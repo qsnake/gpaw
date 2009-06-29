@@ -60,10 +60,18 @@ class YLExpansion:
     def __iter__(self):
         raise NotImplementedError
 
+
 class DensityExpansion(YLExpansion):
+    def __init__(self, n_sLg, Y_yL, ng):
+        YLExpansion.__init__(self, n_sLg, Y_yL)
+        self.n_sg = npy.zeros((len(n_sLg), ng))
+        
     def __iter__(self):
         for Y_L in self.Y_yL:
-            yield npy.dot(Y_L, n_sLg)
+            #self.n_sg[:] = npy.dot(Y_L, self.n_sLg) # This is slower!???
+            for s, n_Lg in enumerate(self.n_sLg):
+                self.n_sg[s] = npy.dot(Y_L, n_Lg) 
+            yield self.n_sg
 
 class GradientExpansion(YLExpansion):
     def __init__(self, n_sLg, Y_yL, dndr_sLg, lmax):
@@ -202,7 +210,7 @@ class XCCorrection:
             if core:
                 n_Lg[0] += (1.0 / len(D_sp)) * self.nc_g * sqrt(4 * pi)
             n_sLg.append(n_Lg)
-        return DensityExpansion(n_sLg, self.Y_yL)
+        return DensityExpansion(n_sLg, self.Y_yL, self.ng)
     
     def expand_pseudo_density(self, D_sp, core=True):
         n_sLg = []
@@ -214,7 +222,7 @@ class XCCorrection:
             if core:
                 n_Lg[0] += (1.0/len(D_sp))*self.nct_g * sqrt(4 * pi)
             n_sLg.append(n_Lg)
-        return DensityExpansion(n_sLg, self.Y_yL)
+        return DensityExpansion(n_sLg, self.Y_yL, self.ng)
 
     def expand_gradient(self, D_sp, core=True):
         raise NotImplementedError
@@ -231,13 +239,13 @@ class XCCorrection:
         vxct_sg = npy.zeros((len(D_sp), self.ng))
         integrator = self.get_integrator(H_sp)
         Etot = 0
-	for H_p in H_sp:        
+        for H_p in H_sp:        
             H_p[:] = 0.0
             
         # Zip makes the iterators to be calculated instantly, which is not good
         for n_sg, nt_sg, i_slice in izip(self.expand_density(D_sp),
-                                 self.expand_pseudo_density(D_sp),
-                                 integrator):
+                                         self.expand_pseudo_density(D_sp),
+                                         integrator):
             vxc_sg[:] = 0.0
             vxct_sg[:] = 0.0
             if len(D_sp) == 1:
@@ -272,7 +280,7 @@ class XCCorrection:
             else:
                 return self.GGA(D_sp, H_sp)
             
-        #Enable this line to test new XC_Correction methods
+        #Enable this line to test new XC_Correction methods-56.64230
         #return self.LDA_new(D_sp, H_sp) - self.Exc0
 
         E = 0.0
