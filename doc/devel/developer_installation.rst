@@ -17,7 +17,6 @@ Do the following:
 
   * build :ref:`c_extension`::
 
-     [~]$ cd gpaw
      [gpaw]$ python setup.py build_ext 2>&1 | tee build_ext.log
 
   This will build two things:
@@ -44,3 +43,5 @@ Do the following:
 
      export PYTHONPATH=${HOME}/gpaw:${PYTHONPATH}
      export PATH=${HOME}/gpaw/build/bin.<platform>-2.5:${HOME}/gpaw/tools:${PATH}
+
+  * install gpaw setups (:ref:`installationguide` step 4).

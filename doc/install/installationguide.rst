@@ -36,22 +36,18 @@ Standard installation
 
      [~]$ cd gpaw
 
-.. note::
+3) If you install on a cluster,
+   take a look at :ref:`install_custom_installation`.
+   Then follow :ref:`developer_installation`.
 
-   The installation described below is suitable only as a first try:
-
-    - if you install on a cluster, take a look at :ref:`install_custom_installation`,
-
-    - if you are a developer, please follow :ref:`developer_installation`.
-
-
-3) install with the standard (using bash)::
+   **Note**: alternatively (**not recommended**) to
+   :ref:`developer_installation`, install with the standard (using bash)::
 
      [gpaw]$ python setup.py install --home=<my-directory>  2>&1 | tee install.log
 
    and put :file:`{<my-directory>}/lib/python` (or
    :file:`{<my-directory>}/lib64/python`) in your :envvar:`$PYTHONPATH` 
-   environment variable. Moreover, if parallel environment is found on your system,
+   environment variable.  Moreover, if parallel environment is found on your system,
    a special :program:`gpaw-python` python-interpreter is created under
    :file:`{<my-directory>}/bin`. Please add
    :file:`{<my-directory>}/bin` to :envvar:`PATH`. Alternatively, the full pathname
@@ -59,11 +55,12 @@ Standard installation
    parallel runs. See :ref:`parallel_installation` for more details about
    parallel runs.
 
+
    .. note::
 
      Usually :envvar:`$HOME` is a good choice for :file:`{<my-directory>}`.
 
-   Alternatively, if you have root-permissions, you can install GPAW system-wide (using bash)::
+   If you have root-permissions, you can install GPAW system-wide (using bash)::
 
      [gpaw]$ python setup.py install 2>&1 | tee install.log
 
