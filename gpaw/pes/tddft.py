@@ -22,7 +22,7 @@ class TDDFTPES(BasePES):
         self.c_m.converge_wave_functions()
         self.c_d.converge_wave_functions()
         
-        self.tjek()
+        self.check_grids()
 
         # Make good way for initialising these
 
@@ -47,18 +47,20 @@ class TDDFTPES(BasePES):
         self._create_f()
         
 
-    def _create_d(self):  # Creates a matrix containing overlaps between KS orbitals
+    def _create_d(self):
+        """Creates a matrix containing overlaps between KS orbitals"""
 
         # This is crap code... !!!!!!!
         self.d=np.zeros((self.imax,self.kmax+self.lmax))
 
-        for i in range(0,self.imax):
-            for j in range(0,self.kmax+self.lmax):
+        for i in range(0, self.imax):
+            for j in range(0, self.kmax + self.lmax):
                 if self.qnr_m[i,1]==self.qnr_d[j,1]:
                     ks_m=self.c_m.wfs.get_wave_function_array(self.qnr_m[i,0], 0,
                                                               self.qnr_m[i,1])
                     ks_d=self.c_d.wfs.get_wave_function_array(self.qnr_d[j,0], 0,
                                                               self.qnr_d[j,1])
+#                    print "--- mpi.rank, ks_m, ks_d=", mpi.rank, type(ks_m), type(ks_d)
                     me=np.vdot(ks_m , ks_d) * self.c_m.wfs.gd.dv
                     self.c_m.wfs.gd.comm.sum(me)
                     
@@ -110,16 +112,22 @@ class TDDFTPES(BasePES):
                 gi=0
                 for kl in range(len(self.lr_d)):
 
-                    for index in [2*self.lr_d.kss[kl].i,2*self.lr_d.kss[kl].i+1]:
-                        if all(self.qnr_d[index,0:2]==np.array([self.lr_d.kss[kl].i,self.lr_d.kss[kl].pspin])):
+                    for index in [2 * self.lr_d.kss[kl].i,
+                                  2 * self.lr_d.kss[kl].i+1]:
+                        if (self.qnr_d[index,0:2] == 
+                            np.array([self.lr_d.kss[kl].i,
+                                      self.lr_d.kss[kl].pspin])).all():
                             k=index
-                    for index in [2*self.lr_d.kss[kl].j,2*self.lr_d.kss[kl].j+1]:
+                    for index in [2 * self.lr_d.kss[kl].j,
+                                  2 * self.lr_d.kss[kl].j+1]:
                         if len(self.c_d.wfs.kpt_u)==1 and self.c_d.wfs.kpt_u[0].f_n.sum()%2==1:
-                            if all(self.qnr_d[index,0:2]==np.array([self.lr_d.kss[kl].j,(self.lr_d.kss[kl].pspin+1)%2])): #lort men i lrtddft har sidste fyldte og 1. tomme samme spin...
+                            if (self.qnr_d[index,0:2] == 
+                                np.array([self.lr_d.kss[kl].j,
+                                          (self.lr_d.kss[kl].pspin+1) % 2])).any(): #lort men i lrtddft har sidste fyldte og 1. tomme samme spin...
                                 l=index-self.kmax
 
                         else:
-                            if all(self.qnr_d[index,0:2]==np.array([self.lr_d.kss[kl].j,self.lr_d.kss[kl].pspin])):
+                            if (self.qnr_d[index,0:2]==np.array([self.lr_d.kss[kl].j,self.lr_d.kss[kl].pspin])).all():
                                 l=index-self.kmax
 
                     gi+=self.lr_d[I].f[kl]*self.h[i,k,l]
@@ -184,7 +192,7 @@ class TDDFTPES(BasePES):
                 
 
 
-    def tjek(self):
+    def check_grids(self):
         if (self.c_m.wfs.gd.cell_c != self.c_d.wfs.gd.cell_c).any():
             raise RuntimeError('Not the same grid')
         if (self.c_m.wfs.gd.h_c != self.c_d.wfs.gd.h_c).any():
