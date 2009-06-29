@@ -123,6 +123,16 @@ class WaveFunctions(EmptyWaveFunctions):
     def add_to_density_from_k_point(self, nt_sG, kpt):
         self.add_to_density_from_k_point_with_occupation(nt_sG, kpt, kpt.f_n)
     
+
+    def get_orbital_density_matrix(self, a, kpt, n):
+        """Add the nth band density from kpt to density matrix D_sp"""
+        ni = self.setups[a].ni
+        D_sii = np.zeros((self.nspins, ni, ni))
+        P_i = kpt.P_ani[a][n]
+        D_sii[kpt.s] += np.outer(P_i.conj(), P_i).real
+        D_sp = [pack(D_ii) for D_ii in D_sii]
+        return D_sp
+    
     def calculate_atomic_density_matrices_k_point(self, D_sii, kpt, a, f_n):
         if kpt.rho_MM is not None:
             P_Mi = kpt.P_aMi[a] 
@@ -902,6 +912,13 @@ class GridWaveFunctions(WaveFunctions):
 
     #def add_to_density_from_k_point(self, nt_sG, kpt):
     #    self.add_to_density_from_k_point_with_occupation(nt_sG, kpt, kpt.f_n)
+
+    def add_orbital_density(self, nt_G, kpt, n):
+        if self.dtype == float:
+            axpy(1.0, kpt.psit_nG[n]**2, nt_G)
+        else:
+            axpy(1.0, kpt.psit_nG[n].real**2, nt_G)
+            axpy(1.0, kpt.psit_nG[n].imag**2, nt_G)
 
     def add_to_density_from_k_point_with_occupation(self, nt_sG, kpt, f_n):
         # Used in calculation of response part of GLLB-potential
