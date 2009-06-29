@@ -16,7 +16,7 @@ from ase.utils.memory import shapeopt, MemorySingleton, MemoryStatistics
 from gpaw import parsize, parsize_bands, debug
 from gpaw.mpi import world, distribute_cpus, compare_atoms
 from gpaw.utilities import gcd
-from gpaw.utilities.tools import tri2full, md5_array
+from gpaw.utilities.tools import tri2full, md5_array, gram_schmidt
 from gpaw.band_descriptor import BandDescriptor
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.hs_operators import Operator
@@ -62,7 +62,7 @@ class UTBandParallelSetup(TestCase):
     Setup a simple band parallel calculation."""
 
     # Number of bands
-    nbands = 360 #*5
+    nbands = 360//10 #*5
 
     # Spin-paired, single kpoint
     nspins = 1
@@ -442,7 +442,7 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
                 fig = pl.figure(numfigs)
                 ax = pl.axes()
                 ax.set_title('%s: %s' % (self.__class__.__name__, keywords))
-                im = ax.imshow(np.abs(A_nn-A0_nn), cmap=pl.cm.jet)
+                im = ax.imshow(np.abs(A_nn-A0_nn), cmap=pl.cm.jet, interpolation='nearest')
                 pl.colorbar(im)
                 numfigs += 1
                 if not self.showplots:
@@ -581,7 +581,7 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
 
         self.check_and_plot(S_nn, alpha*self.S0_nn, 9, 'overlaps,nonhermitian')
 
-    def test_overlap_multiply(self):
+    def test_multiply_orthonormal(self):
         # Known starting point of S_nn = <psit_m|S|psit_n>
         S_nn = self.S0_nn
 
@@ -597,9 +597,9 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
             V_nn[1,2:] = -band_indices[2:]**0.5
 
         W_n = np.zeros(self.nbands).astype(self.dtype)
-        W_n[1] = (1. + self.Qtotal) * self.nbands * (self.nbands - 1) // 2
+        W_n[1] = (1. + self.Qtotal) * self.nbands * (self.nbands - 1) / 2.
 
-        # Find the inverse
+        # Find the inverse basis
         Vinv_nn = np.linalg.inv(V_nn)
 
         # Test analytical eigenvectors for consistency against analytical S_nn
@@ -607,36 +607,29 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         self.assertAlmostEqual(np.abs(D_nn.diagonal()-W_n).max(), 0, 8)
         self.assertAlmostEqual(np.abs(np.tril(D_nn, -1)).max(), 0, 4)
         self.assertAlmostEqual(np.abs(np.triu(D_nn, 1)).max(), 0, 4)
-        del D_nn
+        del Vinv_nn, D_nn
 
-        if True:
-            # Eigenvector basis should do just fine
-            C_nn = Vinv_nn.copy()
-        else:
-            # To mix it up, perform Gram Schmidt orthonormalization
-            from gpaw.utilities.tools import gram_schmidt
-            Q_nn = V_nn.copy()
-            gram_schmidt(Q_nn)
-            self.assertAlmostEqual(np.abs(np.dot(Q_nn.T.conj(), Q_nn) \
-                                          - np.eye(self.nbands)).max(), 0, 6)
-            C_nn = np.linalg.inverse(Q_nn)
+        # Perform Gram Schmidt orthonormalization for diagonalization
+        # |psit_n> -> C_nn |psit_n>, using orthonormalized basis Q_nn
+        # <psit_m|S|psit_n> -> <psit_m|C_nn^dag S C_nn|psit_n> = diag(W_n)
+        # using S_nn = V_nn * W_nn * V_nn^(-1) = Q_nn * W_nn * Q_nn^dag
+        C_nn = V_nn.copy()
+        gram_schmidt(C_nn)
+        self.assertAlmostEqual(np.abs(np.dot(C_nn.T.conj(), C_nn) \
+                                      - np.eye(self.nbands)).max(), 0, 6)
 
-        # XXX must be strictly hermitian apparently!!!
-        #C_nn[:] = np.triu(C_nn)
-        C_nn[:] = (C_nn+C_nn.T.conj())/2.
-        del Vinv_nn
-
+        # Set up Hermitian overlap operator:
         S = lambda x: x
         dS = lambda a, P_ni: np.dot(P_ni, self.setups[a].O_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
         overlap = Operator(self.bd, self.gd, nblocks, self.async, True)
-        self.psit_nG = overlap.matrix_multiply(C_nn.conj(), self.psit_nG, self.P_ani)
+        self.psit_nG = overlap.matrix_multiply(C_nn.T.copy(), self.psit_nG, self.P_ani)
         #D_nn = overlap.calculate_matrix_elements(self.psit_nG, \
         #    self.P_ani, S, dS).conj() # conjugate to get <psit_m|A|psit_n>
-        #tri2full(D_nn)
+        #tri2full(D_nn) # lower to upper...
         D_nn = overlap.calculate_matrix_elements(self.psit_nG, \
-            self.P_ani, S, dS).T.copy() # conjugate to get <psit_m|A|psit_n>
-        tri2full(D_nn, 'U') #upper to lower now...
+            self.P_ani, S, dS).T.copy() # transpose to get <psit_m|A|psit_n>
+        tri2full(D_nn, 'U') # upper to lower...
 
         if self.bd.comm.rank == 0:
             self.gd.comm.broadcast(D_nn, 0)
@@ -645,10 +638,101 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         if memstats:
             self.mem_test = record_memory()
 
-        # D_nn = C_nn^dag * S_nn * C_nn = C_nn^dag * L_nn * L_nn^dag * C_nn
+        # D_nn = C_nn^dag * S_nn * C_nn = W_n since Q_nn^dag = Q_nn^(-1)
         D0_nn = np.dot(C_nn.T.conj(), np.dot(S_nn, C_nn))
-        #self.assertAlmostEqual(np.abs(D0_nn-np.diag(W_n)).max(), 0, 9)
-        self.check_and_plot(D_nn, D0_nn, 9, 'overlaps,multiply')
+        self.assertAlmostEqual(np.abs(D0_nn-np.diag(W_n)).max(), 0, 9)
+        self.check_and_plot(D_nn, D0_nn, 9, 'multiply,orthonormal')
+
+    def test_multiply_randomized(self):
+        # Known starting point of S_nn = <psit_m|S|psit_n>
+        S_nn = self.S0_nn
+
+        if self.dtype == complex:
+            C_nn = np.random.uniform(size=self.nbands**2) * \
+                np.exp(1j*np.random.uniform(0,2*np.pi,size=self.nbands**2))
+        else:
+            C_nn = np.random.normal(size=self.nbands**2)
+        C_nn = C_nn.reshape((self.nbands,self.nbands)) / np.linalg.norm(C_nn,2)
+        world.broadcast(C_nn, 0)
+
+        # Set up Hermitian overlap operator:
+        S = lambda x: x
+        dS = lambda a, P_ni: np.dot(P_ni, self.setups[a].O_ii)
+        nblocks = self.get_optimal_number_of_blocks(self.blocking)
+        overlap = Operator(self.bd, self.gd, nblocks, self.async, True)
+        self.psit_nG = overlap.matrix_multiply(C_nn.T.copy(), self.psit_nG, self.P_ani)
+        #D_nn = overlap.calculate_matrix_elements(self.psit_nG, \
+        #    self.P_ani, S, dS).conj() # conjugate to get <psit_m|A|psit_n>
+        #tri2full(D_nn) # lower to upper...
+        D_nn = overlap.calculate_matrix_elements(self.psit_nG, \
+            self.P_ani, S, dS).T.copy() # transpose to get <psit_m|A|psit_n>
+        tri2full(D_nn, 'U') # upper to lower...
+
+        if self.bd.comm.rank == 0:
+            self.gd.comm.broadcast(D_nn, 0)
+        self.bd.comm.broadcast(D_nn, 0)
+
+        if memstats:
+            self.mem_test = record_memory()
+
+        # D_nn = C_nn^dag * S_nn * C_nn
+        D0_nn = np.dot(C_nn.T.conj(), np.dot(S_nn, C_nn))
+        self.check_and_plot(D_nn, D0_nn, 9, 'multiply,randomized')
+
+    def test_multiply_nonhermitian(self):
+        alpha = np.random.normal(size=1).astype(self.dtype)
+        if self.dtype == complex:
+            alpha += 1j*np.random.normal(size=1)
+        world.sum(alpha)
+        alpha /= world.size
+
+        # Known starting point of S_nn = <psit_m|S|psit_n>
+        S_nn = alpha*self.S0_nn
+
+        if self.dtype == complex:
+            C_nn = np.random.uniform(size=self.nbands**2) * \
+                np.exp(1j*np.random.uniform(0,2*np.pi,size=self.nbands**2))
+        else:
+            C_nn = np.random.normal(size=self.nbands**2)
+        C_nn = C_nn.reshape((self.nbands,self.nbands)) / np.linalg.norm(C_nn,2)
+        world.broadcast(C_nn, 0)
+
+
+        # Set up non-Hermitian overlap operator:
+        S = lambda x: alpha*x
+        dS = lambda a, P_ni: np.dot(alpha*P_ni, self.setups[a].O_ii)
+        nblocks = self.get_optimal_number_of_blocks(self.blocking)
+        overlap = Operator(self.bd, self.gd, nblocks, self.async, False)
+        self.psit_nG = overlap.matrix_multiply(C_nn.T.copy(), self.psit_nG, self.P_ani)
+        D_nn = overlap.calculate_matrix_elements(self.psit_nG, \
+            self.P_ani, S, dS).T.copy() # transpose to get <psit_m|A|psit_n>
+
+        if self.bd.comm.rank == 0:
+            self.gd.comm.broadcast(D_nn, 0)
+        self.bd.comm.broadcast(D_nn, 0)
+
+        if memstats:
+            self.mem_test = record_memory()
+
+        # D_nn = C_nn^dag * S_nn * C_nn
+        D0_nn = np.dot(C_nn.T.conj(), np.dot(S_nn, C_nn))
+        self.check_and_plot(D_nn, D0_nn, 9, 'multiply,nonhermitian')
+
+    """
+    def test_multiply_cholesky(self):
+        # Known starting point of S_nn = <psit_m|S|psit_n>
+        S_nn = self.S0_nn
+
+        try:
+            # Try Cholesky decomposition S_nn = L_nn * L_nn^dag
+            L_nn = np.linalg.cholesky(S_nn)
+            # |psit_n> -> C_nn |psit_n> , C_nn^(-1) = L_nn^dag
+            # <psit_m|S|psit_n> -> <psit_m|C_nn^dag S C_nn|psit_n> = diag(W_n)
+            C_nn = np.linalg.inv(L_nn.T.conj())
+            W_n = np.ones(self.nbands).astype(self.dtype)
+        except np.linalg.LinAlgError:
+            self.fail(...)
+    """
 
 
 # -------------------------------------------------------------------
