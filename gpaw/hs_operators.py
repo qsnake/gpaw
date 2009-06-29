@@ -299,9 +299,6 @@ class Operator:
 
         """
 
-        if not self.hermitian:
-            raise NotImplementedError('Non-hermitian mode is untested.')
-
         band_comm = self.bd.comm
         B = band_comm.size
         J = self.nblocks
