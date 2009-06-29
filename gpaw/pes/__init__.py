@@ -29,12 +29,10 @@ class BasePES:
              folding='Gauss',
              comment=None):
 
-        print "5 mpi.rank", mpi.rank
+        ew = self.get_energies_and_weights()
         if mpi.rank == mpi.MASTER:
-            sp = PESpectrum(self.get_energies_and_weights(),
-                            folding, width)
+            sp = PESpectrum(ew, folding, width)
             sp.write(filename, emin, emax, de,  comment)
-        print "8 mpi.rank", mpi.rank
 
     def get_energies_and_weights(self):
         if self.be == None or self.f == None:

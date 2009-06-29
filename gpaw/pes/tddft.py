@@ -56,15 +56,24 @@ class TDDFTPES(BasePES):
         for i in range(0, self.imax):
             for j in range(0, self.kmax + self.lmax):
                 if self.qnr_m[i,1]==self.qnr_d[j,1]:
-                    ks_m=self.c_m.wfs.get_wave_function_array(self.qnr_m[i,0], 0,
-                                                              self.qnr_m[i,1])
-                    ks_d=self.c_d.wfs.get_wave_function_array(self.qnr_d[j,0], 0,
-                                                              self.qnr_d[j,1])
-#                    print "--- mpi.rank, ks_m, ks_d=", mpi.rank, type(ks_m), type(ks_d)
+#                    ks_m=self.c_m.wfs.get_wave_function_array(self.qnr_m[i,0], 0,
+#                                                              self.qnr_m[i,1])
+                    ks_m = self.c_m.wfs.kpt_u[self.qnr_m[i,1]].psit_nG[
+                        self.qnr_m[i,0]]
+#                    ks_d=self.c_d.wfs.get_wave_function_array(self.qnr_d[j,0], 0,
+#                                                              self.qnr_d[j,1])
+                    ks_d = self.c_d.wfs.kpt_u[self.qnr_d[j,1]].psit_nG[
+                        self.qnr_d[j,0]]
+
                     me=np.vdot(ks_m , ks_d) * self.c_m.wfs.gd.dv
+#                    print "0 mpi.rank, me=", mpi.rank, me
                     self.c_m.wfs.gd.comm.sum(me)
+#                    print "1 mpi.rank, me=", mpi.rank, me
                     
-                    self.d[i,j]=me+self._nuc_corr(self.qnr_m[i,0],self.qnr_d[j,0],self.qnr_m[i,2],self.qnr_d[j,2])
+                    self.d[i,j] = me + self._nuc_corr(self.qnr_m[i,0],
+                                                      self.qnr_d[j,0],
+                                                      self.qnr_m[i,2],
+                                                      self.qnr_d[j,2])
 
     def _create_h(self):
         self.h=np.zeros((self.imax,self.kmax,self.lmax))
