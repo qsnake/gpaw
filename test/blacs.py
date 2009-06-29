@@ -1,7 +1,7 @@
 # Simple test case for new BLACS/ScaLAPACK
 # We compare the results here to those obtained
 # from
-# test/parallel/bandpar3.py
+# test/parallel/bandpar3?.py
 # with analogous parameters.
 #
 # Note that GPAW does not do transpose for calls
