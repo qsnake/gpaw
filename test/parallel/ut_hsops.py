@@ -7,7 +7,12 @@ import gc
 import sys
 import time
 import numpy as np
-import pylab as pl
+
+try:
+    # Matplotlib is not a dependency
+    import pylab as pl
+except ImportError:
+    pl = None
 
 from copy import copy
 from ase import Atoms, molecule
@@ -437,7 +442,7 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         try:
             self.assertAlmostEqual(np.abs(A_nn-A0_nn).max(), 0, digits)
         except AssertionError:
-            if world.rank == 0:
+            if world.rank == 0 and pl is not None:
                 global numfigs
                 fig = pl.figure(numfigs)
                 ax = pl.axes()
