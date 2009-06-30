@@ -45,6 +45,10 @@ parser.add_option('-u', '--new-unittest',
 parser.add_option('--from', metavar='TESTFILE', dest='from_test',
                   help='Run remaining tests, starting from TESTFILE')
 
+parser.add_option('--dry', action='store_true',
+                  help='Do not run any tests, but write the names of those '
+                  'tests which would be run')
+
 opt, tests = parser.parse_args()
 
 if len(tests) == 0:
@@ -301,6 +305,11 @@ class MyTextTestRunner(TextTestRunner):
         if self.parallel:
             args = (mpi.world,) + args
         return MyTextTestResult(*args)
+
+if opt.dry:
+    for test in tests:
+        print test
+    raise SystemExit
 
 ts = TestSuite()
 for test in tests:
