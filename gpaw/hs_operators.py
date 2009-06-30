@@ -307,8 +307,6 @@ class Operator:
         if self.work1_xG is None:
             self.allocate_work_arrays(N, psit_nG.dtype)
 
-        async = self.async
-
         if B == 1 and J == 1:
             # Simple case:
             newpsit_nG = self.work1_xG
@@ -319,13 +317,11 @@ class Operator:
                     gemm(1.0, P_ni.copy(), C_NN, 0.0, P_ni)
             return newpsit_nG
         
-        # Now it gets nasty!  We parallelize over B groups of bands
-        # and each group is blocked in J blocks.
+        # Now it gets nasty! We parallelize over B groups of bands and
+        # each grid chunk is divided in J smaller slices (less memory).
 
+        Q = B # always non-hermitian XXX
         rank = band_comm.rank
-        rankm = (rank - 1) % B
-        rankp = (rank + 1) % B
-        N = len(psit_nG)       # mynbands
         shape = psit_nG.shape
         psit_nG = psit_nG.reshape(N, -1)
         G = psit_nG.shape[1]   # number of grid-points
@@ -333,98 +329,60 @@ class Operator:
         if g * J < G:
             g += 1
 
-        if async:
-            for j in range(J):
-                G1 = j * g
-                G2 = G1 + g
-                if G2 > G:
-                    G2 = G
-                    g = G2 - G1
-                sbuf_ng = self.work1_xG.reshape(-1)[:N * g].reshape(N, g)
-                rbuf_ng = self.work2_xG.reshape(-1)[:N * g].reshape(N, g)
-                sbuf_ng[:] = psit_nG[:, G1:G2]
-                if P_ani:
-                    sbuf_In = np.concatenate([P_ni.T for P_ni in P_ani.values()])
-                beta = 0.0
-                for q in range(B):
-                    if j == 0 and P_ani:
-                        if B > 1:
-                            rbuf_In = np.empty_like(sbuf_In)
-                        if q < B - 1:
-                            sreq2 = band_comm.send(sbuf_In, rankm, 31, False)
-                            rreq2 = band_comm.receive(rbuf_In, rankp, 31, False)
-                    if q < B - 1:
-                        sreq = band_comm.send(sbuf_ng, rankm, 61, False)
-                        rreq = band_comm.receive(rbuf_ng, rankp, 61, False)
-                    C_mm = self.bd.extract_block(C_NN, rank, (rank + q) % B)
-                    gemm(1.0, sbuf_ng, C_mm, beta, psit_nG[:, G1:G2])
-                    if j == 0 and P_ani:
-                        I1 = 0
-                        for P_ni in P_ani.values():
-                            I2 = I1 + P_ni.shape[1]
-                            gemm(1.0, sbuf_In[I1:I2].T.copy(), C_mm, beta, P_ni)
-                            I1 = I2
-
-                    if q == B - 1:
-                        break
-
-                    if j == 0 and P_ani:
-                        band_comm.wait(sreq2)
-                        band_comm.wait(rreq2)
-                        sbuf_In, rbuf_In = rbuf_In, sbuf_In
-
-                    beta = 1.0
-                    band_comm.wait(rreq)
-                    band_comm.wait(sreq)
-                    sbuf_ng, rbuf_ng = rbuf_ng, sbuf_ng
-        else:
-            if P_ani:
-                beta = 0.0
-                sbuf_In = np.concatenate([P_ni.T for P_ni in P_ani.values()])
+        # Buffers for send/receive of pre-multiplication versions of P_ani's.
+        if P_ani:
+            sbuf_In = np.concatenate([P_ni.T for P_ni in P_ani.values()])
+            if B > 1:
                 rbuf_In = np.empty_like(sbuf_In)
-                for q in range(B):
-                    C_mm = self.bd.extract_block(C_NN, rank, (rank + q) % B)
-                    if q < B - 1:
-                        sreq2 = band_comm.send(sbuf_In, rankm, 31, False)
-                        rreq2 = band_comm.receive(rbuf_In, rankp, 31, False)
+
+        #XXX actually odd number of processors mysterically works in sync too
+        if not self.async:
+            if B > 1 and B % 2 != 0:
+                raise NotImplementedError('Synchronous band-parallel operator' \
+                    ' requires an even number of processors.')
+
+        for j in range(J):
+            G1 = j * g
+            G2 = G1 + g
+            if G2 > G:
+                G2 = G
+                g = G2 - G1
+            sbuf_ng = self.work1_xG.reshape(-1)[:N * g].reshape(N, g)
+            rbuf_ng = self.work2_xG.reshape(-1)[:N * g].reshape(N, g)
+            sbuf_ng[:] = psit_nG[:, G1:G2]
+            beta = 0.0
+            cycle_P_ani = (j == 0 and P_ani)
+            for q in range(Q):
+                # Start sending currently buffered kets to rank below
+                # and receiving next set of kets from rank above us.
+                # If we're at the first slice, start cycling P_ani too.
+                if q < Q - 1:
+                    self._initialize_cycle(sbuf_ng, rbuf_ng, \
+                        sbuf_In, rbuf_In, cycle_P_ani)
+
+                # Calculate wave-function contributions from the current slice
+                # of grid data by the current mynbands x mynbands matrix block.
+                C_mm = self.bd.extract_block(C_NN, rank, (rank + q) % B)
+                gemm(1.0, sbuf_ng, C_mm, beta, psit_nG[:, G1:G2])
+
+                # If we're at the first slice, add contributions to P_ani's.
+                if cycle_P_ani:
                     I1 = 0
                     for P_ni in P_ani.values():
                         I2 = I1 + P_ni.shape[1]
                         gemm(1.0, sbuf_In[I1:I2].T.copy(), C_mm, beta, P_ni)
                         I1 = I2
 
+                # Wait for all send/receives to finish before next iteration.
+                # Swap send and receive buffer such that next becomes current.
+                # If we're at the first slice, also finishes the P_ani cycle.
+                if q < Q - 1:
+                    sbuf_ng, rbuf_ng, sbuf_In, rbuf_In = self._finish_cycle( \
+                        sbuf_ng, rbuf_ng, sbuf_In, rbuf_In, cycle_P_ani)
+
+                # First iteration was special because we initialized the kets
+                if q == 0:
                     beta = 1.0
-                    if q < B - 1:
-                        band_comm.wait(sreq2)
-                        band_comm.wait(rreq2)
-                        sbuf_In, rbuf_In = rbuf_In, sbuf_In
-
-            for j in range(J):
-                G1 = j * g
-                G2 = G1 + g
-                if G2 > G:
-                    G2 = G
-                    g = G2 - G1
-                sbuf_ng = self.work1_xG.reshape(-1)[:N * g].reshape(N, g)
-                rbuf_ng = self.work2_xG.reshape(-1)[:N * g].reshape(N, g)
-                sbuf_ng[:] = psit_nG[:, G1:G2]
-                beta = 0.0
-                for q in range(B):
-                    C_mm = self.bd.extract_block(C_NN, rank, (rank + q) % B)
-                    gemm(1.0, sbuf_ng, C_mm, beta, psit_nG[:, G1:G2])
-                    beta = 1.0
-
-                    if q == B - 1:
-                        break
-
-                    if (rank % 2 == 0):
-                        band_comm.send(sbuf_ng, rankm, 11)
-                        band_comm.receive(rbuf_ng, rankp, 11)
-                    else:
-                        band_comm.receive(rbuf_ng, rankp, 11)
-                        band_comm.send(sbuf_ng, rankm, 11)
-
-                    sbuf_ng, rbuf_ng = rbuf_ng, sbuf_ng
 
         psit_nG.shape = shape
         return psit_nG
