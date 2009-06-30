@@ -42,6 +42,8 @@ parser.add_option('-u', '--new-unittest',
                   action='store_true',
                   help='Use new unittest module with parallel support.')
 
+parser.add_option('--from', metavar='TESTFILE', dest='from_test',
+                  help='Run remaining tests, starting from TESTFILE')
 
 opt, tests = parser.parse_args()
 
@@ -214,6 +216,10 @@ if size > 1:
 for test in exclude:
     if test in tests:
         tests.remove(test)
+
+if opt.from_test:
+    fromindex = tests.index(opt.from_test)
+    tests = tests[fromindex:]
 
 #gc.set_debug(gc.DEBUG_SAVEALL)
 
