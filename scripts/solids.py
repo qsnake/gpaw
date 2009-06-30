@@ -180,7 +180,7 @@ def alloy(structure, symbol1, symbol2, a):
 ## CaTiO3 = perovskite('Ca', 'Ti', 'O', 3.84)
 ## view(CaTiO3)
 
-## Be = hcp('Be', 2.29)
+## Be = hcp('Be', 2.29, c=1.567 * 2.29)
 ## view(Be)
 
 ## ZnO = wurtzite('Zn', 'O', 3.25, c=5.23).repeat([2, 2, 2])
