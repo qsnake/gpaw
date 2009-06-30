@@ -6,11 +6,17 @@ from gpaw.utilities.blas import rk, r2k, gemm
 
 
 class Operator:
+    """Base class for overlap and hamiltonian operators.
+    Due to optimized BLAS usage, matrices are considered
+    transposed both upon input and output.""" #XXX
+
+    # This class has 100% parallel unittest coverage by parallel/ut_hsops.py!
+    # If you add to or change any aspect of the code, please update the test.
+
     nblocks = 1
     async = True
     hermitian = True
 
-    """Base class for overlap and hamiltonian operators."""
     def __init__(self, bd, gd, nblocks=None, async=None, hermitian=None):
         self.bd = bd
         self.gd = gd
@@ -95,8 +101,34 @@ class Operator:
         else:
             gemm(dv, bra_xG, ket_yG, 0.0, A_yx, 'c')
 
-
     def _initialize_cycle(self, sbuf_mG, rbuf_mG, sbuf_In, rbuf_In, auxiliary):
+        """Initializes send/receive cycle of pseudo wave functions, as well as
+        an optional auxiliary send/receive cycle of corresponding projections.
+        Low-level helper function. Results in the following communications::
+
+                       Rank below            This rank            Rank above
+        Asynchronous:  ... o/i  <-- sbuf_mG --  o/i  <-- rbuf_mG --  o/i ...
+        Synchronous:
+            ...
+        Auxiliary:     ... o/i  <-- sbuf_In --  o/i  <-- rbuf_In --  o/i ...
+
+        A letter 'o' signifies a non-blocking send and 'i' a matching receive.
+
+
+        Parameters:
+
+        sbuf_mG: ndarray
+            Send buffer for the outgoing set of pseudo wave functions.
+        rbuf_mG: ndarray
+            Receive buffer for the incoming set of pseudo wave functions.
+        sbuf_In: ndarray, ignored if not auxiliary
+            Send buffer for the outgoing set of atomic projector overlaps.
+        rbuf_In: ndarray, ignored if not auxiliary
+            Receive buffer for the incoming set of atomic projector overlaps.
+        auxiliary: bool
+            Determines whether to initiate the auxiliary send/receive cycle.
+
+        """
         band_comm = self.bd.comm
         rankm = (band_comm.rank - 1) % band_comm.size
         rankp = (band_comm.rank + 1) % band_comm.size
@@ -106,8 +138,10 @@ class Operator:
         if self.async:
             self.req.append(band_comm.send(sbuf_mG, rankm, 11, False))
             self.req.append(band_comm.receive(rbuf_mG, rankp, 11, False))
-        else:
-            pass
+        elif band_comm.size > 1 and band_comm.size % 2 != 0:
+            # Cyclic chains of blocking send/receives requires an even number.
+            raise NotImplementedError('Synchronous band-parallel operator' \
+                ' requires an even number of processors (if more than one).')
 
         # Auxiliary asyncronous cycle, also send/receive of P_ani's.
         if auxiliary:
@@ -115,6 +149,37 @@ class Operator:
             self.req2.append(band_comm.receive(rbuf_In, rankp, 31, False))
 
     def _finish_cycle(self, sbuf_mG, rbuf_mG, sbuf_In, rbuf_In, auxiliary):
+        """Completes a send/receive cycle of pseudo wave functions, as well as
+        an optional auxiliary send/receive cycle of corresponding projections.
+        Low-level helper function. Results in the following communications::
+
+                       Rank below            This rank            Rank above
+        Asynchronous:  ... w/w  <-- sbuf_mG --  w/w  <-- rbuf_mG --  w/w ...
+        Synchronous:   ... O/I  <-- sbuf_mG --  O/I  <-- rbuf_mG --  O/I ...
+            ...
+        Auxiliary:     ... w/w  <-- sbuf_In --  w/w  <-- rbuf_In --  w/w ...
+
+        A letter 'w' signifies wait for initialized non-blocking communication.
+        The letter 'O' signifies a blocking send and 'I' a matching receive,
+        but note that the underlying mechanism differs on even and odd ranks.
+
+
+        Parameters:
+
+        Same as _initialize_cycle.
+
+        Returns:
+
+        sbuf_mG: ndarray
+            New send buffer with the received set of pseudo wave functions.
+        rbuf_mG: ndarray
+            New receive buffer (has the sent set of pseudo wave functions).
+        sbuf_In: ndarray, same as input if not auxiliary
+            New send buffer with the received set of atomic projector overlaps.
+        rbuf_In: ndarray, same as input if not auxiliary
+            New receive buffer (has the sent set of atomic projector overlaps).
+
+        """
         band_comm = self.bd.comm
         rankm = (band_comm.rank - 1) % band_comm.size
         rankp = (band_comm.rank + 1) % band_comm.size
@@ -176,7 +241,6 @@ class Operator:
         B = band_comm.size
         J = self.nblocks
         N = self.bd.mynbands
-        dv = self.gd.dv
         
         if self.work1_xG is None:
             self.allocate_work_arrays(N, psit_nG.dtype)
@@ -201,16 +265,13 @@ class Operator:
             domain_comm.sum(A_NN, 0)
             return A_NN
         
-        # Now it gets nasty!  We parallelize over B groups of bands
-        # and each group is blocked in J smaller slices (less memory).
+        # Now it gets nasty! We parallelize over B groups of bands and
+        # each band group is blocked in J smaller slices (less memory).
 
         if self.hermitian:
             Q = B // 2 + 1
         else:
             Q = B
-        rank = band_comm.rank
-        rankm = (rank - 1) % B
-        rankp = (rank + 1) % B
         M = N // J
 
         # Buffer for storage of blocks of calculated matrix elements.
@@ -225,11 +286,6 @@ class Operator:
             if B > 1:
                 rbuf_In = np.empty_like(sbuf_In)
 
-        #XXX actually odd number of processors mysterically works in sync too
-        if not self.async:
-            if B > 1 and B % 2 != 0:
-                raise NotImplementedError('Synchronous band-parallel operator' \
-                    ' requires an even number of processors.')
 
         for j in range(J):
             n1 = j * M
@@ -273,6 +329,7 @@ class Operator:
                     sbuf_mG, rbuf_mG, sbuf_In, rbuf_In = self._finish_cycle( \
                         sbuf_mG, rbuf_mG, sbuf_In, rbuf_In, cycle_P_ani)
 
+                # First iteration was special because we had the ket to ourself
                 if q == 0:
                     rbuf_mG = self.work1_xG[:M]
 
@@ -334,12 +391,6 @@ class Operator:
             sbuf_In = np.concatenate([P_ni.T for P_ni in P_ani.values()])
             if B > 1:
                 rbuf_In = np.empty_like(sbuf_In)
-
-        #XXX actually odd number of processors mysterically works in sync too
-        if not self.async:
-            if B > 1 and B % 2 != 0:
-                raise NotImplementedError('Synchronous band-parallel operator' \
-                    ' requires an even number of processors.')
 
         for j in range(J):
             G1 = j * g
