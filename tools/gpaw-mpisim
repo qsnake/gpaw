@@ -28,19 +28,9 @@ class DummyCommunicator:
         self.txt += ', kpt_u=[' + ','.join(kpt_u) + ']'
         self.output('kpt_comm')
 
-    def simulate_band_comm(self, nbands):
-        # From gpaw/__init__.py lines 398-401 rev. 3893
-        if nbands % self.size != 0:
-            raise RuntimeError('Cannot distribute %d bands to %d processors' %
-                               (nbands, self.size))
-        mynbands = nbands // self.size
-        self.txt += ', mynbands=%d' % mynbands
-
-        # From gpaw/io/__init__.py lines 540-543 rev. 3893
-        n0 = self.rank
-        nstride = self.size
-        mybands = range(n0, nbands, nstride)
-        self.txt += ', mybands=' + str(mybands)
+    def simulate_band_comm(self, bd):
+        self.txt += ', mynbands=%d' % bd.mynbands
+        self.txt += ', mybands=%s' % bd.get_band_indices()
         self.output('band_comm')
 
     def output(self, name='world'):
@@ -50,8 +40,8 @@ class DummyCommunicator:
 
 # -------------------------------------------------------------------
 
-def simulate(world_size, parsize_c, parsize_bands, nspins, nibzkpts, nbands,
-             show_kpt=True, show_band=True, show_domain=True, gd=None):
+def simulate(world_size, parsize_c, parsize_bands, parstride_bands, nspins,
+             nibzkpts, nbands, show_kpt=True, show_band=True, show_domain=True):
 
     # We haven't imported GPAW until now because it messes with sys.argv
     from gpaw import mpi
@@ -60,6 +50,7 @@ def simulate(world_size, parsize_c, parsize_bands, nspins, nibzkpts, nbands,
     print 'Simulating: world.size = %d' % world_size
     print '    parsize_c =', parsize_c
     print '    parsize_bands =', parsize_bands
+    print '    parstride_bands =', parstride_bands
     print '    nspins =', nspins
     print '    nibzkpts =', nibzkpts
     print '    nbands =', nbands
@@ -75,7 +66,9 @@ def simulate(world_size, parsize_c, parsize_bands, nspins, nibzkpts, nbands,
         if show_kpt:
             kpt_comm.simulate_kpt_comm(nspins, nibzkpts)
         if show_band:
-            band_comm.simulate_band_comm(nbands)
+            from gpaw.band_descriptor import BandDescriptor
+            bd = BandDescriptor(nbands, band_comm, parstride_bands)
+            band_comm.simulate_band_comm(bd)
         if show_domain:
             domain_comm.output('domain_comm') #TODO N_c parts!
 
@@ -129,6 +122,9 @@ if __name__ in ['__main__', '__builtin__']:
     parser.add_option('-b', '--state-parallelization', default=1, type='int', \
         dest='parsize_bands', metavar='<B>', \
         help='Divide bands into this many blocks [default: %default]')
+    parser.add_option('-x', '--strided-bandgroups', action='store_true', \
+        default=None, dest='parstride_bands',\
+        help='Simulate strided band grouping (instead of blocked)')
 
     # GPAW-specific options
     parser.add_option('-s', '--spins', default=1, type='int', dest='nspins', \
@@ -142,45 +138,45 @@ if __name__ in ['__main__', '__builtin__']:
     #    dest='N_c', metavar='<X,Y,Z>', \
     #    help='Size of the grid along three axes [default: %default]')
 
-    options, args = parser.parse_args()
+    opts, args = parser.parse_args()
 
-    if options.show_all is not None:
-        options.show_kpoint = True
-        options.show_band = True
-        options.show_domain = True
+    if opts.show_all is not None:
+        opts.show_kpoint = True
+        opts.show_band = True
+        opts.show_domain = True
 
-    if not options.world_size > 0:
+    if not opts.world_size > 0:
         sys.stderr.write('ERROR: MPI world size is unspecified or invalid.\n')
         parser.print_help()
         raise SystemExit(-1)
 
-    if options.parsize_c is not None and (len(options.parsize_c) != 3 or
-       (np.array(options.parsize_c)<1).any()):
+    if opts.parsize_c is not None and (len(opts.parsize_c) != 3 or
+       (np.array(opts.parsize_c)<1).any()):
         sys.stderr.write('ERROR: Domain decomposition is invalid.\n')
         parser.print_help()
         raise SystemExit(-1)
 
-    if not options.parsize_bands > 0:
+    if not opts.parsize_bands > 0:
         sys.stderr.write('ERROR: State-parallelization size is invalid.\n')
         parser.print_help()
         raise SystemExit(-1)
 
-    if not options.nspins in [1,2]:
+    if not opts.nspins in [1,2]:
         sys.stderr.write('ERROR: Invalid number of spins.\n')
         parser.print_help()
         raise SystemExit(-1)
 
-    if not options.nibzkpts > 0:
+    if not opts.nibzkpts > 0:
         sys.stderr.write('ERROR: Invalid number of irreducible k-points.\n')
         parser.print_help()
         raise SystemExit(-1)
 
-    if not options.nbands > 0:
+    if not opts.nbands > 0:
         sys.stderr.write('ERROR: Invalid number of bands.\n')
         parser.print_help()
         raise SystemExit(-1)
 
-    simulate(options.world_size, options.parsize_c, options.parsize_bands,
-             options.nspins, options.nibzkpts, options.nbands,
-             options.show_kpoint, options.show_band, options.show_domain)
+    simulate(opts.world_size, opts.parsize_c, opts.parsize_bands,
+             opts.parstride_bands, opts.nspins, opts.nibzkpts, opts.nbands,
+             opts.show_kpoint, opts.show_band, opts.show_domain)
 
