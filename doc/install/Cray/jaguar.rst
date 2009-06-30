@@ -116,7 +116,7 @@ following instructions are tested with python 2.5.4:
   by editing :file:`Modules/Setup`::
 
    mv Modules/Setup Modules/Setup.orig
-   wget --no-check-certificate http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/install/Cray/Jaguar/Setup_jaguar -O Modules/Setup
+   wget --no-check-certificate http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/install/Cray/Setup_jaguar -O Modules/Setup
 
   **Note**: sha modules are required by numpy::
 
