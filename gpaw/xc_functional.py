@@ -604,7 +604,8 @@ class XC3DGrid(XCGrid):
             self.xcfunc.calculate_spinpaired(e_g, n_g, v_g,
                                              self.a2_g,
                                              self.deda2_g,
-                                             self.taut_sg[0], self.dedtau_sg[0])
+                                             self.taut_sg[0],
+                                             self.dedtau_sg[0])
             tmp_g = self.dndr_cg[0]
             for c in range(3):
                 self.ddr[c](self.deda2_g * self.dndr_cg[c], tmp_g)
