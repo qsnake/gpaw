@@ -83,7 +83,7 @@ for symbol in atoms:
         state, occ = opt.core_hole.split(',')
         # Translate corestate string ('1s') to n and l:
         ncorehole = int(state[0])
-        lcorehole = 'spd'.find(state[1])
+        lcorehole = 'spdf'.find(state[1])
         fcorehole = float(occ)
         corehole = (ncorehole, lcorehole, fcorehole)
         
