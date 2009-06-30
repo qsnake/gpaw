@@ -234,6 +234,14 @@ class XCCorrection:
         return Integrator(H_sp, self.weights, self.Y_yL,
                           self.n_qg, self.nt_qg, self.B_pqL, self.dv_g)
 
+    def get_energy_and_potential_slice(self, n_sg, vxc_sg):
+        vxc_sg[:] = 0.0
+        if len(n_sg) == 1:
+            return self.xc.get_energy_and_potential(n_sg[0], vxc_sg[0])
+        else:
+            return self.xc.get_energy_and_potential(n_sg[0], vxc_sg[0],
+                                                    n_sg[1], vxc_sg[1])            
+
     def LDA_new(self, D_sp, H_sp):
         vxc_sg = npy.zeros((len(D_sp), self.ng))
         vxct_sg = npy.zeros((len(D_sp), self.ng))
@@ -246,17 +254,8 @@ class XCCorrection:
         for n_sg, nt_sg, i_slice in izip(self.expand_density(D_sp),
                                          self.expand_pseudo_density(D_sp),
                                          integrator):
-            vxc_sg[:] = 0.0
-            vxct_sg[:] = 0.0
-            if len(D_sp) == 1:
-                E = self.xc.get_energy_and_potential(n_sg[0], vxc_sg[0])
-                E -= self.xc.get_energy_and_potential(nt_sg[0], vxct_sg[0])
-            else:
-                E = self.xc.get_energy_and_potential(n_sg[0], vxc_sg[0],
-                                                      n_sg[1], vxc_sg[1])
-                E -= self.xc.get_energy_and_potential(nt_sg[0], vxct_sg[0],
-                                                      nt_sg[1], vxct_sg[1])
-            
+            E = self.get_energy_and_potential_slice(n_sg, vxc_sg)
+            E-= self.get_energy_and_potential_slice(nt_sg, vxct_sg)
             integrator.integrate_H_sp(i_slice, vxc_sg, vxct_sg)
             Etot += integrator.integrate_E(i_slice, E)
         return Etot
