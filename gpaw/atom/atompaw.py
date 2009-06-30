@@ -5,7 +5,7 @@ from ase.atoms import Atoms
 
 from gpaw.aseinterface import GPAW
 from gpaw.wavefunctions import WaveFunctions
-from gpaw.grid_descriptor import RadialGridDescriptor
+from gpaw.grid_descriptor import EquidistantRadialGridDescriptor
 from gpaw.utilities import unpack
 from gpaw.utilities.lapack import diagonalize
 from gpaw.occupations import OccupationNumbers
@@ -180,21 +180,15 @@ class AtomBasisFunctions:
             nt_sG += f_asi[0][:, i:i + 1] * (2 * l + 1) / 4 / pi * b_g**2
             i += 2 * l + 1
 
-class AtomGridDescriptor(RadialGridDescriptor):
+class AtomGridDescriptor(EquidistantRadialGridDescriptor):
     def __init__(self, h, rcut):
-        h = h
-        N = int(float(rcut) / h + 0.5) - 1
-        rcut = N * h
-        r = np.linspace(h, rcut, N)
-        RadialGridDescriptor.__init__(self, r, np.ones(N) * h)
-        self.h = h
-        self.N = N
-        self.rcut = rcut
+        ng = int(float(rcut) / h + 0.5) - 1
+        EquidistantRadialGridDescriptor.__init__(self, h, ng)
         self.sdisp_cd = np.empty((3, 2))
         self.comm = mpi.serial_comm
         self.pbc_c = np.zeros(3, bool)
         self.cell_c = np.ones(3) * rcut
-        self.N_c = np.ones(3, dtype=int) * 2 * N
+        self.N_c = np.ones(3, dtype=int) * 2 * ng
         self.h_c = np.ones(3) * h
     def get_ranks_from_positions(self, spos_ac):
         return np.array([0])
@@ -204,14 +198,6 @@ class AtomGridDescriptor(RadialGridDescriptor):
         return True
     def get_lfc(self, gd, spline_aj):
         return AtomLocalizedFunctionsCollection(gd, spline_aj)
-    def zeros(self, shape=()):
-        if isinstance(shape, int):
-            shape = (shape,)
-        return np.zeros(shape + self.r_g.shape)
-    def empty(self, shape=()):
-        if isinstance(shape, int):
-            shape = (shape,)
-        return np.empty(shape + self.r_g.shape)
     def integrate(self, a_xg, b_xg=None, global_integral=True):
         """Integrate function(s) in array over domain."""
         if b_xg is None:

@@ -200,7 +200,6 @@ class SetupData:
             g -= 1
         gcutfilter = g + 1
         return gcutfilter
-        #self.rcutfilter = rcutfilter = r_g[gcutfilter]
 
     def get_xc_correction(self, rgd, xcfunc, gcut2, lcut):
         xc = XCRadialGrid(xcfunc, rgd, xcfunc.nspins)
@@ -218,7 +217,6 @@ class SetupData:
             self.nct_g[:gcut2].copy() / sqrt(4 * pi),
             rgd,
             list(enumerate(self.l_j)),
-            #[(j, self.l_j[j]) for j in range(len(self.l_j))],
             min(2 * lcut, 4),
             self.e_xc,
             phicorehole_g,
@@ -343,6 +341,11 @@ class SetupData:
             print >> xml, '  <exact_exchange core-core="%f"/>' % self.ExxC
 
         print >> xml, '</paw_setup>'
+
+    def build(self, xcfunc, lmax, nspins, basis):
+        from gpaw.setup import Setup
+        setup = Setup(self, xcfunc, lmax, nspins, basis)
+        return setup
 
 
 def search_for_file(name):

@@ -39,6 +39,8 @@ class Spline:
             f3 = npy.take(f_g, g + 1)
             f_g = f1 * x1 + f2 * x2 + f3 * x3
 
+        # Copy so we don't change the values of the input array
+        f_g = f_g.copy()
         f_g[-1] = 0.0
         self.spline = _gpaw.Spline(l, rmax, f_g)
 

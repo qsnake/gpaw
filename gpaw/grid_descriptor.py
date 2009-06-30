@@ -16,6 +16,8 @@ import numpy as np
 
 import gpaw.mpi as mpi
 from gpaw.domain import Domain
+from gpaw.utilities import divrl
+from gpaw.spline import Spline
 
 
 # Remove this:  XXX
@@ -567,6 +569,9 @@ class RadialGridDescriptor:
         points according to some possibly non-linear function:
         ``r_g[g]`` = *f(g)*.  The array ``dr_g[g]`` = *f'(g)* is used
         for forming derivatives."""
+
+        self.rcut = r_g[-1]
+        self.ng = len(r_g)
         
         self.r_g = r_g
         self.dr_g = dr_g
@@ -597,6 +602,49 @@ class RadialGridDescriptor:
         
         return np.dot(self.dv_g, f_g)
 
+    def spline(self, l, f_g):
+        raise NotImplementedError
+
+    def reducedspline(self, l, r_g):
+        raise NotImplementedError
+
+    def zeros(self, shape=()):
+        if isinstance(shape, int):
+            shape = (shape,)
+        return np.zeros(shape + self.r_g.shape)
+
+    def empty(self, shape=()):
+        if isinstance(shape, int):
+            shape = (shape,)
+        return np.empty(shape + self.r_g.shape)
+
+class EquidistantRadialGridDescriptor(RadialGridDescriptor):
+    def __init__(self, h, ng):
+        self.h = h
+        rcut = h * ng
+        r_g = np.linspace(h, rcut, ng)
+        RadialGridDescriptor.__init__(self, r_g, np.ones(ng) * h)
+
+    def r2g_ceil(self, r):
+        return int(ceil(r / self.h))
+
+    def r2g_floor(self, r):
+        return int(floor(r / self.h))
+
+    def truncate(self, gmax):
+        return EquidistantRadialGridDescriptor(self.h, gmax)
+
+    def spline(self, l, f_g):
+        ng = len(f_g)
+        rmax = self.r_g[ng - 1]
+        return Spline(l, rmax, f_g)
+
+    def reducedspline(self, l, f_g):
+        ng = len(f_g)
+        r_g = self.r_g[:ng]
+        rmax = r_g[-1]
+        f_g = divrl(f_g, l, r_g)
+        return Spline(l, rmax, f_g)
 
 class AERadialGridDescriptor(RadialGridDescriptor):
     """Descriptor-class for non-uniform grid used by setups, all-electron.
@@ -624,13 +672,12 @@ class AERadialGridDescriptor(RadialGridDescriptor):
         RadialGridDescriptor.__init__(self, r_g, dr_g)
         d2gdr2 = -2 * N * beta / (beta + r_g)**3
         self.d2gdr2 = d2gdr2
-        self.rc = r_g[-1]
 
     def r2g_ceil(self, r):
-        return ceil(r * self.N / (self.beta + r))
+        return int(ceil(r * self.N / (self.beta + r)))
 
     def r2g_floor(self, r):
-        return floor(r * self.N / (self.beta + r))
+        return int(floor(r * self.N / (self.beta + r)))
 
     def truncate(self, gcut):
         """Return a descriptor for a subset of this grid."""
@@ -641,5 +688,36 @@ class AERadialGridDescriptor(RadialGridDescriptor):
         other.dr_g = self.dr_g[:gcut]
         RadialGridDescriptor.__init__(other, other.r_g, other.dr_g)
         other.d2gdr2 = self.d2gdr2[:gcut]
-        other.rc = other.r_g[-1]
+        other.rcut = other.r_g[-1]
         return other
+
+    def spline(self, l, f_g, points=25):
+        ng = len(f_g)
+        rmax = self.r_g[ng - 1]
+        r_g = self.r_g[:ng]
+        f_g = self.equidistant(f_g, points=points)
+        return Spline(l, rmax, f_g)
+
+    def equidistant(self, f_g, points=25):
+        ng = len(f_g)
+        r_g = self.r_g[:ng]
+        rmax = r_g[-1]
+        r = 1.0 * rmax / points * np.arange(points + 1)
+        g = (self.N * r / (self.beta + r) + 0.5).astype(int)
+        g = np.clip(g, 1, ng - 2)
+        r1 = np.take(r_g, g - 1)
+        r2 = np.take(r_g, g)
+        r3 = np.take(r_g, g + 1)
+        x1 = (r - r2) * (r - r3) / (r1 - r2) / (r1 - r3)
+        x2 = (r - r1) * (r - r3) / (r2 - r1) / (r2 - r3)
+        x3 = (r - r1) * (r - r2) / (r3 - r1) / (r3 - r2)
+        f1 = np.take(f_g, g - 1)
+        f2 = np.take(f_g, g)
+        f3 = np.take(f_g, g + 1)
+        f_g = f1 * x1 + f2 * x2 + f3 * x3
+        return f_g
+
+    def reducedspline(self, l, f_g, points=25):
+        ng = len(f_g)
+        return self.spline(l, divrl(f_g, l, self.r_g[:ng]), points=points)
+

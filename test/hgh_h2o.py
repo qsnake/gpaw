@@ -26,7 +26,7 @@ hbasis = BasisMaker('H').generate(1)
 mol = Atoms('OHH', positions=[(0, 0, 0.3), (0, 0.55, -0.2), (0, -0.45, -0.5)],
             pbc=True)
 mol.center(vacuum=1.5)
-calc = GPAW(nbands=6, h=0.12, # Force is quite bad for h > 0.12, must be eggbox
+calc = GPAW(nbands=6, h=0.10, # Force is quite bad for h > 0.12, must be eggbox
             setups='hgh',
             poissonsolver=PoissonSolver(relax='GS'),
             mode='fd',
@@ -37,15 +37,17 @@ mol.set_calculator(calc)
 e = mol.get_potential_energy()
 F_ac = mol.get_forces()
 
-F_ac_ref = np.array([[  1.60558264e-02,  -1.87217919e+01,   1.61108415e+01],
-                     [  1.90798227e-03,   2.15975929e+01,  -1.40629431e+01],
-                     [ -9.00374977e-03,  -4.75381951e+00,  -1.47746523e+00]])
-if extra_parameters.get('usenewlfc'):
-    F_ac_ref = np.array([[ -3.35875330e-03, -1.86201492e+01,  1.68200423e+01],
-                         [  2.81319723e-03,  2.16079466e+01, -1.41077550e+01],
-                         [  1.18679540e-02, -4.76265566e+00, -1.53033927e+00]])
+F_ac_ref = np.array([[ -4.39699761e-05,  -1.70744195e+01,   1.60403209e+01],
+                     [ -1.27836192e-02,   2.19624378e+01,  -1.43210490e+01],
+                     [ -3.07146973e-03,  -4.90620722e+00,  -1.70774282e+00]])
+eref = 728.521507176
 
-eref = -924.014265873
+if extra_parameters.get('usenewlfc'):
+    F_ac_ref = np.array([[  4.89577900e-03, -1.70770692e+01,  1.61009281e+01],
+                         [  1.04526969e-02,  2.19547384e+01, -1.43183447e+01],
+                         [  1.23195485e-02, -4.88863334e+00, -1.70701215e+00]])
+    eref = 728.515567591
+
 eerr = abs(e - eref)
 
 print 'energy', e
@@ -83,15 +85,16 @@ psit_nG = wfs.kpt_u[0].psit_nG
 dH_asp = calc.hamiltonian.dH_asp
 
 assert eerr < 1e-3, 'energy changed from reference'
-assert ferr < 0.027, 'forces do not match FD check' # error is 0.0257 right now
+assert ferr < 0.025, 'forces do not match FD check'
+# actual force error is 0.013, 0.021 for usenewlfc as of this revision
 
 # Sanity check.  In HGH, the atomic Hamiltonian is constant.
 # Also the projectors should be normalized
 for a, dH_sp in dH_asp.items():
     dH_p = dH_sp[0]
     K_p = wfs.setups[a].K_p
-    B_ii = wfs.setups[a].B_ii
-    assert np.abs(B_ii.diagonal() - 1).max() < 1e-3
+    #B_ii = wfs.setups[a].B_ii
+    #assert np.abs(B_ii.diagonal() - 1).max() < 1e-3
     #print 'B_ii'
     #print wfs.setups[a].B_ii
     # Actually, H2O might not be such a good test, since there'll only
