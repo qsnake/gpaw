@@ -64,7 +64,7 @@ class BandDescriptor:
         nbands: int
             Number of bands.
         comm: MPI-communicator
-            Communicator for domain-decomposition.
+            Communicator for band-groups.
         strided: bool
             Enable strided band distribution for better
             load balancing with many unoccupied bands.
