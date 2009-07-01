@@ -5,7 +5,7 @@
 import os
 import sys
 import re
-from distutils.util import get_platform
+import distutils.util
 from distutils.sysconfig import get_config_var, get_config_vars
 from distutils.command.config import config
 from glob import glob
@@ -298,7 +298,7 @@ def check_dependencies(sources):
     mtimes = {}  # modification times
 
     # Remove object files if any dependencies have changed:
-    plat = get_platform() + '-' + sys.version[0:3]
+    plat = distutils.util.get_platform() + '-' + sys.version[0:3]
     remove = False
     for source in sources:
         path, name = os.path.split(source)
@@ -362,7 +362,7 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
     #Build custom interpreter which is used for parallel calculations
 
     cfgDict = get_config_vars()
-    plat = get_platform() + '-' + sys.version[0:3]
+    plat = distutils.util.get_platform() + '-' + sys.version[0:3]
 
     cfiles = glob('c/[a-zA-Z_]*.c') + ['c/bmgs/bmgs.c']
     cfiles += glob('c/libxc/src/*.c')

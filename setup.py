@@ -7,8 +7,8 @@ import os
 import sys
 import re
 import distutils
+import distutils.util
 from distutils.core import setup, Extension
-from distutils.util import get_platform
 from distutils.sysconfig import get_config_var
 from glob import glob
 from os.path import join
@@ -42,6 +42,7 @@ mpi_include_dirs = []
 mpi_runtime_library_dirs = []
 mpi_define_macros = []
 
+platform_id = ''
 
 packages = ['gpaw',
             'gpaw.analyse',
@@ -131,6 +132,11 @@ scalapack = False
 if os.path.isfile(customize):
     execfile(customize)
 
+if platform_id != '':
+    plat = distutils.util.get_platform() + platform_id
+    def my_get_platform(): return plat
+    distutils.util.get_platform = my_get_platform
+
 if compiler is not None:
     msg += ['* Compiling gpaw with %s' % compiler]
     # A hack to change the used compiler and linker:
@@ -166,7 +172,7 @@ if scalapack:
 
 # distutils clean does not remove the _gpaw.so library and gpaw-python
 # binary so do it here:
-plat = get_platform() + '-' + sys.version[0:3]
+plat = distutils.util.get_platform() + '-' + sys.version[0:3]
 gpawso = 'build/lib.%s/' % plat + '_gpaw.so'
 gpawbin = 'build/bin.%s/' % plat + 'gpaw-python'
 if "clean" in sys.argv:
