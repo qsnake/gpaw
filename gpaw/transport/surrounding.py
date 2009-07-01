@@ -485,12 +485,11 @@ class Surrounding:
                 self.d_spkmm[s, q, ind2.T, ind] = side2.d_spkcmm[s, q]
                 self.d_spkmm[s, q, ind.T, ind2] = side2.d_spkcmm[s, q].T.conj()
                 self.extended_basis_functions.construct_density(
-                                                    self.d_spkmm[s, q],
+                                                    self.d_spkmm[s, q].copy(),
                                                     self.extended_nt_sG[s], q)
-            wfs.band_comm.sum(self.extended_nt_sG)       
             wfs.kpt_comm.sum(self.extended_nt_sG)
             global_extended_nt_sG = self.extended_gd.collect(
-                                                        self.extended_nt_sG, True)
+                                                    self.extended_nt_sG, True)
             self.streching_nt_sG = self.uncapsule(nn1, 'nt_sG', direction,
                                                   global_extended_nt_sG,
                                                   False, nn2)
@@ -505,14 +504,14 @@ class Surrounding:
         dim = vt_sG.shape[1] / 2
         self.boundary_data['vt_sG'] = self.sides['z-'].boundary_vt_sG[s, dim , dim]
         
-        if debug:
-            from pylab import plot, show, title
-            plot(vt_sG[s, dim ,dim])
-            title('extend_vt_sG')
-            show()
-            plot(np.diag(self.vt_MM))
-            title('vt_MM')
-            show()
+        #if debug:
+        #    from pylab import plot, show, title
+        #    plot(vt_sG[s, dim ,dim])
+        #    title('extend_vt_sG')
+        #    show()
+        #    plot(np.diag(self.vt_MM))
+        #    title('vt_MM')
+        #    show()
         return self.vt_MM
      
     def restrict(self, vt_sg, s):
@@ -525,12 +524,12 @@ class Surrounding:
         vt_G0 = self.gd.zeros()
         self.restrictor.apply(vt_sg0[s], vt_G0)
         nn /= 2
-        if debug:
-            from pylab import plot, show, title
-            dim = vt_sg.shape[1] / 2
-            plot(vt_sg[s, dim ,dim])
-            title('extend_vt_sg_restrict')
-            show()
+        #if debug:
+        #    from pylab import plot, show, title
+        #    dim = vt_sg.shape[1] / 2
+        #    plot(vt_sg[s, dim ,dim])
+        #    title('extend_vt_sg_restrict')
+        #    show()
         return self.uncapsule(nn, 'vt_sG', direction, vt_G0, collect=True)
     
     def get_xc(self, nt_sg0, vt_sg0):
@@ -539,12 +538,12 @@ class Surrounding:
         direction = self.directions[0][0]
         nt_sg = self.capsule(nn, 'nt_sg', direction, nt_sg0)
         vt_sg = self.capsule(nn, 'vt_sg', direction, vt_sg0)
-        if debug:
-            from pylab import plot, show, title
-            dim = nt_sg.shape[1] / 2
-            plot(nt_sg[0, dim ,dim])
-            title('extend_nt_sg_xc')
-            show()            
+        #if debug:
+        #    from pylab import plot, show, title
+        #    dim = nt_sg.shape[1] / 2
+        #    plot(nt_sg[0, dim ,dim])
+        #    title('extend_nt_sg_xc')
+        #    show()            
         if ns == 1:
             Exc = self.xc.get_energy_and_potential(nt_sg[0], vt_sg[0])
         else:
@@ -566,12 +565,12 @@ class Surrounding:
         
         self.boundary_data['nt_sG'] = self.nt_sG[0, dim, dim]
         
-        if debug:
-            from pylab import plot, show, title
+        #if debug:
+        #    from pylab import plot, show, title
 
-            plot(nt_sG[0, dim ,dim])
-            title('extend_nt_sG_interpolate')
-            show()          
+        #    plot(nt_sG[0, dim ,dim])
+        #    title('extend_nt_sG_interpolate')
+        #    show()          
         nt_sg = self.finegd.zeros(self.nspins)
         for s in range(density.nspins):
             self.interpolator.apply(nt_sG[s], nt_sg[s])
@@ -742,12 +741,12 @@ class Surrounding:
         self.ghat.add(rhot_g, density.Q_aL)
         dim = rhot_g.shape[0] / 2
         self.boundary_data['rhot_g'] = self.extra_rhot_g[dim, dim]
-        if debug:
-            from pylab import plot, show, title
-            dim = rhot_g.shape[0] / 2
-            plot(rhot_g[dim ,dim])
-            title('extended_rhot_g_multi_poles')
-            show()          
+        #if debug:
+        #    from pylab import plot, show, title
+        #    dim = rhot_g.shape[0] / 2
+        #    plot(rhot_g[dim ,dim])
+        #    title('extended_rhot_g_multi_poles')
+        #    show()          
         density.rhot_g += self.uncapsule(nn, 'vHt_g', direction,
                                          rhot_g, collect=True)
         if debug:
