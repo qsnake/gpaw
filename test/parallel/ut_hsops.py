@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 memstats = False
-partest = True
+partest = False
 
 import gc
 import sys
@@ -14,11 +14,9 @@ try:
 except ImportError:
     pl = None
 
-from copy import copy
 from ase import Atoms, molecule
 from ase.units import Bohr
 from ase.utils.memory import shapeopt, MemorySingleton, MemoryStatistics
-from gpaw import parsize, parsize_bands, debug
 from gpaw.mpi import world, distribute_cpus, compare_atoms
 from gpaw.utilities import gcd
 from gpaw.utilities.tools import tri2full, md5_array, gram_schmidt
@@ -56,6 +54,7 @@ else:
     from ase.test import CustomTestCase as TestCase, CustomTextTestRunner
     from unittest import TextTestRunner, defaultTestLoader
 
+from copy import copy
 initialTestLoader = copy(defaultTestLoader)
 assert hasattr(initialTestLoader, 'testMethodPrefix')
 initialTestLoader.testMethodPrefix = 'verify'
@@ -76,18 +75,17 @@ class UTBandParallelSetup(TestCase):
     # Strided or blocked groups
     parstride_bands = None
 
-    # Display plots (if any) or save to file
-    showplots = None
-
     # Mean spacing and number of grid points per axis (G x G x G)
     h = 0.5 / Bohr
     G = 100//5
 
     def setUp(self):
-        # Careful, overwriting parsize_bands may cause amnesia in Python.
-        best_parsize_bands = parsize_bands or gcd(self.nbands, world.size)
+        assert self.parstride_bands is not None, 'Virtual "parstride_bands"!'
+
+        parsize, parsize_bands = self.get_parsizes()
+        assert self.nbands % np.prod(parsize_bands) == 0
         domain_comm, kpt_comm, band_comm = distribute_cpus(parsize,
-            best_parsize_bands, self.nspins, self.nibzkpts)
+            parsize_bands, self.nspins, self.nibzkpts)
 
         # Set up band descriptor:
         self.bd = BandDescriptor(self.nbands, band_comm, self.parstride_bands)
@@ -104,6 +102,18 @@ class UTBandParallelSetup(TestCase):
     def tearDown(self):
         del self.bd, self.gd, self.kpt_comm
 
+    def get_parsizes(self):
+        # Careful, overwriting imported GPAW params may cause amnesia in Python.
+        from gpaw import parsize, parsize_bands
+
+        # Just pass domain parsize through (None is tolerated)
+        test_parsize = parsize
+
+        # If parsize_bands is not set, choose the largest possible
+        test_parsize_bands =  parsize_bands or gcd(self.nbands, world.size)
+
+        return test_parsize, test_parsize_bands
+
     # =================================
 
     def verify_comm_sizes(self):
@@ -114,7 +124,7 @@ class UTBandParallelSetup(TestCase):
         self._parinfo =  '%d world, %d band, %d domain, %d kpt' % comm_sizes
         self.assertEqual((self.nspins*self.nibzkpts) % self.kpt_comm.size, 0)
 
-    def verify_stride_related(self):
+    def verify_band_stride_related(self):
         # Verify that (q1+q2)%B-q1 falls in ]-B;Q[ where Q=B//2+1
         for B in range(1,256):
             Q = B//2+1
@@ -130,8 +140,8 @@ class UTBandParallelSetup(TestCase):
             self.assertEqual(dqs.min(), -B+1)
             self.assertEqual(dqs.max(), Q-1)
 
-    def verify_indexing_consistency(self):
-        for n in range(self.nbands):
+    def verify_band_indexing_consistency(self):
+        for n in range(self.bd.nbands):
             band_rank, myn = self.bd.who_has(n)
             self.assertEqual(self.bd.global_index(myn, band_rank), n)
 
@@ -140,7 +150,7 @@ class UTBandParallelSetup(TestCase):
                 n = self.bd.global_index(myn, band_rank)
                 self.assertTrue(self.bd.who_has(n) == (band_rank, myn))
 
-    def verify_ranking_consistency(self):
+    def verify_band_ranking_consistency(self):
         rank_n = self.bd.get_band_ranks()
 
         for band_rank in range(self.bd.comm.size):
@@ -237,12 +247,18 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
     blocking = None
     async = None
 
+    # Display plots (if any) or save to file
+    showplots = None
+
     def setUp(self):
         global numfigs
         if 'numfigs' not in globals():
             numfigs = 0
 
         UTBandParallelSetup.setUp(self)
+
+        for virtvar in ['allocated','dtype','blocking','async','showplots']:
+            assert getattr(self,virtvar) is not None, 'Virtual "%s"!' % virtvar
 
         # Create randomized atoms
         self.atoms = create_random_atoms(self.gd)
@@ -771,7 +787,7 @@ if __name__ in ['__main__', '__builtin__']:
         testrunner = TextTestRunner(stream=stream, verbosity=2)
 
     parinfo = []
-    for test in [UTBandParallelSetup]:
+    for test in [UTBandParallelSetup_Blocked, UTBandParallelSetup_Strided]:
         info = ['', test.__name__, test.__doc__.strip('\n'), '']
         testsuite = initialTestLoader.loadTestsFromTestCase(test)
         map(testrunner.stream.writeln, info)
@@ -779,6 +795,7 @@ if __name__ in ['__main__', '__builtin__']:
         assert testresult.wasSuccessful(), 'Initial verification failed!'
         parinfo.extend(['    Parallelization options: %s' % tci._parinfo for \
                         tci in testsuite._tests if hasattr(tci, '_parinfo')])
+    parinfo = np.unique(np.sort(parinfo)).tolist()
 
     testcases = []
     for dtype in [float, complex]:
