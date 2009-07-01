@@ -53,3 +53,5 @@
 
 #mpi_define_macros = []
 #mpi_define_macros += []
+
+#platform_id = ''
