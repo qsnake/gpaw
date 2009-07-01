@@ -26,6 +26,7 @@ args2change = {"-fno-strict-aliasing":"",
                "-O1":""}
 
 fragile_files = ["test.c"]
+qhot_files = ["c/blas.c", "c/utilities.c","c/lfc.c","c/localized_functions.c"]
 non_c99files = glob('c/libxc/src/*.c')
 
 cmd = ""
@@ -35,9 +36,11 @@ for arg in sys.argv[1:]:
     cmd += " "
     t = arg.strip()
     if t in fragile_files:
-        opt += 1
+        opt = 2
     if t in non_c99files:
-        opt += 2
+        opt = 3
+    if t in qhot_files:
+        opt = 4
     if t in args2change:
         cmd += args2change[t]
     else:
@@ -45,8 +48,8 @@ for arg in sys.argv[1:]:
 
 flags_list = {1: "-O3 -qlanglvl=extc99 -qnostaticlink -qflag=e:e",
               2: "-O3 -qstrict -qlanglvl=extc99 -qnostaticlink -qflag=e:e",
-              3: "-O3 -qlanglvl=extc99 -qnostaticlink -qflag=e:e",
-              4: "-O3 -qstrict -qlanglvl=extc99 -qnostaticlink -qflag=e:e",
+              3: "-O3 -qnostaticlink -qflag=e:e",
+              4: "-O3 -qhot -qlanglvl=extc99 -qnostaticlink -qflag=e:e",
               }
 
 flags = flags_list[opt]  
