@@ -58,7 +58,7 @@ def get_realspace_hs(h_skmm, s_kmm, ibzk_kc, weight_k, R_c=(0, 0, 0),
     return h_smm, s_mm
 
 
-def remove_pbc(atoms, h, s=None, d=0, centers_ic=None):
+def remove_pbc(atoms, h, s=None, d=0, centers_ic=None, cutoff=None):
     L = atoms.cell[d, d]
     nao = len(h)
     if centers_ic is None:
@@ -68,8 +68,9 @@ def remove_pbc(atoms, h, s=None, d=0, centers_ic=None):
         assert nao == 2 * ni
         centers_ic = np.vstack((centers_ic, centers_ic))
         centers_ic[ni:, d] += L
-        cutoff = L
-    else:
+        if cutoff is None:
+            cutoff = L
+    elif cutoff is None:
         cutoff = 0.5 * L
     pos_i = centers_ic[:, d]
     for i in range(nao):
