@@ -4,12 +4,11 @@ import numpy as np
 from gpaw import parsize, parsize_bands
 from gpaw.band_descriptor import BandDescriptor
 from gpaw.grid_descriptor import GridDescriptor
-from gpaw.mpi import world
+from gpaw.mpi import world, distribute_cpus
+from gpaw.utilities import gcd
 from gpaw.utilities.lapack import inverse_cholesky
 from gpaw.hs_operators import Operator
 
-B = parsize_bands or 1   # number of groups
-    
 G = 120  # number of grid points (G x G x G)
 N = 2000  # number of bands
 repeats = 20
@@ -22,22 +21,36 @@ except (IndexError, ValueError):
     K = 3
     repeats = 3
 
+# B: number of band groups
+# D: number of domains
+if parsize_bands is None:
+    if parsize is None:
+        B = gcd(N, world.size)
+        D = world.size // B
+    else:
+        B = world.size // np.prod(parsize)
+        D = parsize
+else:
+    B = parsize_bands
+    D = world.size // B
+
+M = N // B     # number of bands per group
+assert M * B == N, 'M=%d, B=%d, N=%d' % (M,B,N)
+
 h = 0.2        # grid spacing
 a = h * G      # side length of box
-M = N // B     # number of bands per group
-assert M * B == N
-
-D = world.size // B  # number of domains
-assert D * B == world.size
+assert np.prod(D) * B == world.size, 'D=%s, B=%d, W=%d' % (D,B,world.size)
 
 # Set up communicators:
-r = world.rank // D * D
-domain_comm = world.new_communicator(np.arange(r, r + D))
-band_comm = world.new_communicator(np.arange(world.rank % D, world.size, D))
+domain_comm, kpt_comm, band_comm = distribute_cpus(parsize=D, parsize_bands=B, \
+                                                   nspins=1, nibzkpts=1)
+assert kpt_comm.size == 1
+if world.rank == 0:
+    print 'MPI: %d domains, %d band groups' % (domain_comm.size, band_comm.size)
 
 # Set up band and grid descriptors:
 bd = BandDescriptor(N, band_comm, False)
-gd = GridDescriptor((G, G, G), (a, a, a), True, domain_comm, parsize)
+gd = GridDescriptor((G, G, G), (a, a, a), True, domain_comm, parsize=D)
 
 # Random wave functions:
 psit_mG = gd.empty(M)
