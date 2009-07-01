@@ -11,15 +11,15 @@ from gpaw.operators import Laplace
 from gpaw.utilities.blas import axpy
 
 class Preconditioner:
-    def __init__(self, gd0, kin0, dtype):
+    def __init__(self, gd0, kin0, dtype, block=1):
         gd1 = gd0.coarsen()
         gd2 = gd1.coarsen()
         self.kin0 = kin0
         self.kin1 = Laplace(gd1, -0.5, 1, dtype)
         self.kin2 = Laplace(gd2, -0.5, 1, dtype)
-        self.scratch0 = gd0.zeros(2, dtype, False)
-        self.scratch1 = gd1.zeros(3, dtype, False)
-        self.scratch2 = gd2.zeros(3, dtype, False)
+        self.scratch0 = gd0.zeros((2, block), dtype, False)
+        self.scratch1 = gd1.zeros((3, block),dtype, False)
+        self.scratch2 = gd2.zeros((3, block), dtype, False)
         self.step = 0.66666666 / kin0.get_diagonal_element()
 
         self.restrictor_object0 = Transformer(gd0, gd1, 1,dtype, False)
@@ -41,12 +41,12 @@ class Preconditioner:
             transformer.allocate()
         self.allocated = True
         
-    def __call__(self, residual, phases, phit=None, kpt=None):
+    def __call__(self, residuals, phases, phit=None, kpt=None):
         step = self.step
         d0, q0 = self.scratch0
         r1, d1, q1 = self.scratch1
         r2, d2, q2 = self.scratch2
-        self.restrictor0(-residual, r1, phases)
+        self.restrictor0(-residuals, r1, phases)
         d1 = 4 * step * r1
         self.kin1.apply(d1, q1, phases)
         q1 -= r1
@@ -62,7 +62,7 @@ class Preconditioner:
         d1 -= 4 * step * q1
         self.interpolator1(-d1, d0, phases)
         self.kin0.apply(d0, q0, phases)
-        q0 -= residual
+        q0 -= residuals
         axpy(-step, q0, d0)  # d0 -= step * q0
         d0 *= -1.0
         return d0

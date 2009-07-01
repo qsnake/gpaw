@@ -75,10 +75,16 @@ void *transapply_worker(void *threadarg)
   if (nend > args->nin)
     nend = args->nin;
 
+  int out_ng;
+  if (self->interpolate)
+    out_ng = args->ng * 8;
+  else
+    out_ng = args->ng / 8;
+
   for (int n = nstart; n < nend; n++)
     {
       const double* in = args->in + n * args->ng;
-      double* out = args->out + n * args->ng * 8;
+      double* out = args->out + n * out_ng;
       for (int i = 0; i < 3; i++)
         {
           bc_unpack1(bc, in, buf, i,
