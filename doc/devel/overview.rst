@@ -217,7 +217,7 @@ Commonly used indices:
  ``k``    **k**-point index
  ``q``    **k**-point index (local, i.e. it starts at 0 on each processor)
  ``s``    Spin index (:math:`\sigma`)                           
- ``u``    Combined spin and **k**-point index 
+ ``u``    Combined spin and **k**-point index (local)
  ``G``    Three indices into the coarse 3D grid                     
  ``g``    Three indices into the fine 3D grid  
  ``M``    LCAO orbital index (:math:`\mu`)
