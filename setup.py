@@ -103,6 +103,12 @@ if '--remove-default-flags' in sys.argv:
     remove_default_flags = True
     sys.argv.remove('--remove-default-flags')
 
+customize = 'customize.py'
+for i, arg in enumerate(sys.argv):
+    if arg.startswith('--customize'):
+        customize = sys.argv.pop(i).split('=')[1]
+        break
+
 check_packages(packages, msg, include_ase, import_numpy)
 
 get_system_config(define_macros, undef_macros,
@@ -122,8 +128,8 @@ compiler = None
 
 scalapack = False
 #User provided customizations
-if os.path.isfile('customize.py'):
-    execfile('customize.py')
+if os.path.isfile(customize):
+    execfile(customize)
 
 if compiler is not None:
     msg += ['* Compiling gpaw with %s' % compiler]
