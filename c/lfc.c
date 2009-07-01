@@ -23,6 +23,7 @@ static void lfc_dealloc(LFCObject *self)
 PyObject* calculate_potential_matrix(LFCObject *self, PyObject *args);
 PyObject* integrate(LFCObject *self, PyObject *args);
 PyObject* derivative(LFCObject *self, PyObject *args);
+PyObject* normalized_derivative(LFCObject *self, PyObject *args);
 PyObject* construct_density(LFCObject *self, PyObject *args);
 PyObject* construct_density1(LFCObject *self, PyObject *args);
 PyObject* lcao_to_grid(LFCObject *self, PyObject *args);
@@ -37,6 +38,8 @@ static PyMethodDef lfc_methods[] = {
      (PyCFunction)integrate, METH_VARARGS, 0},
     {"derivative",
      (PyCFunction)derivative, METH_VARARGS, 0},
+    {"normalized_derivative",
+     (PyCFunction)normalized_derivative, METH_VARARGS, 0},
     {"construct_density",
      (PyCFunction)construct_density, METH_VARARGS, 0},
     {"construct_density1",
@@ -1033,5 +1036,93 @@ PyObject* derivative(LFCObject *lfc, PyObject *args)
       a_G += nG;
     }
   }
+  Py_RETURN_NONE;
+}
+
+PyObject* normalized_derivative(LFCObject *lfc, PyObject *args)
+{
+  const PyArrayObject* a_G_obj;
+  PyArrayObject* c_Mv_obj;
+  PyArrayObject* h_cv_obj;
+  PyArrayObject* n_c_obj;
+  PyObject* spline_M_obj;
+  PyArrayObject* beg_c_obj;
+  PyArrayObject* pos_Wc_obj;
+
+  if (!PyArg_ParseTuple(args, "OOOOOOO", &a_G_obj, &c_Mv_obj,
+			&h_cv_obj, &n_c_obj,
+                        &spline_M_obj, &beg_c_obj,
+                        &pos_Wc_obj))
+    return NULL; 
+
+  const double* h_cv = (const double*)h_cv_obj->data;
+  const long* n_c = (const long*)n_c_obj->data;
+  const double (*pos_Wc)[3] = (const double (*)[3])pos_Wc_obj->data;
+  long* beg_c = LONGP(beg_c_obj);
+  const double* a_G = (const double*)a_G_obj->data;
+  double* c_Mv = (double*)c_Mv_obj->data;
+  GRID_LOOP_START(lfc, -1) {
+    int i2 = Ga % n_c[2] + beg_c[2];
+    int i1 = (Ga / n_c[2]) % n_c[1] + beg_c[1];
+    int i0 = Ga / (n_c[2] * n_c[1]) + beg_c[0];
+    double xG = h_cv[0] * i0 + h_cv[3] * i1 + h_cv[6] * i2;
+    double yG = h_cv[1] * i0 + h_cv[4] * i1 + h_cv[7] * i2;
+    double zG = h_cv[2] * i0 + h_cv[5] * i1 + h_cv[8] * i2;
+    for (int G = Ga; G < Gb; G++) {
+      for (int i = 0; i < ni; i++) {
+        LFVolume* vol = volume_i + i;
+        int M = vol->M;
+        double* c_mv = c_Mv + 7 * M;
+        const bmgsspline* spline = (const bmgsspline*)                  \
+          &((const SplineObject*)PyList_GetItem(spline_M_obj, M))->spline;
+        
+        int nm = vol->nm;
+        int l = (nm - 1) / 2;
+        double x = xG - pos_Wc[vol->W][0];
+        double y = yG - pos_Wc[vol->W][1];
+        double z = zG - pos_Wc[vol->W][2];
+        double R_c[] = {x, y, z};
+        double r2 = x * x + y * y + z * z;
+        double r = sqrt(r2);
+        double f;
+        double dfdr;
+        bmgs_get_value_and_derivative(spline, r, &f, &dfdr);
+        f *= lfc->dv;
+        double a = a_G[G];
+        if (l == 0)
+          c_mv[6] += 0.28209479177387814 * a * f;
+        double fdrlYdx_m[nm];  // f * d(r^l * Y)/dx
+        spherical_harmonics_derivative_x(l, f, x, y, z, r2, fdrlYdx_m);
+        for (int m = 0; m < nm; m++) {
+          c_mv[7 * m    ] += a * fdrlYdx_m[m];
+          c_mv[7 * m + 3] += fdrlYdx_m[m];
+        }
+        spherical_harmonics_derivative_y(l, f, x, y, z, r2, fdrlYdx_m);
+        for (int m = 0; m < nm; m++) {
+          c_mv[7 * m + 1] += a * fdrlYdx_m[m];
+          c_mv[7 * m + 4] += fdrlYdx_m[m];
+        }
+        spherical_harmonics_derivative_z(l, f, x, y, z, r2, fdrlYdx_m);
+        for (int m = 0; m < nm; m++) {
+          c_mv[7 * m + 2] += a * fdrlYdx_m[m];
+          c_mv[7 * m + 5] += fdrlYdx_m[m];
+        }
+        if (r > 1e-15) {
+          double rlm1Ydfdr_m[nm]; // r^(l-1) * Y * df/dr
+          double rm1dfdr = dfdr * lfc->dv / r;
+          spherical_harmonics(l, rm1dfdr, x, y, z, r2, rlm1Ydfdr_m);
+          for (int m = 0; m < nm; m++)
+            for (int v = 0; v < 3; v++) {
+              c_mv[m * 7 + v] += a * rlm1Ydfdr_m[m] * R_c[v];
+              c_mv[m * 7 + v + 3] += rlm1Ydfdr_m[m] * R_c[v];
+            }
+        }
+      }
+      xG += h_cv[6];
+      yG += h_cv[7];
+      zG += h_cv[8];
+    }
+  }
+  GRID_LOOP_STOP(lfc, -1);
   Py_RETURN_NONE;
 }

@@ -68,6 +68,8 @@ class Sphere:
         self.G_wb = None
         self.M_w = None
         self.sdisp_wc = None
+        self.normalized = False
+        self.I_M = None
         
     def set_position(self, spos_c, gd, cut):
         if self.spos_c is not None and not (self.spos_c - spos_c).any():
@@ -108,6 +110,7 @@ class Sphere:
             self.sdisp_wc = None
             
         self.spos_c = spos_c
+        self.normalized = False
         return True
 
     def spline_to_grid(self, spline, gd, start_c, end_c, spos_c):
@@ -120,6 +123,61 @@ class Sphere:
     def get_function_count(self):
         return sum([2 * spline.get_angular_momentum_number() + 1
                     for spline in self.spline_j])
+
+    def normalize(self, integral, a, dv, comm):
+        """Normalize localized functions."""
+        if self.normalized:
+            yield None
+            yield None
+            yield None
+            return
+        
+        I_M = np.zeros(self.Mmax)
+        
+        nw = len(self.A_wgm) // len(self.spline_j)
+        assert nw * len(self.spline_j) == len(self.A_wgm)
+
+        for M, A_gm in zip(self.M_w, self.A_wgm):
+            I_m = A_gm.sum(axis=0)
+            I_M[M:M + len(I_m)] += I_m * dv
+
+        requests = []
+        if len(self.ranks) > 0:
+            I_rM = np.empty((len(self.ranks), self.Mmax))
+            for r, J_M in zip(self.ranks, I_rM):
+                requests.append(comm.receive(J_M, r, a, False))
+        if self.rank != comm.rank:
+            requests.append(comm.send(I_M, self.rank, a, False))
+
+        yield None
+
+        for request in requests:
+            comm.wait(request)
+            
+        requests = []
+        if len(self.ranks) > 0:
+            I_M += I_rM.sum(axis=0)
+            for r in self.ranks:
+                requests.append(comm.send(I_M, r, a, False))
+        if self.rank != comm.rank:
+            requests.append(comm.receive(I_M, self.rank, a, False))
+
+        yield None
+
+        for request in requests:
+            comm.wait(request)
+
+        w = 0
+        for M, A_gm in zip(self.M_w, self.A_wgm):
+            if M == 0 and integral > 1e-15:
+                A_gm *= integral / I_M[0]
+            else:
+                A_gm -= (I_M[M:M + A_gm.shape[1]] / integral *
+                         self.A_wgm[w % nw])
+            w += 1
+        self.normalized = True
+        self.I_M = I_M
+        yield None
 
     def estimate_gridpointcount(self, gd):
         points = 0.0
@@ -180,6 +238,15 @@ class NewLocalizedFunctionsCollection(BaseLFC):
 
         # Global or local M-indices?
         self.use_global_indices = False
+
+        if integral is not None:
+            if isinstance(integral, (float, int)):
+                self.integral_a = np.empty(len(spline_aj))
+                self.integral_a[:] = integral
+            else:
+                self.integral_a = np.array(integral)
+        else:
+            self.integral_a = None
         
     def set_k_points(self, ibzk_qc):
         self.ibzk_qc = ibzk_qc
@@ -281,6 +348,17 @@ class NewLocalizedFunctionsCollection(BaseLFC):
                 sphere.ranks = x_ra[:, a].nonzero()[0]
             else:
                 sphere.ranks = []
+
+        if self.integral_a is not None:
+            iterators = []
+            for a in self.atom_indices:
+                iterator = self.sphere_a[a].normalize(self.integral_a[a], a,
+                                                       self.gd.dv,
+                                                       self.gd.comm)
+                iterators.append(iterator)
+            for i in range(3):
+                for iterator in iterators:
+                    iterator.next()
 
     def M_to_ai(self, src_xM, dst_axi):
         xshape = src_xM.shape[:-1]
@@ -465,6 +543,13 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         if debug:
             assert (np.sort(c_axiv.keys()) == self.my_atom_indices).all()
 
+        if self.integral_a is not None:
+            assert q == -1
+            assert a_xG.ndim == 3
+            assert a_xG.dtype == float
+            self._normalized_derivative(a_xG, c_axiv)
+            return
+        
         dtype = a_xG.dtype
 
         xshape = a_xG.shape[:-3]
@@ -484,7 +569,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         rank = comm.rank
         srequests = []
         rrequests = []
-        c_arxiv = {}
+        c_arxiv = {}  # see also http://arXiv.org
         b_axiv = {}
         M1 = 0
         for a in self.atom_indices:
@@ -517,6 +602,120 @@ class NewLocalizedFunctionsCollection(BaseLFC):
                     c_xiv[:] = c_xMv[..., M1:M2, :] + c_arxiv[a].sum(axis=0)
                 else:
                     c_xiv[:] = c_xMv[..., M1:M2, :]
+            M1 = M2
+
+        for request in srequests:
+            comm.wait(request)
+
+    def _normalized_derivative(self, a_G, c_aiv):
+        """Calculate x-, y-, and z-derivatives of localized function integrals.
+
+        Calculates the derivatives of this integral::
+        
+           a       /  _   _   a  -   _a
+          A     =  | dr a(r) f  (r - R ),
+           lm      /          lm
+
+                    a 
+                  dA
+                    lm
+          c_aiv = ----,
+                    a
+                   R
+                    v
+                    
+        where v is either x, y, or z and i=l**2+m.  Note that the
+        actual integrals used are normalized::
+
+                      a
+          ~a     a   I
+          f   = f   ---,
+           00    00  a
+                    I
+                     00
+
+        and for l > 0::
+
+                           a
+                          I
+          ~a     a     a   lm
+          f   = f   - f   ---,
+           lm    lm    00  a
+                          I
+                           00
+
+        where
+
+        ::
+
+           a       /  _ -a  _   _a
+          I     =  | dr f  (r - R ),
+           lm      /     lm
+          
+
+        so the derivative look pretty ugly!"""
+
+        c_Mv = np.zeros((self.Mmax, 7))
+
+        cspline_M = []
+        for a in self.atom_indices:
+            for spline in self.sphere_a[a].spline_j:
+                nm = 2 * spline.get_angular_momentum_number() + 1
+                cspline_M.extend([spline.spline] * nm)
+        gd = self.gd
+        h_cv = gd.cell_cv / gd.N_c
+        self.lfc.normalized_derivative(a_G, c_Mv, h_cv, gd.n_c, cspline_M,
+                                       gd.beg_c, self.pos_Wv)
+
+        comm = self.gd.comm
+        rank = comm.rank
+        srequests = []
+        rrequests = []
+        c_ariv = {}
+        b_aiv = {}
+        M1 = 0
+        for a in self.atom_indices:
+            sphere = self.sphere_a[a]
+            M2 = M1 + sphere.Mmax
+            if sphere.rank != rank:
+                c_iv = c_Mv[M1:M2].copy()
+                b_aiv[a] = c_iv
+                srequests.append(comm.send(c_iv, sphere.rank, a, False))
+            else:
+                if len(sphere.ranks) > 0:
+                    c_riv = np.empty((len(sphere.ranks), M2 - M1, 7))
+                    c_ariv[a] = c_riv
+                    for r, b_iv in zip(sphere.ranks, c_riv):
+                        rrequests.append(comm.receive(b_iv, r, a, False))
+            M1 = M2
+
+        for request in rrequests:
+            comm.wait(request)
+
+        M1 = 0
+        for a in self.atom_indices:
+            c_iv = c_aiv.get(a)
+            sphere = self.sphere_a[a]
+            M2 = M1 + sphere.Mmax
+            if c_iv is not None:
+                if len(sphere.ranks) > 0:
+                    c_Mv[M1:M2] += c_ariv[a].sum(axis=0)
+                I = self.integral_a[a]
+                I_L = sphere.I_M
+                I0 = I_L[0]
+                c_Lv = c_Mv[M1:M2, :3]
+                b_Lv = c_Mv[M1:M2, 3:6]
+                A0 = c_Mv[M1, 6]
+                if I0 < 1e-15:
+                    c_iv[0] = 0.0
+                else:
+                    c_iv[0, :] = (I / I0 * c_Lv[0] -
+                                  I / I0**2 * b_Lv[0] * A0)
+                    c_iv[1:, :] = (c_Lv[1:] -
+                                   np.outer(I_L[1:] / I0, c_Lv[0]) -
+                                   A0 / I0 * b_Lv[1:] +
+                                   A0 / I0**2 * np.outer(I_L[1:], b_Lv[0]))
+                               
             M1 = M2
 
         for request in srequests:

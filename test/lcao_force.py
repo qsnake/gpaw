@@ -5,7 +5,7 @@
 
 import numpy as np
 from ase.data.molecules import molecule
-from gpaw import GPAW, extra_parameters
+from gpaw import GPAW
 from gpaw.atom.basis import BasisMaker
 
 obasis = BasisMaker('O').generate(2, 1, energysplit=0.3, tailnorm=0.03**.5)
@@ -33,10 +33,6 @@ F_ac = system.get_forces()
 F_ac_ref = np.array([[ 1.03188708,  1.64391922, -4.82343159],
                      [-0.70545468, -0.89151495,  3.04009972],
                      [-0.32259103, -0.73038964,  1.75334536]])
-if extra_parameters.get('usenewlfc'):
-    F_ac_ref = np.array([[ 1.03336128,  1.62745359, -4.83669908],
-                         [-0.70579285, -0.89223393,  3.03773256],
-                         [-0.32727525, -0.727834  ,  1.756671  ]])
 
 err_ac = np.abs(F_ac - F_ac_ref)
 err = err_ac.max()

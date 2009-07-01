@@ -15,7 +15,7 @@ Forces are compared to a previous finite-difference result.
 
 import numpy as np
 from ase import *
-from gpaw import GPAW, extra_parameters
+from gpaw import GPAW
 from gpaw.utilities import unpack
 from gpaw.poisson import PoissonSolver
 from gpaw.atom.basis import BasisMaker
@@ -41,12 +41,6 @@ F_ac_ref = np.array([[ -4.39699761e-05,  -1.70744195e+01,   1.60403209e+01],
                      [ -1.27836192e-02,   2.19624378e+01,  -1.43210490e+01],
                      [ -3.07146973e-03,  -4.90620722e+00,  -1.70774282e+00]])
 eref = 728.521507176
-
-if extra_parameters.get('usenewlfc'):
-    F_ac_ref = np.array([[  4.89577900e-03, -1.70770692e+01,  1.61009281e+01],
-                         [  1.04526969e-02,  2.19547384e+01, -1.43183447e+01],
-                         [  1.23195485e-02, -4.88863334e+00, -1.70701215e+00]])
-    eref = 728.515567591
 
 eerr = abs(e - eref)
 

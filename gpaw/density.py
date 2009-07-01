@@ -8,7 +8,7 @@ from math import pi, sqrt
 
 import numpy as np
 
-from gpaw import debug, extra_parameters
+from gpaw import debug
 from gpaw.mixer import BaseMixer, Mixer, MixerSum
 from gpaw.transformers import Transformer
 from gpaw.lfc import LFC
@@ -45,8 +45,6 @@ class Density:
         self.charge = float(charge)
 
         self.charge_eps = 1e-7
-        if extra_parameters.get('usenewlfc'):
-            self.charge_eps = 1e-2
         
         self.D_asp = None
         self.Q_aL = None

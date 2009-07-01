@@ -1,7 +1,6 @@
 from ase import *
-# note that we overwite numpy.equal in the next line
 from gpaw.utilities import equal
-from gpaw import GPAW, extra_parameters
+from gpaw import GPAW
 
 ref_3775 = [ # Values from revision 3775.
     # d         Energy
@@ -29,6 +28,4 @@ for d, eref in ref_3775:
     atoms.positions[1] = (x, x, x)
     e = atoms.get_potential_energy()
     print d, e - e0, e-eref
-    if extra_parameters.get('usenewlfc'):
-        eref += 0.00036
     equal(eref, e, 7e-5)
