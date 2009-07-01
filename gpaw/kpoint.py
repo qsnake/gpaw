@@ -53,8 +53,8 @@ class KPoint:
             Spin index: up or down (0 or 1).
         k: int
             k-point index.
-        u: int
-            Combined spin and k-point index.
+        q: int
+            local k-point index.
         k_c: float-ndarray of shape (3,)
             scaled **k**-point vector (coordinates scaled to
             [-0.5:0.5] interval).
