@@ -207,7 +207,7 @@ if debug:
     serial_comm = _Communicator(serial_comm)
 
 
-def distribute_cpus(parsize_c, parsize_bands, nspins, nibzkpts, comm=world):
+def distribute_cpus(parsize, parsize_bands, nspins, nibzkpts, comm=world):
     """Distribute k-points/spins to processors.
 
     Construct communicators for parallelization over
@@ -218,9 +218,12 @@ def distribute_cpus(parsize_c, parsize_bands, nspins, nibzkpts, comm=world):
     rank = comm.rank
 
     ntot = nspins * nibzkpts * parsize_bands
-    if parsize_c is None:
+    if parsize is None:
         ndomains = size // gcd(ntot, size)
+    elif type(parsize) is int:
+        ndomains = parsize
     else:
+        parsize_c = parsize
         ndomains = parsize_c[0] * parsize_c[1] * parsize_c[2]
 
     r0 = (rank // ndomains) * ndomains

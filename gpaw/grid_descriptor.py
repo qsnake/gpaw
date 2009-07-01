@@ -62,7 +62,7 @@ class GridDescriptor(Domain):
      """
     
     def __init__(self, N_c, cell_cv=(1, 1, 1), pbc_c=True,
-                 comm=None, parsize_c=None):
+                 comm=None, parsize=None):
         """Construct grid-descriptor object.
 
         parameters:
@@ -75,7 +75,7 @@ class GridDescriptor(Domain):
             Periodic boundary conditions flag(s).
         comm: MPI-communicator
             Communicator for domain-decomposition.
-        parsize_c: 3 int's
+        parsize: tuple of 3 int's, a single int or None
             Number of domains.
 
         Note that if pbc_c[c] is True, then the actual number of gridpoints
@@ -100,7 +100,7 @@ class GridDescriptor(Domain):
             pbc_c = (pbc_c,) * 3
         if comm is None:
             comm = mpi.world
-        Domain.__init__(self, cell_cv, pbc_c, comm, parsize_c, N_c)
+        Domain.__init__(self, cell_cv, pbc_c, comm, parsize, N_c)
         self.rank = self.comm.rank
 
         self.N_c = np.array(N_c, int)

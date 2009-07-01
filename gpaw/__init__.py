@@ -73,6 +73,10 @@ while len(sys.argv) > i:
             dry_run = int(arg.split('=')[1])
     elif arg.startswith('--domain-decomposition='):
         parsize = [int(n) for n in arg.split('=')[1].split(',')]
+        if len(parsize) == 1:
+            parsize = parsize[0]
+        else:
+            assert len(parsize) == 3
     elif arg.startswith('--state-parallelization='):
         parsize_bands = int(arg.split('=')[1])
     elif arg.startswith('--sl_diagonalize='):

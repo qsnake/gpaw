@@ -31,7 +31,7 @@ class Domain:
          ``neighbor_cd`` Rank of neighbor CPU in direction ``d`` along axis
                          ``c``.
          ``parpos_c``    Position of this CPU in the 3D grid of all CPUs.
-         ``parsize_c``   Domain decomposition.
+         ``parsize_c``   Domain decomposition along the three axes.
          ``stride_c``    Strides.
          =============== ==================================================
         """
@@ -47,7 +47,13 @@ class Domain:
 
         self.pbc_c = npy.asarray(pbc, bool)
 
-        self.set_decomposition(comm, parsize, N_c)
+        if type(parsize) is int:
+            parsize_c = None
+            assert parsize == comm.size
+        else:
+            parsize_c = parsize
+
+        self.set_decomposition(comm, parsize_c, N_c)
 
     def set_decomposition(self, comm, parsize_c=None, N_c=None):
         """Set MPI-communicator and do domain decomposition.
