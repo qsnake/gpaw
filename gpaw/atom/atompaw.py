@@ -270,7 +270,7 @@ class AtomPAW(GPAW):
 
         basis = Basis(self.symbol, basis_name, readxml=False)
         basis.d = self.gd.h
-        basis.ng = self.gd.N
+        basis.ng = self.gd.ng
         basis.generatorattrs = {} # attrs of the setup maybe
         basis.generatordata = 'AtomPAW' # version info too?
         
