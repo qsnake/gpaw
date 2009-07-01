@@ -24,6 +24,14 @@ def get_bf_centers(atoms):
     return pos_ic
 
 
+def get_bf_centers2(atoms, bfs_dict):
+    """bfs_dict is a dictionary mapping atom symbols to a number of bfs."""
+    pos_ic = []
+    for pos, sym in zip(atoms.get_positions(), atoms.get_chemical_symbols()):
+        pos_ic.extend(pos[None].repeat(bfs_dict[sym], 0))
+    return np.array(pos_ic)
+
+
 def get_realspace_hs(h_skmm, s_kmm, ibzk_kc, weight_k, R_c=(0, 0, 0),
                      usesymm=None):
     # usesymm=False only works if the k-point reduction is only along one
@@ -50,22 +58,28 @@ def get_realspace_hs(h_skmm, s_kmm, ibzk_kc, weight_k, R_c=(0, 0, 0),
     return h_smm, s_mm
 
 
-def remove_pbc(atoms, h, s=None, d=0):
-    calc = atoms.get_calculator()
-    if not calc.initialized:
-        calc.initialize(atoms)
-
-    nao = calc.wfs.setups.nao
-    cutoff = atoms.get_cell()[d, d] * 0.5
-    pos_i = get_bf_centers(atoms)[:, d]
+def remove_pbc(atoms, h, s=None, d=0, centers_ic=None):
+    L = atoms.cell[d, d]
+    nao = len(h)
+    if centers_ic is None:
+        centers_ic = get_bf_centers(atoms) # requires an attached LCAO calc
+    ni = len(centers_ic)
+    if nao != ni:
+        assert nao == 2 * ni
+        centers_ic = np.vstack(centers_ic, centers_ic)
+        centers_ic[ni:, d] += L
+        cutoff = L
+    else:
+        cutoff = 0.5 * L
+    pos_i = centers_ic[:, d]
     for i in range(nao):
         dpos_i = abs(pos_i - pos_i[i])
         mask_i = (dpos_i < cutoff).astype(int)
-        h[i, :] = h[i, :] * mask_i
-        h[:, i] = h[:, i] * mask_i
+        h[i, :] *= mask_i
+        h[:, i] *= mask_i
         if s != None:
-            s[i, :] = s[i, :] * mask_i
-            s[:, i] = s[:, i] * mask_i
+            s[i, :] *= mask_i
+            s[:, i] *= mask_i
 
 
 def dump_hamiltonian(filename, atoms, direction=None):
