@@ -185,22 +185,27 @@ class TauTimer(Timer):
     unmatched starts/stops in the code."""
     
     def __init__(self):
+        self.tau_timers = {}
         self.timers = {}
+        self.t0 = time.time()
         self.running = []
         pytau.setNode(mpi.rank)
         self.start('PAW_calc') 
 
     def start(self, name):
-        self.timers[name] = pytau.profileTimer(name)
+        self.tau_timers[name] = pytau.profileTimer(name)
+        self.timers[name] = self.timers.get(name, 0.0) - time.time()
         self.running.append(name)
-        pytau.start(self.timers[name])
+        pytau.start(self.tau_timers[name])
         
     def stop(self, name=None):
         if name is None: name = self.running[-1]
         if name != self.running.pop():
             raise RuntimeError
-        pytau.stop(self.timers[name])
+        self.timers[name] += time.time()
+        pytau.stop(self.tau_timers[name])
 
     def write(self, out=sys.stdout):
         self.stop('PAW_calc')
+        Timer.write(self, out)
 
