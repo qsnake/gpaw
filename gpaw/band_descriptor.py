@@ -17,7 +17,7 @@ import gpaw.mpi as mpi
 NONBLOCKING = False
 
 class BandDescriptor:
-    """Descriptor-class for 
+    """Descriptor-class for ordered lists of bands
 
     A ``BandDescriptor`` object holds information on how functions, such
     as wave functions and corresponding occupation numbers, are divided
@@ -98,15 +98,17 @@ class BandDescriptor:
         self.mynbands = self.nbands // self.comm.size
         self.strided = strided
 
-        nslice = self.get_slice(self.comm.size)
+        nslice = self.get_slice()
         self.beg, self.end, self.step = nslice.indices(self.nbands)
 
     def __len__(self):
         return self.mynbands
 
     def get_slice(self, band_rank=None):
+        """Return the slice of global bands which belong to a given rank."""
         if band_rank is None:
             band_rank = self.comm.rank
+        assert band_rank in xrange(self.comm.size)
 
         if self.strided:
             nstride = self.comm.size
@@ -117,10 +119,12 @@ class BandDescriptor:
         return nslice
 
     def get_band_indices(self, band_rank=None):
+        """Return the global band indices which belong to a given rank."""
         nslice = self.get_slice(band_rank)
         return np.arange(*nslice.indices(self.nbands))
 
     def get_band_ranks(self):
+        """Return array of ranks as a function of global band indices."""
         rank_n = np.empty(self.nbands, dtype=int)
         for band_rank in range(self.comm.size):
             nslice = self.get_slice(band_rank)
@@ -129,22 +133,21 @@ class BandDescriptor:
         return rank_n
 
     def who_has(self, n):
+        """Convert global band index to rank information and local index."""
         if self.strided:
             myn, band_rank = divmod(n, self.comm.size)
         else:
             band_rank, myn = divmod(n, self.mynbands)
-
         return band_rank, myn
 
     def global_index(self, myn, band_rank=None):
+        """Convert rank information and local index to global index."""
         if band_rank is None:
             band_rank = self.comm.rank
-
         if self.strided:
             n = band_rank + myn * self.comm.size
         else:
             n = band_rank * self.mynbands + myn
-
         return n
 
     def get_size_of_global_array(self):
