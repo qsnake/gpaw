@@ -66,7 +66,7 @@ def remove_pbc(atoms, h, s=None, d=0, centers_ic=None):
     ni = len(centers_ic)
     if nao != ni:
         assert nao == 2 * ni
-        centers_ic = np.vstack(centers_ic, centers_ic)
+        centers_ic = np.vstack((centers_ic, centers_ic))
         centers_ic[ni:, d] += L
         cutoff = L
     else:
@@ -121,7 +121,7 @@ def dump_hamiltonian_parallel(filename, atoms, direction=None):
         Note:
         H and S are parallized over spin and k-points and
         is for now dumped into a number of pickle files. This
-        may be changed into a dump to a single file in the feature.
+        may be changed into a dump to a single file in the future.
 
     """
     if direction != None:
@@ -161,7 +161,7 @@ def dump_hamiltonian_parallel(filename, atoms, direction=None):
             H_qMM[kpt.s, kpt.q] -= S_qMM[kpt.q] * \
                                    calc.occupations.get_fermi_level()    
     
-    if wfs.gd.comm.rank==0:
+    if wfs.gd.comm.rank == 0:
         fd = file(filename+'%i.pckl' % wfs.kpt_comm.rank, 'wb')
         H_qMM *= Hartree
         pickle.dump((H_qMM, S_qMM),fd , 2)
@@ -173,13 +173,12 @@ def dump_hamiltonian_parallel(filename, atoms, direction=None):
 def get_lead_lcao_hamiltonian(calc, usesymm=False):
     S_qMM = calc.wfs.S_qMM.copy()
     H_sqMM = np.empty((calc.wfs.nspins,) + S_qMM.shape, calc.wfs.dtype)
-    Nk = len(calc.wfs.weight_k)
     for kpt in calc.wfs.kpt_u:
         calc.wfs.eigensolver.calculate_hamiltonian_matrix(
             calc.hamiltonian, calc.wfs, kpt)
-        H_sqMM[kpt.s, kpt.k] = calc.wfs.eigensolver.H_MM * Hartree
-        tri2full(S_qMM[kpt.k])
-        tri2full(H_sqMM[kpt.s, kpt.k])
+        H_sqMM[kpt.s, kpt.q] = calc.wfs.eigensolver.H_MM * Hartree
+        tri2full(S_qMM[kpt.q])
+        tri2full(H_sqMM[kpt.s, kpt.q])
     return lead_kspace2realspace(H_sqMM, S_qMM, calc.wfs.ibzk_kc,
                                  calc.wfs.weight_k, 'x', usesymm)
 
