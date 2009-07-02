@@ -3,7 +3,8 @@
 
 import os
 import sys
-
+import time
+import atexit
 import numpy as npy
 
 from gpaw import debug
@@ -298,3 +299,21 @@ def run(iterators):
             results = [iter.next() for iter in iterators]
         except StopIteration:
             return results
+
+# Shut down all processes if one of them fails.
+if parallel and not (dry_run_size > 1):
+    # This is a true parallel calculation
+    def cleanup(sys=sys, time=time, world=world):
+        error = getattr(sys, 'last_type', None)
+        if error:
+            sys.stdout.flush()
+            sys.stderr.write(('GPAW CLEANUP (node %d): %s occurred.  ' +
+                              'Calling MPI_Abort!\n') % (world.rank, error))
+            sys.stderr.flush()
+            # Give other nodes a moment to crash by themselves (perhaps
+            # producing helpful error messages)
+            time.sleep(3)
+            world.abort(42)
+
+    atexit.register(cleanup)
+    
