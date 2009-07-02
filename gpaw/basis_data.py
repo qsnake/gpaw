@@ -8,6 +8,7 @@ import numpy as np
 
 from gpaw import setup_paths
 from gpaw.setup_data import search_for_file
+from gpaw.grid_descriptor import EquidistantRadialGridDescriptor
 
 try:
     import gzip
@@ -29,6 +30,19 @@ class Basis:
 
         if readxml:
             self.read_xml()
+
+    @property
+    def nao(self): # implement as a property so we don't have to
+        # catch all the places where Basis objects are modified without
+        # updating it.  (we can do that later)
+        return sum([2 * bf.l + 1 for bf in self.bf_j])
+
+    def get_grid_descriptor(self):
+        return EquidistantRadialGridDescriptor(self.d, self.ng)
+
+    def tosplines(self):
+        gd = self.get_grid_descriptor()
+        return [gd.reducedspline(bf.l, bf.phit_g) for bf in self.bf_j]
 
     def read_xml(self, filename=None):
         parser = BasisSetXMLParser(self)
@@ -146,6 +160,7 @@ for details."""
             basis.bf_j.append(bf)
         elif name == 'generator':
             basis.generatordata = ''.join([line for line in self.data])
+
 
 class BasisPlotter:
     def __init__(self, premultiply=True, normalize=False,

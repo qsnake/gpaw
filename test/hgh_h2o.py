@@ -20,27 +20,25 @@ from gpaw.utilities import unpack
 from gpaw.poisson import PoissonSolver
 from gpaw.atom.basis import BasisMaker
 
-obasis = BasisMaker('O').generate(1)
-hbasis = BasisMaker('H').generate(1)
-
-mol = Atoms('OHH', positions=[(0, 0, 0.3), (0, 0.55, -0.2), (0, -0.45, -0.5)],
-            pbc=True)
-mol.center(vacuum=1.5)
-calc = GPAW(nbands=6, h=0.10, # Force is quite bad for h > 0.12, must be eggbox
+mol = molecule('H2O')
+mol.rattle(0.2)
+mol.center(vacuum=2.0)
+calc = GPAW(nbands=6,
+            gpts=(32, 40, 40),
             setups='hgh',
             poissonsolver=PoissonSolver(relax='GS'),
-            mode='fd',
-            basis={'H' : hbasis, 'O' : obasis},
-            width=0.01,
+            convergence=dict(eigenstates=1e-9, density=1e-5, energy=1e-4),
             txt='-')
 mol.set_calculator(calc)
 e = mol.get_potential_energy()
 F_ac = mol.get_forces()
 
-F_ac_ref = np.array([[ -4.39699761e-05,  -1.70744195e+01,   1.60403209e+01],
-                     [ -1.27836192e-02,   2.19624378e+01,  -1.43210490e+01],
-                     [ -3.07146973e-03,  -4.90620722e+00,  -1.70774282e+00]])
-eref = 728.521507176
+F_ac_ref = np.array([[ 9.22651716,  4.69341829, -6.15529718],
+                     [-0.94608984, -1.28176225,  3.50473655],
+                     [-0.65317874, -0.29196963,  2.44196361]])
+
+
+eref = 722.39463463
 
 eerr = abs(e - eref)
 
@@ -79,8 +77,7 @@ psit_nG = wfs.kpt_u[0].psit_nG
 dH_asp = calc.hamiltonian.dH_asp
 
 assert eerr < 1e-3, 'energy changed from reference'
-assert ferr < 0.025, 'forces do not match FD check'
-# actual force error is 0.013, 0.021 for usenewlfc as of this revision
+assert ferr < 0.02, 'forces do not match FD check'
 
 # Sanity check.  In HGH, the atomic Hamiltonian is constant.
 # Also the projectors should be normalized

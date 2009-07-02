@@ -354,6 +354,7 @@ class LeanSetup(BaseSetup):
 
         self.type = s.type # required for writing to file
         self.fingerprint = s.fingerprint # also req. for writing
+        self.filename = s.filename
 
         self.nspins = s.nspins # XXX use self.xc_correction.nspins instead?
         self.symbol = s.symbol
@@ -1006,7 +1007,7 @@ class Setups(list):
                 Z, type, basis = id
                 symbol = chemical_symbols[Z]
                 setupdata = None
-                if isinstance(type, SetupData):
+                if not isinstance(type, str):
                     setupdata = type
                 setup = create_setup(symbol, xcfunc, lmax, nspins, type,
                                      basis, setupdata=setupdata)

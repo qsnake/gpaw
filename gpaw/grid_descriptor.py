@@ -620,12 +620,36 @@ class RadialGridDescriptor:
             shape = (shape,)
         return np.empty(shape + self.r_g.shape)
 
+    def equidistant(self, f_g, points):
+        ng = len(f_g)
+        r_g = self.r_g[:ng]
+        rmax = r_g[-1]
+        r = 1.0 * rmax / points * np.arange(points + 1)
+        g = (self.N * r / (self.beta + r) + 0.5).astype(int)
+        g = np.clip(g, 1, ng - 2)
+        r1 = np.take(r_g, g - 1)
+        r2 = np.take(r_g, g)
+        r3 = np.take(r_g, g + 1)
+        x1 = (r - r2) * (r - r3) / (r1 - r2) / (r1 - r3)
+        x2 = (r - r1) * (r - r3) / (r2 - r1) / (r2 - r3)
+        x3 = (r - r1) * (r - r2) / (r3 - r1) / (r3 - r2)
+        f1 = np.take(f_g, g - 1)
+        f2 = np.take(f_g, g)
+        f3 = np.take(f_g, g + 1)
+        f_g = f1 * x1 + f2 * x2 + f3 * x3
+        return f_g
+
+
 class EquidistantRadialGridDescriptor(RadialGridDescriptor):
     def __init__(self, h, ng):
         self.h = h
-        rcut = h * ng
-        r_g = np.linspace(h, rcut, ng)
+        r_g = self._get_position_array(h, ng)
         RadialGridDescriptor.__init__(self, r_g, np.ones(ng) * h)
+
+    def _get_position_array(self, h, ng):
+        # AtomGridDescriptor overrides this to use r_g = [h, 2h, ... ng h]
+        # In this class it is [0, h, ... (ng - 1) h]
+        return h * np.arange(ng)
 
     def r2g_ceil(self, r):
         return int(ceil(r / self.h))
@@ -642,11 +666,8 @@ class EquidistantRadialGridDescriptor(RadialGridDescriptor):
         return Spline(l, rmax, f_g)
 
     def reducedspline(self, l, f_g):
-        ng = len(f_g)
-        r_g = self.r_g[:ng]
-        rmax = r_g[-1]
-        f_g = divrl(f_g, l, r_g)
-        return Spline(l, rmax, f_g)
+        f_g = divrl(f_g, l, self.r_g[:len(f_g)])
+        return self.spline(l, f_g)
 
 class AERadialGridDescriptor(RadialGridDescriptor):
     """Descriptor-class for non-uniform grid used by setups, all-electron.
@@ -661,9 +682,10 @@ class AERadialGridDescriptor(RadialGridDescriptor):
       g = --------
           beta + r
     """
-    def __init__(self, beta, N, _noarrays=False):
+    def __init__(self, beta, N, default_spline_points=25, _noarrays=False):
         self.beta = beta
         self.N = N
+        self.default_spline_points = default_spline_points
         if _noarrays:
             return
 
@@ -693,33 +715,18 @@ class AERadialGridDescriptor(RadialGridDescriptor):
         other.rcut = other.r_g[-1]
         return other
 
-    def spline(self, l, f_g, points=25):
+    def spline(self, l, f_g, points=None):
         ng = len(f_g)
         rmax = self.r_g[ng - 1]
         r_g = self.r_g[:ng]
         f_g = self.equidistant(f_g, points=points)
         return Spline(l, rmax, f_g)
 
-    def equidistant(self, f_g, points=25):
-        ng = len(f_g)
-        r_g = self.r_g[:ng]
-        rmax = r_g[-1]
-        r = 1.0 * rmax / points * np.arange(points + 1)
-        g = (self.N * r / (self.beta + r) + 0.5).astype(int)
-        g = np.clip(g, 1, ng - 2)
-        r1 = np.take(r_g, g - 1)
-        r2 = np.take(r_g, g)
-        r3 = np.take(r_g, g + 1)
-        x1 = (r - r2) * (r - r3) / (r1 - r2) / (r1 - r3)
-        x2 = (r - r1) * (r - r3) / (r2 - r1) / (r2 - r3)
-        x3 = (r - r1) * (r - r2) / (r3 - r1) / (r3 - r2)
-        f1 = np.take(f_g, g - 1)
-        f2 = np.take(f_g, g)
-        f3 = np.take(f_g, g + 1)
-        f_g = f1 * x1 + f2 * x2 + f3 * x3
-        return f_g
-
-    def reducedspline(self, l, f_g, points=25):
+    def reducedspline(self, l, f_g, points=None):
         ng = len(f_g)
         return self.spline(l, divrl(f_g, l, self.r_g[:ng]), points=points)
 
+    def equidistant(self, f_g, points=None):
+        if points is None:
+            points = self.default_spline_points
+        return RadialGridDescriptor.equidistant(self, f_g, points)

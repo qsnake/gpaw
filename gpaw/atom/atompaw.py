@@ -23,12 +23,10 @@ class MakeWaveFunctions:
 
 class AtomWaveFunctions(WaveFunctions):
     def initialize(self, density, hamiltonian, spos_ac):
-        r = self.gd.r_g
-        N = len(r)
         setup = self.setups[0]
         bf = AtomBasisFunctions(self.gd, setup.phit_j)
         density.initialize_from_atomic_densities(bf)
-        hamiltonian.update(density)      
+        hamiltonian.update(density)
 
     def add_to_density_from_k_point(self, nt_sG, kpt):
         nt_sG[kpt.s] += np.dot(kpt.f_n / 4 / pi, kpt.psit_nG**2)
@@ -143,7 +141,7 @@ class AtomLocalizedFunctionsCollection:
     def __init__(self, gd, spline_aj):
         self.gd = gd
         spline = spline_aj[0][0]
-        self.b_g = np.array([spline(x) for x in gd.r_g]) / sqrt(4 * pi)
+        self.b_g = np.array([spline(r) for r in gd.r_g]) / sqrt(4 * pi)
 
     def set_positions(self, spos_ac):
         pass
@@ -183,6 +181,7 @@ class AtomBasisFunctions:
 class AtomGridDescriptor(EquidistantRadialGridDescriptor):
     def __init__(self, h, rcut):
         ng = int(float(rcut) / h + 0.5) - 1
+        rcut = ng * h
         EquidistantRadialGridDescriptor.__init__(self, h, ng)
         self.sdisp_cd = np.empty((3, 2))
         self.comm = mpi.serial_comm
@@ -190,6 +189,16 @@ class AtomGridDescriptor(EquidistantRadialGridDescriptor):
         self.cell_c = np.ones(3) * rcut
         self.N_c = np.ones(3, dtype=int) * 2 * ng
         self.h_c = np.ones(3) * h
+    def _get_position_array(self, h, ng):
+        return np.linspace(h, ng * h, ng)
+    def r2g_ceil(self, r):
+        return EquidistantRadialGridDescriptor.r2g_ceil(self, r + self.h)
+    def r2g_floor(self, r):
+        return EquidistantRadialGridDescriptor.r2g_floor(self, r + self.h)
+    def spline(self, l, f_g):
+        raise NotImplementedError
+    def reducedspline(self, l, f_g):
+        raise NotImplementedError
     def get_ranks_from_positions(self, spos_ac):
         return np.array([0])
     def refine(self):
@@ -270,13 +279,24 @@ class AtomPAW(GPAW):
 
         basis = Basis(self.symbol, basis_name, readxml=False)
         basis.d = self.gd.h
-        basis.ng = self.gd.ng
+        basis.ng = self.gd.ng + 1
         basis.generatorattrs = {} # attrs of the setup maybe
         basis.generatordata = 'AtomPAW' # version info too?
-        
+
         bf_j = basis.bf_j
         for l, n, f, eps, psit_G in self.state_iter():
-            bf = BasisFunction(l, self.gd.rcut, psit_G * np.sign(psit_G[-1]), 
+            phit_g = np.empty(basis.ng)
+            phit_g[0] = 0.0
+            phit_g[1:] = psit_G
+            phit_g *= np.sign(psit_G[-1])
+
+            # If there's no node at zero, we shouldn't set phit_g to zero
+            # We'll make an ugly hack
+            absphit = np.abs(psit_G[:4])
+            if absphit[0] > absphit[1] > absphit[2] > absphit[3]:
+                phit_g[0] = phit_g[1]
+            
+            bf = BasisFunction(l, self.gd.rcut, phit_g,
                                '%s%d e=%.3f f=%.3f' % ('spdf'[l], n, eps, f))
             bf_j.append(bf)
         return basis

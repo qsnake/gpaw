@@ -8,6 +8,8 @@ from gpaw.setup import BaseSetup
 from gpaw.spline import Spline
 from gpaw.grid_descriptor import AERadialGridDescriptor
 from gpaw.grid_descriptor import EquidistantRadialGridDescriptor
+from gpaw.atom.atompaw import AtomPAW
+from gpaw.basis_data import Basis, BasisFunction
 
 setups = {} # Filled out during parsing below
 sc_setups = {} # Semicore
@@ -33,6 +35,7 @@ class RealHGHSetup(BaseSetup):
         self.R_sii = None
         self.HubU = None
 
+        self.filename = None
         self.fingerprint = None
         self.symbol = data.symbol
         self.type = data.name
@@ -44,7 +47,7 @@ class RealHGHSetup(BaseSetup):
         
         self.ni = sum([2 * l + 1 for l in data.l_j])
         self.pt_j = data.get_projectors()
-        self.phit_j = self.read_basis_functions(basis)
+        self.phit_j = basis.tosplines()
         self.niAO = sum([2 * phit.get_angular_momentum_number() + 1
                          for phit in self.phit_j])
 
@@ -83,7 +86,7 @@ class RealHGHSetup(BaseSetup):
         self.rcutfilter = None
         self.rcore = None
 
-        self.N0_p = None
+        self.N0_p = np.zeros(_np) # not really implemented
         self.Delta1_jj = None
         self.phicorehole_g = None
         self.beta = None
@@ -169,7 +172,7 @@ class HGHSetup:
         
     def initialize_setup_data(self):
         hghdata = self.hghdata
-        rgd = AERadialGridDescriptor(0.1, 450)
+        rgd = AERadialGridDescriptor(0.1, 450, default_spline_points=100)
         #rgd = EquidistantRadialGridDescriptor(0.001, 10000)
         self.rgd = rgd
         
@@ -313,7 +316,7 @@ class HGHSetup:
         from gpaw import extra_parameters
         if extra_parameters.get('usenewlfc'):
             pt_jg = self.pt_jg
-        else: # make projectors equidistant
+        else: # give projectors equal range
             maxlen = max([len(pt_g) for pt_g in self.pt_jg])
             pt_jg = []        
             for pt1_g in self.pt_jg:
@@ -321,9 +324,43 @@ class HGHSetup:
                 pt2_g[:len(pt1_g)] = pt1_g
                 pt_jg.append(pt2_g)
         
-        pt_j = [self.rgd.reducedspline(l, pt_g, points=100)
+        pt_j = [self.rgd.reducedspline(l, pt_g)
                 for l, pt_g, in zip(self.l_j, pt_jg)]
         return pt_j
+
+    def create_basis_functions(self):
+        class SimpleBasis(Basis):
+            def __init__(self, symbol, l_j):
+                Basis.__init__(self, symbol, 'simple', readxml=False)
+                self.generatordata = 'simple'
+                self.d = 0.02
+                self.ng = 160
+                rgd = self.get_grid_descriptor()
+                bf_j = self.bf_j
+                rcgauss = rgd.rcut / 3.0
+                gauss_g = np.exp(-(rgd.r_g / rcgauss)**2.0)
+                for l in l_j:
+                    phit_g = rgd.r_g**l * gauss_g
+                    norm = np.dot((rgd.r_g * phit_g)**2, rgd.dr_g)**.5
+                    phit_g /= norm
+                    bf = BasisFunction(l, rgd.rcut, phit_g, 'gaussian')
+                    bf_j.append(bf)
+        b1 = SimpleBasis(self.symbol, range(max(self.l_j) + 1))
+        
+        f_ln = []
+        for l in self.l_j:
+            f_n = []
+            for f, n, l2 in zip(self.f_j, self.n_j, self.l_j):
+                if l2 == l:
+                    f_n.append(f)
+            f_ln.append(f_n)
+        
+        apaw = AtomPAW(self.symbol, [f_ln], h=0.05, rcut=9.0,
+                       basis={self.symbol: b1},
+                       setups={self.symbol : self},
+                       lmax=0, txt='-')
+        basis = apaw.extract_basis_functions()
+        return basis
 
     def get_compensation_charge_function(self):
         rcgauss = sqrt(2) * self.hghdata.rloc
@@ -335,13 +372,17 @@ class HGHSetup:
         return r, g
 
     def get_local_potential(self):
-        return self.rgd.reducedspline(0, self.vbar_g, points=100)
+        return self.rgd.reducedspline(0, self.vbar_g)
 
     def build(self, xcfunc, lmax, nspins, basis):
         if xcfunc.get_setup_name() != 'LDA':
             raise ValueError('HGH setups support only LDA')
         if lmax != 0:
             raise ValueError('HGH setups support only lmax=0')
+        if basis is None:
+            basis = self.create_basis_functions()
+        elif isinstance(basis, str):
+            basis = Basis(self.symbol, basis)
         setup = RealHGHSetup(self, nspins, basis)
         return setup
 
