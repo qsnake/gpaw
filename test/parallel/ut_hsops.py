@@ -44,8 +44,8 @@ else:
         ase_svnrevision = ase_svnrevision[:ase_svnrevision.rfind(':')]
     ase_svnrevision = int(ase_svnrevision)
 
-# Hack to use a features from ASE 3.1.0 svn. rev. 893 or later.
-if ase_svnrevision >= 893:
+# Hack to use a features from ASE 3.1.0 svn. rev. 1001 or later.
+if ase_svnrevision >= 1001: # wasn't bug-free between rev. 893 and 1000
     from ase.utils.memory import shapeopt
 else:
     # Bogus function only valid for one set of parameters.
