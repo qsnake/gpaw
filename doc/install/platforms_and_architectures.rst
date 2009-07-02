@@ -51,6 +51,7 @@ Linux:
    Linux/murska
    Linux/neolith
    Linux/sepeli
+   Linux/supernova
    Linux/uranus
 
 Solaris:

@@ -63,7 +63,7 @@ MEM=`echo "$CPU / $CORES_PER_SOCKET" |bc`;;
 CPU=7
 MEM=`echo "$CPU / $CORES_PER_SOCKET" |bc`;;
 esac
-ulimit -s unlimited
+#ulimit -s unlimited
 CMD="numactl --membind=$MEM --physcpubind=$CPU $@"
 echo $CMD
 eval $CMD

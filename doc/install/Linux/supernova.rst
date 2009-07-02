@@ -1,17 +1,21 @@
-.. _uranus:
+.. _supernova:
 
-======
-uranus
-======
+=========
+supernova
+=========
 
-The uranus machine is a cluster of dual socket, quad-core AMD Opteron
-2354 CPUs, 2.2 GHz processors with 2 GB of memory per core.
+The supernova machine is a cluster of dual-core AMD Athlon 64 X2 5000+ CPUs,
+2.6 GHz processors with 1 GB of memory per core.
 
-Instructions assume **bash**, installation under `${HOME}/opt`.
+Instructions assume **tcsh**, installation under `${HOME}/opt`.
 Build the unoptimized numpy/scipy::
 
   mkdir ${HOME}/opt
   cd ${HOME}/opt
+
+  mkdir -p ${HOME}/opt/python/lib/python2.4/site-packages
+  setenv PYTHONPATH ${HOME}/opt/python/lib/python2.4/site-packages
+
   wget http://dfn.dl.sourceforge.net/sourceforge/numpy/numpy-1.3.0.tar.gz
   wget http://dfn.dl.sourceforge.net/sourceforge/scipy/scipy-0.7.0.tar.gz
   wget http://python-nose.googlecode.com/files/nose-0.11.0.tar.gz
@@ -19,10 +23,9 @@ Build the unoptimized numpy/scipy::
   tar zxf numpy-1.3.0.tar.gz
   tar zxf scipy-0.7.0.tar.gz
   cd nose-0.11.0
-  python setup.py install --prefix=${HOME}/opt/python 2>&1 | tee install.log
+  python setup.py install --prefix=${HOME}/opt/python | tee install.log
   cd ../numpy-1.3.0
-  python setup.py install --prefix=${HOME}/opt/python 2>&1 | tee install.log
-  export PYTHONPATH=${HOME}/opt/python/lib64/python2.4/site-packages:${HOME}/opt/python/lib/python2.4/site-packages
+  python setup.py install --prefix=${HOME}/opt/python | tee install.log
   cd ..
   python -c "import numpy; numpy.test()"
 
@@ -34,43 +37,16 @@ Build the unoptimized numpy/scipy::
   export LAPACK_SRC=${HOME}/opt/lapack-3.2.1
 
   cd scipy-0.7.0
-  python setup.py config_fc --fcompiler=gfortran install --prefix=${HOME}/opt/python 2>&1 | tee install.log
+  python setup.py config_fc --fcompiler=gfortran install --prefix=${HOME}/opt/python | tee install.log
   cd ..
   python -c "import scipy; scipy.test()"
-
-Set these environment variables in the :file:`.bashrc` file::
-
-  if [ -z "${PYTHONPATH}" ]
-  then
-      export PYTHONPATH=""
-  fi
-
-  export PYTHONPATH=${HOME}/opt/python/lib64/python2.4/site-packages:${HOME}/opt/python/lib/python2.4/site-packages:${PYTHONPATH}
-
-  export OMPI=/usr/local/ompi-ifort
-  export OPAL_PREFIX=${OMPI}
-  export OMP_NUM_THREADS=1
-
-  if [ -z "${PATH}" ]
-  then
-      export PATH=${OMPI}/bin 
-  else
-      export PATH=${OMPI}/bin:${PATH}
-  fi
-
-  if [ -z "${LD_LIBRARY_PATH}" ] 
-  then
-      export LD_LIBRARY_PATH=${OMPI}/lib
-  else
-      export LD_LIBRARY_PATH=${OMPI}/lib:${LD_LIBRARY_PATH}
-  fi
 
 Make sure that you have the right mpicc::
 
   which mpicc
-  /usr/local/ompi-ifort/bin/mpicc
+ /usr/local/ompi-1.2.5-pgi/bin/mpicc
 
-and build GPAW (``python setup.py build_ext 2>&1 | tee build_ext.log``) with this
+and build GPAW (``python setup.py build_ext | tee build_ext.log``) with this
 :file:`customize.py` file::
 
   scalapack = True
@@ -85,7 +61,9 @@ and build GPAW (``python setup.py build_ext 2>&1 | tee build_ext.log``) with thi
 
   libraries= []
 
-  mkl_lib_path = '/opt/intel/mkl/10.0.4.023/lib/em64t/'
+  mkl_lib_path = '/usr/local/intel/mkl/10.0.011/lib/em64t/'
+
+  library_dirs = [mkl_lib_path]
 
   extra_link_args = [
   mkl_lib_path+'libmkl_intel_lp64.a',
@@ -106,6 +84,7 @@ and build GPAW (``python setup.py build_ext 2>&1 | tee build_ext.log``) with thi
     ('GPAW_MKL', '1')
   ]
 
+
 **Note**: is case of problems similar to those found on :ref:`akka` static linking is required.
 
 A gpaw script :file:`test.py` can be submitted like this::
@@ -120,7 +99,7 @@ where :file:`run.sh` looks like this::
   #PBS -M email@email.com
   #PBS -q long
   #PBS -r n
-  #PBS -l nodes=1:ppn=8
+  #PBS -l nodes=1:ppn=2
 
   cd $PBS_O_WORKDIR
   echo Running on host `hostname` in directory `pwd`
@@ -128,18 +107,18 @@ where :file:`run.sh` looks like this::
   echo This jobs runs on the following $NPROCS processors:
   cat $PBS_NODEFILE
 
-  export PYTHONPATH=${HOME}/opt/gpaw-0.5.3667:${HOME}/opt/python-ase-3.1.0.846:${PYTHONPATH}
-  export PYTHONPATH=${HOME}/opt/python/lib64/python2.4/site-packages:${HOME}/opt/python/lib/python2.4/site-packages:${PYTHONPATH}
-  export PATH=${HOME}/opt/gpaw-0.5.3667/build/bin.linux-x86_64-2.4:${PATH}
-  export GPAW_SETUP_PATH=${HOME}/opt/gpaw-setups-0.5.3574
+  export PYTHONPATH=~/opt/gpaw-0.5.3667:~/opt/python-ase-3.1.0.846:${PYTHONPATH}
+  export PYTHONPATH=~/opt/python/lib/python2.4/site-packages:${PYTHONPATH}
+  export PATH=~/opt/gpaw-0.5.3667/build/bin.linux-x86_64-2.4:${PATH}
+  export GPAW_SETUP_PATH=~/opt/gpaw-setups-0.5.3574
   export OMP_NUM_THREADS=1
 
   mpiexec gpaw-python test.py
 
 Please make sure that your jobs do not run multi-threaded, e.g. for a
-job running on ``node02`` do from a login node::
+job running on ``star237`` do from a login node::
 
-  ssh node02 ps -fL
+  ssh star237 ps -fL
 
 you should see **1** in the **NLWP** column. Numbers higher then **1**
 mean multi-threaded job.

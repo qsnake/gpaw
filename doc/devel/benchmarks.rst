@@ -105,6 +105,7 @@ Please perform the following steps:
     wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/memory_bandwidth/run_numactl.sh
     wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/memory_bandwidth/memory_bandwidth.py
     wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/memory_bandwidth/twiny.py
+    chmod u+x taskit.BINDING.one.node
     sh prepare.sh
 
  - run with (it takes 6-10 hours with NCORES=8)::
