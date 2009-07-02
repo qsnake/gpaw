@@ -119,8 +119,8 @@ class UTBandParallelSetup(TestCase):
     def verify_comm_sizes(self):
         if world.size == 1:
             return
-        comm_sizes = tuple(comm.size for comm in [world, self.bd.comm, \
-                                                  self.gd.comm, self.kpt_comm])
+        comm_sizes = tuple([comm.size for comm in [world, self.bd.comm, \
+                                                   self.gd.comm, self.kpt_comm]])
         self._parinfo =  '%d world, %d band, %d domain, %d kpt' % comm_sizes
         self.assertEqual((self.nspins*self.nibzkpts) % self.kpt_comm.size, 0)
 
