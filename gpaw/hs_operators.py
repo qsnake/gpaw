@@ -346,13 +346,26 @@ class Operator:
     def matrix_multiply(self, C_NN, psit_nG, P_ani=None):
         """Calculate new linear combinations of wave functions.
 
-        ::
+        Results will be put in the *P_ani* dict and a new psit_nG returned::
 
                      __                                __
             ~       \       ~           ~a  ~         \       ~a  ~
            psi  <--  ) C   psi    and  <p |psi >  <--  ) C   <p |psi >
               n     /__ nn'   n'         i    n       /__ nn'  i    n'
                      n'                                n'
+
+
+        Parameters:
+
+        C_NN: ndarray XXX to be decided!
+            Matrix representation of the requested linear combinations. Even
+            with a hermitian operator, this matrix need not be self-adjoint.
+            However, unlike the results from calculate_matrix_elements, it is
+            assumed that all matrix elements are filled in (use e.g. tri2full).
+        psit_nG: ndarray
+            Set of vectors in which the matrix elements are evaulated.
+        P_ani: dict
+            Dictionary of projector overlap integrals P_ni = <p_i | psit_nG>.
 
         """
 
