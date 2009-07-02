@@ -17,9 +17,6 @@ class PESpectrum(Writer):
             self.values.append([val])
 
 class BasePES:
-    def __init__(self):
-        self.h=1
-
     def save_folded_pes(self,
              filename=None,
              width=0.5, # Gauss/Lorentz width
@@ -39,4 +36,8 @@ class BasePES:
             self._calculate()
 
         return self.be , self.f
+
+    def set_first_peak_energy(self,energy):
+        self.first_peak_energy=energy
+        
 

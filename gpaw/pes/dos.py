@@ -10,29 +10,27 @@ class DOSPES(BasePES):
         self.c_d=Daughter
         self.f=None
         self.be=None
+	self.first_peak_energy=None
 
 
     def _calculate(self):
-
+        
         e_m=self.c_m.get_potential_energy()
         e_d=self.c_d.get_potential_energy()
 
+        if self.first_peak_energy==None:
+            self.first_peak_energy=e_d-e_m
+
         ex_m=[]
-        occ_m=0
     
         for kpt in self.c_m.wfs.kpt_u:
-            ex_m+=list(kpt.eps_n * Ha)
-            occ_m+=kpt.f_n.sum()
-
-        if len(self.c_m.wfs.kpt_u)==1:
-            ex_m+=ex_m
+            for j in range(len(kpt.f_n)):
+                ex_m+=[kpt.eps_n[j]* Ha]*int(kpt.f_n[j])
 
         ex_m.sort()
-        occ_m=int(occ_m)
-
         self.be=[]
 
-        for j in range(occ_m):
-            self.be.append(-ex_m[j]+ex_m[occ_m-1]+(e_d-e_m))
+        for j in range(len(ex_m)):
+            self.be.append(-ex_m[j]+ex_m[-1]+(self.first_peak_energy))
 
         self.f = [1] * len(self.be)

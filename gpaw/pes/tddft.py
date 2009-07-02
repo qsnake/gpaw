@@ -22,23 +22,26 @@ class TDDFTPES(BasePES):
         
         self.c_m.converge_wave_functions()
         self.c_d.converge_wave_functions()
+        self.lr_d.diagonalize()
         
-        self.check_grids()
-
+        self.check_systems()
+        self.lr_d.jend=self.lr_d.kss[-1].j        
+	
         # Make good way for initialising these
 
         self.imax=0
         for kpt in self.c_m.wfs.kpt_u:
-            self.imax+=int(kpt.f_n.sum())
+            self.imax+=int(kpt.f_n.sum()) # Isn't there a 'number of electrons' varible?
             
         self.kmax=self.imax-1                                #k=0,...,kmax-1  ### os ad 
-        self.lmax=2*self.c_d.get_number_of_bands()-self.kmax #l=0,...,lmax-1
+        self.lmax=2*(self.lr_d.jend+1)-self.kmax #l=0,...,lmax-1
 
-        self.qnr_m=self._create_qnr(self.c_m)
-        self.qnr_d=self._create_qnr(self.c_d)
+        self.qnr_m=self._create_qnr(self.c_m , self.c_m.get_number_of_bands())
+        self.qnr_d=self._create_qnr(self.c_d,self.lr_d.jend+1)
 
         self.f=None
         self.be=None
+	self.first_peak_energy=None
 
     def _calculate(self):
         self._create_d()
@@ -51,7 +54,6 @@ class TDDFTPES(BasePES):
     def _create_d(self):
         """Creates a matrix containing overlaps between KS orbitals"""
 
-        # This is crap code... !!!!!!!
         self.d=np.zeros((self.imax,self.kmax+self.lmax))
 
         for i in range(0, self.imax):
@@ -107,32 +109,38 @@ class TDDFTPES(BasePES):
 
 
     def _create_g(self):
-        self.lr_d.diagonalize()
+        totspin=int(np.abs(self.c_d.get_magnetic_moment()))
         self.g=np.zeros((len(self.lr_d)+1,self.imax))
         self.g[0,:]=self.g0
 
         for I in range(len(self.lr_d)):
+            
             for i in range(self.imax):
                 gi=0
                 for kl in range(len(self.lr_d)):
 
-                    for index in [2 * self.lr_d.kss[kl].i,
-                                  2 * self.lr_d.kss[kl].i+1]:
+                    for index in range(2*self.lr_d.kss[kl].i-totspin, 2 * self.lr_d.kss[kl].i+2): 
                         if (self.qnr_d[index,0:2] == 
                             np.array([self.lr_d.kss[kl].i,
                                       self.lr_d.kss[kl].pspin])).all():
                             k=index
-                    for index in [2 * self.lr_d.kss[kl].j,
-                                  2 * self.lr_d.kss[kl].j+1]:
+                            break
+                        
+
+                    for index in range(2*self.lr_d.kss[kl].j, 2*self.lr_d.kss[kl].j+2+totspin):
+
                         if len(self.c_d.wfs.kpt_u)==1 and self.c_d.wfs.kpt_u[0].f_n.sum()%2==1:
                             if (self.qnr_d[index,0:2] == 
                                 np.array([self.lr_d.kss[kl].j,
-                                          (self.lr_d.kss[kl].pspin+1) % 2])).any(): #lort men i lrtddft har sidste fyldte og 1. tomme samme spin...
+                                          (self.lr_d.kss[kl].pspin+1) % 2])).any():
+                                #Crap but in non spinpol lrtddft of open shell systems the HOMO and LUMO have equal quantum numbers, or so it seams 
                                 l=index-self.kmax
+                                break
 
                         else:
                             if (self.qnr_d[index,0:2]==np.array([self.lr_d.kss[kl].j,self.lr_d.kss[kl].pspin])).all():
                                 l=index-self.kmax
+                                break
 
                     gi+=self.lr_d[I].f[kl]*self.h[i,k,l]
                     l=None
@@ -142,9 +150,12 @@ class TDDFTPES(BasePES):
 
     def _create_f(self):
         self.f=(self.g*self.g).sum(axis=1)
-        be0=self.c_d.get_potential_energy()-self.c_m.get_potential_energy()
 
-        self.be = be0 + np.array([0] + list(self.lr_d.GetEnergies()))
+        if self.first_peak_energy==None:
+            self.first_peak_energy=(self.c_d.get_potential_energy()
+                                  -self.c_m.get_potential_energy())
+
+        self.be = self.first_peak_energy + np.array([0] + list(self.lr_d.GetEnergies()))
 
     def _nuc_corr(self, i_m, j_d, k_m, k_d):
         ma = 0
@@ -166,11 +177,11 @@ class TDDFTPES(BasePES):
 #        print "1 mpi.rank, ma=", mpi.rank, ma, i_m, j_d, k_m, k_d
         return sqrt(4 * pi) * ma
         
-    def _create_qnr(self,c): #[n, spin, kpt]
-        qnr=np.zeros((2 * c.get_number_of_bands(), 3,), dtype=int)
+    def _create_qnr(self,c,nmax): #[n, spin, kpt, occ?]
+        qnr=np.zeros((2 * nmax , 4,), dtype=int)
 
         if len(c.wfs.kpt_u)==1:
-            for j in range(0, shape(qnr)[0], 2):
+            for j in range(0, 2 * nmax, 2): 
                 qnr[j,0]=j/2
                 qnr[j+1,0]=j/2
                 qnr[j,1]=0
@@ -178,33 +189,36 @@ class TDDFTPES(BasePES):
 
         if len(c.wfs.kpt_u)==2: # Make this properly 
             
-            if c.wfs.kpt_u[0].f_n.sum()<c.wfs.kpt_u[1].f_n.sum():
-                place0=1
-                place1=0
-            else:
-                place0=0
-                place1=1
-            
-            for j in range(len(c.wfs.kpt_u[0].f_n)):
-                qnr[2*j+place0,0]=j
-                qnr[2*j+place0,1]=c.wfs.kpt_u[0].s
-                qnr[2*j+place0,2]=0
+            for j in range(nmax):
+                qnr[2*j,0]=j
+                qnr[2*j,1]=c.wfs.kpt_u[0].s
+                qnr[2*j,2]=0
+                qnr[2*j,3]=-c.wfs.kpt_u[0].f_n[j]
         
-            for j in range(len(c.wfs.kpt_u[1].f_n)):
-                qnr[2*j+place1,0]=j
-                qnr[2*j+place1,1]=c.wfs.kpt_u[1].s
-                qnr[2*j+place1,2]=1
+            for j in range(nmax):
+                qnr[2*j+1,0]=j
+                qnr[2*j+1,1]=c.wfs.kpt_u[1].s
+                qnr[2*j+1,2]=1
+                qnr[2*j+1,3]=-c.wfs.kpt_u[1].f_n[j]
+
+            qnr=qnr[qnr[:,3].argsort(),]
+            qnr=np.abs(qnr) # Haha my code is so ugly that its funny... Want to sort but with 1 comming before 0           
+            if 2*nmax>(c.wfs.kpt_u[1].f_n+c.wfs.kpt_u[0].f_n).sum():
+                qnr_empty=qnr[int((c.wfs.kpt_u[1].f_n+c.wfs.kpt_u[0].f_n).sum()):,:]
+                qnr_empty=qnr_empty[qnr_empty[:,0].argsort(),]
+                qnr[int((c.wfs.kpt_u[1].f_n+c.wfs.kpt_u[0].f_n).sum()):,:]=qnr_empty
 
         return qnr
-                
 
 
-    def check_grids(self):
+    def check_systems(self):
         if (self.c_m.wfs.gd.cell_c != self.c_d.wfs.gd.cell_c).any():
             raise RuntimeError('Not the same grid')
         if (self.c_m.wfs.gd.h_c != self.c_d.wfs.gd.h_c).any():
             raise RuntimeError('Not the same grid')
         if (self.c_m.atoms.positions != self.c_m.atoms.positions).any():
             raise RuntimeError('Not the same atomic positions')
-
+        #if np.abs(self.c_m.get_magnetic_moment()-self.c_d.get_magnetic_moment())!=1.:
+            #raise RuntimeError('Mother and daughter spin are not compatible')
+        # Make number of electrons check...
 
