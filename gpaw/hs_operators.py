@@ -230,7 +230,7 @@ class Operator:
             Functional form of the operator A which works on psit_nG.
             Must accept and return an ndarray of the same shape as psit_nG.
         dA: dict or function
-            Dictionary of atomic matrix elements dA_ii = <phi_i | A | phi_i >
+            Dictionary of atomic matrix elements dA_ii = d<phi_i | A | phi_i >
             or functional form of the operator which works on | phi_i >.
             Must accept atomic index a and P_ni and return an ndarray with the
             same shape as P_ni, thus representing P_ni multiplied by dA_ii.
