@@ -13,7 +13,8 @@ class DummyCommunicator:
     def new_communicator(self, ranks):
         # The process with rank i in new group is the
         # process with rank ranks[i] in the old group
-        return DummyCommunicator(rank=np.argwhere(ranks==self.rank)[0],
+        my_subcomm_rank = np.argwhere(ranks==self.rank).ravel()
+        return DummyCommunicator(rank=my_subcomm_rank.item(),
                                  size=len(ranks), ranks=ranks)
 
     def simulate_kpt_comm(self, nspins, nibzkpts):
