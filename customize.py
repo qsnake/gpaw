@@ -1,38 +1,57 @@
-scalapack = False
+#User provided customizations for the gpaw setup
 
-extra_compile_args += [
-  '-O3'
-]
+#Here, one can override the default arguments, or append own
+#arguments to default ones
+#To override use the form
+#     libraries = ['somelib','otherlib']
+#To append use the form
+#     libraries += ['somelib','otherlib']
 
-libraries = [
-  'gfortran',
-  'mpiblacsCinit',
-  'mpiblacs',
-  'acml',
-  'mpi_f77'
-  ]
+# Valid values for scalapack are False, or True:
+# False (the default) - no ScaLapack compiled in
+# True - ScaLapack compiled in
+#scalapack = True
 
-library_dirs = [
-  '/opt/acml-4.0.1/gfortran64/lib',
-  '/usr/local/blacs-1.1-24.56.gfortran/lib64',
-  '/usr/local/scalapack-1.8.0-1.gfortran.acml/lib64',
-  '/usr/local/openmpi-1.2.5-gfortran/lib64'
-  ]
+#compiler = 'mpcc'
+#libraries = []
+#libraries += []
 
-include_dirs += [
-  '/usr/local/openmpi-1.2.5-gfortran/include'
- ]
+#library_dirs = []
+#library_dirs += []
 
-extra_link_args += [
-  '-Wl,-rpath=/opt/acml-4.0.1/gfortran64/lib',
-  '-Wl,-rpath=/usr/local/blacs-1.1-24.56.gfortran/lib64',
-  '-Wl,-rpath=/usr/local/scalapack-1.8.0-1.gfortran.acml/lib64',
-  '-Wl,-rpath=/usr/local/openmpi-1.2.5-gfortran/lib64'
-]
+#include_dirs = []
+#include_dirs += []
 
-define_macros += [
-  ('GPAW_MKL', '1'),
-]
+#extra_link_args = []
+#extra_link_args += []
 
-mpicompiler = '/usr/local/openmpi-1.2.5-gfortran/bin/mpicc'
-mpilinker = mpicompiler
+#extra_compile_args = []
+#extra_compile_args += []
+
+#runtime_library_dirs = []
+#runtime_library_dirs += []
+
+#extra_objects = []
+#extra_objects += []
+
+#define_macros = []
+#define_macros += []
+
+#mpicompiler = None
+#mpilinker = None
+#mpi_libraries = []
+#mpi_libraries += []
+
+#mpi_library_dirs = []
+#mpi_library_dirs += []
+
+#mpi_include_dirs = []
+#mpi_include_dirs += []
+
+#mpi_runtime_library_dirs = []
+#mpi_runtime_library_dirs += []
+
+#mpi_define_macros = []
+#mpi_define_macros += []
+
+#platform_id = ''
