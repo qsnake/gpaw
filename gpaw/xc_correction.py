@@ -1573,6 +1573,10 @@ class XCCorrection:
                 dEdDb_p += w * npy.dot(dot3(self.B_pqL,
                                               A_Li[:, 2]),
                                       npy.dot(self.n_qg, x_g * ab1z_g))
+                dedtaua_g *= self.dv_g
+                dedtaub_g *= self.dv_g
+                dEdDa_p += w * npy.dot(tau_pg,dedtaua_g)
+                dEdDb_p += w * npy.dot(tau_pg,dedtaub_g)
 
                 na_g = npy.dot(Y_L, nat_Lg)
                 aa1x_g = npy.dot(A_Li[:, 0], nat_Lg)
@@ -1647,7 +1651,7 @@ class XCCorrection:
                 dEdD_p += w * npy.dot(dot3(self.B_pqL,
                                             A_Li[:, 2]),
                                        npy.dot(self.nt_qg, x_g * ab1z_g))
-                dEdDa_p += dEdD_p
+                dEdDa_p -= dEdD_p
 
                 x_g = -2.0 * dedaa2_g * self.dv_g * aa1_g
                 self.rgd.derivative2(x_g, x_g)
@@ -1681,6 +1685,10 @@ class XCCorrection:
                                             A_Li[:, 2]),
                                        npy.dot(self.nt_qg, x_g * ab1z_g))
                 
+                dedtaua_g *= self.dv_g
+                dedtaub_g *= self.dv_g
+                dEdDa_p -= w * npy.dot(taut_pg,dedtaua_g)
+                dEdDb_p -= w * npy.dot(taut_pg,dedtaub_g)
                 y += 1
         return E - self.Exc0
 
