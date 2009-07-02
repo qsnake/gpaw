@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 memstats = False
-partest = True
+partest = False #XXX disabled for now
 
 import gc
 import sys
