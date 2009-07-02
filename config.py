@@ -160,7 +160,18 @@ def get_system_config(define_macros, undef_macros,
             extra_link_args += ['-Wl,-rpath=' + acml[-1]]
             msg += ['* Using ACML library']
         else:
-            libraries += ['blas', 'lapack']
+            atlas = False
+            for dir in ['/usr/lib', '/usr/local/lib']:
+                if glob(join(dir, 'libatlas.a')) != []:
+                    atlas = True
+                    break
+            if atlas:
+                libraries += ['lapack', 'atlas', 'blas']
+                library_dirs += [dir]
+                msg +=  ['* Using ATLAS library']
+            else:
+                libraries += ['blas', 'lapack']
+                msg +=  ['* Using standard lapack']
 
     elif machine =='ia64':
 
@@ -212,7 +223,7 @@ def get_system_config(define_macros, undef_macros,
 
             # add libg2c if available
             g2c=False
-            for dir in ['/usr/lib', 'usr/local/lib']:
+            for dir in ['/usr/lib', '/usr/local/lib']:
                 if glob(join(dir, 'libg2c.so')) != []:
                     g2c=True
                     break
