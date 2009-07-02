@@ -66,11 +66,12 @@ jobs.append(Job('../../doc/setups/make_setup_pages_data', tmax=60, ncpu=1,
                       for symbol in setup_parameters]))
 
 jobs = [
-    Job('NORu001/ruslab', tmax=5*60, ncpu=4),
-    Job('NORu001/ruslab', tmax=5*60, ncpu=8, arg='N'),
-    Job('NORu001/ruslab', tmax=5*60, ncpu=12, arg='O'),
-    Job('NORu001/NO', tmax=20, ncpu=4),
-#   Job('NORu001/result', ncpu=1, deps=['ruslab', 'ruslabN', 'ruslabO', 'NO']),
+    Job('Ru001/ruslab', tmax=5*60, ncpu=4),
+    Job('Ru001/ruslab', tmax=5*60, ncpu=8, arg='H'),
+    Job('Ru001/ruslab', tmax=5*60, ncpu=8, arg='N'),
+    Job('Ru001/ruslab', tmax=5*60, ncpu=12, arg='O'),
+    Job('Ru001/molecules', tmax=20, ncpu=4),
+#   Job('Ru001/result', ncpu=1, deps=['ruslab', 'ruslabN', 'ruslabO', 'NO']),
 #    Job('COAu38/Au038to', 10),
 #    Job('O2Pt/o2pt', 40),
 #    Job('../vdw/interaction', 60, deps=['dimers']),

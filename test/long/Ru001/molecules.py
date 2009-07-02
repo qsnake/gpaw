@@ -1,7 +1,7 @@
 from gpaw import *
 from ase import *
 
-for name in ['N2', 'O2', 'NO']:
+for name in ['H2', 'N2', 'O2', 'NO']:
     mol = molecule(name)
     mol.center(vacuum=5.0)
     if name == 'NO':

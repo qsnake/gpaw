@@ -6,7 +6,7 @@ from ase.optimize.lbfgs import HessLBFGS
 
 tag = 'Ru001'
 
-adsorbate_heights = {'N': 1.108, 'O': 1.257}
+adsorbate_heights = {'H': 1.0, 'N': 1.108, 'O': 1.257}
 
 slab = hcp0001('Ru', size=(2, 2, 4), a=2.72, c=1.58*2.72, vacuum=7.0,
                orthogonal=True)
