@@ -29,20 +29,30 @@ from gpaw import get_gpaw_python_path
 
 nodename = os.uname()[1]
 c = nodename[0]
-assert c in 'nmpqtu'
+assert c in 'abcnmqp'
 
-if c in 'nmq':
-    # Normal Niflheim node:
-    mpirun = ('export LD_LIBRARY_PATH=/opt/acml-4.0.1/gfortran64/lib:' +
-              '/opt/acml-4.0.1/gfortran64/lib:' +
-              '/usr/local/openmpi-1.2.5-gfortran/lib64 && ' +
-              'export PATH=/usr/local/openmpi-1.2.5-gfortran/bin:${PATH} && ' +
-              'mpirun')
-
+if c in 'abc':
+    # Intel Niflheim node:
+    mpirun = 'mpiexec --mca mpi_paffinity_alone 1'
+elif c in 'nmq':
+    # Opteron Niflheim node:
+    vers = sys.version[:3]
+    if vers == '2.3':
+        mpirun = ('export LD_LIBRARY_PATH=/opt/acml-4.0.1/gfortran64/lib:'
+                  '/opt/acml-4.0.1/gfortran64/lib:'
+                  '/usr/local/openmpi-1.2.5-gfortran/lib64 && '
+                  'export PATH=/usr/local/openmpi-1.2.5-gfortran/bin:'
+                  '${PATH} && mpirun')
+    elif vers == '2.4':
+        mpirun = 'mpiexec --mca mpi_paffinity_alone 1'
+    else:
+        raise RuntimeError('Unknown python version')
 elif c == 'p':
     # Infiniband:
     np = len(open(os.environ['PBS_NODEFILE']).readlines())
     mpirun = 'mpirun -np %d -machinefile $PBS_NODEFILE' % np
+else:
+    raise RuntimeError('Unknown node type')
 """
 
 # Release script:
