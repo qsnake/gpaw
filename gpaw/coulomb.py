@@ -290,7 +290,7 @@ class HF:
             setup = paw.wfs.setups[a]
             D_p = paw.density.D_asp[a][kpt.s]
             H_p = np.zeros_like(D_p)
-            D_ii = unpack(D_p)
+            D_ii = unpack2(D_p)
             ni = len(D_ii)
             for i1 in range(ni):
                 for i2 in range(ni):
