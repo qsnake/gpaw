@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 memstats = False
-partest = False
+partest = True
 
 import gc
 import sys
@@ -16,7 +16,6 @@ except ImportError:
 
 from ase import Atoms, molecule
 from ase.units import Bohr
-from ase.utils.memory import shapeopt, MemorySingleton, MemoryStatistics
 from gpaw.mpi import world, distribute_cpus, compare_atoms
 from gpaw.utilities import gcd
 from gpaw.utilities.tools import tri2full, md5_array, gram_schmidt
@@ -28,6 +27,37 @@ from gpaw.xc_functional import XCFunctional
 from gpaw.setup import Setup, Setups
 from gpaw.lfc import LFC
 
+# -------------------------------------------------------------------
+
+# Maintain backwards compatibility with ASE 3.1.0 svn. rev. 846 or later
+
+try:
+    from ase.svnrevision import svnrevision as ase_svnrevision
+except ImportError:
+    print 'The hack in this test may is not working. Expect import errors.'
+else:
+    # From test/ase3k_version.py.
+    full_ase_svnrevision = ase_svnrevision
+    if ase_svnrevision[-1] == 'M':
+        ase_svnrevision = ase_svnrevision[:-1]
+    if ase_svnrevision.rfind(':') != -1:
+        ase_svnrevision = ase_svnrevision[:ase_svnrevision.rfind(':')]
+    ase_svnrevision = int(ase_svnrevision)
+
+# Hack to use a features from ASE 3.1.0 svn. rev. 893 or later.
+if ase_svnrevision >= 893:
+    from ase.utils.memory import shapeopt
+else:
+    # Bogus function only valid for one set of parameters.
+    def shapeopt(maxseed, size, ndims, ecc): 
+        assert (maxseed,size,ndims,ecc) == (100, 8000, 3, 0.2)
+        return -np.inf, (20.0, 16.0, 25.0)
+
+if memstats:
+    # Developer use of this feature requires ASE 3.1.0 svn.rev. 905 or later.
+    assert ase_svnrevision >= 905 # wasn't bug-free untill 973!
+    from ase.utils.memory import MemorySingleton, MemoryStatistics
+
 if partest:
     from gpaw.testing.parunittest import ParallelTestCase as TestCase, \
         ParallelTextTestRunner as TextTestRunner, ParallelTextTestRunner as \
@@ -35,22 +65,8 @@ if partest:
     def CustomTextTestRunner(logname, verbosity=2):
         return TextTestRunner(stream=logname, verbosity=verbosity)
 else:
-    # Hack to use a feature from ASE 3.1.0 svn.rev. 929 or later.
-    # From test/ase3k_versio.py with different requirement.
-
-    ase_required_svnrevision = 929
-    try:
-        from ase.svnrevision import svnrevision as ase_svnrevision
-    except ImportError:
-        print 'The hack in this test may is not working. Disregard import errors.'
-    else:
-        full_ase_svnrevision = ase_svnrevision
-        if ase_svnrevision[-1] == 'M':
-            ase_svnrevision = ase_svnrevision[:-1]
-        if ase_svnrevision.rfind(':') != -1:
-            ase_svnrevision = ase_svnrevision[:ase_svnrevision.rfind(':')]
-        assert int(ase_svnrevision) >= int(ase_required_svnrevision)
-
+    # Developer use of this feature requires ASE 3.1.0 svn.rev. 929 or later.
+    assert ase_svnrevision >= 929
     from ase.test import CustomTestCase as TestCase, CustomTextTestRunner
     from unittest import TextTestRunner, defaultTestLoader
 
