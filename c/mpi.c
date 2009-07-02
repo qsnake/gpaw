@@ -670,19 +670,18 @@ PyTypeObject MPIType = {
 
 static PyObject * MPICommunicator(MPIObject *self, PyObject *args)
 {
-  PyObject* ranks;
-  if (!PyArg_ParseTuple(args, "O", &ranks))
+  PyObject* orig_ranks;
+  if (!PyArg_ParseTuple(args, "O", &orig_ranks))
     return NULL;
-  CHK_ARRAY(ranks);
-  if (PyArray_NDIM(ranks) != 1 || PyArray_TYPE(ranks) != NPY_LONG)
-    {
-      PyErr_SetString(PyExc_TypeError,
-		      "ranks must be a onedimensional array of ints.");
-      return NULL;
-    }
+  // First convert to NumPy array of NPY_LONG, then cast to NPY_INT,
+  // to allow both 32 and 64 bit integers in the argument.
+  PyObject *ranks = PyArray_ContiguousFromAny(orig_ranks, NPY_LONG, 1, 1);
+  if (ranks == NULL)
+    return NULL;
   PyObject *iranks;
   int n = PyArray_DIM(ranks, 0);
   iranks = PyArray_Cast((PyArrayObject*) ranks, NPY_INT);
+  Py_DECREF(ranks);
   if (iranks == NULL)
     return NULL;
   // Check that all ranks make sense
