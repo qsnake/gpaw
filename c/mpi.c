@@ -58,6 +58,42 @@ static void mpi_dealloc(MPIObject *obj)
   PyObject_DEL(obj);
 }
 
+static PyObject * mpi_sendreceive(MPIObject *self, PyObject *args, PyObject *kwargs)
+{
+  PyObject* a;
+  PyObject* b;
+  int dest, src;
+  int sendtag = 123;
+  int recvtag = 123;
+  int ret; 
+  static char *kwlist[] = {"a", "dest", "sendtag", "b", "src", "recvtag", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "Oi|ii:sendreceive", kwlist,
+				   &a, &dest, &sendtag, &b, &src, &recvtag))
+    return NULL;
+  CHK_ARRAY(a);
+  CHK_OTHER_PROC(dest);
+  CHK_ARRAY(b);
+  CHK_OTHER_PROC(src);
+  int nsend = PyArray_DESCR(a)->elsize;
+  for (int d = 0; d < PyArray_NDIM(a); d++)
+    nsend *= PyArray_DIM(a,d);
+  int nrecv = PyArray_DESCR(a)->elsize;
+  for (int d = 0; d < PyArray_NDIM(a); d++)
+    nrecv *= PyArray_DIM(a,d);
+  ret = MPI_Sendrecv(PyArray_BYTES(a), nsend, MPI_BYTE, dest, sendtag, 
+		     PyArray_BYTES(a), nrecv, MPI_BYTE, src, recvtag, 
+		     self->comm, MPI_STATUS_IGNORE);
+#ifdef GPAW_MPI_DEBUG
+      if (ret != MPI_SUCCESS)
+	{
+	  PyErr_SetString(PyExc_RuntimeError, "MPI_Send error occured.");
+	  return NULL;
+	}
+#endif
+      Py_RETURN_NONE;
+    }
+
+
 static PyObject * mpi_receive(MPIObject *self, PyObject *args, PyObject *kwargs)
 {
   PyObject* a;
@@ -538,6 +574,9 @@ static PyObject * mpi_cart_create(MPIObject *self, PyObject *args)
 static PyObject * MPICommunicator(MPIObject *self, PyObject *args);
 
 static PyMethodDef mpi_methods[] = {
+    {"sendreceive",          (PyCFunction)mpi_sendreceive,
+     METH_VARARGS|METH_KEYWORDS,
+     "sendreceive(a, dest, desttag=123, b, src, srctag=123) sends an array to dest and receives an array a from src."},
     {"receive",          (PyCFunction)mpi_receive,
      METH_VARARGS|METH_KEYWORDS,
      "receive(a, src, tag=123, block=1) receives array a from src."},
