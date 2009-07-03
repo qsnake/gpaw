@@ -112,8 +112,12 @@ class TransformerWrapper:
     def apply(self, input, output, phases=None):
         assert is_contiguous(input, self.dtype)
         assert is_contiguous(output, self.dtype)
-        assert input.shape == self.ngpin
-        assert output.shape == self.ngpout
+        assert input.shape[-3:] == self.ngpin
+        assert output.shape[-3:] == self.ngpout
+        assert (self.dtype == float or
+                (phases.dtype == complex and
+                 phases.shape == (3, 2)))
+
         assert self.allocated
         self.transformer.apply(input, output, phases)
 
