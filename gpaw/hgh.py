@@ -358,7 +358,7 @@ class HGHSetup:
         apaw = AtomPAW(self.symbol, [f_ln], h=0.05, rcut=9.0,
                        basis={self.symbol: b1},
                        setups={self.symbol : self},
-                       lmax=0, txt='-')
+                       lmax=0, txt=None)
         basis = apaw.extract_basis_functions()
         return basis
 
