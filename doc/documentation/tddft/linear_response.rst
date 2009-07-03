@@ -57,11 +57,30 @@ The dipole spectrum can be evaluated from the Omega matrix and written to a file
   from gpaw.lrtddft import LrTDDFT
   from gpaw.lrtddft import photoabsorption_spectrum
 
-  lr = LrTDDFT(filename='lr.dat.gz')
+  lr = LrTDDFT('lr.dat.gz')
   lr.diagonalize()
   # write the spectrum to the data file
   photoabsorption_spectrum(lr, 'spectrum_w.05eV.dat', # data file name
                            width=0.05)                # width in eV
+
+Analysing the transitions
+=========================
+
+The single transitions (or a list of transitions) can be analysed as follows 
+(output printed)::
+
+  from gpaw.lrtddft import LrTDDFT
+  from gpaw.lrtddft import photoabsorption_spectrum
+
+  lr = LrTDDFT('lr.dat.gz')
+  lr.diagonalize()
+
+  # analyse transition 1
+  lr.analyse(1)
+
+  # analyse transition 0-10
+  lr.analyse(range(11))
+
 
 Quick reference
 ===============
