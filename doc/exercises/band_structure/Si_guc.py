@@ -9,7 +9,7 @@ atoms = Atoms(symbols='Si2', pbc=True,
               scaled_positions=[(.00, .00, .00),
                                 (.25, .25, .25)])
 
-set usenewlfc=1 for this to work!
+#set usenewlfc=1 for this to work!
 
 if 1:
     # Make self-consistent calculation and save results
@@ -21,9 +21,9 @@ if 1:
 
 # Special points in the IBZ of an fcc primitive cell
 G = np.array([0., 0., 0.])
-L = np.array([?., ?., ?.])
-X = np.array([?., ?., ?.])
-K = np.array([?., ?., ?.])
+L = np.array([0.5, 0.5, 0.5])
+X = np.array([0.0, 0.5, 0.5])
+K = np.array([0.375, 0.375, 0.75])
 
 # The path for the band plot
 path = [L, G, X, K, G]
@@ -44,7 +44,7 @@ for next in path[1:]:
 if 1: # Calculate band structure along specified path
     calc = GPAW('Si_sc.gpw', txt='Si_harris.txt',
                 kpts=kpts, fixdensity=True, nbands=8,
-                eigensolver='cg', convergence={'bands': 'all'})
+                eigensolver='cg', convergence={'bands': -2})
     calc.get_potential_energy()
     calc.write('Si_harris.gpw')
 
