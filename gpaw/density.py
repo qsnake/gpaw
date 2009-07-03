@@ -8,11 +8,12 @@ from math import pi, sqrt
 
 import numpy as np
 
-from gpaw import debug
+from gpaw import debug, extra_parameters
 from gpaw.mixer import BaseMixer, Mixer, MixerSum
 from gpaw.transformers import Transformer
-from gpaw.lfc import LFC
+from gpaw.lfc import LFC, BasisFunctions
 from gpaw.wavefunctions import LCAOWaveFunctions
+from gpaw.utilities import unpack2
 
 
 class Density:
@@ -396,6 +397,111 @@ class Density:
 
         return n_sg, gd
 
+    def new_get_all_electron_density(self, atoms, gridrefinement=2):
+        """Return real all-electron density array."""
+
+        # Refinement of coarse grid, for representation of the AE-density
+        if gridrefinement == 1:
+            gd = self.gd
+            n_sg = self.nt_sG.copy()
+        elif gridrefinement == 2:
+            gd = self.finegd
+            if self.nt_sg is None:
+                self.interpolate()
+            n_sg = self.nt_sg.copy()
+        elif gridrefinement == 4:
+            # Extra fine grid
+            gd = self.finegd.refine()
+            
+            # Interpolation function for the density:
+            interpolator = Transformer(self.finegd, gd, 3)
+
+            # Transfer the pseudo-density to the fine grid:
+            n_sg = gd.empty(self.nspins)
+            if self.nt_sg is None:
+                self.interpolate()
+            for s in range(self.nspins):
+                interpolator.apply(self.nt_sg[s], n_sg[s])
+        else:
+            raise NotImplementedError
+
+        # Add corrections to pseudo-density to get the AE-density
+        splines = {}
+        phi_aj = []
+        phit_aj = []
+        nc_a = []
+        nct_a = []
+        for a, id in enumerate(self.setups.id_a):
+            if id in splines:
+                phi_j, phit_j, nc, nct = splines[id]
+            else:
+                # Load splines:
+                phi_j, phit_j, nc, nct = self.setups[a].get_partial_waves()[:4]
+                splines[id] = (phi_j, phit_j, nc, nct)
+            phi_aj.append(phi_j)
+            phit_aj.append(phit_j)
+            nc_a.append([nc])
+            nct_a.append([nct])
+
+        # Create localized functions from splines
+        phi = BasisFunctions(gd, phi_aj)
+        phit = BasisFunctions(gd, phit_aj)
+        nc = LFC(gd, nc_a)
+        nct = LFC(gd, nct_a)
+        spos_ac = atoms.get_scaled_positions() % 1.0
+        phi.set_positions(spos_ac)
+        phit.set_positions(spos_ac)
+        nc.set_positions(spos_ac)
+        nct.set_positions(spos_ac)
+
+        I_sa = np.zeros((self.nspins, len(atoms)))
+        a_W =  np.empty(len(phi.M_W), np.int32)
+        W = 0
+        for a in phi.atom_indices:
+            nw = len(phi.sphere_a[a].M_w)
+            a_W[W:W + nw] = a
+            W += nw
+        rho_MM = np.zeros((phi.Mmax, phi.Mmax))
+        for s, I_a in enumerate(I_sa):
+            M1 = 0
+            for a, setup in enumerate(self.setups):
+                ni = setup.ni
+                D_sp = self.D_asp.get(a)
+                if D_sp is None:
+                    D_sp = np.empty((self.nspins, ni * (ni + 1) // 2))
+                if gd.comm.size > 1:
+                    gd.comm.broadcast(D_sp, self.rank_a[a])
+                M2 = M1 + ni
+                rho_MM[M1:M2, M1:M2] = unpack2(D_sp[s])
+                M1 = M2
+                I_a[a] = ((setup.Nct - setup.Nc) / self.nspins -
+                          sqrt(4 * pi) *
+                          np.dot(D_sp[s], setup.Delta_pL[:, 0]))
+
+            phi.lfc.ae_valence_density_correction(rho_MM, n_sg[s], a_W, I_a)
+            phit.lfc.ae_valence_density_correction(-rho_MM, n_sg[s], a_W, I_a)
+
+        a_W =  np.empty(len(nc.M_W), np.int32)
+        W = 0
+        for a in nc.atom_indices:
+            nw = len(nc.sphere_a[a].M_w)
+            a_W[W:W + nw] = a
+            W += nw
+        scale = 1.0 / self.nspins
+        for s, I_a in enumerate(I_sa):
+            nc.lfc.ae_core_density_correction(scale, n_sg[s], a_W, I_a)
+            nct.lfc.ae_core_density_correction(-scale, n_sg[s], a_W, I_a)
+            gd.comm.sum(I_a)
+            N_c = gd.N_c
+            g_ac = np.around(N_c * spos_ac).astype(int) % N_c - gd.beg_c
+            for I, g_c in zip(I_a, g_ac):
+                if (g_c >= 0).all() and (g_c < gd.n_c).all():
+                    n_sg[s][tuple(g_c)] -= I / gd.dv
+        return n_sg, gd
+
+    if extra_parameters.get('usenewlfc'):
+        get_all_electron_density = new_get_all_electron_density
+        
     def estimate_memory(self, mem):
         nspins = self.nspins
         nbytes = self.gd.bytecount()

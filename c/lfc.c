@@ -26,6 +26,8 @@ PyObject* derivative(LFCObject *self, PyObject *args);
 PyObject* normalized_derivative(LFCObject *self, PyObject *args);
 PyObject* construct_density(LFCObject *self, PyObject *args);
 PyObject* construct_density1(LFCObject *self, PyObject *args);
+PyObject* ae_valence_density_correction(LFCObject *self, PyObject *args);
+PyObject* ae_core_density_correction(LFCObject *self, PyObject *args);
 PyObject* lcao_to_grid(LFCObject *self, PyObject *args);
 PyObject* add(LFCObject *self, PyObject *args);
 PyObject* calculate_potential_matrix_derivative(LFCObject *self, 
@@ -44,6 +46,10 @@ static PyMethodDef lfc_methods[] = {
      (PyCFunction)construct_density, METH_VARARGS, 0},
     {"construct_density1",
      (PyCFunction)construct_density1, METH_VARARGS, 0},
+    {"ae_valence_density_correction",
+     (PyCFunction)ae_valence_density_correction, METH_VARARGS, 0},
+    {"ae_core_density_correction",
+     (PyCFunction)ae_core_density_correction, METH_VARARGS, 0},
     {"lcao_to_grid",
      (PyCFunction)lcao_to_grid, METH_VARARGS, 0},
     {"add",
@@ -451,40 +457,6 @@ PyObject* construct_density1(LFCObject *lfc, PyObject *args)
   GRID_LOOP_STOP(lfc, -1);
   Py_RETURN_NONE;
 }
-
-/*
-PyObject* construct_density2(LFCObject *lfc, PyObject *args)
-{
-  PyArrayObject* nt_G_obj;
-  const PyArrayObject* a_M_obj;
-  const PyListObject* D_ap_obj;
-  PyArrayObject* I_a_obj;
-  
-  if (!PyArg_ParseTuple(args, "OOOO", &nt_G_obj, &a_M_obj, &D_aii_obj,
-                        &I_a_obj))
-    return NULL; 
-  
-  double* nt_G = (double*)nt_G_obj->data;
-  const int* a_M = (const int*)a_M_obj->data;
-  double* I_a = (double*)I_a_obj->data;
-
-  GRID_LOOP_START(lfc, -1) {
-    for (int i = 0; i < ni; i++) {
-      LFVolume* v = volume_i + i;
-      int M = v->M;
-      int a = a_M[M];
-      const double* D_p = (const double*)(D_ap_obj, a)->data;
-      for (int gm = 0, G = Ga; G < Gb; G++) {
-	for (int m = 0; m < v->nm; m++, gm++) {
-	  nt_G[G] += v->A_gm[gm] * v->A_gm[gm] * f_M[v->M + m];
-	}
-      }
-    }
-  }
-  GRID_LOOP_STOP(lfc, -1);
-  Py_RETURN_NONE;
-}
-*/
 
 PyObject* lcao_to_grid(LFCObject *lfc, PyObject *args)
 {
@@ -1121,6 +1093,78 @@ PyObject* normalized_derivative(LFCObject *lfc, PyObject *args)
       xG += h_cv[6];
       yG += h_cv[7];
       zG += h_cv[8];
+    }
+  }
+  GRID_LOOP_STOP(lfc, -1);
+  Py_RETURN_NONE;
+}
+
+PyObject* ae_valence_density_correction(LFCObject *lfc, PyObject *args)
+{
+  const PyArrayObject* rho_MM_obj;
+  PyArrayObject* n_G_obj;
+  const PyArrayObject* a_W_obj;
+  PyArrayObject* I_a_obj;
+
+  if (!PyArg_ParseTuple(args, "OOOO", &rho_MM_obj, &n_G_obj,
+                        &a_W_obj, &I_a_obj))
+    return NULL; 
+  
+  double* n_G = (double*)n_G_obj->data;
+  int* a_W = (int*)a_W_obj->data;
+  double* I_a = (double*)I_a_obj->data;
+  const double* rho_MM = (const double*)rho_MM_obj->data;
+
+  int nM = rho_MM_obj->dimensions[0];
+
+  GRID_LOOP_START(lfc, -1) {
+    for (int i = 0; i < ni; i++) {
+      LFVolume* v = volume_i + i;
+      int M = v->M;
+      int nm = v->nm;
+      const double* rho_mm = rho_MM + M * nM + M;
+      double Ia = 0.0;
+      for (int g = 0; g < nG; g++) {
+        double density = 0.0;
+        for (int m2 = 0; m2 < nm; m2++)
+          for (int m1 = 0; m1 < nm; m1++)
+            density += (rho_mm[m2 + m1 * nM] *
+                  v->A_gm[g * nm + m1] * v->A_gm[g * nm + m2]);
+        n_G[Ga + g] += density;
+        Ia += density;
+      }
+      I_a[a_W[v->W]] += Ia * lfc->dv;
+    }
+  }
+  GRID_LOOP_STOP(lfc, -1);
+  Py_RETURN_NONE;
+}
+
+PyObject* ae_core_density_correction(LFCObject *lfc, PyObject *args)
+{
+  double scale;
+  PyArrayObject* n_G_obj;
+  const PyArrayObject* a_W_obj;
+  PyArrayObject* I_a_obj;
+
+  if (!PyArg_ParseTuple(args, "dOOO", &scale, &n_G_obj,
+                        &a_W_obj, &I_a_obj))
+    return NULL; 
+  
+  double* n_G = (double*)n_G_obj->data;
+  int* a_W = (int*)a_W_obj->data;
+  double* I_a = (double*)I_a_obj->data;
+
+  GRID_LOOP_START(lfc, -1) {
+    for (int i = 0; i < ni; i++) {
+      LFVolume* v = volume_i + i;
+      double Ia = 0.0;
+      for (int g = 0; g < nG; g++) {
+        double density = scale * v->A_gm[g];
+        n_G[Ga + g] += density;
+        Ia += density;
+      }
+      I_a[a_W[v->W]] += Ia * lfc->dv;
     }
   }
   GRID_LOOP_STOP(lfc, -1);
