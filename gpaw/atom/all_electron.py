@@ -116,7 +116,7 @@ class AllElectron:
                     self.jcorehole = j
                     break
 
-            coreholestate='%d%s' % (self.ncorehole, 'spd'[self.lcorehole])
+            coreholestate='%d%s' % (self.ncorehole, 'spdf'[self.lcorehole])
             t('Core hole in %s state (%s occupation: %.1f)' % (
                 coreholestate, coreholestate, self.f_j[self.jcorehole]))
         else:

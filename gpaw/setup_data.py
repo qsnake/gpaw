@@ -281,7 +281,7 @@ class SetupData:
         if self.has_corehole:
             print >> xml, (('  <core_hole_state state="%d%s" ' +
                            'removed="%.1f" eig="%.8f" ekin="%.8f">') %
-                           (self.ncorehole, 'spd'[self.lcorehole],
+                           (self.ncorehole, 'spdf'[self.lcorehole],
                             self.fcorehole,
                             self.core_hole_e, self.core_hole_e_kin))
             for x in self.phicorehole_g:

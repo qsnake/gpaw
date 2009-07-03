@@ -165,7 +165,8 @@ class Generator(AllElectron):
         while core != '':
             assert n_j[j] == int(core[0])
             assert l_j[j] == 'spdf'.find(core[1])
-            assert f_j[j] == 2 * (2 * l_j[j] + 1)
+            if j != self.jcorehole:
+                assert f_j[j] == 2 * (2 * l_j[j] + 1)
             j += 1
             core = core[2:]
         njcore = j
@@ -1009,7 +1010,7 @@ class Generator(AllElectron):
             print "self.jcorehole", self.jcorehole
             print >> xml, (('  <core_hole_state state="%d%s" ' +
                            'removed="%.1f" eig="%.8f" ekin="%.8f">') %
-                           (self.ncorehole, 'spd'[self.lcorehole],
+                           (self.ncorehole, 'spdf'[self.lcorehole],
                             self.fcorehole,
                             self.e_j[self.jcorehole],self.Ekincorehole))
             #print 'normalized?', npy.dot(self.dr, self.u_j[self.jcorehole]**2)
