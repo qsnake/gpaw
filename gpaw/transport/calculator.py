@@ -1241,7 +1241,7 @@ class Transport(GPAW):
         if self.master:
             self.text('----------------step %d -------------------'
                                                                 % self.step)
-        self.keep_trace()
+        #self.keep_trace()
         self.h_cvg = self.check_convergence('h')
         self.get_density_matrix()
         self.get_hamiltonian_matrix()
@@ -1868,6 +1868,8 @@ class Transport(GPAW):
         if self.use_linear_vt_array:
             self.hamiltonian.vt_sG += self.get_linear_potential()
         self.h_skmm, self.s_kmm = self.get_hs(self, 'scat')
+        #self.spy('h_skmm', self.h_skmm)
+        #self.spy('s_kmm', self.s_kmm)
         if self.use_linear_vt_mm:
             if self.linear_mm == None:
                 self.linear_mm = self.get_linear_potential_matrix()            
@@ -1964,14 +1966,20 @@ class Transport(GPAW):
             density = self.density
             self.surround.calculate_pseudo_density(density, wfs)
             density.nt_sG += self.surround.streching_nt_sG
+            #self.spy('nt_sG', density.nt_sG)
             #wfs.calculate_atomic_density_matrices(density.D_asp)
             self.surround.calculate_atomic_density_matrices()
+            #self.spy('D_asp', density.D_asp)
             comp_charge = density.calculate_multipole_moments()
+            #self.spy('comp', comp_charge)
             #if (isinstance(wfs, LCAOWaveFunctions) or
             #    extra_parameters.get('normalize')):
             #    density.normalize(comp_charge)
             #density.mix(comp_charge)
+            
+            
             pseudo_charge = density.gd.integrate(density.nt_sG).sum()
+            #self.spy('pchar', pseudo_charge)
             print pseudo_charge, world.rank, 'pseudo_charge'
             if pseudo_charge != 0:
                 x = -(density.charge + comp_charge) / pseudo_charge
@@ -1981,10 +1989,13 @@ class Transport(GPAW):
                 density.mixer.mix(density)
                 comp_charge = None
             self.surround.interpolate_density(density, comp_charge)
+            #self.spy('nt_sg', density.nt_sg)
             self.surround.calculate_pseudo_charge(density, comp_charge)
+            #self.spy('rhot_g', density.rhot_g)
             if density.mixer.mix_rho:
                 density.mixer.mix(density)            
-            density.rhot_g -= self.surround.extra_rhot_g            
+            density.rhot_g -= self.surround.extra_rhot_g
+            #self.spy('extra_rhot_g', self.surround.extra_rhot_g)
 
     def update_hamiltonian(self, density):
         ham = self.hamiltonian        
@@ -2026,6 +2037,7 @@ class Transport(GPAW):
         ham.npoisson = ham.poisson.solve_neutral(ham.vHt_g, density.rhot_g,
                                                           eps=ham.poisson.eps)
         ham.timer.stop('Poisson')
+        #self.spy('vHt_g', ham.vHt_g)
         dim = density.rhot_g.shape[0] / 2
         if self.fixed:
             self.surround.boundary_data['rhot_g1'] = density.rhot_g[dim, dim]
@@ -2045,7 +2057,8 @@ class Transport(GPAW):
                 ham.vt_sG[s] = self.surround.restrict(ham.vt_sg, s)
                 Ekin -= ham.gd.integrate(ham.vt_sG[s], nt_G - density.nct_G,
                                                global_integral=False)
-            
+        #self.spy('vt_sg', ham.vt_sg)
+        #self.spy('vt_sG', ham.vt_sG)
         # Calculate atomic hamiltonians:
         ham.timer.start('Atomic Hamiltonians')
         W_aL = {}
@@ -2842,7 +2855,8 @@ class Transport(GPAW):
                 fd = file('result.dat', 'wb')
                 pickle.dump(result, fd, 2)
                 fd.close()
-
+        del self.surround
+ 
     def restart_and_abstract_result(self, v_limit=3, num_v=16):
         bias = np.linspace(0, v_limit, num_v)
         current = np.empty([num_v])
@@ -3097,5 +3111,14 @@ class Transport(GPAW):
         wfs.eigensolver.iterate(hamiltonian, wfs)
         occupations.calculate(wfs)
      
-        
-           
+    def spy(self, var_name, var):
+        if not hasattr(self, 'spy_data'):
+            self.spy_data = {}
+        if var_name not in self.spy_data:
+            self.spy_data[var_name] = []
+        self.spy_data[var_name].append(var)
+        if self.master:
+            fd = file('spy_data', 'wb')
+            pickle.dump(self.spy_data, fd, 2)
+            fd.close()
+          
