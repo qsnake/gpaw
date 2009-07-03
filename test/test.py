@@ -213,7 +213,8 @@ if not opt.parallel:
 
 from ase.parallel import size
 if size > 1:
-    exclude += ['asewannier.py',
+    exclude += ['pes.py',
+                'asewannier.py',
                 'wannier-ethylene.py',
                 'restart_band_structure.py']
 
