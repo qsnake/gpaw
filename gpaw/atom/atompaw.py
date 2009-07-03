@@ -250,6 +250,7 @@ class AtomPAW(GPAW):
                       stencils=(1, 9),
                       nbands=sum([(2 * l + 1) * len(f_n)
                                   for l, f_n in enumerate(f_sln[0])]),
+                      communicator=mpi.serial_comm,
                       **kwargs)
         self.occupations = AtomOccupations(f_sln)
         self.initialize(Atoms(symbol, calculator=self))
