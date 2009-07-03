@@ -158,7 +158,7 @@ class GPAW(PAW):
             return None
         
         if pad:
-            nt_G = self.wfs.gd.zero_pad(nt_G)
+            nt_G = gd.zero_pad(nt_G)
 
         return nt_G / Bohr**3
 

@@ -477,19 +477,11 @@ class GridDescriptor(Domain):
     def zero_pad(self, a_xg):
         """Pad array with zeros as first element along non-periodic directions.
         """
-        if self.comm.size > 1:
-            raise NotImplementedError('zero-pad not implemented for parallel '
-                                      'domain-distributed arrays.')
-        
-        pbc_c = self.pbc_c
-
-        if pbc_c.all():
+        if self.pbc_c.all():
             return a_xg
 
-        npbx, npby, npbz = 1 - pbc_c
-        shape = np.array(a_xg.shape)
-        shape[-3:] += [npbx, npby, npbz]
-        b_xg = np.zeros(shape, dtype=a_xg.dtype)
+        npbx, npby, npbz = 1 - self.pbc_c
+        b_xg = np.zeros(a_xg.shape[:-3] + tuple(self.N_c), dtype=a_xg.dtype)
         b_xg[..., npbx:, npby:, npbz:] = a_xg
         return b_xg
 
