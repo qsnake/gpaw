@@ -469,14 +469,15 @@ class Density:
                 D_sp = self.D_asp.get(a)
                 if D_sp is None:
                     D_sp = np.empty((self.nspins, ni * (ni + 1) // 2))
+                else:
+                    I_a[a] = ((setup.Nct - setup.Nc) / self.nspins -
+                              sqrt(4 * pi) *
+                              np.dot(D_sp[s], setup.Delta_pL[:, 0]))
                 if gd.comm.size > 1:
                     gd.comm.broadcast(D_sp, self.rank_a[a])
                 M2 = M1 + ni
                 rho_MM[M1:M2, M1:M2] = unpack2(D_sp[s])
                 M1 = M2
-                I_a[a] = ((setup.Nct - setup.Nc) / self.nspins -
-                          sqrt(4 * pi) *
-                          np.dot(D_sp[s], setup.Delta_pL[:, 0]))
 
             phi.lfc.ae_valence_density_correction(rho_MM, n_sg[s], a_W, I_a)
             phit.lfc.ae_valence_density_correction(-rho_MM, n_sg[s], a_W, I_a)
