@@ -133,8 +133,8 @@ if os.path.isfile(customize):
     execfile(customize)
 
 if platform_id != '':
-    plat = distutils.util.get_platform() + platform_id
-    def my_get_platform(): return plat
+    my_platform = distutils.util.get_platform() + platform_id
+    def my_get_platform(): return my_platform
     distutils.util.get_platform = my_get_platform
 
 if compiler is not None:
