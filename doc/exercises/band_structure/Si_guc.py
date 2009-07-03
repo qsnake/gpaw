@@ -26,14 +26,14 @@ X = np.array([.500, .500, .000])
 W = np.array([.500, .750, .250])
 K = np.array([.375, .375, .750])
 L = np.array([.500, .500, .500])
-reci_cell = np.pi * np.linalg.inv(atoms.cell)
+reci_cell = 2. * np.pi * np.linalg.inv(atoms.cell).T
 
 # The path for the band plot
 path = [L, G, X, K, G]
 textpath = [r'$L$', r'$\Gamma$', r'$X$', r'$K$', r'$\Gamma$']
 
 # Make kpts list
-Npoints = 28
+Npoints = 14
 previous = path[0]
 kpts = []
 points = [0,] # Indices in the kpts list of the special points
