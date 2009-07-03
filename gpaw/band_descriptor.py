@@ -293,7 +293,7 @@ class BandDescriptor:
 
         if B == 1:
             # Only fill in the lower part
-            mask = np.tri(N, dtype=bool)
+            mask = np.tri(N).astype(bool)
             A_NN[mask] = A_qnn.reshape((N,N))[mask]
             return
 
@@ -318,7 +318,7 @@ class BandDescriptor:
                 dq = (q1+q2)%B-q1 # within ]-B; Q[ so dq//B is -1 or 0
 
                 # Create mask for lower part of current block
-                mask = np.tri(N, N, dq//B, dtype=bool)
+                mask = np.tri(N, N, dq//B).astype(bool)
                 if debug:
                     m1,m2 = np.indices((N,N))
                     assert (mask == (m1 >= m2 - dq//B)).all()
