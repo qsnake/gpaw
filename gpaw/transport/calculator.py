@@ -2855,7 +2855,8 @@ class Transport(GPAW):
                 fd = file('result.dat', 'wb')
                 pickle.dump(result, fd, 2)
                 fd.close()
-        del self.surround
+        if self.fixed:
+            del self.surround
  
     def restart_and_abstract_result(self, v_limit=3, num_v=16):
         bias = np.linspace(0, v_limit, num_v)
