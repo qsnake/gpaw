@@ -11,7 +11,7 @@ import numpy as np
 try:
     # Matplotlib is not a dependency
     import pylab as pl
-except ImportError:
+except (ImportError, RuntimeError):
     pl = None
 
 from ase import Atoms, molecule
@@ -24,7 +24,7 @@ from gpaw.grid_descriptor import GridDescriptor
 from gpaw.hs_operators import Operator
 from gpaw.parameters import InputParameters
 from gpaw.xc_functional import XCFunctional
-from gpaw.setup import Setup, Setups
+from gpaw.setup import Setups
 from gpaw.lfc import LFC
 
 # -------------------------------------------------------------------
