@@ -4,8 +4,148 @@ import pickle
 import numpy as np
 from gpaw.mpi import world, rank
 from gpaw.utilities.blas import gemm
+import _gpaw
 
+class Fb_Sparse_Matrix:
+    # For matrix with the sparse property like A_ij != 0,  q<=j<=q+l (*)
+    # q(i) denpends on i and now only consider the symmetric sparse matrix,
+    # which means the non_zero elements' position is symmetric, not for
+    # the element value.
+    
+    def __init__(self, mat, symm=False, index=None, tol=1e-16):
+        self.tol = tol
+        self.dtype = mat.dtype
+        self.symm = symm
+        if reference == None:
+            self.initialize(mat)
+        else:
+            self.initialize2(mat, index)
+        
+    def initialize(self, mat):
+        # index[0][0] = dim, index[0][1:] is the q in (*) for each line
+        # index[1][0] = dim, index[1][1:] is the q + l in (*) for each line
+        # index[2][0] = nele, index[2][1:] is the start pointer for each line
+        # in the data array.
+        dim = mat.shape[-1]  
+        self.index = [[dim], [dim], [0]]
+        self.data = []
+        cur_row = -1
+        
+        end_pos = dim
+        for i in range(dim):
+            if self.symm:
+                end_pos = i + 1
+            for j in range(end_pos):
+                if abs(mat[i, j]) > self.tol:
+                    self.data.append(mat[i, j])
+                    k = j
+                    if i != cur_row:
+                        self.index[0].append(k)
+                        self.index[2].append(len(self.data) - 1)
+            cur_row += 1
+            self.index[1].append(k)
+        self.index[2][0] = len(self.data)    
+        self.data = np.array(self.data)                    
 
+    def initialize2(self, mat, index):
+        self.index = index
+        dim = self.index[0][0]
+        self.data = []
+        for i in range(dim):
+            begin = self.index[0][i + 1]
+            end = self.index[1][i + 1]
+            for j in range(begin, end + 1):
+                self.data.append(mat[i, j])
+        self.data = np.array(self.data)
+    
+    def inv(self, data=None, partly=False, row_b=None, row_e=None,
+                                                      col_b=None, col_e=None):
+        # get the sparse matrix inversion in the same positions of
+        # non_zero elements, also can only get some rows:  [row_b:row_e] and
+        # some columns: [col_b:col_e]
+        # self.data is lost after inversion
+        
+        assert self.dtype == complex
+        dim = self.index[0][0]
+        length = dim * (dim + 1) / 2
+
+        if partly:
+            assert row_b != None and row_e != None
+            assert col_b != None and col_e != None
+        else:
+            row_b = 0
+            col_b = 0
+            row_e = dim - 1
+            col_e = dim - 1
+
+        inv_mat = np.zeros([dim, dim], complex)
+           
+        if data == None:
+            data = self.data
+        if self.symm:
+            if not _gpaw.csspar_ll(self.data, self.index):
+                raise RuntimeError('lu decompostion for sparse matrix fails')
+            for i in range(dim):
+                in_mat[i][i] = 1.0 
+                if not _gpaw.cspar_lx(self.data, self.index, inv_mat[i],
+                                                          dim, row_b, row_e):
+                    raise RuntimeError('row recus for sparse matrix fails')
+                if not _gpaw.cspar_uy(self.data, self.index, inv_mat[i],
+                                                           dim, col_b, col_e):
+                    raise RuntimeError('col recus for sparse matrix fails')
+        else:
+            if not _gpaw.cgspar_lu(self.data, self.index):
+                raise RuntimeError('lu decompostion for sparse matrix fails')
+            inv_u = self.split_u(self.data)
+            inv_l = self.split_l(self.data)
+            for i in range(dim):
+                in_mat[i][i] = 1.0 
+                if not _gpaw.cspar_lx(inv_u, self.index, inv_mat[i],
+                                                          dim, row_b, row_e):
+                    raise RuntimeError('row recus for sparse matrix fails')
+                if not _gpaw.cspar_uy(inv_l, self.index, inv_mat[i],
+                                                           dim, col_b, col_e):
+                    raise RuntimeError('col recus for sparse matrix fails')            
+        return inv_mat  
+
+    
+class Tp_Sparse_Matrix:
+    def __init__(self, mat, tol=1e-16):
+        self.tol = tol
+        self.dtype = mat.dtype
+        self.initialize(mat)
+        
+    def initialize(self, mat):
+        
+        raise NotImplementError
+    
+    def inv(self):
+        raise NotImplementError
+    
+    def dot(self):
+        raise NotImplementError
+    
+        
+        
+
+def get_tri_type(mat):
+    #mat is lower triangular or upper triangular matrix
+    tol = 1e-10
+    mat = abs(mat)
+    dim = mat.shape[-1]
+    sum = [0, 0]
+    for i in range(dim):
+        sum[0] += np.trace(mat, -j)
+        sum[1] += np.trace(mat, j)
+    diff = sum[0] - sum[1]
+    if diff >= 0:
+        ans = 'L'
+    elif diff < 0:
+        ans = 'U'
+    if abs(diff) < tol:
+        print 'Warning: can not define the triangular matrix'
+    return ans
+    
 def tri2full(M,UL='L'):
     """UP='L' => fill upper triangle from lower triangle
        such that M=M^d"""
@@ -19,6 +159,22 @@ def tri2full(M,UL='L'):
 
 def dagger(matrix):
     return np.conj(matrix.T)
+
+def get_matrix_index(ind):
+    dim = len(ind)
+    return np.resize(ind, (dim, dim))
+    
+def aa1d(self, a, d=2):
+    # array average in one dimension
+    dim = a.shape
+    b = [np.sum(np.take(a, i, axis=d)) for i in range(dim[d])]
+    b *= dim[d] / np.product(dim)
+    return b
+    
+def aa2d(self, a, d=0):
+    # array average in two dimensions
+    b = np.sum(a, axis=d) / a.shape[d]
+    return b   
 
 #def get_realspace_hs(h_skmm,s_kmm, ibzk_kc, weight_k, R_c=(0,0,0)):
 def k2r_hs(h_skmm,s_kmm, ibzk_kc, weight_k, R_c=(0,0,0)):
