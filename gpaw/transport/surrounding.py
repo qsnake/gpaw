@@ -43,6 +43,17 @@ class Side:
         self.initialize()
         self.abstract_boundary()
         self.get_density_matrix()
+        self.get_scaling()
+        
+    def get_scaling(self):
+        calc = self.atoms.calc
+        density = calc.density
+        wfs = calc.wfs
+        comp_charge = density.calculate_multipole_moments()
+        pseudo_charge = -(density.charge + comp_charge)
+        density.calculate_pseudo_density(wfs)
+        assert abs(pseudo_charge) > 1.0e-14
+        self.scaling = pseudo_charge / density.gd.integrate(density.nt_sG).sum()
 
     def abstract_boundary(self):
         nn = self.nn
@@ -105,6 +116,8 @@ class Side:
             fd = file('sidedk.dat', 'r')
             self.d_spkmm, self.d_spkcmm = pickle.load(fd)
             fd.close()
+        #self.d_spkmm *= self.scaling
+        #self.d_spkcmm *= self.scaling
 
     def slice(self, nn, in_array):
         direction = self.direction
@@ -150,7 +163,7 @@ class Surrounding:
         self.sides_index = {'x-':-1, 'x+':1, 'y-':-2,
                             'y+':2, 'z-':-3, 'z+': 3}
         self.initialized = False
-        self.nn = 32
+        self.nn = 64
         self.nspins = self.atoms.calc.wfs.nspins
         
     def initialize(self):
@@ -434,8 +447,8 @@ class Surrounding:
                             gemm(1.0, dHP_iM, P_Mi, 1.0, sah_mm2)
                 self.gd.comm.sum(sah_mm1)
                 self.gd.comm.sum(sah_mm2)
-                sah_mm1 += bias_shift1 * s_qmm1[q]
-                sah_mm2 += bias_shift2 * s_qmm2[q]
+                sah_mm1 += bias_shift1 * s_qmm1
+                sah_mm2 += bias_shift2 * s_qmm2
                 sah_mm = sah_mm1 + sah_mm2        
                 self.sah_spkmm[s, q] = sah_mm[nao1: nao1 + nao0,
                                            nao1: nao1 + nao0].copy()
@@ -600,7 +613,7 @@ class Surrounding:
             array = self.nt_sG
         return array
 
-    def capsule(self, nn, array_name, direction, loc_in_array):
+    def capsule(self, nn, array_name, direction, loc_in_array, distribute=True):
         ns = self.nspins
         gd, gd0 = self.choose_gd(array_name)
         cap_array = self.choose_array(array_name)
@@ -626,8 +639,11 @@ class Surrounding:
                     cap_array[:, :, nn:-nn] = in_array
                 else:
                     raise ValueError('unknown direction')
-        gd.distribute(cap_array, local_cap_array)
-        return local_cap_array
+        if distribute:
+            gd.distribute(cap_array, local_cap_array)
+            return local_cap_array
+        else:
+            return cap_array
     
     def uncapsule(self, nn, array_name, direction, in_array, collect=False,
                                                                nn2=None):
@@ -877,4 +893,12 @@ class Surrounding:
         gd = GridDescriptor(dim, cell, pbc, domain_comm)
         gd.use_fixed_bc = True
         return gd
+        
+    def calculate_pseudo_charge2(self, nt_sG0):
+        nn = self.nn / 2
+        direction = self.directions[0][0]
+        nt_sG = self.capsule(nn, 'nt_sG', direction, nt_sG0, distribute=False)
+        nt_sG = nt_sG[:,:,:,nn-1:-nn].copy()
+        return np.sum(nt_sG) * self.gd.dv
+
         
