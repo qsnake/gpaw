@@ -19,34 +19,22 @@ if 1:
     atoms.get_potential_energy()
     calc.write('Si_sc.gpw')
 
-# Special points in the IBZ of an fcc primitive cell
-# http://cms.mpi.univie.ac.at/vasp/vasp/node56.html
-G = np.array([.000, .000, .000])
-X = np.array([.500, .500, .000])
-W = np.array([.500, .750, .250])
-K = np.array([.375, .375, .750])
-L = np.array([.500, .500, .500])
-reci_cell = 2. * np.pi * np.linalg.inv(atoms.cell).T
-
-# The path for the band plot
-path = [L, G, X, K, G]
-textpath = [r'$L$', r'$\Gamma$', r'$X$', r'$K$', r'$\Gamma$']
-
-# Make kpts list
-Npoints = 14
-previous = path[0]
-kpts = []
-points = [0,] # Indices in the kpts list of the special points
-for next in path[1:]:
-    length = np.linalg.norm(np.dot(next - previous, reci_cell))
-    for t in np.linspace(0, 1, int(round(Npoints * length))):
-        kpts.append((1 - t) * previous + t * next)
-    points.append(len(kpts))
-    previous = next
+# Make kpts list representing the path between
+# special points in the IBZ of an fcc primitive cell
+from gpaw.utilities.tools import get_bandpath
+G = [.000, .000, .000]
+X = [.000, .500, .500]
+W = [.500, .750, .250]
+K = [.375, .375, .750]
+U = [.250, .625, .625]
+L = [.500, .500, .500]
+path = [L, G, G, X, X, U, K, G]
+point_names = [r'$L$', r'$\Gamma$', r'$X$', r'$U,K$', r'$\Gamma$']
+kpts, point_indices = get_bandpath(path, atoms.cell, 62)
 
 if 1: # Calculate band structure along specified path
     calc = GPAW('Si_sc.gpw', txt='Si_harris.txt',
-                kpts=kpts, fixdensity=True, nbands=9, usesymm=None,
+                kpts=kpts, fixdensity=True, nbands=9,
                 eigensolver='cg', convergence={'bands': 7})
     calc.get_potential_energy()
     calc.write('Si_harris.gpw')
@@ -67,14 +55,16 @@ if 1: # Plot the band structure
     eigs_nk -= GPAW('Si_sc.gpw', txt=None).get_fermi_level()
 
     # Do the plot
-    fig = pl.figure(1, dpi=120)
+    fig = pl.figure(1, figsize=(9, 8), dpi=120)
     for eigs_k in eigs_nk:
         pl.plot(range(nkpts), eigs_k, '.k')
     lim = [0, nkpts, -13, 6]
-    for p in points:
+    for p in point_indices:
         pl.plot([p, p], lim[2:], 'k-')
-    pl.xticks(points, textpath)
+    pl.xticks(point_indices, point_names)
     pl.axis(lim)
+    pl.xlabel('k-vector')
+    pl.ylabel('Energy (eV)')
     pl.title('LDA bandstructure of Silicon')
     pl.savefig('Si_guc_band.png', dpi=120)
     pl.show()
