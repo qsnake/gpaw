@@ -23,6 +23,8 @@ encountering convergence problems:
 * Try to use a less aggressive :ref:`mixing <manual_mixer>`, i.e. a
   smaller mixing parameter. For example a typical mixer for a metallic
   system may be ``mixer=Mixer(0.1, 5, metric='new', weight=100.0)``.
+  For spin polarised systems you can use either ``mixer=MixerSum()`` or
+  ``mixer=MixerDif()`` using the same options as with ``mixer=Mixer()``.
 * The initial guess for the electron density is always calculated
   using the LCAO scheme, with a default single-zeta basis, i.e. one
   orbital for each valence electron. You can try to make a better
