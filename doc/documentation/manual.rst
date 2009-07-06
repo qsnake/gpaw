@@ -224,6 +224,12 @@ n3)``, where ``n1``, ``n2`` and ``n3`` are positive integers.  This
 will sample the Brillouin-zone with a regular grid of ``n1`` `\times`
 ``n2`` `\times` ``n3`` **k**-points.
 
+An arbitrary set of **k**-points can be specified, by giving an array
+of floats of the format ``kpts_kc`` where ``k`` is a k-point index,
+and ``c`` is an axis index. **k**-points are given in scaled
+coordinates, relative to the basis vectors of the reciprocal unit
+cell.
+
 
 .. _manual_spinpol:
 
