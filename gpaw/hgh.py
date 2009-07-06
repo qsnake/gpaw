@@ -81,6 +81,7 @@ class RealHGHSetup(BaseSetup):
         self.f_j = data.f_j
         self.n_j = data.n_j
         self.l_j = data.l_j
+        self.nj = len(data.l_j)
 
         # We don't really care about these variables
         self.rcutfilter = None
@@ -217,6 +218,7 @@ class HGHSetup:
             n_j.append(n + 1) # Note: actual n must be positive!
             l_j.append(l)
         assert nj == len(v_j)
+        self.nj = nj
         self.l_j = l_j
         self.n_j = n_j
 
