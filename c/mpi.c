@@ -77,11 +77,11 @@ static PyObject * mpi_sendreceive(MPIObject *self, PyObject *args, PyObject *kwa
   int nsend = PyArray_DESCR(a)->elsize;
   for (int d = 0; d < PyArray_NDIM(a); d++)
     nsend *= PyArray_DIM(a,d);
-  int nrecv = PyArray_DESCR(a)->elsize;
-  for (int d = 0; d < PyArray_NDIM(a); d++)
-    nrecv *= PyArray_DIM(a,d);
+  int nrecv = PyArray_DESCR(b)->elsize;
+  for (int d = 0; d < PyArray_NDIM(b); d++)
+    nrecv *= PyArray_DIM(b,d);
   ret = MPI_Sendrecv(PyArray_BYTES(a), nsend, MPI_BYTE, dest, sendtag, 
-		     PyArray_BYTES(a), nrecv, MPI_BYTE, src, recvtag, 
+		     PyArray_BYTES(b), nrecv, MPI_BYTE, src, recvtag, 
 		     self->comm, MPI_STATUS_IGNORE);
 #ifdef GPAW_MPI_DEBUG
       if (ret != MPI_SUCCESS)
