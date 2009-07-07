@@ -69,7 +69,7 @@ def run():
         # Fill in upper part:
         for n in range(N - 1):
             S_nn[n, n + 1:] = S_nn[n + 1:, n]
-#      assert (S_nn.round(7) == np.eye(N)).all()
+        assert (S_nn.round(7) == np.eye(N)).all()
 
 def overlap(psit_mG, send_mG, recv_mG):
     """Calculate overlap matrix.
