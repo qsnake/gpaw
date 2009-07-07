@@ -84,11 +84,8 @@ def overlap(psit_mG, send_mG, recv_mG):
 
     # Shift wave functions:
     for i in range(Q - 1):
-        rrequest = band_comm.receive(recv_mG, (rank + 1) % B, 42, False)
-        srequest = band_comm.send(send_mG, (rank - 1) % B, 42, False)
         gemm(gd.dv, psit_mG, send_mG, 0.0, S_imm[i], 'c')
-        band_comm.wait(rrequest)
-        band_comm.wait(srequest)
+        band_comm.sendreceive(send_mG, (rank + 1) % B, 42, recv_mG, (rank - 1) % B, 42)
         send_mG, recv_mG = recv_mG, send_mG
     gemm(gd.dv, psit_mG, send_mG, 0.0, S_imm[Q - 1], 'c')
 
@@ -124,16 +121,15 @@ def matrix_multiply(C_nn, psit_mG, send_mG, recv_mG):
     psit_mG[:] = 0.0
     beta = 0.0
     for i in range(B - 1):
-        rrequest = band_comm.receive(recv_mG, (rank + 1) % B, 117, False)
-        srequest = band_comm.send(send_mG, (rank - 1) % B, 117, False)
         gemm(1.0, send_mG, C_imim[rank, :, (rank + i) % B], beta, psit_mG)
         beta = 1.0
-        band_comm.wait(rrequest)
-        band_comm.wait(srequest)
+        band_comm.sendreceive(send_mG, (rank + 1) % B, 117, recv_mG, (rank - 1) % B, 117)
         send_mG, recv_mG = recv_mG, send_mG
     gemm(1.0, send_mG, C_imim[rank, :, rank - 1], beta, psit_mG)
 
     return psit_mG
+
+world.barrier()
 
 ta = time()
 
