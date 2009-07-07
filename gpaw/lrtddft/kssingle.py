@@ -316,6 +316,7 @@ class KSSingle(Excitation, PairDensity):
 
             Pi_i = P_ni[self.i]
             Pj_i = P_ni[self.j]
+            ni = len(Pi_i)
             
             ma1 = npy.zeros(me.shape)
             for i1 in range(ni):
