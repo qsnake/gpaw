@@ -5,6 +5,30 @@
 #include "extensions.h"
 #include <math.h>
 
+#ifdef GPAW_HPM
+void HPM_Start(char *);
+void HPM_Stop(char *);
+
+PyObject* gpaw_hpm_start(PyObject *self, PyObject *args)
+{
+  char* s;
+  if (!PyArg_ParseTuple(args, "s", &s))
+    return NULL;
+  HPM_Start(s);
+  Py_RETURN_NONE;
+}
+
+PyObject* gpaw_hpm_stop(PyObject *self, PyObject *args)
+{
+  char* s;
+  if (!PyArg_ParseTuple(args, "s", &s))
+    return NULL;
+  HPM_Stop(s);
+  Py_RETURN_NONE;
+}
+#endif
+
+
 #ifdef GPAW_CRAYPAT
 #include <pat_api.h>
 
