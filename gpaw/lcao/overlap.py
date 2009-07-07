@@ -549,19 +549,15 @@ class BlacsTwoCenterIntegrals(TwoCenterIntegrals):
             selfinteraction = (a1 == a2 and offset.any())
             P1_qxMi = P_aqxMi.get(a1)
             P2_qxMi = P_aqxMi.get(a2)
-            rlY_lm = []
-            drlYdR_lmc = []
-            for l in range(5):
-                rlY_m = np.empty(2 * l + 1)
-                Yl(l, R, rlY_m)
-                rlY_lm.append(rlY_m)
 
-                if derivative:
-                    drlYdR_mc = np.empty((2 * l + 1, 3))
-                    for m in range(2 * l + 1):
-                        L = l**2 + m
-                        drlYdR_mc[m, :] = nablaYL(L, R)
-                    drlYdR_lmc.append(drlYdR_mc)
+            if derivative:
+                rlY_lm, drlYdR_lmc = spherical_harmonics_and_derivatives(R, 5)
+            else:
+                if extra_parameters.get('fprojectors'):
+                    rlY_lm = spherical_harmonics(R, 7)
+                else:
+                    rlY_lm = spherical_harmonics(R, 5)
+                drlYdR_lmc = []
 
             self.stp_overlaps(S_qxMM, T_qxMM, P1_qxMi, P2_qxMi, a1, a2,
                               r, R, rlY_lm, drlYdR_lmc, phase_q,
@@ -596,7 +592,7 @@ class BlacsTwoCenterIntegrals(TwoCenterIntegrals):
         comm.sum(S_qxMM)
         comm.sum(T_qxMM)
                                      
-    def blacs_overlap(self, X, symbol1, symbol2, spline1_j, spline2_j,
+    def blacs_overlap(self, X, symbol1, symbol2, spline1_j, spline2_j, sign,
                 r, R, rlY_lm, drlYdR_lmc, phase_q, selfinteraction, M1, M2,
                 X_qMM):
         """Calculate overlaps or kinetic energy matrix elements for the
@@ -610,7 +606,12 @@ class BlacsTwoCenterIntegrals(TwoCenterIntegrals):
             if M1b <= M0 or M1a >= M3:
                 continue
 
-            X_mm = splines.evaluate(r, rlY_lm).T
+            if not drlYdR_lmc:
+                X_mm = splines.evaluate(r, rlY_lm).T
+            else:
+                assert r != 0
+                X_xmm = sign * splines.derivative(r, R, rlY_lm, drlYdR_lmc)
+
             M1ap = max(M1a, M0)
             M1bp = min(M1b, M3)
             A_qMM = X_qMM[:, M1ap - M0:M1bp - M0, M2a:M2b]
@@ -634,12 +635,12 @@ class BlacsTwoCenterIntegrals(TwoCenterIntegrals):
             for X, X_qMM in zip([self.S, self.T], [S_qMM, T_qMM]):
                 self.blacs_overlap(X, setup1.symbol, setup2.symbol,
                              setup1.phit_j, setup2.phit_j,
-                             r, R, rlY_lm, drlYdR_lmc,
+                             1, r, R, rlY_lm, drlYdR_lmc,
                              phase_q, selfinteraction,
                              M1, M2, X_qMM)
             self.overlap(self.P,
                          setup1.symbol, setup2.symbol,
-                         setup1.phit_j, setup2.pt_j,
+                         setup1.phit_j, setup2.pt_j, 1,
                          r, R, reverse_Y(rlY_lm), reverse_Y(drlYdR_lmc),
                          phase_q.conj(), False, # XXX conj()?
                          M1, 0, P2_qMi.swapaxes(-1, -2))
@@ -647,13 +648,13 @@ class BlacsTwoCenterIntegrals(TwoCenterIntegrals):
         if P1_qMi is not None and (a1 != a2 or offset.any()):
             for X, X_qMM in zip([self.S, self.T], [S_qMM, T_qMM]):
                 self.blacs_overlap(X, setup2.symbol, setup1.symbol,
-                             setup2.phit_j, setup1.phit_j,
+                             setup2.phit_j, setup1.phit_j, -1,
                              r, R, reverse_Y(rlY_lm), reverse_Y(drlYdR_lmc),
                              phase_q.conj(), selfinteraction,
                              M2, M1, X_qMM)
             # XXX phase should not be conjugated here?
             # also, what if P2 as well as P1 are not None?
             self.overlap(self.P, setup2.symbol, setup1.symbol,
-                         setup2.phit_j, setup1.pt_j, r, R,
+                         setup2.phit_j, setup1.pt_j, -1, r, R,
                          rlY_lm, drlYdR_lmc, phase_q,
                          False, M2, 0, P1_qMi.swapaxes(-1, -2))
