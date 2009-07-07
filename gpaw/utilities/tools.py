@@ -55,82 +55,6 @@ def split_formula(formula):
             res.extend([res[-1],] * (eval(c) - 1))
     return res
 
-def get_kpoint_dimensions(kpts):
-    """Returns number of k-points along each axis of input Monkhorst pack.
-       The set of k-points must not have been symmetry reduced.
-    """
-    nkpts = len(kpts)
-    if nkpts == 1:
-        return np.ones(3, int)
-
-    tol = 1e-5
-    Nk_c = np.zeros(3)
-    for c in range(3):
-        # Sort kpoints in ascending order along current axis
-        slist = np.argsort(kpts[:, c])
-        skpts = np.take(kpts, slist)
-
-        # Determine increment between kpoints along current axis
-        DeltaK = max([skpts[n + 1, c] - skpts[n, c] for n in range(nkpts - 1)])
-
-        # Determine number of kpoints as inverse of distance between kpoints
-        if DeltaK > tol: Nk_c[c] = int(round(1. / DeltaK))
-        else: Nk_c[c] = 1
-    return Nk_c
-
-# In units of the reciprocal basis vectors
-fcc_ibz_points = {'Gamma': [0/1., 0/1., 0/1.],
-                  'X':     [0/1., 1/2., 1/2.],
-                  'W':     [1/2., 3/4., 1/4.],
-                  'K':     [3/8., 3/8., 3/4.],
-                  'U':     [1/4., 5/8., 5/8.],
-                  'L':     [1/2., 1/2., 1/2.]}
-
-def kpoint_convert(cell_cv, scaledkpts_xc=None, cartesiankpts_xv=None):
-    """Convert k-points between scaled and cartesian coordinates.
-
-    Given the unit cell, cell_cv, and either the scaled or cartesian k-point
-    coordinates, the other is determined.
-
-    The k-point arrays can be either a single point, or a list of points,
-    i.e. dimension x can be empty or multidimensional.
-    """
-    if cartesiankpts_xv is None:
-        icell_cv = 2 * np.pi * np.linalg.inv(cell_cv).T
-        return np.dot(scaledkpts_xc, icell_cv)
-    elif scaledkpts_xc is None:
-        return np.dot(cartesiankpts_xv, cell_cv.T) / (2 * np.pi)
-    else:
-        raise KeyError('Either scaled or cartesian coordinates must be given.')
-
-def get_bandpath(points, cell, npoints):
-    """Make a list of kpoints defining the path between the given points.
-
-    points is a list of special IBZ point pairs, e.g.
-    >>> points = [L, Gamma, Gamma, X, X, U, K, Gamma]
-    These should be given in scaled coordinates.
-
-    cell is the unitcell if the atoms.
-
-    npoints is the approximate desired length of the output kpts list
-
-    The output list point_indices, gives the indices in kpts of the special
-    points.
-    """
-    assert len(points) % 2 == 0
-    points = np.asarray(points)
-    dists = points[1::2] - points[::2]
-    lengths = [np.linalg.norm(d) for d in kpoint_convert(cell, dists)]
-    length = sum(lengths)
-    kpts = []
-    point_indices = [0]
-    for P, d, L in zip(points[::2], dists, lengths):
-        for t in np.linspace(0, 1, int(round(L / length * npoints)),
-                             endpoint=False):
-            kpts.append(P + t * d)
-        point_indices.append(len(kpts))
-    return np.array(kpts), point_indices
-
 def construct_reciprocal(gd):
     """Construct the reciprocal lattice vectors correspoding to the
        grid defined in input grid-descriptor 'gd'.
@@ -235,15 +159,6 @@ def lowdin_svd(U):
     """
     Z, D, V = np.linalg.svd(U, full_matrices=0)
     return np.dot(Z, V)
-
-def rotate_matrix(h, U):
-    """U contains the new basis as its columns"""
-    return np.dot(dagger(U), np.dot(h, U))
-
-def permute_basis(h, basis):
-    """Permute basis of h according to list basis, specifying new order"""
-    assert h.ndim == 2 and h.shape[0] == h.shape[1]
-    return h.take(basis, 0).take(basis, 1)
 
 def symmetrize(matrix):
     """Symmetrize input matrix."""
@@ -357,8 +272,8 @@ def signtrim(data, decimals=None):
     data = data.reshape(-1)
 
     if data.dtype == complex:
-        i = np.argwhere(np.sign(data.real)==0).ravel()
-        j = np.argwhere(np.sign(data.imag)==0).ravel()
+        i = np.argwhere(np.sign(data.real) == 0).ravel()
+        j = np.argwhere(np.sign(data.imag) == 0).ravel()
         data.real[i] = 0
         data.imag[j] = 0
     else:
