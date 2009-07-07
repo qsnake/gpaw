@@ -9,7 +9,7 @@
 void HPM_Start(char *);
 void HPM_Stop(char *);
 
-PyObject* gpaw_hpm_start(PyObject *self, PyObject *args)
+PyObject* ibm_hpm_start(PyObject *self, PyObject *args)
 {
   char* s;
   if (!PyArg_ParseTuple(args, "s", &s))
@@ -18,7 +18,7 @@ PyObject* gpaw_hpm_start(PyObject *self, PyObject *args)
   Py_RETURN_NONE;
 }
 
-PyObject* gpaw_hpm_stop(PyObject *self, PyObject *args)
+PyObject* ibm_hpm_stop(PyObject *self, PyObject *args)
 {
   char* s;
   if (!PyArg_ParseTuple(args, "s", &s))
