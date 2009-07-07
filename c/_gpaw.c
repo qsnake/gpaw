@@ -8,8 +8,8 @@ void HPM_Start(char *);
 void HPM_Stop(char *);
 void HPM_Print(void);
 void HPM_Print_Flops(void);
-PyObject* gpaw_hpm_start(PyObject *self, PyObject *args);
-PyObject* gpaw_hpm_stop(PyObject *self, PyObject *args);
+PyObject* ibm_hpm_start(PyObject *self, PyObject *args);
+PyObject* ibm_hpm_stop(PyObject *self, PyObject *args);
 #endif
 
 #ifdef GPAW_CRAYPAT
@@ -27,8 +27,6 @@ PyObject* rk(PyObject *self, PyObject *args);
 PyObject* r2k(PyObject *self, PyObject *args);
 PyObject* dotc(PyObject *self, PyObject *args);
 PyObject* dotu(PyObject *self, PyObject *args);
-PyObject* multi_dotu(PyObject *self, PyObject *args);
-PyObject* multi_axpy(PyObject *self, PyObject *args);
 PyObject* diagonalize(PyObject *self, PyObject *args);
 PyObject* inverse_cholesky(PyObject *self, PyObject *args);
 PyObject* inverse_symmetric(PyObject *self, PyObject *args);
@@ -80,8 +78,6 @@ static PyMethodDef functions[] = {
   {"r2k", r2k, METH_VARARGS, 0},
   {"dotc", dotc, METH_VARARGS, 0},
   {"dotu", dotu, METH_VARARGS, 0},
-  {"multi_dotu", multi_dotu, METH_VARARGS, 0},
-  {"multi_axpy", multi_axpy, METH_VARARGS, 0},
   {"diagonalize", diagonalize, METH_VARARGS, 0},
   {"inverse_cholesky", inverse_cholesky, METH_VARARGS, 0},
   {"inverse_symmetric", inverse_symmetric, METH_VARARGS, 0},
@@ -128,8 +124,8 @@ static PyMethodDef functions[] = {
   {"scalapack_inverse_cholesky", scalapack_inverse_cholesky, METH_VARARGS, 0},
 #endif
 #ifdef GPAW_HPM
-  {"hpm_start", gpaw_hpm_start, METH_VARARGS, 0},
-  {"hpm_stop", gpaw_hpm_stop, METH_VARARGS, 0},
+  {"hpm_start", ibm_hpm_start, METH_VARARGS, 0},
+  {"hpm_stop", ibm_hpm_stop, METH_VARARGS, 0},
 #endif
 #ifdef GPAW_CRAYPAT
   {"craypat_region_begin", craypat_region_begin, METH_VARARGS, 0},
@@ -182,7 +178,7 @@ int
 main(int argc, char **argv)
 {
   int status;
-#ifdef GPAW_BGP_MAP
+#ifdef GPAW_MPI_MAP
   int tag = 99;
   int myid, numprocs, i, procnamesize;
   char procname[MPI_MAX_PROCESSOR_NAME];
@@ -196,7 +192,7 @@ main(int argc, char **argv)
   if(granted != MPI_THREAD_MULTIPLE) exit(1);
 #endif // GPAW_OMP
 
-#ifdef GPAW_BGP_MAP
+#ifdef GPAW_MPI_MAP
   MPI_Comm_size(MPI_COMM_WORLD, &numprocs );
   MPI_Comm_rank(MPI_COMM_WORLD, &myid );
   MPI_Get_processor_name(procname, &procnamesize);
