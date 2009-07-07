@@ -177,32 +177,42 @@ PyObject* calculate_potential_matrix(LFCObject *lfc, PyObject *args)
   const double* vt_G = (const double*)vt_G_obj->data;
 
   int nM = Vt_MM_obj->dimensions[1];
+  double dv = lfc->dv;
   double* work_gm = lfc->work_gm;
   if (!lfc->bloch_boundary_conditions) {
     if (Mstart == -1) {
       double* Vt_MM = (double*)Vt_MM_obj->data;
-      GRID_LOOP_START(lfc, -1) {
+      GRID_LOOP_START(lfc, -1) { // ORDINARY/GAMMA-POINT
         for (int i1 = 0; i1 < ni; i1++) {
           LFVolume* v1 = volume_i + i1;
+          const double* A1_gm = v1->A_gm;
           int M1 = v1->M;
           int nm1 = v1->nm;
           int gm1 = 0;
-          for (int G = Ga; G < Gb; G++)
-            for (int m1 = 0; m1 < nm1; m1++, gm1++)
-              lfc->work_gm[gm1] = vt_G[G] * v1->A_gm[gm1];
-
+          double vtdv;
+          for (int G = Ga; G < Gb; G++){
+            vtdv = vt_G[G] * dv;
+            for (int m1 = 0; m1 < nm1; m1++, gm1++){
+              lfc->work_gm[gm1] = vtdv * A1_gm[gm1];
+            }
+          }
           for (int i2 = 0; i2 < ni; i2++) {
             LFVolume* v2 = volume_i + i2;
             int M2 = v2->M;
             if (M1 >= M2) {
               int nm2 = v2->nm;
+              const double* A2_gm = v2->A_gm;
               double* Vt_mm = Vt_MM + M1 * nM + M2;
-              for (int g = 0; g < nG; g++)
-                for (int m1 = 0; m1 < nm1; m1++)
-                  for (int m2 = 0; m2 < nm2; m2++)
-                    Vt_mm[m2 + m1 * nM] += (v2->A_gm[g * nm2 + m2] * 
-                                            work_gm[g * nm1 + m1] *
-                                            lfc->dv);
+              for (int g = 0; g < nG; g++){
+                int gnm1 = g * nm1;
+                int gnm2 = g * nm2;
+                for (int m1 = 0; m1 < nm1; m1++){
+                  int m1nM = m1 * nM;
+                  for (int m2 = 0; m2 < nm2; m2++){
+                    Vt_mm[m2 + m1nM] += A2_gm[gnm2 + m2] * work_gm[gnm1 + m1];
+                  }
+                }
+              }
             }
           }
         }
@@ -211,7 +221,7 @@ PyObject* calculate_potential_matrix(LFCObject *lfc, PyObject *args)
     }
     else {
       double* Vt_MM = (double*)Vt_MM_obj->data;
-      GRID_LOOP_START(lfc, -1) {
+      GRID_LOOP_START(lfc, -1) { // BLACS THINGY
         for (int i1 = 0; i1 < ni; i1++) {
           LFVolume* v1 = volume_i + i1;
           int M1 = v1->M;
@@ -226,7 +236,7 @@ PyObject* calculate_potential_matrix(LFCObject *lfc, PyObject *args)
           int gm1 = 0;
           for (int G = Ga; G < Gb; G++, gm += nm1 - nm1p)
             for (int m1 = 0; m1 < nm1p; m1++, gm1++, gm++)
-	    lfc->work_gm[gm1] = vt_G[G] * v1->A_gm[gm];
+              lfc->work_gm[gm1] = vt_G[G] * v1->A_gm[gm];
           for (int i2 = 0; i2 < ni; i2++) {
             LFVolume* v2 = volume_i + i2;
             int M2 = v2->M;
@@ -237,7 +247,7 @@ PyObject* calculate_potential_matrix(LFCObject *lfc, PyObject *args)
               for (int m1 = 0; m1 < nm1p; m1++, gm1++)
                 for (int m2 = 0; m2 < nm2; m2++)
                   Vt_mm[m2 + m1 * nM] += (v2->A_gm[g * nm2 + m2] * 
-                                          work_gm[gm1] * lfc->dv);
+                                          work_gm[gm1] * dv);
           }
 	}
       }
@@ -246,30 +256,38 @@ PyObject* calculate_potential_matrix(LFCObject *lfc, PyObject *args)
   }
   else {
     complex double* Vt_MM = (complex double*)Vt_MM_obj->data;
-    GRID_LOOP_START(lfc, k) {
+    GRID_LOOP_START(lfc, k) {  // KPOINT CALC POT MATRIX
       for (int i1 = 0; i1 < ni; i1++) {
         LFVolume* v1 = volume_i + i1;
+        complex conjphase1 = conj(phase_i[i1]);
         int M1 = v1->M;
         int nm1 = v1->nm;
         int gm1 = 0;
+        double vtdv;
+        const double* A1_gm = v1->A_gm;
 	for (int G = Ga; G < Gb; G++) {
+          vtdv = vt_G[G] * dv;
 	  for (int m1 = 0; m1 < nm1; m1++, gm1++) {
-	    lfc->work_gm[gm1] = vt_G[G] * v1->A_gm[gm1];
+	    work_gm[gm1] = vtdv * A1_gm[gm1];
 	  }
 	}
-	
 	for (int i2 = 0; i2 < ni; i2++) {
 	  LFVolume* v2 = volume_i + i2;
+          const double* A2_gm = v2->A_gm;
 	  int M2 = v2->M;
 	  if (M1 >= M2) {
 	    int nm2 = v2->nm;
-	    double complex phase = (conj(phase_i[i1]) * phase_i[i2] * lfc->dv);
+	    double complex phase = conjphase1 * phase_i[i2];
 	    double complex* Vt_mm = Vt_MM + M1 * nM + M2;
+            complex double wphase;
 	    for (int g = 0; g < nG; g++) {
-	      for (int m1 = 0; m1 < nm1; m1++) {
-		complex double wphase = work_gm[g * nm1 + m1] * phase;
+              int gnm2 = g * nm2;
+              int gnm1 = g * nm1;
+              int m1nM = 0;
+	      for (int m1 = 0; m1 < nm1; m1++, m1nM+=nM) {
+		wphase = work_gm[gnm1 + m1] * phase;
 		for (int m2 = 0; m2 < nm2; m2++) {
-		  Vt_mm[m2 + m1 * nM] += (v2->A_gm[g * nm2 + m2] * wphase);
+		  Vt_mm[m1nM + m2] += A2_gm[gnm2 + m2] * wphase;
 		}
 	      }
 	    }
