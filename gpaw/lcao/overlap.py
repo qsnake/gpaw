@@ -530,7 +530,8 @@ class BlacsTwoCenterIntegrals(TwoCenterIntegrals):
         else:
             self.astop = natoms
 
-    def _calculate(self, spos_ac, S_qxMM, T_qxMM, P_aqxMi, derivative):
+    def _calculate(self, spos_ac, S_qxMM, T_qxMM, P_aqxMi, derivative,
+                   nopawcorrection=False):
         # Whether we're calculating values or derivatives, most operations
         # are the same.  For this reason the "public" calculate and
         # calculate_derivative methods merely point to this implementation
@@ -576,7 +577,7 @@ class BlacsTwoCenterIntegrals(TwoCenterIntegrals):
         #                          aij
         #
         mynao, nao = S_qxMM.shape[-2:]
-        if not derivative:
+        if not derivative and not nopawcorrection:
             dOP_iM = None # Assign explicitly in case loop runs 0 times
             for a, P_qxMi in P_aqxMi.items():
                 dO_ii = np.asarray(self.setups[a].O_ii, P_qxMi.dtype)
