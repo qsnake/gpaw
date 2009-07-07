@@ -521,7 +521,9 @@ class LCAOWaveFunctions(WaveFunctions):
             nao = self.setups.nao
             rho_MM = np.empty((nao, nao), self.dtype)
             self.calculate_density_matrix(f_n, kpt.C_nM, rho_MM)
+        self.timer.start('LCAO WaveFunctions: construct density')
         self.basis_functions.construct_density(rho_MM, nt_sG[kpt.s], kpt.q)
+        self.timer.stop('LCAO WaveFunctions: construct density')
 
     def add_to_density_from_k_point(self, nt_sG, kpt):
         """Add contribution to pseudo electron-density. """
@@ -660,43 +662,37 @@ class LCAOWaveFunctions(WaveFunctions):
         dPdR_avMi = dict([(a, dPdR_aqvMi[a][q]) for a in my_atom_indices])
         work_MM = np.zeros((nao, nao), dtype)
         ZE_MM = None
-        for v in range(3):
-            for b in my_atom_indices:
-                setup = self.setups[b]
-                O_ii = np.asarray(setup.O_ii, dtype)
-                dOP_iM = np.zeros((setup.ni, nao), dtype)
-                gemm(1.0, self.P_aqMi[b][q], O_ii, 0.0, dOP_iM, 'c')
+        for b in my_atom_indices:
+            setup = self.setups[b]
+            O_ii = np.asarray(setup.O_ii, dtype)
+            dOP_iM = np.zeros((setup.ni, nao), dtype)
+            gemm(1.0, self.P_aqMi[b][q], O_ii, 0.0, dOP_iM, 'c')
+            for v in range(3):
                 gemm(1.0, dOP_iM, dPdR_avMi[b][v], 0.0, work_MM, 'n')
                 ZE_MM = (work_MM * ET_MM).real
                 for a, M1, M2 in slices():
-                    if a != b:
-                        dE = np.sign(a - b) * ZE_MM[M1:M2].sum()
-                    if a == b:
-                        dE = ZE_MM[:M1].sum() - ZE_MM[M2:].sum()
-                    dErho_av[a, v] += 2 * dE
+                    dE = -2 * ZE_MM[M1:M2].sum()
+                    dErho_av[a, v] += dE
+                    dErho_av[b, v] -= dE
         del work_MM, ZE_MM
         self.timer.stop('LCAO forces: paw correction')
         
         # Atomic density contribution
         self.timer.start('LCAO forces: atomic density')
         dED_av = np.zeros_like(F_av)
-        for v in range(3):
-            for b in my_atom_indices:
+        for b in my_atom_indices:
+            H_ii = unpack(hamiltonian.dH_asp[b][kpt.s])
+            PH_Mi = gemmdot(self.P_aqMi[b][q], np.asarray(H_ii, dtype))
+            for v in range(3):
                 dPdR_Mi = dPdR_avMi[b][v]
-                Hb_ii = unpack(hamiltonian.dH_asp[b][kpt.s])
-                PH_Mi = gemmdot(self.P_aqMi[b][q], np.asarray(Hb_ii, dtype))
-                PHPrhoT_MM = gemmdot(PH_Mi, np.conj(dPdR_Mi.T)) * rhoT_MM
+                PHPrhoT_MM = (gemmdot(PH_Mi, np.conj(dPdR_Mi.T)) * rhoT_MM).real
                 for a, M1, M2 in slices():
-                    if a != b:
-                        dE = np.sign(b - a) * PHPrhoT_MM[:, M1:M2].real.sum()
-                    else:
-                        dE = (PHPrhoT_MM[:, M2:].real.sum()
-                              - PHPrhoT_MM[:, :M1].real.sum())
-                    dED_av[a, v] += 2 * dE
+                    dE = 2 * PHPrhoT_MM[:, M1:M2].sum()
+                    dED_av[a, v] += dE
+                    dED_av[b, v] -= dE
         self.timer.stop('LCAO forces: atomic density')
         
         F_av -= (dET_av + dEn_av + dErho_av + dED_av)
-
 
     def _get_wave_function_array(self, u, n):
         kpt = self.kpt_u[u]

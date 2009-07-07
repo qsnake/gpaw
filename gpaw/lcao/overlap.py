@@ -65,7 +65,7 @@ class OverlapExpansion:
         lb = self.lb
         G_mmm = gaunt[lb**2:(lb + 1)**2,
                       la**2:(la + 1)**2,
-                      l**2:(l + 1)**2].swapaxes(-1, -2)
+                      l**2:(l + 1)**2]
         return G_mmm
 
     def gaunt_iter(self):
@@ -87,7 +87,7 @@ class OverlapExpansion:
         describing the overlap integral."""
         x_mi = self.zeros()
         for l, spline, G_mmm in self.gaunt_iter():
-            x_mi += spline(r) * np.dot(rlY_lm[l], G_mmm)
+            x_mi += spline(r) * np.dot(G_mmm, rlY_lm[l])
         return x_mi
 
     def derivative(self, r, R, rlY_lm, drlYdR_lmc):
@@ -98,9 +98,9 @@ class OverlapExpansion:
         dxdR_cmi = self.zeros((3,))
         for l, spline, G_mmm in self.gaunt_iter():
             x, dxdr = spline.get_value_and_derivative(r)
-            GrlY_mi = np.dot(rlY_lm[l], G_mmm)
+            GrlY_mi = np.dot(G_mmm, rlY_lm[l])
             dxdR_cmi += dxdr / r * GrlY_mi * R[:, None, None]
-            dxdR_cmi += x * np.dot(drlYdR_lmc[l].T, G_mmm)
+            dxdR_cmi += x * np.dot(G_mmm, drlYdR_lmc[l]).transpose(2, 0, 1)
         return dxdR_cmi
 
 
@@ -251,7 +251,7 @@ class TwoCenterIntegralSplines:
         return meh.count_fft, meh.count_realspace
 
 class TwoCenterIntegrals:
-    def __init__(self, gd, setups, gamma=True, ibzk_qc=None):
+    def __init__(self, gd, setups, gamma=True, ibzk_qc=((0., 0., 0.),)):
         self.gd = gd
         self.setups = setups
         self.gamma = gamma
@@ -309,9 +309,10 @@ class TwoCenterIntegrals:
         
         self.neighbors.update(self.atoms)
 
-    def calculate(self, spos_ac, S_qMM, T_qMM, P_aqMi):
+    def calculate(self, spos_ac, S_qMM, T_qMM, P_aqMi, nopawcorrection=False):
         """Calculate values of two-center integrals."""
-        self._calculate(spos_ac, S_qMM, T_qMM, P_aqMi, derivative=False)
+        self._calculate(spos_ac, S_qMM, T_qMM, P_aqMi, derivative=False,
+                        nopawcorrection=nopawcorrection)
 
     def calculate_derivative(self, spos_ac, dThetadR_qvMM, dTdR_qvMM,
                              dPdR_aqvMi):
@@ -319,7 +320,8 @@ class TwoCenterIntegrals:
         self._calculate(spos_ac, dThetadR_qvMM, dTdR_qvMM, dPdR_aqvMi,
                         derivative=True)
 
-    def _calculate(self, spos_ac, S_qxMM, T_qxMM, P_aqxMi, derivative):
+    def _calculate(self, spos_ac, S_qxMM, T_qxMM, P_aqxMi, derivative,
+                   nopawcorrection=False):
         # Whether we're calculating values or derivatives, most operations
         # are the same.  For this reason the "public" calculate and
         # calculate_derivative methods merely point to this implementation
@@ -361,7 +363,7 @@ class TwoCenterIntegrals:
         #                          aij
         #
         nao = self.setups.nao
-        if not derivative:
+        if not derivative and not nopawcorrection:
             dOP_iM = None # Assign explicitly in case loop runs 0 times
             for a, P_qxMi in P_aqxMi.items():
                 dO_ii = np.asarray(self.setups[a].O_ii, P_qxMi.dtype)
@@ -438,12 +440,12 @@ class TwoCenterIntegrals:
             for X, X_qMM in zip([self.S, self.T], [S_qMM, T_qMM]):
                 self.overlap(X, setup1.symbol, setup2.symbol,
                              setup1.phit_j, setup2.phit_j,
-                             r, R, rlY_lm, drlYdR_lmc,
+                             1, r, R, rlY_lm, drlYdR_lmc,
                              phase_q, selfinteraction,
                              M1, M2, X_qMM)
             self.overlap(self.P,
                          setup1.symbol, setup2.symbol,
-                         setup1.phit_j, setup2.pt_j,
+                         setup1.phit_j, setup2.pt_j, 1,
                          r, R, reverse_Y(rlY_lm), reverse_Y(drlYdR_lmc),
                          phase_q.conj(), False, # XXX conj()?
                          M1, 0, P2_qMi.swapaxes(-1, -2))
@@ -452,11 +454,11 @@ class TwoCenterIntegrals:
             # XXX phase should not be conjugated here?
             # also, what if P2 as well as P1 are not None?
             self.overlap(self.P, setup2.symbol, setup1.symbol,
-                         setup2.phit_j, setup1.pt_j, r, R,
+                         setup2.phit_j, setup1.pt_j, -1, r, R,
                          rlY_lm, drlYdR_lmc, phase_q,
                          False, M2, 0, P1_qMi.swapaxes(-1, -2))
         
-    def overlap(self, X, symbol1, symbol2, spline1_j, spline2_j,
+    def overlap(self, X, symbol1, symbol2, spline1_j, spline2_j, sign,
                 r, R, rlY_lm, drlYdR_lmc, phase_q, selfinteraction, M1, M2,
                 X_qxMM):
         """Calculate overlaps or kinetic energy matrix elements for the
@@ -468,7 +470,7 @@ class TwoCenterIntegrals:
                 X_xmm = splines.evaluate(r, rlY_lm)
             else:
                 assert r != 0
-                X_xmm = splines.derivative(r, R, rlY_lm, drlYdR_lmc)
+                X_xmm = sign * splines.derivative(r, R, rlY_lm, drlYdR_lmc)
             X_qxmm = X_xmm
             if not self.gamma:
                 dims = np.rank(X_xmm)
