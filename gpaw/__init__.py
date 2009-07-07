@@ -116,9 +116,9 @@ while len(sys.argv) > i:
                 else:
                     sl_inverse_cholesky.append(sl_args[sl_args_index])
     elif arg.startswith('--gpaw='):
-        extra_parameters.update(eval('dict(%s)' % arg[7:]))
+        extra_parameters = eval('dict(%s)' % arg[7:])
     elif arg == '--gpaw':
-        extra_parameters.update(eval('dict(%s)' % sys.argv.pop(i + 1)))
+        extra_parameters = eval('dict(%s)' % sys.argv.pop(i + 1))
     elif arg.startswith('--profile='):
         profile = arg.split('=')[1]
     else:
