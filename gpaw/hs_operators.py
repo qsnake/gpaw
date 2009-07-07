@@ -138,10 +138,6 @@ class Operator:
         if self.async:
             self.req.append(band_comm.send(sbuf_mG, rankm, 11, False))
             self.req.append(band_comm.receive(rbuf_mG, rankp, 11, False))
-        elif band_comm.size > 1 and band_comm.size % 2 != 0:
-            # Cyclic chains of blocking send/receives requires an even number.
-            raise NotImplementedError('Synchronous band-parallel operator' \
-                ' requires an even number of processors (if more than one).')
 
         # Auxiliary asyncronous cycle, also send/receive of P_ani's.
         if auxiliary:
@@ -190,12 +186,7 @@ class Operator:
             map(band_comm.wait, self.req)
         else:
             assert len(self.req) == 0, 'Got unexpected asynchronous requests.'
-            if (band_comm.rank % 2 == 0):
-                band_comm.send(sbuf_mG, rankm, 11)
-                band_comm.receive(rbuf_mG, rankp, 11)
-            else:
-                band_comm.receive(rbuf_mG, rankp, 11)
-                band_comm.send(sbuf_mG, rankm, 11)
+            band_comm.sendreceive(sbuf_mG, rankm, 11, rbuf_mG, rankp, 11)
         sbuf_mG, rbuf_mG = rbuf_mG, sbuf_mG
 
         # Auxiliary asyncronous cycle, also wait for P_ani's.
