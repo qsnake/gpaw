@@ -419,28 +419,44 @@ PyObject* construct_density(LFCObject *lfc, PyObject *args)
 	  double ifactor = cimag(factor);
 	  
 	  LFVolume* v2 = volume_i + i2;
+          const double* A2_gm = v2->A_gm;
 	  int M2 = v2->M;
 	  int nm2 = v2->nm;
 	  const double complex* rho_mm = rho_MM + M1 * nM + M2;
+          double rrho, irho, rwork, iwork;
+          complex double* rho_m;
+          complex double rho;
 	  for (int g = 0; g < nG; g++) {
-	    for (int m2 = 0; m2 < nm2; m2++) {
-	      for (int m1 = 0; m1 < nm1; m1++) {
-		complex double rho = rho_mm[m2 + m1 * nM];
-		double rrho = creal(rho);
-		double irho = cimag(rho);
-		double x = rfactor * rrho - ifactor * irho;
-		work_gm[m1 + g * nm1] += (v2->A_gm[g * nm2 + m2] * x);
-		//creal(rho_mm[m2 + m1 * nM] *
-		//factor));
+            int gnm1 = g * nm1;
+            int gnm2 = g * nm2;
+            int m1nM = 0;
+            for (int m1 = 0; m1 < nm1; m1++) {
+              int m1nM = m1 * nM;
+              //work = 0;
+              iwork = 0;
+              rwork = 0;
+              for (int m2 = 0; m2 < nm2; m2++) {
+		rho = rho_mm[m1nM + m2];
+		rrho = creal(rho);
+		irho = cimag(rho);
+                rwork += A2_gm[gnm2 + m2] * rrho;
+                iwork += A2_gm[gnm2 + m2] * irho;
+                // We could save one of those multiplications if the buffer
+                // were twice as large
+
+                //work += A2_gm[gnm2 + m2] * (rfactor * rrho - ifactor * irho);
 	      }
+              //work_gm[m1 + gnm1] += work;
+              work_gm[m1 + gnm1] += rwork * rfactor - iwork * ifactor;
 	    }
 	  }
 	}
 	int gm1 = 0;
+        const double* A1_gm = v1->A_gm;
 	for (int G = Ga; G < Gb; G++) {
 	  double nt = 0.0;
 	  for (int m1 = 0; m1 < nm1; m1++, gm1++) {
-	    nt += v1->A_gm[gm1] * work_gm[gm1];
+	    nt += A1_gm[gm1] * work_gm[gm1];
 	  }
 	  nt_G[G] += nt;
 	}
