@@ -69,9 +69,9 @@ def remove_pbc(atoms, h, s=None, d=0, centers_ic=None, cutoff=None):
         centers_ic = np.vstack((centers_ic, centers_ic))
         centers_ic[ni:, d] += L
         if cutoff is None:
-            cutoff = L
+            cutoff = L - 1e-3
     elif cutoff is None:
-        cutoff = 0.5 * L
+        cutoff = 0.5 * L - 1e-3
     pos_i = centers_ic[:, d]
     for i in range(nao):
         dpos_i = abs(pos_i - pos_i[i])

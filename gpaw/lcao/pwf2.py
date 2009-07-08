@@ -255,8 +255,7 @@ class ProjectedWannierFunctionsIBL:
         else:
             U_ow = self.U_ow[:, indices]
             U_Mw = self.U_Mw[:, indices]
-        #w_wG = np.tensordot(U_ow, psit_oG, axes=[[0], [0]]) # Do BLAS?
-        w_wG = np.empty((U_ow.shape[1],) + psit_oG.shape[1:])
+        w_wG = np.zeros((U_ow.shape[1],) + psit_oG.shape[1:])
         if len(U_ow) > 0:
             gemm(1., psit_oG, U_ow.T.copy(), 0., w_wG)
         bfs.lcao_to_grid(U_Mw.T.copy(), w_wG, q)
