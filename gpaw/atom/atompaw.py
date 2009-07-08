@@ -293,11 +293,9 @@ class AtomPAW(GPAW):
 
             # If there's no node at zero, we shouldn't set phit_g to zero
             # We'll make an ugly hack
-            absphit = np.abs(psit_G[:4])
-            if absphit[0] > absphit[1] > absphit[2] > absphit[3]:
+            if abs(phit_g[1]) > 3.0 * abs(phit_g[2] - phit_g[1]):
                 phit_g[0] = phit_g[1]
-            
             bf = BasisFunction(l, self.gd.rcut, phit_g,
-                               '%s%d e=%.3f f=%.3f' % ('spdf'[l], n, eps, f))
+                               '%s%d e=%.3f f=%.3f' % ('spdfgh'[l], n, eps, f))
             bf_j.append(bf)
         return basis

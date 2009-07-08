@@ -221,7 +221,7 @@ class HGHSetup:
         self.nj = nj
         self.l_j = l_j
         self.n_j = n_j
-
+        
         self.f_j = []
         self.rcut_j = []
         self.pt_jg = []
@@ -257,6 +257,8 @@ class HGHSetup:
         while acc_sqrnorm <= sqrtailnorm:
             g -= 1
             acc_sqrnorm += (r_g[g] * f_g[g])**2.0 * dr_g[g]
+            if r_g[g] < 0.5: # XXX
+                return g, r_g[g]
         return g, r_g[g]
 
     def expand_hamiltonian_matrix(self):
@@ -301,7 +303,7 @@ class HGHSetup:
         
         pl.plot(rcc, gcc * self.Delta0, 'b--', label='Comp charge [arb. unit]',
                 linewidth=3)
-        pl.legend(loc='center right')
+        pl.legend(loc='best')
 
         pl.subplot(212) # projectors
         for j, (n, l, pt_g) in enumerate(zip(self.n_j, self.l_j, self.pt_jg)):
@@ -350,13 +352,16 @@ class HGHSetup:
         b1 = SimpleBasis(self.symbol, range(max(self.l_j) + 1))
         
         f_ln = []
-        for l in self.l_j:
+        lmax = max(self.l_j)
+        occ = 0
+        for l in range(lmax + 1):
             f_n = []
             for f, n, l2 in zip(self.f_j, self.n_j, self.l_j):
-                if l2 == l:
+                if l2 == l and f != 0:
+                    occ += f
                     f_n.append(f)
             f_ln.append(f_n)
-        
+        assert abs(occ - self.Nv) < 1e-12
         apaw = AtomPAW(self.symbol, [f_ln], h=0.05, rcut=9.0,
                        basis={self.symbol: b1},
                        setups={self.symbol : self},
@@ -480,6 +485,7 @@ class HGHData:
         for v in self.v_l:
             txt('        l=%d: ' % v.l + ', '.join(['%8.05f' % h
                                                     for h in v.h_n]))
+            txt('\n')
         txt('\n')
 
     def nl_iter(self):
