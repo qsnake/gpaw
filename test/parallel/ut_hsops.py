@@ -10,9 +10,10 @@ import numpy as np
 
 try:
     # Matplotlib is not a dependency
-    import pylab as pl
+    import matplotlib as mpl
+    mpl.use('Agg')  # force the antigrain backend
 except (ImportError, RuntimeError):
-    pl = None
+    mpl = None
 
 from ase import Atoms, molecule
 from ase.units import Bohr
@@ -287,17 +288,10 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
     blocking = None
     async = None
 
-    # Display plots (if any) or save to file
-    showplots = None
-
     def setUp(self):
-        global numfigs
-        if 'numfigs' not in globals():
-            numfigs = 0
-
         UTBandParallelSetup.setUp(self)
 
-        for virtvar in ['allocated','dtype','blocking','async','showplots']:
+        for virtvar in ['allocated','dtype','blocking','async']:
             assert getattr(self,virtvar) is not None, 'Virtual "%s"!' % virtvar
 
         # Create randomized atoms
@@ -498,19 +492,19 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         try:
             self.assertAlmostEqual(np.abs(A_nn-A0_nn).max(), 0, digits)
         except AssertionError:
-            if world.rank == 0 and pl is not None:
-                global numfigs
-                fig = pl.figure(numfigs)
-                ax = pl.axes()
-                ax.set_title('%s: %s' % (self.__class__.__name__, keywords))
-                im = ax.imshow(np.abs(A_nn-A0_nn), cmap=pl.cm.jet, interpolation='nearest')
-                pl.colorbar(im)
-                numfigs += 1
-                if not self.showplots:
-                    from matplotlib.backends.backend_agg import FigureCanvasAgg
-                    img = 'ut_hsops_%s_%s.png' % (self.__class__.__name__, \
-                        '_'.join(keywords.split(',')))
-                    FigureCanvasAgg(fig).print_figure(img.lower(), dpi=90)
+            if world.rank == 0 and mpl is not None:
+                from matplotlib.figure import Figure
+                fig = Figure()
+                ax = fig.add_axes([0.0, 0.1, 1.0, 0.83])
+                ax.set_title(self.__class__.__name__)
+                im = ax.imshow(np.abs(A_nn-A0_nn), interpolation='nearest')
+                fig.colorbar(im)
+                fig.legend((im,), (keywords,), 'lower center')
+
+                from matplotlib.backends.backend_agg import FigureCanvasAgg
+                img = 'ut_hsops_%s_%s.png' % (self.__class__.__name__, \
+                    '_'.join(keywords.split(',')))
+                FigureCanvasAgg(fig).print_figure(img.lower(), dpi=90)
             raise
 
     def get_optimal_number_of_blocks(self, blocking='fast'):
@@ -811,7 +805,6 @@ def UTConstantWavefunctionFactory(dtype, parstride_bands, blocking, async):
         parstride_bands = parstride_bands
         blocking = blocking
         async = async
-        showplots = (__name__ == '__main__')
     MetaPrototype.__name__ = classname
     return MetaPrototype
 
@@ -853,8 +846,4 @@ if __name__ in ['__main__', '__builtin__']:
         # Provide feedback on failed tests if imported by test.py
         if __name__ == '__builtin__' and not testresult.wasSuccessful():
             raise SystemExit('Test failed. Check ut_hsops.log for details.')
-
-    global numfigs
-    if numfigs > 0:
-        pl.show()
 
