@@ -3,7 +3,7 @@ from gpaw.utilities.tools import tri2full
 from ase.units import Hartree
 import cPickle as pickle
 import numpy as np
-from gpaw.mpi import world, rank
+from gpaw.mpi import world, rank, MASTER
 
 
 def get_bf_centers(atoms):
@@ -171,47 +171,39 @@ def dump_hamiltonian_parallel(filename, atoms, direction=None):
         fd.close()
 
 
-def get_lead_lcao_hamiltonian(calc, usesymm=False):
-    S_qMM = calc.wfs.S_qMM.copy()
-    H_sqMM = np.empty((calc.wfs.nspins,) + S_qMM.shape, calc.wfs.dtype)
+def get_lcao_hamiltonian(calc):
+    if calc.wfs.S_qMM is None:
+        calc.wfs.set_positions(calc.get_atoms().get_scaled_positions() % 1)
+    dtype = calc.wfs.dtype
+    NM = calc.wfs.eigensolver.nao
+    Nk = calc.wfs.nibzkpts
+    Ns = calc.wfs.nspins
+    
+    S_kMM = np.zeros((Nk, NM, NM), dtype)
+    H_skMM = np.zeros((Ns, Nk, NM, NM), dtype)
     for kpt in calc.wfs.kpt_u:
         calc.wfs.eigensolver.calculate_hamiltonian_matrix(
             calc.hamiltonian, calc.wfs, kpt)
-        H_sqMM[kpt.s, kpt.q] = calc.wfs.eigensolver.H_MM * Hartree
-        tri2full(S_qMM[kpt.q])
-        tri2full(H_sqMM[kpt.s, kpt.q])
-    return lead_kspace2realspace(H_sqMM, S_qMM, calc.wfs.ibzk_kc,
-                                 calc.wfs.weight_k, 'x', usesymm)
+        if kpt.s == 0:
+            S_kMM[kpt.k] = calc.wfs.S_qMM[kpt.q]
+            tri2full(S_kMM[kpt.k])
+        H_skMM[kpt.s, kpt.k] = calc.wfs.eigensolver.H_MM * Hartree
+        tri2full(H_skMM[kpt.s, kpt.k])
+    calc.wfs.kpt_comm.sum(S_kMM, MASTER)
+    calc.wfs.kpt_comm.sum(H_skMM, MASTER)
+    if rank == MASTER:
+        return H_skMM, S_kMM
+    else:
+        return None, None
 
 
-def get_hamiltonian(atoms):
-    """Calculate the Hamiltonian and overlap matrix."""
-    calc = atoms.calc
-    Ef = calc.get_fermi_level()
-    eigensolver = calc.wfs.eigensolver
-    hamiltonian = calc.hamiltonian
-    Vt_skmm = eigensolver.Vt_skmm
-    print "Calculating effective potential matrix (%i)" % rank 
-    hamiltonian.calculate_effective_potential_matrix(Vt_skmm)
-    ibzk_kc = calc.ibzk_kc
-    nkpts = len(ibzk_kc)
-    nspins = calc.nspins
-    weight_k = calc.weight_k
-    nao = calc.nao
-    h_skmm = np.zeros((nspins, nkpts, nao, nao), complex)
-    s_kmm = np.zeros((nkpts, nao, nao), complex)
-    for k in range(nkpts):
-        s_kmm[k] = hamiltonian.S_kmm[k]
-        tri2full(s_kmm[k])
-        for s in range(nspins):
-            h_skmm[s,k] = calc.eigensolver.get_hamiltonian_matrix(hamiltonian,
-                                                                  k=k,
-                                                                  s=s)
-            tri2full(h_skmm[s, k])
-            h_skmm[s,k] *= Hartree
-            h_skmm[s,k] -= Ef * s_kmm[k]
-
-    return h_skmm, s_kmm
+def get_lead_lcao_hamiltonian(calc, usesymm=False):
+    H_skMM, S_kMM = get_lcao_hamiltonian(calc)
+    if rank == MASTER:
+        return lead_kspace2realspace(H_skMM, S_kMM, calc.wfs.ibzk_kc,
+                                     calc.wfs.weight_k, 'x', usesymm)
+    else:
+        return None, None
 
 
 def lead_kspace2realspace_fromfile(filename, direction='x', usesymm=None):
