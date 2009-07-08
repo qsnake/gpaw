@@ -53,79 +53,254 @@ for R in points:
     y += 1
 
 class YLExpansion:
-    def __init__(self, n_sLg, Y_yL):
+    def __init__(self, n_sLg, Y_yL, lmax, ng, rgd):
         self.n_sLg = n_sLg
         self.Y_yL = Y_yL
+        self.lmax = lmax
+        self.Lmax = (self.lmax+1)**2
+        self.ng = ng
+        self.rgd = rgd
 
     def __iter__(self):
         raise NotImplementedError
 
 
 class DensityExpansion(YLExpansion):
-    def __init__(self, n_sLg, Y_yL, ng):
-        YLExpansion.__init__(self, n_sLg, Y_yL)
+    def __init__(self, n_sLg, Y_yL, lmax, ng, rgd):
+        YLExpansion.__init__(self, n_sLg, Y_yL, lmax, ng, rgd)
         self.n_sg = npy.zeros((len(n_sLg), ng))
         
     def __iter__(self):
+        """Expand the density on angular slices
+
+        n_g = \sum_L Y_L n_Lg
+        """
+        
         for Y_L in self.Y_yL:
             #self.n_sg[:] = npy.dot(Y_L, self.n_sLg) # This is slower!???
             for s, n_Lg in enumerate(self.n_sLg):
                 self.n_sg[s] = npy.dot(Y_L, n_Lg) 
             yield self.n_sg
 
+    def get_gradient_expansion(self):
+        """Return GradiendExpansion object, which will yield the gradient of this density
+        """
+
+        # Calculate the radial derivatives of the density expansion dn/dr
+        dndr_sLg = npy.zeros((len(self.n_sLg), self.Lmax, self.ng))
+        for L in range(self.Lmax):
+            for s, n_Lg in enumerate(self.n_sLg):
+                self.rgd.derivative(self.n_sLg[s][L], dndr_sLg[s][L])
+
+        # Create GradientExpansion object
+        return GradientExpansion(self.n_sLg, self.Y_yL, dndr_sLg, self.lmax, self.ng, self.rgd)
+
+class GradientSlice:
+    """GradientSlice stored all possible information regarding spin paired/polarized radial gradient slice.
+    """
+    
+    def __init__(self, a1x_sg, a1y_sg, a1z_sg, a2_sg, a1_sg, deda2_sg, A_Li):
+        self.a1x_sg = a1x_sg
+        self.a1y_sg = a1y_sg
+        self.a1z_sg = a1z_sg
+        self.a2_sg = a2_sg
+        self.a1_sg = a1_sg
+        self.deda2_sg = deda2_sg
+        self.A_Li = A_Li
+
+    def get_total_deda2(self):
+        if len(self.deda2_sg) == 1:
+            return self.deda2_sg[0]
+        else:
+            return self.deda2_sg[0]+self.deda2_g[1]
+
+    def get_deda2_g(self, s):
+        return self.deda2_sg[s]
+
+    def get_a2_g(self, s):
+        return self.a2_sg[s]
+
+    def get_total_a2_g(self):
+        if len(self.deda2_sg) == 1:
+            return self.a2_sg[0]
+        else:
+            return self.a2_sg[0]+self.a2_sg[1]
+
+    def get_total_a1_g(self):
+        if len(self.deda2_sg) == 1:
+            return self.a1_sg[0]
+        else:
+            return self.a1_sg[0]+self.a1_sg[1]
+
+    def get_A_Li(self):
+        return self.A_Li
+   
+    def get_total_a1c(self):
+        if len(self.deda2_sg) == 1:
+            return self.a1x_sg[0], self.a1y_sg[0], self.a1z_sg[0]
+        else:
+            return self.a1x_sg[0]+self.a1x_sg[1], self.a1y_sg[0]+self.a1y_sg[1], self.a1z_sg[0]+self.a1z_sg[1]
+        
 class GradientExpansion(YLExpansion):
-    def __init__(self, n_sLg, Y_yL, dndr_sLg, lmax):
-        YLExpansion.__init__(self, n_sLg, Y_yL)
+    def __init__(self, n_sLg, Y_yL, dndr_sLg, lmax, ng, rgd):
+        YLExpansion.__init__(self, n_sLg, Y_yL, lmax, ng, rgd)
         self.dndr_sLg = dndr_sLg
-        #self.lmax = lmax       
-        self.Lmax = (lmax + 1)**2
+
+        # Preallocate arrays
+        self.a1x_sg = npy.zeros((len(n_sLg), ng))
+        self.a1y_sg = npy.zeros((len(n_sLg), ng))
+        self.a1z_sg = npy.zeros((len(n_sLg), ng))
+        self.a2_sg = npy.zeros((len(n_sLg), ng))
+        self.a1_sg =  npy.zeros((len(n_sLg), ng))
+        self.deda2_sg = npy.zeros((len(n_sLg), ng)) # spin-wise deda
+        self.deda2_g = npy.zeros((ng,)) # total deda
 
     def __iter__(self):
-        # TODO: Can preallocation of arrays speed this up
+        """Iterate through all gradient slices
+
+        Some explanations
+
+        If density is
+        
+        n_g = \sum_L Y_L n_Lg.
+
+        The goal is to calculate
+                __          __             __             __  
+        a2_g = |\/n_g|^2 = (\/_x n_g)^2 + (\/_y n_g)^2 + (\/_z n_g)^2.
+
+        The gradient to x direction of n_g is
+        __                 __                           __
+        \/_x n_g = \sum_L (\/_x Y_L) n_Lg + \sum_L Y_L (\/_x n_Lg).
+
+        For the radial part we calculate
+        a2_g (rad) = (dn_g/dr dr/dx)^2 + (dn_g/dr dr/dy)^2 + (dn_g/dr dr/dy)^2
+
+        r = sqrt(x^2+y^2+z^2)
+        dr/dx = x/sqrt(x^2+y^2+z^2)
+        ==> 
+        a2_g (rad) = (dn/dr)^2
+
+        and since obviously dY_L/dr = 0,
+
+        a1_g := (dn/dr)_g = \sum_L Y_L dndr_Lg
+        a2_g (rad) = a1_g**2
+
+        For the angular part we calculate
+
+        In code we have
+                        __
+        a1x_g = \sum_L (\/_x Y_L) n_Lg = \sum_L A_Lx n_Lg,
+                        __
+        a1y_g = \sum_L (\/_y Y_L) n_Lg = \sum_L A_Ly n_Lg,
+                        __
+        a1z_g = \sum_L (\/_z Y_L) n_Lg = \sum_L A_Lz n_Lg,
+                     __
+        where A_Li = \/_i Y_L.
+
+        Why do we divide bu r^2???. This results
+        
+        a2_g (ang) = (a1_g^2 + a1y_g^2 + a1z_g^2) / r^2
+
+        Thus to combine, we have
+
+        a2_g = a2_g (rad) + a2_g (ang)
+
+        """
         # TODO: No spin polarized gradients implemented
-        assert len(dndr_sLg) == 1
-        dndr_Lg = self.dndr_sLg[0]
+        #assert len(dndr_sLg) == 1
+        #dndr_Lg = self.dndr_sLg[0]
         
         for y, Y_L in enumerate(self.Y_yL):
             A_Li = A_Liy[:self.Lmax, :, y]
-            #a2_g = (npy.tensordot(A_Li, self.n_Lg, axes=[0,0])**2).sum(axis=0)
-            a2_g = (npy.dot(A_Li[:, 0], self.n_Lg)**2+
-                    npy.dot(A_Li[:, 1], self.n_Lg)**2+
-                    npy.dot(A_Li[:, 2], self.n_Lg)**2)
-            a2_g = a1x_g**2 + a1y_g**2 + a1z_g**2
-            a2_g[1:] /= r_g[1:]**2
-            a2_g[0] = a2_g[1]
-            a1_g = npy.dot(Y_L, self.dndr_Lg)
-            a2_g += a1_g**2
-            yield a2_g
+            for s in range(len(self.n_sLg)):
+                #                __
+                #a1x_g = \sum_L (\/_x Y_L) n_Lg = \sum_L A_Lx n_Lg,
+                self.a1x_sg[s,:] = npy.dot(A_Li[:, 0], self.n_sLg[s])
+                self.a1y_sg[s,:] = npy.dot(A_Li[:, 1], self.n_sLg[s])
+                self.a1z_sg[s,:] = npy.dot(A_Li[:, 2], self.n_sLg[s])
+
+                # a2_g (ang) = (a1_g^2 + a1y_g^2 + a1z_g^2) / r^2
+                self.a2_sg[s,:] = self.a1x_sg[s]**2 + self.a1y_sg[s]**2 + self.a1z_sg[s]**2
+                self.a2_sg[s,1:] /= self.rgd.r_g[1:]**2
+                self.a2_sg[s,0] = self.a2_sg[s,1]
+                
+                # a1_g (rad) = (dn/dr)^2
+                self.a1_sg[s,:] = npy.dot(Y_L, self.dndr_sLg[s])
+
+                # a2_g = a2_g (ang) + a1_g (rad)**2
+                self.a2_sg[s,:] += self.a1_sg[s]**2
+            yield GradientSlice(self.a1x_sg, self.a1y_sg, self.a1z_sg,
+                                self.a2_sg, self.a1_sg, self.deda2_sg, A_Li)
 
 class Integrator:
-    def __init__(self, H_sp, weights, Y_yL, n_qg, nt_qg, B_pqL, dv_g):
+    def __init__(self, H_sp, weights, Y_yL, B_pqL, rgd):
         self.H_sp = H_sp
         self.weights = weights
         self.Y_yL = Y_yL
-        self.n_qg = n_qg
-        self.nt_qg = nt_qg
         self.B_pqL = B_pqL
-        self.dv_g = dv_g
-        
+        self.rgd = rgd
+        self.dv_g = rgd.dv_g
+
     def __iter__(self):
         for w, Y_L in zip(self.weights, self.Y_yL):
             yield [w, Y_L]
 
-    def integrate_H_sp(self, i_slice, v_sg, vt_sg):
-        # TODO: Gradient integration missing
+    def integrate_H_sp(self, coeff, i_slice, v_sg, n_qg, grad=None):
+        """Integrates given potential on given radial slice and adds the result to H_sp
+
+        coeff Multiply the integration result with this constant before adding to H_sp
+        i_slice Slice definition given by integrator iterator.
+        v_sg The potential to integrate.
+        n_qg All possible pair of partial waves
+        grad GradientSlice object with all possible details needed for gradient
+        """
+
         w, Y_L = i_slice
         s = 0
-        for v_g, vt_g in zip(v_sg, vt_sg):
-            dEdD_q = npy.dot(self.n_qg, v_g * self.dv_g)
-            dEdD_q -= npy.dot(self.nt_qg, vt_g * self.dv_g)
-            self.H_sp[s] += npy.dot(dot3(self.B_pqL, Y_L), dEdD_q) * w
-            s += 1
+        # Pure LDA
+        if grad == None:
+            for v_g in v_sg:
+                dEdD_q = coeff*npy.dot(n_qg, v_g * self.dv_g)
+                self.H_sp[s] += npy.dot(dot3(self.B_pqL, Y_L), dEdD_q) * w
+                s += 1
+        else:
+            # GGA functional
+
+            # Do the common part for spin-paired and spin-polarized
+            # TODO: Spin-polarized doesn't work
+            deda2_g = grad.get_total_deda2()
+            a1_g = grad.get_total_a1_g()
+            a1x_g, a1y_g, a1z_g = grad.get_total_a1c()
+            A_Li = grad.get_A_Li()
+                
+            x_g = -2.0 * deda2_g * self.dv_g * a1_g
+            self.rgd.derivative2(x_g, x_g)
+            
+            gdEdD_p = npy.dot(dot3(self.B_pqL, Y_L),
+                              npy.dot(n_qg, x_g))
+            x_g = 8.0 * pi * deda2_g * self.rgd.dr_g
+            gdEdD_p += npy.dot(dot3(self.B_pqL,
+                                    A_Li[:, 0]),
+                               npy.dot(n_qg, x_g * a1x_g))
+            gdEdD_p += npy.dot(dot3(self.B_pqL,
+                                    A_Li[:, 1]),
+                               npy.dot(n_qg, x_g * a1y_g))
+            gdEdD_p += npy.dot(dot3(self.B_pqL,
+                                    A_Li[:, 2]),
+                                npy.dot(n_qg, x_g * a1z_g))
+
+            for v_g in v_sg:
+                dEdD_q = npy.dot(n_qg, v_g * self.dv_g) # LDA part
+                self.H_sp[s] += coeff*w*(npy.dot(dot3(self.B_pqL, Y_L), dEdD_q) + gdEdD_p)
+                s += 1
 
     def integrate_E(self, i_slice, E):
         w, Y_L = i_slice
         return E * w
+
+    def integrate_e_g(self, i_slice, e_g):
+        w, Y_L = i_slice
+        return npy.dot(self.dv_g, e_g) * w
             
 class XCCorrection:
     def __init__(self,
@@ -210,7 +385,7 @@ class XCCorrection:
             if core:
                 n_Lg[0] += (1.0 / len(D_sp)) * self.nc_g * sqrt(4 * pi)
             n_sLg.append(n_Lg)
-        return DensityExpansion(n_sLg, self.Y_yL, self.ng)
+        return DensityExpansion(n_sLg, self.Y_yL, self.lmax, self.ng, self.rgd)
     
     def expand_pseudo_density(self, D_sp, core=True):
         n_sLg = []
@@ -222,42 +397,76 @@ class XCCorrection:
             if core:
                 n_Lg[0] += (1.0/len(D_sp))*self.nct_g * sqrt(4 * pi)
             n_sLg.append(n_Lg)
-        return DensityExpansion(n_sLg, self.Y_yL, self.ng)
-
-    def expand_gradient(self, D_sp, core=True):
-        raise NotImplementedError
-    
-    def expand_pseudo_gradient(self, D_sp, core=True):
-        raise NotImplementedError
+        return DensityExpansion(n_sLg, self.Y_yL, self.lmax, self.ng, self.rgd)
 
     def get_integrator(self, H_sp):
-        return Integrator(H_sp, self.weights, self.Y_yL,
-                          self.n_qg, self.nt_qg, self.B_pqL, self.dv_g)
+        return Integrator(H_sp, self.weights, self.Y_yL, self.B_pqL, self.rgd)
 
-    def get_energy_and_potential_slice(self, n_sg, vxc_sg):
+    def calculate_potential_slice(self, e_g, n_sg, vxc_sg, grad=None):
+        xcfunc = self.xc.get_functional()
         vxc_sg[:] = 0.0
-        if len(n_sg) == 1:
-            return self.xc.get_energy_and_potential(n_sg[0], vxc_sg[0])
+        if grad==None:
+            if len(n_sg) == 1:
+                xcfunc.calculate_spinpaired(e_g, n_sg[0], vxc_sg[0])
+            else:
+                xcfunc.calculate_spinpolarized(e_g, n_sg[0], vxc_sg[0],
+                                               n_sg[1], vxc_sg[1])
         else:
-            return self.xc.get_energy_and_potential(n_sg[0], vxc_sg[0],
-                                                    n_sg[1], vxc_sg[1])            
+            if len(n_sg) == 1:
+                xcfunc.calculate_spinpaired(e_g, n_sg[0], vxc_sg[0], grad.get_a2_g(0), grad.get_deda2_g(0))
+            else:
+                # Spin-polarized GGA not implemented
+                raise NotImplementedError
 
     def LDA_new(self, D_sp, H_sp):
-        vxc_sg = npy.zeros((len(D_sp), self.ng))
-        vxct_sg = npy.zeros((len(D_sp), self.ng))
-        integrator = self.get_integrator(H_sp)
-        Etot = 0
         for H_p in H_sp:        
             H_p[:] = 0.0
-            
-        # Zip makes the iterators to be calculated instantly, which is not good
+
+        vxc_sg = npy.zeros((len(D_sp), self.ng))
+        vxct_sg = npy.zeros((len(D_sp), self.ng))
+        e_g = npy.zeros((self.ng,))
+        integrator = self.get_integrator(H_sp)
+        Etot = 0
+
         for n_sg, nt_sg, i_slice in izip(self.expand_density(D_sp),
                                          self.expand_pseudo_density(D_sp),
                                          integrator):
-            E = self.get_energy_and_potential_slice(n_sg, vxc_sg)
-            E-= self.get_energy_and_potential_slice(nt_sg, vxct_sg)
-            integrator.integrate_H_sp(i_slice, vxc_sg, vxct_sg)
-            Etot += integrator.integrate_E(i_slice, E)
+            self.calculate_potential_slice(e_g, n_sg, vxc_sg)
+            Etot += integrator.integrate_e_g(i_slice, e_g)
+            integrator.integrate_H_sp(1.0, i_slice, vxc_sg, self.n_qg)
+
+            self.calculate_potential_slice(e_g, nt_sg, vxct_sg)
+            Etot -= integrator.integrate_e_g(i_slice, e_g)
+            integrator.integrate_H_sp(-1.0, i_slice, vxct_sg, self.nt_qg)
+
+        return Etot
+
+    def GGA_new(self, D_sp, H_sp):
+        for H_p in H_sp:        
+            H_p[:] = 0.0
+
+        vxc_sg = npy.zeros((len(D_sp), self.ng))
+        vxct_sg = npy.zeros((len(D_sp), self.ng))
+        e_g = npy.zeros((self.ng,))
+        
+        integrator = self.get_integrator(H_sp)
+        Etot = 0
+        
+        density_iter = self.expand_density(D_sp)
+        pseudo_density_iter = self.expand_pseudo_density(D_sp)
+        for n_sg, nt_sg, grad, gradt, i_slice in izip(density_iter, 
+                                                            pseudo_density_iter,
+                                                            density_iter.get_gradient_expansion(),
+                                                            pseudo_density_iter.get_gradient_expansion(),
+                                                            integrator):
+            self.calculate_potential_slice(e_g, n_sg, vxc_sg, grad)
+            Etot += integrator.integrate_e_g(i_slice, e_g)
+            integrator.integrate_H_sp(1.0, i_slice, vxc_sg, self.n_qg, grad=grad)
+            
+            self.calculate_potential_slice(e_g, nt_sg, vxct_sg, gradt)
+            Etot -= integrator.integrate_e_g(i_slice, e_g)
+            integrator.integrate_H_sp(-1.0, i_slice, vxct_sg, self.nt_qg, grad=gradt)
+
         return Etot
             
     def calculate_energy_and_derivatives(self, D_sp, H_sp, a=None):
@@ -275,12 +484,13 @@ class XCCorrection:
         
         if self.xc.get_functional().gga:
             if self.xc.get_functional().uses_libxc:
+                #return self.GGA_new(D_sp, H_sp) - self.Exc0  # Uncomment me to test new xc_correction
                 return self.GGA_libxc(D_sp, H_sp)
             else:
+                #return self.GGA_new(D_sp, H_sp) - self.Exc0  # Uncomment me to test new xc_correction
                 return self.GGA(D_sp, H_sp)
             
-        #Enable this line to test new XC_Correction methods-56.64230
-        #return self.LDA_new(D_sp, H_sp) - self.Exc0
+        #return self.LDA_new(D_sp, H_sp) - self.Exc0  # Uncomment me to test new xc_correction
 
         E = 0.0
         if len(D_sp) == 1:
