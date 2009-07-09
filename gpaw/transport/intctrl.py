@@ -47,8 +47,11 @@ class IntCtrl:
             dkt = 10 * npy.pi * self.kt
             #self.eqintpath = [-20.0, -20.0 + dkt * 1.j, -nkt + dkt * 1.j,
             #                  dkt * 1.j + nkt]
-            self.eqintpath = [-50, -50 + 10*1.j, -nkt + 5*1.j,
-                                         -nkt + dkt * 1.j, dkt *1.j +nkt]
+            self.eqintpath = [-50, 
+                              -50 + (10 + dkt)*1.j, 
+                              -nkt + (10 + dkt)* 1.j, 
+                              -nkt + dkt * 1.j, 
+                               dkt *1.j +nkt]
             self.eqdelta = dkt
             nRes = 10
             if abs( nRes - (npy.round((nRes - 1) / 2) * 2 + 1)) < 1e-3 :
