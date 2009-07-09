@@ -255,6 +255,9 @@ class AtomPAW(GPAW):
         self.occupations = AtomOccupations(f_sln)
         self.initialize(Atoms(symbol, calculator=self))
         self.calculate(converge=True)
+
+    def dry_run(self):
+        pass
         
     def state_iter(self):
         """Yield the tuples (l, n, f, eps, psit_G) of states.

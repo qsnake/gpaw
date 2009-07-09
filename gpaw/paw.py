@@ -521,13 +521,15 @@ class PAW(PAWTextOutput):
             xcfunc.initialize_gllb(self)
 
         if dry_run:
-            self.print_cell_and_parameters()
-            self.print_memory_estimate(self.txt, maxdepth=2)
-            self.txt.flush()
-            raise SystemExit
-
+            self.dry_run()
+            
         self.initialized = True
 
+    def dry_run(self):
+        self.print_cell_and_parameters()
+        self.print_memory_estimate(self.txt, maxdepth=2)
+        self.txt.flush()
+        raise SystemExit
 
     def attach(self, function, n, *args, **kwargs):
         """Register observer function.
