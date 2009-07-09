@@ -11,7 +11,7 @@ import gpaw
 from gpaw import GPAW, extra_parameters
 from gpaw import Mixer, MixerDif, PoissonSolver
 from gpaw import restart as restart_gpaw
-from gpaw.transport.tools import k2r_hs, r2k_hs, tri2full, dot
+from gpaw.transport.tools import k2r_hs, r2k_hs, tri2full, dot, Se_Sparse_Matrix
 from gpaw.transport.intctrl import IntCtrl
 from gpaw.transport.surrounding import Surrounding
 from gpaw.grid_descriptor import GridDescriptor
@@ -1364,12 +1364,10 @@ class Transport(GPAW):
         self.tgtint = []
         for i in range(self.lead_num):
             nblead = self.nblead[i]
-            self.tgtint.append(np.empty([maxintcnt, nblead, nblead],
-                                                       complex))
+            self.tgtint.append([])
         for i in range(self.env_num):
             nbenv = self.nbenv[i]
-            self.tgtint.append(np.empty([maxintcnt, nbenv, nbenv],
-                                                           complex))
+            self.tgtint.append([])
         self.cntint = -1
 
         self.reset_lead_hs(s, k)        
@@ -1437,12 +1435,12 @@ class Transport(GPAW):
         self.tgtint = []
         for i in range(self.lead_num):
             nblead = self.nblead[i]
-            self.tgtint.append(np.empty([maxintcnt, nblead, nblead], complex))
+            self.tgtint.append([])
         
         for i in range(self.env_num):
             nbenv = self.nbenv[i]
-            self.tgtint.append(np.empty([maxintcnt, nbenv, nbenv],
-                                                                     complex))
+            self.tgtint.append([])
+
         self.reset_lead_hs(s, k)
         if self.use_env:
             print 'Attention here, maybe confusing npk and nk'
@@ -1611,27 +1609,17 @@ class Transport(GPAW):
                 env_gamma = np.zeros([self.env_num, nbmol, nbmol], complex)
             if self.cntint + 1 >= len(self.zint):
                 self.zint += [0] * stepintcnt
-                for n in range(self.lead_num):
-                    nblead = self.nblead[n]
-                    tmp = self.tgtint[n].shape[0]
-                    tmptgt = np.copy(self.tgtint[n])
-                    self.tgtint[n] = np.empty([tmp + stepintcnt,
-                                                nblead, nblead], complex)
-                    self.tgtint[n][:tmp] = tmptgt
-                if self.use_env:
-                    nl = self.lead_num
-                    for n in range(self.env_num):
-                        nbenv = self.nbenv[n]
-                        tmp = self.tgtint[n + nl].shape[0]
-                        tmptgt = np.copy(self.tgtint[n + nl])
-                        self.tgtint[n + nl] = np.empty([tmp + stepintcnt,
-                                                       nbenv, nbenv], complex)
-                        self.tgtint[n + nl][:tmp] = tmptgt
+
             self.cntint += 1
             self.zint[self.cntint] = zp[i]
 
             for j in range(self.lead_num):
-                self.tgtint[j][self.cntint] = self.selfenergies[j](zp[i])
+                if j == 0:
+                    tri_type = 'L'
+                else:
+                    tri_type = 'R'
+                tgt = Se_Sparse_Matrix(self.selfenergies[j](zp[i]), tri_type) 
+                self.tgtint[j].append(tgt)
             
             if self.use_env:
                 nl = self.lead_num
@@ -1643,8 +1631,9 @@ class Transport(GPAW):
                 ind = self.inner_lead_index[j]
                 dim = len(ind)
                 ind = np.resize(ind, [dim, dim])
-                sigma[ind.T, ind] += self.tgtint[j][self.cntint]             
-                gamma[j, ind.T, ind] += self.selfenergies[j].get_lambda(zp[i])
+                tgt = self.tgtint[j][self.cntint].restore()     
+                sigma[ind.T, ind] +=  tgt       
+                gamma[j, ind.T, ind] += 1.j *(tgt - tgt.T.conj())
             
             if self.use_env:
                 nl = self.lead_num
@@ -1784,7 +1773,7 @@ class Transport(GPAW):
                 ind = self.inner_lead_index[n]
                 dim = len(ind)
                 ind = np.resize(ind, [dim, dim])
-                sigma[ind.T, ind] += pathinfo.sigma[n][i]
+                sigma[ind.T, ind] += pathinfo.sigma[n][i].restore()
             if self.use_env:
                 nl = self.lead_num
                 for n in range(self.env):
@@ -1798,7 +1787,7 @@ class Transport(GPAW):
                 ind = self.inner_lead_index[n]
                 dim = len(ind)
                 ind = np.resize(ind, [dim, dim])                
-                sigmatmp = pathinfo.sigma[n][i]
+                sigmatmp = pathinfo.sigma[n][i].restore()
                 if ov == 'occ':
                     fermifactor = np.real(pathinfo.fermi_factor[n][0][i])
                 elif ov == 'vir':
@@ -1846,7 +1835,7 @@ class Transport(GPAW):
                 ind = self.inner_lead_index[n]
                 dim = len(ind)
                 ind = np.resize(ind, [dim, dim])
-                sigma[ind.T, ind] += pathinfo.sigma[n][i]
+                sigma[ind.T, ind] += pathinfo.sigma[n][i].restore()
             if self.use_env:
                 nl = self.lead_num
                 for n in range(self.env_num):
