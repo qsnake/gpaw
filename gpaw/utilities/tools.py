@@ -327,6 +327,19 @@ def md5_array(data, numeric=False):
     else:
         return datahash.hexdigest()
 
+def split_nodes(length, parrank, parsize):
+    """Split length over nodes.
+
+    Divide length into parsize even sized chunks, and return the start/end
+    indices of the parrank'th chunk.
+    """
+    if parsize == 1:
+        return 0, length
+    pernode = int(round(length / float(parsize)))
+    if parrank == parsize - 1:
+        return parrank * pernode, length
+    return parrank * pernode, (parrank + 1) * pernode
+
 class Spline:
     def __init__(self, xi, yi, leftderiv=None, rightderiv=None):
         """Cubic spline approximation class.
