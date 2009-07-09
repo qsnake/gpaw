@@ -195,6 +195,7 @@ tests_parallel = [
     'parallel/par6.py',
     'parallel/exx.py',
     'parallel/domain_only.py',
+    'parallel/lcao_hamiltonian.py',
     ]
 
 if opt.run_failed_tests_only:
