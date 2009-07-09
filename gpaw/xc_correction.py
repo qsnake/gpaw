@@ -5,6 +5,7 @@ from math import pi, sqrt
 
 import numpy as npy
 
+from gpaw import extra_parameters
 from gpaw.gaunt import gaunt
 from gpaw.spherical_harmonics import YL
 
@@ -312,7 +313,7 @@ class Integrator:
         return npy.dot(self.dv_g, e_g) * w
 
 
-class XCCorrection:
+class BaseXCCorrection:
     def __init__(self,
                  xc,    # radial exchange-correlation object
                  w_jg,  # all-lectron partial waves
@@ -389,6 +390,184 @@ class XCCorrection:
                 self.nca_g = 0.5 * (nc_g - ncorehole_g)
                 self.ncb_g = 0.5 * (nc_g + ncorehole_g)
 
+    def calculate_energy_and_derivatives(self, D_sp, H_sp, a=None):
+        if self.xc.get_functional().is_gllb():
+            # The coefficients for GLLB-functional are evaluated elsewhere
+            return self.xc.xcfunc.xc.calculate_energy_and_derivatives(
+                D_sp, H_sp, a)
+        if self.xc.get_functional().mgga:
+            if self.xc.get_functional().uses_libxc:
+                return self.MGGA_libxc(D_sp, H_sp)
+            else:
+                return self.MGGA(D_sp, H_sp)
+        if self.xc.get_functional().gga:
+            if self.xc.get_functional().uses_libxc:
+                return self.GGA_libxc(D_sp, H_sp)
+            else:
+                return self.GGA(D_sp, H_sp)
+        return self.LDA(D_sp, H_sp)
+
+    def two_phi_integrals(self, D_sp):
+        """Evaluate the integral in the augmentation sphere.
+
+        ::
+
+                      /
+          I_{i1 i2} = | d r [ phi_i1(r) phi_i2(r) v_xc[n](r) -
+                      /       tphi_i1(r) tphi_i2(r) v_xc[tn](r) ]
+                      a
+
+        The input D_sp is the density matrix in packed(pack) form
+        The result is given in packed(pack2) form.
+        """
+        I_sp = npy.zeros(D_sp.shape)
+        self.calculate_energy_and_derivatives(D_sp, I_sp)
+        return I_sp
+
+    def four_phi_integrals(self, D_sp, fxc):
+        """Calculate four-phi integrals.
+
+        The density is given by the density matrix ``D_sp`` in packed(pack)
+        form, and the resulting rank-four tensor is also returned in
+        packed format. ``fxc`` is a radial object???
+        """
+
+        ns, np = D_sp.shape
+
+        assert ns == 1 and not self.xc.get_functional().gga
+
+        dot = npy.dot
+
+        D_p = D_sp[0]
+        D_Lq = npy.dot(self.B_Lqp, D_p)
+
+        # Expand all-electron density in spherical harmonics:
+        n_qg = self.n_qg
+        n_Lg = dot(D_Lq, n_qg)
+        n_Lg[0] += self.nc_g * sqrt(4 * pi)
+
+        # Expand pseudo electron density in spherical harmonics:
+        nt_qg = self.nt_qg
+        nt_Lg = dot(D_Lq, nt_qg)
+        nt_Lg[0] += self.nct_g * sqrt(4 * pi)
+
+        # Allocate array for result:
+        J_pp = npy.zeros((np, np))
+
+        # Loop over 50 points on the sphere surface:
+        for w, Y_L in zip(self.weights, self.Y_yL):
+            B_pq = npy.dot(self.B_pqL, Y_L)
+
+            fxcdv = fxc(dot(Y_L, n_Lg)) * self.dv_g
+            dn2_qq = npy.inner(n_qg * fxcdv, n_qg)
+
+            fxctdv = fxc(dot(Y_L, nt_Lg)) * self.dv_g
+            dn2_qq -= npy.inner(nt_qg * fxctdv, nt_qg)
+
+            J_pp += w * npy.dot(B_pq, npy.inner(dn2_qq, B_pq))
+
+        return J_pp
+
+    def create_kinetic(self,jlL,jl,ny,np,phi_jg,tau_ypg):
+        """Short title here.
+        
+        kinetic expression is::
+
+                                             __         __ 
+          tau_s = 1/2 Sum_{i1,i2} D(s,i1,i2) \/phi_i1 . \/phi_i2 +tauc_s
+
+        here the orbital dependent part is calculated::
+
+          __         __         
+          \/phi_i1 . \/phi_i2 = 
+                      __    __
+                      \/YL1.\/YL2 phi_j1 phi_j2 +YL1 YL2 dphi_j1 dphi_j2
+                                                         ------  ------
+                                                           dr     dr
+          __    __
+          \/YL1.\/YL2 [y] = Sum_c A[L1,c,y] A[L2,c,y] / r**2 
+          
+        """
+        ng = self.ng
+        Lmax = self.Lmax
+        nj = len(jl)
+        ni = len(jlL)
+        np = ni * (ni + 1) // 2
+        dphidr_jg = npy.zeros(npy.shape(phi_jg))
+        for j in range(nj):
+            phi_g = phi_jg[j]
+            self.rgd.derivative(phi_g, dphidr_jg[j])
+        ##second term
+        for y in range(ny):
+            i1 = 0
+            p = 0
+            Y_L = self.Y_yL[y]
+            for j1, l1, L1 in jlL:
+                for j2, l2, L2 in jlL[i1:]:
+                    c = Y_L[L1]*Y_L[L2]
+                    temp = c * dphidr_jg[j1] *  dphidr_jg[j2]
+                    tau_ypg[y,p,:] += temp
+                    p += 1
+                i1 +=1
+        ##first term
+        for y in range(ny):
+            i1 = 0
+            p = 0
+            A_Li = A_Liy[:self.Lmax, :, y]
+            A_Lxg = A_Li[:, 0]
+            A_Lyg = A_Li[:, 1]
+            A_Lzg = A_Li[:, 2]
+            for j1, l1, L1 in jlL:
+                for j2, l2, L2 in jlL[i1:]:
+                    temp = (A_Lxg[L1] * A_Lxg[L2] + A_Lyg[L1] * A_Lyg[L2]
+                            + A_Lzg[L1] * A_Lzg[L2])
+                    temp *=  phi_jg[j1] * phi_jg[j2] 
+                    temp[1:] /= self.rgd.r_g[1:]**2                       
+                    temp[0] = temp[1]
+                    tau_ypg[y, p, :] += temp
+                    p += 1
+                i1 +=1
+        tau_ypg *= 0.5
+                    
+        return 
+        
+    def set_nspins(self, nspins):
+        """change number of spins"""
+        if nspins != self.nspins:
+            self.nspins = nspins
+            if nspins == 1:
+                self.nc_g = self.nca_g + self.ncb_g
+            else:
+                self.nca_g = self.ncb_g = 0.5 * self.nc_g
+                
+    def initialize_kinetic(self, data):
+        r_g = self.rgd.r_g
+        ny = len(points)
+        ng = self.ng
+        l_j = data.l_j
+        nj = len(l_j)
+        jl =  [(j, l_j[j]) for j in range(nj)]
+        jlL = []
+        for j, l in jl:
+            for m in range(2 * l + 1):
+                jlL.append((j, l, l**2 + m))
+        ni = len(jlL)
+        np = ni * (ni + 1) // 2
+        self.tau_ypg = npy.zeros((ny, np, ng))
+        self.taut_ypg = npy.zeros((ny, np, ng))
+        phi_jg = data.phi_jg
+        phit_jg = data.phit_jg
+        phi_jg = npy.array([phi_g[:ng].copy() for phi_g in phi_jg])
+        phit_jg = npy.array([phit_g[:ng].copy() for phit_g in phit_jg])
+        self.create_kinetic(jlL,jl,ny, np,phit_jg, self.taut_ypg)
+        self.create_kinetic(jlL,jl,ny, np,phi_jg, self.tau_ypg)            
+        tauc_g = data.tauc_g
+        tauct_g = data.tauct_g
+        self.tauc_g = npy.array(tauc_g[:ng].copy())
+        self.tauct_g = npy.array(tauct_g[:ng].copy())
+
+
+class NewXCCorrection(BaseXCCorrection):
     def expand_density(self, D_sp, core=True):
         n_sLg = []
         for D_p in D_sp:
@@ -417,7 +596,7 @@ class XCCorrection:
     def calculate_potential_slice(self, e_g, n_sg, vxc_sg, grad=None):
         xcfunc = self.xc.get_functional()
         vxc_sg[:] = 0.0
-        if grad==None:
+        if grad is None:
             if len(n_sg) == 1:
                 xcfunc.calculate_spinpaired(e_g, n_sg[0], vxc_sg[0])
             else:
@@ -432,7 +611,7 @@ class XCCorrection:
                 # Spin-polarized GGA not implemented
                 raise NotImplementedError
 
-    def LDA_new(self, D_sp, H_sp):
+    def LDA(self, D_sp, H_sp):
         for H_p in H_sp:        
             H_p[:] = 0.0
 
@@ -453,9 +632,9 @@ class XCCorrection:
             Etot -= integrator.integrate_e_g(i_slice, e_g)
             integrator.integrate_H_sp(-1.0, i_slice, vxct_sg, self.nt_qg)
 
-        return Etot
+        return Etot - self.Exc0
 
-    def GGA_new(self, D_sp, H_sp):
+    def GGA(self, D_sp, H_sp):
         for H_p in H_sp:        
             H_p[:] = 0.0
 
@@ -482,31 +661,12 @@ class XCCorrection:
             Etot -= integrator.integrate_e_g(i_slice, e_g)
             integrator.integrate_H_sp(-1.0, i_slice, vxct_sg, self.nt_qg,
                                       grad=gradt)
-        return Etot
-            
-    def calculate_energy_and_derivatives(self, D_sp, H_sp, a=None):
-        if self.xc.get_functional().is_gllb():
-            # The coefficients for GLLB-functional are evaluated elsewhere
-            return self.xc.xcfunc.xc.calculate_energy_and_derivatives(D_sp,
-                                                                      H_sp, a)
+        return Etot - self.Exc0
 
-        if self.xc.get_functional().mgga:
-            #return self.MGGA(D_sp, H_sp)
-            if self.xc.get_functional().uses_libxc:
-                return self.MGGA_libxc(D_sp, H_sp)
-            else:
-                return self.MGGA(D_sp, H_sp)
-        
-        if self.xc.get_functional().gga:
-            if self.xc.get_functional().uses_libxc:
-                #return self.GGA_new(D_sp, H_sp) - self.Exc0  # Uncomment me to test new xc_correction
-                return self.GGA_libxc(D_sp, H_sp)
-            else:
-                #return self.GGA_new(D_sp, H_sp) - self.Exc0  # Uncomment me to test new xc_correction
-                return self.GGA(D_sp, H_sp)
-            
-        #return self.LDA_new(D_sp, H_sp) - self.Exc0  # Uncomment me to test new xc_correction
+    GGA_libxc = GGA
 
+class XCCorrection(BaseXCCorrection):
+    def LDA(self, D_sp, H_sp):
         E = 0.0
         if len(D_sp) == 1:
             D_p = D_sp[0]
@@ -1874,162 +2034,5 @@ class XCCorrection:
                 y += 1
         return E - self.Exc0
 
-    def two_phi_integrals(self,
-                          D_sp # density matrix in packed(pack) form
-                          ):
-        """Evaluate the integral in the augmentation sphere.
-
-        ::
-
-                      /
-          I_{i1 i2} = | d r [ phi_i1(r) phi_i2(r) v_xc[n](r) -
-                      /       tphi_i1(r) tphi_i2(r) v_xc[tn](r) ]
-                      a
-
-        The result is given in packed(pack2) form.
-        """
-        I_sp = npy.zeros(D_sp.shape)
-        self.calculate_energy_and_derivatives(D_sp, I_sp)
-        return I_sp
-
-    def four_phi_integrals(self, D_sp, fxc):
-        """Calculate four-phi integrals.
-
-        The density is given by the density matrix ``D_sp`` in packed(pack)
-        form, and the resulting rank-four tensor is also returned in
-        packed format. ``fxc`` is a radial object???
-        """
-
-        ns, np = D_sp.shape
-
-        assert ns == 1 and not self.xc.get_functional().gga
-
-        dot = npy.dot
-
-        D_p = D_sp[0]
-        D_Lq = npy.dot(self.B_Lqp, D_p)
-
-        # Expand all-electron density in spherical harmonics:
-        n_qg = self.n_qg
-        n_Lg = dot(D_Lq, n_qg)
-        n_Lg[0] += self.nc_g * sqrt(4 * pi)
-
-        # Expand pseudo electron density in spherical harmonics:
-        nt_qg = self.nt_qg
-        nt_Lg = dot(D_Lq, nt_qg)
-        nt_Lg[0] += self.nct_g * sqrt(4 * pi)
-
-        # Allocate array for result:
-        J_pp = npy.zeros((np, np))
-
-        # Loop over 50 points on the sphere surface:
-        for w, Y_L in zip(self.weights, self.Y_yL):
-            B_pq = npy.dot(self.B_pqL, Y_L)
-
-            fxcdv = fxc(dot(Y_L, n_Lg)) * self.dv_g
-            dn2_qq = npy.inner(n_qg * fxcdv, n_qg)
-
-            fxctdv = fxc(dot(Y_L, nt_Lg)) * self.dv_g
-            dn2_qq -= npy.inner(nt_qg * fxctdv, nt_qg)
-
-            J_pp += w * npy.dot(B_pq, npy.inner(dn2_qq, B_pq))
-
-        return J_pp
-
-    def create_kinetic(self,jlL,jl,ny,np,phi_jg,tau_ypg):
-        """Short title here.
-        
-        kinetic expression is::
-
-                                             __         __ 
-          tau_s = 1/2 Sum_{i1,i2} D(s,i1,i2) \/phi_i1 . \/phi_i2 +tauc_s
-
-        here the orbital dependent part is calculated::
-
-          __         __         
-          \/phi_i1 . \/phi_i2 = 
-                      __    __
-                      \/YL1.\/YL2 phi_j1 phi_j2 +YL1 YL2 dphi_j1 dphi_j2
-                                                         ------  ------
-                                                           dr     dr
-          __    __
-          \/YL1.\/YL2 [y] = Sum_c A[L1,c,y] A[L2,c,y] / r**2 
-          
-        """
-        ng = self.ng
-        Lmax = self.Lmax
-        nj = len(jl)
-        ni = len(jlL)
-        np = ni * (ni + 1) // 2
-        dphidr_jg = npy.zeros(npy.shape(phi_jg))
-        for j in range(nj):
-            phi_g = phi_jg[j]
-            self.rgd.derivative(phi_g, dphidr_jg[j])
-        ##second term
-        for y in range(ny):
-            i1 = 0
-            p = 0
-            Y_L = self.Y_yL[y]
-            for j1, l1, L1 in jlL:
-                for j2, l2, L2 in jlL[i1:]:
-                    c = Y_L[L1]*Y_L[L2]
-                    temp = c * dphidr_jg[j1] *  dphidr_jg[j2]
-                    tau_ypg[y,p,:] += temp
-                    p += 1
-                i1 +=1
-        ##first term
-        for y in range(ny):
-            i1 = 0
-            p = 0
-            A_Li = A_Liy[:self.Lmax, :, y]
-            A_Lxg = A_Li[:, 0]
-            A_Lyg = A_Li[:, 1]
-            A_Lzg = A_Li[:, 2]
-            for j1, l1, L1 in jlL:
-                for j2, l2, L2 in jlL[i1:]:
-                    temp = (A_Lxg[L1] * A_Lxg[L2] + A_Lyg[L1] * A_Lyg[L2]
-                            + A_Lzg[L1] * A_Lzg[L2])
-                    temp *=  phi_jg[j1] * phi_jg[j2] 
-                    temp[1:] /= self.rgd.r_g[1:]**2                       
-                    temp[0] = temp[1]
-                    tau_ypg[y, p, :] += temp
-                    p += 1
-                i1 +=1
-        tau_ypg *= 0.5
-                    
-        return 
-        
-    def set_nspins(self, nspins):
-        """change number of spins"""
-        if nspins != self.nspins:
-            self.nspins = nspins
-            if nspins == 1:
-                self.nc_g = self.nca_g + self.ncb_g
-            else:
-                self.nca_g = self.ncb_g = 0.5 * self.nc_g
-                
-    def initialize_kinetic(self,data):
-        r_g = self.rgd.r_g
-        ny = len(points)
-        ng = self.ng
-        l_j = data.l_j
-        nj = len(l_j)
-        jl =  [(j, l_j[j]) for j in range(nj)]
-        jlL = []
-        for j, l in jl:
-            for m in range(2 * l + 1):
-                jlL.append((j, l, l**2 + m))
-        ni = len(jlL)
-        np = ni * (ni + 1) // 2
-        self.tau_ypg = npy.zeros((ny, np, ng))
-        self.taut_ypg = npy.zeros((ny, np, ng))
-        phi_jg = data.phi_jg
-        phit_jg = data.phit_jg
-        phi_jg = npy.array([phi_g[:ng].copy() for phi_g in phi_jg])
-        phit_jg = npy.array([phit_g[:ng].copy() for phit_g in phit_jg])
-        self.create_kinetic(jlL,jl,ny, np,phit_jg, self.taut_ypg)
-        self.create_kinetic(jlL,jl,ny, np,phi_jg, self.tau_ypg)            
-        tauc_g = data.tauc_g
-        tauct_g = data.tauct_g
-        self.tauc_g = npy.array(tauc_g[:ng].copy())
-        self.tauct_g = npy.array(tauct_g[:ng].copy())
+if extra_parameters.get('usenewxc'):
+    XCCorrection = NewXCCorrection
