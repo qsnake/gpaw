@@ -13,6 +13,8 @@
 #  define zher2k_ zher2k
 #  define dgemm_ dgemm
 #  define zgemm_ zgemm
+#  define dgemv_ dgemv
+#  define zgemv_ zgemv
 #  define ddot_ ddot
 #endif
 
@@ -45,6 +47,14 @@ int zgemm_(char *transa, char *transb, int *m, int * n,
 	   int *k, void *alpha, void *a, int *lda, 
 	   void *b, int *ldb, void *beta,
 	   void *c, int *ldc);
+int dgemv_(char *trans, int *m, int * n,
+	   double *alpha, double *a, int *lda,
+	   double *x, int *incx, double *beta,
+	   double *y, int *incy);
+int zgemv_(char *trans, int *m, int * n,
+	   void *alpha, void *a, int *lda,
+	   void *x, int *incx, void *beta,
+	   void *y, int *incy);
 double ddot_(int *n, void *dx, int *incx, void *dy, int *incy);
 
 PyObject* gemm(PyObject *self, PyObject *args)
@@ -93,6 +103,62 @@ PyObject* gemm(PyObject *self, PyObject *args)
            (void*)COMPLEXP(b), &ldb,
            &beta, 
            (void*)COMPLEXP(c), &ldc);
+  Py_RETURN_NONE;
+}
+
+
+PyObject* gemv(PyObject *self, PyObject *args)
+{
+  Py_complex alpha;
+  PyArrayObject* a;
+  PyArrayObject* x;
+  Py_complex beta;
+  PyArrayObject* y;
+  char trans = 't';
+  if (!PyArg_ParseTuple(args, "DOODO|c", &alpha, &a, &x, &beta, &y, &trans)) 
+    return NULL;
+
+  int m, n, lda, itemsize, incx, incy;
+
+  if (trans == 'n')
+    {
+      m = a->dimensions[1];
+      for (int i = 2; i < a->nd; i++)
+	m *= a->dimensions[i];
+      n = a->dimensions[0];
+      lda = m;
+    }
+  else
+    {
+      m = a->dimensions[1];
+      for (int i = 2; i < a->nd; i++)
+	m *= a->dimensions[i];
+      n = a->dimensions[0];
+      lda = m;
+    }
+
+  if (a->descr->type_num == PyArray_DOUBLE)
+    itemsize = sizeof(double);
+  else
+    itemsize = sizeof(double_complex);
+
+  incx = x->strides[0]/itemsize;
+  incy = y->strides[0]/itemsize;
+
+  if (a->descr->type_num == PyArray_DOUBLE)
+    dgemv_(&trans, &m, &n, 
+           &(alpha.real),
+           DOUBLEP(a), &lda, 
+           DOUBLEP(x), &incx,
+           &(beta.real), 
+           DOUBLEP(y), &incy);
+  else
+    zgemv_(&trans, &m, &n, 
+           &alpha,
+           (void*)COMPLEXP(a), &lda, 
+           (void*)COMPLEXP(x), &incx,
+           &beta, 
+           (void*)COMPLEXP(y), &incy);
   Py_RETURN_NONE;
 }
 

@@ -63,7 +63,36 @@ def gemm(alpha, a, b, beta, c, transa='n'):
         assert c.shape == (b.shape[0], a.shape[0])
     _gpaw.gemm(alpha, a, b, beta, c, transa)
 
-    
+
+def gemv(alpha, a, x, beta, y, trans='t'):
+    """General Matrix Vector product.
+
+    Performs the operation::
+
+      y <- alpha * a.x + beta * y
+
+    ``a.x`` denotes matrix multiplication, where the product-sum is
+    over the entire length of the vector x and 
+    the first dimension of a (for trans='n'), or
+    the last dimension of a (for trans='t' or 'c').
+
+    If trans='c', the complex conjugate of a is used.
+    """
+    assert (a.dtype == float and x.dtype == float and y.dtype == float and
+            isinstance(alpha, float) and isinstance(beta, float) or
+            a.dtype == complex and x.dtype == complex and y.dtype == complex)
+    assert a.flags.contiguous
+    assert x.ndim == 1
+    assert y.ndim == 1
+    if trans == 'n':
+        assert a.shape[0] == x.shape[0]
+        assert np.prod(a.shape[1:]) == y.shape[0]
+    else:
+        assert a.shape[-1] == x.shape[0]
+        assert np.prod(a.shape[:-1]) == y.shape[0]
+    _gpaw.gemv(alpha, a, x, beta, y, trans)
+
+
 def axpy(alpha, x, y):
     """alpha x plus y.
 
@@ -269,6 +298,7 @@ def _rotate(in_jj, U_ij, a=1., b=0., out_ii=None, work_ij=None):
 
 if not debug:
     gemm = _gpaw.gemm
+    gemv = _gpaw.gemv
     axpy = _gpaw.axpy
     rk = _gpaw.rk
     r2k = _gpaw.r2k

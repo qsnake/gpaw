@@ -20,6 +20,7 @@ PyObject* craypat_region_end(PyObject *self, PyObject *args);
 
 
 PyObject* gemm(PyObject *self, PyObject *args);
+PyObject* gemv(PyObject *self, PyObject *args);
 PyObject* axpy(PyObject *self, PyObject *args);
 PyObject* d2Excdnsdnt(PyObject *self, PyObject *args);
 PyObject* d2Excdn2(PyObject *self, PyObject *args);
@@ -71,6 +72,7 @@ PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args);
 
 static PyMethodDef functions[] = {
   {"gemm", gemm, METH_VARARGS, 0},
+  {"gemv", gemv, METH_VARARGS, 0},
   {"axpy", axpy, METH_VARARGS, 0},
   {"d2Excdnsdnt", d2Excdnsdnt, METH_VARARGS, 0},
   {"d2Excdn2", d2Excdn2, METH_VARARGS, 0},
