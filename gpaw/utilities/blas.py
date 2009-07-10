@@ -76,7 +76,16 @@ def gemv(alpha, a, x, beta, y, trans='t'):
     the first dimension of a (for trans='n'), or
     the last dimension of a (for trans='t' or 'c').
 
-    If trans='c', the complex conjugate of a is used.
+    If trans='c', the complex conjugate of a is used. The default is
+    trans='t', i.e. behaviour like np.dot with a 2D matrix and a vector.
+
+    Example::
+
+      >>> y_m = np.dot(A_mn, x_n)
+      >>> # or better yet
+      >>> y_m = np.zeros(A_mn.shape[0], A_mn.dtype)
+      >>> gemv(1.0, A_mn, x_n, 0.0, y_m)
+
     """
     assert (a.dtype == float and x.dtype == float and y.dtype == float and
             isinstance(alpha, float) and isinstance(beta, float) or
