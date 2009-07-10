@@ -139,6 +139,8 @@ def matrix_multiply(C_nn, psit_mG, send_mG, recv_mG):
 
     return psit_mG
 
+world.barrier()
+
 ta = time()
 
 # Do twenty iterations
