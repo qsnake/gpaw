@@ -370,7 +370,7 @@ class GPAW(PAW):
     
     def get_xc_difference(self, xcname):
         xcfunc = XCFunctional(xcname, self.hamiltonian.nspins)
-        if xcfunc.mgga or xcfunc.hybrid > 0.0:
+        if xcfunc.mgga or xcfunc.orbital_dependent:
             self.converge_wave_functions()
         return self.hamiltonian.get_xc_difference(xcfunc, self.wfs,
                                                   self.density,
