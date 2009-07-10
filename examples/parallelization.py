@@ -27,7 +27,7 @@ mpi_debug('data: %s' % data)
 # -------------------------------------------------------------------
 
 if world.rank == 0:
-	print '-'*16
+    print '-'*16
 
 # Who has global index 11? The master needs it!
 i = 11
@@ -37,11 +37,11 @@ assert rank*M + ilocal == i
 
 # Do I have it?
 if world.rank == rank:
-	# Yes, so extract data (must be an array)
-	idata = np.array([data[ilocal]], dtype=data.dtype)
+    # Yes, so extract data (must be an array)
+    idata = np.array([data[ilocal]], dtype=data.dtype)
 else:
-	# No, so just allocate space
-	idata = np.empty(1, dtype=data.dtype)
+    # No, so just allocate space
+    idata = np.empty(1, dtype=data.dtype)
 
 # Broadcast from owner to everyone else
 world.broadcast(idata, rank)
@@ -51,14 +51,14 @@ world.broadcast(idata, rank)
 
 # Do I have it?
 if world.rank == rank:
-	# Yes, now send it to the others
-	for other_rank in range(world.size):
-		# We don't have to send it to ourselves
-		if other_rank != rank:
-			world.send(idata, other_rank, tag=123)
+    # Yes, now send it to the others
+    for other_rank in range(world.size):
+        # We don't have to send it to ourselves
+        if other_rank != rank:
+            world.send(idata, other_rank, tag=123)
 else:
-	# No, so receive from the one that own the data
-	world.receive(idata, rank, tag=123)
+    # No, so receive from the one that own the data
+    world.receive(idata, rank, tag=123)
 """
 
 mpi_debug('idata=%d' % idata)
@@ -66,16 +66,16 @@ mpi_debug('idata=%d' % idata)
 # -------------------------------------------------------------------
 
 if world.rank == 0:
-	print '-'*16
+    print '-'*16
 
 # The master just calculated auxilary data. Distribute it.
 aux = np.empty(N, dtype=float)
 
 # Only master knows the data right now
 if world.rank == 0:
-	np.random.seed(1234567)
-	aux[:] = np.random.uniform(0,1,size=N).round(2)
-	print 'MASTER aux: %s, mean=%f' % (aux, aux.mean())
+    np.random.seed(1234567)
+    aux[:] = np.random.uniform(0,1,size=N).round(2)
+    print 'MASTER aux: %s, mean=%f' % (aux, aux.mean())
 
 # Allocate space for my part of the auxilary data
 myaux = np.empty(M, dtype=float)
@@ -88,16 +88,16 @@ world.scatter(aux, myaux, 0)
 
 # Are we the master?
 if world.rank == 0:
-	# Yes, so extract my part directly
-	myaux[:] = aux[0:M]
+    # Yes, so extract my part directly
+    myaux[:] = aux[0:M]
 
-	# Now send parts to the slaves
-	for slave_rank in range(1, world.size):
-		youraux = aux[slave_rank*M:(slave_rank+1)*M]
-		world.send(youraux, slave_rank, tag=123)
+    # Now send parts to the slaves
+    for slave_rank in range(1, world.size):
+        youraux = aux[slave_rank*M:(slave_rank+1)*M]
+        world.send(youraux, slave_rank, tag=123)
 else:
-	# No, so receive from the master
-	world.receive(myaux, 0, tag=123)
+    # No, so receive from the master
+    world.receive(myaux, 0, tag=123)
 """
 
 # We don't need original data anymore
@@ -110,13 +110,13 @@ mpi_debug('myaux: %s, mean=%f' % (myaux,meanaux))
 # -------------------------------------------------------------------
 
 if world.rank == 0:
-	print '-'*16
+    print '-'*16
 
 # We've done something to our part of the auxilary data. Master needs it all
 if world.rank == 0:
-	result = np.empty(N, dtype=float)
+    result = np.empty(N, dtype=float)
 else:
-	result = None
+    result = None
 
 # Do something to our auxilary data
 myaux[:] = np.sin(2*np.pi*myaux).round(3)
@@ -130,17 +130,17 @@ world.gather(myaux, 0, result)
 
 # Are we the master?
 if world.rank == 0:
-	# Yes, so extract my part directly
-	result[0:M] = myaux[:]
+    # Yes, so extract my part directly
+    result[0:M] = myaux[:]
 
-	# Now receive parts from the slaves
-	for slave_rank in range(1, world.size):
-		youraux = np.empty(M, dtype=float)
-		world.receive(youraux, slave_rank, tag=123)
-		result[slave_rank*M:(slave_rank+1)*M] = youraux
+    # Now receive parts from the slaves
+    for slave_rank in range(1, world.size):
+        youraux = np.empty(M, dtype=float)
+        world.receive(youraux, slave_rank, tag=123)
+        result[slave_rank*M:(slave_rank+1)*M] = youraux
 else:
-	# No, so send to the master
-	world.send(myaux, 0, tag=123)
+    # No, so send to the master
+    world.send(myaux, 0, tag=123)
 """
 
 mpi_debug('result: %s' % result)
