@@ -116,6 +116,7 @@ if len(tests) == 0:
         'H-force.py',
         'CL_minus.py',
         'gemm.py',
+        'gemv.py',
         'fermilevel.py',
         'degeneracy.py',
         'h2o-xas.py',
