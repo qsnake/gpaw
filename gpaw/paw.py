@@ -622,6 +622,8 @@ class PAW(PAWTextOutput):
 
     def converge_wave_functions(self):
         """Converge the wave-functions if not present."""
+
+        self.wfs.initialize_wave_functions_from_restart_file()
         
         if self.scf.converged:
             # are the wfs ok ?
