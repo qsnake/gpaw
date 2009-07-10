@@ -26,7 +26,6 @@ except:
 # full information
 c = GPAW(fwfname, txt=txt)
 E_PBE = c.get_potential_energy()
-c.converge_wave_functions()
 dE = c.get_xc_difference('TPSS')
 E_1 = E_PBE + dE
 print "E PBE, TPSS=", E_PBE, E_1
@@ -34,7 +33,6 @@ print "E PBE, TPSS=", E_PBE, E_1
 # no wfs
 c = GPAW(fname, txt=txt)
 E_PBE = c.get_potential_energy()
-c.converge_wave_functions()
 dE = c.get_xc_difference('TPSS')
 E_2 = E_PBE + dE
 print "E PBE, TPSS=", E_PBE, E_2

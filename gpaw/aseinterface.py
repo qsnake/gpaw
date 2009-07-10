@@ -9,7 +9,7 @@ import numpy as np
 from ase.units import Bohr, Hartree
 
 from gpaw.paw import PAW
-
+from gpaw.xc_functional import XCFunctional
 
 class GPAW(PAW):
     """This is the ASE-calculator frontend for doing a PAW calculation.
@@ -369,7 +369,10 @@ class GPAW(PAW):
         return f_n
     
     def get_xc_difference(self, xcname):
-        return self.hamiltonian.get_xc_difference(xcname, self.wfs,
+        xcfunc = XCFunctional(xcname, self.hamiltonian.nspins)
+        if xcfunc.mgga or xcfunc.hybrid > 0.0:
+            self.converge_wave_functions()
+        return self.hamiltonian.get_xc_difference(xcfunc, self.wfs,
                                                   self.density,
                                                   self.atoms) * Hartree
 
