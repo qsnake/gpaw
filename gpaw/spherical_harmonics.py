@@ -167,4 +167,4 @@ def nablaYL(L, R):
         dYdx += N * powx * x**abs(powx - 1) * y**powy * z**powz
         dYdy += N * powy * x**powx * y**abs(powy - 1) * z**powz
         dYdz += N * powz * x**powx * y**powy * z**abs(powz - 1)
-    return (dYdx, dYdy, dYdz)
+    return dYdx, dYdy, dYdz

@@ -7,7 +7,7 @@ import numpy as npy
 
 from gpaw import extra_parameters
 from gpaw.gaunt import gaunt
-from gpaw.spherical_harmonics import YL
+from gpaw.spherical_harmonics import nablaYL
 
 # load points and weights for the angular integration
 from gpaw.sphere import Y_nL, points, weights
@@ -31,25 +31,36 @@ from itertools import izip
           c
 
 """
+# A_Liy is defined as above, i means c, and y is an expansion point index.
+if 1: # Old complicated loop
+    from gpaw.spherical_harmonics import YL
+    A_Liy = npy.zeros((25, 3, len(points)))
+    y = 0
+    for R in points:
+        for l in range(5):
+            for m in range(2 * l + 1):
+                L = l**2 + m
+                for c, n in YL[L]:
+                    for i in range(3):
+                        ni = n[i]
+                        if ni > 0:
+                            a = ni * c * R[i]**(ni - 1)
+                            for ii in range(3):
+                                if ii != i:
+                                    a *= R[ii]**n[ii]
+                            A_Liy[L, i, y] += a
+                A_Liy[L, :, y] -= l * R * Y_nL[y, L]
+        y += 1
+else: # The proper way to do it, and with the consistent axis notation of gpaw
+    A_ncL = npy.empty((len(points), 3, 25))
+    for A_cL, Y_L, R_c in zip(A_ncL, Y_nL, points):
+        for L, Y in enumerate(Y_L):
+            l = int(sqrt(L))
+            A_cL[:, L] = nablaYL(L, R_c)  - l * R_c * Y
 
-# A_liy is as above, i means c, and y is an expansion point index.
-A_Liy = npy.zeros((25, 3, len(points)))
-y = 0
-for R in points:
-    for l in range(5):
-        for m in range(2 * l + 1):
-            L = l**2 + m
-            for c, n in YL[L]:
-                for i in range(3):
-                    ni = n[i]
-                    if ni > 0:
-                        a = ni * c * R[i]**(ni - 1)
-                        for ii in range(3):
-                            if ii != i:
-                                a *= R[ii]**n[ii]
-                        A_Liy[L, i, y] += a
-            A_Liy[L, :, y] -= l * R * Y_nL[y, L]
-    y += 1
+    # Make A_Liy as a view into A_ncL, thus being contiguous in the order as
+    # A_ncL, i.e. A_Liy[:, :, y].T and A_Liy[:, c, y] are contiguous
+    A_Liy = A_ncL.T
 
 
 class YLExpansion:
