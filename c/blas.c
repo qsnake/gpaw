@@ -106,7 +106,6 @@ PyObject* gemm(PyObject *self, PyObject *args)
   Py_RETURN_NONE;
 }
 
-#include <stdio.h>
 
 PyObject* gemv(PyObject *self, PyObject *args)
 {
