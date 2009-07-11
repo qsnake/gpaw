@@ -302,13 +302,15 @@ class BandDescriptor:
         # n2 <-> ((q1+q2)%B,myn2) since we've sent/recieved q2 times.
         q1 = band_rank
         Q = B // 2 + 1
+        if debug:
+            assert A_qnn.shape == (Q,N,N)
 
         # Note that for integer inequalities, these relations are useful (X>0):
         #     A*X > B   <=>   A > B//X   ^   A*X <= B   <=>   A <= B//X
 
         if self.strided:
             A_nbnb = A_NN.reshape((N, B, N, B))
-
+            mask = np.empty((N,N), dtype=bool)
             for q2 in range(Q):
                 # n1 = (q1+q2)%B + myn1*B   ^   n2 = q1 + myn2*B
                 #
@@ -318,15 +320,16 @@ class BandDescriptor:
                 dq = (q1+q2)%B-q1 # within ]-B; Q[ so dq//B is -1 or 0
 
                 # Create mask for lower part of current block
-                mask = np.tri(N, N, dq//B).astype(bool)
+                mask[:] = np.tri(N, N, dq//B)
                 if debug:
                     m1,m2 = np.indices((N,N))
+                    assert dq in xrange(-B+1,Q)
                     assert (mask == (m1 >= m2 - dq//B)).all()
 
                 # Copy lower part of A_qnn[q2] to its rightfull place
                 A_nbnb[:, (q1+q2)%B, :, q1][mask] = A_qnn[q2][mask]
 
-                # Negate and transpose mask to get complementary mask
+                # Negate the transposed mask to get complementary mask
                 mask = ~mask.T
 
                 # Copy upper part of Hermitian conjugate of A_qnn[q2]
@@ -366,14 +369,23 @@ class BandDescriptor:
         # between <psi_n1| and A|psit_n2> where n1 <-> (q1,myn1) and 
         # n2 <-> ((q1+q2)%B,myn2) since we've sent/recieved q2 times.
         q1 = band_rank
+        Q = B
+        if debug:
+            assert A_qnn.shape == (Q,N,N)
 
         if self.strided:
             A_nbnb = A_NN.reshape((N, B, N, B))
-            for q2 in range(B):
+            for q2 in range(Q):
                 A_nbnb[:, (q1+q2)%B, :, q1] = A_qnn[q2]
         else:
             A_bnbn = A_NN.reshape((B, N, B, N))
-            for q2 in range(B):
+
+            # Optimization for the first block
+            if q1 == 0:
+                A_bnbn[:Q, :, 0] = A_qnn
+                return
+
+            for q2 in range(Q):
                 A_bnbn[(q1+q2)%B, :, q1] = A_qnn[q2]
 
     def extract_block(self, A_NN, q1, q2):
