@@ -91,14 +91,15 @@ def gemv(alpha, a, x, beta, y, trans='t'):
             isinstance(alpha, float) and isinstance(beta, float) or
             a.dtype == complex and x.dtype == complex and y.dtype == complex)
     assert a.flags.contiguous
+    assert y.flags.contiguous
     assert x.ndim == 1
-    assert y.ndim == 1
+    assert y.ndim == a.ndim-1
     if trans == 'n':
         assert a.shape[0] == x.shape[0]
-        assert np.prod(a.shape[1:]) == y.shape[0]
+        assert a.shape[1:] == y.shape
     else:
         assert a.shape[-1] == x.shape[0]
-        assert np.prod(a.shape[:-1]) == y.shape[0]
+        assert a.shape[:-1] == y.shape
     _gpaw.gemv(alpha, a, x, beta, y, trans)
 
 

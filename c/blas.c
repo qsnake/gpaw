@@ -106,6 +106,7 @@ PyObject* gemm(PyObject *self, PyObject *args)
   Py_RETURN_NONE;
 }
 
+#include <stdio.h>
 
 PyObject* gemv(PyObject *self, PyObject *args)
 {
@@ -130,10 +131,10 @@ PyObject* gemv(PyObject *self, PyObject *args)
     }
   else
     {
-      m = a->dimensions[1];
-      for (int i = 2; i < a->nd; i++)
-	m *= a->dimensions[i];
       n = a->dimensions[0];
+      for (int i = 1; i < a->nd-1; i++)
+	n *= a->dimensions[i];
+      m = a->dimensions[a->nd-1];
       lda = m;
     }
 
@@ -143,7 +144,7 @@ PyObject* gemv(PyObject *self, PyObject *args)
     itemsize = sizeof(double_complex);
 
   incx = x->strides[0]/itemsize;
-  incy = y->strides[0]/itemsize;
+  incy = 1;
 
   if (a->descr->type_num == PyArray_DOUBLE)
     dgemv_(&trans, &m, &n, 
