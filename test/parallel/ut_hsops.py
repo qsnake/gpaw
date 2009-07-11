@@ -247,9 +247,10 @@ def rigid_motion(atoms, center_c=None, rotation_s=None):
 def create_random_atoms(gd, nmolecules=10, name='H2O'):
     # Construct pseudo-random gas of H2O molecules:
     assert not gd.is_non_orthogonal()
-    cell_c = gd.cell_cv.diagonal()
+    cell_c = gd.cell_cv.diagonal() * Bohr
     atoms = Atoms(cell=cell_c, pbc=gd.pbc_c)
-    np.random.seed(nmolecules)
+    np.random.seed([md5_array(data, numeric=True) for data
+        in [nmolecules, gd.cell_cv, gd.pbc_c, gd.N_c]])
     for m in range(nmolecules):
         amol = molecule(name)
         dpos_ac = amol.get_positions()-amol.get_center_of_mass()[np.newaxis,:]
@@ -291,7 +292,7 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
     def setUp(self):
         UTBandParallelSetup.setUp(self)
 
-        for virtvar in ['allocated','dtype','blocking','async']:
+        for virtvar in ['dtype','blocking','async']:
             assert getattr(self,virtvar) is not None, 'Virtual "%s"!' % virtvar
 
         # Create randomized atoms
