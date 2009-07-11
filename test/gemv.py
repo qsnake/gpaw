@@ -46,7 +46,7 @@ for n in range(numreps):
 t = time.time()-t
 performance = numflop*numreps/t
 print 'dot    : %8.5f s, %8.5f Mflops' % (t,performance/1024**2.)
-assert np.abs(nx0_q-nx1_q).max()<1e-12
+assert np.abs(nx0_q-nx1_q).max()<5e-12
 del nx1_q
 
 t = time.time()
@@ -56,27 +56,29 @@ for n in range(numreps):
 t = time.time()-t
 performance = numflop*numreps/t
 print 'gemmdot: %8.5f s, %8.5f Mflops' % (t,performance/1024**2.)
-assert np.abs(nx0_q-nx2_q).max()<1e-12
+assert np.abs(nx0_q-nx2_q).max()<5e-12
 del nx2_q
 
 t = time.time()
-nx3_q = np.zeros(Q, dtype)
+nx3_q = np.empty(Q, dtype)
 for n in range(numreps):
-	gemv(1.0, n_qg, x_g, 0.0, nx3_q, 't')
+    nx3_q.fill(0.0)
+    gemv(1.0, n_qg, x_g, 0.0, nx3_q, 't')
 t = time.time()-t
 performance = numflop*numreps/t
 print 'gemv   : %8.5f s, %8.5f Mflops' % (t,performance/1024**2.)
-assert np.abs(nx0_q-nx3_q).max()<1e-12
+assert np.abs(nx0_q-nx3_q).max()<5e-12
 del nx3_q
 
 t = time.time()
 nT_gq = n_qg.T.copy()
-nx4_q = np.zeros(Q, dtype)
+nx4_q = np.empty(Q, dtype)
 for n in range(numreps):
-	gemv(1.0, nT_gq, x_g, 0.0, nx4_q, 'n')
+    nx4_q.fill(0.0)
+    gemv(1.0, nT_gq, x_g, 0.0, nx4_q, 'n')
 t = time.time()-t
 performance = numflop*numreps/t
 print 'gemvT  : %8.5f s, %8.5f Mflops' % (t,performance/1024**2.)
-assert np.abs(nx0_q-nx4_q).max()<1e-12
+assert np.abs(nx0_q-nx4_q).max()<5e-12
 del nT_gq, nx4_q
 
