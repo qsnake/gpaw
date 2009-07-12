@@ -249,8 +249,8 @@ def create_random_atoms(gd, nmolecules=10, name='H2O'):
     assert not gd.is_non_orthogonal()
     cell_c = gd.cell_cv.diagonal() * Bohr
     atoms = Atoms(cell=cell_c, pbc=gd.pbc_c)
-    np.random.seed([md5_array(data, numeric=True) for data
-        in [nmolecules, gd.cell_cv, gd.pbc_c, gd.N_c]])
+    np.random.seed(np.array([md5_array(data, numeric=True) for data
+        in [nmolecules, gd.cell_cv, gd.pbc_c, gd.N_c]]).astype(int))
     for m in range(nmolecules):
         amol = molecule(name)
         dpos_ac = amol.get_positions()-amol.get_center_of_mass()[np.newaxis,:]
