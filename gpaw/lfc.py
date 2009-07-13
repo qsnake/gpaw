@@ -398,6 +398,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
             return
 
         if debug:
+            assert a_xG.ndim >= 3
             assert (np.sort(c_axi.keys()) == self.my_atom_indices).all()
 
         comm = self.gd.comm
@@ -477,6 +478,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
             assert self.dtype == float
         
         if debug:
+            assert a_xG.ndim >= 3
             assert (np.sort(c_axi.keys()) == self.my_atom_indices).all()
 
         dtype = a_xG.dtype
@@ -541,6 +543,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         assert not self.use_global_indices
 
         if debug:
+            assert a_xG.ndim >= 3
             assert (np.sort(c_axiv.keys()) == self.my_atom_indices).all()
 
         if self.integral_a is not None:
