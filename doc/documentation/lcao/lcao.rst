@@ -56,8 +56,8 @@ basis of the atomic orbitals.
 
 Some detailed information can be found in the master theses `1`_ and `2`_.  
 
-.. _1: ../_static/askhl_master.pdf
-.. _2: ../_static/marco_master.pdf
+.. _1: ../../_static/askhl_master.pdf
+.. _2: ../../_static/marco_master.pdf
 
 Basis-set generation
 --------------------
