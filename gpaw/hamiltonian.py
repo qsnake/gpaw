@@ -210,7 +210,9 @@ class Hamiltonian:
         W_aL = {}
         for a in density.D_asp:
             W_aL[a] = np.empty((self.setups[a].lmax + 1)**2)
+        self.timer.start('Hamiltonian: atomic: integrate ghat')
         density.ghat.integrate(self.vHt_g, W_aL)
+        self.timer.stop('Hamiltonian: atomic: integrate ghat')
         self.dH_asp = {}
         for a, D_sp in density.D_asp.items():
             W_L = W_aL[a]
@@ -274,12 +276,9 @@ class Hamiltonian:
         if self.Enlxc != 0 or self.Enlkin != 0:
             print 'Where should we do comm.sum() ?'
 
-        comm = self.gd.comm
-        self.Ekin0 = comm.sum(Ekin)
-        self.Epot = comm.sum(Epot)
-        self.Ebar = comm.sum(Ebar)
-        self.Eext = comm.sum(Eext)
-        self.Exc = comm.sum(Exc)
+        energies = np.array([Ekin, Epot, Ebar, Eext, Exc])
+        self.gd.comm.sum(energies)
+        (self.Ekin0, self.Epot, self.Ebar, self.Eext, self.Exc) = energies
 
         self.Exc += self.Enlxc
         self.Ekin0 += self.Enlkin
