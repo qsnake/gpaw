@@ -137,6 +137,9 @@ class PAWTextOutput:
         t = self.text
         p = self.input_parameters
 
+        for setup in self.wfs.setups.setups.values():
+            setup.print_info(self.text)
+            
         t('Using the %s Exchange-Correlation Functional.'
           % self.hamiltonian.xcfunc.xcname)
         if self.wfs.nspins == 2:
@@ -148,10 +151,6 @@ class PAWTextOutput:
                 t()
         else:
             t('Spin-Paired Calculation')
-
-        for setup in self.wfs.setups.setups.values():
-            setup.print_info(self.text)
-            
         t('Total Charge:      %.6f' % p['charge'])
         t('Fermi Temperature: %.6f' % (self.occupations.kT * Hartree))
         t('Mode:              %s' % p['mode'])
