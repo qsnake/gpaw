@@ -139,6 +139,7 @@ class VDWFunctional:
             
         self.gga = True
         self.mgga = not True
+        self.orbital_dependent = False
         self.hybrid = 0.0
         self.uses_libxc = self.revPBEx.uses_libxc
         self.gllb = False
@@ -165,7 +166,7 @@ class VDWFunctional:
 
     def get_setup_name(self):
         return 'revPBE'
-    
+
     def apply_non_local(self, kpt):
         pass
 

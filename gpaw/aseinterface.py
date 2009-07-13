@@ -369,10 +369,10 @@ class GPAW(PAW):
         return f_n
     
     def get_xc_difference(self, xcname):
-        if isinstance(xcname, XCFunctional):
-            xcfunc = xcname
-        else:
+        if isinstance(xcname, str) or isinstance(xcname, dict):
             xcfunc = XCFunctional(xcname, self.hamiltonian.nspins)
+        else:
+            xcfunc = xcname
         if xcfunc.mgga or xcfunc.orbital_dependent:
             self.converge_wave_functions()
         return self.hamiltonian.get_xc_difference(xcfunc, self.wfs,
