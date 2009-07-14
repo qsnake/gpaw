@@ -12,7 +12,7 @@ class ExteriorElectronDensity:
     Simple approach to describe MIES spectra after
     Y. Harada et al., Chem. Rev. 97 (1997) 1897
     """
-    def __init__(self, gd, setups, atoms):
+    def __init__(self, gd, atoms):
         """Find the grid points outside of the van der Waals radii 
         of the atoms"""
 
@@ -21,8 +21,8 @@ class ExteriorElectronDensity:
         n = len(atoms)
         atom_c = atoms.positions / Bohr
         vdWradius = npy.empty((n))
-        for a, setup in enumerate(setups):
-            vdWradius[a] = self.get_vdWradius(setup.Z)
+        for a, atom in enumerate(atoms):
+            vdWradius[a] = self.get_vdWradius(atom.get_atomic_number())
 
         # define the exterior region mask
         mask = gd.empty(dtype=int)
@@ -32,12 +32,12 @@ class ExteriorElectronDensity:
     def get_weight(self, psit_G):
         """Get the weight of a wave function in the exterior region
         (outside of the van der Waals radius). The augmentation sphere
-        is assumed to be smaller as the van der Waals radius and hence 
+        is assumed to be smaller than the van der Waals radius and hence 
         does not contribute."""
 
         # smooth part
         weigth = self.gd.integrate(npy.where(self.mask == 1, 
-                                             psit_G**2, 0.0))
+                                             psit_G * psit_G.conj(), 0.0))
 
         return weigth
 
@@ -51,12 +51,8 @@ class ExteriorElectronDensity:
             return r
         
     def write_mies_weights(self, wfs, file=None):
-        if not wfs.gamma:
-            raise NotImplementedError # XXXX TODO
-
-        out = sys.stdout
         if file is None:
-            file = 'mies.dat'
+            file = 'eed_mies.dat'
 
         if isinstance(file, str):
             out = paropen(file, 'aw')
@@ -65,30 +61,15 @@ class ExteriorElectronDensity:
 
         print >> out, '# exterior electron density weights after'
         print >> out, '# Y. Harada et al., Chem. Rev. 97 (1997) 1897'
-        if wfs.nspins == 1:
-            print >> out, '# Band   energy      occ         weight'
-            kpt = wfs.kpt_u[0]
+        
+        print >> out, '#  n   k s   weight      energy         occ mies_weight'
+        for kpt in wfs.kpt_u:
             for n in range(wfs.nbands):
-                print  >> out, '%4d  %10.5f  %10.5f  %10.5f' % \
-                    (n, 
+                print  >> out, '%4d %3d %1d %8.5f  %10.5f  %10.5f  %10.5f' % \
+                    (n, kpt.k, kpt.s, kpt.weight,
                      kpt.eps_n[n] * Hartree,
                      kpt.f_n[n], 
-                     self.get_weight(kpt.psit_nG[n]) )
-                if hasattr(out, 'flush'):
-                    out.flush()
-        else:
-            print >> out, '# Band   energy      occ         weight     energy      occ         weight'
-            kpta = wfs.kpt_u[0]
-            kptb = wfs.kpt_u[1]
-            for n in range(wfs.nbands):
-                print  >> out, '%4d  %10.5f  %10.5f  %10.5f  %10.5f    %10.5f  %10.5f' % \
-                    (n, 
-                     kpta.eps_n[n] * Hartree,
-                     kpta.f_n[n], 
-                     self.get_weight(kpta.psit_nG[n]),
-                     kptb.eps_n[n] * Hartree,
-                     kptb.f_n[n], 
-                     self.get_weight(kptb.psit_nG[n]),
+                     self.get_weight(kpt.psit_nG[n])
                      )
                 if hasattr(out, 'flush'):
                     out.flush()
