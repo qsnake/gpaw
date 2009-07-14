@@ -4,9 +4,48 @@ import pickle
 import numpy as np
 from gpaw.mpi import world, rank
 from gpaw.utilities.blas import gemm
+from gpaw.utilities.lapack import inverse_symmetric, inverse_general
 from gpaw.utilities.timing import Timer
 import _gpaw
 
+class PathInfo:
+    def __init__(self, type, nlead):
+        self.type = type
+        self.num = 0
+        self.lead_num = nlead
+        self.energy = []
+        self.weight = []
+        self.nres = 0
+        self.sigma = []
+        for i in range(nlead):
+            self.sigma.append([])
+        if type == 'eq':
+            self.fermi_factor = []
+        elif type == 'ne':
+            self.fermi_factor = []
+            for i in range(nlead):
+                self.fermi_factor.append([[], []])
+        else:
+            raise TypeError('unkown PathInfo type')
+
+    def add(self, elist, wlist, flist, siglist):
+        self.num += len(elist)
+        self.energy += elist
+        self.weight += wlist
+        if self.type == 'eq':
+            self.fermi_factor += flist
+        elif self.type == 'ne':
+            for i in range(self.lead_num):
+                for j in [0, 1]:
+                    self.fermi_factor[i][j] += flist[i][j]
+        else:
+            raise TypeError('unkown PathInfo type')
+        for i in range(self.lead_num):
+            self.sigma[i] += siglist[i]
+
+    def set_nres(self, nres):
+        self.nres = nres
+        
 class Fb_Sparse_Matrix:
     # For matrix with the sparse property like A_ij != 0,  q<=j<=q+l (*)
     # q(i) denpends on i and now only consider the symmetric sparse matrix,
@@ -157,13 +196,69 @@ class Fb_Sparse_Matrix:
                     n += 1
         return a
    
+class Banded_Sparse_Matrix:
+    def __init__(self, mat, band_index=None, tol=1e-12):
+        self.dtype = mat.dtype
+        self.tol = tol
+        if band_index == None:
+            self.initialize(mat)
+        else:
+            self.reset(mat)
         
+    def initialize(self, mat):
+        dim = mat.shape[-1]
+        ku = 0
+        kl = 0
+        ud_sum = 1
+        dd_sum = 1
+        while(ud_sum > self.tol):
+            ku += 1
+            ud_sum = np.sum(np.diag(abs(mat), ku))
+        while(dd_sum > self.tol):
+            kl += 1
+            dd_sum = np.sum(np.diag(abs(mat), -kl))
+        ku -= 1
+        kl -= 1
+            
+        self.band_index = (kl, ku)
+        assert self.dtype == complex
+        self.spar = np.zeros([2 * kl + ku + 1, dim], complex)
+        
+        for i in range(kl, kl + ku + 1):
+            ud = kl + ku - i
+            self.spar[i][ud:] = np.diag(mat, ud)
+        
+        for i in range(kl + ku + 1, 2 * kl + ku + 1):
+            ud = kl + ku - i
+            self.spar[i][:ud] = np.diag(mat, ud)
+    
+    def reset(self, mat):
+        kl, ku = self.band_index
+        assert self.dtype == complex
+        for i in range(kl + 1, kl + ku + 2):
+            ud = kl + ku + 1 - i
+            self.spar[i][ud:] = np.diag(mat, ud)
+        for i in range(kl + ku + 2, 2 * kl + ku + 1):
+            ud = kl + ku + 1 - i
+            self.spar[i][:ud] = np.diag(mat, ud)        
+
+    def inv(self):
+        kl, ku = self.band_index
+        dim = self.spar.shape[1]
+        inv_mat = np.eye(dim, dtype=complex)
+        #inv_mat=np.zeros([dim],complex)
+        #inv_mat[0]=1.0
+        spar = self.spar.copy()
+        ldab = 2*kl + ku + 1
+        info = _gpaw.linear_solve_band(self.spar, inv_mat, kl, ku, dim, ldab, dim, dim)
+        return inv_mat
+       
 class Tp_Sparse_Matrix:
     def __init__(self, mat, ll_index):
     # ll_index : lead_layer_index
     # matrix stored here will be changed to inversion
         self.dtype = mat.dtype
-        self.lead_num = len(llayer_index)
+        self.lead_num = len(ll_index)
         self.ll_index = ll_index
         self.initialize(mat)
         
@@ -185,15 +280,15 @@ class Tp_Sparse_Matrix:
         for i in range(self.lead_num):
             self.diag_h.append([])
             self.upc_h.append([])
-            self.dwnc_h.appned([])
+            self.dwnc_h.append([])
             self.lead_nlayer.append(len(self.ll_index[i]))
         
-            assert self.ll_index[i][0] == self.mol_index
+            assert (self.ll_index[i][0] == self.mol_index).all()
             
             self.nl += self.lead_nlayer[i]        
             for j in range(self.lead_nlayer[i] - 1):
-                ind = get_matrix_index(self.lead_nlayer[i][j])
-                ind1 = get_matrix_index(self.lead_nlayer[i][j + 1])
+                ind = get_matrix_index(self.ll_index[i][j])
+                ind1 = get_matrix_index(self.ll_index[i][j + 1])
                 
                 self.diag_h[i].append(mat[ind1.T, ind1])
                 self.upc_h[i].append(mat[ind.T, ind1])
@@ -201,15 +296,14 @@ class Tp_Sparse_Matrix:
                 
                 self.nb += len(self.ll_index[i][j + 1])
 
-    
     def inv_eq(self):
+        inv = inverse_symmetric
         q_mat = []
         for i in range(self.lead_num):
             q_mat.append([])
             nll = self.lead_nlayer[i]
             for j in range(nll - 1):
                 q_mat[i].append([])
-
             end = nll - 2
             q_mat[i][end] =  self.diag_h[i][end]
             inv(q_mat[i][end])
@@ -366,6 +460,8 @@ class Tp_Sparse_Matrix:
                         
                     self.upc_h[j][k] +=  self.dotdot(inv_mat[i][j][k - 1], se_less[i],
                                                     inv_mat[i][j][k].T.conj())
+
+    
            
 class CP_Sparse_Matrix:
     def __init__(self, mat, tri_type, nn=None, tol=1e-16):
@@ -654,6 +750,45 @@ def plot_diag(mtx, ind=1):
     pylab.plot(x_data, y_data,'b-o')
     pylab.show()
 
+def get_atom_indices(subatoms, setups):
+    basis_list = [setup.niAO for setup in setups]
+    index = []
+    for j, lj  in zip(subatoms, range(len(subatoms))):
+        begin = np.sum(np.array(basis_list[:j], int))
+        for n in range(basis_list[j]):
+            index.append(begin + n) 
+    return np.array(index, int)    
+
+def mp_distribution(e, kt, n=1):
+    x = e / kt
+    re = 0.5 * error_function(x)
+    for i in range(n):
+        re += coff_function(i + 1) * hermite_poly(2 * i + 1, x) * np.exp(-x**2) 
+    return re        
+
+def coff_function(n):
+    return (-1)**n / (np.product(np.arange(1, n + 1)) * 4.** n * np.sqrt(np.pi))
+    
+def hermite_poly(n, x):
+    if n == 0:
+        return 1
+    elif n == 1:
+        return 2 * x
+    else:
+        return 2 * x * hermite_poly(n - 1, x) \
+                                      - 2 * (n - 1) * hermite_poly(n - 2 , x)
+
+def error_function(x):
+	z = abs(x)
+	t = 1. / (1. + 0.5*z)
+	r = t * np.exp(-z*z-1.26551223+t*(1.00002368+t*(.37409196+
+		t*(.09678418+t*(-.18628806+t*(.27886807+
+		t*(-1.13520398+t*(1.48851587+t*(-.82215223+
+		t*.17087277)))))))))
+	if (x >= 0.):
+		return r
+	else:
+		return 2. - r
 class P_info:
     def __init__(self):
         P.x = 0
