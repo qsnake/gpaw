@@ -277,6 +277,8 @@ class Tp_Sparse_Matrix:
 
         self.nl = 1
         self.nb = len(self.mol_index)
+        self.length = self.nb * self.nb 
+        
         for i in range(self.lead_num):
             self.diag_h.append([])
             self.upc_h.append([])
@@ -294,8 +296,67 @@ class Tp_Sparse_Matrix:
                 self.upc_h[i].append(mat[ind.T, ind1])
                 self.dwnc_h[i].append(mat[ind1.T, ind])
                 
-                self.nb += len(self.ll_index[i][j + 1])
+                len1 = len(self.ll_index[i][j])
+                len2 = len(self.ll_index[i][j + 1])
+                
+                self.length += 2 * len1 * len2 + len2 * len2
+                self.nb += len2
+    
+    def recover(self):
+        nb = self.nb
+        mat = np.zeros([nb, nb], complex)
+        ind = get_matrix_index(self.mol_index)
+        mat[ind.T, ind] = self.mol_h
+        for i in range(self.lead_num):
+            for j in range(self.lead_nlayer[i] - 1):
+                ind = get_matrix_index(self.ll_index[i][j])
+                ind1 = get_matrix_index(self.ll_index[i][j + 1])
+                mat[ind1.T, ind1] = self.diag_h[i][j]
+                mat[ind.T, ind1] = self.upc_h[i][j]
+                mat[ind1.T, ind] = self.dwnc_h[i][j]
+        return mat        
 
+    def storage(self):
+        begin = 0 
+        mem = np.empty([self.length], complex)
+        nb = len(self.mol_index)
+        mem[: nb ** 2] = np.resize(self.mol_h, [nb ** 2])
+        begin += nb ** 2
+        for i in range(self.lead_num):
+            for j in range(self.lead_nlayer[i] - 1):
+                len1 = len(self.ll_index[i][j])
+                len2 = len(self.ll_index[i][j + 1])
+                mem[begin: begin + len2 ** 2] = np.resize(self.diag_h[i][j],
+                                                                    [len2 ** 2])
+                begin += len2 * len2
+                mem[begin: begin + len1 * len2] = np.resize(self.upc_h[i][j],
+                                                                  [len1 * len2])
+                begin += len1 * len2
+                mem[begin: begin + len1 * len2] = np.resize(
+                                                         self.dwnc_h[i][j + 1],
+                                                         [len1 * len2])
+                begin += len1 * len2
+        return mem                                                   
+
+    def read(self, mem):
+        begin = 0 
+        nb = len(self.mol_index)
+        self.mol_h = np.resize(mem[: nb ** 2], [nb, nb])
+        begin += nb ** 2
+        for i in range(self.lead_num):
+            for j in range(self.lead_nlayer[i] - 1):
+                len1 = len(self.ll_index[i][j])
+                len2 = len(self.ll_index[i][j + 1])
+                self.diag_h[i][j] = np.resize(mem[begin: begin + len2 ** 2],
+                                                                [len2, len2])
+                begin += len2 * len2
+                self.upc_h[i][j] = np.resize(mem[begin: begin + len1 * len2],
+                                             [len1, len2])
+                begin += len1 * len2
+                self.dwnc_h[i][j] = np.resize(mem[begin: begin + len1 * len2],
+                                              [len2, len1])
+                begin += len1 * len2
+    
     def inv_eq(self):
         inv = inverse_symmetric
         q_mat = []
