@@ -197,11 +197,11 @@ def get_lcao_hamiltonian(calc):
         return None, None
 
 
-def get_lead_lcao_hamiltonian(calc, usesymm=False):
+def get_lead_lcao_hamiltonian(calc, usesymm=False, direction='x'):
     H_skMM, S_kMM = get_lcao_hamiltonian(calc)
     if rank == MASTER:
         return lead_kspace2realspace(H_skMM, S_kMM, calc.wfs.ibzk_kc,
-                                     calc.wfs.weight_k, 'x', usesymm)
+                                     calc.wfs.weight_k, direction, usesymm)
     else:
         return None, None
 
