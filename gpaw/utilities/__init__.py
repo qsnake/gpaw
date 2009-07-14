@@ -131,6 +131,11 @@ def unpacked_indices(p, ni):
     i1 = int(ni + .5 - sqrt((ni - .5)**2 - 2 * (p - ni)))
     return i1, p - i1 * (2 * ni - 1 - i1) // 2
 
+packing_conventions = """\n
+In the code, the convention is that density matrices are constructed using
+pack / unpack2, and anything that should be multiplied onto such, e.g.
+corrections to the Hamiltonian, are constructed accroding to pack2 / unpack.
+"""
 
 def unpack(M):
     """Unpack 1D array to 2D, assuming a packing as in ``pack2``."""
@@ -195,6 +200,10 @@ def pack2(M2, tolerance=1e-10):
             p += 1
     assert p == len(M)
     return M
+
+
+for method in (unpack, unpack2, pack, pack2):
+    method.__doc__ += packing_conventions
 
 
 def element_from_packed(M, i, j):
