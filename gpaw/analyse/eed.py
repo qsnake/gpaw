@@ -5,6 +5,7 @@ from ase.units import Bohr, Hartree
 from ase.parallel import paropen
 
 import _gpaw
+from gpaw.io.fmf import FMF
 
 class ExteriorElectronDensity:
     """Exterior electron density to describe MIES spectra.
@@ -59,10 +60,18 @@ class ExteriorElectronDensity:
         else:
             out = file
 
-        print >> out, '# exterior electron density weights after'
-        print >> out, '# Y. Harada et al., Chem. Rev. 97 (1997) 1897'
+        fmf = FMF(['exterior electron density weights after',
+                   'Y. Harada et al., Chem. Rev. 97 (1997) 1897'])
+        print >> out, fmf.header(),
+        print >> out, fmf.data(['band index: n',
+                                'k-point index: k',
+                                'spin index: s',
+                                'k-point weight: weight',
+                                'energy: energy [eV]',
+                                'occupation number: occ',
+                                'relative EED weight: eed_weight']),
         
-        print >> out, '#  n   k s   weight      energy         occ mies_weight'
+        print >> out, '#; n   k s   weight      energy         occ  eed_weight'
         for kpt in wfs.kpt_u:
             for n in range(wfs.nbands):
                 print  >> out, '%4d %3d %1d %8.5f  %10.5f  %10.5f  %10.5f' % \
