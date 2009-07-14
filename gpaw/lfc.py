@@ -225,7 +225,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
 
     Methods missing before LocalizedFunctionsCollection is obsolete:
 
-    add1, add2, derivative
+    add1, add2
     """
     def __init__(self, gd, spline_aj, kpt_comm=None, cut=False, dtype=float,
                  integral=None, forces=None):
@@ -534,11 +534,20 @@ class NewLocalizedFunctionsCollection(BaseLFC):
 
         ::
         
-                    d   /             a*
-          c_axiv =  --  | dG a (G) Phi  (G)
-                    dv  /     x       i
+                    /              a*
+          c_axiv =  | dG a (G) dPhi  (G)
+                    /     x        iv
 
-        where v is either x, y, or z.
+        where::
+
+                       
+              a        d       a
+          dPhi  (G) =  ---  Phi (g)
+              iv         a     i
+                       dR 
+                         v
+                         
+        and v is either x, y, or z.
         """
         assert not self.use_global_indices
 
@@ -656,7 +665,8 @@ class NewLocalizedFunctionsCollection(BaseLFC):
            lm      /     lm
           
 
-        so the derivative look pretty ugly!"""
+        so the derivative look pretty ugly!
+        """
 
         c_Mv = np.zeros((self.Mmax, 7))
 
