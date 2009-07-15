@@ -17,18 +17,19 @@ for xc in ['LDA', 'PBE']:
     D_p = 0.1 * ra.random(nii) + 0.2
     H_p = np.zeros(nii)
 
-    E1 = s.xc_correction.calculate_energy_and_derivatives([D_p], [H_p])
+    E1 = s.xc_correction.calculate_energy_and_derivatives(D_p.reshape(1, -1),
+                                                          H_p.reshape(1, -1))
     dD_p = x * ra.random(nii)
     D_p += dD_p
     dE = np.dot(H_p, dD_p) / x
-    E2 = s.xc_correction.calculate_energy_and_derivatives([D_p], [H_p])
+    E2 = s.xc_correction.calculate_energy_and_derivatives(D_p.reshape(1, -1),
+                                                          H_p.reshape(1, -1))
     equal(dE, (E2 - E1) / x, 0.003)
 
     xcfunc = XCFunctional(xc, nspins_2)
     d = create_setup('N', xcfunc, nspins=2)
-    E2s = d.xc_correction.calculate_energy_and_derivatives([0.5 * D_p,
-                                                            0.5 * D_p],
-                                                           [H_p, H_p])
+    E2s = d.xc_correction.calculate_energy_and_derivatives(np.array(
+        [0.5 * D_p, 0.5 * D_p]), np.array([H_p, H_p]))
     equal(E2, E2s, 1.0e-12)
 
     D_sp = 0.1 * ra.random((2, nii)) + 0.2

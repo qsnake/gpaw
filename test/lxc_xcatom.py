@@ -50,7 +50,8 @@ for xc in libxc_set:
     D_p = 0.1 * ra.random(nii) + 0.4
     H_p = np.zeros(nii)
 
-    E1 = s.xc_correction.calculate_energy_and_derivatives([D_p], [H_p])
+    E1 = s.xc_correction.calculate_energy_and_derivatives(D_p.reshape(1, -1),
+                                                          H_p.reshape(1, -1))
     dD_p = x * ra.random(nii)
     D_p += dD_p
     dE = np.dot(H_p, dD_p) / x
@@ -60,9 +61,8 @@ for xc in libxc_set:
 
     xcfunc = XCFunctional(xc, 2)
     d = create_setup('N', xcfunc, nspins=2)
-    E2s = d.xc_correction.calculate_energy_and_derivatives([0.5 * D_p,
-                                                            0.5 * D_p],
-                                                           [H_p, H_p])
+    E2s = d.xc_correction.calculate_energy_and_derivatives(
+        np.array([0.5 * D_p, 0.5 * D_p]), np.array([H_p, H_p]))
     print E2, E2s
     equal(E2, E2s, 1.0e-12)
 
