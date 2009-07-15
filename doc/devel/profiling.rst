@@ -88,7 +88,6 @@ TAU
 is a portable profiling and tracing toolkit for performance analysis
 of parallel programs written in Fortran, C, C++, Java, and Python.
 
-
 Installation and configuration
 ------------------------------
 
@@ -115,8 +114,7 @@ it is also possible to accomplish this directly with the PerfDMF utilities.
 
 Generating profile data
 ------------------------
-TAU has a number of capabilities including generating a call path, memory profiling, measuring MPI message sizes, and much more. Here we describe the flat profile. It
-is the mos basic type of profile. It will show you where the wall-clock time is going. There are two methods for generating a flat profile:
+TAU has a number of capabilities including generating a call path, memory profiling, measuring MPI message sizes, and much more. Here we describe the flat profile. It is the most basic type of profile. It will show you where the wall-clock time is going. There are two methods for generating a flat profile:
 
 Manual
 ^^^^^^^^^^
@@ -188,7 +186,8 @@ may not work if TAU is not configured correctly.
 
 * **-optCompInst**: Performs the compiler-based instrumentation. This enables instrumentation by modifying the object files. This is only supported with certain compilers. The default is source-based instrumentation. This applies only to C code.
 * **-optShared**: Specifies the use of a dynamic TAU library binding (\*.so) instead of the default static library that would otherwise be linked into ``gpaw-python``. Instrumentation on all three distinct levels requires this option. This should **always** be used, otherwise profile information will only be collected for the Python layer. Additionally,  the library binding is chosen at runtime by specifying the TAU library binding directory in your *PYTHON_PATH* and *LD_LIBRARY_PATH*
-* **-optTau**: This is frequently very platform and compiler specific. See the BG/P page for an example.
+* **-optTau**: This is frequently very platform and compiler specific. See the BG/P page for examples.
+* **-optTauSelectFile**: A file containing a list of functions that are to be excluded or included. This is necessary to reduce the instrumentation overhead from lightweight function calls. The following selective instrumentation file is recommended for use with TAU as a number of functions called by libxc created substantial overhead: `select.tau <https://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/profiling/select.tau`_
 * **-optVerbose**: Useful for debugging, all the details of the invocation of ``tau_cc.sh`` are passed to stdout.
 
 Analysing profile data
