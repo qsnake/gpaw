@@ -35,9 +35,9 @@ for arg in sys.argv[1:]:
     cmd += " "
     t = arg.strip()
     if t in fragile_files:
-        opt += 1
+        opt = 2
     if t in non_c99files:
-        opt += 2
+        opt = 3
     if t in args2change:
         cmd += args2change[t]
     else:
@@ -46,7 +46,6 @@ for arg in sys.argv[1:]:
 flags_list = {1: "-O3 -g -std=c99 -fPIC -dynamic",
               2: "-O2 -g -std=c99 -fPIC -dynamic",
               3: "-O3 -g -fPIC -dynamic",
-              4: "-O2 -g -fPIC -dynamic",
               }
 
 flags = flags_list[opt]     
