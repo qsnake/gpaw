@@ -526,10 +526,12 @@ class NewXCCorrection(BaseXCCorrection):
         for n_Lg, D_p in zip(n_sLg, D_sp):
             D_Lq = npy.dot(self.B_Lqp, D_p)
             n_Lg[:] = npy.dot(D_Lq, self.n_qg)
-            if core:
-                # XXX this is wrong if fcorehole != 0.0 and nspins == 2,
-                # in which case nca_g != ncb_g != nc_g / 2.
-                n_Lg[0] += self.nc_g * sqrt(4 * pi) / self.nspins
+        if core:
+            if self.nspins == 1:
+                axpy(sqrt(4 * pi), self.nc_g, n_Lg[0, 0])
+            else:
+                axpy(sqrt(4 * pi), self.nca_g, n_sLg[0, 0])
+                axpy(sqrt(4 * pi), self.ncb_g, n_sLg[1, 0])
         return DensityExpansion(n_sLg, self.Y_yL, self.rgd)
     
     def expand_pseudo_density(self, D_sp, core=True):
@@ -539,8 +541,8 @@ class NewXCCorrection(BaseXCCorrection):
             # and expand_density this line is redunant
             D_Lq = npy.dot(self.B_Lqp, D_p)
             n_Lg[:] = npy.dot(D_Lq, self.nt_qg)
-            if core:
-                n_Lg[0] += self.nct_g * sqrt(4 * pi) / self.nspins
+        if core:
+            n_sLg[:, 0] += self.nct_g * sqrt(4 * pi) / self.nspins
         return DensityExpansion(n_sLg, self.Y_yL, self.rgd)
 
     def get_integrator(self, H_sp):
