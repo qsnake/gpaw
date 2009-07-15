@@ -99,7 +99,6 @@ class DensityExpansion(YLExpansion):
 
         This is a generator which will yield the gradient of this density.
         """
-
         # Calculate the radial derivatives of the density expansion dn/dr
         dndr_sLg = npy.zeros((len(self.n_sLg), self.Lmax, self.ng))
         for n_Lg, dndr_Lg in zip(self.n_sLg, dndr_sLg):
@@ -585,7 +584,9 @@ class NewXCCorrection(BaseXCCorrection):
             D_Lq = npy.dot(self.B_Lqp, D_p)
             n_Lg = npy.dot(D_Lq, self.n_qg)
             if core:
-                n_Lg[0] += (1.0 / len(D_sp)) * self.nc_g * sqrt(4 * pi)
+                # XXX this is wrong if fcorehole != 0.0 and nspins == 2,
+                # in which case nca_g != ncb_g != nc_g / 2.
+                n_Lg[0] += self.nc_g * sqrt(4 * pi) / self.nspins
             n_sLg.append(n_Lg)
         return DensityExpansion(n_sLg, self.Y_yL, self.lmax, self.ng, self.rgd)
     
@@ -597,7 +598,7 @@ class NewXCCorrection(BaseXCCorrection):
             D_Lq = npy.dot(self.B_Lqp, D_p)
             n_Lg = npy.dot(D_Lq, self.nt_qg)
             if core:
-                n_Lg[0] += (1.0 / len(D_sp)) * self.nct_g * sqrt(4 * pi)
+                n_Lg[0] += self.nct_g * sqrt(4 * pi) / self.nspins
             n_sLg.append(n_Lg)
         return DensityExpansion(n_sLg, self.Y_yL, self.lmax, self.ng, self.rgd)
 
