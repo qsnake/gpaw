@@ -2,7 +2,7 @@ define_macros += [("GPAW_AIX",1)]
 define_macros += [("GPAW_MKL",1)]
 define_macros += [("GPAW_BGP",1)]
 define_macros += [("GPAW_ASYNC",1)]
-define_macros += [('GPAW_MPI2',1)]
+define_macros += [("GPAW_MPI2",1)]
 # define_macros += [('GPAW_HPM',1)] # FLOP rate measurements
 # define_macros += [("GPAW_MPI_DEBUG",1)] # debugging
 # define_macros += [("GPAW_OMP",1)] # not really working 
@@ -47,9 +47,9 @@ library_dirs = [
            ]
 
 include_dirs += [
-    '/home/dulak/numpy-1.0.4-1.optimized/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages/numpy/core/include'
+    '/home/dulak/numpy-1.0.4-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages/numpy/core/include'
     ]
 
-compiler = "bgp_xlc.py"
-mpicompiler = "bgp_xlc.py"
-mpilinker   = "bgp_xlc.py"
+compiler = "bgp_gcc.py"
+mpicompiler = "bgp_gcc.py"
+mpilinker   = "bgp_gcc.py"

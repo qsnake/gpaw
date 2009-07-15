@@ -6,6 +6,13 @@ Building with gcc compiler
 
 NumPy
 =====
+
+If you do not wish to build NumPy for yourself, you can use one of the following versions::
+
+  /home/dulak/numpy-1.0.4-1
+  /home/naromero/numpy-1.0.4-1.essl
+  /home/naromero/numpy-1.0.4-1.goto
+
 Instructions for the ``V1R3M0_460_2008-081112P`` driver,
 compilation with gcc compiler.
 
@@ -33,12 +40,6 @@ and the :svn:`~doc/install/BGP/numpy-1.0.4-site.cfg.lapack_bgp_goto_esslbg` file
 and xlf* related libraries).
 
 **Note** that ``lapack_bgp`` and ``cblas_bgp`` are not available on ``surveyor/intrepid``, to build use instructions from `<http://www.pdc.kth.se/systems_support/computers/bluegene/LAPACK-CBLAS/LAPACK-CBLAS-build>`_. Python requires all libraries to have names like ``liblapack_bgp.a``, so please make the required links for ``lapack_bgp.a``, and ``cblas_bgp.a``. Moreover numpy requires that ``lapack_bgp``, ``goto``, ``esslbg``, and ``cblas_bgp`` reside in the same directory, so choose a directory and edit ``numpy-1.0.4-site.cfg.lapack_bgp_goto_esslbg`` to reflect your installation path (in this example `/home/dulak/from_Nils_Smeds/CBLAS_goto/lib/bgp`). Include the directory containing `cblas.h` in `include_dirs`. Change the locations of the libraries to be used in the makefiles: `/soft/apps/LIBGOTO` and `/opt/ibmcmp/lib/bg`.
-
-**Warning**: 23 March 2009: The optimized version of NumPy no longer seems to be running faster. This is
-currently under investigation.
-
-**Warning**: 23 March 2009: Crashes have been reported with numpy compiled against ``goto``
-so build numpy against ``esslbg`` - see :ref:`rbgc`.
 
 **Warning** : If NumPy built using these libraries fails
 with errors of kind "R_PPC_REL24 relocation at 0xa3d664fc for symbol sqrt"
@@ -81,30 +82,41 @@ get and numpy-1.0.4 and do this::
   $ LD_LIBRARY_PATH="$ldpath" CC="$c" $p setup.py install --root="$root"
 
 
-If you do not wish to build NumPy for yourself, you can use the version in Marcin Dulak's directory::
-
-  /home/dulak/numpy-1.0.4-1
-  /home/dulak/numpy-1.0.4-1.optimized
-
 GPAW
 ====
-We presume that you have already downloaded: GPAW, GPAW_SETUPS, ASE, and NumPy.
+
+Step 1
+======
+
+Download all the necessary libraries: GPAW, GPAW_SETUPS, ASE, and NumPy.
+
+Step 2
+======
 
 Set these environment variables in the :file:`.softenvrc` file::
 
-  PYTHONPATH = ${HOME}/Numeric-24.2-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages/Numeric
-  PYTHONPATH += ${HOME}/numpy-1.0.4-1.optimized/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages
-  PYTHONPATH += ${HOME}/gpaw:${HOME}/CamposASE2:${HOME}/ase3k
-  GPAW_SETUP_PATH = ${HOME}/gpaw-setups-0.4.2039
+  PYTHONPATH += $HOME/numpy-1.0.4-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages
+  PYTHONPATH += $HOME/gpaw:${HOME}/ase3k
+  GPAW_SETUP_PATH = $HOME/gpaw-setups-0.4.2039
 
-  LD_LIBRARY_PATH += /bgsys/drivers/ppcfloor/runtime/SPI
-  LD_LIBRARY_PATH += /opt/ibmcmp/xlf/bg/11.1/bglib:/opt/ibmcmp/lib/bglib
-  LD_LIBRARY_PATH += /opt/ibmcmp/xlsmp/bg/1.7/bglib:/bgsys/drivers/ppcfloor/gnu-linux/lib
-  PATH += ${HOME}/gpaw/tools:${HOME}/CamposASE2/tools:${HOME}/ase3k/tools
+  LD_LIBRARY_PATH += /bgsys/drivers/ppcfloor/gnu-linux/lib
+  # Compute node
+  # qsub --env LD_LIBRARY_PATH=$CN_LD_LIBRARY_PATH
+  # some of these are only relevant for gcc, xlc, or TAU
+  CN_LD_LIBRARY_PATH = /bgsys/drivers/ppcfloor/runtime/SPI:/opt/ibmcmp/xlf/bg/11.1/bglib: \
+  		     /opt/ibmcmp/lib/bg/bglib:/bgsys/drivers/ppcfloor/gnu-linux/powerpc-bgp-linux/lib: \
+  		     /bgsys/drivers/ppcfloor/comm/lib
 
-and do::
+  PATH += $HOME/gpaw/tools:$HOME/ase3k/tools
+
+and type::
 
   resoft
+
+to update your environment in the main login terminal.
+
+Step 3
+======
 
 Because the ``popen3`` function is missing, you will need to remove all the
 contents of the :file:`gpaw/version.py` file after ``version =
@@ -112,40 +124,38 @@ contents of the :file:`gpaw/version.py` file after ``version =
 installation!  Suggestions how to skip the ``popen3`` testing in
 :file:`gpaw/version.py` on BG/P are welcome!
 
-Because NumPy is primarily built for the compute nodes and the optimized version
-cannot be imported on the front end nodes, it is necessary to use "--do-not-force-inclusion-of-numpy"
-option during build, and put the path to ``.../site-packages/numpy/core/include``
-in ``include_dirs`` variable in the :svn:`~doc/install/BGP/customize_surveyor_gcc.py` file.
+Step 4
+======
 
-A number of the GPAW source files in ``c`` directory are built using
+A number of the GPAW source files in ``gpaw/c`` directory are built using
 the ``distutils`` module which makes it difficult to control the flags
-which are passed to the gnu compiler.
-A workaround is to use the following :svn:`~doc/install/BGP/bgp_gcc.py` file:
+which are passed to the gnu compiler. A workaround is to use the following python
+script: :svn:`~doc/install/BGP/bgp_gcc.py`
 
 .. literalinclude:: bgp_gcc.py
 
-Finally, we build GPAW by doing``/bgsys/drivers/ppcfloor/gnu-linux/bin/python
-setup.py build_ext --do-not-force-inclusion-of-numpy``
-with this :svn:`~doc/install/BGP/customize_surveyor_gcc.py` file:
+Finally, we build GPAW by typing::
+
+  /bgsys/drivers/ppcfloor/gnu-linux/bin/python setup.py build_ext --ignore-numpy
+
+with this :svn:`~doc/install/BGP/customize_surveyor_gcc.py` file. Note that it has to
+be renamed to **customize.py** in $HOME/gpaw. If an optimized
+version of NumPy is in your $PYTHONPATH you may need to use "--ignore-numpy".
 
 .. literalinclude:: customize_surveyor_gcc.py
 
 Additional BG/P specific hacks
 ===============================
 
-A FLOPS (floating point per second) counter and a number of other hardware counters can be enabled by adding two extra lines to your customize.py::
+A FLOPS (floating point per second) counter and a number of other hardware counters can be enabled with the macro::
 
-  libraries += [
-             'hpm',
-            ]
-
-  define_macros += [('GPAW_BGP_PERF',1)]
+  define_macros += [('GPAW_HPM',1)]
 
 This hpm library is available on the BG/P machines at Argonne National Laboratory. It will produce two files for each core: ``hpm_flops.$rank`` and ``hpm_data.$rank``. The latter one contains a number of additional hardware counters. There are four cores per chip and data for only two of the four cores can be collected simultaneously. This is set through an environment variable which is passed to Cobalt with the *--env*  flag. *BGP_COUNTER_MODE=0* specifies core 1 and 2, while *BGP_COUNTER_MODE=1* specifies core 3 and 4. 
 
 A mapfile for the ranks can be generated by adding another macro to customize.py::
   
-  define_macros += [('GPAW_BGP_MAP',1)]
+  define_macros += [('GPAW_MAP',1)]
 
 
 Submitting jobs
@@ -154,8 +164,8 @@ Submitting jobs
 A gpaw script ``CH4.py`` (fetch it from ``gpaw/test``) can be submitted like this::
 
   qsub -n 2 -t 10 --mode vn --env \
-       OMP_NUM_THREADS=1:GPAW_SETUP_PATH=$GPAW_SETUP_PATH:PYTHONPATH=$PYTHONPATH:/bgsys/drivers/ppcfloor/gnu-linux/powerpc-bgp-linux/lib:LD_LIBRARY_PATH=$LD_LIBRARY_PATH \
-       ${HOME}/gpaw/build/bin.linux-ppc64-2.5/gpaw-python ${HOME}/CH4.py
+       OMP_NUM_THREADS=1:GPAW_SETUP_PATH=$GPAW_SETUP_PATH:PYTHONPATH=$PYTHONPATH:LD_LIBRARY_PATH=$CN_LD_LIBRARY_PATH \
+       $HOME/gpaw/build/bin.linux-ppc64-2.5/gpaw-python CH4.py
 
 It's convenient to customize as in :file:`gpaw-qsub.py` which can be
 found at the :ref:`parallel_runs` page.

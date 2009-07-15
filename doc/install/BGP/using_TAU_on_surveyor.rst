@@ -4,7 +4,22 @@
 Using TAU on surveyor
 =====================
 
-gcc
+Start by reading the `main profiling page <https://wiki.fysik.dtu.dk/gpaw/devel/profiling.html>`_
+
+Do **not** using the customize.py from the above page, following the instructions found on this
+page instead. The following mostly applies to automatic instrumentation using the TAU compiler
+scripts. 
+
+Overhead with the TAU for automatic instrumentation has been measured ate about 20% for the
+`b256H2O.py <https://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/256H2O/b256H2O.py>`_.
+Use manual instrumentation if this overhead is unacceptable or you might need to 
+add more functions to the existing selective instrumentation file
+`select.tau <https://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/profiling/select.tau>`_
+
+The version of TAU at ALCF is updated frequently, please check:
+`<https://wiki.alcf.anl.gov/index.php/Tuning_and_Analysis_Utilities_(TAU)>`_
+
+GCC
 ===
 
 This applies to surveyor and intrepid, regardless of doing either
@@ -15,55 +30,59 @@ Add the following lines to you ``.softenvrc``. Note that here we specify
 ``paraprof`` on the front-end nodes::
 
   TAUARCHITECTURE = ppc64
-  TAUVERSION = 2.18.1
-  TAU_MAKEFILE = /soft/apps/tau/tau-$TAUVERSION/bgp/lib/Makefile.tau-bgptimers-mpi-gnu-compensate-python-pdt
-  TAU_OPTIONS = '-optTau="-rn Py_RETURN_NONE"  -i/soft/apps/tau/tau-'$TAUVERSION'/include/TAU_PYTHON_FIX.h"'
+  TAUVERSION = 2.18.2p2
+  TAU_MAKEFILE = /soft/apps/tau/tau-$TAUVERSION/bgp/lib/Makefile.tau-bgptimers-mpi-python-pdt
+  TAU_OPTIONS = '-optVerbose -optShared -optTauSelectFile=select.tau \
+  	      -optTau="-rn Py_RETURN_NONE" -i/soft/apps/tau/tau-'$TAUVERSION'/include/TAU_PYTHON_FIX.h"'
   PATH += /soft/apps/tau/tau-$TAUVERSION/$TAUARCHITECTURE/bin
+
+The biggest difference between 2.18.2 and 2.18.1, is that many Makefile stub configurations are now available as run time options.
 
 The bindings are located in
 ``/soft/apps/tau/tau/tau-$TAUVERSION/bgp/lib/<name>``.  This particular TAU library binding supports BGP timers (a low-level
-timer with minimal overhead), MPI, GNU compiler, Python, and compensation. This is the recommended library binding for
-flat profiles.
+timer with minimal overhead), MPI, GNU compiler, and Python. This is the recommended library binding for flat profiles.
 
 You will also need to change one line in your :svn:`bgp_gcc.py`::
 
   cmd = "tau_cc.sh %s %s"%(flags, cmd)
   
-xlc
+XLC
 ===
 
-Follow the instructions for **gcc** (above), except:
+TAU does not work with XLC for automatic instrumentation because of an issue related to the bgptimers shared library. IBM is working
+towards a resolution this fall.
 
-* use filenames and directories that do not contain *gnu* in their name,
-* There is no need to include TAU_PYTHON_FIX.h in *TAU_OPTIONS*,
-* At the moment the ``-optShared`` is not working with *bgptimers* binding libraries.
+Run time environment variables
+================================
+Please see:
+https://wiki.alcf.anl.gov/index.php/Tuning_and_Analysis_Utilities_(TAU)#Running_With_TAU
 
+Here are the recommended run time environment variables that should be passed to Cobalt via qsub::
 
-automatic instrumentation
-==========================
+  TAU_VERBOSE=1:TAU_THROTTLE=0:TAU_COMPENSATE=1
 
-Overhead with the 2.18.1 version of TAU has been measured to be about
-20% for the `b256H2O.py
-<https://svn.fysik.dtu.dk/projects/gpaw/doc/devel/256H2O/b256H2O.py>`_
-test case. Use manual instrumentation if this overhead is unacceptable.
+TAU_COMPENSATE seems to cause problems with manual instrumentation, so do not set it to 0 which
+means off. In any case, it should not be particularly relevant unless you have manual timers on a
+frequently accessed lightweight functions.
 
 Submitting jobs
 ==================
 
-If you are doing manual instrumentation, the following environment variables must be append and passed to Cobalt via the qsub command::
+The following environment variables must be append and passed to Cobalt via the qsub command::
 
-  PYTHONPATH=/soft/apps/tau/tau_latest/bgp/lib/bindings-bgptimers-mpi-gnu-compensate-python-pdt
-  LD_LIBRARY_PATH=/soft/apps/tau/tau_latest/bgp/lib/bindings-bgptimers-mpi-gnu-compensate-python-pdt
-
-For automatica instrumentation, also add::
-
-  LD_LIBRARY_PATH=/bgsys/drivers/ppcfloor/gnu-linux/powerpc-bgp-linux/lib:/bgsys/drivers/ppcfloor/comm/lib  
+  PYTHONPATH=/soft/apps/tau/tau-$TAUVERSION/bgp/lib/bindings-bgptimers-mpi-gnu-python-pdt
+  LD_LIBRARY_PATH=/soft/apps/tau/tau-$TAUVERSION/bgp/lib/bindings-bgptimers-mpi-gnu-python-pdt
 
 A typically ``qsub`` commands looks like this::
 
-  qsub -A Gpaw -n $nodes -t $time -q $queue --mode $mode --env BG_MAPPING=$mapping:MPIRUN_ENABLE_TTY_REPORTING=0:OMP_NUM_THREADS=1:GPAW_SETUP_PATH=$GPAW_SETUP_PATH:PYTHONPATH=/home/naromero/ase:/home/naromero/gpaw-tau:/soft/apps/tau/tau_latest/bgp/lib/bindings-bgptimers-mpi-gnu-compensate-python-pdt:$PYTHONPATH:LD_LIBRARY_PATH=/bgsys/drivers/ppcfloor/gnu-linux/powerpc-bgp-linux/lib:/bgsys/drivers/ppcfloor/comm/lib:/soft/apps/tau/tau_latest/bgp/lib/bindings-bgptimers-mpi-gnu-compensate-python-pdt:$LD_LIBRARY_PATH /home/naromero/gpaw-tau/build/bin.linux-ppc64-2.5/gpaw-python ./$input --sl_inverse_cholesky=4,4,64,4 --sl_diagonalize=4,4,64,4 --domain-decomposition=4,4,4 
+  qsub -A $account -n $nodes -t $time -q $queue --mode $mode \
+       --env BG_MAPPING=$mapping:MPIRUN_ENABLE_TTY_REPORTING=0:OMP_NUM_THREADS=1: \
+       GPAW_SETUP_PATH=$GPAW_SETUP_PATH:\
+       PYTHONPATH=$PYTHONPATH:/soft/apps/tau/tau-$TAUVERSION/bgp/lib/bindings-bgptimers-mpi-gnu-python-pdt: \
+       LD_LIBRARY_PATH=$CN_LIBRARY_PATH:/soft/apps/tau/tau-$TAUVERSION/bgp/lib/bindings-bgptimers-mpi-gnu-python-pdt \
+       $HOME/gpaw-tau/build/bin.linux-ppc64-2.5/gpaw-python wrapper.py
 
-If you are doing manual instrumentation, simply then the the true input files is passed to ``gpaw-python``. For automatic instrumentation, you need to submit ``wrapper.py`` instead::
+If you are doing manual instrumentation, simply pass the actual input file to ``gpaw-python`` instead. For automatic instrumentation, you need to ``wrapper.py`` instead::
 
   import tau
 
@@ -72,7 +91,7 @@ If you are doing manual instrumentation, simply then the the true input files is
 
   tau.run('OurMain()')
 
-This TAU run will produce ``profile.*`` files that can be merged into
+TAU run will then produce ``profile.*`` files that can be merged into
 the default TAU's ``ppk`` format using the command issued from the directory
 where the ``profile.*`` files reside::
 
