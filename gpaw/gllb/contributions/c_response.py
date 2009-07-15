@@ -45,12 +45,19 @@ class C_Response(Contribution):
         self.grid_comm = self.gd.comm
         self.vt_sg = self.finegd.empty(self.nlfunc.nspins)
         self.vt_sG = self.gd.empty(self.nlfunc.nspins)
-        print "Writing over vt_sG!"
+        print "Writing over vt_sG as empty"
         self.nt_sG = self.gd.empty(self.nlfunc.nspins)
 
         self.Dresp_asp = None
+        self.D_asp = None
+
+        # The response discontinuity is stored here
+	self.Dxc_vt_sG = None
+        self.Dxc_Dresp_asp = {}
+        self.Dxc_D_asp = {}
         
     def calculate_spinpaired(self, e_g, n_g, v_g):
+        print "In response::calculate_spinpaired."
         w_kn = self.coefficients.get_coefficients_by_kpt(self.kpt_u)
         f_kn = [ kpt.f_n for kpt in self.kpt_u ]
         if w_kn is not None:
@@ -69,7 +76,6 @@ class C_Response(Contribution):
                 for nt_G, vt_G in zip(self.nt_sG, self.vt_sG):
                     self.symmetry.symmetrize(nt_G, self.gd)
                     self.symmetry.symmetrize(vt_G, self.gd)
-
 
             self.wfs.calculate_atomic_density_matrices_with_occupation(
                 self.Dresp_asp, w_kn)
@@ -93,6 +99,7 @@ class C_Response(Contribution):
         raise NotImplementedError
 
     def calculate_energy_and_derivatives(self, D_sp, H_sp, a):
+        print "In response::calculate_energy_and_derivatives"
         # Get the XC-correction instance
         c = self.nlfunc.setups[a].xc_correction
         ncresp_g = self.nlfunc.setups[a].extra_xc_data['core_response']
@@ -159,22 +166,27 @@ class C_Response(Contribution):
         vt_g += self.weight * v_g / (n_g + 1e-10)
         return 0.0 # Response part does not contribute to energy
 
-    def calculate_delta_xc_perturbation(self):
+    def calculate_delta_xc(self):
         # Calculate band gap
         homo = self.occupations.get_zero_kelvin_homo_eigenvalue(self.kpt_u)
         lumo = self.occupations.get_zero_kelvin_lumo_eigenvalue(self.kpt_u)
         Ksgap = lumo-homo
+
+        for a in self.density.nct.my_atom_indices:
+            ni = self.setups[a].ni
+            self.Dxc_Dresp_asp[a] = npy.zeros((self.nlfunc.nspins, ni * (ni + 1) // 2))
+            self.Dxc_D_asp[a] = npy.zeros((self.nlfunc.nspins, ni * (ni + 1) // 2))
 
         # Calculate new response potential with LUMO reference 
         w_kn = self.coefficients.get_coefficients_by_kpt(self.kpt_u, lumo_perturbation=True)
        
         f_kn = [ kpt.f_n for kpt in self.kpt_u ]
 
-        self.vt_sG[:] = 0.0
-        self.nt_sG[:] = 0.0
+        vt_sG = self.gd.zeros(self.nlfunc.nspins)
+        nt_sG = self.gd.zeros(self.nlfunc.nspins)
         for kpt, w_n in zip(self.kpt_u, w_kn):
-            self.wfs.add_to_density_from_k_point_with_occupation(self.vt_sG, kpt, w_n)
-            self.wfs.add_to_density_from_k_point(self.nt_sG, kpt)
+            self.wfs.add_to_density_from_k_point_with_occupation(vt_sG, kpt, w_n)
+            self.wfs.add_to_density_from_k_point(nt_sG, kpt)
             
         self.band_comm.sum(self.nt_sG)
         self.kpt_comm.sum(self.nt_sG)
@@ -182,48 +194,64 @@ class C_Response(Contribution):
         self.kpt_comm.sum(self.vt_sG)
             
         if self.wfs.symmetry:
-            for nt_G, vt_G in zip(self.nt_sG, self.vt_sG):
+            for nt_G, vt_G in zip(nt_sG, vt_sG):
                 self.symmetry.symmetrize(nt_G, self.gd)
                 self.symmetry.symmetrize(vt_G, self.gd)
 
-        self.vt_sG[:] /= self.nt_sG + 1e-10
+        vt_sG /= nt_sG + 1e-10
+        self.Dxc_vt_sG = vt_sG
 
         self.wfs.calculate_atomic_density_matrices_with_occupation(
-            self.Dresp_asp, w_kn)
+            self.Dxc_Dresp_asp, w_kn)
         self.wfs.calculate_atomic_density_matrices_with_occupation(
-            self.D_asp, f_kn)
+            self.Dxc_D_asp, f_kn)
+
+    def calculate_delta_xc_perturbation(self):
+        # Calculate band gap
+        homo = self.occupations.get_zero_kelvin_homo_eigenvalue(self.kpt_u)
+        lumo = self.occupations.get_zero_kelvin_lumo_eigenvalue(self.kpt_u)
+        Ksgap = lumo-homo
 
         # Calculate average of lumo reference response potential
-        method1_dxc = npy.average(self.vt_sG[0])
+        method1_dxc = npy.average(self.Dxc_vt_sG[0])
+
+        nt_G = self.gd.empty()
 
         ne = self.occupations.ne # Number of electrons
         assert self.nspins == 1
         lumo_n = ne // 2
-        lumo_occupied = npy.array([ 1.0*(n==lumo_n) for n in range(len(self.kpt_u[0].f_n)) ])
         eps_u =[]
-        for kpt in self.kpt_u:
-            self.nt_sG[:] = 0.0
-            self.wfs.add_to_density_from_k_point_with_occupation(self.nt_sG, kpt, lumo_occupied)
-            Ecorr = 0.0
-            for a in self.D_asp:
-                D_sp = self.D_asp[a]
-                Dresp_sp = self.Dresp_asp[a]
-                Dwf_p = pack(npy.outer(kpt.P_ani[a][lumo_n].conj(), kpt.P_ani[a][lumo_n]).real)
-                Ecorr += self.integrate_sphere(a, Dresp_sp, D_sp, Dwf_p)
-            print "Proc", world.rank, " Ecorr", Ecorr
-            Ecorr = self.grid_comm.sum(Ecorr)
-            print "Spherical correction from processor ",world.rank, ":", Ecorr * 27.21
-            eps_u.append(Ecorr + self.gd.integrate(self.nt_sG[0]*self.vt_sG[0]))
+        eps_un = npy.zeros((len(self.kpt_u),len(self.kpt_u[0].psit_nG)))
+        for u, kpt in enumerate(self.kpt_u):
+            print "K-Point index: ",u
+            for n in range(len(kpt.psit_nG)):
+                nt_G[:] = 0.0
+                self.wfs.add_orbital_density(nt_G, kpt, n)
+                E = 0
+                for a in self.D_asp:
+                    D_sp = self.Dxc_D_asp[a]
+                    Dresp_sp = self.Dxc_Dresp_asp[a]
+                    P_ni = kpt.P_ani[a]
+                    Dwf_p = pack(npy.outer(P_ni[n].T.conj(), P_ni[n]).real)
+                    E += self.integrate_sphere(a, Dresp_sp, D_sp, Dwf_p)
+                print "Atom corrections", E*27.21
+                E = self.grid_comm.sum(E)
+                
+                E += self.gd.integrate(nt_G*self.Dxc_vt_sG[0])
+                E += kpt.eps_n[lumo_n]
+                print "Old eigenvalue",  kpt.eps_n[lumo_n]*27.21, " New eigenvalue ", E*27.21, " DXC", kpt.eps_n[lumo_n]*27.21-E*27.21
+                eps_un[u][n] = E
 
-        method2_dxc = min(eps_u)
-        method2_dxc = -self.kpt_comm.max(-method2_dxc)
-
+        method2_lumo = min([ eps_n[lumo_n] for eps_n in eps_un])
+        method2_lumo = -self.kpt_comm.max(-method2_lumo)
+        method2_dxc = method2_lumo-lumo
         Ha = 27.2116 
         Ksgap *= Ha
         method1_dxc *= Ha
         method2_dxc *= Ha
         if world.rank is not 0:
             return (Ksgap, method2_dxc)
+        
         print
         print "\Delta XC calulation"
         print "-----------------------------------------------"
@@ -312,6 +340,10 @@ class C_Response(Contribution):
             print "Hardness predicted: %10.3f eV" % (self.hardness * 27.2107)
             
     def write(self, w):
+
+        if self.Dxc_vt_sG == None:
+            self.calculate_delta_xc()
+        
         wfs = self.wfs
         world = wfs.world
         domain_comm = wfs.gd.comm
@@ -341,11 +373,24 @@ class C_Response(Contribution):
                 if master:
                     w.fill(vt_sG)
 
+        if master:
+            w.add('GLLBDxcPseudoResponsePotential',
+                  ('nspins', 'ngptsx', 'ngptsy', 'ngptsz'), dtype=float)
+
+        if kpt_comm.rank == 0:
+            for s in range(wfs.nspins):
+                vt_sG = wfs.gd.collect(self.Dxc_vt_sG[s])
+                if master:
+                    w.fill(vt_sG)
+
         print "Integration over vt_sG", npy.sum(self.vt_sG.ravel())
+        print "Integration over Dxc_vt_sG", npy.sum(self.Dxc_vt_sG.ravel())
                 
         if master:
             all_D_sp = npy.empty((wfs.nspins, nadm))
             all_Dresp_sp = npy.empty((wfs.nspins, nadm))
+            all_Dxc_D_sp = npy.empty((wfs.nspins, nadm))
+            all_Dxc_Dresp_sp = npy.empty((wfs.nspins, nadm))
             p1 = 0
             for a in range(natoms):
                 ni = wfs.setups[a].ni
@@ -353,26 +398,38 @@ class C_Response(Contribution):
                 if a in self.D_asp:
                     D_sp = self.D_asp[a]
                     Dresp_sp = self.Dresp_asp[a]
+                    Dxc_D_sp = self.Dxc_D_asp[a]
+                    Dxc_Dresp_sp = self.Dxc_Dresp_asp[a]
                 else:
                     D_sp = npy.empty((wfs.nspins, nii))
                     domain_comm.receive(D_sp, wfs.rank_a[a], 27)
                     Dresp_sp = npy.empty((wfs.nspins, nii))
                     domain_comm.receive(Dresp_sp, wfs.rank_a[a], 271)
+                    Dxc_D_sp = npy.empty((wfs.nspins, nii))
+                    domain_comm.receive(Dxc_D_sp, wfs.rank_a[a], 28)
+                    Dxc_Dresp_sp = npy.empty((wfs.nspins, nii))
+                    domain_comm.receive(Dxc_Dresp_sp, wfs.rank_a[a], 272)
+                    
                 p2 = p1 + nii
                 all_D_sp[:, p1:p2] = D_sp
                 all_Dresp_sp[:, p1:p2] = Dresp_sp
+                all_Dxc_D_sp[:, p1:p2] = Dxc_D_sp
+                all_Dxc_Dresp_sp[:, p1:p2] = Dxc_Dresp_sp
+                
                 p1 = p2
             assert p2 == nadm
             w.add('GLLBAtomicDensityMatrices', ('nspins', 'nadm'), all_D_sp)
             w.add('GLLBAtomicResponseMatrices', ('nspins', 'nadm'), all_Dresp_sp)
+            w.add('GLLBDxcAtomicDensityMatrices', ('nspins', 'nadm'), all_Dxc_D_sp)
+            w.add('GLLBDxcAtomicResponseMatrices', ('nspins', 'nadm'), all_Dxc_Dresp_sp)
         elif kpt_comm.rank == 0 and band_comm.rank == 0:
             for a in range(natoms):
                 if a in self.density.D_asp:
                     domain_comm.send(self.D_asp[a], 0, 27)
                     domain_comm.send(self.Dresp_asp[a], 0, 271)
+                    domain_comm.send(self.Dxc_D_asp[a], 0, 28)
+                    domain_comm.send(self.Dxc_Dresp_asp[a], 0, 272)
 
-        #print "Wrote Dresp_asp", self.Dresp_asp
-        
     def read(self, r):
         wfs = self.wfs
         world = wfs.world
@@ -381,18 +438,30 @@ class C_Response(Contribution):
         band_comm = wfs.band_comm
         
         self.vt_sG = wfs.gd.empty(wfs.nspins)
+        self.Dxc_vt_sG = wfs.gd.empty(wfs.nspins)
         print "Reading vt_sG"
         for s in range(wfs.nspins):
             self.gd.distribute(r.get('GLLBPseudoResponsePotential', s),
                               self.vt_sG[s])
+        print "Reading Dxc_vt_sG"
+        for s in range(wfs.nspins):
+            self.gd.distribute(r.get('GLLBDxcPseudoResponsePotential', s),
+                              self.Dxc_vt_sG[s])
+            
         print "Integration over vt_sG", npy.sum(self.vt_sG.ravel())
+        print "Integration over Dxc_vt_sG", npy.sum(self.Dxc_vt_sG.ravel())
         
         # Read atomic density matrices and non-local part of hamiltonian:
         D_sp = r.get('GLLBAtomicDensityMatrices')
         Dresp_sp = r.get('GLLBAtomicResponseMatrices')
+        Dxc_D_sp = r.get('GLLBDxcAtomicDensityMatrices')
+        Dxc_Dresp_sp = r.get('GLLBDxcAtomicResponseMatrices')
         
         self.D_asp = {}
         self.Dresp_asp = {}
+        self.Dxc_D_asp = {}
+        self.Dxc_Dresp_asp = {}
+
         p1 = 0
         for a, setup in enumerate(wfs.setups):
             ni = setup.ni
@@ -400,9 +469,27 @@ class C_Response(Contribution):
             # NOTE: Distrbibutes the matrices to more processors than necessary
             self.D_asp[a] = D_sp[:, p1:p2].copy()
             self.Dresp_asp[a] = Dresp_sp[:, p1:p2].copy()
-
+            self.Dxc_D_asp[a] = Dxc_D_sp[:, p1:p2].copy()
+            self.Dxc_Dresp_asp[a] = Dxc_Dresp_sp[:, p1:p2].copy()
             print "Proc", world.rank, " reading atom ", a
             p1 = p2
 
-        #print "Read Dresp_asp", self.Dresp_asp
+if __name__ == "__main__":
+    from gpaw.xc_functional import XCFunctional
+    xc = XCFunctional('LDA')
+    dx = 1e-3
+    Ntot = 100000
+    x = npy.array(range(1,Ntot+1))*dx
+    kf = (2*x)**(1./2)
+    n_g = kf**3 / (3*pi**2)
+    v_g = npy.zeros(Ntot)
+    e_g = npy.zeros(Ntot)
+    xc.calculate_spinpaired(e_g, n_g, v_g)
+    vresp = v_g - 2*e_g / n_g
+    
+    f = open('response.dat','w')
+    for xx, v in zip(x, vresp):
+        print >>f, xx, v
+    f.close()
+
 
