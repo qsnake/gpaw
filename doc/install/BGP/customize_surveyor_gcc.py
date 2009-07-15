@@ -1,42 +1,55 @@
+define_macros += [("GPAW_AIX",1)]
+define_macros += [("GPAW_MKL",1)]
+define_macros += [("GPAW_BGP",1)]
+define_macros += [("GPAW_ASYNC",1)]
+define_macros += [('GPAW_MPI2',1)]
+# define_macros += [('GPAW_HPM',1)] # FLOP rate measurements
+# define_macros += [("GPAW_MPI_DEBUG",1)] # debugging
+# define_macros += [("GPAW_OMP",1)] # not really working 
+
 scalapack = True
 
+# If you are using threading, you probably
+# need to change the following library:
+# xlomp_ser -> xlsmp
+#
+# DO NOT INTERCHANGE THE ORDER OF LAPACK
+# & ESSL, LAPACK SHOULD BE LINKED FIRST.
+# 
+#
+# It is also possible to use Goto BLAS instead
+# of ESSL. The performance is similar though,
+# and IBM updates ESSL frequently.
+
 libraries = [
-           'lapack_bgp',
            'scalapack',
            'blacsCinit_MPI-BGP-0',
            'blacs_MPI-BGP-0',
            'lapack_bgp',
-           'goto',
+           'esslbg',
            'xlf90_r',
            'xlopt',
            'xl',
            'xlfmath',
-           'xlsmp'
+           'xlomp_ser',
+#           'hpm',
            ]
 
 library_dirs = [
-           '/soft/apps/LAPACK',
-           '/soft/apps/LIBGOTO',
-           '/soft/apps/BLACS',
            '/soft/apps/SCALAPACK',
+           '/soft/apps/BLACS',
+           '/soft/apps/LAPACK',
+           '/soft/apps/ESSL-4.3.1-1/lib',
            '/opt/ibmcmp/xlf/bg/11.1/bglib',
            '/opt/ibmcmp/xlsmp/bg/1.7/bglib',
-           '/bgsys/drivers/ppcfloor/gnu-linux/lib'
+           '/bgsys/drivers/ppcfloor/gnu-linux/lib',
+#           '/soft/apps/UPC/lib',
            ]
 
-gpfsdir = '/home/dulak'
-python_site = 'bgsys/drivers/ppcfloor/gnu-linux'
+include_dirs += [
+    '/home/dulak/numpy-1.0.4-1.optimized/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages/numpy/core/include'
+    ]
 
-include_dirs += [gpfsdir+'/Numeric-24.2-1/'+python_site+'/include/python2.5',
-                 gpfsdir+'/numpy-1.0.4-1.optimized/'+python_site+'/lib/python2.5/site-packages/numpy/core/include']
-
-define_macros += [
-          ('GPAW_AIX', '1'),
-          ('GPAW_MKL', '1'),
-          ('GPAW_BGP', '1'),
-          ('GPAW_ASYNC', '1')
-          ]
-
-mpicompiler = "bgp_gcc.py"
-mpilinker = "bgp_gcc.py"
-compiler = "bgp_gcc.py"
+compiler = "bgp_xlc.py"
+mpicompiler = "bgp_xlc.py"
+mpilinker   = "bgp_xlc.py"
