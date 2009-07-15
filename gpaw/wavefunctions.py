@@ -631,33 +631,74 @@ class LCAOWaveFunctions(WaveFunctions):
         self.timer.stop('LCAO forces: initial')
         
         # Kinetic energy contribution
-        dET_av = np.zeros_like(F_av)
+        #
+        #           ----- d T
+        #  a         \       mu nu
+        # F += 2 Re   )   -------- rho
+        #            /      d R       nu mu
+        #           -----      a
+        #        mu in a; nu
+        #
+        Fkin_av = np.zeros_like(F_av)
         dEdTrhoT_vMM = (dTdR_vMM * rhoT_MM[np.newaxis]).real
         for a, M1, M2 in my_slices():
-            dET_av[a, :] = -2 * dEdTrhoT_vMM[:, M1:M2].sum(-1).sum(-1)
+            Fkin_av[a, :] = 2 * dEdTrhoT_vMM[:, M1:M2].sum(-1).sum(-1)
         del dEdTrhoT_vMM
-
+        
         # Potential contribution
+        #
+        #          -----     /  d Phi  (r)
+        #  a        \       |        mu    ~
+        # F += 2 Re  )      |   ---------- v (r)  Phi  (r) dr rho
+        #           /       |       R                nu          nu mu
+        #          -----   /         a
+        #      mu in a; nu
+        #
         self.timer.start('LCAO forces: potential')
-        dEn_av = np.zeros_like(F_av)
+        Fpot_av = np.zeros_like(F_av)
         vt_G = hamiltonian.vt_sG[kpt.s]
         DVt_vMM = np.zeros((3, nao, nao), dtype)
         basis_functions.calculate_potential_matrix_derivative(vt_G, DVt_vMM, q)
         for a, M1, M2 in slices():
             for v in range(3):
-                dEn_av[a, v] = -2 * (DVt_vMM[v, M1:M2, :]
+                Fpot_av[a, v] = 2 * (DVt_vMM[v, M1:M2, :]
                                      * rhoT_MM[M1:M2, :]).real.sum()
         del DVt_vMM
         self.timer.stop('LCAO forces: potential')
         
         # Density matrix contribution due to basis overlap
-        dErho_av = np.zeros_like(F_av)
+        #
+        #            ----- d Theta
+        #  a          \           mu nu
+        # F  += -2 Re  )   ------------  E
+        #             /        d R        nu mu
+        #            -----        a
+        #         mu in a; nu
+        #
+        Frho_av = np.zeros_like(F_av)
         dThetadRE_vMM = (dThetadR_vMM * ET_MM[np.newaxis]).real
         for a, M1, M2 in my_slices():
-            dErho_av[a, :] = 2 * dThetadRE_vMM[:, M1:M2].sum(-1).sum(-1)
+            Frho_av[a, :] = -2 * dThetadRE_vMM[:, M1:M2].sum(-1).sum(-1)
         del dThetadRE_vMM
 
         # Density matrix contribution from PAW correction
+        #
+        #           -----                        -----
+        #  a         \      a                     \     b
+        # F += -2 Re  )    Z      E        + 2 Re  )   Z      E
+        #            /      mu nu  nu mu          /     mu nu  nu mu
+        #           -----                        -----
+        #           mu nu                    b; mu in a; nu
+        #
+        # with
+        #                  b*
+        #         -----  dP
+        #   b      \       i mu    b   b
+        #  Z     =  )   -------  dS   P
+        #   mu nu  /      dR       ij  j nu
+        #         -----     a
+        #           ij
+        #
         self.timer.start('LCAO forces: paw correction')
         dPdR_avMi = dict([(a, dPdR_aqvMi[a][q]) for a in my_atom_indices])
         work_MM = np.zeros((nao, nao), dtype)
@@ -671,28 +712,43 @@ class LCAOWaveFunctions(WaveFunctions):
                 gemm(1.0, dOP_iM, dPdR_avMi[b][v], 0.0, work_MM, 'n')
                 ZE_MM = (work_MM * ET_MM).real
                 for a, M1, M2 in slices():
-                    dE = -2 * ZE_MM[M1:M2].sum()
-                    dErho_av[a, v] += dE
-                    dErho_av[b, v] -= dE
+                    dE = 2 * ZE_MM[M1:M2].sum()
+                    Frho_av[a, v] += dE # the "b; mu in a; nu" term
+                    Frho_av[b, v] -= dE # the "mu nu" term
         del work_MM, ZE_MM
         self.timer.stop('LCAO forces: paw correction')
         
         # Atomic density contribution
+        #           -----                         -----
+        #  a         \     a                       \     b
+        # F  += 2 Re  )   A      rho       - 2 Re   )   A      rho
+        #            /     mu nu    nu mu          /     mu nu    nu mu
+        #           -----                         -----
+        #           mu nu                     b; mu in a; nu
+        #
+        #                  b*
+        #         ----- d P
+        #  b       \       i mu   b   b
+        # A     =   )   ------- dH   P
+        #  mu nu   /      d R     ij  j nu
+        #         -----      a
+        #           ij
+        #
         self.timer.start('LCAO forces: atomic density')
-        dED_av = np.zeros_like(F_av)
+        Fatom_av = np.zeros_like(F_av)
         for b in my_atom_indices:
-            H_ii = unpack(hamiltonian.dH_asp[b][kpt.s])
-            PH_Mi = gemmdot(self.P_aqMi[b][q], np.asarray(H_ii, dtype))
+            H_ii = np.asarray(unpack(hamiltonian.dH_asp[b][kpt.s]), dtype)
+            HP_iM = gemmdot(H_ii, np.conj(self.P_aqMi[b][q].T))
             for v in range(3):
                 dPdR_Mi = dPdR_avMi[b][v]
-                PHPrhoT_MM = (gemmdot(PH_Mi, np.conj(dPdR_Mi.T)) * rhoT_MM).real
+                ArhoT_MM = (gemmdot(dPdR_Mi, HP_iM) * rhoT_MM).real
                 for a, M1, M2 in slices():
-                    dE = 2 * PHPrhoT_MM[:, M1:M2].sum()
-                    dED_av[a, v] += dE
-                    dED_av[b, v] -= dE
+                    dE = 2 * ArhoT_MM[M1:M2].sum()
+                    Fatom_av[a, v] -= dE # the "b; mu in a; nu" term
+                    Fatom_av[b, v] += dE # the "mu nu" term
         self.timer.stop('LCAO forces: atomic density')
         
-        F_av -= (dET_av + dEn_av + dErho_av + dED_av)
+        F_av += Fkin_av + Fpot_av + Frho_av + Fatom_av
 
     def _get_wave_function_array(self, u, n):
         kpt = self.kpt_u[u]
