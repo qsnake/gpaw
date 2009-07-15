@@ -71,7 +71,7 @@ class DensityExpansion(YLExpansion):
           n_g = \sum_L Y_L n_Lg
         """
         for Y_L in self.Y_nL:
-            #self.n_sg[:] = npy.dot(Y_L, self.n_sLg) # This is slower!???
+            #yield npy.dot(Y_L, self.n_sLg) # This is slower!???
             # or is it only when n_sLg is a list !!
             for n_g, n_Lg in zip(self.n_sg, self.n_sLg):
                 n_g[:] = npy.dot(Y_L, n_Lg)
@@ -522,10 +522,8 @@ class BaseXCCorrection:
 
 class NewXCCorrection(BaseXCCorrection):
     def expand_density(self, D_sp, core=True):
-        n_sLg = npy.empty((self.nspins, self.Lmax, self.ng))
-        for n_Lg, D_p in zip(n_sLg, D_sp):
-            D_Lq = npy.dot(self.B_Lqp, D_p)
-            n_Lg[:] = npy.dot(D_Lq, self.n_qg)
+        D_sLq = gemmdot(D_sp, self.B_Lqp, trans='t')
+        n_sLg = npy.dot(D_sLq, self.n_qg)
         if core:
             if self.nspins == 1:
                 axpy(sqrt(4 * pi), self.nc_g, n_sLg[0, 0])
@@ -535,14 +533,12 @@ class NewXCCorrection(BaseXCCorrection):
         return DensityExpansion(n_sLg, self.Y_yL, self.rgd)
     
     def expand_pseudo_density(self, D_sp, core=True):
-        n_sLg = npy.empty((self.nspins, self.Lmax, self.ng))
-        for n_Lg, D_p in zip(n_sLg, D_sp):
-            # TODO: when calling both expand pseudo_density
-            # and expand_density this line is redunant
-            D_Lq = npy.dot(self.B_Lqp, D_p)
-            n_Lg[:] = npy.dot(D_Lq, self.nt_qg)
+        # TODO: when calling both expand pseudo_density
+        # and expand_density the line below is redunant
+        D_sLq = gemmdot(D_sp, self.B_Lqp, trans='t')
+        n_sLg = npy.dot(D_sLq, self.nt_qg)
         if core:
-            n_sLg[:, 0] += self.nct_g * sqrt(4 * pi) / self.nspins
+            n_sLg[:, 0] += sqrt(4 * pi) / self.nspins * self.nct_g
         return DensityExpansion(n_sLg, self.Y_yL, self.rgd)
 
     def get_integrator(self, H_sp):
@@ -567,9 +563,7 @@ class NewXCCorrection(BaseXCCorrection):
                 raise NotImplementedError
 
     def LDA(self, D_sp, H_sp):
-        for H_p in H_sp:
-            H_p[:] = 0.0
-
+        H_sp[:] = 0.0
         vxc_sg = npy.zeros((len(D_sp), self.ng))
         vxct_sg = npy.zeros((len(D_sp), self.ng))
         e_g = npy.zeros((self.ng,))
@@ -588,9 +582,7 @@ class NewXCCorrection(BaseXCCorrection):
         return Etot - self.Exc0
 
     def GGA(self, D_sp, H_sp):
-        for H_p in H_sp:        
-            H_p[:] = 0.0
-
+        H_sp[:] = 0.0
         vxc_sg = npy.zeros((len(D_sp), self.ng))
         vxct_sg = npy.zeros((len(D_sp), self.ng))
         e_g = npy.zeros((self.ng,))
