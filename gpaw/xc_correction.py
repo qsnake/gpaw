@@ -528,7 +528,7 @@ class NewXCCorrection(BaseXCCorrection):
             n_Lg[:] = npy.dot(D_Lq, self.n_qg)
         if core:
             if self.nspins == 1:
-                axpy(sqrt(4 * pi), self.nc_g, n_Lg[0, 0])
+                axpy(sqrt(4 * pi), self.nc_g, n_sLg[0, 0])
             else:
                 axpy(sqrt(4 * pi), self.nca_g, n_sLg[0, 0])
                 axpy(sqrt(4 * pi), self.ncb_g, n_sLg[1, 0])
