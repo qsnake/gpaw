@@ -231,7 +231,7 @@ def _gemmdot(a, b, alpha=1.0, beta=1.0, out=None, trans='n'):
 
     return reference to out, where::
 
-      out <- beta * out + alpha * a . b
+      out <- alpha * a . b + beta * out
 
     If out is None, a suitably sized zero array will be created.
 
@@ -253,6 +253,12 @@ def _gemmdot(a, b, alpha=1.0, beta=1.0, out=None, trans='n'):
             return beta * _gpaw.dotc(b, a) # dotc conjugates *first* argument
         else:
             return beta * _gpaw.dotu(a, b)
+
+##     # Use gemv if a or b is a vector, and the other is a matrix??
+##     if a.ndim == 1 and trans == 'n':
+##         gemv(alpha, b, a, beta, out, trans='n')
+##     if b.ndim == 1 and trans == 'n':
+##         gemv(alpha, a, b, beta, out, trans='t')
 
     # Map all arrays to 2D arrays
     a = a.reshape(-1, a.shape[-1])
@@ -349,4 +355,3 @@ else:
             assert work_ij.flags.contiguous
             assert work_ij.shape == U_ij.shape
         return _rotate(in_jj, U_ij, a, b, out_ii, work_ij)
-        
