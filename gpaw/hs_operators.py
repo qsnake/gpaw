@@ -156,8 +156,7 @@ class Operator:
           Auxiliary:    ... w/w  <-- sbuf_In --  w/w  <-- rbuf_In --  w/w ...
 
         A letter 'w' signifies wait for initialized non-blocking communication.
-        The letter 'O' signifies a blocking send and 'I' a matching receive,
-        but note that the underlying mechanism differs on even and odd ranks.
+        The letter 'O' signifies a blocking send and 'I' a matching receive.
 
 
         Parameters:
