@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 memstats = False
-partest = False #XXX disabled for now
+partest = True
 
 import gc
 import sys
@@ -107,7 +107,7 @@ class UTBandParallelSetup(TestCase):
     Setup a simple band parallel calculation."""
 
     # Number of bands
-    nbands = 360//10 #*5
+    nbands = 36
 
     # Spin-paired, single kpoint
     nspins = 1
@@ -117,8 +117,8 @@ class UTBandParallelSetup(TestCase):
     parstride_bands = None
 
     # Mean spacing and number of grid points per axis (G x G x G)
-    h = 0.5 / Bohr
-    G = 100//5
+    h = 1.0 / Bohr
+    G = 20
 
     def setUp(self):
         assert self.parstride_bands is not None, 'Virtual "parstride_bands"!'
@@ -214,52 +214,45 @@ class UTBandParallelSetup_Strided(UTBandParallelSetup):
 
 # -------------------------------------------------------------------
 
-def rigid_motion(atoms, center_c=None, rotation_s=None):
-    """Apply rigid motion to atoms, translating the COM and/or rotating
+def create_random_atoms(gd, nmolecules=10, name='H2O', mindist=4.5):
+    """Create gas-like collection of atoms from randomly placed molecules.
+    Applies rigid motions to molecules, translating the COM and/or rotating
     by a given angle around an axis of rotation through the new COM.
     """
-    pos_ac = atoms.get_positions()
-    if hasattr(atoms, 'constraints') and atoms.constraints:
-        raise NotImplementedError('Constrained rigid motion is not defined.')
-    
-    # Translate molecule such that the COM becomes center_c
-    if center_c is not None:
-        center_c = np.asarray(center_c)
-        assert center_c.shape == (3,)       
-        com_c = atoms.get_center_of_mass()
-        pos_ac += (center_c-com_c)[np.newaxis,:]
-    else:
-        center_c = atoms.get_center_of_mass()
-    atoms.set_positions(pos_ac)
-
-    # Rotate molecule around COM according to angles
-    if rotation_s is not None:
-        # The rotation axis is given by spherical angles phi and theta
-        assert len(rotation_s) == 3
-        from math import sin, cos
-        v,phi,theta = rotation_s[:]
-        axis = np.array([cos(phi)*sin(theta), sin(phi)*sin(theta), cos(theta)])
-        atoms.rotate(axis, v, center_c)
-
-    assert np.linalg.norm(atoms.get_center_of_mass()-center_c) < 1e-12
-
-
-def create_random_atoms(gd, nmolecules=10, name='H2O'):
-    # Construct pseudo-random gas of H2O molecules:
-    assert not gd.is_non_orthogonal()
+    assert not gd.is_non_orthogonal(), 'Orthogonal grid required.'
     cell_c = gd.cell_cv.diagonal() * Bohr
     atoms = Atoms(cell=cell_c, pbc=gd.pbc_c)
+
+    # Store the original state of the random number generator
+    randstate = np.random.get_state()
     np.random.seed(np.array([md5_array(data, numeric=True) for data
         in [nmolecules, gd.cell_cv, gd.pbc_c, gd.N_c]]).astype(int))
+
     for m in range(nmolecules):
         amol = molecule(name)
+
+        # Rotate the molecule around COM according to three random angles
+        # The rotation axis is given by spherical angles phi and theta
+        from math import sin, cos
+        v,phi,theta = np.random.uniform(0.0, 2*np.pi, 3) # theta [0,pi[ really
+        axis = np.array([cos(phi)*sin(theta), sin(phi)*sin(theta), cos(theta)])
+        amol.rotate(axis, v)
+
+        # Dimensions of the smallest possible box centered on the COM
         dpos_ac = amol.get_positions()-amol.get_center_of_mass()[np.newaxis,:]
-        mindist = (np.sum((dpos_ac)**2,axis=1)**0.5).max() / Bohr
-        delta_c = 1.1 * (1-np.array(gd.pbc_c)) * mindist
-        center_c = [np.random.uniform(delta, cell_c[c]-delta) for c,delta in enumerate(delta_c)]
-        rotation_s = np.random.uniform(0.0, 2*np.pi, 3) #last angle [0,pi[ really
-        rigid_motion(amol, center_c, rotation_s)
+        combox_c = np.abs(dpos_ac).max(axis=0)
+        delta_c = (1-np.array(gd.pbc_c)) * (combox_c + mindist)
+        assert (delta_c < cell_c-delta_c).all(), 'Box is too tight to fit atoms.'
+        center_c = [np.random.uniform(d,w-d) for d,w in zip(delta_c, cell_c)]
+
+        # Translate the molecule such that COM is located at random center
+        offset_ac = (center_c-amol.get_center_of_mass())[np.newaxis,:]
+        amol.set_positions(amol.get_positions()+offset_ac)
+        assert np.linalg.norm(amol.get_center_of_mass()-center_c) < 1e-12
         atoms.extend(amol)
+
+    # Restore the original state of the random number generator
+    np.random.set_state(randstate)
     assert compare_atoms(atoms)
     return atoms
 
