@@ -89,6 +89,115 @@ PyObject* elementwise_multiply_add(PyObject *self, PyObject *args)
   Py_RETURN_NONE;
 }
 
+
+PyObject* utilities_gaussian_wave(PyObject *self, PyObject *args)
+{
+  Py_complex A_obj;
+  PyArrayObject* r_cG_obj;
+  PyArrayObject* r0_c_obj;
+  Py_complex sigma_obj; // imaginary part ignored
+  PyArrayObject* k_c_obj;
+  PyArrayObject* gs_G_obj;
+
+  if (!PyArg_ParseTuple(args, "DOODOO", &A_obj, &r_cG_obj, &r0_c_obj, &sigma_obj, &k_c_obj, &gs_G_obj))
+    return NULL;
+
+  int C, G;
+  C = r_cG_obj->dimensions[0];
+  G = r_cG_obj->dimensions[1];
+  for (int i = 2; i < r_cG_obj->nd; i++)
+	G *= r_cG_obj->dimensions[i];
+
+  double* r_cG = DOUBLEP(r_cG_obj); // XXX not ideally strided
+  double* r0_c = DOUBLEP(r0_c_obj);
+  double dr2, kr, alpha = -0.5/pow(sigma_obj.real, 2);
+
+  int gammapoint = 1;
+  double* k_c = DOUBLEP(k_c_obj);
+  for (int c=0; c<C; c++)
+    gammapoint &= (k_c[c]==0);
+
+  if (gs_G_obj->descr->type_num == PyArray_DOUBLE)
+    {
+      double* gs_G = DOUBLEP(gs_G_obj);
+
+      if(gammapoint)
+        for(int g=0; g<G; g++)
+          {
+            dr2 = pow(r_cG[g]-r0_c[0], 2);
+            for(int c=1; c<C; c++)
+              dr2 += pow(r_cG[c*G+g]-r0_c[c], 2);
+            gs_G[g] = A_obj.real*exp(alpha*dr2);
+          }
+      else if(sigma_obj.real>0)
+        for(int g=0; g<G; g++)
+          {
+            kr = k_c[0]*r_cG[g];
+            dr2 = pow(r_cG[g]-r0_c[0], 2);
+            for(int c=1; c<C; c++)
+              {
+                kr += k_c[c]*r_cG[c*G+g];
+                dr2 += pow(r_cG[c*G+g]-r0_c[c], 2);
+              }
+            kr = A_obj.real*cos(kr)-A_obj.imag*sin(kr);
+            gs_G[g] = kr*exp(alpha*dr2);
+          }
+      else
+        {
+          return NULL; //TODO sigma<=0 could be exp(-(r-r0)^2/2sigma^2) -> 1 ?
+        }
+    }
+  else
+    {
+      double_complex* gs_G = COMPLEXP(gs_G_obj);
+#ifndef NO_C99_COMPLEX
+      double_complex A = A_obj.real+I*A_obj.imag;
+#else
+      double_complex A = {A_obj.real, A_obj.imag};
+#endif
+
+      if(gammapoint)
+        for(int g=0; g<G; g++)
+          {
+            dr2 = pow(r_cG[g]-r0_c[0], 2);
+            for(int c=1; c<C; c++)
+              dr2 += pow(r_cG[c*G+g]-r0_c[c], 2);
+#ifndef NO_C99_COMPLEX
+            gs_G[g] = A*exp(alpha*dr2);
+#else
+            gs_G[g].r = A.r*cos(alpha.i*dr2);
+            gs_G[g].i = A.i*sin(alpha.i*dr2);
+#endif    
+          }
+      else if(sigma_obj.real>0)
+        for(int g=0; g<G; g++)
+          {
+            kr = k_c[0]*r_cG[g];
+            dr2 = pow(r_cG[g]-r0_c[0], 2);
+            for(int c=1; c<C; c++)
+              {
+                kr += k_c[c]*r_cG[c*G+g];
+                dr2 += pow(r_cG[c*G+g]-r0_c[c], 2);
+              }
+#ifndef NO_C99_COMPLEX
+            double_complex f = A*cexp(I*kr);
+            gs_G[g] = f*exp(alpha*dr2);
+#else
+            double_complex f = {A.r*cos(kr)-A.i*sin(kr),A.r*sin(kr)+A.i*cos(kr)};
+            gs_G[g].r = f.r*exp(alpha*dr2);
+            gs_G[g].i = f.i*exp(alpha*dr2);
+#endif
+          }
+      else
+        {
+          return NULL; //TODO sigma<=0 could be exp(-(r-r0)^2/2sigma^2) -> 1 ?
+        }
+    }
+
+  Py_RETURN_NONE;
+}
+
+
 /* vdot
  * 
  * If a and b are input vectors,
