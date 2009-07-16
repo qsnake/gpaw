@@ -1,7 +1,11 @@
-import numpy as npy
+
+import numpy as np
 from numpy import sqrt, pi, exp
+
+import _gpaw
+from gpaw import debug
 from gpaw.utilities.tools import coordinates
-from gpaw.utilities import erf
+from gpaw.utilities import erf, is_contiguous
 
 # computer generated code:
 # use c/bmgs/sharmonic.py::construct_gauss_code(lmax) to generate more
@@ -74,7 +78,7 @@ class Gaussian:
         x, y, z  = tuple(self.xyz)
         r2 = self.r2
         if not hasattr(self, 'r'):
-            self.r = npy.sqrt(r2)
+            self.r = np.sqrt(r2)
         r = self.r
         return eval(gausspot_L[L])
 
@@ -97,3 +101,71 @@ class Gaussian:
 
         # Return correction
         return q * self.get_gauss_pot(L)
+
+
+def gaussian_wave(r_cG, r0_c, sigma, k_c=None, A=None, dtype=float, out_G=None):
+    """
+    Generates function values for atomic-centered Gaussian waves of the form::
+                         _ _
+        _            / -|r-r0|^2 \           _ _
+      f(r) = A * exp( ----------- ) * exp( i k.r )
+                     \ 2 sigma^2 /
+
+    If the parameter A is not specified, the Gaussian wave is normalized::
+
+                                                  oo
+           /    ____        \ -3/2               /       2  2
+      A = (    /    '        )        =>    4 pi | dr f(r) r  = 1
+           \ \/  pi   sigma /                    /
+                                                   0
+
+    Parameters:
+
+    r_cG: ndarray
+        Set of coordinates defining the grid positions.
+    r0_c: ndarray
+        Set of coordinates defining the center of the Gaussian envelope.
+    sigma: float
+        Specifies the spatial width of the Gaussian envelope.
+    k_c: ndarray or None
+        Set of reciprocal lattice coordinates defining the wave vector.
+        An argument of None is interpreted as the gamma point i.e. k_c=0.
+    A: float, complex or None
+        Specifies the amplitude of the Gaussian wave. Normalizes if None.
+    dtype: type, defaults to float
+        Specifies the output data type. Only returns the real-part if float.
+    out_G: ndarray or None
+        Optional pre-allocated buffer to fill in values. Allocates if None.
+
+    """
+    if k_c is None:
+        k_c = np.zeros(r0_c.shape)
+
+    if A is None:
+        # 4*pi*int(exp(-r^2/(2*sigma^2))^2 * r^2, r=0...infinity)
+        # = sigma^3*pi^(3/2) = 1/A^2 -> A = (sqrt(Pi)*sigma)^(-3/2)
+        A = 1/(sigma*(np.pi)**0.5)**1.5
+
+    if debug:
+        assert is_contiguous(r_cG, float)
+        assert is_contiguous(r0_c, float)
+        assert is_contiguous(k_c, float)
+        assert r_cG.ndim >= 2 and r_cG.shape[0] > 0
+        assert r0_c.ndim == 1 and r0_c.shape[0] > 0
+        assert k_c.ndim == 1 and k_c.shape[0] > 0
+        assert (r_cG.shape[0],) == r0_c.shape == k_c.shape
+        assert sigma > 0
+
+    if out_G is None:
+        out_G = np.empty(r_cG.shape[1:], dtype=dtype)
+    elif debug:
+        assert is_contiguous(out_G)
+        assert out_G.shape == r_cG.shape[1:]
+
+    # slice_c2cG = [slice(None)] + [np.newaxis]*3
+    # gw = lambda r_cG, r0_c, sigma, k_c, A=1/(sigma*np.pi**0.5)**1.5: \
+    #    * np.exp(-np.sum((r_cG-r0_c[slice_c2cG])**2, axis=0)/(2*sigma**2)) \
+    #    * np.exp(1j*np.sum(np.r_cG*k_c[slice_c2cG], axis=0)) * A
+    _gpaw.utilities_gaussian_wave(A, r_cG, r0_c, sigma, k_c, out_G)
+    return out_G
+
