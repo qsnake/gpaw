@@ -33,7 +33,7 @@ Add the following lines to you ``.softenvrc``. Note that here we specify
   TAUVERSION = 2.18.2p2
   TAU_MAKEFILE = /soft/apps/tau/tau-$TAUVERSION/bgp/lib/Makefile.tau-bgptimers-gnu-mpi-python-pdt
   TAU_OPTIONS = '-optVerbose -optShared -optTauSelectFile=select.tau \
-  	      -optTau="-rn Py_RETURN_NONE" -i/soft/apps/tau/tau-'$TAUVERSION'/include/TAU_PYTHON_FIX.h"'
+  	      -optTau="-rn Py_RETURN_NONE -i/soft/apps/tau/tau-'$TAUVERSION'/include/TAU_PYTHON_FIX.h"'
   PATH += /soft/apps/tau/tau-$TAUVERSION/$TAUARCHITECTURE/bin
 
 The biggest difference between 2.18.2 and 2.18.1, is that many Makefile stub configurations are now available as run time options.
