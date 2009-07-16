@@ -7,6 +7,7 @@ from ase.units import Bohr
 from gpaw.mpi import world, distribute_cpus
 from gpaw.utilities import gcd
 from gpaw.utilities.tools import md5_array
+from gpaw.utilities.gauss import gaussian_wave
 from gpaw.band_descriptor import BandDescriptor
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.parameters import InputParameters
@@ -16,7 +17,7 @@ from gpaw.lfc import LFC
 from gpaw.wavefunctions import EmptyWaveFunctions
 from gpaw.utilities.timing import NullTimer
 #from gpaw.kpoint import KPoint
-from gpaw.pair_overlap import PairOverlap
+from gpaw.pair_overlap import GridPairOverlap
 
 # -------------------------------------------------------------------
 
@@ -35,16 +36,6 @@ else:
 
 # -------------------------------------------------------------------
 
-#XXX DEBUG
-if sys.argv[-1] == '--wait':
-    import os, time
-    for i in range(10):
-        print 'PID: %6d, Waited %02d seconds...' % (os.getpid(),i)
-        time.sleep(1)
-#XXX DEBUG
-
-
-
 class UTDomainParallelSetup(TestCase):
     """
     Setup a simple domain parallel calculation."""
@@ -57,7 +48,7 @@ class UTDomainParallelSetup(TestCase):
     nibzkpts = 1
 
     # Mean spacing and number of grid points per axis (G x G x G)
-    h = 0.1 / Bohr
+    h = 0.2 / Bohr
     G = 90
 
     # Type of boundary conditions employed
@@ -148,7 +139,6 @@ class UTDomainParallelSetup_Mixed(UTDomainParallelSetup):
 
 # -------------------------------------------------------------------
 
-
 class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
     __doc__ = UTDomainParallelSetup.__doc__ + """
     The pseudo wavefunctions are moving gaussians centered around each atom."""
@@ -156,29 +146,9 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
     allocated = False
     dtype = None
 
-    boundaries = 'zero' #XXX TEMPORARY
-
-    # Helper functions for memory efficient reshaping to match any grid
-    _all = slice(None)
-    _newgd = (np.newaxis, np.newaxis, np.newaxis,)
-    def _slice(sclass, c=-1):
-        newgd = list(sclass._newgd)
-        if c == -1:
-            return [sclass._all]+newgd
-        elif c in range(3):
-            newgd[c] = sclass._all
-            return newgd
-        else:
-            raise ValueError('Invalid slicing index "%s".' % c)
-    _slice = classmethod(_slice)
-
-    # Generate density components from atom-centered Gaussians
-    # 4*pi*int(exp(-(r-r0)**2/(2*sigma**2)),r=0...infinity)
-    # = sigma**3*(2*pi)**(3/2.) = 1/norm
+    # Default arguments for scaled Gaussian wave
     _sigma0 = 2.0 #0.75
-    _gauss = lambda sclass, r_cG, r0_c, dr: 1/(dr*(2*np.pi)**0.5)**3 \
-        * np.exp(-np.sum((r_cG-r0_c[sclass._slice(-1)])**2, axis=0)/(2*dr**2))
-    _gauss = classmethod(_gauss)
+    _k0_c = 2*np.pi*np.array([1/5., 1/3., 0.])
 
     def setUp(self):
         UTDomainParallelSetup.setUp(self)
@@ -187,12 +157,12 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
             assert getattr(self,virtvar) is not None, 'Virtual "%s"!' % virtvar
 
         # Create randomized atoms
-        self.atoms = create_random_atoms(self.gd, 1, 'NH3') #NH3/BDA
+        self.atoms = create_random_atoms(self.gd) # or 10xNH3 / BDA
 
         # XXX DEBUG START
         if False:
             from ase import view
-            view(self.atoms*(1+self.gd.pbc_c))
+            view(self.atoms*(1+2*self.gd.pbc_c))
         # XXX DEBUG END
 
         # Do we agree on the atomic positions?
@@ -216,55 +186,64 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
                       self.kpt_comm, dtype=self.dtype)
         self.pt.set_positions(spos_ac)
 
-        # Also create pseudo partial waveves
-        self.phit = LFC(self.gd, [setup.phit_j for setup in self.setups], \
-                        self.kpt_comm, dtype=self.dtype)
-        self.phit.set_positions(spos_ac)
+        ## Also create pseudo partial waveves
+        #self.phit = LFC(self.gd, [setup.phit_j for setup in self.setups], \
+        #                self.kpt_comm, dtype=self.dtype)
+        #self.phit.set_positions(spos_ac)
 
         self.r_cG = None
+        self.buf_G = None
         self.psit_nG = None
 
         self.allocate()
 
     def tearDown(self):
         UTDomainParallelSetup.tearDown(self)
-        del self.r_cG
+        del self.r_cG, self.buf_G, self.psit_nG
         del self.pt, self.setups, self.atoms
         self.allocated = False
 
     def allocate(self):
-        self.r_cG = self.gd.empty((3,), dtype=self.dtype)
+        self.r_cG = self.gd.empty(3)
         for c, r_G in enumerate(self.r_cG):
-            slice_c2G = list(self._newgd)
+            slice_c2G = [np.newaxis, np.newaxis, np.newaxis]
             slice_c2G[c] = slice(None) #this means ':'
-            assert slice_c2G == self._slice(c)
             r_G[:] = self.gd.h_c[c]*np.arange(self.gd.beg_c[c], \
                                               self.gd.end_c[c])[slice_c2G]
-
-        slice_c2cG = [slice(None)]+list(self._newgd)
-        assert slice_c2cG == self._slice(-1)
 
         cell_cv = self.atoms.get_cell() / Bohr
         assert np.abs(cell_cv-self.gd.cell_cv).max() < 1e-9
         center_c = 0.5*cell_cv.diagonal()
-        psit_G = 10*self.get_gaussian(self.r_cG, center_c) \
-            * np.sin(2*np.pi*(self.r_cG[0]/5.0 + self.r_cG[1]/3.0))
-        for pos_c in self.atoms.get_positions() / Bohr:
-            sigma = self._sigma0/(1+np.sum(pos_c**2))**0.5
-            psit_G += 5 * self.get_gaussian(self.r_cG, pos_c, sigma) \
-                * np.cos(2*np.pi*(self.r_cG[0]/2.0-self.r_cG[1]/7.0))
-        assert self.bd.mynbands == 1
-        self.psit_nG = psit_G.reshape((1,)+psit_G.shape)
 
-        #work_G = self.gd.empty(dtype=dtype)
-        #restored_G = np.empty_like(work_G)
+        self.buf_G = self.gd.empty(dtype=self.dtype)
+        self.psit_nG = self.gd.empty(self.bd.mynbands, dtype=self.dtype)
+
+        for myn,psit_G in enumerate(self.psit_nG):
+            n = self.bd.global_index(myn)
+            psit_G[:] = self.get_scaled_gaussian_wave(center_c, scale=10+2j*n)
+
+            k_c = 2*np.pi*np.array([1/2., -1/7., 0.])
+            for pos_c in self.atoms.get_positions() / Bohr:
+                sigma = self._sigma0/(1+np.sum(pos_c**2))**0.5
+                psit_G += self.get_scaled_gaussian_wave(pos_c, sigma, k_c, n+5j)
 
         self.allocated = True
 
-    def get_gaussian(self, r_cG, center_c, sigma=None):
+    def get_scaled_gaussian_wave(self, pos_c, sigma=None, k_c=None, scale=None):
         if sigma is None:
             sigma = self._sigma0
-        return self._gauss(r_cG, center_c, sigma).astype(self.dtype)
+
+        if k_c is None:
+            k_c = self._k0_c
+
+        if scale is None:
+            A = None
+        else:
+            # 4*pi*int(exp(-r^2/(2*w^2))^2*r^2, r=0...infinity)= w^3*pi^(3/2)
+            # = scale/A^2 -> A = scale*(sqrt(Pi)*w)^(-3/2) hence int -> scale^2
+            A = scale/(sigma*(np.pi)**0.5)**1.5
+
+        return gaussian_wave(self.r_cG, pos_c, sigma, k_c, A, self.dtype, self.buf_G)
 
     def collect_projections(self, P_ani):
         #XXX copy/paste from WaveFunctions.collect_projections
@@ -350,6 +329,9 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
         Q_ani = self.pt.dict(self.bd.mynbands)
         self.pt.integrate(self.psit_nG, Q_ani, q=-1) #XXX q???
 
+        for Q_ni in Q_ani.values():
+            self.assertTrue(Q_ni.dtype == self.dtype)
+
         P0_ani = dict([(a,Q_ni.copy()) for a,Q_ni in Q_ani.items()])
         self.pt.add(self.psit_nG, Q_ani, q=-1) #XXX q???
         self.pt.integrate(self.psit_nG, P0_ani, q=-1) #XXX q???
@@ -358,16 +340,16 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
         #rank_a = self.gd.get_ranks_from_positions(spos_ac)
         #my_atom_indices = np.argwhere(self.gd.comm.rank == rank_a).ravel()
 
-        #                                              ~ a   ~ a'
-        #TODO XXX must fix PairOverlap-ish stuff for < p  | phi  > overlaps
-        #                                               i      i'
+        #                                                ~ a   ~ a'
+        #TODO XXX should fix PairOverlap-ish stuff for < p  | phi  > overlaps
+        #                                                 i      i'
 
         spos_ac = self.pt.spos_ac
         # spos_ac = self.atoms.get_scaled_positions() % 1.0
         #my_atom_indices = np.argwhere(self.rank_a == self.gd.comm.rank).ravel()
 
-        po = PairOverlap(self.gd, self.setups)
-        dB_aa = po.calculate_overlaps(spos_ac, self.pt)
+        gpo = GridPairOverlap(self.gd, self.setups)
+        dB_aa = gpo.calculate_overlaps(spos_ac, self.pt)
         #dX_aa = po.calculate_overlaps(spos_ac, self.pt, self.phit)
         #P_ani = self.pt.dict(self.bd.mynbands, zero=True)
         P_ani = dict([(a,Q_ni.copy()) for a,Q_ni in Q_ani.items()])
@@ -376,14 +358,15 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
                 P_ni = P_ani[a1]
             else:
                 # Atom a1 is not in domain so allocate a temporary buffer
-                P_ni = np.zeros((self.bd.mynbands,self.setups[a1].ni,), dtype=self.pt.dtype) #TODO
+                P_ni = np.zeros((self.bd.mynbands,self.setups[a1].ni,),
+                                 dtype=self.dtype)
             for a2, Q_ni in Q_ani.items():
-                # dX_aa are the overlap extrapolators across atomic pairs
-                dB_ii = po.extract_atomic_pair_matrix(dB_aa, a1, a2)
+                # dB_aa are the projector overlaps across atomic pairs
+                dB_ii = gpo.extract_atomic_pair_matrix(dB_aa, a1, a2)
                 P_ni += np.dot(Q_ni, dB_ii.T) #sum over a2 and last i in dB_ii
             self.gd.comm.sum(P_ni)
 
-        self.check_and_plot(P_ani, P0_ani, 6, 'projection,linearity')
+        self.check_and_plot(P_ani, P0_ani, 9, 'projection,linearity')
 
     def dont_test_pair_overlap_creation(self): #XXX
         # WaveFunctions
@@ -421,6 +404,7 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
 # -------------------------------------------------------------------
 
 def UTGaussianWavefunctionSetupFactory(boundaries, dtype):
+    #import tempfile
     sep = '_'
     classname = 'UTGaussianWavefunctionSetup' \
     + sep + {'zero':'Zero', 'periodic':'Periodic', 'mixed':'Mixed'}[boundaries] \
@@ -429,6 +413,7 @@ def UTGaussianWavefunctionSetupFactory(boundaries, dtype):
         __doc__ = UTGaussianWavefunctionSetup.__doc__
         boundaries = boundaries
         dtype = dtype
+        #tmpname = tempfile.mktemp(prefix='ut_invops',suffix='.dat')
     MetaPrototype.__name__ = classname
     return MetaPrototype
 
@@ -467,8 +452,8 @@ elif __name__ in ['__main__', '__builtin__']:
     parinfo = np.unique(np.sort(parinfo)).tolist()
 
     testcases = []
-    for boundaries in ['periodic']: #['zero', 'periodic', 'mixed']:
-         for dtype in [float]: #[float, complex]:
+    for boundaries in ['zero', 'periodic', 'mixed']:
+         for dtype in [float, complex]:
              testcases.append(UTGaussianWavefunctionSetupFactory(boundaries, \
                  dtype))
 
