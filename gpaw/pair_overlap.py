@@ -104,13 +104,13 @@ class GridPairOverlap(PairOverlap):
                             assert ket_iB2.shape[0] == lfs2.ni
                             assert self.setups[a2].ni == lfs2.ni, 'setups[%d].ni=%d, lfc2.lfs_a[%d].ni=%d' % (a2,self.setups[a2].ni,a2,lfs2.ni)
 
-                        # Find the union of the two boxes
+                        # Find the intersection of the two boxes
                         beg_c = np.array([map(max, zip(beg1_c, beg2_c))]).ravel()
                         end_c = np.array([map(min, zip(end1_c, end2_c))]).ravel()
 
                         if debug: mpi_debug('        beg_c=%s, end_c=%s, size_c=%s' % (beg_c, end_c, tuple(end_c-beg_c)), ordered=False)
 
-                        # Union is non-empty, add piece-to-piece contribution
+                        # Intersection is non-empty, add overlap contribution
                         if (beg_c <= end_c).all():
                             w1slice = [slice(None)]+[slice(b,e) for b,e in \
                                 zip(beg_c-beg1_c, end_c-beg1_c)]
