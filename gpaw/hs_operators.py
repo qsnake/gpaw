@@ -271,11 +271,11 @@ class Operator:
             A_qnn = self.A_qnn
 
         # Buffers for send/receive of operated-on versions of P_ani's.
+        sbuf_In = rbuf_In = None
         if P_ani:
             sbuf_In = np.concatenate([dAP_ani[a].T for a,P_ni in P_ani.items()])
             if B > 1:
                 rbuf_In = np.empty_like(sbuf_In)
-
 
         for j in range(J):
             n1 = j * M
@@ -390,6 +390,7 @@ class Operator:
             g += 1
 
         # Buffers for send/receive of pre-multiplication versions of P_ani's.
+        sbuf_In = rbuf_In = None
         if P_ani:
             sbuf_In = np.concatenate([P_ni.T for P_ni in P_ani.values()])
             if B > 1:
