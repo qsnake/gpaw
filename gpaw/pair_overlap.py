@@ -36,8 +36,8 @@ class PairOverlap:
 
 class GridPairOverlap(PairOverlap):
 
+
     def calculate_overlaps(self, spos_ac, lfc1, lfc2=None):
-        # TODO XXX this is just a reference implementation. not fast at all!
         # CONDITION: The two sets of splines must belong to the same kpoint!
 
         if lfc2 is None:
@@ -64,15 +64,13 @@ class GridPairOverlap(PairOverlap):
             # We assume that all functions have the same cut-off:
             rcut1 = spline1_j[0].get_cutoff()
             if debug: mpi_debug('a1=%d, spos1_c=%s, rcut1=%g, ni1=%d' % (a1,spos_ac[a1],rcut1,self.setups[a1].ni))
-            work1_iG = self.gd.zeros(self.setups[a1].ni, lfc1.dtype)
 
             for a2, spline2_j in enumerate(lfc2.spline_aj):
                 # We assume that all functions have the same cut-off:
                 rcut2 = spline2_j[0].get_cutoff()
                 if debug: mpi_debug('  a2=%d, spos2_c=%s, rcut2=%g, ni2=%d' % (a2,spos_ac[a2],rcut2,self.setups[a2].ni))
-                work2_iG = self.gd.zeros(self.setups[a2].ni, lfc2.dtype)
 
-                X_ii = np.zeros((self.setups[a1].ni, self.setups[a2].ni), dtype=float) # XXX always float?
+                X_ii = self.extract_atomic_pair_matrix(X_aa, a1, a2)
 
                 b1 = 0
                 for beg1_c, end1_c, sdisp1_c in self.gd.get_boxes(spos_ac[a1], rcut1, cut=False): # loop over lfs1.box_b instead?
@@ -83,20 +81,12 @@ class GridPairOverlap(PairOverlap):
 
                     # Similarly, the LocFuncs must have the piece at hand
                     box1 = lfs1.box_b[b1]
-
                     bra_iB1 = box1.get_functions()
-                    w1slice = [slice(None)]+[slice(b,e) for b,e in \
-                        zip(beg1_c-self.gd.beg_c, end1_c-self.gd.beg_c)]
 
                     if debug:
                         assert lfs1.dtype == lfc1.dtype
                         assert bra_iB1.shape[0] == lfs1.ni
                         assert self.setups[a1].ni == lfs1.ni, 'setups[%d].ni=%d, lfc1.lfs_a[%d].ni=%d' % (a1,self.setups[a1].ni,a1,lfs1.i)
-                        assert bra_iB1.shape == work1_iG[w1slice].shape
-
-                    work1_iG.fill(0.0)
-                    work1_iG[w1slice] = bra_iB1.conj() #XXX conj. phase
-                    del bra_iB1
 
                     b2 = 0
                     for beg2_c, end2_c, sdisp2_c in self.gd.get_boxes(spos_ac[a2], rcut2, cut=False): # loop over lfs2.box_b instead?
@@ -107,33 +97,39 @@ class GridPairOverlap(PairOverlap):
 
                         # Similarly, the LocFuncs must have the piece at hand
                         box2 = lfs2.box_b[b2]
-
                         ket_iB2 = box2.get_functions()
-                        w2slice = [slice(None)]+[slice(b,e) for b,e in \
-                            zip(beg2_c-self.gd.beg_c, end2_c-self.gd.beg_c)]
 
                         if debug:
                             assert lfs2.dtype == lfc2.dtype
                             assert ket_iB2.shape[0] == lfs2.ni
                             assert self.setups[a2].ni == lfs2.ni, 'setups[%d].ni=%d, lfc2.lfs_a[%d].ni=%d' % (a2,self.setups[a2].ni,a2,lfs2.ni)
-                            assert ket_iB2.shape == work2_iG[w2slice].shape
 
-                        work2_iG.fill(0.0)
-                        work2_iG[w2slice] = ket_iB2 #XXX phase
+                        # Find the union of the two boxes
+                        beg_c = np.array([map(max, zip(beg1_c, beg2_c))]).ravel()
+                        end_c = np.array([map(min, zip(end1_c, end2_c))]).ravel()
 
-                        # Add piece-to-piece contribution
-                        X_ii += np.inner(work1_iG.reshape((lfs1.ni,-1)), work2_iG.reshape((lfs2.ni,-1)))*self.gd.dv
+                        if debug: mpi_debug('        beg_c=%s, end_c=%s, size_c=%s' % (beg_c, end_c, tuple(end_c-beg_c)), ordered=False)
+
+                        # Union is non-empty, add piece-to-piece contribution
+                        if (beg_c <= end_c).all():
+                            w1slice = [slice(None)]+[slice(b,e) for b,e in \
+                                zip(beg_c-beg1_c, end_c-beg1_c)]
+                            w2slice = [slice(None)]+[slice(b,e) for b,e in \
+                                zip(beg_c-beg2_c, end_c-beg2_c)]
+
+                            X_ii += self.gd.dv * np.inner( \
+                                bra_iB1[w1slice].reshape((lfs1.ni,-1)), \
+                                ket_iB2[w2slice].reshape((lfs2.ni,-1))) #XXX phase factors for kpoints
 
                         del ket_iB2
-
                         b2 += 1
 
+                    del bra_iB1
                     b1 += 1
-
-                self.assign_atomic_pair_matrix(X_aa, a1, a2, X_ii)
 
         self.gd.comm.sum(X_aa) # better to sum over X_ii?
         return X_aa
+
 
 
 """
