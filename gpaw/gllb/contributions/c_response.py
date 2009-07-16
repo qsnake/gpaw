@@ -52,7 +52,7 @@ class C_Response(Contribution):
         self.D_asp = None
 
         # The response discontinuity is stored here
-	self.Dxc_vt_sG = None
+        self.Dxc_vt_sG = None
         self.Dxc_Dresp_asp = {}
         self.Dxc_D_asp = {}
         
