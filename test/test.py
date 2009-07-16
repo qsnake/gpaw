@@ -87,6 +87,7 @@ if len(tests) == 0:
         'ase3k.py',
         'eed.py',
         'timing.py',
+        'gauss_wave.py',
         'gauss_func.py',
         'xcatom.py',
         'parallel/overlap.py',
