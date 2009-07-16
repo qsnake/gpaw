@@ -66,10 +66,10 @@ class Electron_Step_Info:
         self.ehot_g = ehot_g
         self.evHt_g = evHt_g
     
-class TransportAnalysis:
-    def __init__(self, transport):
+class Transport_Analysor:
+    def __init__(self, transport, restart=False):
         self.tp = transport
-        self.restart = True
+        self.restart = restart
         self.data = {}
         self.steps = []
         self.bias_steps = []
@@ -163,8 +163,8 @@ class TransportAnalysis:
                 gamma1 = self.selfenergies[l1].get_lambda(energy)
                 gamma2 = self.selfenergies[l2].get_lambda(energy)
                 
-                ind1 = get_matrix_index(self.leads_index[l1])
-                ind2 = get_matrix_index(self.leads_index[l2])
+                ind1 = get_matrix_index(self.tp.lead_index[l1])
+                ind2 = get_matrix_index(self.tp.lead_index[l2])
                 
                 gr_sub = gr[ind1.T, ind2]
                 
@@ -182,11 +182,16 @@ class TransportAnalysis:
 
     def save_ele_step(self):
         tp = self.tp
-        step = Electron_Step_Info(tp.n_ion_step, tp.n_bias_step, tp.n_step)
-        dd = np.diag(tp.d_spkmm[0,0])
-        df = np.diag(tp.f_spkmm[0,0])
+        step = Electron_Step_Info(tp.n_ion_step, tp.n_bias_step, tp.n_ele_step)
+        dtype = tp.d_spkmm.dtype
+        dd = np.empty([tp.my_nspins, tp.mp_npk, tp.nbmol], dtype)
+        df = np.empty([tp.my_nspins, tp.mp_npk, tp.nbmol], dtype)
+        for s in range(tp.my_nspins):
+            for k in range(tp.my_npk):
+                dd[s, k] = np.diag(tp.d_spkmm[s, k])
+                df[s, k] = np.diag(tp.f_spkmm[s, k])
+
         dim = tp.gd.N_c
-        
         assert tp.d == 2
         
         gd = tp.gd
@@ -421,9 +426,7 @@ class TransportAnalysis:
         p.savefig(filename)
         if self.plot_show:
             p.show()
-      
-
-        
+     
     def plot_eigen_channel(self, energy=[0]):
         tcalc = self.set_calculator(energy)
         tcalc.initialize()
