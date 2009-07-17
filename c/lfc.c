@@ -259,7 +259,7 @@ PyObject* calculate_potential_matrix(LFCObject *lfc, PyObject *args)
     GRID_LOOP_START(lfc, k) {  // KPOINT CALC POT MATRIX
       for (int i1 = 0; i1 < ni; i1++) {
         LFVolume* v1 = volume_i + i1;
-        complex conjphase1 = conj(phase_i[i1]);
+        double complex conjphase1 = conj(phase_i[i1]);
         int M1 = v1->M;
         int nm1 = v1->nm;
         int gm1 = 0;
