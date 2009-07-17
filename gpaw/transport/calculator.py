@@ -449,7 +449,7 @@ class Transport(GPAW):
                 self.set_positions()
             else:
                 self.surround.set_positions()
-                self.get_hamiltonian_initial_guess2()
+                self.get_hamiltonian_initial_guess()
         del self.atoms_l
         del self.atoms_e
        
@@ -1195,7 +1195,7 @@ class Transport(GPAW):
             self.step +=  1
         
         self.scf.converged = self.cvgflag
-        self.analysor.save_data_to_file()  
+
         for kpt in self.wfs.kpt_u:
             kpt.rho_MM = None
             kpt.eps_n = np.zeros((self.nbmol))
@@ -1266,7 +1266,9 @@ class Transport(GPAW):
             self.text('----------------step %d -------------------'
                                                                 % self.step)
         #self.keep_trace()
-        self.analysor.save_ele_step()
+        if self.fixed:
+            self.analysor.save_ele_step()
+            self.analysor.save_data_to_file()              
         self.h_cvg = self.check_convergence('h')
         self.get_density_matrix()
         self.get_hamiltonian_matrix()
@@ -1330,8 +1332,8 @@ class Transport(GPAW):
             self.text(bias_info)
             self.text('Gate: %f V' % self.gate)
 
-
-        self.analysor = Transport_Analysor(self)
+        if self.fixed:
+            self.analysor = Transport_Analysor(self)
         #------for check convergence------
         self.ham_vt_old = np.empty(self.hamiltonian.vt_sG.shape)
         self.ham_vt_diff = None
@@ -2871,7 +2873,9 @@ class Transport(GPAW):
                 fd = file('result.dat', 'wb')
                 pickle.dump(result, fd, 2)
                 fd.close()
+
         if self.fixed:
+            del self.analysor
             del self.surround
  
     def restart_and_abstract_result(self, v_limit=3, num_v=16):
