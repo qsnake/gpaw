@@ -208,6 +208,7 @@ class PAW(PAWTextOutput):
                                  self.occupations):
             self.call_observers(iter)
             self.print_iteration(iter)
+            self.iter = iter
             
         if self.scf.converged:
             self.call_observers(iter, final=True)
