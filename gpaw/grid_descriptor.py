@@ -307,7 +307,7 @@ class GridDescriptor(Domain):
         nucleus belongs to (i.e. return can be negative, or larger than
         gd.end_c), in which case something clever should be done.
         The point can be forced to the grid descriptors domain to be
-        consistent with self.get_rank_for_position(spos_c).
+        consistent with self.get_rank_from_position(spos_c).
         """
         if spos_c is None:
             raise RuntimeError('Expecting a scaled position')
