@@ -14,6 +14,7 @@ if rank == 0:
         g.run(exx=True, **parameters[symbol])
 
     gen('Si','GLLBSC')
+    gen('Li','oldPBE')
     for symbol in ['H', 'He', 'Li', 'C', 'N', 'O', 'Cl', 'Al', 'Si',
                    'Na', 'Fe', 'Cu']:
         gen(symbol, 'LDA')

@@ -145,6 +145,7 @@ if len(tests) == 0:
         'lcao_bulk.py',
         'revPBE_Li.py',
         'fixmom.py',
+        'xctest.py',
         'td_na2.py',
         'exx_coarse.py',
         '2Al.py',
