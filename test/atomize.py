@@ -1,5 +1,6 @@
 from ase import *
 from gpaw import GPAW
+from gpaw.utilities import equal
 
 a = 6.  # Size of unit cell (Angstrom)
 c = a / 2
@@ -37,5 +38,5 @@ PBEM06Ldifference = (2 * e1 - e2)-(2 * (e1+de12m) - (e2+de22m))
 print PBETPSSdifference 
 print PBEM06Ldifference 
 # TPSS value is from JCP 120 (15) 6898, 2004
-assert abs(PBETPSSdifference + 0.3599)  < 0.002
-assert abs(PBEM06Ldifference + 0.169)  < 0.002
+equal(PBETPSSdifference, -0.3599, 0.002)
+equal(PBEM06Ldifference, -0.169, 0.002)
