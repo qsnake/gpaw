@@ -55,7 +55,8 @@ for xc in libxc_set:
     dD_p = x * ra.random(nii)
     D_p += dD_p
     dE = np.dot(H_p, dD_p) / x
-    E2 = s.xc_correction.calculate_energy_and_derivatives([D_p], [H_p])
+    E2 = s.xc_correction.calculate_energy_and_derivatives(D_p.reshape(1, -1),
+                                                          H_p.reshape(1, -1))
     print xc, dE, (E2 - E1) / x
     equal(dE, (E2 - E1) / x, 0.003)
 
