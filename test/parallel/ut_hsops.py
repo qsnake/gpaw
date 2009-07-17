@@ -388,8 +388,9 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
             self.Z_a[:] = 2**63-1
         # XXX DEBUG
 
-        Qlocal = sum([Qeff for Qeff in self.Qeff_a.values()]) # never np.sum!
-        self.Qtotal = self.gd.comm.sum(Qlocal)
+        self.Qtotal = np.empty(1, dtype=float)
+        self.Qtotal[:] = np.sum([Qeff for Qeff in self.Qeff_a.values()])
+        self.gd.comm.sum(self.Qtotal)
 
         band_indices = np.arange(self.nbands).astype(self.dtype)
         z = self.gamma**band_indices * band_indices**0.5
@@ -436,6 +437,16 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         # Fill in projector overlaps
         my_band_indices = self.bd.get_band_indices()
         my_atom_indices = np.argwhere(self.gd.comm.rank == self.rank_a).ravel()
+
+        # Holm-Nielsen check:
+        natoms = len(self.atoms)
+        assert (self.gd.comm.sum(float(sum(my_atom_indices))) ==
+                natoms * (natoms - 1) // 2)
+
+        # Check that LFC agrees with us:
+        self.assertEqual(len(my_atom_indices), len(self.pt.my_atom_indices))
+        for a1, a2 in zip(my_atom_indices, self.pt.my_atom_indices):
+            self.assertEqual(a1, a2)
 
         self.Qeff_a = {}
         self.P_ani = self.pt.dict(self.bd.mynbands)
@@ -610,8 +621,7 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         alpha = np.random.normal(size=1).astype(self.dtype)
         if self.dtype == complex:
             alpha += 1j*np.random.normal(size=1)
-        world.sum(alpha)
-        alpha /= world.size
+        world.broadcast(alpha, 0)
 
         # Set up non-Hermitian overlap operator:
         S = lambda x: alpha*x
@@ -732,8 +742,7 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         alpha = np.random.normal(size=1).astype(self.dtype)
         if self.dtype == complex:
             alpha += 1j*np.random.normal(size=1)
-        world.sum(alpha)
-        alpha /= world.size
+        world.broadcast(alpha, 0)
 
         # Known starting point of S_nn = <psit_m|S|psit_n>
         S_nn = alpha*self.S0_nn
@@ -745,7 +754,6 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
             C_nn = np.random.normal(size=self.nbands**2)
         C_nn = C_nn.reshape((self.nbands,self.nbands)) / np.linalg.norm(C_nn,2)
         world.broadcast(C_nn, 0)
-
 
         # Set up non-Hermitian overlap operator:
         S = lambda x: alpha*x
