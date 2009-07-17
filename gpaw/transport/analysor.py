@@ -1,9 +1,10 @@
-from gpaw.transport.calculator import Transport
+#from gpaw.transport.calculator import Transport
 from gpaw.transport.selfenergy import LeadSelfEnergy, CellSelfEnergy
 from gpaw.transport.greenfunction import GreenFunction
 from gpaw.transport.tools import get_matrix_index, aa1d, aa2d
 import numpy as np
-
+import copy
+import pickle
 
 class Structure_Info:
     def __init__(self, ion_step):
@@ -53,35 +54,49 @@ class Electron_Step_Info:
     def __init__(self, ion_step, bias_step, step):
         self.ion_step, self.bias_step, self.step = ion_step, bias_step, step
         
-    def initialize_data(self, bias, gate, dd, df, nt, vt):
+    def initialize_data(self, bias, gate, dd, df, nt, vt, D_asp, dH_asp, tc, dos):
         self.bias = bias
         self.gate = gate
         self.dd = dd
         self.df = df
         self.nt = nt
         self.vt = vt
+        self.D_asp = D_asp
+        self.dH_asp = dH_asp
+        self.tc = tc
+        self.dos = dos
     
-    def initialize_extended_data(self, ent, ehot_g, evHt_g):
-        self.ent = ent
+    def initialize_extended_data(self, ent_G, evt_G, ent_g,
+                                 evt_g, ehot_g, evHt_g, edmm):
+        #capital 'e' represents 'extended region'
+        self.ent_G = ent_G
+        self.evt_G = evt_G
+        self.ent_g = ent_g
+        self.evt_g = evt_g
         self.ehot_g = ehot_g
         self.evHt_g = evHt_g
+        self.edmm = edmm
     
 class Transport_Analysor:
     def __init__(self, transport, restart=False):
         self.tp = transport
         self.restart = restart
         self.data = {}
-        self.steps = []
+        self.ele_steps = []
         self.bias_steps = []
         self.ion_steps = []
+        self.n_ele_step = 0
+        self.n_bias_step = 0
+        self.n_ion_step = 0
         self.reset = False
         self.set_plot_option()
+        self.initialize()
 
     def set_plot_option(self):
         tp = self.tp
         if tp.plot_option == None:
             ef = tp.lead_fermi[0]
-            self.energies = np.linspace(ef - 6, ef + 2, 60)
+            self.energies = np.linspace(ef - 3, ef + 5, 60)
             self.lead_pairs = [[0,1]]
         else:
             self.energies = tp.plot_option['energies']
@@ -92,7 +107,7 @@ class Transport_Analysor:
             self.initialize_selfenergy_and_green_function()
         else:
             self.selfenergies = self.tp.selfenergies
-            self.greenfunction = self.greenfunction
+            self.greenfunction = self.tp.greenfunction
                 
     def initialize_selfenergy_and_green_function(self):
         self.selfenergies = []
@@ -170,7 +185,7 @@ class Transport_Analysor:
                 
                 transmission =  np.dot(np.dot(gamma1, gr_sub),
                                        np.dot(gamma2, gr_sub.T.conj()))
-                trans_coff.append(transmission)
+                trans_coff.append(np.trace(transmission))
             transmission_list.append(trans_coff)
             del trans_coff
             
@@ -178,20 +193,27 @@ class Transport_Analysor:
                                            self.greenfunction.S))) / np.pi
             dos_list.append(dos)
         
-        return np.array(transmission_list), np.array(dos_list)
+        ne = len(energies)
+        npl = len(self.lead_pairs)
+        transmission_list = np.array(transmission_list)
+        transmission_list = np.resize(transmission_list.T, [npl, ne])
+        return transmission_list, np.array(dos_list)
 
     def save_ele_step(self):
         tp = self.tp
-        step = Electron_Step_Info(tp.n_ion_step, tp.n_bias_step, tp.n_ele_step)
+        step = Electron_Step_Info(self.n_ion_step, self.n_bias_step, self.n_ele_step)
         dtype = tp.d_spkmm.dtype
-        dd = np.empty([tp.my_nspins, tp.mp_npk, tp.nbmol], dtype)
-        df = np.empty([tp.my_nspins, tp.mp_npk, tp.nbmol], dtype)
+        dd = np.empty([tp.my_nspins, tp.my_npk, tp.nbmol], dtype)
+        df = np.empty([tp.my_nspins, tp.my_npk, tp.nbmol], dtype)
         for s in range(tp.my_nspins):
             for k in range(tp.my_npk):
                 dd[s, k] = np.diag(tp.d_spkmm[s, k])
-                df[s, k] = np.diag(tp.f_spkmm[s, k])
+                df[s, k] = np.diag(tp.h_spkmm[s, k])
 
         dim = tp.gd.N_c
+        d1 = dim[0] // 2
+        d2 = dim[1] // 2
+        
         assert tp.d == 2
         
         gd = tp.gd
@@ -200,22 +222,45 @@ class Transport_Analysor:
         nt_sG = gd.collect(tp.density.nt_sG)
         vt_sG = gd.collect(tp.hamiltonian.vt_sG)
         
-        nt = nt_sG[0, dim[0] // 2, dim[1] // 2]
-        vt = vt_sG[0, dim[0] // 2, dim[1] // 2]
-        step.initialize_data(tp.bias, tp.gate, dd, df, nt, vt)
-        self.steps.append(step)
+        nt = nt_sG[0, d1, d2]
+        vt = vt_sG[0, d1, d2]
+        
+        D_asp = copy.deepcopy(tp.density.D_asp)
+        dH_asp = copy.deepcopy(tp.hamiltonian.dH_asp)
+        
+        tc_array, dos_array = self.collect_transmission_and_dos()
+        step.initialize_data(tp.bias, tp.gate, dd, df, nt, vt, D_asp, dH_asp, tc_array, dos_array)
+        
+        sr = tp.surround
+        ent_G = sr.vt_sG[0, d1, d2]
+        evt_G = sr.nt_sG[0, d1, d2]
+        ent_g = sr.nt_sg[0, d1*2, d2*2]
+        evt_g = sr.nt_sg[0, d1*2, d2*2]
+        ehot_g = sr.extra_rhot_g[d1*2, d2*2]
+        evHt_g = sr.vHt_g[d1*2, d2*2]
+        
+        nb = sr.d_spkmm.shape[-1]
+        edmm = np.empty([tp.my_nspins, tp.my_npk, nb], sr.d_spkmm.dtype)
+        for s in range(tp.my_nspins):
+            for k in range(tp.my_npk):
+                edmm[s, k] = np.diag(sr.d_spkmm[s, k])
+        step.initialize_extended_data(ent_G, evt_G, ent_g,
+                                                  evt_g, ehot_g, evHt_g, edmm)        
+        self.ele_steps.append(step)
+        self.n_ele_step += 1
       
     def save_bias_step(self):
         tp = self.tp
-        step = Transmission_Info(tp.n_ion_step, tp.n_bias_step)
+        step = Transmission_Info(self.n_ion_step, self.n_bias_step)
         tc_array, dos_array = self.collect_transmission_and_dos()
         dv = self.abstract_d_and_v()
         current = self.calculate_current()
         step.initialize_data(tp.bias, tp.gate, self.energies, self.lead_pairs,
                              tc_array, dos_array, dv, current, tp.lead_fermi)
-        step['ele_steps'] = self.steps
-        del self.steps[:]
+        step['ele_steps'] = self.ele_steps
+        del self.ele_steps[:]
         self.bias_steps.append(step)
+        self.n_bias_step += 1
 
     def collect_transmission_and_dos(self, energies=None):
         if energies == None:
@@ -233,11 +278,11 @@ class Transport_Analysor:
         local_tc_array = np.empty([ns, npk, nlp, ne])
         local_dos_array = np.empty([ns, npk, ne])
         
-        for kpt in tp.pkpt_u:
+        for kpt in tp.wfs.kpt_u:
             s = kpt.s
             q = kpt.q
             local_tc_array[s, q], local_dos_array[s, q] = \
-                      self.calculate_transmission_and_dos(s, k, energies)
+                      self.calculate_transmission_and_dos(s, q, energies)
 
         pkpt_comm = tp.pkpt_comm
         pkpt_comm.all_gather(local_tc_array, tc_array)
@@ -247,12 +292,19 @@ class Transport_Analysor:
 
     def save_ion_step(self):
         tp = self.tp
-        step = Structure_Info(tp.n_ion_step)
+        step = Structure_Info(self.n_ion_step)
         step.initialize_data(tp.atoms.positions, tp.forces)
         step['bias_steps'] = self.bias_steps
         del self.bias_steps[:]
         self.ion_steps.append(step)
+        self.n_ion_step += 1
  
+    def save_data_to_file(self):
+        fd = file('analysis_data', 'wb')
+        pickle.dump(self.ele_steps, fd, 2)
+        fd.close()
+                  
+   
     def calculate_t_and_dos(self, E_range=[-6,2],
                             point_num = 60, leads=[[0,1]]):
         data = {}
@@ -682,3 +734,39 @@ class Transport_Analysor:
         pylab.ylabel('current(au.)')
         pylab.show()
           
+class Transport_Plotter:
+    def __init__(self):
+        fd = file('analysis_data', 'r')
+        self.ele_steps = pickle.load(fd)
+        fd.close()
+        
+    def plot_ele_step(self, nstep, s, k):
+        ee = np.linspace(-3, 5, 60)
+        step = self.ele_steps[nstep]
+        import pylab as p
+        p.plot(step.dd[s, k], 'b--o')
+        p.title('density matrix')
+        p.show()
+        
+        p.plot(step.df[s, k], 'b--o')
+        p.title('hamiltonian matrix')
+        p.show()
+        
+        p.plot(step.nt, 'b--o')
+        p.title('density')
+        p.show()
+ 
+        p.plot(step.vt, 'b--o')
+        p.title('hamiltonian')
+        p.show()
+        
+        p.plot(ee, step.tc[s, k, 0], 'b--o')
+        p.title('transmission')
+        p.show()
+        
+        p.plot(ee, step.dos[s, k], 'b--o')
+        p.title('dos')
+        p.show()
+        
+        
+        
