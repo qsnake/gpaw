@@ -60,10 +60,14 @@ class Operator:
         else:
             X = mynbands // self.nblocks
             if self.gd.n_c.prod() % self.nblocks != 0:
-                X += 1
+                X += self.nblocks
             mem.subnode('2 work_xG', 2 * X * gdbytes)
             if ngroups > 1:
-                count = (ngroups // 2 + 1) * mynbands**2
+                if self.hermitian:
+                    Q = ngroups // 2 + 1
+                else:
+                    Q = ngroups
+                count = Q * mynbands**2
                 mem.subnode('A_qnn', count * mem.itemsize[dtype])
 
     def _pseudo_braket(self, bra_xG, ket_yG, A_yx, square=None):
