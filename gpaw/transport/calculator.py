@@ -13,6 +13,7 @@ from gpaw import Mixer, MixerDif, PoissonSolver
 from gpaw import restart as restart_gpaw
 from gpaw.transport.tools import k2r_hs, r2k_hs, tri2full, dot, Se_Sparse_Matrix
 from gpaw.transport.intctrl import IntCtrl
+from gpaw.transport.analysor import Transport_Analysor
 from gpaw.transport.surrounding import Surrounding
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.lcao.tools import get_realspace_hs
@@ -83,6 +84,8 @@ class Transport(GPAW):
                        'use_buffer', 'buffer_atoms', 'edge_atoms', 'bias',
                        'lead_restart',
                        
+                       'lead_atoms', 'nleadlayers',
+                       
                        'use_env', 'env_atoms', 'env_cells', 'env_kpts',
                        'env_use_buffer', 'env_buffer_atoms', 'env_edge_atoms',
                        'env_bias', 'env_pbc', 'env_restart',                     
@@ -110,6 +113,12 @@ class Transport(GPAW):
                 p['buffer_atoms'] = kw['buffer_atoms']
             if key in ['edge_atoms']:
                 p['edge_atoms'] = kw['edge_atoms']
+                
+            if key in ['lead_atoms']:
+                p['lead_atoms'] = kw['lead_atoms']
+            if key in ['nleadlayers']:
+                p['nleadlayers'] = kw['nleadlayers']
+                
             if key in ['bias']:
                 p['bias'] = kw['bias']                
             if key in ['lead_restart']:
@@ -182,6 +191,9 @@ class Transport(GPAW):
             #assert self.lead_num == len(self.buffer_atoms)
             #assert self.lead_num == len(self.edge_atoms[0])
             assert self.lead_num == len(self.bias)
+            
+            self.lead_atoms = p['lead_atoms']
+            self.nleadlayers = p['nleadlayers']
             
         self.use_env = p['use_env']
         self.env_atoms = p['env_atoms']
@@ -260,6 +272,9 @@ class Transport(GPAW):
         p['bias'] = [0, 0]
         p['d'] = 2
         p['lead_restart'] = False
+
+        p['lead_atoms'] = None
+        p['nleadlayers'] = 1
 
         p['use_env'] = False
         p['env_atoms'] = []
@@ -434,9 +449,13 @@ class Transport(GPAW):
                 self.set_positions()
             else:
                 self.surround.set_positions()
-                self.get_hamiltonian_initial_guess()
-        #del self.atoms_l
+                self.get_hamiltonian_initial_guess2()
+        del self.atoms_l
         del self.atoms_e
+       
+        self.plot_option = None 
+
+       
         self.initialized_transport = True
 
     def get_hamiltonian_initial_guess(self):
@@ -444,12 +463,15 @@ class Transport(GPAW):
         atoms.pbc[self.d] = True
         kwargs = self.gpw_kwargs.copy()
         kwargs['poissonsolver'] = PoissonSolver(nn=2)
-        #kwargs['kpts'] = (1,1,1)
+        kpts = kwargs['kpts']
+        kpts = kpts[:2] + (3,)
+        kwargs['kpts'] = kpts
+     
         kwargs['mixer'] = Mixer(0.1, 5, metric='new', weight=100.0)
         atoms.set_calculator(gpaw.GPAW(**kwargs))
         atoms.get_potential_energy()
         h_skmm, s_kmm =  self.get_hs(atoms.calc, 'lead')
-        ntk = 1
+        ntk = 3
         kpts = atoms.calc.wfs.ibzk_qc
         self.h_skmm = self.substract_pk(ntk, kpts, h_skmm, 'h')
         self.s_kmm = self.substract_pk(ntk, kpts, s_kmm)
@@ -459,9 +481,10 @@ class Transport(GPAW):
         del atoms
 
     def get_hamiltonian_initial_guess2(self):
-        self.h_skmm = self.hl_spkmm[0].copy()
-        self.s_kmm = self.sl_pkmm[0].copy()
-
+        fd = file('guess.dat', 'r')
+        self.h_skmm, self.s_kmm = pickle.load(fd)
+        fd.close()
+        
     def get_lead_index(self):
         basis_list = [setup.niAO for setup in self.wfs.setups]
         lead_basis_list = []
@@ -1172,6 +1195,7 @@ class Transport(GPAW):
             self.step +=  1
         
         self.scf.converged = self.cvgflag
+        self.analysor.save_data_to_file()  
         for kpt in self.wfs.kpt_u:
             kpt.rho_MM = None
             kpt.eps_n = np.zeros((self.nbmol))
@@ -1242,6 +1266,7 @@ class Transport(GPAW):
             self.text('----------------step %d -------------------'
                                                                 % self.step)
         #self.keep_trace()
+        self.analysor.save_ele_step()
         self.h_cvg = self.check_convergence('h')
         self.get_density_matrix()
         self.get_hamiltonian_matrix()
@@ -1305,6 +1330,8 @@ class Transport(GPAW):
             self.text(bias_info)
             self.text('Gate: %f V' % self.gate)
 
+
+        self.analysor = Transport_Analysor(self)
         #------for check convergence------
         self.ham_vt_old = np.empty(self.hamiltonian.vt_sG.shape)
         self.ham_vt_diff = None
