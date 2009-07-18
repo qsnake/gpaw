@@ -2,7 +2,7 @@
 
 __all__ = ['ase_svnrevision', 'shapeopt', 'TestCase', 'TextTestRunner', \
     'CustomTextTestRunner', 'defaultTestLoader', 'initialTestLoader', \
-    'create_random_atoms']
+    'create_random_atoms', 'create_parsize_maxbands']
 
 partest = False
 
@@ -122,4 +122,26 @@ def create_random_atoms(gd, nmolecules=10, name='H2O', mindist=4.5):
     np.random.set_state(randstate)
     assert compare_atoms(atoms)
     return atoms
+
+
+# -------------------------------------------------------------------
+
+from gpaw.utilities import gcd
+from gpaw import parsize, parsize_bands
+
+def create_parsize_maxbands(nbands, world_size):
+    """Safely parse command line parallel arguments for band parallel case."""
+    # D: number of domains
+    # B: number of band groups   
+    if parsize_bands is None:
+        if parsize is None:
+            B = gcd(nbands, world_size) # largest possible
+            D = world_size // B
+        else:
+            D = parsize
+            B = world_size // np.prod(D)
+    else:
+        B = parsize_bands
+        D = parsize or world_size // B
+    return D, B
 

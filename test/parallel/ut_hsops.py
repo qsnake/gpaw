@@ -14,7 +14,6 @@ except (ImportError, RuntimeError):
 
 from ase.units import Bohr
 from gpaw.mpi import world, distribute_cpus
-from gpaw.utilities import gcd
 from gpaw.utilities.tools import tri2full, md5_array, gram_schmidt
 from gpaw.band_descriptor import BandDescriptor
 from gpaw.grid_descriptor import GridDescriptor
@@ -28,7 +27,7 @@ from gpaw.lfc import LFC
 
 from gpaw.testing.ut_common import ase_svnrevision, shapeopt, TestCase, \
     TextTestRunner, CustomTextTestRunner, defaultTestLoader, \
-    initialTestLoader, create_random_atoms
+    initialTestLoader, create_random_atoms, create_parsize_maxbands
 
 if shapeopt is None:
     # Bogus function only valid for one set of parameters.
@@ -65,7 +64,7 @@ class UTBandParallelSetup(TestCase):
     def setUp(self):
         assert self.parstride_bands is not None, 'Virtual "parstride_bands"!'
 
-        parsize, parsize_bands = self.get_parsizes()
+        parsize, parsize_bands = create_parsize_maxbands(self.nbands, world.size)
         assert self.nbands % np.prod(parsize_bands) == 0
         domain_comm, kpt_comm, band_comm = distribute_cpus(parsize,
             parsize_bands, self.nspins, self.nibzkpts)
@@ -84,18 +83,6 @@ class UTBandParallelSetup(TestCase):
 
     def tearDown(self):
         del self.bd, self.gd, self.kpt_comm
-
-    def get_parsizes(self):
-        # Careful, overwriting imported GPAW params may cause amnesia in Python.
-        from gpaw import parsize, parsize_bands
-
-        # Just pass domain parsize through (None is tolerated)
-        test_parsize = parsize
-
-        # If parsize_bands is not set, choose the largest possible
-        test_parsize_bands =  parsize_bands or gcd(self.nbands, world.size)
-
-        return test_parsize, test_parsize_bands
 
     # =================================
 
