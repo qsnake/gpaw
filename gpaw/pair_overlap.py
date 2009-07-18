@@ -333,14 +333,7 @@ class ProjectorPairOverlap(Overlap, GridPairOverlap):
             for a,P_ni in kpt.P_ani.items():
                 P_axi[a][:] = P_ni
 
-        if debug:
-            mpi_debug('apply, P_axi has %s' % P_axi.keys())
-
         Q_axi = wfs.pt.dict(shape)
-
-        if debug:
-            mpi_debug('apply, Q_axi has %s' % Q_axi.keys())
-
         for a, Q_xi in Q_axi.items():
             Q_xi[:] = np.dot(P_axi[a], self.setups[a].O_ii)
 
