@@ -40,6 +40,7 @@ elif ase_svnrevision >= 929:
     from unittest import TextTestRunner, defaultTestLoader
 else:
     # Hack to use features from ASE 3.1.0 svn. rev. 929 or later.
+    import sys
     from ase.parallel import paropen
     from unittest import TextTestRunner, defaultTestLoader, TestCase as _UTC
 
