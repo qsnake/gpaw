@@ -168,6 +168,7 @@ if len(tests) == 0:
         'mgga_restart.py',
         'fd2lcao_restart.py',
         'parallel/ut_hsops.py',
+        'parallel/ut_invops.py',
         'pes.py'
         ]
 

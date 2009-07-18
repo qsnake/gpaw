@@ -3,9 +3,15 @@
 import sys
 import numpy as np
 
+try:
+    # Matplotlib is not a dependency
+    import matplotlib as mpl
+    mpl.use('Agg')  # force the antigrain backend
+except (ImportError, RuntimeError):
+    mpl = None
+
 from ase.units import Bohr
 from gpaw.mpi import world, distribute_cpus
-from gpaw.utilities import gcd
 from gpaw.utilities.tools import md5_array
 from gpaw.utilities.gauss import gaussian_wave
 from gpaw.band_descriptor import BandDescriptor
@@ -13,22 +19,16 @@ from gpaw.grid_descriptor import GridDescriptor
 from gpaw.parameters import InputParameters
 from gpaw.xc_functional import XCFunctional
 from gpaw.setup import Setups
-from gpaw.lfc import LFC
-from gpaw.wavefunctions import EmptyWaveFunctions
-from gpaw.utilities.timing import NullTimer
-#from gpaw.kpoint import KPoint
-from gpaw.pair_overlap import GridPairOverlap
+from gpaw.wavefunctions import GridWaveFunctions, WaveFunctions
+from gpaw.pair_overlap import GridPairOverlap, ProjectorPairOverlap
 
 # -------------------------------------------------------------------
 
-from ut_hsops import mpl, ase_svnrevision, TestCase, CustomTextTestRunner, \
-                     TextTestRunner, defaultTestLoader, initialTestLoader, \
-                     create_random_atoms
+from gpaw.testing.ut_common import ase_svnrevision, shapeopt, TestCase, \
+    TextTestRunner, CustomTextTestRunner, defaultTestLoader, \
+    initialTestLoader, create_random_atoms, create_parsize_maxbands
 
-# Hack to use a feature from ASE 3.1.0 svn. rev. 1001 or later.
-if ase_svnrevision >= 1001: # wasn't bug-free between rev. 893 and 1000
-    from ase.utils.memory import shapeopt
-else:
+if shapeopt is None:
     # Bogus function only valid for one set of parameters.
     def shapeopt(maxseed, size, ndims, ecc): 
         assert (maxseed,size,ndims,ecc) == (300, 90**3, 3, 0.2)
@@ -58,7 +58,7 @@ class UTDomainParallelSetup(TestCase):
         for virtvar in ['boundaries']:
             assert getattr(self,virtvar) is not None, 'Virtual "%s"!' % virtvar
 
-        parsize, parsize_bands = self.get_parsizes()
+        parsize, parsize_bands = create_parsize_maxbands(self.nbands, world.size)
         assert self.nbands % np.prod(parsize_bands) == 0
         domain_comm, kpt_comm, band_comm = distribute_cpus(parsize,
             parsize_bands, self.nspins, self.nibzkpts)
@@ -69,7 +69,9 @@ class UTDomainParallelSetup(TestCase):
         # Set up grid descriptor:
         res, ngpts = shapeopt(300, self.G**3, 3, 0.2)
         cell_c = self.h * np.array(ngpts)
-        pbc_c = self.get_periodic_scenario(self.boundaries)
+        pbc_c = {'zero'    : False, \
+                 'periodic': True, \
+                 'mixed'   : (True, False, True)}[self.boundaries]
         self.gd = GridDescriptor(ngpts, cell_c, pbc_c, domain_comm, parsize)
 
         # What to do about kpoints?
@@ -77,37 +79,6 @@ class UTDomainParallelSetup(TestCase):
 
     def tearDown(self):
         del self.bd, self.gd, self.kpt_comm
-
-    def get_parsizes(self):
-        # Careful, overwriting imported GPAW params may cause amnesia in Python.
-        from gpaw import parsize, parsize_bands
-
-        # Just pass domain parsize through (None is tolerated)
-        test_parsize = parsize
-
-        # If parsize_bands is not set, choose the largest possible
-        test_parsize_bands =  parsize_bands or gcd(self.nbands, world.size)
-
-        return test_parsize, test_parsize_bands
-
-    def get_periodic_scenario(self, boundaries='zero'):
-        """XXX TODO
-
-        ``boundaries``  ``pbc_c``        Description
-        ==============  =============    ====================================
-        'zero'          ``False``        Zero boundary conditions on all axes.
-        'periodic'      ``True``         All boundary conditions are periodic.
-        'mixed'         ``...``          XXX
-        """
-
-        if boundaries == 'zero':
-            return False
-        elif boundaries == 'periodic':
-            return True
-        elif boundaries == 'mixed':
-            return (True, False, True)
-        else:
-            raise ValueError('Unrecognized boundary mode "%s".' % boundaries)
 
     # =================================
 
@@ -135,8 +106,35 @@ class UTDomainParallelSetup_Mixed(UTDomainParallelSetup):
 
 # -------------------------------------------------------------------
 
-# Helper functions here
+# Helper functions/classes here
 
+class GDWFS(GridWaveFunctions):
+    def __init__(self, gd, bd, kpt_comm, setups, dtype): # override constructor
+        assert kpt_comm.size == 1
+        WaveFunctions.__init__(self, gd, 1, setups, bd, dtype, world, \
+            kpt_comm, True, [None], [None], [1.], None)
+        self.kin = None
+        self.overlap = None
+        self.rank_a = None
+
+    def allocate_arrays_for_projections(self, my_atom_indices): # no alloc
+        pass
+
+    def collect_projections(self, P_ani):
+        if self.gd.comm.size == 1 and self.bd.comm.size == 1:
+            return np.concatenate([P_ni.T for P_ni in P_ani.values()])
+
+        assert len(self.kpt_u) == 1
+        self.kpt_u[0].P_ani = P_ani
+        all_P_ni = WaveFunctions.collect_projections(self, 0, 0)
+        if self.world.rank == 0:
+            P_In = all_P_ni.T.copy()
+        else:
+            nproj = sum([setup.ni for setup in self.setups])
+            P_In = np.empty((nproj, self.nbands), self.pt.dtype)
+        self.world.broadcast(P_In, 0)
+        return P_In
+        
 # -------------------------------------------------------------------
 
 class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
@@ -157,7 +155,7 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
             assert getattr(self,virtvar) is not None, 'Virtual "%s"!' % virtvar
 
         # Create randomized atoms
-        self.atoms = create_random_atoms(self.gd) # or 10xNH3 / BDA
+        self.atoms = create_random_atoms(self.gd) # also tested: 10xNH3/BDA
 
         # XXX DEBUG START
         if False:
@@ -179,14 +177,14 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
         self.setups = Setups(self.Z_a, par.setups, par.basis, self.nspins, \
                              par.lmax, xcfunc)
 
-        # Create atomic projector overlaps
+        # Create gamma-point dummy wavefunctions
+        self.wfs = GDWFS(self.gd, self.bd, self.kpt_comm, self.setups, self.dtype)
         spos_ac = self.atoms.get_scaled_positions() % 1.0
-        self.rank_a = self.gd.get_ranks_from_positions(spos_ac)
-        self.pt = LFC(self.gd, [setup.pt_j for setup in self.setups], \
-                      self.kpt_comm, dtype=self.dtype)
-        self.pt.set_positions(spos_ac)
+        self.wfs.set_positions(spos_ac)
+        self.pt = self.wfs.pt # XXX shortcut
 
         ## Also create pseudo partial waveves
+        #from gpaw.lfc import LFC
         #self.phit = LFC(self.gd, [setup.phit_j for setup in self.setups], \
         #                self.kpt_comm, dtype=self.dtype)
         #self.phit.set_positions(spos_ac)
@@ -245,52 +243,10 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
 
         return gaussian_wave(self.r_cG, pos_c, sigma, k_c, A, self.dtype, self.buf_G)
 
-    def collect_projections(self, P_ani):
-        #XXX copy/paste from WaveFunctions.collect_projections
-
-        assert self.kpt_comm.size == 1
-        kpt_rank = 0
-        natoms = len(self.atoms)
-        nproj = sum([setup.ni for setup in self.setups])
-        P_In = np.empty((nproj, self.nbands), self.dtype)
-
-        if world.rank == 0:
-            mynu = self.nspins * self.nibzkpts // self.kpt_comm.size
-            for band_rank in range(self.bd.comm.size):
-                nslice = self.bd.get_slice(band_rank)
-                i = 0
-                for a in range(natoms):
-                    ni = self.setups[a].ni
-                    if kpt_rank == 0 and band_rank == 0 and a in P_ani:
-                        P_ni = P_ani[a]
-                    else:
-                        P_ni = np.empty((self.bd.mynbands, ni), self.dtype)
-                        world_rank = (self.rank_a[a] +
-                                      kpt_rank * self.gd.comm.size *
-                                      self.bd.comm.size +
-                                      band_rank * self.gd.comm.size)
-                        world.receive(P_ni, world_rank, 1303 + a)
-                    P_In[i:i + ni, nslice] = P_ni.T
-                    i += ni
-                assert i == nproj
-        elif self.kpt_comm.rank == kpt_rank: # plain else works too...
-            for a in range(natoms):
-                if a in P_ani:
-                    world.send(P_ani[a], 0, 1303 + a)
-
-        world.broadcast(P_In, 0)
-        return P_In
-
     def check_and_plot(self, P_ani, P0_ani, digits, keywords='none'):
-
-        if self.gd.comm.size == 1 and self.bd.comm.size == 1:
-            # Collapse into viewable matrices
-            P_In = np.concatenate([P_ni.T for P_ni in P_ani.values()])
-            P0_In = np.concatenate([P0_ni.T for P0_ni in P0_ani.values()])
-        else:
-            P_In = self.collect_projections(P_ani)
-            P0_In = self.collect_projections(P0_ani)
-
+        # Collapse into viewable matrices
+        P_In = self.wfs.collect_projections(P_ani)
+        P0_In = self.wfs.collect_projections(P0_ani)
 
         # Construct fingerprint of input matrices for comparison
         fingerprint = np.array([md5_array(P_In, numeric=True),
@@ -321,20 +277,19 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
                 FigureCanvasAgg(fig).print_figure(img.lower(), dpi=90)
             raise
 
-
     # =================================
 
     def test_projection_linearity(self):
-
+        kpt = self.wfs.kpt_u[0]
         Q_ani = self.pt.dict(self.bd.mynbands)
-        self.pt.integrate(self.psit_nG, Q_ani, q=-1) #XXX q???
+        self.pt.integrate(self.psit_nG, Q_ani, q=kpt.q)
 
         for Q_ni in Q_ani.values():
             self.assertTrue(Q_ni.dtype == self.dtype)
 
         P0_ani = dict([(a,Q_ni.copy()) for a,Q_ni in Q_ani.items()])
-        self.pt.add(self.psit_nG, Q_ani, q=-1) #XXX q???
-        self.pt.integrate(self.psit_nG, P0_ani, q=-1) #XXX q???
+        self.pt.add(self.psit_nG, Q_ani, q=kpt.q)
+        self.pt.integrate(self.psit_nG, P0_ani, q=kpt.q)
 
         #spos_ac = self.atoms.get_scaled_positions() % 1.0
         #rank_a = self.gd.get_ranks_from_positions(spos_ac)
@@ -345,13 +300,8 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
         #                                                 i      i'
 
         spos_ac = self.pt.spos_ac
-        # spos_ac = self.atoms.get_scaled_positions() % 1.0
-        #my_atom_indices = np.argwhere(self.rank_a == self.gd.comm.rank).ravel()
-
         gpo = GridPairOverlap(self.gd, self.setups)
         dB_aa = gpo.calculate_overlaps(spos_ac, self.pt)
-        #dX_aa = po.calculate_overlaps(spos_ac, self.pt, self.phit)
-        #P_ani = self.pt.dict(self.bd.mynbands, zero=True)
         P_ani = dict([(a,Q_ni.copy()) for a,Q_ni in Q_ani.items()])
         for a1 in range(len(self.atoms)):
             if a1 in P_ani.keys():
@@ -368,43 +318,93 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
 
         self.check_and_plot(P_ani, P0_ani, 9, 'projection,linearity')
 
-    def dont_test_pair_overlap_creation(self): #XXX
-        # WaveFunctions
-        wfs = EmptyWaveFunctions()
-        wfs.gd = self.gd
-        #wfs.nspins = self.nspins
-        wfs.bd = self.bd
-        wfs.nbands = self.bd.nbands
-        wfs.mynbands = self.bd.mynbands
-        #wfs.dtype = self.dtype
-        #wfs.world = world
-        wfs.kpt_comm = self.kpt_comm
-        wfs.band_comm = self.bd.comm
-        #wfs.gamma = ?
-        #wfs.bzk_kc = ?
-        #wfs.ibzk_kc = ?
-        #wfs.weight_k = ?
-        #wfs.symmetry = ?
-        wfs.timer = NullTimer()
-        #wfs.rank_a = ?
-        #wfs.nibzkpts = ?
-        #wfs.kpt_u = ?
-        #wfs.ibzk_qc = ?
-        #wfs.eigensolver = ?
-        #wfs.positions_set = ?
+    def test_extrapolate_overlap(self):
+        kpt = self.wfs.kpt_u[0]
+        ppo = ProjectorPairOverlap(self.wfs, self.atoms)
 
-        # GridWaveFunctions
-        #wfs.kin = ?
-        #wfs.orthonormalized = ?
-        wfs.setups = self.setups
-        wfs.pt = self.pt
+        work_nG = np.empty_like(self.psit_nG)
+        P_ani = ppo.apply(self.psit_nG, work_nG, self.wfs, kpt, \
+            calculate_P_ani=True, extrapolate_P_ani=True)
 
-        overlap = PairOverlap(wfs, self.atoms)
+        P0_ani = self.pt.dict(self.bd.mynbands)
+        self.pt.integrate(work_nG, P0_ani, kpt.q)
+        del work_nG
+
+        self.check_and_plot(P_ani, P0_ani, 12, 'extrapolate,overlap')
+
+    def test_extrapolate_inverse(self):
+        kpt = self.wfs.kpt_u[0]
+        ppo = ProjectorPairOverlap(self.wfs, self.atoms)
+
+        work_nG = np.empty_like(self.psit_nG)
+        P_ani = ppo.apply_inverse(self.psit_nG, work_nG, self.wfs, kpt, \
+            calculate_P_ani=True, extrapolate_P_ani=True)
+
+        P0_ani = self.pt.dict(self.bd.mynbands)
+        self.pt.integrate(work_nG, P0_ani, kpt.q)
+        del work_nG
+
+        self.check_and_plot(P_ani, P0_ani, 12, 'extrapolate,inverse')
+
+    def test_overlap_inverse_after(self):
+        kpt = self.wfs.kpt_u[0]
+        kpt.P_ani = self.pt.dict(self.bd.mynbands)
+        ppo = ProjectorPairOverlap(self.wfs, self.atoms)
+
+        work_nG = np.empty_like(self.psit_nG)
+        self.pt.integrate(self.psit_nG, kpt.P_ani, kpt.q)
+        P0_ani = dict([(a,P_ni.copy()) for a,P_ni in kpt.P_ani.items()])
+        ppo.apply(self.psit_nG, work_nG, self.wfs, kpt, calculate_P_ani=False)
+
+        res_nG = np.empty_like(self.psit_nG)
+        ppo.apply_inverse(work_nG, res_nG, self.wfs, kpt, calculate_P_ani=True)
+        del work_nG
+
+        P_ani = self.pt.dict(self.bd.mynbands)
+        self.pt.integrate(res_nG, P_ani, kpt.q)
+
+        abserr = np.empty(1, dtype=float)
+        for n in range(self.nbands):
+            band_rank, myn = self.bd.who_has(n)
+            if band_rank == self.bd.comm.rank:
+                abserr[:] = np.abs(self.psit_nG[myn] - res_nG[myn]).max()
+                self.gd.comm.max(abserr)
+            self.bd.comm.broadcast(abserr, band_rank)
+            self.assertAlmostEqual(abserr.item(), 0, 12)
+
+        self.check_and_plot(P_ani, P0_ani, 12, 'overlap,inverse,after')
+
+    def test_overlap_inverse_before(self):
+        kpt = self.wfs.kpt_u[0]
+        kpt.P_ani = self.pt.dict(self.bd.mynbands)
+        ppo = ProjectorPairOverlap(self.wfs, self.atoms)
+
+        work_nG = np.empty_like(self.psit_nG)
+        self.pt.integrate(self.psit_nG, kpt.P_ani, kpt.q)
+        P0_ani = dict([(a,P_ni.copy()) for a,P_ni in kpt.P_ani.items()])
+        ppo.apply_inverse(self.psit_nG, work_nG, self.wfs, kpt, calculate_P_ani=False)
+
+        res_nG = np.empty_like(self.psit_nG)
+        ppo.apply(work_nG, res_nG, self.wfs, kpt, calculate_P_ani=True)
+        del work_nG
+
+        P_ani = self.pt.dict(self.bd.mynbands)
+        self.pt.integrate(res_nG, P_ani, kpt.q)
+
+        abserr = np.empty(1, dtype=float)
+        for n in range(self.nbands):
+            band_rank, myn = self.bd.who_has(n)
+            if band_rank == self.bd.comm.rank:
+                abserr[:] = np.abs(self.psit_nG[myn] - res_nG[myn]).max()
+                self.gd.comm.max(abserr)
+            self.bd.comm.broadcast(abserr, band_rank)
+            self.assertAlmostEqual(abserr.item(), 0, 12)
+
+        self.check_and_plot(P_ani, P0_ani, 12, 'overlap,inverse,before')
 
 # -------------------------------------------------------------------
 
 def UTGaussianWavefunctionSetupFactory(boundaries, dtype):
-    #import tempfile
     sep = '_'
     classname = 'UTGaussianWavefunctionSetup' \
     + sep + {'zero':'Zero', 'periodic':'Periodic', 'mixed':'Mixed'}[boundaries] \
@@ -413,24 +413,12 @@ def UTGaussianWavefunctionSetupFactory(boundaries, dtype):
         __doc__ = UTGaussianWavefunctionSetup.__doc__
         boundaries = boundaries
         dtype = dtype
-        #tmpname = tempfile.mktemp(prefix='ut_invops',suffix='.dat')
     MetaPrototype.__name__ = classname
     return MetaPrototype
 
-
 # -------------------------------------------------------------------
 
-if False: #XXX DEBUG DIRECT
-    class UTC(UTGaussianWavefunctionSetup):
-        boundaries='periodic'
-        dtype=float
-
-    testcase = UTC('test_projection_linearity')
-    testcase.setUp()
-    testcase.test_projection_linearity()
-    testcase.tearDown()
-
-elif __name__ in ['__main__', '__builtin__']:
+if __name__ in ['__main__', '__builtin__']:
     # We may have been imported by test.py, if so we should redirect to logfile
     if __name__ == '__builtin__':
         testrunner = CustomTextTestRunner('ut_invops.log', verbosity=2)
