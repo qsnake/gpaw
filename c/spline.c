@@ -12,14 +12,14 @@ static PyObject * spline_get_cutoff(SplineObject *self, PyObject *args)
 }
 
 static PyObject * spline_get_angular_momentum_number(SplineObject *self,
-						     PyObject *args)
+                                                     PyObject *args)
 {
   return Py_BuildValue("i", self->spline.l);
 }
 
 static PyObject * spline_get_value_and_derivative(SplineObject *obj, 
-						  PyObject *args,
-						  PyObject *kwargs)
+                                                  PyObject *args,
+                                                  PyObject *kwargs)
 {
   double r;
   if (!PyArg_ParseTuple(args, "d", &r))
@@ -30,6 +30,53 @@ static PyObject * spline_get_value_and_derivative(SplineObject *obj,
   return Py_BuildValue("(dd)", f, dfdr);
 }
 
+
+// Convert boundary point z-ranges to grid indices for the 2*l+1 boxes
+static PyObject * spline_get_indices_from_zranges(SplineObject *self,
+                                                      PyObject *args)
+{
+  PyArrayObject* beg_c_obj;
+  PyArrayObject* end_c_obj;
+  PyArrayObject* G_b_obj;
+  int nm = 2 * self->spline.l + 1;
+
+  if (!PyArg_ParseTuple(args, "OOO", &beg_c_obj, &end_c_obj, &G_b_obj))
+    return NULL; 
+
+  long* beg_c = LONGP(beg_c_obj);
+  long* end_c = LONGP(end_c_obj);
+
+  int ngmax = ((end_c[0] - beg_c[0]) *
+               (end_c[1] - beg_c[1]) *
+               (end_c[2] - beg_c[2]));
+
+  int* G_B = INTP(G_b_obj);
+  int nB = G_b_obj->dimensions[0];
+
+  int ng = 0;
+  for (int b = 0; b < nB; b+=2)
+    ng += G_B[b+1]-G_B[b];
+
+  npy_intp gm_dims[2] = {ng, nm};
+  PyArrayObject* indices_gm_obj = (PyArrayObject*)PyArray_SimpleNew(2, gm_dims, 
+                                                                    NPY_INT);
+
+  int* p = INTP(indices_gm_obj);
+  for (int b = 0; b < nB; b += 2) {
+    int Ga = G_B[b], Gb = G_B[b+1];
+    for (int G = Ga; G < Gb; G++)
+      for (int m = 0; m < nm; m++)
+        *p++ = m * ngmax + G;
+    }
+
+  // PyObjects created in the C code will be initialized with a refcount
+  // of 1, for which reason we'll have to decref them when done here
+  PyObject* values = Py_BuildValue("(Oii)", indices_gm_obj, ng, nm);
+  Py_DECREF(indices_gm_obj);
+  return values;
+}
+
+
 static PyMethodDef spline_methods[] = {
     {"get_cutoff",
      (PyCFunction)spline_get_cutoff, METH_VARARGS, 0},
@@ -37,6 +84,8 @@ static PyMethodDef spline_methods[] = {
      (PyCFunction)spline_get_angular_momentum_number, METH_VARARGS, 0},
     {"get_value_and_derivative", 
      (PyCFunction)spline_get_value_and_derivative, METH_VARARGS, 0},
+    {"get_indices_from_zranges", 
+     (PyCFunction)spline_get_indices_from_zranges, METH_VARARGS, 0},
     {NULL, NULL, 0, NULL}
 };
 
