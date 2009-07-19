@@ -291,7 +291,6 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
         self.pt.add(self.psit_nG, Q_ani, q=kpt.q)
         self.pt.integrate(self.psit_nG, P0_ani, q=kpt.q)
 
-        #spos_ac = self.atoms.get_scaled_positions() % 1.0
         #rank_a = self.gd.get_ranks_from_positions(spos_ac)
         #my_atom_indices = np.argwhere(self.gd.comm.rank == rank_a).ravel()
 
@@ -299,7 +298,8 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
         #TODO XXX should fix PairOverlap-ish stuff for < p  | phi  > overlaps
         #                                                 i      i'
 
-        spos_ac = self.pt.spos_ac
+        #spos_ac = self.pt.spos_ac # NewLFC doesn't have this
+        spos_ac = self.atoms.get_scaled_positions() % 1.0
         gpo = GridPairOverlap(self.gd, self.setups)
         dB_aa = gpo.calculate_overlaps(spos_ac, self.pt)
         P_ani = dict([(a,Q_ni.copy()) for a,Q_ni in Q_ani.items()])
