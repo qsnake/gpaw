@@ -1,9 +1,10 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
-import numpy as npy
+import numpy as np
 
-from gpaw.utilities import contiguous, divrl
+from gpaw import debug
+from gpaw.utilities import contiguous, divrl, is_contiguous
 import _gpaw
 
 
@@ -24,19 +25,19 @@ class Spline:
             f_g = contiguous(f_g, float)
         else:
             f_g = divrl(f_g, l, r_g)
-            r = 1.0 * rmax / points * npy.arange(points + 1)
+            r = 1.0 * rmax / points * np.arange(points + 1)
             ng = len(f_g)
             g = (ng * r / (beta + r) + 0.5).astype(int)
-            g = npy.clip(g, 1, ng - 2)
-            r1 = npy.take(r_g, g - 1)
-            r2 = npy.take(r_g, g)
-            r3 = npy.take(r_g, g + 1)
+            g = np.clip(g, 1, ng - 2)
+            r1 = np.take(r_g, g - 1)
+            r2 = np.take(r_g, g)
+            r3 = np.take(r_g, g + 1)
             x1 = (r - r2) * (r - r3) / (r1 - r2) / (r1 - r3)
             x2 = (r - r1) * (r - r3) / (r2 - r1) / (r2 - r3)
             x3 = (r - r1) * (r - r2) / (r3 - r1) / (r3 - r2)
-            f1 = npy.take(f_g, g - 1)
-            f2 = npy.take(f_g, g)
-            f3 = npy.take(f_g, g + 1)
+            f1 = np.take(f_g, g - 1)
+            f2 = np.take(f_g, g)
+            f3 = np.take(f_g, g + 1)
             f_g = f1 * x1 + f2 * x2 + f3 * x3
 
         # Copy so we don't change the values of the input array
@@ -59,3 +60,25 @@ class Spline:
     def __call__(self, r):
         assert r >= 0.0
         return self.spline(r)
+
+    def get_functions(self, gd, start_c, end_c, spos_c):
+        h_cv = gd.cell_cv / gd.N_c[:, np.newaxis]
+        # start_c is the new origin so we translate gd.beg_c to start_c
+        origin_c = np.array([0,0,0]) 
+        pos_v = np.dot(spos_c, gd.cell_cv) - np.dot(start_c, h_cv)
+        A_gm, G_b = _gpaw.spline_to_grid(self.spline, origin_c, end_c-start_c,
+                                         pos_v, h_cv, end_c-start_c, origin_c)
+
+        if debug:
+            assert G_b.ndim == 1 and G_b.shape[0] % 2 == 0
+            assert is_contiguous(G_b, np.int32)
+            assert A_gm.shape[:-1] == np.sum(G_b[1::2]-G_b[::2])
+
+        indices_gm, ng, nm = self.spline.get_indices_from_zranges(start_c, 
+                                                                  end_c, G_b)
+        shape = (nm,) + tuple(end_c-start_c)
+        work_mB = np.zeros(shape, dtype=A_gm.dtype)
+        np.put(work_mB, indices_gm, A_gm)
+        return work_mB
+
+
