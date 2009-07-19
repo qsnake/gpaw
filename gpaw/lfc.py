@@ -113,12 +113,14 @@ class Sphere:
         self.normalized = False
         return True
 
-    def spline_to_grid(self, spline, gd, start_c, end_c, spos_c):
+    def spline_to_grid(spline, gd, start_c, end_c, spos_c):
         dom = gd
-        h_cv = dom.cell_cv / gd.N_c[:, None]
+        h_cv = dom.cell_cv / gd.N_c[:, np.newaxis]
         pos_v = np.dot(spos_c, dom.cell_cv)
         return _gpaw.spline_to_grid(spline.spline, start_c, end_c, pos_v, h_cv,
                                     gd.n_c, gd.beg_c)
+
+    spline_to_grid = staticmethod(spline_to_grid) # TODO This belongs in Spline!
 
     def get_function_count(self):
         return sum([2 * spline.get_angular_momentum_number() + 1
