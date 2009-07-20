@@ -1,6 +1,6 @@
 from gpaw import GPAW
 from gpaw.transport.tools import k2r_hs, get_hs, dagger, dot, get_tri_type
-from gpaw.transport.tools import Fb_Sparse_Matrix
+from gpaw.transport.tools import Banded_Sparse_Matrix, get_matrix_index
 from gpaw.utilities.lapack import inverse_general, inverse_symmetric
 from gpaw.lcao.tools import get_realspace_hs
 
@@ -34,28 +34,40 @@ class LeadSelfEnergy:
         #initialize sparse matrix
         
         self.symm = self.dtype == float
-        self.s_ii_spar = Fb_Sparse_Matrix(s_ii, self.symm)
-        index = self.s_ii_spar.index
-        self.h_ii_spar = Fb_sparse_Matrix(h_ii, self.symm, index)
-        self.spar_init(h_ij, s_ij)
+        self.s_ii_spar = Banded_Sparse_Matrix(s_ii)
+        index = self.s_ii_spar.banded_index
+        self.h_ii_spar = Banded_sparse_Matrix(h_ii, index)
+        
+        self.s_ij = s_ij
+        self.h_ij = h_ij
+        
+        #self.spar_init(h_ij, s_ij)
+        
+        #if self.tri_type == 'L':
+        #    self.ind0 = get_matrix_index(np.arange(self.nn))  #the index of non-zero selfenergy elements
+        #    self.ind1 = get_matrix_index(np.arange(self.nn, 0)) #the index of non-zero selfenergy elements
+                                                           # in the other direction    
+        #else:
+        #    self.ind0 = get_matrix_index(np.arange(-self.nn, 0))
+        #    self.ind1 = get_matrix_index(np.arange(self.nn))
+
 
     def reset(self, hs_ii, hs_ij):
         h_ii, s_ii = hs_ii
         h_ij, s_ij = hs_ij
-        index = self.s_ii_spar.index
-        self.s_ii_spar = Fb_Sparse_Matrix(s_ii, self.symm, index)
-        self.h_ii_spar = Fb_Sparse_Matrix(h_ii, self.symm, index)
-        if self.tri_type == 'L':
-            self.s_ij_spar = s_ij[-self.nn:, :self.nn]
-            self.h_ij_spar = h_ij[-self.nn:, :self.nn]
-        else:
-            self.s_ij_spar = s_ij[:self.nn, -self.nn:]
-            self.h_ij_spar = h_ij[:self.nn, -self.nn:]
+        index = self.s_ii_spar.banded_index
+        self.s_ii_spar.reset(s_ii)
+        self.h_ii_spar.reset(h_ii)
+        #if self.tri_type == 'L':
+        #    self.s_ij_spar = s_ij[-self.nn:, :self.nn]
+        #    self.h_ij_spar = h_ij[-self.nn:, :self.nn]
+        #else:
+        #    self.s_ij_spar = s_ij[:self.nn, -self.nn:]
+        #    self.h_ij_spar = h_ij[:self.nn, -self.nn:]
   
     def spar_init(self, h_ij, s_ij, tol=1e-16):
         # determine the sparse property accorrding to overlap and apply to
         # hamiltonian matrix
-
         dim = s_ij.shape[-1]
         flag = 0
         self.s_ij_spar = []
@@ -90,24 +102,12 @@ class LeadSelfEnergy:
     def __call__(self, energy):
         self.energy = energy
         z = energy - self.bias + self.eta * 1.j           
-        tau_im = z * self.s_ij_spar - self.h_ij_spar
-
-
+        tau_ij = z * self.s_ij - self.h_ij
         ginv = self.get_sgfinv(energy)
-        inv(ginv, gsub, pb, pe)
-        
-        gsub2 = np.take(gsub, )
-        a_im = dot(gsub, tau_im)
-        
-        tau_mi = z * dagger(self.s_im) - dagger(self.h_im)
-        self.sigma_mm[:] = dot(tau_mi, a_im)
-        return self.sigma_mm
-    
-    
-        # sigma = _gpaw.calculate_selfenergy(self.h_ii, self.h_ij, self.s_ii,
-        #                                     self.s_ij, energy)
-        raise NotImplementError
-    
+        a_ij = dot(ginv, tau_ij)        
+        sigma = dot(tau_ij.T.conj(), a_ij)
+        return sigma
+       
     def set_bias(self, bias):
         self.bias = bias
         
@@ -117,32 +117,29 @@ class LeadSelfEnergy:
     
     def get_sgfinv(self, energy):
         """The inverse of the retarded surface Green function"""
-        if self.symm:
-            inv = inverse_symmetric
-        else:
-            inv = inverse_general
         z = energy - self.bias + self.eta * 1.0j
         
-        v_00 = z * dagger(self.s_ii) - dagger(self.h_ii)
+        g_spar = Banded_Sparse_Matrix(None, self.s_ii.spar.banded_index)
+        g_spar.reset_from_others(self.s_ii_spar, self.h_ii_spar, z, -1.0)
         
-        v_11 = v_00.copy()
+        g_spar0 = copy.deepcopy(g_spar)
         
-        v_10 = z * self.s_ij - self.h_ij
-        v_01 = z * dagger(self.s_ij) - dagger(self.h_ij)
+        #v_00 = z * self.s_ii- self.h_ii
+        #v_11 = v_00.copy()
+        v_10 = z * self.s_ij- self.h_ij
+        #v_01 = z * dagger(self.s_ij_spar) - dagger(self.h_ij_spar)
+        v_01 = dagger(v_10)
+        
         delta = self.conv + 1
-        n = 0
         while delta > self.conv:
-            inv_v_11 = np.copy(v_11)
-            inv(inv_v_11)
+            inv_v_11 = g_spar.inv()
             a = dot(inv_v_11, v_01)
             b = dot(inv_v_11, v_10)
             v_01_dot_b = dot(v_01, b)
-            v_00 -= v_01_dot_b
-            v_11 -= dot(v_10, a)
-            v_11 -= v_01_dot_b
+            v_00.reset_minus(v_01_dot_b)
+            v_11.reset_minus(dot(v_10, a))
+            v_11.reset_minus(v_01_dot_b)
             v_01 = -dot(v_01, a)
             v_10 = -dot(v_10, b)
             delta = np.abs(v_01).max()
-            n += 1
-        return v_00    
     
