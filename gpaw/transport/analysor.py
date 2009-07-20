@@ -112,9 +112,10 @@ class Transport_Analysor:
     def initialize_selfenergy_and_green_function(self):
         self.selfenergies = []
         tp = self.tp
-        if tp.use_lead:
-            for i in range(tp.lead_num):
-                self.selfenergies.append(LeadSelfEnergy((tp.hl_spkmm[i][0,0],
+        if tp.matrix_mode == 'full':
+            if tp.use_lead:
+                for i in range(tp.lead_num):
+                    self.selfenergies.append(LeadSelfEnergy((tp.hl_spkmm[i][0,0],
                                                          tp.sl_pkmm[i][0]), 
                                                         (tp.hl_spkcmm[i][0,0],
                                                          tp.sl_pkcmm[i][0]),
@@ -122,48 +123,62 @@ class Transport_Analysor:
                                                          tp.sl_pkcmm[i][0]),
                                                  1e-8))
     
-                self.selfenergies[i].set_bias(tp.bias[i])
+                    self.selfenergies[i].set_bias(tp.bias[i])
 
-        if tp.use_env:
-            self.env_selfenergies = []
-            for i in range(tp.env_num):
-                self.env_selfenergies.append(CellSelfEnergy((tp.he_skmm[i],
+            if tp.use_env:
+                self.env_selfenergies = []
+                for i in range(tp.env_num):
+                    self.env_selfenergies.append(CellSelfEnergy((tp.he_skmm[i],
                                                              tp.se_kmm[i]),
                                                             (tp.he_smm[i],
                                                              tp.se_mm[i]),
                                                              tp.env_ibzk_kc[i],
                                                              tp.env_weight[i],
                                                             1e-8))
-        self.greenfunction = GreenFunction(selfenergies=self.selfenergies,
-                                           H=tp.h_spkmm[0,0],
-                                           S=tp.s_pkmm[0], eta=0)
-
+            self.greenfunction = GreenFunction(selfenergies=self.selfenergies,
+                                               H=tp.h_spkmm[0,0],
+                                               S=tp.s_pkmm[0], eta=0)
+        else:  #sparse_matrix
+            raise NotImplementError
+            
     def reset_selfenergy_and_green_function(self, s, k):
         tp = self.tp
-        if tp.use_lead:    
-            sg = self.selfenergies
-            for i in range(tp.lead_num):
-                sg[i].h_ii = tp.hl_spkmm[i][s, k]
-                sg[i].s_ii = tp.sl_pkmm[i][k]
-                sg[i].h_ij = tp.hl_spkcmm[i][s, k]
-                sg[i].s_ij = tp.sl_pkcmm[i][k]
-                sg[i].h_im = tp.hl_spkcmm[i][s, k]
-                sg[i].s_im = tp.sl_pkcmm[i][k]         
+        if tp.matrix_mode == 'full':
+            if tp.use_lead:    
+                sg = self.selfenergies
+                for i in range(tp.lead_num):
+                    sg[i].h_ii = tp.hl_spkmm[i][s, k]
+                    sg[i].s_ii = tp.sl_pkmm[i][k]
+                    sg[i].h_ij = tp.hl_spkcmm[i][s, k]
+                    sg[i].s_ij = tp.sl_pkcmm[i][k]
+                    sg[i].h_im = tp.hl_spkcmm[i][s, k]
+                    sg[i].s_im = tp.sl_pkcmm[i][k]         
 
-        ind = get_matrix_index(tp.inner_mol_index)
-        self.greenfunction.H = tp.h_spkmm[s, k, ind.T, ind]
-        self.greenfunction.S = tp.s_pkmm[k, ind.T, ind]
+            ind = get_matrix_index(tp.inner_mol_index)
+            self.greenfunction.H = tp.h_spkmm[s, k, ind.T, ind]
+            self.greenfunction.S = tp.s_pkmm[k, ind.T, ind]
+        else:
+            for i in range(tp.lead_num):
+                self.energies[i].hsd.s = s
+                self.energies[i].hsd.pk = k
+            tp.hsd.s = s
+            tp.hsd.pk = k
       
     def calculate_green_function_of_k_point(self, s, k, energy):
         tp = self.tp 
-        nbmol = tp.nbmol_inner
-        sigma = np.zeros([nbmol, nbmol], complex)
-
-        for i in range(tp.lead_num):
-            ind = get_matrix_index(tp.inner_lead_index[i])
-            sigma[ind.T, ind] += self.selfenergies[i](energy)
-
-        return self.greenfunction.calculate(energy, sigma)
+        if tp.matrix_mode == 'full':
+            nbmol = tp.nbmol_inner
+            sigma = np.zeros([nbmol, nbmol], complex)
+            for i in range(tp.lead_num):
+                ind = get_matrix_index(tp.inner_lead_index[i])
+                sigma[ind.T, ind] += self.selfenergies[i](energy)
+            return self.greenfunction.calculate(energy, sigma)
+        else:
+            sigma = []
+            for i in range(tp.lead_num):
+                sigma.append(self.selfenergies[i](energy))
+            tp.hsd.inv_eq(sigma)
+            return tp.hsd.recover()
 
     def calculate_transmission_and_dos(self, s, k, energies):
         self.reset_selfenergy_and_green_function(s, k)
@@ -207,8 +222,12 @@ class Transport_Analysor:
         df = np.empty([tp.my_nspins, tp.my_npk, tp.nbmol], dtype)
         for s in range(tp.my_nspins):
             for k in range(tp.my_npk):
-                dd[s, k] = np.diag(tp.d_spkmm[s, k])
-                df[s, k] = np.diag(tp.h_spkmm[s, k])
+                if tp.matrix_mode == 'full':
+                    dd[s, k] = np.diag(tp.d_spkmm[s, k])
+                    df[s, k] = np.diag(tp.h_spkmm[s, k])
+                else:
+                    dd[s, k] = np.diag(tp.hsd.D[s][k].recover())
+                    df[s, k] = np.diag(tp.hsd.H[s][k].recover())
 
         dim = tp.gd.N_c
         d1 = dim[0] // 2
