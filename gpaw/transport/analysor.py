@@ -51,8 +51,8 @@ class Electron_Step_Info:
     # ehot_g(the rho density in a line along transport direction)
     # evHt_g(the Hartree potential)
    
-    def __init__(self, ion_step, bias_step, step):
-        self.ion_step, self.bias_step, self.step = ion_step, bias_step, step
+    def __init__(self, ion_step, bias_step, ele_step):
+        self.ion_step, self.bias_step, self.ele_step = ion_step, bias_step, ele_step
         
     def initialize_data(self, bias, gate, dd, df, nt, vt, D_asp, dH_asp, tc, dos):
         self.bias = bias
@@ -787,5 +787,38 @@ class Transport_Plotter:
         p.title('dos')
         p.show()
         
+    def plot_ele_step_info(self, info, steps_indices, s, k, height=None):
+        ee = np.linspace(-3, 5, 60)
+        import pylab as p
+        legends = []
+        for i, step in enumerate(self.ele_steps):
+            if i in steps_indices:
+                if info == 'dd':
+                    data = step.dd[s, k]
+                    title = 'density matrix diagonal elements'
+                elif info == 'df':
+                    data = step.df[s, k]
+                    title = 'hamiltonian matrix diagonal elements'
+                elif info == 'den':
+                    data = step.nt
+                    title = 'density'
+                elif info == 'ham':
+                    data = step.vt
+                    title = 'hamiltonian'
+                elif info == 'tc':
+                    data = step.tc[s, k, 0]
+                    title = 'trasmission coefficeints'
+                elif info == 'dos':
+                    data = step.dos[s, k]
+                    title = 'density of states'
+                else:
+                    raise ValueError('no this info type---' + info)
+                p.plot(ee, step.dos[s, k])
+                legends.append('step' + str(step.step))
+        p.title(title)
+        p.legend(legends)
+        if height != None:
+            p.axis([ee[0], ee[-1], 0, height])
+        p.show()
         
         
