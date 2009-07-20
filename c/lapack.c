@@ -25,6 +25,7 @@
 #  define zsytri_ zsytri
 #  define dgetri_ dgetri
 #  define zgetri_ zgetri
+#  define zgbsv_ zgbsv
 #endif
 
 int dsyev_(char *jobz, char *uplo, int *n, double *
@@ -76,6 +77,8 @@ int dgetri_(int *n, double *a, int *lda, int *ipiv,
             double *work, int *lwork, int *info); 
 int zgetri_(int *n, void *a, int *lda, int *ipiv, 
             void *work, int *lwork, int *info); 
+int zgbsv_(int*n, int* kl, int* ku, int* nrhs, void* ab, int*ldab, 
+                 int*ipiv, void* b, int*ldb, int*info);
 
 PyObject* diagonalize(PyObject *self, PyObject *args)
 {
@@ -304,4 +307,22 @@ PyObject* inverse_symmetric(PyObject *self, PyObject *args)
   free(ipiv);
   return Py_BuildValue("i", info);
 }
- 
+
+PyObject* linear_solve_band(PyObject *self, PyObject *args)
+{
+ PyArrayObject* a;
+ PyArrayObject* b;
+ int  kl, ku, info=0, *ipiv;
+ if(!PyArg_ParseTuple(args,"OOii",&a, &b,&kl,&ku))
+   return NULL;
+int n=a->dimensions[0];
+int ldab=a->dimensions[1];
+int ldb=b->dimensions[0];
+int nrhs=b->dimensions[1];
+   ipiv = GPAW_MALLOC(int, n);
+   zgbsv_(&n, &kl,&ku, &nrhs, (void*)COMPLEXP(a), &ldab, ipiv, (void*)COMPLEXP(b), &ldb, &info);
+   free(ipiv);
+ return Py_BuildValue("i",info);
+}
+
+
