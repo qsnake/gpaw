@@ -1,6 +1,8 @@
 import os
 import time
 
+from gpaw.version import version
+
 class FMF:
     """Full-Metadata Format
 
@@ -32,6 +34,14 @@ class FMF:
             else:
                 header += ec + '       '
             header += line + '\n'
+
+        header += ec + 'gpaw-version: ' + version + '\n'
+        try:
+            import socket
+            header += ec + 'hostname: ' + socket.gethostname() + '\n'
+        except:
+            pass
+        header += ec + 'architecture: ' + os.uname()[4]  + '\n'
 
         return header
 
