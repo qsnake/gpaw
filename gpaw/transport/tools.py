@@ -6,17 +6,8 @@ from gpaw.mpi import world, rank
 from gpaw.utilities.blas import gemm
 from gpaw.utilities.lapack import inverse_symmetric, inverse_general
 from gpaw.utilities.timing import Timer
+import copy
 import _gpaw
-
-
-a11 = np.array([[1,0.5],[0.5,1]], dtype=complex)
-a22 = a11.copy()
-a33 = a11.copy()
-a12 = np.array([[0,0],[0.5,0]], dtype=complex)
-a23 = a12.copy()
-a21 = np.array([[0,0.5],[0,0]], dtype=complex)
-a32 = a21.copy()
-
 
 class PathInfo:
     def __init__(self, type, nlead):
@@ -56,166 +47,19 @@ class PathInfo:
     def set_nres(self, nres):
         self.nres = nres
         
-class Fb_Sparse_Matrix:
-    # For matrix with the sparse property like A_ij != 0,  q<=j<=q+l (*)
-    # q(i) denpends on i and now only consider the symmetric sparse matrix,
-    # which means the non_zero elements' position is symmetric, not for
-    # the element value.
-    
-    def __init__(self, mat, symm=False, index=None, tol=1e-16):
-        self.tol = tol
-        self.dtype = mat.dtype
-        self.symm = symm
-        if index == None:
-            self.initialize(mat)
-        else:
-            self.reset(mat, index)
-        self.timer = Timer()
-        
-    def initialize(self, mat):
-        # index[0][0] = dim, index[0][1:] is the q in (*) for each line
-        # index[1][0] = dim, index[1][1:] is the q + l in (*) for each line
-        # index[2][-1] = nele, index[2][:-1] is the start pointer for each line
-        # in the data array.
-        dim = mat.shape[-1]  
-        self.index = [[dim], [dim], []]
-        self.spar = []
-        cur_row = -1
-        
-        for i in range(dim):
-            for j in range(dim):
-                 if abs(mat[i, j]) > self.tol:
-                    if not self.symm or (self.symm and i>=j):
-                        self.spar.append(mat[i, j])
-                    k = j
-                    if i != cur_row:
-                        self.index[0].append(k)
-                        self.index[2].append(len(self.spar) - 1)
-                        cur_row += 1
-            self.index[1].append(k)
-        self.index[2].append(len(self.spar))
-        self.index = np.array(self.index)
-        self.spar = np.array(self.spar)                    
-
-    def reset(self, mat, index=None):
-        if index != None:
-            self.index = index
-        dim = self.index[0][0]
-        self.spar = []
-        for i in range(dim):
-            begin = self.index[0][i + 1]
-            end = self.index[1][i + 1]
-            for j in range(begin, end + 1):
-                self.spar.append(mat[i, j])
-        self.spar = np.array(self.spar)
-    
-    def inv(self, data=None, partly=False, row_b=None, row_e=None,
-                                                      col_b=None, col_e=None):
-        # get the sparse matrix inversion in the same positions of
-        # non_zero elements, also can only get some rows:  [row_b:row_e] and
-        # some columns: [col_b:col_e]
-        # self.spar is lost after inversion
-        
-        assert self.dtype == complex
-        dim = self.index[0][0]
-        length = dim * (dim + 1) / 2
-
-        if partly:
-            assert row_b != None and row_e != None
-            assert col_b != None and col_e != None
-        else:
-            row_b = 0
-            col_b = 0
-            row_e = dim - 1
-            col_e = dim - 1
-
-        inv_mat = np.zeros([dim, dim], complex)
-           
-        if data == None:
-            data = self.spar
-
-        #a0 = self.spar2full(self.spar, self.index)
-        if self.symm:
-            #if not _gpaw.csspar_ll(self.spar, self.index):
-            #    raise RuntimeError('lu decompostion for sparse matrix fails')
-            #for i in range(dim):
-            #    inv_mat[i][i] = 1.0 
-            #    if not _gpaw.cspar_lx(self.spar, self.index, inv_mat[i],
-            #                                              dim, row_b, row_e):
-            #        raise RuntimeError('row recus for sparse matrix fails')
-            #    if not _gpaw.cspar_uy(self.spar, self.index, inv_mat[i],
-            #                                               dim, col_b, col_e):
-            #        raise RuntimeError('col recus for sparse matrix fails')
-             _gpaw.cspar_inv(self.spar, self.index, inv_mat, 'S', dim, 0, dim-1)   
-        else:
-            #print 'debug0'
-            #print self.spar, self.index
-            #if not _gpaw.cgspar_lu(self.spar, self.index):
-            #    print 'debug1'
-            #    raise RuntimeError('lu decompostion for sparse matrix fails')
-            #print 'debug2'
-            #inv_u, index_u = self.split_u(self.spar)
-            #inv_l, index_l = self.split_l(self.spar)
-            #l0 = self.spar2full(inv_l, index_l)            
-            #u0 = self.spar2full(inv_u, index_u)            
-            #print np.max(abs(dot(l0, u0) - a0)), 'hahsd'
-            #seq = np.array([0, 1,3,2,4,5])
-            #for i in range(dim):
-            #    inv_mat[i][i] = 1.0 
-            #    if not _gpaw.cspar_lx(inv_u[seq], index_l, inv_mat[i],
-            #                                              dim, row_b, row_e):
-            #        raise RuntimeError('row recus for sparse matrix fails')
-            #    if not _gpaw.cspar_uy(inv_l, index_l, inv_mat[i],
-            #                                               dim, col_b, col_e):
-            #        raise RuntimeError('col recus for sparse matrix fails')
-             _gpaw.cspar_inv(self.spar, self.index, inv_mat, 'G', dim, 0, dim-1)              
-            
-        return inv_mat  
-
-    def split_u(self, data):
-        dim = self.index[0][0]
-        index = self.index.copy()
-        data_u = []
-        for i in range(dim):
-            index[2][i] = len(data_u)
-            data_u.append(1.0)
-            for j in range(i + 1, index[1][i + 1] + 1):
-                data_u.append(data[self.index[2][i] + j - index[0][i + 1]])
-        index[2][-1] = len(data_u)
-        return np.array(data_u), np.array(index)
-    
-    def split_l(self, data):
-        dim = self.index[0][0]
-        index = self.index.copy()
-        data_l = []
-        for i in range(dim):
-            index[2][i] = len(data_l)
-            for j in range(index[0][i + 1], i + 1):
-                data_l.append(data[self.index[2][i] + j - index[0][i + 1]])
-        index[2][-1] = len(data_l)
-        return np.array(data_l), np.array(index)
-    
-    def spar2full(self, data, index):
-        dim = index[0][0]
-        a = np.zeros((dim, dim), complex)
-        for i in range(dim):
-            n = 0
-            for j in range(index[0][i + 1], index[1][i + 1] + 1):
-                if not self.symm or (self.symm and j <= i):
-                    a[i, j] = data[index[2][i] + n]
-                    n += 1
-        return a
-   
 class Banded_Sparse_Matrix:
-    def __init__(self, mat, band_index=None, tol=1e-12):
-        self.dtype = mat.dtype
+    def __init__(self, mat=None, band_index=None, tol=1e-12):
         self.tol = tol
-        if band_index == None:
-            self.initialize(mat)
+        if mat == None:
+            self.band_index = banded_index
         else:
-            self.reset(mat)
+            if band_index == None:
+                self.initialize(mat)
+            else:
+                self.reset(mat)
         
     def initialize(self, mat):
+        self.dtype = mat.dtype
         dim = mat.shape[-1]
         ku = 0
         kl = 0
@@ -232,35 +76,79 @@ class Banded_Sparse_Matrix:
             
         self.band_index = (kl, ku)
         assert self.dtype == complex
-        self.spar = np.zeros([2 * kl + ku + 1, dim], complex)
+        
+        #self.spar = np.zeros([2 * kl + ku + 1, dim], complex)
+        
+        #for i in range(kl, kl + ku + 1):
+        #    ud = kl + ku - i
+        #    self.spar[i][ud:] = np.diag(mat, ud)
+        
+        #for i in range(kl + ku + 1, 2 * kl + ku + 1):
+        #    ud = kl + ku - i
+        #    self.spar[i][:ud] = np.diag(mat, ud)
+    
+        # storage in the tranpose, bacause column major order for zgbsv_ function
+        self.spar = np.zeros([dim, 2 * kl + ku + 1], complex)
         
         for i in range(kl, kl + ku + 1):
             ud = kl + ku - i
-            self.spar[i][ud:] = np.diag(mat, ud)
-        
+            self.spar[ud:][i] = np.diag(mat, ud)
         for i in range(kl + ku + 1, 2 * kl + ku + 1):
             ud = kl + ku - i
-            self.spar[i][:ud] = np.diag(mat, ud)
-    
+            self.spar[:ud][i] + np.diag(mat, ud)
+  
     def reset(self, mat):
         kl, ku = self.band_index
         assert self.dtype == complex
-        for i in range(kl + 1, kl + ku + 2):
-            ud = kl + ku + 1 - i
-            self.spar[i][ud:] = np.diag(mat, ud)
-        for i in range(kl + ku + 2, 2 * kl + ku + 1):
-            ud = kl + ku + 1 - i
-            self.spar[i][:ud] = np.diag(mat, ud)        
+        #for i in range(kl + 1, kl + ku + 2):
+        #    ud = kl + ku + 1 - i
+        #    self.spar[i][ud:] = np.diag(mat, ud)
+        #for i in range(kl + ku + 2, 2 * kl + ku + 1):
+        #    ud = kl + ku + 1 - i
+        #    self.spar[i][:ud] = np.diag(mat, ud)        
 
-    def inv(self):
+        for i in range(kl, kl + ku + 1):
+            ud = kl + ku - i
+            self.spar[ud:][i] = np.diag(mat, ud)
+        for i in range(kl + ku + 1, 2 * kl + ku + 1):
+            ud = kl + ku - i
+            self.spar[:ud][i] = np.diag(mat, ud)
+    
+    def reset_from_others(self, bds_mm1, bds_mm2, c1, c2):
+        self.spar = c1 * bds_mm1.spar + c2 * bds_mm2.spar 
+            
+    def reset_minus(self, mat):
+        kl, ku = self.band_index
+        assert self.dtype == complex
+        for i in range(kl, kl + ku + 1):
+            ud = kl + ku - i
+            self.spar[ud:][i] -= np.diag(mat, ud)
+        for i in range(kl + ku + 1, 2 * kl + ku + 1):
+            ud = kl + ku - i
+            self.spar[:ud][i] -= np.diag(mat, ud)
+    
+    def reset_plus(self, mat):
+        kl, ku = self.band_index
+        assert self.dtype == complex
+        for i in range(kl, kl + ku + 1):
+            ud = kl + ku - i
+            self.spar[ud:][i] -= np.diag(mat, ud)
+        for i in range(kl + ku + 1, 2 * kl + ku + 1):
+            ud = kl + ku - i
+            self.spar[:ud][i] -= np.diag(mat, ud)
+
+    def inv(self, keep_data=False):
         kl, ku = self.band_index
         dim = self.spar.shape[1]
         inv_mat = np.eye(dim, dtype=complex)
-        #inv_mat=np.zeros([dim],complex)
-        #inv_mat[0]=1.0
-        spar = self.spar.copy()
         ldab = 2*kl + ku + 1
-        info = _gpaw.linear_solve_band(self.spar, inv_mat, kl, ku, dim, ldab, dim, dim)
+       
+        if keep_data:
+            source_mat = self.spar
+        else:
+            source_mat = self.spar.copy()
+        info = _gpaw.linear_solve_band(source_mat, inv_mat,
+                                                    kl, ku, dim, ldab, dim, dim)            
         return inv_mat
        
 class Tp_Sparse_HSD:
@@ -355,22 +243,27 @@ class Tp_Sparse_Matrix:
     
     def reset(self, mat):
         ind = get_matrix_index(self.mol_index)
-        self.mol_h = mat[ind.T, ind]
+        #self.mol_h = mat[ind.T, ind]
+        self.mol_h.reset(mat[ind.T, ind])
         for i in range(self.lead_num):
             for j in range(self.lead_nlayer[i] - 1):
                 ind = get_matrix_index(self.ll_index[i][j])
                 ind1 = get_matrix_index(self.ll_index[i][j + 1])
-                self.diag_h[i][j] = mat[ind1.T, ind1]
+                #self.diag_h[i][j] = mat[ind1.T, ind1]
+                self.diag_h[i][j].reset(mat[ind1.T, ind1])
                 self.upc_h[i][j] = mat[ind.T, ind1]
                 self.dwnc_h[i][j] = mat[ind1.T, ind]
        
     def reset_from_others(self, tps_mm1, tps_mm2, c1, c2):
-        self.mol_h = c1 * tps_mm1.mol_h + c2 * tps_mm2.mol_h
+        #self.mol_h = c1 * tps_mm1.mol_h + c2 * tps_mm2.mol_h
+        self.mol_h.spar = c1 * tps_mm1.mol_h.spar + c2 * tps_mm2.mol_h.spar
         for i in range(self.lead_num):
             for j in range(self.lead_nlayer[i] - 1):
                 assert (tps_mm1.ll_index[i][j] == tps_mm2.ll_index[i][j]).all()
-                self.diag_h[i][j] = c1 * tps_mm1.diag_h[i][j] + \
-                                      c2 * tps_mm2.diag_h[i][j]
+                #self.diag_h[i][j] = c1 * tps_mm1.diag_h[i][j] + \
+                #                     c2 * tps_mm2.diag_h[i][j]
+                self.diag_h[i][j].spar = c1 * tps_mm1.diag_h[i][j].spar + \
+                                      c2 * tps_mm2.diag_h[i][j].spar
                 self.upc_h[i][j] = c1 * tps_mm1.upc_h[i][j] + \
                                       c2 * tps_mm2.upc_h[i][j]
                 self.dwnc_h[i][j] = c1 * tps_mm1.dwnc_h[i][j] + \
@@ -384,12 +277,12 @@ class Tp_Sparse_Matrix:
         nb = self.nb
         mat = np.zeros([nb, nb], complex)
         ind = get_matrix_index(self.mol_index)
-        mat[ind.T, ind] = self.mol_h
+        mat[ind.T, ind] = self.mol_h.recover()
         for i in range(self.lead_num):
             for j in range(self.lead_nlayer[i] - 1):
                 ind = get_matrix_index(self.ll_index[i][j])
                 ind1 = get_matrix_index(self.ll_index[i][j + 1])
-                mat[ind1.T, ind1] = self.diag_h[i][j]
+                mat[ind1.T, ind1] = self.diag_h[i][j].recover()
                 mat[ind.T, ind1] = self.upc_h[i][j]
                 mat[ind1.T, ind] = self.dwnc_h[i][j]
         return mat        
@@ -398,13 +291,13 @@ class Tp_Sparse_Matrix:
         begin = 0 
         mem = np.empty([self.length], complex)
         nb = len(self.mol_index)
-        mem[: nb ** 2] = np.resize(self.mol_h, [nb ** 2])
+        mem[: nb ** 2] = np.resize(self.mol_h.recover(), [nb ** 2])
         begin += nb ** 2
         for i in range(self.lead_num):
             for j in range(self.lead_nlayer[i] - 1):
                 len1 = len(self.ll_index[i][j])
                 len2 = len(self.ll_index[i][j + 1])
-                mem[begin: begin + len2 ** 2] = np.resize(self.diag_h[i][j],
+                mem[begin: begin + len2 ** 2] = np.resize(self.diag_h[i][j].recover(),
                                                                     [len2 ** 2])
                 begin += len2 * len2
                 mem[begin: begin + len1 * len2] = np.resize(self.upc_h[i][j],
@@ -419,14 +312,14 @@ class Tp_Sparse_Matrix:
     def read(self, mem):
         begin = 0 
         nb = len(self.mol_index)
-        self.mol_h = np.resize(mem[: nb ** 2], [nb, nb])
+        self.mol_h.reset(np.resize(mem[: nb ** 2], [nb, nb]))
         begin += nb ** 2
         for i in range(self.lead_num):
             for j in range(self.lead_nlayer[i] - 1):
                 len1 = len(self.ll_index[i][j])
                 len2 = len(self.ll_index[i][j + 1])
-                self.diag_h[i][j] = np.resize(mem[begin: begin + len2 ** 2],
-                                                                [len2, len2])
+                self.diag_h[i][j].reset(np.resize(mem[begin: begin + len2 ** 2],
+                                                                [len2, len2]))
                 begin += len2 * len2
                 self.upc_h[i][j] = np.resize(mem[begin: begin + len1 * len2],
                                              [len1, len2])
@@ -444,42 +337,45 @@ class Tp_Sparse_Matrix:
             for j in range(nll - 1):
                 q_mat[i].append([])
             end = nll - 2
-            q_mat[i][end] =  self.diag_h[i][end]
-            inv(q_mat[i][end])
+            q_mat[i][end] =  self.diag_h[i][end].inv()
+            #inv(q_mat[i][end])
             
             for j in range(end - 1, -1, -1):
-                q_mat[i][j] = self.diag_h[i][j] - dot(
-                                                  dot(self.upc_h[i][j + 1],
-                                                         q_mat[i][j + 1]),
-                                                  self.dwnc_h[i][j + 1])
-                inv(q_mat[i][j])
+                self.diag_h[i][j].reset_minus(self.dotdot(
+                                                    self.upc_h[i][j + 1],
+                                                         q_mat[i][j + 1],
+                                                  self.dwnc_h[i][j + 1]))
+                q_mat[i][j] = self.diag_h[i][j].inv()
+                #inv(q_mat[i][j])
         h_mm = self.mol_h
         
         for i in range(self.lead_num):
-            h_mm -= dot(dot(self.upc_h[i][0], q_mat[i][0]),
-                                             self.dwnc_h[i][0])
-        inv(h_mm)
+            h_mm.reset_minus(self.dotdot(self.upc_h[i][0], q_mat[i][0],
+                                                             self.dwnc_h[i][0]))
+        inv_hmm = h_mm.inv()
+        h_mm.reset(inv_hmm)
+        
+        #inv(h_mm)
         
         for i in range(self.lead_num):
             tmp_dc = self.dwnc_h[i][0].copy()
             #tmp_uc = self.upc_h[i][0].copy()
-            self.dwnc_h[i][0] = -dot(dot(q_mat[i][0], tmp_dc), h_mm)
-            self.upc_h[i][0] = -dot(dot(h_mm, self.upc_h[i][0]),
-                                                           q_mat[i][0])
+            self.dwnc_h[i][0] = -self.dotdot(q_mat[i][0], tmp_dc, inv_h_mm)
+            self.upc_h[i][0] = -self.dotdot(inv_h_mm, self.upc_h[i][0],
+                                                                    q_mat[i][0])
             dim = len(self.ll_index[i][1])
-            self.diag_h[i][0] = dot(q_mat[i][0], np.eye(dim) -
-                                            dot(tmp_dc, self.upc_h[i][0]))
-
+            self.diag_h[i][0].reset(dot(q_mat[i][0], np.eye(dim) -
+                                                  dot(tmp_dc, self.upc_h[i][0])))
             for j in range(1, self.lead_nlayer[i] - 1):
                 tmp_dc = self.dwnc_h[i][j].copy()
-                self.dwnc_h[i][j] = -dot(dot(q_mat[i][j], tmp_dc),
-                                                       self.diag_h[i][j - 1])
-                self.upc_h[i][j] = -dot(dot(self.diag_h[i][j - 1],
-                                                    self.upc_h[i][j]),
+                self.dwnc_h[i][j] = -self.dotdot(q_mat[i][j], tmp_dc,
+                                                self.diag_h[i][j - 1].recover())
+                self.upc_h[i][j] = -self.dotdot(self.diag_h[i][j - 1].recover(),
+                                                    self.upc_h[i][j],
                                                      q_mat[i][j])
                 dim = len(self.ll_index[i][j + 1])
-                self.diag_h[i][j] = dot(q_mat[i][j], np.eye(dim) -
-                                           dot(tmp_dc, self.upc_h[i][j]))
+                self.diag_h[i][j].reset(dot(q_mat[i][j], np.eye(dim) -
+                                           dot(tmp_dc, self.upc_h[i][j])))
 
     def inv_ne(self):
         inv = inverse_general
@@ -507,18 +403,24 @@ class Tp_Sparse_Matrix:
             inv_mat[i].append([])                
             
             end = nll - 2
-            q_mat[i][end] =  self.diag_h[i][end].copy()
-            inv(q_mat[i][end])
+            #q_mat[i][end] =  self.diag_h[i][end].copy()
+            q_mat[i][end] =  self.diag_h[i][end].inv(keep_data=True)
+            #inv(q_mat[i][end])
             for j in range(end - 1, -1, -1):
-                q_mat[i][j] = self.diag_h[i][j] - dot(
-                                                  dot(self.upc_h[i][j + 1],
-                                                     q_mat[i][j + 1]),
-                                                  self.dwnc_h[i][j + 1])
-                inv(q_mat[i][j])
+                tmp_diag_h = copy.deepcopy(self.diag_h[i][j])
+                tmp_diag_h.reset_minus(self.dotdot(self.upc_h[i][j + 1],
+                                                     q_mat[i][j + 1],
+                                                  self.dwnc_h[i][j + 1]))
+                #q_mat[i][j] = self.diag_h[i][j] - dot(
+                #                                  dot(self.upc_h[i][j + 1],
+                #                                     q_mat[i][j + 1]),
+                #                                  self.dwnc_h[i][j + 1])
+                #inv(q_mat[i][j])
+                q_mat[i][j] = tmp_diag_h.inv()
         # above get all the q matrix, then if want to solve the cols
         # cooresponding to the lead i, the q_mat[i] will not be used
 
-        q_mm = self.mol_h.copy()
+        q_mm = self.mol_h.recover()
         for i in range(self.lead_num):
             q_mm -= dot(dot(self.upc_h[i][0], q_mat[i][0]),
                                              self.dwnc_h[i][0])        
@@ -526,37 +428,48 @@ class Tp_Sparse_Matrix:
         for i in range(self.lead_num):
         # solve the corresponding cols to the lead i
             nll = self.lead_nlayer[i]
-            qi_mat[i][0] = q_mm + dot(self.upc_h[i][0],
-                                  dot(q_mat[i][0], self.dwnc_h[i][0]))
+            qi_mat[i][0] = q_mm + self.dotdot(self.upc_h[i][0],q_mat[i][0],
+                                                            self.dwnc_h[i][0])
             inv(qi_mat[i][0])
             for j in range(1, nll - 1):
-                qi_mat[i][j] = self.diag_h[i][j - 1] - dot(self.dwnc_h[i][j -1],
-                                                        dot(qi_mat[i][j - 1],
+                tmp_diag_h = copy.deepcopy(self.diag_h[i][j - 1])
+                tmp_diag_h.reset_minus(self.dotdot(self.dwnc_h[i][j -1],
+                                                        qi_mat[i][j - 1],
                                                         self.upc_h[i][j - 1]))
-                inv(qi_mat[i][j])
+                qi_mat[i][j] = tmp_diag_h.inv()
+                
+                #qi_mat[i][j] = self.diag_h[i][j - 1] - dot(self.dwnc_h[i][j -1],
+                #                                        dot(qi_mat[i][j - 1],
+                #                                        self.upc_h[i][j - 1]))
+                #inv(qi_mat[i][j])
             
             
-            inv_mat[i][i][nll - 2] = self.diag_h[i][nll - 2] - \
-                                        dot(self.dwnc_h[i][nll - 2],
-                                        dot(qi_mat[i][nll -2],
+            #inv_mat[i][i][nll - 2] = self.diag_h[i][nll - 2] - \
+            #                            dot(self.dwnc_h[i][nll - 2],
+            #                            dot(qi_mat[i][nll -2],
+            #                                   self.upc_h[i][nll -2]))
+            #inv(inv_mat[i][i][nll - 2])
+            tmp_diag_h = copy.deepcopy(self.diag_h[i][nll - 2])
+            tmp_diag_h.reset_minus(self.dotdot(self.dwnc_h[i][nll - 2],
+                                                qi_mat[i][nll -2],
                                                self.upc_h[i][nll -2]))
-            inv(inv_mat[i][i][nll - 2])
+            inv_mat[i][i][nll - 2] = tmp_diag_h.inv()
             
             for j in range(nll - 3, -1, -1):
-                inv_mat[i][i][j] = -dot(dot(qi_mat[i][j + 1],
-                                                  self.upc_h[i][j + 1]),
-                                            inv_mat[i][i][j + 1])
-            inv_mat[i][self.lead_num] = -dot(dot(qi_mat[i][0],
-                                                  self.upc_h[i][0]),
-                                            inv_mat[i][i][0]) 
+                inv_mat[i][i][j] = -self.dotdot(qi_mat[i][j + 1],
+                                                  self.upc_h[i][j + 1],
+                                                 inv_mat[i][i][j + 1])
+            inv_mat[i][self.lead_num] = -self.dotdot(qi_mat[i][0],
+                                                  self.upc_h[i][0],
+                                                  inv_mat[i][i][0]) 
             
             for j in range(self.lead_num):
                 if j != i:
                     nlj = self.lead_nlayer[j]
-                    inv_mat[i][j][0] = -dot(dot(q_mat[j][0], self.dwnc_h[j][0]),
+                    inv_mat[i][j][0] = -self.dotdot(q_mat[j][0], self.dwnc_h[j][0],
                                                 inv_mat[i][self.lead_num])
                     for k in range(1, nlj - 1):
-                        inv_mat[i][j][k] = -dot(dot(q_mat[j][k], self.dwnc_h[j][k]),
+                        inv_mat[i][j][k] = -self.dotdot(q_mat[j][k], self.dwnc_h[j][k],
                                                 inv_mat[i][j][k - 1])                         
         return inv_mat 
   
@@ -592,13 +505,13 @@ class Tp_Sparse_Matrix:
         
         for i in range(self.lead_num):
             # less selfenergy loop
-            self.mol_h += self.dotdot(inv_mat[i][self.lead_num], se_less[i],
-                                      inv_mat[i][self.lead_num].T.conj())            
+            self.mol_h.reset_plus(self.dotdot(inv_mat[i][self.lead_num], se_less[i],
+                                      inv_mat[i][self.lead_num].T.conj()))            
             for j in range(self.lead_num):
                # matrix operation loop    
                 nlj = self.lead_nlayer[j]
-                self.diag_h[j][0] += self.dotdot(inv_mat[i][j][0], se_less[i],
-                                                 inv_mat[i][j][0].T.conj())            
+                self.diag_h[j][0].reset_plus(self.dotdot(inv_mat[i][j][0], se_less[i],
+                                                 inv_mat[i][j][0].T.conj()))            
             
                 self.dwnc_h[j][0] += self.dotdot(inv_mat[i][j][0], se_less[i],
                                             inv_mat[i][self.lead_num].T.conj())
@@ -607,8 +520,8 @@ class Tp_Sparse_Matrix:
                                             inv_mat[i][j][0].T.conj())
             
                 for k in range(1, nlj -1):
-                    self.diag_h[j][k] += self.dotdot(inv_mat[i][j][k - 1], se_less[i],
-                                                 inv_mat[i][j][k - 1].T.conj())
+                    self.diag_h[j][k].reset_plus(self.dotdot(inv_mat[i][j][k - 1], se_less[i],
+                                                 inv_mat[i][j][k - 1].T.conj()))
                     
                     self.dwnc_h[j][k] += self.dotdot(inv_mat[i][j][k], se_less[i],
                                                  inv_mat[i][j][k - 1].T.conj())
