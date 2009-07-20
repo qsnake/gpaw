@@ -455,7 +455,7 @@ class Transport(GPAW):
        
         self.plot_option = None 
 
-       
+        self.matrix_mode = 'full'
         self.initialized_transport = True
 
     def get_hamiltonian_initial_guess(self):
