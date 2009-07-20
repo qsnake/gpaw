@@ -32,6 +32,7 @@ PyObject* diagonalize(PyObject *self, PyObject *args);
 PyObject* inverse_cholesky(PyObject *self, PyObject *args);
 PyObject* inverse_symmetric(PyObject *self, PyObject *args);
 PyObject* inverse_general(PyObject *self, PyObject *args);
+PyObject* linear_solve_band(PyObject *self, PyObject *args);
 PyObject* right_eigenvectors(PyObject *self, PyObject *args);
 PyObject* NewLocalizedFunctionsObject(PyObject *self, PyObject *args);
 PyObject* NewOperatorObject(PyObject *self, PyObject *args);
@@ -68,6 +69,7 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args);
 PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args);
 PyObject* scalapack_general_diagonalize(PyObject *self, PyObject *args);
 PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args);
+PyObject* scalapack_inverse_general(PyObject *self, PyObject *args);
 #endif
 
 
@@ -85,6 +87,7 @@ static PyMethodDef functions[] = {
   {"inverse_cholesky", inverse_cholesky, METH_VARARGS, 0},
   {"inverse_symmetric", inverse_symmetric, METH_VARARGS, 0},
   {"inverse_general", inverse_general, METH_VARARGS, 0},
+  {"linear_solve_band", linear_solve_band, METH_VARARGS, 0},
   {"right_eigenvectors", right_eigenvectors, METH_VARARGS, 0},
   {"LocalizedFunctions", NewLocalizedFunctionsObject, METH_VARARGS, 0},
   {"Operator", NewOperatorObject, METH_VARARGS, 0},
