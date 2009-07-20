@@ -238,8 +238,8 @@ class Transport_Analysor:
         gd = tp.gd
         nt_sG = gd.empty(tp.nspins, global_array=True)
         vt_sG = gd.empty(tp.nspins, global_array=True)
-        nt_sG = gd.collect(tp.density.nt_sG)
-        vt_sG = gd.collect(tp.hamiltonian.vt_sG)
+        nt_sG = gd.collect(tp.density.nt_sG, True)
+        vt_sG = gd.collect(tp.hamiltonian.vt_sG, True)
         
         nt = nt_sG[0, d1, d2]
         vt = vt_sG[0, d1, d2]
@@ -787,23 +787,41 @@ class Transport_Plotter:
         p.title('dos')
         p.show()
         
-    def plot_ele_step_info(self, info, steps_indices, s, k, height=None):
+    def plot_ele_step_info(self, info, steps_indices, s, k,
+                                                     height=None, unit=None):
         ee = np.linspace(-3, 5, 60)
         import pylab as p
         legends = []
+        
         for i, step in enumerate(self.ele_steps):
             if i in steps_indices:
                 if info == 'dd':
                     data = step.dd[s, k]
+                    if unit != None:
+                        dim = data.shape[0]
+                        data.shape = (dim // unit, unit)
+                        data = np.sum(data, axis=1) / unit
                     title = 'density matrix diagonal elements'
                 elif info == 'df':
                     data = step.df[s, k]
+                    if unit != None:
+                        dim = data.shape[0]
+                        data.shape = (dim // unit, unit)
+                        data = np.sum(data, axis=1) / unit                    
                     title = 'hamiltonian matrix diagonal elements'
                 elif info == 'den':
                     data = step.nt
+                    if unit != None:
+                        dim = data.shape[0]
+                        data.shape = (dim // unit, unit)
+                        data = np.sum(data, axis=1) / unit                    
                     title = 'density'
                 elif info == 'ham':
                     data = step.vt
+                    if unit != None:
+                        dim = data.shape[0]
+                        data.shape = (dim // unit, unit)
+                        data = np.sum(data, axis=1) / unit                    
                     title = 'hamiltonian'
                 elif info == 'tc':
                     data = step.tc[s, k, 0]
@@ -813,8 +831,8 @@ class Transport_Plotter:
                     title = 'density of states'
                 else:
                     raise ValueError('no this info type---' + info)
-                p.plot(ee, step.dos[s, k])
-                legends.append('step' + str(step.step))
+                p.plot(ee, data)
+                legends.append('step' + str(step.ele_step))
         p.title(title)
         p.legend(legends)
         if height != None:
