@@ -46,7 +46,7 @@ class CG(Eigensolver):
         
         self.subspace_diagonalize(hamiltonian, wfs, kpt)
         
-        R_nG = self.overlap.operator.work1_xG
+        R_nG = self.overlap.operator.suggest_temporary_buffer(wfs.dtype)
         Htphi_G = R_nG[0]
         
         R_nG[:] = self.Htpsit_nG

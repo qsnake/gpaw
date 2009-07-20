@@ -31,8 +31,9 @@ class Operator:
         if hermitian is not None:
             self.hermitian = hermitian
 
-    def allocate_work_arrays(self, mynbands, dtype):
+    def allocate_work_arrays(self, dtype):
         ngroups = self.bd.comm.size
+        mynbands = self.bd.mynbands
         if ngroups == 1 and self.nblocks == 1:
             self.work1_xG = self.gd.zeros(mynbands, dtype)
         else:
@@ -51,8 +52,9 @@ class Operator:
         nbands = ngroups * mynbands
         self.A_nn = np.zeros((nbands, nbands), dtype)
 
-    def estimate_memory(self, mem, mynbands, dtype):
+    def estimate_memory(self, mem, dtype):
         ngroups = self.bd.comm.size
+        mynbands = self.bd.mynbands
         gdbytes = self.gd.bytecount(dtype)
         # Code semipasted from allocate_work_arrays
         if ngroups == 1 and self.nblocks == 1:
@@ -200,6 +202,30 @@ class Operator:
 
         return sbuf_mG, rbuf_mG, sbuf_In, rbuf_In
 
+    def suggest_temporary_buffer(self, dtype):
+        """Return a *suggested* buffer for calculating A(psit_nG) during
+        a call to calculate_matrix_elements. Work arrays will be allocated
+        if they are not already available.
+
+        Note that the temporary buffer is merely a reference to (part of) a
+        work array, hence data race conditions occur if you're not careful.
+        """
+        if self.work1_xG is None:
+            self.allocate_work_arrays(dtype)
+        else:
+            assert self.work1_xG.dtype == dtype
+
+        J = self.nblocks
+        N = self.bd.mynbands
+        B = self.bd.comm.size
+
+        if B == 1 and J == 1:
+            return self.work1_xG
+        else:
+            assert N % J == 0, "Can't divide %d bands in %d blocks." % (N,J)
+            M = N // J
+            return self.work1_xG[:M]
+
     def calculate_matrix_elements(self, psit_nG, P_ani, A, dA):
         """Calculate matrix elements for A-operator.
 
@@ -237,7 +263,9 @@ class Operator:
         N = self.bd.mynbands
         
         if self.work1_xG is None:
-            self.allocate_work_arrays(N, psit_nG.dtype)
+            self.allocate_work_arrays(psit_nG.dtype)
+        else:
+            assert self.work1_xG.dtype == psit_nG.dtype
 
         A_NN = self.A_nn
 
@@ -369,7 +397,9 @@ class Operator:
         N = self.bd.mynbands
 
         if self.work1_xG is None:
-            self.allocate_work_arrays(N, psit_nG.dtype)
+            self.allocate_work_arrays(psit_nG.dtype)
+        else:
+            assert self.work1_xG.dtype == psit_nG.dtype
 
         if B == 1 and J == 1:
             # Simple case:

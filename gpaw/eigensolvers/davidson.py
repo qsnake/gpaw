@@ -47,7 +47,7 @@ class Davidson(Eigensolver):
         H_2n2n = self.H_2n2n
         S_2n2n = self.S_2n2n
         eps_2n = self.eps_2n
-        psit2_nG = self.overlap.operator.work1_xG
+        psit2_nG = self.overlap.operator.suggest_temporary_buffer(wfs.dtype)
 
         self.timer.start('Davidson')
         R_nG = self.Htpsit_nG 

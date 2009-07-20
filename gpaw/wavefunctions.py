@@ -1092,5 +1092,4 @@ class GridWaveFunctions(WaveFunctions):
                                          self.dtype, self.mynbands,
                                          self.nbands)
         self.pt.estimate_memory(mem.subnode('Projectors'))
-        self.overlap.estimate_memory(mem.subnode('Overlap op'),
-                                     self.mynbands, self.dtype)
+        self.overlap.estimate_memory(mem.subnode('Overlap op'), self.dtype)
