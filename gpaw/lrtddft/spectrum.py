@@ -108,6 +108,53 @@ def spectrum(exlist=None,
 from gpaw.version import version
 from gpaw.gauss import Gauss, Lorentz
 
+def fold(energies, values, 
+         emin=None, emax=None, de=None,
+         folding='Gauss', width=0.08, # Gauss/Lorentz width
+         ):
+
+    if folding == 'Gauss':
+        func = Gauss(width)
+    elif folding == 'Lorentz':
+        func = Lorentz(width)
+    else:
+        raise RuntimeError('unknown folding "'+folding+'"')
+
+    # minimal and maximal energies
+    if emin == None:
+        emin = min(energies)
+        emin -= 4 * width
+    if emax == None:
+        emax = max(energies)
+        emax += 4 * width
+    if de == None:
+        # set de to sample 4 points in the width
+        de = width / 4.
+    print "de=", de
+
+    print values.shape, len(values.shape)
+    if len(values.shape) < 2:
+        vallists = values.reshape((len(values),1))
+    else:
+        vallists = values
+ 
+    el = []
+    vl = []
+
+    e = emin
+    while e < emax:
+        folded = np.zeros(len(vallists[0]))
+        
+        for ene, val in zip(energies, vallists):
+            wght = func.get(ene - e)
+            folded += wght * np.array(val)
+            
+        el.append(e)
+        vl.append(folded)
+        e += de
+            
+    return np.array(el), np.array(vl)
+     
 class Writer:
     def __init__(self, folding=None, width=0.08, # Gauss/Lorentz width
                  ):
