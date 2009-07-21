@@ -286,10 +286,10 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         self.Mmax = M
 
         natoms = len(spos_ac)
-        if debug:
-            # Holm-Nielsen check:
-            assert (self.gd.comm.sum(float(sum(self.my_atom_indices))) ==
-                    natoms * (natoms - 1) // 2)
+        # Holm-Nielsen check:
+        if ((self.gd.comm.sum(float(sum(self.my_atom_indices))) !=
+             natoms * (natoms - 1) // 2)):
+            raise RuntimeError('Use finer grid!')
 
         self.M_W = np.empty(nW, np.intc)
         self.G_B = np.empty(nB, np.intc)
