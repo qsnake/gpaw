@@ -318,6 +318,29 @@ class GridDescriptor(Domain):
                 g_c[c] = min(g_c[c], self.end_c[c] - 1)
         return g_c - self.beg_c
 
+    def interpolate_grid_point(self, spos_c, vt_g):
+        """Return trilinearly interpolated value from array vt_g based on the scaled coordinate spos_c.
+        
+        This doesn't work in parallel, since it would require communication between neighbour points.
+        Note: Not optimized, use only for post processing.
+        """
+        g_c = self.N_c * spos_c
+        bg_c = np.floor(g_c).astype(int)
+        Bg_c = np.ceil(g_c).astype(int)
+
+        dg_c = g_c - bg_c
+
+        return (vt_g[bg_c[0],bg_c[1],bg_c[2]] * (1.0 - dg_c[0]) * (1.0 - dg_c[1]) * (1.0 - dg_c[2]) + 
+               vt_g[Bg_c[0],bg_c[1],bg_c[2]] * (0.0 + dg_c[0]) * (1.0 - dg_c[1]) * (1.0 - dg_c[2]) + 
+               vt_g[bg_c[0],Bg_c[1],bg_c[2]] * (1.0 - dg_c[0]) * (0.0 + dg_c[1]) * (1.0 - dg_c[2]) +  
+               vt_g[Bg_c[0],Bg_c[1],bg_c[2]] * (0.0 + dg_c[0]) * (0.0 + dg_c[1]) * (1.0 - dg_c[2]) + 
+               vt_g[bg_c[0],bg_c[1],Bg_c[2]] * (1.0 - dg_c[0]) * (1.0 - dg_c[1]) * (0.0 + dg_c[2]) + 
+               vt_g[Bg_c[0],bg_c[1],Bg_c[2]] * (0.0 + dg_c[0]) * (1.0 - dg_c[1]) * (0.0 + dg_c[2]) + 
+               vt_g[bg_c[0],Bg_c[1],Bg_c[2]] * (1.0 - dg_c[0]) * (0.0 + dg_c[1]) * (0.0 + dg_c[2]) + 
+               vt_g[Bg_c[0],Bg_c[1],Bg_c[2]] * (0.0 + dg_c[0]) * (0.0 + dg_c[1]) * (0.0 + dg_c[2]))
+        
+    
+
     def mirror(self, a_g, c):
         """Apply mirror symmetry to array.
 
