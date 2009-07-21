@@ -760,7 +760,7 @@ class XCCorrection(BaseXCCorrection):
             na_Lg = self.quickdotmm(Da_Lq, self.n_qg)
             axpy(sqrt(4 * pi), self.nca_g, na_Lg[0])
             nta_Lg = self.quickdotmm(Da_Lq, self.nt_qg)
-            axpy(sqrt(4 * pi), self.nct_g, nta_Lg[0])
+            axpy(0.5*sqrt(4 * pi), self.nct_g, nta_Lg[0])
             dEdDa_p = H_sp[0][:]
             dEdDa_p[:] = 0.0
             Db_p = D_sp[1]
@@ -768,7 +768,7 @@ class XCCorrection(BaseXCCorrection):
             nb_Lg = self.quickdotmm(Db_Lq, self.n_qg)
             axpy(sqrt(4 * pi), self.ncb_g, nb_Lg[0])
             ntb_Lg = self.quickdotmm(Db_Lq, self.nt_qg)
-            axpy(sqrt(4 * pi), self.nct_g, ntb_Lg[0])
+            axpy(0.5*sqrt(4 * pi), self.nct_g, ntb_Lg[0])
             dEdDb_p = H_sp[1][:]
             dEdDb_p[:] = 0.0
             for w, Y_L in zip(self.weights, self.Y_yL):
