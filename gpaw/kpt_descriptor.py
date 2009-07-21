@@ -29,6 +29,9 @@ class KPointDescriptor:
         comm: MPI-communicator
             Communicator for kpoint-groups.
         gamma: bool
+            More to follow.
+        dtype: NumPy dtype
+            More to follow.
 
         Note that if comm.size is greater than the number of spins, then
         the kpoints cannot all be located at the gamma point and therefor

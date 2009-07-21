@@ -104,8 +104,7 @@ class Gaussian:
 
 
 def gaussian_wave(r_cG, r0_c, sigma, k_c=None, A=None, dtype=float, out_G=None):
-    """
-    Generates function values for atomic-centered Gaussian waves of the form::
+    """Generates function values for atom-centered Gaussian waves of the form::
                          _ _
         _            / -|r-r0|^2 \           _ _
       f(r) = A * exp( ----------- ) * exp( i k.r )

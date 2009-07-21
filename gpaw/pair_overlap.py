@@ -485,13 +485,14 @@ class ProjectorPairOverlap(Overlap, GridPairOverlap):
         """Rotate two-center projector expansion coefficients with
         the projector-projector overlap integrals as basis.
 
-        ::
-                     ---
-             a1,a3   \       a1    a2     a2,a3
-           dY      =  )  <  p   | p   >  X
-             i1,i3   /       i1    i2     i2,i3
-                     ---
-                    a2,i2
+        Performs the following operation and returns the result::
+
+                    ---
+            a1,a3   \       a1    a2     a2,a3
+           Y      =  )  <  p   | p   >  X
+            i1,i3   /       i1    i2     i2,i3
+                    ---
+                   a2,i2
         """
         return np.dot(self.dB_aa, X_aa)
 
