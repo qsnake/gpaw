@@ -229,6 +229,7 @@ class GradientSlice:
         where na / nb are the alpha / beta spin channels of the density.
 
         For GPAW's builtin GGA functionals, the three dimensions are::
+
           0: de / d | nabla na |^2
           1: de / d | nabla nb |^2
           2: de / d | nabla (na + nb) |^2
@@ -262,15 +263,17 @@ class Integrator:
 
     def integrate_H_sp(self, coeff, v_sg, n_qg, grad=None):
         """Integrates given potential on given radial slice and adds the
-        result to H_sp
+        result to H_sp.
+
+        Input parameters::
         
-        coeff:   Multiply the integration result with this constant before
-                 adding to H_sp
-        i_slice: Slice definition given by integrator iterator.
-        v_sg:    The potential to integrate.
-        n_qg:    All possible pairs of partial waves
-        grad:    GradientSlice object with all possible details needed for
-                 gradient
+          coeff:   Multiply the integration result with this constant before
+                   adding to H_sp.
+          i_slice: Slice definition given by integrator iterator.
+          v_sg:    The potential to integrate.
+          n_qg:    All possible pairs of partial waves
+          grad:    GradientSlice object with all possible details needed for
+                   gradient.
         """
         BY_pq = npy.dot(self.B_pqL, self.Y_L)
         v_sq = gemmdot(v_sg, n_qg, trans='t')
@@ -349,7 +352,7 @@ class Integrator:
                                 grad.energy_gradient(s),
                                 H_p)
     
-    def integrate_E(self,E):
+    def integrate_E(self, E): # XXX method never used!!
         return E * self.weight
 
     def integrate_e_g(self, e_g):
