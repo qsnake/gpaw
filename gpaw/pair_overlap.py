@@ -88,11 +88,9 @@ class GridPairOverlap(PairOverlap):
 
                     # Similarly, the LocFuncs must have the piece at hand
                     box1 = lfs1.box_b[b1]
-                    bra_iB1 = box1.get_functions()
 
                     if debug:
                         assert lfs1.dtype == lfc1.dtype
-                        assert bra_iB1.shape[0] == lfs1.ni
                         assert self.setups[a1].ni == lfs1.ni, 'setups[%d].ni=%d, lfc1.lfs_a[%d].ni=%d' % (a1,self.setups[a1].ni,a1,lfs1.i)
 
                     b2 = 0
@@ -104,11 +102,9 @@ class GridPairOverlap(PairOverlap):
 
                         # Similarly, the LocFuncs must have the piece at hand
                         box2 = lfs2.box_b[b2]
-                        ket_iB2 = box2.get_functions()
 
                         if debug:
                             assert lfs2.dtype == lfc2.dtype
-                            assert ket_iB2.shape[0] == lfs2.ni
                             assert self.setups[a2].ni == lfs2.ni, 'setups[%d].ni=%d, lfc2.lfs_a[%d].ni=%d' % (a2,self.setups[a2].ni,a2,lfs2.ni)
 
                         # Find the intersection of the two boxes
@@ -119,8 +115,11 @@ class GridPairOverlap(PairOverlap):
 
                         # Intersection is non-empty, add overlap contribution
                         if (beg_c < end_c).all():
+                            bra_iB1 = box1.get_functions()
                             w1slice = [slice(None)]+[slice(b,e) for b,e in \
                                 zip(beg_c-beg1_c, end_c-beg1_c)]
+
+                            ket_iB2 = box2.get_functions()
                             w2slice = [slice(None)]+[slice(b,e) for b,e in \
                                 zip(beg_c-beg2_c, end_c-beg2_c)]
 
@@ -128,10 +127,10 @@ class GridPairOverlap(PairOverlap):
                                 bra_iB1[w1slice].reshape((lfs1.ni,-1)), \
                                 ket_iB2[w2slice].reshape((lfs2.ni,-1))) #XXX phase factors for kpoints
 
-                        del ket_iB2
+                            del bra_iB1, ket_iB2
+
                         b2 += 1
 
-                    del bra_iB1
                     b1 += 1
 
         self.gd.comm.sum(X_aa) # better to sum over X_ii?
@@ -160,7 +159,7 @@ class GridPairOverlap(PairOverlap):
         if debug:
             assert len(lfc1.sphere_a) == len(lfc2.sphere_a) # XXX must they be equal?!?
 
-        # Both loops are over all atoms in all domains
+        # Both a-loops are over all relevant atoms which affect this domain
         for a1 in lfc1.atom_indices:
             sphere1 = lfc1.sphere_a[a1]
 
@@ -195,160 +194,31 @@ class GridPairOverlap(PairOverlap):
 
                         # Intersection is non-empty, add overlap contribution
                         if (beg_c < end_c).all():
-                            #shape = tuple(end_c-beg_c)
-
-                            # A_gm are function values, G_b boundary grid points
-
-                            #"""
-                            # THIS IS FAST BUT ONLY WORKS EXACTLY FOR PERIODIC!!!
                             i1 = 0
                             for j1, spline1 in enumerate(spline1_j):
-                                #A1_gm, G1_b = sphere1.spline_to_grid(spline1, \
-                                #    self.gd, beg_c, end_c, spos_ac[a1]-sdisp1_c)
-                                #if debug: mpi_debug('         j1=%d, ng1max=%d, A1_gm: %s, G1_b: %s' % (j1,np.prod(np.array(end1_c)-np.array(beg1_c)),A1_gm.shape,G1_b.shape), ordered=False)
-                                #nm1 = 2*spline1.get_angular_momentum_number()+1
-                                #assert A1_gm.shape == (np.sum(G1_b[1::2]-G1_b[::2]), nm1)
-
-                                #n = 0
-                                #for a,b in zip(G1_b[::2], G1_b[1::2]):
-                                #    for m in range(A1_gm.shape[-1]): #XXX ugly
-                                #        np.put(bra1_mG[m], range(a,b), A1_gm[n:n+b-a,m])
-                                #    n += b-a
                                 bra1_mB = spline1.get_functions(self.gd, \
                                     beg_c, end_c, spos_ac[a1]-sdisp1_c)
                                 nm1 = bra1_mB.shape[0]
-                                #if debug: mpi_debug('         j1=%d, nm1=%d, ng1max=%d, bra1_mB: %s' % (j1,nm1,np.prod(np.array(end_c)-np.array(beg_c)),bra1_mB.shape), ordered=False)
 
                                 i2 = 0
                                 for j2, spline2 in enumerate(spline2_j):
-                                    #A2_gm, G2_b = sphere2.spline_to_grid(spline2, \
-                                    #    self.gd, beg_c, end_c, spos_ac[a2]-sdisp2_c)
-                                    #    #if debug: mpi_debug('    -> j=%d, ng2max=%d, A2_gm: %s, G2_b: %s, \n%s' % (j,np.prod(np.array(end2_c)-np.array(beg2_c)),A2_gm.shape,G2_b.shape,G2_b), ordered=False)
-                                    #nm2 = 2*spline2.get_angular_momentum_number()+1
-                                    #ket2_mG = self.gd.zeros(nm2, dtype=float) #XXX always float?
-
-                                    #n = 0
-                                    #for a,b in zip(G2_b[::2], G2_b[1::2]):
-                                    #    for m in range(A2_gm.shape[-1]): #XXX ugly
-                                    #        np.put(ket2_mG_mG[m], range(a,b), A2_gm[n:n+b-a,m])
-                                    #    n += b-a
                                     ket2_mB = spline2.get_functions(self.gd, \
                                         beg_c, end_c, spos_ac[a2]-sdisp2_c)
                                     nm2 = ket2_mB.shape[0]
-                                    #if debug: mpi_debug('           j2=%d, nm2=%d, ng2max=%d, ket2_mB: %s' % (j2,nm2,np.prod(np.array(end_c)-np.array(beg_c)),ket2_mB.shape), ordered=False)
 
                                     X_mm = X_ii[i1:i1+nm1,i2:i2+nm2]
-                                    X_mm += self.gd.dv * np.inner(bra1_mB.reshape((nm1,-1)), ket2_mB.reshape((nm2,-1))) #XXX phase factors for kpoints
+                                    X_mm += self.gd.dv * np.inner( \
+                                        bra1_mB.reshape((nm1,-1)), \
+                                        ket2_mB.reshape((nm2,-1))) #XXX phase factors for kpoints
 
+                                    del ket2_mB
                                     i2 += nm2
+
+                                del bra1_mB
                                 i1 += nm1
-                            """
-                            import _gpaw
-                            def spline_to_box(spline, gd, start_c, end_c, spos_c):
-                                dom = gd
-                                h_cv = dom.cell_cv / gd.N_c[:, np.newaxis]
-                                #offset_c = start_c - gd.beg_c # translate gd.beg_c to start_c
-                                #corner_c = np.array([0,0,0]) # start_c is the new array origin
-                                #pos_v = np.dot(spos_c, gd.cell_cv) - np.dot(offset_c, h_cv)
-                                #A_gm, G_b = _gpaw.spline_to_grid(spline.spline, corner_c, end_c-start_c,
-                                #                                 pos_v, h_cv, end_c-start_c, gd.beg_c)
-                                h_cv = dom.cell_cv / gd.N_c[:, np.newaxis]
-                                offset_c = start_c - gd.beg_c # translate gd.beg_c to start_c
-                                pos_v = np.dot(spos_c, dom.cell_cv) - np.dot(offset_c, h_cv)
-                                A_gm, G_b = _gpaw.spline_to_grid(spline.spline, start_c-offset_c, end_c-offset_c, pos_v, h_cv,
-                                                                 gd.n_c, gd.beg_c*0)
 
-                                #pos_v = np.dot(spos_c, gd.cell_cv) - np.dot(offset_c, h_cv)
-                                nm, ng = A_gm.shape[-1], np.sum(G_b[1::2]-G_b[::2])
-                                work_mB = np.zeros((nm,)+tuple(end_c-start_c), dtype=A_gm.dtype)
-
-                                n = 0
-                                for a,b in zip(G_b[::2], G_b[1::2]):
-                                    for m,work_B in enumerate(work_mB):
-                                        np.put(work_B, range(a,b), A_gm[n:n+(b-a),m])
-                                    n += b-a
-
-                                return work_mB
-
-                            # THIS IS IN DEVELOPMENT!!!
-                            work1_G = self.gd.zeros(dtype=float) #XXX always float?
-                            work2_G = self.gd.zeros(dtype=float) #XXX always float?
-
-                            nproj1 = sum([2*spline.get_angular_momentum_number()+1 for spline in spline1_j])
-                            nproj2 = sum([2*spline.get_angular_momentum_number()+1 for spline in spline2_j])
-                            assert X_ii.shape == (nproj1, nproj2)
-
-                            i1 = 0
-                            for j1, spline1 in enumerate(spline1_j):
-                                bra1_mB = spline_to_box(spline1, self.gd, beg_c, end_c, spos_ac[a1]-sdisp1_c)
-                                nm1 = 2*spline1.get_angular_momentum_number()+1
-
-                                for m1,work1_G in enumerate(bra1_mB):
-                                    i2 = 0
-                                    for j2, spline2 in enumerate(spline2_j):
-                                        ket2_mB = spline_to_box(spline2, self.gd, beg_c, end_c, spos_ac[a2]-sdisp2_c)
-                                        nm2 = 2*spline2.get_angular_momentum_number()+1
-
-                                        for m2,work2_G in enumerate(ket2_mB):
-                                            if debug: mpi_debug('               i1=%d, i2=%d' % (i1,i2))
-
-                                            X_ii[i1,i2] += self.gd.dv * np.vdot(work1_G, work2_G)
-
-                                            i2 += 1
-
-                                    i1 += 1
-                            "#"#"
-                            # THIS WORKS BUT IS VERY SLOW!!!
-                            work1_G = self.gd.zeros(dtype=float) #XXX always float?
-                            work2_G = self.gd.zeros(dtype=float) #XXX always float?
-
-                            nproj1 = sum([2*spline.get_angular_momentum_number()+1 for spline in spline1_j])
-                            nproj2 = sum([2*spline.get_angular_momentum_number()+1 for spline in spline2_j])
-                            assert X_ii.shape == (nproj1, nproj2)
-
-                            i1 = 0
-                            for j1, spline1 in enumerate(spline1_j):
-                                A1_gm, G1_b = sphere1.spline_to_grid(spline1, \
-                                    self.gd, beg_c, end_c, spos_ac[a1]-sdisp1_c)
-                                if debug: mpi_debug('         j1=%d, ng1max=%d, A1_gm: %s, G1_b: %s' % (j1,np.prod(np.array(end1_c)-np.array(beg1_c)),A1_gm.shape,G1_b.shape), ordered=False)
-                                nm1 = 2*spline1.get_angular_momentum_number()+1
-                                assert A1_gm.shape == (np.sum(G1_b[1::2]-G1_b[::2]), nm1)
-
-                                for m1 in range(nm1):
-                                    work1_G.fill(0.0)
-                                    n1 = 0
-                                    for a,b in zip(G1_b[::2], G1_b[1::2]):
-                                        np.put(work1_G, range(a,b), A1_gm[n1:n1+b-a,m1])
-                                        n1 += b-a
-
-                                    i2 = 0
-                                    for j2, spline2 in enumerate(spline2_j):
-                                        A2_gm, G2_b = sphere2.spline_to_grid(spline2, \
-                                            self.gd, beg_c, end_c, spos_ac[a2]-sdisp2_c)
-                                        if debug: mpi_debug('           j2=%d, ng2max=%d, A2_gm: %s, G2_b: %s' % (j2,np.prod(np.array(end2_c)-np.array(beg2_c)),A2_gm.shape,G2_b.shape), ordered=False)
-                                        nm2 = 2*spline2.get_angular_momentum_number()+1
-                                        assert A2_gm.shape == (np.sum(G2_b[1::2]-G2_b[::2]), nm2)
-
-                                        for m2 in range(nm2):
-                                            work2_G.fill(0.0)
-                                            n2 = 0
-                                            for a,b in zip(G2_b[::2], G2_b[1::2]):
-                                                np.put(work2_G, range(a,b), A2_gm[n2:n2+b-a,m2])
-                                                n2 += b-a
-
-                                            if debug: mpi_debug('               i1=%d, i2=%d' % (i1,i2))
-
-                                            X_ii[i1,i2] += self.gd.dv * np.vdot(work1_G, work2_G)
-
-                                            i2 += 1
-
-                                    i1 += 1
-                            """
-
-                        #del ket_iB2
                         b2 += 1
 
-                    #del bra_iB1
                     b1 += 1
 
         self.gd.comm.sum(X_aa) # better to sum over X_ii?
