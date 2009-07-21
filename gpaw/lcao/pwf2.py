@@ -70,7 +70,7 @@ def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
         for a, P_ni in calc.wfs.kpt_u[q].P_ani.items():
             dS_ii = calc.wfs.setups[a].O_ii
             P_Mi = P_aqMi[a][q]
-            V_nM += dots(P_ni, dS_ii, P_Mi.T.conj())
+            V_nM += np.dot(P_ni, np.inner(dS_ii, P_Mi).conj())
     if projectionsonly:
         #return V_qnM.conj()
         return V_qnM
@@ -87,7 +87,7 @@ def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
     for a, P_qMi in P_aqMi.items():
         dH_ii = unpack(calc.hamiltonian.dH_asp[a][spin])
         for P_Mi, H_MM in zip(P_qMi, H_qMM):
-            H_MM += dots(P_Mi, dH_ii, P_Mi.T.conj())
+            H_MM += np.dot(P_Mi, np.inner(dH_ii, P_Mi).conj())
     
     # Fill in the upper triangles of H and S
     for H_MM, S_MM in zip(H_qMM, S_qMM):
