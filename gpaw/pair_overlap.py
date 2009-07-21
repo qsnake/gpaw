@@ -118,7 +118,7 @@ class GridPairOverlap(PairOverlap):
                         if debug: mpi_debug('        beg_c=%s, end_c=%s, size_c=%s' % (beg_c, end_c, tuple(end_c-beg_c)), ordered=False)
 
                         # Intersection is non-empty, add overlap contribution
-                        if (beg_c <= end_c).all():
+                        if (beg_c < end_c).all():
                             w1slice = [slice(None)]+[slice(b,e) for b,e in \
                                 zip(beg_c-beg1_c, end_c-beg1_c)]
                             w2slice = [slice(None)]+[slice(b,e) for b,e in \
@@ -153,15 +153,15 @@ class GridPairOverlap(PairOverlap):
             if world.rank == 0:
                 print 'DEBUG INFO'
 
-            mpi_debug('len(lfc1.sphere_a): %d, lfc1.my_atom_indices: %s' % (len(lfc1.sphere_a),lfc1.my_atom_indices))
-            mpi_debug('len(lfc2.sphere_a): %d, lfc2.my_atom_indices: %s' % (len(lfc2.sphere_a),lfc2.my_atom_indices))
+            mpi_debug('len(lfc1.sphere_a): %d, lfc1.atom_indices: %s' % (len(lfc1.sphere_a),lfc1.atom_indices))
+            mpi_debug('len(lfc2.sphere_a): %d, lfc2.atom_indices: %s' % (len(lfc2.sphere_a),lfc2.atom_indices))
             mpi_debug('N_c=%s, beg_c=%s, end_c=%s' % (self.gd.N_c,self.gd.beg_c,self.gd.end_c))
 
         if debug:
             assert len(lfc1.sphere_a) == len(lfc2.sphere_a) # XXX must they be equal?!?
 
         # Both loops are over all atoms in all domains
-        for a1 in lfc1.my_atom_indices:
+        for a1 in lfc1.atom_indices:
             sphere1 = lfc1.sphere_a[a1]
 
             # We assume that all functions have the same cut-off:
@@ -169,7 +169,7 @@ class GridPairOverlap(PairOverlap):
             rcut1 = spline1_j[0].get_cutoff()
             if debug: mpi_debug('a1=%d, spos1_c=%s, rcut1=%g, ni1=%d' % (a1,spos_ac[a1],rcut1,self.setups[a1].ni), ordered=False)
 
-            for a2 in lfc2.my_atom_indices:
+            for a2 in lfc2.atom_indices:
                 sphere2 = lfc2.sphere_a[a2]
 
                 # We assume that all functions have the same cut-off:
@@ -217,7 +217,7 @@ class GridPairOverlap(PairOverlap):
                                 bra1_mB = spline1.get_functions(self.gd, \
                                     beg_c, end_c, spos_ac[a1]-sdisp1_c)
                                 nm1 = bra1_mB.shape[0]
-                                if debug: mpi_debug('         j1=%d, nm1=%d, ng1max=%d, bra1_mB: %s' % (j1,nm1,np.prod(np.array(end_c)-np.array(beg_c)),bra1_mB.shape), ordered=False)
+                                #if debug: mpi_debug('         j1=%d, nm1=%d, ng1max=%d, bra1_mB: %s' % (j1,nm1,np.prod(np.array(end_c)-np.array(beg_c)),bra1_mB.shape), ordered=False)
 
                                 i2 = 0
                                 for j2, spline2 in enumerate(spline2_j):
@@ -235,7 +235,7 @@ class GridPairOverlap(PairOverlap):
                                     ket2_mB = spline2.get_functions(self.gd, \
                                         beg_c, end_c, spos_ac[a2]-sdisp2_c)
                                     nm2 = ket2_mB.shape[0]
-                                    if debug: mpi_debug('           j2=%d, nm2=%d, ng2max=%d, ket2_mB: %s' % (j2,nm2,np.prod(np.array(end_c)-np.array(beg_c)),ket2_mB.shape), ordered=False)
+                                    #if debug: mpi_debug('           j2=%d, nm2=%d, ng2max=%d, ket2_mB: %s' % (j2,nm2,np.prod(np.array(end_c)-np.array(beg_c)),ket2_mB.shape), ordered=False)
 
                                     X_mm = X_ii[i1:i1+nm1,i2:i2+nm2]
                                     X_mm += self.gd.dv * np.inner(bra1_mB.reshape((nm1,-1)), ket2_mB.reshape((nm2,-1))) #XXX phase factors for kpoints

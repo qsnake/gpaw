@@ -302,6 +302,14 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
         spos_ac = self.atoms.get_scaled_positions() % 1.0
         gpo = GridPairOverlap(self.gd, self.setups)
         dB_aa = gpo.calculate_overlaps(spos_ac, self.pt)
+
+        # Compare fingerprints across all processors
+        fingerprint = np.array([md5_array(dB_aa, numeric=True)])
+        fingerprints = np.empty(world.size, np.int64)
+        world.all_gather(fingerprint, fingerprints)
+        if fingerprints.ptp(0).any():
+            raise RuntimeError('Distributed matrices are not identical!')
+
         P_ani = dict([(a,Q_ni.copy()) for a,Q_ni in Q_ani.items()])
         for a1 in range(len(self.atoms)):
             if a1 in P_ani.keys():
@@ -322,6 +330,13 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
         kpt = self.wfs.kpt_u[0]
         ppo = ProjectorPairOverlap(self.wfs, self.atoms)
 
+        # Compare fingerprints across all processors
+        fingerprint = np.array([md5_array(ppo.dB_aa, numeric=True)])
+        fingerprints = np.empty(world.size, np.int64)
+        world.all_gather(fingerprint, fingerprints)
+        if fingerprints.ptp(0).any():
+            raise RuntimeError('Distributed matrices are not identical!')
+
         work_nG = np.empty_like(self.psit_nG)
         P_ani = ppo.apply(self.psit_nG, work_nG, self.wfs, kpt, \
             calculate_P_ani=True, extrapolate_P_ani=True)
@@ -335,6 +350,13 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
     def test_extrapolate_inverse(self):
         kpt = self.wfs.kpt_u[0]
         ppo = ProjectorPairOverlap(self.wfs, self.atoms)
+
+        # Compare fingerprints across all processors
+        fingerprint = np.array([md5_array(ppo.dB_aa, numeric=True)])
+        fingerprints = np.empty(world.size, np.int64)
+        world.all_gather(fingerprint, fingerprints)
+        if fingerprints.ptp(0).any():
+            raise RuntimeError('Distributed matrices are not identical!')
 
         work_nG = np.empty_like(self.psit_nG)
         P_ani = ppo.apply_inverse(self.psit_nG, work_nG, self.wfs, kpt, \
@@ -350,6 +372,13 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
         kpt = self.wfs.kpt_u[0]
         kpt.P_ani = self.pt.dict(self.bd.mynbands)
         ppo = ProjectorPairOverlap(self.wfs, self.atoms)
+
+        # Compare fingerprints across all processors
+        fingerprint = np.array([md5_array(ppo.dB_aa, numeric=True)])
+        fingerprints = np.empty(world.size, np.int64)
+        world.all_gather(fingerprint, fingerprints)
+        if fingerprints.ptp(0).any():
+            raise RuntimeError('Distributed matrices are not identical!')
 
         work_nG = np.empty_like(self.psit_nG)
         self.pt.integrate(self.psit_nG, kpt.P_ani, kpt.q)
@@ -378,6 +407,13 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
         kpt = self.wfs.kpt_u[0]
         kpt.P_ani = self.pt.dict(self.bd.mynbands)
         ppo = ProjectorPairOverlap(self.wfs, self.atoms)
+
+        # Compare fingerprints across all processors
+        fingerprint = np.array([md5_array(ppo.dB_aa, numeric=True)])
+        fingerprints = np.empty(world.size, np.int64)
+        world.all_gather(fingerprint, fingerprints)
+        if fingerprints.ptp(0).any():
+            raise RuntimeError('Distributed matrices are not identical!')
 
         work_nG = np.empty_like(self.psit_nG)
         self.pt.integrate(self.psit_nG, kpt.P_ani, kpt.q)
