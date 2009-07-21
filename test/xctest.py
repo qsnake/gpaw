@@ -11,7 +11,7 @@ def printstr(calc):
            'xc_correction = %0.3f sec') % (
         calc.get_potential_energy(),
         calc.iter,
-        calc.timer.timers['Hamiltonian: xc_correction'])
+        calc.timer.timers.get('Hamiltonian: xc_correction', 0))
 
 if 1: # spin polarized LDA
     calc = GPAW(gpts=(g, g, g), kpts=(k, k, k), nbands=2, txt=None, xc='LDA')
