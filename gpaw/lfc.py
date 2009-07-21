@@ -225,9 +225,6 @@ class NewLocalizedFunctionsCollection(BaseLFC):
     the uniform grid, as opposed to LocalizedFunctionsCollection which is just
     a wrapper around the old localized_functions which use rectangular grids.
 
-    Methods missing before LocalizedFunctionsCollection is obsolete:
-
-    add1, add2
     """
     def __init__(self, gd, spline_aj, kpt_comm=None, cut=False, dtype=float,
                  integral=None, forces=None):
@@ -438,34 +435,6 @@ class NewLocalizedFunctionsCollection(BaseLFC):
             
         self.lfc.add(c_xM, a_xG, q)
     
-    def add1(self, n_g, scale, I_a):
-        """What should this do? XXX"""
-        raise NotImplementedError
-
-    def add2(self, n_g, D_asp, s, I_a):
-        """Add atomic electron density to extended density array and integrate.
-
-        ::
-
-                   ---
-                   \    a         a        a
-           n(g) +=  )  D (s)   Phi (g)  Phi (g)
-                   /    i1,i2    i1       i2
-                   ---
-                 a,i1,i2
-
-        also at the same time::
-
-               /    __
-           a   |   \     a         a        a   
-          I  = | dg >   D (s)   Phi (g)  Phi (g)
-               |   /__   i1,i2     i1       i2
-               /   i1,i2
-        
-        where s is the spin index, and D_ii' is the unpacked version of D_p
-        """
-        raise NotImplementedError
-
     def integrate(self, a_xG, c_axi, q=-1):
         """Calculate integrals of arrays times localized functions.
 
