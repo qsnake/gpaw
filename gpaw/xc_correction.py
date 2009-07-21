@@ -10,8 +10,6 @@ from gpaw import extra_parameters
 from gpaw.gaunt import gaunt
 from gpaw.spherical_harmonics import nablaYL
 
-from gpaw.utilities.blas import gemm, gemv, axpy
-
 # load points and weights for the angular integration
 from gpaw.sphere import Y_nL, points, weights
 
@@ -312,7 +310,7 @@ class Integrator:
                             self.H_sp[0])
         elif self.libxc:
             # Libxc GGA routine
-            # Here grad.get_energy_gradient() means
+            # Here grad.get_energy_gradient(2) means
             # de / d (  nabla na . nabla nb )
             for s, H_p in enumerate(self.H_sp):
                 # Cross terms between spin channels
@@ -331,7 +329,7 @@ class Integrator:
                                 H_p)
         else:
             # GPAW's own GGA routine
-            # Here grad.get_energy_gradient() means
+            # Here grad.get_energy_gradient(2) means
             # de / d |nabla (na + nb)|^2
 
             # This is common to both spin channels
@@ -481,19 +479,17 @@ class BaseXCCorrection:
 
         assert ns == 1 and not self.xc.get_functional().gga
 
-        dot = npy.dot
-
         D_p = D_sp[0]
         D_Lq = npy.dot(self.B_Lqp, D_p)
 
         # Expand all-electron density in spherical harmonics:
         n_qg = self.n_qg
-        n_Lg = dot(D_Lq, n_qg)
+        n_Lg = npy.dot(D_Lq, n_qg)
         n_Lg[0] += self.nc_g * sqrt(4 * pi)
 
         # Expand pseudo electron density in spherical harmonics:
         nt_qg = self.nt_qg
-        nt_Lg = dot(D_Lq, nt_qg)
+        nt_Lg = npy.dot(D_Lq, nt_qg)
         nt_Lg[0] += self.nct_g * sqrt(4 * pi)
 
         # Allocate array for result:
@@ -503,10 +499,10 @@ class BaseXCCorrection:
         for w, Y_L in zip(self.weights, self.Y_yL):
             B_pq = npy.dot(self.B_pqL, Y_L)
 
-            fxcdv = fxc(dot(Y_L, n_Lg)) * self.dv_g
+            fxcdv = fxc(npy.dot(Y_L, n_Lg)) * self.dv_g
             dn2_qq = npy.inner(n_qg * fxcdv, n_qg)
 
-            fxctdv = fxc(dot(Y_L, nt_Lg)) * self.dv_g
+            fxctdv = fxc(npy.dot(Y_L, nt_Lg)) * self.dv_g
             dn2_qq -= npy.inner(nt_qg * fxctdv, nt_qg)
 
             J_pp += w * npy.dot(B_pq, npy.inner(dn2_qq, B_pq))
