@@ -10,8 +10,8 @@ from gpaw.utilities.tools import tri2full, lowdin
 from gpaw.coulomb import get_vxc as get_ks_xc
 from gpaw.utilities.blas import r2k, gemm
 
-from gpaw.lcao.projected_wannier import dots, condition_number, eigvals,\
-     get_bfs, get_lfc
+from gpaw.lcao.projected_wannier import dots, condition_number, eigvals, \
+     get_bfs, get_lcao_projections_HSP
 
 
 def get_rot(F_MM, V_oM, L):
@@ -28,76 +28,6 @@ def get_rot(F_MM, V_oM, L):
         col2 /= norm
     return U_ow, U_lw, U_Ml
     
-
-def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
-    """Some title.
-
-    if projectionsonly is True, return the projections::
-
-      V_qnM = <psi_qn | Phi_qM>
-
-    else, also return the Hamiltonian, overlap, and projector overlaps::
-
-      H_qMM  = <Phi_qM| H |Phi_qM'>
-      S_qMM  = <Phi_qM|Phi_qM'>
-      P_aqMi = <pt^a_qi|Phi_qM>
-    """
-    spos_ac = calc.atoms.get_scaled_positions() % 1.
-    nq = len(calc.wfs.ibzk_qc)
-    nao = calc.wfs.setups.nao
-    dtype = calc.wfs.dtype
-    if bfs is None:
-        bfs = get_bfs(calc)
-    tci = TwoCenterIntegrals(calc.gd, calc.wfs.setups,
-                             calc.wfs.gamma, calc.wfs.ibzk_qc)
-    tci.set_positions(spos_ac)
-
-    # Calculate projector overlaps, and (lower triangle of-) S and T matrices
-    S_qMM = np.zeros((nq, nao, nao), dtype)
-    T_qMM = np.zeros((nq, nao, nao), dtype)
-    P_aqMi = {}
-    for a in range(len(spos_ac)):
-        ni = calc.wfs.setups[a].ni
-        P_aqMi[a] = np.zeros((nq, nao, ni), dtype)
-    tci.calculate(spos_ac, S_qMM, T_qMM, P_aqMi)
-
-    # Calculate projections
-    V_qnM = np.zeros((nq, calc.wfs.nbands, nao), dtype)
-    for q, V_nM in enumerate(V_qnM):
-        bfs.integrate2(calc.wfs.kpt_u[q].psit_nG[:], V_nM, q)
-        #for n, V_M in enumerate(V_nM): # band-by-band to save memory
-        #    bfs.integrate2(calc.wfs.kpt_u[q].psit_nG[n], V_M, q)
-        for a, P_ni in calc.wfs.kpt_u[q].P_ani.items():
-            dS_ii = calc.wfs.setups[a].O_ii
-            P_Mi = P_aqMi[a][q]
-            V_nM += np.dot(P_ni, np.inner(dS_ii, P_Mi).conj())
-    if projectionsonly:
-        #return V_qnM.conj()
-        return V_qnM
-
-    # Determine potential matrix
-    vt_G = calc.hamiltonian.vt_sG[spin]
-    V_qMM = np.zeros((nq, nao, nao), dtype)
-    for q, V_MM in enumerate(V_qMM):
-        bfs.calculate_potential_matrix(vt_G, V_MM, q)
-
-    # Make Hamiltonian as sum of kinetic (T) and potential (V) matrices
-    # and add atomic corrections
-    H_qMM = T_qMM + V_qMM
-    for a, P_qMi in P_aqMi.items():
-        dH_ii = unpack(calc.hamiltonian.dH_asp[a][spin])
-        for P_Mi, H_MM in zip(P_qMi, H_qMM):
-            H_MM += np.dot(P_Mi, np.inner(dH_ii, P_Mi).conj())
-    
-    # Fill in the upper triangles of H and S
-    for H_MM, S_MM in zip(H_qMM, S_qMM):
-        tri2full(H_MM)
-        tri2full(S_MM)
-    H_qMM *= Hartree
-
-    #return V_qnM.conj(), H_qMM, S_qMM, P_aqMi
-    return V_qnM, H_qMM, S_qMM, P_aqMi
-
 
 def get_lcao_xc(calc, P_aqMi, bfs=None, spin=0):
     nq = len(calc.wfs.ibzk_qc)
@@ -126,7 +56,7 @@ def get_lcao_xc(calc, P_aqMi, bfs=None, spin=0):
             D_sp, H_sp)
         H_ii = unpack(H_sp[spin])
         for Vxc_MM, P_Mi in zip(Vxc_qMM, P_qMi):
-            Vxc_MM += dots(P_Mi.conj(), H_ii, P_Mi.T)
+            Vxc_MM += dots(P_Mi, H_ii, P_Mi.T.conj())
     return Vxc_qMM * Hartree
 
 
@@ -152,7 +82,7 @@ def get_xc2(calc, w_wG, P_awi, spin=0):
         calc.wfs.setups[a].xc_correction.calculate_energy_and_derivatives(
             D_sp, H_sp)
         H_ii = unpack(H_sp[spin])
-        xc_ww += dots(P_wi.conj(), H_ii, P_wi.T)
+        xc_ww += dots(P_wi, H_ii, P_wi.T.conj())
     return xc_ww * Hartree
 
 
@@ -359,7 +289,7 @@ class PWF2:
             Fcore_ww = np.zeros((len(indices), len(indices)))
         for a, P_wi in self.get_projections(q, indices).items():
             X_ii = unpack(self.calc.wfs.setups[a].X_p)
-            Fcore_ww -= dots(P_wi.conj(), X_ii, P_wi.T)
+            Fcore_ww -= dots(P_wi, X_ii, P_wi.T.conj())
         return Fcore_ww * Hartree
 
     def get_eigs(self, q=0):

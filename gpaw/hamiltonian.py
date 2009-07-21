@@ -456,9 +456,13 @@ class Hamiltonian:
             self.gd.comm.sum(Vxc_nn)
 
             # Add atomic corrections
+            # H_ij = \int dr phi_i(r) Ĥ phi_j^*(r)
+            # P_ni = \int dr psi_n(r) pt_i^*(r)
+            # Vxc_nm = \int dr phi_n(r) vxc(r) phi_m^*(r)
+            #      + sum_ij P_ni H_ij P_mj^*
             for a, P_ni in kpt.P_ani.items():
                 Vxc_ii = unpack(Vxc_asp[a][s])
-                Vxc_nn += np.dot(P_ni.conj(), np.dot(H_ii, P_ni.T))
+                Vxc_nn += np.dot(P_ni, np.inner(H_ii, P_ni).conj())
         return Vxc_unn
 
     def estimate_memory(self, mem):
