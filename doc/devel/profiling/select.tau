@@ -14,5 +14,8 @@ void g(int, int, double *, double *, double *, double *) C
 void pbe_eq8(int, int, double, double, double *, double *, double *, double *, double *, double *) C 
 void pbe_eq7(int, int, double, double, double, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *) C 
 void xc_perdew_potentials(xc_perdew_t *, const double *, double, int, double *, double *, double *, double *, double *) C 
+double G(double, double, double, double, double, double, double, double *) C 
+double pbe_correlation(double, double, double, double, bool, bool, double *, double *, double *) C 
+double pbe_exchange(const xc_parameters *, double, double, double, double *, double *) C 
 END_EXCLUDE_LIST
 
