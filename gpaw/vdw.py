@@ -21,6 +21,7 @@ from numpy.fft import fftn, fftfreq, fft, ifftn
 
 from gpaw.xc_functional import XCFunctional
 from gpaw.operators import Gradient
+from gpaw import setup_paths
 import gpaw.mpi as mpi
 import _gpaw
  
@@ -298,17 +299,27 @@ class VDWFunctional:
                 e_g[0] += e / self.gd.dv 
 
     def read_table(self):
-        name = os.path.join(os.environ.get('GPAW_VDW', '.'),
-                            'phi-%.3f-%.3f-%.3f-%d-%d.pckl' %
-                            (self.phi0, self.ds, self.D_j[-1],
-                             len(self.delta_i), len(self.D_j)))
-        try:
-            self.phi_ij = pickle.load(open(name))
-            if self.verbose:
-                print 'VDW: using', name
-        except IOError, e:
-            print 'VDW: Could not read table file:', name, 'Error:', e
-            self.make_table(name)
+        name = ('phi-%.3f-%.3f-%.3f-%d-%d.pckl' %
+                (self.phi0, self.ds, self.D_j[-1],
+                 len(self.delta_i), len(self.D_j)))
+        
+        if 'GPAW_VDW' in os.environ:
+            print 'Use of GPAW_VDW is deprecated.'
+            print 'Put', name, 'in your GPAW_SETUP_PATH directory.'
+            dirs = [os.environ['GPAW_VDW']]
+        else:
+            dirs = setup_paths + ['.']
+
+        for dir in dirs:
+            filename = os.path.join(dir, name)
+            if os.path.isfile(filename):
+                self.phi_ij = pickle.load(open(filename))
+                if self.verbose:
+                    print 'VDW: using', filename
+                return
+            
+        print 'VDW: Could not find table file:', name
+        self.make_table(name)
             
     def make_table(self, name):
         print 'VDW: Generating vdW-DF kernel ...'
