@@ -7,6 +7,7 @@ import numpy as npy
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.operators import Gradient
 from gpaw.utilities import is_contiguous
+from gpaw.utilities.blas import axpy
 from gpaw.utilities.timing import Timer
 from gpaw.exx import EXX
 from gpaw.gllb.nonlocalfunctionalfactory import NonLocalFunctionalFactory
@@ -597,10 +598,12 @@ class XC3DGrid(XCGrid):
                     
             # Interpolate pseudo electron kinetic density to the fine grid:
             self.xcfunc.interpolator.apply(self.taut_sG[0], self.taut_sg[0])
-                
+
+            self.a2_g.fill(0.0)
             for c in range(3):
                 self.ddr[c](n_g, self.dndr_cg[c])
-            npy.sum(self.dndr_cg**2, axis=0, out=self.a2_g)
+                axpy(1.0, self.dndr_cg[c]**2, self.a2_g)
+
             self.xcfunc.calculate_spinpaired(e_g, n_g, v_g,
                                              self.a2_g,
                                              self.deda2_g,
@@ -609,13 +612,13 @@ class XC3DGrid(XCGrid):
             tmp_g = self.dndr_cg[0]
             for c in range(3):
                 self.ddr[c](self.deda2_g * self.dndr_cg[c], tmp_g)
-                v_g -= 2.0 * tmp_g
+                axpy(-2.0, tmp_g, v_g)
 
         elif self.xcfunc.gga:
+            self.a2_g.fill(0.0)
             for c in range(3):
                 self.ddr[c](n_g, self.dndr_cg[c])
-
-            npy.sum(self.dndr_cg**2, axis=0, out=self.a2_g)
+                axpy(1.0, self.dndr_cg[c]**2, self.a2_g)
 
             self.xcfunc.calculate_spinpaired(e_g.ravel(),
                                              n_g, v_g,
@@ -624,7 +627,7 @@ class XC3DGrid(XCGrid):
             tmp_g = self.dndr_cg[0]
             for c in range(3):
                 self.ddr[c](self.deda2_g * self.dndr_cg[c], tmp_g)
-                v_g -= 2.0 * tmp_g
+                axpy(-2.0, tmp_g, v_g)
         else:
             self.xcfunc.calculate_spinpaired(e_g, n_g, v_g)
 
@@ -659,13 +662,16 @@ class XC3DGrid(XCGrid):
                 self.xcfunc.interpolator.apply(self.taut_sG[s],
                                                self.taut_sg[s])
                 
+            self.aa2_g.fill(0.0)
+            self.ab2_g.fill(0.0)
+            self.a2_g.fill(0.0)
             for c in range(3):
                 self.ddr[c](na_g, self.dnadr_cg[c])
+                axpy(1.0, self.dnadr_cg[c]**2, self.aa2_g)
                 self.ddr[c](nb_g, self.dnbdr_cg[c])
-            self.dndr_cg[:] = self.dnadr_cg + self.dnbdr_cg
-            npy.sum(self.dndr_cg**2, axis=0, out=self.a2_g)
-            npy.sum(self.dnadr_cg**2, axis=0, out=self.aa2_g)
-            npy.sum(self.dnbdr_cg**2, axis=0, out=self.ab2_g)
+                axpy(1.0, self.dnbdr_cg[c]**2, self.ab2_g)
+                self.dndr_cg[c] = self.dnadr_cg[c] + self.dnbdr_cg[c]
+                axpy(1.0, self.dndr_cg[c]**2, self.a2_g)
 
             self.xcfunc.calculate_spinpolarized(e_g,
                                                 na_g, va_g,
@@ -683,32 +689,36 @@ class XC3DGrid(XCGrid):
             for c in range(3):
                 if not self.uses_libxc:
                     self.ddr[c](self.deda2_g * self.dndr_cg[c], tmp_g)
-                    va_g -= 2.0 * tmp_g
-                    vb_g -= 2.0 * tmp_g
+                    axpy(-2.0, tmp_g, va_g)
+                    axpy(-2.0, tmp_g, vb_g)
                     self.ddr[c](self.dedaa2_g * self.dnadr_cg[c], tmp_g)
-                    va_g -= 4.0 * tmp_g
+                    axpy(-4.0, tmp_g, va_g)
                     self.ddr[c](self.dedab2_g * self.dnbdr_cg[c], tmp_g)
-                    vb_g -= 4.0 * tmp_g
+                    axpy(-4.0, tmp_g, vb_g)
                 else: # libxc uses https://wiki.fysik.dtu.dk/gpaw/GGA
                     # see also:
                     # http://www.cse.scitech.ac.uk/ccg/dft/design.html
                     self.ddr[c](self.deda2_g * self.dnadr_cg[c], tmp_g)
-                    vb_g -= tmp_g
+                    axpy(-1.0, tmp_g, vb_g)
                     self.ddr[c](self.deda2_g * self.dnbdr_cg[c], tmp_g)
-                    va_g -= tmp_g
+                    axpy(-1.0, tmp_g, va_g)
                     self.ddr[c](self.dedaa2_g * self.dnadr_cg[c], tmp_g)
-                    va_g -= 2.0 * tmp_g
+                    axpy(-2.0, tmp_g, va_g)
                     self.ddr[c](self.dedab2_g * self.dnbdr_cg[c], tmp_g)
-                    vb_g -= 2.0 * tmp_g
+                    axpy(-2.0, tmp_g, vb_g)
 
         elif self.xcfunc.gga:
+            self.aa2_g.fill(0.0)
+            self.ab2_g.fill(0.0)
+            self.a2_g.fill(0.0)
             for c in range(3):
                 self.ddr[c](na_g, self.dnadr_cg[c])
+                axpy(1.0, self.dnadr_cg[c]**2, self.aa2_g)
                 self.ddr[c](nb_g, self.dnbdr_cg[c])
-            self.dndr_cg[:] = self.dnadr_cg + self.dnbdr_cg
-            npy.sum(self.dndr_cg**2, axis=0, out=self.a2_g)
-            npy.sum(self.dnadr_cg**2, axis=0, out=self.aa2_g)
-            npy.sum(self.dnbdr_cg**2, axis=0, out=self.ab2_g)
+                axpy(1.0, self.dnbdr_cg[c]**2, self.ab2_g)
+                self.dndr_cg[c] = self.dnadr_cg[c] + self.dnbdr_cg[c]
+                axpy(1.0, self.dndr_cg[c]**2, self.a2_g)
+
             self.xcfunc.calculate_spinpolarized(e_g.ravel(),
                                                 na_g, va_g,
                                                 nb_g, vb_g,
@@ -721,23 +731,23 @@ class XC3DGrid(XCGrid):
             for c in range(3):
                 if not self.uses_libxc:
                     self.ddr[c](self.deda2_g * self.dndr_cg[c], tmp_g)
-                    va_g -= 2.0 * tmp_g
-                    vb_g -= 2.0 * tmp_g
+                    axpy(-2.0, tmp_g, va_g)
+                    axpy(-2.0, tmp_g, vb_g)
                     self.ddr[c](self.dedaa2_g * self.dnadr_cg[c], tmp_g)
-                    va_g -= 4.0 * tmp_g
+                    axpy(-4.0, tmp_g, va_g)
                     self.ddr[c](self.dedab2_g * self.dnbdr_cg[c], tmp_g)
-                    vb_g -= 4.0 * tmp_g
+                    axpy(-4.0, tmp_g, vb_g)
                 else: # libxc uses https://wiki.fysik.dtu.dk/gpaw/GGA
                     # see also:
                     # http://www.cse.scitech.ac.uk/ccg/dft/design.html
                     self.ddr[c](self.deda2_g * self.dnadr_cg[c], tmp_g)
-                    vb_g -= tmp_g
+                    axpy(-1.0, tmp_g, vb_g)
                     self.ddr[c](self.deda2_g * self.dnbdr_cg[c], tmp_g)
-                    va_g -= tmp_g
+                    axpy(-1.0, tmp_g, va_g)
                     self.ddr[c](self.dedaa2_g * self.dnadr_cg[c], tmp_g)
-                    va_g -= 2.0 * tmp_g
+                    axpy(-2.0, tmp_g, va_g)
                     self.ddr[c](self.dedab2_g * self.dnbdr_cg[c], tmp_g)
-                    vb_g -= 2.0 * tmp_g
+                    axpy(-2.0, tmp_g, vb_g)
         else:
             self.xcfunc.calculate_spinpolarized(e_g,
                                                 na_g, va_g,
@@ -754,7 +764,7 @@ class XC3DGrid(XCGrid):
                     else:
                         self.ddrG[c](a_G,dpsidr_G, kpt.phase_cd)
                     self.ddrG[c](self.dedtau_G * self.dpsidr_G, self.tmp_G)
-                    Htpsit_G -= self.tmp_G
+                    axpy(-1.0, self.tmp_G, Htpsit_G)
         
     def estimate_memory(self, mem):
         bytecount = self.gd.bytecount()
@@ -820,7 +830,7 @@ class XCRadialGrid(XCGrid):
                                  self.dndr_g, tmp_g)
             tmp_g[1:] /= self.dv_g[1:]
             tmp_g[0] = tmp_g[1]
-            v_g -= 2.0 * tmp_g
+            axpy(-2.0, tmp_g, v_g)
 
         elif self.xcfunc.gga:
             self.rgd.derivative(n_g, self.dndr_g)
@@ -835,7 +845,7 @@ class XCRadialGrid(XCGrid):
                                  self.dndr_g, tmp_g)
             tmp_g[1:] /= self.dv_g[1:]
             tmp_g[0] = tmp_g[1]
-            v_g -= 2.0 * tmp_g
+            axpy(-2.0, tmp_g, v_g)
         else:
             self.xcfunc.calculate_spinpaired(e_g, n_g, v_g)
 
@@ -862,18 +872,18 @@ class XCRadialGrid(XCGrid):
                                  self.dndr_g, tmp_g)
             tmp_g[1:] /= self.dv_g[1:]
             tmp_g[0] = tmp_g[1]
-            va_g -= 2.0 * tmp_g
-            vb_g -= 2.0 * tmp_g
+            axpy(-2.0, tmp_g, va_g)
+            axpy(-2.0, tmp_g, vb_g)
             self.rgd.derivative2(self.dv_g * self.dedaa2_g *
                                  self.dnadr_g, tmp_g)
             tmp_g[1:] /= self.dv_g[1:]
             tmp_g[0] = tmp_g[1]
-            va_g -= 4.0 * tmp_g
+            axpy(-4.0, tmp_g, va_g)
             self.rgd.derivative2(self.dv_g * self.dedab2_g *
                                  self.dnbdr_g, tmp_g)
             tmp_g[1:] /= self.dv_g[1:]
             tmp_g[0] = tmp_g[1]
-            vb_g -= 4.0 * tmp_g
+            axpy(-4.0, tmp_g, vb_g)
 
         if self.xcfunc.gga:
             self.rgd.derivative(na_g, self.dnadr_g)
@@ -898,18 +908,18 @@ class XCRadialGrid(XCGrid):
                                      self.dndr_g, tmp_g)
                 tmp_g[1:] /= self.dv_g[1:]
                 tmp_g[0] = tmp_g[1]
-                va_g -= 2.0 * tmp_g
-                vb_g -= 2.0 * tmp_g
+                axpy(-2.0, tmp_g, va_g)
+                axpy(-2.0, tmp_g, vb_g)
                 self.rgd.derivative2(self.dv_g * self.dedaa2_g *
                                      self.dnadr_g, tmp_g)
                 tmp_g[1:] /= self.dv_g[1:]
                 tmp_g[0] = tmp_g[1]
-                va_g -= 4.0 * tmp_g
+                axpy(-4.0, tmp_g, va_g)
                 self.rgd.derivative2(self.dv_g * self.dedab2_g *
                                      self.dnbdr_g, tmp_g)
                 tmp_g[1:] /= self.dv_g[1:]
                 tmp_g[0] = tmp_g[1]
-                vb_g -= 4.0 * tmp_g
+                axpy(-4.0, tmp_g, vb_g)
             else:
                 # libxc uses https://wiki.fysik.dtu.dk/gpaw/GGA
                 # see also:
@@ -918,22 +928,22 @@ class XCRadialGrid(XCGrid):
                                      self.dnadr_g, tmp_g)
                 tmp_g[1:] /= self.dv_g[1:]
                 tmp_g[0] = tmp_g[1]
-                vb_g -= tmp_g
+                axpy(-1.0, tmp_g, vb_g)
                 self.rgd.derivative2(self.dv_g * self.deda2_g *
                                      self.dnbdr_g, tmp_g)
                 tmp_g[1:] /= self.dv_g[1:]
                 tmp_g[0] = tmp_g[1]
-                va_g -= tmp_g
+                axpy(-1.0, tmp_g, va_g)
                 self.rgd.derivative2(self.dv_g * self.dedaa2_g *
                                      self.dnadr_g, tmp_g)
                 tmp_g[1:] /= self.dv_g[1:]
                 tmp_g[0] = tmp_g[1]
-                va_g -= 2.0 * tmp_g
+                axpy(-2.0, tmp_g, va_g)
                 self.rgd.derivative2(self.dv_g * self.dedab2_g *
                                      self.dnbdr_g, tmp_g)
                 tmp_g[1:] /= self.dv_g[1:]
                 tmp_g[0] = tmp_g[1]
-                vb_g -= 2.0 * tmp_g
+                axpy(-2.0, tmp_g, vb_g)
         else:
             self.xcfunc.calculate_spinpolarized(self.e_g,
                                                 na_g, va_g,
