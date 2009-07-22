@@ -457,7 +457,8 @@ class PAWTextOutput:
             if hasattr(self, 'timer'):
                 self.timer.write(self.txt)
 
-            self.txt.close()
+            if self.txt != sys.stdout:
+                self.txt.close()
             self.wfs.world.barrier()
 
     def warn(self, string=None):
