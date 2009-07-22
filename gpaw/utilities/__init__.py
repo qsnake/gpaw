@@ -239,6 +239,9 @@ class _DownTheDrain:
     def flush(self):
         pass
 
+    def close(self):
+        pass
+
 devnull = _DownTheDrain()
 
 """
