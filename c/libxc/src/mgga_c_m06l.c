@@ -286,7 +286,7 @@ c_m06l_para(xc_mgga_type *p, FLOAT *rho, FLOAT *sigma_, FLOAT *tau,
 	    FLOAT *energy, FLOAT *dedd, FLOAT *vsigma, FLOAT *dedtau)
 {
   FLOAT rho2[2], rho2s[2], x[2], z[2], zc_ss[2];
-  FLOAT tau2[2], dens, dens1, sigma[3];
+  FLOAT tau2[2], tauw[2], dens, dens1, sigma[3];
   FLOAT g_ss[2], h_ss[2], Ec_ss[2], D_ss[2]; 
   FLOAT g_ab=0.0, h_ab=0.0, Ec_ab=0.0; 
   FLOAT exunif_ss[2], vxunif_up[2], vxunif_dn[2], vxunif_ss[2];
@@ -305,13 +305,9 @@ c_m06l_para(xc_mgga_type *p, FLOAT *rho, FLOAT *sigma_, FLOAT *tau,
   
 
   /*calculate |nabla rho|^2 */
-  /*grad = sigma[0];
-  if(p->nspin == XC_POLARIZED) grad += 2.0*sigma[1] + sigma[2];
-  grad = max(MIN_GRAD*MIN_GRAD, grad);*/
-
-  //tau[0] = max(1e+10*MIN_TAU, tau[0]);
   sigma_[0] = max(MIN_GRAD*MIN_GRAD, sigma_[0]);
-  tau[0] = max(sigma_[0]/(8.0*rho[0]), tau[0]);
+  tauw[0] = sigma_[0]/(8.0*rho[0]);
+  tau[0] = max(tauw[0], tau[0]);
 
 
   dens1 = rho[0]+rho[1];
@@ -332,8 +328,8 @@ c_m06l_para(xc_mgga_type *p, FLOAT *rho, FLOAT *sigma_, FLOAT *tau,
 
     }else{
       sigma_[2] = max(MIN_GRAD*MIN_GRAD, sigma_[2]);
-      //tau[1] = max(1e+10*MIN_TAU, tau[1]);
-      tau[1] = max(sigma_[2]/(8.0*rho[1]), tau[1]);
+	  tauw[1] = sigma_[2]/(8.0*rho[1]);
+      tau[1] = max(tauw[1], tau[1]);
 
       rho2[0]=rho[0];
 	  rho2[1]=rho[1];	
@@ -500,8 +496,4 @@ XC(mgga_c_m06l)(XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma, FLOAT *tau,
 	    FLOAT *e, FLOAT *dedd, FLOAT *vsigma, FLOAT *dedtau)
 {
     c_m06l_para(p, rho, sigma, tau, e, dedd, vsigma, dedtau);
-	  /*if (abs(*e) > 1000)
-	  {printf("EMGGACR %.9e\n", *e);
-       printf("tauCR0 %.9e\n", tau[0]);
-       printf("tauCR1 %.9e\n", tau[1]);}*/
 }

@@ -127,7 +127,6 @@ static void c_tpss_12(XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma,
   /* e_PBE */
   XC(gga_type) *aux2 = (p->nspin == XC_UNPOLARIZED) ? p->gga_aux2 : p->gga_aux1;
   XC(gga_vxc)(aux2, densp, sigmatot, &e_PBE, de_PBEdd, de_PBEdsigma); 
-  /*printf("e_PBE %19.12f\n", e_PBE);*/
 
   densp2[0]=densp[0];
   densp2[1]=0.0;
@@ -144,7 +143,6 @@ static void c_tpss_12(XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma,
   }
   /* e_PBE spin up */
   XC(gga_vxc)(aux2, densp2, sigmaup, &e_PBEup, de_PBEddup, de_PBEdsigmaup); 
-  /*printf("e_PBEup%19.12f\n", e_PBEup);*/
   
   densp2[0]=densp[1];
   densp2[1]=0.0;
@@ -162,7 +160,6 @@ static void c_tpss_12(XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma,
 
   /* e_PBE spin down */
   XC(gga_vxc)(aux2,  densp2, sigmadn, &e_PBEdn, de_PBEdddn, de_PBEdsigmadn); 
-  /*printf("e_PBEdn%19.12f\n", e_PBEdn);*/
   
   /*get Eq. (13) and (14) for the polarized case*/
   if(p->nspin == XC_UNPOLARIZED){   
@@ -179,7 +176,7 @@ static void c_tpss_12(XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma,
     for(i=0; i<3; i++) dcsidsigma[i] = 0.0;
 
 
-	    
+
     FLOAT num, gzeta, csi, a;
 
 	  /*numerator of csi: derive as grho all components and then square the 3 parts
@@ -187,6 +184,7 @@ static void c_tpss_12(XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma,
 	   -> 4 (sigma_aa n_b^2 - 2 sigma_ab n_a n_b + sigma_bb n_b^2)/(n_a+n_b)^2 */
 
     num = sigma[0] * POW(rho[1],2) - 2.* sigma[1]*rho[0]*rho[1]+ sigma[2]*POW(rho[0],2);
+	num = max(num,0);
 	gzeta = sqrt(4*(num))/(dens*dens);
 	gzeta = max(gzeta, MIN_GRAD);
 	  /*denominator of csi*/
@@ -194,7 +192,6 @@ static void c_tpss_12(XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma,
 
 	csi = gzeta/a;
 
-    //printf("csi %.9e, gzeta %.9e, a %.9e\n", csi, gzeta2, a);
 	c_tpss_14(csi, zeta, &C, &dCdcsi, &dCdzeta);
 
 	dzetadd[0] =  (1.0 - zeta)/dens; /*OK*/
@@ -248,7 +245,6 @@ static void c_tpss_12(XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma,
  
     zsq=z*z;
     *e_PKZB    = (e_PBE*(1.0 + C * zsq) - (1.0 + C) * zsq * aux);
-	//printf("e_PBE %.9e, C %.9e, zsq %.9e, auz %.9e\n", e_PBE, C, zsq, aux);
     *de_PKZBdz = dens * e_PBE * C * 2*z - dens * (1.0 + C) * 2*z * aux;  /*? think ok*/
 
       
@@ -268,7 +264,6 @@ static void c_tpss_12(XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma,
 	  if(p->nspin==XC_UNPOLARIZED) dauxdsigma[i] /= 2.;
       FLOAT dCdsigma[i]; 
 	  dCdsigma[i]=  dCdcsi*dcsidsigma[i];
-	  //printf("de_PBEdsigma %.9e, dCdsigma %.9e, dauxdsigma %.9e\n", de_PBEdsigma[i], dCdsigma[i], dauxdsigma[i]);
 	
       /* partial derivatives*/
 	  de_PKZBdsigma[i] = de_PBEdsigma[i] * (1.0 + C * zsq) + dens * e_PBE * dCdsigma[i] * zsq
@@ -295,8 +290,8 @@ XC(mgga_c_tpss)(XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma, FLOAT *tau,
   sigma[0] = max(MIN_GRAD*MIN_GRAD, sigma[0]);
   if(p->nspin == XC_POLARIZED) sigma[2] = max(MIN_GRAD*MIN_GRAD, sigma[2]);
 
-  tauw = sigma[0]/(8.0*rho[0]);
-  if(p->nspin == XC_POLARIZED) tauw += sigma[2]/(8.0*rho[1]);
+  tauw = max(sigma[0]/(8.0*rho[0]), 1.0e-12);
+  if(p->nspin == XC_POLARIZED) tauw += max(sigma[2]/(8.0*rho[1]),1.0e-12);
 
   /* GMadsen: tau lower bound by tauw*/ 
   taut = max(tau[0]+tau[1], tauw);
@@ -328,7 +323,6 @@ XC(mgga_c_tpss)(XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma, FLOAT *tau,
 	}
     
     *energy = e_PKZB * (1.0 + d*e_PKZB*z3);
-	 //printf("EC %.9e\n", *energy);
     /* due to the definition of na and nb in libxc.c we need to divide by (na+nb) to recover the 
 	 * same energy for polarized and unpolarized calculation with the same total density */
 	if(p->nspin == XC_UNPOLARIZED) *energy *= dens/(rho[0]+rho[1]);

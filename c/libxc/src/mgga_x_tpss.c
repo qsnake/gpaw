@@ -168,7 +168,7 @@ x_tpss_para(XC(mgga_type) *pt, FLOAT *rho, FLOAT sigma, FLOAT tau_,
   dpdsigma= 1/(4.0*POW(3*M_PI*M_PI, 2.0/3.0)*POW(rho[0], 8.0/3.0));
 
   /* von Weisaecker kinetic energy density */
-  tauw = gdms/(8.0*rho[0]);
+  tauw = max(gdms/(8.0*rho[0]), 1.0e-12);
   /* GMadsen: tau lower bound by tauw */
   tau = max(tau_, tauw);
   z  = tauw/tau;

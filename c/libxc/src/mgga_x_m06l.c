@@ -177,7 +177,7 @@ static void
 x_m06l_para(XC(mgga_type) *pt, FLOAT rho, FLOAT sigma, FLOAT tau, FLOAT *energy, FLOAT *dedd, FLOAT *vsigma, FLOAT *dedtau)
 {
 	/*Build Eq. (6) collecting the terms Fx_PBE,  fw, e_lsda and h*/
-  FLOAT grad, tau2, x, z;
+  FLOAT grad, tauw, tau2, x, z;
   FLOAT rho2[2],sigmatot[3];
   FLOAT F_PBE, de_PBEdd[2], de_PBEdgd[3];
   FLOAT h, dhdd, dhdgd, dhdtau;
@@ -189,10 +189,8 @@ x_m06l_para(XC(mgga_type) *pt, FLOAT rho, FLOAT sigma, FLOAT tau, FLOAT *energy,
   /* calculate |nabla rho|^2 */
   grad = sigma;
   grad = max(MIN_GRAD*MIN_GRAD, grad);
-  tau = max(grad/(8.0*rho), tau);
-
-  //tauw = grad/(8.0*rho); /* tau^W = |nabla rho|^2/ 8rho */
-  //tau = max(tau_, tauw);
+  tauw = grad/(8.0*rho); /* tau^W = |nabla rho|^2/ 8rho */
+  tau = max(tau, tauw);
 
   rho2[0]=rho/2.;
   rho2[1]=0.0;
@@ -226,8 +224,6 @@ x_m06l_para(XC(mgga_type) *pt, FLOAT rho, FLOAT sigma, FLOAT tau, FLOAT *energy,
   { /* Eq. (6)  E_x = Int F_PBE*fw + exunif*h, the factor 2 accounts for spin. */
 
     *energy = 2*(F_PBE*rho2[0] *fw + epsx_lsda *h);
-	//printf("fw %.9e\n", fw);
-	//printf("h %.9e\n", fw);
 
     *dedd   = (de_PBEdd[0] *fw + F_PBE*rho2[0] * dfwdd+ depsx_lsdadd *h + epsx_lsda * dhdd);
     *dedtau = (F_PBE * dfwdtau *rho2[0] + epsx_lsda * dhdtau);
@@ -269,10 +265,6 @@ XC(mgga_x_m06l)(XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma, FLOAT *tau,
       x_m06l_para(p, rhob[0], 4*sigma[2], 2.0*tau[1], &e2nb, &(dedd[1]), &(vsigmapart[2]), &(dedtau[1]));
 		 
 	  *e = (e2na + e2nb )/(2.*(rho[0]+rho[1]));
-	  /*if (abs(*e) > 1000)
-	  {printf("EMGGAEX %.9e\n", *e);
-       printf("tauEX0 %.9e\n", tau[0]);
-       printf("tauEX1 %.9e\n", tau[1]);}*/
 	  vsigma[0] = 2*vsigmapart[0];
 	  vsigma[2] = 2*vsigmapart[2];
   }
