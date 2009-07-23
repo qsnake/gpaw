@@ -32,6 +32,13 @@ Cray:
    Cray/louhi
    Cray/jaguar
 
+HP:
+
+.. toctree::
+   :maxdepth: 1
+
+   HP/xc
+
 Linux:
 
 .. toctree::
