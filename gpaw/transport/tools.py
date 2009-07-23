@@ -46,7 +46,45 @@ class PathInfo:
 
     def set_nres(self, nres):
         self.nres = nres
-        
+
+
+class Banded_Sparse_HSD:
+    #for lead's hamiltonian, overlap, and density matrix
+    def __init__(self, dtype, ns, npk, index=None):
+        self.band_index = index
+        self.dtype = dtype
+        self.H = []
+        self.S = []
+        self.D = []
+        self.ns = ns
+        self.npk = npk
+        self.s = 0
+        self.pk = 0
+        for s in range(ns):
+            self.H.append([])
+            self.D.append([])
+            for k in range(npk):
+                self.H[s].append([])
+                self.D[s].append([])
+        for k in range(npk):
+            self.S.append([])        
+
+    def reset(self, s, pk, mat, flag='S', init=False):
+        assert mat.dtype == self.dtype
+        if flag == 'S':
+            spar = self.S
+        elif flag == 'H':
+            spar = self.H[s]
+        elif flag == 'D':
+            spar = self.D[s]
+        if not init:
+            spar[pk].reset(mat)            
+        elif self.band_index != None:
+            spar[pk] = Banded_Sparse_Matrix(mat, self.band_index)
+        else:
+            spar[pk] = Banded_Sparse_Matrix(mat)
+            self.band_index = spar[pk].band_index
+       
 class Banded_Sparse_Matrix:
     def __init__(self, mat=None, band_index=None, tol=1e-12):
         self.tol = tol
@@ -76,43 +114,41 @@ class Banded_Sparse_Matrix:
             
         self.band_index = (kl, ku)
         assert self.dtype == complex
-        
-        #self.spar = np.zeros([2 * kl + ku + 1, dim], complex)
-        
-        #for i in range(kl, kl + ku + 1):
-        #    ud = kl + ku - i
-        #    self.spar[i][ud:] = np.diag(mat, ud)
-        
-        #for i in range(kl + ku + 1, 2 * kl + ku + 1):
-        #    ud = kl + ku - i
-        #    self.spar[i][:ud] = np.diag(mat, ud)
-    
+   
         # storage in the tranpose, bacause column major order for zgbsv_ function
         self.spar = np.zeros([dim, 2 * kl + ku + 1], complex)
         
-        for i in range(kl, kl + ku + 1):
-            ud = kl + ku - i
-            self.spar[ud:][i] = np.diag(mat, ud)
-        for i in range(kl + ku + 1, 2 * kl + ku + 1):
-            ud = kl + ku - i
-            self.spar[:ud][i] + np.diag(mat, ud)
+        #for i in range(kl, kl + ku + 1):
+        #    ud = kl + ku - i
+        #    self.spar[ud:, i] = np.diag(mat, -ud)
+        #for i in range(kl + ku + 1, 2 * kl + ku + 1):
+        #    ud = kl + ku - i
+        #    self.spar[:ud, i] = np.diag(mat, -ud)
+            
+        self.index1 = np.zeros([dim, 2 * kl + ku + 1], int)
+        self.index2 = np.zeros([dim, 2 * kl + ku + 1], int)
+        
+        for i in range(dim):
+            self.index1[i] = i
+            for j in range(2 * kl + ku + 1):
+                tmp = i + j - (kl + ku)
+                if 0 <= tmp <= dim -1:
+                    self.index2[i][j] = tmp
+                else:
+                    self.index2[i][j] = 0
+        self.spar = mat[self.index1, self.index2]
   
     def reset(self, mat):
         kl, ku = self.band_index
         assert self.dtype == complex
-        #for i in range(kl + 1, kl + ku + 2):
-        #    ud = kl + ku + 1 - i
-        #    self.spar[i][ud:] = np.diag(mat, ud)
-        #for i in range(kl + ku + 2, 2 * kl + ku + 1):
-        #    ud = kl + ku + 1 - i
-        #    self.spar[i][:ud] = np.diag(mat, ud)        
+        self.spar = mat[self.index1, self.index2]
 
-        for i in range(kl, kl + ku + 1):
-            ud = kl + ku - i
-            self.spar[ud:][i] = np.diag(mat, ud)
-        for i in range(kl + ku + 1, 2 * kl + ku + 1):
-            ud = kl + ku - i
-            self.spar[:ud][i] = np.diag(mat, ud)
+        #for i in range(kl, kl + ku + 1):
+        #    ud = kl + ku - i
+        #    self.spar[ud:, i] = np.diag(mat, -ud)
+        #for i in range(kl + ku + 1, 2 * kl + ku + 1):
+        #    ud = kl + ku - i
+        #    self.spar[:ud, i] = np.diag(mat, -ud)
     
     def reset_from_others(self, bds_mm1, bds_mm2, c1, c2):
         self.spar = c1 * bds_mm1.spar + c2 * bds_mm2.spar 
@@ -120,39 +156,40 @@ class Banded_Sparse_Matrix:
     def reset_minus(self, mat):
         kl, ku = self.band_index
         assert self.dtype == complex
-        for i in range(kl, kl + ku + 1):
-            ud = kl + ku - i
-            self.spar[ud:][i] -= np.diag(mat, ud)
-        for i in range(kl + ku + 1, 2 * kl + ku + 1):
-            ud = kl + ku - i
-            self.spar[:ud][i] -= np.diag(mat, ud)
+        #for i in range(kl, kl + ku + 1):
+        #    ud = kl + ku - i
+        #    self.spar[ud:, i] -= np.diag(mat, -ud)
+        #for i in range(kl + ku + 1, 2 * kl + ku + 1):
+        #    ud = kl + ku - i
+        #    self.spar[:ud, i] -= np.diag(mat, -ud)
+        self.spar -= mat[self.index1, self.index2]
     
     def reset_plus(self, mat):
         kl, ku = self.band_index
         assert self.dtype == complex
-        for i in range(kl, kl + ku + 1):
-            ud = kl + ku - i
-            self.spar[ud:][i] -= np.diag(mat, ud)
-        for i in range(kl + ku + 1, 2 * kl + ku + 1):
-            ud = kl + ku - i
-            self.spar[:ud][i] -= np.diag(mat, ud)
+        #for i in range(kl, kl + ku + 1):
+        #    ud = kl + ku - i
+        #    self.spar[ud:, i] -= np.diag(mat, -ud)
+        #for i in range(kl + ku + 1, 2 * kl + ku + 1):
+        #    ud = kl + ku - i
+        #    self.spar[:ud, i] -= np.diag(mat, -ud)
+        self.spar += mat[self.index1, self.index2]
 
     def inv(self, keep_data=False):
         kl, ku = self.band_index
-        dim = self.spar.shape[1]
+        dim = self.spar.shape[0]
         inv_mat = np.eye(dim, dtype=complex)
         ldab = 2*kl + ku + 1
-       
         if keep_data:
             source_mat = self.spar
         else:
             source_mat = self.spar.copy()
-        info = _gpaw.linear_solve_band(source_mat, inv_mat,
-                                                    kl, ku, dim, ldab, dim, dim)            
+        info = _gpaw.linear_solve_band(source_mat, inv_mat, kl, ku)            
         return inv_mat
        
 class Tp_Sparse_HSD:
-    def __init__(self, ns, npk, ll_index):
+    def __init__(self, dtype, ns, npk, ll_index):
+        self.dtype = dtype
         self.ll_index = ll_index
         self.H = []
         self.S = []
@@ -528,52 +565,101 @@ class Tp_Sparse_Matrix:
                         
                     self.upc_h[j][k] +=  self.dotdot(inv_mat[i][j][k - 1], se_less[i],
                                                     inv_mat[i][j][k].T.conj())
-           
-class CP_Sparse_Matrix:
-    def __init__(self, mat, tri_type, nn=None, tol=1e-16):
-        # coupling sparse matrix A_ij!=0 if i>dim -nn and j>nn (for lower triangle
-        # matrix) or A_ij!=0 if i<nn and j>dim-nn (for upper triangle matrix,
-        #dim is the shape of A)
 
-        self.tri_type = tri_type
-        self.spar = []
-        if nn == None:
-            self.initialize(mat)
+class CP_Sparse_HSD:
+    def __init__(self, dtype, ns, npk, index=None):
+        self.index = index
+        self.dtype = dtype
+        self.H = []
+        self.S = []
+        self.D = []
+        self.ns = ns
+        self.npk = npk
+        self.s = 0
+        self.pk = 0
+        for s in range(ns):
+            self.H.append([])
+            self.D.append([])
+            for k in range(npk):
+                self.H[s].append([])
+                self.D[s].append([])
+        for k in range(npk):
+            self.S.append([])        
+
+    def reset(self, s, pk, mat, flag='S', init=False):
+        assert mat.dtype == self.dtype
+        if flag == 'S':
+            spar = self.S
+        elif flag == 'H':
+            spar = self.H[s]
+        elif flag == 'D':
+            spar = self.D[s]
+        if not init:
+            spar[pk].reset(mat)
+        elif self.index != None:
+            spar[pk] = CP_Sparse_Matrix(mat, self.index)
         else:
-            self.reset(mat, nn)
+            spar[pk] = CP_Sparse_Matrix(mat)
+            self.index = spar[pk].index
+     
+class CP_Sparse_Matrix:
+    def __init__(self, mat=None, index=None, flag=None, tol=1e-16):
+        self.tol = tol
+        if mat == None:
+            self.index = index
+            self.flag = flag
+        else:
+            if self.index == None:
+                self.initialize(mat)
+            else:
+                self.reset(mat)
         
     def initialize(self, mat):
-        dim = mat.shape[-1]
-        flag = 0        
+        self.dtype = mat.dtype
+        self.nb = dim = mat.shape[-1]
+        ud_array = np.empty([dim])
+        dd_array = np.empty([dim])
         for i in range(dim):
-            for j in range(i + 1):
-                if stri_type == 'L':
-                    if abs(mat[i, j]) > tol:
-                        if flag == 0:
-                            self.nn = dim - i
-                            flag = 1
-                        if flag == 1 and j <= self.nn:
-                            self.spar.append(mat[i ,j])
-                else:
-                    if abs(mat[j, i]) > tol:
-                        if flag == 0:
-                            self.nn = dim - i
-                            flag = 1
-                        if flag == 1 and i <= self.nn:
-                            self.spar.append(mat[j, i])
-       
-        self.spar = np.array(self.spar)
-        self.spar.shape = (self.nn, self.nn)
+            ud_array[i] = np.sum(abs(np.diag(mat, dim)))
+            dd_array[i] = np.sum(abs(np.diag(mat, -dim)))
+        self.spar = []
+        if np.sum(abs(ud_array)) >  np.sum(abs(dd_array)):
+            self.flag = 'U'
+            i = 0
+            while ud_array[i] < self.tol and  i < dim - 1:
+                i += 1
+            self.index = i
+            ldab = dim - i
+            self.spar = mat[:ldab, i:].copy()
 
-        assert abs(np.sum(abs(mat)) - np.sum(abs(self.spar))) < tol
-        
-    def reset(self, mat, nn=None):
-        if nn != None:
-            self.nn = nn
-        if self.tri_type == 'L':
-            self.spar = mat[-self.nn:, :self.nn]
         else:
-            self.spar = mat[:self.nn, -self.nn:]
+            self.flag = 'L'
+            i = 0
+            while dd_array[i] < self.tol and  i < dim - 1:
+                i += 1
+            self.index = -i
+            ldab = dim - i
+            self.spar = mat[i:, :ldab].copy()
+      
+    def reset(self, mat):
+        assert mat.dtype == self.dtype and mat.shape[-1] == self.nb
+        dim = mat.shape[-1]
+        if self.flag == 'U':
+            ldab = dim - self.index
+            self.spar = mat[:ldab, self.index:].copy()            
+        else:
+            ldab = dim + self.index
+            self.spar = mat[-self.index:, :ldab].copy()               
+
+    def recover(self):
+        mat = np.zeros([self.nb, self.nb], self.dtype)
+        if self.flag == 'U':
+            ldab = self.nb - self.index
+            mat[:ldab, self.index:] = self.spar
+        else:
+            ldab = self.nb + self.index
+            mat[-self.index:, :ldab] = self.spar         
+        return mat
 
 class Se_Sparse_Matrix:
     def __init__(self, mat, tri_type, nn=None, tol=1e-12):
@@ -855,6 +941,54 @@ def error_function(x):
 		return r
 	else:
 		return 2. - r
+
+def sum_by_unit(x, unit):
+    dim = x.shape[0]
+    dim1 = int(np.ceil(dim / unit))
+    y = np.empty([dim1], dtype=x.dtype)
+    for i in range(dim1 - 1):
+        y[i] = np.sum(x[i * unit: (i + 1) * unit]) / unit
+    y[0] = y[1]
+    y[-1] = y[-2]
+    return y
+
+def get_pk_hsd(d, ntk, kpts, hl_skmm, sl_kmm, dl_skmm, txt=None):
+    npk = len(kpts) / ntk
+    position = [0, 0, 0]
+    hl_spkmm = substract_pk(d, npk, ntk, kpts, hl_skmm, hors='h')
+    dl_spkmm = substract_pk(d, npk, ntk, kpts, dl_skmm, hors='h')
+    sl_pkmm = substract_pk(d, npk, ntk, kpts, sl_kmm, hors='s')
+    position[d] = 1.0
+    
+    hl_spkcmm = substract_pk(d, npk, ntk, kpts, hl_skmm, 'h', position)
+    dl_spkcmm = substract_pk(d, npk, ntk, kpts, dl_skmm, 'h', position)
+    sl_pkcmm = substract_pk(d, npk, ntk, kpts, sl_kmm, 's', position)
+    
+    tol = 1e-10
+    position[d] = 2.0
+    s_test = substract_pk(d, npk, ntk, kpts, sl_kmm, 's', position)
+    
+    matmax = np.max(abs(s_test))
+    if matmax > tol:
+        if txt != None:
+            txt('Warning*: the principle layer should be lagger, \
+                                                      matmax=%f' % matmax)
+        else:
+            print 'Warning*: the principle layer should be lagger, \
+                                                      matmax=%f' % matmax
+    return hl_spkmm, sl_pkmm, dl_spkmm, hl_spkcmm, sl_pkcmm, dl_spkcmm
+    
+def get_density_matrix(calc):
+    wfs = calc.wfs
+    ns = wfs.nspins
+    kpts = wfs.ibzk_qc
+    nq = len(kpts)
+    d_skmm = np.empty([ns, nq, nao, nao], wfs.dtype)
+    for kpt in wfs.kpt_u:
+        wfs.calculate_density_matrix(kpt.f_n, kpt.C_nM, d_skmm[kpt.s, kpt.q])
+    return d_skmm
+        
+
 class P_info:
     def __init__(self):
         P.x = 0
