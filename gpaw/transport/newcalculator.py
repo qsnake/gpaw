@@ -10,9 +10,11 @@ import gpaw
 from gpaw import GPAW, extra_parameters
 from gpaw import Mixer, MixerDif, PoissonSolver
 from gpaw import restart as restart_gpaw
-from gpaw.transport.tools import k2r_hs, r2k_hs, tri2full, dot, Se_Sparse_Matrix, PathInfo, get_atom_indices, Tp_Sparse_HSD
+from gpaw.transport.tools import tri2full, dot, Se_Sparse_Matrix, PathInfo,\
+          get_atom_indices, Tp_Sparse_HSD, Banded_Sparse_HSD, CP_Sparse_HSD,\
+          substract_pk, get_density_matrix, get_pk_hsd
 from gpaw.transport.intctrl import IntCtrl
-from gpaw.transport.surrounding import Surrounding
+from gpaw.transport.surrounding2 import Surrounding
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.lcao.tools import get_realspace_hs
 from gpaw.mpi import world
@@ -361,24 +363,25 @@ class Transport(GPAW):
                     self.update_lead_hamiltonian(i, 'lead0')    
                 else:
                     self.update_lead_hamiltonian(i)
-                self.initialize_lead(i)
 
             for i in range(self.env_num):
                 self.update_env_hamiltonian(i)
                 self.initialize_env(i)
         elif restart:
-            for l in range(self.lead_num):
-                (self.lead_fermi[l],
-                 self.hl_skmm[l],
-                 self.dl_skmm[l],
-                 self.sl_kmm[l]) = self.pl_read('lead' + str(l)+ '.mat')
-                self.initialize_lead(l)            
+            pass
+            #self.hl_hsd.restart('lead_hsd')
+            
+            #for l in range(self.lead_num):
+            #    (self.lead_fermi[l],
+            #     self.hl_skmm[l],
+            #     self.dl_skmm[l],
+            #     self.sl_kmm[l]) = self.pl_read('lead' + str(l)+ '.mat')
+            #    self.initialize_lead(l)            
 
         self.fermi = self.lead_fermi[0]
 
         world.barrier()
         if self.use_lead:
-            self.check_edge()
             self.get_edge_density()
         
         if self.fixed:
@@ -399,6 +402,7 @@ class Transport(GPAW):
         del self.atoms_l
         del self.atoms_e
         self.initialized_transport = True
+        self.matrix_mode = 'sparse'
 
     def get_hamiltonian_initial_guess(self):
         atoms = self.atoms.copy()
@@ -414,8 +418,8 @@ class Transport(GPAW):
         h_skmm, s_kmm =  self.get_hs(atoms.calc, 'lead')
         ntk = 3
         kpts = atoms.calc.wfs.ibzk_qc
-        h_spkmm = self.substract_pk(ntk, kpts, h_skmm, 'h')
-        s_pkmm = self.substract_pk(ntk, kpts, s_kmm)
+        h_spkmm = substract_pk(self.d, ntk, self.my_npk, kpts, h_skmm, 'h')
+        s_pkmm = substract_pk(self.d, ntk, self.my_npk, kpts, s_kmm)
         fd = file('guess.dat', 'wb')
         pickle.dump((h_spkmm, s_pkmm), fd, 2)
         fd.close()
@@ -542,15 +546,8 @@ class Transport(GPAW):
       
     def initialize_matrix(self):
         if self.use_lead:
-            self.hl_skmm = []
-            self.dl_skmm = []
-            self.sl_kmm = []
-            self.hl_spkmm = []
-            self.dl_spkmm = []
-            self.sl_pkmm = []
-            self.hl_spkcmm = []
-            self.dl_spkcmm = []
-            self.sl_pkcmm = []
+            self.lead_hsd = []
+            self.lead_couple_hsd = []
             self.ed_pkmm = []
             self.lead_index = []
             self.inner_lead_index = []
@@ -577,24 +574,15 @@ class Transport(GPAW):
             dtype = float
         else:
             dtype = complex
-        ns = self.my_nspins        
+        ns = self.my_nspins
+       
         for i in range(self.lead_num):
             nk = len(self.my_lead_kpts)
             nb = self.nblead[i]
-            self.hl_skmm.append(np.empty((ns, nk, nb, nb), complex))
-            self.dl_skmm.append(np.empty((ns, nk, nb, nb), complex))
-            self.sl_kmm.append(np.empty((nk, nb, nb), complex))
-
-            self.hl_spkmm.append(np.empty((ns, npk, nb, nb), dtype))
-            self.dl_spkmm.append(np.empty((ns, npk, nb, nb), dtype))
-            self.sl_pkmm.append(np.empty((npk, nb, nb), dtype))
-
-            self.hl_spkcmm.append(np.empty((ns, npk, nb, nb), dtype))
-            self.dl_spkcmm.append(np.empty((ns, npk, nb, nb), dtype))
-            self.sl_pkcmm.append(np.empty((npk, nb, nb), dtype))
+            self.lead_hsd.append(Banded_Sparse_HSD(dtype, ns, npk))
+            self.lead_couple_hsd.append(CP_Sparse_HSD(dtype, ns, npk))
 
             self.ed_pkmm.append(np.empty((ns, npk, nb, nb), dtype))
-
             self.lead_index.append([])
             self.inner_lead_index.append([])
             self.buffer_index.append([])
@@ -656,17 +644,34 @@ class Transport(GPAW):
         if not self.lead_restart and restart_file==None:
             atoms = self.atoms_l[l]
             atoms.get_potential_energy()
-            self.hl_skmm[l], self.sl_kmm[l] = self.get_hs(atoms.calc)
+            hl_skmm, sl_kmm = self.get_hs(atoms.calc)
             self.lead_fermi[l] = atoms.calc.get_fermi_level()
-            self.dl_skmm[l] = self.initialize_density_matrix('lead', l)
+            dl_skmm = get_density_matrix(atoms.calc)
+            
+            hl_spkmm, sl_pkmm, dl_spkmm,  \
+            hl_spkcmm, sl_pkcmm, dl_spkcmm = get_pk_hsd(self.ntklead,
+                                                atoms.calc.wfs.ibzk_qc,
+                                                hl_skmm, sl_kmm, dl_skmm,
+                                                self.text)
+            for pk in range(self.my_npk):
+                self.lead_hsd[l].reset(0, pk, sl_pkmm[pk], 'S')
+                self.lead_couple_hsd[l].reset(0, pk, sl_pkcmm[pk], 'S')
+                for s in range(self.my_nspins):
+                    self.lead_hsd[l].reset(s, pk, hl_spkmm[s, pk], 'H')     
+                    self.lead_hsd[l].reset(s, pk, dl_spkmm[s, pk], 'D')
+                    self.lead_couple_hsd[l].reset(s, pk, hl_spkcmm[s, pk], 'H')     
+                    self.lead_couple_hsd[l].reset(s, pk, dl_spkcmm[s, pk], 'D')                    
+           
             if self.save_file:
                 atoms.calc.write('lead' + str(l) + '.gpw', db=True,
                                 keywords=['transport', 'electrode', 'lcao'])                    
-                self.pl_write('lead' + str(l) + '.mat',
-                                                  (self.lead_fermi[l],
-                                                   self.hl_skmm[l],
-                                                   self.dl_skmm[l],
-                                                   self.sl_kmm[l]))            
+                #self.pl_write('lead' + str(l) + '.mat',
+                #                                  (self.lead_fermi[l],
+                #                                   self.hl_skmm[l],
+                #                                   self.dl_skmm[l],
+                #                                   self.sl_kmm[l]))
+                
+                #self.lead_hsd[l].store('XXXX')
         else:
             if restart_file == None:
                 restart_file = 'lead' + str(l)
@@ -674,10 +679,7 @@ class Transport(GPAW):
             calc.set_positions()
             self.recover_kpts(calc)
             self.atoms_l[l] = atoms
-            (self.lead_fermi[l],
-             self.hl_skmm[l],
-             self.dl_skmm[l],
-             self.sl_kmm[l]) = self.pl_read(restart_file +'.mat')
+            #self.lead_hsd[l].read('XXX')
 
     def update_env_hamiltonian(self, l):
         if not self.env_restart:
@@ -685,7 +687,7 @@ class Transport(GPAW):
             atoms.get_potential_energy()
             self.he_skmm[l], self.se_kmm[l] = self.get_hs(atoms.calc)
             self.env_fermi[l] = atoms.calc.get_fermi_level()
-            self.de_skmm[l] = self.initialize_density_matrix('env', l)
+            self.de_skmm[l] = get_density_matrix(atoms.calc)
             if self.save_file:
                 atoms.calc.write('env' + str(l) + '.gpw', db=True,
                                  keywords=['transport',
@@ -716,7 +718,7 @@ class Transport(GPAW):
             #    self.h_skmm = np.real(self.h_skmm).copy()
          
             if not self.fixed:
-                self.d_skmm = self.initialize_density_matrix('scat')
+                self.d_skmm = get_density_matrix(self)
             else:
              
                 #self.d_skmm = np.zeros(self.h_skmm.shape, self.h_skmm.dtype)
@@ -769,31 +771,10 @@ class Transport(GPAW):
 
     def calculate_hamiltonian_matrix(self, kpt):
         assert self.fixed
-        wfs = self.wfs
-        hamiltonian = self.hamiltonian
-        eigensolver = wfs.eigensolver
-        assert eigensolver.has_initialized
         s = kpt.s
         q = kpt.q
         H_MM = self.surround.calculate_potential_matrix(hamiltonian.vt_sG,
-                                                                      s, q)
-        Mstart = wfs.basis_functions.Mstart
-        Mstop = wfs.basis_functions.Mstop
-
-        test = np.zeros(H_MM.shape, H_MM.dtype) 
-        for a, P_Mi in kpt.P_aMi.items():
-            dH_ii = np.asarray(unpack(hamiltonian.dH_asp[a][s]), P_Mi.dtype)
-            dHP_iM = np.zeros((dH_ii.shape[1], P_Mi.shape[0]), P_Mi.dtype)
-            gemm(1.0, P_Mi, dH_ii, 0.0, dHP_iM, 'c')
-            if Mstart != -1:
-                P_Mi = P_Mi[Mstart:Mstop]
-            gemm(1.0, dHP_iM, P_Mi, 1.0, H_MM)
-            gemm(1.0, dHP_iM, P_Mi, 1.0, test)            
-          
-        eigensolver.gd.comm.sum(H_MM)
-        H_MM += self.surround.sah_spkmm[s, q]
-        test += self.surround.sah_spkmm[s, q]
-        self.test_atomic_hamiltonian_matrix = np.diag(test)
+                                                                      kpt)
         H_MM += wfs.T_qMM[q]
         return H_MM
         
@@ -854,26 +835,6 @@ class Transport(GPAW):
         self.initialize_mol()
         #self.boundary_check()
     
-    def initialize_lead(self, l):
-        nspins = self.my_nspins
-        ntk = self.ntklead
-        nblead = self.nblead[l]
-        kpts = self.my_lead_kpts
-        position = [0, 0, 0]
-        spk = self.substract_pk
-        if l == 0:
-            position[self.d] = 1.0
-        elif l == 1:
-            position[self.d] = -1.0
-        else:
-            raise NotImplementError('can no deal with multi-terminal now')
-        self.hl_spkmm[l] = spk(ntk, kpts, self.hl_skmm[l], 'h')
-        self.sl_pkmm[l] = spk(ntk, kpts, self.sl_kmm[l])
-        self.hl_spkcmm[l] = spk(ntk, kpts, self.hl_skmm[l], 'h', position)
-        self.sl_pkcmm[l] = spk(ntk, kpts, self.sl_kmm[l], 's', position)
-        self.dl_spkmm[l] = spk(ntk, kpts, self.dl_skmm[l], 'h')
-        self.dl_spkcmm[l] = spk(ntk, kpts, self.dl_skmm[l], 'h', position)
-
     def initialize_env(self, l):
         wfs = self.atoms_e[l].calc.wfs
         kpts = wfs.ibzk_kc
@@ -896,59 +857,14 @@ class Transport(GPAW):
     def initialize_mol(self):
         self.remove_matrix_corner()
 
-    def substract_pk(self, ntk, kpts, k_mm, hors='s', position=[0, 0, 0]):
-        npk = self.my_npk
-        weight = np.array([1.0 / ntk] * ntk )
-        if hors not in 'hs':
-            raise KeyError('hors should be h or s!')
-        if hors == 'h':
-            dim = k_mm.shape[:]
-            dim = (dim[0],) + (dim[1] / ntk,) + dim[2:]
-            pk_mm = np.empty(dim, k_mm.dtype)
-            dim = (dim[0],) + (ntk,) + dim[2:]
-            tk_mm = np.empty(dim, k_mm.dtype)
-        elif hors == 's':
-            dim = k_mm.shape[:]
-            dim = (dim[0] / ntk,) + dim[1:]
-            pk_mm = np.empty(dim, k_mm.dtype)
-            dim = (ntk,) + dim[1:]
-            tk_mm = np.empty(dim, k_mm.dtype)
-        if self.LR_leads:
-            tkpts = self.pick_out_tkpts(ntk, kpts)
-        else:
-            tkpts = kpts
-        for i in range(npk):
-            n = i * ntk
-            for j in range(ntk):
-                if hors == 'h':
-                    tk_mm[:, j] = np.copy(k_mm[:, n + j])
-                elif hors == 's':
-                    tk_mm[j] = np.copy(k_mm[n + j])
-            if hors == 'h':
-                pk_mm[:, i] = k2r_hs(tk_mm, None, tkpts, weight, position)
-            elif hors == 's':
-                pk_mm[i] = k2r_hs(None, tk_mm, tkpts, weight, position)
-        return pk_mm   
-            
-    def check_edge(self):
-        tolx = 1e-6
-        position = [0,0,0]
-        position[self.d] = 2.0
-        ntk = self.ntklead
-        kpts = self.my_lead_kpts
-        s_pkmm = self.substract_pk(ntk, kpts, self.sl_kmm[0], 's', position)
-        matmax = np.max(abs(s_pkmm))
-        if matmax > tolx:
-            self.text('Warning*: the principle layer should be lagger, \
-                                                          matmax=%f' % matmax)
-    
     def get_edge_density(self):
+        hsd = self.lead_couple_hsd
         for n in range(self.lead_num):
-            for i in range(self.my_nspins):
-                for j in range(self.my_npk):
-                    self.ed_pkmm[n][i, j] = dot(self.dl_spkcmm[n][i, j],
-                                                 self.sl_pkcmm[n][j].T.conj())
-                    self.ec[n, i] += np.real(np.trace(self.ed_pkmm[n][i, j]))   
+            for s in range(self.my_nspins):
+                for pk in range(self.my_npk):
+                    self.ed_pkmm[n][s, pk] = dot(hsd[n].D[s][pk].recover(),
+                                             hsd[n].S[pk].recover().T.conj())
+                    self.ec[n, s] += np.real(np.trace(self.ed_pkmm[n][s, pk]))#*self.weight[pk]?   
         self.pkpt_comm.sum(self.ec)
         self.ed_pkmm *= 3 - self.nspins
         self.ec *= 3 - self.nspins
@@ -959,114 +875,9 @@ class Transport(GPAW):
                     self.total_edge_charge  += self.ec[n, i] / self.npk
         self.text('edge_charge =%f' % (self.total_edge_charge))
 
-    def pick_out_tkpts(self, ntk, kpts):
-        npk = self.npk
-        tkpts = np.zeros([ntk, 3])
-        for i in range(ntk):
-            tkpts[i, self.d] = kpts[i, self.d]
-        return tkpts
-
-    def initialize_density_matrix(self, region, l=0):
-        npk = self.npk
-        my_npk = self.my_npk
-        ns = self.my_nspins
-        
-        if region == 'lead':
-            ntk = self.ntklead
-            calc = self.atoms_l[l].calc
-            d_skmm = np.empty(self.hl_skmm[l].shape, self.hl_skmm[l].dtype)
-            nk = ntk * npk
-            weight = [1. / nk] * ntk * my_npk * ns
-
-        if region == 'env':
-            calc = self.atoms_e[l].calc
-            weight = calc.wfs.weight_k
-            d_skmm = np.empty(self.he_skmm[l].shape, self.he_skmm[l].dtype)
-        
-        if region == 'scat':
-            ntk = self.ntkmol
-            calc = self
-            d_skmm = np.empty(self.h_skmm.shape, self.h_skmm.dtype)
-            nk = ntk * npk
-            weight = [1. / nk] * ntk * my_npk * ns
-        for kpt, i in zip(calc.wfs.kpt_u, range(len(calc.wfs.kpt_u))):
-            C_nm = kpt.C_nM
-            f_nn = np.diag(kpt.f_n)
-            if ns == 2:
-                d_skmm[kpt.s, kpt.q] = np.dot(C_nm.T.conj(),
-                                             np.dot(f_nn, C_nm)) / weight[i]
-            else:
-                d_skmm[0, kpt.q] = np.dot(C_nm.T.conj(),
-                                             np.dot(f_nn, C_nm)) / weight[i]
-        return d_skmm
-
     def boundary_check(self):
         tol = 5.e-4
-        if self.use_lead:
-            ham_diff = np.empty([self.lead_num])
-            den_diff = np.empty([self.lead_num])
-            self.e_float = np.empty([self.lead_num])
-            for i in range(self.lead_num):
-                ind = self.lead_index[i]
-                dim = len(ind)
-                ind = np.resize(ind, [dim, dim])
-                h_mat_diff = self.h_skmm[:, :, ind.T, ind] - self.hl_spkmm[i]
-                d_mat_diff = self.d_skmm[:, :, ind.T, ind] - self.dl_spkmm[i]
-                ham_diff[i] = np.max(abs(h_mat_diff))
-                den_diff[i] = np.max(abs(d_mat_diff))
-                im = self.edge_index[1][i]
-                il = self.edge_index[0][i]
-                self.e_float[i] = (self.h_skmm[0, 0, im, im] -
-                                          self.hl_spkmm[i][0, 0, il, il]) / \
-                                          self.sl_pkmm[i][0, il, il]
-            
-            self.edge_ham_diff = np.max(ham_diff)
-            self.edge_den_diff = np.max(den_diff)
-            if self.align:
-                for i in range(self.lead_num):
-                    self.hl_spkmm[i][:] += self.sl_pkmm[i] * self.e_float[i]
-                    self.hl_spkcmm[i][:] += self.sl_pkcmm[i] * self.e_float[i]
-                    self.hl_skmm[i][:] += self.sl_kmm[i] * self.e_float[i]
-                    self.lead_fermi[i] += self.e_float[i]
-                self.fermi = self.lead_fermi[0]    
-
-            self.text('********cancel boundary shift***********')
-
-            for i in range(self.lead_num):
-                if ham_diff[i] > tol and self.master:
-                    self.text('Warning*: hamiltonian boundary difference lead %d  %f' %
-                                                                 (i, self.e_float[i]))
-                if den_diff[i] > tol and self.master:
-                    self.text('Warning*: density boundary difference lead %d %f' % 
-                                                             (i, den_diff[i]))
-
-        if self.use_env:
-            env_ham_diff = np.empty([self.env_num])
-            env_den_diff = np.empty([self.env_num])            
-            self.env_e_float = np.empty([self.env_num])
-            for i in range(self.env_num):
-                ind = self.env_index[i]
-                dim = len(ind)
-                ind = np.resize(ind, [dim, dim])
-                env_h_mat_diff = self.h_skmm[:, :, ind.T, ind] - \
-                                                               self.he_skmm[i]
-                env_d_mat_diff = self.d_skmm[:, :, ind.T, ind] - \
-                                                               self.de_skmm[i]            
-                env_ham_diff[i] = np.max(abs(env_h_mat_diff))
-                env_den_diff[i] = np.max(abs(env_d_mat_diff))
-                im = self.env_edge_index[1][i]
-                ie = self.env_edge_index[0][i]
-                self.env_e_float[i] = (self.h_skmm[0, 0, im, im] -
-                                       self.he_skmm[i][0, 0, ie, ie]) / \
-                                       self.se_kmm[i][0, ie, ie]
-            self.env_edge_ham_diff = np.max(env_ham_diff)
-            self.env_dege_den_diff = np.max(env_den_diff)
-        
-            for i in range(self.env_num):
-                self.he_skmm[i][:] += self.se_kmm[i] * self.env_e_float[i]
-                self.he_smm[i][:] += self.se_mm[i] * self.env_e_float[i]
-
-            
+           
     def get_selfconsistent_hamiltonian(self):
         self.initialize_scf()
         ##temperary lines
@@ -1125,8 +936,6 @@ class Transport(GPAW):
                     d_mm = self.spin_coff * (
                                                               den[s, k] +
                                                               denocc[s, k])
-                    #self.d_skmm[s, k, ind.T, ind] = (d_mm +
-                    #                                  d_mm.T.conj()) / 2
                     
                     self.hsd.reset(s, k, (d_mm + d_mm.T.conj()) / 2, 'D')
                     #del self.eqpathinfo[s][k][:]
@@ -1134,8 +943,6 @@ class Transport(GPAW):
         else:
             for s in range(ns):
                 for k in range(self.my_npk):
-                    #self.d_skmm[s, k, ind.T, ind] = self.spin_coff *   \
-                    #                                 self.fock2den(s, k)
                     self.hsd.reset(s, k, self.spin_coff * self.fock2den(s, k), 'D')
         self.add_matrix_corner()
         self.timer.stop('DenMM')
@@ -2698,13 +2505,8 @@ class Transport(GPAW):
         self.selfenergies = []
         if self.use_lead:
             for i in range(self.lead_num):
-                self.selfenergies.append(LeadSelfEnergy((self.hl_spkmm[i][0,0],
-                                                             self.sl_pkmm[i][0]), 
-                                                (self.hl_spkcmm[i][0,0],
-                                                             self.sl_pkcmm[i][0]),
-                                                (self.hl_spkcmm[i][0,0],
-                                                             self.sl_pkcmm[i][0]),
-                                                 1e-8))
+                self.selfenergies.append(LeadSelfEnergy(self.lead_hsd[i],
+                                                      self.lead_couple_hsd[i]))
     
                 self.selfenergies[i].set_bias(self.bias[i])
             
@@ -2801,253 +2603,6 @@ class Transport(GPAW):
         if self.fixed:
             del self.surround
  
-    def restart_and_abstract_result(self, v_limit=3, num_v=16):
-        bias = np.linspace(0, v_limit, num_v)
-        current = np.empty([num_v])
-        result = {}
-        result['N'] = num_v
-        for i in range(num_v):
-            self.input('bias' + str(i))
-            self.hamiltonian.vt_sG += self.get_linear_potential()
-            result['step_data' + str(i)] = self.result_for_one_bias_step()            
-            current[i] = self.current
-        result['i_v'] = (bias, current)    
-        if self.master:
-            fd = file('result.dat', 'wb')
-            pickle.dump(result, fd, 2)
-            fd.close()
-            
-    def result_for_one_bias_step(self):
-        step_data = {}
-        step_data['bias'] = self.bias
-        step_data['v_d'] = self.abstract_d_and_v()
-        ef = self.fermi 
-        step_data['t_dos'] = self.calculate_dos([ef-4, ef+4])
-        return step_data
-
-    def get_boundary_info(self):
-        data={}
-        #data['dmm'] = np.diag(self.d_skmm[0,0])
-        #data['hmm'] = np.diag(self.h_skmm[0,0])
-        dim = self.density.nt_sG.shape[1] / 2
-        data['den'] = self.density.nt_sG[0, dim, dim]
-        data['ham'] = self.hamiltonian.vt_sG[0, dim, dim]
-        if hasattr(self, 'test_atomic_hamiltonian_matrix'):
-            data['atomic_ham'] = self.test_atomic_hamiltonian_matrix
-        if self.fixed:
-            data['boundary'] = self.surround.boundary_data
-        data['step'] = self.step
-        return data
-  
-    def analysis(self,  flag='bias'):
-        if self.master:
-            if flag == 'bias':
-                fd = file('result.dat', 'r')
-                result = pickle.load(fd)
-                fd.close()
-                num_v = result['N']
-                for i in range(num_v):
-                    step_data = result['step_data' + str(i)]
-                    self.plot_step_data(step_data)
-                self.plot_iv(result['i_v'])
-            elif flag == 'ele':
-                fd = file('ele.dat', 'r')
-                result = pickle.load(fd)
-                fd.close()
-                num_e = len(result)
-                for i in range(num_e):
-                    step_data = result['step_data' + str(i)]
-                    self.plot_boundary_info(step_data)
-
-    def analysis_compare(self):
-        if self.master:
-            fd = file('result.dat', 'r')
-            result = pickle.load(fd)
-            fd.close()
-            num_v = result['N']
-            step_data1 = result['step_data' + str(0)]
-            step_data2 = result['step_data' + str(1)]
-            self.compare_step_data(step_data1, step_data2)
-            
-    def compare_step_data(self, step_data1, step_data2):
-        overview_d = 1
-        self.nspins = 1
-        sd = step_data1['t_dos']
-        bias = step_data1['bias']
-        import pylab
-        pylab.figure(1)
-        pylab.subplot(211)
-        pylab.plot(sd['e_points'], sd['T_e'], 'b-o', sd['f1'], sd['l1'],
-                                    'r--', sd['f2'], sd['l1'], 'r--')
-        pylab.ylabel('Transmission Coefficients')
-        pylab.subplot(212)
-        pylab.plot(sd['e_points'], sd['dos_e'], 'b-o', sd['f1'], sd['l2'],
-                                      'r--', sd['f2'], sd['l2'], 'r--')
-        pylab.ylabel('Density of States')
-        pylab.xlabel('Energy (eV)')
-        pylab.title('bias=' + str(bias))
-        pylab.show()
-        
-        sd = step_data2['t_dos']
-        bias = step_data2['bias']
-        import pylab
-        from mytools import gnu_save
-        pylab.figure(1)
-        pylab.subplot(211)
-        pylab.plot(sd['e_points'], sd['T_e'], 'b-o', sd['f1'], sd['l1'],
-                                    'r--', sd['f2'], sd['l1'], 'r--')
-        pylab.ylabel('Transmission Coefficients')
-        pylab.subplot(212)
-        pylab.plot(sd['e_points'], sd['dos_e'], 'b-o', sd['f1'], sd['l2'],
-                                      'r--', sd['f2'], sd['l2'], 'r--')
-        pylab.ylabel('Density of States')
-        pylab.xlabel('Energy (eV)')
-        pylab.title('bias=' + str(bias))
-        pylab.show()        
-        
-        sd1 = step_data1['v_d']
-        sd2 = step_data2['v_d']
-        bias1 = step_data1['bias']
-        bias2 = step_data2['bias']
-        dd = ['x', 'y', 'z']
-        for s in range(self.nspins):
-            tmp = sd1['s' + str(s) + 'vt_1d_' + dd[self.d]] - sd2['s' + str(s) + 'vt_1d_' + dd[self.d]]
-            pylab.plot(tmp * Hartree, 'b--o') 
-            pylab.ylabel('potential(eV)')
-            pylab.title('spin' + str(s) + 'bias=' + str(bias1) + '-' + str(bias2))
-            pylab.show()
-
-            tmp = sd1['s' + str(s) + 'nt_1d_' + dd[self.d]] - sd2['s' + str(s) + 'nt_1d_' + dd[self.d]]        
-            pylab.plot(tmp, 'b--o')
-            pylab.ylabel('density')
-            pylab.title('spin' + str(s) + 'bias=' + str(bias1) + '-' + str(bias2))
-            pylab.show()
-
-            tmp = sd1['s' + str(s) + 'vt_2d_' + dd[overview_d]] - sd2['s' + str(s) + 'vt_2d_' + dd[overview_d]]          
-            cb = pylab.matshow(tmp * Hartree)
-            pylab.title('spin' + str(s) + 'potential(eV) at bias=' + str(bias1) + '-' + str(bias2))
-            pylab.colorbar()
-            pylab.show()
-
-            tmp = sd1['s' + str(s) + 'nt_2d_' + dd[overview_d]] - sd2['s' + str(s) + 'nt_2d_' + dd[overview_d]]              
-            cb = pylab.matshow(tmp)
-            gnu_save('diff_s', tmp) 
-            pylab.title('spin' + str(s) + 'density at bias=' + str(bias1) + '-' + str(bias2))
-            pylab.colorbar()                
-            pylab.show()        
-       
-    def plot_step_data(self, step_data):
-        overview_d = 1
-        #self.d = 0
-        self.nspins = 2
-        sd = step_data['t_dos']
-        bias = step_data['bias']
-        import pylab
-        pylab.figure(1)
-        pylab.subplot(211)
-        pylab.plot(sd['e_points'], sd['T_e'], 'b-o', sd['f1'], sd['l1'],
-                                    'r--', sd['f2'], sd['l1'], 'r--')
-        pylab.ylabel('Transmission Coefficients')
-        pylab.subplot(212)
-        pylab.plot(sd['e_points'], sd['dos_e'], 'b-o', sd['f1'], sd['l2'],
-                                      'r--', sd['f2'], sd['l2'], 'r--')
-        pylab.ylabel('Density of States')
-        pylab.xlabel('Energy (eV)')
-        pylab.title('bias=' + str(bias))
-        pylab.show()
-        
-        sd = step_data['v_d']
-        dd = ['x', 'y', 'z']
-        for s in range(self.nspins):
-            pylab.plot(sd['s' + str(s) + 'vt_1d_' + dd[self.d]] * Hartree, 'b--o') 
-            pylab.ylabel('potential(eV)')
-            pylab.title('spin' + str(s) + 'bias=' + str(bias))
-            pylab.show()
-        
-            pylab.plot(sd['s' + str(s) + 'nt_1d_' + dd[self.d]], 'b--o')
-            pylab.ylabel('density')
-            pylab.title('spin' + str(s) + 'bias=' + str(bias))
-            pylab.show()
-        
-            cb = pylab.matshow(sd['s' + str(s) + 'vt_2d_' + dd[overview_d]] * Hartree)
-            pylab.title('spin' + str(s) + 'potential(eV) at bias=' + str(bias))
-            pylab.colorbar()               
-            pylab.show()
-       
-            cb = pylab.matshow(sd['s' + str(s) + 'nt_2d_' + dd[overview_d]])
-            pylab.title('spin' + str(s) + 'density at bias=' + str(bias))
-            pylab.colorbar()
-            pylab.show()
-        if self.nspins == 2:
-            cb = pylab.matshow(sd['s' + str(0) + 'vt_2d_' + dd[overview_d]] * Hartree -
-                           sd['s' + str(1) + 'vt_2d_' + dd[overview_d]] * Hartree)
-            pylab.title('spin_diff' + 'potential(eV) at bias=' + str(bias))
-            pylab.colorbar()                
-            pylab.show()
-       
-            cb = pylab.matshow(sd['s' + str(0) + 'nt_2d_' + dd[overview_d]] -
-                               sd['s' + str(1) + 'nt_2d_' + dd[overview_d]])
-            pylab.title('spin_diff' + 'density at bias=' + str(bias))
-            pylab.colorbar()                
-            pylab.show()
- 
-    def plot_boundary_info(self, step_data):
-        import pylab
-        bsd = step_data
-        pylab.plot(bsd['dmm'], 'b--o')
-        pylab.title('dmm')
-        pylab.show()
-        pylab.plot(bsd['hmm'], 'b--o')
-        pylab.title('hmm')        
-        pylab.show()
-        pylab.plot(bsd['den'], 'b--o')
-        pylab.title('den')        
-        pylab.show()
-        pylab.plot(bsd['ham'], 'b--o')
-        pylab.title('ham')        
-        pylab.show()
-        if 'atomic_ham' in bsd:
-            pylab.plot(bsd['atomic_ham'], 'b--o')
-            pylab.title('atomic_ham')        
-            pylab.show()        
-        pylab.plot(bsd['boundary']['nt_sG'], 'b--o')
-        pylab.title('boundary_nt_sG')        
-        pylab.show()
-        pylab.plot(bsd['boundary']['vt_sG'], 'b--o')
-        pylab.title('boundary_vt_sG')        
-        pylab.show()        
-        pylab.plot(bsd['boundary']['vt_sg'], 'b--o')
-        pylab.title('boundary_vt_sg')        
-        pylab.show()
-        pylab.plot(bsd['boundary']['vt_sg1'], 'b--o')
-        pylab.title('boundary_vt_sg1')        
-        pylab.show()
-        pylab.plot(bsd['boundary']['rhot_g'], 'b--o')
-        pylab.title('boundary_rhot_g')        
-        pylab.show()
-        pylab.plot(bsd['boundary']['rhot_g1'], 'b--o')
-        pylab.title('boundary_rhot_g1')        
-        pylab.show()        
-        pylab.plot(bsd['boundary']['vHt_g1'], 'b--o')
-        pylab.title('boundary_vHt_g1')        
-        pylab.show()          
-
-        pylab.plot(bsd['boundary']['rhot_g2'], 'b--o')
-        pylab.title('boundary_rhot_g2')        
-        pylab.show()        
-        pylab.plot(bsd['boundary']['vHt_g2'], 'b--o')
-        pylab.title('boundary_vHt_g2')        
-        pylab.show()
-        
-        
-    def plot_iv(self, i_v):
-        v, i = i_v
-        import pylab
-        pylab.plot(v, i, 'b--o')
-        pylab.xlabel('bias(V)')
-        pylab.ylabel('current(au.)')
-        pylab.show()
-      
     def recover_kpts(self, calc):
         wfs = calc.wfs
         hamiltonian = calc.hamiltonian
@@ -3055,14 +2610,5 @@ class Transport(GPAW):
         wfs.eigensolver.iterate(hamiltonian, wfs)
         occupations.calculate(wfs)
      
-    def spy(self, var_name, var):
-        if not hasattr(self, 'spy_data'):
-            self.spy_data = {}
-        if var_name not in self.spy_data:
-            self.spy_data[var_name] = []
-        self.spy_data[var_name].append(var)
-        if self.master:
-            fd = file('spy_data', 'wb')
-            pickle.dump(self.spy_data, fd, 2)
-            fd.close()
+
           
