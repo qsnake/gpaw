@@ -661,7 +661,9 @@ class BasisMaker:
         for bf in basis.bf_j:
             label = bf.type
             # XXX times g.r or not times g.r ?
-            pylab.plot(r, bf.phit_g * r, label=label[:12])
+            phit_g = npy.zeros_like(r)
+            phit_g[:len(bf.phit_g)] = bf.phit_g
+            pylab.plot(r, phit_g * r, label=label[:12])
         axis = pylab.axis()
         newaxis = [0., rc, axis[2], axis[3]]
         pylab.axis(newaxis)
