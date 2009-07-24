@@ -83,6 +83,27 @@ gpaw-logo.odg_, gpaw-logo.svg_
 .. _gpaw-logo.odg: ../_static/gpaw-logo.odg
 .. _gpaw-logo.svg: ../_static/gpaw-logo.svg
 
+
+Statistics
+==========
+
+The image below shows the development in the volume of the code as per
+July 24 2009.
+
+.. image:: ../_static/stat.png
+
+*Documentation* refers solely the contents of this homepage. Inline
+documentation is included in the other line counts.
+
+.. ::
+
+   Commented text!
+
+   The gpaw development project currently count about 20 active
+   developers in 7 universities, and has 93 subscribers to the mailing
+   list.
+
+
 Old pages
 =========
 
@@ -93,4 +114,3 @@ These pages may contain inaccurate or outdated information
 
    bugs
    testsuite
-   statistics
