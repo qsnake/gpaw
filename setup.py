@@ -79,6 +79,7 @@ for dir_to_remove in ['test/analyse', 'test/parallel', 'test/long',
         test_files.remove(dir_to_remove)
 test_analyse_files = glob('test/analyse/*')
 test_parallel_files = glob('test/parallel/*')
+test_vdw_files = glob('test/vdw/*')
 
 data_files=[
     #('share/gpaw/examples', examples_files),
@@ -86,7 +87,8 @@ data_files=[
     #('share/gpaw/examples/tutorials', examples_tutorials_files),
     ('share/gpaw/test', test_files),
     ('share/gpaw/test/analyse', test_analyse_files),
-    ('share/gpaw/test/parallel', test_parallel_files)
+    ('share/gpaw/test/parallel', test_parallel_files),
+    ('share/gpaw/test/vdw', test_vdw_files)
     ]
 
 include_ase = False
@@ -212,7 +214,7 @@ extension = Extension('_gpaw',
                       extra_objects=extra_objects)
 
 scripts = [join('tools', script)
-           for script in ('gpaw-setup', 'gpaw-basis')]
+           for script in ('gpaw-setup', 'gpaw-basis', 'gpaw-mpisim')]
 
 write_configuration(define_macros, include_dirs, libraries, library_dirs,
                     extra_link_args, extra_compile_args,
