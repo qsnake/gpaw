@@ -54,6 +54,8 @@ class SCFLoop:
             if iter > self.niter_fixdensity:
                 density.update(wfs)
                 hamiltonian.update(density)
+            else:
+                hamiltonian.npoisson = 0
 
         # Don't fix the density in the next step:
         self.niter_fixdensity = 0

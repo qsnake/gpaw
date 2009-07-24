@@ -230,7 +230,9 @@ class PAWTextOutput:
 
         nibzkpts = self.wfs.nibzkpts
 
-        if self.wfs.kpt_comm.size > 1:
+        # Print parallelization details
+        t('Total number of nodes used: %d' % size)
+        if self.wfs.kpt_comm.size > 1: # kpt/spin parallization
             if self.wfs.nspins == 2 and nibzkpts == 1:
                 t('Parallelization Over Spin')
             elif self.wfs.nspins == 2:
@@ -239,15 +241,12 @@ class PAWTextOutput:
             else:
                 t('Parallelization Over k-points on %d Processors' %
                   self.wfs.kpt_comm.size)
-
-        gd = self.gd
-        if gd.comm.size > 1:
+        if self.gd.comm.size > 1: # domain parallelization
             t('Using Domain Decomposition: %d x %d x %d' %
-              tuple(gd.parsize_c))
+              tuple(self.gd.parsize_c))
 
         if self.wfs.symmetry is not None:
             self.wfs.symmetry.print_symmetries(t)
-
         t(('%d k-point%s in the Irreducible Part of the ' +
            'Brillouin Zone (total: %d)') %
           (nibzkpts, ' s'[1:nibzkpts], len(self.wfs.bzk_kc)))
@@ -397,6 +396,8 @@ class PAWTextOutput:
                 niterocc = '%d' % niterocc
 
             niterpoisson = '%d' % self.hamiltonian.npoisson
+            if niterpoisson == '0':
+                niterpoisson = ' fixed '
 
             t("iter: %3d  %02d:%02d:%02d  %-5s  %-5s    %- 12.5f %-5s  %-7s" %
               (iter,
