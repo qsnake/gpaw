@@ -4,6 +4,11 @@
 Niflheim
 ========
 
+.. note::
+
+  Niflheim has recently been upgraded by some new nodes. For information on
+  building gpaw on these. Please see :ref:`newNiflheim`.
+
 Information about the Niflheim cluster can be found at
 `<https://wiki.fysik.dtu.dk/niflheim>`_.
 

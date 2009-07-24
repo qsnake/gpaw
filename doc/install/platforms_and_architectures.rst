@@ -49,6 +49,7 @@ Linux:
    Linux/openSUSE
    Linux/Ubuntu
    Linux/Niflheim/Niflheim
+   Linux/Niflheim/new/newNiflheim
    Linux/akka
    Linux/batman
    Linux/carbon_cnm
