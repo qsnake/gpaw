@@ -423,7 +423,7 @@ class PAW(PAWTextOutput):
         if par.mode == 'lcao':
             niter_fixdensity = 0
         else:
-            niter_fixdensity = 2
+            niter_fixdensity = None
 
         if self.scf is None:
             self.scf = self.scf_loop_class(cc['eigenstates'] * nvalence, 
