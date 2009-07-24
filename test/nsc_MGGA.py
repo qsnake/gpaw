@@ -5,6 +5,7 @@ from gpaw import GPAW
 from gpaw.atom.generator import Generator, parameters
 from gpaw.xc_functional import XCFunctional
 from gpaw import setup_paths
+from gpaw.utilities import equal
 
 # test with revision 4432
 
@@ -30,8 +31,8 @@ print 'tpss = ', e1+de12t
 print 'm06l = ', e1+de12m
 print '================'
 
-assert abs(e1+de12t-15.5749645819)< 0.005
-assert abs(e1+de12m-15.6913237136)< 0.005
+equal(e1+de12t, 15.5749645819, 0.005)
+equal(e1+de12m, 15.6913237136, 0.005)
 
 symbol = 'He'
 g = Generator(symbol, 'TPSS', scalarrel=True, nofiles=True)
@@ -55,5 +56,5 @@ print 'tpss = ', e1He+de12tHe
 print 'm06l = ', e1He+de12mHe
 print '================'
 
-assert (e1He+de12tHe-2.23392895229)< 0.005
-assert (e1He+de12mHe-1.64218259886)< 0.005
+equal(e1He+de12tHe, 2.23392895229, 0.005)
+equal(e1He+de12mHe, 1.64218259886, 0.005)
