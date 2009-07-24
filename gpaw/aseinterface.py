@@ -624,6 +624,9 @@ class GPAW(PAW):
     def get_number_of_grid_points(self):
         return self.gd.N_c
 
+    def get_number_of_iterations(self):
+        return self.iter
+
     def GetEnsembleCoefficients(self):
         """Get BEE ensemble coefficients.
 
