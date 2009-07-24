@@ -360,7 +360,7 @@ setenv GPAW_PYTHON /mnt/nas2/wrk/walter/gridpaw/trunk/build/bin.linux-x86_64-2.4
         print >> f,"#$ -o",set['out']+'_$JOB_ID'
         print >> f,"#$ -e",set['err']+'_$JOB_ID'
         if set['mail'] is not None:
-            print >> f,"#$ -M",set['mail']
+            print >> f,"#$ -M", set['mail']
         print >> f,"#$ -m be"
         print >> f,"#$ -pe mpich",set['cores']
         if set['mem']:
@@ -406,9 +406,12 @@ echo \"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\"
             mem = 5000
         else:
             mem = 2000
-        print 'use: job_submit -t', str(minutes(set['time'])),\
-              '-m ' + str(mem) +' -p', str(set['cores']), \
-              '-c ' + jobclass + ' run.xc2'
+        msg = 'use: job_submit -t ' + str(minutes(set['time'])) +\
+              ' -m ' + str(mem) +' -p' + str(set['cores']) +\
+              ' -c ' + jobclass + ' run.xc2'
+        if set['mail'] is not None:
+            msg += ' -Nbc:' + str(set['mail'])
+        print msg
 
 # ............................................................
 # program
