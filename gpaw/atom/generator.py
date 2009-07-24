@@ -116,9 +116,9 @@ parameters_extra = {
 class Generator(AllElectron):
     def __init__(self, symbol, xcname='LDA', scalarrel=False, corehole=None,
                  configuration=None,
-                 nofiles=True, txt='-'):
+                 nofiles=True, txt='-', gpernode=150):
         AllElectron.__init__(self, symbol, xcname, scalarrel, corehole,
-                             configuration, nofiles, txt)
+                             configuration, nofiles, txt, gpernode)
 
     def run(self, core='', rcut=1.0, extra=None,
             logderiv=False, vbar=None, exx=False, name=None,

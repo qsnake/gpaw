@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 
 # Emacs: treat this as -*- python -*-
 
@@ -54,6 +54,8 @@ parser.add_option('-w', '--write-files', action='store_true',
                   help='Write wave functions and other things to files.')
 parser.add_option('-p', '--plot', action='store_true',
                   help='Show plot and generate reStructuredText.')
+parser.add_option('-g', '--points-per-node', metavar='<gpernode>', type='int',
+                  default=150, help='Number of radial grid points per node.')
 
 opt, args = parser.parse_args()
 
@@ -89,7 +91,8 @@ for symbol in atoms:
         
     if opt.all_electron_only:
         a = AllElectron(symbol, opt.xcfunctional, scalarrel, corehole,
-                        opt.configuration, not opt.write_files)
+                        opt.configuration, not opt.write_files, '-',
+                        opt.points_per_node)
         try:
             a.run()
         except ConvergenceError:
@@ -97,7 +100,8 @@ for symbol in atoms:
         continue
     
     g = Generator(symbol, opt.xcfunctional, scalarrel, corehole,
-                  opt.configuration, not opt.write_files)
+                  opt.configuration, not opt.write_files, '-',
+                  opt.points_per_node)
 
     p = parameters.get(symbol, {})
             
