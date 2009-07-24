@@ -144,7 +144,7 @@ class Eigensolver:
         if self.band_comm.size > 1 and wfs.bd.strided:
             raise NotImplementedError
 
-        self.timer.start('Subspace diag.')
+        self.timer.start('Subspace diag')
 
         psit_nG = kpt.psit_nG
         P_ani = kpt.P_ani
@@ -175,9 +175,9 @@ class Eigensolver:
         if sl_diagonalize:
             assert parallel
             assert scalapack()
-            dsyev_zheev_string = 'Subspace diag.: ' + 'pdsyevd/pzheevd'
+            dsyev_zheev_string = 'Subspace diag: ' + 'pdsyevd/pzheevd'
         else:
-            dsyev_zheev_string = 'Subspace diag.: ' + 'dsyev/zheev'
+            dsyev_zheev_string = 'Subspace diag: ' + 'dsyev/zheev'
 
         self.timer.start(dsyev_zheev_string)
         if sl_diagonalize:
@@ -204,7 +204,7 @@ class Eigensolver:
         self.gd.comm.broadcast(kpt.eps_n, 0)
 
         if not rotate:
-            self.timer.stop('Subspace diag.')
+            self.timer.stop('Subspace diag')
             return
 
         self.timer.start('Subspace diag: rotate_psi')
@@ -217,7 +217,7 @@ class Eigensolver:
         if hamiltonian.xc.xcfunc.hybrid > 0.0:
             hamiltonian.xc.xcfunc.exx.rotate(kpt, U_nn)
 
-        self.timer.stop('Subspace diag.')
+        self.timer.stop('Subspace diag')
 
     def estimate_memory(self, mem, gd, dtype, mynbands, nbands):
         gridmem = gd.bytecount(dtype)

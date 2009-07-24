@@ -182,6 +182,7 @@ class Hamiltonian:
         if self.nspins == 2:
             self.vt_sg[1] = vt_g
 
+        self.timer.start('Hamiltonian: xc 3D grid')
         if self.nspins == 2:
             Exc = self.xc.get_energy_and_potential(
                 density.nt_sg[0], self.vt_sg[0],
@@ -189,6 +190,7 @@ class Hamiltonian:
         else:
             Exc = self.xc.get_energy_and_potential(
                 density.nt_sg[0], self.vt_sg[0])
+        self.timer.stop('Hamiltonian: xc 3D grid')
 
         self.timer.start('Poisson')
         # npoisson is the number of iterations:
@@ -224,7 +226,8 @@ class Hamiltonian:
                     np.dot(setup.Delta_pL, W_L))
             Ekin += np.dot(setup.K_p, D_p) + setup.Kc
             Ebar += setup.MB + np.dot(setup.MB_p, D_p)
-            Epot += setup.M + np.dot(D_p, (setup.M_p + np.dot(setup.M_pp, D_p)))
+            Epot += setup.M + np.dot(D_p, (setup.M_p +
+                                           np.dot(setup.M_pp, D_p)))
 
             if setup.HubU is not None:
 ##                 print '-----'
@@ -259,10 +262,10 @@ class Hamiltonian:
                     dH_p += sqrt(4 * pi / 3) * np.dot(vext[1], Delta_p1)
 
             self.dH_asp[a] = dH_sp = np.zeros_like(D_sp)
-            self.timer.start('Hamiltonian: xc_correction')
+            self.timer.start('Hamiltonian: atomic: xc_correction')
             Exc += setup.xc_correction.calculate_energy_and_derivatives(
                 D_sp, dH_sp, a)
-            self.timer.stop('Hamiltonian: xc_correction')
+            self.timer.stop('Hamiltonian: atomic: xc_correction')
             dH_sp += dH_p
 
             Ekin -= (D_sp * dH_sp).sum()
