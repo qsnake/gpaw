@@ -36,5 +36,4 @@ def test():
     assert abs(E - -0.0048) < 1e-4
     assert abs(Evdw - +0.0223) < 1e-4
 
-if 'GPAW_VDW' in os.environ:
-    test()
+test()

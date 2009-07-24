@@ -58,6 +58,6 @@ def polarized():
     print i, x, x2, x - x2, x / x2
     equal(x, x2, 1e-10)
 
-if 'GPAW_VDW' in os.environ and world.size == 1:
+if world.size == 1:
     paired()
     polarized()
