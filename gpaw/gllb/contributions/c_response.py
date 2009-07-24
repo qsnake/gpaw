@@ -1,7 +1,7 @@
 from gpaw.gllb.contributions.contribution import Contribution
 from gpaw.gllb.contributions.contribution import Contribution
 from gpaw.xc_functional import XCRadialGrid, XCFunctional, XC3DGrid
-from gpaw.xc_correction import A_Liy
+from gpaw.xc_correction import A_Liy, weights
 from gpaw.utilities import pack
 from gpaw.gllb import safe_sqr
 from math import sqrt, pi
@@ -117,7 +117,7 @@ class C_Response(Contribution):
         nresp_Lg = npy.dot(Dresp_Lq, c.n_qg) # Construct 'response density'
         nrespt_Lg = npy.dot(Dresp_Lq, c.nt_qg) # Construct smooth 'response density' (w/o smooth core)
 
-        for w, Y_L in zip(c.weights, c.Y_yL):
+        for w, Y_L in zip(weights, c.Y_nL):
             nt_g = npy.dot(Y_L, nt_Lg)
             nrespt_g = npy.dot(Y_L, nrespt_Lg)
             x_g = nrespt_g / (nt_g + 1e-10)
@@ -147,7 +147,7 @@ class C_Response(Contribution):
         nwf_Lg = npy.dot(Dwf_Lq, c.n_qg)
         nwft_Lg = npy.dot(Dwf_Lq, c.nt_qg)
         E = 0.0
-        for w, Y_L in zip(c.weights, c.Y_yL):
+        for w, Y_L in zip(weights, c.Y_nL):
             v = npy.dot(Y_L, nwft_Lg) * npy.dot(Y_L, nrespt_Lg) / (npy.dot(Y_L, nt_Lg) + 1e-10)
             E -= self.weight * w * npy.dot(v, c.rgd.dv_g)
             v = npy.dot(Y_L, nwf_Lg) * npy.dot(Y_L, nresp_Lg) / (npy.dot(Y_L, n_Lg) + 1e-10)

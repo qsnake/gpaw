@@ -1,6 +1,6 @@
 from gpaw.gllb.contributions.contribution import Contribution
 from gpaw.xc_functional import XCRadialGrid, XC3DGrid, XCFunctional
-from gpaw.xc_correction import A_Liy
+from gpaw.xc_correction import A_Liy, weights
 import numpy as npy
 from numpy import dot as dot3  # Avoid dotblas bug!
 from math import pi, sqrt
@@ -66,7 +66,7 @@ class C_XC(Contribution):
         v_g = npy.zeros(c.ng)
         e_g = npy.zeros(c.ng)
         y = 0
-        for w, Y_L in zip(c.weights, c.Y_yL):
+        for w, Y_L in zip(weights, c.Y_nL):
             A_Li = A_Liy[:c.Lmax, :, y]
             a1x_g = npy.dot(A_Li[:, 0], n_Lg)
             a1y_g = npy.dot(A_Li[:, 1], n_Lg)

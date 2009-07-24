@@ -1,6 +1,6 @@
 from gpaw.gllb.contributions.contribution import Contribution
 from gpaw.xc_functional import XCRadialGrid, XCFunctional, XC3DGrid
-from gpaw.xc_correction import A_Liy
+from gpaw.xc_correction import A_Liy, weights
 from gpaw.gllb import safe_sqr
 from math import sqrt, pi
 from gpaw.io.tar import TarFileReference
@@ -134,7 +134,7 @@ class C_GLLBScr(Contribution):
         v_g = npy.zeros(c.ng)
         e_g = npy.zeros(c.ng)
         deda2_g = npy.zeros(c.ng)
-        for y, (w, Y_L) in enumerate(zip(c.weights, c.Y_yL)):
+        for y, (w, Y_L) in enumerate(zip(weights, c.Y_nL)):
             # Cut gradient releated coefficient to match the setup's Lmax
             A_Li = A_Liy[:c.Lmax, :, y]
 

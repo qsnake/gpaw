@@ -247,18 +247,17 @@ class GradientSlice:
 
 
 class Integrator:
-    def __init__(self, H_sp, weights, Y_nL, B_pqL, rgd, libxc=True):
+    def __init__(self, H_sp, Y_nL, B_pqL, rgd, libxc=True):
         self.H_sp = H_sp
-        self.weights = weights
         self.Y_nL = Y_nL
         self.B_pqL = B_pqL
         self.rgd = rgd
         self.dv_g = rgd.dv_g
-        self.nspins, self.np = H_sp.shape
+        self.nspins, self.nii = H_sp.shape
         self.libxc = libxc
 
     def __iter__(self):
-        for self.weight, self.Y_L in zip(self.weights, self.Y_nL):
+        for self.weight, self.Y_L in zip(weights, self.Y_nL):
             yield self
 
     def integrate_H_sp(self, coeff, v_sg, n_qg, grad=None):
@@ -288,7 +287,7 @@ class Integrator:
 
         # The GGA part
         A_cL = grad.get_A_cL()
-        BA_pqc = gemmdot(self.B_pqL, A_cL, trans='t').reshape(self.np, -1)
+        BA_pqc = gemmdot(self.B_pqL, A_cL, trans='t').reshape(self.nii, -1)
         def energy_gradient(coeff, a1_g, a1_cg, deda2_g, dEdD_p):
             """Determine the derivative of the energy wrt the density matrix D.
 
@@ -336,7 +335,7 @@ class Integrator:
             # de / d |nabla (na + nb)|^2
 
             # This is common to both spin channels
-            dEdD_p = npy.zeros((self.np))
+            dEdD_p = npy.zeros((self.nii))
             energy_gradient(-2.0 * coeff * self.weight,
                             grad.radial_gradient(),
                             grad.angular_gradient(),
@@ -352,9 +351,6 @@ class Integrator:
                                 grad.energy_gradient(s),
                                 H_p)
     
-    def integrate_E(self, E): # XXX method never used!!
-        return E * self.weight
-
     def integrate_e_g(self, e_g):
         return npy.dot(self.dv_g, e_g) * self.weight
 
@@ -374,33 +370,28 @@ class BaseXCCorrection:
                  fcorehole,     # ?
                  nspins,        # Number os spins
                  tauc_g=None,   # kinetic core energy array
-                 tauct_g=None): # pseudo kinetic core energy array
+                 tauct_g=None,  # pseudo kinetic core energy array
+                 ):
 
         self.nc_g = nc_g
         self.nct_g = nct_g
         self.xc = xc
         self.Exc0 = Exc0
         self.Lmax = (lmax + 1)**2
-        self.lmax = lmax
-        if lmax == 0:
-            self.weights = [1.0]
-            self.Y_yL = npy.array([[1.0 / sqrt(4.0 * pi)]])
-        else:
-            self.weights = weights
-            self.Y_yL = Y_nL[:, :self.Lmax].copy()
-        jlL = []
-        for j, l in jl:
-            for m in range(2 * l + 1):
-                jlL.append((j, l, l**2 + m))
+        self.rgd = rgd
+        self.dv_g = rgd.dv_g
+        self.nspins = nspins
+        self.Y_nL = Y_nL[:, :self.Lmax].copy()
+        self.ng = ng = len(nc_g)
 
-        self.jlL = jlL
-        ng = len(nc_g)
-        self.ng = ng
+        jlL = [(j, l, l**2 + m) for j, l in jl for m in range(2 * l + 1)]
         self.ni = ni = len(jlL)
         self.nj = nj = len(jl)
-        self.np = np = ni * (ni + 1) // 2
-        self.nq = nq = nj * (nj + 1) // 2
-        self.B_Lqp = npy.zeros((self.Lmax, nq, np))
+        self.nii = nii = ni * (ni + 1) // 2
+        njj = nj * (nj + 1) // 2
+
+        # 
+        self.B_Lqp = npy.zeros((self.Lmax, njj, nii))
         p = 0
         i1 = 0
         for j1, l1, L1 in jlL:
@@ -412,10 +403,11 @@ class BaseXCCorrection:
                 self.B_Lqp[:, q, p] = gaunt[L1, L2, :self.Lmax]
                 p += 1
             i1 += 1
-        self.B_pqL = npy.transpose(self.B_Lqp).copy()
-        self.dv_g = rgd.dv_g
-        self.n_qg = npy.zeros((nq, ng))
-        self.nt_qg = npy.zeros((nq, ng))
+        self.B_pqL = self.B_Lqp.T.copy()
+
+        # 
+        self.n_qg = npy.zeros((njj, ng))
+        self.nt_qg = npy.zeros((njj, ng))
         q = 0
         for j1, l1 in jl:
             for j2, l2 in jl[j1:]:
@@ -423,18 +415,11 @@ class BaseXCCorrection:
                 self.n_qg[q] = rl1l2 * w_jg[j1] * w_jg[j2]
                 self.nt_qg[q] = rl1l2 * wt_jg[j1] * wt_jg[j2]
                 q += 1
-        self.rgd = rgd
 
-        self.nspins = nspins
-        if nspins == 1:
-            self.nc_g = nc_g
-        else:
-            if fcorehole == 0.0:
-                self.nca_g = self.ncb_g = 0.5 * nc_g
-            else:
-                ncorehole_g = fcorehole * phicorehole_g**2 / (4 * pi)
-                self.nca_g = 0.5 * (nc_g - ncorehole_g)
-                self.ncb_g = 0.5 * (nc_g + ncorehole_g)
+        # 
+        self.ncorehole_g = None       
+        if nspins == 2 and fcorehole != 0.0:
+            self.ncorehole_g = fcorehole * phicorehole_g**2 / (4 * pi)
 
     def calculate_energy_and_derivatives(self, D_sp, H_sp, a=None):
         if self.xc.get_functional().is_gllb():
@@ -478,7 +463,7 @@ class BaseXCCorrection:
         packed format. ``fxc`` is a radial object???
         """
 
-        ns, np = D_sp.shape
+        ns, nii = D_sp.shape
 
         assert ns == 1 and not self.xc.get_functional().gga
 
@@ -496,10 +481,10 @@ class BaseXCCorrection:
         nt_Lg[0] += self.nct_g * sqrt(4 * pi)
 
         # Allocate array for result:
-        J_pp = npy.zeros((np, np))
+        J_pp = npy.zeros((nii, nii))
 
         # Loop over 50 points on the sphere surface:
-        for w, Y_L in zip(self.weights, self.Y_yL):
+        for w, Y_L in zip(weights, self.Y_nL):
             B_pq = npy.dot(self.B_pqL, Y_L)
 
             fxcdv = fxc(npy.dot(Y_L, n_Lg)) * self.dv_g
@@ -512,7 +497,7 @@ class BaseXCCorrection:
 
         return J_pp
 
-    def create_kinetic(self,jlL,jl,ny,np,phi_jg,tau_ypg):
+    def create_kinetic(self,jlL,jl,ny,nii,phi_jg,tau_ypg):
         """Short title here.
         
         kinetic expression is::
@@ -536,7 +521,7 @@ class BaseXCCorrection:
         Lmax = self.Lmax
         nj = len(jl)
         ni = len(jlL)
-        np = ni * (ni + 1) // 2
+        nii = ni * (ni + 1) // 2
         dphidr_jg = npy.zeros(npy.shape(phi_jg))
         for j in range(nj):
             phi_g = phi_jg[j]
@@ -545,7 +530,7 @@ class BaseXCCorrection:
         for y in range(ny):
             i1 = 0
             p = 0
-            Y_L = self.Y_yL[y]
+            Y_L = self.Y_nL[y]
             for j1, l1, L1 in jlL:
                 for j2, l2, L2 in jlL[i1:]:
                     c = Y_L[L1]*Y_L[L2]
@@ -575,15 +560,6 @@ class BaseXCCorrection:
                     
         return 
         
-    def set_nspins(self, nspins):
-        """change number of spins"""
-        if nspins != self.nspins:
-            self.nspins = nspins
-            if nspins == 1:
-                self.nc_g = self.nca_g + self.ncb_g
-            else:
-                self.nca_g = self.ncb_g = 0.5 * self.nc_g
-                
     def initialize_kinetic(self, data):
         r_g = self.rgd.r_g
         ny = len(points)
@@ -596,15 +572,15 @@ class BaseXCCorrection:
             for m in range(2 * l + 1):
                 jlL.append((j, l, l**2 + m))
         ni = len(jlL)
-        np = ni * (ni + 1) // 2
-        self.tau_ypg = npy.zeros((ny, np, ng))
-        self.taut_ypg = npy.zeros((ny, np, ng))
+        nii = ni * (ni + 1) // 2
+        self.tau_ypg = npy.zeros((ny, nii, ng))
+        self.taut_ypg = npy.zeros((ny, nii, ng))
         phi_jg = data.phi_jg
         phit_jg = data.phit_jg
         phi_jg = npy.array([phi_g[:ng].copy() for phi_g in phi_jg])
         phit_jg = npy.array([phit_g[:ng].copy() for phit_g in phit_jg])
-        self.create_kinetic(jlL,jl,ny, np,phit_jg, self.taut_ypg)
-        self.create_kinetic(jlL,jl,ny, np,phi_jg, self.tau_ypg)            
+        self.create_kinetic(jlL,jl,ny, nii,phit_jg, self.taut_ypg)
+        self.create_kinetic(jlL,jl,ny, nii,phi_jg, self.tau_ypg)            
         tauc_g = data.tauc_g
         tauct_g = data.tauct_g
         self.tauc_g = npy.array(tauc_g[:ng].copy())
@@ -612,30 +588,20 @@ class BaseXCCorrection:
 
 
 class NewXCCorrection(BaseXCCorrection):
-    def expand_density(self, D_sp, core=True):
-        D_sLq = gemmdot(D_sp, self.B_Lqp, trans='t')
-        n_sLg = npy.dot(D_sLq, self.n_qg)
-        if core:
-            if self.nspins == 1:
-                axpy(sqrt(4 * pi), self.nc_g, n_sLg[0, 0])
-            else:
-                axpy(sqrt(4 * pi), self.nca_g, n_sLg[0, 0])
-                axpy(sqrt(4 * pi), self.ncb_g, n_sLg[1, 0])
-        return DensityExpansion(n_sLg, self.Y_yL, self.rgd)
-    
-    def expand_pseudo_density(self, D_sp, core=True):
-        # TODO: when calling both expand pseudo_density
-        # and expand_density the line below is redunant XXX
-        D_sLq = gemmdot(D_sp, self.B_Lqp, trans='t')
-        n_sLg = npy.dot(D_sLq, self.nt_qg)
-        if core:
-            n_sLg[:, 0] += sqrt(4 * pi) / self.nspins * self.nct_g
-        return DensityExpansion(n_sLg, self.Y_yL, self.rgd)
+    def set_nspins(self, nspins):
+        self.nspins = nspins
+                
+    def expand_density(self, D_sLq, n_qg, nc_g, ncorehole_g=None):
+        n_sLg = npy.dot(D_sLq, n_qg)
+        n_sLg[:, 0] += (sqrt(4 * pi) / self.nspins) * nc_g
+        if self.nspins == 2 and ncorehole_g is not None:
+            axpy(-sqrt(pi), ncorehole_g, n_sLg[0, 0])
+            axpy(+sqrt(pi), ncorehole_g, n_sLg[1, 0])
+        return DensityExpansion(n_sLg, self.Y_nL, self.rgd)
 
     def get_integrator(self, H_sp):
         libxc = self.xc.get_functional().uses_libxc
-        return Integrator(H_sp, self.weights, self.Y_yL, self.B_pqL,
-                          self.rgd, libxc)
+        return Integrator(H_sp, self.Y_nL, self.B_pqL, self.rgd, libxc)
 
     def calculate_potential_slice(self, e_g, n_sg, vxc_sg, grad=None):
         xcfunc = self.xc.get_functional()
@@ -669,8 +635,11 @@ class NewXCCorrection(BaseXCCorrection):
         e_g = npy.zeros((self.ng,))
         Etot = 0.0
         
-        for n_sg, nt_sg, integrator in izip(self.expand_density(D_sp),
-                                            self.expand_pseudo_density(D_sp),
+        D_sLq = gemmdot(D_sp, self.B_Lqp, trans='t')
+        n_iter = self.expand_density(D_sLq, self.n_qg, self.nc_g,
+                                     self.ncorehole_g)
+        nt_iter = self.expand_density(D_sLq, self.nt_qg, self.nct_g)
+        for n_sg, nt_sg, integrator in izip(n_iter, nt_iter, 
                                             self.get_integrator(H_sp)):
             # ae-density
             self.calculate_potential_slice(e_g, n_sg, vxc_sg)
@@ -689,13 +658,14 @@ class NewXCCorrection(BaseXCCorrection):
         e_g = npy.zeros((self.ng,))
         Etot = 0
 
-        density_iter = self.expand_density(D_sp)
-        pseudo_density_iter = self.expand_pseudo_density(D_sp)
+        D_sLq = gemmdot(D_sp, self.B_Lqp, trans='t')
+        n_iter = self.expand_density(D_sLq, self.n_qg, self.nc_g,
+                                     self.ncorehole_g)
+        nt_iter = self.expand_density(D_sLq, self.nt_qg, self.nct_g)
         for n_sg, nt_sg, grad, gradt, integrator in izip(
-            density_iter,
-            pseudo_density_iter,
-            density_iter.get_gradient_expansion(),
-            pseudo_density_iter.get_gradient_expansion(),
+            n_iter, nt_iter,
+            n_iter.get_gradient_expansion(),
+            nt_iter.get_gradient_expansion(),
             self.get_integrator(H_sp)):
 
             # ae-density
@@ -718,6 +688,25 @@ class NewXCCorrection(BaseXCCorrection):
 
 
 class XCCorrection(BaseXCCorrection):
+    def __init__(self, *args, **kwargs):
+        BaseXCCorrection.__init__(self, *args, **kwargs)
+        if self.nspins == 2:
+            if self.ncorehole_g is None:
+                self.nca_g = self.ncb_g = 0.5 * self.nc_g
+            else:
+                self.nca_g = 0.5 * (self.nc_g - self.ncorehole_g)
+                self.ncb_g = 0.5 * (self.nc_g + self.ncorehole_g)
+
+        
+    def set_nspins(self, nspins):
+        """change number of spins"""
+        if nspins != self.nspins:
+            self.nspins = nspins
+            if nspins == 1:
+                self.nc_g = self.nca_g + self.ncb_g
+            else:
+                self.nca_g = self.ncb_g = 0.5 * self.nc_g
+                
     def quickdot(self, A_mn, x_n, y_m=None, trans='t'):
         if y_m is None and trans == 't':
             y_m = npy.zeros(A_mn.shape[:-1], dtype=A_mn.dtype)
@@ -743,7 +732,7 @@ class XCCorrection(BaseXCCorrection):
             axpy(sqrt(4 * pi), self.nct_g, nt_Lg[0])
             dEdD_p = H_sp[0][:]
             dEdD_p[:] = 0.0
-            for w, Y_L in zip(self.weights, self.Y_yL):
+            for w, Y_L in zip(weights, self.Y_nL):
                 n_g = self.quickdot(n_Lg, Y_L, None, 'n')
                 vxc_g = npy.zeros(self.ng)
                 E += self.xc.get_energy_and_potential(n_g, vxc_g) * w
@@ -770,7 +759,7 @@ class XCCorrection(BaseXCCorrection):
             axpy(0.5*sqrt(4 * pi), self.nct_g, ntb_Lg[0])
             dEdDb_p = H_sp[1][:]
             dEdDb_p[:] = 0.0
-            for w, Y_L in zip(self.weights, self.Y_yL):
+            for w, Y_L in zip(weights, self.Y_nL):
                 na_g = self.quickdot(na_Lg, Y_L, None, 'n')
                 vxca_g = npy.zeros(self.ng)
                 nb_g = self.quickdot(nb_Lg, Y_L, None, 'n')
@@ -810,7 +799,7 @@ class XCCorrection(BaseXCCorrection):
             dEdD_p = H_sp[0][:]
             dEdD_p[:] = 0.0
             y = 0
-            for w, Y_L in zip(self.weights, self.Y_yL):
+            for w, Y_L in zip(weights, self.Y_nL):
                 A_Li = A_Liy[:self.Lmax, :, y]
                 n_g = self.quickdot(n_Lg, Y_L, None, 'n')
                 a1x_g = self.quickdot(n_Lg, A_Li[:, 0], None, 'n')
@@ -890,7 +879,7 @@ class XCCorrection(BaseXCCorrection):
             dEdDb_p = H_sp[1][:]
             dEdDb_p[:] = 0.0
             y = 0
-            for w, Y_L in zip(self.weights, self.Y_yL):
+            for w, Y_L in zip(weights, self.Y_nL):
                 A_Li = A_Liy[:self.Lmax, :, y]
                 na_g = self.quickdot(na_Lg, Y_L, None, 'n')
                 aa1x_g = self.quickdot(na_Lg, A_Li[:, 0], None, 'n')
@@ -1048,7 +1037,7 @@ class XCCorrection(BaseXCCorrection):
             dEdD_p = H_sp[0][:]
             dEdD_p[:] = 0.0
             y = 0
-            for w, Y_L in zip(self.weights, self.Y_yL):
+            for w, Y_L in zip(weights, self.Y_nL):
                 A_Li = A_Liy[:self.Lmax, :, y]
                 n_g = npy.dot(Y_L, n_Lg)
                 a1x_g = npy.dot(A_Li[:, 0], n_Lg)
@@ -1136,7 +1125,7 @@ class XCCorrection(BaseXCCorrection):
             dEdDb_p = H_sp[1][:]
             dEdDb_p[:] = 0.0
             y = 0
-            for w, Y_L in zip(self.weights, self.Y_yL):
+            for w, Y_L in zip(weights, self.Y_nL):
                 A_Li = A_Liy[:self.Lmax, :, y]
 
                 na_g = npy.dot(Y_L, na_Lg)
@@ -1363,7 +1352,7 @@ class XCCorrection(BaseXCCorrection):
             dEdD_p[:] = 0.0
             y = 0
 
-            for w, Y_L in zip(self.weights, self.Y_yL):
+            for w, Y_L in zip(weights, self.Y_nL):
                 ## Calculate pseudo and all electron kinetic energy 
                 ## from orbitals
                 taut_pg = self.taut_ypg[y]
@@ -1472,7 +1461,7 @@ class XCCorrection(BaseXCCorrection):
             dEdDb_p = H_sp[1][:]
             dEdDb_p[:] = 0.0
             y = 0
-            for w, Y_L in zip(self.weights, self.Y_yL):
+            for w, Y_L in zip(weights, self.Y_nL):
                 taut_pg = self.taut_ypg[y]
                 tauat_g = npy.dot(Da_p,taut_pg)
                 taubt_g = npy.dot(Db_p,taut_pg)
@@ -1706,7 +1695,7 @@ class XCCorrection(BaseXCCorrection):
             dEdD_p[:] = 0.0
             y = 0
 
-            for w, Y_L in zip(self.weights, self.Y_yL):
+            for w, Y_L in zip(weights, self.Y_nL):
                 ## Calculate pseudo and all electron kinetic energy 
                 ##from orbitals
                 taut_pg = self.taut_ypg[y]
@@ -1816,7 +1805,7 @@ class XCCorrection(BaseXCCorrection):
             dEdDb_p = H_sp[1][:]
             dEdDb_p[:] = 0.0
             y = 0
-            for w, Y_L in zip(self.weights, self.Y_yL):
+            for w, Y_L in zip(weights, self.Y_nL):
                 taut_pg = self.taut_ypg[y]
                 tauat_g = npy.dot(Da_p,taut_pg)
                 taubt_g = npy.dot(Db_p,taut_pg)
