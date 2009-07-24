@@ -189,7 +189,7 @@ x_m06l_para(XC(mgga_type) *pt, FLOAT rho, FLOAT sigma, FLOAT tau, FLOAT *energy,
   /* calculate |nabla rho|^2 */
   grad = sigma;
   grad = max(MIN_GRAD*MIN_GRAD, grad);
-  tauw = grad/(8.0*rho); /* tau^W = |nabla rho|^2/ 8rho */
+  tauw = max(grad/(8.0*rho),1.0e-12); /* tau^W = |nabla rho|^2/ 8rho */
   tau = max(tau, tauw);
 
   rho2[0]=rho/2.;

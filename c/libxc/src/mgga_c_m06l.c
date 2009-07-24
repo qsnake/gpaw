@@ -306,7 +306,7 @@ c_m06l_para(xc_mgga_type *p, FLOAT *rho, FLOAT *sigma_, FLOAT *tau,
 
   /*calculate |nabla rho|^2 */
   sigma_[0] = max(MIN_GRAD*MIN_GRAD, sigma_[0]);
-  tauw[0] = sigma_[0]/(8.0*rho[0]);
+  tauw[0] = max(sigma_[0]/(8.0*rho[0]), 1.0e-12);
   tau[0] = max(tauw[0], tau[0]);
 
 
@@ -328,7 +328,7 @@ c_m06l_para(xc_mgga_type *p, FLOAT *rho, FLOAT *sigma_, FLOAT *tau,
 
     }else{
       sigma_[2] = max(MIN_GRAD*MIN_GRAD, sigma_[2]);
-	  tauw[1] = sigma_[2]/(8.0*rho[1]);
+	  tauw[1] = max(sigma_[2]/(8.0*rho[1]), 1.0e-12);
       tau[1] = max(tauw[1], tau[1]);
 
       rho2[0]=rho[0];
