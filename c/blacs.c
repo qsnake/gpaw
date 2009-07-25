@@ -267,6 +267,11 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
   // It then calls Cpdgemr2d which performs the actual redistribution.
   if (comm_obj == Py_None)
     {
+      Cpdgemr2do_(m, n, DOUBLEP(a_obj), one, one, INTP(adesc), 
+		  DOUBLEP(b_obj), one, one, INTP(bdesc));
+    }
+  else
+    {
       // Create intermediate blacs grid on this communicator
       MPI_Comm comm = ((MPIObject*)comm_obj)->comm;
       Cblacs_pinfo_(&iam, &nprocs);
@@ -276,11 +281,6 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
       Cpdgemr2d_(m, n, DOUBLEP(a_obj), one, one, INTP(adesc), 
 		 DOUBLEP(b_obj), one, one, INTP(bdesc), c_ConTxt);
       Cblacs_gridexit(c_ConTxt);
-    }
-  else
-    {
-      Cpdgemr2do_(m, n, DOUBLEP(a_obj), one, one, INTP(adesc), 
-		  DOUBLEP(b_obj), one, one, INTP(bdesc));
     }
 
   // Note that we choose to return Py_None, instead of an empty array.
