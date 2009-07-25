@@ -381,9 +381,9 @@ class BasisMaker:
 
         if isinstance(tailnorm, float):
             tailnorm = (tailnorm,)
-        assert (1 + len(tailnorm) >= max(polarizationcount, zetacount),
-                'Needs %d tail norm values, but only %d are specified' %
-                (max(polarizationcount, zetacount) - 1, len(tailnorm)))
+        assert 1 + len(tailnorm) >= max(polarizationcount, zetacount), \
+               'Needs %d tail norm values, but only %d are specified' % \
+               (max(polarizationcount, zetacount) - 1, len(tailnorm))
 
         textbuffer = StringIO()
         class TeeStream: # Quick hack to both write and save output
@@ -569,7 +569,8 @@ class BasisMaker:
             polarization_functions.append(bf_pol)
             for i in range(polarizationcount - 1):
                 npol = i + 2
-                msg = '\n%s: %s' % (['Secondary', 'Tertiary'][i],
+                msg = '\n%s: %s' % (['Secondary', 'Tertiary', 'Quaternary', \
+                                     'Quintary', 'Sextary', 'Septenary'][i],
                                     splitvalencedescr)
                 print >> txt, msg
                 rsplit, norm, splitwave = self.rsplit_by_norm(l_pol, psi_pol,
