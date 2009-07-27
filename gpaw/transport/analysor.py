@@ -97,7 +97,7 @@ class Transport_Analysor:
         tp = self.tp
         if tp.plot_option == None:
             ef = tp.lead_fermi[0]
-            self.energies = np.linspace(ef - 3, ef + 5, 60)
+            self.energies = np.linspace(ef - 3, ef + 5, 60) + 1e-4 * 1.j
             self.lead_pairs = [[0,1]]
         else:
             self.energies = tp.plot_option['energies']
@@ -108,7 +108,8 @@ class Transport_Analysor:
             self.initialize_selfenergy_and_green_function()
         else:
             self.selfenergies = self.tp.selfenergies
-            self.greenfunction = self.tp.greenfunction
+            if self.tp.matrix_mode == 'full':
+                self.greenfunction = self.tp.greenfunction
                 
     def initialize_selfenergy_and_green_function(self):
         self.selfenergies = []
@@ -160,8 +161,8 @@ class Transport_Analysor:
             self.greenfunction.S = tp.s_pkmm[k, ind.T, ind]
         else:
             for i in range(tp.lead_num):
-                self.energies[i].hsd.s = s
-                self.energies[i].hsd.pk = k
+                self.selfenergies[i].s = s
+                self.selfenergies[i].pk = k
             tp.hsd.s = s
             tp.hsd.pk = k
       
@@ -178,8 +179,7 @@ class Transport_Analysor:
             sigma = []
             for i in range(tp.lead_num):
                 sigma.append(self.selfenergies[i](energy))
-            tp.hsd.inv_eq(sigma)
-            return tp.hsd.recover()
+            return tp.hsd.calculate_eq_green_function(energy, sigma)
 
     def calculate_transmission_and_dos(self, s, k, energies):
         self.reset_selfenergy_and_green_function(s, k)
@@ -205,8 +205,12 @@ class Transport_Analysor:
             transmission_list.append(trans_coff)
             del trans_coff
             
-            dos = - np.imag(np.trace(np.dot(gr,
+            if self.tp.matrix_mode == 'full':
+                dos = - np.imag(np.trace(np.dot(gr,
                                            self.greenfunction.S))) / np.pi
+            else:
+                dos = - np.imag(np.trace(np.dot(gr,
+                                         self.tp.hsd.S[k].recover()))) / np.pi                
             dos_list.append(dos)
         
         ne = len(energies)
@@ -218,7 +222,7 @@ class Transport_Analysor:
     def save_ele_step(self):
         tp = self.tp
         step = Electron_Step_Info(self.n_ion_step, self.n_bias_step, self.n_ele_step)
-        dtype = tp.d_spkmm.dtype
+        dtype = tp.wfs.dtype
         dd = np.empty([tp.my_nspins, tp.my_npk, tp.nbmol], dtype)
         df = np.empty([tp.my_nspins, tp.my_npk, tp.nbmol], dtype)
         
