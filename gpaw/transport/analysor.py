@@ -1,7 +1,7 @@
 #from gpaw.transport.calculator import Transport
 from gpaw.transport.selfenergy import LeadSelfEnergy, CellSelfEnergy
 from gpaw.transport.greenfunction import GreenFunction
-from gpaw.transport.tools import get_matrix_index, aa1d, aa2d
+from gpaw.transport.tools import get_matrix_index, aa1d, aa2d, sum_by_unit
 import numpy as np
 import copy
 import pickle
@@ -54,13 +54,14 @@ class Electron_Step_Info:
     def __init__(self, ion_step, bias_step, ele_step):
         self.ion_step, self.bias_step, self.ele_step = ion_step, bias_step, ele_step
         
-    def initialize_data(self, bias, gate, dd, df, nt, vt, D_asp, dH_asp, tc, dos):
+    def initialize_data(self, bias, gate, dd, df, nt, vt, rho, D_asp, dH_asp, tc, dos):
         self.bias = bias
         self.gate = gate
         self.dd = dd
         self.df = df
         self.nt = nt
         self.vt = vt
+        self.rho = rho
         self.D_asp = D_asp
         self.dH_asp = dH_asp
         self.tc = tc
@@ -220,6 +221,10 @@ class Transport_Analysor:
         dtype = tp.d_spkmm.dtype
         dd = np.empty([tp.my_nspins, tp.my_npk, tp.nbmol], dtype)
         df = np.empty([tp.my_nspins, tp.my_npk, tp.nbmol], dtype)
+        
+        total_dd = np.empty([tp.nspins, tp.npk, tp.nbmol], dtype)
+        total_df = np.empty([tp.nspins, tp.npk, tp.nbmol], dtype)
+        
         for s in range(tp.my_nspins):
             for k in range(tp.my_npk):
                 if tp.matrix_mode == 'full':
@@ -228,6 +233,9 @@ class Transport_Analysor:
                 else:
                     dd[s, k] = np.diag(tp.hsd.D[s][k].recover())
                     df[s, k] = np.diag(tp.hsd.H[s][k].recover())
+        
+        tp.pkpt_comm.all_gather(dd, total_dd)
+        tp.pkpt_comm.all_gather(df, total_df)
 
         dim = tp.gd.N_c
         d1 = dim[0] // 2
@@ -238,33 +246,61 @@ class Transport_Analysor:
         gd = tp.gd
         nt_sG = gd.empty(tp.nspins, global_array=True)
         vt_sG = gd.empty(tp.nspins, global_array=True)
+        
         nt_sG = gd.collect(tp.density.nt_sG, True)
         vt_sG = gd.collect(tp.hamiltonian.vt_sG, True)
-        
-        nt = nt_sG[0, d1, d2]
-        vt = vt_sG[0, d1, d2]
+
+        nt = nt_sG[0, d1, d2].copy()
+        vt = vt_sG[0, d1, d2].copy()
+
+        gd = tp.finegd
+        rhot_g = gd.empty(tp.nspins, global_array=True)
+        rhot_g = gd.collect(tp.density.rhot_g, True)
+        rho = rhot_g[d1*2, d2*2].copy()
         
         D_asp = copy.deepcopy(tp.density.D_asp)
         dH_asp = copy.deepcopy(tp.hamiltonian.dH_asp)
         
         tc_array, dos_array = self.collect_transmission_and_dos()
-        step.initialize_data(tp.bias, tp.gate, dd, df, nt, vt, D_asp, dH_asp, tc_array, dos_array)
+        step.initialize_data(tp.bias, tp.gate, total_dd, total_df, nt, vt, rho, D_asp, dH_asp, tc_array, dos_array)
         
         sr = tp.surround
-        ent_G = sr.vt_sG[0, d1, d2]
-        evt_G = sr.nt_sG[0, d1, d2]
-        ent_g = sr.nt_sg[0, d1*2, d2*2]
-        evt_g = sr.nt_sg[0, d1*2, d2*2]
-        ehot_g = sr.extra_rhot_g[d1*2, d2*2]
-        evHt_g = sr.vHt_g[d1*2, d2*2]
+        gd = sr.gd
+        b_nt_sG = gd.empty(tp.nspins, global_array=True)
+        b_vt_sG = gd.empty(tp.nspins, global_array=True)
         
-        nb = sr.d_spkmm.shape[-1]
-        edmm = np.empty([tp.my_nspins, tp.my_npk, nb], sr.d_spkmm.dtype)
-        for s in range(tp.my_nspins):
-            for k in range(tp.my_npk):
-                edmm[s, k] = np.diag(sr.d_spkmm[s, k])
+        b_nt_sG = gd.collect(sr.density.nt_sG, True)
+        b_vt_sG = gd.collect(sr.boundary_vt_sG, True)
+       
+        gd = sr.finegd
+        b_nt_sg = gd.empty(tp.nspins, global_array=True)
+        b_vt_sg = gd.empty(tp.nspins, global_array=True)
+
+        b_nt_sg = gd.collect(sr.nt_sg, True)
+        b_vt_sg = gd.collect(sr.boundary_vt_sg, True)
+         
+        b_rhot_g = gd.empty(global_array=True)
+        b_vHt_g = gd.empty(global_array=True)
+        
+        b_rhot_g = gd.collect(sr.rhot_g, True)
+        b_vHt_g = gd.collect(sr.vHt_g, True)
+        
+        
+        ent_G = b_nt_sG[0, d1, d2].copy()
+        evt_G = b_vt_sG[0, d1, d2].copy()
+        ent_g = b_nt_sg[0, d1*2, d2*2].copy()
+        evt_g = b_vt_sg[0, d1*2, d2*2].copy()
+        ehot_g = b_rhot_g[d1*2, d2*2].copy()
+        evHt_g = b_vHt_g[d1*2, d2*2].copy()
+        
+        nb = sr.wfs.setups.nao
+        edmm = np.empty([tp.my_nspins, tp.my_npk, nb], sr.wfs.dtype)
+        total_edmm = np.empty([tp.nspins, tp.npk, nb], sr.wfs.dtype)        
+        for kpt in sr.wfs.kpt_u:
+            edmm[kpt.s, kpt.q] = np.diag(kpt.rho_MM)
+        tp.pkpt_comm.all_gather(edmm, total_edmm)
         step.initialize_extended_data(ent_G, evt_G, ent_g,
-                                                  evt_g, ehot_g, evHt_g, edmm)        
+                                                  evt_g, ehot_g, evHt_g, total_edmm)        
         self.ele_steps.append(step)
         self.n_ele_step += 1
       
@@ -787,56 +823,172 @@ class Transport_Plotter:
         p.title('dos')
         p.show()
         
+    def compare_two_calculations(self, nstep, s, k):
+        fd = file('analysis_data_cmp', 'r')
+        self.ele_steps_cmp = pickle.load(fd)
+        fd.close()
+        
+        ee = np.linspace(-3, 5, 60)
+        step = self.ele_steps[nstep]
+        step_cmp = self.ele_steps_cmp[nstep]
+        
+        import pylab as p
+        p.plot(step.dd[s, k] - step_cmp.dd[s, k], 'b--o')
+        p.title('density matrix')
+        p.show()
+        
+        p.plot(step.df[s, k] - step_cmp.df[s, k], 'b--o')
+        p.title('hamiltonian matrix')
+        p.show()
+        
+        p.plot(step.nt - step_cmp.nt, 'b--o')
+        p.title('density')
+        p.show()
+ 
+        p.plot(step.vt - step_cmp.vt, 'b--o')
+        p.title('hamiltonian')
+        p.show()
+        
+        p.plot(ee, step.tc[s, k, 0] - step_cmp.tc[s, k, 0], 'b--o')
+        p.title('transmission')
+        p.show()
+        
+        p.plot(ee, step.dos[s, k] - step_cmp.dos[s, k], 'b--o')
+        p.title('dos')
+        p.show()
+       
     def plot_ele_step_info(self, info, steps_indices, s, k,
                                                      height=None, unit=None):
-        ee = np.linspace(-3, 5, 60)
+        xdata = np.linspace(-3, 5, 60)
+        energy_axis = False        
         import pylab as p
         legends = []
-        
+        if info == 'dd':
+            data = 'dd[s, k]'
+            title = 'density matrix diagonal elements'
+        elif info == 'df':
+            data = 'df[s, k]'
+            title = 'hamiltonian matrix diagonal elements'
+        elif info == 'den':
+            data = 'nt'
+            title = 'density'
+        elif info == 'ham':
+            data = 'vt'
+            title = 'hamiltonian'
+        elif info == 'rho':
+            data = 'rho'
+            title = 'total poisson density'
+        elif info == 'tc':
+            data = 'tc[s, k, 0]'
+            title = 'trasmission coefficeints'
+            energy_axis = True
+        elif info == 'dos':
+            data = 'dos[s, k]'
+            title = 'density of states'
+            energy_axis = True
+        else:
+            raise ValueError('no this info type---' + info)        
+
         for i, step in enumerate(self.ele_steps):
             if i in steps_indices:
-                if info == 'dd':
-                    data = step.dd[s, k]
-                    if unit != None:
-                        dim = data.shape[0]
-                        data.shape = (dim // unit, unit)
-                        data = np.sum(data, axis=1) / unit
-                    title = 'density matrix diagonal elements'
-                elif info == 'df':
-                    data = step.df[s, k]
-                    if unit != None:
-                        dim = data.shape[0]
-                        data.shape = (dim // unit, unit)
-                        data = np.sum(data, axis=1) / unit                    
-                    title = 'hamiltonian matrix diagonal elements'
-                elif info == 'den':
-                    data = step.nt
-                    if unit != None:
-                        dim = data.shape[0]
-                        data.shape = (dim // unit, unit)
-                        data = np.sum(data, axis=1) / unit                    
-                    title = 'density'
-                elif info == 'ham':
-                    data = step.vt
-                    if unit != None:
-                        dim = data.shape[0]
-                        data.shape = (dim // unit, unit)
-                        data = np.sum(data, axis=1) / unit                    
-                    title = 'hamiltonian'
-                elif info == 'tc':
-                    data = step.tc[s, k, 0]
-                    title = 'trasmission coefficeints'
-                elif info == 'dos':
-                    data = step.dos[s, k]
-                    title = 'density of states'
+                ydata = eval('step.' + data)
+                if unit != None:
+                    ydata = sum_by_unit(ydata, unit)
+                if not energy_axis:
+                    p.plot(ydata)
                 else:
-                    raise ValueError('no this info type---' + info)
-                p.plot(ee, data)
+                    p.plot(xdata, ydata)
                 legends.append('step' + str(step.ele_step))
         p.title(title)
         p.legend(legends)
         if height != None:
-            p.axis([ee[0], ee[-1], 0, height])
+            p.axis([xdata[0], xdata[-1], 0, height])
         p.show()
         
+    def plot_ele_step_extended_info(self, info, steps_indices, s, k, unit=None):
+        import pylab as p
+        legends = []
+        if info == 'edd':
+            data = 'edmm[s, k]'
+            title = 'extended density matrix diagonal elements'
+        elif info == 'ent_G':
+            data = 'ent_G'
+            title = 'extended density on coarse gird'
+        elif info == 'evt_G':
+            data = 'evt_G'
+            title = 'extended hamiltonian on coarse grid'
+        elif info == 'ent_g':
+            data = 'ent_g'
+            title = 'extended density on fine grid'
+        elif info == 'evt_g':
+            data = 'evt_g'
+            title = 'extended hamiltonian on fine grid'
+        elif info == 'ehot_g':
+            data = 'ehot_g'
+            title = 'extended rho-density'
+        elif info == 'vHt_g':
+            data = 'evHt_g'
+            title = 'extended Hartree potential'
+        else:
+            raise ValueError('no this info type---' + info)        
+
+        for i, step in enumerate(self.ele_steps):
+            if i in steps_indices:
+                ydata = eval('step.' + data)
+                if unit != None:
+                    ydata = sum_by_unit(ydata, unit)
+                p.plot(ydata)
+                legends.append('step' + str(step.ele_step))
+        p.title(title)
+        p.legend(legends)
+        p.show()        
+
+    def compare_ele_step_info(self, info, steps_indices, s, k, height=None, unit=None):
+        xdata = np.linspace(-3, 5, 60)
+        energy_axis = False        
+        import pylab as p
+        legends = []
+        if info == 'dd':
+            data = 'dd[s, k]'
+            title = 'density matrix diagonal elements'
+        elif info == 'df':
+            data = 'df[s, k]'
+            title = 'hamiltonian matrix diagonal elements'
+        elif info == 'den':
+            data = 'nt'
+            title = 'density'
+        elif info == 'ham':
+            data = 'vt'
+            title = 'hamiltonian'
+        elif info == 'tc':
+            data = 'tc[s, k, 0]'
+            title = 'trasmission coefficeints'
+            energy_axis = True
+        elif info == 'dos':
+            data = 'dos[s, k]'
+            title = 'density of states'
+            energy_axis = True
+        else:
+            raise ValueError('no this info type---' + info)        
+
+        for i, step in enumerate(self.ele_steps):
+            if i == steps_indices[0]:
+                ydata0 = eval('step.' + data)
+                if unit != None:
+                    ydata0 = sum_by_unit(ydata0, unit)
+            elif i == steps_indices[1]:   
+                ydata1 = eval('step.' + data)
+                if unit != None:
+                    ydata1 = sum_by_unit(ydata1, unit)                
+        if not energy_axis:
+            p.plot(ydata1 - ydata0)
+        else:
+            p.plot(xdata, ydata1 - ydata0)
         
+        legends.append('step' + str(steps_indices[1]) +
+                                         'minus step' + str(steps_indices[0]))
+        p.title(title)
+        p.legend(legends)
+        if height != None:
+            p.axis([xdata[0], xdata[-1], 0, height])
+        p.show()        
