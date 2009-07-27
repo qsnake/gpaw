@@ -101,8 +101,8 @@ keyword            type       default value        description
                                                    of the system
 ``convergence``    ``dict``                        :ref:`manual_convergence`
 ``maxiter``        ``int``    ``120``              :ref:`manual_maxiter`
-``txt``            ``str``,   ``sys.stdout``       :ref:`manual_h`
-                   None, or
+``txt``            ``str``,   ``'-'``              :ref:`manual_txt`
+                   None, or   (``sys.stdout``)
                    file obj.
 ``parsize``        *seq*                           Parallel
                                                    :ref:`manual_parsize`
