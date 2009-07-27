@@ -253,7 +253,8 @@ class Integrator:
         self.B_pqL = B_pqL
         self.rgd = rgd
         self.dv_g = rgd.dv_g
-        self.nspins, self.nii = H_sp.shape
+        if H_sp is not None:
+            self.nspins, self.nii = H_sp.shape
         self.libxc = libxc
 
     def __iter__(self):

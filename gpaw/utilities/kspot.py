@@ -1,6 +1,7 @@
 from math import pi,sqrt
 from itertools import izip
 from gpaw.utilities import hartree
+from gpaw.utilities.blas import gemmdot
 from gpaw.atom.all_electron import AllElectron
 from gpaw import extra_parameters
 from gpaw.sphere import weights, points
@@ -67,15 +68,18 @@ class AllElectronPotential:
          print "Interpolating density"
          self.paw.density.interpolate()
          
-      # Get D_sp for atom a
-      D_sp = self.paw.density.D_asp[a]
-
-      # The 'spherical' spherical harmonic
-      Y0 = 1.0/sqrt(4*pi)
-
       # Get xccorr for atom a
       setup = self.paw.density.setups[a]
       xccorr = setup.xc_correction
+
+      # Get D_sp for atom a
+      D_sp = self.paw.density.D_asp[a]
+
+      # density a function of L and partial wave radial pair density coefficient
+      D_sLq = gemmdot(D_sp, xccorr.B_Lqp, trans='t')
+
+      # The 'spherical' spherical harmonic
+      Y0 = 1.0/sqrt(4*pi)
 
       # Generate cartesian fine grid xc-potential
       print "Generate cartesian fine grid xc-potential"
@@ -104,7 +108,8 @@ class AllElectronPotential:
       print "D_sp", D_sp
 
       # Calculate the difference in density and pseudo density
-      dn_g = Y0 * (xccorr.expand_density(D_sp).n_sLg[0][0] - xccorr.expand_pseudo_density(D_sp).n_sLg[0][0])
+      dn_g = Y0 * (xccorr.expand_density(D_sLq, xccorr.n_qg, xccorr.nc_g, xccorr.ncorehole_g).n_sLg[0][0]
+                   - xccorr.expand_density(D_sLq, xccorr.nt_qg, xccorr.nct_g).n_sLg[0][0])
       
       # Calculate the Hartree potential for this
       vHr = npy.zeros((xccorr.ng,))
@@ -136,11 +141,15 @@ class AllElectronPotential:
       # Arrays for evaluating radial xc potential slice
       e_g = npy.zeros((xccorr.ng,))
       vxc_sg = npy.zeros((len(D_sp), xccorr.ng))
+
+      # Create pseudo/ae density iterators for integration
+      n_iter = xccorr.expand_density(D_sLq, xccorr.n_qg, xccorr.nc_g, xccorr.ncorehole_g)
+      nt_iter = xccorr.expand_density(D_sLq, xccorr.nt_qg, xccorr.nct_g)
       
       # Take the spherical average of smooth and ae radial xc potentials
-      for n_sg, nt_sg, integrator in izip(xccorr.expand_density(D_sp),
-                                          xccorr.expand_pseudo_density(D_sp),
-                                          xccorr.get_integrator(D_sp.copy())): # D_sp.copy is just a dummy argument
+      for n_sg, nt_sg, integrator in izip(n_iter,
+                                          nt_iter,
+                                          xccorr.get_integrator(None)):
          # Add the ae xc potential
          xccorr.calculate_potential_slice(e_g, n_sg, vxc_sg)
          radvxct_g += integrator.weight * vxc_sg[0]

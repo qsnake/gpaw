@@ -140,6 +140,7 @@ if len(tests) == 0:
         'apmb.py',
         'relax.py',
         'generatesetups.py',
+        'muffintinpot.py',
         'restart_band_structure.py',
         'ldos.py',
         'lcao_bulk.py',
