@@ -241,18 +241,16 @@ class Tp_Sparse_HSD:
         self.G.calculate_less_green(gamma)
         return self.G.recover()     
 
-    def calculate_transmission_coefficient(self, zp, sigma, l1, l2,
-                                                               inv_mat=None):
+    def abstract_sub_green_matrix(self, zp, sigma, l1, l2, inv_mat=None):
         if inv_mat == None:
             s, pk = self.s, self.pk        
             self.G.reset_from_others(self.S[pk], self.H[s][pk], zp, -1)
             self.G.substract_sigma(sigma)            
             inv_mat = self.G.inv_ne()
-            
-        
-        
-
-
+            gr_sub = inv_mat[l2][l1][-1]
+            return gr_sub, inv_mat
+        else:
+            return gr_sub
        
 class Tp_Sparse_Matrix:
     def __init__(self, dtype, ll_index, mat=None, band_indices=None):
