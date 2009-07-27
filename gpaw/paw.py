@@ -89,6 +89,8 @@ class PAW(PAWTextOutput):
             self.input_parameters.parsize_bands = kwargs.pop('parsize_bands', 1)
             self.input_parameters.parstride_bands = \
                 kwargs.pop('parstride_bands', False)
+            self.input_parameters.communicator = \
+                kwargs.pop('communicator', None)
             self.initialize()
             self.read(reader)
             
