@@ -424,15 +424,13 @@ PyObject* construct_density(LFCObject *lfc, PyObject *args)
           int nm2 = v2->nm;
           const double complex* rho_mm = rho_MM + M1 * nM + M2;
           double rrho, irho, rwork, iwork;
-          complex double* rho_m;
           complex double rho;
           for (int g = 0; g < nG; g++) {
             int gnm1 = g * nm1;
             int gnm2 = g * nm2;
             int m1nM = 0;
             for (int m1 = 0; m1 < nm1; m1++) {
-              int m1nM = m1 * nM;
-              //work = 0;
+              m1nM = m1 * nM;
               iwork = 0;
               rwork = 0;
               for (int m2 = 0; m2 < nm2; m2++) {
