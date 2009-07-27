@@ -240,6 +240,19 @@ class Tp_Sparse_HSD:
             gamma.append(ff * 1.j * (full_tgt - full_tgt.T.conj()))
         self.G.calculate_less_green(gamma)
         return self.G.recover()     
+
+    def calculate_transmission_coefficient(self, zp, sigma, l1, l2,
+                                                               inv_mat=None):
+        if inv_mat == None:
+            s, pk = self.s, self.pk        
+            self.G.reset_from_others(self.S[pk], self.H[s][pk], zp, -1)
+            self.G.substract_sigma(sigma)            
+            inv_mat = self.G.inv_ne()
+            
+        
+        
+
+
        
 class Tp_Sparse_Matrix:
     def __init__(self, dtype, ll_index, mat=None, band_indices=None):
