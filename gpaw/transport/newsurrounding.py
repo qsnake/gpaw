@@ -683,7 +683,7 @@ class Surrounding:
             ni = wfs.setups[a].ni
             D_sii = np.zeros((self.nspins, ni, ni))
             for f_n, kpt in zip(f_un, wfs.kpt_u):
-                print world.rank, a, kpt.P_aMi[a]
+                #print world.rank, a, kpt.P_aMi[a]
                 wfs.calculate_atomic_density_matrices_k_point(D_sii, kpt,
                                                               a, f_n)
             D_sp[:] = [pack(D_ii) for D_ii in D_sii]
@@ -767,6 +767,7 @@ class Surrounding:
         tmp = self.capsule(nn, 'vHt_g', direction, vHt_g, False)
 
     def calculate_atomic_hamiltonian_matrix(self, ham, Ekin, Ebar, Epot, Exc):
+        self.combine_vHt_g(ham.vHt_g)
         W_aL = {}
         for a in self.density.D_asp:
             W_aL[a] = np.empty((self.wfs.setups[a].lmax + 1)**2)
@@ -798,6 +799,7 @@ class Surrounding:
             natoms1 = side1.n_atoms
             for a in self.atoms.calc.wfs.basis_functions.my_atom_indices:
                 ham.dH_asp[a] = self.dH_asp[a + natoms1]            
-       
-    
+
+        
+        
         
