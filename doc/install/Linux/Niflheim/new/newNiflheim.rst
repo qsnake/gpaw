@@ -10,17 +10,20 @@ architecture types.
 
 In all of the folowing, let :envvar:`GPAW` denote your gpaw base directory.
 
-You need to have the newest gpaw-qsub_ script in your :envvar:`PATH`.
+You need to have the newest
+:svn:`~doc/documentation/parallel_runs/gpaw-qsub` script in your
+:envvar:`PATH`.
 
-You should put the following 4 :file:`customize.py` files in your
+You should put the following four :file:`customize.py` files in your
 :envvar:`GPAW` directory:
 
-* customize-slid-ethernet.py_
-* customize-slid-infiniband.py_
-* customize-fjorm.py_
-* customize-thul.py_
+* :svn:`~doc/install/Linux/Niflheim/new/customize-slid-ethernet.py`
+* :svn:`~doc/install/Linux/Niflheim/new/customize-slid-infiniband.py`
+* :svn:`~doc/install/Linux/Niflheim/new/customize-fjorm.py`
+* :svn:`~doc/install/Linux/Niflheim/new/customize-thul.py`
 
-To compile the code, you should run the shell script compile.sh_:
+To compile the code, you should run the shell script
+:svn:`~doc/install/Linux/Niflheim/new/compile.sh`:
 
 .. literalinclude:: compile.sh
 
@@ -39,7 +42,7 @@ If you use a tc shell, the following should be put in the top of your
 
   source /home/camp/modulefiles.csh
   if ( "`echo $FYS_PLATFORM`" == "AMD-Opteron-el4" ) then # slid
-      if ( ! ( `hostname -s | grep "^p"` ==  "")) then
+      if ( ! ( `hostname -s | grep "^p"` ==  "")) then # p-node = infiniband
           setenv PATH $GPAW/build/bin.linux-x86_64infiniband-2.3:$PATH
           setenv PYTHONPATH $GPAW/build/lib.linux-x86_64infiniband-2.3:$PYTHONPATH
       else
@@ -59,11 +62,3 @@ If you use a tc shell, the following should be put in the top of your
   endif
 
 You should now be able to submit to all possible Niflheim nodes.
-
-.. _gpaw-qsub: ../../../../documentation/parallel_runs/gpaw-qsub
-.. _customize-slid-ethernet.py: customize-slid-ethernet.py
-.. _customize-slid-infiniband.py: customize-slid-infiniband.py
-.. _customize-fjorm.py: customize-fjorm.py
-.. _customize-thul.py: customize-thul.py
-.. _compile.sh: compile.sh
-
