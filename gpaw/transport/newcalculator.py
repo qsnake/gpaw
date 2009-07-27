@@ -15,6 +15,7 @@ from gpaw.transport.tools import tri2full, dot, Se_Sparse_Matrix, PathInfo,\
 from gpaw.transport.intctrl import IntCtrl
 from gpaw.transport.newsurrounding import Surrounding
 from gpaw.transport.newselfenergy import LeadSelfEnergy
+from gpaw.transport.analysor import Transport_Analysor
 
 import ase
 import gpaw
@@ -402,11 +403,12 @@ class Transport(GPAW):
                 self.set_positions()
             else:
                 self.surround.set_positions()
-                self.get_hamiltonian_initial_guess()
+                #self.get_hamiltonian_initial_guess()
         del self.atoms_l
         del self.atoms_e
         self.initialized_transport = True
         self.matrix_mode = 'sparse'
+        self.plot_option = None         
 
     def get_hamiltonian_initial_guess(self):
         atoms = self.atoms.copy()
@@ -722,7 +724,13 @@ class Transport(GPAW):
             if not self.fixed:
                 GPAW.get_potential_energy(self, atoms)
                 self.h_skmm, self.s_kmm = self.get_hs(self, 'scat')               
-            
+            else:
+                h_spkmm, s_pkmm = self.get_hs2(self, 'scat')
+                for kpt in self.wfs.kpt_u:
+                    s = kpt.s
+                    q = kpt.q
+                    self.hsd.reset(s, q, s_pkmm[s], 'S', True)
+                    self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)            
             self.atoms = atoms.copy()
             rank = world.rank
             #if self.gamma:
@@ -919,6 +927,7 @@ class Transport(GPAW):
         self.hamiltonian.S = 0
         self.hamiltonian.Etot = 0
         ##temp
+        
         while not self.cvgflag and self.step < self.max_steps:
             self.iterate()
             self.cvgflag = self.d_cvg and self.h_cvg
@@ -1047,6 +1056,7 @@ class Transport(GPAW):
         self.calculate_integral_path()
         self.distribute_energy_points()
     
+    
         if self.master:
             self.text('------------------Transport SCF-----------------------') 
             bias_info = 'Bias:'
@@ -1055,6 +1065,8 @@ class Transport(GPAW):
             self.text(bias_info)
             self.text('Gate: %f V' % self.gate)
 
+        if self.fixed:
+            self.analysor = Transport_Analysor(self)
         #------for check convergence------
         self.ham_vt_old = np.empty(self.hamiltonian.vt_sG.shape)
         self.ham_vt_diff = None
@@ -1623,6 +1635,11 @@ class Transport(GPAW):
         self.update_hamiltonian(self.density)
         if self.use_linear_vt_array:
             self.hamiltonian.vt_sG += self.get_linear_potential()
+        
+        if self.fixed:
+            self.analysor.save_ele_step()
+            self.analysor.save_data_to_file()
+            
         h_skmm, s_kmm = self.get_hs2(self, 'scat')        
         for kpt in self.wfs.kpt_u:
             s = kpt.s
@@ -1695,7 +1712,7 @@ class Transport(GPAW):
                 kpt.rho_MM = self.hsd.D[kpt.s][kpt.q].recover()
             else:
                 #kpt.rho_MM = self.d_skmm[0, kpt.q]
-                kpt.rho_MM = self.hsd.D[0][kpt.q].recover()
+                kpt.rho_MM = np.real(self.hsd.D[0][kpt.q].recover()).copy()
         self.update_density()
 
     def update_density(self):
@@ -1885,6 +1902,225 @@ class Transport(GPAW):
         self.h_skmm, self.d_skmm, self.s_kmm = self.pl_read(filename + '.mat')
         self.initialize_mol()
      
+    def set_calculator(self, e_points, leads=[0,1]):
+        from ase.transport.calculators import TransportCalculator
+        ind = self.inner_mol_index
+        dim = len(ind)
+        ind = np.resize(ind, [dim, dim])
+     
+        h_scat = self.h_skmm[:, :, ind.T, ind]
+        h_scat = np.sum(h_scat[0, :], axis=0) / self.npk
+        h_scat = np.real(h_scat)
+        
+        l1 = leads[0]
+        l2 = leads[1]
+        
+        h_lead1 = self.double_size(np.sum(self.hl_spkmm[l1][0], axis=0),
+                                   np.sum(self.hl_spkcmm[l1][0], axis=0))
+        h_lead2 = self.double_size(np.sum(self.hl_spkmm[l2][0], axis=0),
+                                   np.sum(self.hl_spkcmm[l2][0], axis=0))
+        h_lead1 /= self.npk
+        h_lead2 /= self.npk
+        
+        h_lead1 = np.real(h_lead1)
+        h_lead2 = np.real(h_lead2)
+        
+        s_scat = np.sum(self.s_kmm[:, ind.T, ind], axis=0) / self.npk
+        s_scat = np.real(s_scat)
+        
+        s_lead1 = self.double_size(np.sum(self.sl_pkmm[l1], axis=0),
+                                   np.sum(self.sl_pkcmm[l1], axis=0))
+        s_lead2 = self.double_size(np.sum(self.sl_pkmm[l2], axis=0),
+                                   np.sum(self.sl_pkcmm[l2], axis=0))
+        
+        s_lead1 /= self.npk
+        s_lead2 /= self.npk
+        
+        s_lead1 = np.real(s_lead1)
+        s_lead2 = np.real(s_lead2)
+        
+        tcalc = TransportCalculator(energies=e_points,
+                                    h = h_scat,
+                                    h1 = h_lead1,
+                                    h2 = h_lead1,
+                                    s = s_scat,
+                                    s1 = s_lead1,
+                                    s2 = s_lead1,
+                                    dos = True
+                                   )
+        return tcalc
+    
+    def calculate_dos(self, E_range=[-6,2], point_num = 60, leads=[0,1]):
+        data = {}
+        e_points = np.linspace(E_range[0], E_range[1], point_num)
+        tcalc = self.set_calculator(e_points, leads)
+        tcalc.get_transmission()
+        tcalc.get_dos()
+        f1 = self.intctrl.leadfermi[leads[0]] * (np.zeros([10, 1]) + 1)
+        f2 = self.intctrl.leadfermi[leads[1]] * (np.zeros([10, 1]) + 1)
+        a1 = np.max(tcalc.T_e)
+        a2 = np.max(tcalc.dos_e)
+        l1 = np.linspace(0, a1, 10)
+        l2 = np.linspace(0, a2, 10)
+        data['e_points'] = e_points
+        data['T_e'] = tcalc.T_e
+        data['dos_e'] = tcalc.dos_e
+        data['f1'] = f1
+        data['f2'] = f2
+        data['l1'] = l1
+        data['l2'] = l2
+        return data
+  
+    def abstract_d_and_v(self):
+        data = {}
+        for s in range(self.nspins):
+            nt = self.gd.collect(self.density.nt_sG[s], True)
+            vt = self.gd.collect(self.hamiltonian.vt_sG[s], True)
+            for name, d in [('x', 0), ('y', 1), ('z', 2)]:
+                data['s' + str(s) + 'nt_1d_' +
+                     name] = self.array_average_in_one_d(nt, d)
+                data['s' + str(s) + 'nt_2d_' +
+                     name] = self.array_average_in_two_d(nt, d)            
+                data['s' + str(s) + 'vt_1d_' +
+                     name] = self.array_average_in_one_d(vt, d)
+                data['s' + str(s) + 'vt_2d_' +
+                     name] = self.array_average_in_two_d(vt, d)
+        return data    
+    
+    def array_average_in_one_d(self, a, d=2):
+        nx, ny, nz = a.shape
+        if d==0:
+            b = np.array([np.sum(a[i]) for i in range(nx)]) / (ny * nz)
+        if d==1:
+            b = np.array([np.sum(a[:, i, :]) for i in range(ny)]) / (nx * nz)        
+        if d==2:
+            b = np.array([np.sum(a[:, :, i]) for i in range(nz)]) / (nx * ny)
+        return b
+    
+    def array_average_in_two_d(self, a, d=0):
+        b = np.sum(a, axis=d) / a.shape[d]
+        return b        
+    
+    def plot_dos(self, E_range, point_num = 30, leads=[0,1]):
+        e_points = np.linspace(E_range[0], E_range[1], point_num)
+        tcalc = self.set_calculator(e_points, leads)
+        tcalc.get_transmission()
+        tcalc.get_dos()
+        f1 = self.intctrl.leadfermi[leads[0]] * (np.zeros([10, 1]) + 1)
+        f2 = self.intctrl.leadfermi[leads[1]] * (np.zeros([10, 1]) + 1)
+        a1 = np.max(tcalc.T_e)
+        a2 = np.max(tcalc.dos_e)
+        l1 = np.linspace(0, a1, 10)
+        l2 = np.linspace(0, a2, 10)
+        import pylab
+        pylab.figure(1)
+        pylab.subplot(211)
+        pylab.plot(e_points, tcalc.T_e, 'b-o', f1, l1, 'r--', f2, l1, 'r--')
+        pylab.ylabel('Transmission Coefficients')
+        pylab.subplot(212)
+        pylab.plot(e_points, tcalc.dos_e, 'b-o', f1, l2, 'r--', f2, l2, 'r--')
+        pylab.ylabel('Density of States')
+        pylab.xlabel('Energy (eV)')
+        pylab.show()
+        
+    def plot_v(self, vt=None, tit=None, ylab=None,
+                                             l_MM=False, plot_buffer=False):
+        import pylab
+        self.use_linear_vt_mm = l_MM
+        if vt == None:
+            vt = self.hamiltonian.vt_sG + self.get_linear_potential()
+        dim = vt.shape
+        for i in range(3):
+            vt = np.sum(vt, axis=0) / dim[i]
+        db = self.dimt_buffer
+        if plot_buffer:
+            td = len(vt)
+            pylab.plot(range(db[0]), vt[:db[0]] * Hartree, 'g--o')
+            pylab.plot(range(db[0], td - db[1]),
+                               vt[db[0]: -db[1]] * Hartree, 'b--o')
+            pylab.plot(range(td - db[1], td), vt[-db[1]:] * Hartree, 'g--o')
+        elif db[1]==0:
+            pylab.plot(vt[db[0]:] * Hartree, 'b--o')
+        else:
+            pylab.plot(vt[db[0]: db[1]] * Hartree, 'b--o')
+        if ylab == None:
+            ylab = 'energy(eV)'
+        pylab.ylabel(ylab)
+        if tit == None:
+            tit = 'bias=' + str(self.bias)
+        pylab.title(tit)
+        pylab.show()
+
+    def plot_d(self, nt=None, tit=None, ylab=None, plot_buffer=False):
+        import pylab
+        if nt == None:
+            nt = self.density.nt_sG
+        dim = nt.shape
+        for i in range(3):
+            nt = np.sum(nt, axis=0) / dim[i]
+        db = self.dimt_buffer
+        if plot_buffer:
+            td = len(nt)
+            pylab.plot(range(db[0]), nt[:db[0]], 'g--o')
+            pylab.plot(range(db[0], td - db[1]), nt[db[0]: -db[1]], 'b--o')
+            pylab.plot(range(td - db[1], td), nt[-db[1]:], 'g--o')
+        elif db[1] == 0:
+            pylab.plot(nt[db[0]:], 'b--o')            
+        else:
+            pylab.plot(nt[db[0]: db[1]], 'b--o')            
+        if ylab == None:
+            ylab = 'density'
+        pylab.ylabel(ylab)
+        if tit == None:
+            tit = 'bias=' + str(self.bias)
+        pylab.title(tit)
+        pylab.show()        
+           
+    def double_size(self, m_ii, m_ij):
+        dim = m_ii.shape[-1]
+        mtx = np.empty([dim * 2, dim * 2])
+        mtx[:dim, :dim] = m_ii
+        mtx[-dim:, -dim:] = m_ii
+        mtx[:dim, -dim:] = m_ij
+        mtx[-dim:, :dim] = m_ij.T.conj()
+        return mtx
+    
+    def get_current(self):
+        E_Points, weight, fermi_factor = self.get_nepath_info()
+        tcalc = self.set_calculator(E_Points)
+        tcalc.initialize()
+        tcalc.update()
+        numE = len(E_Points) 
+        current = [0, 0]
+        for i in [0,1]:
+            for j in range(numE):
+                current[i] += tcalc.T_e[j] * weight[j] * fermi_factor[i][0][j]
+        self.current = current[0] - current[1]
+        return self.current
+    
+    def plot_eigen_channel(self, energy=[0]):
+        tcalc = self.set_calculator(energy)
+        tcalc.initialize()
+        tcalc.update()
+        T_MM = tcalc.T_MM[0]
+        from gpaw.utilities.lapack import diagonalize
+        nmo = T_MM.shape[-1]
+        T = np.zeros([nmo])
+        info = diagonalize(T_MM, T)
+        dmo = np.empty([nmo, nmo, nmo])
+        for i in range(nmo):
+            dmo[i] = np.dot(T_MM[i].T.conj(),T_MM[i])
+        basis_functions = self.wfs.basis_functions
+        for i in range(nmo):
+            wt = self.gd.zeros(1)
+            basis_functions.construct_density(dmo[i], wt[0], 0)
+            import pylab
+            wt=np.sum(wt, axis=2) / wt.shape[2] 
+            if abs(T[i]) > 0.001:
+                pylab.matshow(wt[0])
+                pylab.title('T=' + str(T[i]))
+                pylab.show()     
+                
     def get_nepath_info(self):
         if hasattr(self, 'nepathinfo'):
             energy = self.nepathinfo[0][0].energy
@@ -2002,6 +2238,15 @@ class Transport(GPAW):
         
         self.hl_spkcmm[1] = self.h_skmm[:, :, -nblead:, -nblead*2 : -nblead]
         self.sl_pkcmm[1] = self.s_kmm[:, -nblead:, -nblead*2 : -nblead]
+
+    def get_lead_layer_num(self):
+        tol = 1e-4
+        temp = []
+        for lead_atom in self.atoms_l[0]:
+            for i in range(len(temp)):
+                if abs(atom.position[self.d] - temp[i]) < tol:
+                    break
+                temp.append(atom.position[self.d])
 
     def get_linear_potential_matrix(self):
         # only ok for self.d = 2 now
@@ -2151,6 +2396,66 @@ class Transport(GPAW):
         basis_functions.set_positions(spos_ac)
         return basis_functions
     
+    def initialize_green_function(self):
+        self.selfenergies = []
+        if self.use_lead:
+            for i in range(self.lead_num):
+                self.selfenergies.append(LeadSelfEnergy(self.lead_hsd[i],
+                                                      self.lead_couple_hsd[i]))
+    
+                self.selfenergies[i].set_bias(self.bias[i])
+            
+        if self.use_env:
+            self.env_selfenergies = []
+            for i in range(self.env_num):
+                self.env_selfenergies.append(CellSelfEnergy((self.he_skmm[i],
+                                                             self.se_kmm[i]),
+                                                            (self.he_smm[i],
+                                                             self.se_mm[i]),
+                                                             self.env_ibzk_kc[i],
+                                                             self.env_weight[i],
+                                                            1e-8))
+   
+
+       
+    def calculate_real_dos(self, energy):
+        ns = self.my_nspins
+        nk = self.my_npk
+        nb = self.nbmol_inner
+        gr_skmm = np.zeros([ns, nk, nb, nb], complex)
+        gr_mm = np.zeros([nb, nb], complex)
+        self.initialize_green_function()
+        for s in range(ns):
+            for k in range(nk):
+                gr_mm = self.calculate_green_function_of_k_point(s,
+                                                                    k, energy)
+                gr_skmm[s, k] =  (gr_mm - gr_mm.conj()) /2.
+                print gr_skmm.dtype
+                
+        self.dos_sg = self.project_from_orbital_to_grid(gr_skmm)
+
+    def plot_real_dos(self, direction=0, mode='average', nl=0):
+        import pylab
+        dim = self.dos_sg.shape
+        print 'diff', np.max(abs(self.dos_sg[0] - self.dos_sg[1]))
+        ns, nx, ny, nz = dim
+        if mode == 'average':
+            for s in range(ns):
+                dos_g = np.sum(self.dos_sg[s], axis=direction)
+                dos_g /= dim[direction]
+                pylab.matshow(dos_g)
+                pylab.show()
+        elif mode == 'sl': # single layer mode
+            for s in range(ns):
+                if direction == 0:
+                    dos_g = self.dos_sg[s, nl]
+                elif direction == 1:
+                    dos_g = self.dos_sg[s, :, nl]
+                elif direction == 2:
+                    dos_g = self.dos_g[s, :, :, nl]
+                pylab.matshow(dos_g)
+                pylab.show()
+    
     def calculate_iv(self, v_limit=3, num_v=16):
         bias = np.linspace(0, v_limit, num_v)
         self.file_num = num_v
@@ -2171,6 +2476,7 @@ class Transport(GPAW):
                 pickle.dump(result, fd, 2)
                 fd.close()
         if self.fixed:
+            del self.analysor
             del self.surround
  
     def recover_kpts(self, calc):
