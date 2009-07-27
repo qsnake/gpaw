@@ -610,22 +610,11 @@ class Surrounding:
     
     def set_positions(self, atoms=None):
         calc = self.atoms.calc
-        wfs = calc.wfs
         density = calc.density
-        #hamiltonian = calc.hamiltonian
         charge = calc.input_parameters.charge
         hund = calc.input_parameters.hund
         spos_ac = calc.initialize_positions(atoms)        
-        
-        #self.wfs.initialize(self.density, self.hamiltonian, spos_ac)
-        
-        if density.nt_sG is None:
-            if wfs.kpt_u[0].f_n is None or wfs.kpt_u[0].C_nM is None:
-                self.initialize_from_atomic_densities(density, charge, hund)
-            else:
-                raise NonImplementError('missing the initialization from wfs')
-        else:
-            density.calculate_normalized_charges_and_mix()
+        self.initialize_from_atomic_densities(density, charge, hund)
         calc.update_hamiltonian(density)        
         calc.scf.reset()
         calc.forces.reset()
@@ -726,14 +715,9 @@ class Surrounding:
                                                         self.density.nt_sG, True, nn2)
         
         comp_charge = density.calculate_multipole_moments()
-        if not density.mixer.mix_rho:
-            #density.mixer.mix(density)
-            comp_charge = None
         self.interpolate_density(density, comp_charge)
         self.calculate_pseudo_charge(density, comp_charge)
-        #if density.mixer.mix_rho:
-            #density.mixer.mix(density)
-        density.rhot_g -= self.extra_rhot_g              
+        density.rhot_g -= self.extra_rhot_g
 
     def set_grid_descriptor(self, dim, cell, pbc, domain_comm):
         gd = GridDescriptor(dim, cell, pbc, domain_comm)
