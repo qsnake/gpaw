@@ -324,12 +324,14 @@ class GridDescriptor(Domain):
         This doesn't work in parallel, since it would require communication between neighbour points.
         Note: Not optimized, use only for post processing.
         """
+
         g_c = self.N_c * spos_c - self.beg_c
         bg_c = np.floor(g_c).astype(int) 
         Bg_c = np.ceil(g_c).astype(int) 
         dg_c = g_c - bg_c
 
         # Flip boundary points
+        assert mpi.world.size==1
         Bg_c %= self.N_c
 
         return (vt_g[bg_c[0],bg_c[1],bg_c[2]] * (1.0 - dg_c[0]) * (1.0 - dg_c[1]) * (1.0 - dg_c[2]) + 

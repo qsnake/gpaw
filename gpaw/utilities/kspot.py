@@ -2,6 +2,7 @@ from math import pi,sqrt
 from itertools import izip
 from gpaw.utilities import hartree
 from gpaw.atom.all_electron import AllElectron
+from gpaw import extra_parameters
 from gpaw.sphere import weights, points
 import numpy as npy
 
@@ -149,4 +150,7 @@ class AllElectronPotential:
 
       radvks_g = radvxct_g + radHt_g
       return (xccorr.rgd.r_g, radvks_g)
+
+if not extra_parameters.get('usenewxc'):
+    raise "New XC-corrections required. Add --gpaw usenewxc=1 to command line and try again."
 
