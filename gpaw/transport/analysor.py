@@ -188,19 +188,26 @@ class Transport_Analysor:
         for energy in energies:
             gr = self.calculate_green_function_of_k_point(s, k, energy)
             trans_coff = []
-            for lead_pair in self.lead_pairs:
+            for i, lead_pair in numerate(self.lead_pairs):
                 l1, l2 = lead_pair
                 
                 gamma1 = self.selfenergies[l1].get_lambda(energy)
                 gamma2 = self.selfenergies[l2].get_lambda(energy)
                 
-                ind1 = get_matrix_index(self.tp.lead_index[l1])
-                ind2 = get_matrix_index(self.tp.lead_index[l2])
+                if self.tp.matrix_mode == 'full':
+                    ind1 = get_matrix_index(self.tp.lead_index[l1])
+                    ind2 = get_matrix_index(self.tp.lead_index[l2])
                 
-                gr_sub = gr[ind1.T, ind2]
-                
+                    gr_sub = gr[ind1.T, ind2]
+                elif i == 0:
+                    gr_sub, inv_mat = self.tp.hsd.abstract_sub_green_matrix(
+                                                          energy, sigma, l1, l2)
+                else:
+                    gr_sub = self.tp.hsd.abstract_sub_green_matrix(energy,
+                                                         sigma, l1, l2, inv_mat)                    
                 transmission =  np.dot(np.dot(gamma1, gr_sub),
-                                       np.dot(gamma2, gr_sub.T.conj()))
+                                                np.dot(gamma2, gr_sub.T.conj()))
+       
                 trans_coff.append(np.trace(transmission))
             transmission_list.append(trans_coff)
             del trans_coff
