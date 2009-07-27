@@ -329,6 +329,9 @@ class GridDescriptor(Domain):
         Bg_c = np.ceil(g_c).astype(int) 
         dg_c = g_c - bg_c
 
+        # Flip boundary points
+        Bg_c %= self.N_c
+
         return (vt_g[bg_c[0],bg_c[1],bg_c[2]] * (1.0 - dg_c[0]) * (1.0 - dg_c[1]) * (1.0 - dg_c[2]) + 
                vt_g[Bg_c[0],bg_c[1],bg_c[2]] * (0.0 + dg_c[0]) * (1.0 - dg_c[1]) * (1.0 - dg_c[2]) + 
                vt_g[bg_c[0],Bg_c[1],bg_c[2]] * (1.0 - dg_c[0]) * (0.0 + dg_c[1]) * (1.0 - dg_c[2]) +  

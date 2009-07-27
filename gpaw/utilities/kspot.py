@@ -16,7 +16,7 @@ def get_scaled_positions(atoms, positions):
    scaled = npy.linalg.solve(atoms._cell.T, positions.T).T
    for i in range(3):
       if atoms._pbc[i]:
-         scaled[:, i] %= 1.0
+         scaled[i] %= 1.0
    return scaled
 
 class AllElectronPotential:
