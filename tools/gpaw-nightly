@@ -54,6 +54,7 @@ if day % 2:
     d = {}
     execfile('gpaw/gpaw/version.py', d)
     aserevision = 'tags/' + d['ase_required_version']
+    args = '-x eed.py'
 else:
     aserevision = 'trunk'
 
