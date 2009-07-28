@@ -572,11 +572,16 @@ PyObject* add(LFCObject *lfc, PyObject *args)
     for (int x = 0; x < nx; x++) {
       GRID_LOOP_START(lfc, q) {
         for (int i = 0; i < ni; i++) {
+          double complex conjphase = conj(phase_i[i]);
           LFVolume* v = volume_i + i;
+          const double complex* c_M1 = c_M + v->M;
+          const double* A_gm = v->A_gm;
           for (int gm = 0, G = Ga; G < Gb; G++) {
+            double complex a = 0.0;
             for (int m = 0; m < v->nm; m++, gm++) {
-              a_G[G] += v->A_gm[gm] * c_M[v->M + m] * conj(phase_i[i]);
+              a += A_gm[gm] * c_M[m];
             }
+            a_G[G] += a * conjphase;
           }
         }
       }
