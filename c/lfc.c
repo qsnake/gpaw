@@ -314,6 +314,7 @@ PyObject* integrate(LFCObject *lfc, PyObject *args)
   int nx = PyArray_MultiplyList(dims, nd - 3);
   int nG = PyArray_MultiplyList(dims + nd - 3, 3);
   int nM = c_xM_obj->dimensions[c_xM_obj->nd - 1];
+  double dv = lfc->dv;
 
   if (!lfc->bloch_boundary_conditions) {
     const double* a_G = (const double*)a_xG_obj->data;
@@ -322,9 +323,15 @@ PyObject* integrate(LFCObject *lfc, PyObject *args)
       GRID_LOOP_START(lfc, -1) {
         for (int i = 0; i < ni; i++) {
           LFVolume* v = volume_i + i;
-          for (int gm = 0, G = Ga; G < Gb; G++)
-            for (int m = 0; m < v->nm; m++, gm++)
-              c_M[v->M + m] += a_G[G] * v->A_gm[gm] * lfc->dv;
+          const double* A_gm = v->A_gm;
+          int nm = v->nm;
+          double* c_M1 = c_M + v->M;
+          for (int gm = 0, G = Ga; G < Gb; G++){
+            double av = a_G[G] * dv;
+            for (int m = 0; m < nm; m++, gm++){
+              c_M1[m] += av * A_gm[gm];
+            }
+          }
         }
       }
       GRID_LOOP_STOP(lfc, -1);
@@ -339,10 +346,16 @@ PyObject* integrate(LFCObject *lfc, PyObject *args)
       GRID_LOOP_START(lfc, q) {
         for (int i = 0; i < ni; i++) {
           LFVolume* v = volume_i + i;
-          double complex phase = phase_i[i] * lfc->dv;
-          for (int gm = 0, G = Ga; G < Gb; G++)
-            for (int m = 0; m < v->nm; m++, gm++)
-              c_M[v->M + m] += a_G[G] * v->A_gm[gm] * phase;
+          int nm = v->nm;
+          complex double* c_M1 = c_M + v->M;
+          const double* A_gm = v->A_gm;
+          double complex vphase = phase_i[i] * dv;
+          for (int gm = 0, G = Ga; G < Gb; G++){
+            double complex avphase = a_G[G] * vphase;
+            for (int m = 0; m < nm; m++, gm++){
+              c_M1[m] += avphase * A_gm[gm];
+            }
+          }
         }
       }
       GRID_LOOP_STOP(lfc, q);
