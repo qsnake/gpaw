@@ -17,7 +17,6 @@ from gpaw.utilities.blas import gemm
 from gpaw.setup import Setups
 from gpaw import debug
 import pickle
-from pylab import *
 
 class Side:
     def __init__(self, type, atoms, direction='x+'):
