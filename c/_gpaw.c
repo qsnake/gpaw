@@ -69,9 +69,7 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args);
 PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args);
 PyObject* scalapack_general_diagonalize(PyObject *self, PyObject *args);
 PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args);
-PyObject* scalapack_inverse_general(PyObject *self, PyObject *args);
 #endif
-
 
 static PyMethodDef functions[] = {
   {"gemm", gemm, METH_VARARGS, 0},
