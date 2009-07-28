@@ -136,6 +136,7 @@ if len(tests) == 0:
         'lcao_force.py',
         'wannier-ethylene.py',
         'CH4.py',
+        'neb.py',
         #'hgh_h2o.py',
         'apmb.py',
         'relax.py',
