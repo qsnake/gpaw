@@ -99,46 +99,42 @@ class Banded_Sparse_Matrix:
     def initialize(self, mat):
         assert self.dtype == mat.dtype
         dim = mat.shape[-1]
-        ku = 0
-        kl = 0
-        ud_sum = 1
-        dd_sum = 1
-        while(ud_sum > self.tol):
+        ku = -1
+        kl = -1
+        mat_sum = np.sum(abs(mat))
+        spar_sum = 0
+        while abs(mat_sum - spar_sum) > self.tol * 10:
             ku += 1
-            ud_sum = np.sum(np.diag(abs(mat), ku))
-        while(dd_sum > self.tol):
             kl += 1
-            dd_sum = np.sum(np.diag(abs(mat), -kl))
-        ku -= 1
-        kl -= 1
-            
+            ud_sum = 1
+            dd_sum = 1
+            while(ud_sum > self.tol):
+                ku += 1
+                ud_sum = np.sum(np.diag(abs(mat), ku))
+            while(dd_sum > self.tol):
+                kl += 1
+                dd_sum = np.sum(np.diag(abs(mat), -kl))
+            ku -= 1
+            kl -= 1
    
-        # storage in the tranpose, bacause column major order for zgbsv_ function
-        self.spar = np.zeros([dim, 2 * kl + ku + 1], self.dtype)
-        
-        #for i in range(kl, kl + ku + 1):
-        #    ud = kl + ku - i
-        #    self.spar[ud:, i] = np.diag(mat, -ud)
-        #for i in range(kl + ku + 1, 2 * kl + ku + 1):
-        #    ud = kl + ku - i
-        #    self.spar[:ud, i] = np.diag(mat, -ud)
+            # storage in the tranpose, bacause column major order for zgbsv_ function
+            self.spar = np.zeros([dim, 2 * kl + ku + 1], self.dtype)
+                
+            index1 = np.zeros([dim, 2 * kl + ku + 1], int)
+            index2 = np.zeros([dim, 2 * kl + ku + 1], int)
             
-        index1 = np.zeros([dim, 2 * kl + ku + 1], int)
-        index2 = np.zeros([dim, 2 * kl + ku + 1], int)
-        
-        for i in range(dim):
-            index1[i] = i
-            for j in range(2 * kl + ku + 1):
-                tmp = i + j - (kl + ku)
-                if 0 <= tmp <= dim -1:
-                    index2[i][j] = tmp
-                else:
-                    index2[i][j] = 0
-        
-        self.band_index = (kl, ku, index1, index2)
-        self.spar = mat[index1, index2]
-        assert abs(np.sum(abs(mat)) -
-                                 np.sum(abs(self.recover()))) < self.tol * 10
+            for i in range(dim):
+                index1[i] = i
+                for j in range(2 * kl + ku + 1):
+                    tmp = i + j - (kl + ku)
+                    if 0 <= tmp <= dim -1:
+                        index2[i][j] = tmp
+                    else:
+                        index2[i][j] = 0
+            
+            self.band_index = (kl, ku, index1, index2)
+            self.spar = mat[index1, index2]
+            spar_sum = np.sum(abs(self.recover()))
 
     def recover(self):
         dim = self.spar.shape[0]
@@ -158,19 +154,19 @@ class Banded_Sparse_Matrix:
             
     def reset_minus(self, mat, full=False):
         assert self.dtype == complex
+        index1, index2 = self.band_index[-2:]
         if full:
-            index1, index2 = self.band_index[-2:]
             self.spar -= mat[index1, index2]
         else:
-            self.spar -= mat.spar
+            self.spar -= mat.recover()[index1, index2]
     
     def reset_plus(self, mat, full=False):
         assert self.dtype == complex
+        index1, index2 = self.band_index[-2:]
         if full:
-            index1, index2 = self.band_index[-2:]
             self.spar += mat[index1, index2]
         else:
-            self.spar += mat.spar            
+            self.spar += mat.recover()[index1, index2]           
 
     def inv(self, keep_data=False):
         kl, ku = self.band_index[:2]
@@ -302,7 +298,7 @@ class Tp_Sparse_Matrix:
                 len2 = len(self.ll_index[i][j + 1])
                 self.length += 2 * len1 * len2 + len2 * len2
                 self.nb += len2
-    
+                
     def reset(self, mat, init=False):
         assert mat.dtype == self.dtype
         ind = get_matrix_index(self.mol_index)
@@ -318,6 +314,10 @@ class Tp_Sparse_Matrix:
             for j in range(self.lead_nlayer[i] - 1):
                 ind = get_matrix_index(self.ll_index[i][j])
                 ind1 = get_matrix_index(self.ll_index[i][j + 1])
+                indr1, indc1 = get_matrix_index(self.ll_index[i][j],
+                                                      self.ll_index[i][j + 1])
+                indr2, indc2 = get_matrix_index(self.ll_index[i][j + 1],
+                                                  self.ll_index[i][j])
                 if init:
                     self.diag_h[i][j] = Banded_Sparse_Matrix(self.dtype,
                                                              mat[ind1.T, ind1],
@@ -327,8 +327,8 @@ class Tp_Sparse_Matrix:
                                                   self.diag_h[i][j].band_index
                 else:
                     self.diag_h[i][j].reset(mat[ind1.T, ind1])
-                self.upc_h[i][j] = mat[ind.T, ind1]
-                self.dwnc_h[i][j] = mat[ind1.T, ind]
+                self.upc_h[i][j] = mat[indr1, indc1]
+                self.dwnc_h[i][j] = mat[indr2, indc2]
        
     def reset_from_others(self, tps_mm1, tps_mm2, c1, c2, init=False):
         #self.mol_h = c1 * tps_mm1.mol_h + c2 * tps_mm2.mol_h
@@ -368,9 +368,13 @@ class Tp_Sparse_Matrix:
             for j in range(self.lead_nlayer[i] - 1):
                 ind = get_matrix_index(self.ll_index[i][j])
                 ind1 = get_matrix_index(self.ll_index[i][j + 1])
+                indr1, indc1 = get_matrix_index(self.ll_index[i][j],
+                                                      self.ll_index[i][j + 1])
+                indr2, indc2 = get_matrix_index(self.ll_index[i][j + 1],
+                                                  self.ll_index[i][j])                
                 mat[ind1.T, ind1] = self.diag_h[i][j].recover()
-                mat[ind.T, ind1] = self.upc_h[i][j]
-                mat[ind1.T, ind] = self.dwnc_h[i][j]
+                mat[indr1, indc1] = self.upc_h[i][j]
+                mat[indr2, indc2] = self.dwnc_h[i][j]
         return mat        
 
     def storage(self):
@@ -430,7 +434,7 @@ class Tp_Sparse_Matrix:
                 self.diag_h[i][j].reset_minus(self.dotdot(
                                                     self.upc_h[i][j + 1],
                                                          q_mat[i][j + 1],
-                                                  self.dwnc_h[i][j + 1]))
+                                            self.dwnc_h[i][j + 1]), full=True)
                 q_mat[i][j] = self.diag_h[i][j].inv()
                 #inv(q_mat[i][j])
         h_mm = self.mol_h
@@ -567,13 +571,14 @@ class Tp_Sparse_Matrix:
         nb = self.nb
         mat = np.zeros([nb, nb], complex)
         for i in range(self.lead_num):
-            ind = get_matrix_index(self.ll_index[i][-1])
-            ind1 = get_matrix_index(self.ll_index[i][0])
-            mat[ind1.T, ind] = inv_mat[i][self.lead_num]
+            indr, indc = get_matrix_index(self.ll_index[i][0],
+                                          self.ll_index[i][-1])
+            mat[indr, indc] = inv_mat[i][self.lead_num]
             for j in range(self.lead_num):
                 for k in range(1, self.lead_nlayer[j]):
-                    ind1 = get_matrix_index(self.ll_index[j][k])
-                    mat[ind1.T, ind] = inv_mat[i][j][k - 1]
+                    indr, indc = get_matrix_index(self.ll_index[j][k],
+                                                  self.ll_index[i][-1])
+                    mat[indr, indc] = inv_mat[i][j][k - 1]
         return mat
                     
   
@@ -674,25 +679,30 @@ class CP_Sparse_Matrix:
         for i in range(dim):
             ud_array[i] = np.sum(abs(np.diag(mat, i)))
             dd_array[i] = np.sum(abs(np.diag(mat, -i)))
-        self.spar = []
+        spar_sum = 0
+        mat_sum = np.sum(abs(mat))
         if np.sum(abs(ud_array)) >  np.sum(abs(dd_array)):
             self.flag = 'U'
-            i = 0
-            while ud_array[i] < self.tol and  i < dim - 1:
+            i = -1
+            while abs(mat_sum - spar_sum) > self.tol * 10:
                 i += 1
-            self.index = (i, dim)
-            ldab = dim - i
-            self.spar = mat[:ldab, i:].copy()
-
+                while ud_array[i] < self.tol and  i < dim - 1:
+                    i += 1
+                self.index = (i, dim)
+                ldab = dim - i
+                self.spar = mat[:ldab, i:].copy()
+                spar_sum = np.sum(abs(self.spar))
         else:
             self.flag = 'L'
-            i = 0
-            while dd_array[i] < self.tol and  i < dim - 1:
+            i = -1
+            while abs(mat_sum - spar_sum) > self.tol * 10:
                 i += 1
-            self.index = (-i, dim)
-            ldab = dim - i
-            self.spar = mat[i:, :ldab].copy()
-        assert abs(np.sum(abs(mat)) - np.sum(abs(self.spar))) < self.tol * 10
+                while dd_array[i] < self.tol and  i < dim - 1:
+                    i += 1
+                self.index = (-i, dim)
+                ldab = dim - i
+                self.spar = mat[i:, :ldab].copy()
+                spar_sum = np.sum(abs(self.spar))
         
     def reset(self, mat):
         assert mat.dtype == self.dtype and mat.shape[-1] == self.index[1]
@@ -793,9 +803,14 @@ def tri2full(M,UL='L'):
 def dagger(matrix):
     return np.conj(matrix.T)
 
-def get_matrix_index(ind):
-    dim = len(ind)
-    return np.resize(ind, (dim, dim))
+def get_matrix_index(ind1, ind2=None):
+    if ind2 == None:
+        dim1 = len(ind1)
+        return np.resize(ind1, (dim1, dim1))
+    else:
+        dim1 = len(ind1)
+        dim2 = len(ind2)
+    return np.resize(ind1, (dim2, dim1)).T, np.resize(ind2, (dim1, dim2))
     
 def aa1d(self, a, d=2):
     # array average in one dimension
