@@ -166,7 +166,7 @@ class Transport_Analysor:
             tp.hsd.s = s
             tp.hsd.pk = k
       
-    def calculate_green_function_of_k_point(self, s, k, energy):
+    def calculate_green_function_of_k_point(self, s, k, energy, re_flag=0):
         tp = self.tp 
         if tp.matrix_mode == 'full':
             nbmol = tp.nbmol_inner
@@ -179,21 +179,25 @@ class Transport_Analysor:
             sigma = []
             for i in range(tp.lead_num):
                 sigma.append(self.selfenergies[i](energy))
-            return tp.hsd.calculate_eq_green_function(energy, sigma)
-
+            if re_flag==0:
+                return tp.hsd.calculate_eq_green_function(energy, sigma)
+            else:
+                return tp.hsd.calculate_eq_green_function(energy, sigma), sigma 
+    
     def calculate_transmission_and_dos(self, s, k, energies):
         self.reset_selfenergy_and_green_function(s, k)
         transmission_list = []
         dos_list = []
         for energy in energies:
-            gr = self.calculate_green_function_of_k_point(s, k, energy)
+            gr, sigma = self.calculate_green_function_of_k_point(s, k, energy, 1)
             trans_coff = []
-            for i, lead_pair in numerate(self.lead_pairs):
+            gamma = []
+            for i in range(self.tp.lead_num):
+                gamma.append(1.j * (sigma[i].recover() -
+                                                   sigma[i].recover().T.conj()))
+            
+            for i, lead_pair in enumerate(self.lead_pairs):
                 l1, l2 = lead_pair
-                
-                gamma1 = self.selfenergies[l1].get_lambda(energy)
-                gamma2 = self.selfenergies[l2].get_lambda(energy)
-                
                 if self.tp.matrix_mode == 'full':
                     ind1 = get_matrix_index(self.tp.lead_index[l1])
                     ind2 = get_matrix_index(self.tp.lead_index[l2])
@@ -205,8 +209,8 @@ class Transport_Analysor:
                 else:
                     gr_sub = self.tp.hsd.abstract_sub_green_matrix(energy,
                                                          sigma, l1, l2, inv_mat)                    
-                transmission =  np.dot(np.dot(gamma1, gr_sub),
-                                                np.dot(gamma2, gr_sub.T.conj()))
+                transmission =  np.dot(np.dot(gamma[l1], gr_sub),
+                                                np.dot(gamma[l2], gr_sub.T.conj()))
        
                 trans_coff.append(np.trace(transmission))
             transmission_list.append(trans_coff)
