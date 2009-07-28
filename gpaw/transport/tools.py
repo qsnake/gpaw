@@ -86,7 +86,7 @@ class Banded_Sparse_HSD:
             self.band_index = spar[pk].band_index
        
 class Banded_Sparse_Matrix:
-    def __init__(self, dtype, mat=None, band_index=None, tol=1e-100):
+    def __init__(self, dtype, mat=None, band_index=None, tol=1e-12):
         self.tol = tol
         self.dtype = dtype
         self.band_index = band_index
@@ -655,7 +655,7 @@ class CP_Sparse_HSD:
             self.index = spar[pk].index
      
 class CP_Sparse_Matrix:
-    def __init__(self, dtype, mat=None, index=None, flag=None, tol=1e-100):
+    def __init__(self, dtype, mat=None, index=None, flag=None, tol=1e-12):
         self.tol = tol
         self.index = index
         self.dtype = dtype
@@ -697,7 +697,7 @@ class CP_Sparse_Matrix:
     def reset(self, mat):
         assert mat.dtype == self.dtype and mat.shape[-1] == self.index[1]
         dim = mat.shape[-1]
-        if self.flag == 'U':
+        if self.index[0] > 0:
             ldab = dim - self.index[0]
             self.spar = mat[:ldab, self.index[0]:].copy()            
         else:
@@ -707,7 +707,7 @@ class CP_Sparse_Matrix:
     def recover(self):
         nb = self.index[1]
         mat = np.zeros([nb, nb], self.dtype)
-        if self.flag == 'U':
+        if self.index[0] > 0:
             ldab = nb - self.index[0]
             mat[:ldab, self.index[0]:] = self.spar
         else:
