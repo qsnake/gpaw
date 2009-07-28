@@ -109,7 +109,7 @@ PyObject* diagonalize(PyObject *self, PyObject *args)
     {
       int lwork = 2 * n + 1;
       int lrwork = 3 * n + 1;
-      void* work = (void*)GPAW_MALLOC(double_complex, lwork);
+      void* work = GPAW_MALLOC(double_complex, lwork);
       double* rwork = GPAW_MALLOC(double, lrwork);
       if (b == 0)
         zheev_("V", "U", &n, (void*)COMPLEXP(a), &lda,

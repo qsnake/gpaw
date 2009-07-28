@@ -41,12 +41,12 @@ static INLINE void* gpaw_malloc(int n)
 }
 
 #ifdef GPAW_BGP
-#define GPAW_MALLOC(T, n) ((T*)gpaw_malloc((n) * sizeof(T)))
+#define GPAW_MALLOC(T, n) (gpaw_malloc((n) * sizeof(T)))
 #else
 #ifdef GPAW_AIX
-#define GPAW_MALLOC(T, n) ((T*)malloc((n) * sizeof(T)))
+#define GPAW_MALLOC(T, n) (malloc((n) * sizeof(T)))
 #else
-#define GPAW_MALLOC(T, n) ((T*)gpaw_malloc((n) * sizeof(T)))
+#define GPAW_MALLOC(T, n) (gpaw_malloc((n) * sizeof(T)))
 #endif
 #endif
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
