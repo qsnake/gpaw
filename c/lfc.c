@@ -579,7 +579,7 @@ PyObject* add(LFCObject *lfc, PyObject *args)
           for (int gm = 0, G = Ga; G < Gb; G++) {
             double complex a = 0.0;
             for (int m = 0; m < v->nm; m++, gm++) {
-              a += A_gm[gm] * c_M[m];
+              a += A_gm[gm] * c_M1[m];
             }
             a_G[G] += a * conjphase;
           }
