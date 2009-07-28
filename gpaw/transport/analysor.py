@@ -170,11 +170,16 @@ class Transport_Analysor:
         tp = self.tp 
         if tp.matrix_mode == 'full':
             nbmol = tp.nbmol_inner
+            sigma_list = []
             sigma = np.zeros([nbmol, nbmol], complex)
             for i in range(tp.lead_num):
                 ind = get_matrix_index(tp.inner_lead_index[i])
-                sigma[ind.T, ind] += self.selfenergies[i](energy)
-            return self.greenfunction.calculate(energy, sigma)
+                sigma_list.append(self.selfenergies[i](energy))
+                sigma[ind.T, ind] += sigma_list[i]
+            if re_flag == 0:
+                return self.greenfunction.calculate(energy, sigma)
+            else:
+                return self.greenfunction.calculate(energy, sigma), sigma_list
         else:
             sigma = []
             for i in range(tp.lead_num):
@@ -193,8 +198,11 @@ class Transport_Analysor:
             trans_coff = []
             gamma = []
             for i in range(self.tp.lead_num):
-                gamma.append(1.j * (sigma[i].recover() -
+                if self.tp.matrix_mode == 'sparse':
+                    gamma.append(1.j * (sigma[i].recover() -
                                                    sigma[i].recover().T.conj()))
+                else:
+                    gamma.append(1.j * (sigma[i] - sigma[i].T.conj()))            
             
             for i, lead_pair in enumerate(self.lead_pairs):
                 l1, l2 = lead_pair
