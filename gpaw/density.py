@@ -500,7 +500,7 @@ class Density:
                     n_sg[s][tuple(g_c)] -= I / gd.dv
         return n_sg, gd
 
-    if extra_parameters.get('usenewlfc'):
+    if extra_parameters.get('usenewlfc', True):
         get_all_electron_density = new_get_all_electron_density
         
     def estimate_memory(self, mem):

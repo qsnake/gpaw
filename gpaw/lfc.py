@@ -1064,7 +1064,7 @@ class LocalizedFunctionsCollection(BaseLFC):
             mem.subnode('Derivatives', 3 * bytes)
         mem.subnode('Work', bytes)
 
-if extra_parameters.get('usenewlfc'):
+if extra_parameters.get('usenewlfc', True):
     LocalizedFunctionsCollection = NewLocalizedFunctionsCollection
 
 

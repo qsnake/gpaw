@@ -318,7 +318,7 @@ class HGHSetup:
 
     def get_projectors(self):
         from gpaw import extra_parameters
-        if extra_parameters.get('usenewlfc'):
+        if extra_parameters.get('usenewlfc', True):
             pt_jg = self.pt_jg
         else: # give projectors equal range
             maxlen = max([len(pt_g) for pt_g in self.pt_jg])
