@@ -406,7 +406,7 @@ class Transport(GPAW):
                 self.set_positions()
             else:
                 self.surround.set_positions()
-                #self.get_hamiltonian_initial_guess()
+                self.get_hamiltonian_initial_guess()
         del self.atoms_l
         del self.atoms_e
         self.initialized_transport = True
@@ -728,13 +728,13 @@ class Transport(GPAW):
             if not self.fixed:
                 GPAW.get_potential_energy(self, atoms)
                 self.h_skmm, self.s_kmm = self.get_hs(self, 'scat')               
-            else:
-                h_spkmm, s_pkmm = self.get_hs2(self, 'scat')
-                for kpt in self.wfs.kpt_u:
-                    s = kpt.s
-                    q = kpt.q
-                    self.hsd.reset(s, q, s_pkmm[s], 'S', True)
-                    self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)            
+            #else:
+            #    h_spkmm, s_pkmm = self.get_hs2(self, 'scat')
+            #    for kpt in self.wfs.kpt_u:
+            #        s = kpt.s
+            #        q = kpt.q
+            #        self.hsd.reset(s, q, s_pkmm[s], 'S', True)
+            #        self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)            
             self.atoms = atoms.copy()
             rank = world.rank
             #if self.gamma:
@@ -2470,15 +2470,6 @@ class Transport(GPAW):
             v = bias[i]
             self.bias = [v/2., -v /2.]
             self.get_selfconsistent_hamiltonian()
-            result['step_data' + str(i)] = self.result_for_one_bias_step()            
-            current[i] = self.get_current()
-            #self.output('bias' + str(i))
-            result['i_v'] = (bias[:i+1], current[:i+1])    
-            result['N'] = i + 1
-            if self.master:
-                fd = file('result.dat', 'wb')
-                pickle.dump(result, fd, 2)
-                fd.close()
         if self.fixed:
             del self.analysor
             del self.surround
