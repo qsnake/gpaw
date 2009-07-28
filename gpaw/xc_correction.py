@@ -688,7 +688,7 @@ class NewXCCorrection(BaseXCCorrection):
     MGGA_libxc = MGGA
 
 
-class XCCorrection(BaseXCCorrection):
+class OldXCCorrection(BaseXCCorrection):
     def __init__(self, *args, **kwargs):
         BaseXCCorrection.__init__(self, *args, **kwargs)
         if self.nspins == 2:
@@ -2048,5 +2048,8 @@ class XCCorrection(BaseXCCorrection):
                 y += 1
         return E - self.Exc0
 
-if extra_parameters.get('usenewxc'):
-    XCCorrection = NewXCCorrection
+def XCCorrection(*args, **kwargs):
+    if extra_parameters.get('usenewxc'):
+        return NewXCCorrection(*args, **kwargs)
+    else:
+        return OldXCCorrection(*args, **kwargs)
