@@ -54,7 +54,7 @@ class Transport(GPAW):
                        'use_buffer', 'buffer_atoms', 'edge_atoms', 'bias',
                        'lead_restart',
                        
-                       'lead_atoms', 'nleadlayers',
+                       'lead_atoms', 'nleadlayers', 'mol_atoms',
                        
                        'use_env', 'env_atoms', 'env_cells', 'env_kpts',
                        'env_use_buffer', 'env_buffer_atoms', 'env_edge_atoms',
@@ -88,6 +88,8 @@ class Transport(GPAW):
                 p['lead_atoms'] = kw['lead_atoms']
             if key in ['nleadlayers']:
                 p['nleadlayers'] = kw['nleadlayers']
+            if key in ['mol_atoms']:
+                p['mol_atoms'] = kw['mol_atoms']
                 
             if key in ['bias']:
                 p['bias'] = kw['bias']                
@@ -164,6 +166,7 @@ class Transport(GPAW):
             
             self.lead_atoms = p['lead_atoms']
             self.nleadlayers = p['nleadlayers']
+            self.mol_atoms = p['mol_atoms']
             
         self.use_env = p['use_env']
         self.env_atoms = p['env_atoms']
@@ -548,9 +551,10 @@ class Transport(GPAW):
                                              self.env_buffer_atoms[i], setups)
         
         for i in range(self.lead_num):
-            begin = 0
             n_layer_atoms = len(self.lead_atoms[i]) / self.nleadlayers[i]
-            for j in range(self.nleadlayers[i]):
+            self.lead_layer_index[i][0] = get_atom_indices(self.mol_atoms, setups)
+            begin = 0
+            for j in range(1, self.nleadlayers[i] + 1):
                 atoms_index = self.lead_atoms[i][begin: begin + n_layer_atoms]
                 self.lead_layer_index[i][j] = get_atom_indices(atoms_index, setups)
                 begin += n_layer_atoms
@@ -595,7 +599,7 @@ class Transport(GPAW):
             self.inner_lead_index.append([])
             self.buffer_index.append([])
             self.lead_layer_index.append([])
-            for j in range(self.nleadlayers[i]):
+            for j in range(self.nleadlayers[i] + 1):
                 self.lead_layer_index[i].append([])
       
         for i in range(self.env_num):
