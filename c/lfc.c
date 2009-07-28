@@ -533,10 +533,15 @@ PyObject* lcao_to_grid(LFCObject *lfc, PyObject *args)
     GRID_LOOP_START(lfc, k) {
       for (int i = 0; i < ni; i++) {
         LFVolume* v = volume_i + i;
+        double complex conjphase = conj(phase_i[i]);
+        const double* A_gm = v->A_gm;
+        const double complex* c_M1 = c_M + v->M;
         for (int gm = 0, G = Ga; G < Gb; G++) {
+          double complex psit = 0.0;
           for (int m = 0; m < v->nm; m++, gm++) {
-            psit_G[G] += v->A_gm[gm] * c_M[v->M + m] * conj(phase_i[i]);
+            psit += A_gm[gm] * c_M1[m];
           }
+          psit_G[G] += psit * conjphase;
         }
       }
     }
