@@ -1,7 +1,7 @@
 #from gpaw.transport.calculator import Transport
 from gpaw.transport.selfenergy import LeadSelfEnergy, CellSelfEnergy
 from gpaw.transport.greenfunction import GreenFunction
-from gpaw.transport.tools import get_matrix_index, aa1d, aa2d, sum_by_unit
+from gpaw.transport.tools import get_matrix_index, aa1d, aa2d, sum_by_unit, dot
 import numpy as np
 import copy
 import pickle
@@ -209,18 +209,18 @@ class Transport_Analysor:
                 else:
                     gr_sub = self.tp.hsd.abstract_sub_green_matrix(energy,
                                                          sigma, l1, l2, inv_mat)                    
-                transmission =  np.dot(np.dot(gamma[l1], gr_sub),
-                                                np.dot(gamma[l2], gr_sub.T.conj()))
+                transmission =  dot(dot(gamma[l1], gr_sub),
+                                                dot(gamma[l2], gr_sub.T.conj()))
        
                 trans_coff.append(np.trace(transmission))
             transmission_list.append(trans_coff)
             del trans_coff
             
             if self.tp.matrix_mode == 'full':
-                dos = - np.imag(np.trace(np.dot(gr,
+                dos = - np.imag(np.trace(dot(gr,
                                            self.greenfunction.S))) / np.pi
             else:
-                dos = - np.imag(np.trace(np.dot(gr,
+                dos = - np.imag(np.trace(dot(gr,
                                          self.tp.hsd.S[k].recover()))) / np.pi                
             dos_list.append(dos)
         
@@ -560,7 +560,7 @@ class Transport_Analysor:
         info = diagonalize(T_MM, T)
         dmo = np.empty([nmo, nmo, nmo])
         for i in range(nmo):
-            dmo[i] = np.dot(T_MM[i].T.conj(),T_MM[i])
+            dmo[i] = dot(T_MM[i].T.conj(),T_MM[i])
         basis_functions = self.wfs.basis_functions
         for i in range(nmo):
             wt = self.gd.zeros(1)
