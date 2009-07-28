@@ -121,6 +121,7 @@ if len(tests) == 0:
         'fermilevel.py',
         'degeneracy.py',
         'h2o-xas.py',
+        'si_primitive.py',
         'si.py',
         'simple_stm.py',
         'asewannier.py',
