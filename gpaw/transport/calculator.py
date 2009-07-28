@@ -11,10 +11,10 @@ import gpaw
 from gpaw import GPAW, extra_parameters
 from gpaw import Mixer, MixerDif, PoissonSolver
 from gpaw import restart as restart_gpaw
-from gpaw.transport.tools import k2r_hs, r2k_hs, tri2full, dot, Se_Sparse_Matrix, get_matrix_index
+from gpaw.transport.tools import k2r_hs, r2k_hs, tri2full, dot, Se_Sparse_Matrix
 from gpaw.transport.intctrl import IntCtrl
 from gpaw.transport.analysor import Transport_Analysor
-from gpaw.transport.newsurrounding import Surrounding
+from gpaw.transport.surrounding import Surrounding
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.lcao.tools import get_realspace_hs
 from gpaw.mpi import world
@@ -25,16 +25,6 @@ from gpaw.utilities.timing import Timer
 from gpaw.wavefunctions import LCAOWaveFunctions
 from gpaw import debug
 
-def tw(mat, filename):
-    fd = file(filename, 'wb')
-    pickle.dump(mat, fd, 2)
-    fd.close()
-def tr(filename):
-    fd = file(filename, 'r')
-    mat = pickle.load(fd)
-    fd.close()
-    return mat
-    
 class PathInfo:
     def __init__(self, type, nlead):
         self.type = type
@@ -459,13 +449,13 @@ class Transport(GPAW):
                 self.set_positions()
             else:
                 self.surround.set_positions()
-                self.get_hamiltonian_initial_guess2()
+                self.get_hamiltonian_initial_guess()
         del self.atoms_l
         del self.atoms_e
        
         self.plot_option = None 
-
         self.matrix_mode = 'full'
+       
         self.initialized_transport = True
 
     def get_hamiltonian_initial_guess(self):
@@ -485,9 +475,6 @@ class Transport(GPAW):
         kpts = atoms.calc.wfs.ibzk_qc
         self.h_skmm = self.substract_pk(ntk, kpts, h_skmm, 'h')
         self.s_kmm = self.substract_pk(ntk, kpts, s_kmm)
-        if self.wfs.dtype == float:
-            h_spkmm = np.real(h_spkmm).copy()
-            s_pkmm = np.real(s_pkmm).copy()        
         fd = file('guess.dat', 'wb')
         pickle.dump((self.h_skmm, self.s_kmm), fd, 2)
         fd.close()
@@ -856,39 +843,6 @@ class Transport(GPAW):
         for S_MM in S_qMM:
             tri2full(S_MM)
         H_sqMM = np.empty((self.my_nspins,) + S_qMM.shape, complex)
-        
-        if self.fixed and region == 'scat':
-            for kpt in self.surround.wfs.kpt_u: 
-                H_MM = self.calculate_hamiltonian_matrix(kpt)
-                ind = get_matrix_index(self.gate_mol_index)
-                H_MM[ind.T, ind] += self.gate * S_qMM[kpt.q, ind.T, ind]
-                tri2full(H_MM)
-                H_MM *= Hartree
-                if self.my_nspins == 2:
-                    H_sqMM[kpt.s, kpt.q] = H_MM
-                else:
-                    H_sqMM[0, kpt.q] = H_MM        
-        else:        
-            for kpt in wfs.kpt_u:
-                eigensolver.calculate_hamiltonian_matrix(ham, wfs, kpt)
-                H_MM = eigensolver.H_MM
-                tri2full(H_MM)
-                H_MM *= Hartree
-                if self.my_nspins == 2:
-                    H_sqMM[kpt.s, kpt.q] = H_MM
-                else:
-                    H_sqMM[0, kpt.q] = H_MM
-
-        return H_sqMM, S_qMM
-
-    def get_hs_bak(self, calc, region='lead'):
-        wfs = calc.wfs
-        eigensolver = wfs.eigensolver
-        ham = calc.hamiltonian
-        S_qMM = wfs.S_qMM.copy()
-        for S_MM in S_qMM:
-            tri2full(S_MM)
-        H_sqMM = np.empty((self.my_nspins,) + S_qMM.shape, complex)
         for kpt in wfs.kpt_u:
             if self.fixed and region == 'scat':
                 H_MM = self.calculate_hamiltonian_matrix(kpt)
@@ -907,7 +861,7 @@ class Transport(GPAW):
             else:
                 H_sqMM[0, kpt.q] = H_MM
         return H_sqMM, S_qMM
-    
+
     def calculate_hamiltonian_matrix(self, kpt):
         assert self.fixed
         wfs = self.wfs
@@ -917,24 +871,24 @@ class Transport(GPAW):
         s = kpt.s
         q = kpt.q
         H_MM = self.surround.calculate_potential_matrix(hamiltonian.vt_sG,
-                                                                      kpt)
-        #Mstart = wfs.basis_functions.Mstart
-        #Mstop = wfs.basis_functions.Mstop
+                                                                      s, q)
+        Mstart = wfs.basis_functions.Mstart
+        Mstop = wfs.basis_functions.Mstop
 
-        #test = np.zeros(H_MM.shape, H_MM.dtype) 
-        #for a, P_Mi in kpt.P_aMi.items():
-        #    dH_ii = np.asarray(unpack(hamiltonian.dH_asp[a][s]), P_Mi.dtype)
-        #    dHP_iM = np.zeros((dH_ii.shape[1], P_Mi.shape[0]), P_Mi.dtype)
-        #    gemm(1.0, P_Mi, dH_ii, 0.0, dHP_iM, 'c')
-        #    if Mstart != -1:
-        #        P_Mi = P_Mi[Mstart:Mstop]
-        #    gemm(1.0, dHP_iM, P_Mi, 1.0, H_MM)
-        #    gemm(1.0, dHP_iM, P_Mi, 1.0, test)            
-        #  
-        #eigensolver.gd.comm.sum(H_MM)
-        #H_MM += self.surround.sah_spkmm[s, q]
-        #test += self.surround.sah_spkmm[s, q]
-        #self.test_atomic_hamiltonian_matrix = np.diag(test)
+        test = np.zeros(H_MM.shape, H_MM.dtype) 
+        for a, P_Mi in kpt.P_aMi.items():
+            dH_ii = np.asarray(unpack(hamiltonian.dH_asp[a][s]), P_Mi.dtype)
+            dHP_iM = np.zeros((dH_ii.shape[1], P_Mi.shape[0]), P_Mi.dtype)
+            gemm(1.0, P_Mi, dH_ii, 0.0, dHP_iM, 'c')
+            if Mstart != -1:
+                P_Mi = P_Mi[Mstart:Mstop]
+            gemm(1.0, dHP_iM, P_Mi, 1.0, H_MM)
+            gemm(1.0, dHP_iM, P_Mi, 1.0, test)            
+          
+        eigensolver.gd.comm.sum(H_MM)
+        H_MM += self.surround.sah_spkmm[s, q]
+        test += self.surround.sah_spkmm[s, q]
+        self.test_atomic_hamiltonian_matrix = np.diag(test)
         H_MM += wfs.T_qMM[q]
         return H_MM
         
@@ -993,7 +947,7 @@ class Transport(GPAW):
         self.update_scat_hamiltonian(atoms)
         world.barrier()
         self.initialize_mol()
-        #self.boundary_check()
+        self.boundary_check()
     
     def initialize_lead(self, l):
         nspins = self.my_nspins
@@ -1100,8 +1054,6 @@ class Transport(GPAW):
             for i in range(self.my_nspins):
                 for j in range(self.my_npk):
                     self.ed_pkmm[n][i, j] = dot(self.dl_spkcmm[n][i, j],
-                                                 self.sl_pkcmm[n][j].T.conj())
-                    test2=np.dot(self.dl_spkcmm[n][i, j],
                                                  self.sl_pkcmm[n][j].T.conj())
                     self.ec[n, i] += np.real(np.trace(self.ed_pkmm[n][i, j]))   
         self.pkpt_comm.sum(self.ec)
@@ -1314,7 +1266,9 @@ class Transport(GPAW):
             self.text('----------------step %d -------------------'
                                                                 % self.step)
         #self.keep_trace()
-          
+        #if self.fixed:
+        #   self.analysor.save_ele_step()
+        #    self.analysor.save_data_to_file()              
         self.h_cvg = self.check_convergence('h')
         self.get_density_matrix()
         self.get_hamiltonian_matrix()
@@ -1693,7 +1647,7 @@ class Transport(GPAW):
                     tri_type = 'L'
                 else:
                     tri_type = 'R'
-                tgt = Se_Sparse_Matrix(self.selfenergies[j](zp[i]), tri_type)
+                tgt = Se_Sparse_Matrix(self.selfenergies[j](zp[i]), tri_type) 
                 self.tgtint[j].append(tgt)
             
             if self.use_env:
@@ -1931,11 +1885,6 @@ class Transport(GPAW):
         self.update_hamiltonian(self.density)
         if self.use_linear_vt_array:
             self.hamiltonian.vt_sG += self.get_linear_potential()
-        
-        if self.fixed:
-            self.analysor.save_ele_step()
-            self.analysor.save_data_to_file()            
-        
         self.h_skmm, self.s_kmm = self.get_hs(self, 'scat')
         #self.spy('h_skmm', self.h_skmm)
         #self.spy('s_kmm', self.s_kmm)
@@ -2031,41 +1980,40 @@ class Transport(GPAW):
         if not self.fixed:
             self.density.update(self.wfs)
         else:
-            self.surround.update_density(self.density)
-            #wfs = self.wfs
-            #density = self.density
-            #self.surround.calculate_pseudo_density(density, wfs)
-            #density.nt_sG += self.surround.streching_nt_sG
-            ##self.spy('nt_sG', density.nt_sG)
-            ##wfs.calculate_atomic_density_matrices(density.D_asp)
-            #self.surround.calculate_atomic_density_matrices()
-            ##self.spy('D_asp', density.D_asp)
-            #comp_charge = density.calculate_multipole_moments()
-            ##self.spy('comp', comp_charge)
-            ##if (isinstance(wfs, LCAOWaveFunctions) or
-            ##    extra_parameters.get('normalize')):
-            ##    density.normalize(comp_charge)
-            ##density.mix(comp_charge)
-            #
-            #
-            #pseudo_charge = density.gd.integrate(density.nt_sG).sum()
-            ##self.spy('pchar', pseudo_charge)
-            #print pseudo_charge, world.rank, 'pseudo_charge'
-            #if pseudo_charge != 0:
-            #    x = -(density.charge + comp_charge) / pseudo_charge
-            #    print 'scaling', x
-            #    #density.nt_sG *= x                
-            #if not density.mixer.mix_rho:
-            #    density.mixer.mix(density)
-            #    comp_charge = None
-            #self.surround.interpolate_density(density, comp_charge)
-            ##self.spy('nt_sg', density.nt_sg)
-            #self.surround.calculate_pseudo_charge(density, comp_charge)
-            ##self.spy('rhot_g', density.rhot_g)
-            #if density.mixer.mix_rho:
-            #    density.mixer.mix(density)            
-            #density.rhot_g -= self.surround.extra_rhot_g
-            ##self.spy('extra_rhot_g', self.surround.extra_rhot_g)
+            wfs = self.wfs
+            density = self.density
+            self.surround.calculate_pseudo_density(density, wfs)
+            density.nt_sG += self.surround.streching_nt_sG
+            #self.spy('nt_sG', density.nt_sG)
+            #wfs.calculate_atomic_density_matrices(density.D_asp)
+            self.surround.calculate_atomic_density_matrices()
+            #self.spy('D_asp', density.D_asp)
+            comp_charge = density.calculate_multipole_moments()
+            #self.spy('comp', comp_charge)
+            #if (isinstance(wfs, LCAOWaveFunctions) or
+            #    extra_parameters.get('normalize')):
+            #    density.normalize(comp_charge)
+            #density.mix(comp_charge)
+            
+            
+            pseudo_charge = density.gd.integrate(density.nt_sG).sum()
+            #self.spy('pchar', pseudo_charge)
+            print pseudo_charge, world.rank, 'pseudo_charge'
+            if pseudo_charge != 0:
+                x = -(density.charge + comp_charge) / pseudo_charge
+                print 'scaling', x
+                #density.nt_sG *= x                
+            if not density.mixer.mix_rho:
+                density.mixer.mix(density)
+                comp_charge = None
+            self.surround.interpolate_density(density, comp_charge)
+            #self.spy('nt_sg', density.nt_sg)
+            self.surround.calculate_pseudo_charge(density, comp_charge)
+            #self.spy('rhot_g', density.rhot_g)
+            if density.mixer.mix_rho:
+                density.mixer.mix(density)            
+            density.rhot_g -= self.surround.extra_rhot_g
+            #self.spy('extra_rhot_g', self.surround.extra_rhot_g)
 
     def update_hamiltonian(self, density):
         ham = self.hamiltonian        
@@ -2107,11 +2055,11 @@ class Transport(GPAW):
         ham.npoisson = ham.poisson.solve_neutral(ham.vHt_g, density.rhot_g,
                                                           eps=ham.poisson.eps)
         ham.timer.stop('Poisson')
-       
-        self.surround.combine_vHt_g(ham.vHt_g)
-        
+        #self.spy('vHt_g', ham.vHt_g)
         dim = density.rhot_g.shape[0] / 2
-        
+        if self.fixed:
+            self.surround.boundary_data['rhot_g1'] = density.rhot_g[dim, dim]
+            self.surround.boundary_data['vHt_g1'] = ham.vHt_g[dim, dim]        
         Epot = 0.5 * ham.finegd.integrate(ham.vHt_g, density.rhot_g,
                                            global_integral=False)
         Ekin = 0.0
@@ -2127,80 +2075,78 @@ class Transport(GPAW):
                 ham.vt_sG[s] = self.surround.restrict(ham.vt_sg, s)
                 Ekin -= ham.gd.integrate(ham.vt_sG[s], nt_G - density.nct_G,
                                                global_integral=False)
-         
-        self.surround.calculate_atomic_hamiltonian_matrix(ham, Ekin, Ebar, Epot, Exc)        
         #self.spy('vt_sg', ham.vt_sg)
         #self.spy('vt_sG', ham.vt_sG)
         # Calculate atomic hamiltonians:
-        #ham.timer.start('Atomic Hamiltonians')
-        #W_aL = {}
-        #for a in density.D_asp:
-        #    W_aL[a] = np.empty((ham.setups[a].lmax + 1)**2)
-        #density.ghat.integrate(ham.vHt_g, W_aL)
-        #ham.dH_asp = {}
-        #for a, D_sp in density.D_asp.items():
-        #    W_L = W_aL[a]
-        #    setup = ham.setups[a]
+        ham.timer.start('Atomic Hamiltonians')
+        W_aL = {}
+        for a in density.D_asp:
+            W_aL[a] = np.empty((ham.setups[a].lmax + 1)**2)
+        density.ghat.integrate(ham.vHt_g, W_aL)
+        ham.dH_asp = {}
+        for a, D_sp in density.D_asp.items():
+            W_L = W_aL[a]
+            setup = ham.setups[a]
 
-        #    D_p = D_sp.sum(0)
-        #    dH_p = (setup.K_p + setup.M_p +
-        #            setup.MB_p + 2.0 * np.dot(setup.M_pp, D_p) +
-        #            np.dot(setup.Delta_pL, W_L))
-        #    Ekin += np.dot(setup.K_p, D_p) + setup.Kc
-        #    Ebar += setup.MB + np.dot(setup.MB_p, D_p)
-        #    Epot += setup.M + np.dot(D_p, (setup.M_p + np.dot(setup.M_pp, D_p)))
+            D_p = D_sp.sum(0)
+            dH_p = (setup.K_p + setup.M_p +
+                    setup.MB_p + 2.0 * np.dot(setup.M_pp, D_p) +
+                    np.dot(setup.Delta_pL, W_L))
+            Ekin += np.dot(setup.K_p, D_p) + setup.Kc
+            Ebar += setup.MB + np.dot(setup.MB_p, D_p)
+            Epot += setup.M + np.dot(D_p, (setup.M_p + np.dot(setup.M_pp, D_p)))
 
-        #    if setup.HubU is not None:
-        #        nspins = len(ham.D_sp)
-        #        i0 = setup.Hubi
-        #        i1 = i0 + 2 * setup.Hubl + 1
-        #        for D_p, H_p in zip(ham.D_sp, ham.H_sp): # XXX ham.H_sp ??
-        #            N_mm = unpack2(D_p)[i0:i1, i0:i1] / 2 * nspins 
-        #            Eorb = setup.HubU/2. * (N_mm - np.dot(N_mm,N_mm)).trace()
-        #            Vorb = setup.HubU * (0.5 * np.eye(i1-i0) - N_mm)
-        #            Exc += Eorb                    
-        #            Htemp = unpack(H_p)
-        #            Htemp[i0:i1,i0:i1] += Vorb
-        #            H_p[:] = pack2(Htemp)
+            if setup.HubU is not None:
+                nspins = len(ham.D_sp)
+                i0 = setup.Hubi
+                i1 = i0 + 2 * setup.Hubl + 1
+                for D_p, H_p in zip(ham.D_sp, ham.H_sp): # XXX ham.H_sp ??
+                    N_mm = unpack2(D_p)[i0:i1, i0:i1] / 2 * nspins 
+                    Eorb = setup.HubU/2. * (N_mm - np.dot(N_mm,N_mm)).trace()
+                    Vorb = setup.HubU * (0.5 * np.eye(i1-i0) - N_mm)
+                    Exc += Eorb                    
+                    Htemp = unpack(H_p)
+                    Htemp[i0:i1,i0:i1] += Vorb
+                    H_p[:] = pack2(Htemp)
 
-        #    if 0:#vext is not None:
-        #        # Tailor expansion to the zeroth order
-        #        Eext += vext[0][0] * (sqrt(4 * pi) * ham.Q_L[0] + setup.Z)
-        #        dH_p += vext[0][0] * sqrt(4 * pi) * setup.Delta_pL[:, 0]
-        #        if len(vext) > 1:
-        #            # Tailor expansion to the first order
-        #            Eext += sqrt(4 * pi / 3) * np.dot(vext[1], ham.Q_L[1:4])
-        #            # there must be a better way XXXX
-        #            Delta_p1 = np.array([setup.Delta_pL[:, 1],
-        #                                  setup.Delta_pL[:, 2],
-        #                                  setup.Delta_pL[:, 3]])
-        #            dH_p += sqrt(4 * pi / 3) * np.dot(vext[1], Delta_p1)
+            if 0:#vext is not None:
+                # Tailor expansion to the zeroth order
+                Eext += vext[0][0] * (sqrt(4 * pi) * ham.Q_L[0] + setup.Z)
+                dH_p += vext[0][0] * sqrt(4 * pi) * setup.Delta_pL[:, 0]
+                if len(vext) > 1:
+                    # Tailor expansion to the first order
+                    Eext += sqrt(4 * pi / 3) * np.dot(vext[1], ham.Q_L[1:4])
+                    # there must be a better way XXXX
+                    Delta_p1 = np.array([setup.Delta_pL[:, 1],
+                                          setup.Delta_pL[:, 2],
+                                          setup.Delta_pL[:, 3]])
+                    dH_p += sqrt(4 * pi / 3) * np.dot(vext[1], Delta_p1)
 
-        #    ham.dH_asp[a] = dH_sp = np.zeros_like(D_sp)
-        #    Exc += setup.xc_correction.calculate_energy_and_derivatives(
-        #        D_sp, dH_sp, a)
-        #    dH_sp += dH_p
+            ham.dH_asp[a] = dH_sp = np.zeros_like(D_sp)
+            Exc += setup.xc_correction.calculate_energy_and_derivatives(
+                D_sp, dH_sp, a)
+            dH_sp += dH_p
 
-        #    Ekin -= (D_sp * dH_sp).sum()
+            Ekin -= (D_sp * dH_sp).sum()
 
-        #ham.timer.stop('Atomic Hamiltonians')
+        ham.timer.stop('Atomic Hamiltonians')
 
-        ## Make corrections due to non-local xc:
-        #xcfunc = ham.xc.xcfunc
-        #ham.Enlxc = xcfunc.get_non_local_energy()
-        #ham.Enlkin = xcfunc.get_non_local_kinetic_corrections()
-        #if ham.Enlxc != 0 or ham.Enlkin != 0:
-        #    print 'Where should we do comm.sum() ?'
+        # Make corrections due to non-local xc:
+        xcfunc = ham.xc.xcfunc
+        ham.Enlxc = xcfunc.get_non_local_energy()
+        ham.Enlkin = xcfunc.get_non_local_kinetic_corrections()
+        if ham.Enlxc != 0 or ham.Enlkin != 0:
+            print 'Where should we do comm.sum() ?'
 
-        #comm = ham.gd.comm
-        #ham.Ekin0 = comm.sum(Ekin)
-        #ham.Epot = comm.sum(Epot)
-        #ham.Ebar = comm.sum(Ebar)
-        #ham.Eext = comm.sum(Eext)
-        #ham.Exc = comm.sum(Exc)
+        comm = ham.gd.comm
+        ham.Ekin0 = comm.sum(Ekin)
+        ham.Epot = comm.sum(Epot)
+        ham.Ebar = comm.sum(Ebar)
+        ham.Eext = comm.sum(Eext)
+        ham.Exc = comm.sum(Exc)
 
-        #ham.Exc += ham.Enlxc
-        #ham.Ekin0 += ham.Enlkin
+        ham.Exc += ham.Enlxc
+        ham.Ekin0 += ham.Enlkin
 
         ham.timer.stop('Hamiltonian')
     
@@ -2834,7 +2780,7 @@ class Transport(GPAW):
                                                              self.sl_pkcmm[i][0]),
                                                 (self.hl_spkcmm[i][0,0],
                                                              self.sl_pkcmm[i][0]),
-                                                 1e-4))
+                                                 1e-8))
     
                 self.selfenergies[i].set_bias(self.bias[i])
             
@@ -2965,6 +2911,8 @@ class Transport(GPAW):
         data['ham'] = self.hamiltonian.vt_sG[0, dim, dim]
         if hasattr(self, 'test_atomic_hamiltonian_matrix'):
             data['atomic_ham'] = self.test_atomic_hamiltonian_matrix
+        if self.fixed:
+            data['boundary'] = self.surround.boundary_data
         data['step'] = self.step
         return data
   
@@ -3194,3 +3142,4 @@ class Transport(GPAW):
             fd = file('spy_data', 'wb')
             pickle.dump(self.spy_data, fd, 2)
             fd.close()
+          
