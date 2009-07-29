@@ -224,7 +224,8 @@ if size > 1:
     exclude += ['pes.py',
                 'asewannier.py',
                 'wannier-ethylene.py',
-                'restart_band_structure.py']
+                'restart_band_structure.py',
+                'muffintinpot.py']
 
 for test in exclude:
     if test in tests:
