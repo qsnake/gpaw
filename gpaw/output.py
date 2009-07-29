@@ -456,12 +456,7 @@ class PAWTextOutput:
                 else:
                     self.text('Memory usage: %.2f GB' % (mr / 1024.0**3))
 
-            if hasattr(self, 'timer'):
-                self.timer.write(self.txt)
-
-            if self.txt != sys.stdout:
-                self.txt.close()
-            self.wfs.world.barrier()
+            self.timer.write(self.txt)
 
     def warn(self, string=None):
         if not string:
