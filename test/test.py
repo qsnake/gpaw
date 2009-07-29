@@ -19,7 +19,7 @@ parser = OptionParser(usage='%prog [options] [tests]',
 
 parser.add_option('-v', '--verbosity',
                   type='int', default=2,
-                  help='Verbocity level.')
+                  help='Verbosity level.')
 
 parser.add_option('-x', '--exclude',
                   type='string', default=None,
