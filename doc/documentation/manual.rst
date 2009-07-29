@@ -115,8 +115,9 @@ keyword            type       default value        description
 ``setups``         ``str``    ``'paw'``            :ref:`manual_setups`
                    or
                    ``dict``
-``basis``          ``dict``   ``{}``               Specification of
-                                                   :ref:`manual_basis`
+``basis``          ``str``    ``{}``               Specification of
+                   or                              :ref:`manual_basis`
+                   ``dict``
 ``eigensolver``    ``str``    ``'rmm-diis'``       :ref:`manual_eigensolver`
 ``hund``           ``bool``   ``False``            :ref:`Use Hund's rule
                                                    <manual_hund>`
@@ -512,9 +513,10 @@ initialization in FD mode.
 In FD mode, the initial guess for the density / wave functions is
 determined by solving the Kohn-Sham equations in the LCAO basis.
 
-The ``basis`` keyword must be a dictionary, and the rules for
-specifying this are exactly like for the :ref:`setups <manual_setups>`
-keyword, except that there is only one "special name".
+The ``basis`` keyword can be a string or a dictionary, and the rules
+for specifying these are exactly like for the :ref:`setups
+<manual_setups>` keyword, except that there is only one "special
+name".
 
 The value ``None`` (default) implies that the pseudo partial waves
 from the setup are used as a basis. This basis is always available;
