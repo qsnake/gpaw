@@ -115,9 +115,8 @@ keyword            type       default value        description
 ``setups``         ``str``    ``'paw'``            :ref:`manual_setups`
                    or
                    ``dict``
-``basis``          ``str``    ``{}``               Specification of
-                   or                              :ref:`manual_basis`
-                   ``dict``
+``basis``          ``dict``   ``{}``               Specification of
+                                                   :ref:`manual_basis`
 ``eigensolver``    ``str``    ``'rmm-diis'``       :ref:`manual_eigensolver`
 ``hund``           ``bool``   ``False``            :ref:`Use Hund's rule
                                                    <manual_hund>`
@@ -460,18 +459,45 @@ XXX Missing doc
 Type of setup to use
 --------------------
 
-The ``setups`` keyword can be a dictionary mapping chemical symbols or
-atom numbers to types of setups (strings).  The default type is
-``'paw'``.  Another type is ``'ae'`` for all-electron calculations.
-In the future there might be a ``'hgh'`` type for
-Hartwigsen-Goedecker-Hutter pseudopotential calculations.  An
-example::
+The ``setups`` keyword is used to specify the name(s) of the setup files
+used in the calulation.
 
-  setups={'Li': 'mine', 'H': 'ae'}
+For a given element ``E``, setup name ``NAME``, and xc-functional
+'XC', GPAW look for the file :file:`E.NAME.XC` or :file:`E.NAME.XC.gz`
+(in that order) in your :envvar:`GPAW_SETUP_PATH` environment
+variable. Unless ``NAME='paw'``, in which case it will simply look for
+:file:`E.XC` (or :file:`E.XC.gz`).
 
-For an LDA calculation, GPAW will look for :file:`Li.mine.LDA` (or
-:file:`Li.mine.LDA.gz`) in your :envvar:`GPAW_SETUP_PATH` environment
-variable and use an all-electron potential for hydrogen atoms.
+The ``setups`` keyword can be either a single string, or a dictionary.
+
+If specified as a string, the given name is used for all atoms.  If
+specified as a dictionary, each keys can be either a chemical symbol
+or an atom number. The values state the individual setup names.
+
+The special key ``None`` can be used to specify the default setup
+name. Thus ``setups={None: 'paw'}`` is equivalent to ``setups='paw'``
+which is the GPAW default.
+
+There exist three special names, that if used, does not specify a file name:
+
+* ``'ae'`` is used for specifying all-electron mode for an
+  atom. I.e. no PAW or pseudo potential is used.
+* ``'hgh'`` is used to specify a Hartwigsen-Goedecker-Hutter
+  pseudopotential (no file necessary).
+* ``'bsse'`` is used to indicated a *ghost* atom in LCAO mode. XXX
+  more info needed?
+
+If a dictionary contains both chemical element specifications *and*
+atomic number specifications, the latter is dominant.
+
+An example::
+
+  setups={None: 'soft', 'Li': 'hard', 5: 'bsse', 'H': 'ae'}
+  
+Indicates that the files named 'hard' should be used for lithium
+atoms, an all-electron potential is used for hydrogen atoms, atom
+number 5 is a ghost atom (even if it is a Li or H atom), and for all
+other atoms the files named 'soft' will be used.
 
 
 .. _manual_basis:
@@ -486,10 +512,14 @@ initialization in FD mode.
 In FD mode, the initial guess for the density / wave functions is
 determined by solving the Kohn-Sham equations in the LCAO basis.
 
-Default is to use the pseudo partial waves from the setup as a
-basis. This basis is always available; choosing anything else requires
-the existence of the corresponding basis set file in the
-:envvar:`GPAW_SETUP_PATH`.
+The ``basis`` keyword must be a dictionary, and the rules for
+specifying this are exactly like for the :ref:`setups <manual_setups>`
+keyword, except that there is only one "special name".
+
+The value ``None`` (default) implies that the pseudo partial waves
+from the setup are used as a basis. This basis is always available;
+choosing anything else requires the existence of the corresponding
+basis set file in the :envvar:`GPAW_SETUP_PATH`.
 
 For details on the LCAO mode and generation of basis set files; see
 the :ref:`LCAO <lcao>` documentation.
