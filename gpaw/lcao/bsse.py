@@ -42,6 +42,7 @@ class BSSESetup(BaseSetup):
 
         self.ni = 1
         self.pt_j = [zero_function]
+        self.wg_lg = None
 
         self.Nct = 1e-12 # XXX XXX XXX XXX
         self.nct = nonzero_function # XXXXXX
