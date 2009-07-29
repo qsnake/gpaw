@@ -229,6 +229,13 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
         setup_types = p['setups']
         if isinstance(setup_types, str):
             setup_types = {None: setup_types}
+        for key, value in setup_types.items():
+            if not isinstance(value, str):
+                # Setups which are not strings are assumed to be
+                # runtime-dependent and should *not* be saved.  We'll
+                # just discard the whole dictionary
+                setup_types = None
+                break
         w['SetupTypes'] = repr(setup_types)
 
         dtype = {float: float, complex: complex}[wfs.dtype]

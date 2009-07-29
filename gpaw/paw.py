@@ -82,15 +82,22 @@ class PAW(PAWTextOutput):
         if filename is not None:
             reader = gpaw.io.open(filename, 'r')
             self.atoms = gpaw.io.read_atoms(reader)
-            self.input_parameters.read(reader)
-            self.input_parameters.txt = kwargs.pop('txt', '-')
-            self.input_parameters.idiotproof = kwargs.pop('idiotproof', True)
-            self.input_parameters.parsize = kwargs.pop('parsize', None)
-            self.input_parameters.parsize_bands = kwargs.pop('parsize_bands', 1)
-            self.input_parameters.parstride_bands = \
-                kwargs.pop('parstride_bands', False)
-            self.input_parameters.communicator = \
-                kwargs.pop('communicator', None)
+            par = self.input_parameters
+            par.read(reader)
+            par.txt = kwargs.pop('txt', '-')
+            par.idiotproof = kwargs.pop('idiotproof', True)
+            par.parsize = kwargs.pop('parsize', None)
+            par.parsize_bands = kwargs.pop('parsize_bands', 1)
+            par.parstride_bands = kwargs.pop('parstride_bands', False)
+            par.communicator = kwargs.pop('communicator', None)
+
+            if par.setups is None:
+                if par.idiotproof:
+                    raise RuntimeError('Setups not specified in file.  Use '
+                                       'idiotproof=False to proceed anyway.')
+                else:
+                    par.setups = {None : 'paw'}
+            
             self.initialize()
             self.read(reader)
             
