@@ -231,7 +231,7 @@ class PAWTextOutput:
         nibzkpts = self.wfs.nibzkpts
 
         # Print parallelization details
-        t('Total number of nodes used: %d' % size)
+        t('Total number of nodes used: %d' % self.wfs.world.size)
         if self.wfs.kpt_comm.size > 1: # kpt/spin parallization
             if self.wfs.nspins == 2 and nibzkpts == 1:
                 t('Parallelization Over Spin')
@@ -395,9 +395,10 @@ class PAWTextOutput:
             else:
                 niterocc = '%d' % niterocc
 
-            niterpoisson = '%d' % self.hamiltonian.npoisson
-            if niterpoisson == '0':
-                niterpoisson = ' fixed '
+            if self.hamiltonian.npoisson == 0:
+                niterpoisson = ''
+            else:
+                niterpoisson = str(self.hamiltonian.npoisson)
 
             t("iter: %3d  %02d:%02d:%02d  %-5s  %-5s    %- 12.5f %-5s  %-7s" %
               (iter,
