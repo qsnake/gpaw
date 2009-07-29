@@ -40,9 +40,9 @@ def create_setup(symbol, xcfunc, lmax=0, nspins=1,
                 table = setups
             parameters = table[symbol]
             setupdata = HGHSetup(parameters)
-        elif type == 'bsse':
-            from gpaw.lcao.bsse import BSSESetupData
-            setupdata = BSSESetupData(symbol)
+        elif type == 'ghost':
+            from gpaw.lcao.bsse import GhostSetupData
+            setupdata = GhostSetupData(symbol)
         else:
             zero_reference = xcfunc.hybrid > 0
             setupdata = SetupData(symbol, xcfunc.get_setup_name(),

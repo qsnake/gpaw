@@ -21,7 +21,7 @@ zero_function = Spline(0, 0.5, [0.0, 0.0, 0.0])
 # We'll use a function which is almost zero for these things
 nonzero_function = Spline(0, 0.5, [0.0, 1.0e-12, 0.0]) # XXX
 
-class BSSESetup(BaseSetup):
+class GhostSetup(BaseSetup):
     def __init__(self, basis, nspins, data):
         self.symbol = data.symbol
         self.data = data
@@ -87,17 +87,17 @@ class BSSESetup(BaseSetup):
         self.extra_xc_data = {}
 
 
-class BSSESetupData:
+class GhostSetupData:
     def __init__(self, symbol):
         self.chemsymbol = symbol
-        self.symbol = symbol + '.bsse'
+        self.symbol = symbol + '.ghost'
         self.Z = atomic_numbers[symbol]
 
     def build(self, xcfunc, lmax, nspins, basis):
         if basis is None:
             raise ValueError('Loading partial waves not supported right now')
-        setup = BSSESetup(basis, nspins, self)
+        setup = GhostSetup(basis, nspins, self)
         return setup
 
     def print_info(self, text, _setup):
-        text('BSSE Setup for %s' % self.chemsymbol)
+        text('Ghost setup for %s' % self.chemsymbol)
