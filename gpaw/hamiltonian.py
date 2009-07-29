@@ -12,7 +12,7 @@ from gpaw.poisson import PoissonSolver
 from gpaw.transformers import Transformer
 from gpaw.xc_functional import XCFunctional, xcgrid
 from gpaw.lfc import LFC
-from gpaw.utilities import unpack
+from gpaw.utilities import pack2,unpack,unpack2
 from gpaw.utilities.tools import tri2full
 
 
@@ -151,6 +151,60 @@ class Hamiltonian:
             self.xc.set_positions(spos_ac)
             
         self.rank_a = rank_a
+    def aoom(self,DM,a,l,scale=1):
+        """
+        Atomic Orbital Occupation Matrix (aoom) for a given l-quantum number,
+        This operation, takes the  density matrix
+        (DM), which for example is given by unpack2(D_asq[i][spin]),
+        and corrects for the overlap between the selected orbitals (l)
+        upon which the the density is expanded  (ex <p|p*>,<p|p>,<p*|p*> ).
+        Returned is only the "corrected"  part of the density matrix,
+        which represents the orbital occupation matrix
+        for l=2 this is a 5x5 matrix
+        """
+        S=self.setups[a]
+        l_j =S.l_j
+        n_j =S.n_j
+        lq  =S.lq
+        nl  =np.where(np.equal(l_j,l))[0]
+        if len(nl)==2:
+            
+            # cup and cdown gives us the index of Delta_lq we need
+            cup     = (nl[0]-1)*(nl[0])/2
+            if cup<=0:cup=0
+            cdown   = (nl[1]-1)*(nl[1])/2
+            if cdown<=0:cup=0
+            
+            # lets find the correct entrances in the lq,
+            # and enable scaling eg. force <p|p>=1
+            aa      = nl[0]*len(l_j)-cup
+            ab      = nl[0]*len(l_j)-cup+nl[1]-l
+            bb      = nl[1]*len(l_j)-cdown
+            
+            if(scale==0 or scale=='False' or scale =='false'):
+                lq_a    =lq[aa]
+                lq_ab   =lq[ab]
+                lq_b    =lq[ab]
+            else:
+                lq_a    =1
+                lq_ab   =lq[ab]/lq[aa]
+                lq_b    =lq[ab]/lq[aa]
+ 
+            # and the correct entrances in the DM
+            nn      =(2*np.array(l_j)+1)[0:nl[0]].sum()
+            mm      =(2*np.array(l_j)+1)[0:nl[1]].sum()
+            
+            # finally correct and add the four submatrices of NC_DM
+            A       = DM[nn:nn+2*l+1,nn:nn+2*l+1]*(lq_a)
+            B       = DM[nn:nn+2*l+1,mm:mm+2*l+1]*(lq_ab)
+            C       = DM[mm:mm+2*l+1,nn:nn+2*l+1]*(lq_ab)
+            D       = DM[mm:mm+2*l+1,mm:mm+2*l+1]*(lq_b)
+            return  A+B+C+D
+        else:
+            nn      =(2*np.array(l_j)+1)[0:nl[0]].sum()
+            return  DM[nn:nn+2*l+1,nn:nn+2*l+1]*lq[-1]
+
+
 
     def update(self, density):
         """Calculate effective potential.
@@ -229,25 +283,6 @@ class Hamiltonian:
             Epot += setup.M + np.dot(D_p, (setup.M_p +
                                            np.dot(setup.M_pp, D_p)))
 
-            if setup.HubU is not None:
-##                 print '-----'
-                nspins = len(self.D_sp)
-                i0 = setup.Hubi
-                i1 = i0 + 2 * setup.Hubl + 1
-                for D_p, H_p in zip(self.D_sp, self.H_sp): # XXX self.H_sp ??
-                    N_mm = unpack2(D_p)[i0:i1, i0:i1] / 2 * nspins 
-                    Eorb = setup.HubU/2. * (N_mm - np.dot(N_mm,N_mm)).trace()
-                    Vorb = setup.HubU * (0.5 * np.eye(i1-i0) - N_mm)
-##                     print '========='
-##                     print 'occs:',np.diag(N_mm)
-##                     print 'Eorb:',Eorb
-##                     print 'Vorb:',np.diag(Vorb)
-##                     print '========='
-                    Exc += Eorb                    
-                    Htemp = unpack(H_p)
-                    Htemp[i0:i1,i0:i1] += Vorb
-                    H_p[:] = pack2(Htemp)
-
             if 0:#vext is not None:
                 # Tailor expansion to the zeroth order
                 Eext += vext[0][0] * (sqrt(4 * pi) * self.Q_L[0] + setup.Z)
@@ -266,6 +301,24 @@ class Hamiltonian:
             Exc += setup.xc_correction.calculate_energy_and_derivatives(
                 D_sp, dH_sp, a)
             self.timer.stop('Hamiltonian: atomic: xc_correction')
+
+            if setup.HubU is not None:
+                nspins = len(D_sp)
+                i0 = setup.Hubi
+                i1 = i0 + 2 * setup.Hubl + 1
+                for D_p, H_p in zip(D_sp, self.dH_asp[a]):
+                    N_mm =self.aoom(unpack2(D_p),a,setup.Hubl) / 2 *nspins
+
+                    Eorb = setup.HubU/2. * (N_mm - np.dot(N_mm,N_mm)).trace()
+                    Vorb = setup.HubU * (0.5 * np.eye(i1-i0) - N_mm)
+                    #print "###### ",np.diag(N_mm)," ##########"
+                    Exc += Eorb                    
+                    Htemp = unpack(H_p)
+                    Htemp[i0:i1,i0:i1] += Vorb
+                    H_p[:] = pack2(Htemp)
+
+
+
             dH_sp += dH_p
 
             Ekin -= (D_sp * dH_sp).sum()

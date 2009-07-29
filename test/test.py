@@ -55,6 +55,7 @@ if len(tests) == 0:
     # Fastest first, slowest last:
     tests = [
         'ase3k_version.py',
+        'pes.py',
         'lapack.py',
         'eigh.py',
         'setups.py',
@@ -133,6 +134,7 @@ if len(tests) == 0:
         'cg.py',
         'h2o-xas-recursion.py',
         'atomize.py',
+        'Hubbard_U.py',    
         'lrtddft.py',
         'lcao_force.py',
         'wannier-ethylene.py',
@@ -171,8 +173,7 @@ if len(tests) == 0:
         'mgga_restart.py',
         'fd2lcao_restart.py',
         'parallel/ut_hsops.py',
-        'parallel/ut_invops.py',
-        'pes.py'
+        'parallel/ut_invops.py'
         ]
 
 disabled_tests = [

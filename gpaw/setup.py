@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
@@ -229,11 +230,19 @@ class BaseSetup:
             phit_j.append(Spline(l, rcut2, phit_g, r_g, beta, points=100))
         return phi_j, phit_j, nc, nct, tauc, tauct
 
-    def set_hubbard_u(self, U, l):
+    def set_hubbard_u(self, U, l,scale=1,store=0,LinRes=0):
         """Set Hubbard parameter.
-
-        U in atomic units
+        U in atomic units, l is the orbital to which we whish to
+        add a hubbard potential and scale enables or desables the
+        scaling of the overlap between the l orbitals, if true we enforce
+        <p|p>=1
+        Note U is in atomic units
         """
+        
+        self.HubLinRes=LinRes;
+        self.Hubs = scale;
+        self.HubStore=store;
+        self.HubOcc=[];
         self.HubU = U;
         self.Hubl = l;
         self.Hubi = 0;
@@ -241,7 +250,6 @@ class BaseSetup:
             if ll == self.Hubl:
                 break
             self.Hubi = self.Hubi + 2 * ll + 1
-        #print self.Hubi
 
     def four_phi_integrals(self):
         """Calculate four-phi integral.
@@ -354,7 +362,7 @@ class LeanSetup(BaseSetup):
         self.natoms = 0 # number of atoms with this setup
         self.R_sii = None # rotations, initialized when doing sym. reductions
         self.HubU = s.HubU # XXX probably None
-
+	self.lq  = s.lq
         self.type = s.type # required for writing to file
         self.fingerprint = s.fingerprint # also req. for writing
         self.filename = s.filename
@@ -562,6 +570,8 @@ class Setup(BaseSetup):
         rcut2 = 2 * rcutmax
         gcut2 = 1 + int(rcut2 * ng / (rcut2 + beta))
         self.gcut2 = gcut2
+
+	self.gcutmin=1 + int(min(rcut_j) * ng / (min(rcut_j) + beta))
 
         ni = 0
         i = 0
@@ -831,6 +841,9 @@ class Setup(BaseSetup):
                 n_qg[q] = phi_jg[j1] * phi_jg[j2]
                 nt_qg[q] = phit_jg[j1] * phit_jg[j2]
                 q += 1
+	
+	gcutmin=self.gcutmin
+        self.lq=np.dot(n_qg[:,:gcutmin]  , r_g[:gcutmin]**2 * dr_g[:gcutmin])
 
         Delta_lq = np.zeros((lmax + 1, nq))
         for l in range(lmax + 1):
