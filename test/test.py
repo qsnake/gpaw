@@ -55,7 +55,6 @@ if len(tests) == 0:
     # Fastest first, slowest last:
     tests = [
         'ase3k_version.py',
-        'pes.py',
         'lapack.py',
         'eigh.py',
         'setups.py',
@@ -87,6 +86,7 @@ if len(tests) == 0:
         'coulomb.py',
         'ase3k.py',
         'eed.py',
+        'pes.py',
         'timing.py',
         'gauss_wave.py',
         'gauss_func.py',
