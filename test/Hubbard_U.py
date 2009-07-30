@@ -31,7 +31,7 @@ def band_gab(calc):
 
 
 ##############################################################################
-## Setup up bulk NiO in a ferro magnetic configuration
+## Setup up bulk NiO in an antiferromagnetic configuration
 name='Hubbard_test_on_NiO'
 a = 4.19 # Lattice constants
 b=a/sqrt(2)

@@ -102,7 +102,7 @@ def run(psit_mG):
     H_nn = overlap.calculate_matrix_elements(psit_mG, P_ani, H, dH_aii)
     if world.rank == 0:
         for n in range(N):
-            assert abs(H_nn[n, n] - eps_n[n]) < 1e-8
+            assert abs(H_nn[n, n] - eps_n[n]) < 1.5e-8
             assert not H_nn[n + 1:, n].round(8).any()
 
     return psit_mG
