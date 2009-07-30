@@ -33,7 +33,7 @@ class GhostSetup(BaseSetup):
         self.HubU = None
         self.filename = None
         self.fingerprint = None
-        self.type = 'BSSE'
+        self.type = 'ghost'
         self.nspins = nspins
 
         self.Z = 0
