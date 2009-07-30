@@ -39,7 +39,7 @@ library_dirs = [
            '/soft/apps/SCALAPACK',
            '/soft/apps/BLACS',
            '/soft/apps/LAPACK',
-           '/soft/apps/ESSL-4.3.1-1/lib',
+           '/soft/apps/ESSL-4.4.1-0/lib',
            '/opt/ibmcmp/xlf/bg/11.1/bglib',
            '/opt/ibmcmp/xlsmp/bg/1.7/bglib',
            '/bgsys/drivers/ppcfloor/gnu-linux/lib',
