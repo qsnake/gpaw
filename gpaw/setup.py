@@ -362,7 +362,7 @@ class LeanSetup(BaseSetup):
         self.natoms = 0 # number of atoms with this setup
         self.R_sii = None # rotations, initialized when doing sym. reductions
         self.HubU = s.HubU # XXX probably None
-	self.lq  = s.lq
+        self.lq  = s.lq # Required for LDA+U I think.
         self.type = s.type # required for writing to file
         self.fingerprint = s.fingerprint # also req. for writing
         self.filename = s.filename
@@ -571,7 +571,7 @@ class Setup(BaseSetup):
         gcut2 = 1 + int(rcut2 * ng / (rcut2 + beta))
         self.gcut2 = gcut2
 
-	self.gcutmin=1 + int(min(rcut_j) * ng / (min(rcut_j) + beta))
+        self.gcutmin = 1 + int(min(rcut_j) * ng / (min(rcut_j) + beta))
 
         ni = 0
         i = 0
@@ -841,9 +841,9 @@ class Setup(BaseSetup):
                 n_qg[q] = phi_jg[j1] * phi_jg[j2]
                 nt_qg[q] = phit_jg[j1] * phit_jg[j2]
                 q += 1
-	
-	gcutmin=self.gcutmin
-        self.lq=np.dot(n_qg[:,:gcutmin]  , r_g[:gcutmin]**2 * dr_g[:gcutmin])
+        
+        gcutmin = self.gcutmin
+        self.lq = np.dot(n_qg[:, :gcutmin], r_g[:gcutmin]**2 * dr_g[:gcutmin])
 
         Delta_lq = np.zeros((lmax + 1, nq))
         for l in range(lmax + 1):

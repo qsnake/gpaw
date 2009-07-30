@@ -67,6 +67,7 @@ class GhostSetup(BaseSetup):
         self.n_j = [0]
         self.l_j = [0]
         self.nj = 1
+        self.lq = None # XXXX
 
         self.rcutfilter = None
         self.rcore = None
