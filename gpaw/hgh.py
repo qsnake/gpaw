@@ -27,13 +27,14 @@ class NullXCCorrection:
 null_xc_correction = NullXCCorrection()
 
 
-class RealHGHSetup(BaseSetup):
+class HGHSetup(BaseSetup):
     def __init__(self, data, nspins, basis):
         self.data = data
 
         self.natoms = 0
         self.R_sii = None
         self.HubU = None
+        self.lq = None
 
         self.filename = None
         self.fingerprint = None
@@ -103,8 +104,9 @@ class RealHGHSetup(BaseSetup):
         self.dEH_p = np.zeros(_np)
         self.extra_xc_data = {}
 
+        self.wg_lg = None
 
-class HGHSetup:
+class HGHSetupData:
     """Setup-compatible class implementing HGH pseudopotential.
 
     To the PAW code this will appear as a legit PAW setup, but is
@@ -285,6 +287,12 @@ class HGHSetup:
         K_p = pack2(H_ii)
         return K_p
 
+    def __str__(self):
+        return "HGHSetup('%s')" % self.type
+
+    def __repr__(self):
+        return self.__str__()
+
     def print_info(self, text, _setup):
         self.hghdata.print_info(text)
         
@@ -317,16 +325,17 @@ class HGHSetup:
         pl.legend()
 
     def get_projectors(self):
-        from gpaw import extra_parameters
-        if extra_parameters.get('usenewlfc', True):
-            pt_jg = self.pt_jg
-        else: # give projectors equal range
-            maxlen = max([len(pt_g) for pt_g in self.pt_jg])
-            pt_jg = []        
-            for pt1_g in self.pt_jg:
-                pt2_g = np.zeros(maxlen)
-                pt2_g[:len(pt1_g)] = pt1_g
-                pt_jg.append(pt2_g)
+        # XXX equal-range projectors still required for some reason
+        #from gpaw import extra_parameters
+        #if extra_parameters.get('usenewlfc', True):
+        #    pt_jg = self.pt_jg
+        #else: # give projectors equal range
+        maxlen = max([len(pt_g) for pt_g in self.pt_jg])
+        pt_jg = []        
+        for pt1_g in self.pt_jg:
+            pt2_g = np.zeros(maxlen)
+            pt2_g[:len(pt1_g)] = pt1_g
+            pt_jg.append(pt2_g)
         
         pt_j = [self.rgd.reducedspline(l, pt_g)
                 for l, pt_g, in zip(self.l_j, pt_jg)]
@@ -390,7 +399,7 @@ class HGHSetup:
             basis = self.create_basis_functions()
         elif isinstance(basis, str):
             basis = Basis(self.symbol, basis)
-        setup = RealHGHSetup(self, nspins, basis)
+        setup = HGHSetup(self, nspins, basis)
         return setup
 
 def create_local_shortrange_potential(r_g, rloc, c_n):
@@ -456,7 +465,7 @@ class VNonLocal:
             h_nn[0, 1] = h_nn[1, 0] = coefs[0] * h_n[1]
 
 
-class HGHData:
+class HGHParameterSet:
     """Wrapper class for HGH-specific data corresponding to one element."""
     def __init__(self, symbol, Z, Nv, rloc, c_n):
         self.symbol = symbol # Identifier, e.g. 'Na', 'Na.sc', ...
@@ -495,7 +504,7 @@ class HGHData:
                     yield n, l
         
 def parse_local_part(string):
-    """Create HGHData object with local part initialized."""
+    """Create HGHParameterSet object with local part initialized."""
     tokens = iter(string.split())
     symbol = tokens.next()
     actual_chemical_symbol = symbol.split('.')[0]
@@ -503,12 +512,12 @@ def parse_local_part(string):
     Nv = int(tokens.next())
     rloc = float(tokens.next())
     c_n = [float(token) for token in tokens]
-    hgh = HGHData(symbol, Z, Nv, rloc, c_n)
+    hgh = HGHParameterSet(symbol, Z, Nv, rloc, c_n)
     return hgh
 
 
 def parse_hgh_setup(lines):
-    """Initialize HGHData object from text representation."""
+    """Initialize HGHParameterSet object from text representation."""
     lines = iter(lines)
     hgh = parse_local_part(lines.next())
 

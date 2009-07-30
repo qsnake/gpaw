@@ -33,13 +33,13 @@ def create_setup(symbol, xcfunc, lmax=0, nspins=1,
     if setupdata is None:
         if type == 'hgh' or type == 'hgh.sc':
             lmax = 0
-            from gpaw.hgh import HGHSetup, setups, sc_setups
+            from gpaw.hgh import HGHSetupData, setups, sc_setups
             if type == 'hgh.sc':
                 table = sc_setups
             else:
                 table = setups
             parameters = table[symbol]
-            setupdata = HGHSetup(parameters)
+            setupdata = HGHSetupData(parameters)
         elif type == 'ghost':
             from gpaw.lcao.bsse import GhostSetupData
             setupdata = GhostSetupData(symbol)
