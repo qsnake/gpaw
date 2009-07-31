@@ -406,7 +406,7 @@ class Transport(GPAW):
                 self.set_positions()
             else:
                 self.surround.set_positions()
-                self.get_hamiltonian_initial_guess()
+                #self.get_hamiltonian_initial_guess()
         del self.atoms_l
         del self.atoms_e
         self.initialized_transport = True
@@ -453,7 +453,16 @@ class Transport(GPAW):
             self.hsd.reset(s, q, s_pkmm[s], 'S', True)
             test1 = self.hsd.S[0].recover()
             self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)            
-                
+
+    def fill_guess_with_leads(self):
+        for s in range(self.my_nspins):
+            for pk in range(self.my_npk):
+                for l in range(self.lead_num):
+                    self.hsd.H[s][pk].diag_h[l][-1].reset(
+                                          self.lead_hsd[l].H[s][pk].recover())
+
+                    self.hsd.D[s][pk].diag_h[l][-1].reset(
+                                          self.lead_hsd[l].D[s][pk].recover())               
     def allocate_cpus(self):
         # when do parallel calculation, if world.size > nspins * npk,
         # use energy parallel, otherwise just parallel for s,k pairs, and
@@ -728,13 +737,16 @@ class Transport(GPAW):
             if not self.fixed:
                 GPAW.get_potential_energy(self, atoms)
                 self.h_skmm, self.s_kmm = self.get_hs(self, 'scat')               
-            #else:
-            #    h_spkmm, s_pkmm = self.get_hs2(self, 'scat')
-            #    for kpt in self.wfs.kpt_u:
-            #        s = kpt.s
-            #        q = kpt.q
-            #        self.hsd.reset(s, q, s_pkmm[s], 'S', True)
-            #        self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)            
+            else:
+                h_spkmm, s_pkmm = self.get_hs2(self, 'scat')
+               
+                for kpt in self.wfs.kpt_u:
+                    s = kpt.s
+                    q = kpt.q
+                    self.hsd.reset(s, q, s_pkmm[s], 'S', True)
+                    self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)
+
+                
             self.atoms = atoms.copy()
             rank = world.rank
             #if self.gamma:
@@ -750,7 +762,7 @@ class Transport(GPAW):
                     q = kpt.q
                     self.hsd.reset(s, q, np.zeros([self.nbmol, self.nbmol], self.wfs.dtype),
                                                                     'D', True)
-           
+                self.fill_guess_with_leads()           
             #if self.save_file and not self.fixed:
                 #self.write('scat.gpw', db=True, keywords=['transport',
                 #                                          'scattering region',
@@ -937,12 +949,15 @@ class Transport(GPAW):
             self.cvgflag = self.d_cvg and self.h_cvg
             self.step +=  1
         
+        if self.fixed:
+            self.analysor.save_bias_step()
+            self.analysor.save_data_to_file()            
+         
         self.scf.converged = self.cvgflag
         for kpt in self.wfs.kpt_u:
             kpt.rho_MM = None
             kpt.eps_n = np.zeros((self.nbmol))
             kpt.f_n = np.zeros((self.nbmol))
-
         self.linear_mm = None
         if not self.scf.converged:
             raise RuntimeError('Transport do not converge in %d steps' %
@@ -1069,7 +1084,7 @@ class Transport(GPAW):
             self.text(bias_info)
             self.text('Gate: %f V' % self.gate)
 
-        if self.fixed:
+        if self.fixed and not hasattr(self, 'analysor'):
             self.analysor = Transport_Analysor(self)
         #------for check convergence------
         self.ham_vt_old = np.empty(self.hamiltonian.vt_sG.shape)
@@ -1344,7 +1359,7 @@ class Transport(GPAW):
             del self.fint
         return den
          
-    def calgfunc(self, zp, calcutype):			 
+    def calgfunc(self, zp, calcutype):
         #calcutype = 
         #  - 'eqInt':  gfunc[Mx*Mx,nE] (default)
         #  - 'neInt':  gfunc[Mx*Mx,nE]
@@ -1642,7 +1657,6 @@ class Transport(GPAW):
         
         if self.fixed:
             self.analysor.save_ele_step()
-            self.analysor.save_data_to_file()
             
         h_skmm, s_kmm = self.get_hs2(self, 'scat')        
         for kpt in self.wfs.kpt_u:
@@ -1667,6 +1681,9 @@ class Transport(GPAW):
         else:
             self.negf_prepare(atoms)
             self.get_selfconsistent_hamiltonian()
+            if self.fixed:
+                self.analysor.save_ion_step()
+                self.analysor.save_data_to_file()
         self.forces.F_av = None
         f = GPAW.get_forces(self, atoms)
         return f
@@ -1716,7 +1733,7 @@ class Transport(GPAW):
                 kpt.rho_MM = self.hsd.D[kpt.s][kpt.q].recover()
             else:
                 #kpt.rho_MM = self.d_skmm[0, kpt.q]
-                kpt.rho_MM = np.real(self.hsd.D[0][kpt.q].recover()).copy()
+                kpt.rho_MM = self.hsd.D[0][kpt.q].recover()
         self.update_density()
 
     def update_density(self):
