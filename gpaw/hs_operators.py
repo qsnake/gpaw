@@ -1,6 +1,8 @@
 # Copyright (C) 2008 CAMd
 # Please see the accompanying LICENSE file for further information.
 
+from __future__ import division
+
 import numpy as np
 from gpaw.utilities.blas import rk, r2k, gemm
 
@@ -32,6 +34,35 @@ class Operator:
             self.hermitian = hermitian
 
     def allocate_work_arrays(self, dtype):
+        """This is a little complicated, but let's look at the facts.
+
+        Given::
+
+          N = mynbands            The number of bands on this core.
+          J = nblocks             The number of blocks to divide bands into.
+          M = N // J              The number of bands in each block.
+          G = gd.n_c.prod()       The number of grid points on this core.
+          g = int(np.ceil(G/J))   The number of grid points in a block.
+
+        We allocate work arrays as gd.empty(X) where X is to be determined.
+
+        Conditions::
+
+          N % J == 0        Bands must be exactly divisible into blocks.
+          g * J >= G        The grid point blocks can contain all the points.
+          X * G >= N * g    Blocking over grid points must have enough space.
+
+        Cases::
+
+          When G % J == 0, the expression for g simplifies to g = G//J,
+          and g * J >= G is obviously fulfilled. The condition for X
+          is equivalent to X >= N//J, hence this is the minimal requirement.
+
+          When G % J != 0, the expression for g becomes g = G//J+1 instead,
+          and g * J >= G is again fulfilled. The condition for X is basically
+          X * J * G >= N * (G+J) hence X = N//J + int(np.ceil(N/G)) is best.
+
+        """
         ngroups = self.bd.comm.size
         mynbands = self.bd.mynbands
         if ngroups == 1 and self.nblocks == 1:
@@ -40,7 +71,7 @@ class Operator:
             assert mynbands % self.nblocks == 0
             X = mynbands // self.nblocks
             if self.gd.n_c.prod() % self.nblocks != 0:
-                X += self.nblocks
+                X += int(np.ceil(mynbands/self.gd.n_c.prod()))
             self.work1_xG = self.gd.zeros(X, dtype)
             self.work2_xG = self.gd.zeros(X, dtype)
             if ngroups > 1:
@@ -62,7 +93,7 @@ class Operator:
         else:
             X = mynbands // self.nblocks
             if self.gd.n_c.prod() % self.nblocks != 0:
-                X += self.nblocks
+                X += int(np.ceil(mynbands/self.gd.n_c.prod()))
             mem.subnode('2 work_xG', 2 * X * gdbytes)
             if ngroups > 1:
                 if self.hermitian:
@@ -419,9 +450,7 @@ class Operator:
         shape = psit_nG.shape
         psit_nG = psit_nG.reshape(N, -1)
         G = psit_nG.shape[1]   # number of grid-points
-        g = G // J
-        if g * J < G:
-            g += 1
+        g = int(np.ceil(G/J))
 
         # Buffers for send/receive of pre-multiplication versions of P_ani's.
         sbuf_In = rbuf_In = None
