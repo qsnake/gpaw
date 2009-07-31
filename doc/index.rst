@@ -53,6 +53,8 @@ algorithms used <features_and_algorithms>`.
 News
 ====
 
+* Join the new IRC channel ``#gpaw`` on FreeNode (Jul 15 2009)
+
 * :ref:`GPAW version 0.5 <releasenotes>` released (Apr 1 2009)
 
 * A new :ref:`setups` bundle released (Mar 27 2009)

@@ -26,3 +26,10 @@ The mailing lists below are of interest for active GPAW developers only:
 .. _campos: https://listserv.fysik.dtu.dk/mailman/listinfo/campos
 .. _campos-devel: https://listserv.fysik.dtu.dk/mailman/listinfo/campos-devel
 .. _BerliOS: http://www.berlios.de
+
+
+Internet Relay Chat
+===================
+
+We have an IRC channel (`#gpaw`) on FreeNode.  Please join us if you
+have any questions.
