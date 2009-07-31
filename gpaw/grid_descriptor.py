@@ -420,6 +420,8 @@ class GridDescriptor(Domain):
                         r = np.dot(operation, (i, j, k))
                         r = np.mod(r, dim)
                         A_g[r[0]][r[1]][r[2]] = a[i, j, k]
+        else:
+            A_g = None
 
         b_g = self.empty()
         self.distribute(A_g, b_g)
