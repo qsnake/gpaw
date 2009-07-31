@@ -91,12 +91,27 @@ class PAW(PAWTextOutput):
             par.parstride_bands = kwargs.pop('parstride_bands', False)
             par.communicator = kwargs.pop('communicator', None)
 
+            setups = kwargs.pop('setups', None)
+            if setups is not None:
+                par.setups = setups
+            basis = kwargs.pop('basis', None)
+            if basis is not None:
+                par.basis = basis
+                
+            # Setups are not saved in the file if the setups were not loaded
+            # *from* files in the first place
             if par.setups is None:
                 if par.idiotproof:
                     raise RuntimeError('Setups not specified in file.  Use '
                                        'idiotproof=False to proceed anyway.')
                 else:
                     par.setups = {None : 'paw'}
+            if par.basis is None:
+                if par.idiotproof:
+                    raise RuntimeError('Basis not specified in file. Use '
+                                       'idiotproof=False to proceed anyway.')
+                else:
+                    par.basis = {}
             
             self.initialize()
             self.read(reader)

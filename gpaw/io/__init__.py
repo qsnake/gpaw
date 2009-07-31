@@ -172,7 +172,6 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
         w['UseSymmetry'] = p['usesymm']
         w['Converged'] = scf.converged
         w['FermiWidth'] = paw.occupations.kT
-        w['BasisSet'] = p['basis']
         w['MixClass'] = paw.density.mixer.__class__.__name__
         w['MixBeta'] = paw.density.mixer.beta
         w['MixOld'] = paw.density.mixer.nmaxold
@@ -237,6 +236,14 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
                 setup_types = None
                 break
         w['SetupTypes'] = repr(setup_types)
+
+        basis = p['basis'] # And similarly for basis sets
+        if isinstance(basis, dict):
+            for key, value in basis.items():
+                if not isinstance(value, str):
+                    basis = None
+        w['BasisSet'] = repr(basis)
+
 
         dtype = {float: float, complex: complex}[wfs.dtype]
 
