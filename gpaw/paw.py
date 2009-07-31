@@ -85,6 +85,13 @@ class PAW(PAWTextOutput):
             par = self.input_parameters
             par.read(reader)
 
+            # Parallelization keywords can be altered before initialization
+            # without any consequences - just don't pass them through set().
+            par.parsize = kwargs.pop('parsize', None)
+            par.parsize_bands = kwargs.pop('parsize_bands', 1)
+            par.parstride_bands = kwargs.pop('parstride_bands', False)
+            par.communicator = kwargs.pop('communicator', None)
+
         self.set(**kwargs)
 
         if filename is not None:
