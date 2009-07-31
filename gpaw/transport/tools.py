@@ -97,6 +97,8 @@ class Banded_Sparse_Matrix:
                 self.reset(mat)
         
     def initialize(self, mat):
+        # the indexing way needs mat[0][-1] = 0,otherwise will recover a
+        # unsymmetric full matrix
         assert self.dtype == mat.dtype
         dim = mat.shape[-1]
         ku = -1
@@ -130,7 +132,8 @@ class Banded_Sparse_Matrix:
                     if 0 <= tmp <= dim -1:
                         index2[i][j] = tmp
                     else:
-                        index2[i][j] = 0
+                        index1[i][j] = 0
+                        index2[i][j] = -1
             
             self.band_index = (kl, ku, index1, index2)
             self.spar = mat[index1, index2]
@@ -283,6 +286,7 @@ class Tp_Sparse_Matrix:
         self.nb = len(self.mol_index)
         self.length = self.nb * self.nb
         self.mol_h = []
+
         for i in range(self.lead_num):
             self.diag_h.append([])
             self.upc_h.append([])
@@ -812,17 +816,17 @@ def get_matrix_index(ind1, ind2=None):
         dim2 = len(ind2)
     return np.resize(ind1, (dim2, dim1)).T, np.resize(ind2, (dim1, dim2))
     
-def aa1d(self, a, d=2):
+def aa1d(a, d=2):
     # array average in one dimension
     dim = a.shape
-    b = [np.sum(np.take(a, i, axis=d)) for i in range(dim[d])]
+    b = [np.sum(np.take(a, [i], axis=d)) for i in range(dim[d])]
     b *= dim[d] / np.product(dim)
     return b
     
-def aa2d(self, a, d=0):
+def aa2d(a, d=0):
     # array average in two dimensions
     b = np.sum(a, axis=d) / a.shape[d]
-    return b   
+    return b
 
 #def get_realspace_hs(h_skmm,s_kmm, ibzk_kc, weight_k, R_c=(0,0,0)):
 def k2r_hs(h_skmm,s_kmm, ibzk_kc, weight_k, R_c=(0,0,0)):
@@ -1001,16 +1005,16 @@ def hermite_poly(n, x):
                                       - 2 * (n - 1) * hermite_poly(n - 2 , x)
 
 def error_function(x):
-	z = abs(x)
-	t = 1. / (1. + 0.5*z)
-	r = t * np.exp(-z*z-1.26551223+t*(1.00002368+t*(.37409196+
-		t*(.09678418+t*(-.18628806+t*(.27886807+
-		t*(-1.13520398+t*(1.48851587+t*(-.82215223+
-		t*.17087277)))))))))
-	if (x >= 0.):
-		return r
-	else:
-		return 2. - r
+    z = abs(x)
+    t = 1. / (1. + 0.5*z)
+    r = t * np.exp(-z*z-1.26551223+t*(1.00002368+t*(.37409196+
+        t*(.09678418+t*(-.18628806+t*(.27886807+
+        t*(-1.13520398+t*(1.48851587+t*(-.82215223+
+        t*.17087277)))))))))
+    if (x >= 0.):
+        return r
+    else:
+        return 2. - r
 
 def sum_by_unit(x, unit):
     dim = x.shape[0]
