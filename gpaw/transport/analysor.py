@@ -289,24 +289,26 @@ class Transport_Analysor:
         
         sr = tp.surround
         gd = sr.gd
-        b_nt_sG = gd.empty(tp.nspins, global_array=True)
-        b_vt_sG = gd.empty(tp.nspins, global_array=True)
+        #b_nt_sG = gd.empty(tp.nspins, global_array=True)
+        #b_vt_sG = gd.empty(tp.nspins, global_array=True)
         
-        b_nt_sG = gd.collect(sr.density.nt_sG, True)
-        b_vt_sG = gd.collect(sr.boundary_vt_sG, True)
+        b_nt_sG = sr.nt_sG
+    
+        b_vt_sG = sr.boundary_vt_sG
        
         gd = sr.finegd
-        b_nt_sg = gd.empty(tp.nspins, global_array=True)
-        b_vt_sg = gd.empty(tp.nspins, global_array=True)
+        #b_nt_sg = gd.empty(tp.nspins, global_array=True)
+        #b_vt_sg = gd.empty(tp.nspins, global_array=True)
 
-        b_nt_sg = gd.collect(sr.nt_sg, True)
-        b_vt_sg = gd.collect(sr.boundary_vt_sg, True)
+        b_nt_sg = sr.nt_sg
+        #b_vt_sg = gd.collect(sr.boundary_vt_sg, True)
+        b_vt_sg = sr.boundary_vt_sg
          
-        b_rhot_g = gd.empty(global_array=True)
-        b_vHt_g = gd.empty(global_array=True)
+        #b_rhot_g = gd.empty(global_array=True)
+        #b_vHt_g = gd.empty(global_array=True)
         
-        b_rhot_g = gd.collect(sr.rhot_g, True)
-        b_vHt_g = gd.collect(sr.vHt_g, True)
+        b_rhot_g = sr.rhot_g
+        b_vHt_g = sr.vHt_g
         
         
         ent_G = b_nt_sG[0, d1, d2].copy()
@@ -335,8 +337,10 @@ class Transport_Analysor:
         current = self.calculate_current()
         step.initialize_data(tp.bias, tp.gate, self.energies, self.lead_pairs,
                              tc_array, dos_array, dv, current, tp.lead_fermi)
-        step['ele_steps'] = self.ele_steps
-        del self.ele_steps[:]
+        step.ele_steps = self.ele_steps
+        del self.ele_steps
+        self.ele_steps = []
+        self.n_ele_step = 0
         self.bias_steps.append(step)
         self.n_bias_step += 1
 
@@ -346,7 +350,7 @@ class Transport_Analysor:
         tp = self.tp
       
         nlp = len(self.lead_pairs)
-        ne = len(self.energies)
+        ne = len(energies)
         ns, npk = tp.nspins, tp.npk
 
         tc_array = np.empty([ns, npk, nlp, ne])
@@ -372,16 +376,22 @@ class Transport_Analysor:
         tp = self.tp
         step = Structure_Info(self.n_ion_step)
         step.initialize_data(tp.atoms.positions, tp.forces)
-        step['bias_steps'] = self.bias_steps
-        del self.bias_steps[:]
+        step.bias_steps = self.bias_steps
+        del self.bias_steps
+        self.bias_steps = []
+        self.n_bias_step = 0
         self.ion_steps.append(step)
         self.n_ion_step += 1
  
-    def save_data_to_file(self):
+    def save_data_to_file(self, flag='bias'):
+        if flag == 'ion':
+            steps = self.ion_steps
+        else:
+            steps = self.bias_steps
+            
         fd = file('analysis_data', 'wb')
-        pickle.dump(self.ele_steps, fd, 2)
+        pickle.dump(steps, fd, 2)
         fd.close()
-                  
    
     def calculate_t_and_dos(self, E_range=[-6,2],
                             point_num = 60, leads=[[0,1]]):
@@ -408,6 +418,8 @@ class Transport_Analysor:
     def abstract_d_and_v(self):
         data = {}
         tp = self.tp
+        nt = tp.gd.empty()
+        vt = tp.gd.empty()
         for s in range(tp.nspins):
             nt = tp.gd.collect(tp.density.nt_sG[s], True)
             vt = tp.gd.collect(tp.hamiltonian.vt_sG[s], True)
@@ -424,7 +436,7 @@ class Transport_Analysor:
         tp = self.tp
         assert hasattr(tp, 'nepathinfo')
         ep = tp.nepathinfo[0][0].energy
-        weight = tp.nepathinfo[0][0],weight
+        weight = tp.nepathinfo[0][0].weight
         fermi_factor = tp.nepathinfo[0][0].fermi_factor
         
         tc_array, dos_array = self.collect_transmission_and_dos(ep)
@@ -432,7 +444,7 @@ class Transport_Analysor:
         tc_all = np.sum(tc_array, axis=1) / tp.npk
         
         #attention here, pk weight should be changed
-        for s in tp.nspins:
+        for s in range(tp.nspins):
             for i in range(len(self.lead_pairs)):
                 for j in range(len(ep)):
                     current[s, i] += tc_all[s, i, j] * weight[j] * \
@@ -813,10 +825,18 @@ class Transport_Analysor:
         pylab.show()
           
 class Transport_Plotter:
-    def __init__(self):
+    def __init__(self, flag='bias'):
         fd = file('analysis_data', 'r')
-        self.ele_steps = pickle.load(fd)
+        if flag == 'ion':
+            self.ion_steps = pickle.load(fd)
+        else:
+            self.bias_steps = pickle.load(fd)
         fd.close()
+
+    def filter(self, n_ion_step=None, n_bias_step=0):
+        if n_ion_step != None:
+            self.bias_steps = self.ion_steps[n_ion_step].bias_steps
+        self.ele_steps = self.bias_steps[n_bias_step].ele_steps
         
     def plot_ele_step(self, nstep, s, k):
         ee = np.linspace(-3, 5, 60)
