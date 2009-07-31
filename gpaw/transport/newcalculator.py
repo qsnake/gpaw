@@ -1657,6 +1657,7 @@ class Transport(GPAW):
         
         if self.fixed:
             self.analysor.save_ele_step()
+            self.analysor.save_data_to_file('ele')
             
         h_skmm, s_kmm = self.get_hs2(self, 'scat')        
         for kpt in self.wfs.kpt_u:
