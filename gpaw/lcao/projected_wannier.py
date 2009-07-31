@@ -4,7 +4,7 @@ from gpaw.lfc import LocalizedFunctionsCollection as LFC
 from gpaw.lcao.overlap import TwoCenterIntegrals
 from gpaw.lfc import BasisFunctions
 from gpaw.utilities import unpack
-from gpaw.utilities.tools import dagger, lowdin
+from gpaw.utilities.tools import dagger, lowdin, tri2full
 from ase import Hartree
 
 

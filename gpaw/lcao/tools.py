@@ -172,6 +172,7 @@ def dump_hamiltonian_parallel(filename, atoms, direction=None):
 
 
 def get_lcao_hamiltonian(calc):
+    """Return H_skMM, S_kMM on master, None, None on slaves. H is in eV."""
     if calc.wfs.S_qMM is None:
         calc.wfs.set_positions(calc.get_atoms().get_scaled_positions() % 1)
     dtype = calc.wfs.dtype
