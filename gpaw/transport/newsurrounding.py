@@ -242,7 +242,7 @@ class Surrounding:
             spos_ac = np.linalg.solve(np.diag(self.cell) * Bohr,
                                                               pos.T).T % 1.0
             self.wfs.set_positions(spos_ac)
-            self.density.set_positions(spos_ac)
+            self.density.set_positions(spos_ac, self.wfs.rank_a)
        
         elif self.type == 'all':
             raise NotImplementError()
@@ -283,9 +283,10 @@ class Surrounding:
             for atom in atoms_l:
                 atom.position[di] += cell_l[di] + cell[di]
             all_atoms += atoms_l
-            all_atoms.set_cell(self.cell)
+            all_atoms.set_cell(self.cell * Bohr)
             all_atoms.set_pbc(self.atoms._pbc)
             self.extended_atoms = all_atoms
+            self.extended_atoms.center()
   
     def calculate_sides(self):
         if self.type == 'LR':
@@ -306,51 +307,7 @@ class Surrounding:
             nn = self.nn[0] * 2
             self.extra_rhot_g = self.uncapsule(nn, 'vHt_g',
                                              direction, rhot_g, collect=True)
-            
-    def calculate_hamiltonian_atomic_matrix(self, kpt):
-        if self.type == 'LR':
-            wfs = self.wfs            
-            nao = wfs.setups.nao
-            ah_mm = np.zeros([nao, nao], wfs.dtype)
-            for a, P_Mi in kpt.P_aMi.items():
-                dH_ii = np.asarray(unpack(self.dH_asp[a][kpt.s]), P_Mi.dtype)
-                dHP_iM = np.zeros((dH_ii.shape[1], P_Mi.shape[0]),
-                                                               P_Mi.dtype)
-                gemm(1.0, P_Mi, dH_ii, 0.0, dHP_iM, 'c')
-                gemm(1.0, dHP_iM, P_Mi, 1.0, ah_mm)
-        return ah_mm
-            
-    def combine_atomic_hamiltonian(self):
-        if self.type == 'LR':
-            direction = self.directions[0][0]
-            side1 = self.sides[direction + '-']
-            side2 = self.sides[direction + '+']
-            
-            for a in range(side1.n_atoms):
-                self.dH_asp[a] = side1.dH_asp[a]
-            
-            for a in range(len(self.atoms)):
-                self.dH_asp[a + side1.n_atoms] = self.atoms.calc.hamiltonian.dH_asp[a]
 
-            for a in range(side2.n_atoms):
-                self.dH_asp[a + side1.n_atoms + len(self.atoms)] = side2.dH_asp[a]
-
-    def combine_atomic_density(self): 
-        if self.type == 'LR':
-            direction = self.directions[0][0]
-            side1 = self.sides[direction + '-']
-            side2 = self.sides[direction + '+']
-            
-            for a in range(side1.n_atoms):
-                self.density.D_asp[a] = side1.D_asp[a]
-            
-            for a in range(len(self.atoms)):
-                self.density.D_asp[a + side1.n_atoms] = self.atoms.calc.density.D_asp[a]
-
-            for a in range(side2.n_atoms):
-                self.density.D_asp[a + side1.n_atoms + len(self.atoms)] = side2.D_asp[a]
-
- 
     def calculate_potential_matrix(self, vt_sG0, kpt):
         s = kpt.s
         q = kpt.q
@@ -376,7 +333,7 @@ class Surrounding:
             gemm(1.0, dHP_iM, P_Mi, 1.0, self.vt_MM)
             gemm(1.0, dHP_iM, P_Mi, 1.0, test)            
         self.gd.comm.sum(self.vt_MM)
-   
+        
         direction = self.directions[0][0] + '-'   
         nao1 = self.sides[direction].nao
         ind = get_matrix_index(np.arange(nao0) +  nao1)
@@ -625,12 +582,41 @@ class Surrounding:
         f_un = [kpt.f_n for kpt in kpt_u]
         self.calculate_atomic_density_matrices_with_occupation(f_un)
         if self.type == 'LR':
-            direction = self.directions[0][0]            
-            side1 = self.sides[direction + '-']
-            natoms1 = side1.n_atoms
-            for a in self.atoms.calc.wfs.basis_functions.my_atom_indices:
-                density.D_asp[a][:] = self.density.D_asp[a + natoms1]
-             
+            self.get_inner_density_atomic_matrix(density)
+     
+    def get_inner_density_atomic_matrix(self, density): 
+        all_D_asp = []
+        for a, setup in enumerate(self.density.setups):
+            D_sp = self.density.D_asp.get(a)
+            if D_sp is None:
+                ni = setup.ni
+                D_sp = np.empty((self.density.nspins, ni * (ni + 1) // 2))
+            if self.gd.comm.size > 1:
+                self.gd.comm.broadcast(D_sp, self.density.rank_a[a])
+            all_D_asp.append(D_sp)
+   
+        direction = self.directions[0][0]            
+        side1 = self.sides[direction + '-']
+        natoms1 = side1.n_atoms
+        for a, D_sp in enumerate(density.D_asp):
+            D_sp = all_D_asp[a + natoms1]
+
+    def get_inner_hamiltonian_atomic_matrix(self, hamiltonian): 
+        all_dH_asp = []
+        for a, setup in enumerate(self.wfs.setups):
+            dH_sp = self.dH_asp.get(a)
+            if dH_sp is None:
+                ni = setup.ni
+                dH_sp = np.empty((self.nspins, ni * (ni + 1) // 2))
+            if self.gd.comm.size > 1:
+                self.gd.comm.broadcast(dH_sp, self.wfs.rank_a[a])
+            all_dH_asp.append(dH_sp)
+        direction = self.directions[0][0]            
+        side1 = self.sides[direction + '-']
+        natoms1 = side1.n_atoms
+        for a, dH_sp in enumerate(hamiltonian.dH_asp):
+            dH_sp = all_dH_asp[a + natoms1]
+            
     def combine_density_matrix(self):
         wfs = self.atoms.calc.wfs
         direction = self.directions[0][0]            
@@ -671,7 +657,6 @@ class Surrounding:
             ni = wfs.setups[a].ni
             D_sii = np.zeros((self.nspins, ni, ni))
             for f_n, kpt in zip(f_un, wfs.kpt_u):
-                #print world.rank, a, kpt.P_aMi[a]
                 wfs.calculate_atomic_density_matrices_k_point(D_sii, kpt,
                                                               a, f_n)
             D_sp[:] = [pack(D_ii) for D_ii in D_sii]
@@ -692,15 +677,16 @@ class Surrounding:
         for a in basis_functions.atom_indices:
             f_si = setups[a].calculate_initial_occupation_numbers(
                        magmom_a[a], hund, charge=c)
-            self.density.D_asp[a] =  setups[a].initialize_density_matrix(f_si)
+            if a in basis_functions.my_atom_indices:
+                self.density.D_asp[a] =  setups[a].initialize_density_matrix(f_si)
             f_asi[a] = f_si
+            
         if self.type == 'LR':
             direction = self.directions[0][0]            
             side1 = self.sides[direction + '-']
             side2 = self.sides[direction + '+']
             natoms1 = side1.n_atoms
-            for a in self.atoms.calc.wfs.basis_functions.my_atom_indices:
-                density.D_asp[a] = self.density.D_asp[a + natoms1].copy()
+            self.get_inner_density_atomic_matrix(density) 
 
         self.density.nt_sG = self.gd.zeros(self.nspins)
         basis_functions.add_to_density(self.density.nt_sG, f_asi)
@@ -754,7 +740,9 @@ class Surrounding:
         W_aL = {}
         for a in self.density.D_asp:
             W_aL[a] = np.empty((self.wfs.setups[a].lmax + 1)**2)
-        self.density.ghat.integrate(self.vHt_g, W_aL)
+        vHt_g = self.finegd.empty()
+        self.finegd.distribute(self.vHt_g, vHt_g)
+        self.density.ghat.integrate(vHt_g, W_aL)
         self.dH_asp = {}
         for a, D_sp in self.density.D_asp.items():
             W_L = W_aL[a]
@@ -774,14 +762,9 @@ class Surrounding:
                 D_sp, dH_sp, a)
             dH_sp += dH_p
             Ekin -= (D_sp * dH_sp).sum()
-        
         ham.dH_asp = {}
         if self.type == 'LR':
-            direction = self.directions[0][0]            
-            side1 = self.sides[direction + '-']
-            natoms1 = side1.n_atoms
-            for a in self.atoms.calc.wfs.basis_functions.my_atom_indices:
-                ham.dH_asp[a] = self.dH_asp[a + natoms1]            
+            self.get_inner_hamiltonian_atomic_matrix(ham)
 
         
         
