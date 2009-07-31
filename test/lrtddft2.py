@@ -39,15 +39,14 @@ assert( abs(calc.wfs.eigensolver.error/gs.wfs.eigensolver.error - 1) < 1e-8)
 lr1 = LrTDDFT(gs, xc=xc, txt='-')
 lr1.diagonalize()
 # check the oscillator strrength
-assert(abs(lr1[0].get_oscillator_strength()[0]/
-           lr[0].get_oscillator_strength()[0]   -1) < 1e-10)
+assert (abs(lr1[0].get_oscillator_strength()[0] /
+            lr[0].get_oscillator_strength()[0] -1) < 1e-10)
 
 #print "-> reading gs without wfs"
 gs = GPAW('H2saved.gpw', txt=None)
-# the wave functions err should be infinity
-assert(gs.wfs.eigensolver.error >  calc.wfs.eigensolver.error)
+
 lr2 = LrTDDFT(gs, xc=xc, txt='-')
 lr2.diagonalize()
 # check the oscillator strrength
-assert(abs(lr2[0].get_oscillator_strength()[0]/
-           lr[0].get_oscillator_strength()[0]   -1) < 1e-5)
+assert (abs(lr2[0].get_oscillator_strength()[0] /
+           lr[0].get_oscillator_strength()[0] -1) < 1e-5)

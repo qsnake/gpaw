@@ -514,7 +514,6 @@ def read(paw, reader):
     wfs.rank_a = npy.zeros(natoms, int)
 
     if version > 0.3:
-        paw.scf.converged = r['Converged']
         density_error = r['DensityError']
         if density_error is not None:
             density.mixer.set_charge_sloshing(density_error)
@@ -574,9 +573,11 @@ def read(paw, reader):
                     c_n = r.get('LinearExpansionCoefficients', s, k, o)
                     kpt.c_on[o,:] = c_n[nslice]
 
+        if version > 0.3:
+            wfs.eigensolver.error = r['EigenstateError']
+            
         if r.has_array('PseudoWaveFunctions'):
-            if version > 0.3:
-                wfs.eigensolver.error = r['EigenstateError']
+            
             if band_comm.size == 1:
                 # We may not be able to keep all the wave
                 # functions in memory - so psit_nG will be a special type of
@@ -607,10 +608,14 @@ def read(paw, reader):
                     kpt.P_ani[a] = P_ni[nslice, i1:i2].copy()
                 i1 = i2
 
+    paw.scf.check_convergence(density, wfs.eigensolver)
+
     try:
         if r['Mode'] == 'lcao':
             spos_ac = paw.atoms.get_scaled_positions()
             paw.wfs.load_lazily(hamiltonian, spos_ac)
+        if paw.input_parameters.mode != r['Mode']:
+            paw.scf.reset()
     except(AttributeError, KeyError):
         pass
 

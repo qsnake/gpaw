@@ -84,20 +84,10 @@ class PAW(PAWTextOutput):
             self.atoms = gpaw.io.read_atoms(reader)
             par = self.input_parameters
             par.read(reader)
-            par.txt = kwargs.pop('txt', '-')
-            par.idiotproof = kwargs.pop('idiotproof', True)
-            par.parsize = kwargs.pop('parsize', None)
-            par.parsize_bands = kwargs.pop('parsize_bands', 1)
-            par.parstride_bands = kwargs.pop('parstride_bands', False)
-            par.communicator = kwargs.pop('communicator', None)
 
-            setups = kwargs.pop('setups', None)
-            if setups is not None:
-                par.setups = setups
-            basis = kwargs.pop('basis', None)
-            if basis is not None:
-                par.basis = basis
-                
+        self.set(**kwargs)
+
+        if filename is not None:
             # Setups are not saved in the file if the setups were not loaded
             # *from* files in the first place
             if par.setups is None:
@@ -115,14 +105,12 @@ class PAW(PAWTextOutput):
             
             self.initialize()
             self.read(reader)
-            
-        self.set(**kwargs)
 
-        if filename is not None and not self.initialized: # TODO last condition is redundant
-            self.initialize()
-            # Read GLLB-releated stuff here, so they are not overwritten by self.initialize()
-            if self.hamiltonian.xcfunc.gllb:
-                self.hamiltonian.xcfunc.xc.read(reader)
+            # XXX this stuff here can be moved now.            ###
+            # Read GLLB-releated stuff here, so they are not   ###
+            # overwritten by self.initialize()                 ###
+            if self.hamiltonian.xcfunc.gllb:                   ###
+                self.hamiltonian.xcfunc.xc.read(reader)        ###
                             
             self.print_cell_and_parameters()
                 
@@ -649,31 +637,22 @@ class PAW(PAWTextOutput):
         """Converge the wave-functions if not present."""
 
         self.wfs.initialize_wave_functions_from_restart_file()
-        
-        if self.scf.converged:
-            # are the wfs ok ?
-            error = self.wfs.eigensolver.error
-            criterion = (self.input_parameters['convergence']['eigenstates']
-                         * self.nvalence)
 
-            if error < criterion:
-                # print "nothing to be done"
-                return
-
-            # XXX direct access to private property
+        no_wave_functions = (self.wfs.kpt_u[0].psit_nG is None)
+        converged = self.scf.check_convergence(self.density,
+                                               self.wfs.eigensolver)
+        if no_wave_functions or not converged:
+            self.wfs.eigensolver.error = np.inf
             self.scf.converged = False
 
             # is the density ok ?
             error = self.density.mixer.get_charge_sloshing()
             criterion = (self.input_parameters['convergence']['density']
                          * self.nvalence)
-
             if error < criterion:
-                # print "fixing the density"
                 self.scf.fix_density()
 
-        # we have nothing
-        self.calculate()
+            self.calculate()
 
     def check_atoms(self):
         """Check that atoms objects are identical on all processors."""
