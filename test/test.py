@@ -45,6 +45,9 @@ parser.add_option('-u', '--new-unittest',
 parser.add_option('--from', metavar='TESTFILE', dest='from_test',
                   help='Run remaining tests, starting from TESTFILE')
 
+parser.add_option('--after', metavar='TESTFILE', dest='after_test',
+                  help='Run remaining tests, starting after TESTFILE')
+
 parser.add_option('--dry', action='store_true',
                   help='Do not run any tests, but write the names of those '
                   'tests which would be run')
@@ -236,6 +239,10 @@ for test in exclude:
 if opt.from_test:
     fromindex = tests.index(opt.from_test)
     tests = tests[fromindex:]
+
+if opt.after_test:
+    index = tests.index(opt.after_test) + 1
+    tests = tests[index:]
 
 #gc.set_debug(gc.DEBUG_SAVEALL)
 
