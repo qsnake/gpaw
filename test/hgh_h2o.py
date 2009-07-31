@@ -24,6 +24,7 @@ mol = molecule('H2O')
 mol.rattle(0.2)
 mol.center(vacuum=2.0)
 calc = GPAW(nbands=6,
+            basis='sz',
             gpts=(32, 40, 40),
             setups='hgh',
             poissonsolver=PoissonSolver(relax='GS'),
