@@ -386,9 +386,10 @@ class Transport_Analysor:
     def save_data_to_file(self, flag='bias'):
         if flag == 'ion':
             steps = self.ion_steps
-        else:
+        elif flag == 'bias':
             steps = self.bias_steps
-            
+        else:
+            steps = self.ele_steps
         fd = file('analysis_data', 'wb')
         pickle.dump(steps, fd, 2)
         fd.close()
@@ -829,8 +830,10 @@ class Transport_Plotter:
         fd = file('analysis_data', 'r')
         if flag == 'ion':
             self.ion_steps = pickle.load(fd)
-        else:
+        elif flag == 'bias':
             self.bias_steps = pickle.load(fd)
+        else:
+            self.ele_steps = pickle.load(fd)
         fd.close()
 
     def filter(self, n_ion_step=None, n_bias_step=0):
