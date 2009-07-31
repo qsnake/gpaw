@@ -414,12 +414,9 @@ class GridDescriptor(Domain):
             dim = a.shape
             A_g = np.empty(dim)
 
-            for i in range(dim[0]):
-                for j in range(dim[1]):
-                    for k in range(dim[2]):
-                        r = np.dot(operation, (i, j, k))
-                        r = np.mod(r, dim)
-                        A_g[r[0]][r[1]][r[2]] = a[i, j, k]
+            for g, value in np.ndenumerate(a):
+                r = np.dot(operation, g) % dim
+                A_g[tuple(r)] = value
         else:
             A_g = None
 
