@@ -171,6 +171,13 @@ By default, the Poisson solver uses the *Jacobi method*.  To increase
 performance further use the *Gauss-Seidel* method instead, which
 usually reduces the Poisson iteration count by around 40%.
 
+The convergence criterion of the Poisson solver in FD mode,
+``eps=2e-10``, is very strict.  A value of around ``eps=1e-7`` can
+reduce the required Poisson iteration count considerably without
+increasing the required number of SCF steps.  Larger values like
+``eps=1e-5`` tend to increase the number of SCF steps, possibly making
+the calculation take longer.
+
 Example:
 
 .. literalinclude:: lcao_opt.py

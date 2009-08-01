@@ -11,7 +11,7 @@ mol = Atoms([Atom('O',(b, b, 0.1219 + b)),
 
 calc = GPAW(nbands=4, mode='lcao', basis='dzp',
             gpts=(32, 32, 32),
-            poissonsolver=PoissonSolver(relax='GS'))
+            poissonsolver=PoissonSolver(relax='GS', eps=1e-7))
 
 mol.set_calculator(calc)
 dyn = QuasiNewton(mol, trajectory='lcao2_h2o.traj')
