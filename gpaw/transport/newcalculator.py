@@ -753,7 +753,7 @@ class Transport(GPAW):
                 s = kpt.s
                 q = kpt.q
                 self.hsd.reset(s, q, d_spkmm, 'D', True)
-                self.fill_guess_with_leads()           
+            self.fill_guess_with_leads()           
             
             if self.save_file and not self.fixed:
                 self.write('scat.gpw', db=True, keywords=['transport',
