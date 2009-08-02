@@ -165,6 +165,8 @@ class Transport(GPAW):
             assert self.lead_num == len(self.bias)
             
             self.lead_atoms = p['lead_atoms']
+            if self.lead_atoms == None:
+                self.lead_atoms = self.pl_atoms
             self.nleadlayers = p['nleadlayers']
             self.mol_atoms = p['mol_atoms']
             
@@ -247,7 +249,7 @@ class Transport(GPAW):
         p['lead_restart'] = False
 
         p['lead_atoms'] = None
-        p['nleadlayers'] = 1
+        p['nleadlayers'] = [1, 1]
 
         p['use_env'] = False
         p['env_atoms'] = []
@@ -269,7 +271,7 @@ class Transport(GPAW):
         p['use_linear_vt_mm'] = False
         p['use_linear_vt_array'] = False        
         p['scat_restart'] = False
-        p['save_file'] = True
+        p['save_file'] = False
         p['restart_file'] = None
         p['fixed_boundary'] = True
         p['spinpol'] = False
@@ -411,7 +413,8 @@ class Transport(GPAW):
         del self.atoms_e
         self.initialized_transport = True
         self.matrix_mode = 'sparse'
-        self.plot_option = None         
+        self.plot_option = None
+        self.ground = True
 
     def get_hamiltonian_initial_guess(self):
         atoms = self.atoms.copy()
@@ -668,36 +671,9 @@ class Transport(GPAW):
         if not self.lead_restart and restart_file==None:
             atoms = self.atoms_l[l]
             atoms.get_potential_energy()
-            hl_skmm, sl_kmm = self.get_hs(atoms.calc)
-            self.lead_fermi[l] = atoms.calc.get_fermi_level()
-            dl_skmm = get_lcao_density_matrix(atoms.calc)
-            
-            hl_spkmm, sl_pkmm, dl_spkmm,  \
-            hl_spkcmm, sl_pkcmm, dl_spkcmm = get_pk_hsd(self.d, self.ntklead,
-                                                atoms.calc.wfs.ibzk_qc,
-                                                hl_skmm, sl_kmm, dl_skmm,
-                                                self.text, self.wfs.dtype,
-                                                direction=l)
-            for pk in range(self.my_npk):
-                self.lead_hsd[l].reset(0, pk, sl_pkmm[pk], 'S', init=True)
-                self.lead_couple_hsd[l].reset(0, pk, sl_pkcmm[pk], 'S',
-                                                                  init=True)
-                for s in range(self.my_nspins):
-                    self.lead_hsd[l].reset(s, pk, hl_spkmm[s, pk], 'H', init=True)     
-                    self.lead_hsd[l].reset(s, pk, dl_spkmm[s, pk], 'D', init=True)
-                    self.lead_couple_hsd[l].reset(s, pk, hl_spkcmm[s, pk], 'H', init=True)     
-                    self.lead_couple_hsd[l].reset(s, pk, dl_spkcmm[s, pk], 'D', init=True)                    
-           
             if self.save_file:
                 atoms.calc.write('lead' + str(l) + '.gpw', db=True,
-                                keywords=['transport', 'electrode', 'lcao'])                    
-                #self.pl_write('lead' + str(l) + '.mat',
-                #                                  (self.lead_fermi[l],
-                #                                   self.hl_skmm[l],
-                #                                   self.dl_skmm[l],
-                #                                   self.sl_kmm[l]))
-                
-                #self.lead_hsd[l].store('XXXX')
+                                keywords=['transport', 'electrode', 'lcao']) 
         else:
             if restart_file == None:
                 restart_file = 'lead' + str(l)
@@ -705,7 +681,26 @@ class Transport(GPAW):
             calc.set_positions()
             self.recover_kpts(calc)
             self.atoms_l[l] = atoms
-            #self.lead_hsd[l].read('XXX')
+            
+        hl_skmm, sl_kmm = self.get_hs(atoms.calc)
+        self.lead_fermi[l] = atoms.calc.get_fermi_level()
+        dl_skmm = get_lcao_density_matrix(atoms.calc)
+            
+        hl_spkmm, sl_pkmm, dl_spkmm,  \
+        hl_spkcmm, sl_pkcmm, dl_spkcmm = get_pk_hsd(self.d, self.ntklead,
+                                                atoms.calc.wfs.ibzk_qc,
+                                                hl_skmm, sl_kmm, dl_skmm,
+                                                self.text, self.wfs.dtype,
+                                                direction=l)
+        for pk in range(self.my_npk):
+            self.lead_hsd[l].reset(0, pk, sl_pkmm[pk], 'S', init=True)
+            self.lead_couple_hsd[l].reset(0, pk, sl_pkcmm[pk], 'S',
+                                                              init=True)
+            for s in range(self.my_nspins):
+                self.lead_hsd[l].reset(s, pk, hl_spkmm[s, pk], 'H', init=True)     
+                self.lead_hsd[l].reset(s, pk, dl_spkmm[s, pk], 'D', init=True)
+                self.lead_couple_hsd[l].reset(s, pk, hl_spkcmm[s, pk], 'H', init=True)     
+                self.lead_couple_hsd[l].reset(s, pk, dl_spkcmm[s, pk], 'D', init=True)                    
 
     def update_env_hamiltonian(self, l):
         if not self.env_restart:
@@ -736,41 +731,35 @@ class Transport(GPAW):
                 atoms = self.atoms
             if not self.fixed:
                 GPAW.get_potential_energy(self, atoms)
-                self.h_skmm, self.s_kmm = self.get_hs(self, 'scat')               
+                h_spkmm, s_pkmm = self.get_hs(self, 'scat')               
             else:
                 h_spkmm, s_pkmm = self.get_hs2(self, 'scat')
-               
-                for kpt in self.wfs.kpt_u:
-                    s = kpt.s
-                    q = kpt.q
-                    self.hsd.reset(s, q, s_pkmm[s], 'S', True)
-                    self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)
+              
+            for kpt in self.wfs.kpt_u:
+                s = kpt.s
+                q = kpt.q
+                self.hsd.reset(s, q, s_pkmm[s], 'S', True)
+                self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)
 
-                
             self.atoms = atoms.copy()
             rank = world.rank
-            #if self.gamma:
-            #    self.h_skmm = np.real(self.h_skmm).copy()
-         
+ 
             if not self.fixed:
-                self.d_skmm = get_lcao_density_matrix(self)
+                d_spkmm = get_lcao_density_matrix(self)
             else:
              
-                #self.d_skmm = np.zeros(self.h_skmm.shape, self.h_skmm.dtype)
-                for kpt in self.wfs.kpt_u:
-                    s = kpt.s
-                    q = kpt.q
-                    self.hsd.reset(s, q, np.zeros([self.nbmol, self.nbmol], self.wfs.dtype),
-                                                                    'D', True)
+                d_spkmm = np.zeros([self.nbmol, self.nbmol], self.wfs.dtype)
+            for kpt in self.wfs.kpt_u:
+                s = kpt.s
+                q = kpt.q
+                self.hsd.reset(s, q, d_spkmm, 'D', True)
                 self.fill_guess_with_leads()           
-            #if self.save_file and not self.fixed:
-                #self.write('scat.gpw', db=True, keywords=['transport',
-                #                                          'scattering region',
-                #                                          'lcao'])
-                #self.pl_write('scat.mat', (self.h_skmm,
-                #                           self.d_skmm,
-                #                           self.s_kmm))
-            #self.save_file = False
+            
+            if self.save_file and not self.fixed:
+                self.write('scat.gpw', db=True, keywords=['transport',
+                                                          'scattering region',
+                                                          'lcao'])
+            self.save_file = False
         else:
             self.h_skmm, self.d_skmm, self.s_kmm = self.pl_read(
                                                      self.restart_file + '.mat')
@@ -958,6 +947,8 @@ class Transport(GPAW):
             kpt.rho_MM = None
             kpt.eps_n = np.zeros((self.nbmol))
             kpt.f_n = np.zeros((self.nbmol))
+        
+        self.ground = False
         self.linear_mm = None
         if not self.scf.converged:
             raise RuntimeError('Transport do not converge in %d steps' %
@@ -1069,7 +1060,7 @@ class Transport(GPAW):
                                                         self.lead_fermi, bias)
         else:
             self.intctrl = IntCtrl(self.occupations.kT * Hartree,
-                                                        self.lead_fermi, bias)            
+                                                        self.lead_fermi, bias, self.ground)            
             self.surround.reset_bias(bias) 
         self.initialize_green_function()
         self.calculate_integral_path()
@@ -1658,22 +1649,23 @@ class Transport(GPAW):
         if self.fixed:
             self.analysor.save_ele_step()
             self.analysor.save_data_to_file('ele')
-            
-        h_skmm, s_kmm = self.get_hs2(self, 'scat')        
+        
+        if self.fixed:    
+            h_spkmm, s_pkmm = self.get_hs2(self, 'scat')
+        else:
+            h_spkmm, s_pkmm = self.get_hs(self, 'scat')
+            if self.use_linear_vt_mm:
+                if self.linear_mm == None:
+                    self.linear_mm = self.get_linear_potential_matrix()            
+                h_spkmm += self.linear_mm            
         for kpt in self.wfs.kpt_u:
             s = kpt.s
             q = kpt.q
-            self.hsd.reset(s, q, h_skmm[s, q], 'H')
-            self.hsd.reset(s, q, s_kmm[q], 'S')
-            
-        #self.h_skmm, self.s_kmm = self.get_hs(self, 'scat')
-        #self.spy('h_skmm', self.h_skmm)
-        #self.spy('s_kmm', self.s_kmm)
-        if self.use_linear_vt_mm:
-            if self.linear_mm == None:
-                self.linear_mm = self.get_linear_potential_matrix()            
-            self.h_skmm += self.linear_mm
-   
+            self.hsd.reset(s, q, h_spkmm[s, q], 'H')
+            self.hsd.reset(s, q, s_pkmm[q], 'S')
+        if self.ground and self.step < self.density.mixer.nmaxold:
+            self.fill_guess_with_leads() 
+  
     def get_forces(self, atoms):
         if (atoms.positions != self.atoms.positions).any():
             self.scf.converged = False
@@ -1731,10 +1723,10 @@ class Transport(GPAW):
         for kpt in self.wfs.kpt_u:
             if ns == 2:
                 #kpt.rho_MM = self.d_skmm[kpt.s, kpt.q]
-                kpt.rho_MM = self.hsd.D[kpt.s][kpt.q].recover()
+                kpt.rho_MM = self.hsd.D[kpt.s][kpt.q].recover() / self.npk
             else:
                 #kpt.rho_MM = self.d_skmm[0, kpt.q]
-                kpt.rho_MM = self.hsd.D[0][kpt.q].recover()
+                kpt.rho_MM = self.hsd.D[0][kpt.q].recover() / self.npk
         self.update_density()
 
     def update_density(self):
