@@ -3,7 +3,7 @@
 
 version = '0.6'
 
-ase_required_version = '3.1.0'
+ase_required_version = '3.2.0'
 ase_required_svnrevision = '1062'
 
 from os import popen3, path
