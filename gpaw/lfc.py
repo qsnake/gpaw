@@ -397,12 +397,15 @@ class NewLocalizedFunctionsCollection(BaseLFC):
             self.lfc.add(c_xM, a_xG, q)
             return
 
+        dtype = a_xG.dtype
+
         if debug:
             assert a_xG.ndim >= 3
             assert (np.sort(c_axi.keys()) == self.my_atom_indices).all()
+            for c_xi in c_axi.values():
+                assert c_xi.dtype == dtype
 
         comm = self.gd.comm
-        dtype = a_xG.dtype
         xshape = a_xG.shape[:-3]
         requests = []
         M1 = 0
@@ -418,6 +421,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
             else:
                 for r in sphere.ranks:
                     requests.append(comm.send(c_xi, r, a, False))
+
             M1 = M2
 
         for request in requests:
@@ -433,7 +437,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
                 c_xi = b_axi[a]
             c_xM[..., M1:M2] = c_xi
             M1 = M2
-            
+
         self.lfc.add(c_xM, a_xG, q)
     
     def integrate(self, a_xG, c_axi, q=-1):

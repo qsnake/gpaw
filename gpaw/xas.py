@@ -389,7 +389,7 @@ class RecursionMethod:
 
         A_aci = self.wfs.pt.dict(3, zero=True)
         if a in A_aci:
-            A_aci[a] = A_ci
+            A_aci[a] = A_ci.astype(self.wfs.dtype)
         for u in range(nmykpts):
             self.wfs.pt.add(self.w_ucG[u], A_aci, u)
 
