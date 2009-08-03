@@ -31,5 +31,5 @@ The mailing lists below are of interest for active GPAW developers only:
 Internet Relay Chat
 ===================
 
-We have an IRC channel (`#gpaw`) on FreeNode.  Please join us if you
+We have an IRC channel (``#gpaw``) on FreeNode.  Please join us if you
 have any questions.
