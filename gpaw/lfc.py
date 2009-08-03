@@ -523,7 +523,9 @@ class NewLocalizedFunctionsCollection(BaseLFC):
                        dR 
                          v
                          
-        and v is either x, y, or z.
+        and v is either x, y, or z, and R^a_v is the center of Phi^a.
+
+        Notice that d Phi^a_i / dR^a_v == - d Phi^a_i / d v.
         """
         assert not self.use_global_indices
 
