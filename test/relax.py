@@ -83,6 +83,9 @@ assert abs(d0q - d0) < 4e-4
 
 f0 = molecule.get_forces()
 del relax, molecule
+
+from gpaw.mpi import world
+world.barrier()  # syncronize before reading text output file
 f = read('H2.txt').get_forces()
 assert abs(f - f0).max() < 5e-6  # 5 digits in txt file
 
