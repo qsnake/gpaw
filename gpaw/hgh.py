@@ -379,9 +379,9 @@ class HGHSetupData:
         return basis
 
     def get_compensation_charge_function(self):
-        rcgauss = sqrt(2) * self.hghdata.rloc
+        rcgauss = sqrt(2.0) * self.hghdata.rloc
         alpha = rcgauss**-2
-        rcutgauss = rcgauss * 4.0
+        rcutgauss = rcgauss * 5.0 # smaller values break charge conservation
         r = np.linspace(0.0, rcutgauss, 100)
         g = alpha**1.5 * np.exp(-alpha * r**2) * 4.0 / sqrt(pi)
         g[-1] = 0.0
