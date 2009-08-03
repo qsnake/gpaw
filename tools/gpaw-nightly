@@ -53,7 +53,7 @@ if os.system('svn checkout ' +
 if day % 2:
     d = {}
     execfile('gpaw/gpaw/version.py', d)
-    asesvnrevision = d['ase_required_svnversion']
+    asesvnrevision = d['ase_required_svnrevision']
 else:
     asesvnrevision = 'HEAD'
 
