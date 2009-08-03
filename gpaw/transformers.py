@@ -1,6 +1,12 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
+"""Grid transformers.
+
+This module defines tools for doing interpolations/restrictions between
+differentt uniform 3D grids.
+"""
+
 from __future__ import division
 from math import pi
 import numpy as np

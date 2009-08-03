@@ -1,6 +1,11 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
+"""Finite difference operators.
+
+This file defines a series of finite difference operators used in grid mode.
+"""
+
 from __future__ import division
 from math import pi
 
