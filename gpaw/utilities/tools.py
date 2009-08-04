@@ -60,15 +60,15 @@ def construct_reciprocal(gd):
        grid defined in input grid-descriptor 'gd'.
     """
     # Calculate reciprocal lattice vectors
-    N_c1 = gd.n_c[:, np.newaxis]
-    i_cq = np.indices(gd.n_c).reshape((3, -1))
+    N_c1 = gd.N_c[:, np.newaxis]
+    i_cq = np.indices(gd.N_c).reshape((3, -1))
     i_cq += N_c1 // 2
     i_cq %= N_c1
     i_cq -= N_c1 // 2
     B_vc = 2.0 * np.pi * gd.icell_cv.T
     k_vq = np.dot(B_vc, i_cq)
     k_vq *= k_vq
-    k2_Q = k_vq.sum(axis=0).reshape(gd.n_c)
+    k2_Q = k_vq.sum(axis=0).reshape(gd.N_c)
     k2_Q[0, 0, 0] = 1.0
 
     # Determine N^3

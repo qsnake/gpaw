@@ -12,6 +12,7 @@ from gpaw import PoissonConvergenceError
 from gpaw.utilities.blas import axpy
 from gpaw.utilities.gauss import Gaussian
 from gpaw.utilities.ewald import Ewald
+import gpaw.mpi as mpi
 
 
 class PoissonSolver:
@@ -334,14 +335,21 @@ class FFTPoissonSolver(PoissonSolver):
         self.eps = eps
 
     def set_grid_descriptor(self, gd):
-        if gd.comm.size > 1:
-            raise RuntimeError('Cannot do parallel FFT.')
         assert gd.pbc_c.all()
         self.gd = gd
 
     def initialize(self):
-        self.k2_Q, self.N3 = construct_reciprocal(self.gd)
+        if self.gd.comm.rank == 0:
+            self.k2_Q, self.N3 = construct_reciprocal(self.gd)
 
     def solve_neutral(self, phi_g, rho_g, eps=None):
-        phi_g[:] = ifftn(fftn(rho_g) * 4.0 * pi / self.k2_Q).real
+        if self.gd.comm.size == 1:
+            phi_g[:] = ifftn(fftn(rho_g) * 4.0 * pi / self.k2_Q).real
+        else:
+            rho_g = self.gd.collect(rho_g)
+            if self.gd.comm.rank == 0:
+                globalphi_g = ifftn(fftn(rho_g) * 4.0 * pi / self.k2_Q).real
+            else:
+                globalphi_g = None
+            self.gd.distribute(globalphi_g, phi_g)
         return 1
