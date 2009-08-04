@@ -14,7 +14,8 @@ atoms.positions[:, 2] = [i * a for i in range(12)]
 
 calc = GPAW(h=0.3,
             mode='lcao',
-            basis='sz')
+            basis='sz',
+            usesymm = False)
 
 # Lead calculation
 lead = atoms.copy()
@@ -65,7 +66,7 @@ stm.initialize()
 stm.scan()
 stm.linescan()
 
-if 0:
+if 1:
     stm.plot()
 
 
