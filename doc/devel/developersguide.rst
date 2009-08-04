@@ -10,7 +10,8 @@ XXX Update page to new GPAW style (after guc merge) and mention NewLFCs.
 
 This page goes through the most important equations of a PAW
 calculation and has references to the code.  It is a good idea to have
-:ref:`the_big_picture` in front of you when reading this page.
+:ref:`the big picture <the_big_picture>` in front of you when reading
+this page.
 
 For special topics, look at the :ref:`special_topics`
 

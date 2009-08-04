@@ -45,6 +45,13 @@ to become the next release.
 Code Overview
 =============
 
+Keep this picture under your pillow:
+
+.. _the_big_picture:
+
+.. image:: bigpicture.png
+   :target: ../bigpicture.pdf
+
 The developer guide provides an overview of the PAW quantities and how
 the corresponding objects are defined in the code:
 
@@ -59,17 +66,6 @@ the corresponding objects are defined in the code:
    density_and_hamiltonian
    others
 
-.. _the_big_picture:
-
-The big picture
-===============
-
-The old (outdated) "The big picture" created with OpenOffice.org-Draw_
-can be found here: overview.odg_, overview.pdf_
-
-.. _OpenOffice.org-Draw: http://www.openoffice.org/product/draw.html
-.. _overview.pdf: ../_static/overview.pdf
-.. _overview.odg: ../_static/overview.odg
 
 
 The GPAW logo
