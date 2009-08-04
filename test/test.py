@@ -88,6 +88,7 @@ if len(tests) == 0:
         'parallel/compare.py',
         'coulomb.py',
         'ase3k.py',
+        'symmetry.py',
         'eed.py',
         'pes.py',
         'timing.py',
