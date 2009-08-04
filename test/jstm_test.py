@@ -65,7 +65,7 @@ stm.initialize()
 stm.scan()
 stm.linescan()
 
-if 1:
+if 0:
     stm.plot()
 
 
