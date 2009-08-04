@@ -408,15 +408,13 @@ class GridDescriptor(Domain):
     def apply_operation(self, a_g, operation):
         """Apply an operation on an array."""
 
-        a = self.collect(a_g)
+        a_g = self.collect(a_g)
 
         if self.rank == 0:
-            dim = a.shape
-            A_g = np.empty(dim)
-
-            for g, value in np.ndenumerate(a):
-                r = np.dot(operation, g) % dim
-                A_g[tuple(r)] = value
+            A_g = np.empty_like(a_g)
+            for g, value in np.ndenumerate(a_g):
+                g2 = tuple(np.dot(operation, g) % a_g.shape)
+                A_g[g2] = value
         else:
             A_g = None
 
