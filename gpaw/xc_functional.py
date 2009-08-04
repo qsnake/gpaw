@@ -229,6 +229,7 @@ class XCFunctional:
                             parameters[i] = self.parameters[key]
             elif xcname == 'BEE1':
                 code = 18
+                self.setupname = 'PBE'
             else:
                 raise TypeError('Unknown exchange-correlation functional')
 
