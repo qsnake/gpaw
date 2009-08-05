@@ -1,4 +1,3 @@
-#from gpaw.transport.calculator import Transport
 from gpaw.transport.selfenergy import LeadSelfEnergy, CellSelfEnergy
 from gpaw.transport.greenfunction import GreenFunction
 from gpaw.transport.tools import get_matrix_index, aa1d, aa2d, sum_by_unit, dot
@@ -24,7 +23,7 @@ class Transmission_Info:
         self.ion_step, self.bias_step = ion_step, bias_step
     
     def initialize_data(self, bias, gate, ep, lead_pairs,
-                                   tc, dos, dv, current, lead_fermis):
+                                   tc, dos, dv, current, lead_fermis, time_cost):
         self.bias = bias
         self.gate = gate
         self.ep = ep
@@ -34,6 +33,7 @@ class Transmission_Info:
         self.dv = dv
         self.current = current
         self.lead_fermis = lead_fermis
+        self.time_cost = time_cost
 
 class Electron_Step_Info:
     # member variables:
@@ -54,7 +54,7 @@ class Electron_Step_Info:
     def __init__(self, ion_step, bias_step, ele_step):
         self.ion_step, self.bias_step, self.ele_step = ion_step, bias_step, ele_step
         
-    def initialize_data(self, bias, gate, dd, df, nt, vt, rho, D_asp, dH_asp, tc, dos):
+    def initialize_data(self, bias, gate, dd, df, nt, vt, rho, D_asp, dH_asp, tc, dos, time_cost):
         self.bias = bias
         self.gate = gate
         self.dd = dd
@@ -66,6 +66,7 @@ class Electron_Step_Info:
         self.dH_asp = dH_asp
         self.tc = tc
         self.dos = dos
+        self.time_cost = time_cost
     
     def initialize_extended_data(self, ent_G, evt_G, ent_g,
                                  evt_g, ehot_g, evHt_g, edmm):
@@ -185,9 +186,10 @@ class Transport_Analysor:
             for i in range(tp.lead_num):
                 sigma.append(self.selfenergies[i](energy))
             if re_flag==0:
-                return tp.hsd.calculate_eq_green_function(energy, sigma)
+                return tp.hsd.calculate_eq_green_function(energy, sigma, False)
             else:
-                return tp.hsd.calculate_eq_green_function(energy, sigma), sigma 
+                return tp.hsd.calculate_eq_green_function(energy, sigma,
+                                                          False), sigma 
     
     def calculate_transmission_and_dos(self, s, k, energies):
         self.reset_selfenergy_and_green_function(s, k)
@@ -254,11 +256,11 @@ class Transport_Analysor:
                     dd[s, k] = np.diag(tp.d_spkmm[s, k])
                     df[s, k] = np.diag(tp.h_spkmm[s, k])
                 else:
-                    dd[s, k] = np.diag(tp.hsd.D[s][k].recover())
-                    df[s, k] = np.diag(tp.hsd.H[s][k].recover())
+                    dd[s, k] = np.diag(tp.hsd.D[s][k].recover(True))
+                    df[s, k] = np.diag(tp.hsd.H[s][k].recover(True))
         
-        tp.pkpt_comm.all_gather(dd, total_dd)
-        tp.pkpt_comm.all_gather(df, total_df)
+        tp.wfs.kpt_comm.all_gather(dd, total_dd)
+        tp.wfs.kpt_comm.all_gather(df, total_df)
 
         dim = tp.gd.N_c
         d1 = dim[0] // 2
@@ -285,64 +287,46 @@ class Transport_Analysor:
         dH_asp = copy.deepcopy(tp.hamiltonian.dH_asp)
         
         tc_array, dos_array = self.collect_transmission_and_dos()
-        step.initialize_data(tp.bias, tp.gate, total_dd, total_df, nt, vt, rho, D_asp, dH_asp, tc_array, dos_array)
+        time_cost = self.ele_step_time_collect()
+        step.initialize_data(tp.bias, tp.gate, total_dd, total_df, nt, vt, rho, D_asp, dH_asp, tc_array, dos_array, time_cost)
         
-        sr = tp.surround
-        gd = sr.gd
-        #b_nt_sG = gd.empty(tp.nspins, global_array=True)
-        #b_vt_sG = gd.empty(tp.nspins, global_array=True)
-        
-        b_nt_sG = sr.nt_sG
-    
-        b_vt_sG = sr.boundary_vt_sG
-       
-        gd = sr.finegd
-        #b_nt_sg = gd.empty(tp.nspins, global_array=True)
-        #b_vt_sg = gd.empty(tp.nspins, global_array=True)
-
-        b_nt_sg = sr.nt_sg
-        #b_vt_sg = gd.collect(sr.boundary_vt_sg, True)
-        b_vt_sg = sr.boundary_vt_sg
-         
-        #b_rhot_g = gd.empty(global_array=True)
-        #b_vHt_g = gd.empty(global_array=True)
-        
-        b_rhot_g = sr.rhot_g
-        b_vHt_g = sr.vHt_g
-        
-        
-        ent_G = b_nt_sG[0, d1, d2].copy()
-        evt_G = b_vt_sG[0, d1, d2].copy()
-        ent_g = b_nt_sg[0, d1*2, d2*2].copy()
-        evt_g = b_vt_sg[0, d1*2, d2*2].copy()
-        ehot_g = b_rhot_g[d1*2, d2*2].copy()
-        evHt_g = b_vHt_g[d1*2, d2*2].copy()
-        
-        nb = sr.wfs.setups.nao
-        edmm = np.empty([tp.my_nspins, tp.my_npk, nb], sr.wfs.dtype)
-        total_edmm = np.empty([tp.nspins, tp.npk, nb], sr.wfs.dtype)        
-        for kpt in sr.wfs.kpt_u:
-            edmm[kpt.s, kpt.q] = np.diag(kpt.rho_MM)
-        tp.pkpt_comm.all_gather(edmm, total_edmm)
-        step.initialize_extended_data(ent_G, evt_G, ent_g,
-                                                  evt_g, ehot_g, evHt_g, total_edmm)        
         self.ele_steps.append(step)
         self.n_ele_step += 1
       
     def save_bias_step(self):
         tp = self.tp
         step = Transmission_Info(self.n_ion_step, self.n_bias_step)
+        time_cost = self.bias_step_time_collect()
         tc_array, dos_array = self.collect_transmission_and_dos()
         dv = self.abstract_d_and_v()
         current = self.calculate_current()
         step.initialize_data(tp.bias, tp.gate, self.energies, self.lead_pairs,
-                             tc_array, dos_array, dv, current, tp.lead_fermi)
+                             tc_array, dos_array, dv, current, tp.lead_fermi, time_cost)
         step.ele_steps = self.ele_steps
         del self.ele_steps
         self.ele_steps = []
         self.n_ele_step = 0
         self.bias_steps.append(step)
         self.n_bias_step += 1
+
+    def bias_step_time_collect(self):
+        time = self.tp.timer.gettime
+        cost = {}
+        cost['update lead hamiltonian'] = time('update lead hamiltonian0') * self.tp.lead_num
+        cost['init lead'] = time('init lead0') * self.tp.lead_num
+        cost['scat guess'] = time('scat guess')
+        cost['init scat'] = time('init scat')
+        cost['init surround'] = time('init surround')
+        cost['init scf'] = time('init scf')
+        return cost
+        
+    def ele_step_time_collect(self):    
+        time = self.tp.timer.gettime
+        cost = {}
+        cost['eq fock2den'] = time('eq fock2den')
+        cost['ne fock2den'] = time('ne fock2den')
+        cost['Poisson'] = time('Poisson')
+        return cost
 
     def collect_transmission_and_dos(self, energies=None):
         if energies == None:
@@ -366,9 +350,9 @@ class Transport_Analysor:
             local_tc_array[s, q], local_dos_array[s, q] = \
                       self.calculate_transmission_and_dos(s, q, energies)
 
-        pkpt_comm = tp.pkpt_comm
-        pkpt_comm.all_gather(local_tc_array, tc_array)
-        pkpt_comm.all_gather(local_dos_array, dos_array)            
+        kpt_comm = tp.wfs.kpt_comm
+        kpt_comm.all_gather(local_tc_array, tc_array)
+        kpt_comm.all_gather(local_dos_array, dos_array)            
 
         return tc_array, dos_array
 
