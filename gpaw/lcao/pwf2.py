@@ -98,6 +98,7 @@ class ProjectedWannierFunctionsFBL:
     def __init__(self, V_nM, No, ortho=False):
         Nw = V_nM.shape[1]
         assert No <= Nw
+        
         V_oM, V_uM = V_nM[:No], V_nM[No:]
         F_MM = np.dot(V_uM.T.conj(), V_uM)
         U_ow, U_lw, U_Ml = get_rot(F_MM, V_oM, Nw - No)
@@ -140,6 +141,7 @@ class ProjectedWannierFunctionsIBL:
         Nw = V_nM.shape[1]
         assert No <= Nw
         self.V_oM, V_uM = V_nM[:No], V_nM[No:]
+        
         F_MM = S_MM - np.dot(self.V_oM.T.conj(), self.V_oM)
         U_ow, U_lw, U_Ml = get_rot(F_MM, self.V_oM, Nw - No)
         self.U_Mw = np.dot(U_Ml, U_lw)
@@ -152,15 +154,11 @@ class ProjectedWannierFunctionsIBL:
            np.dot(U_ow, np.linalg.solve(self.S_ww, U_ow.T.conj())).diagonal(),
            np.dot(P_uw, np.linalg.solve(self.S_ww, P_uw.T.conj())).diagonal()))
 
-    def rotate_matrix(self, A_oo, A_MM):
-        if A_oo.ndim == 1:
-            A_ww = dots(self.U_ow.T.conj() * A_oo, self.V_oM, self.U_Mw)
-            A_ww += np.conj(A_ww.T)
-            A_ww += np.dot(self.U_ow.T.conj() * A_oo, self.U_ow)
-        else:
-            A_ww = dots(self.U_ow.T.conj(), A_oo, self.V_oM, self.U_Mw)
-            A_ww += np.conj(A_ww.T)
-            A_ww += dots(self.U_ow.T.conj(), A_oo, self.U_ow)
+    def rotate_matrix(self, A_o, A_MM):
+        assert A_o.ndim == 1
+        A_ww = dots(self.U_ow.T.conj() * A_o, self.V_oM, self.U_Mw)
+        A_ww += np.conj(A_ww.T)
+        A_ww += np.dot(self.U_ow.T.conj() * A_o, self.U_ow)
         A_ww += dots(self.U_Mw.T.conj(), A_MM, self.U_Mw)
         return A_ww
 
@@ -192,9 +190,48 @@ class ProjectedWannierFunctionsIBL:
         return w_wG
 
 
+def pwf_mask(symbols, lcaobasis='dzp', pwfbasis='sz'):
+    from gpaw.lcao.tools import basis_nao
+    mask = []
+    for symbol in symbols:
+        nao_lcao = basis_nao[lcaobasis][symbol]
+        nao_pwf = basis_nao[pwfbasis][symbol]
+        mask += [True,] * nao_pwf
+        mask += [False,] * (nao_lcao - nao_pwf)
+    return np.asarray(mask, bool)
+
+
+class PWFplusLCAO(ProjectedWannierFunctionsIBL):
+    def __init__(self, V_nM, S_MM, No, pwfmask):
+        Nw = V_nM.shape[0]
+        self.V_oM = V_nM[:No]
+        dtype = V_nM.dtype
+        
+        # Do PWF optimization for pwfbasis submatrix only!
+        pwfmask2 = np.outer(pwfmask, pwfmask)
+        s_MM = S_MM[pwfmask2]
+        v_oM = self.V_oM[:, pwfmask]
+        f_MM = s_MM - np.dot(v_oM.T.conj(), v_oM)
+        nw = len(s_MM)
+        assert No <= nw
+        
+        u_ow, u_lw, u_Ml = get_rot(f_MM, v_oM, nw - No)
+        u_Mw = np.dot(u_Ml, u_lw)
+        u_ow = u_ow - np.dot(v_oM, u_Mw)
+
+        # Determine U for full lcao basis
+        self.U_ow = np.zeros((No, Nw), dtype)
+        for U_w, u_w in zip(self.U_ow, u_ow):
+            np.place(U_w, pwfmask, u_w)
+        self.U_Mw = np.identity(Nw, dtype)
+        np.place(self.U_Mw, pwfmask2, u_Mw)
+
+        self.S_ww = self.rotate_matrix(np.ones(1), S_MM)
+        
+
 class PWF2:
-    def __init__(self, gpwfilename, fixedenergy=0.,
-                 spin=0, ibl=True, basis='sz', zero_fermi=False):
+    def __init__(self, gpwfilename, fixedenergy=0., spin=0, ibl=True,
+                 basis='sz', zero_fermi=False, pwfbasis=None):
         calc = GPAW(gpwfilename, txt=None, basis=basis)
         calc.wfs.initialize_wave_functions_from_restart_file()
         calc.density.ghat.set_positions(calc.atoms.get_scaled_positions() % 1.)
@@ -223,12 +260,18 @@ class PWF2:
         self.H_qww = []
 
         if ibl:
+            if pwfbasis is not None:
+                pwfmask = pwf_mask(calc.atoms.get_chemical_symbols(),
+                                   basis, pwfbasis)
             self.bfs = get_bfs(calc)
             V_qnM, H_qMM, S_qMM, self.P_aqMi = get_lcao_projections_HSP(
                 calc, bfs=self.bfs, spin=spin, projectionsonly=False)
             H_qMM -= Ef * S_qMM
             for q, M in enumerate(self.M_k):
-                pwf = ProjectedWannierFunctionsIBL(V_qnM[q], S_qMM[q], M)
+                if pwfbasis is None:
+                    pwf = ProjectedWannierFunctionsIBL(V_qnM[q], S_qMM[q], M)
+                else:
+                    pwf = PWFplusLCAO(V_qnM[q], S_qMM[q], M, pwfmask)
                 self.pwf_q.append(pwf)
                 self.norms_qn.append(pwf.norms_n)
                 self.S_qww.append(pwf.S_ww)
