@@ -479,7 +479,7 @@ class LCAOWaveFunctions(WaveFunctions):
         if debug:
             from numpy.linalg import eigvalsh
             for S_MM in self.S_qMM:
-                smin = eigvalsh(S_MM)[0]
+                smin = eigvalsh(S_MM).real.min()
                 if smin < 0:
                     raise RuntimeError('Overlap matrix has negative '
                                        'eigenvalue: %e' % smin)
