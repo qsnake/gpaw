@@ -281,7 +281,8 @@ class HGHSetupData:
             for n2, l2 in self.hghdata.nl_iter():
                 M2end = M2start + 2 * l2 + 1
                 if l1 == l2:
-                    H_ii[M1start:M1end, M2start:M2end] = v.h_nn[n1, n2]
+                    H_mm = np.identity(M2end - M2start) * v.h_nn[n1, n2]
+                    H_ii[M1start:M1end, M2start:M2end] += H_mm
                 M2start = M2end
             M1start = M1end
         K_p = pack2(H_ii)
@@ -420,7 +421,7 @@ def create_local_shortrange_potential(r_g, rloc, c_n):
 def create_hgh_projector(r_g, l, n, r0):
     poly_g = r_g**(l + 2 * (n - 1))
     gauss_g = np.exp(-.5 * r_g**2 / r0**2)
-    A = r0**(l + (4 * n - 1)/2.)
+    A = r0**(l + (4 * n - 1) / 2.0)
     assert (4 * n - 1) % 2 == 1
     B = half_integer_gamma[l + (4 * n - 1) // 2]**.5
     #print l, n, B, r0
