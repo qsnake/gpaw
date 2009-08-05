@@ -24,8 +24,33 @@ def get_bf_centers(atoms):
     return pos_ic
 
 
+basis_nao = {'sz': {'H':  1,
+                    'C':  4,
+                    'N':  4,
+                    'Au': 6,
+                    'Pt': 6,},
+             'dz': {'H':   2,
+                    'C':   8,
+                    'N':   8,
+                    'Au': 12,
+                    'Pt': 12,},
+             'szp': {'H':  4,
+                     'C':  9,
+                     'N':  9,
+                     'Au': 9,
+                     'Pt': 9,},
+             'dzp': {'H':   5,
+                     'C':  13,
+                     'N':  13,
+                     'Au': 15,
+                     'Pt': 15,},
+             }
+
 def get_bf_centers2(atoms, bfs_dict):
-    """bfs_dict is a dictionary mapping atom symbols to a number of bfs."""
+    """bfs_dict is a dictionary mapping atom symbols to a number of bfs.
+
+    Use e.g. basis_nao['dzp'].
+    """
     pos_ic = []
     for pos, sym in zip(atoms.get_positions(), atoms.get_chemical_symbols()):
         pos_ic.extend(pos[None].repeat(bfs_dict[sym], 0))
@@ -93,7 +118,6 @@ def dump_hamiltonian(filename, atoms, direction=None):
                     remove_pbc(atoms, h_skmm[s, k], s_kmm[k], d)
                 else:
                     remove_pbc(atoms, h_skmm[s, k], None, d)
-
     
     if atoms.calc.master:
         fd = file(filename,'wb')
@@ -205,21 +229,6 @@ def get_lead_lcao_hamiltonian(calc, usesymm=False, direction='x'):
                                      calc.wfs.weight_k, direction, usesymm)
     else:
         return None, None
-
-
-def lead_kspace2realspace_fromfile(filename, direction='x', usesymm=None):
-    """Convert a dumped hamiltonian representing a lead, to a realspace
-    hamiltonian of double size representing two principal layers and the
-    coupling between."""
-    fd = file(filename, 'rb')
-    h_skmm, s_kmm = pickle.load(fd)
-    atom_data = pickle.load(fd)
-    calc_data = pickle.load(fd)
-    ibzk_kc = calc.data['ibzk_kc']
-    weight_k = calc.data['weight_k']
-    fd.close()
-    return lead_kspace2realspace(h_skmm, s_kmm, ibzk_kc, weight_k,
-                                 direction, usesymm)
 
 
 def lead_kspace2realspace(h_skmm, s_kmm, ibzk_kc, weight_k,
