@@ -16,7 +16,7 @@ class IntCtrl:
         neintpath    // [ minfermi leadfermi maxfermi ] + eta ( 1e-8 )}
     """
     
-    def __init__(self, kt, efermi, bias, ground=True, env_bias=[], verbose=False):
+    def __init__(self, kt, efermi, bias, env_bias=[], verbose=False):
         #if u_l>u_r,bias>0
         self.kt = kt
         self.leadfermi = []
@@ -27,10 +27,7 @@ class IntCtrl:
             self.envfermi.append(efermi + env_bias[i])
         self.minfermi = min(self.leadfermi + self.envfermi)
         self.maxfermi = max(self.leadfermi + self.envfermi)
-        if not ground:
-            self.eqinttol = 1e-5
-        else:
-            self.eqinttol = 1e-4
+        self.eqinttol = 1e-5
         self.kttol = 1e-5
         self.biastol = 1e-10
         
@@ -50,19 +47,11 @@ class IntCtrl:
             dkt = 10 * npy.pi * self.kt
             #self.eqintpath = [-20.0, -20.0 + dkt * 1.j, -nkt + dkt * 1.j,
             #                  dkt * 1.j + nkt]
-            if not ground:
-                self.eqintpath = [-50, 
+            self.eqintpath = [-50, 
                               -50 + (10 + dkt)*1.j, 
                               -nkt + (10 + dkt)* 1.j, 
                               -nkt + dkt * 1.j, 
                                dkt *1.j +nkt]
-            else:
-                self.eqintpath = [-500, 
-                              -500 + (10 + dkt)*1.j, 
-                              -nkt + (10 + dkt)* 1.j, 
-                              -nkt + dkt * 1.j, 
-                               dkt *1.j +nkt]                
-                
             self.eqdelta = dkt
             nRes = 10
             if abs( nRes - (npy.round((nRes - 1) / 2) * 2 + 1)) < 1e-3 :
