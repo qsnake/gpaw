@@ -135,7 +135,7 @@ class TwoCenterIntegralSplines:
 
     def __init__(self, rcmax):
         self.rcmax = rcmax
-        self.set_ng(2**12)
+        self.set_ng(2**extra_parameters.get('log2ng', 12))
 
     def set_ng(self, ng):
         # The ng parameter is rather sensitive.  2**11 might be sufficient,
