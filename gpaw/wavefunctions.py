@@ -10,7 +10,7 @@ from gpaw.operators import Gradient
 from gpaw.utilities.timing import nulltimer
 from gpaw.band_descriptor import BandDescriptor
 import gpaw.mpi as mpi
-from gpaw import extra_parameters
+from gpaw import extra_parameters, debug
 
 
 class EmptyWaveFunctions:
@@ -475,7 +475,14 @@ class LCAOWaveFunctions(WaveFunctions):
 
         self.tci.set_positions(spos_ac)
         self.tci.calculate(spos_ac, self.S_qMM, self.T_qMM, self.P_aqMi)
-            
+
+        if debug:
+            from numpy.linalg import eigvalsh
+            for S_MM in self.S_qMM:
+                smin = eigvalsh(S_MM)[0]
+                if smin < 0:
+                    raise RuntimeError('Overlap matrix has negative '
+                                       'eigenvalue: %e' % smin)
         self.positions_set = True
 
     def initialize(self, density, hamiltonian, spos_ac):
