@@ -56,6 +56,17 @@ def get_bf_centers2(atoms, bfs_dict):
         pos_ic.extend(pos[None].repeat(bfs_dict[sym], 0))
     return np.array(pos_ic)
 
+def get_bfi(calc, a_list):
+    """basis function indices from a list of atom indices.
+       a_list: atom indices
+       Use: get_bfi(calc, [0, 4]) gives the functions indices
+       corresponding to atom 0 and 4"""
+    bfs_list = []
+    for a in a_list:
+        M = calc.wfs.basis_functions.M_a[a]
+        bfs_list += range(M, M + calc.wfs.setups[a].niAO)
+
+    return bfs_list        
 
 def get_realspace_hs(h_skmm, s_kmm, ibzk_kc, weight_k, R_c=(0, 0, 0),
                      usesymm=None):
