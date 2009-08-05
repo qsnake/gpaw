@@ -59,6 +59,7 @@ def construct_reciprocal(gd):
     """Construct the reciprocal lattice vectors correspoding to the
        grid defined in input grid-descriptor 'gd'.
     """
+    assert gd.pbc_c.all(), 'Works only with periodic boundary conditions!'
     # Calculate reciprocal lattice vectors
     N_c1 = gd.N_c[:, np.newaxis]
     i_cq = np.indices(gd.N_c).reshape((3, -1))

@@ -9,19 +9,19 @@ import time
 
 def test_coulomb(N=2**6, a=20):
     Nc = (N, N, N)            # Number of grid point
-    gd = GridDescriptor(Nc, (a, a, a), 0)# grid-descriptor object
+    gd = GridDescriptor(Nc, (a, a, a), True)  # grid-descriptor object
     xyz, r2 = coordinates(gd) # matrix with the square of the radial coordinate
-    r  = np.sqrt(r2)         # matrix with the values of the radial coordinate
-    nH = np.exp(-2 * r) / pi # density of the hydrogen atom
+    r = np.sqrt(r2)           # matrix with the values of the radial coordinate
+    nH = np.exp(-2 * r) / pi  # density of the hydrogen atom
     C = Coulomb(gd)           # coulomb calculator
     
     if parallel:
         C.load('real')
         t0 = time.time()
-        print 'Processor %s of %s: %s Ha in %s sec'%(
+        print 'Processor %s of %s: %s Ha in %s sec' % (
             gd.comm.rank + 1,
             gd.comm.size,
-            -.5 * C.coulomb(nH, method='real'),
+            -0.5 * C.coulomb(nH, method='real'),
             time.time() - t0)
         return
     else:
@@ -30,15 +30,15 @@ def test_coulomb(N=2**6, a=20):
         C.load('real')
         test = {}
         t0 = time.time()
-        test['dual density'] = (-.5 * C.coulomb(nH, nH.copy()),
+        test['dual density'] = (-0.5 * C.coulomb(nH, nH.copy()),
                                 time.time() - t0)
         for method in ('real', 'recip_gauss', 'recip_ewald'):
             t0 = time.time()
-            test[method] = (-.5 * C.coulomb(nH, method=method),
+            test[method] = (-0.5 * C.coulomb(nH, method=method),
                             time.time() - t0)
         return test
 
-analytic = -5 / 16.
+analytic = -5 / 16.0
 res = test_coulomb(N=48, a=15)
 if not parallel:
     print 'Units: Bohr and Hartree'
