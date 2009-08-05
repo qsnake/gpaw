@@ -31,88 +31,61 @@ class Symmetry:
         self.op2sym = [0]
 
     def analyze(self, spos_ac):
-        """Determine list of symmetry operations.
+        """Analyse(atoms)
 
-        First determine all symmetry operations of the cell.
-        Then call prune_symmetries(spos_ac) to remove those symmetries that
-        are not satisfied by the atoms.
-        """
+        Find a list of symmetry operations."""
 
         self.symmetries = []# Symmetry operations as pairs of swaps and mirrors
         self.operations = []# Orthogonal symmetry operations as matrices
         self.op2sym = []    # Orthogonal operation to (swap, mirror) symmetry
                             # pointer
         
-        # Only swap axes that are both periodic, and of equal length
-        cellsyms_cc = np.array(
-            [[self.pbc_c[c1] and self.pbc_c[c2] and
-              abs(np.linalg.norm(self.cell_cv[c1]) -
-                  np.linalg.norm(self.cell_cv[c2])) < self.tol
-              for c1 in range(3)]
-             for c2 in range(3)], dtype=bool)
+        # Only swap axes of equal length:
+        cellsyms = [[abs(np.vdot(self.cell_cv[c1], self.cell_cv[c1]) -
+                         np.vdot(self.cell_cv[c2], self.cell_cv[c2])) <
+                     self.tol and self.pbc_c[c1] and self.pbc_c[c2]
+                     for c1 in range(3)]
+                    for c2 in range(3)]
         
         # Metric tensor
-        metric_vv = np.dot(self.cell_cv.T, self.cell_cv)
+        cell_cdt = np.dot(self.cell_cv.T, self.cell_cv)
         
         # Generate all possible 3x3 symmetry matrices using base-3 integers
         power = (6561, 2187, 729, 243, 81, 27, 9, 3, 1)
-
-        # operation is a 3x3 matrix, with possible elements -1, 0, 1, thus
-        # there are 3**9 = 19683 possible matrices
-        for base3id in xrange(19683):
-            operation_vv = np.empty((3, 3), dtype=int)
+        for base3id in range(19683):
+            operation = np.empty((3, 3), dtype=int)
             m = base3id
             for ip, p in enumerate(power):
                 d, m = divmod(m, p)
-                operation_vv[ip // 3, ip % 3] = 1 - d
-
-            # Check if current operation satisfies all criteria for being
-            # a symmertry operation
-
-            # All rows must have some non-zero element
-            if not abs(operation_vv).sum(1).all():
+                operation[ip // 3, ip % 3] = 1 - d
+            # No zero rows
+            if not np.all(np.sum(abs(operation), axis=1)):
                 continue
-
-            # If we only want orthogonal symmetry operations, discard those
-            # that are not
-            if (not self.use_all_symmetries) and np.any(
-                np.dot(operation_vv, operation_vv.T) - np.eye(3)):
+            # Should only orthogonal matrices be accepted?
+            elif (not self.use_all_symmetries) and (np.sometrue(np.dot(
+                operation, operation.T) - np.identity(3))):
                 continue
+            else:
+                # Criterion of a matrix being a symmetry operation 
+                cell_cdo = np.dot(self.cell_cv, operation)
+                cell_cdodt = np.dot(np.transpose(cell_cdo), cell_cdo)
 
-            # The metric of the cell should be conserved after applying
-            # the operation
-            opcell_cv = np.dot(self.cell_cv, operation_vv)
-            opcellmetric_vv = np.dot(opcell_cv.T, opcell_cv)
-            if np.any(metric_vv - opcellmetric_vv):
-                continue
+                if not np.sometrue(cell_cdt - cell_cdodt):
+                    if not np.any([(abs(operation[i, (i + 1) % 3]) +
+                                    abs(operation[(i + 1) % 3, i]) != 0) and
+                                   not cellsyms[i][(i + 1) % 3]
+                                   for i in range(3)]):
+                        if not np.any([(operation[i, i] == -1 and
+                                        not cellsyms[i][i])
+                                       for i in range(3)]):
+                            self.operations.append(operation)
 
-            # operation must not swap axes that are not both periodic
-            # and of equal length
-            if np.any((operation_vv.diagonal() == -1) &
-                      ~cellsyms_cc.diagonal()):
-                continue
-
-            # XXX explain this condition
-            legalsym = True
-            for i1 in range(3):
-                i2 = (i1 + 1) % 3
-                if (not cellsyms_cc[i1, i2]) and (
-                    abs(operation_vv[i1, 2]) + abs(operation_vv[i2, i1]) != 0):
-                    legalsym = False
-                    break
-
-            if legalsym:
-                # operation is a valid symmetry of the unit cell
-                self.operations.append(operation_vv)
-
-        # Check if symmetry operations are also valid when taking account
-        # of atomic positions
         self.prune_symmetries(spos_ac)
         
     def prune_symmetries(self, spos_ac):
         """prune_symmetries(atoms)
 
-        Remove symmetries that are not satisfied by the atoms."""
+        Remove symmetries that are not satisfied."""
 
         # Build lists of (atom number, scaled position) tuples.  One
         # list for each combination of atomic number, setup type,
