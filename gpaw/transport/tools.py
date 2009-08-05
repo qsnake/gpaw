@@ -184,9 +184,10 @@ class Banded_Sparse_Matrix:
         return inv_mat
        
 class Tp_Sparse_HSD:
-    def __init__(self, dtype, ns, npk, ll_index):
+    def __init__(self, dtype, ns, npk, ll_index, ex=True):
         self.dtype = dtype
         self.ll_index = ll_index
+        self.extended = ex
         self.H = []
         self.S = []
         self.D = []
@@ -204,7 +205,8 @@ class Tp_Sparse_HSD:
                 self.D[s].append([])
         for k in range(npk):
             self.S.append([])
-        self.G = Tp_Sparse_Matrix(complex, self.ll_index)
+        self.G = Tp_Sparse_Matrix(complex, self.ll_index,
+                                                    None, None, self.extended)
     
     def reset(self, s, pk, mat, flag='S', init=False):
         if flag == 'S':
@@ -216,20 +218,35 @@ class Tp_Sparse_HSD:
         if not init:
             spar[pk].reset(mat)
         elif self.band_indices == None:
-            spar[pk] = Tp_Sparse_Matrix(self.dtype, self.ll_index, mat)
+            spar[pk] = Tp_Sparse_Matrix(self.dtype, self.ll_index, mat,
+                                                          None, self.extended)
             self.band_indices = spar[pk].band_indices
         else:
             spar[pk] = Tp_Sparse_Matrix(self.dtype, self.ll_index, mat,
-                                                   self.band_indices)
-        
-    def calculate_eq_green_function(self, zp, sigma):
+                                             self.band_indices, self.extended)
+
+    def append_lead_as_buffer(self, lead_hsd, lead_couple_hsd, ex_index):
+        assert self.extended == True
+        clm = collect_lead_mat
+        for pk in range(self.npk):
+            diag_h, upc_h, dwnc_h = clm(lead_hsd, lead_couple_hsd, 0, pk)    
+            self.S[pk].append_ex_mat(diag_h, upc_h, dwnc_h, ex_index)
+            for s in range(self.ns):
+                diag_h, upc_h, dwnc_h = clm(lead_hsd,
+                                                  lead_couple_hsd, s, pk, 'H')              
+                self.H[s][pk].append_ex_mat(diag_h, upc_h, dwnc_h, ex_index)                    
+                diag_h, upc_h, dwnc_h = clm(lead_hsd,
+                                                  lead_couple_hsd, s, pk, 'D')                 
+                self.D[s][pk].append_ex_mat(diag_h, upc_h, dwnc_h, ex_index)                 
+  
+    def calculate_eq_green_function(self, zp, sigma, ex=True):
         s, pk = self.s, self.pk
         self.G.reset_from_others(self.S[pk], self.H[s][pk], zp, -1, init=True)
         self.G.substract_sigma(sigma)
         self.G.inv_eq()
-        return self.G.recover()
+        return self.G.recover(ex)
 
-    def calculate_ne_green_function(self, zp, sigma, fermi_factors):
+    def calculate_ne_green_function(self, zp, sigma, fermi_factors, ex=True):
         s, pk = self.s, self.pk        
         self.G.reset_from_others(self.S[pk], self.H[s][pk], zp, -1)
         self.G.substract_sigma(sigma)
@@ -238,7 +255,7 @@ class Tp_Sparse_HSD:
             full_tgt = tgt.recover()
             gamma.append(ff * 1.j * (full_tgt - full_tgt.T.conj()))
         self.G.calculate_less_green(gamma)
-        return self.G.recover()     
+        return self.G.recover(ex)     
 
     def abstract_sub_green_matrix(self, zp, sigma, l1, l2, inv_mat=None):
         if inv_mat == None:
@@ -252,12 +269,14 @@ class Tp_Sparse_HSD:
             return gr_sub
        
 class Tp_Sparse_Matrix:
-    def __init__(self, dtype, ll_index, mat=None, band_indices=None):
+    def __init__(self, dtype, ll_index, mat=None, band_indices=None, ex=True):
     # ll_index : lead_layer_index
     # matrix stored here will be changed to inversion
 
         self.lead_num = len(ll_index)
         self.ll_index = ll_index
+        self.ex_ll_index = copy.deepcopy(ll_index[:])
+        self.extended = ex
         self.dtype = dtype
         self.initialize()
         self.band_indices = band_indices
@@ -270,7 +289,7 @@ class Tp_Sparse_Matrix:
         self.band_indices = [None]
         for i in range(self.lead_num):
             self.band_indices.append([])
-            for j in range(self.lead_nlayer[i] - 1):
+            for j in range(self.ex_lead_nlayer[i] - 1):
                 self.band_indices[i + 1].append(None)
         
     def initialize(self):
@@ -281,6 +300,7 @@ class Tp_Sparse_Matrix:
         self.upc_h = []
         self.dwnc_h = []
         self.lead_nlayer = []
+        self.ex_lead_nlayer = []
         self.mol_index = self.ll_index[0][0]
         self.nl = 1
         self.nb = len(self.mol_index)
@@ -292,8 +312,14 @@ class Tp_Sparse_Matrix:
             self.upc_h.append([])
             self.dwnc_h.append([])
             self.lead_nlayer.append(len(self.ll_index[i]))
+            if self.extended:
+                self.ex_lead_nlayer.append(len(self.ll_index[i]) + 1)
+            else:
+                self.ex_lead_nlayer.append(len(self.ll_index[i]))
+            
             assert (self.ll_index[i][0] == self.mol_index).all()
-            self.nl += self.lead_nlayer[i]        
+            self.nl += self.lead_nlayer[i] - 1       
+            
             for j in range(self.lead_nlayer[i] - 1):
                 self.diag_h[i].append([])
                 self.upc_h[i].append([])
@@ -302,7 +328,52 @@ class Tp_Sparse_Matrix:
                 len2 = len(self.ll_index[i][j + 1])
                 self.length += 2 * len1 * len2 + len2 * len2
                 self.nb += len2
-                
+            
+            if self.extended:                
+                self.diag_h[i].append([])
+                self.upc_h[i].append([])
+                self.dwnc_h[i].append([])
+        if self.extended:
+            self.ex_nb = self.nb
+
+    def append_ex_mat(self, diag_h, upc_h, dwnc_h, ex_index):
+        assert self.extended
+        for i in range(self.lead_num):
+            self.diag_h[i][-1] = diag_h[i]
+            self.upc_h[i][-1] = upc_h[i]
+            self.dwnc_h[i][-1] = dwnc_h[i]
+            self.ex_ll_index[i].append(ex_index[i])
+            self.ex_nb += len(ex_index[i])
+  
+    def abstract_layer_info(self):
+        self.basis_to_layer = np.empty([self.nb], int)
+        self.neighbour_layers = np.zeros([self.nl, self.lead_num], int) - 1
+
+        for i in self.mol_index:
+            self.basis_to_layer[i] = 0
+        nl = 1
+        
+        for i in range(self.lead_num):
+            for j in range(self.lead_nlayer[i] - 1):
+                for k in self.ll_index[i][j]:
+                    self.basis_to_layer[k] = nl
+                nl += 1
+
+        nl = 1                 
+        for i in range(self.lead_num):        
+            self.neighbour_layers[0][i] = nl
+            first = nl
+            for j in range(self.lead_nlayer[i] - 1):
+                if nl == first:
+                    self.neighbour_layers[nl][0] = 0
+                    if j != self.lead_nlayer[i] - 2:
+                        self.neighbour_layers[nl][1] = nl + 1
+                else:
+                    self.neighbour_layers[nl][0] = nl - 1
+                    if j != self.lead_nlayer[i] - 2:
+                        self.neighbour_layers[nl][1] = nl + 1                    
+                nl += 1
+              
     def reset(self, mat, init=False):
         assert mat.dtype == self.dtype
         ind = get_matrix_index(self.mol_index)
@@ -341,12 +412,13 @@ class Tp_Sparse_Matrix:
         
         self.mol_h.spar = c1 * tps_mm1.mol_h.spar + c2 * tps_mm2.mol_h.spar
         self.mol_h.band_index = tps_mm1.mol_h.band_index
+        self.ex_lead_nlayer = tps_mm1.ex_lead_nlayer
+        self.ex_ll_index = tps_mm1.ex_ll_index
+        self.ex_nb = tps_mm1.ex_nb
         
         for i in range(self.lead_num):
-            for j in range(self.lead_nlayer[i] - 1):
-                assert (tps_mm1.ll_index[i][j] == tps_mm2.ll_index[i][j]).all()
-                #self.diag_h[i][j] = c1 * tps_mm1.diag_h[i][j] + \
-                #                     c2 * tps_mm2.diag_h[i][j]
+            for j in range(self.ex_lead_nlayer[i] - 1):
+                assert (tps_mm1.ex_ll_index[i][j] == tps_mm2.ex_ll_index[i][j]).all()
                 if init:
                     self.diag_h[i][j] = Banded_Sparse_Matrix(complex)
                     self.diag_h[i][j].band_index = \
@@ -360,70 +432,41 @@ class Tp_Sparse_Matrix:
                                       c2 * tps_mm2.dwnc_h[i][j]
   
     def substract_sigma(self, sigma):
+        if self.extended:
+            n = -2
+        else:
+            n = -1
         for i in range(self.lead_num):
-            self.diag_h[i][-1].reset_minus(sigma[i])
+            self.diag_h[i][n].reset_minus(sigma[i])
         
-    def recover(self):
-        nb = self.nb
+    def recover(self, ex=False):
+        if ex:
+            nb = self.ex_nb
+            lead_nlayer = self.ex_lead_nlayer
+            ll_index = self.ex_ll_index
+        else:
+            nb = self.nb
+            lead_nlayer = self.lead_nlayer
+            ll_index = self.ll_index            
+        
         mat = np.zeros([nb, nb], self.dtype)
-        ind = get_matrix_index(self.mol_index)
+        ind = get_matrix_index(ll_index[0][0])
+        
         mat[ind.T, ind] = self.mol_h.recover()
+        
+        gmi = get_matrix_index
         for i in range(self.lead_num):
-            for j in range(self.lead_nlayer[i] - 1):
-                ind = get_matrix_index(self.ll_index[i][j])
-                ind1 = get_matrix_index(self.ll_index[i][j + 1])
-                indr1, indc1 = get_matrix_index(self.ll_index[i][j],
-                                                      self.ll_index[i][j + 1])
-                indr2, indc2 = get_matrix_index(self.ll_index[i][j + 1],
-                                                  self.ll_index[i][j])                
+            for j in range(lead_nlayer[i] - 1):
+                ind = gmi(ll_index[i][j])
+                ind1 = gmi(ll_index[i][j + 1])
+                indr1, indc1 = gmi(ll_index[i][j], ll_index[i][j + 1])
+                indr2, indc2 = gmi(ll_index[i][j + 1], ll_index[i][j])                
                 mat[ind1.T, ind1] = self.diag_h[i][j].recover()
                 mat[indr1, indc1] = self.upc_h[i][j]
                 mat[indr2, indc2] = self.dwnc_h[i][j]
         return mat        
-
-    def storage(self):
-        begin = 0 
-        mem = np.empty([self.length], complex)
-        nb = len(self.mol_index)
-        mem[: nb ** 2] = np.resize(self.mol_h.recover(), [nb ** 2])
-        begin += nb ** 2
-        for i in range(self.lead_num):
-            for j in range(self.lead_nlayer[i] - 1):
-                len1 = len(self.ll_index[i][j])
-                len2 = len(self.ll_index[i][j + 1])
-                mem[begin: begin + len2 ** 2] = np.resize(self.diag_h[i][j].recover(),
-                                                                    [len2 ** 2])
-                begin += len2 * len2
-                mem[begin: begin + len1 * len2] = np.resize(self.upc_h[i][j],
-                                                                  [len1 * len2])
-                begin += len1 * len2
-                mem[begin: begin + len1 * len2] = np.resize(
-                                                         self.dwnc_h[i][j + 1],
-                                                         [len1 * len2])
-                begin += len1 * len2
-        return mem                                                   
-
-    def read(self, mem):
-        begin = 0 
-        nb = len(self.mol_index)
-        self.mol_h.reset(np.resize(mem[: nb ** 2], [nb, nb]))
-        begin += nb ** 2
-        for i in range(self.lead_num):
-            for j in range(self.lead_nlayer[i] - 1):
-                len1 = len(self.ll_index[i][j])
-                len2 = len(self.ll_index[i][j + 1])
-                self.diag_h[i][j].reset(np.resize(mem[begin: begin + len2 ** 2],
-                                                                [len2, len2]))
-                begin += len2 * len2
-                self.upc_h[i][j] = np.resize(mem[begin: begin + len1 * len2],
-                                             [len1, len2])
-                begin += len1 * len2
-                self.dwnc_h[i][j] = np.resize(mem[begin: begin + len1 * len2],
-                                              [len2, len1])
-                begin += len1 * len2
-    
+                                                 
     def inv_eq(self):
-        inv = inverse_general
         q_mat = []
         for i in range(self.lead_num):
             q_mat.append([])
@@ -432,28 +475,23 @@ class Tp_Sparse_Matrix:
                 q_mat[i].append([])
             end = nll - 2
             q_mat[i][end] =  self.diag_h[i][end].inv()
-            #inv(q_mat[i][end])
-            
+          
             for j in range(end - 1, -1, -1):
                 self.diag_h[i][j].reset_minus(self.dotdot(
                                                     self.upc_h[i][j + 1],
                                                          q_mat[i][j + 1],
                                             self.dwnc_h[i][j + 1]), full=True)
                 q_mat[i][j] = self.diag_h[i][j].inv()
-                #inv(q_mat[i][j])
         h_mm = self.mol_h
-        
+
         for i in range(self.lead_num):
             h_mm.reset_minus(self.dotdot(self.upc_h[i][0], q_mat[i][0],
                                                 self.dwnc_h[i][0]), full=True)
         inv_h_mm = h_mm.inv()
         h_mm.reset(inv_h_mm)
         
-        #inv(h_mm)
-        
         for i in range(self.lead_num):
             tmp_dc = self.dwnc_h[i][0].copy()
-            #tmp_uc = self.upc_h[i][0].copy()
             self.dwnc_h[i][0] = -self.dotdot(q_mat[i][0], tmp_dc, inv_h_mm)
             self.upc_h[i][0] = -self.dotdot(inv_h_mm, self.upc_h[i][0],
                                                                     q_mat[i][0])
@@ -497,20 +535,13 @@ class Tp_Sparse_Matrix:
             inv_mat[i].append([])                
             
             end = nll - 2
-            #q_mat[i][end] =  self.diag_h[i][end].copy()
             q_mat[i][end] =  self.diag_h[i][end].inv(keep_data=True)
-            #inv(q_mat[i][end])
             for j in range(end - 1, -1, -1):
                 tmp_diag_h = copy.deepcopy(self.diag_h[i][j])
                 tmp_diag_h.reset_minus(self.dotdot(self.upc_h[i][j + 1],
                                                      q_mat[i][j + 1],
                                                   self.dwnc_h[i][j + 1]),
                                         full=True)
-                #q_mat[i][j] = self.diag_h[i][j] - dot(
-                #                                  dot(self.upc_h[i][j + 1],
-                #                                     q_mat[i][j + 1]),
-                #                                  self.dwnc_h[i][j + 1])
-                #inv(q_mat[i][j])
                 q_mat[i][j] = tmp_diag_h.inv()
         # above get all the q matrix, then if want to solve the cols
         # cooresponding to the lead i, the q_mat[i] will not be used
@@ -533,18 +564,7 @@ class Tp_Sparse_Matrix:
                                                         self.upc_h[i][j - 1]),
                                                        full=True)
                 qi_mat[i][j] = tmp_diag_h.inv()
-                
-                #qi_mat[i][j] = self.diag_h[i][j - 1] - dot(self.dwnc_h[i][j -1],
-                #                                        dot(qi_mat[i][j - 1],
-                #                                        self.upc_h[i][j - 1]))
-                #inv(qi_mat[i][j])
-            
-            
-            #inv_mat[i][i][nll - 2] = self.diag_h[i][nll - 2] - \
-            #                            dot(self.dwnc_h[i][nll - 2],
-            #                            dot(qi_mat[i][nll -2],
-            #                                   self.upc_h[i][nll -2]))
-            #inv(inv_mat[i][i][nll - 2])
+
             tmp_diag_h = copy.deepcopy(self.diag_h[i][nll - 2])
             tmp_diag_h.reset_minus(self.dotdot(self.dwnc_h[i][nll - 2],
                                                 qi_mat[i][nll -2],
@@ -584,7 +604,6 @@ class Tp_Sparse_Matrix:
                                                   self.ll_index[i][-1])
                     mat[indr, indc] = inv_mat[i][j][k - 1]
         return mat
-                    
   
     def dotdot(self, mat1, mat2, mat3):
         return dot(mat1, dot(mat2, mat3))
@@ -718,7 +737,7 @@ class CP_Sparse_Matrix:
             ldab = dim + self.index[0]
             self.spar = mat[-self.index[0]:, :ldab].copy()               
 
-    def recover(self):
+    def recover(self, trans='n'):
         nb = self.index[1]
         mat = np.zeros([nb, nb], self.dtype)
         if self.index[0] > 0:
@@ -726,7 +745,12 @@ class CP_Sparse_Matrix:
             mat[:ldab, self.index[0]:] = self.spar
         else:
             ldab = nb + self.index[0]
-            mat[-self.index[0]:, :ldab] = self.spar         
+            mat[-self.index[0]:, :ldab] = self.spar
+        if trans == 'c':
+            if self.dtype == float:
+                mat = mat.T.copy()
+            else:
+                mat = mat.T.conj()
         return mat
 
 class Se_Sparse_Matrix:
@@ -873,6 +897,22 @@ def r2k_hs(h_srmm, s_rmm, R_vector, kvector=(0,0,0)):
     elif s_rmm == None:
         return h_smm
 
+def collect_lead_mat(lead_hsd, lead_couple_hsd, s, pk, flag='S'):
+    diag_h = []
+    upc_h = []
+    dwnc_h = []
+    for i, hsd, c_hsd in zip(range(len(lead_hsd)), lead_hsd, lead_couple_hsd):
+        if flag == 'S':
+            band_mat, cp_mat = hsd.S[pk], c_hsd.S[pk]
+        elif flag == 'H':
+            band_mat, cp_mat = hsd.H[s][pk], c_hsd.H[s][pk]
+        else:
+            band_mat, cp_mat = hsd.D[s][pk], c_hsd.D[s][pk]            
+        diag_h.append(band_mat)
+        upc_h.append(cp_mat.recover('c'))
+        dwnc_h.append(cp_mat.recover('n'))
+    return diag_h, upc_h, dwnc_h        
+        
 def get_hs(atoms):
     """Calculate the Hamiltonian and overlap matrix."""
     calc = atoms.calc
@@ -1026,6 +1066,11 @@ def sum_by_unit(x, unit):
     y[-1] = y[-2]
     return y
 
+def diag_cell(cell):
+    if len(cell.shape) == 2:
+        cell = np.diag(cell)
+    return cell
+    
 def get_pk_hsd(d, ntk, kpts, hl_skmm, sl_kmm, dl_skmm, txt=None,
                                                   dtype=complex, direction=0):
     npk = len(kpts) / ntk
