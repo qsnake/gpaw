@@ -65,8 +65,24 @@ def get_bfi(calc, a_list):
     for a in a_list:
         M = calc.wfs.basis_functions.M_a[a]
         bfs_list += range(M, M + calc.wfs.setups[a].niAO)
-
     return bfs_list        
+    
+
+def get_mulliken(calc, a_list):
+    """mulliken charges from a list atom indices (a_list). """
+    Q_a = {}
+    for kpt in calc.wfs.kpt_u:
+        S_MM = calc.wfs.S_qMM[kpt.q]
+        nao = S_MM.shape[0]
+        rho_MM = np.empty((nao, nao), calc.wfs.dtype)
+        calc.wfs.calculate_density_matrix(kpt.f_n, kpt.C_nM, rho_MM)
+        Q_M = np.dot(rho_MM, S_MM).diagonal()
+        for a in a_list:
+            M1 = calc.wfs.basis_functions.M_a[a]
+            M2 = M1 + calc.wfs.setups[a].niAO
+            Q_a[a] = np.sum(Q_M[M1:M2])
+    return Q_a        
+
 
 def get_realspace_hs(h_skmm, s_kmm, ibzk_kc, weight_k, R_c=(0, 0, 0),
                      usesymm=None):
