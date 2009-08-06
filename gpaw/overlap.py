@@ -142,12 +142,13 @@ class Overlap:
         if calculate_P_ani:
             wfs.pt.integrate(a_xG, P_axi, kpt.q)
         else:
-            for a,P_ni in kpt.P_ani.items():
+            for a, P_ni in kpt.P_ani.items():
                 P_axi[a][:] = P_ni
 
         for a, P_xi in P_axi.items():
             P_axi[a] = np.dot(P_xi, self.setups[a].O_ii)
-        wfs.pt.add(b_xG, P_axi, kpt.q)
+            # gemm(1.0, self.setups[a].O_ii, P_xi, 0.0, P_xi, 'n')
+        wfs.pt.add(b_xG, P_axi, kpt.q) # b_xG += sum_ai pt^a_i P_axi
         self.timer.stop('Apply overlap')
 
     def apply_inverse(self, a_xG, b_xG, wfs, kpt, calculate_P_ani=True):
