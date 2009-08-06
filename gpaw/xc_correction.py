@@ -363,7 +363,7 @@ class BaseXCCorrection:
                  wt_jg, # pseudo partial waves
                  nc_g,  # core density
                  nct_g, # smooth core density
-                 rgd,   # radial grid edscriptor
+                 rgd,   # radial grid descriptor
                  jl,    # ?
                  lmax,  # maximal angular momentum to consider
                  Exc0,  # xc energy of reference atom
