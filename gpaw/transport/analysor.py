@@ -1016,9 +1016,9 @@ class Transport_Plotter:
             p.plot(xdata, ydata1 - ydata0)
         
         legends.append('step' + str(steps_indices[1]) +
-                                         'minus step' + str(steps_indices[0]))
+                       'minus step' + str(steps_indices[0]))
         p.title(title)
         p.legend(legends)
         if height != None:
             p.axis([xdata[0], xdata[-1], 0, height])
-        p.show()        
+        p.show()

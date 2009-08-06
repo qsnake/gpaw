@@ -1968,4 +1968,4 @@ class Transport(GPAW):
             else:
                 H_sqMM[0, kpt.q] = H_MM
         self.gd.comm.sum(H_sqMM)  
-        return H_sqMM        
+        return H_sqMM
