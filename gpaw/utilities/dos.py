@@ -120,9 +120,10 @@ def all_electron_LDOS(paw, mol, spin, lc=None, wf_k=None, P_aui=None):
     
        wf_k should be a list of pseudo_wavefunctons of a Kohn-Sham state,
        corresponding to the different kpoints. It should be accompanied by a
-       list of projector overlaps: P_aui=[[kpt.P_ani[a][n]for a in mol]
-       for kpt in paw.kpt_u] for the band n. The weights are then calculated
-       as the overlap of all-electron KS wavefunctions with wf_k
+       list of projector overlaps: P_aui=[[kpt.P_ani[a][n] for kpt in
+       paw.wfs.kpt_u] for a in range(len(molecule))] for the band n. The
+       weights are then calculated as the overlap of all-electron
+       KS wavefunctions with wf_k
 
        If wf_k is None, the weights are calculated as linear combinations of
        atomic orbitals using P_uni. lc should then be a list of weights
@@ -135,49 +136,48 @@ def all_electron_LDOS(paw, mol, spin, lc=None, wf_k=None, P_aui=None):
     nb = paw.wfs.nbands
     ns = paw.wfs.nspins
     
-    P_un = np.zeros((nk * ns, nb), np.complex)
+    P_kn = np.zeros((nk, nb), np.complex)
     if wf_k is None:
         if lc is None:
             lc = [[1,0,0,0] for a in mol]
-        for u, kpt in enumerate(paw.wfs.kpt_u):
+        for k, kpt in enumerate(paw.wfs.kpt_u[spin * nk:(spin + 1) * nk]):
             N = 0
             for atom, w_a in zip(mol, lc):
                 i=0
                 for w_o in w_a:
-                    P_un[u] += w_o * kpt.P_ani[atom][:, i]
+                    P_kn[k] += w_o * kpt.P_ani[atom][:, i]
                     N += abs(w_o)**2
                     i +=1
-        P_un /= sqrt(N)
+        P_kn /= sqrt(N)
 
     else:
         wf_k = np.array(wf_k)
         P_aui = [np.array(P_ui).conj() for P_ui in P_aui]
-        for u, kpt in enumerate(paw.wfs.kpt_u[spin * nk:(spin + 1) * nk]):
+        for k, kpt in enumerate(paw.wfs.kpt_u[spin * nk:(spin + 1) * nk]):
             w = np.reshape(wf_k.conj()[kpt.k], -1)
             for n in range(nb):
                 psit_nG = np.reshape(kpt.psit_nG[n], -1)
-                P_un[u][n] = np.dot(w, psit_nG) * paw.wfs.gd.dv * Bohr**1.5
+                P_kn[k][n] = np.dot(w, psit_nG) * paw.wfs.gd.dv * Bohr**1.5
                 for a, b in zip(mol, range(len(mol))):
                     atom = paw.wfs.setups[a]
                     p_i = kpt.P_ani[a][n]
                     for i in range(len(p_i)):
                         for j in range(len(p_i)):
-                            P_un[u][n] += (P_aui[b][u][i] *
+                            P_kn[k][n] += (P_aui[b][spin*nk + k][i] *
                                            atom.O_ii[i][j] * p_i[j])
                 #print n, abs(P_un)[u][n]**2
 
             # XXX ??? why not print to paw.txt
-            print 'Kpoint', u, ' Sum: ',  sum(abs(P_un[u])**2)
-            
+            print 'Kpoint', k, ' Sum: ',  sum(abs(P_kn[k])**2)
+          
     energies = np.empty(nb * nk)
     weights = np.empty(nb * nk)
     x = 0
     for k, w in enumerate(w_k):
         energies[x:x + nb] = paw.wfs.collect_eigenvalues(k=k, s=spin)
-        u = spin * nk + k
-        weights[x:x + nb] = w * abs(P_un[u])**2
+        weights[x:x + nb] = w * abs(P_kn[k])**2
         x += nb
-
+    #print weights
     return energies, weights
 
                     
