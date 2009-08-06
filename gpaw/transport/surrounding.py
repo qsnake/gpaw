@@ -900,5 +900,3 @@ class Surrounding:
         nt_sG = self.capsule(nn, 'nt_sG', direction, nt_sG0, distribute=False)
         nt_sG = nt_sG[:,:,:,nn-1:-nn].copy()
         return np.sum(nt_sG) * self.gd.dv
-
-        
