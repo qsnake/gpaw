@@ -469,20 +469,22 @@ class BaseMixer_Broydn:
                 usize = len(self.u_G)
                 for i in range(usize - 1):
                     a_G = npy.sum(self.v_G[i] * temp_nt_G)
-                    self.u_G[usize - 1]  -= a_G * self.u_G[i]
+                    axpy(-a_G, self.u_G[i], self.u_G[usize - 1])
                     for u_D in self.u_D:
-                        u_D[usize - 1]  -= a_G * u_D[i]                    
+                        axpy(-a_G, u_D[i], u_D[usize - 1])
             self.eta_G = self.beta * self.d_nt_G[-1]
-            for eta_D, d_Dp in zip(self.eta_D, self.d_D_ap):
-                eta_D = self.beta * d_Dp[-1]
+            for i, d_Dp in enumerate(self.d_D_ap):
+                self.eta_D[i] = self.beta * d_Dp[-1]
             usize = len(self.u_G) 
             for i in range(usize):
-                self.eta_G -= self.c_G[i] * self.u_G[i]
+                axpy(-self.c_G[i], self.u_G[i], self.eta_G)
                 for eta_D, u_D in zip(self.eta_D, self.u_D):
-                    eta_D -= self.c_G[i] * u_D[i]
-            nt_G = self.nt_iG[-1] + self.eta_G
-            for D_p, D_ip, eta_D in zip(D_ap, self.D_iap, self.eta_D):
-                D_p = D_ip[-1] + eta_D
+                    axpy(-self.c_G[i], u_D[i], eta_D)
+            axpy(-1.0, self.d_nt_G[-1], nt_G)
+            axpy(1.0, self.eta_G, nt_G)
+            for D_p, d_Dp, eta_D in zip(D_ap, self.d_D_ap, self.eta_D):            
+                axpy(-1.0, d_Dp[-1], D_p)
+                axpy(1.0, eta_D, D_p)
             if self.step >= 2:
                 del self.nt_iG[0]
                 for D_ip in self.D_iap:
