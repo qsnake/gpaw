@@ -4,7 +4,18 @@ from ase.units import Hartree
 import cPickle as pickle
 import numpy as np
 from gpaw.mpi import world, rank, MASTER
+from gpaw.basis_data import Basis
 
+class basis_nao(dict):
+    def __init__(self, basis):
+        self.basis = basis
+        dict.__init__(self)
+    
+    def __getitem__(self, symbol):
+        try:
+            return dict.__getitem__(self, symbol)
+        except KeyError:
+            return dict.setdefault(self, symbol, Basis(symbol, self.basis).nao)
 
 def get_bf_centers(atoms):
     calc = atoms.get_calculator()
@@ -24,37 +35,16 @@ def get_bf_centers(atoms):
     return pos_ic
 
 
-basis_nao = {'sz': {'H':  1,
-                    'C':  4,
-                    'N':  4,
-                    'Au': 6,
-                    'Pt': 6,},
-             'dz': {'H':   2,
-                    'C':   8,
-                    'N':   8,
-                    'Au': 12,
-                    'Pt': 12,},
-             'szp': {'H':  4,
-                     'C':  9,
-                     'N':  9,
-                     'Au': 9,
-                     'Pt': 9,},
-             'dzp': {'H':   5,
-                     'C':  13,
-                     'N':  13,
-                     'Au': 15,
-                     'Pt': 15,},
-             }
-
 def get_bf_centers2(atoms, bfs_dict):
     """bfs_dict is a dictionary mapping atom symbols to a number of bfs.
 
-    Use e.g. basis_nao['dzp'].
+    Use e.g. basis_nao('dzp').
     """
     pos_ic = []
     for pos, sym in zip(atoms.get_positions(), atoms.get_chemical_symbols()):
         pos_ic.extend(pos[None].repeat(bfs_dict[sym], 0))
     return np.array(pos_ic)
+
 
 def get_bfi(calc, a_list):
     """basis function indices from a list of atom indices.
