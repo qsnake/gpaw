@@ -5,6 +5,7 @@ from gpaw.aseinterface import GPAW
 from gpaw.lfc import LocalizedFunctionsCollection as LFC
 from gpaw.lfc import BasisFunctions
 from gpaw.lcao.overlap import TwoCenterIntegrals
+from gpaw.lcao.tools import basis_nao
 from gpaw.utilities import unpack
 from gpaw.utilities.tools import tri2full, lowdin
 from gpaw.coulomb import get_vxc as get_ks_xc
@@ -84,6 +85,19 @@ def get_xc2(calc, w_wG, P_awi, spin=0):
         H_ii = unpack(H_sp[spin])
         xc_ww += dots(P_wi, H_ii, P_wi.T.conj())
     return xc_ww * Hartree
+
+
+def pwf_mask(symbols, lcaobasis='dzp', pwfbasis='sz'):
+    lcao_dict = basis_nao(lcaobasis)
+    pwf_dict = basis_nao(pwfbasis)
+        
+    mask = []
+    for symbol in symbols:
+        nao_lcao = lcao_dict[symbol]
+        nao_pwf = pwf_dict[symbol]
+        mask += [True,] * nao_pwf
+        mask += [False,] * (nao_lcao - nao_pwf)
+    return np.asarray(mask, bool)
 
 
 class ProjectedWannierFunctionsFBL:
@@ -190,26 +204,16 @@ class ProjectedWannierFunctionsIBL:
         return w_wG
 
 
-def pwf_mask(symbols, lcaobasis='dzp', pwfbasis='sz'):
-    from gpaw.lcao.tools import basis_nao
-    mask = []
-    for symbol in symbols:
-        nao_lcao = basis_nao[lcaobasis][symbol]
-        nao_pwf = basis_nao[pwfbasis][symbol]
-        mask += [True,] * nao_pwf
-        mask += [False,] * (nao_lcao - nao_pwf)
-    return np.asarray(mask, bool)
-
-
 class PWFplusLCAO(ProjectedWannierFunctionsIBL):
     def __init__(self, V_nM, S_MM, No, pwfmask):
-        Nw = V_nM.shape[0]
+        Nw = V_nM.shape[1]
         self.V_oM = V_nM[:No]
         dtype = V_nM.dtype
         
         # Do PWF optimization for pwfbasis submatrix only!
+        Npwf = len(pwfmask.nonzero()[0])
         pwfmask2 = np.outer(pwfmask, pwfmask)
-        s_MM = S_MM[pwfmask2]
+        s_MM = S_MM[pwfmask2].reshape(Npwf, Npwf)
         v_oM = self.V_oM[:, pwfmask]
         f_MM = s_MM - np.dot(v_oM.T.conj(), v_oM)
         nw = len(s_MM)
@@ -224,9 +228,10 @@ class PWFplusLCAO(ProjectedWannierFunctionsIBL):
         for U_w, u_w in zip(self.U_ow, u_ow):
             np.place(U_w, pwfmask, u_w)
         self.U_Mw = np.identity(Nw, dtype)
-        np.place(self.U_Mw, pwfmask2, u_Mw)
+        np.place(self.U_Mw, pwfmask2, u_Mw.flat)
 
         self.S_ww = self.rotate_matrix(np.ones(1), S_MM)
+        self.norms_n = None
         
 
 class PWF2:
