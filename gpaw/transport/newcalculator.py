@@ -1,7 +1,7 @@
 from ase.transport.tools import function_integral, fermidistribution
 from ase import Atoms, Atom, Hartree, Bohr
 
-from gpaw import GPAW, extra_parameters, debug, Mixer, MixerDif, PoissonSolver
+from gpaw import GPAW, debug, dry_run, Mixer, MixerDif, PoissonSolver
 from gpaw import restart as restart_gpaw
 
 from gpaw.grid_descriptor import GridDescriptor
@@ -33,7 +33,11 @@ def tr(filename):
     mat = pickle.load(fd)
     fd.close()
     return mat
-    
+
+class Lead_Calc(GPAW):
+    def dry_run(self):
+        pass
+        
 class Transport(GPAW):
     
     def __init__(self, **transport_kwargs):
@@ -41,7 +45,6 @@ class Transport(GPAW):
         if self.scat_restart:
             GPAW.__init__(self, self.restart_file + '.gpw')
             self.set_positions()
-            self.verbose = self.transport_parameters['verbose']
         else:
             GPAW.__init__(self, **self.gpw_kwargs)            
             
@@ -284,7 +287,7 @@ class Transport(GPAW):
     def set_atoms(self, atoms):
         self.atoms = atoms.copy()
         
-    def initialize_transport(self, dryrun=False, restart=True):
+    def initialize_transport(self):
         if self.use_lead:
             if self.LR_leads:
                 self.dimt_lead = []
@@ -295,20 +298,14 @@ class Transport(GPAW):
         if self.use_env:
             self.nbenv = []
             self.env_edge_index = [[None] * self.env_num, [None] * self.env_num]
-         
-        if dryrun:
-            self.atoms_l = []
-            self.atoms_e = []
 
         for i in range(self.lead_num):
-            if dryrun:
-                self.atoms_l.append([])
             self.atoms_l[i] = self.get_lead_atoms(i)
             calc = self.atoms_l[i].calc
             atoms = self.atoms_l[i]
             if not calc.initialized:
                 calc.initialize(atoms)
-                if not dryrun:
+                if not dry_run:
                     calc.set_positions(atoms)
             self.nblead.append(calc.wfs.setups.nao)
             if self.LR_leads:
@@ -320,7 +317,7 @@ class Transport(GPAW):
             atoms = self.atoms_e[i]
             if not calc.initialized:
                 calc.initialize(atoms)
-                if not dryrun:
+                if not dry_run:
                     calc.set_positions(atoms)
             self.nbenv.append(calc.wfs.setups.nao)
         
@@ -357,7 +354,7 @@ class Transport(GPAW):
                 self.use_buffer = False
                 if self.master:
                     self.text('Moleucle is too small, force not to use buffer')
-            
+           
         if self.use_lead:
             if self.use_buffer: 
                 self.buffer = [len(self.buffer_index[i])
@@ -375,16 +372,15 @@ class Transport(GPAW):
         self.current = 0
         self.linear_mm = None
 
-        if not dryrun:        
-            for i in range(self.lead_num):
-                if self.identical_leads and i > 0:
-                    self.update_lead_hamiltonian(i, 'lead0')    
-                else:
-                    self.update_lead_hamiltonian(i)
+        for i in range(self.lead_num):
+            if self.identical_leads and i > 0:
+                self.update_lead_hamiltonian(i, 'lead0')    
+            else:
+                self.update_lead_hamiltonian(i)
 
-            for i in range(self.env_num):
-                self.update_env_hamiltonian(i)
-                self.initialize_env(i)
+        for i in range(self.env_num):
+            self.update_env_hamiltonian(i)
+            self.initialize_env(i)
 
         self.fermi = self.lead_fermi[0]
         world.barrier()
@@ -404,16 +400,16 @@ class Transport(GPAW):
             self.inner_poisson.set_grid_descriptor(self.finegd0)
             self.timer.stop('init surround')
             
-        if not dryrun:
-            if not self.fixed:
-                self.set_positions()
-            else:
-                self.timer.start('surround set_position')
-                self.set_positions(self.extended_atoms)
-                self.inner_poisson.initialize()
-                self.surround.combine()
-                self.timer.stop('surround set_position')
-                #self.get_hamiltonian_initial_guess()
+        if not self.fixed:
+            self.set_positions()
+        else:
+            self.timer.start('surround set_position')
+            self.set_positions(self.extended_atoms)
+            self.inner_poisson.initialize()
+            self.surround.combine()
+            self.timer.stop('surround set_position')
+            #self.get_hamiltonian_initial_guess()
+
         del self.atoms_l
         del self.atoms_e
         self.initialized_transport = True
@@ -783,7 +779,7 @@ class Transport(GPAW):
         p['poissonsolver'] = PoissonSolver(nn=2)
         if 'txt' in p and p['txt'] != '-':
             p['txt'] = 'lead%i_' % (l + 1) + p['txt']
-        return gpaw.GPAW(**p)
+        return Lead_Calc(**p)
     
     def get_env_calc(self, l):
         p = self.gpw_kwargs.copy()
@@ -794,7 +790,7 @@ class Transport(GPAW):
             p['mixer'] = Mixer(0.1, 5, metric='new', weight=100.0)
         if 'txt' in p and p['txt'] != '-':
             p['txt'] = 'env%i_' % (l + 1) + p['txt']
-        return gpaw.GPAW(**p)
+        return Lead_Calc(**p)
 
     def negf_prepare(self, atoms=None):
         if not self.initialized_transport:
@@ -1792,20 +1788,20 @@ class Transport(GPAW):
         self.sl_pkcmm[1] = self.s_kmm[:, -nblead:, -nblead*2 : -nblead]
 
     def estimate_transport_matrix_memory(self):
-        self.initialize_transport(dryrun=True, restart=False)
         sum = 0
-        ns = self.nspins
+        ns = self.wfs.nspins
         if self.use_lead:
-            nk = len(self.my_lead_kpts)
+            nk = len(self.atoms_l[0].calc.wfs.ibzk_qc)
             nb = max(self.nblead)
-            npk = self.my_npk
+            npk = len(self.wfs.ibzk_qc)
             unit_real = np.array(1,float).itemsize
             unit_complex = np.array(1, complex).itemsize
-            if self.npk == 1:
-                unit = unit_real
-            else:
+            
+            gamma = len(self.wfs.bzk_kc) == 1 and not self.wfs.bzk_kc[0].any()          
+            if gamma:
                 unit = unit_complex
-            sum += self.lead_num * (2 * ns + 1)* nk * nb**2 * unit_complex
+            else:
+                unit = float
             sum += self.lead_num * (2 * ns + 1)* npk * nb**2 * unit
             
             if self.LR_leads:
@@ -1819,33 +1815,21 @@ class Transport(GPAW):
             print 'selfenergy memery  MB',  tmp *1e-6
 
         if self.use_env:
-            nk = len(self.env_kpts)
+            nk = len(self.atoms_e[0].calc.ibzk_qc)
             nb = self.nbenv
             sum += self.env_num * (2 * ns + 1) * nk * nb ** 2 * unit_complex
             sum += self.env_num * (2 * ns + 1) * nb ** 2 * unit_real
             
             sum += self.env_num * ns * ntgt * nb**2 * unit_complex
             
-        if self.gamma:
+        if gamma:
             unit = unit_real
         else:
             unit = unit_complex
-        nk = len(self.my_kpts)
-        nb = self.nbmol
-        tmp = 0 
-        tmp += (2*ns + 1) * nk * nb**2 * unit
-
-        if self.npk == 1:
-            unit = unit_real
-        else:
-            unit = unit_complex
-        tmp += 2 * (2* ns + 1) * npk * nb**2 * unit
-        sum += tmp
-
-        #print 'scat matrix memery  MB',  tmp *1e-6
-        #print 'total memery  MB',  sum *1e-6
-        #raise SystemExit
-        return tmp * 1e-6, (sum - tmp) *1e-6
+        nk = len(self.wfs.ibzk_qc)
+        nb = self.wfs.setups.nao
+        sum += (2*ns + 1) * nk * nb**2 * unit
+        return tmp, (sum - tmp)
            
     def reset_lead_hs(self, s, k):
         if self.use_lead:    
@@ -1895,18 +1879,19 @@ class Transport(GPAW):
 
     def estimate_memory(self, mem):
         """Estimate memory use of this object."""
-        mat_mem, se_mem = self.estimate_transport_matrix_memory()
-        mem.subnode('Matrix', mat_mem)
-        mem.subnode('Selfenergy', se_mem)
-
+  
         mem_init = memory() # XXX initial overhead includes part of Hamiltonian
         mem.subnode('Initial overhead', mem_init)
         for name, obj in [('Density', self.density),
                           ('Hamiltonian', self.hamiltonian),
-                          ('Wavefunctions', self.wfs),
-                          ('Surrouding', self.surround)
-                          ]:
-            obj.estimate_memory(mem.subnode(name))     
+                          ('Wavefunctions', self.wfs)]:
+            obj.estimate_memory(mem.subnode(name))
+        for i, atoms in enumerate(self.atoms_l):
+            atoms.calc.estimate_memory(mem.subnode('Leads' + str(i), 0))
+        mat_mem, se_mem = self.estimate_transport_matrix_memory()
+        
+        mem.subnode('Matrix', mat_mem)
+        mem.subnode('Selfenergy', se_mem)
 
     def get_extended_atoms(self):
         # for LR leads only
@@ -1969,3 +1954,5 @@ class Transport(GPAW):
                 H_sqMM[0, kpt.q] = H_MM
         self.gd.comm.sum(H_sqMM)  
         return H_sqMM
+    
+ 
