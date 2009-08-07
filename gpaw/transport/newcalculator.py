@@ -858,12 +858,12 @@ class Transport(GPAW):
             for i in range(self.lead_num):
                 self.selfenergies[i].set_bias(0)
         
-        if self.recal_path or (self.ground and self.step < 10):
+        if self.recal_path:
             self.initialize_path()
             
         for s in range(self.my_nspins):
             for k in range(self.my_npk):
-                if self.recal_path or (self.ground and self.step < 10):
+                if self.recal_path:
                     d_mm = self.get_eqintegral_points(s, k) + \
                                               self.get_neintegral_points(s, k)
                 else:
@@ -1876,7 +1876,7 @@ class Transport(GPAW):
             obj.estimate_memory(mem.subnode(name))
         for i, atoms in enumerate(self.atoms_l):
             atoms.calc.estimate_memory(mem.subnode('Leads' + str(i), 0))
-        mat_mem, se_mem = self.estimate_transport_matrix_memory()
+        se_mem, mat_mem = self.estimate_transport_matrix_memory()
         
         mem.subnode('Matrix', mat_mem)
         mem.subnode('Selfenergy', se_mem)
