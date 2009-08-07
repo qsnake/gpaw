@@ -33,7 +33,8 @@ class AllElectronPotential:
          # Calculate also atomic LDA for reference
          g = AllElectron(setup.symbol, xcname='LDA',nofiles=True, txt=None)
          g.run()
-         g.vr /= g.r
+         g.vr[1:] /= g.r[1:]
+         g.vr[0] = g.vr[1]
          for r, vKS,vr in zip(r_g,vKS_g, g.vr):
             print >> f, r, vKS,vr, (vKS-vr)
 
