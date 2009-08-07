@@ -106,7 +106,7 @@ class Surrounding:
     def capsule(self, nn, loc_in_array):
         ns = self.tp.nspins
         gd, gd0 = self.tp.finegd, self.tp.finegd0
-        cap_array = self.tp.hamiltonian.vHt_g
+        cap_array = gd.collect(self.tp.hamiltonian.vHt_g, True)
         in_array = gd0.collect(loc_in_array, True)
         if len(in_array.shape) == 4:
             local_cap_array = gd.empty(ns)
