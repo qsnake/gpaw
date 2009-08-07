@@ -139,12 +139,12 @@ class Surrounding:
                 ham.vHt_g = ham.finegd.zeros()
                 ham.vt_sG = ham.gd.empty(ham.nspins)
                 ham.poisson.initialize()            
-            vHt_g = ham.vHt_g
+            vHt_g = ham.finegd.zeros(global_array=True)
             bias_shift0 = self.bias_index['-'] / Hartree
             bias_shift1 = self.bias_index['+'] / Hartree
-            vHt_g.fill(0.0)                
             vHt_g[:, :, :nn] = self.sides['-'].boundary_vHt_g + bias_shift0
             vHt_g[:, :, -nn:] = self.sides['+'].boundary_vHt_g + bias_shift1
+            ham.finegd.distribute(vHt_g, ham.vHt_g)
             self.get_extra_density()
 
     def combine_vHt_g(self, vHt_g):
