@@ -408,11 +408,11 @@ class Transport(GPAW):
             self.set_positions()
         else:
             self.timer.start('surround set_position')
-            self.set_positions(self.extended_atoms)
-            self.inner_poisson.initialize()
             self.surround.combine()
+            self.inner_poisson.initialize()
+            self.set_extended_positions(self.extended_atoms)
             self.timer.stop('surround set_position')
-            #self.get_hamiltonian_initial_guess()
+            self.get_hamiltonian_initial_guess()
 
         self.initialized_transport = True
         self.matrix_mode = 'sparse'
@@ -689,7 +689,7 @@ class Transport(GPAW):
             self.atoms = atoms.copy()
             self.get_extended_atoms()
             self.initialize(self.extended_atoms)
-            self.set_positions(self.extended_atoms)
+            self.set_extended_positions(self.extended_atoms)
                 
         if self.scat_restart:
             self.recover_kpts(self)
@@ -699,7 +699,7 @@ class Transport(GPAW):
             h_spkmm, s_pkmm = self.get_hs(self)               
         else:
             self.timer.start('scat guess')
-            h_spkmm, s_pkmm = self.get_hs(self)
+            #h_spkmm, s_pkmm = self.get_hs(self)
             self.timer.stop('scat guess')
 
         self.timer.start('init scat')  
@@ -712,8 +712,8 @@ class Transport(GPAW):
         for kpt in self.wfs.kpt_u:
             s = kpt.s
             q = kpt.q
-            self.hsd.reset(s, q, s_pkmm[s], 'S', True)
-            self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)
+            #self.hsd.reset(s, q, s_pkmm[s], 'S', True)
+            #self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)
             self.hsd.reset(s, q, d_spkmm, 'D', True)            
         self.append_buffer_hsd()            
         self.fill_guess_with_leads()           
@@ -868,7 +868,7 @@ class Transport(GPAW):
                                               self.get_neintegral_points(s, k)
                 else:
                     d_mm = self.fock2den(s, k)
-                d_mm = self.spin_coff * (d_mm + d_mm.T.conj()) / 2
+                d_mm = self.spin_coff * (d_mm + d_mm.T.conj()) / (2 * self.npk)
                 self.hsd.reset(s, k, d_mm, 'D') 
         self.timer.stop('DenMM')
         self.print_boundary_charge()
@@ -1533,9 +1533,9 @@ class Transport(GPAW):
         self.timer.start('dmm recover')
         for kpt in self.wfs.kpt_u:
             if self.my_nspins == 2:
-                kpt.rho_MM = self.hsd.D[kpt.s][kpt.q].recover(True) / self.npk
+                kpt.rho_MM = self.hsd.D[kpt.s][kpt.q].recover(True)
             else:
-                kpt.rho_MM = self.hsd.D[0][kpt.q].recover(True) / self.npk
+                kpt.rho_MM = self.hsd.D[0][kpt.q].recover(True)
         self.timer.stop('dmm recover')        
         
         density = self.density
@@ -1568,7 +1568,6 @@ class Transport(GPAW):
         ham = self.hamiltonian
         density = self.density
         self.timer.start('Hamiltonian')
-
         if ham.vt_sg is None:
             ham.vt_sg = ham.finegd.empty(ham.nspins)
             ham.vHt_g = ham.finegd.zeros()
@@ -1944,4 +1943,34 @@ class Transport(GPAW):
         self.gd.comm.sum(H_sqMM)  
         return H_sqMM
     
- 
+    def set_extended_positions(self, atoms=None):
+        spos_ac = self.initialize_positions(atoms)
+        density = self.density
+        wfs = self.wfs
+        if density.nt_sG is None:
+            if wfs.kpt_u[0].f_n is None or wfs.kpt_u[0].C_nM is None:
+                f_sM = np.empty((self.nspins, wfs.basis_functions.Mmax))
+                density.D_asp = {}
+                f_asi = {}
+                c = density.charge / len(density.setups)  # distribute charge on all atoms
+                for a in wfs.basis_functions.atom_indices:
+                    f_si = density.setups[a].calculate_initial_occupation_numbers(
+                            density.magmom_a[a], density.hund, charge=c)
+                    if a in wfs.basis_functions.my_atom_indices:
+                        density.D_asp[a] = density.setups[a].initialize_density_matrix(f_si)
+                    f_asi[a] = f_si
+
+                density.nt_sG = self.gd.zeros(self.nspins)
+                wfs.basis_functions.add_to_density(density.nt_sG, f_asi)
+                density.nt_sG += density.nct_G
+                comp_charge = density.calculate_multipole_moments()
+                density.interpolate(comp_charge)
+                density.calculate_pseudo_charge(comp_charge)                
+            else:
+                density.nt_sG = self.gd.empty(self.nspins)
+                density.calculate_pseudo_density(wfs)
+
+        self.update_hamiltonian()                   
+        self.scf.reset()
+        self.forces.reset()
+        self.print_positions() 
