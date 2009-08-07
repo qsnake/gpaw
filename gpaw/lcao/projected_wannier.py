@@ -15,16 +15,21 @@ def dots(*args):
     return x        
 
 
-def normalize(U, U2=None):
-    if U2 is None:
-        for col in U.T:
-            col /= la.norm(col)
+def normalize(U, U2=None, norms=None):
+    if norms is None:
+        norms2 = np.ones(U.shape[1])
     else:
-         for col1, col2 in zip(U.T, U2.T):
+        norms2 = np.sqrt(norms)
+
+    if U2 is None:
+        for n, col in zip(norms2, U.T):
+            col *= n / la.norm(col)
+    else:
+         for n, col1, col2 in zip(norms2, U.T, U2.T):
              norm = np.sqrt(np.vdot(col1, col1) + np.vdot(col2, col2))
-             col1 /= norm
-             col2 /= norm
-       
+             col1 *= n / norm
+             col2 *= n / norm
+      
 
 def normalize2(C, S):
     C /= np.sqrt(dots(dagger(C), S, C).diagonal())
@@ -98,9 +103,8 @@ def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
     # Calculate projections
     V_qnM = np.zeros((nq, calc.wfs.nbands, nao), dtype)
     for q, V_nM in enumerate(V_qnM):
-        bfs.integrate2(calc.wfs.kpt_u[q].psit_nG[:], V_nM, q)
-        #for n, V_M in enumerate(V_nM): # band-by-band to save memory
-        #    bfs.integrate2(calc.wfs.kpt_u[q].psit_nG[n], V_M, q)
+        for n in range(calc.wfs.nbands):#band-band to sace memory(?)
+            bfs.integrate2(calc.wfs.kpt_u[q].psit_nG[n].copy(), V_nM[n], q)
         for a, P_ni in calc.wfs.kpt_u[q].P_ani.items():
             dS_ii = calc.wfs.setups[a].O_ii
             P_Mi = P_aqMi[a][q]
@@ -242,19 +246,18 @@ class ProjectedWannierFunctions:
         Uo_kni = [Vo_ni.copy() for Vo_ni in self.Vo_kni]
         Uu_kli = [np.dot(dagger(b_il), Fu_ii) 
                   for b_il, Fu_ii in zip(self.b_kil, self.Fu_kii)]
-        #Normalize such that <omega_i|omega_i> = 1
-        for Uo_ni, Uu_li in zip(Uo_kni, Uu_kli):
-            normalize(Uo_ni, Uu_li)
+        #Normalize such that <omega_i|omega_i> = <f_i|f_i>
+        for Uo_ni, Uu_li, s_ii in zip(Uo_kni, Uu_kli, self.s_lcao_kii):
+            normalize(Uo_ni, Uu_li, s_ii.diagonal())
         self.Uo_kni = Uo_kni
         self.Uu_kli = Uu_kli
 
     def calculate_overlaps(self):
         Wo_kii = [np.dot(dagger(Uo_ni), Uo_ni) for Uo_ni in self.Uo_kni]
-        Wu_kii = [dots(dagger(Uu_li), dagger(b_il), Fu_ii, b_il, Uu_li) 
-        for Uu_li, b_il, Fu_ii in zip(self.Uu_kli, self.b_kil, self.Fu_kii)]
-        Wo_kii = np.asarray(Wo_kii)
-        Wu_kii = np.asarray(Wu_kii)
-        self.S_kii = Wo_kii + Wu_kii
+        Wu_kii = [np.dot(dagger(Uu_li), Uu_li) for Uu_li in self.Uu_kli]
+        #Wu_kii = [dots(dagger(Uu_li), dagger(b_il), Fu_ii, b_il, Uu_li) 
+        #for Uu_li, b_il, Fu_ii in zip(self.Uu_kli, self.b_kil, self.Fu_kii)]
+        self.S_kii = np.asarray(Wo_kii) + np.asarray(Wu_kii)
 
     def get_condition_number(self):
         eigs_kn = [la.eigvalsh(S_ii) for S_ii in self.S_kii]
@@ -317,6 +320,29 @@ class ProjectedWannierFunctions:
                     for Pu_ni, Sinv_ii in zip(Pu_kni, Sinv_kii)])
 
         return np.hstack((normo_kn, normu_kn))
+        
+
+    def calculate_functions(self, calc, basis, k=0):
+        from gpaw.io.tar import TarFileReference
+        psit_nG = calc.wfs.kpt_u[k].psit_nG
+        atoms = calc.get_atoms()
+        Uo_ni = self.Uo_kni[k]
+        tarinstance = isinstance(psit_nG, TarFileReference)
+        if tarinstance:
+            psit_nG = np.asarray([psit_nG[i] for i in range(self.M_k[k])])
+
+        basis_functions = get_bfs(calc)
+        b_il, Uu_li, Vo_ni = self.b_kil[k], self.Uu_kli[k], self.Vo_kni[k]
+        a_iG = -np.tensordot(Vo_ni, psit_nG, axes=[0, 0])# a_iG = -fo_iG
+        #self.fo_iG = -a_iG.copy()#f projected onto the occupied subspace
+        C_iM = np.identity(self.Nw, dtype=self.dtype)
+        basis_functions.lcao_to_grid(C_iM, a_iG, q=-1) # a_iG=fu_iG=f_iG-fo_iG
+        #self.f_iG = self.fo_iG + a_iG # check
+        a_iG = np.tensordot(b_il, a_iG, axes=[0, 0])   # a_iG = EDF
+        a_iG = np.tensordot(Uu_li, a_iG, axes=[0, 0])  # a_iG = wu_iG
+        a_iG+=np.tensordot(Uo_ni, psit_nG, axes=[0, 0])# ai_G = wu_iG+wo_iG
+        self.w_iG = a_iG
+
 
     def get_mlwf_initial_guess(self):
         """calculate initial guess for maximally localized 
