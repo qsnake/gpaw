@@ -243,7 +243,7 @@ class Transport(GPAW):
     def set_default_transport_parameters(self):
         p = {}
         p['use_lead'] = True
-        p['identical_leads'] = True
+        p['identical_leads'] = False
         p['pl_atoms'] = []
         p['pl_cells'] = []
         p['pl_kpts'] = []
