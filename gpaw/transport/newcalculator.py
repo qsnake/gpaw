@@ -399,7 +399,11 @@ class Transport(GPAW):
             self.inner_poisson = PoissonSolver(nn=self.hamiltonian.poisson.nn)
             self.inner_poisson.set_grid_descriptor(self.finegd0)
             self.timer.stop('init surround')
-            
+        
+        # save memory
+        del self.atoms_l
+        del self.atoms_e
+        
         if not self.fixed:
             self.set_positions()
         else:
@@ -410,8 +414,6 @@ class Transport(GPAW):
             self.timer.stop('surround set_position')
             #self.get_hamiltonian_initial_guess()
 
-        del self.atoms_l
-        del self.atoms_e
         self.initialized_transport = True
         self.matrix_mode = 'sparse'
         self.plot_option = None
@@ -445,17 +447,6 @@ class Transport(GPAW):
             s = kpt.s
             q = kpt.q
             self.hsd.reset(s, q, s_pkmm[s], 'S', True)
-            self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)            
-        
-    def get_hamiltonian_initial_guess2(self):
-        fd = file('guess.dat', 'r')
-        h_spkmm, s_pkmm = pickle.load(fd)
-        fd.close()
-        for kpt in self.wfs.kpt_u:
-            s = kpt.s
-            q = kpt.q
-            self.hsd.reset(s, q, s_pkmm[s], 'S', True)
-            test1 = self.hsd.S[0].recover()
             self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)            
 
     def fill_guess_with_leads(self):
@@ -867,12 +858,12 @@ class Transport(GPAW):
             for i in range(self.lead_num):
                 self.selfenergies[i].set_bias(0)
         
-        if self.recal_path:
+        if self.recal_path or (self.ground and self.step < 10):
             self.initialize_path()
             
         for s in range(self.my_nspins):
             for k in range(self.my_npk):
-                if self.recal_path:
+                if self.recal_path or (self.ground and self.step < 10):
                     d_mm = self.get_eqintegral_points(s, k) + \
                                               self.get_neintegral_points(s, k)
                 else:
@@ -897,23 +888,23 @@ class Transport(GPAW):
     def check_convergence(self, var):
         cvg = False
         if var == 'h':
+            diag_ham = np.zeros([self.nbmol], self.wfs.dtype)
+            for kpt, weight in zip(self.wfs.kpt_u, self.wfs.weight_k):
+                diag_ham += np.diag(self.hsd.H[kpt.s][kpt.q].recover(True))
+            self.wfs.kpt_comm.sum(diag_ham)
+            diag_ham /= self.npk
+                     
             if self.step > 0:
-                self.diff_h = self.gd.integrate(np.fabs(self.hamiltonian.vt_sG -
-                                    self.ham_vt_old))
-                self.diff_h = np.max(self.diff_h)
+                self.diff_h = np.max(abs(diag_ham - self.diag_ham_old))
                 if self.master:
                     self.text('hamiltonian: diff = %f  tol=%f' % (self.diff_h,
-                                                  self.ham_vt_tol))
-                if self.diff_h < self.ham_vt_tol:
+                                                  self.diag_ham_tol))
+                if self.diff_h < self.diag_ham_tol:
                     cvg = True
-            self.ham_vt_old = np.copy(self.hamiltonian.vt_sG)
+            self.diag_ham_old = np.copy(diag_ham)
         if var == 'd':
             if self.step > 0:
                 self.diff_d = self.density.mixer.get_charge_sloshing()
-                if self.step == 1:
-                    self.min_diff_d = self.diff_d
-                elif self.diff_d < self.min_diff_d:
-                    self.min_diff_d = self.diff_d
                 if self.master:
                     self.text('density: diff = %f  tol=%f' % (self.diff_d,
                                                   self.scf.max_density_error))
@@ -946,7 +937,7 @@ class Transport(GPAW):
         self.ham_vt_old = np.empty(self.hamiltonian.vt_sG.shape)
         self.ham_vt_diff = None
         self.ham_vt_tol = 1e-2
-        
+        self.diag_ham_tol = 1e-3
         self.step = 0
         self.cvgflag = False
         self.spin_coff = 3. - self.nspins
@@ -1509,8 +1500,6 @@ class Transport(GPAW):
             q = kpt.q
             self.hsd.reset(s, q, h_spkmm[s, q], 'H')
             self.hsd.reset(s, q, s_pkmm[q], 'S')
-        if self.ground and self.step < self.density.mixer.nmaxold:
-            self.fill_guess_with_leads() 
   
     def get_forces(self, atoms):
         if (atoms.positions != self.atoms.positions).any():
@@ -1799,9 +1788,9 @@ class Transport(GPAW):
             
             gamma = len(self.wfs.bzk_kc) == 1 and not self.wfs.bzk_kc[0].any()          
             if gamma:
-                unit = unit_complex
+                unit = unit_real
             else:
-                unit = float
+                unit = unit_complex
             sum += self.lead_num * (2 * ns + 1)* npk * nb**2 * unit
             
             if self.LR_leads:
