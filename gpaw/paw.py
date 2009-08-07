@@ -296,6 +296,18 @@ class PAW(PAWTextOutput):
         else:
             bzk_kc = np.array(kpts)
         
+        # Is this a gamma-point calculation?
+        gamma = len(bzk_kc) == 1 and not bzk_kc[0].any()
+
+        width = par.width
+        if width is None:
+            if gamma:
+                width = 0
+            else:
+                width = 0.1 / Hartree
+        else:
+            width /= Hartree
+            
         magnetic = magmom_a.any()
 
         spinpol = par.spinpol
@@ -303,7 +315,8 @@ class PAW(PAWTextOutput):
         if par.hund:
             if natoms != 1:
                 raise ValueError('hund=True arg only valid for single atoms!')
-            fixmom = True
+            if width == 0:
+                fixmom = True
             spinpol = True
 
         if spinpol is None:
@@ -329,9 +342,6 @@ class PAW(PAWTextOutput):
                 N_c.append(max(4, int(L / h / 4 + 0.5) * 4))
             N_c = np.array(N_c)
                        
-        # Is this a gamma-point calculation?
-        gamma = len(bzk_kc) == 1 and not bzk_kc[0].any()
-
         if hasattr(self, 'time'):
             dtype = complex
         else:
@@ -358,15 +368,6 @@ class PAW(PAWTextOutput):
             symmetry, weight_k, ibzk_kc = reduce_kpoints(atoms, bzk_kc,
                                                          setups, par.usesymm)
 
-        width = par.width
-        if width is None:
-            if gamma:
-                width = 0
-            else:
-                width = 0.1 / Hartree
-        else:
-            width /= Hartree
-            
         nao = setups.nao
         self.nvalence = nvalence = setups.nvalence - par.charge
         
