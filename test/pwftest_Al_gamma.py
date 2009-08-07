@@ -24,7 +24,7 @@ Ef = calc.get_fermi_level()
 eps_kn = np.asarray([calc.get_eigenvalues(kpt=k) for k in range(nk)])
 eps_kn -= Ef
 
-V_knM, H_kMM, S_kMM = get_phs(calc, s=0)
+V_knM, H_kMM, S_kMM, P_aqMi = get_phs(calc, s=0)
 H_kMM -= S_kMM * Ef
 
 pwf = ProjectedWannierFunctions(V_knM, 
