@@ -133,7 +133,13 @@ class Surrounding:
     def combine(self):
         if self.type == 'LR':
             nn = self.nn[0] * 2
-            vHt_g = self.tp.hamiltonian.vHt_g
+            ham = self.tp.hamiltonian
+            if ham.vt_sg is None:
+                ham.vt_sg = ham.finegd.empty(ham.nspins)
+                ham.vHt_g = ham.finegd.zeros()
+                ham.vt_sG = ham.gd.empty(ham.nspins)
+                ham.poisson.initialize()            
+            vHt_g = ham.vHt_g
             bias_shift0 = self.bias_index['-'] / Hartree
             bias_shift1 = self.bias_index['+'] / Hartree
             vHt_g.fill(0.0)                
