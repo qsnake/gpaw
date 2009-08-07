@@ -166,8 +166,8 @@ tci = Box('TwoCenterIntegrals',
 atoms.set_position((23.5, 16))
 atoms.has(paw, 'calculator', -160, 7.5)
 paw.has(scf, 'scf', 160, 4, x=0.48)
-#paw.has(gd, 'gd')
-#paw.has(finegd, 'finegd', x=0.23)
+#paw.has(gd, 'gd') # XXX link exist in the code, but shouldn't
+#paw.has(finegd, 'finegd', x=0.23) # XXX link exist in the code, but shouldn't
 paw.has(density, 'density', -150, 14, 0.23)
 paw.has(hamiltonian, 'hamiltonian', 180, 10, 0.3)
 paw.has(wfs, 'wfs', -65, 5.5, x=0.48)

@@ -336,7 +336,8 @@ class Operator:
         # Buffers for send/receive of operated-on versions of P_ani's.
         sbuf_In = rbuf_In = None
         if P_ani:
-            sbuf_In = np.concatenate([dAP_ani[a].T for a,P_ni in P_ani.items()])
+            sbuf_In = np.concatenate([dAP_ani[a].T
+                                      for a, P_ni in P_ani.items()])
             if B > 1:
                 rbuf_In = np.empty_like(sbuf_In)
 
@@ -372,7 +373,8 @@ class Operator:
                     I1 = 0
                     for P_ni in P_ani.values():
                         I2 = I1 + P_ni.shape[1]
-                        gemm(1.0, P_ni, sbuf_In[I1:I2].T.copy(), 1.0, A_nn, 'c')
+                        gemm(1.0, P_ni, sbuf_In[I1:I2].T.copy(),
+                             1.0, A_nn, 'c')
                         I1 = I2
 
                 # Wait for all send/receives to finish before next iteration.
