@@ -6,19 +6,20 @@ from _gpaw import hpm_start, hpm_stop
 
 G = 20  # number of grid points (G x G x G)
 N = 2000  # total number of bands
-repeats = 5
 
-J = 1 # number of blocks
+beta = 1.0
+dv = 0.1
 
-# Random "Hamiltonian" matrix
-A_nn = np.random.uniform(-0.5, 0.5, (N,N))
+# Random matrix
+C_nn = np.random.uniform(-0.5, 0.5, (N,N))
 
 for B in (1,2,4,8,16):
 
     M = N // B     # number of bands per group
     assert M * B == N
 
-    A_bnbn = A_nn.reshape((B, M, B, M))
+    C_bnbn = C_nn.reshape((B, M, B, M))
+    S_mm = np.random.uniform(-0.5, 0.5, (M,M))
 
     # Random wave functions:
     shape = (M, G, G, G)
@@ -26,14 +27,27 @@ for B in (1,2,4,8,16):
     psit_mG = np.random.uniform(-0.5, 0.5, shape)
     tmp_mG = psit_mG.copy()
 
+    # Overlap
     ttot = 0.0
     ta = time()
-    reg = "gemm" + str(B)
+    reg = "Overlap" + str(B)
     hpm_start(reg)
     for n in range(B):
-        A_mm = A_bnbn[0, :, n % B] 
-        gemm(1.0, tmp_mG, A_mm, 0.0, psit_mG)
+        gemm(dv, tmp_mG, psit_mG, 0.0, S_mm, 'c')
     hpm_stop(reg)
     ttot = time() - ta
 
-    print "B:", B, "Time:", ttot
+    print "Overlap, B:", B, "Time:", ttot
+
+    # Matrix multiply
+    ttot = 0.0
+    ta = time()
+    reg = "Matrix_Mutiply" + str(B)
+    hpm_start(reg)
+    for n in range(B):
+        C_mm = C_bnbn[0, :, n % B] 
+        gemm(1.0, tmp_mG, C_mm, beta, psit_mG)
+    hpm_stop(reg)
+    ttot = time() - ta
+
+    print "Matrix_Multiply, B:", B, "Time:", ttot
