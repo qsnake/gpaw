@@ -2,10 +2,10 @@ import numpy as np
 from ase.units import Bohr
 from ase.transport.tools import dagger
 
-#from gpaw.transport.selfenergy import LeadSelfEnergy
-#from gpaw.transport.greenfunction import GreenFunction
-from ase.transport.selfenergy import LeadSelfEnergy
-from ase.transport.greenfunction import GreenFunction
+from gpaw.transport.selfenergy import LeadSelfEnergy
+from gpaw.transport.greenfunction import GreenFunction
+#from ase.transport.selfenergy import LeadSelfEnergy
+#from ase.transport.greenfunction import GreenFunction
 
 from gpaw.operators import Laplace
 from gpaw.grid_descriptor import GridDescriptor
@@ -13,48 +13,9 @@ from gpaw.lfc import NewLocalizedFunctionsCollection as LFC
 import gpaw.mpi as mpi
 from gpaw.utilities.tools import tri2full
 
-class LocalizedFunctions:
-    """HEADLINE ...
-    
-    A typical transverse plane of some grid...
-    (pbc's only in transverse directions)
+''' differ from version 4 by selected scaning range in z direction by values in Angstrom '''
 
-    ::
-    
-        --------------------------------------------------(3)
-       |    Extended region                                |
-       |    .........                         .........    |
-       |    .    ---.-------------------------.--(2)  .    |
-       |    .   |   .                         .   |   .    |
-       |    o2..|....                         o3..|....    |    
-       |        |                                 |        |
-       |        |     Fixed region                |        |
-       |        |                                 |        |
-       |        |                                 |        |
-       |        |                                 |        |
-       |        |                                 |        |
-       |        |                                 |        |
-       |        |                                 |        |
-       |    ....|..oo                         ....|....    |
-       |    .   |   .                         .   |   .    |
-       |    .  (1)--.-------------------------.---    .    |
-       |    o........                         o1.......    |
-       |                                                   |
-      (0)--------------------------------------------------
-        
-       Extended region = region which is used to extend the potential in order to
-                         get rid of pbc's
-       
-       o1, o2, o3 = corners of LocalizedFunctions objects which are periodic
-                    translations of LF object with corner at o.
-        
-       Some vectors:
-       (1)-(0) = (3)-(2) = pbc_cutoff (if pbc_cutoff = 0 <=> (0)=(1) /\ (2)=(3))
-        o  - (1) = v1_c
-        oo - (2) = v2_c   
-        
-    more doc to come.......
-    """
+class LocalizedFunctions:
 
     def __init__(self, gd, f_iG, corner_c, index=None, vt_G=None):
         self.gd = gd
@@ -65,39 +26,12 @@ class LocalizedFunctions:
         self.index = index
         self.vt_G = vt_G
    
-    def periodic(self, extension = np.array([0,0,0])):
-        """extension - Extension of the surface unit cell in terms of gridpoints"""
+    def periodic(self):
+        trans_c = [np.array([0, 0, 0]), np.array([0, 1, 0]), np.array([-1,  0,  0]), np.array([ 0, -1,  0]), 
+                   np.array([1, 1, 0]), np.array([ 1, -1,  0]), np.array([-1,  1,  0]), np.array([-1, -1,  0]), 
+                   np.array([ 1,  0,  0])]
+        trans_c[:] *= np.array([self.gd.N_c[0],self.gd.N_c[1],0])
         
-        extension_c = extension
-
-        v1_c = np.sign(self.corner_c[:2] - extension_c[:2])
-        v2_c = np.sign(self.corner_c[:2] + self.size_c[:2]-\
-                     (self.gd.end_c[:2] - extension_c[:2] - 1))
-        
-        # Translation vectors along the axes of the transverse unit-cell.
-        trans_c = []
-        for i in np.where(v1_c == -1)[0]:
-            v = np.zeros(3,dtype=int)    
-            v[i] = 1
-            trans_c.append(v)
-            
-        for i in np.where(v2_c == 1)[0]:
-            v = np.zeros(3,dtype=int)
-            v[i] = -1
-            trans_c.append(v)
-        
-        # Translation vectors along the diagonal of the transverse unit-cell.
-        trans_diag_c = []
-        for i in range(len(trans_c)):
-            for j in range(i,len(trans_c)):
-                v = trans_c[i]+trans_c[j]
-                if not len(np.where(v == 0)[0]) >= 2:
-                    trans_diag_c.append(v)
-        
-        trans_c = trans_c+trans_diag_c
-        trans_c.append(np.zeros(3)) # The original LF object
-        
-        trans_c[:] *= (self.gd.N_c-1) 
         self.periodic_list = trans_c+self.corner_c
  
         list = []
@@ -107,6 +41,7 @@ class LocalizedFunctions:
                                         index=self.index,
                                         vt_G=self.vt_G))
         return list
+
 
 
     def __len__(self):
@@ -193,108 +128,6 @@ class AtomCenteredFunctions(LocalizedFunctions):
                                      index=index)
 
 
-class Lead_HS:
-    def __init__(self, calc, atom_list, extension = None, shift = 0.0):
-        self.calc = calc
-        self.gd = calc.gd
-        self.atom_list = atom_list
-        self.shift = shift
-        self.extension = extension
-    def get_HS(self):
-        # get functions on small grid without periodic conditions
-        self.basis_functions_fix = []
-        pos_av = self.calc.atoms.get_positions() / Bohr
-        Hj = 0
-        for a in self.atom_list:
-            setup = self.calc.wfs.setups[a]
-            spos_c = pos_av[a] / self.gd.cell_c
-            for phit in setup.phit_j:
-                f = AtomCenteredFunctions(self.gd, [phit], spos_c, Hj)
-                self.basis_functions_fix.append(f)
-                Hj += len(f.f_iG)
-        self.nHj = Hj
-
-        # get functions on small grid with periodic conditions without entension 
-        self.basis_functions = []
-        Hi = 0
-        for a in self.atom_list:
-            setup = self.calc.wfs.setups[a]
-            spos_c = pos_av[a] / self.gd.cell_c
-            for phit in setup.phit_j:
-                f = AtomCenteredFunctions(self.gd, [phit], spos_c, Hi)
-                self.basis_functions += f.periodic()
-                Hi += len(f.f_iG)
-        self.nHi = Hi
-
-        # Apply kinetic energy:
-        self.basis_kinetics = []
-        for f in self.basis_functions:
-            self.basis_kinetics.append(f.apply_t())
-        #print np.shape(self.srfH_functions[0].f_iG)
-        #print np.shape(self.srfH_kinetics[0].f_iG)
-
-
-        # extend the effective potential for surface
-        svt_G = petential = self.calc.get_effective_potential() - self.shift
-        if self.extension is None:
-            self.extension = self.gd.N_c     ####################### needs to be modified later #######################
-        extension = self.extension
-        ex,ey,ez = extension
-        newsize_c = 2 * extension + self.gd.N_c
-        ext_svt_G = np.zeros(newsize_c)
-        ext_svt_G[ex:-ex,ey:-ey,ez:-ez] = svt_G
-        ext_svt_G[:ex,ey:-ey,ez:-ez]  = svt_G[-ex:,:,:]
-        ext_svt_G[-ex:,ey:-ey,ez:-ez] = svt_G[:ex,:,:]
-        ext_svt_G[:,:ey,ez:-ez] = ext_svt_G[:,-2*ey:-ey,ez:-ez]
-        ext_svt_G[:,-ey:,ez:-ez] = ext_svt_G[:,ey:2*ey,ez:-ez]
-        ext_svt_G[:,:,:ez] = ext_svt_G[:,:,-2*ez:-ez]
-        ext_svt_G[:,:,-ez:] = ext_svt_G[:,:,ez:2*ez] 
-
-        # transfer the corner_c of each basis function and basis kinetics
-        for sbox in self.basis_functions:
-            sbox.corner_c += extension
-        for sbox in self.basis_kinetics:
-            sbox.corner_c += extension
-        for sbox in self.basis_functions_fix:
-            sbox.corner_c += extension
-       
-        # get H 
-        self.H = np.zeros((self.nHi, self.nHi))
-        for s1 in self.basis_functions_fix:
-            j1 = s1.index 
-            j2 = j1 + len(s1)
-            for s2 in self.basis_functions:
-                i1 = s2.index
-                i2 = i1 + len(s2)
-                overlap = (s1 | ext_svt_G | s2)
-                if overlap is not None:
-                    self.H[j1:j2, i1:i2] += overlap
-
-        for s1 in self.basis_functions_fix:
-            j1 = s1.index
-            j2 = j1 + len(s1)
-            for s2 in self.basis_kinetics:
-                i1 = s2.index
-                i2 = i1 + len(s2)
-                overlap = (s1 | s2)
-                if overlap is not None:
-                    self.H[j1:j2, i1:i2] += overlap
-          
-
-        # get S
-        self.S = np.zeros((self.nHi, self.nHi))
-        for s1 in self.basis_functions_fix:
-            j1 = s1.index
-            j2 = j1 + len(s1)
-            for s2 in self.basis_functions:
-                i1 = s2.index
-                i2 = i1 + len(s2)
-                overlap = (s1 | s2)
-                if overlap is not None:
-                    self.S[j1:j2, i1:i2] += overlap
-
-        return self.H, self.S
-
 class STM:
     def __init__(self, srf, tip, srf_pl, tip_pl, eta1=1e-4, eta2=1e-4):
         self.tip = tip                     # tip calcualtor
@@ -332,15 +165,15 @@ class STM:
         self.tip_alignv = tip_alignv
 
         #hamiltoian and overlap matrix of onsite tip and srf
-        self.h1, self.s1 = Lead_HS(calc = self.tip, atom_list = tip_atoms, shift = srf_alignv).get_HS()
+        self.h1, self.s1 = Lead_HS(calc = self.tip, atom_list = tip_atoms, shift = srf_alignv-bias).get_HS()
         print 'shape of onsite tip', np.shape(self.h1), np.shape(self.s1)
         self.h2, self.s2 = Lead_HS(calc = self.srf, atom_list = srf_atoms, shift = tip_alignv).get_HS()        
         print 'shape of onsite srf', np.shape(self.h2), np.shape(self.s2)
 
         #hamiltoian and overlap matrix of two tip and srf principle layers
-        self.h10, self.s10 = Periodic_layer_HS(calc = self.tip_pl, atom_list = tip_pl_atoms, shift = tip_pl_alignv).get_HS() #2 and only 2 principle layers
+        self.h10, self.s10 = Lead_HS(calc = self.tip_pl, atom_list = tip_pl_atoms, shift = tip_pl_alignv).get_HS() #2 and only 2 principle layers
         print 'shape of pl tip', np.shape(self.h10), np.shape(self.s10) 
-        self.h20, self.s20 = Periodic_layer_HS(calc = self.srf_pl, atom_list = srf_pl_atoms).get_HS() #2 and only 2 principle layers
+        self.h20, self.s20 = Lead_HS(calc = self.srf_pl, atom_list = srf_pl_atoms, shift = -bias).get_HS() #2 and only 2 principle layers
         print 'shape of pl srf', np.shape(self.h20), np.shape(self.s20)
 
         nbf1, nbf2 = len(self.h1), len(self.h2)       #No. of basis functions of onsite tip and surface atoms
@@ -397,16 +230,36 @@ class STM:
             self.gft1_emm[e] = gft1_mm
             self.gft2_emm[e] = gft2_mm
 
-        self.current = np.zeros((self.srf.gd.N_c[0],self.srf.gd.N_c[1]))
-        for px in range(self.srf.gd.N_c[0]):
-            for py in range(self.srf.gd.N_c[1]):
-                # get coupleing between tip and surface Vts for a given tip position on original srf grids 
-                pos = np.array([px,py,12])
-                V_12 = self.get_Vts(pos)
-                # get current values
-                I = self.get_current(V_12)
-                self.current[px,py] = I
-                print I
+    def scan(self,height=None,zmin=None,zmax=None):
+        if height is not None:
+            self.current = np.zeros((self.srf.gd.N_c[0],self.srf.gd.N_c[1]))
+            h = 0
+            h = np.round(height/Bohr/self.srf.gd.h_c[2]).astype(int)
+            for px in range(self.srf.gd.N_c[0]):
+                for py in range(self.srf.gd.N_c[1]):
+                    pos = np.array([px,py,h])
+                    V_12 = self.get_Vts(pos)
+                    I = self.get_current(V_12)
+                    self.current[px,py] = I
+                    print 'I = ', I
+            return self.current
+        if height is None:
+            zmin_c = np.round(zmin/Bohr/self.srf.gd.h_c[2]).astype(int)
+            zmax_c = np.round(zmax/Bohr/self.srf.gd.h_c[2]).astype(int)
+            nz = zmax_c - zmin_c
+            self.current = np.zeros((self.srf.gd.N_c[0],self.srf.gd.N_c[1],nz))
+            for px in range(self.srf.gd.N_c[0]):
+                for py in range(self.srf.gd.N_c[1]):
+                    for pz in range(zmin_c,zmax_c):
+                        # get coupleing between tip and surface Vts for a given tip position on original srf grids 
+                        pos = np.array([px,py,pz])
+                        V_12 = self.get_Vts(pos)
+                        # get current values
+                        I = self.get_current(V_12)
+                        self.current[px,py,pz-zmin_c] = I
+                        print I
+            return self.current
+
 
 
     def get_current(self, v_12):
@@ -436,6 +289,7 @@ class STM:
 
 
     def get_Vts(self, tip_pos):
+        # tip_pos is in terms of grid points, showing the tip apex position respect to the surface grid
         print 'tip_pos is', tip_pos
         tip_apex_c = self.tip_apex_c[0] 
         srf_pos_av = self.srf.atoms.get_positions() / Bohr
@@ -475,25 +329,28 @@ class STM:
 
         #get V_ts 
         V_ts = np.zeros((self.ni,self.nj))
-        for s in self.srf_coupling_functions:
-            j1 = s.index
-            j2 = j1 + len(s)
+        for ns in range(len(self.srf_coupling_functions)):
+            sf = self.srf_coupling_functions[ns]
+            sk = self.srf_coupling_kinetics[ns]
+            j1 = sf[0].index
+            j2 = j1 + len(sf[0])
             for t in self.tip_coupling_functions:
                 i1 = t.index
                 i2 = i1 + len(t)
-                overlap = (t | V_couple | s)
-                if overlap is not None:
-                    V_ts[i1:i2, j1:j2] += overlap
-
-        for s in self.srf_coupling_kinetics:
-            j1 = s.index
-            j2 = j1 + len(s)
-            for t in self.tip_coupling_functions:
-                i1 = t.index
-                i2 = i1 + len(t)
-                overlap = (t | s)
-                if overlap is not None:
-                    V_ts[i1:i2, j1:j2] += overlap
+                test_overlap1 = []
+                test_overlap2 = []
+                for x in range(9):
+                    overlap = (t | sf[x])                    
+                    if overlap is not None:
+                        test_overlap1.append(overlap.copy())
+                        test_overlap2.append((np.abs(overlap)).sum())
+                    else:
+                        test_overlap1.append(overlap)
+                        test_overlap2.append(overlap)
+                k = np.argmax(test_overlap2)
+                if test_overlap1[k] != None:
+                    V_ts[i1:i2, j1:j2] += (t|sk[k])
+                    V_ts[i1:i2, j1:j2] += (t|V_couple|sf[k])
 
         # return the tbox back :) 
         for tbox in self.tip_coupling_functions:
@@ -552,22 +409,21 @@ class STM:
         
         # get surface fucntions on small grid with periodic conditions with entension 
         self.srf_coupling_functions = []
+        self.srf_coupling_kinetics = []
         j = 0
         for a in self.srf_coupling_atoms: 
             setup = self.srf.wfs.setups[a]
             spos_c = srf_pos_av[a] / self.srf.gd.cell_c
             for phit in setup.phit_j:
                 f = AtomCenteredFunctions(self.srf.gd, [phit], spos_c, j)
-                self.srf_coupling_functions += f.periodic(srf_extension)
+                f.corner_c += srf_extension
+                f_kinetic = f.apply_t()
+                self.srf_coupling_functions.append(f.periodic())
+                self.srf_coupling_kinetics.append(f_kinetic.periodic())
                 j += len(f.f_iG)
         self.nj = j
-        # Apply kinetic energy for srf:
-        self.srf_coupling_kinetics = []
-        for f in self.srf_coupling_functions:
-            self.srf_coupling_kinetics.append(f.apply_t())
-        #print np.shape(self.srf_coupling_functions[0].f_iG), np.shape(self.srf_coupling_kinetics[0].f_iG)
-        
-      
+        #print np.shape(self.srf_coupling_functions[0][0].f_iG), self.srf_coupling_functions[0][0].corner_c
+        #print np.shape(self.srf_coupling_functions[0][8].f_iG), self.srf_coupling_functions[0][8].corner_c
         # Extend the surface grid and surface effective potential
         svt_G = self.srf.get_effective_potential() - self.srf_alignv + self.bias 
         ex,ey,ez = srf_extension
@@ -579,17 +435,17 @@ class STM:
         extvt_G[:,:ey,:] = extvt_G[:,-2*ey:-ey,:]
         extvt_G[:,-ey:,:] = extvt_G[:,ey:2*ey,:]
         self.extvt_G = extvt_G  
-        # XXX N_c = newsize_c + 1 ?
+
         extsgd = GridDescriptor(N_c=newsize_c,
                                 cell_cv=self.sgd.h_c*(newsize_c),
                                 pbc_c=False,
                                 comm=mpi.serial_comm)
 
-        # Transfer the coner_c of surface basis-functions and srf_kinetics to the extended surface cell
-        for sbox in self.srf_coupling_functions:
-            sbox.corner_c += srf_extension
-        for sbox in self.srf_coupling_kinetics:
-            sbox.corner_c += srf_extension
+        ## Transfer the coner_c of surface basis-functions and srf_kinetics to the extended surface cell
+        #for sbox in self.srf_coupling_functions:
+        #    sbox.corner_c += srf_extension
+        #for sbox in self.srf_coupling_kinetics:
+        #    sbox.corner_c += srf_extension
 
 
 
@@ -603,35 +459,38 @@ class STM:
         return pos2_v - pos1_v
 
 
-class Periodic_layer_HS:
-    def __init__(self, calc, atom_list, shift = 0.0):
+class Lead_HS:
+    def __init__(self, calc, atom_list, extension = None, shift = 0.0):
         self.calc = calc
         self.gd = calc.gd
         self.atom_list = atom_list
         self.shift = shift
-        self.periodic_list = self.get_periodic_list()
-        self.extension = self.gd.N_c     ####################### needs to be modified later #######################
+        self.extension = extension
+        if self.extension is None:
+            self.extension = self.gd.N_c     ####################### needs to be modified later #######################
+ 
     def get_HS(self):
-        pos_av = self.calc.atoms.get_positions() / Bohr
-        self.basis_functions = []
+        # get functions on small grid without periodic conditions
         self.basis_functions_fix = []
+        pos_av = self.calc.atoms.get_positions() / Bohr
+
+        # get functions on small grid with periodic conditions without entension 
+        self.basis_functions = []
         self.basis_kinetics = []
         Hi = 0
         for a in self.atom_list:
             setup = self.calc.wfs.setups[a]
             spos_c = pos_av[a] / self.gd.cell_c
             for phit in setup.phit_j:
-                f1 = AtomCenteredFunctions(self.gd, [phit], spos_c, Hi)
-                f2 = AtomCenteredFunctions(self.gd, [phit], spos_c, Hi)
-                self.basis_functions.append(f1)
-                self.basis_functions_fix.append(f2)
-                self.basis_kinetics.append(f1.apply_t())
-                Hi += len(f1.f_iG)
+                f = AtomCenteredFunctions(self.gd, [phit], spos_c, Hi)
+                f.corner_c += self.extension
+                f_kinetic = f.apply_t()
+                self.basis_functions_fix.append(f)
+                self.basis_functions.append(f.periodic())
+                self.basis_kinetics.append(f_kinetic.periodic())
+                Hi += len(f.f_iG)
         self.nHi = Hi
-        #print np.shape(self.srfH_functions[0].f_iG)
         #print np.shape(self.srfH_kinetics[0].f_iG)
-
-
         # extend the effective potential for surface
         svt_G = petential = self.calc.get_effective_potential() - self.shift
         extension = self.extension
@@ -646,77 +505,34 @@ class Periodic_layer_HS:
         ext_svt_G[:,:,:ez] = ext_svt_G[:,:,-2*ez:-ez]
         ext_svt_G[:,:,-ez:] = ext_svt_G[:,:,ez:2*ez]
 
-        # transfer the corner_c of each basis function and basis kinetics
-        for sbox in self.basis_functions:
-            sbox.corner_c += extension
-        for sbox in self.basis_kinetics:
-            sbox.corner_c += extension
-        for sbox in self.basis_functions_fix:
-            sbox.corner_c += extension
-
         # get H 
         self.H = np.zeros((self.nHi, self.nHi))
-        for s1 in self.basis_functions_fix:
-            j1 = s1.index
-            j2 = j1 + len(s1)
-            for s2 in self.basis_functions:
-                i1 = s2.index
-                i2 = i1 + len(s2)
-                if i1 >= j1:
-                    fix_corner = s2.corner_c.copy()
-                    for repeat in self.periodic_list:
-                        s2.corner_c = fix_corner.copy() + repeat*np.array([ex,ey,ez])
-                        overlap = (s1 | ext_svt_G | s2)
-                        s2.corner_c = fix_corner.copy()
-                        if overlap is not None:
-                            self.H[j1:j2, i1:i2] += overlap
-
-        for s1 in self.basis_functions_fix:
-            j1 = s1.index
-            j2 = j1 + len(s1)
-            for s2 in self.basis_kinetics:
-                i1 = s2.index
-                i2 = i1 + len(s2)
-                if i1 >= j1:
-                    fix_corner = s2.corner_c.copy()
-                    for repeat in self.periodic_list:
-                        s2.corner_c = fix_corner.copy() + repeat*np.array([ex,ey,ez])
-                        overlap = (s1 | ext_svt_G | s2)
-                        s2.corner_c = fix_corner.copy()
-                        overlap = (s1 | s2)
-                        if overlap is not None:
-                            self.H[j1:j2, i1:i2] += overlap
-
-#        # get S
         self.S = np.zeros((self.nHi, self.nHi))
-        for s1 in self.basis_functions_fix:
-            j1 = s1.index
-            j2 = j1 + len(s1)
-            for s2 in self.basis_functions:
-                i1 = s2.index
-                i2 = i1 + len(s2)
-                if i1 >= j1:
-                    fix_corner = s2.corner_c.copy()
-                    for repeat in self.periodic_list:
-                        s2.corner_c = fix_corner.copy() + repeat*np.array([ex,ey,ez])
-                        overlap = (s1 | ext_svt_G | s2)
-                        s2.corner_c = fix_corner.copy()
-                        overlap = (s1 | s2)
-                        if overlap is not None:
-                            self.S[j1:j2, i1:i2] += overlap
-        tri2full(self.S,'U')
-        tri2full(self.H,'U')
+        for ns in range(len(self.basis_functions)):
+            sf = self.basis_functions[ns]
+            sk = self.basis_kinetics[ns]
+            j1 = sf[0].index
+            j2 = j1 + len(sf[0])
+
+            for s in self.basis_functions_fix:
+                i1 = s.index
+                i2 = i1 + len(s)
+                test_overlap1 = []
+                test_overlap2 = []
+
+                for x in range(9):
+                    overlap = (s | sf[x])
+                    if overlap is not None:
+                        test_overlap1.append(overlap.copy())
+                        test_overlap2.append((np.abs(overlap)).sum())
+                    else:
+                        test_overlap1.append(overlap)
+                        test_overlap2.append(overlap)
+                k = np.argmax(test_overlap2)
+                if test_overlap1[k] != None:
+                    self.H[i1:i2, j1:j2] += (s|sk[k])
+                    self.H[i1:i2, j1:j2] += (s| ext_svt_G |sf[k])
+                    self.S[i1:i2, j1:j2] += (s|sf[k])
+
         return self.H, self.S
 
-    def get_periodic_list(self):
-        list = []
-        x = np.array([0,0,0])
-        for i in np.arange(-1,2,1):
-            x[0] = i
-            for j in np.arange(-1,2,1):
-                x[1] = j
-                for k in np.arange(-1,2,1):
-                    x[2] = k
-                    list.append(x.copy())
-        return list
- 
