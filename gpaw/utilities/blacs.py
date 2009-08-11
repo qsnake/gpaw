@@ -12,7 +12,6 @@ and
 http://www.netlib.org/scalapack
 """
 
-from sys import maxint
 from sys import stderr
 
 import numpy as np
@@ -23,10 +22,10 @@ import gpaw.mpi as mpi
 import _gpaw
 
 def blacs_create(comm_obj=None, m, n, nprow, npcol, mb, nb, row_order='R'):
-    assert 0 < m <= maxint
-    assert 0 < n <= maxint
-    assert 0 < nprow <= maxint
-    assert 0 < npcol <= maxint
+    assert m > 0
+    assert n > 0
+    assert nprow > 0 
+    assert npcol > 0
     assert row_order[0] in ['C','c','R','r']
     if comm_obj is not None:
         assert nprow*npcol <= comm_obj.size
