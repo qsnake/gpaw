@@ -6,7 +6,7 @@ import numpy as np
 class LeadSelfEnergy:
     conv = 1e-8 # Convergence criteria for surface Green function
     
-    def __init__(self, hsd_ii, hsd_ij, eta=1e-4):
+    def __init__(self, hsd_ii, hsd_ij, eta=1e-8):
         self.hsd_ii = hsd_ii
         self.hsd_ij = hsd_ij
         self.eta = eta
