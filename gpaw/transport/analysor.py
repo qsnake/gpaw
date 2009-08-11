@@ -54,7 +54,7 @@ class Electron_Step_Info:
     def __init__(self, ion_step, bias_step, ele_step):
         self.ion_step, self.bias_step, self.ele_step = ion_step, bias_step, ele_step
         
-    def initialize_data(self, bias, gate, dd, df, nt, vt, rho, D_asp, dH_asp, tc, dos, time_cost):
+    def initialize_data(self, bias, gate, dd, df, nt, vt, rho, vHt, D_asp, dH_asp, tc, dos, time_cost):
         self.bias = bias
         self.gate = gate
         self.dd = dd
@@ -62,6 +62,7 @@ class Electron_Step_Info:
         self.nt = nt
         self.vt = vt
         self.rho = rho
+        self.vHt = vHt
         self.D_asp = D_asp
         self.dH_asp = dH_asp
         self.tc = tc
@@ -98,7 +99,7 @@ class Transport_Analysor:
         tp = self.tp
         if tp.plot_option == None:
             ef = tp.lead_fermi[0]
-            self.energies = np.linspace(ef - 3, ef + 5, 60) + 1e-4 * 1.j
+            self.energies = np.linspace(ef - 100, ef + 100, 200) + 1e-4 * 1.j
             self.lead_pairs = [[0,1]]
         else:
             self.energies = tp.plot_option['energies']
@@ -244,11 +245,12 @@ class Transport_Analysor:
         tp = self.tp
         step = Electron_Step_Info(self.n_ion_step, self.n_bias_step, self.n_ele_step)
         dtype = tp.wfs.dtype
-        dd = np.empty([tp.my_nspins, tp.my_npk, tp.nbmol], dtype)
-        df = np.empty([tp.my_nspins, tp.my_npk, tp.nbmol], dtype)
+        nbmol = tp.wfs.setups.nao
+        dd = np.empty([tp.my_nspins, tp.my_npk, nbmol], dtype)
+        df = np.empty([tp.my_nspins, tp.my_npk, nbmol], dtype)
         
-        total_dd = np.empty([tp.nspins, tp.npk, tp.nbmol], dtype)
-        total_df = np.empty([tp.nspins, tp.npk, tp.nbmol], dtype)
+        total_dd = np.empty([tp.nspins, tp.npk, nbmol], dtype)
+        total_df = np.empty([tp.nspins, tp.npk, nbmol], dtype)
         
         for s in range(tp.my_nspins):
             for k in range(tp.my_npk):
@@ -272,7 +274,7 @@ class Transport_Analysor:
         nt_sG = gd.empty(tp.nspins, global_array=True)
         vt_sG = gd.empty(tp.nspins, global_array=True)
         
-        nt_sG = gd.collect(tp.density.nt_sG, True)
+        nt_sG = gd.collect(tp.density.nt_sG - tp.density.nct_G, True)
         vt_sG = gd.collect(tp.hamiltonian.vt_sG, True)
 
         nt = nt_sG[0, d1, d2].copy()
@@ -283,12 +285,15 @@ class Transport_Analysor:
         rhot_g = gd.collect(tp.density.rhot_g, True)
         rho = rhot_g[d1*2, d2*2].copy()
         
+        vHt_g = gd.collect(tp.hamiltonian.vHt_g, True)
+        vHt = vHt_g[d1*2, d2*2].copy()
+        
         D_asp = copy.deepcopy(tp.density.D_asp)
         dH_asp = copy.deepcopy(tp.hamiltonian.dH_asp)
         
         tc_array, dos_array = self.collect_transmission_and_dos()
         time_cost = self.ele_step_time_collect()
-        step.initialize_data(tp.bias, tp.gate, total_dd, total_df, nt, vt, rho, D_asp, dH_asp, tc_array, dos_array, time_cost)
+        step.initialize_data(tp.bias, tp.gate, total_dd, total_df, nt, vt, rho, vHt, D_asp, dH_asp, tc_array, dos_array, time_cost)
         
         self.ele_steps.append(step)
         self.n_ele_step += 1
@@ -908,6 +913,9 @@ class Transport_Plotter:
         elif info == 'rho':
             data = 'rho'
             title = 'total poisson density'
+        elif info == 'vHt':
+            data = 'vHt'
+            title = 'total Hartree potential'            
         elif info == 'tc':
             data = 'tc[s, k, 0]'
             title = 'trasmission coefficeints'
@@ -990,6 +998,12 @@ class Transport_Plotter:
         elif info == 'ham':
             data = 'vt'
             title = 'hamiltonian'
+        elif info == 'rho':
+            data = 'rho'
+            title = 'total poisson density'
+        elif info == 'vHt':
+            data = 'vHt'
+            title = 'total Hartree potential'             
         elif info == 'tc':
             data = 'tc[s, k, 0]'
             title = 'trasmission coefficeints'
