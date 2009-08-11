@@ -4,7 +4,6 @@ import pickle
 import numpy as np
 from gpaw.mpi import world, rank
 from gpaw.utilities.blas import gemm
-from gpaw.utilities.lapack import inverse_symmetric, inverse_general
 from gpaw.utilities.timing import Timer
 import copy
 import _gpaw
@@ -180,6 +179,7 @@ class Banded_Sparse_Matrix:
             source_mat = self.spar.copy()
         else:
             source_mat = self.spar
+        assert source_mat.flags.contiguous
         info = _gpaw.linear_solve_band(source_mat, inv_mat, kl, ku)            
         return inv_mat
        
@@ -243,6 +243,7 @@ class Tp_Sparse_HSD:
         s, pk = self.s, self.pk
         self.G.reset_from_others(self.S[pk], self.H[s][pk], zp, -1, init=True)
         self.G.substract_sigma(sigma)
+        #self.G.test_inv_eq()
         self.G.inv_eq()
         return self.G.recover(ex)
 
@@ -333,8 +334,7 @@ class Tp_Sparse_Matrix:
                 self.diag_h[i].append([])
                 self.upc_h[i].append([])
                 self.dwnc_h[i].append([])
-        if self.extended:
-            self.ex_nb = self.nb
+        self.ex_nb = self.nb
 
     def append_ex_mat(self, diag_h, upc_h, dwnc_h, ex_index):
         assert self.extended
@@ -465,7 +465,33 @@ class Tp_Sparse_Matrix:
                 mat[indr1, indc1] = self.upc_h[i][j]
                 mat[indr2, indc2] = self.dwnc_h[i][j]
         return mat        
-                                                 
+
+    def test_inv_eq(self, tol=1e-12):
+        tp_mat = copy.deepcopy(self)
+        tp_mat.inv_eq()
+        mol_h = dot(tp_mat.mol_h.recover(), self.mol_h.recover())
+        for i in range(self.lead_num):
+            mol_h += dot(tp_mat.upc_h[i][0], self.dwnc_h[i][0])
+        diff = np.max(abs(mol_h - np.eye(mol_h.shape[0])))
+        if diff > tol:
+            print 'warning, mol_diff', diff
+        for i in range(self.lead_num):
+            for j in range(self.lead_nlayer[i] - 2):
+                diag_h = dot(tp_mat.diag_h[i][j].recover(),
+                                                  self.diag_h[i][j].recover())
+                diag_h += dot(tp_mat.dwn_h[i][j], self.upc_h[i][j])
+                diag_h += dot(tp_mat.upc_h[i][j + 1], self.dwnc_h[i][j + 1])                
+                diff = np.max(abs(diag_h - np.eye(diag_h.shape[0])))
+                if diff > tol:
+                    print 'warning, diag_diff', i, j, diff
+            j = self.lead_nlayer[i] - 2
+            diag_h = dot(tp_mat.diag_h[i][j].recover(),
+                                                  self.diag_h[i][j].recover())
+            diag_h += dot(tp_mat.dwnc_h[i][j], self.upc_h[i][j])
+            diff = np.max(abs(diag_h - np.eye(diag_h.shape[0])))
+            if diff > tol:
+                print 'warning, diag_diff', i, j, diff            
+                                                
     def inv_eq(self):
         q_mat = []
         for i in range(self.lead_num):
@@ -510,7 +536,6 @@ class Tp_Sparse_Matrix:
                                            dot(tmp_dc, self.upc_h[i][j])))
 
     def inv_ne(self):
-        inv = inverse_general
         q_mat = []
         qi_mat = []
         inv_mat = []
@@ -754,7 +779,7 @@ class CP_Sparse_Matrix:
         return mat
 
 class Se_Sparse_Matrix:
-    def __init__(self, mat, tri_type, nn=None, tol=1e-100):
+    def __init__(self, mat, tri_type, nn=None, tol=1e-12):
         # coupling sparse matrix A_ij!=0 if i>dim-nn and j>dim-nn (for right selfenergy)
         # or A_ij!=0 if i<nn and j<nn (for left selfenergy, dim is the shape of A)
         self.tri_type = tri_type
@@ -907,7 +932,7 @@ def collect_lead_mat(lead_hsd, lead_couple_hsd, s, pk, flag='S'):
         elif flag == 'H':
             band_mat, cp_mat = hsd.H[s][pk], c_hsd.H[s][pk]
         else:
-            band_mat, cp_mat = hsd.D[s][pk], c_hsd.D[s][pk]            
+            band_mat, cp_mat = hsd.D[s][pk], c_hsd.D[s][pk]
         diag_h.append(band_mat)
         upc_h.append(cp_mat.recover('c'))
         dwnc_h.append(cp_mat.recover('n'))
