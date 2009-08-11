@@ -11,8 +11,11 @@ from gpaw.utilities.lapack import diagonalize
 from gpaw.utilities.memory import memory
 
 from gpaw.transport.tools import tri2full, dot, Se_Sparse_Matrix, PathInfo,\
-          get_atom_indices, Tp_Sparse_HSD, Banded_Sparse_HSD, CP_Sparse_HSD,\
+          get_atom_indices,\
           substract_pk, get_lcao_density_matrix, get_pk_hsd, diag_cell
+
+from gpaw.transport.tools import Tp_Sparse_HSD, Banded_Sparse_HSD, CP_Sparse_HSD
+
 from gpaw.transport.intctrl import IntCtrl
 from gpaw.transport.newsurrounding import Surrounding
 from gpaw.transport.newselfenergy import LeadSelfEnergy
@@ -338,6 +341,8 @@ class Transport(GPAW):
         bzk_kc = self.wfs.bzk_kc 
         self.gamma = len(bzk_kc) == 1 and not bzk_kc[0].any()
         self.nbmol = self.wfs.setups.nao
+        if self.fixed:
+            self.nbmol -= np.sum(self.nblead)
 
         if self.use_lead:
             if self.npk == 1:
@@ -406,6 +411,7 @@ class Transport(GPAW):
         
         if not self.fixed:
             self.set_positions()
+            self.get_hamiltonian_initial_guess()            
         else:
             self.timer.start('surround set_position')
             self.surround.combine()
@@ -420,35 +426,66 @@ class Transport(GPAW):
         self.ground = True
 
     def get_hamiltonian_initial_guess(self):
-        atoms = self.atoms.copy()
+        if self.fixed:
+            atoms = self.original_atoms.copy()
+        else:
+            atoms = self.atoms.copy()
         atoms.pbc[self.d] = True
         kwargs = self.gpw_kwargs.copy()
         kwargs['poissonsolver'] = PoissonSolver(nn=2)
         kpts = kwargs['kpts']
-        kpts = kpts[:2] + (3,)
+        kpts = kpts[:2] + (5,)
         kwargs['kpts'] = kpts
-        kwargs['mixer'] = Mixer(0.1, 5, metric='new', weight=100.0)
+        if self.spinpol:
+            kwargs['mixer'] = MixerDif(0.1, 5, metric='new', weight=100.0)
+        else:
+            kwargs['mixer'] = Mixer(0.1, 5, metric='new', weight=100.0)
         atoms.set_calculator(gpaw.GPAW(**kwargs))
         atoms.get_potential_energy()
         h_skmm, s_kmm =  self.get_hs(atoms.calc)
-        ntk = 3
+        d_skmm = get_lcao_density_matrix(atoms.calc)
+        ntk = 5
         kpts = atoms.calc.wfs.ibzk_qc
         h_spkmm = substract_pk(self.d, self.my_npk, ntk, kpts, h_skmm, 'h')
         s_pkmm = substract_pk(self.d, self.my_npk, ntk, kpts, s_kmm)
+        d_spkmm = substract_pk(self.d, self.my_npk, ntk, kpts, d_skmm, 'h')
         if self.wfs.dtype == float:
             h_spkmm = np.real(h_spkmm).copy()
             s_pkmm = np.real(s_pkmm).copy()
-            
-        fd = file('guess.dat', 'wb')
-        pickle.dump((h_spkmm, s_pkmm), fd, 2)
-        fd.close()
+            d_spkmm = np.real(d_spkmm).copy()
+        atoms.calc.write('guess.gpw')
         del atoms
         for kpt in self.wfs.kpt_u:
             s = kpt.s
             q = kpt.q
             self.hsd.reset(s, q, s_pkmm[s], 'S', True)
             self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)            
-
+            self.hsd.reset(s, q, d_spkmm[s, q] * ntk, 'D', True)
+            
+    def get_hamiltonian_initial_guess2(self):
+        atoms, calc = gpaw.restart('guess.gpw')
+        calc.set_positions()
+        self.recover_kpts(calc)
+        h_skmm, s_kmm =  self.get_hs(calc)
+        d_skmm = get_lcao_density_matrix(calc)
+        
+        ntk = 5
+        kpts = calc.wfs.ibzk_qc
+        h_spkmm = substract_pk(self.d, self.my_npk, ntk, kpts, h_skmm, 'h')
+        s_pkmm = substract_pk(self.d, self.my_npk, ntk, kpts, s_kmm)
+        d_spkmm = substract_pk(self.d, self.my_npk, ntk, kpts, d_skmm, 'h')        
+        if self.wfs.dtype == float:
+            h_spkmm = np.real(h_spkmm).copy()
+            s_pkmm = np.real(s_pkmm).copy()
+            d_spkmm = np.real(d_spkmm).copy()            
+        del atoms
+        for kpt in self.wfs.kpt_u:
+            s = kpt.s
+            q = kpt.q
+            self.hsd.reset(s, q, s_pkmm[q], 'S', True)
+            self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)
+            self.hsd.reset(s, q, d_spkmm[s, q]*ntk, 'D', True)            
+            
     def fill_guess_with_leads(self):
         if self.hsd.S[0].extended:
             n = -2
@@ -687,36 +724,38 @@ class Transport(GPAW):
             atoms = self.atoms
         else:
             self.atoms = atoms.copy()
-            self.get_extended_atoms()
-            self.initialize(self.extended_atoms)
-            self.set_extended_positions(self.extended_atoms)
+            if self.fixed:
+                self.get_extended_atoms()
+                self.initialize(self.extended_atoms)
+                self.set_extended_positions(self.extended_atoms)
+            else:
+                self.initialize()
+                self.set_positions()
                 
         if self.scat_restart:
             self.recover_kpts(self)
      
-        if not self.fixed:
-            GPAW.get_potential_energy(self, atoms)
-            h_spkmm, s_pkmm = self.get_hs(self)               
-        else:
-            self.timer.start('scat guess')
-            #h_spkmm, s_pkmm = self.get_hs(self)
-            self.timer.stop('scat guess')
+        self.timer.start('scat guess')
+        #h_spkmm, s_pkmm = self.get_hs(self)
+        self.timer.stop('scat guess')
 
         self.timer.start('init scat')  
 
-        if not self.fixed:
-            d_spkmm = get_lcao_density_matrix(self)
-        else:
-            d_spkmm = np.zeros([self.nbmol, self.nbmol], self.wfs.dtype)
+        #if not self.fixed:
+        #    d_spkmm = get_lcao_density_matrix(self)
+        #else:
+        #    d_spkmm = np.zeros([self.nspins, self.my_npk,
+        #                          self.nbmol, self.nbmol], self.wfs.dtype)
 
         for kpt in self.wfs.kpt_u:
             s = kpt.s
             q = kpt.q
-            #self.hsd.reset(s, q, s_pkmm[s], 'S', True)
+            #self.hsd.reset(s, q, s_pkmm[q], 'S', True)
             #self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)
-            self.hsd.reset(s, q, d_spkmm, 'D', True)            
-        self.append_buffer_hsd()            
-        self.fill_guess_with_leads()           
+            #self.hsd.reset(s, q, d_spkmm[s, q], 'D', True)            
+       
+        self.append_buffer_hsd()
+        #self.fill_guess_with_leads()           
         self.timer.stop('init scat')
         self.scat_restart = False
 
@@ -890,7 +929,7 @@ class Transport(GPAW):
         if var == 'h':
             diag_ham = np.zeros([self.nbmol], self.wfs.dtype)
             for kpt, weight in zip(self.wfs.kpt_u, self.wfs.weight_k):
-                diag_ham += np.diag(self.hsd.H[kpt.s][kpt.q].recover(True))
+                diag_ham += np.diag(self.hsd.H[kpt.s][kpt.q].recover())
             self.wfs.kpt_comm.sum(diag_ham)
             diag_ham /= self.npk
                      
@@ -1273,7 +1312,7 @@ class Transport(GPAW):
                     env_gamma[j, ind.T, ind] += \
                                     self.env_selfenergies[j].get_lambda(zp[i])
 
-            gr = self.hsd.calculate_eq_green_function(zp[i], sigmatmp)
+            gr = self.hsd.calculate_eq_green_function(zp[i], sigmatmp, False)
             # --ne-Integral---
             kt = intctrl.kt
             fftmp = []
@@ -1308,7 +1347,7 @@ class Transport(GPAW):
                         gammaocc += env_gamma[n] * \
                                              self.fint[n + nl][0][self.cntint]
 
-                gfunc[i] = self.hsd.calculate_ne_green_function(zp[i], sigmatmp, fftmp)
+                gfunc[i] = self.hsd.calculate_ne_green_function(zp[i], sigmatmp, fftmp, False)
                 
 
             elif calcutype == 'neVirInt':
@@ -1434,7 +1473,7 @@ class Transport(GPAW):
                     sigmalesser[ind.T, ind] += 1.0j * fermifactor * (
                                              sigmatmp - sigmatmp.T.conj())
             
-            glesser = self.hsd.calculate_ne_green_function(zp[i], sigmatmp, ff_tmp)
+            glesser = self.hsd.calculate_ne_green_function(zp[i], sigmatmp, ff_tmp, False)
             weight = pathinfo.weight[i]            
             den += glesser * weight / np.pi / 2
         self.energy_comm.sum(den)
@@ -1465,7 +1504,7 @@ class Transport(GPAW):
                     ind = np.resize(ind, [dim, dim])
                     sigma[ind.T, ind] += pathinfo.sigma[n + nl][i]
             
-            gr = self.hsd.calculate_eq_green_function(zp[i], sigmatmp)
+            gr = self.hsd.calculate_eq_green_function(zp[i], sigmatmp, False)
             fermifactor = pathinfo.fermi_factor[i]
             weight = pathinfo.weight[i]
             den += gr * fermifactor * weight
@@ -1494,12 +1533,11 @@ class Transport(GPAW):
                     self.linear_mm = self.get_linear_potential_matrix()            
                 h_spkmm += self.linear_mm
         self.timer.stop('hamiltonian matrix')                  
-                
+       
         for kpt in self.wfs.kpt_u:
             s = kpt.s
             q = kpt.q
             self.hsd.reset(s, q, h_spkmm[s, q], 'H')
-            self.hsd.reset(s, q, s_pkmm[q], 'S')
   
     def get_forces(self, atoms):
         if (atoms.positions != self.atoms.positions).any():
@@ -1541,22 +1579,24 @@ class Transport(GPAW):
         density = self.density
         density.calculate_pseudo_density(self.wfs)
         self.wfs.calculate_atomic_density_matrices(density.D_asp)
+        if self.fixed:
+            self.surround.combine_D_asp()
         comp_charge = density.calculate_multipole_moments()        
-
         #delete normalize line
-        
+        if self.fixed:
+            self.surround.combine_nt_sG()        
         if not density.mixer.mix_rho:
             density.mixer.mix(density)
             comp_charge = None
-   
-        #interpolation  
-
+     
         if density.nt_sg is None:
             density.nt_sg = density.finegd.empty(self.nspins)
         for s in range(self.nspins):
             density.interpolator.apply(density.nt_sG[s], density.nt_sg[s])            
         
         #calculate_pseudo_charge
+        if self.fixed:
+            self.surround.combine_nt_sg()
         density.nt_g = density.nt_sg.sum(axis=0)
         density.rhot_g = density.nt_g.copy()
         density.ghat.add(density.rhot_g, density.Q_aL)            
@@ -1602,12 +1642,13 @@ class Transport(GPAW):
                                                   charge=-density.charge)
         else:
             assert abs(density.charge) < 1e-6
-            rhot_g = self.surround.abstract_inner_rhot()
-            vHt_g = np.empty(rhot_g.shape)
-            ham.npoisson = self.inner_poisson.solve_neutral(vHt_g,
+            rhot_g = self.surround.abstract_inner_rhot().copy()
+            if not hasattr(self, 'inner_vHt_g'):
+                self.inner_vHt_g = self.finegd0.zeros()
+            ham.npoisson = self.inner_poisson.solve_neutral(self.inner_vHt_g,
                                                             rhot_g,
-                                              eps=self.inner_poisson.eps)
-            self.surround.combine_vHt_g(vHt_g)
+                                              eps=self.inner_poisson.eps*1e-3)
+            self.surround.combine_vHt_g(self.inner_vHt_g)
         self.timer.stop('Poisson')
       
         Epot = 0.5 * ham.finegd.integrate(ham.vHt_g, density.rhot_g,
@@ -1973,4 +2014,51 @@ class Transport(GPAW):
         self.update_hamiltonian()                   
         self.scf.reset()
         self.forces.reset()
-        self.print_positions() 
+        self.print_positions()
+        
+    #def print_iteration(self, iter):
+    #    t = self.text
+    #    nvalence = self.wfs.setups.nvalence        
+    #    if self.verbose != 0:
+    #        T = time.localtime()
+    #        t()
+    #        t('------------------------------------')
+    #        t('iter: %d %d:%02d:%02d' % (iter, T[3], T[4], T[5]))
+    #        t()
+    #        t('Poisson Solver Converged in %d Iterations' %
+    #          self.hamiltonian.npoisson)
+    #        ne = self.eqpathinfo[0][0] + self.nepathinfo[0][0].num
+    #        t('%d energy point in integral contour' % ne)
+    #        t()
+    #        #self.print_all_information()
+    #    else:
+    #        if iter == 1:
+    #            header = """\
+    #                 log10-error:   diagonal      Iterations:
+    #       Time        Density     Hamiltonian     Poisson"""
+    #            if self.wfs.nspins == 2:
+    #                header += '  MagMom'
+    #            t(header)
+    #        T = time.localtime()
+    #        denserr = self.density.mixer.get_charge_sloshing()
+    #        if denserr is None or denserr == 0 or nvalence == 0:
+    #            denserr = ''
+    #        else:
+    #            denserr = '%+.1f' % (log(denserr / nvalence) / log(10))
+    #        niterpoisson = '%d' % self.hamiltonian.npoisson
+    #        if niterpoisson == '0':
+    #            niterpoisson = ' fixed '
+
+    #        t("iter: %3d  %02d:%02d:%02d  %-5s  %-5s  %-7s" %
+    #          (iter,
+    #           T[3], T[4], T[5],
+    #           eigerr,
+    #           niterocc,
+    #           niterpoisson), end='')
+
+    #        if self.wfs.nspins == 2:
+    #            t('  %+.4f' % self.occupations.magmom)
+    #        else:
+    #            t()
+
+    #    self.txt.flush() 
