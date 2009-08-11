@@ -9,6 +9,7 @@ from gpaw.spline import Spline
 from gpaw.grid_descriptor import AERadialGridDescriptor
 from gpaw.grid_descriptor import EquidistantRadialGridDescriptor
 from gpaw.atom.atompaw import AtomPAW
+from gpaw.atom.configurations import configurations
 from gpaw.basis_data import Basis, BasisFunction
 
 setups = {} # Filled out during parsing below
@@ -227,7 +228,7 @@ class HGHSetupData:
         self.f_j = []
         self.rcut_j = []
         self.pt_jg = []
-                
+        
         for n, l, v in zip(n_j, l_j, v_j):
             # Note: even pseudopotentials without projectors will get one
             # projector, but the coefficients h_ij should be zero so it
@@ -235,11 +236,6 @@ class HGHSetupData:
             pt_g = create_hgh_projector(rgd.r_g, l, n, v.r0)
             norm = sqrt(np.dot(rgd.dr_g, pt_g**2 * rgd.r_g**2))
             assert np.abs(1 - norm) < 1e-5, str(1 - norm)
-
-            degeneracy = (2 * l + 1) * 2
-            f = min(self.Nv - electroncount, degeneracy)
-            electroncount += f
-            self.f_j.append(f)
             gcut, rcut = self.find_cutoff(rgd.r_g, rgd.dr_g, pt_g, threshold)
             if rcut < 0.5:
                 rcut = 0.5
@@ -248,6 +244,27 @@ class HGHSetupData:
             rcut = max(rcut, 0.5)
             self.rcut_j.append(rcut)
             self.pt_jg.append(pt_g)
+
+        Z, nlfe_j = configurations[self.symbol]
+        nlfe_j = list(nlfe_j)
+        nlfe_j.reverse()
+        f_ln = [[], [], []] # [[s], [p], [d]]
+        Nv = 0
+        for n, l, f, e in nlfe_j:
+            Nv += f
+            f_n = f_ln[l]
+            assert f_n == []
+            f_n.append(f)
+            if Nv >= self.Nv:
+                break
+        assert Nv == self.Nv#abs(Nv - self.Nv) < 1e-12
+        self.f_ln = f_ln
+        self.f_j = [0] * nj
+        for j, (n, l) in enumerate(self.hghdata.nl_iter()):
+            try:
+                self.f_j[j] = f_ln[l][n]
+            except IndexError:
+                pass
 
         # This is the correct magnitude of the otherwise normalized
         # compensation charge
@@ -360,19 +377,7 @@ class HGHSetupData:
                     bf = BasisFunction(l, rgd.rcut, phit_g, 'gaussian')
                     bf_j.append(bf)
         b1 = SimpleBasis(self.symbol, range(max(self.l_j) + 1))
-        
-        f_ln = []
-        lmax = max(self.l_j)
-        occ = 0
-        for l in range(lmax + 1):
-            f_n = []
-            for f, n, l2 in zip(self.f_j, self.n_j, self.l_j):
-                if l2 == l and f != 0:
-                    occ += f
-                    f_n.append(f)
-            f_ln.append(f_n)
-        assert abs(occ - self.Nv) < 1e-12
-        apaw = AtomPAW(self.symbol, [f_ln], h=0.05, rcut=9.0,
+        apaw = AtomPAW(self.symbol, [self.f_ln], h=0.05, rcut=9.0,
                        basis={self.symbol: b1},
                        setups={self.symbol : self},
                        lmax=0, txt=None)
