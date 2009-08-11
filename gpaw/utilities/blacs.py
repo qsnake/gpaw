@@ -62,11 +62,11 @@ def scalapack_diagonalize_dc(a_obj, adesc):
 
 def scalapack_general_diagonalize(a_obj, adesc):
     if a_obj is not None:
-        assert a_obj.ndim = 2
+        assert a_obj.ndim == 2
         assert (a_obj.dtype == float) or (a_obj.dtype == complex)
         assert a_obj.flags.f_contiguous
     if b_obj is not None:
-        assert a_obj.ndim = 2
+        assert a_obj.ndim == 2
         assert (a_obj.dtype == float) or (a_obj.dtype == complex)
         assert a_obj.flags.f_contiguous
     if a_obj is None:
