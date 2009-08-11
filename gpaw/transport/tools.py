@@ -571,17 +571,26 @@ class Tp_Sparse_Matrix:
         # above get all the q matrix, then if want to solve the cols
         # cooresponding to the lead i, the q_mat[i] will not be used
 
-        q_mm = self.mol_h.recover()
+        #q_mm = self.mol_h.recover()
+        q_mm = copy.deepcopy(self.mol_h)
         for i in range(self.lead_num):
-            q_mm -= dot(dot(self.upc_h[i][0], q_mat[i][0]),
-                                             self.dwnc_h[i][0])        
+            #q_mm -= dot(dot(self.upc_h[i][0], q_mat[i][0]),
+            #                                 self.dwnc_h[i][0])
+            q_mm.reset_minus(self.dotdot(self.upc_h[i][0],
+                                  q_mat[i][0], self.dwnc_h[i][0]), full=True)
         
         for i in range(self.lead_num):
         # solve the corresponding cols to the lead i
             nll = self.lead_nlayer[i]
-            qi_mat[i][0] = q_mm + self.dotdot(self.upc_h[i][0],q_mat[i][0],
-                                                            self.dwnc_h[i][0])
-            inv(qi_mat[i][0])
+    
+            #qi_mat[i][0] = q_mm + self.dotdot(self.upc_h[i][0],q_mat[i][0],
+            #                                                self.dwnc_h[i][0])
+            q_mm_tmp = copy.deepcopy(q_mm)
+            q_mm_tmp.reset_plus(self.dotdot(self.upc_h[i][0],q_mat[i][0],
+                                                self.dwnc_h[i][0]), full=True)
+            
+            #inv(qi_mat[i][0])
+            qi_mat[i][0] = q_mm_tmp.inv()
             for j in range(1, nll - 1):
                 tmp_diag_h = copy.deepcopy(self.diag_h[i][j - 1])
                 tmp_diag_h.reset_minus(self.dotdot(self.dwnc_h[i][j -1],
