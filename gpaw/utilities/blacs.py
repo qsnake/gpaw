@@ -16,7 +16,7 @@ from sys import stderr
 
 import numpy as np
 
-from gpaw.utilities import is_contiguous, warning
+from gpaw.utilities import warning
 from gpaw import debug
 import gpaw.mpi as mpi
 import _gpaw
@@ -31,7 +31,7 @@ def blacs_create(comm_obj, m, n, nprow, npcol, mb, nb, row_order='R'):
         assert nprow*npcol <= comm_obj.size
     assert 0 < mb <= m
     assert 0 < nb <= n
-    _gpaw.blacs_create(comb_obj, m, n, nprow, npcol, mb, nb, row_order)
+    _gpaw.blacs_create(comm_obj, m, n, nprow, npcol, mb, nb, row_order)
 
 def blacs_destroy(adesc):
     assert len(adesc) == 9
