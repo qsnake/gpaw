@@ -449,18 +449,19 @@ class Transport(GPAW):
         h_spkmm = substract_pk(self.d, self.my_npk, ntk, kpts, h_skmm, 'h')
         s_pkmm = substract_pk(self.d, self.my_npk, ntk, kpts, s_kmm)
         d_spkmm = substract_pk(self.d, self.my_npk, ntk, kpts, d_skmm, 'h')
+        
         if self.wfs.dtype == float:
             h_spkmm = np.real(h_spkmm).copy()
             s_pkmm = np.real(s_pkmm).copy()
             d_spkmm = np.real(d_spkmm).copy()
         atoms.calc.write('guess.gpw')
         del atoms
-        for kpt in self.wfs.kpt_u:
-            s = kpt.s
-            q = kpt.q
-            self.hsd.reset(s, q, s_pkmm[s], 'S', True)
-            self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)            
-            self.hsd.reset(s, q, d_spkmm[s, q] * ntk, 'D', True)
+        
+        for q in range(self.my_npk):
+            self.hsd.reset(0, q, s_pkmm[q], 'S', True)
+            for s in range(self.my_nspins):
+                self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)            
+                self.hsd.reset(s, q, d_spkmm[s, q] * ntk, 'D', True)
             
     def get_hamiltonian_initial_guess2(self):
         atoms, calc = gpaw.restart('guess.gpw')
@@ -479,12 +480,11 @@ class Transport(GPAW):
             s_pkmm = np.real(s_pkmm).copy()
             d_spkmm = np.real(d_spkmm).copy()            
         del atoms
-        for kpt in self.wfs.kpt_u:
-            s = kpt.s
-            q = kpt.q
-            self.hsd.reset(s, q, s_pkmm[q], 'S', True)
-            self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)
-            self.hsd.reset(s, q, d_spkmm[s, q]*ntk, 'D', True)            
+        for q in range(self.my_npk):
+            self.hsd.reset(0, q, s_pkmm[q], 'S', True)
+            for s in range(self.my_nspins):
+                self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)            
+                self.hsd.reset(s, q, d_spkmm[s, q] * ntk, 'D', True) 
             
     def fill_guess_with_leads(self):
         if self.hsd.S[0].extended:
@@ -746,13 +746,12 @@ class Transport(GPAW):
         #else:
         #    d_spkmm = np.zeros([self.nspins, self.my_npk,
         #                          self.nbmol, self.nbmol], self.wfs.dtype)
-
-        for kpt in self.wfs.kpt_u:
-            s = kpt.s
-            q = kpt.q
-            #self.hsd.reset(s, q, s_pkmm[q], 'S', True)
-            #self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)
-            #self.hsd.reset(s, q, d_spkmm[s, q], 'D', True)            
+       
+        #for q in range(self.my_npk):
+        #    self.hsd.reset(0, q, s_pkmm[q], 'S', True)
+        #    for s in range(self.my_nspins):
+        #        self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)            
+        #        self.hsd.reset(s, q, d_spkmm[s, q] * ntk, 'D', True)
        
         self.append_buffer_hsd()
         #self.fill_guess_with_leads()           
@@ -928,8 +927,9 @@ class Transport(GPAW):
         cvg = False
         if var == 'h':
             diag_ham = np.zeros([self.nbmol], self.wfs.dtype)
-            for kpt, weight in zip(self.wfs.kpt_u, self.wfs.weight_k):
-                diag_ham += np.diag(self.hsd.H[kpt.s][kpt.q].recover())
+            for s in range(self.my_nspins):
+                for q in range(self.my_npk):
+                    diag_ham += np.diag(self.hsd.H[s][q].recover())
             self.wfs.kpt_comm.sum(diag_ham)
             diag_ham /= self.npk
                      
@@ -1534,10 +1534,9 @@ class Transport(GPAW):
                 h_spkmm += self.linear_mm
         self.timer.stop('hamiltonian matrix')                  
        
-        for kpt in self.wfs.kpt_u:
-            s = kpt.s
-            q = kpt.q
-            self.hsd.reset(s, q, h_spkmm[s, q], 'H')
+        for q in range(self.my_npk):
+            for s in range(self.my_nspins):
+                self.hsd.reset(s, q, h_spkmm[s, q], 'H')            
   
     def get_forces(self, atoms):
         if (atoms.positions != self.atoms.positions).any():
@@ -1642,12 +1641,12 @@ class Transport(GPAW):
                                                   charge=-density.charge)
         else:
             assert abs(density.charge) < 1e-6
-            rhot_g = self.surround.abstract_inner_rhot().copy()
+            rhot_g = self.surround.abstract_inner_rhot()
             if not hasattr(self, 'inner_vHt_g'):
                 self.inner_vHt_g = self.finegd0.zeros()
             ham.npoisson = self.inner_poisson.solve_neutral(self.inner_vHt_g,
                                                             rhot_g,
-                                              eps=self.inner_poisson.eps*1e-3)
+                                              eps=self.inner_poisson.eps)
             self.surround.combine_vHt_g(self.inner_vHt_g)
         self.timer.stop('Poisson')
       
