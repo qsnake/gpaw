@@ -29,7 +29,8 @@ hosts = { 'batman'             : 'pbs_batman',
           'sepeli.csc.fi'      : 'sepeli',
           'ui.bfg.uni'         : 'pbs_bfg',
           'xc2n992'            : 'xc2',
-          'xc2n993'            : 'xc2'
+          'xc2n993'            : 'xc2',
+          'juropa.fz-juelich.de': 'juropa'
           }
 
 platforms = { 'aix5' : 'loadleveler' }
@@ -329,6 +330,36 @@ unset CC CFLAGS LDFLAGS
         print >> f, '>', set['out']+'_$PBS_JOBID',
         print >> f, '2>', set['err']+'_$PBS_JOBID'
 
+    def juropa(self, f, set, env):
+        print >> f, '#!/bin/bash'
+        print >> f, '#MSUB -N '+set['name']
+        # nodes contain 8 cores                                             
+        cores = set['cores']
+        nodes = int((cores + 7) / 8)
+        ppn = int((cores + nodes - 1) / nodes)
+        if cores != nodes * ppn:
+            print 'Note:', nodes * ppn, 'cores reserved but only', cores, 'core\
+s used.'
+            print '     Consider to use multiples of 8 processors for best perf\
+ormance.'
+        print >> f, '#MSUB -l nodes=' + str(nodes) + ':ppn=' + str(ppn)
+        print >> f, '#MSUB -l cput=' + hms_string(set['time'])
+        print >> f, '#MSUB -l walltime=' + hms_string(set['time'])
+        print >> f, '#MSUB -m bea'
+        if set['mail'] is not None:
+            print >> f, '#MSUB -M',set['mail']
+#        print >> f, 'export PATH=/usr/lib/openmpi/1.2.5-gcc/bin:$PATH'
+        print >> f, 'cd', set['wd']
+        print >> f, 'export PYTHONPATH=$PYTHONPATH:' + env['PYTHONPATH']
+        print >> f, 'export GPAW_SETUP_PATH='+env['GPAW_SETUP_PATH']
+        print >> f, 'export GPAW_PYTHON='+env['GPAW_PYTHON']
+        print >> f, 'mpiexec -np', cores, 
+        print >> f, '-env PYTHONPATH $PYTHONPATH',
+        print >> f, '-env GPAW_SETUP_PATH $GPAW_SETUP_PATH',
+        print >> f, '$GPAW_PYTHON', set['script']#,
+#        print >> f, '>', set['out']+'_$PBS_JOBID',
+#        print >> f, '2>', set['err']+'_$PBS_JOBID'
+
     def sepeli(self, f, set, env):
         print >> f,"#$ -N",set['name']
         print >> f,"#$ -cwd"
@@ -462,12 +493,15 @@ if opt.qsys:
     set['qsys']=opt.qsys
 else:
     host = None
-    try:
-        import socket
-        host = socket.gethostname().split('-')[0]
-    except:
-        dummy, hostname = os.popen4('hostname -s')
-        host = hostname.readline().split()
+    if 'HOSTNAME' in os.environ.keys():
+        host = os.environ['HOSTNAME']
+    else:
+        try:
+            import socket
+            host = socket.gethostname().split('-')[0]
+        except:
+            dummy, hostname = os.popen4('hostname -s')
+            host = hostname.readline().split()
 
     if hosts.has_key(host):
         set['qsys']=hosts[host]
