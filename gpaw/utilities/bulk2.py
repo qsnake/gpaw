@@ -207,7 +207,11 @@ class GPAWRunner(Runner):
             kwargs = dict(kpts=self.kpts, gpts=gpts, txt=filename[:-4] + 'txt')
         else:
             # Isolated atom or molecule:
-            hund = (len(config) == 1)
+            if (len(config) == 1 and
+                config.get_initial_magnetic_moments().any()):
+                hund = True
+            else:
+                hund = False
             kwargs = dict(hund=hund, width=0.02, txt=filename[:-4] + 'txt')
             config.center(vacuum=self.vacuum)
 
@@ -217,14 +221,6 @@ class GPAWRunner(Runner):
                     xc=self.xc,
                     **kwargs)
         config.set_calculator(calc)
-
-    def calculate(self, filename):
-        config = Runner.calculate(self, filename)
-        self.check_occupation_numbers(config)
-
-    def calculate_isolated_atom(self, symbol, filename):
-        atom = Runner.calculate_isolated_atom(self, symbol, filename)
-        self.check_occupation_numbers(atom)
 
     def check_occupation_numbers(self, config):
         """Check that occupation numbers are integers."""

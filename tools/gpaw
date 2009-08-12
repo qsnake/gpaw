@@ -112,9 +112,9 @@ def run():
                     raise ValueError('Unknown molecule: ' + name)
 
     if opt.magnetic_moment:
-        if isinstance(magmom, (int, float)):
-            magmom = [magmom]
-        atoms.set_magnetic_moments(np.tile(magmom, len(atoms) // len(magmom)))
+        magmom = opt.magnetic_moment.split(',')
+        atoms.set_initial_magnetic_moments(np.tile(magmom,
+                                                   len(atoms) // len(magmom)))
 
     if opt.repeat is not None:
         r = opt.repeat.split(',')
