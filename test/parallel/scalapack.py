@@ -9,9 +9,11 @@
 # with those obtain with serial LAPACK
 import numpy as np
 
+from gpaw import GPAW
+from gpaw import debug
 from gpaw.mpi import world
 from gpaw.utilities.lapack import diagonalize, inverse_cholesky
-from gpaw.utilites.blacs import *
+from gpaw.utilities.blacs import *
 
 w_tol = 1.e-12
 z_tol = 1.e-7
@@ -34,8 +36,11 @@ A[:,2*M:3*M] = 2.0*np.eye(N,M,-M*2)
 A[:,2*M:3*M] = A[:,2*M:3*M] + 0.1*np.eye(N,M,-M*2+1) # shift off of diag +1 
 A[:,3*M:4*M] = 3.0*np.eye(N,M,-M*3)
 A[:,3*M:4*M] = A[:,3*M:4*M]+ 0.1*np.eye(N,M,-M*3+1) # shift off of diag +1
-A = A.copy("Fortran")
 print "Hamiltonian =", A
+# We should really use Fortran ordered array but this gives
+# a false positive in LAPACK's debug mode
+# A = A.copy("Fortran")
+A = A.transpose()
 
 S = np.empty((N,N))
 S[:,0:M] = 1.0*np.eye(N,M,0)
@@ -46,13 +51,15 @@ S[:,2*M:3*M] = 1.0*np.eye(N,M,-M*2)
 S[:,2*M:3*M] = S[:,8:12] + 0.2*np.eye(N,4,-M*2+1) # shift off of diag +1 
 S[:,3*M:4*M] = 1.0*np.eye(N,M,-M*3)
 S[:,3*M:4*M] = S[:,3*M:4*M] + 0.2*np.eye(N,4,-M*3+1) # shift off of diag +1
-S = S.copy("Fortran")
 print "Overlap = ", S
-
+# We should really use Fortran ordered array but this gives
+# a false positive in LAPACK's debug mode
+# S = S.copy("Fortran")
+S = S.transpose()
 w = np.empty(N)
 
 # We need to make a backup of A since LAPACK diagonalize will destroy it
-A2 = A.copy("Fortran")
+A2 = A.copy()
 info = diagonalize(A2, w)
 
 if info != 0:
@@ -63,7 +70,7 @@ print "eigenvectors", A2
 wg = np.empty(N)
 
 # We need to make a backup of S since LAPACK diagonalize will destroy it
-S2 = S.copy("Fortran")
+S2 = S.copy()
 info = diagonalize(A, wg, S2)
 
 if info != 0:
@@ -72,7 +79,7 @@ print "lambda", w_g
 print "eigenvectors", A
 
 # For consistency, also make a backup of S since LAPACK will destroy it
-C = S.copy("Fortran")
+C = S.copy()
 info = inverse_cholesky(C)
 
 if info != 0:
@@ -118,7 +125,7 @@ Wg, Zg_mm = scalapack_general_diagonalize(H_mm, S_mm, desc2)
 
 scalapack_inverse_cholesky(C_mm, desc2)
 
-assert len(W) = len(w)
+assert len(W) == len(w)
 
 for i in range(len(W)):
     if abs(W[i]-w[i]) > w_tol:
@@ -126,7 +133,7 @@ for i in range(len(W)):
         
 
 
-assert len(Wg) = len(wg)
+assert len(Wg) == len(wg)
 
 for i in range(len(W)):
     if abs(Wg[i]-wg[i]) > w_tol:
@@ -138,8 +145,10 @@ Z_0 = scalapack_redist(Z_mm,desc2,desc0)
 Zg_0 = scalapack_redist(Z_mm,desc2,desc0)
 C_0 = scalapack_redist(C_00, desc2, desc0)
 
-assert Z_0.shape = A2.shape = Zg_0.shape = A.shape = C_0.shape = C.shape
+assert Z_0.shape == A2.shape == Zg_0.shape == A.shape == C_0.shape == C.shape
 
+# We compare Fortran and C NumPy arrays, but this is not a problem here
+# because NumPy does all the hardwork for us.
 for i in Z_0.shape[0]:
     for j in Z_0.shape[0]:
         if abs(Z_0[i,j]-A2[i,j]) > z_tol:
