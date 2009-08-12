@@ -20,13 +20,17 @@ z_tol = 1.e-7
 c_tol = 1.e-7
 
 
-N = 16;
-B = 4;
-M = N/B;
+N = 16
+B = 4
+M = N/B
+# blacs grid dimensions
+D = 2 
+nb = 3
+mb = 3
 
-if world.size != B:
-    raise NameError('scalapack tests only works on 4 MPI tasks!')
-    
+assert world.size == B
+assert world.size >= D*D
+
 A = np.empty((N,N))
 A[:,0:M] = 0.0*np.eye(N,M,0)
 A[:,0:M] = A[:,0:M]+ 0.1*np.eye(N,M,-M*0+1) # shift off of diag +1
@@ -40,7 +44,7 @@ print "Hamiltonian =", A
 # We should really use Fortran ordered array but this gives
 # a false positive in LAPACK's debug mode
 # A = A.copy("Fortran")
-A = A.transpose()
+A = A.transpose().copy()
 
 S = np.empty((N,N))
 S[:,0:M] = 1.0*np.eye(N,M,0)
@@ -55,7 +59,7 @@ print "Overlap = ", S
 # We should really use Fortran ordered array but this gives
 # a false positive in LAPACK's debug mode
 # S = S.copy("Fortran")
-S = S.transpose()
+S = S.transpose().copy()
 w = np.empty(N)
 
 # We need to make a backup of A since LAPACK diagonalize will destroy it
@@ -75,7 +79,7 @@ info = diagonalize(A, wg, S2)
 
 if info != 0:
     print "WARNING: general diagonalize info = ", info
-print "lambda", w_g
+print "lambda", wg
 print "eigenvectors", A
 
 # For consistency, also make a backup of S since LAPACK will destroy it
@@ -98,8 +102,8 @@ C_mm = None
 
 # Create arrays in parallel
 A_nm = world.rank*np.eye(N,M,-M*world.rank)
-A_nm = H_nm[:,0:N/B] + 0.1*np.eye(N,M,-M*world.rank+1)
-A_nm = H_nm.copy("Fortran") # Fortran order required for ScaLAPACK
+A_nm = A_nm[:,0:N/B] + 0.1*np.eye(N,M,-M*world.rank+1)
+A_nm = A_nm.copy("Fortran") # Fortran order required for ScaLAPACK
 S_nm = np.eye(N,M,-M*world.rank)
 S_nm = S_nm[:,0:N/B] + 0.2*np.eye(N,M,-M*world.rank+1)
 S_nm = S_nm.copy("Fortran") # Fortran order required for ScaLAPACK
@@ -111,17 +115,17 @@ desc0 = blacs_create(world,N,N,1,1,N,N)
 # Desc for A_nm : 1-D grid
 desc1 = blacs_create(world,N,N,1,B,N,M)
 # Desc for H_mm : 2-D grid
-desc2 = blacs_create(world,N,N,B,B,M,M)
+desc2 = blacs_create(world,N,N,D,D,mb,nb)
 
 # Redistribute from 1-D -> 2-D grid
 # in practice we must do this for performance
 # reasons so this is not hypothetical
-H_mm = scalapack_redist(H_nm,desc1,desc2)
+A_mm = scalapack_redist(A_nm,desc1,desc2)
 S_mm = scalapack_redist(S_nm,desc1,desc2)
 
-W, Z_mm = scalapack_diagonalize_dc(H_mm, desc2)
+W, Z_mm = scalapack_diagonalize_dc(A_mm, desc2)
 
-Wg, Zg_mm = scalapack_general_diagonalize(H_mm, S_mm, desc2)
+Wg, Zg_mm = scalapack_general_diagonalize(A_mm, S_mm, desc2)
 
 scalapack_inverse_cholesky(C_mm, desc2)
 
