@@ -21,12 +21,12 @@ from gpaw import debug
 import gpaw.mpi as mpi
 import _gpaw
 
-def blacs_create(comm_obj, m, n, nprow, npcol, mb, nb, row_order='R'):
+def blacs_create(comm_obj, m, n, nprow, npcol, mb, nb, row_order=1):
     assert m > 0
     assert n > 0
     assert nprow > 0 
     assert npcol > 0
-    assert row_order[0] in ['C','c','R','r']
+    # assert row_order[0] in ['C','c','R','r']
     if comm_obj is not None:
         assert nprow*npcol <= comm_obj.size
     assert 0 < mb <= m
