@@ -15,15 +15,19 @@ from gpaw.mpi import world
 from gpaw.utilities.lapack import diagonalize, inverse_cholesky
 from gpaw.utilities.blacs import *
 
-w_tol = 1.e-12
-z_tol = 1.e-7
-c_tol = 1.e-7
+# We could possibly have a stricter criteria, but these are all
+# the printed digits at least
+w_tol = 1.e-8
+z_tol = 1.e-8
+c_tol = 1.e-8
 
 
 N = 16
 B = 4
 M = N/B
-# blacs grid dimensions
+
+# blacs grid dimensions DxD and non-even blocking factors just
+# to make things more non-trivial.
 D = 2 
 nb = 3
 mb = 3
@@ -40,7 +44,8 @@ A[:,2*M:3*M] = 2.0*np.eye(N,M,-M*2)
 A[:,2*M:3*M] = A[:,2*M:3*M] + 0.1*np.eye(N,M,-M*2+1) # shift off of diag +1 
 A[:,3*M:4*M] = 3.0*np.eye(N,M,-M*3)
 A[:,3*M:4*M] = A[:,3*M:4*M]+ 0.1*np.eye(N,M,-M*3+1) # shift off of diag +1
-print "Hamiltonian =", A
+if world.rank == 0:
+    print "A = ", A
 # We should really use Fortran ordered array but this gives
 # a false positive in LAPACK's debug mode
 # A = A.copy("Fortran")
@@ -55,7 +60,8 @@ S[:,2*M:3*M] = 1.0*np.eye(N,M,-M*2)
 S[:,2*M:3*M] = S[:,8:12] + 0.2*np.eye(N,4,-M*2+1) # shift off of diag +1 
 S[:,3*M:4*M] = 1.0*np.eye(N,M,-M*3)
 S[:,3*M:4*M] = S[:,3*M:4*M] + 0.2*np.eye(N,4,-M*3+1) # shift off of diag +1
-print "Overlap = ", S
+if world.rank == 0:
+    print "S = ", S
 # We should really use Fortran ordered array but this gives
 # a false positive in LAPACK's debug mode
 # S = S.copy("Fortran")
@@ -66,10 +72,11 @@ w = np.empty(N)
 A2 = A.copy()
 info = diagonalize(A2, w)
 
-if info != 0:
-    print "WARNING: diagonalize info = ", info
-print "lambda", w
-print "eigenvectors", A2
+if world.rank == 0:
+    if info != 0:
+        print "WARNING: diagonalize info = ", info
+    print "diagonalize: lambda = ", w
+    print "diagonalize: eigenvectors = ", A2
 
 wg = np.empty(N)
 
@@ -77,18 +84,20 @@ wg = np.empty(N)
 S2 = S.copy()
 info = diagonalize(A, wg, S2)
 
-if info != 0:
-    print "WARNING: general diagonalize info = ", info
-print "lambda", wg
-print "eigenvectors", A
+if world.rank == 0:
+    if info != 0:
+        print "WARNING: general diagonalize info = ", info
+    print "general diagonalize: lambda = ", wg
+    print "general diagonalize: eigenvectors = ", A
 
 # For consistency, also make a backup of S since LAPACK will destroy it
 C = S.copy()
 info = inverse_cholesky(C)
 
-if info != 0:
-    print "WARNING: general diagonalize info = ", info
-print "overlap", C
+if world.rank == 0:
+    if info != 0:
+        print "WARNING: general diagonalize info = ", info
+    print "cholesky = ", C
 
 # Initialize distributed matrices to None;
 # Otherwise, scalapack_redist will complain of UnboundLocalError
@@ -122,6 +131,7 @@ desc2 = blacs_create(world,N,N,D,D,mb,nb)
 # reasons so this is not hypothetical
 A_mm = scalapack_redist(A_nm,desc1,desc2)
 S_mm = scalapack_redist(S_nm,desc1,desc2)
+C_mm = scalapack_redist(C_nm,desc1,desc2)
 
 W, Z_mm = scalapack_diagonalize_dc(A_mm, desc2)
 
@@ -129,35 +139,53 @@ Wg, Zg_mm = scalapack_general_diagonalize(A_mm, S_mm, desc2)
 
 scalapack_inverse_cholesky(C_mm, desc2)
 
+if  world.rank == 0:
+    print "W =", w
+    print "Wg =", wg
 assert len(W) == len(w)
 
 for i in range(len(W)):
     if abs(W[i]-w[i]) > w_tol:
-        raise NameError('scalapack_diagonalize_dc eigenvalues wrong!')
+        raise NameError('scalapack_diagonalize_dc: incorrect eigenvalues!')
         
-
-
 assert len(Wg) == len(wg)
 
 for i in range(len(W)):
     if abs(Wg[i]-wg[i]) > w_tol:
-        raise NameError('scalapack_general_diagonalize eigenvalues wrong!')
+        raise NameError('scalapack_general_diagonalize: incorrect eigenvalues!')
 
 # Check eigenvectors
 # Easier to do this if everything if everything is collect on one node
 Z_0 = scalapack_redist(Z_mm,desc2,desc0)
-Zg_0 = scalapack_redist(Z_mm,desc2,desc0)
-C_0 = scalapack_redist(C_00, desc2, desc0)
+Zg_0 = scalapack_redist(Zg_mm,desc2,desc0)
+C_0 = scalapack_redist(C_mm, desc2, desc0)
 
+if world.rank == 0:
+    Z_0 = Z_0.copy("C")
+    Zg_0 = Zg_0.copy("C")
+    C_0 = C_0.copy("C")
+else:            
+    Z_0 = np.zeros((N,N))
+    Zg_0 = np.zeros((N,N))
+    C_0 = np.zeros((N,N))
+    
 assert Z_0.shape == A2.shape == Zg_0.shape == A.shape == C_0.shape == C.shape
 
-# We compare Fortran and C NumPy arrays, but this is not a problem here
-# because NumPy does all the hardwork for us.
-for i in Z_0.shape[0]:
-    for j in Z_0.shape[0]:
-        if abs(Z_0[i,j]-A2[i,j]) > z_tol:
-            raise NameError('scalapack_diagonalize_dc eigenvectors failed!')
-        if abs(Zg_0[i,j]-A[i,j]) > z_tol:
-            raise NameError('scalapack_diagonalize_dc eigenvectors failed!')        
-        if abs(C_0[i,j]-C[i,j]) > c_tol:
-            raise NameError('scalapack_inverse_cholesky failed!')
+world.broadcast(Z_0, 0)
+world.broadcast(Zg_0, 0)
+world.broadcast(C_0, 0)
+
+# Note that in general the an entire set of eigenvectors can differ by -1.
+# For degenerate eigenvectors, this is even worse as they can be rotated
+# by any angle as long as they space the Hilber space.
+# 
+# The indices on the matrices are swapped due to different orderings
+# between C and Fortran arrays.
+for i in range(Z_0.shape[0]):
+    for j in range(Z_0.shape[1]):
+        if abs(abs(Z_0[i,j])-abs(A2[j,i])) > z_tol:
+            raise NameError('scalapack_diagonalize_dc: incorrect eigenvectors!')
+        if abs(abs(Zg_0[i,j])-abs(A[j,i])) > z_tol:
+            raise NameError('scalapack_general_diagonalize: incorrect eigenvectors!')        
+        if abs(abs(C_0[i,j])-abs(C[j,i])) > c_tol:
+            raise NameError('scalapack_inverse_cholesky: failed!')
