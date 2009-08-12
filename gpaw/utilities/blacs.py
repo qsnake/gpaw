@@ -31,7 +31,7 @@ def blacs_create(comm_obj, m, n, nprow, npcol, mb, nb, row_order=1):
         assert nprow*npcol <= comm_obj.size
     assert 0 < mb <= m
     assert 0 < nb <= n
-    _gpaw.blacs_create(comm_obj, m, n, nprow, npcol, mb, nb, row_order)
+    return _gpaw.blacs_create(comm_obj, m, n, nprow, npcol, mb, nb, row_order)
 
 def blacs_destroy(adesc):
     assert len(adesc) == 9
@@ -45,12 +45,12 @@ def scalapack_redist(a_obj, adesc, bdesc, comm_obj=mpi.world, m=0, n=0):
             print >> stderr, warning ('scalapack_redist: local matrices are not Fortran contiguous\n')
     assert len(adesc) == 9
     assert len(bdesc) == 9
-    assert bdesc[2] == m
-    assert bdesc[3] == n
-    assert m <= adesc[2]
-    assert n <= adesc[3]
+    assert 0 <= m <= adesc[2]
+    assert 0 <= n <= adesc[3]
+    assert (bdesc[2] == m) or (bdesc[2] == adesc[2])
+    assert (bdesc[3] == n) or (bdesc[3] == adesc[3])
     # There is no simple may to check if adesc and bdesc are disjoint to comm_obj
-    _gpaw.scalapack_redist(a_obj, adesc, bdesc, comm_obj, m, n)
+    return _gpaw.scalapack_redist(a_obj, adesc, bdesc, comm_obj, m, n)
 
 def scalapack_diagonalize_dc(a_obj, adesc):
     if a_obj is not None:
@@ -58,21 +58,21 @@ def scalapack_diagonalize_dc(a_obj, adesc):
         assert (a_obj.dtype == float) or (a_obj.dtype == complex)
         assert a_obj.flags.f_contiguous
     assert len(adesc) == 9
-    _gpaw.scalapack_diagonalize_dc(a_obj, adesc)
+    return _gpaw.scalapack_diagonalize_dc(a_obj, adesc)
 
-def scalapack_general_diagonalize(a_obj, adesc):
+def scalapack_general_diagonalize(a_obj, b_obj, adesc):
     if a_obj is not None:
         assert a_obj.ndim == 2
         assert (a_obj.dtype == float) or (a_obj.dtype == complex)
         assert a_obj.flags.f_contiguous
     if b_obj is not None:
-        assert a_obj.ndim == 2
-        assert (a_obj.dtype == float) or (a_obj.dtype == complex)
-        assert a_obj.flags.f_contiguous
+        assert b_obj.ndim == 2
+        assert (b_obj.dtype == float) or (b_obj.dtype == complex)
+        assert b_obj.flags.f_contiguous
     if a_obj is None:
         assert b_obj is None
     assert len(adesc) == 9
-    _gpaw.scalapack_diagonalize_dc(a_obj, adesc)
+    return _gpaw.scalapack_general_diagonalize(a_obj, b_obj, adesc)
 
 def scalapack_inverse_cholesky(a_obj, adesc):
     if a_obj is not None:
