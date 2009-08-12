@@ -17,6 +17,7 @@ import ase.units as units
 from ase.data import covalent_radii
 
 from gpaw.aseinterface import GPAW
+from gpaw.poisson import PoissonSolver
 from gpaw.mpi import world
 
 # Magnetic moments of isolated atoms:
@@ -186,16 +187,20 @@ class EMTRunner(Runner):
 class GPAWRunner(Runner):
     """GPAW implementation"""
     def set_parameters(self, mode='fd', basis=None, kpts=None,
-                       h=None, xc='LDA', vacuum=4.0):
-        self.mode = mode
-
+                       h=None, xc='LDA', stencils=None, width=0.1,
+                       vacuum=3.0):
         if basis is None:
             basis = {}
+        if stencils is None:
+            stencils = (3, 3)
+
+        self.mode = mode
         self.basis = basis
-        
         self.kpts = kpts
         self.h = h
         self.xc = xc
+        self.stencils = stencils
+        self.width = width
         self.vacuum = vacuum
     
     def set_calculator(self, config, filename):
@@ -204,7 +209,10 @@ class GPAWRunner(Runner):
             L_c = (config.cell**2).sum(1)**0.5
             d_c = self.h * (L_c.prod() / config.get_volume())**(1.0 / 3)
             gpts = (L_c / d_c / 4).round().astype(int) * 4
-            kwargs = dict(kpts=self.kpts, gpts=gpts, txt=filename[:-4] + 'txt')
+            kwargs = dict(kpts=self.kpts,
+                          gpts=gpts,
+                          width=self.width,
+                          txt=filename[:-4] + 'txt')
         else:
             # Isolated atom or molecule:
             if (len(config) == 1 and
@@ -212,13 +220,16 @@ class GPAWRunner(Runner):
                 hund = True
             else:
                 hund = False
-            kwargs = dict(hund=hund, width=0.02, txt=filename[:-4] + 'txt')
+            kwargs = dict(hund=hund,
+                          width=0.02,
+                          txt=filename[:-4] + 'txt')
             config.center(vacuum=self.vacuum)
 
         calc = GPAW(mode=self.mode,
                     basis=self.basis,
-                    stencils=(3, 3),
+                    stencils=self.stencils,
                     xc=self.xc,
+                    poissonsolver=PoissonSolver(nn=3, relax='GS'),
                     **kwargs)
         config.set_calculator(calc)
 
