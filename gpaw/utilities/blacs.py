@@ -21,7 +21,7 @@ from gpaw import debug
 import gpaw.mpi as mpi
 import _gpaw
 
-def blacs_create(comm_obj=None, m, n, nprow, npcol, mb, nb, row_order='R'):
+def blacs_create(comm_obj, m, n, nprow, npcol, mb, nb, row_order='R'):
     assert m > 0
     assert n > 0
     assert nprow > 0 
