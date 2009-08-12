@@ -55,6 +55,7 @@ Linux:
    Linux/carbon_cnm
    Linux/davinci
    Linux/huygens
+   Linux/juropa
    Linux/monolith
    Linux/murska
    Linux/neolith
