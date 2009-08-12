@@ -349,11 +349,10 @@ class Transport_Analysor:
         local_tc_array = np.empty([ns, npk, nlp, ne])
         local_dos_array = np.empty([ns, npk, ne])
         
-        for kpt in tp.wfs.kpt_u:
-            s = kpt.s
-            q = kpt.q
-            local_tc_array[s, q], local_dos_array[s, q] = \
-                      self.calculate_transmission_and_dos(s, q, energies)
+        for s in range(ns):
+            for q in range(npk):
+                local_tc_array[s, q], local_dos_array[s, q] = \
+                          self.calculate_transmission_and_dos(s, q, energies)
 
         kpt_comm = tp.wfs.kpt_comm
         kpt_comm.all_gather(local_tc_array, tc_array)
