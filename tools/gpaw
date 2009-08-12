@@ -1,0 +1,174 @@
+#!/usr/bin/env python
+# Emacs: treat this as -*- python -*-
+
+import sys
+import traceback
+from optparse import OptionParser
+
+import numpy as np
+from ase.atoms import Atoms, string2symbols
+from ase.data.molecules import molecule
+from ase.visualize import view
+from ase.io import read, write
+
+from gpaw.utilities.bulk2 import bulk, estimate_lattice_constant
+from gpaw.utilities.bulk2 import EMTRunner, GPAWRunner
+
+
+description = ('Run GPAW calculation for simple atoms, molecules or '
+               'bulk systems.')
+
+parser = OptionParser(usage='%prog [options] formula or filename',
+                      version='%prog 0.1', description=description)
+
+# Structure:
+parser.add_option('-i', '--identifier',
+                  help='String identifier added to filenames.')
+parser.add_option('-x', '--crystal-structure',
+                  help='Crystal structure.',
+                  choices=['sc', 'fcc', 'bcc', 'diamond', 'hcp', 'rocksalt',
+                           'zincblende'])
+parser.add_option('-a', '--lattice-constant', type=float,
+                  help='Lattice constant in Angstrom.')
+parser.add_option('--c_over_a', type=float,
+                  help='c/a ratio.')
+parser.add_option('-v', '--vacuum', type=float, default=4.0,
+                  help='Amount of vacuum to add around isolated systems '
+                  '(in Angstrom).')
+parser.add_option('--orthorhombic',
+                  action='store_true',
+                  help='Use orthorhombic unit cell.')
+parser.add_option('-r', '--repeat',
+                  help='Repeat unit cell.  Use "-r 2" or "-r 2,3,1".')
+parser.add_option('-M', '--magnetic-moment',
+                  help='Magnetic moment(s).  Use "-M 1" or "-M 2.3,-2.3".')
+
+# Behavior:
+parser.add_option('-c', '--clean', action='store_true',
+                  help='Recalculate everything.')
+parser.add_option('-p', '--plot', action='store_true',
+                  help='Plot results.')
+parser.add_option('-G', '--gui', action='store_true',
+                  help="Pop up ASE's GUI.")
+parser.add_option('-w', '--write-to-file', metavar='FILENAME',
+                  help="Write configuration to file.")
+parser.add_option('-O', '--optimize', action='store_true',
+                  help='Find optimal volume or bondlength.')
+parser.add_option('-A', '--atomization-energy', action='store_true',
+                  help='Calculate atomization energy or cohesive energy.')
+
+# Calculator:
+parser.add_option('-e', '--effective-medium-theory',
+                  action='store_true',
+                  help='Use EMT calculator.')
+parser.add_option('-m', '--mode', default='fd', choices=['fd', 'lcao'],
+                  help='Mode of calculation.')
+parser.add_option('-b', '--basis',
+                  help='Basis set.')
+parser.add_option('-k', '--brillouin-zone-sampling', metavar='K1,K2,K3',
+                  help='Number of k-points.  Example: -k 4,4,1.')
+parser.add_option('-g', '--grid-spacing', type=float, default=0.2,
+                  help='Grid spacing in Angstrom.  Deafault is 0.2.')
+parser.add_option('-f', '--xc-functional', default='LDA',
+                  help='Exchange-Correlation functional (default value LDA).')
+
+opt, args = parser.parse_args()
+
+
+def run():
+    if len(args) != 1:
+        parser.error("incorrect number of arguments")
+    name = args[0]
+    
+    a = None
+    try:
+        symbols = string2symbols(name)
+    except ValueError:
+        # name was not a chemical formula - must be a file name:
+        atoms = read(name)
+    else:
+        if opt.crystal_structure:
+            a = opt.lattice_constant
+            if a is None:
+                a = estimate_lattice_constant(name, opt.crystal_structure,
+                                              opt.c_over_a)
+                print 'Using an estimated lattice constant of %.3f Ang' % a
+
+            atoms = bulk(name, opt.crystal_structure, a, opt.c_over_a,
+                         orthorhombic=opt.orthorhombic)
+        else:
+            try:
+                # Molecule?
+                atoms = molecule(name)
+            except NotImplementedError:
+                if len(symbols) == 1:
+                    # Atom
+                    atoms = Atoms(name)
+                elif len(symbols) == 2:
+                    # Dimer
+                    atoms = Atoms(name, positions=[(0, 0, 0),
+                                                   (opt.bond_length, 0, 0)])
+                else:
+                    raise ValueError('Unknown molecule: ' + name)
+
+    if opt.magnetic_moment:
+        if isinstance(magmom, (int, float)):
+            magmom = [magmom]
+        atoms.set_magnetic_moments(np.tile(magmom, len(atoms) // len(magmom)))
+
+    if opt.repeat is not None:
+        r = opt.repeat.split(',')
+        if len(r) == 1:
+            r = 3 * r
+        atoms = atoms.repeat([int(c) for c in r])
+
+    if opt.gui:
+        view(atoms)
+        return
+
+    if opt.write_to_file:
+        write(opt.write_to_file, atoms)
+        return
+    
+    if opt.effective_medium_theory:
+        Runner = EMTRunner
+    else:
+        Runner = GPAWRunner
+
+    if opt.optimize:
+        strains = np.linspace(0.98, 1.02, 5)
+    else:
+        strains = None
+        
+    runner = Runner(name, atoms, strains, tag=opt.identifier, clean=opt.clean)
+
+    if not opt.effective_medium_theory:
+        if opt.brillouin_zone_sampling:
+            kpts = [int(x) for x in opt.brillouin_zone_sampling.split(',')]
+        else:
+            kpts = None
+        runner.set_parameters(mode=opt.mode, basis=opt.basis, kpts=kpts,
+                              h=opt.grid_spacing, xc=opt.xc_functional,
+                              vacuum=opt.vacuum)
+
+    runner.run()
+
+    if opt.atomization_energy:
+        runner.atomize()
+        
+    runner.summary(plot=opt.plot, a0=a)
+
+
+try:
+    run()
+except KeyboardInterrupt:
+    print 'Killed!'
+except SystemExit:
+    pass
+except Exception:
+    traceback.print_exc()
+    print """
+An exception occurred!  Please report the issue to
+gridpaw-developers@listserv.fysik.dtu.dk - thanks!  Please also report this if
+it was a user error, so that a better error message can be provided
+next time."""
