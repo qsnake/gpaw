@@ -300,9 +300,9 @@ def _rotate(in_jj, U_ij, a=1., b=0., out_ii=None, work_ij=None):
     The method returns a reference to out.
     """
     if work_ij is None:
-        work_ij = np.empty_like(U_ij)
+        work_ij = np.zeros_like(U_ij)
     if out_ii is None:
-        out_ii = np.empty(U_ij.shape[:1] * 2, U_ij.dtype)
+        out_ii = np.zeros(U_ij.shape[:1] * 2, U_ij.dtype)
     if in_jj.dtype == float:
         trans = 't'
     else:
@@ -345,11 +345,11 @@ else:
         assert in_jj.dtype == U_ij.dtype
         assert in_jj.flags.contiguous
         assert U_ij.flags.contiguous
-        assert in_jj.shape == U_ij.shape[:1] * 2
+        assert in_jj.shape == U_ij.shape[1:] * 2
         if out_ii is not None:
             assert out_ii.dtype == in_jj.dtype
             assert out_ii.flags.contiguous
-            assert out_jj.shape == U_ij.shape[1:] * 2
+            assert out_ii.shape == U_ij.shape[:1] * 2
         if work_ij is not None:
             assert work_ij.dtype == in_jj.dtype
             assert work_ij.flags.contiguous
