@@ -1146,13 +1146,16 @@ def get_pk_hsd(d, ntk, kpts, hl_skmm, sl_kmm, dl_skmm, txt=None,
    
 def get_lcao_density_matrix(calc):
     wfs = calc.wfs
-    ns = wfs.nspins
     kpts = wfs.ibzk_qc
     nq = len(kpts)
+    my_ns = len(wfs.kpt_u) / nq
     nao = wfs.setups.nao
-    d_skmm = np.empty([ns, nq, nao, nao], wfs.dtype)
+    d_skmm = np.empty([my_ns, nq, nao, nao], wfs.dtype)
     for kpt in wfs.kpt_u:
-        wfs.calculate_density_matrix(kpt.f_n, kpt.C_nM, d_skmm[kpt.s, kpt.q])
+        if my_ns == 1:
+            wfs.calculate_density_matrix(kpt.f_n, kpt.C_nM, d_skmm[0, kpt.q])
+        else:
+            wfs.calculate_density_matrix(kpt.f_n, kpt.C_nM, d_skmm[kpt.s, kpt.q])            
     return d_skmm
 
 class P_info:
