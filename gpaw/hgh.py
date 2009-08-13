@@ -205,35 +205,26 @@ class HGHSetupData:
             # has projectors!  We'll just add the zero function then
             hghdata.v_l = [VNonLocal(0, 0.01, np.array([[0.]]), [])]
 
-        v_l = hghdata.v_l
-
-        # Construct projectors
-        electroncount = 0 # Occupations are used during initialization,
-        # for this reason we'll have to at least specify the right number
-
-        v_j = []
         n_j = []
         l_j = []
 
         # j ordering is significant, must be nl rather than ln
         for n, l in self.hghdata.nl_iter():
-            v_j.append(v_l[l])
             n_j.append(n + 1) # Note: actual n must be positive!
             l_j.append(l)
-        assert nj == len(v_j)
+        assert nj == len(n_j)
         self.nj = nj
         self.l_j = l_j
         self.n_j = n_j
         
-        self.f_j = []
         self.rcut_j = []
         self.pt_jg = []
         
-        for n, l, v in zip(n_j, l_j, v_j):
+        for n, l in zip(n_j, l_j):
             # Note: even pseudopotentials without projectors will get one
             # projector, but the coefficients h_ij should be zero so it
             # doesn't matter
-            pt_g = create_hgh_projector(rgd.r_g, l, n, v.r0)
+            pt_g = create_hgh_projector(rgd.r_g, l, n, hghdata.v_l[l].r0)
             norm = sqrt(np.dot(rgd.dr_g, pt_g**2 * rgd.r_g**2))
             assert np.abs(1 - norm) < 1e-5, str(1 - norm)
             gcut, rcut = self.find_cutoff(rgd.r_g, rgd.dr_g, pt_g, threshold)
@@ -245,30 +236,19 @@ class HGHSetupData:
             self.rcut_j.append(rcut)
             self.pt_jg.append(pt_g)
 
-        Z, nlfe_j = configurations[self.symbol]
-        nlfe_j = list(nlfe_j)
-        nlfe_j.reverse()
-        f_ln = [[], [], []] # [[s], [p], [d]]
-        Nv = 0
-        for n, l, f, e in nlfe_j:
-            Nv += f
-            f_n = f_ln[l]
-            assert f_n == []
-            f_n.append(f)
-            if Nv >= self.Nv:
-                break
-        assert Nv == self.Nv#abs(Nv - self.Nv) < 1e-12
-        self.f_ln = f_ln
-        self.f_j = [0] * nj
-        for j, (n, l) in enumerate(self.hghdata.nl_iter()):
-            try:
-                self.f_j[j] = f_ln[l][n]
-            except IndexError:
-                pass
-
         # This is the correct magnitude of the otherwise normalized
         # compensation charge
         self.Delta0 = -self.Nv / sqrt(4.0 * pi)
+
+        f_ln = self.hghdata.get_occupation_numbers()
+        f_j = [0] * nj
+        for j, (n, l) in enumerate(self.hghdata.nl_iter()):
+            try:
+                f_j[j] = f_ln[l][n]
+            except IndexError:
+                pass
+        self.f_ln = f_ln
+        self.f_j = f_j
 
     def find_cutoff(self, r_g, dr_g, f_g, sqrtailnorm=1e-5):
         g = len(r_g)
@@ -508,6 +488,22 @@ class HGHParameterSet:
             for l, v in enumerate(self.v_l):
                 if n < v.nn:
                     yield n, l
+
+    def get_occupation_numbers(self):
+        Z, nlfe_j = configurations[self.symbol.split('.')[0]]
+        nlfe_j = list(nlfe_j)
+        nlfe_j.reverse()
+        f_ln = [[], [], []] # [[s], [p], [d]]
+        Nv = 0
+        for n, l, f, e in nlfe_j:
+            Nv += f
+            f_n = f_ln[l]
+            assert f_n == []
+            f_n.append(f)
+            if Nv >= self.Nv:
+                break
+        assert Nv == self.Nv
+        return f_ln
         
 def parse_local_part(string):
     """Create HGHParameterSet object with local part initialized."""
