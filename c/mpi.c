@@ -254,6 +254,57 @@ static PyObject * mpi_wait(MPIObject *self, PyObject *args)
   Py_RETURN_NONE;
 }
 
+static PyObject * mpi_waitall(MPIObject *self, PyObject *requests)
+{
+  int n;   // Number of requests
+  int ret;
+  MPI_Request *rqs = NULL;
+  PyObject **bufs = NULL;
+  if (!PySequence_Check(requests))
+    {
+      PyErr_SetString(PyExc_TypeError, "mpi.waitall: argument must be a sequence");
+      return NULL;
+    }
+  // Extract the 
+  n = PySequence_Size(requests);
+  assert(n >= 0);  // This cannot fail.
+  rqs = GPAW_MALLOC(MPI_Request, n);
+  bufs = GPAW_MALLOC(PyObject*, n);
+  for (int i = 0; i < n; i++)
+    {
+      PyObject *o = PySequence_GetItem(requests, i);
+      if (o == NULL)
+	return NULL;
+      if (!PyString_CheckExact(o) || (PyString_Size(o) != sizeof(mpi_request)))
+	{
+	  Py_DECREF(o);
+	  free(rqs);
+	  free(bufs);
+	  PyErr_SetString(PyExc_TypeError, "mpi.waitall: argument must be a sequence of MPI requests");
+	  return NULL;
+	}
+      mpi_request *s = (mpi_request *) PyString_AS_STRING(o);
+      //memcpy(rqs[i], &(s->rq), sizeof(MPI_Request));
+      rqs[i] = s->rq;
+      bufs[i] = s->buffer;
+      Py_DECREF(o);
+    }
+  ret = MPI_Waitall(n, rqs, MPI_STATUSES_IGNORE);
+  for (int i = 0; i < n; i++)
+    Py_DECREF(bufs[i]);
+  free(rqs);
+  free(bufs);
+#ifdef GPAW_MPI_DEBUG
+  if (ret != MPI_SUCCESS)
+    {
+      PyErr_SetString(PyExc_RuntimeError, "MPI_Waitall error occured.");
+      return NULL;
+    }
+#endif
+  Py_RETURN_NONE;
+}
+ 
+
 static MPI_Datatype get_mpi_datatype(PyObject *a)
 {
   int n = PyArray_DESCR(a)->elsize;
@@ -594,6 +645,8 @@ static PyMethodDef mpi_methods[] = {
      "barrier() synchronizes all MPI tasks"},
     {"wait",             (PyCFunction)mpi_wait,         METH_VARARGS,
      "wait(request) waits for a nonblocking communication to complete."},
+    {"waitall",          (PyCFunction)mpi_waitall,      METH_O,
+     "waitall(list_of_rqs) waits for multiple nonblocking communications to complete."},
     {"sum",              (PyCFunction)mpi_sum,
      METH_VARARGS|METH_KEYWORDS,
      "sum(a, root=-1) sums arrays, result on all tasks unless root is given."},
