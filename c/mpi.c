@@ -265,7 +265,7 @@ static PyObject * mpi_waitall(MPIObject *self, PyObject *requests)
       PyErr_SetString(PyExc_TypeError, "mpi.waitall: argument must be a sequence");
       return NULL;
     }
-  // Extract the 
+  // Extract the request objects 
   n = PySequence_Size(requests);
   assert(n >= 0);  // This cannot fail.
   rqs = GPAW_MALLOC(MPI_Request, n);
@@ -289,18 +289,22 @@ static PyObject * mpi_waitall(MPIObject *self, PyObject *requests)
       bufs[i] = s->buffer;
       Py_DECREF(o);
     }
+  // Do the actual wait.
   ret = MPI_Waitall(n, rqs, MPI_STATUSES_IGNORE);
-  for (int i = 0; i < n; i++)
-    Py_DECREF(bufs[i]);
-  free(rqs);
-  free(bufs);
 #ifdef GPAW_MPI_DEBUG
   if (ret != MPI_SUCCESS)
     {
+      // We do not dare to release the buffers now!
       PyErr_SetString(PyExc_RuntimeError, "MPI_Waitall error occured.");
       return NULL;
     }
 #endif
+  // Release the buffers used by the MPI communication
+  for (int i = 0; i < n; i++)
+    Py_DECREF(bufs[i]);
+  // Release internal data and return.
+  free(rqs);
+  free(bufs);
   Py_RETURN_NONE;
 }
  
