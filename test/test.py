@@ -124,6 +124,7 @@ if len(tests) == 0:
         'CL_minus.py',
         'gemm.py',
         'gemv.py',
+        'ncsfsic.py',
         'fermilevel.py',
         'degeneracy.py',
         'h2o-xas.py',

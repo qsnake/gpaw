@@ -594,11 +594,30 @@ class NewXCCorrection(BaseXCCorrection):
                 
     def expand_density(self, D_sLq, n_qg, nc_g, ncorehole_g=None):
         n_sLg = npy.dot(D_sLq, n_qg)
-        n_sLg[:, 0] += (sqrt(4 * pi) / self.nspins) * nc_g
+        if nc_g is not None:
+            n_sLg[:, 0] += (sqrt(4 * pi) / self.nspins) * nc_g
         if self.nspins == 2 and ncorehole_g is not None:
             axpy(-sqrt(pi), ncorehole_g, n_sLg[0, 0])
             axpy(+sqrt(pi), ncorehole_g, n_sLg[1, 0])
         return DensityExpansion(n_sLg, self.Y_nL, self.rgd)
+
+    def expand_ae_density(self, D_sp, core=True):
+        D_sLq = gemmdot(D_sp, self.B_Lqp, trans='t')
+        if core:
+            nc_g = self.nc_g
+        else:
+            nc_g = None
+            
+        return self.expand_density(D_sLq, self.n_qg, nc_g)
+
+    def expand_pseudo_density(self, D_sp, core=True):
+        D_sLq = gemmdot(D_sp, self.B_Lqp, trans='t')
+        if core:
+            nc_g = self.nct_g
+        else:
+            nc_g = None
+            
+        return self.expand_density(D_sLq, self.nt_qg, nc_g)
 
     def get_integrator(self, H_sp):
         libxc = self.xc.get_functional().uses_libxc

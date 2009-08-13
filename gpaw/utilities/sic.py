@@ -26,10 +26,11 @@ class NSCFSIC:
             g = Generator(setup.symbol, xcname='LDA',nofiles=True, txt=None)
             g.run(**parameters[setup.symbol])
             njcore = g.njcore
-            for f, e, u in zip(g.f_j[:njcore], g.e_j[:njcore], g.u_j[:njcore]):
+            for f, l, e, u in zip(g.f_j[:njcore], g.l_j[:njcore], g.e_j[:njcore], g.u_j[:njcore]):
                 # Calculate orbital density
                 # NOTE: It's spherically symmetrized!
                 #n = npy.dot(self.f_j,
+                assert l == 0, ("Not tested for l>0 core states")
                 na = npy.where(abs(u) < 1e-160, 0,u)**2 / (4 * pi)
                 na[1:] /= g.r[1:]**2
                 na[0] = na[1]
@@ -55,6 +56,7 @@ class NSCFSIC:
         # For each state
         print "Valence electron sic "
         print "%10s%10s%10s%10s%10s%10s" % ("spin", "k-point", "band", "E_xc[n_i]", "E_Ha[n_i]", "E_SIC")
+        assert len(self.paw.wfs.kpt_u)==1, ("Not tested for bulk calculations")
         for kpt in self.paw.wfs.kpt_u:
             for n, psit_G in enumerate(kpt.psit_nG):
                 nt_sG[:] = 0.0
@@ -101,7 +103,9 @@ class NSCFSIC:
                     if len(D_sp) == 1:
                         D_p2 = D_sp[0].copy()
                         D_p2[:] = 0.0
-                        D_sp = [ D_sp[0], D_p2 ]
+                        D_sp = npy.array([ D_sp[0], D_p2 ])
+                    else:
+                        raise NotImplementedError
                         
                     vxc_sg = npy.zeros((2, xccorr.ng))
                     vxct_sg = npy.zeros((2, xccorr.ng))
@@ -110,14 +114,14 @@ class NSCFSIC:
                     e2 = npy.zeros((xccorr.ng))
 
                     # Loop over each sline
-                    for n1_sg, n1t_sg, i_slice in izip(xccorr.expand_density(D_sp, core=False),
+                    for n1_sg, n1t_sg, i_slice in izip(xccorr.expand_ae_density(D_sp, core=False),
                                                      xccorr.expand_pseudo_density(D_sp, core=False),
                                                      integrator):
                         xc.calculate_spinpolarized(e, n1_sg[0], vxc_sg[0], n1_sg[1], vxc_sg[1])
-                        E = npy.dot(e, xccorr.dv_g)
+                        Exc += i_slice.integrate_e_g(e)
                         xc.calculate_spinpolarized(e2, n1t_sg[0], vxct_sg[0], n1t_sg[1], vxct_sg[1])
-                        E2 = npy.dot(e2, xccorr.dv_g)
-                        Exc += integrator.integrate_E(i_slice, E-E2)
+                        Exc -= i_slice.integrate_e_g(e2)
+                        
                 ESIC+=-kpt.f_n[n]*(Exc+EH)
                 print "%10i%10i%10i%10.2f%10.2f%10.2f" % (kpt.s, kpt.k, n, Exc*27.21, EH*27.21, -kpt.f_n[n]*(Exc+EH)*27.21) 
         print "Total correction for self-interaction energy:"
