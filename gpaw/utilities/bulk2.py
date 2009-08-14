@@ -19,6 +19,7 @@ from ase.data import covalent_radii
 from gpaw.aseinterface import GPAW
 from gpaw.poisson import PoissonSolver
 from gpaw.mpi import world
+from gpaw.utilities import devnull
 
 # Magnetic moments of isolated atoms:
 magmom = {'C': 2, 'N': 3, 'Pt': 2, 'F': 1, 'Mg': 0, 'Na': 1, 'Cl': 1, 'Al': 1,
@@ -29,7 +30,8 @@ class Runner:
 
     Subclasses must implement set_calculator() method."""
     
-    def __init__(self, name, atoms, strains=None, tag='', clean=False):
+    def __init__(self, name, atoms, strains=None, tag='', clean=False,
+                 out='-'):
         """Construct runner object.
 
         Results will be written to trajectory files or read from those
@@ -48,24 +50,40 @@ class Runner:
             Do *not* read results from files.
         """
         
-        self.name = name
-        self.atoms = atoms
-
         if strains is None:
             strains = [1.0]
-        self.strains = np.array(strains)
-        
+
         if tag:
             self.tag = '-' + tag
         else:
             self.tag = ''
 
+        if world.rank == 0:
+            if out is None:
+                out = devnull
+            elif isinstance(out, str):
+                if out == ' ':
+                    out = sys.stdout
+                else:
+                    out = open(out, 'w')
+        else:
+            out = devnull
+            
+        self.name = name
+        self.atoms = atoms
+        self.strains = np.array(strains)
         self.clean = clean
+        self.out = out
         
         self.volumes = None
         self.energies = None
         self.atomic_energies = {}  # for calculating atomization energy
-        
+
+    def log(self, *args, **kwargs):
+        self.out.write(kwargs.get('sep', ' ').join([str(arg)
+                                                    for arg in args]) +
+                       kwargs.get('end', '\n'))
+
     def run(self):
         """Start calculation or read results from file."""
         filename = '%s%s.traj' % (self.name, self.tag)
@@ -73,16 +91,16 @@ class Runner:
             world.barrier()
             if world.rank == 0:
                 open(filename, 'w')
-            print 'Calculating', self.name, '...'
+            self.log('Calculating', self.name, '...')
             self.calculate(filename)
         else:
             try:
-                print 'Reading', filename,
+                self.log('Reading', filename, end=' ')
                 configs = read(filename, ':')
             except IOError:
-                print 'FAILED'
+                self.log('FAILED')
             else:
-                print
+                self.log()
                 if len(configs) == len(self.strains):
                     # Extract volumes and energies:
                     self.volumes = [a.get_volume() for a in configs]
@@ -97,16 +115,16 @@ class Runner:
                     world.barrier()
                     if world.rank == 0:
                         open(filename, 'w')
-                    print 'Calculating', symbol, 'atom ...'
+                    self.log('Calculating', symbol, 'atom ...')
                     self.calculate_isolated_atom(symbol, filename)
                 else:
                     try:
-                        print 'Reading', filename,
+                        self.log('Reading', filename, end=' ')
                         atom = read(filename)
                     except IOError:
-                        print 'FAILED'
+                        self.log('FAILED')
                     else:
-                        print
+                        self.log()
                         e = atom.get_potential_energy()
                         self.atomic_energies[symbol] = e
                 
@@ -138,25 +156,25 @@ class Runner:
     
     def summary(self, plot=False, a0=None):
         natoms = len(self.atoms)
-        e = None
+        e = v = B = ec = a = None
         if self.energies and len(self.energies) > 1:
             eos = EquationOfState(self.volumes, self.energies)
             v, e, B = eos.fit()
             a = a0 * (v / self.atoms.get_volume())**(1.0 / 3)
-            print 'Fit using %d points:' % len(self.energies)
-            print 'Volume per atom: %.3f Ang^3' % (v / natoms)
-            print 'Lattice constant: %.3f Ang' % a
-            print 'Bulk modulus: %.1f GPa' % (B * 1e24 / units.kJ)
+            self.log('Fit using %d points:' % len(self.energies))
+            self.log('Volume per atom: %.3f Ang^3' % (v / natoms))
+            self.log('Lattice constant: %.3f Ang' % a)
+            self.log('Bulk modulus: %.1f GPa' % (B * 1e24 / units.kJ))
         elif self.energies and len(self.energies) == 1:
             e = self.energies[0]
 
         if e is not None:
-            print ('Total energy: %.3f eV (%d atom%s)' %
-                   (e, natoms, ' s'[1:natoms]))
+            self.log('Total energy: %.3f eV (%d atom%s)' %
+                     (e, natoms, ' s'[1:natoms]))
 
             
         for symbol, ea in self.atomic_energies.items():
-            print 'Energy of %s atom: %.3f eV' % (symbol, ea)
+            self.log('Energy of %s atom: %.3f eV' % (symbol, ea))
             
         if e is not None:
             ec = -e
@@ -168,7 +186,8 @@ class Runner:
                     break
                 
             if ec is not None:
-                print 'Cohesive energy: %.3f eV' % (ec / natoms)
+                ec /= natoms
+                self.log('Cohesive energy: %.3f eV' % ec)
 
             if plot:
                 import pylab as plt
@@ -177,6 +196,7 @@ class Runner:
                 plt.plot(x, eos.fit0(x**-(1.0 / 3)), '-r')
                 plt.show()
 
+        return e, v, B, ec, a
 
 class EMTRunner(Runner):
     """EMT implementation"""
