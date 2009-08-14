@@ -2015,12 +2015,11 @@ class Transport(GPAW):
                 comp_charge = density.calculate_multipole_moments()
                 density.interpolate(comp_charge)
                 density.calculate_pseudo_charge(comp_charge)
-                #self.surround.normalize2()
             else:
                 density.nt_sG = self.gd.empty(self.nspins)
                 density.calculate_pseudo_density(wfs)
 
-        self.update_hamiltonian()                   
+        self.hamiltonian.update(density)                   
         self.scf.reset()
         self.forces.reset()
         self.print_positions()
