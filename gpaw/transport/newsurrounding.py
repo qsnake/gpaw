@@ -61,7 +61,8 @@ class Side:
         
     def slice(self, nn, in_array):
         if self.type == 'LR':
-            seq1 = np.arange(-nn + 1, 1)
+            #seq1 = np.arange(-nn + 1, 1)
+            seq1 = np.arange(nn)            
             seq2 = np.arange(nn)
             di = len(in_array.shape) - 1
             if self.direction == '-':
@@ -113,16 +114,16 @@ class Surrounding:
         if self.type == 'all':
             raise NotImplementError('type all not yet')
             
-    def get_extra_density(self):
+    def get_extra_density(self, vHt_g):
         if self.type == 'LR':
             rhot_g = self.tp.finegd.zeros()
-            self.operator.apply(self.tp.hamiltonian.vHt_g, rhot_g)
+            self.operator.apply(vHt_g, rhot_g)
             nn = self.nn[0] * 2
-            self.extra_rhot_g = self.uncapsule(nn, rhot_g)
+            self.extra_rhot_g = self.uncapsule(nn, rhot_g, self.tp.finegd,
+                                                       self.tp.finegd0)
 
-    def capsule(self, nn, loc_in_array):
+    def capsule(self, nn, loc_in_array, gd, gd0):
         ns = self.tp.nspins
-        gd, gd0 = self.tp.finegd, self.tp.finegd0
         cap_array = gd.collect(self.tp.hamiltonian.vHt_g, True)
         in_array = gd0.collect(loc_in_array, True)
         if len(in_array.shape) == 4:
@@ -134,12 +135,13 @@ class Surrounding:
         gd.distribute(cap_array, local_cap_array)
         return local_cap_array
     
-    def uncapsule(self, nn, in_array, nn2=None):
-        gd, gd0 = self.tp.finegd, self.tp.finegd0
+    def uncapsule(self, nn, in_array, gd, gd0, nn2=None):
         nn1 = nn
         if nn2 == None:
             nn2 = nn1
         di = 2
+        if len(in_array.shape) == 4:
+            di += 1
         local_uncap_array = gd0.zeros()
         global_in_array = gd.collect(in_array, True)
         seq = np.arange(nn1, global_in_array.shape[di] - nn2)    
@@ -157,16 +159,24 @@ class Surrounding:
                 ham.vt_sG = ham.gd.empty(ham.nspins)
                 ham.poisson.initialize()
             vHt_g = ham.finegd.zeros(global_array=True)
+            extra_vHt_g = ham.finegd.zeros(global_array=True)
+            loc_extra_vHt_g = ham.finegd.zeros()
+            
             bias_shift0 = self.bias_index['-'] / Hartree
             bias_shift1 = self.bias_index['+'] / Hartree
             vHt_g[:, :, :nn] = self.sides['-'].boundary_vHt_g + bias_shift0
             vHt_g[:, :, -nn:] = self.sides['+'].boundary_vHt_g + bias_shift1
+            extra_vHt_g[:, :, :nn] = bias_shift0
+            extra_vHt_g[:, :, -nn:] = bias_shift1
             ham.finegd.distribute(vHt_g, ham.vHt_g)
-            self.get_extra_density()
+            ham.finegd.distribute(extra_vHt_g, loc_extra_vHt_g)
+            self.get_extra_density(loc_extra_vHt_g)
+            #self.get_extra_density(ham.vHt_g)
 
     def combine_vHt_g(self, vHt_g):
         nn = self.nn[0] * 2
-        self.tp.hamiltonian.vHt_g = self.capsule(nn, vHt_g)
+        self.tp.hamiltonian.vHt_g = self.capsule(nn, vHt_g, self.tp.finegd,
+                                                  self.tp.finegd0)
 
     def combine_nt_sG(self):
         nn = self.nn[0]
@@ -198,7 +208,36 @@ class Surrounding:
        
     def abstract_inner_rhot(self):
         nn = self.nn[0] * 2
-        rhot_g = self.uncapsule(nn, self.tp.density.rhot_g)
+        rhot_g = self.uncapsule(nn, self.tp.density.rhot_g, self.tp.finegd,
+                                                       self.tp.finegd0)
         rhot_g -= self.extra_rhot_g
         return rhot_g
+        
+    def normalize(self, comp_charge):    
+        nn = self.nn[0]
+        density = self.tp.density
+        nt_sG = self.uncapsule(nn, density.nt_sG,
+                                self.tp.gd, self.tp.gd0)
+        pseudo_charge = self.tp.gd0.integrate(nt_sG).sum()
+        if pseudo_charge != 0:
+            x = -(density.charge + comp_charge) / pseudo_charge
+            density.nt_sG *= x
+            print 'surround scaling', x
+
+    def normalize2(self):
+        density = self.tp.density
+        finegd, finegd0 = self.tp.finegd, self.tp.finegd0
+        nn = self.nn[0] * 2
+        rhot_g_plus = self.tp.finegd.zeros()
+        density.ghat.add(rhot_g_plus, density.Q_aL)
+        inner_rhot_g_plus = self.uncapsule(nn, rhot_g_plus, finegd, finegd0)
+        inner_rhot_g = self.uncapsule(nn, density.rhot_g, finegd, finegd0)
+        charge0 = finegd0.integrate(inner_rhot_g)
+        charge1 = finegd0.integrate(inner_rhot_g_plus)
+        if charge0 != 0:
+            scaling = -charge1 / charge0
+            density.rhot_g *= scaling
+            density.nt_sg *= scaling
+            print 'surround scaling', scaling
+        density.rhot_g += rhot_g_plus
         
