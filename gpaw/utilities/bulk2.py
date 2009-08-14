@@ -62,7 +62,7 @@ class Runner:
             if out is None:
                 out = devnull
             elif isinstance(out, str):
-                if out == ' ':
+                if out == '-':
                     out = sys.stdout
                 else:
                     out = open(out, 'w')

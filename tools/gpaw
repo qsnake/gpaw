@@ -13,6 +13,7 @@ from ase.io import read, write
 
 from gpaw.utilities.bulk2 import bulk, estimate_lattice_constant
 from gpaw.utilities.bulk2 import EMTRunner, GPAWRunner
+from gpaw.mpi import world
 
 
 description = ('Run GPAW calculation for simple atoms, molecules or '
@@ -35,7 +36,7 @@ parser.add_option('--c_over_a', type='float',
 parser.add_option('-v', '--vacuum', type='float', default=3.0,
                   help='Amount of vacuum to add around isolated systems '
                   '(in Angstrom).')
-parser.add_option('-o', '--orthorhombic', action='store_true',
+parser.add_option('--orthorhombic', action='store_true',
                   help='Use orthorhombic unit cell.')
 parser.add_option('-r', '--repeat',
                   help='Repeat unit cell.  Use "-r 2" or "-r 2,3,1".')
@@ -55,6 +56,9 @@ parser.add_option('-O', '--optimize', action='store_true',
                   help='Find optimal volume or bondlength.')
 parser.add_option('-A', '--atomization-energy', action='store_true',
                   help='Calculate atomization energy or cohesive energy.')
+parser.add_option('-o', '--output', default='-',
+                  help="Write output to file.  Use '-' for stdout "
+                  '(the default).')
 
 # Calculator:
 parser.add_option('-e', '--effective-medium-theory',
@@ -87,6 +91,14 @@ def run():
         parser.error("incorrect number of arguments")
     name = args[0]
     
+    if world.rank == 0:
+        if opt.output == '-':
+            out = sys.stdout
+        else:
+            out = open(opt.output, 'w')
+    else:
+        out = devnull
+
     a = None
     try:
         symbols = string2symbols(name)
@@ -99,7 +111,8 @@ def run():
             if a is None:
                 a = estimate_lattice_constant(name, opt.crystal_structure,
                                               opt.c_over_a)
-                print 'Using an estimated lattice constant of %.3f Ang' % a
+                out.write('Using an estimated lattice constant of %.3f Ang\n' %
+                          a)
 
             atoms = bulk(name, opt.crystal_structure, a, opt.c_over_a,
                          orthorhombic=opt.orthorhombic)
@@ -147,7 +160,8 @@ def run():
     else:
         strains = None
         
-    runner = Runner(name, atoms, strains, tag=opt.identifier, clean=opt.clean)
+    runner = Runner(name, atoms, strains, tag=opt.identifier, clean=opt.clean,
+                    out=out)
 
     if not opt.effective_medium_theory:
         if opt.brillouin_zone_sampling:
