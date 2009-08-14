@@ -28,11 +28,11 @@ parser.add_option('-x', '--crystal-structure',
                   help='Crystal structure.',
                   choices=['sc', 'fcc', 'bcc', 'diamond', 'hcp', 'rocksalt',
                            'zincblende'])
-parser.add_option('-a', '--lattice-constant', type=float,
+parser.add_option('-a', '--lattice-constant', type='float',
                   help='Lattice constant in Angstrom.')
-parser.add_option('--c_over_a', type=float,
+parser.add_option('--c_over_a', type='float',
                   help='c/a ratio.')
-parser.add_option('-v', '--vacuum', type=float, default=3.0,
+parser.add_option('-v', '--vacuum', type='float', default=3.0,
                   help='Amount of vacuum to add around isolated systems '
                   '(in Angstrom).')
 parser.add_option('-o', '--orthorhombic', action='store_true',
@@ -66,9 +66,9 @@ parser.add_option('-b', '--basis',
                   help='Basis set.')
 parser.add_option('-k', '--brillouin-zone-sampling', metavar='K1,K2,K3',
                   help='Number of k-points.  Example: -k 4,4,1.')
-parser.add_option('-g', '--grid-spacing', type=float, default=0.2,
+parser.add_option('-g', '--grid-spacing', type='float', default=0.2,
                   help='Grid spacing in Angstrom.  Deafault is 0.2.')
-parser.add_option('-T', '--smearing-width', type=float, default=0.1,
+parser.add_option('-T', '--smearing-width', type='float', default=0.1,
                   metavar='WIDTH',
                   help='Occupation number smearing width in eV.  Default '
                   'is 0.1 eV.')
