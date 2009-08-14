@@ -59,73 +59,73 @@ int Csys2blacs_handle_(MPI_Comm SysCtxt);
 // tools
 int numroc_(int* n, int* nb, int* iproc, int* isrcproc, int* nprocs);
 
-void Cpdgemr2d_(const int* m, const int* n, const double* a, 
-                const int* ia, const int* ja, const int* desca,
-                double* b, const int ib, const int* jb, const int* descb, 
-                const int* gcontext);
+void Cpdgemr2d_(int m, int n, 
+                double* a, int ia, int ja, int* desca,
+                double* b, int ib, int jb, int* descb, 
+                int gcontext);
 
-void Cpzgemr2d_(const int* m, const int* n, 
-                const void* a, const int* ia, const int* ja, const int* desca,
-                void* b, const int* ib, const int* jb, const int* descb, 
-                const int* gcontext);
+void Cpzgemr2d_(int m, int n, 
+                void* a, int ia, int ja, int* desca,
+                void* b, int ib, int jb, int* descb, 
+                int gcontext);
 
-void Cpdgemr2do_(const int* m, const int* n, const double* a, 
-                 const int* ia, const int* ja, const int* desca,
-                 double* b, const int* ib, const int* jb, const int* descb);
+void Cpdgemr2do_(int m, int n, 
+                 double* a, int ia, int ja, int* desca,
+                 double* b, int ib, int jb, int* descb);
 
-void Cpzgemr2do_(const int* m, const int* n, const void* a, 
-                 const int ia, const int ja, const int* desca,
-                 void* b, const int ib, const int jb, const int* descb);
+void Cpzgemr2do_(int m, int n, 
+                 void* a, int ia, int ja, int* desca,
+                 void* b, int ib, int jb, int* descb);
 
-double pdlamch_(const int* ictxt, const char* cmach);
+double pdlamch_(int* ictxt, char* cmach);
 
 // cholesky
-void pdpotrf_(const char* uplo, const int* n, double* a, 
-              const int* ia, const int* ja, const int* desca, int* info);
+void pdpotrf_(char* uplo, int* n, double* a, 
+              int* ia, int* ja, int* desca, int* info);
 
-void pzpotrf_(const char* uplo, const int* n, void* a, 
-              const int* ia, const int* ja, const int* desca, int* info);
+void pzpotrf_(char* uplo, int* n, void* a, 
+              int* ia, int* ja, int* desca, int* info);
 
-void pdtrtri_(const char* uplo, const char* diag, const int* n, double* a, 
-              const int *ia, const int* ja, const int* desca, int* info);
+void pdtrtri_(char* uplo, char* diag, int* n, double* a, 
+              int *ia, int* ja, int* desca, int* info);
 
-void pztrtri_(const char* uplo, const char* diag, const int* n, void* a, 
-              const int *ia, int* ja, const int* desca, int* info);
+void pztrtri_(char* uplo, char* diag, int* n, void* a, 
+              int *ia, int* ja, int* desca, int* info);
 
 // diagonalization
-void pdsyevd_(const char* jobz, const char* uplo, const int* n, 
-              double* a, const int* ia, const int* ja, const int* desca, 
-              double* w, double* z, const int* iz, const int* jz, 
-              const int* descz, double* work, const int* lwork, int* iwork, 
-              const int* liwork, int* info);
+void pdsyevd_(char* jobz, char* uplo, int* n, 
+              double* a, int* ia, int* ja, int* desca, 
+              double* w, double* z, int* iz, int* jz, 
+              int* descz, double* work, int* lwork, int* iwork, 
+              int* liwork, int* info);
 
-void pzheevd_(const char* jobz, const char* uplo, const int* n, 
-              void* a, const int* ia, const int* ja, const int* desca, 
-              double* w, void* z, const int* iz, const int* jz, 
-              const int* descz, void* work, const int* lwork, double* rwork, 
-              const int* lrwork, int* iwork, const int* liwork, int* info);
+void pzheevd_(char* jobz, char* uplo, int* n, 
+              void* a, int* ia, int* ja, int* desca, 
+              double* w, void* z, int* iz, int* jz, 
+              int* descz, void* work, int* lwork, double* rwork, 
+              int* lrwork, int* iwork, int* liwork, int* info);
 
-void pdsygvx_(const int* ibtype, const char* jobz, const char* range, 
-              const char* uplo, const int* n,
-              double* a, const int* ia, const int* ja, const int* desca, 
-              double* b, const int *ib, const int* jb, const int* descb, 
-              const double* vl, const double* vu, 
-              const int* il, const int* iu, const double* abstol, 
-              int* m, int* nz, double* w, const double* orfac, 
-              double* z, const int* iz, const int* jz, const int* descz, 
-              double* work, const int* lwork, int* iwork, const int* liwork, 
+void pdsygvx_(int* ibtype, char* jobz, char* range, 
+              char* uplo, int* n,
+              double* a, int* ia, int* ja, int* desca, 
+              double* b, int *ib, int* jb, int* descb, 
+              double* vl, double* vu, 
+              int* il, int* iu, double* abstol, 
+              int* m, int* nz, double* w, double* orfac, 
+              double* z, int* iz, int* jz, int* descz, 
+              double* work, int* lwork, int* iwork, int* liwork, 
               int* ifail, int* iclustr, double* gap, int* info);
 
-void pzhegvx_(const int* ibtype, const char* jobz, const char* range, 
-              const char* uplo, const int* n,
-              void* a, const int* ia, const int* ja, const int* desca, 
-              void* b, const int *ib, const int* jb, const int* descb, 
-              const double* vl, const double* vu, 
-              const int* il, const int* iu, const double* abstol, 
-              int* m, int* nz,  double* w, const double* orfac, 
-              void* z, const int* iz, const int* jz, const int* descz, 
-              void* work, const int* lwork, double* rwork, const int lrwork,
-              int* iwork, const int* liwork, 
+void pzhegvx_(int* ibtype, char* jobz, char* range, 
+              char* uplo, int* n,
+              void* a, int* ia, int* ja, int* desca, 
+              void* b, int *ib, int* jb, int* descb, 
+              double* vl, double* vu, 
+              int* il, int* iu, double* abstol, 
+              int* m, int* nz,  double* w, double* orfac, 
+              void* z, int* iz, int* jz, int* descz, 
+              void* work, int* lwork, double* rwork, int* lrwork,
+              int* iwork, int* liwork, 
               int* ifail, int* iclustr, double* gap, int* info);
 
 PyObject* blacs_create(PyObject *self, PyObject *args)
@@ -313,11 +313,11 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
   if (comm_obj == Py_None)
     {
       if (a_obj->descr->type_num == PyArray_DOUBLE)
-        Cpdgemr2do_(&m, &n, DOUBLEP(a_obj), &one, &one, INTP(adesc), 
-                    DOUBLEP(b_obj), &one, &one, INTP(bdesc));
+        Cpdgemr2do_(m, n, DOUBLEP(a_obj), one, one, INTP(adesc), 
+                    DOUBLEP(b_obj), one, one, INTP(bdesc));
       else
-        Cpzgemr2do_(&m, &n, (void*)COMPLEXP(a_obj), &one, &one, INTP(adesc), 
-                    (void*)COMPLEXP(b_obj), &one, &one, INTP(bdesc));	
+        Cpzgemr2do_(m, n, (void*)COMPLEXP(a_obj), one, one, INTP(adesc), 
+                    (void*)COMPLEXP(b_obj), one, one, INTP(bdesc));	
     }
   else
     {
@@ -328,11 +328,11 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
       c_ConTxt = Csys2blacs_handle(comm);
       Cblacs_gridinit(&c_ConTxt, &order, 1, nprocs);
       if (a_obj->descr->type_num == PyArray_DOUBLE)
-        Cpdgemr2d_(&m, &n, DOUBLEP(a_obj), &one, &one, INTP(adesc), 
-                   DOUBLEP(b_obj), &one, &one, INTP(bdesc), c_ConTxt);
+        Cpdgemr2d_(m, n, DOUBLEP(a_obj), one, one, INTP(adesc), 
+                   DOUBLEP(b_obj), one, one, INTP(bdesc), c_ConTxt);
       else
-        Cpzgemr2d_(&m, &n, (void*)COMPLEXP(a_obj), &one, &one, INTP(adesc), 
-                   (void*)COMPLEXP(b_obj), &one, &one, INTP(bdesc), &c_ConTxt);
+        Cpzgemr2d_(m, n, (void*)COMPLEXP(a_obj), one, one, INTP(adesc), 
+                   (void*)COMPLEXP(b_obj), one, one, INTP(bdesc), c_ConTxt);
       Cblacs_gridexit(c_ConTxt);
     }
 
@@ -446,8 +446,8 @@ PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args)
           double* dwork = (double *)work;
           pdsyevd_(&jobz, &uplo, &n, DOUBLEP(a_obj), &one, &one, 
                    INTP(adesc), DOUBLEP(w_obj), DOUBLEP(z_obj), 
-                   &one,  &one, &zdesc, &dwork, &querylwork, 
-                   &iwork, &liwork, &info);
+                   &one,  &one, zdesc, dwork, &querylwork, 
+                   iwork, &liwork, &info);
           lwork = (int)(dwork[0]+0.1); // give extra space to 
                                        // avoid complaint 
                                        // from PDORMTR
@@ -459,8 +459,8 @@ PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args)
           rwork = GPAW_MALLOC(double, 1);
           pzheevd_(&jobz, &uplo, &n, (void*)COMPLEXP(a_obj), &one, &one, 
                    INTP(adesc), DOUBLEP(w_obj), (void*)COMPLEXP(z_obj), 
-                   &one,  &one, &zdesc, &work, &querylwork, &rwork, &lrwork, 
-                   &iwork, &liwork, &info);
+                   &one,  &one, zdesc, work, &querylwork, rwork, &lrwork, 
+                   iwork, &liwork, &info);
           lwork = (int)(cwork[0]+0.1); // give extra space to
                                        // avoid complaint
                                        // from PDORMTR
@@ -481,16 +481,16 @@ PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args)
           double* dwork = (double *)work;
           pdsyevd_(&jobz, &uplo, &n, DOUBLEP(a_obj), &one, &one, 
                    INTP(adesc), DOUBLEP(w_obj), DOUBLEP(z_obj), 
-                   &one, &one, &zdesc, &dwork, &lwork, 
-                   &iwork, &liwork, &info);
+                   &one, &one, zdesc, dwork, &lwork, 
+                   iwork, &liwork, &info);
         }
       else
         {
           work = GPAW_MALLOC(double_complex, lwork);
           pzheevd_(&jobz, &uplo, &n, (void*)COMPLEXP(a_obj), &one, &one, 
                    INTP(adesc), DOUBLEP(w_obj), (void*)COMPLEXP(z_obj), 
-                   &one, &one, &zdesc, &work, &lwork, &rwork, &lrwork,
-                   &iwork, &liwork, &info);
+                   &one, &one, zdesc, work, &lwork, rwork, &lrwork,
+                   iwork, &liwork, &info);
           free(rwork);
         }
       printf("computation info = %d\n", info);
@@ -636,8 +636,8 @@ PyObject* scalapack_general_diagonalize(PyObject *self, PyObject *args)
                    &one, &one, INTP(adesc), DOUBLEP(b_obj), &one, &one, 
                    INTP(adesc), &vl, &vu, &il, &iu, &abstol, &eigvalm, 
                    &nz, DOUBLEP(w_obj), &orfac, DOUBLEP(z_obj), 
-                   &one, &one, &zdesc, dwork, &querylwork, 
-                   &iwork, &liwork, &ifail, &iclustr, &gap, &info);
+                   &one, &one, zdesc, dwork, &querylwork, 
+                   iwork, &liwork, ifail, iclustr, gap, &info);
           lwork = (int)(dwork[0]);
         }
       else
@@ -649,8 +649,8 @@ PyObject* scalapack_general_diagonalize(PyObject *self, PyObject *args)
                    &one, &one, INTP(adesc), (void*)COMPLEXP(b_obj), &one, &one,
                    INTP(adesc), &vl, &vu, &il, &iu, &abstol, &eigvalm, 
                    &nz, DOUBLEP(w_obj), &orfac, (void*)COMPLEXP(z_obj), 
-                   &one, &one, &zdesc, &work, &querylwork, &rwork, &lrwork,
-                   &iwork, &liwork, &ifail, &iclustr, &gap, &info);
+                   &one, &one, zdesc, work, &querylwork, rwork, &lrwork,
+                   iwork, &liwork, ifail, iclustr, gap, &info);
           lwork = (int)(cwork[0]);
           lrwork = (int)(rwork[0]);
           free(rwork);
@@ -672,8 +672,8 @@ PyObject* scalapack_general_diagonalize(PyObject *self, PyObject *args)
                    &one, &one, INTP(adesc), DOUBLEP(b_obj), &one, &one,
                    INTP(adesc), &vl, &vu, &il, &iu, &abstol, &eigvalm, 
                    &nz, DOUBLEP(w_obj), &orfac, DOUBLEP(z_obj), 
-                   &one, &one,  &zdesc, &dwork, &lwork, 
-                   &iwork, &liwork, &ifail, &iclustr, &gap, &info);
+                   &one, &one,  zdesc, dwork, &lwork, 
+                   iwork, &liwork, ifail, iclustr, gap, &info);
         }
       else
         {
@@ -682,8 +682,8 @@ PyObject* scalapack_general_diagonalize(PyObject *self, PyObject *args)
                    &one, &one, INTP(adesc), (void*)COMPLEXP(b_obj), &one, &one,
                    INTP(adesc), &vl, &vu, &il, &iu, &abstol, &eigvalm, 
                    &nz, DOUBLEP(w_obj), &orfac, (void*)COMPLEXP(z_obj), 
-                   &one, &one, &zdesc, &work, &lwork, &rwork, &lrwork,
-                   &iwork, &liwork, &ifail, &iclustr, &gap, &info);
+                   &one, &one, zdesc, work, &lwork, rwork, &lrwork,
+                   iwork, &liwork, ifail, iclustr, gap, &info);
           free(rwork);
         }
       // printf("computation info = %d\n", info);                
