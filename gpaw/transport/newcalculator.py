@@ -12,7 +12,7 @@ from gpaw.utilities.memory import memory
 
 from gpaw.transport.tools import tri2full, dot, Se_Sparse_Matrix, PathInfo,\
           get_atom_indices,\
-          substract_pk, get_lcao_density_matrix, get_pk_hsd, diag_cell
+          substract_pk, get_lcao_density_matrix, get_pk_hsd, diag_cell, get_matrix_index
 
 from gpaw.transport.tools import Tp_Sparse_HSD, Banded_Sparse_HSD, CP_Sparse_HSD
 
@@ -754,7 +754,7 @@ class Transport(GPAW):
         #        self.hsd.reset(s, q, d_spkmm[s, q] * ntk, 'D', True)
        
         self.append_buffer_hsd()
-        #self.fill_guess_with_leads()           
+        self.fill_guess_with_leads()           
         self.timer.stop('init scat')
         self.scat_restart = False
 
@@ -1571,8 +1571,12 @@ class Transport(GPAW):
         for kpt in self.wfs.kpt_u:
             if self.my_nspins == 2:
                 kpt.rho_MM = self.hsd.D[kpt.s][kpt.q].recover(True)
+                if self.atoms.pbc[2] == 1:
+                    self.add_density_matrix_corner(kpt.rho_MM, kpt.s, kpt.q)                
             else:
                 kpt.rho_MM = self.hsd.D[0][kpt.q].recover(True)
+                if self.atoms.pbc[2] == 1:
+                    self.add_density_matrix_corner(kpt.rho_MM, 0, kpt.q)                      
         self.timer.stop('dmm recover')        
         
         density = self.density
@@ -1580,25 +1584,27 @@ class Transport(GPAW):
         self.wfs.calculate_atomic_density_matrices(density.D_asp)
         if self.fixed:
             self.surround.combine_D_asp()
-        comp_charge = density.calculate_multipole_moments()        
-        #delete normalize line
+        comp_charge = density.calculate_multipole_moments()
+        if not self.fixed:
+            density.normalize(comp_charge)
         if self.fixed:
             self.surround.combine_nt_sG()        
         if not density.mixer.mix_rho:
             density.mixer.mix(density)
-            comp_charge = None
-     
         if density.nt_sg is None:
             density.nt_sg = density.finegd.empty(self.nspins)
         for s in range(self.nspins):
             density.interpolator.apply(density.nt_sG[s], density.nt_sg[s])            
-        
         #calculate_pseudo_charge
         if self.fixed:
             self.surround.combine_nt_sg()
         density.nt_g = density.nt_sg.sum(axis=0)
         density.rhot_g = density.nt_g.copy()
-        density.ghat.add(density.rhot_g, density.Q_aL)            
+        
+        if self.fixed:       
+            self.surround.normalize2()
+        
+        #density.ghat.add(density.rhot_g, density.Q_aL)     
 
         if density.mixer.mix_rho:
             density.mixer.mix(density)
@@ -1736,6 +1742,8 @@ class Transport(GPAW):
                     qr_mm[i] += dot(D.dwnc_h[i][n], S.upc_h[i][n])
                     if S.extended:
                         qr_mm[i] += dot(D.upc_h[i][n + 1], S.dwnc_h[i][n + 1])
+                    else:
+                        qr_mm[i] += dot(D.upc_h[i][n], S.dwnc_h[i][n])                        
             self.wfs.kpt_comm.sum(qr_mm[i])
             boundary_charge.append(np.real(np.trace(qr_mm[i])))
             if i != 0:
@@ -2003,9 +2011,11 @@ class Transport(GPAW):
                 density.nt_sG = self.gd.zeros(self.nspins)
                 wfs.basis_functions.add_to_density(density.nt_sG, f_asi)
                 density.nt_sG += density.nct_G
+                density.normalize()
                 comp_charge = density.calculate_multipole_moments()
                 density.interpolate(comp_charge)
-                density.calculate_pseudo_charge(comp_charge)                
+                density.calculate_pseudo_charge(comp_charge)
+                #self.surround.normalize2()
             else:
                 density.nt_sG = self.gd.empty(self.nspins)
                 density.calculate_pseudo_density(wfs)
@@ -2060,4 +2070,12 @@ class Transport(GPAW):
     #        else:
     #            t()
 
-    #    self.txt.flush() 
+    #    self.txt.flush()
+
+    def add_density_matrix_corner(self, rho_MM, s, k):
+        index = self.hsd.S[0].ex_ll_index
+        ind0 = get_matrix_index(index[0][-1])
+        ind1 = get_matrix_index(index[1][-1])
+        rho_MM[ind0.T, ind1] += self.lead_couple_hsd[0].D[s][k].recover()
+        rho_MM[ind1.T, ind0] += self.lead_couple_hsd[0].D[s][k].recover().T.conj()
+        
