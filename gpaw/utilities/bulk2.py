@@ -9,7 +9,7 @@ import os
 
 import numpy as np
 from ase.atoms import Atoms, string2symbols
-from ase.utils.eos import *
+from ase.utils.eos import EquationOfState
 from ase.calculators.emt import EMT
 from ase.io.trajectory import PickleTrajectory
 from ase.io import read
@@ -28,7 +28,7 @@ magmom = {'C': 2, 'N': 3, 'Pt': 2, 'F': 1, 'Mg': 0, 'Na': 1, 'Cl': 1, 'Al': 1,
 class Runner:
     """Base class for running the calculations.
 
-    Subclasses must implement set_calculator() method."""
+    Subclasses must implement a set_calculator() method."""
     
     def __init__(self, name, atoms, strains=None, tag='', clean=False,
                  out='-'):
