@@ -962,66 +962,28 @@ class Setup(BaseSetup):
 
 
 class Setups(list):
-    """
+    """Collection of Setup objects. One for each distinct atom.
 
+    Non-distinct atoms are those with the same atomic number, setup, and basis.
+
+    Class attributes:
+    
     ``nvalence``    Number of valence electrons.
+    ``nao``         Number of atomic orbitals.
+    ``Eref``        Reference energy.
+    ``core_charge`` Core hole charge.
     """
 
     def __init__(self, Z_a, setup_types, basis_sets, nspins, lmax, xcfunc):
         list.__init__(self)
-        natoms =  len(Z_a)
-        if isinstance(setup_types, str):
-            setup_types = {None: setup_types}
-        
-        # setup_types is a dictionary mapping chemical symbols and/or atom
-        # numbers to setup types.
-        
-        # If present, None will map to the default type:
-        default = setup_types.get(None, 'paw')
-        
-        type_a = [default] * natoms
-        
-        # First symbols ...
-        for symbol, type in setup_types.items():
-            if isinstance(symbol, str):
-                number = atomic_numbers[symbol]
-                for a, Z in enumerate(Z_a):
-                    if Z == number:
-                        type_a[a] = type
-        
-        # and then atom indices:
-        for a, type in setup_types.items():
-            if isinstance(a, int):
-                type_a[a] = type
-        
-        if isinstance(basis_sets, str):
-            basis_sets = {None: basis_sets}
-        
-        # basis_sets is a dictionary mapping chemical symbols and/or atom
-        # numbers to basis sets.
-        
-        # If present, None will map to the default type:
-        default = basis_sets.get(None, None)
-        
-        basis_a = [default] * natoms
-        
-        # First symbols ...
-        for symbol, basis in basis_sets.items():
-            if isinstance(symbol, str):
-                number = atomic_numbers[symbol]
-                for a, Z in enumerate(Z_a):
-                    if Z == number:
-                        basis_a[a] = basis
-        
-        # and then atom numbers:
-        for a, basis in basis_sets.items():
-            if isinstance(a, int):
-                basis_a[a] = basis
+        symbols = [chemical_symbols[Z] for Z in Z_a]
+        type_a = types2atomtypes(symbols, setup_types, default='paw')
+        basis_a = types2atomtypes(symbols, basis_sets, default=None)
         
         # Construct necessary PAW-setup objects:
         self.setups = {}
         self.id_a = zip(Z_a, type_a, basis_a)
-        for a, id in enumerate(self.id_a):
+        for id in self.id_a:
             setup = self.setups.get(id)
             if setup is None:
                 Z, type, basis = id
@@ -1053,3 +1015,37 @@ class Setups(list):
         
         for setup in self.setups.values():
             setup.calculate_rotations(R_slmm)
+
+
+def types2atomtypes(symbols, types, default):
+    """Map a types identifier to a list with a type id for each atom.
+    
+    types can be a single str, or a dictionary mapping chemical
+    symbols and/or atom numbers to a type identifier.
+    If both a symbol key and atomnumber key relates to the same atom, then
+    the atomnumber key is dominant.
+
+    If types is a dictionary and contains None, this will be used as default
+    type, otherwize input arg ``default`` is used as default.
+    """
+    natoms =  len(symbols)
+    if isinstance(types, str):
+        return [types] * natoms
+
+    # If present, None will map to the default type, else use the input default
+    type_a = [types.get(None, default)] * natoms
+
+    # First symbols ...
+    for symbol, type in types.items():
+        if isinstance(symbol, str):
+            for a, symbol2 in enumerate(symbols):
+                if symbol == symbol2:
+                    type_a[a] = type
+
+    # and then atom indices
+    for a, type in types.items():
+        if isinstance(a, int):
+            type_a[a] = type
+
+    return type_a
+
