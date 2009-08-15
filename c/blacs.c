@@ -432,69 +432,57 @@ PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args)
 
       // Query part, need to find the optimal size of a number of work arrays
       int info;
-      int querylwork = -1;
+      int querywork = -1;
       int* iwork;
-      iwork = GPAW_MALLOC(int, 1);
       int liwork;
-      void* work;
       int lwork;
-      double *rwork;
       int lrwork;
+      int i_work;
+      double d_work;
+      double_complex c_work;
       if (a_obj->descr->type_num == PyArray_DOUBLE)
         {
-          work = GPAW_MALLOC(double, 1);
-          double* dwork = (double *)work;
           pdsyevd_(&jobz, &uplo, &n, DOUBLEP(a_obj), &one, &one, 
                    INTP(adesc), DOUBLEP(w_obj), DOUBLEP(z_obj), 
-                   &one,  &one, zdesc, dwork, &querylwork, 
-                   iwork, &liwork, &info);
-          lwork = (int)(dwork[0]+0.1); // give extra space to 
-                                       // avoid complaint 
-                                       // from PDORMTR
+                   &one,  &one, zdesc, &d_work, &querywork, 
+                   &i_work, &liwork, &info);
+          lwork = (int)(d_work); 
         }
       else
         {
-          work = GPAW_MALLOC(double_complex, 1);
-          double_complex* cwork = (double_complex *)work;
-          rwork = GPAW_MALLOC(double, 1);
           pzheevd_(&jobz, &uplo, &n, (void*)COMPLEXP(a_obj), &one, &one, 
                    INTP(adesc), DOUBLEP(w_obj), (void*)COMPLEXP(z_obj), 
-                   &one,  &one, zdesc, work, &querylwork, rwork, &lrwork, 
-                   iwork, &liwork, &info);
-          lwork = (int)(cwork[0]+0.1); // give extra space to
-                                       // avoid complaint
-                                       // from PDORMTR
-          lrwork = (int)(rwork[0]+0.1);
-          free(rwork);
-          rwork = GPAW_MALLOC(double, lrwork);
+                   &one,  &one, zdesc, &c_work, &querywork, &d_work, &querywork, 
+                   &i_work, &liwork, &info);
+          lwork = (int)(c_work);
+          lrwork = (int)(d_work);
         } 
-      printf("query info = %d\n", info);
+      // printf("query info = %d\n", info);
 
       // Computation part
-      free(work);
-      liwork = (int)iwork[0];
-      free(iwork);
+      liwork = i_work;
       iwork = GPAW_MALLOC(int, liwork);
       if (a_obj->descr->type_num == PyArray_DOUBLE)
         {
-          work = GPAW_MALLOC(double, lwork);
-          double* dwork = (double *)work;
+          double* work = GPAW_MALLOC(double, lwork);
           pdsyevd_(&jobz, &uplo, &n, DOUBLEP(a_obj), &one, &one, 
                    INTP(adesc), DOUBLEP(w_obj), DOUBLEP(z_obj), 
-                   &one, &one, zdesc, dwork, &lwork, 
+                   &one, &one, zdesc, work, &lwork, 
                    iwork, &liwork, &info);
+          free(work);
         }
       else
         {
-          work = GPAW_MALLOC(double_complex, lwork);
+          double_complex *work = GPAW_MALLOC(double_complex, lwork);
+          double* rwork = GPAW_MALLOC(double, lrwork);
           pzheevd_(&jobz, &uplo, &n, (void*)COMPLEXP(a_obj), &one, &one, 
                    INTP(adesc), DOUBLEP(w_obj), (void*)COMPLEXP(z_obj), 
                    &one, &one, zdesc, work, &lwork, rwork, &lrwork,
                    iwork, &liwork, &info);
           free(rwork);
+          free(work);
         }
-      printf("computation info = %d\n", info);
-      free(work);
+      // printf("computation info = %d\n", info);
       free(iwork);
       PyObject* values = Py_BuildValue("(OO)", w_obj, z_obj);
       Py_DECREF(w_obj);
@@ -620,64 +608,56 @@ PyObject* scalapack_general_diagonalize(PyObject *self, PyObject *args)
       iclustr = GPAW_MALLOC(int, 2*z_nprow*z_npcol);
       double  *gap;
       gap = GPAW_MALLOC(double, z_nprow*z_npcol);
-      int querylwork = -1;
+      int querywork = -1;
       int* iwork;
-      iwork = GPAW_MALLOC(int, 1);
       int liwork;
-      void* work;
       int lwork;
-      double *rwork;
       int lrwork;
+      int i_work;
+      double d_work;
+      double_complex c_work;
       if (a_obj->descr->type_num == PyArray_DOUBLE)
         {
-          work = GPAW_MALLOC(double, 3);
-          double* dwork = (double*)work;
           pdsygvx_(&ibtype, &jobz, &range, &uplo, &n, DOUBLEP(a_obj), 
                    &one, &one, INTP(adesc), DOUBLEP(b_obj), &one, &one, 
                    INTP(adesc), &vl, &vu, &il, &iu, &abstol, &eigvalm, 
                    &nz, DOUBLEP(w_obj), &orfac, DOUBLEP(z_obj), 
-                   &one, &one, zdesc, dwork, &querylwork, 
-                   iwork, &liwork, ifail, iclustr, gap, &info);
-          lwork = (int)(dwork[0]);
+                   &one, &one, zdesc, &d_work, &querywork, 
+                   &i_work, &liwork, ifail, iclustr, gap, &info);
+          lwork = (int)(d_work);
         }
       else
         {
-          work = GPAW_MALLOC(double_complex, 3);
-          double_complex* cwork = (double_complex*)work;
-          rwork = GPAW_MALLOC(double, 1);
           pzhegvx_(&ibtype, &jobz, &range, &uplo, &n, (void*)COMPLEXP(a_obj),
                    &one, &one, INTP(adesc), (void*)COMPLEXP(b_obj), &one, &one,
                    INTP(adesc), &vl, &vu, &il, &iu, &abstol, &eigvalm, 
                    &nz, DOUBLEP(w_obj), &orfac, (void*)COMPLEXP(z_obj), 
-                   &one, &one, zdesc, work, &querylwork, rwork, &lrwork,
-                   iwork, &liwork, ifail, iclustr, gap, &info);
-          lwork = (int)(cwork[0]);
-          lrwork = (int)(rwork[0]);
-          free(rwork);
-          rwork = GPAW_MALLOC(double, lrwork);
+                   &one, &one, zdesc, &c_work, &querywork, &d_work, &querywork,
+                   &i_work, &liwork, ifail, iclustr, gap, &info);
+          lwork = (int)(c_work);
+          lrwork = (int)(d_work);
         }      
       // printf("query info = %d\n", info);
 
       // Computation part
       lwork = lwork + (n-1)*n;
-      free(work);
-      liwork = (int)iwork[0];
-      free(iwork);
+      liwork = i_work; 
       iwork = GPAW_MALLOC(int, liwork);
       if (a_obj->descr->type_num == PyArray_DOUBLE)
         {
-          work = GPAW_MALLOC(double, lwork);
-          double* dwork = (double*)work;
+          double* work = GPAW_MALLOC(double, lwork);
           pdsygvx_(&ibtype, &jobz, &range, &uplo, &n, DOUBLEP(a_obj), 
                    &one, &one, INTP(adesc), DOUBLEP(b_obj), &one, &one,
                    INTP(adesc), &vl, &vu, &il, &iu, &abstol, &eigvalm, 
                    &nz, DOUBLEP(w_obj), &orfac, DOUBLEP(z_obj), 
-                   &one, &one,  zdesc, dwork, &lwork, 
+                   &one, &one,  zdesc, work, &lwork, 
                    iwork, &liwork, ifail, iclustr, gap, &info);
+          free(work);
         }
       else
         {
-          work = GPAW_MALLOC(double_complex, lwork);
+          double_complex* work = GPAW_MALLOC(double_complex, lwork);
+          double* rwork = GPAW_MALLOC(double, lrwork);
           pzhegvx_(&ibtype, &jobz, &range, &uplo, &n, (void*)COMPLEXP(a_obj), 
                    &one, &one, INTP(adesc), (void*)COMPLEXP(b_obj), &one, &one,
                    INTP(adesc), &vl, &vu, &il, &iu, &abstol, &eigvalm, 
@@ -685,9 +665,9 @@ PyObject* scalapack_general_diagonalize(PyObject *self, PyObject *args)
                    &one, &one, zdesc, work, &lwork, rwork, &lrwork,
                    iwork, &liwork, ifail, iclustr, gap, &info);
           free(rwork);
+          free(work);
         }
       // printf("computation info = %d\n", info);                
-      free(work);
       free(iwork);
       free(gap);
       free(iclustr);
