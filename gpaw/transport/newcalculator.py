@@ -411,14 +411,14 @@ class Transport(GPAW):
         
         if not self.fixed:
             self.set_positions()
-            self.get_hamiltonian_initial_guess()            
+            #self.get_hamiltonian_initial_guess()            
         else:
             self.timer.start('surround set_position')
             self.surround.combine()
             self.inner_poisson.initialize()
             self.set_extended_positions(self.extended_atoms)
             self.timer.stop('surround set_position')
-            self.get_hamiltonian_initial_guess()
+            #self.get_hamiltonian_initial_guess()
 
         self.initialized_transport = True
         self.matrix_mode = 'sparse'
@@ -736,22 +736,22 @@ class Transport(GPAW):
             self.recover_kpts(self)
      
         self.timer.start('scat guess')
-        #h_spkmm, s_pkmm = self.get_hs(self)
+        h_spkmm, s_pkmm = self.get_hs(self)
         self.timer.stop('scat guess')
 
         self.timer.start('init scat')  
 
-        #if not self.fixed:
-        #    d_spkmm = get_lcao_density_matrix(self)
-        #else:
-        #    d_spkmm = np.zeros([self.nspins, self.my_npk,
-        #                          self.nbmol, self.nbmol], self.wfs.dtype)
+        if not self.fixed:
+            d_spkmm = get_lcao_density_matrix(self)
+        else:
+            d_spkmm = np.zeros([self.nspins, self.my_npk,
+                                  self.nbmol, self.nbmol], self.wfs.dtype)
        
-        #for q in range(self.my_npk):
-        #    self.hsd.reset(0, q, s_pkmm[q], 'S', True)
-        #    for s in range(self.my_nspins):
-        #        self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)            
-        #        self.hsd.reset(s, q, d_spkmm[s, q] * ntk, 'D', True)
+        for q in range(self.my_npk):
+            self.hsd.reset(0, q, s_pkmm[q], 'S', True)
+            for s in range(self.my_nspins):
+                self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)            
+                self.hsd.reset(s, q, d_spkmm[s, q], 'D', True)
        
         self.append_buffer_hsd()
         self.fill_guess_with_leads()           
