@@ -19,21 +19,20 @@ from ase.units import Bohr, Hartree
 
 class ElectronPhononCouplingMatrix:
     """Class for calculating the electron-phonon coupling matrix, defined
-       by the electron phonon interaction
-                  _                   _____
-                 \     l   cc        /  h             cc
-       H      =   )   M   c   c     /------   ( b  + b   )
-        el-ph    /_    ij  i   j  \/   2 W       l    l
-                 l,ij                     l
+       by the electron phonon interaction::
+                      _                   _____
+                      \     l   cc        /  h             cc
+            H      =   )   M   c   c     /------   ( b  + b   )
+             el-ph    /_    ij  i   j  \/   2 W       l    l
+                        l,ij                     l
         
-        where the electron phonon coupling matrix is given by
+            where the electron phonon coupling matrix is given by
                     
-         l           _ 
-        M   = < i | \ /  V   * v  |j>
-         ij          'u   eff   l
+                l           _ 
+                M   = < i | \ /  V   * v  |j>
+                 ij          'u   eff   l
   
-        blablabla
-
+          ::
     """
     def __init__(self, atoms, indices=None, name = 'v',delta=0.005, nfree=2):
         assert nfree in [2,4]
@@ -165,9 +164,10 @@ class ElectronPhononCouplingMatrix:
     def get_Mlii(self, modes, vtonly = False):
 
         """
-              d                   d  ~
-        < w | -- v | w' > = < w | -- v | w'>
-              dP                  dP
+          ::
+                  d                   d  ~
+            < w | -- v | w' > = < w | -- v | w'>
+                  dP                  dP
 
                                _
                               \        ~a     d   .       ~a
@@ -187,6 +187,7 @@ class ElectronPhononCouplingMatrix:
                               /_        i        ij    dP  j
                               a,ij
 
+            ::
         """
  
         d  = pickle.load(open('data.pckl')) # bfs
@@ -273,11 +274,11 @@ class ElectronPhononCouplingMatrix:
         
 
     def get_Mlii2(self, modes, atoms, calc, vtonly=True):
-
         """
-              d                   d  ~
-        < w | -- v | w' > = < w | -- v | w'>
-              dP                  dP
+          ::
+                  d                   d  ~
+            < w | -- v | w' > = < w | -- v | w'>
+                  dP                  dP
 
                                _
                               \        ~a     d   .       ~a
@@ -297,8 +298,9 @@ class ElectronPhononCouplingMatrix:
                               /_        i        ij    dP  j
                               a,ij
 
+            ::
         """
-        from gpaw import restart
+       from gpaw import restart
         atoms, calc = restart('eq.gpw')
         spos_ac = atoms.get_scaled_positions()
         calc.initialize(atoms)
