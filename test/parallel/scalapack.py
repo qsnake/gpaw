@@ -5,8 +5,9 @@
 # convert everything here to Fortran style since
 # this is the default for ScaLAPACK
 #
-# Here we compare ScaLAPACK results for a 16-by-16 matrix
+# Here we compare ScaLAPACK results for a N-by-N matrix
 # with those obtain with serial LAPACK
+from time import time
 import numpy as np
 
 from gpaw import GPAW
@@ -22,15 +23,15 @@ z_tol = 1.e-8
 c_tol = 1.e-8
 
 
-N = 16
+N = 512
 B = 4
 M = N/B
 
 # blacs grid dimensions DxD and non-even blocking factors just
 # to make things more non-trivial.
 D = 2 
-nb = 3
-mb = 3
+nb = 64
+mb = 64
 
 assert world.size == B
 assert world.size >= D*D
@@ -42,7 +43,7 @@ def test(complex_type):
     else:
         epsilon = 1.0
 
-    if world.rank == 0:
+    if debug and world.rank == 0:
         print "epsilon =",  epsilon
         
     if complex_type:
@@ -58,7 +59,7 @@ def test(complex_type):
     A[:,2*M:3*M] = A[:,2*M:3*M] + 0.1*np.eye(N,M,-M*2+1)*epsilon # diag +1
     A[:,3*M:4*M] = 3.0*np.eye(N,M,-M*3)
     A[:,3*M:4*M] = A[:,3*M:4*M]+ 0.1*np.eye(N,M,-M*3+1)*epsilon # diag +1
-    if world.rank == 0:
+    if debug and world.rank == 0:
         print "A = ", A
         
     # We should really use Fortran ordered array but this gives
@@ -73,10 +74,10 @@ def test(complex_type):
     S[:,M:2*M] = 1.0*np.eye(N,M,-M)
     S[:,M:2*M] = S[:,M:2*M] + 0.2*np.eye(N,M,-M*1+1)*epsilon # diag +1
     S[:,2*M:3*M] = 1.0*np.eye(N,M,-M*2)
-    S[:,2*M:3*M] = S[:,8:12] + 0.2*np.eye(N,4,-M*2+1)*epsilon # diag +1 
+    S[:,2*M:3*M] = S[:,2*M:3*M] + 0.2*np.eye(N,M,-M*2+1)*epsilon # diag +1 
     S[:,3*M:4*M] = 1.0*np.eye(N,M,-M*3)
-    S[:,3*M:4*M] = S[:,3*M:4*M] + 0.2*np.eye(N,4,-M*3+1)*epsilon # diag +1
-    if world.rank == 0:
+    S[:,3*M:4*M] = S[:,3*M:4*M] + 0.2*np.eye(N,M,-M*3+1)*epsilon # diag +1
+    if debug and world.rank == 0:
         print "S = ", S
         
     # We should really use Fortran ordered array but this gives
@@ -146,8 +147,9 @@ def test(complex_type):
     S_mm = scalapack_redist(S_nm, desc1, desc2, world, 0, 0)
     C_mm = scalapack_redist(C_nm, desc1, desc2, world, 0, 0)
 
-    print "A_mm = ", A_mm
-    print "S_mm = ", S_mm
+    if debug:
+        print "A_mm = ", A_mm
+        print "S_mm = ", S_mm
     
     W, Z_mm = scalapack_diagonalize_dc(A_mm, desc2)
     Wg, Zg_mm = scalapack_general_diagonalize(Ag_mm, S_mm, desc2)
@@ -177,17 +179,18 @@ def test(complex_type):
     world.broadcast(Zg_0, 0)
     world.broadcast(C_0, 0)
 
-    print "W = ", W
-    print "diag: lambda = ", w
+    if debug:
+        print "W = ", W
+        print "diag: lambda = ", w
 
-    print "Z_0 ", Z_0
-    print "diag: eigenvectors = ", A
+        print "Z_0 ", Z_0
+        print "diag: eigenvectors = ", A
 
-    print "Wg = ", Wg
-    print "general diag =" , wg
+        print "Wg = ", Wg
+        print "general diag =" , wg
 
-    print "Zg_0", Zg_0
-    print "general diag: eigenvectors = ", Ag
+        print "Zg_0", Zg_0
+        print "general diag: eigenvectors = ", Ag
     
     for i in range(len(W)):
         if abs(W[i]-w[i]) > w_tol:
@@ -224,8 +227,15 @@ def test(complex_type):
             print "complex type verified!"
         else:
             print "double type verified!"
+
+ta = time()
+for x in range(20):
+    # Test real scalapack
+    test(False)
+    # Test complex scalapack
+    test(True)
+tb = time()
+
+if world.rank == 0:
+    print 'Total Time %f' % (tb - ta)
     
-# Test real scalapack
-test(False)
-# Test complex scalapack
-test(True)
