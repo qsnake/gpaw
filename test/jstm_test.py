@@ -6,13 +6,12 @@ import numpy as np
 # GPAW calculations
 a = 0.75 # Bond length
 cell = np.diag([5,5,12*a])
-cell[0,1] = 2*np.sqrt(2)
-cell[1,0] = 1 
 
 atoms = Atoms('H12', pbc=(1, 1, 1), cell=cell) 
 atoms.positions[:, 2] = [i * a for i in range(12)]
 
-calc = GPAW(h=0.3,
+calc = GPAW(h=0.2,
+            width = 0.1,
             mode='lcao',
             basis='sz',
             usesymm = False)
@@ -67,6 +66,6 @@ stm.scan()
 stm.linescan()
 
 if 0:
-    stm.plot()
+    stm.plot(repeat = [3,3])
 
 
