@@ -274,8 +274,10 @@ class ElectronPhononCouplingMatrix:
         
 
     def get_Mlii2(self, modes, atoms, calc, vtonly=True):
-        """
-          ::
+        """bla bla ..
+        
+        ::
+        
                   d                   d  ~
             < w | -- v | w' > = < w | -- v | w'>
                   dP                  dP
@@ -298,9 +300,9 @@ class ElectronPhononCouplingMatrix:
                               /_        i        ij    dP  j
                               a,ij
 
-            ::
+
         """
-       from gpaw import restart
+        from gpaw import restart
         atoms, calc = restart('eq.gpw')
         spos_ac = atoms.get_scaled_positions()
         calc.initialize(atoms)
@@ -326,21 +328,3 @@ class ElectronPhononCouplingMatrix:
                 M_lii[mode]*=Hartree/Bohr
             
             return M_lii
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
