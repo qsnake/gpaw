@@ -226,7 +226,7 @@ class GPAWRunner(Runner):
     def set_calculator(self, config, filename):
         if config.pbc.any():
             # Bulk calculation:
-            gpts = h2gpts(sel.h, config.cell)
+            gpts = h2gpts(self.h, config.cell)
             kwargs = dict(kpts=self.kpts,
                           gpts=gpts,
                           width=self.width,
