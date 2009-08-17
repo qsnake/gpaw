@@ -11,6 +11,7 @@ from ase.data.molecules import molecule
 from ase.visualize import view
 from ase.io import read, write
 
+from gpaw.utilities import devnull
 from gpaw.utilities.bulk2 import bulk, estimate_lattice_constant
 from gpaw.utilities.bulk2 import EMTRunner, GPAWRunner
 from gpaw.mpi import world
