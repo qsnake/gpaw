@@ -19,7 +19,7 @@ from ase.data import covalent_radii
 from gpaw.aseinterface import GPAW
 from gpaw.poisson import PoissonSolver
 from gpaw.mpi import world
-from gpaw.utilities import devnull
+from gpaw.utilities import devnull, h2gpts
 
 # Magnetic moments of isolated atoms:
 magmom = {'C': 2, 'N': 3, 'Pt': 2, 'F': 1, 'Mg': 0, 'Na': 1, 'Cl': 1, 'Al': 1,
@@ -226,9 +226,7 @@ class GPAWRunner(Runner):
     def set_calculator(self, config, filename):
         if config.pbc.any():
             # Bulk calculation:
-            L_c = (config.cell**2).sum(1)**0.5
-            d_c = self.h * (L_c.prod() / config.get_volume())**(1.0 / 3)
-            gpts = (L_c / d_c / 4).round().astype(int) * 4
+            gpts = h2gpts(sel.h, config.cell)
             kwargs = dict(kpts=self.kpts,
                           gpts=gpts,
                           width=self.width,

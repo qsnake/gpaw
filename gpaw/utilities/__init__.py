@@ -25,6 +25,21 @@ fac = [1, 1, 2, 6, 24, 120, 720, 5040, 40320,
        362880, 3628800, 39916800, 479001600]
 
 
+def h2gpts(h, cell_cv):
+    """Convert grid spacing to number of grid points divisible by 4.
+
+    Note that units of h and cell_cv must match!
+    
+    h: float
+        Desired grid spacing in.
+    cell_cv: 3x3 ndarray
+        Unit cell.
+    """
+
+    L_c = (cell_cv**2).sum(1)**0.5
+    d = h * (L_c.prod() / abs(np.linalg.det(cell_cv)))**(1.0 / 3.0)
+    return np.maximum(4, (L_c / d / 4).round().astype(int) * 4)
+
 def gcd(a, b):
     """Return greatest common divisor of a and b, using the
     euclidian algorithm.

@@ -31,6 +31,7 @@ from gpaw.setup import Setups
 from gpaw.output import PAWTextOutput
 from gpaw.scf import SCFLoop
 from gpaw.forces import ForceCalculator
+from gpaw.utilities import h2gpts
 
 
 class PAW(PAWTextOutput):
@@ -335,12 +336,7 @@ class PAW(PAWTextOutput):
                 h = 0.2 / Bohr
             else:
                 h = par.h / Bohr
-            # N_c should be a multiple of 4:
-            N_c = []
-            for axis_v in cell_cv:
-                L = (axis_v**2).sum()**0.5
-                N_c.append(max(4, int(L / h / 4 + 0.5) * 4))
-            N_c = np.array(N_c)
+            N_c = h2gpts(h, cell_cv)
                        
         if hasattr(self, 'time'):
             dtype = complex
