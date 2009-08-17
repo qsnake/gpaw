@@ -179,7 +179,8 @@ if len(tests) == 0:
         'mgga_restart.py',
         'fd2lcao_restart.py',
         'parallel/ut_hsops.py',
-        'parallel/ut_invops.py'
+        'parallel/ut_invops.py',
+        'parallel/scalapack.py',
         ]
 
 disabled_tests = [
@@ -234,6 +235,9 @@ if size > 1:
                 'muffintinpot.py']
 if size > 2:
     exclude += ['neb.py']
+
+if size != 4:
+    exclude += ['parallel/scalapack.py']
 
 for test in exclude:
     if test in tests:
