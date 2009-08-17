@@ -92,7 +92,7 @@ class RMM_DIIS(Eigensolver):
             R_G *= 2.0 * lam
             axpy(lam**2, dR_G, R_G)  # R_G += lam**2 * dR_G
             kpt.psit_nG[n1:n2] += self.preconditioner(R_G, kpt.phase_cd,
-                                                   kpt.psit_nG[n1])
+                                                      kpt.psit_nG[n1])
             
         self.timer.stop('RMM-DIIS')
         error = self.gd.comm.sum(error)

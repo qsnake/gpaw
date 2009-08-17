@@ -464,8 +464,11 @@ class GridDescriptor(Domain):
         return A_xg
 
     def distribute(self, B_xg, b_xg):
-        """ distribute full array B_xg to subdomains, result in
-        b_xg. b_xg must be allocated."""
+        """Distribute full array B_xg to subdomains, result in b_xg.
+
+        B_xg is not used by the slaves (i.e. it should be None on all slaves)
+        b_xg must be allocated on all nodes and will be overwritten.
+        """
 
         if self.comm.size == 1:
             b_xg[:] = B_xg
