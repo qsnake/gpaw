@@ -14,6 +14,11 @@ from gpaw import GPAW
 from gpaw import debug
 from gpaw.mpi import world
 from gpaw.utilities.lapack import diagonalize, inverse_cholesky
+
+from gpaw.utilities import scalapack
+if not scalapack():
+    raise ImportError('Not built with ScaLAPACK. Test does not apply.')
+
 from gpaw.utilities.blacs import *
 
 # We could possibly have a stricter criteria, but these are all
