@@ -13,6 +13,8 @@ import cPickle as pickle
 from gpaw.lcao.projected_wannier import dots
 from gpaw import GPAW
 from gpaw.mpi import world as w
+from ase.dft import monkhorst_pack
+
 
 class LocalizedFunctions:
     def __init__(self, gd, f_iG, corner_c, index=None, vt_G=None):
@@ -171,6 +173,7 @@ class STM:
                                  'cvl2': 0,
                                  'bias': 1.0,
                                  'de': 0.01,
+                                 'kpts': (1, 1),
                                  'energies': None,
                                  'w': 0.0,
                                  'eta1': 1e-3,
@@ -443,6 +446,51 @@ class STM:
                  if self.input_parameters['verbose']:
                     print self.tip_cell.position, I
         self.scans['fullscan'] = scan
+
+    def scan3d(self, zmin, zmax):
+        bias = self.stm_calc.bias
+        self.scans['scan3d'] = {}
+        hz = self.srf_cell.gd.h_c[2] * Bohr
+        dmins = np.arange(zmin, zmax + hz, hz)
+        for dmin in dmins:
+            fd = open('scan_' + str(np.round(dmin, 2)) + '_bias_'\
+                      + str(bias) + '_.pckl', 'wb')
+            self.set(dmin=dmin)
+            self.initialize()
+            self.scan()
+            dmin = self.get_dmin()
+            pickle.dump((dmin, bias, self.scans['fullscan']), fd, 2)
+            self.scans['scan3d'][dmin] = self.scans['fullscan'].copy()
+
+    def get_constantI(self, I):
+        assert self.scans.has_key('scan3d')
+        scans = self.scans['scan3d']
+        dmins = []
+        for dmin in scans.keys():
+            dmins.append(dmin)
+        dmins.sort()
+        scans3d = np.zeros(tuple(scans.values()[0].shape) + (len(dmins),))
+        for i, dmin in enumerate(dmins):
+            scans3d[:, :, i] = scans[dmin]
+        scans = scans3d.copy()
+        shape = tuple(scans.shape[:2])
+        cons = np.zeros(shape)
+        hz = self.srf_cell.gd.h_c[2] * Bohr
+        for x in range(shape[0]):
+            for y in range(shape[1]):
+                x_I = scans[x, y, :]
+                i1 = np.where(x_I <= I)[0].min()
+                i2 = i1 - 1
+                I1 = x_I[i1]
+                I2 = x_I[i2]
+                h = I2 - I1
+                Ih = (I - I1) / h
+                result = i1 * (1 - Ih) + i2 * Ih
+                if i2 < 0:
+                    result = 0
+                print [x, y], [i1, i2], result
+                cons[x, y] = result * hz + dmins[0]
+        self.scans['fullscan'] = cons
 
     def linescan(self, startstop=None):
         if startstop == None:
@@ -768,12 +816,11 @@ class TipCell:
         i=0
         for k, a in enumerate(tip_indices):
             setup = self.tip.wfs.setups[a]
-            spos_c = self.atoms.get_scaled_positions()[i]
-            if a == tip_atom_index:
-                for phit in setup.phit_j:
-                    f = AtomCenteredFunctions(self.gd, [phit], spos_c, i)
-                    functions.append(f)
-                    i += len(f.f_iG)
+            spos_c = self.atoms.get_scaled_positions()[k]
+            for phit in setup.phit_j:
+                f = AtomCenteredFunctions(self.gd, [phit], spos_c, i)
+                functions.append(f)
+                i += len(f.f_iG)
         self.ni = i
            
         # Apply kinetic energy:
@@ -1210,4 +1257,57 @@ def smallestbox(cell1, cell2, theta, plot=False):
     origo[:2] = l1[0]
     return cell/Bohr, origo/Bohr
     '''
+
+class Spline:
+    def __init__(self,x,f, bc= None):
+        self.x = x
+        self.f = f
+
+        n = len(x) - 1 # number of knot intervals
+        h = np.diff(x) # n-vector with knot spacings
+        v = np.diff(f)/h # n-vector with divided differences
+
+        A = np.zeros((n+1,n+1))
+        r = np.zeros((n+1,1))
+        for i in range(n-1):
+            A[i+1, i:i+3] = [h[i+1], 2*(h[i]+h[i+1]), h[i]]
+            r[i+1] = 3*(h[i+1]*v[i]+h[i]*v[i+1])
+
+        if bc == None: # Natural Spline
+            A[0,0:2] = [2,1]
+            r[0] = 3*v[0]
+            A[n,n-1:n+1] = [1,2]
+            r[n] = 3*v[n-1]
+        else:          # Correct boundary conditions
+            A[0,0] = 1
+            r[0] = bc[0]
+            A[n,n] = 1
+            r[n] = bc[1]
+
+        ds = np.linalg.solve(A,r)
+
+        # Compute coefficients
+        p = np.zeros((n,4))
+        for i in range(n):
+            p[i,0] = f[i]
+            p[i,1] = h[i]*ds[i]
+            p[i,2] = 3*(f[i+1] - f[i]) - h[i]*(2*ds[i] + ds[i+1])
+            p[i,3] = 2*(f[i] - f[i+1]) + h[i]*(ds[i] + ds[i+1])
+
+        self.p = p
+
+    def __call__(self,t):
+        x = self.x
+        p = self.p
+        assert not any([t < x.min(),t > x.max()])
+        index=np.where(x<=t)[0].max()
+        if index == len(x)-1:
+            index -=1
+
+        u = (t-x[index])/(x[index+1]-x[index])
+
+        s = p[index,0] + u*(p[index,1]+u*(p[index,2]+u*p[index,3]))
+        return s
+
+
 
