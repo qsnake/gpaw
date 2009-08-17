@@ -231,7 +231,6 @@ if size > 1:
     exclude += ['pes.py',
                 'asewannier.py',
                 'wannier-ethylene.py',
-                'restart_band_structure.py',
                 'muffintinpot.py']
 if size > 2:
     exclude += ['neb.py']

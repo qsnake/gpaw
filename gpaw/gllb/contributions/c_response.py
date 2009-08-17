@@ -77,7 +77,7 @@ class C_Response(Contribution):
                     self.symmetry.symmetrize(nt_G, self.gd)
                     self.symmetry.symmetrize(vt_G, self.gd)
 
-            self.wfs.calculate_atomic_density_matrices_with_occupation(
+           self.wfs.calculate_atomic_density_matrices_with_occupation(
                 self.Dresp_asp, w_kn)
             self.wfs.calculate_atomic_density_matrices_with_occupation(
                 self.D_asp, f_kn)
@@ -88,7 +88,6 @@ class C_Response(Contribution):
         else:
             if world.rank == 0:
                 print "Reusing potential"
-            
         self.density.interpolator.apply(self.vt_sG[0], self.vt_sg[0])
         v_g[:] += self.weight * self.vt_sg[0]
         return 0.0
@@ -188,10 +187,10 @@ class C_Response(Contribution):
             self.wfs.add_to_density_from_k_point_with_occupation(vt_sG, kpt, w_n)
             self.wfs.add_to_density_from_k_point(nt_sG, kpt)
             
-        self.band_comm.sum(self.nt_sG)
-        self.kpt_comm.sum(self.nt_sG)
-        self.band_comm.sum(self.vt_sG)
-        self.kpt_comm.sum(self.vt_sG)
+        self.band_comm.sum(nt_sG)
+        self.kpt_comm.sum(nt_sG)
+        self.band_comm.sum(vt_sG)
+        self.kpt_comm.sum(vt_sG)
             
         if self.wfs.symmetry:
             for nt_G, vt_G in zip(nt_sG, vt_sG):
@@ -199,7 +198,7 @@ class C_Response(Contribution):
                 self.symmetry.symmetrize(vt_G, self.gd)
 
         vt_sG /= nt_sG + 1e-10
-        self.Dxc_vt_sG = vt_sG
+        self.Dxc_vt_sG = vt_sG.copy()
 
         self.wfs.calculate_atomic_density_matrices_with_occupation(
             self.Dxc_Dresp_asp, w_kn)
@@ -383,8 +382,8 @@ class C_Response(Contribution):
                 if master:
                     w.fill(vt_sG)
 
-        print "Integration over vt_sG", npy.sum(self.vt_sG.ravel())
-        print "Integration over Dxc_vt_sG", npy.sum(self.Dxc_vt_sG.ravel())
+        print "Integration over vt_sG", domain_comm.sum(npy.sum(self.vt_sG.ravel()))
+        print "Integration over Dxc_vt_sG", domain_comm.sum(npy.sum(self.Dxc_vt_sG.ravel()))
                 
         if master:
             all_D_sp = npy.empty((wfs.nspins, nadm))
@@ -448,8 +447,8 @@ class C_Response(Contribution):
             self.gd.distribute(r.get('GLLBDxcPseudoResponsePotential', s),
                               self.Dxc_vt_sG[s])
             
-        print "Integration over vt_sG", npy.sum(self.vt_sG.ravel())
-        print "Integration over Dxc_vt_sG", npy.sum(self.Dxc_vt_sG.ravel())
+        print "Integration over vt_sG", domain_comm.sum(npy.sum(self.vt_sG.ravel()))
+        print "Integration over Dxc_vt_sG", domain_comm.sum(npy.sum(self.Dxc_vt_sG.ravel()))
         
         # Read atomic density matrices and non-local part of hamiltonian:
         D_sp = r.get('GLLBAtomicDensityMatrices')
