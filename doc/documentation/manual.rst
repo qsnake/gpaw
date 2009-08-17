@@ -256,7 +256,7 @@ reasonable convergence of total energies.  If a ``n1`` `\times` ``n2``
 ``n1``, ``n2`` and ``n3`` are positive ``int``s all divisible by four.
 Alternatively, one can use something like ``h=0.25``, and the program
 will try to choose a number of grid points that gives approximately
-the desired grid spacing.  For more details, see :ref:`grids`.
+a grid-point density of `1/h^3`.  For more details, see :ref:`grids`.
 
 If you are more used to think in terms of plane waves; a conversion
 formula between plane wave energy cutoffs and realspace grid spacings
@@ -273,11 +273,13 @@ conversion can be done like this::
 Grid spacing
 ------------
 
-The parameter ``h`` specifies the grid spacing in Å that has to be used
-for the realspace representation of the smooth wave functions. Note, that
-this grid spacing in most cases is approximate as it has to fit to the unit
-cell. In case you want to specify ``h`` exactly you have to choose
-the unit cell accordingly. This can be achieved by::
+The parameter ``h`` specifies the grid spacing in Å that has to be
+used for the realspace representation of the smooth wave
+functions. Note, that this grid spacing in most cases is approximate
+as it has to fit to the unit cell (see :ref:`manual_gpts` above).
+
+In case you want to specify ``h`` exactly you have to choose the unit
+cell accordingly. This can be achieved by::
 
   from gpaw.cluster import *
 

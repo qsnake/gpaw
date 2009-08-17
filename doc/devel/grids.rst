@@ -4,15 +4,11 @@
 Grids
 =====
 
-XXX Update to ASE3 syntax
-
-Assume that we have a ``ListOfAtoms`` object contained in a cubic unit
+Assume that we have an ``Atoms`` object contained in a cubic unit
 cell of sidelength ``L``::
 
   L = 2.0
-  atoms = ListOfAtoms([...],
-                      cell=(L, L, L),
-                      periodic=True)
+  atoms = Atoms(cell=(L, L, L), pbc=True)
 
 and we use a calculator with a grid spacing of ``h=0.25`` Å or
 ``gpts=(8, 8, 8)``.  Since we have periodic boundary conditions, the
@@ -25,7 +21,7 @@ and we use a calculator with a grid spacing of ``h=0.25`` Å or
 Wave functions are represented on 8x8x8 grids, where the grid points
 are numbered from 0 to 7.
 
-If we use zero boundary conditions (``periodic=False``), then the
+If we use zero boundary conditions (``pbc=False``), then the
 *x*-axis will look like this::
 
                     0 1 2 3 4 5 6
@@ -36,16 +32,19 @@ Here the wave functions are exactly zero at *x*\ =0 Å and *x*\ =\ *L*,
 and only the non-zero values are stored in 7x7x7 grids (grid points
 numbered from 0 to 6).
 
+
+Update this XXX how about padding?
+
 An example:
 
 >>> L = 2.0
->>> atoms = ListOfAtoms([...],
-...                     cell=(L, L, L),
-...                     periodic=False)
+>>> atoms = Atoms(...,
+...               cell=(L, L, L),
+...               pbc=False)
 >>> calc = GPAW(..., gpts=(8, 8, 8))
 >>> atoms.SetCalculator(calc)
->>> e = atoms.GetPotentialEnergy()
->>> wf = calc.GetWaveFunctionArray(band=0)
+>>> e = atoms.get_potential_energy()
+>>> wf = calc.get_pseudo_wave_function(band=0)
 >>> wf.shape
 (7, 7, 7)
 >>> calc.GetGridSpacings()
