@@ -6,7 +6,7 @@ from gpaw.utilities import equal
 from gpaw.analyse.expandyl import ExpandYl
 
 R=0.7 # approx. experimental bond length
-a = 2
+a = 2.5
 c = 3
 H2 = Atoms([Atom('H', (a/2, a/2, (c-R)/2)),
             Atom('H', (a/2, a/2, (c+R)/2))],
