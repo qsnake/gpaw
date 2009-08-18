@@ -99,7 +99,7 @@ class Transport_Analysor:
         tp = self.tp
         if tp.plot_option == None:
             ef = tp.lead_fermi[0]
-            self.energies = np.linspace(ef - 100, ef + 100, 200) + 1e-4 * 1.j
+            self.energies = np.linspace(ef - 3, ef + 5, 60) + 1e-4 * 1.j
             self.lead_pairs = [[0,1]]
         else:
             self.energies = tp.plot_option['energies']
@@ -274,7 +274,7 @@ class Transport_Analysor:
         nt_sG = gd.empty(tp.nspins, global_array=True)
         vt_sG = gd.empty(tp.nspins, global_array=True)
         
-        nt_sG = gd.collect(tp.density.nt_sG - tp.density.nct_G, True)
+        nt_sG = gd.collect(tp.density.nt_sG, True)
         vt_sG = gd.collect(tp.hamiltonian.vt_sG, True)
 
         nt = nt_sG[0, d1, d2].copy()
@@ -331,6 +331,11 @@ class Transport_Analysor:
         cost['eq fock2den'] = time('eq fock2den')
         cost['ne fock2den'] = time('ne fock2den')
         cost['Poisson'] = time('Poisson')
+        cost['construct density'] = time('LCAO WaveFunctions: construct density')
+        if self.tp.step == 0:
+            cost['project hamiltonian'] = 0
+        else:
+            cost['project hamiltonian'] = time('project hamiltonian')            
         return cost
 
     def collect_transmission_and_dos(self, energies=None):
