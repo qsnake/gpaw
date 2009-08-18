@@ -8,6 +8,17 @@ from gpaw.utilities.timing import Timer
 import copy
 import _gpaw
 
+def tw(mat, filename):
+    fd = file(filename, 'wb')
+    pickle.dump(mat, fd, 2)
+    fd.close()
+
+def tr(filename):
+    fd = file(filename, 'r')
+    mat = pickle.load(fd)
+    fd.close()
+    return mat
+
 class PathInfo:
     def __init__(self, type, nlead):
         self.type = type
@@ -45,7 +56,6 @@ class PathInfo:
 
     def set_nres(self, nres):
         self.nres = nres
-
 
 class Banded_Sparse_HSD:
     #for lead's hamiltonian, overlap, and density matrix
@@ -94,11 +104,12 @@ class Banded_Sparse_Matrix:
                 self.initialize(mat)
             else:
                 self.reset(mat)
-        
+           
     def initialize(self, mat):
         # the indexing way needs mat[0][-1] = 0,otherwise will recover a
         # unsymmetric full matrix
         assert self.dtype == mat.dtype
+        #assert mat[0][-1] < self.tol
         dim = mat.shape[-1]
         ku = -1
         kl = -1
@@ -119,29 +130,47 @@ class Banded_Sparse_Matrix:
             kl -= 1
    
             # storage in the tranpose, bacause column major order for zgbsv_ function
-            self.spar = np.zeros([dim, 2 * kl + ku + 1], self.dtype)
+            length = (kl + ku + 1) * dim - kl * (kl + 1) / 2. - \
+                                                ku * (ku + 1) / 2.
+            
+            self.spar = np.zeros([length], self.dtype)
                 
-            index1 = np.zeros([dim, 2 * kl + ku + 1], int)
-            index2 = np.zeros([dim, 2 * kl + ku + 1], int)
+            index1 = []
+            index2 = []
+            index0 = np.zeros((dim, 2 * kl + ku + 1), int)
+           
+            n = 0
+            for i in range(kl, -1, -1):
+                for j in range(dim - i):
+                    index1.append(i + j)
+                    index2.append(j)
+                    index0[i + j, 2 * kl - i] = n
+                    n += 1
+        
+            for i in range(1, ku + 1):
+                for j in range(dim - i):
+                    index1.append(j)
+                    index2.append(j + i)
+                    index0[j, 2 * kl + i] = n
+                    n += 1
             
-            for i in range(dim):
-                index1[i] = i
-                for j in range(2 * kl + ku + 1):
-                    tmp = i + j - (kl + ku)
-                    if 0 <= tmp <= dim -1:
-                        index2[i][j] = tmp
-                    else:
-                        index1[i][j] = 0
-                        index2[i][j] = -1
+            index1 = np.array(index1)        
+            index2 = np.array(index2)
             
-            self.band_index = (kl, ku, index1, index2)
+            self.band_index = (kl, ku, index0, index1, index2)
             self.spar = mat[index1, index2]
             spar_sum = np.sum(abs(self.recover()))
 
+    def test1(self, n1, n2):
+        index1 ,index2 = self.band_index[-2:]
+        for i in range(len(index1)):
+            if index1[i] == n1 and index2[i] == n2:
+                print i
+                
     def recover(self):
-        dim = self.spar.shape[0]
+        index0, index1, index2 = self.band_index[-3:]
+        dim = index0.shape[0]
         mat = np.zeros([dim, dim], self.dtype)
-        index1, index2 = self.band_index[-2:]
         mat[index1, index2] = self.spar
         return mat
  
@@ -170,15 +199,12 @@ class Banded_Sparse_Matrix:
         else:
             self.spar += mat.recover()[index1, index2]           
 
-    def inv(self, keep_data=False):
-        kl, ku = self.band_index[:2]
-        dim = self.spar.shape[0]
+    def inv(self):
+        kl, ku, index0 = self.band_index[:3]
+        dim = index0.shape[0]
         inv_mat = np.eye(dim, dtype=complex)
         ldab = 2*kl + ku + 1
-        if keep_data:
-            source_mat = self.spar.copy()
-        else:
-            source_mat = self.spar
+        source_mat = self.spar[index0]
         assert source_mat.flags.contiguous
         info = _gpaw.linear_solve_band(source_mat, inv_mat, kl, ku)            
         return inv_mat
@@ -560,7 +586,7 @@ class Tp_Sparse_Matrix:
             inv_mat[i].append([])                
             
             end = nll - 2
-            q_mat[i][end] =  self.diag_h[i][end].inv(keep_data=True)
+            q_mat[i][end] =  self.diag_h[i][end].inv()
             for j in range(end - 1, -1, -1):
                 tmp_diag_h = copy.deepcopy(self.diag_h[i][j])
                 tmp_diag_h.reset_minus(self.dotdot(self.upc_h[i][j + 1],
@@ -887,7 +913,7 @@ def aa2d(a, d=0):
     return b
 
 #def get_realspace_hs(h_skmm,s_kmm, ibzk_kc, weight_k, R_c=(0,0,0)):
-def k2r_hs(h_skmm,s_kmm, ibzk_kc, weight_k, R_c=(0,0,0)):
+def k2r_hs(h_skmm, s_kmm, ibzk_kc, weight_k, R_c=(0,0,0)):
     phase_k = np.dot(2 * np.pi * ibzk_kc, R_c)
     c_k = np.exp(1.0j * phase_k) * weight_k
     c_k.shape = (len(ibzk_kc),1,1)
@@ -895,12 +921,12 @@ def k2r_hs(h_skmm,s_kmm, ibzk_kc, weight_k, R_c=(0,0,0)):
     if h_skmm != None:
         nbf = h_skmm.shape[-1]
         nspins = len(h_skmm)
-        h_smm = np.empty((nspins,nbf,nbf),complex)
+        h_smm = np.empty((nspins, nbf, nbf),complex)
         for s in range(nspins):
             h_smm[s] = np.sum((h_skmm[s] * c_k), axis=0)
     if s_kmm != None:
         nbf = s_kmm.shape[-1]
-        s_mm = np.empty((nbf,nbf),complex)
+        s_mm = np.empty((nbf, nbf),complex)
         s_mm[:] = np.sum((s_kmm * c_k), axis=0)     
     if h_skmm != None and s_kmm != None:
         return h_smm, s_mm
