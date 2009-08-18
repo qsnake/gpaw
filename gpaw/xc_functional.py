@@ -766,6 +766,8 @@ class XC3DGrid(XCGrid):
                         self.ddrG[c](a_G,dpsidr_G, kpt.phase_cd)
                     self.ddrG[c](self.dedtau_G * self.dpsidr_G, self.tmp_G)
                     axpy(-1.0, self.tmp_G, Htpsit_G)
+        if self.xcfunc.xcname.endswith('-SIC'):
+            self.xcfunc.add_non_local_terms(psit_nG, Htpsit_nG, s)
         
     def estimate_memory(self, mem):
         bytecount = self.gd.bytecount()
