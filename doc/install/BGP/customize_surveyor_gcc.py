@@ -16,17 +16,21 @@ scalapack = True
 # DO NOT INTERCHANGE THE ORDER OF LAPACK
 # & ESSL, LAPACK SHOULD BE LINKED FIRST.
 # 
+# Goto appears to be much faster for general
+# DGEMM operations, particularly those with
+# alpha != beta != 0
 #
-# It is also possible to use Goto BLAS instead
-# of ESSL. The performance is similar though,
-# and IBM updates ESSL frequently.
+# Goto is hand-tuned assembly, it will most
+# likely always be faster than ESSL-4.x,
+# but ESSL is more likely to be bug free.
 
 libraries = [
            'scalapack',
            'blacsCinit_MPI-BGP-0',
            'blacs_MPI-BGP-0',
            'lapack_bgp',
-           'esslbg',
+#           'esslbg',
+           'goto',
            'xlf90_r',
            'xlopt',
            'xl',
@@ -39,7 +43,8 @@ library_dirs = [
            '/soft/apps/SCALAPACK',
            '/soft/apps/BLACS',
            '/soft/apps/LAPACK',
-           '/soft/apps/ESSL-4.4.1-0/lib',
+#           '/soft/apps/ESSL-4.4.1-0/lib',
+           '/soft/apps/LIBGOTO',
            '/opt/ibmcmp/xlf/bg/11.1/bglib',
            '/opt/ibmcmp/xlsmp/bg/1.7/bglib',
            '/bgsys/drivers/ppcfloor/gnu-linux/lib',
