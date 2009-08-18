@@ -26,17 +26,6 @@ import gpaw
 import numpy as np
 import pickle
 
-
-def tw(mat, filename):
-    fd = file(filename, 'wb')
-    pickle.dump(mat, fd, 2)
-    fd.close()
-def tr(filename):
-    fd = file(filename, 'r')
-    mat = pickle.load(fd)
-    fd.close()
-    return mat
-
 class Lead_Calc(GPAW):
     def dry_run(self):
         pass
@@ -392,7 +381,7 @@ class Transport(GPAW):
         
         if self.fixed:
             self.timer.start('init surround')
-            self.surround = Surrounding(self)
+            self.surround = Surrounding(self)  
             N_c = self.gd.N_c.copy()
             for name in self.surround.sides:
                 N_c[self.d] -= self.surround.sides[name].N_c[self.d]
@@ -414,8 +403,8 @@ class Transport(GPAW):
             #self.get_hamiltonian_initial_guess()            
         else:
             self.timer.start('surround set_position')
-            self.surround.combine()
             self.inner_poisson.initialize()
+            self.surround.combine()
             self.set_extended_positions(self.extended_atoms)
             self.timer.stop('surround set_position')
             #self.get_hamiltonian_initial_guess()
@@ -486,7 +475,7 @@ class Transport(GPAW):
                 self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)            
                 self.hsd.reset(s, q, d_spkmm[s, q] * ntk, 'D', True) 
             
-    def fill_guess_with_leads(self):
+    def fill_guess_with_leads(self, flag=None):
         if self.hsd.S[0].extended:
             n = -2
         else:
@@ -495,9 +484,10 @@ class Transport(GPAW):
             for pk in range(self.my_npk):
                 for l in range(self.lead_num):
                     self.hsd.H[s][pk].diag_h[l][n].reset(
-                                          self.lead_hsd[l].H[s][pk].recover())
-
-                    self.hsd.D[s][pk].diag_h[l][n].reset(
+                                          self.lead_hsd[l].H[s][pk].recover()
+                            + self.bias[l] * self.lead_hsd[l].S[pk].recover())
+                    if flag != 'H':
+                        self.hsd.D[s][pk].diag_h[l][n].reset(
                                           self.lead_hsd[l].D[s][pk].recover())
 
     def append_buffer_hsd(self):
@@ -932,7 +922,8 @@ class Transport(GPAW):
                     diag_ham += np.diag(self.hsd.H[s][q].recover())
             self.wfs.kpt_comm.sum(diag_ham)
             diag_ham /= self.npk
-                     
+            
+            self.diff_h = 1.         
             if self.step > 0:
                 self.diff_h = np.max(abs(diag_ham - self.diag_ham_old))
                 if self.master:
@@ -1010,7 +1001,9 @@ class Transport(GPAW):
                 self.get_eqintegral_points(s, k)
                 self.get_neintegral_points(s, k)
                 if self.cal_loc:
-                    self.get_neintegral_points(s, k, 'locInt')        
+                    self.get_neintegral_points(s, k, 'locInt')
+        ne = self.eqpathinfo[0][0].num + self.nepathinfo[0][0].num
+        self.text('energy point' + str(ne))           
         
     def get_eqintegral_points(self, s, k):
         if self.recal_path:
@@ -1523,7 +1516,7 @@ class Transport(GPAW):
             self.analysor.save_ele_step()
             self.analysor.save_data_to_file('ele')
         
-        self.timer.start('hamiltonian matrix')
+        self.timer.start('project hamiltonian')
         if self.fixed:    
             h_spkmm, s_pkmm = self.get_hs(self)
         else:
@@ -1532,11 +1525,14 @@ class Transport(GPAW):
                 if self.linear_mm == None:
                     self.linear_mm = self.get_linear_potential_matrix()            
                 h_spkmm += self.linear_mm
-        self.timer.stop('hamiltonian matrix')                  
+        self.timer.stop('project hamiltonian')                  
        
         for q in range(self.my_npk):
             for s in range(self.my_nspins):
-                self.hsd.reset(s, q, h_spkmm[s, q], 'H')            
+                self.hsd.reset(s, q, h_spkmm[s, q], 'H')
+        
+        if self.step < 10:
+           self.fill_guess_with_leads('H')                 
   
     def get_forces(self, atoms):
         if (atoms.positions != self.atoms.positions).any():
@@ -1581,30 +1577,28 @@ class Transport(GPAW):
         
         density = self.density
         density.calculate_pseudo_density(self.wfs)
+        if self.fixed:
+            self.surround.combine_nt_sG
         self.wfs.calculate_atomic_density_matrices(density.D_asp)
         if self.fixed:
             self.surround.combine_D_asp()
         comp_charge = density.calculate_multipole_moments()
         if not self.fixed:
             density.normalize(comp_charge)
-        if self.fixed:
-            self.surround.combine_nt_sG()        
         if not density.mixer.mix_rho:
             density.mixer.mix(density)
         if density.nt_sg is None:
             density.nt_sg = density.finegd.empty(self.nspins)
         for s in range(self.nspins):
             density.interpolator.apply(density.nt_sG[s], density.nt_sg[s])            
-        #calculate_pseudo_charge
         if self.fixed:
             self.surround.combine_nt_sg()
         density.nt_g = density.nt_sg.sum(axis=0)
         density.rhot_g = density.nt_g.copy()
-        
-        if self.fixed:       
+        if self.fixed and self.atoms.pbc.any():       
             self.surround.normalize2()
-        
-        #density.ghat.add(density.rhot_g, density.Q_aL)     
+        else:
+            density.ghat.add(density.rhot_g, density.Q_aL)     
 
         if density.mixer.mix_rho:
             density.mixer.mix(density)
@@ -1653,7 +1647,9 @@ class Transport(GPAW):
             ham.npoisson = self.inner_poisson.solve_neutral(self.inner_vHt_g,
                                                             rhot_g,
                                               eps=self.inner_poisson.eps)
+            self.inner_vHt_g -= self.surround.extra_vHt_g
             self.surround.combine_vHt_g(self.inner_vHt_g)
+            self.text('poisson interations :' + str(ham.npoisson))
         self.timer.stop('Poisson')
       
         Epot = 0.5 * ham.finegd.integrate(ham.vHt_g, density.rhot_g,
