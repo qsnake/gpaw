@@ -77,7 +77,7 @@ PyObject* scal(PyObject *self, PyObject *args)
   if (x->descr->type_num == PyArray_DOUBLE)
     dscal_(&n, &(alpha.real), DOUBLEP(x), &incx);
   else
-    zscal_(&n, &alpha, COMPLEXP(x), &incx);
+    zscal_(&n, &alpha, (void*)COMPLEXP(x), &incx);
 
   Py_RETURN_NONE;
 }
