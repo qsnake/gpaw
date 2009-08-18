@@ -231,7 +231,8 @@ class SIC:
         hamiltonian.restrictor.apply(v_cou_g,v_cou_G)
         
         # write some information about the contributions
-        print "%3d : %10.5f  %10.5f %10.5f" % (n,Ecou_SI,Exc_SI,Ecou_SI+Exc_SI)
+        print ("%3d : %10.5f  %10.5f %10.5f %10.5f %10.5f" %
+               (n,Ecou_SI,Exc_SI,Ecou_SI+Exc_SI, kpt.eps_n[n], kpt.f_n[n]))
         return Exc_SI+Ecou_SI
 
     def add_non_local_terms(self, psit_nG, Htpsit_nG, s):

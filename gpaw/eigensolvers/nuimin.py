@@ -112,7 +112,7 @@ class NUIMin(Eigensolver):
         # (rather than explicit diagonalization which would affect the
         #  orbitals)
         kpt.eps_n[:] = H_nn.diagonal()
-        #
+
         # compute the residuum
         # ------------------------------------------------------------
         # residuum of the pseudo wavefunctions
@@ -152,10 +152,50 @@ class NUIMin(Eigensolver):
             pR_G = self.preconditioner(R_G, kpt.phase_cd)[0]
             #
             # correct
-            psit_nG[n] += pR_G
+            if 0:
+                psit_nG[n] += pR_G
+                continue
+
+            dR_G = wfs.gd.zeros()
+            wfs.kin.apply(pR_G, dR_G, kpt.phase_cd)
+            hamiltonian.apply_local_potential(pR_G, dR_G, kpt.s)
+            dR_G += pR_G * hamiltonian.xc.xcfunc.v_unG[kpt.s, n]
+            dR_G -= kpt.eps_n[n] * pR_G
+
+            dP_ai = wfs.pt.dict()
+            wfs.pt.integrate(pR_G, dP_ai)
+            c_ai = {}
+            for a, dP_i in dP_ai.items():
+                dH_ii = dH_aii[a]
+                dS_ii = hamiltonian.setups[a].O_ii
+                c_i = (np.dot(dP_i, dH_ii)
+                       - kpt.eps_n[n] * np.dot(dP_i, dS_ii))
+
+                P_i       = kpt.P_ani[a][n]
+                D_ii  = np.outer(P_i, P_i)
+                D_p       = pack(D_ii)
+                dU_aii    = unpack(np.dot(setups[a].M_pp, D_p))
+                d_i      = np.dot(dP_i,dU_aii)
+                c_i -= 2*d_i
+                c_ai[a] = c_i
+                
+            wfs.pt.add(dR_G, c_ai, kpt.q)
+
+            # Find lam that minimizes the norm of R'_G = R_G + lam dR_G
+            RdR = wfs.gd.comm.sum(np.vdot(R_G, dR_G).real)
+            dRdR = wfs.gd.comm.sum(np.vdot(dR_G, dR_G).real)
+
+            lam = -RdR / dRdR
+            # Calculate new psi'_G = psi_G + lam pR_G + lam pR'_G
+            #                      = psi_G + p(2 lam R_G + lam**2 dR_G)
+            R_G *= 2.0 * lam
+            axpy(lam**2, dR_G, R_G)  # R_G += lam**2 * dR_G
+            psit_nG[n] += self.preconditioner(R_G, kpt.phase_cd)[0]
+            
+            
         #
         # gather error from all nodes
-        error = self.gd.comm.sum(error)
+        error = wfs.gd.comm.sum(error)
         
         return error
     
