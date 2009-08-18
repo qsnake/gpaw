@@ -54,7 +54,7 @@ class LeadSelfEnergy:
                               dagger(self.hsd_ij.H[self.s][self.pk].recover())
         delta = self.conv + 1
         while delta > self.conv:
-            inv_v_11 = v_11.inv(keep_data=True)
+            inv_v_11 = v_11.inv()
             a = dot(inv_v_11, v_01)
             b = dot(inv_v_11, v_10)
             v_01_dot_b = dot(v_01, b)
