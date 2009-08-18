@@ -19,6 +19,7 @@ PyObject* craypat_region_end(PyObject *self, PyObject *args);
 #endif
 
 
+PyObject* scal(PyObject *self, PyObject *args);
 PyObject* gemm(PyObject *self, PyObject *args);
 PyObject* gemv(PyObject *self, PyObject *args);
 PyObject* axpy(PyObject *self, PyObject *args);
@@ -72,6 +73,7 @@ PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args);
 #endif
 
 static PyMethodDef functions[] = {
+  {"scal", scal, METH_VARARGS, 0},
   {"gemm", gemm, METH_VARARGS, 0},
   {"gemv", gemv, METH_VARARGS, 0},
   {"axpy", axpy, METH_VARARGS, 0},

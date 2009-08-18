@@ -17,7 +17,22 @@ from gpaw.utilities import is_contiguous
 from gpaw import debug
 import _gpaw
 
+def scal(alpha, x):
+    """alpha x
 
+    Performs the operation::
+
+      x <- alpha * x 
+      
+    """
+    if isinstance(alpha, complex):
+        assert is_contiguous(x, complex)
+    else:
+        assert isinstance(alpha, float)
+        assert x.dtype in [float, complex]
+        assert x.flags.contiguous
+    _gpaw.scal(alpha, x)
+    
 def gemm(alpha, a, b, beta, c, transa='n'):
     """General Matrix Multiply.
 
@@ -313,6 +328,7 @@ def _rotate(in_jj, U_ij, a=1., b=0., out_ii=None, work_ij=None):
 
 
 if not debug:
+    scal = _gpaw.scal
     gemm = _gpaw.gemm
     gemv = _gpaw.gemv
     axpy = _gpaw.axpy

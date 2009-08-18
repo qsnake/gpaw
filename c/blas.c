@@ -5,6 +5,8 @@
 #include "extensions.h"
 
 #ifdef GPAW_AIX
+#  define dscal_ dscal
+#  define zscal_ zscal
 #  define daxpy_ daxpy
 #  define zaxpy_ zaxpy
 #  define dsyrk_ dsyrk
@@ -17,6 +19,10 @@
 #  define zgemv_ zgemv
 #  define ddot_ ddot
 #endif
+
+void dscal_(int*n, double* alpha, double* x, int* incx);
+
+void zscal_(int*n, void* alpha, void* x, int* incx);
 
 void daxpy_(int* n, double* alpha,
 	    double* x, int *incx, 
@@ -56,6 +62,25 @@ int zgemv_(char *trans, int *m, int * n,
 	   void *x, int *incx, void *beta,
 	   void *y, int *incy);
 double ddot_(int *n, void *dx, int *incx, void *dy, int *incy);
+
+PyObject* scal(PyObject *self, PyObject *args)
+{
+  Py_complex alpha;
+  PyArrayObject* x;
+  if (!PyArg_ParseTuple(args, "DO", &alpha, &x)) 
+    return NULL;
+  int n = x->dimensions[0];
+  for (int d = 1; d < x->nd; d++)
+    n *= x->dimensions[d];
+  int incx = 1;
+
+  if (x->descr->type_num == PyArray_DOUBLE)
+    dscal_(&n, &(alpha.real), DOUBLEP(x), &incx);
+  else
+    zscal_(&n, &alpha, COMPLEXP(x), &incx);
+
+  Py_RETURN_NONE;
+}
 
 PyObject* gemm(PyObject *self, PyObject *args)
 {
@@ -165,32 +190,24 @@ PyObject* gemv(PyObject *self, PyObject *args)
 
 PyObject* axpy(PyObject *self, PyObject *args)
 {
-  PyObject* alpha;
+  Py_complex alpha;
   PyArrayObject* x;
   PyArrayObject* y;
-  if (!PyArg_ParseTuple(args, "OOO", &alpha, &x, &y)) 
+  if (!PyArg_ParseTuple(args, "DOO", &alpha, &x, &y)) 
     return NULL;
   int n = x->dimensions[0];
   for (int d = 1; d < x->nd; d++)
     n *= x->dimensions[d];
   int incx = 1;
   int incy = 1;
-  if (PyFloat_Check(alpha))
-    {
-      if (x->descr->type_num == PyArray_CDOUBLE)
-	n *= 2;
-      PyFloatObject* palpha = (PyFloatObject*)alpha;
-      daxpy_(&n, &(palpha->ob_fval), 
-            DOUBLEP(x), &incx,
-            DOUBLEP(y), &incy);
-    }
+  if (x->descr->type_num == PyArray_DOUBLE)
+    daxpy_(&n, &(alpha.real), 
+           DOUBLEP(x), &incx,
+           DOUBLEP(y), &incy);
   else
-    {
-      PyComplexObject* palpha = (PyComplexObject*)alpha;
-      zaxpy_(&n, (void*)(&(palpha->cval)), 
-             (void*)COMPLEXP(x), &incx,
-             (void*)COMPLEXP(y), &incy);
-    }
+    zaxpy_(&n, &alpha, 
+           (void*)COMPLEXP(x), &incx,
+           (void*)COMPLEXP(y), &incy);
   Py_RETURN_NONE;
 }
 
