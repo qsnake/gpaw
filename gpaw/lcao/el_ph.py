@@ -19,21 +19,24 @@ from ase.units import Bohr, Hartree
 
 class ElectronPhononCouplingMatrix:
     """Class for calculating the electron-phonon coupling matrix, defined
-       by the electron phonon interaction::
-                      _                   _____
-                      \     l   cc        /  h             cc
-            H      =   )   M   c   c     /------   ( b  + b   )
-             el-ph    /_    ij  i   j  \/   2 W       l    l
-                        l,ij                     l
-        
-            where the electron phonon coupling matrix is given by
-                    
-                l           _ 
-                M   = < i | \ /  V   * v  |j>
-                 ij          'u   eff   l
+    by the electron phonon interaction.
+
+    ::
+   
+                  _                   _____
+                  \     l   cc        /  h             cc
+        H      =   )   M   c   c     /------   ( b  + b   ),
+         el-ph    /_    ij  i   j  \/   2 W       l    l
+                    l,ij                     l
+    
+    where the electron phonon coupling matrix is given by::
+                
+            l           _ 
+            M   = < i | \ /  V   * v  |j>
+             ij          'u   eff   l
   
-          ::
     """
+    
     def __init__(self, atoms, indices=None, name = 'v',delta=0.005, nfree=2):
         assert nfree in [2,4]
         self.nfree = nfree
@@ -162,9 +165,10 @@ class ElectronPhononCouplingMatrix:
         return dvt_Gx, ddH_aspx
 
     def get_Mlii(self, modes, vtonly = False):
+        """bla bla.
 
-        """
-          ::
+        ::
+        
                   d                   d  ~
             < w | -- v | w' > = < w | -- v | w'>
                   dP                  dP
@@ -187,7 +191,6 @@ class ElectronPhononCouplingMatrix:
                               /_        i        ij    dP  j
                               a,ij
 
-            ::
         """
  
         d  = pickle.load(open('data.pckl')) # bfs
