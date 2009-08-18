@@ -46,10 +46,10 @@ for arg in sys.argv[1:]:
     else:
         cmd += arg
 
-flags_list = {1: "-O3 -qlanglvl=extc99 -qnostaticlink -qflag=e:e",
-              2: "-O3 -qstrict -qlanglvl=extc99 -qnostaticlink -qflag=e:e",
-              3: "-O3 -qnostaticlink -qflag=e:e",
-              4: "-O3 -qhot -qlanglvl=extc99 -qnostaticlink -qflag=e:e",
+flags_list = {1: "-O3 -qlanglvl=extc99 -qnostaticlink -qflag=w:w",
+              2: "-O3 -qstrict -qlanglvl=extc99 -qnostaticlink -qflag=w:w",
+              3: "-O3 -qnostaticlink -qflag=w:w",
+              4: "-O3 -qhot -qlanglvl=extc99 -qnostaticlink -qflag=w:w",
               }
 
 flags = flags_list[opt]  
