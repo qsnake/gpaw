@@ -114,14 +114,15 @@ class WannierFunction(LocalizedFunctions):
 class AtomCenteredFunctions(LocalizedFunctions):
     def __init__(self, gd, spline_j, spos_c, index=None):
         rcut = max([spline.get_cutoff() for spline in spline_j])
-        self.spos_c = spos_c
-        # Determination of vector distance, c, from position to origin of the box
+
         cell = gd.cell_cv.copy()
-        diagonal = (cell[0,:]+cell[1,:])
+
+        diagonal = cell[0]+cell[1]
         diagonal = diagonal/np.linalg.norm(diagonal)
+
         a = np.zeros_like(diagonal)
-        a[0]=cell[0,:][1]
-        a[1]=-cell[0,:][0]
+        a[0]=cell[0][1]
+        a[1]=-cell[0][0]
         a=-a/np.linalg.norm(a)
         c = rcut/np.dot(diagonal,a)
         # Determine corner
@@ -129,7 +130,7 @@ class AtomCenteredFunctions(LocalizedFunctions):
         pos =np.dot(np.linalg.inv(cell.T), diagonal * c)
         pos[2] = rcut/gd.cell_c[2]
         corner_c = np.ceil(spos_c * gd.N_c - pos*gd.cell_c / gd.h_c).astype(int)
-        self.center = np.ceil(pos*gd.cell_c / gd.h_c).astype(int)
+        self.center = pos * gd.cell_c / gd.h_c
         size_c = np.ceil(spos_c * gd.N_c + \
                  pos*gd.cell_c / gd.h_c).astype(int) - corner_c
 
@@ -330,48 +331,57 @@ class STM:
                      % (T[3], T[4], T[5])+' Done'
             self.log.flush()
 
-    def set_tip_position(self, position):   
-        """Positions origin of the tip unit cell at grdpt_c
-            in the extended transverse surface unit cell."""         
-        p = self.input_parameters
-        tip_atom_index = p['tip_atom_index']
-        h_c = self.srf.gd.h_c        
-        if len(position) == 2:
-            position = np.resize(position,3)
-            position[2] = 0
+    def set_tip_position(self, position_c):   
+        """Positions tip atom as close as possible above the surface at 
+           the grid point given by positions_c"""
+           
+        position_c = np.resize(position_c,3)
 
-        tip_pos_av = self.tip_cell.atoms.get_positions() / Bohr
+        #tip_atom_index = self.input_parameters['tip_atom_index']
+        h_c = self.srf_cell.gd.h_c        
+ 
+        tip_cell = self.tip_cell
+        tip_atom_index = tip_cell.tip_atom_index
+        
+        tip_pos_av = tip_cell.atoms.get_positions() / Bohr
+
+        tip_zmin = tip_pos_av[tip_atom_index, 2]
+
         tip_pos_av_grpt = self.tip_cell.gd.N_c\
                           * self.tip_cell.atoms.get_scaled_positions()
-        srf_pos_av = self.srf.atoms.get_positions() / Bohr
-        tip_zmin = tip_pos_av[tip_atom_index, 2]
+      
+        srf_pos_av = self.srf_cell.atoms.get_positions() / Bohr
         srf_zmax = srf_pos_av[:, 2].max()
+
+
         extension_c = np.resize(self.srf_cell.ext1,3)
         extension_c[-1] =0
-        self.extension_c = extension_c
+
         #corner of the tip unit cell in the extended grid        
-        cell_corner_c = position + self.extension_c\
+        cell_corner_c = position_c + extension_c\
                       - tip_pos_av_grpt[tip_atom_index]
         cell_corner_c[2]  = (srf_zmax + self.dmin - tip_zmin) / h_c[2]
         cell_corner_c = np.round(cell_corner_c).astype(int)        
 
         self.tip_position = cell_corner_c + \
-                            tip_pos_av_grpt[tip_atom_index] - self.extension_c        
+                           tip_pos_av_grpt[tip_atom_index] - extension_c        
+        
         self.dmin = self.tip_position[2] * h_c[2] - srf_zmax
+
+        self.srf_zmax = srf_zmax
+        self.tip_zmin = tip_zmin
         self.tip_cell.set_position(cell_corner_c)        
 
-        # Add the tip potential at the respective place in the extended grid
-        # of the surface
+        # sum potentials
         size_c = self.tip_cell.gd.n_c
-        #current_Vt = self.extd_vt_G.copy()#XXX
-        
         current_Vt = self.srf_cell.vt_G.copy()
-        current_Vt[cell_corner_c[0]+1:cell_corner_c[0] + 1 + size_c[0],
-                   cell_corner_c[1]+1:cell_corner_c[1] + 1 + size_c[1],
-                   cell_corner_c[2]+1:cell_corner_c[2] + 1 + size_c[2]] +=\
-                    self.tip_cell.vt_G # +1 since cell grid starts at (1,1,1), pbc = 0
+
+        current_Vt[cell_corner_c[0]+1:cell_corner_c[0] + size_c[0] + 1,
+                   cell_corner_c[1]+1:cell_corner_c[1] + size_c[1] + 1,
+                   cell_corner_c[2]+1:cell_corner_c[2] + size_c[2] + 1]\
+                += self.tip_cell.vt_G # +1 since grid starts at (1,1,1), pbc = 0
+
         self.current_v=current_Vt
-        self.tip_cell_corner_c = cell_corner_c
 
     def get_V(self, position_c):
         """Returns the overlap hamiltonian for a position of the tip_atom """
@@ -994,7 +1004,7 @@ class SrfCell:
         self.vt_G = vt_G
         newsize_c = np.resize(newsize_c, 3)
         newsize_c[2] = sgd.n_c[2]
-        newcell_cv = (newsize_c+1) * sgd.cell_cv.T / sgd.cell_c * sgd.h_c
+        newcell_cv = (newsize_c + 1) * sgd.cell_cv.T / sgd.cell_c * sgd.h_c
         newgd = GridDescriptor(N_c=newsize_c + 1,
                                cell_cv=newcell_cv,
                                pbc_c=False,
@@ -1002,6 +1012,7 @@ class SrfCell:
 
         self.gd = newgd
         srf_atoms = self.srf.atoms.copy()[srf_indices]
+        
         self.atoms = srf_atoms
         
         # add functions
@@ -1014,9 +1025,11 @@ class SrfCell:
                 self.functions.append(f)
                 j += len(f.f_iG)
         self.nj = j
+
         # shift corners so that the origin now is the one of the extended surface cell
         for f in self.functions:
-            f.corner_c[:2] += ext1_c #XXX maybe not + 1 ???
+            f.corner_c[:2] += ext1_c  
+
         self.ext1 = ext1_c
 
         # Add an appropriate number of periodic images.
@@ -1037,6 +1050,7 @@ class SrfCell:
             f_iGs[f.index] = f.f_iG
             f.f_iG = None
             list.append(f)
+            '''
             for R in Rs:
                 n = 0
                 add_function = True
@@ -1058,6 +1072,7 @@ class SrfCell:
                         list.append(newf)
                     else:
                         add_function = False
+            '''
         self.functions = list
         self.f_iGs = f_iGs
         self.atoms = srf_atoms
