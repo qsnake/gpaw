@@ -218,7 +218,7 @@ class Surrounding:
         poisson = self.tp.inner_poisson
         self.extra_vHt_g = np.zeros(self.extra_rhot_g.shape)
         poisson.solve_neutral(self.extra_vHt_g, self.extra_rhot_g,
-                                               eps=poisson.eps * 1e-5)
+                                               eps=poisson.eps)
        
     def calculate_gate(self):
         gd = self.tp.finegd0
