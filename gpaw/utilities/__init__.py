@@ -38,7 +38,7 @@ def h2gpts(h, cell_cv):
 
     L_c = (cell_cv**2).sum(1)**0.5
     d = h * (L_c.prod() / abs(np.linalg.det(cell_cv)))**(1.0 / 3.0)
-    return np.maximum(4, (L_c / d / 4).round().astype(int) * 4)
+    return np.maximum(4, (L_c / d / 4 + 0.5).astype(int) * 4)
 
 def gcd(a, b):
     """Return greatest common divisor of a and b, using the

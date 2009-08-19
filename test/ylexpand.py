@@ -6,7 +6,7 @@ from gpaw.utilities import equal
 from gpaw.analyse.expandyl import ExpandYl
 
 R=0.7 # approx. experimental bond length
-a = 2.5
+a = 2
 c = 3
 H2 = Atoms([Atom('H', (a/2, a/2, (c-R)/2)),
             Atom('H', (a/2, a/2, (c+R)/2))],
@@ -15,6 +15,9 @@ calc = GPAW(nbands=2,
             convergence={'eigenstates':1.e-6})
 H2.set_calculator(calc)
 H2.get_potential_energy()
+
+# Check that a / h = 10 is rounded up to 12 as always:
+assert (calc.gd.N_c == (12, 12, 16)).all()
 
 yl = ExpandYl(H2.positions.mean(0), calc.gd, Rmax=1.5)
 
