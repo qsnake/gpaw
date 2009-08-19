@@ -10,6 +10,9 @@ from gpaw.utilities import unpack
 from gpaw.utilities.tools import tri2full, lowdin
 from gpaw.coulomb import get_vxc as get_ks_xc
 from gpaw.utilities.blas import r2k, gemm
+from gpaw.setup import types2atomtypes
+from gpaw.basis_data import Basis
+
 
 from gpaw.lcao.projected_wannier import dots, condition_number, eigvals, \
      get_bfs, get_lcao_projections_HSP
@@ -85,6 +88,22 @@ def get_xc2(calc, w_wG, P_awi, spin=0):
         H_ii = unpack(H_sp[spin])
         xc_ww += dots(P_wi, H_ii, P_wi.T.conj())
     return xc_ww * Hartree
+
+
+def pwf_mask2(symbols, lcaobasis='dzp', pwfbasis='sz'):
+    lcaobasis = types2atomtypes(symbols, lcaobasis, default='dzp')
+    pwfbasis = types2atomtypes(symbols, pwfbasis, default='sz')
+    def nao(symbol, basis):
+        if basis == 'null':
+            return 0
+        return Basis(symbol, basis).nao
+    mask = []
+    for symbol, l, p in zip(symbols, lcaobasis, pwfbasis):
+        nao_lcao = nao(symbol, l)
+        nao_pwf = nal(symbol, p)
+        mask += [True,] * nao_pwf
+        mask += [False,] * (nao_lcao - nao_pwf)
+    return np.asarray(mask, bool)
 
 
 def pwf_mask(symbols, lcaobasis='dzp', pwfbasis='sz'):
