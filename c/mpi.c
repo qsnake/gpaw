@@ -86,7 +86,7 @@ static PyObject * mpi_sendreceive(MPIObject *self, PyObject *args, PyObject *kwa
 #ifdef GPAW_MPI_DEBUG
       if (ret != MPI_SUCCESS)
 	{
-	  PyErr_SetString(PyExc_RuntimeError, "MPI_Send error occured.");
+	  PyErr_SetString(PyExc_RuntimeError, "MPI_Sendrecv error occured.");
 	  return NULL;
 	}
 #endif
