@@ -15,7 +15,6 @@ from gpaw import GPAW
 from gpaw.mpi import world as w
 from ase.dft import monkhorst_pack
 
-
 class LocalizedFunctions:
     def __init__(self, gd, f_iG, corner_c, index=None, vt_G=None):
         self.gd = gd
@@ -150,7 +149,6 @@ class AtomCenteredFunctions(LocalizedFunctions):
         LocalizedFunctions.__init__(self, gd, f_iG, corner_c, 
                                      index=index)
 
-
 class STM:
     def __init__(self, tip, surface, lead1 = None, lead2 = None, **kwargs):
         self.tip = tip
@@ -158,10 +156,8 @@ class STM:
         self.lead1 = lead1
         self.lead2 = lead2
         self.stm_calc = None
-        self.ediff = None        
+        self.ediff = None #XXX       
         self.scans ={}
-        tgd = tip.gd
-        sgd = surface.gd
 
         self.input_parameters = {'tip_atom_index': 0,
                                  'dmin': 6.0,
@@ -179,7 +175,7 @@ class STM:
                                  'w': 0.0,
                                  'eta1': 1e-3,
                                  'eta2': 1e-3,
-                                 'logfile': '-',
+                                 'logfile': None, # '-' for stdin
                                  'verbose': False}
 
         self.initialized = False
@@ -222,8 +218,7 @@ class STM:
             return
 
         T = time.localtime()
-        print >> self.log, '#%d:%02d:%02d'\
-                     % (T[3], T[4], T[5])+' Initializing'
+        self.log.write('#%d:%02d:%02d' % (T[3], T[4], T[5]) + ' Initializing\n')
 
         p = self.input_parameters        
         self.dmin = p['dmin'] / Bohr
@@ -246,11 +241,7 @@ class STM:
         
         tip_indices = np.where(tip_zmin_a < srf_zmax_a.max() - self.dmin)[0]  
         srf_indices = np.where(srf_zmax_a > tip_zmin_a.min() + self.dmin)[0]  
- 
-        print >> self.log, '# dmin = ', str(self.dmin*Bohr)
-        print >> self.log, '#Tip atoms: ', str(tip_indices.min()) + ' to ' + str(tip_indices.max())
-        print >> self.log, '#Surface atoms: ', str(srf_indices.min()) + ' to ' + str(srf_indices.max())
-
+        
         # tip initialization
         self.tip_cell = TipCell(self.tip, self.srf)
         self.tip_cell.initialize(tip_indices, tip_atom_index)
@@ -260,15 +251,24 @@ class STM:
         self.srf_cell = SrfCell(self.srf)
         self.srf_cell.initialize(self.tip_cell, srf_indices)
         self.nj = self.srf_cell.nj
-        
+        self.set_tip_position([0, 0])
+ 
+        self.log.write(' dmin = %.3f\n' % (self.dmin * Bohr) +
+                       ' tip atoms: %i to %i,  tip functions: %i\n' 
+                       % (tip_indices.min(), tip_indices.max(),
+                          len(self.tip_cell.functions))
+                      +' surface atoms: %i to %i, srf functions %i\n' 
+                        %(srf_indices.min(), srf_indices.max(),
+                          len(self.srf_cell.functions))
+                      )
+
         if not self.transport_uptodate:
             self.initialize_transport()            
 
-        self.set_tip_position([0, 0])
         self.initialized = True
         self.log.flush()
 
-    def initialize_transport(self, restart= False, ediff_only = False):
+    def initialize_transport(self, restart = False, ediff_only = False):
         p = self.input_parameters        
         h1, s1 = p['hs1']
         h10, s10 = p['hs10']
@@ -305,13 +305,14 @@ class STM:
         h10 -= diff1 * s10
         if not ediff_only and not self.transport_uptodate:
             from ase.transport.stm import STM as STMCalc
+
             T = time.localtime()
-            print >> self.log, '#%d:%02d:%02d'\
-                     % (T[3], T[4], T[5])+' Updating transport calculator'
+            self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
+                           ' Precalculating green functions\n')
 
             if p['energies'] == None:
                 energies = np.sign(bias) * \
-                np.arange(-abs(bias)*w, -abs(bias)*(w-1)+de, de)
+                np.arange(-abs(bias) * w, -abs(bias)*(w - 1) + de, de)
                 energies.sort()
             else:
                 energies = p['energies']
@@ -327,47 +328,37 @@ class STM:
             
             self.stm_calc = stm_calc
             self.transport_uptodate = True            
-            print >> self.log, '#%d:%02d:%02d'\
-                     % (T[3], T[4], T[5])+' Done'
+
+            T = time.localtime()
+            self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
+                           ' Done\n')
             self.log.flush()
 
     def set_tip_position(self, position_c):   
         """Positions tip atom as close as possible above the surface at 
            the grid point given by positions_c"""
-           
         position_c = np.resize(position_c,3)
 
-        #tip_atom_index = self.input_parameters['tip_atom_index']
         h_c = self.srf_cell.gd.h_c        
- 
         tip_cell = self.tip_cell
         tip_atom_index = tip_cell.tip_atom_index
-        
         tip_pos_av = tip_cell.atoms.get_positions() / Bohr
-
         tip_zmin = tip_pos_av[tip_atom_index, 2]
-
         tip_pos_av_grpt = self.tip_cell.gd.N_c\
                           * self.tip_cell.atoms.get_scaled_positions()
-      
         srf_pos_av = self.srf_cell.atoms.get_positions() / Bohr
         srf_zmax = srf_pos_av[:, 2].max()
-
-
         extension_c = np.resize(self.srf_cell.ext1,3)
-        extension_c[-1] =0
+        extension_c[-1] = 0
 
         #corner of the tip unit cell in the extended grid        
         cell_corner_c = position_c + extension_c\
                       - tip_pos_av_grpt[tip_atom_index]
         cell_corner_c[2]  = (srf_zmax + self.dmin - tip_zmin) / h_c[2]
         cell_corner_c = np.round(cell_corner_c).astype(int)        
-
         self.tip_position = cell_corner_c + \
                            tip_pos_av_grpt[tip_atom_index] - extension_c        
-        
         self.dmin = self.tip_position[2] * h_c[2] - srf_zmax
-
         self.srf_zmax = srf_zmax
         self.tip_zmin = tip_zmin
         self.tip_cell.set_position(cell_corner_c)        
@@ -376,11 +367,10 @@ class STM:
         size_c = self.tip_cell.gd.n_c
         current_Vt = self.srf_cell.vt_G.copy()
 
-        current_Vt[cell_corner_c[0]+1:cell_corner_c[0] + size_c[0] + 1,
-                   cell_corner_c[1]+1:cell_corner_c[1] + size_c[1] + 1,
-                   cell_corner_c[2]+1:cell_corner_c[2] + size_c[2] + 1]\
+        current_Vt[cell_corner_c[0] + 1:cell_corner_c[0] + size_c[0] + 1,
+                   cell_corner_c[1] + 1:cell_corner_c[1] + size_c[1] + 1,
+                   cell_corner_c[2] + 1:cell_corner_c[2] + size_c[2] + 1]\
                 += self.tip_cell.vt_G # +1 since grid starts at (1,1,1), pbc = 0
-
         self.current_v=current_Vt
 
     def get_V(self, position_c):
@@ -498,7 +488,6 @@ class STM:
                 result = i1 * (1 - Ih) + i2 * Ih
                 if i2 < 0:
                     result = 0
-                print [x, y], [i1, i2], result
                 cons[x, y] = result * hz + dmins[0]
         self.scans['fullscan'] = cons
 
@@ -733,7 +722,7 @@ class TipCell:
         sgd = self.srf.gd
         tip_atoms = self.tip.atoms.copy()[tip_indices]      
         tip_atoms.pbc = 0
-        tip_pos_av = tip_atoms.get_positions().copy()/Bohr
+        tip_pos_av = tip_atoms.get_positions().copy() / Bohr
         tip_cell_cv = tgd.cell_cv
         srf_cell_cv = sgd.cell_cv
 
@@ -980,7 +969,6 @@ class SrfCell:
         rest1 = ext1_c % srf_shape[:2]
         intexb = ext2_c / srf_shape[:2]
         rest2 = ext2_c % srf_shape[:2]
-        print intexa, intexb, rest1, rest2
 
         for n in range(intexa[0]+intexb[0] + 1 ):
             for m in range(intexa[1] + intexb[1] + 1):
@@ -1050,7 +1038,6 @@ class SrfCell:
             f_iGs[f.index] = f.f_iG
             f.f_iG = None
             list.append(f)
-            '''
             for R in Rs:
                 n = 0
                 add_function = True
@@ -1072,7 +1059,6 @@ class SrfCell:
                         list.append(newf)
                     else:
                         add_function = False
-            '''
         self.functions = list
         self.f_iGs = f_iGs
         self.atoms = srf_atoms
@@ -1119,6 +1105,7 @@ def dump_lead_hs(calc, filename, return_hs=False, restart=False):
     use restart=True if restarting from a gpw file.
     The energy scale is set to zero at fermi level.
     """
+    usesymm = calc.input_parameters['usesymm']
     atoms = calc.get_atoms()
     atoms.set_calculator(calc)
  
@@ -1126,7 +1113,8 @@ def dump_lead_hs(calc, filename, return_hs=False, restart=False):
        calc.initialize_positions(atoms)
 
     efermi = calc.get_fermi_level()
-    h_smm, s_mm = get_lead_lcao_hamiltonian(calc, direction='z')
+    h_smm, s_mm = get_lead_lcao_hamiltonian(calc, direction='z',
+                                            usesymm = usesymm)
     h_mm = h_smm[0] - efermi * s_mm
     fd = open(filename + '.pckl', 'wb')
     pickle.dump((h_mm, s_mm), fd, 2)
