@@ -16,7 +16,7 @@ import numpy as np
 
 import gpaw.mpi as mpi
 from gpaw.domain import Domain
-from gpaw.utilities import divrl
+from gpaw.utilities import divrl, interpolate_mlsqr, crop_array
 from gpaw.spline import Spline
 
 
@@ -318,33 +318,48 @@ class GridDescriptor(Domain):
                 g_c[c] = min(g_c[c], self.end_c[c] - 1)
         return g_c - self.beg_c
 
-    def interpolate_grid_point(self, spos_c, vt_g):
-        """Return trilinearly interpolated value from array vt_g based on the scaled coordinate spos_c.
+    def interpolate_grid_point(self, spos_c, vt_g, mlsqr=False):
+        """Return interpolated value from array vt_g based on the scaled coordinates on spos_c.
+
+        Is mlsqr flag is set to True use the moving least squares algorithm, otherwise use trilinear
+        interpolation.
         
-        This doesn't work in parallel, since it would require communication between neighbour points.
-        Note: Not optimized, use only for post processing.
+        This doesn't work in parallel, since it would require communication between neighbouring grid.
+        Note: Not optimized, use only for post processing. Probably by far, the most slowest interpolation
+        routine available.
         """
 
         g_c = self.N_c * spos_c - self.beg_c
-        bg_c = np.floor(g_c).astype(int) 
-        Bg_c = np.ceil(g_c).astype(int) 
+
+        if mlsqr:
+            box_size = 4
+        else:
+            box_size = 0
+
+        # The begin and end of the array slice
+        bg_c = np.floor(g_c-box_size).astype(int)
+        Bg_c = np.ceil(g_c+box_size).astype(int)
+
+        # The coordinate within the box (bottom left = 0, top right = h_c)
         dg_c = g_c - bg_c
 
         # Flip boundary points
         assert mpi.world.size==1
         Bg_c %= self.N_c
 
-        return (vt_g[bg_c[0],bg_c[1],bg_c[2]] * (1.0 - dg_c[0]) * (1.0 - dg_c[1]) * (1.0 - dg_c[2]) + 
-               vt_g[Bg_c[0],bg_c[1],bg_c[2]] * (0.0 + dg_c[0]) * (1.0 - dg_c[1]) * (1.0 - dg_c[2]) + 
-               vt_g[bg_c[0],Bg_c[1],bg_c[2]] * (1.0 - dg_c[0]) * (0.0 + dg_c[1]) * (1.0 - dg_c[2]) +  
-               vt_g[Bg_c[0],Bg_c[1],bg_c[2]] * (0.0 + dg_c[0]) * (0.0 + dg_c[1]) * (1.0 - dg_c[2]) + 
-               vt_g[bg_c[0],bg_c[1],Bg_c[2]] * (1.0 - dg_c[0]) * (1.0 - dg_c[1]) * (0.0 + dg_c[2]) + 
-               vt_g[Bg_c[0],bg_c[1],Bg_c[2]] * (0.0 + dg_c[0]) * (1.0 - dg_c[1]) * (0.0 + dg_c[2]) + 
-               vt_g[bg_c[0],Bg_c[1],Bg_c[2]] * (1.0 - dg_c[0]) * (0.0 + dg_c[1]) * (0.0 + dg_c[2]) + 
-               vt_g[Bg_c[0],Bg_c[1],Bg_c[2]] * (0.0 + dg_c[0]) * (0.0 + dg_c[1]) * (0.0 + dg_c[2]))
+        if mlsqr:
+            v = crop_array(vt_g, bg_c, Bg_c)
+            return interpolate_mlsqr(dg_c, v, 2)
+        else:
+            return (vt_g[bg_c[0],bg_c[1],bg_c[2]] * (1.0 - dg_c[0]) * (1.0 - dg_c[1]) * (1.0 - dg_c[2]) + 
+                    vt_g[Bg_c[0],bg_c[1],bg_c[2]] * (0.0 + dg_c[0]) * (1.0 - dg_c[1]) * (1.0 - dg_c[2]) + 
+                    vt_g[bg_c[0],Bg_c[1],bg_c[2]] * (1.0 - dg_c[0]) * (0.0 + dg_c[1]) * (1.0 - dg_c[2]) +  
+                    vt_g[Bg_c[0],Bg_c[1],bg_c[2]] * (0.0 + dg_c[0]) * (0.0 + dg_c[1]) * (1.0 - dg_c[2]) + 
+                    vt_g[bg_c[0],bg_c[1],Bg_c[2]] * (1.0 - dg_c[0]) * (1.0 - dg_c[1]) * (0.0 + dg_c[2]) + 
+                    vt_g[Bg_c[0],bg_c[1],Bg_c[2]] * (0.0 + dg_c[0]) * (1.0 - dg_c[1]) * (0.0 + dg_c[2]) + 
+                    vt_g[bg_c[0],Bg_c[1],Bg_c[2]] * (1.0 - dg_c[0]) * (0.0 + dg_c[1]) * (0.0 + dg_c[2]) + 
+                    vt_g[Bg_c[0],Bg_c[1],Bg_c[2]] * (0.0 + dg_c[0]) * (0.0 + dg_c[1]) * (0.0 + dg_c[2]))
         
-    
-
     def mirror(self, a_g, c):
         """Apply mirror symmetry to array.
 

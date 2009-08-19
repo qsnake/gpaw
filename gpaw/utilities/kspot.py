@@ -53,6 +53,7 @@ class AllElectronPotential:
       
       radf_g = npy.zeros(xccorr.ng)
       for w,p in zip(weights, points):
+         print '.'
          # Very inefficient loop
          for i, r in enumerate(xccorr.rgd.r_g):
             # Obtain the position of this integration quadrature point in specified grid
@@ -60,7 +61,7 @@ class AllElectronPotential:
             # And in scaled coordinates 
             scaled_c = get_scaled_positions(self.paw.atoms, pos_c)
             # Use scaled coordinates to interpolate (trilinear interpolation) correct value
-            radf_g[i] += w * gd.interpolate_grid_point(scaled_c, f_g)
+            radf_g[i] += w * gd.interpolate_grid_point(scaled_c, f_g, mlsqr=False)
       return radf_g
       
    def get_spherical_ks_potential(self,a):
