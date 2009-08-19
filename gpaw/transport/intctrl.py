@@ -47,8 +47,8 @@ class IntCtrl:
             dkt = 10 * npy.pi * self.kt
             #self.eqintpath = [-20.0, -20.0 + dkt * 1.j, -nkt + dkt * 1.j,
             #                  dkt * 1.j + nkt]
-            self.eqintpath = [-100, 
-                              -100 + (10 + dkt)*1.j, 
+            self.eqintpath = [-300, 
+                              -300 + (10 + dkt)*1.j, 
                               -nkt + (10 + dkt)* 1.j, 
                               -nkt + dkt * 1.j, 
                                dkt *1.j +nkt]
@@ -121,7 +121,7 @@ class IntCtrl:
         # IntMethod = Manual Method
         # -------------------------------------------------- 
         # -- Integral Method -- 
-        self.neinttol = 1e-4        
+        self.neinttol = 1e-3        
         self.neintmethod= 1 # 0: Linear 1: Auto
 
         # -- Integral Step--
