@@ -1531,7 +1531,7 @@ class Transport(GPAW):
             for s in range(self.my_nspins):
                 self.hsd.reset(s, q, h_spkmm[s, q], 'H')
         
-        if self.step < 10:
+        if self.step < 5:
            self.fill_guess_with_leads('H')                 
   
     def get_forces(self, atoms):
@@ -1578,7 +1578,7 @@ class Transport(GPAW):
         density = self.density
         density.calculate_pseudo_density(self.wfs)
         if self.fixed:
-            self.surround.combine_nt_sG
+            self.surround.combine_nt_sG()
         self.wfs.calculate_atomic_density_matrices(density.D_asp)
         if self.fixed:
             self.surround.combine_D_asp()
