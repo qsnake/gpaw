@@ -141,6 +141,7 @@ if len(tests) == 0:
         'Hubbard_U.py',    
         'lrtddft.py',
         'lcao_force.py',
+        'parallel/lcao_hamiltonian.py',
         'wannier-ethylene.py',
         'CH4.py',
         'neb.py',
