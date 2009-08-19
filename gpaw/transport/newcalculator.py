@@ -2007,15 +2007,21 @@ class Transport(GPAW):
                 density.nt_sG = self.gd.zeros(self.nspins)
                 wfs.basis_functions.add_to_density(density.nt_sG, f_asi)
                 density.nt_sG += density.nct_G
-                density.normalize()
+                #density.normalize()
                 comp_charge = density.calculate_multipole_moments()
                 density.interpolate(comp_charge)
-                density.calculate_pseudo_charge(comp_charge)
+                #density.calculate_pseudo_charge(comp_charge)
             else:
                 density.nt_sG = self.gd.empty(self.nspins)
                 density.calculate_pseudo_density(wfs)
-
-        self.hamiltonian.update(density)                   
+                density.nt_sG += density.nct_G
+                comp_charge = density.calculate_multipole_moments()
+                density.interpolate(comp_charge)
+                
+        density.nt_g = density.nt_sg.sum(axis=0)
+        density.rhot_g = density.nt_g.copy()        
+        self.surround.normalize2() 
+        self.update_hamiltonian()
         self.scf.reset()
         self.forces.reset()
         self.print_positions()
