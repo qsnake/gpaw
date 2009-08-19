@@ -7,7 +7,7 @@ from gpaw.utilities.kspot import AllElectronPotential
 try:
     be = Atoms(symbols='Be',positions=[(0,0,0)])
     be.center(vacuum=5)
-    calc = GPAW(h=0.2, xc='LDA', nbands=1) #0.1 required for accuracy
+    calc = GPAW(h=0.17, xc='LDA', nbands=1) #0.1 required for accuracy
     be.set_calculator(calc)
     be.get_potential_energy()
     AllElectronPotential(calc).write_spherical_ks_potentials('bepot.txt')
@@ -16,7 +16,7 @@ try:
     f.close()
     for l in lines[2:]:
         # TODO: Improve accuracy
-        assert eval(l.split(' ')[3])<0.13
+        assert eval(l.split(' ')[3])<0.10
 except:
     extra_parameters['usenewxc'] = usenewxc
     raise
