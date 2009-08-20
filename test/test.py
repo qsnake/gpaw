@@ -182,6 +182,7 @@ if len(tests) == 0:
         'parallel/ut_hsops.py',
         'parallel/ut_invops.py',
         'parallel/scalapack.py',
+        'parallel/lcao_projections.py',
         ]
 
 disabled_tests = [

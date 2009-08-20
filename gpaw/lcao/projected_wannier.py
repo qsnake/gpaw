@@ -81,8 +81,13 @@ def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
       S_qMM  = <Phi_qM|Phi_qM'>
       P_aqMi = <pt^a_qi|Phi_qM>
     """
+    if calc.wfs.kpt_comm.size != 1:
+        raise NotImplementedError('Parallelization over spin/kpt not '
+                                  'implemented yet.')
     spos_ac = calc.atoms.get_scaled_positions() % 1.
+    comm = calc.wfs.gd.comm
     nq = len(calc.wfs.ibzk_qc)
+    Nk = calc.wfs.nibzkpts
     nao = calc.wfs.setups.nao
     dtype = calc.wfs.dtype
     if bfs is None:
@@ -95,7 +100,8 @@ def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
     S_qMM = np.zeros((nq, nao, nao), dtype)
     T_qMM = np.zeros((nq, nao, nao), dtype)
     P_aqMi = {}
-    for a in range(len(spos_ac)):
+
+    for a in calc.wfs.pt.my_atom_indices:
         ni = calc.wfs.setups[a].ni
         P_aqMi[a] = np.zeros((nq, nao, ni), dtype)
     tci.calculate(spos_ac, S_qMM, T_qMM, P_aqMi)
@@ -104,27 +110,29 @@ def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
     V_qnM = np.zeros((nq, calc.wfs.nbands, nao), dtype)
     for q, V_nM in enumerate(V_qnM):
         for n in range(calc.wfs.nbands):#band-band to sace memory(?)
-            bfs.integrate2(calc.wfs.kpt_u[q].psit_nG[n].copy(), V_nM[n], q)
+            bfs.integrate2(calc.wfs.kpt_u[q].psit_nG[n][:], V_nM[n], q)
         for a, P_ni in calc.wfs.kpt_u[q].P_ani.items():
             dS_ii = calc.wfs.setups[a].O_ii
             P_Mi = P_aqMi[a][q]
             V_nM += np.dot(P_ni, np.inner(dS_ii, P_Mi).conj())
+    comm.sum(V_nM)
     if projectionsonly:
         return V_qnM
 
     # Determine potential matrix
     vt_G = calc.hamiltonian.vt_sG[spin]
-    V_qMM = np.zeros((nq, nao, nao), dtype)
-    for q, V_MM in enumerate(V_qMM):
-        bfs.calculate_potential_matrix(vt_G, V_MM, q)
+    H_qMM = np.zeros((nq, nao, nao), dtype)
+    for q, H_MM in enumerate(H_qMM):
+        bfs.calculate_potential_matrix(vt_G, H_MM, q)
 
     # Make Hamiltonian as sum of kinetic (T) and potential (V) matrices
     # and add atomic corrections
-    H_qMM = T_qMM + V_qMM
     for a, P_qMi in P_aqMi.items():
         dH_ii = unpack(calc.hamiltonian.dH_asp[a][spin])
         for P_Mi, H_MM in zip(P_qMi, H_qMM):
             H_MM += np.dot(P_Mi, np.inner(dH_ii, P_Mi).conj())
+    comm.sum(H_qMM)
+    H_qMM += T_qMM
     
     # Fill in the upper triangles of H and S
     for H_MM, S_MM in zip(H_qMM, S_qMM):
