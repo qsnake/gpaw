@@ -6,7 +6,7 @@
 This module contains the definition of the ``Domain`` class and some
 helper functins for parallel domain decomposition.  """
 
-import numpy as npy
+import numpy as np
 
 from gpaw.mpi import serial_comm
 
@@ -35,17 +35,18 @@ class Domain:
          ``stride_c``    Strides.
          =============== ==================================================
         """
-        self.cell_c = npy.array(cell, float)
+        self.cell_c = np.array(cell, float)
         if self.cell_c.ndim == 1:
-            self.cell_cv = npy.diag(self.cell_c)
+            self.cell_cv = np.diag(self.cell_c)
         else:
             self.cell_cv = self.cell_c
-            self.cell_c = npy.array([npy.linalg.norm(self.cell_cv[x]) for x in range(3)])
+            self.cell_c = np.array([np.linalg.norm(self.cell_cv[x])
+                                    for x in range(3)])
 
-        self.icell_cv = npy.linalg.inv(self.cell_cv).T
-        self.iucell_cv = npy.linalg.inv((self.cell_cv/self.cell_c).T) #Jacobian
+        self.icell_cv = np.linalg.inv(self.cell_cv).T
+        self.iucell_cv = np.linalg.inv((self.cell_cv / self.cell_c).T)#Jacobian
 
-        self.pbc_c = npy.asarray(pbc, bool)
+        self.pbc_c = np.asarray(pbc, bool)
 
         if type(parsize) is int:
             parsize_c = None
@@ -67,24 +68,24 @@ class Domain:
 
         if parsize_c is None:
             parsize_c = decompose_domain(N_c, comm.size)
-        self.parsize_c = npy.array(parsize_c)
+        self.parsize_c = np.array(parsize_c)
 
-        self.stride_c = npy.array([parsize_c[1] * parsize_c[2],
+        self.stride_c = np.array([parsize_c[1] * parsize_c[2],
                                    parsize_c[2],
                                    1])
 
-        if npy.product(self.parsize_c) != self.comm.size:
+        if np.product(self.parsize_c) != self.comm.size:
             raise RuntimeError('Bad domain decomposition!')
 
-        self.comm.cart_create(self.parsize_c[0], self.parsize_c[1], \
+        self.comm.cart_create(self.parsize_c[0], self.parsize_c[1],
                               self.parsize_c[2], 1)
 
         rnk = self.comm.rank
-        self.parpos_c = npy.array(
+        self.parpos_c = np.array(
             [rnk // self.stride_c[0],
              (rnk % self.stride_c[0]) // self.stride_c[1],
              rnk % self.stride_c[1]])
-        assert npy.dot(self.parpos_c, self.stride_c) == rnk
+        assert np.dot(self.parpos_c, self.stride_c) == rnk
 
         self.find_neighbor_processors()
 
@@ -94,7 +95,7 @@ class Domain:
         Return array with the coordinates scaled to the interval [0,
         1)."""
 
-        spos_c = npy.linalg.solve(self.cell_cv.T, pos_v)
+        spos_c = np.linalg.solve(self.cell_cv.T, pos_v)
 
         for c in range(3):
             if self.pbc_c[c]:
@@ -103,15 +104,15 @@ class Domain:
 
     def get_ranks_from_positions(self, spos_ac):
         """Calculate rank of domain containing scaled position."""
-        rnk_ac = npy.floor(spos_ac * self.parsize_c).astype(int)
+        rnk_ac = np.floor(spos_ac * self.parsize_c).astype(int)
         assert (rnk_ac >= 0).all() and (rnk_ac < self.parsize_c).all()
-        return npy.dot(rnk_ac, self.stride_c)
+        return np.dot(rnk_ac, self.stride_c)
 
     def get_rank_from_position(self, spos_c):
         """Calculate rank of domain containing scaled position."""
-        rnk_c = npy.floor(spos_c * self.parsize_c).astype(int)
+        rnk_c = np.floor(spos_c * self.parsize_c).astype(int)
         assert (rnk_c >= 0).all() and (rnk_c < self.parsize_c).all()
-        return npy.dot(rnk_c, self.stride_c)
+        return np.dot(rnk_c, self.stride_c)
 
     def find_neighbor_processors(self):
         """Find neighbor processors - surprise!
@@ -124,8 +125,8 @@ class Domain:
         * ``sdisp_cd``:  Scaled displacement for neighbor.
         """
 
-        self.neighbor_cd = npy.zeros((3, 2), int)
-        self.sdisp_cd = npy.zeros((3, 2), int)
+        self.neighbor_cd = np.zeros((3, 2), int)
+        self.sdisp_cd = np.zeros((3, 2), int)
         for c in range(3):
             p = self.parpos_c[c]
             for d in range(2):
