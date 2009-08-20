@@ -388,11 +388,11 @@ class Transport(GPAW):
             self.gd0 = GridDescriptor(N_c, self.original_atoms.cell / Bohr,
                                             self.atoms.pbc,
                                             self.gd.comm, self.gd.parsize_c)
-            if np.max(abs(self.gd0.h_c - self.gd.h_c)) < 1e-2:
+            if np.max(abs(self.gd0.h_c - self.gd.h_c)) > 1e-2:
                 self.text('spacing warning, the spacing in scattering region'
-                          + str(self.gd0.h_c[2]) +
-                         'and that in extended scattering region' +
-                         + str(self.gd.h_c[2]) + 'should be close')
+                          , str(self.gd0.h_c[2]) ,
+                         'and that in extended scattering region' ,
+                          str(self.gd.h_c[2]), 'should be close')
             self.gd0.use_fixed_bc = True
             self.finegd0 = self.gd0.refine()
             self.inner_poisson = PoissonSolver(nn=self.hamiltonian.poisson.nn)
@@ -1582,8 +1582,8 @@ class Transport(GPAW):
         if self.fixed:
             self.surround.combine_nt_sG()
         self.wfs.calculate_atomic_density_matrices(density.D_asp)
-        #if self.fixed:
-        #    self.surround.combine_D_asp()
+        if self.fixed:
+            self.surround.combine_D_asp()
         comp_charge = density.calculate_multipole_moments()
         if not self.fixed:
             density.normalize(comp_charge)
@@ -1597,7 +1597,7 @@ class Transport(GPAW):
             self.surround.combine_nt_sg()
         density.nt_g = density.nt_sg.sum(axis=0)
         density.rhot_g = density.nt_g.copy()
-        if self.fixed and self.atoms.pbc.any():       
+        if self.fixed:       
             self.surround.normalize2()
         else:
             density.ghat.add(density.rhot_g, density.Q_aL)     
@@ -1650,6 +1650,9 @@ class Transport(GPAW):
                                                             rhot_g,
                                               eps=self.inner_poisson.eps)
             #self.inner_vHt_g -= self.surround.extra_vHt_g
+            dim1, dim2 = ham.vHt_g.shape[:2]
+            self.inner_vHt_g += ham.vHt_g[dim1/2, dim2/2, 0] - self.inner_vHt_g[dim1/2, dim2/2, 0]
+            #print ham.vHt_g[dim1/2, dim2/2, 0] - self.inner_vHt_g[dim1/2, dim2/2, 0]
             self.surround.combine_vHt_g(self.inner_vHt_g)
             self.text('poisson interations :' + str(ham.npoisson))
         self.timer.stop('Poisson')
@@ -1663,6 +1666,8 @@ class Transport(GPAW):
             Ekin -= ham.gd.integrate(vt_G, nt_G - density.nct_G,
                                                        global_integral=False)            
         
+        if self.fixed:
+            self.surround.refresh_vt_sG()
         self.timer.start('Atomic Hamiltonians')
         W_aL = {}
         for a in density.D_asp:
