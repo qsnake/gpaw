@@ -16,9 +16,6 @@ from gpaw.mpi import world
 from gpaw.utilities.lapack import diagonalize, inverse_cholesky
 
 from gpaw.utilities import scalapack
-if not scalapack():
-    raise ImportError('Not built with ScaLAPACK. Test does not apply.')
-
 from gpaw.utilities.blacs import *
 
 # We could possibly have a stricter criteria, but these are all
@@ -233,14 +230,17 @@ def test(complex_type):
         else:
             print "double type verified!"
 
-ta = time()
-for x in range(20):
-    # Test real scalapack
-    test(False)
-    # Test complex scalapack
-    test(True)
-tb = time()
+if not scalapack():
+    print('Not built with ScaLAPACK. Test does not apply.')
+else:
+    ta = time()
+    for x in range(20):
+        # Test real scalapack
+        test(False)
+        # Test complex scalapack
+        test(True)
+    tb = time()
 
-if world.rank == 0:
-    print 'Total Time %f' % (tb - ta)
+    if world.rank == 0:
+        print 'Total Time %f' % (tb - ta)
     
