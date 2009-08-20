@@ -1531,8 +1531,8 @@ class Transport(GPAW):
             for s in range(self.my_nspins):
                 self.hsd.reset(s, q, h_spkmm[s, q], 'H')
         
-        if self.step < 5:
-           self.fill_guess_with_leads('H')                 
+        #if self.step < 5:
+        #   self.fill_guess_with_leads('H')                 
   
     def get_forces(self, atoms):
         if (atoms.positions != self.atoms.positions).any():
@@ -1647,7 +1647,7 @@ class Transport(GPAW):
             ham.npoisson = self.inner_poisson.solve_neutral(self.inner_vHt_g,
                                                             rhot_g,
                                               eps=self.inner_poisson.eps)
-            self.inner_vHt_g -= self.surround.extra_vHt_g
+            #self.inner_vHt_g -= self.surround.extra_vHt_g
             self.surround.combine_vHt_g(self.inner_vHt_g)
             self.text('poisson interations :' + str(ham.npoisson))
         self.timer.stop('Poisson')
