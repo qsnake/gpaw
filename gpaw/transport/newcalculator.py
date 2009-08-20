@@ -731,10 +731,7 @@ class Transport(GPAW):
 
         self.timer.start('init scat')  
 
-        if not self.fixed:
-            d_spkmm = get_lcao_density_matrix(self)
-        else:
-            d_spkmm = np.zeros([self.nspins, self.my_npk,
+        d_spkmm = np.zeros([self.nspins, self.my_npk,
                                   self.nbmol, self.nbmol], self.wfs.dtype)
        
         for q in range(self.my_npk):
@@ -1531,8 +1528,8 @@ class Transport(GPAW):
             for s in range(self.my_nspins):
                 self.hsd.reset(s, q, h_spkmm[s, q], 'H')
         
-        #if self.step < 5:
-        #   self.fill_guess_with_leads('H')                 
+        if self.step < 5:
+           self.fill_guess_with_leads('H')                 
   
     def get_forces(self, atoms):
         if (atoms.positions != self.atoms.positions).any():
@@ -1580,8 +1577,8 @@ class Transport(GPAW):
         if self.fixed:
             self.surround.combine_nt_sG()
         self.wfs.calculate_atomic_density_matrices(density.D_asp)
-        if self.fixed:
-            self.surround.combine_D_asp()
+        #if self.fixed:
+        #    self.surround.combine_D_asp()
         comp_charge = density.calculate_multipole_moments()
         if not self.fixed:
             density.normalize(comp_charge)
@@ -1986,6 +1983,31 @@ class Transport(GPAW):
                 H_sqMM[0, kpt.q] = H_MM
         self.gd.comm.sum(H_sqMM)  
         return H_sqMM
+
+    def initialize_projector(self, extend=False, nn=64):
+        N_c = self.gd.N_c.copy()
+        h_c = self.gd.h_c
+        N_c[self.d] += nn
+        pbc = self.atoms._pbc
+        cell = N_c * h_c
+        from gpaw.grid_descriptor import GridDescriptor
+        comm = self.gd.comm
+        GD = GridDescriptor(N_c, cell, pbc, comm)
+        from gpaw.lfc import BasisFunctions
+        basis_functions = BasisFunctions(GD,     
+                                        [setup.phit_j
+                                        for setup in self.wfs.setups],
+                                        self.wfs.kpt_comm,
+                                        cut=True)
+        pos = self.atoms.positions.copy()
+        if extend:
+            for i in range(len(pos)):
+                pos[i, self.d] += nn * h_c[self.d] * Bohr / 2.
+        spos_ac = np.linalg.solve(np.diag(cell) * Bohr, pos.T).T % 1.0
+        if not self.wfs.gamma:
+            basis_functions.set_k_points(self.wfs.ibzk_qc)
+        basis_functions.set_positions(spos_ac)
+        return basis_functions
     
     def set_extended_positions(self, atoms=None):
         spos_ac = self.initialize_positions(atoms)
