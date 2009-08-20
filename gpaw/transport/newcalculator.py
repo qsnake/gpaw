@@ -388,6 +388,11 @@ class Transport(GPAW):
             self.gd0 = GridDescriptor(N_c, self.original_atoms.cell / Bohr,
                                             self.atoms.pbc,
                                             self.gd.comm, self.gd.parsize_c)
+            if np.max(abs(self.gd0.h_c - self.gd.h_c)) < 1e-2:
+                self.text('spacing warning, the spacing in scattering region'
+                          + str(self.gd0.h_c[2]) +
+                         'and that in extended scattering region' +
+                         + str(self.gd.h_c[2]) + 'should be close')
             self.gd0.use_fixed_bc = True
             self.finegd0 = self.gd0.refine()
             self.inner_poisson = PoissonSolver(nn=self.hamiltonian.poisson.nn)
