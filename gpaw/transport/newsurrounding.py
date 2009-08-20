@@ -173,6 +173,7 @@ class Surrounding:
             #self.get_extra_density(loc_extra_vHt_g)
             self.get_extra_density(ham.vHt_g)
             #self.calculate_extra_hartree_potential()
+            #self.calculate_gate()
 
     def combine_vHt_g(self, vHt_g):
         nn = self.nn[0] * 2
@@ -221,16 +222,22 @@ class Surrounding:
                                                eps=poisson.eps)
        
     def calculate_gate(self):
-        gd = self.tp.finegd0
+        gd0 = self.tp.finegd0
         if not hasattr(self, 'gate_vHt_g'):
-            self.gate_vHt_g = gd.zeros()
-            self.gate_rhot_g = gd.zeros()
+            self.gate_vHt_g = gd0.zeros()
+            self.gate_rhot_g = gd0.zeros()
         nn = self.nn[0] * 2
-        global_gate_vHt_g = gd.collect(self.gate_vHt_g)
-        global_gate_vHt_g[:, :, nn:-nn] = 1.
-        gd.distribute(global_gate_vHt_g, self.gate_vHt_g)
-        poisson = self.tp.inner_poisson
-        poisson.operators[0].apply(self.gate_vHt_g, self.gate_rhot_g)
+        
+        gd = self.tp.finegd
+        global_gate_vHt_g = gd.zeros(global_array=True)
+        global_gate_vHt_g[:, :, nn:-nn] = 1e-3
+        gate_vHt_g = gd.zeros()
+        gate_rhot_g = gd.zeros()
+        
+        gd.distribute(global_gate_vHt_g, gate_vHt_g)
+        self.operator.apply(gate_vHt_g, gate_rhot_g)
+        self.gate_vHt_g = self.uncapsule(nn, gate_vHt_g, gd, gd0)
+        self.gate_rhot_g = self.uncapsule(nn, gate_rhot_g, gd, gd0)
         
     def normalize(self, comp_charge):    
         nn = self.nn[0]
@@ -257,7 +264,7 @@ class Surrounding:
             scaling = -charge1 / charge0
             density.rhot_g *= scaling
             density.nt_sg *= scaling
-            print 'surround scaling', scaling
+            self.tp.text('surround scaling', scaling)
         density.rhot_g += rhot_g_plus
         
     def normalize3(self):
@@ -273,5 +280,12 @@ class Surrounding:
         
         gate_charge = finegd0.integrate(self.gate_rhot_g)
         self.gate_scaling = -(charge0 + charge1) / gate_charge
-        density.rhot_g += rhot_g_plus + self.gate_rhot_g * self.gate_scaling
+        print self.gate_scaling, charge0, charge1, gate_charge
+        density.rhot_g += rhot_g_plus
+        
+        total_rhot_g = finegd.collect(density.rhot_g)
+        total_rhot_g[:, :, nn:-nn] += self.gate_rhot_g * self.gate_scaling
+        finegd.distribute(total_rhot_g, density.rhot_g)
+        
+
         
