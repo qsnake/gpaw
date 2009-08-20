@@ -22,4 +22,4 @@ extra_compile_args =['-O3', '-std=c99', '-funroll-all-loops', '-fPIC']
 define_macros +=[('GPAW_MKL', '1')]
 mpicompiler = '/opt/openmpi/1.3.3-1.el5.fys.gfortran43.4.3.2/bin/mpicc'
 mpilinker = mpicompiler
-platform_id = 'amd'
+platform_id = 'opteron'

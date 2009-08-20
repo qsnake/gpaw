@@ -31,20 +31,23 @@ nodename = os.uname()[1]
 c = nodename[0]
 assert c in 'abcnmqp'
 
+# use mpi_paffinity_alone if set as environment variable
+# http://www.open-mpi.de/faq/?category=tuning#setting-mca-params
+if os.environ.get('OMPI_MCA_mpi_paffinity_alone'):
+    mpi_paffinity_alone = '--mca mpi_paffinity_alone '+os.environ.get('OMPI_MCA_mpi_paffinity_alone')
+else:
+    mpi_paffinity_alone = ''
+
 if c in 'abc':
     # Intel Niflheim node:
-    mpirun = 'mpiexec --mca mpi_paffinity_alone 1'
+    mpirun = 'mpiexec ' + mpi_paffinity_alone
 elif c in 'nmq':
     # Opteron Niflheim node:
     vers = sys.version[:3]
     if vers == '2.3':
-        mpirun = ('export LD_LIBRARY_PATH=/opt/acml-4.0.1/gfortran64/lib:'
-                  '/opt/acml-4.0.1/gfortran64/lib:'
-                  '/usr/local/openmpi-1.2.5-gfortran/lib64 && '
-                  'export PATH=/usr/local/openmpi-1.2.5-gfortran/bin:'
-                  '${PATH} && mpirun')
+        mpirun = 'mpiexec ' + mpi_paffinity_alone
     elif vers == '2.4':
-        mpirun = 'mpiexec --mca mpi_paffinity_alone 1'
+        mpirun = 'mpiexec ' + mpi_paffinity_alone
     else:
         raise RuntimeError('Unknown python version')
 elif c == 'p':
