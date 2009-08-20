@@ -4,7 +4,8 @@ from ase import Hartree
 from gpaw.aseinterface import GPAW
 from gpaw.lcao.overlap import TwoCenterIntegrals
 from gpaw.utilities import unpack
-from gpaw.utilities.tools import tri2full, lowdin, basis_subset2
+from gpaw.utilities.tools import tri2full, lowdin
+from gpaw.lcao.tools import basis_subset2
 from gpaw.coulomb import get_vxc as get_ks_xc
 from gpaw.utilities.blas import r2k, gemm
 
