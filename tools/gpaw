@@ -193,12 +193,14 @@ try:
     run()
 except KeyboardInterrupt:
     print 'Killed!'
+    raise SystemExit(1)
 except SystemExit:
-    pass
+    raise
 except Exception:
-    traceback.print_exc()
-    print """
+    #traceback.print_exc()
+    print >> sys.stderr, """
 An exception occurred!  Please report the issue to
-gridpaw-developers@listserv.fysik.dtu.dk - thanks!  Please also report this if
+gridpaw-developer@listserv.fysik.dtu.dk - thanks!  Please also report this if
 it was a user error, so that a better error message can be provided
 next time."""
+    raise

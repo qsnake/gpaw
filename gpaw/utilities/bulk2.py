@@ -6,6 +6,8 @@ The main user of the Runner classes defined in this module is the
 ``gpaw`` command-line tool.  """
 
 import os
+import sys
+from math import sqrt
 
 import numpy as np
 from ase.atoms import Atoms, string2symbols
