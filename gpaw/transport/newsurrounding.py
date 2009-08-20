@@ -172,7 +172,7 @@ class Surrounding:
             #ham.finegd.distribute(extra_vHt_g, loc_extra_vHt_g)
             #self.get_extra_density(loc_extra_vHt_g)
             self.get_extra_density(ham.vHt_g)
-            self.calculate_extra_hartree_potential()
+            #self.calculate_extra_hartree_potential()
 
     def combine_vHt_g(self, vHt_g):
         nn = self.nn[0] * 2
@@ -211,7 +211,7 @@ class Surrounding:
         nn = self.nn[0] * 2
         rhot_g = self.uncapsule(nn, self.tp.density.rhot_g, self.tp.finegd,
                                                        self.tp.finegd0)
-        #rhot_g -= self.extra_rhot_g
+        rhot_g -= self.extra_rhot_g
         return rhot_g
 
     def calculate_extra_hartree_potential(self):
