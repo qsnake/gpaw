@@ -3,7 +3,8 @@ from numpy import linalg as la
 from gpaw.lcao.overlap import TwoCenterIntegrals
 from gpaw.lfc import BasisFunctions
 from gpaw.utilities import unpack
-from gpaw.utilities.tools import dagger, lowdin, tri2full, basis_subset2
+from gpaw.utilities.tools import dagger, lowdin, tri2full
+from gpaw.lcao.tools import basis_subset2
 from ase import Hartree
 
 

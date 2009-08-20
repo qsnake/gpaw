@@ -7,43 +7,20 @@ from gpaw.mpi import world, rank, MASTER
 from gpaw.basis_data import Basis
 from gpaw.setup import types2atomtypes
 
-class basis_nao(dict):
-    def __init__(self, basis):
-        self.basis = basis
-        dict.__init__(self)
-    
-    def __getitem__(self, symbol):
-        try:
-            return dict.__getitem__(self, symbol)
-        except KeyError:
-            return dict.setdefault(self, symbol, Basis(symbol, self.basis).nao)
-
-def get_bf_centers(atoms):
+def get_bf_centers(atoms, basis=None):
     calc = atoms.get_calculator()
-    if not calc.initialized:
-        calc.initialize(atoms)
-    nao = calc.wfs.setups.nao
-    pos_ac = atoms.get_positions()
-    natoms = len(pos_ac)
-    pos_ic = np.zeros((nao, 3), np.float)
-    index = 0
-    for a in range(natoms):
-        n = calc.wfs.setups[a].niAO
-        pos_c = pos_ac[a]
-        pos_c.shape = (1, 3)
-        pos_ic[index:index + n] = np.repeat(pos_c, n, axis=0)
-        index += n
-    return pos_ic
-
-
-def get_bf_centers2(atoms, bfs_dict):
-    """bfs_dict is a dictionary mapping atom symbols to a number of bfs.
-
-    Use e.g. basis_nao('dzp').
-    """
+    if calc is None:
+        basis_a = types2atomtypes(symbols, basis, 'dzp')
+        symbols = atoms.get_chemical_symbols()
+        nao_a = [Basis(symbol, type).nao
+                 for symbol, type in zip(symbols, basis_a)]
+    else:
+        if not calc.initialized:
+            calc.initialize(atoms)
+        nao_a = [calc.wfs.setups[a].niAo for a in range(len(atoms))]
     pos_ic = []
-    for pos, sym in zip(atoms.get_positions(), atoms.get_chemical_symbols()):
-        pos_ic.extend(pos[None].repeat(bfs_dict[sym], 0))
+    for pos, nao in zip(atoms.get_positions(), nao_a):
+        pos_ic.extend(pos[None].repeat(nao, 0))
     return np.array(pos_ic)
 
 
@@ -214,7 +191,7 @@ def dump_hamiltonian_parallel(filename, atoms, direction=None):
 
 
 def get_lcao_hamiltonian(calc):
-    """Return H_skMM, S_kMM on master, None, None on slaves. H is in eV."""
+    """Return H_skMM, S_kMM on master, (None, None) on slaves. H is in eV."""
     if calc.wfs.S_qMM is None:
         calc.wfs.set_positions(calc.get_atoms().get_scaled_positions() % 1)
     dtype = calc.wfs.dtype
@@ -315,5 +292,5 @@ def basis_subset2(symbols, largebasis='dzp', smallbasis='sz'):
     smallbasis = types2atomtypes(symbols, smallbasis, default='sz')
     mask = []
     for symbol, large, small in zip(symbols, largebasis, smallbasis):
-        mask += basis_subset(symbol, large, small)
+        mask.extend(basis_subset(symbol, large, small))
     return np.asarray(mask, bool)
