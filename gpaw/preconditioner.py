@@ -11,7 +11,7 @@ from gpaw.operators import Laplace
 from gpaw.utilities.blas import axpy
 
 class Preconditioner:
-    def __init__(self, gd0, kin0, dtype, block=1):
+    def __init__(self, gd0, kin0, dtype=float, block=1):
         gd1 = gd0.coarsen()
         gd2 = gd1.coarsen()
         self.kin0 = kin0
@@ -41,7 +41,7 @@ class Preconditioner:
             transformer.allocate()
         self.allocated = True
         
-    def __call__(self, residuals, phases, phit=None, kpt=None):
+    def __call__(self, residuals, phases=None, phit=None, kpt=None):
         step = self.step
         d0, q0 = self.scratch0
         r1, d1, q1 = self.scratch1
