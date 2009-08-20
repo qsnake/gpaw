@@ -1734,9 +1734,9 @@ class Transport(GPAW):
                                                      S.diag_h[i][n].recover())
                     qr_mm[i] += dot(D.dwnc_h[i][n], S.upc_h[i][n])
                     if S.extended:
-                        qr_mm[i] += dot(D.upc_h[i][n + 1], S.dwnc_h[i][n + 1])
+                        qr_mm[i] += dot(D.dwnc_h[i][n + 1], S.upc_h[i][n + 1])
                     else:
-                        qr_mm[i] += dot(D.upc_h[i][n], S.dwnc_h[i][n])                        
+                        qr_mm[i] += dot(D.dwnc_h[i][n], S.upc_h[i][n])                        
             self.wfs.kpt_comm.sum(qr_mm[i])
             boundary_charge.append(np.real(np.trace(qr_mm[i])))
             if i != 0:
