@@ -52,7 +52,7 @@ class Side:
   
         nn /= 2
         vt_sG = gd.collect(calc.hamiltonian.vt_sG, True)
-        self.boundary_vt_sG_line = self.slice(nn, vt_sG[:, d1, d2])
+        self.boundary_vt_sG = self.slice(nn, vt_sG)
         
         nt_sG = calc.gd.collect(calc.density.nt_sG, True)
         self.boundary_nt_sG = self.slice(nn, nt_sG)
@@ -61,8 +61,8 @@ class Side:
         
     def slice(self, nn, in_array):
         if self.type == 'LR':
-            seq1 = np.arange(-nn + 1, 1)
-            #seq1 = np.arange(nn)            
+            #seq1 = np.arange(-nn + 1, 1)
+            seq1 = np.arange(nn)            
             seq2 = np.arange(nn)
             di = len(in_array.shape) - 1
             if self.direction == '-':
@@ -156,22 +156,22 @@ class Surrounding:
             if ham.vt_sg is None:
                 ham.vt_sg = ham.finegd.empty(ham.nspins)
                 ham.vHt_g = ham.finegd.zeros()
-                ham.vt_sG = ham.gd.empty(ham.nspins)
+                ham.vt_sG = ham.gd.zeros(ham.nspins)
                 ham.poisson.initialize()
             vHt_g = ham.finegd.zeros(global_array=True)
-            #extra_vHt_g = ham.finegd.zeros(global_array=True)
-            #loc_extra_vHt_g = ham.finegd.zeros()
+            extra_vHt_g = ham.finegd.zeros(global_array=True)
+            loc_extra_vHt_g = ham.finegd.zeros()
 
             bias_shift0 = self.bias_index['-'] / Hartree
             bias_shift1 = self.bias_index['+'] / Hartree
             vHt_g[:, :, :nn] = self.sides['-'].boundary_vHt_g + bias_shift0
             vHt_g[:, :, -nn:] = self.sides['+'].boundary_vHt_g + bias_shift1
-            #extra_vHt_g[:, :, :nn] = bias_shift0
-            #extra_vHt_g[:, :, -nn:] = bias_shift1
+            extra_vHt_g[:, :, :nn] = bias_shift0
+            extra_vHt_g[:, :, -nn:] = bias_shift1
             ham.finegd.distribute(vHt_g, ham.vHt_g)
-            #ham.finegd.distribute(extra_vHt_g, loc_extra_vHt_g)
-            #self.get_extra_density(loc_extra_vHt_g)
-            self.get_extra_density(ham.vHt_g)
+            ham.finegd.distribute(extra_vHt_g, loc_extra_vHt_g)
+            self.get_extra_density(loc_extra_vHt_g)
+            #self.get_extra_density(ham.vHt_g)
             #self.calculate_extra_hartree_potential()
             #self.calculate_gate()
 
@@ -179,6 +179,13 @@ class Surrounding:
         nn = self.nn[0] * 2
         self.tp.hamiltonian.vHt_g = self.capsule(nn, vHt_g, self.tp.finegd,
                                                   self.tp.finegd0)
+    def refresh_vt_sG(self):
+        nn = self.nn[0]
+        gd = self.tp.gd
+        vt_sG = gd.collect(self.tp.hamiltonian.vt_sG)
+        vt_sG[:, :, :, :nn] = self.sides['-'].boundary_vt_sG
+        vt_sG[:, :, :, -nn:] = self.sides['+'].boundary_vt_sG
+        gd.distribute(vt_sG, self.tp.hamiltonian.vt_sG)
 
     def combine_nt_sG(self):
         nn = self.nn[0]
