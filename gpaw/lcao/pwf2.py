@@ -2,16 +2,11 @@ import numpy as np
 
 from ase import Hartree
 from gpaw.aseinterface import GPAW
-from gpaw.lfc import LocalizedFunctionsCollection as LFC
-from gpaw.lfc import BasisFunctions
 from gpaw.lcao.overlap import TwoCenterIntegrals
-from gpaw.lcao.tools import basis_nao
 from gpaw.utilities import unpack
-from gpaw.utilities.tools import tri2full, lowdin
+from gpaw.utilities.tools import tri2full, lowdin, basis_subset2
 from gpaw.coulomb import get_vxc as get_ks_xc
 from gpaw.utilities.blas import r2k, gemm
-from gpaw.setup import types2atomtypes
-from gpaw.basis_data import Basis
 
 
 from gpaw.lcao.projected_wannier import dots, condition_number, eigvals, \
@@ -88,35 +83,6 @@ def get_xc2(calc, w_wG, P_awi, spin=0):
         H_ii = unpack(H_sp[spin])
         xc_ww += dots(P_wi, H_ii, P_wi.T.conj())
     return xc_ww * Hartree
-
-
-def pwf_mask2(symbols, lcaobasis='dzp', pwfbasis='sz'):
-    lcaobasis = types2atomtypes(symbols, lcaobasis, default='dzp')
-    pwfbasis = types2atomtypes(symbols, pwfbasis, default='sz')
-    def nao(symbol, basis):
-        if basis == 'null':
-            return 0
-        return Basis(symbol, basis).nao
-    mask = []
-    for symbol, l, p in zip(symbols, lcaobasis, pwfbasis):
-        nao_lcao = nao(symbol, l)
-        nao_pwf = nal(symbol, p)
-        mask += [True,] * nao_pwf
-        mask += [False,] * (nao_lcao - nao_pwf)
-    return np.asarray(mask, bool)
-
-
-def pwf_mask(symbols, lcaobasis='dzp', pwfbasis='sz'):
-    lcao_dict = basis_nao(lcaobasis)
-    pwf_dict = basis_nao(pwfbasis)
-        
-    mask = []
-    for symbol in symbols:
-        nao_lcao = lcao_dict[symbol]
-        nao_pwf = pwf_dict[symbol]
-        mask += [True,] * nao_pwf
-        mask += [False,] * (nao_lcao - nao_pwf)
-    return np.asarray(mask, bool)
 
 
 class ProjectedWannierFunctionsFBL:
@@ -255,11 +221,12 @@ class PWFplusLCAO(ProjectedWannierFunctionsIBL):
 
 class PWF2:
     def __init__(self, gpwfilename, fixedenergy=0., spin=0, ibl=True,
-                 basis='sz', zero_fermi=False, pwfbasis=None):
+                 basis='sz', zero_fermi=False, pwfbasis=None, lcaoatoms=None,
+                 projection_data=None):
         calc = GPAW(gpwfilename, txt=None, basis=basis)
-        calc.wfs.initialize_wave_functions_from_restart_file()
+        #calc.wfs.initialize_wave_functions_from_restart_file()
         calc.density.ghat.set_positions(calc.atoms.get_scaled_positions() % 1.)
-        calc.hamiltonian.poisson.initialize()
+        #calc.hamiltonian.poisson.initialize()
         if zero_fermi:
             try:
                 Ef = calc.get_fermi_level()
@@ -285,11 +252,14 @@ class PWF2:
 
         if ibl:
             if pwfbasis is not None:
-                pwfmask = pwf_mask(calc.atoms.get_chemical_symbols(),
-                                   basis, pwfbasis)
+                pwfmask = basis_subset2(calc.atoms.get_chemical_symbols(),
+                                       basis, pwfbasis)
             self.bfs = get_bfs(calc)
-            V_qnM, H_qMM, S_qMM, self.P_aqMi = get_lcao_projections_HSP(
-                calc, bfs=self.bfs, spin=spin, projectionsonly=False)
+            if projection_data is None:
+                V_qnM, H_qMM, S_qMM, self.P_aqMi = get_lcao_projections_HSP(
+                    calc, bfs=self.bfs, spin=spin, projectionsonly=False)
+            else:
+                V_qnM, H_qMM, S_qMM, self.P_aqMi = projection_data
             H_qMM -= Ef * S_qMM
             for q, M in enumerate(self.M_k):
                 if pwfbasis is None:
@@ -302,7 +272,10 @@ class PWF2:
                 self.H_qww.append(pwf.rotate_matrix(self.eps_kn[q][:M],
                                                     H_qMM[q]))
         else:
-            V_qnM = get_lcao_projections_HSP(calc, spin=spin)
+            if projection_data is None:
+                V_qnM = get_lcao_projections_HSP(calc, spin=spin)
+            else:
+                V_qnM = projection_data
             for q, M in enumerate(self.M_k):
                 pwf = ProjectedWannierFunctionsFBL(V_qnM[q], M, ortho=False)
                 self.pwf_q.append(pwf)

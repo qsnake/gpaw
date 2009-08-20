@@ -1,10 +1,9 @@
 import numpy as np
 from numpy import linalg as la
-from gpaw.lfc import LocalizedFunctionsCollection as LFC
 from gpaw.lcao.overlap import TwoCenterIntegrals
 from gpaw.lfc import BasisFunctions
 from gpaw.utilities import unpack
-from gpaw.utilities.tools import dagger, lowdin, tri2full
+from gpaw.utilities.tools import dagger, lowdin, tri2full, basis_subset2
 from ase import Hartree
 
 
@@ -142,6 +141,21 @@ def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
 
     return V_qnM, H_qMM, S_qMM, P_aqMi
 
+
+def convert_projection_data(symbols, V_qnM, H_qMM, S_qMM, P_aqMi,
+                            originaltype='dzp', newtype='sz'):
+    Nq = len(H_qMM)
+    mask = basis_subset2(symbols, originaltype, newtype)
+    mask2 = np.outer(mask, mask)
+    NMnew = len(mask.nonzero()[0])
+    V_qnM = V_qnM[..., mask]
+    H_qMM = H_qMM[:, mask2].reshape(Nq, NMnew, NMnew)
+    S_qMM = S_qMM[:, mask2].reshape(Nq, NMnew, NMnew)
+    P2_aqMi = {}
+    for a, P_qMi in P_aqMi.items():
+        P2_aqMi[a] = P_qMi[:, mask, :]
+    return V_qnM, H_qMM, S_qMM, P2_aqMi
+    
 
 def get_phs(calc, s=0):
     return get_lcao_projections_HSP(calc, bfs=None,

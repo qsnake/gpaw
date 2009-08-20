@@ -5,6 +5,7 @@ import cPickle as pickle
 import numpy as np
 from gpaw.mpi import world, rank, MASTER
 from gpaw.basis_data import Basis
+from gpaw.setup import types2atomtypes
 
 class basis_nao(dict):
     def __init__(self, basis):
@@ -274,3 +275,45 @@ def lead_kspace2realspace(h_skmm, s_kmm, ibzk_kc, weight_k,
     s_mm[nbf:, :nbf] = s_ij.T.conj()
 
     return h_smm, s_mm
+
+
+def zeta_pol(basis):
+    """Get number of zeta func. and polarization func. indices in Basis."""
+    zeta = 0
+    for bf in basis.bf_j:
+        if 'polarization' in bf.type:
+            break
+        zeta += bf.l**2 + 1
+    pol = basis.nao - zeta
+    return zeta, pol
+
+
+def basis_subset(symbol, largebasis, smallbasis):
+    """Title.
+
+    Determine which basis function indices from ``largebasis`` are also
+    present in smallbasis.
+    """
+    blarge = Basis(symbol, largebasis)
+    zeta_large, pol_large = zeta_pol(blarge)
+    
+    bsmall = Basis(symbol, smallbasis)
+    zeta_small, pol_small = zeta_pol(bsmall)
+
+    assert zeta_small <= zeta_large
+    assert pol_small <= pol_large
+
+    insmall = np.zeros(blarge.nao, bool)
+    insmall[:zeta_small] = True
+    insmall[zeta_large:zeta_large + pol_small] = True
+    return insmall
+
+
+def basis_subset2(symbols, largebasis='dzp', smallbasis='sz'):
+    """Same as basis_subset, but for an entire list of atoms."""
+    largebasis = types2atomtypes(symbols, largebasis, default='dzp')
+    smallbasis = types2atomtypes(symbols, smallbasis, default='sz')
+    mask = []
+    for symbol, large, small in zip(symbols, largebasis, smallbasis):
+        mask += basis_subset(symbol, large, small)
+    return np.asarray(mask, bool)
