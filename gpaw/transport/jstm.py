@@ -1,19 +1,20 @@
+from ase.units import Bohr, Hartree
+import gpaw.mpi as mpi
+from gpaw.mpi import rank, MASTER
+from gpaw.mpi import world as w
+from gpaw import GPAW
+from gpaw.operators import Laplace
+from gpaw.utilities.tools import tri2full
+from gpaw.lcao.projected_wannier import dots
+from gpaw.grid_descriptor import GridDescriptor
+from gpaw.lfc import NewLocalizedFunctionsCollection as LFC
+from gpaw.lcao.tools import remove_pbc, get_lcao_hamiltonian
+from gpaw.mpi import world as w
 import time
 import numpy as np
 import numpy.linalg as la
-from ase.units import Bohr, Hartree
-from gpaw.operators import Laplace
-from gpaw.grid_descriptor import GridDescriptor
-from gpaw.lfc import NewLocalizedFunctionsCollection as LFC
-from gpaw.utilities.tools import tri2full
-import gpaw.mpi as mpi
-from gpaw.lcao.tools import remove_pbc, get_lead_lcao_hamiltonian
 from math import cos, sin, pi
 import cPickle as pickle
-from gpaw.lcao.projected_wannier import dots
-from gpaw import GPAW
-from gpaw.mpi import world as w
-from ase.dft import monkhorst_pack
 
 class LocalizedFunctions:
     def __init__(self, gd, f_iG, corner_c, index=None, vt_G=None):
@@ -1097,7 +1098,6 @@ def dump_hs(calc, filename, return_hs=False, restart = False):
         if return_hs:
             return (h_mm, s_mm)
 
-
 def dump_lead_hs(calc, filename, return_hs=False, restart=False):
     """Pickle real space LCAO - Hamiltonian and overlap matrix for a 
     periodic lead calculation.
@@ -1105,7 +1105,6 @@ def dump_lead_hs(calc, filename, return_hs=False, restart=False):
     use restart=True if restarting from a gpw file.
     The energy scale is set to zero at fermi level.
     """
-    usesymm = calc.input_parameters['usesymm']
     atoms = calc.get_atoms()
     atoms.set_calculator(calc)
  
@@ -1113,14 +1112,14 @@ def dump_lead_hs(calc, filename, return_hs=False, restart=False):
        calc.initialize_positions(atoms)
 
     efermi = calc.get_fermi_level()
-    h_smm, s_mm = get_lead_lcao_hamiltonian(calc, direction='z',
-                                            usesymm = usesymm)
-    h_mm = h_smm[0] - efermi * s_mm
+    ibzk2d_c, weight2d_k, h_skmm, s_kmm\
+             = get_lead_lcao_hamiltonian(calc, direction='z')
+    h_kmm = h_skmm[0] - efermi * s_kmm
     fd = open(filename + '.pckl', 'wb')
-    pickle.dump((h_mm, s_mm), fd, 2)
+    pickle.dump((ibzk2d_c, weight2d_k, h_kmm, s_kmm), fd, 2)
     fd.close()
     if return_hs:
-        return (h_mm, s_mm)
+        return (ibzk2d_c, weight2d_k, h_kmm, s_kmm)
  
 def intersection(l1, l2):
     """Intersection (x, y, t) between two lines.
@@ -1152,6 +1151,81 @@ def rotate(theta):
 
 def unravel2d(data, shape):
     pass
+
+def get_lead_lcao_hamiltonian(calc, direction='z'):
+    H_skMM, S_kMM = get_lcao_hamiltonian(calc)
+    usesymm = calc.input_parameters['usesymm']
+    return lead_kspace2realspace(H_skMM, S_kMM, calc.wfs.ibzk_kc,
+                                 calc.wfs.weight_k, direction, usesymm)  
+
+def get_real_space_hs(h_skmm, s_kmm, ibzk_kc, weight_k, R_c=(0,0,0),
+                      direction = 'z', usesymm = None):
+    d = 'xyz'.index(direction)
+    transverse_dirs = np.delete([0, 1, 2], [d], 0)
+    nspins, nk, nbf = h_skmm.shape[:-1]
+
+    groups = {}
+    m = 0
+    while len(ibzk_kc) is not 0:
+        index = [0]
+        list =[]
+        for j in range(1, len(ibzk_kc)):
+            if not (ibzk_kc[0][transverse_dirs]\
+                   -ibzk_kc[j][transverse_dirs]).any():
+                index.append(j)
+        groups[m] = (weight_k[index], ibzk_kc[index], h_skmm[:, index], s_kmm[ index])
+        ibzk_kc = np.delete(ibzk_kc, index , axis=0)
+        weight_k = np.delete(weight_k, index, axis=0)
+        h_skmm = np.delete(h_skmm, index, axis=1)
+        s_kmm = np.delete(s_kmm, index, axis=0)
+        m += 1
+
+    nk = len(groups.keys())
+    h2_kmm = np.zeros((nspins, nk, nbf, nbf))
+    s2_kmm = np.zeros((nk, nbf, nbf))
+    kpt2d = []
+    weight2d = []
+    for i in groups.keys():
+        weight_k, ibzk_kc, h_kmm, s_kmm = groups[i]
+        nk2 = len(weight_k)
+        kpt2d.append(ibzk_kc[0, :2])
+        weight2d.append(sum(weight_k))
+        c_k = np.exp(2.j * np.pi * np.dot(ibzk_kc, R_c)) * weight_k
+        c_k.shape = (nk2, 1, 1)
+        h_mm = np.sum((h_kmm * c_k), axis=1)
+        s_mm = np.sum((s_kmm * c_k), axis=0)
+        h2_kmm[:, i] = h_mm
+        s2_kmm[i] = s_mm
+    return kpt2d, weight2d, h2_kmm, s2_kmm
+
+def lead_kspace2realspace(h_skmm, s_kmm, ibzk_kc, weight_k,
+                          direction='z', usesymm=None):
+
+    if usesymm==True:
+        raise NotImplementedError
+
+    dir = 'xyz'.index(direction)
+    R_c = [0, 0, 0]
+    ibz2d_kc, weight2d_k, h_skii, s_kii =\
+    get_real_space_hs(h_skmm, s_kmm, ibzk_kc, weight_k, R_c, direction)
+
+    R_c[dir] = 1
+    h_skij, s_kij =\
+    get_real_space_hs(h_skmm, s_kmm, ibzk_kc, weight_k, R_c, direction)[-2:]
+
+    nspins, nk, nbf = h_skii.shape[:-1]
+
+    h_skmm = np.zeros((nspins, nk, 2 * nbf, 2 * nbf), h_skii.dtype)
+    s_kmm = np.zeros((nk, 2 * nbf, 2 * nbf), h_skii.dtype)
+    h_skmm[:, :, :nbf, :nbf] = h_skmm[:, :, nbf:, nbf:] = h_skii
+    h_skmm[:, :, :nbf, nbf:] = h_skij
+    h_skmm[:, :, nbf:, :nbf] = h_skij.swapaxes(2, 3).conj()
+
+    s_kmm[:, :nbf, :nbf] = s_kmm[:, nbf:, nbf:] = s_kii
+    s_kmm[:, :nbf, nbf:] = s_kij
+    s_kmm[:, nbf:, :nbf] = s_kij.swapaxes(1,2).conj()
+
+    return ibz2d_kc, weight2d_k, h_skmm, s_kmm
 
 def smallestbox(cell1, cell2, theta, plot=False):
     """Determines the smallest 2d unit cell which encloses cell1 rotated at 
@@ -1311,6 +1385,5 @@ class Spline:
 
         s = p[index,0] + u*(p[index,1]+u*(p[index,2]+u*p[index,3]))
         return s
-
 
 
