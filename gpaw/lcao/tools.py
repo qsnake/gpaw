@@ -260,7 +260,7 @@ def zeta_pol(basis):
     for bf in basis.bf_j:
         if 'polarization' in bf.type:
             break
-        zeta += bf.l**2 + 1
+        zeta += 2 * bf.l + 1
     pol = basis.nao - zeta
     return zeta, pol
 
