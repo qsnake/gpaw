@@ -247,6 +247,7 @@ main(int argc, char **argv)
   Py_INCREF(&MPIType);
   PyModule_AddObject(m, "Communicator", (PyObject *)&MPIType);
   import_array1(-1);
+  MPI_Barrier(MPI_COMM_WORLD);
   status = Py_Main(argc, argv);
 #ifdef GPAW_HPM
   HPM_Stop("GPAW");
