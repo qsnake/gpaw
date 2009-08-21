@@ -14,8 +14,7 @@ _scale = {'kB': 1024.0, 'mB': 1024.0*1024.0,
           'KB': 1024.0, 'MB': 1024.0*1024.0}
 
 def _VmB(VmKey):
-    '''Private.
-    '''
+    """Private."""
     global _proc_status, _scale
      # get pseudo file  /proc/<pid>/status
     try:
@@ -33,25 +32,24 @@ def _VmB(VmKey):
      # convert Vm value to bytes
     return float(v[1]) * _scale[v[2]]
 
+
 def memory(since=0.0):
-    '''Return memory usage in bytes.
-    '''
+    """Return memory usage in bytes."""
     return _VmB('VmSize:') - since
 
 
 def resident(since=0.0):
-    '''Return resident memory usage in bytes.
-    '''
+    """Return resident memory usage in bytes."""
     return _VmB('VmRSS:') - since
 
+
 def stacksize(since=0.0):
-    '''Return stack size in bytes.
-    '''
+    """Return stack size in bytes."""
     return _VmB('VmStk:') - since
 
+
 def maxrss():
-    '''Return maximal resident memory size in bytes.
-    '''
+    """Return maximal resident memory size in bytes."""
     # see http://www.kernel.org/doc/man-pages/online/pages/man5/proc.5.html
 
     # try to get it from rusage
@@ -74,7 +72,7 @@ def maxrss():
     mm = _VmB('VmSize:') # Virtual memory size
     if mm > 0: return mm
 
-    # no more idea
+    # no more ideas
     return 0.0
 
 
@@ -229,6 +227,7 @@ def estimate_memory(paw):
     print >> out, "Wave functions:         %.2f" % (mem_wave_functions / scale)
     print >> out, "---------------------------------"
     print >> out, "Total:                  %.2f %s" % (mem / scale, scalename)
+
 
 class MemNode:
     """Represents the estimated memory use of an object and its components.
