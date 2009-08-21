@@ -227,10 +227,6 @@ exclude = []
 if opt.exclude is not None:
     exclude += opt.exclude.split(',')
 
-for test in exclude:
-    if test in tests:
-        tests.remove(test)
-
 if opt.from_test:
     fromindex = tests.index(opt.from_test)
     tests = tests[fromindex:]
@@ -281,6 +277,10 @@ if size > 2:
 
 if size != 4:
     exclude += ['parallel/scalapack.py']
+
+for test in exclude:
+    if test in tests:
+        tests.remove(test)
 
 #gc.set_debug(gc.DEBUG_SAVEALL)
 
