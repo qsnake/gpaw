@@ -53,7 +53,7 @@ when installating GPAW for the first time:
    not be accesible from Niflheim.
 
 2. To compile the code, run the shell script
-:svn:`~doc/install/Linux/Niflheim/new/compile.sh`:
+:svn:`~doc/install/Linux/Niflheim/compile.sh`:
 
 .. literalinclude:: compile.sh
 
@@ -70,18 +70,18 @@ https://wiki.fysik.dtu.dk/it/SshWithoutPassword.
        source /home/camp/modulefiles.csh
        if ( "`echo $FYS_PLATFORM`" == "AMD-Opteron-el4" ) then # slid
            if ( ! ( `hostname -s | grep "^p"` ==  "")) then # p-node = infiniband
-               setenv GPAW_PLATFORM "linux-x86_64infiniband-2.3"
+               setenv GPAW_PLATFORM "linux-x86_64-infiniband-2.3"
            else
-               setenv GPAW_PLATFORM "linux-x86_64ethernet-2.3"
+               setenv GPAW_PLATFORM "linux-x86_64-ethernet-2.3"
            endif
        endif
        if ( "`echo $FYS_PLATFORM`" == "AMD-Opteron-el5" ) then # fjorm
            module load GPAW
-           setenv GPAW_PLATFORM "linux-x86_64opteron-2.4"
+           setenv GPAW_PLATFORM "linux-x86_64-opteron-2.4"
        endif
        if ( "`echo $FYS_PLATFORM`" == "Intel-Nehalem-el5" ) then # thul
            module load GPAW
-           setenv GPAW_PLATFORM "linux-x86_64xeon-2.4"
+           setenv GPAW_PLATFORM "linux-x86_64-xeon-2.4"
        endif
        setenv PATH ${GPAW_HOME}/build/bin.${GPAW_PLATFORM}:${PATH}
        setenv PYTHONPATH ${GPAW_HOME}:${PYTHONPATH}
@@ -92,18 +92,18 @@ https://wiki.fysik.dtu.dk/it/SshWithoutPassword.
        source /home/camp/modulefiles.sh
        if [ "`echo $FYS_PLATFORM`" == "AMD-Opteron-el4" ]; then # slid
            if [ ! `hostname -s | grep "^p"` ==  "" ]; then # p-node = infiniband
-               export GPAW_PLATFORM="linux-x86_64infiniband-2.3"
+               export GPAW_PLATFORM="linux-x86_64-infiniband-2.3"
            else
-               export GPAW_PLATFORM="linux-x86_64ethernet-2.3"
+               export GPAW_PLATFORM="linux-x86_64-ethernet-2.3"
            fi
        fi
        if [ "`echo $FYS_PLATFORM`" == "AMD-Opteron-el5" ]; then # fjorm
            module load GPAW
-           export GPAW_PLATFORM="linux-x86_64opteron-2.4"
+           export GPAW_PLATFORM="linux-x86_64-opteron-2.4"
        fi
        if [ "`echo $FYS_PLATFORM`" == "Intel-Nehalem-el5" ]; then # thul
            module load GPAW
-           export GPAW_PLATFORM="linux-x86_64xeon-2.4"
+           export GPAW_PLATFORM="linux-x86_64-xeon-2.4"
        fi
        export PATH=${GPAW_HOME}/build/bin.${GPAW_PLATFORM}:${PATH}
        export PYTHONPATH=${GPAW_HOME}:${PYTHONPATH}
@@ -129,7 +129,7 @@ When updating the gpaw code in the future:
 
 .. note::
 
-  Please consult with Niflheim's support that the threads use 100% of CPU, e.g. for a job running on ``p024`` do from ``audhumbla``::
+  Please ask the Niflheim's support staff to verify that gpaw-python runs single-threaded, e.g. for a job running on ``p024`` do from ``audhumbla``::
 
     ssh p024 ps -fL
 
