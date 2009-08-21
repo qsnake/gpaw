@@ -101,7 +101,7 @@ def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
     T_qMM = np.zeros((nq, nao, nao), dtype)
     P_aqMi = {}
 
-    for a in calc.wfs.pt.my_atom_indices:
+    for a in bfs.my_atom_indices:
         ni = calc.wfs.setups[a].ni
         P_aqMi[a] = np.zeros((nq, nao, ni), dtype)
     tci.calculate(spos_ac, S_qMM, T_qMM, P_aqMi)
