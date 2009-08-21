@@ -405,14 +405,14 @@ class Transport(GPAW):
         
         if not self.fixed:
             self.set_positions()
-            #self.get_hamiltonian_initial_guess()            
+            self.get_hamiltonian_initial_guess()            
         else:
             self.timer.start('surround set_position')
             self.inner_poisson.initialize()
             self.surround.combine()
             self.set_extended_positions(self.extended_atoms)
             self.timer.stop('surround set_position')
-            #self.get_hamiltonian_initial_guess()
+            self.get_hamiltonian_initial_guess()
 
         self.initialized_transport = True
         self.matrix_mode = 'sparse'
@@ -428,17 +428,36 @@ class Transport(GPAW):
         kwargs = self.gpw_kwargs.copy()
         kwargs['poissonsolver'] = PoissonSolver(nn=2)
         kpts = kwargs['kpts']
-        kpts = kpts[:2] + (5,)
+        kpts = kpts[:2] + (1,)
         kwargs['kpts'] = kpts
         if self.spinpol:
             kwargs['mixer'] = MixerDif(0.1, 5, metric='new', weight=100.0)
         else:
             kwargs['mixer'] = Mixer(0.1, 5, metric='new', weight=100.0)
         atoms.set_calculator(gpaw.GPAW(**kwargs))
-        atoms.get_potential_energy()
+        calc = atoms.calc
+        calc.initialize(atoms)
+        calc.set_positions(atoms)
+        
+        wfs = calc.wfs
+        hamiltonian = calc.hamiltonian
+        occupations = calc.occupations
+        density = calc.density
+        scf = calc.scf
+        
+        for iter in range(20):
+            wfs.eigensolver.iterate(hamiltonian, wfs)
+            occupations.calculate(wfs)
+            energy = hamiltonian.get_energy(occupations)
+            scf.energies.append(energy)
+            scf.check_convergence(density, wfs.eigensolver)
+            density.update(wfs)
+            hamiltonian.update(density)
+      
+        #atoms.get_potential_energy()
         h_skmm, s_kmm =  self.get_hs(atoms.calc)
         d_skmm = get_lcao_density_matrix(atoms.calc)
-        ntk = 5
+        ntk = 1
         kpts = atoms.calc.wfs.ibzk_qc
         h_spkmm = substract_pk(self.d, self.my_npk, ntk, kpts, h_skmm, 'h')
         s_pkmm = substract_pk(self.d, self.my_npk, ntk, kpts, s_kmm)
@@ -448,7 +467,7 @@ class Transport(GPAW):
             h_spkmm = np.real(h_spkmm).copy()
             s_pkmm = np.real(s_pkmm).copy()
             d_spkmm = np.real(d_spkmm).copy()
-        atoms.calc.write('guess.gpw')
+        #atoms.calc.write('guess.gpw')
         del atoms
         
         for q in range(self.my_npk):
@@ -464,7 +483,7 @@ class Transport(GPAW):
         h_skmm, s_kmm =  self.get_hs(calc)
         d_skmm = get_lcao_density_matrix(calc)
         
-        ntk = 5
+        ntk = 1
         kpts = calc.wfs.ibzk_qc
         h_spkmm = substract_pk(self.d, self.my_npk, ntk, kpts, h_skmm, 'h')
         s_pkmm = substract_pk(self.d, self.my_npk, ntk, kpts, s_kmm)
@@ -731,22 +750,22 @@ class Transport(GPAW):
             self.recover_kpts(self)
      
         self.timer.start('scat guess')
-        h_spkmm, s_pkmm = self.get_hs(self)
+        #h_spkmm, s_pkmm = self.get_hs(self)
         self.timer.stop('scat guess')
 
         self.timer.start('init scat')  
 
-        d_spkmm = np.zeros([self.nspins, self.my_npk,
-                                  self.nbmol, self.nbmol], self.wfs.dtype)
+        #d_spkmm = np.zeros([self.nspins, self.my_npk,
+        #                          self.nbmol, self.nbmol], self.wfs.dtype)
        
-        for q in range(self.my_npk):
-            self.hsd.reset(0, q, s_pkmm[q], 'S', True)
-            for s in range(self.my_nspins):
-                self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)            
-                self.hsd.reset(s, q, d_spkmm[s, q], 'D', True)
+        #for q in range(self.my_npk):
+        #    self.hsd.reset(0, q, s_pkmm[q], 'S', True)
+        #    for s in range(self.my_nspins):
+        #        self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)            
+        #        self.hsd.reset(s, q, d_spkmm[s, q], 'D', True)
        
         self.append_buffer_hsd()
-        self.fill_guess_with_leads()           
+        #self.fill_guess_with_leads()           
         self.timer.stop('init scat')
         self.scat_restart = False
 
@@ -1533,8 +1552,8 @@ class Transport(GPAW):
             for s in range(self.my_nspins):
                 self.hsd.reset(s, q, h_spkmm[s, q], 'H')
         
-        if self.step < 5:
-           self.fill_guess_with_leads('H')                 
+        #if self.step < 5:
+        #   self.fill_guess_with_leads('H')                 
   
     def get_forces(self, atoms):
         if (atoms.positions != self.atoms.positions).any():
@@ -1597,11 +1616,11 @@ class Transport(GPAW):
             self.surround.combine_nt_sg()
         density.nt_g = density.nt_sg.sum(axis=0)
         density.rhot_g = density.nt_g.copy()
-        if self.fixed:       
-            self.surround.normalize2()
-        else:
-            density.ghat.add(density.rhot_g, density.Q_aL)     
-
+        #if self.fixed:       
+            #self.surround.normalize2()
+        #else:
+        #    density.ghat.add(density.rhot_g, density.Q_aL)     
+        density.ghat.add(density.rhot_g, density.Q_aL)
         if density.mixer.mix_rho:
             density.mixer.mix(density)
             
@@ -1646,13 +1665,14 @@ class Transport(GPAW):
             rhot_g = self.surround.abstract_inner_rhot()
             if not hasattr(self, 'inner_vHt_g'):
                 self.inner_vHt_g = self.finegd0.zeros()
-            ham.npoisson = self.inner_poisson.solve_neutral(self.inner_vHt_g,
-                                                            rhot_g,
-                                              eps=self.inner_poisson.eps)
+            ham.npoisson = self.inner_poisson.solve(self.inner_vHt_g,
+                                                            rhot_g)
+                                               #eps=self.inner_poisson.eps)
             #self.inner_vHt_g -= self.surround.extra_vHt_g
             dim1, dim2 = ham.vHt_g.shape[:2]
             self.inner_vHt_g += ham.vHt_g[dim1/2, dim2/2, 0] - self.inner_vHt_g[dim1/2, dim2/2, 0]
-            #print ham.vHt_g[dim1/2, dim2/2, 0] - self.inner_vHt_g[dim1/2, dim2/2, 0]
+            self.text('Hartree_diff',
+                    str(ham.vHt_g[dim1/2, dim2/2, 0] - self.inner_vHt_g[dim1/2, dim2/2, 0]))
             self.surround.combine_vHt_g(self.inner_vHt_g)
             self.text('poisson interations :' + str(ham.npoisson))
         self.timer.stop('Poisson')
@@ -2052,7 +2072,7 @@ class Transport(GPAW):
                 
         density.nt_g = density.nt_sg.sum(axis=0)
         density.rhot_g = density.nt_g.copy()        
-        self.surround.normalize2() 
+        #self.surround.normalize2() 
         self.update_hamiltonian()
         self.scf.reset()
         self.forces.reset()
