@@ -241,7 +241,9 @@ class RecursionMethod:
         else:
             self.k1 = 0
             self.k2 = None
-
+            self.wfs = None
+            wfs = None
+            
         self.tol = tol
         self.maxiter = maxiter
 
@@ -563,3 +565,27 @@ class RecursionMethod:
         """
 
         return 0.5 * (e - a - ((e - a)**2 - 4 * b**2)**0.5 / b**2)
+
+    def duplicate_coefficients(self, nsteps, ntimes):
+        n1 = self.a_uci.shape[0]
+        n2 = self.a_uci.shape[1]
+        ni = self.a_uci.shape[2]
+        type_code = self.a_uci.dtype.name #typecode()
+        a_uci = npy.empty((n1 , n2, ni + nsteps*ntimes), type_code)
+        b_uci = npy.empty((n1, n2, ni + nsteps*ntimes), type_code)
+        a_uci[:, :, :ni]  = self.a_uci
+        b_uci[:, :, :ni]  = self.b_uci
+        
+        ni1 = ni
+        ni2 = ni +nsteps
+        for i in range(ntimes):
+            a_uci[:, :, ni1: ni2] = a_uci[:, :, ni-nsteps:ni]
+            b_uci[:, :, ni1: ni2] = b_uci[:, :, ni-nsteps:ni]
+            ni1 += nsteps
+            ni2 += nsteps
+        self.a_uci = a_uci
+        self.b_uci = b_uci
+
+
+
+                                                                                                                 
