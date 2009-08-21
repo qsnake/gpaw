@@ -1,14 +1,13 @@
 """
 A simple test script.
 
-Runs all scripts named ``*.py``.  The tests that execute
-the fastest will be run first.
+Runs all enabled test scripts.  The tests that execute the fastest
+will be run first.
 """
 
 import os
 import sys
 import time
-from glob import glob
 import gc
 from optparse import OptionParser
 
@@ -51,6 +50,9 @@ parser.add_option('--after', metavar='TESTFILE', dest='after_test',
 parser.add_option('--dry', action='store_true',
                   help='Do not run any tests, but write the names of those '
                   'tests which would be run')
+
+parser.add_option('--distribute', action='store_true',
+                  help='Distribute tests on available CPUs.')
 
 opt, tests = parser.parse_args()
 
@@ -225,9 +227,47 @@ exclude = []
 if opt.exclude is not None:
     exclude += opt.exclude.split(',')
 
+for test in exclude:
+    if test in tests:
+        tests.remove(test)
+
+if opt.from_test:
+    fromindex = tests.index(opt.from_test)
+    tests = tests[fromindex:]
+
+if opt.after_test:
+    index = tests.index(opt.after_test) + 1
+    tests = tests[index:]
+
 # exclude parallel tests if opt.parallel is not set
 if not opt.parallel:
     exclude.extend(tests_parallel)
+
+if opt.distribute:
+    # NOTE.  This is a very ugly hack which will distribute the tests
+    # on all available CPUs such that each CPU will run its allocated
+    # tests in serial.  Will change global variables of the
+    # ase.parallel and gpaw.mpi modules.  Also, the distribution of
+    # jobs is not intelligent, and processes may end at different
+    # times, waiting idly for each other.
+    realrank = gpaw.mpi.rank
+    realsize = gpaw.mpi.size
+    # Parallel tests which are included in the standard runs cause
+    # trouble for some reason, so remove those
+    tests = [test for test in tests if not test.startswith('parallel/')]
+    tests = tests[realrank::realsize]
+    gpaw.mpi.world = gpaw.mpi.serial_comm
+    gpaw.mpi.size = 1
+    gpaw.mpi.rank = 0
+    gpaw.mpi.parallel = False
+    import ase
+    ase.parallel.world = gpaw.mpi.world
+    ase.parallel.rank = 0
+    ase.parallel.size = 1
+    def barrier():
+        pass
+    ase.parallel.barrier = barrier
+    
 
 from ase.parallel import size
 if size > 1:
@@ -241,18 +281,6 @@ if size > 2:
 
 if size != 4:
     exclude += ['parallel/scalapack.py']
-
-for test in exclude:
-    if test in tests:
-        tests.remove(test)
-
-if opt.from_test:
-    fromindex = tests.index(opt.from_test)
-    tests = tests[fromindex:]
-
-if opt.after_test:
-    index = tests.index(opt.after_test) + 1
-    tests = tests[index:]
 
 #gc.set_debug(gc.DEBUG_SAVEALL)
 
@@ -337,6 +365,9 @@ class MyTextTestRunner(TextTestRunner):
 
 if opt.dry:
     for test in tests:
+        if not os.path.isfile(test):
+            print >> sys.stderr, 'No such file: %s' % test
+            raise SystemExit(17)
         print test
     raise SystemExit
 
