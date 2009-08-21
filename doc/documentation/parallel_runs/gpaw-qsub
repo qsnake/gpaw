@@ -45,7 +45,12 @@ elif c in 'nmq':
     # Opteron Niflheim node:
     vers = sys.version[:3]
     if vers == '2.3':
-        mpirun = 'mpiexec ' + mpi_paffinity_alone
+        mpirun = ('export LD_LIBRARY_PATH=/opt/acml-4.0.1/gfortran64/lib:' 
+                  '/opt/acml-4.0.1/gfortran64/lib:' 
+                  '/usr/local/openmpi-1.2.5-gfortran/lib64 && ' 
+                  'export PATH=/usr/local/openmpi-1.2.5-gfortran/bin:' 
+                  '${PATH} && '
+                  'mpiexec ' + mpi_paffinity_alone)
     elif vers == '2.4':
         mpirun = 'mpiexec ' + mpi_paffinity_alone
     else:
