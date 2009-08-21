@@ -13,6 +13,7 @@ _proc_status = '/proc/%d/status' % os.getpid()
 _scale = {'kB': 1024.0, 'mB': 1024.0*1024.0,
           'KB': 1024.0, 'MB': 1024.0*1024.0}
 
+
 def _VmB(VmKey):
     """Private."""
     global _proc_status, _scale
@@ -33,47 +34,25 @@ def _VmB(VmKey):
     return float(v[1]) * _scale[v[2]]
 
 
-def memory(since=0.0):
-    """Return memory usage in bytes."""
-    return _VmB('VmSize:') - since
-
-
-def resident(since=0.0):
-    """Return resident memory usage in bytes."""
-    return _VmB('VmRSS:') - since
-
-
-def stacksize(since=0.0):
-    """Return stack size in bytes."""
-    return _VmB('VmStk:') - since
-
-
 def maxrss():
     """Return maximal resident memory size in bytes."""
     # see http://www.kernel.org/doc/man-pages/online/pages/man5/proc.5.html
 
     # try to get it from rusage
     mm = resource.getrusage(resource.RUSAGE_SELF)[2]*resource.getpagesize()
-    if mm > 0: return mm
+    if mm > 0:
+        return mm
 
     # try to get it from /proc/id/status
-    mm = _VmB('VmHWM:') # Peak resident set size ("high water mark")
-    if mm > 0: return mm
-
-    # try to get it from /proc/id/status
-    mm = _VmB('VmRss:') # Resident set size
-    if mm > 0: return mm
-
-    # try to get it from /proc/id/status
-    mm = _VmB('VmPeak:') # Peak virtual memory size
-    if mm > 0: return mm
-
-    # Finally, try to get the current usage from /proc/id/status
-    mm = _VmB('VmSize:') # Virtual memory size
-    if mm > 0: return mm
-
-    # no more ideas
-    return 0.0
+    for name in ('VmHWM:',  # Peak resident set size ("high water mark")
+                 'VmRss:',  # Resident set size
+                 'VmPeak:', # Peak virtual memory size
+                 'VmSize:', # Virtual memory size
+                 ):
+        mm = _VmB(name)
+        if mm > 0:
+            return mm
+    return 0.0 # no more ideas
 
 
 def estimate_memory(paw):
@@ -98,7 +77,7 @@ def estimate_memory(paw):
 
     mem = long(0)
     # initial overhead (correct probably only in linux)
-    mem_init= memory()
+    mem_init= maxrss()
     mem += mem_init
 
     # density object

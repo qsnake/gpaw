@@ -25,7 +25,7 @@ from gpaw.xc_functional import XCFunctional
 from gpaw.brillouin import reduce_kpoints
 from gpaw.wavefunctions import GridWaveFunctions, LCAOWaveFunctions
 from gpaw.wavefunctions import EmptyWaveFunctions
-from gpaw.utilities.memory import MemNode, memory
+from gpaw.utilities.memory import MemNode, maxrss
 from gpaw.parameters import InputParameters
 from gpaw.setup import Setups
 from gpaw.output import PAWTextOutput
@@ -597,7 +597,7 @@ class PAW(PAWTextOutput):
 
     def estimate_memory(self, mem):
         """Estimate memory use of this object."""
-        mem_init = memory() # XXX initial overhead includes part of Hamiltonian
+        mem_init = maxrss() # XXX initial overhead includes part of Hamiltonian
         mem.subnode('Initial overhead', mem_init)
         for name, obj in [('Density', self.density),
                           ('Hamiltonian', self.hamiltonian),

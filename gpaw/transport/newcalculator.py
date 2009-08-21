@@ -8,7 +8,7 @@ from gpaw.grid_descriptor import GridDescriptor
 from gpaw.lcao.tools import get_realspace_hs
 from gpaw.mpi import world
 from gpaw.utilities.lapack import diagonalize
-from gpaw.utilities.memory import memory
+from gpaw.utilities.memory import maxrss
 
 from gpaw.transport.tools import tri2full, dot, Se_Sparse_Matrix, PathInfo,\
           get_atom_indices,\
@@ -1939,7 +1939,7 @@ class Transport(GPAW):
     def estimate_memory(self, mem):
         """Estimate memory use of this object."""
   
-        mem_init = memory() # XXX initial overhead includes part of Hamiltonian
+        mem_init = maxrss() # XXX initial overhead includes part of Hamiltonian
         mem.subnode('Initial overhead', mem_init)
         for name, obj in [('Density', self.density),
                           ('Hamiltonian', self.hamiltonian),
