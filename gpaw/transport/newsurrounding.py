@@ -61,8 +61,8 @@ class Side:
         
     def slice(self, nn, in_array):
         if self.type == 'LR':
-            #seq1 = np.arange(-nn + 1, 1)
-            seq1 = np.arange(nn)            
+            seq1 = np.arange(-nn + 1, 1)
+            #seq1 = np.arange(nn)            
             seq2 = np.arange(nn)
             di = len(in_array.shape) - 1
             if self.direction == '-':
@@ -159,19 +159,19 @@ class Surrounding:
                 ham.vt_sG = ham.gd.zeros(ham.nspins)
                 ham.poisson.initialize()
             vHt_g = ham.finegd.zeros(global_array=True)
-            extra_vHt_g = ham.finegd.zeros(global_array=True)
-            loc_extra_vHt_g = ham.finegd.zeros()
+            #extra_vHt_g = ham.finegd.zeros(global_array=True)
+            #loc_extra_vHt_g = ham.finegd.zeros()
 
             bias_shift0 = self.bias_index['-'] / Hartree
             bias_shift1 = self.bias_index['+'] / Hartree
             vHt_g[:, :, :nn] = self.sides['-'].boundary_vHt_g + bias_shift0
             vHt_g[:, :, -nn:] = self.sides['+'].boundary_vHt_g + bias_shift1
-            extra_vHt_g[:, :, :nn] = bias_shift0
-            extra_vHt_g[:, :, -nn:] = bias_shift1
+            #extra_vHt_g[:, :, :nn] = bias_shift0
+            #extra_vHt_g[:, :, -nn:] = bias_shift1
             ham.finegd.distribute(vHt_g, ham.vHt_g)
-            ham.finegd.distribute(extra_vHt_g, loc_extra_vHt_g)
-            self.get_extra_density(loc_extra_vHt_g)
-            #self.get_extra_density(ham.vHt_g)
+            #ham.finegd.distribute(extra_vHt_g, loc_extra_vHt_g)
+            #self.get_extra_density(loc_extra_vHt_g)
+            self.get_extra_density(ham.vHt_g)
             #self.calculate_extra_hartree_potential()
             #self.calculate_gate()
 
@@ -219,7 +219,7 @@ class Surrounding:
         nn = self.nn[0] * 2
         rhot_g = self.uncapsule(nn, self.tp.density.rhot_g, self.tp.finegd,
                                                        self.tp.finegd0)
-        rhot_g -= self.extra_rhot_g
+        #rhot_g -= self.extra_rhot_g
         return rhot_g
 
     def calculate_extra_hartree_potential(self):
@@ -295,4 +295,4 @@ class Surrounding:
         finegd.distribute(total_rhot_g, density.rhot_g)
         
 
-        
+       
