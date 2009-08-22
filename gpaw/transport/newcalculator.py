@@ -1665,14 +1665,19 @@ class Transport(GPAW):
             rhot_g = self.surround.abstract_inner_rhot()
             if not hasattr(self, 'inner_vHt_g'):
                 self.inner_vHt_g = self.finegd0.zeros()
-            ham.npoisson = self.inner_poisson.solve(self.inner_vHt_g,
+            
+            charge = self.finegd0.integrate(rhot_g)
+            background = (charge / self.finegd0.dv / self.finegd0.get_size_of_global_array().prod())
+            rhot_g -= background + self.surround.extra_rhot_g
+            print 'bakground', background
+            ham.npoisson = self.inner_poisson.solve_neutral(self.inner_vHt_g,
                                                             rhot_g)
                                                #eps=self.inner_poisson.eps)
             #self.inner_vHt_g -= self.surround.extra_vHt_g
-            dim1, dim2 = ham.vHt_g.shape[:2]
-            self.inner_vHt_g += ham.vHt_g[dim1/2, dim2/2, 0] - self.inner_vHt_g[dim1/2, dim2/2, 0]
-            self.text('Hartree_diff',
-                    str(ham.vHt_g[dim1/2, dim2/2, 0] - self.inner_vHt_g[dim1/2, dim2/2, 0]))
+            #dim1, dim2 = ham.vHt_g.shape[:2]
+            #self.inner_vHt_g += ham.vHt_g[dim1/2, dim2/2, 0] - self.inner_vHt_g[dim1/2, dim2/2, 0]
+            #self.text('Hartree_diff',
+            #        str(ham.vHt_g[dim1/2, dim2/2, 0] - self.inner_vHt_g[dim1/2, dim2/2, 0]))
             self.surround.combine_vHt_g(self.inner_vHt_g)
             self.text('poisson interations :' + str(ham.npoisson))
         self.timer.stop('Poisson')
