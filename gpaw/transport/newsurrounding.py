@@ -49,6 +49,9 @@ class Side:
         
         rhot_g = finegd.collect(calc.density.rhot_g, True)
         self.boundary_rhot_g_line = self.slice(nn, rhot_g[d1 * 2, d2 * 2])
+        
+        if self.direction == '-':
+            self.boundary_rhot_g = self.slice(1, rhot_g)
   
         nn /= 2
         vt_sG = gd.collect(calc.hamiltonian.vt_sG, True)
@@ -121,6 +124,9 @@ class Surrounding:
             nn = self.nn[0] * 2
             self.extra_rhot_g = self.uncapsule(nn, rhot_g, self.tp.finegd,
                                                        self.tp.finegd0)
+            self.boundary_charge = np.sum(
+                        self.sides['-'].boundary_rhot_g) * self.tp.finegd0.dv
+            
 
     def capsule(self, nn, loc_in_array, gd, gd0):
         ns = self.tp.nspins
