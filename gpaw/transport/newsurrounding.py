@@ -188,9 +188,11 @@ class Surrounding:
     def refresh_vt_sG(self):
         nn = self.nn[0]
         gd = self.tp.gd
+        bias_shift0 = self.bias_index['-'] / Hartree
+        bias_shift1 = self.bias_index['+'] / Hartree        
         vt_sG = gd.collect(self.tp.hamiltonian.vt_sG)
-        vt_sG[:, :, :, :nn] = self.sides['-'].boundary_vt_sG
-        vt_sG[:, :, :, -nn:] = self.sides['+'].boundary_vt_sG
+        vt_sG[:, :, :, :nn] = self.sides['-'].boundary_vt_sG + bias_shift1
+        vt_sG[:, :, :, -nn:] = self.sides['+'].boundary_vt_sG + bias_shift2
         gd.distribute(vt_sG, self.tp.hamiltonian.vt_sG)
 
     def combine_nt_sG(self):
