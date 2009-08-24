@@ -1067,60 +1067,63 @@ class SrfCell:
     def shift_potential(self, shift):
         pass
 
-def dump_hs(calc, filename, return_hs=False, restart = False):
+def dump_hs(calc, filename, return_hs=False):
     """Pickle LCAO - Hamiltonian and overlap matrix for a tip or surface
     calculation.
-    
-    use restart=True if restarting from a gpw file. The energy scale is set
-    to zero at the fermi level and periodic boundary conditions are removed 
-    in the z-direction.
     """
-    atoms = calc.get_atoms()
+    h_skmm, s_kmm = get_lcao_hamiltonian(calc)
+
+    
+    atoms = calc.atoms
     atoms.set_calculator(calc)
 
-    if restart:
-       calc.initialize_positions(atoms)
+    ibzk2d_kc = calc.get_ibz_k_points()[:, :2]
+    weight2d_k = calc.get_k_point_weights()
 
-    efermi = calc.get_fermi_level()
-
+   
     if w.rank == 0:
-        calc.wfs.eigensolver.calculate_hamiltonian_matrix(
-                 calc.hamiltonian, calc.wfs, calc.wfs.kpt_u[0]) # for now gamma only
-        s_mm = calc.wfs.S_qMM[0].copy() 
-        h_mm = calc.wfs.eigensolver.H_MM * Hartree
-        h_mm -= s_mm * efermi
-        tri2full(s_mm)
-        tri2full(h_mm)
-        remove_pbc(atoms, h_mm, s_mm, 2)
-        fd = open(filename + '.pckl', 'wb')        
-        pickle.dump((h_mm, s_mm), fd)
-        fd.close()
-        if return_hs:
-            return (h_mm, s_mm)
+        efermi = calc.get_fermi_level()
+        h_kmm = h_skmm[0] - s_kmm * efermi
+    
+        for i in range(len(h_kmm)):
+            remove_pbc(atoms, h_kmm[i], s_kmm[i], 2)
 
-def dump_lead_hs(calc, filename, return_hs=False, restart=False):
+        fd = open(filename + '_hs.pckl', 'wb')        
+        pickle.dump((h_kmm, s_kmm), fd)
+        fd.close()
+    
+        fd = open(filename + '_data.pckl', 'wb')        
+        pickle.dump((ibzk2d_kc, weight2d_k), fd)
+        fd.close()
+    
+        if return_hs:
+            return ibzk2d_kc, weight2d_k, h_kmm, s_kmm
+    
+
+def dump_lead_hs(calc, filename, direction='z', return_hs=False):
     """Pickle real space LCAO - Hamiltonian and overlap matrix for a 
     periodic lead calculation.
-
-    use restart=True if restarting from a gpw file.
-    The energy scale is set to zero at fermi level.
     """
-    atoms = calc.get_atoms()
-    atoms.set_calculator(calc)
- 
-    if restart:
-       calc.initialize_positions(atoms)
-
     efermi = calc.get_fermi_level()
     ibzk2d_c, weight2d_k, h_skmm, s_kmm\
-             = get_lead_lcao_hamiltonian(calc, direction='z')
-    h_kmm = h_skmm[0] - efermi * s_kmm
-    fd = open(filename + '.pckl', 'wb')
-    pickle.dump((ibzk2d_c, weight2d_k, h_kmm, s_kmm), fd, 2)
-    fd.close()
-    if return_hs:
-        return (ibzk2d_c, weight2d_k, h_kmm, s_kmm)
- 
+             = get_lead_lcao_hamiltonian(calc, direction=direction)
+
+    if w.rank == 0:
+        h_kmm = h_skmm[0] - efermi * s_kmm
+    
+        fd = open(filename + '_hs.pckl', 'wb')
+        pickle.dump((h_kmm, s_kmm), fd, 2)
+        fd.close()
+        
+        fd = open(filename + '_data.pckl', 'wb')
+        pickle.dump((ibzk2d_c, weight2d_k), fd, 2)
+        fd.close()
+        if return_hs:
+            return ibzk2d_c, weight2d_k, h_kmm, s_kmm
+        
+    else:
+        return None, None, None, None
+
 def intersection(l1, l2):
     """Intersection (x, y, t) between two lines.
     
@@ -1155,50 +1158,73 @@ def unravel2d(data, shape):
 def get_lead_lcao_hamiltonian(calc, direction='z'):
     H_skMM, S_kMM = get_lcao_hamiltonian(calc)
     usesymm = calc.input_parameters['usesymm']
-    return lead_kspace2realspace(H_skMM, S_kMM, calc.wfs.ibzk_kc,
-                                 calc.wfs.weight_k, direction, usesymm)  
+    if w.rank == 0:
+        return lead_kspace2realspace(H_skMM, S_kMM, calc.wfs.ibzk_kc,
+                                     calc.wfs.bzk_kc, calc.wfs.weight_k, 
+                                     direction, usesymm)  
+    else:
+        return None, None, None, None
 
-def get_real_space_hs(h_skmm, s_kmm, ibzk_kc, weight_k, R_c=(0,0,0),
-                      direction = 'z', usesymm = None):
-    d = 'xyz'.index(direction)
-    transverse_dirs = np.delete([0, 1, 2], [d], 0)
-    nspins, nk, nbf = h_skmm.shape[:-1]
 
-    groups = {}
-    m = 0
-    while len(ibzk_kc) is not 0:
-        index = [0]
-        list =[]
-        for j in range(1, len(ibzk_kc)):
-            if not (ibzk_kc[0][transverse_dirs]\
-                   -ibzk_kc[j][transverse_dirs]).any():
-                index.append(j)
-        groups[m] = (weight_k[index], ibzk_kc[index], h_skmm[:, index], s_kmm[ index])
-        ibzk_kc = np.delete(ibzk_kc, index , axis=0)
-        weight_k = np.delete(weight_k, index, axis=0)
-        h_skmm = np.delete(h_skmm, index, axis=1)
-        s_kmm = np.delete(s_kmm, index, axis=0)
-        m += 1
+def get_real_space_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
+                      R_c=(0, 0, 0), direction='z', usesymm=None):
 
-    nk = len(groups.keys())
-    h2_kmm = np.zeros((nspins, nk, nbf, nbf))
-    s2_kmm = np.zeros((nk, nbf, nbf))
-    kpt2d = []
-    weight2d = []
-    for i in groups.keys():
-        weight_k, ibzk_kc, h_kmm, s_kmm = groups[i]
-        nk2 = len(weight_k)
-        kpt2d.append(ibzk_kc[0, :2])
-        weight2d.append(sum(weight_k))
-        c_k = np.exp(2.j * np.pi * np.dot(ibzk_kc, R_c)) * weight_k
-        c_k.shape = (nk2, 1, 1)
-        h_mm = np.sum((h_kmm * c_k), axis=1)
-        s_mm = np.sum((s_kmm * c_k), axis=0)
-        h2_kmm[:, i] = h_mm
-        s2_kmm[i] = s_mm
-    return kpt2d, weight2d, h2_kmm, s2_kmm
+    if usesymm == True:
+        raise NotImplementedError
 
-def lead_kspace2realspace(h_skmm, s_kmm, ibzk_kc, weight_k,
+    nspins, nk, nbf = h_skmm.shape[:3]
+    dir = 'xyz'.index(direction)
+
+    # find all bz - kpoints in the transport direction 
+    bzk_p_kc = [bzk_kc[0, dir]]
+    for k in bzk_kc:
+        if (np.asarray(bzk_p_kc) - k[dir]).all():
+            bzk_p_kc.append(k[dir])
+
+    nkpts_p = len(bzk_p_kc)
+    weight_p_k = 1./nkpts_p
+
+    # find all ibz - kpoints in the transverse directions
+    transverse_dirs = np.delete([0, 1, 2], [dir])
+    ibzk_o_kc = [ibzk_kc[0, transverse_dirs]]
+    for k in ibzk_kc:
+        if np.any((np.asarray(ibzk_o_kc) -k[transverse_dirs]), axis = 1).all():
+            ibzk_o_kc.append(k[transverse_dirs])
+
+    nkpts_o = len(ibzk_o_kc)
+    h_skii = np.zeros((nspins, nkpts_o, nbf, nbf))
+    s_kii = np.zeros((nkpts_o, nbf, nbf))
+
+    for j, k_o in enumerate(ibzk_o_kc):
+        for k_p in bzk_p_kc:   
+            k = np.zeros((3,))
+            k[dir] = k_p
+            k[transverse_dirs] = k_o
+            bools = np.any(np.round(ibzk_kc - k, 7), axis=1)# kpt in the ibz?
+            index = np.where(bools == False)[0]
+            if len(index) == 0: # kpt not in ibz, find corresponding one in the ibz
+                k = -k # inversion 
+                bools = np.any(np.round(ibzk_kc - k, 7), axis=1)
+                index = np.where(bools == False)[0][0]
+            else: # kpoint is in the ibz
+                index = index[0]
+            c_k = np.exp(2.j * np.pi * np.dot(k, R_c)) * weight_p_k
+            h_skii[:, j] += c_k * h_skmm[:, index]
+            s_kii[j] += c_k * s_kmm[index]   
+
+    weights_o_k = np.zeros((len(ibzk_o_kc),)) + 2
+    # is the gamma point part of the ibzk ?
+    bools = np.any(np.round(ibzk_o_kc, 7), axis=1)
+    index = np.where(bools == False)[0]
+    if len(index) == 0:
+        weights_o_k = weights_o_k / (2 * nkpts_o)
+    else:
+        weights_o_k[index[0]] = 1
+        weights_o_k = weights_o_k / (2 * nkpts_o - 1)
+
+    return ibzk_o_kc, weights_o_k, h_skii, s_kii
+
+def lead_kspace2realspace(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
                           direction='z', usesymm=None):
 
     if usesymm==True:
@@ -1207,11 +1233,11 @@ def lead_kspace2realspace(h_skmm, s_kmm, ibzk_kc, weight_k,
     dir = 'xyz'.index(direction)
     R_c = [0, 0, 0]
     ibz2d_kc, weight2d_k, h_skii, s_kii =\
-    get_real_space_hs(h_skmm, s_kmm, ibzk_kc, weight_k, R_c, direction)
+    get_real_space_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k, R_c, direction)
 
     R_c[dir] = 1
     h_skij, s_kij =\
-    get_real_space_hs(h_skmm, s_kmm, ibzk_kc, weight_k, R_c, direction)[-2:]
+    get_real_space_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k, R_c, direction)[-2:]
 
     nspins, nk, nbf = h_skii.shape[:-1]
 
