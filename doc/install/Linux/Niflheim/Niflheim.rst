@@ -84,6 +84,7 @@ https://wiki.fysik.dtu.dk/it/SshWithoutPassword.
            setenv GPAW_PLATFORM "linux-x86_64-xeon-2.4"
        endif
        setenv PATH ${GPAW_HOME}/build/bin.${GPAW_PLATFORM}:${PATH}
+       setenv PATH ${GPAW_HOME}/tools:${PATH}
        setenv PYTHONPATH ${GPAW_HOME}:${PYTHONPATH}
        setenv PYTHONPATH ${GPAW_HOME}/build/lib.${GPAW_PLATFORM}:${PYTHONPATH}
 
@@ -106,6 +107,7 @@ https://wiki.fysik.dtu.dk/it/SshWithoutPassword.
            export GPAW_PLATFORM="linux-x86_64-xeon-2.4"
        fi
        export PATH=${GPAW_HOME}/build/bin.${GPAW_PLATFORM}:${PATH}
+       export PATH=${GPAW_HOME}/tools:${PATH}
        export PYTHONPATH=${GPAW_HOME}:${PYTHONPATH}
        export PYTHONPATH=${GPAW_HOME}/build/lib.${GPAW_PLATFORM}:${PYTHONPATH}
 
