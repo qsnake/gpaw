@@ -7,6 +7,7 @@ from gpaw.mpi import world, rank, MASTER
 from gpaw.basis_data import Basis
 from gpaw.setup import types2atomtypes
 
+
 def get_bf_centers(atoms, basis=None):
     calc = atoms.get_calculator()
     if calc is None:
@@ -33,6 +34,19 @@ def get_bfi(calc, a_list):
     for a in a_list:
         M = calc.wfs.basis_functions.M_a[a]
         bfs_list += range(M, M + calc.wfs.setups[a].niAO)
+    return bfs_list
+
+
+def get_bfi2(symbols, basis, a_list):
+    """Same as get_bfi, but does not require an LCAO calc"""
+    basis = types2atomtypes(symbols, basis, default='dzp')
+    bfs_list = []
+    i = 0
+    for a, symbol in enumerate(symbols):
+        nao = Basis(symbol, basis[a]).nao
+        if a in a_list:
+            bfs_list += range(i, i + nao)
+        i += nao
     return bfs_list
     
 
