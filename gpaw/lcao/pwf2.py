@@ -5,11 +5,9 @@ from gpaw.aseinterface import GPAW
 from gpaw.lcao.overlap import TwoCenterIntegrals
 from gpaw.utilities import unpack
 from gpaw.utilities.tools import tri2full, lowdin
-from gpaw.lcao.tools import basis_subset2
+from gpaw.lcao.tools import basis_subset2, get_bfi2
 from gpaw.coulomb import get_vxc as get_ks_xc
 from gpaw.utilities.blas import r2k, gemm
-
-
 from gpaw.lcao.projected_wannier import dots, condition_number, eigvals, \
      get_bfs, get_lcao_projections_HSP
 
@@ -137,7 +135,7 @@ class ProjectedWannierFunctionsIBL:
         |w_w> = >   |psi_o> U_ow + >   |f_M> U_Mw
                 --o=1              --M=1
     """
-    def __init__(self, V_nM, S_MM, No):
+    def __init__(self, V_nM, S_MM, No, lcaoindices=None):
         Nw = V_nM.shape[1]
         assert No <= Nw
         self.V_oM, V_uM = V_nM[:No], V_nM[No:]
@@ -146,6 +144,11 @@ class ProjectedWannierFunctionsIBL:
         U_ow, U_lw, U_Ml = get_rot(F_MM, self.V_oM, Nw - No)
         self.U_Mw = np.dot(U_Ml, U_lw)
         self.U_ow = U_ow - np.dot(self.V_oM, self.U_Mw)
+        if lcaoindices is not None:
+            for i in lcaoindices:
+                self.U_ow[:, i] = 0.0
+                self.U_Mw[:, i] = 0.0
+                self.U_Mw[i, i] = 1.0
 
         # stop here ?? XXX
         self.S_ww = self.rotate_matrix(np.ones(1), S_MM)
@@ -191,7 +194,7 @@ class ProjectedWannierFunctionsIBL:
 
 
 class PWFplusLCAO(ProjectedWannierFunctionsIBL):
-    def __init__(self, V_nM, S_MM, No, pwfmask):
+    def __init__(self, V_nM, S_MM, No, pwfmask, lcaoindices=None):
         Nw = V_nM.shape[1]
         self.V_oM = V_nM[:No]
         dtype = V_nM.dtype
@@ -216,18 +219,27 @@ class PWFplusLCAO(ProjectedWannierFunctionsIBL):
         self.U_Mw = np.identity(Nw, dtype)
         np.place(self.U_Mw, pwfmask2, u_Mw.flat)
 
+        if lcaoindices is not None:
+            for i in lcaoindices:
+                self.U_ow[:, i] = 0.0
+                self.U_Mw[:, i] = 0.0
+                self.U_Mw[i, i] = 1.0
+
         self.S_ww = self.rotate_matrix(np.ones(1), S_MM)
         self.norms_n = None
-        
+
+def set_lcaoatoms(calc, pwf, lcaoatoms):
+    ind = get_bfi(calc, lcaoatoms)
+    for i in ind:
+        pwf.U_ow[:, i] = 0.0
+        pwf.U_Mw[:, i] = 0.0
+        pwf_U_Mw[i, i] = 1.0
 
 class PWF2:
     def __init__(self, gpwfilename, fixedenergy=0., spin=0, ibl=True,
                  basis='sz', zero_fermi=False, pwfbasis=None, lcaoatoms=None,
                  projection_data=None):
         calc = GPAW(gpwfilename, txt=None, basis=basis)
-        #calc.wfs.initialize_wave_functions_from_restart_file()
-        calc.density.ghat.set_positions(calc.atoms.get_scaled_positions() % 1.)
-        #calc.hamiltonian.poisson.initialize()
         if zero_fermi:
             try:
                 Ef = calc.get_fermi_level()
@@ -255,6 +267,12 @@ class PWF2:
             if pwfbasis is not None:
                 pwfmask = basis_subset2(calc.atoms.get_chemical_symbols(),
                                        basis, pwfbasis)
+            if lcaoatoms is not None:
+                lcaoindices = get_bfi2(calc.atoms.get_chemical_symbols(),
+                                       basis,
+                                       lcaoatoms)
+            else:
+                lcaoindices = None
             self.bfs = get_bfs(calc)
             if projection_data is None:
                 V_qnM, H_qMM, S_qMM, self.P_aqMi = get_lcao_projections_HSP(
@@ -264,9 +282,11 @@ class PWF2:
             H_qMM -= Ef * S_qMM
             for q, M in enumerate(self.M_k):
                 if pwfbasis is None:
-                    pwf = ProjectedWannierFunctionsIBL(V_qnM[q], S_qMM[q], M)
+                    pwf = ProjectedWannierFunctionsIBL(V_qnM[q], S_qMM[q], M,
+                                                       lcaoindices)
                 else:
-                    pwf = PWFplusLCAO(V_qnM[q], S_qMM[q], M, pwfmask)
+                    pwf = PWFplusLCAO(V_qnM[q], S_qMM[q], M, pwfmask,
+                                      lcaoindices)
                 self.pwf_q.append(pwf)
                 self.norms_qn.append(pwf.norms_n)
                 self.S_qww.append(pwf.S_ww)
@@ -313,14 +333,15 @@ class PWF2:
         return self.P_awi
 
     def get_orbitals(self, q=0, indices=None):
+        self.calc.wfs.initialize_wave_functions_from_restart_file()
         kpt = self.calc.wfs.kpt_u[self.spin * self.nk + q]
         if not hasattr(self, 'w_wG'):
             if self.ibl:
                 self.w_wG = self.pwf_q[q].rotate_function(
-                    kpt.psit_nG[:][:self.M_k[q]], self.bfs, q, indices)
+                    kpt.psit_nG[:self.M_k[q]], self.bfs, q, indices)
             else:
                 self.w_wG = self.pwf_q[q].rotate_function(
-                    kpt.psit_nG[:], indices)
+                    kpt.psit_nG, indices)
         return self.w_wG
 
     def get_Fcore(self, q=0, indices=None):
@@ -340,6 +361,9 @@ class PWF2:
         return condition_number(self.S_qww[q])
 
     def get_xc(self, q=0, indices=None):
+        #self.calc.density.ghat.set_positions(
+        #    self.calc.atoms.get_scaled_positions() % 1.)
+        #self.calc.hamiltonian.poisson.initialize()
         if self.ibl:
             return get_xc2(self.calc, self.get_orbitals(q, indices),
                            self.get_projections(q, indices), self.spin)
