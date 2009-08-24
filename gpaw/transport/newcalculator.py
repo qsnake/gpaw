@@ -959,7 +959,8 @@ class Transport(GPAW):
                 if self.master:
                     self.text('density: diff = %f  tol=%f' % (self.diff_d,
                                                   self.scf.max_density_error))
-                if self.diff_d < self.scf.max_density_error:
+                #if self.diff_d < self.scf.max_density_error:
+                if self.diff_d < self.scf.max_density_error * 10:                
                     cvg = True
         return cvg
  
@@ -988,7 +989,7 @@ class Transport(GPAW):
         self.ham_vt_old = np.empty(self.hamiltonian.vt_sG.shape)
         self.ham_vt_diff = None
         self.ham_vt_tol = 1e-2
-        self.diag_ham_tol = 5e-3
+        self.diag_ham_tol = 2e-2
         self.step = 0
         self.cvgflag = False
         self.spin_coff = 3. - self.nspins
@@ -1666,11 +1667,11 @@ class Transport(GPAW):
             if not hasattr(self, 'inner_vHt_g'):
                 self.inner_vHt_g = self.finegd0.zeros()
             
-            #charge = self.finegd0.integrate(rhot_g)
-            charge = self.finegd0.integrate(rhot_g) + self.surround.boundary_charge
+            charge = self.finegd0.integrate(rhot_g)
+            
             background = (charge / self.finegd0.dv / self.finegd0.get_size_of_global_array().prod())
             rhot_g -= background + self.surround.extra_rhot_g
-            self.text('background', background, charge, self.surround.boundary_charge)
+            self.text('background', background, charge)
             
             ham.npoisson = self.inner_poisson.solve_neutral(self.inner_vHt_g,
                                                             rhot_g)
