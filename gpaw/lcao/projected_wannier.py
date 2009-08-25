@@ -108,14 +108,18 @@ def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
 
     # Calculate projections
     V_qnM = np.zeros((nq, calc.wfs.nbands, nao), dtype)
-    for q, V_nM in enumerate(V_qnM):
-        for n in range(calc.wfs.nbands):#band-band to sace memory(?)
-            bfs.integrate2(calc.wfs.kpt_u[q].psit_nG[n][:], V_nM[n], q)
-        for a, P_ni in calc.wfs.kpt_u[q].P_ani.items():
+    for kpt in calc.wfs.kpt_u:
+        if kpt.s != spin:
+            continue
+        V_nM = V_qnM[kpt.q]
+        #bfs.integrate2(kpt.psit_nG[:], V_nM, kpt.q) # all bands to save time
+        for n, V_M in enumerate(V_nM): # band-by-band to save memory
+            bfs.integrate2(kpt.psit_nG[n][:], V_M, kpt.q)
+        for a, P_ni in kpt.P_ani.items():
             dS_ii = calc.wfs.setups[a].O_ii
-            P_Mi = P_aqMi[a][q]
+            P_Mi = P_aqMi[a][kpt.q]
             V_nM += np.dot(P_ni, np.inner(dS_ii, P_Mi).conj())
-        comm.sum(V_nM)
+    comm.sum(V_qnM)
     if projectionsonly:
         return V_qnM
 
