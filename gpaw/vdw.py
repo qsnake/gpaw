@@ -529,7 +529,7 @@ class FFTVDWFunctional(VDWFunctional):
         q = q1 * (lambd**np.arange(n) - 1) / (lambd - 1)
 
         if self.verbose:
-            print ('VDW: using %d qubic splines: 0.00, %.2f, ..., %.2f, %.2f' %
+            print ('VDW: using %d cubic splines: 0.00, %.2f, ..., %.2f, %.2f' %
                    (n, q1, q[-2], q[-1]))
             
         y = np.eye(n)
