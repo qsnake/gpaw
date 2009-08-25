@@ -38,10 +38,14 @@ def blacs_destroy(adesc):
     assert len(adesc) == 9
     _gpaw.blacs_destroy(adesc)
 
-def scalapack_redist(a_obj, adesc, bdesc, comm_obj=mpi.world, m=0, n=0):
+def scalapack_redist(a_obj, adesc, bdesc, isreal=True, comm_obj=mpi.world, m=0, n=0):
     if a_obj is not None:
         assert a_obj.ndim == 2
-        assert (a_obj.dtype == float) or (a_obj.dtype == complex)
+        assert a_obj.dtype in [float, complex]
+        if a_obj.dtype == float:
+            assert isreal == True
+        else:
+            assert isreal == False
         if a_obj.flags.c_contiguous:
             print >> stderr, warning ('scalapack_redist: local matrices are not Fortran contiguous\n')
     assert len(adesc) == 9
@@ -51,7 +55,7 @@ def scalapack_redist(a_obj, adesc, bdesc, comm_obj=mpi.world, m=0, n=0):
     assert (bdesc[2] == m) or (bdesc[2] == adesc[2])
     assert (bdesc[3] == n) or (bdesc[3] == adesc[3])
     # There is no simple may to check if adesc and bdesc are disjoint to comm_obj
-    return _gpaw.scalapack_redist(a_obj, adesc, bdesc, comm_obj, m, n)
+    return _gpaw.scalapack_redist(a_obj, adesc, bdesc, isreal, comm_obj, m, n)
 
 def scalapack_diagonalize_dc(a_obj, adesc):
     if a_obj is not None:

@@ -132,7 +132,6 @@ PyObject* blacs_create(PyObject *self, PyObject *args)
 {
   PyObject*  comm_obj;     // communicator
   char order='R';
-  int row_order = 1;
   int m, n, nprow, npcol, mb, nb, lld;
   int nprocs;
   int ConTxt = -1;
@@ -147,16 +146,9 @@ PyObject* blacs_create(PyObject *self, PyObject *args)
   PyArrayObject* desc_obj = (PyArrayObject*)PyArray_SimpleNew(1, desc_dims, 
                                                               NPY_INT);
 
-  if (!PyArg_ParseTuple(args, "Oiiiiii|i", &comm_obj, &m, &n, &nprow, &npcol, 
-                        &mb, &nb, &row_order))
+  if (!PyArg_ParseTuple(args, "Oiiiiii|c", &comm_obj, &m, &n, &nprow, &npcol, 
+                        &mb, &nb, &order))
     return NULL;
-
-
-
-  // False, gives us C-column order. Not clear when this would be beneficial, 
-  // but we do not hard-code R-row order for the sake of generality.
-  if (!row_order) order = 'C';
-  
   
   if (comm_obj == Py_None)
     {
@@ -200,7 +192,7 @@ PyObject* blacs_create(PyObject *self, PyObject *args)
       desc[5] = nb;
       desc[6] = 0;
       desc[7] = 0;
-      desc[8] = MAX(1, lld);
+      desc[8] = MAX(0, lld);
     }
   memcpy(desc_obj->data, desc, 9*sizeof(int));
 
@@ -230,16 +222,16 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
   PyObject* comm_obj = Py_None; //intermediate communicator, must
                                 // encompass adesc + bdesc
   char order='R';
-  int row_order = 1;
   int nprocs;
   int iam = 0;
   int c_ConTxt;
+  int isreal = 1;
   int m = 0;
   int n = 0;
   static int one = 1;
 
-  if (!PyArg_ParseTuple(args, "OOO|Oii", &a_obj, &adesc, &bdesc, 
-                        &comm_obj, &m, &n))
+  if (!PyArg_ParseTuple(args, "OOOi|Oii", &a_obj, &adesc, &bdesc, 
+                        &isreal, &comm_obj, &m, &n))
     return NULL;
 
   // adesc
@@ -295,7 +287,7 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
   // Note there are some times when you can get away with C order arrays.
   // Most notable example is a symmetric matrix stored on a square ConTxt.
   npy_intp b_dims[2] = {b_locM, b_locN};
-  if (a_obj->descr->type_num == PyArray_DOUBLE)
+  if(isreal)
     b_obj = (PyArrayObject*)PyArray_EMPTY(2, b_dims, 
                                           NPY_DOUBLE,
                                           NPY_F_CONTIGUOUS);
@@ -312,7 +304,7 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
   // It then calls Cpdgemr2d which performs the actual redistribution.
   if (comm_obj == Py_None)
     {
-      if (a_obj->descr->type_num == PyArray_DOUBLE)
+      if(isreal)
         Cpdgemr2do_(m, n, DOUBLEP(a_obj), one, one, INTP(adesc), 
                     DOUBLEP(b_obj), one, one, INTP(bdesc));
       else
@@ -327,7 +319,7 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
       MPI_Comm_size(comm, &nprocs);
       c_ConTxt = Csys2blacs_handle(comm);
       Cblacs_gridinit(&c_ConTxt, &order, 1, nprocs);
-      if (a_obj->descr->type_num == PyArray_DOUBLE)
+      if(isreal)
         Cpdgemr2d_(m, n, DOUBLEP(a_obj), one, one, INTP(adesc), 
                    DOUBLEP(b_obj), one, one, INTP(bdesc), c_ConTxt);
       else
