@@ -270,12 +270,16 @@ def lead_kspace2realspace(h_skmm, s_kmm, ibzk_kc, weight_k,
 
 def zeta_pol(basis):
     """Get number of zeta func. and polarization func. indices in Basis."""
-    zeta = 0
+    zeta = []
+    pol = []
     for bf in basis.bf_j:
         if 'polarization' in bf.type:
-            break
-        zeta += 2 * bf.l + 1
-    pol = basis.nao - zeta
+            pol.append(2 * bf.l + 1)
+        else:
+            zeta.append(2 * bf.l + 1)
+    zeta = sum(zeta)
+    pol = sum(pol)
+    assert zeta + pol == basis.nao
     return zeta, pol
 
 
