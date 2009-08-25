@@ -415,39 +415,7 @@ class STM:
                 V_ij[j1:j2, i1:i2] += V + kin
             s.f_iG = None
         return V_ij * Hartree  
-
-    def get_V2(self, position_c):
-        """Returns the overlap hamiltonian for a position of the tip_atom """
-        if not self.initialized:
-            self.initialize()
-        f_iGs = self.srf_cell.f_iGs
-        self.set_tip_position(position_c)
-        nj = self.nj
-        ni = self.ni
-        V_ij = np.zeros((nj, ni))
-        S_ij = np.zeros((nj, ni))
-        vt_G = self.current_v 
-        for s in self.srf_cell.functions:
-            j1 = s.index
-            s.f_iG = f_iGs[j1]
-            j2 = j1 + len(s)
-            for t, t_kin in zip(self.tip_cell.functions,\
-                                self.tip_cell.functions_kin):
-                i1 = t.index
-                i2 = i1 + len(t)
-                V = (s | vt_G | t) 
-                S = (s | t )
-                if V is None:
-                    V = 0
-                kin = (s | t_kin)
-                if kin is None:
-                    kin = 0
-                V_ij[j1:j2, i1:i2] += V + kin
-                if S is not None:
-                    S_ij[j1:j2,i1:i2] += S
-            s.f_iG = None
-        return V_ij * Hartree - S_ij * self.ediff.real 
-
+    
     def get_transmission(self, position_c):
         V_ts = self.get_V(position_c)       
         T_stm = self.stm_calc.get_transmission(V_ts)
