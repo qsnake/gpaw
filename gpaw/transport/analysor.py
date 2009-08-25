@@ -270,26 +270,24 @@ class Transport_Analysor:
         
         assert tp.d == 2
         
-        gd = tp.gd
-        nt_sG = gd.empty(tp.nspins, global_array=True)
-        vt_sG = gd.empty(tp.nspins, global_array=True)
-        
+        gd = tp.extended_calc.gd
+   
         nt_sG = gd.collect(tp.density.nt_sG, True)
-        vt_sG = gd.collect(tp.hamiltonian.vt_sG, True)
+        vt_sG = gd.collect(tp.extended_calc.hamiltonian.vt_sG, True)
 
         nt = nt_sG[0, d1, d2].copy()
         vt = vt_sG[0, d1, d2].copy()
 
-        gd = tp.finegd
+        gd = tp.extended_calc.finegd
         rhot_g = gd.empty(tp.nspins, global_array=True)
         rhot_g = gd.collect(tp.density.rhot_g, True)
         rho = rhot_g[d1*2, d2*2].copy()
         
-        vHt_g = gd.collect(tp.hamiltonian.vHt_g, True)
+        vHt_g = gd.collect(tp.extended_calc.hamiltonian.vHt_g, True)
         vHt = vHt_g[d1*2, d2*2].copy()
         
         D_asp = copy.deepcopy(tp.density.D_asp)
-        dH_asp = copy.deepcopy(tp.hamiltonian.dH_asp)
+        dH_asp = copy.deepcopy(tp.extended_calc.hamiltonian.dH_asp)
         
         tc_array, dos_array = self.collect_transmission_and_dos()
         time_cost = self.ele_step_time_collect()
@@ -331,11 +329,11 @@ class Transport_Analysor:
         cost['eq fock2den'] = time('eq fock2den')
         cost['ne fock2den'] = time('ne fock2den')
         cost['Poisson'] = time('Poisson')
-        cost['construct density'] = time('LCAO WaveFunctions: construct density')
-        if self.tp.step == 0:
-            cost['project hamiltonian'] = 0
-        else:
-            cost['project hamiltonian'] = time('project hamiltonian')            
+        #cost['construct density'] = time('LCAO WaveFunctions: construct density')
+        #if self.tp.step == 0:
+        #    cost['project hamiltonian'] = 0
+        #else:
+        #    cost['project hamiltonian'] = time('project hamiltonian')            
         return cost
 
     def collect_transmission_and_dos(self, energies=None):
@@ -411,12 +409,13 @@ class Transport_Analysor:
   
     def abstract_d_and_v(self):
         data = {}
-        tp = self.tp
-        nt = tp.gd.empty()
-        vt = tp.gd.empty()
-        for s in range(tp.nspins):
-            nt = tp.gd.collect(tp.density.nt_sG[s], True)
-            vt = tp.gd.collect(tp.hamiltonian.vt_sG[s], True)
+        calc = self.tp.extended_calc
+        gd = calc.gd
+        nt = gd.empty()
+        vt = gd.empty()
+        for s in range(self.tp.nspins):
+            nt = gd.collect(self.tp.density.nt_sG[s], True)
+            vt = gd.collect(calc.hamiltonian.vt_sG[s], True)
             for name, d in [('x', 0), ('y', 1), ('z', 2)]:
                 data['s' + str(s) + 'nt_1d_' + name] = aa1d(nt, d)
                 data['s' + str(s) + 'nt_2d_' + name] = aa2d(nt, d)            
@@ -1026,6 +1025,62 @@ class Transport_Plotter:
                     ydata0 = sum_by_unit(ydata0, unit)
             elif i == steps_indices[1]:   
                 ydata1 = eval('step.' + data)
+                if unit != None:
+                    ydata1 = sum_by_unit(ydata1, unit)                
+        if not energy_axis:
+            p.plot(ydata1 - ydata0)
+        else:
+            p.plot(xdata, ydata1 - ydata0)
+        
+        legends.append('step' + str(steps_indices[1]) +
+                       'minus step' + str(steps_indices[0]))
+        p.title(title)
+        p.legend(legends)
+        if height != None:
+            p.axis([xdata[0], xdata[-1], 0, height])
+        p.show()
+
+    def compare_bias_step_info(self, info, steps_indices, s, k, height=None, unit=None):
+        xdata = np.linspace(-3, 5, 60)
+        energy_axis = False        
+        import pylab as p
+        legends = []
+        if info == 'dd':
+            data = 'dd[s, k]'
+            title = 'density matrix diagonal elements'
+        elif info == 'df':
+            data = 'df[s, k]'
+            title = 'hamiltonian matrix diagonal elements'
+        elif info == 'den':
+            data = 'nt'
+            title = 'density'
+        elif info == 'ham':
+            data = 'vt'
+            title = 'hamiltonian'
+        elif info == 'rho':
+            data = 'rho'
+            title = 'total poisson density'
+        elif info == 'vHt':
+            data = 'vHt'
+            title = 'total Hartree potential'             
+        elif info == 'tc':
+            data = 'tc[s, k, 0]'
+            title = 'trasmission coefficeints'
+            energy_axis = True
+        elif info == 'dos':
+            data = 'dos[s, k]'
+            title = 'density of states'
+            energy_axis = True
+        else:
+            raise ValueError('no this info type---' + info)        
+
+        for i, step in enumerate(self.bias_steps):
+            if i == steps_indices[0]:
+                ydata0 = eval('step.ele_steps[-1].' + data)
+                if unit != None:
+                    ydata0 = sum_by_unit(ydata0, unit)
+            elif i == steps_indices[1]:   
+                ydata1 = eval('step.ele_steps[-1].' + data)
                 if unit != None:
                     ydata1 = sum_by_unit(ydata1, unit)                
         if not energy_axis:
