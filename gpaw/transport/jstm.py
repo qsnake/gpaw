@@ -8,7 +8,7 @@ from gpaw.utilities.tools import tri2full
 from gpaw.lcao.projected_wannier import dots
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.lfc import NewLocalizedFunctionsCollection as LFC
-from gpaw.lcao.tools import remove_pbc, get_lcao_hamiltonian
+from gpaw.lcao.tools import remove_pbc, get_lcao_hamiltonian, get_lead_lcao_hamiltonian
 from gpaw.mpi import world as w
 import time
 import numpy as np
@@ -1175,102 +1175,6 @@ def rotate(theta):
 
 def unravel2d(data, shape):
     pass
-
-def get_lead_lcao_hamiltonian(calc, direction='z'):
-    H_skMM, S_kMM = get_lcao_hamiltonian(calc)
-    usesymm = calc.input_parameters['usesymm']
-    if w.rank == 0:
-        return lead_kspace2realspace(H_skMM, S_kMM, calc.wfs.ibzk_kc,
-                                     calc.wfs.bzk_kc, calc.wfs.weight_k, 
-                                     direction, usesymm)  
-    else:
-        return None, None, None, None
-
-def get_real_space_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
-                      R_c=(0, 0, 0), direction='z', usesymm=None):
-
-    if usesymm == True:
-        raise NotImplementedError
-
-    nspins, nk, nbf = h_skmm.shape[:3]
-    dir = 'xyz'.index(direction)
-
-    # find all bz - kpoints in the transport (parallel) direction 
-    bzk_p_kc = [bzk_kc[0, dir]]
-    for k in bzk_kc:
-        if (np.asarray(bzk_p_kc) - k[dir]).all():
-            bzk_p_kc.append(k[dir])
-
-    nkpts_p = len(bzk_p_kc)
-    weight_p_k = 1./nkpts_p
-
-    # find ibz - kpoints in the transverse directions
-    transverse_dirs = np.delete([0, 1, 2], [dir])
-    ibzk_t_kc = [ibzk_kc[0, transverse_dirs]]
-    for k in ibzk_kc:
-        if np.any((np.asarray(ibzk_t_kc)-k[transverse_dirs]), axis=1).all():
-            ibzk_t_kc.append(k[transverse_dirs])
-
-    nkpts_t = len(ibzk_t_kc)
-    h_skii = np.zeros((nspins, nkpts_t, nbf, nbf))
-    s_kii = np.zeros((nkpts_t, nbf, nbf))
-
-    for j, k_t in enumerate(ibzk_t_kc):
-        for k_p in bzk_p_kc:   
-            k = np.zeros((3,))
-            k[dir] = k_p
-            k[transverse_dirs] = k_t
-            bools = np.any(np.round(ibzk_kc - k, 7), axis=1)# kpt in ibz?
-            index = np.where(bools == False)[0]
-            if len(index) == 0: # kpt not in ibz, find corresponding one in the ibz
-                k = -k # inversion 
-                bools = np.any(np.round(ibzk_kc - k, 7), axis=1)
-                index = np.where(bools == False)[0][0]
-            else: # kpoint in the ibz
-                index = index[0]
-            c_k = np.exp(2.j * np.pi * np.dot(k, R_c)) * weight_p_k
-            h_skii[:, j] += c_k * h_skmm[:, index]
-            s_kii[j] += c_k * s_kmm[index]   
-
-    weights_t_k = np.zeros((len(ibzk_t_kc),)) + 2
-    bools = np.any(np.round(ibzk_t_kc, 7), axis=1) # gamma point in ibz?
-    index = np.where(bools == False)[0]
-    if len(index) == 0:
-        weights_t_k = weights_t_k / (2 * nkpts_t)
-    else:
-        weights_t_k[index[0]] = 1
-        weights_t_k = weights_t_k / (2 * nkpts_t - 1)
-
-    return ibzk_t_kc, weights_t_k, h_skii, s_kii
-
-def lead_kspace2realspace(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
-                          direction='z', usesymm=None):
-
-    if usesymm==True:
-        raise NotImplementedError
-
-    dir = 'xyz'.index(direction)
-    R_c = [0, 0, 0]
-    ibz_t_kc, weight_t_k, h_skii, s_kii =\
-    get_real_space_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k, R_c, direction)
-
-    R_c[dir] = 1
-    h_skij, s_kij =\
-    get_real_space_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k, R_c, direction)[-2:]
-
-    nspins, nk, nbf = h_skii.shape[:-1]
-
-    h_skmm = np.zeros((nspins, nk, 2 * nbf, 2 * nbf), h_skii.dtype)
-    s_kmm = np.zeros((nk, 2 * nbf, 2 * nbf), h_skii.dtype)
-    h_skmm[:, :, :nbf, :nbf] = h_skmm[:, :, nbf:, nbf:] = h_skii
-    h_skmm[:, :, :nbf, nbf:] = h_skij
-    h_skmm[:, :, nbf:, :nbf] = h_skij.swapaxes(2, 3).conj()
-
-    s_kmm[:, :nbf, :nbf] = s_kmm[:, nbf:, nbf:] = s_kii
-    s_kmm[:, :nbf, nbf:] = s_kij
-    s_kmm[:, nbf:, :nbf] = s_kij.swapaxes(1,2).conj()
-
-    return ibz_t_kc, weight_t_k, h_skmm, s_kmm
 
 def smallestbox(cell1, cell2, theta, plot=False):
     """Determines the smallest 2d unit cell which encloses cell1 rotated at 
