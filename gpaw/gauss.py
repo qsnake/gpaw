@@ -9,6 +9,16 @@ from gpaw.utilities import erf
 
 
 def I(R, a, b, alpha, beta):
+    """Calculate integral and derivatives wrt. positions of Gaussian product:
+
+                /                              2             2
+               |  a0+b0  a1+b1  a2+b2  -alpha r   -beta (r-R)
+       value = | x      y      z      e          e             dr ,
+               |
+              /
+
+    Returns the tuple (value, d[value]/dx, d[value]/dy, d[value]/dz).
+    """
     result = npy.zeros(4)
     R = npy.array(R)
     result[0] = I1(R, a, b, alpha, beta)
