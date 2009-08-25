@@ -40,8 +40,9 @@ when installating GPAW for the first time:
        export GPAW_HOME=/home/niflheim/$USER/gpaw
 
    Checkout the GPAW source (make **sure** that
-   :file:`${GPAW_HOME}/gpaw` does **not** exist, before running the checkout!)::
+   :file:`${GPAW_HOME}` does **not** exist, before running the checkout!)::
 
+    rm -rf ${GPAW_HOME}
     svn checkout $GPAW_TRUNK ${GPAW_HOME}
 
    You may consider adding :envvar:`GPAW_TRUNK` and :envvar:`GPAW_HOME` to
@@ -49,7 +50,7 @@ when installating GPAW for the first time:
 
    **Note**: that if you are doing a heavy development (many svn checkins)
    you may consider installing a special development version on workstation's
-   local disk (faster), i.e. ``GPAW_HOME=/scratch/$USER``, however this version will
+   local disk (faster), i.e. ``GPAW_HOME=/scratch/$USER/gpaw``, however this version will
    not be accesible from Niflheim.
 
 2. To compile the code, run the shell script
