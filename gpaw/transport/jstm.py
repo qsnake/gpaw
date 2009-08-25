@@ -25,13 +25,14 @@ class LocalizedFunctions:
         self.index = index
         self.vt_G = vt_G
         self.restricted = False
-        self.phase_vector_c = np.array([0,0])
+        self.phase = 1
+        self.sdisp_c = np.array([0, 0])
 
     def __len__(self):
         return len(self.f_iG)
 
-    def set_phase_vector(self, v_c):
-        self.phase_vector_c = np.asarray(v_c)
+    def set_phase_factor(self, k_c):
+        self.phase = np.exp(2.j * pi * np.inner(k_c, self.sdisp_c))
 
     def apply_t(self):
         """Apply kinetic energy operator and return new object."""
@@ -66,7 +67,8 @@ class LocalizedFunctions:
                 bstart_c[0]:bstop_c[0],
                 bstart_c[1]:bstop_c[1],
                 bstart_c[2]:bstop_c[2]].reshape((len(other.f_iG), -1))
-            a_iG1 = a_iG.copy()
+            b_iG *= other.phase
+            a_iG1 = a_iG.copy() * self.phase
             if self.vt_G is not None:
                 a_iG1 *= self.vt_G[start_c[0]:stop_c[0],
                                   start_c[1]:stop_c[1],
@@ -125,17 +127,19 @@ class AtomCenteredFunctions(LocalizedFunctions):
         a[1]=-cell[0][0]
         a=-a/np.linalg.norm(a)
         c = rcut/np.dot(diagonal,a)
+        
         # Determine corner
-        A = cell.T/gd.cell_c # Basis change matrix
-        pos =np.dot(np.linalg.inv(cell.T), diagonal * c)
-        pos[2] = rcut/gd.cell_c[2]
-        corner_c = np.ceil(spos_c * gd.N_c - pos*gd.cell_c / gd.h_c).astype(int)
-        self.center = pos * gd.cell_c / gd.h_c
+        A = cell.T / gd.cell_c # Basis change matrix
+
+        pos = np.dot(np.linalg.inv(cell.T), diagonal * c)
+        pos[2] = rcut / gd.cell_c[2]
+        corner_c = np.ceil(spos_c * gd.N_c - pos * gd.cell_c / gd.h_c).astype(int)
+        self.center = pos * gd.cell_c / gd.h_c - corner_c
         size_c = np.ceil(spos_c * gd.N_c + \
-                 pos*gd.cell_c / gd.h_c).astype(int) - corner_c
+                         pos*gd.cell_c / gd.h_c).astype(int) - corner_c
 
         smallgd = GridDescriptor(N_c=size_c + 1,
-                                 cell_cv=(np.dot(A,np.diag(gd.h_c * (size_c +1))).T),
+                                 cell_cv=(np.dot(A,np.diag(gd.h_c * (size_c + 1))).T),
                                  pbc_c=False,
                                  comm=mpi.serial_comm)
 
@@ -171,12 +175,12 @@ class STM:
                                  'cvl2': 0,
                                  'bias': 1.0,
                                  'de': 0.01,
-                                 'kpts': (1, 1),
+                                 'k_c': (0, 0),
                                  'energies': None,
                                  'w': 0.0,
                                  'eta1': 1e-3,
                                  'eta2': 1e-3,
-                                 'logfile': None, # '-' for stdin
+                                 'logfile': '-', # '-' for stdin
                                  'verbose': False}
 
         self.initialized = False
@@ -188,10 +192,13 @@ class STM:
             if key in ['hs1', 'hs10', 'hs2', 'hs20',
                        'cvl1', 'cvl2', 'bias',
                        'de', 'energies', 'w',
-                       'align_bf','eta1','eta2']:
+                       'align_bf', 'eta1', 'eta2']:
                 self.transport_uptodate = False
                 break
             elif key in ['tip_atom_index', 'dmin']:
+                self.initialized = False
+            elif key in ['k_c']:
+                self.transport_uptodate = False
                 self.initialized = False
             elif key not in self.input_parameters:
                 raise KeyError, '\'%s\' not a valid keyword' % key
@@ -230,11 +237,12 @@ class STM:
         srf_pos_av = self.srf.atoms.get_positions() / Bohr
         tip_zmin = tip_pos_av[tip_atom_index, 2]
         srf_zmax = srf_pos_av[:, 2].max()
-        tip_zmin_a = np.empty(len(tip_pos_av))
         
+        tip_zmin_a = np.empty(len(tip_pos_av))
         for a, setup in enumerate(self.tip.wfs.setups):
             rcutmax = max([phit.get_cutoff() for phit in setup.phit_j])
             tip_zmin_a[a] = tip_pos_av[a, 2] - rcutmax - tip_zmin
+ 
         srf_zmax_a = np.empty(len(srf_pos_av))
         for a, setup in enumerate(self.srf.wfs.setups):
             rcutmax = max([phit.get_cutoff() for phit in setup.phit_j])
@@ -250,10 +258,11 @@ class STM:
 
         # surface initialization
         self.srf_cell = SrfCell(self.srf)
-        self.srf_cell.initialize(self.tip_cell, srf_indices)
+        self.srf_cell.initialize(self.tip_cell, srf_indices, p['k_c'])
         self.nj = self.srf_cell.nj
+         
         self.set_tip_position([0, 0])
- 
+        
         self.log.write(' dmin = %.3f\n' % (self.dmin * Bohr) +
                        ' tip atoms: %i to %i,  tip functions: %i\n' 
                        % (tip_indices.min(), tip_indices.max(),
@@ -283,8 +292,11 @@ class STM:
         w = p['w']
         eta1 = p['eta1']
         eta2 = p['eta2']
-        
-        if cvl1 == 0:
+
+        tip_efermi = self.tip.get_fermi_level() / Hartree
+        srf_efermi = self.srf.get_fermi_level() / Hartree
+
+        if cvl1 == 0: # XXX nessesary???
             cvl1 = 1
             
         h1 = h1[:-cvl1, :-cvl1]
@@ -293,17 +305,18 @@ class STM:
         s2 = s2[cvl2:, cvl2:]
 
         # Align bfs with the surface lead as a reference
-        diff = (h2[align_bf,align_bf] - h20[align_bf, align_bf]) \
+        diff = (h2[align_bf, align_bf] - h20[align_bf, align_bf]) \
                / s2[align_bf, align_bf]
         diff = diff.real
         h2 -= diff * s2      
         h1 -= diff * s1        
         
-        self.ediff = diff + (self.tip.get_fermi_level()\
-                + self.srf.get_fermi_level())/2.0
+        self.tip_cell.shift_potential(-diff / Hartree  - tip_efermi)
+        self.srf_cell.shift_potential(-diff / Hartree  - srf_efermi)
 
-        diff1 = (h10[-1,-1] - h1[-1,-1])/s1[-1,-1]
+        diff1 = (h10[-1, -1] - h1[-1, -1]) / s1[-1, -1]
         h10 -= diff1 * s10
+
         if not ediff_only and not self.transport_uptodate:
             from ase.transport.stm import STM as STMCalc
 
@@ -313,7 +326,7 @@ class STM:
 
             if p['energies'] == None:
                 energies = np.sign(bias) * \
-                np.arange(-abs(bias) * w, -abs(bias)*(w - 1) + de, de)
+                np.arange(-abs(bias) * w, -abs(bias) * (w - 1) + de, de)
                 energies.sort()
             else:
                 energies = p['energies']
@@ -372,9 +385,38 @@ class STM:
                    cell_corner_c[1] + 1:cell_corner_c[1] + size_c[1] + 1,
                    cell_corner_c[2] + 1:cell_corner_c[2] + size_c[2] + 1]\
                 += self.tip_cell.vt_G # +1 since grid starts at (1,1,1), pbc = 0
-        self.current_v=current_Vt
+        self.current_v = current_Vt 
 
     def get_V(self, position_c):
+        """Returns the overlap hamiltonian for a position of the tip_atom """
+        if not self.initialized:
+            self.initialize()
+        
+        f_iGs = self.srf_cell.f_iGs
+        self.set_tip_position(position_c)
+        nj = self.nj
+        ni = self.ni
+        V_ij = np.zeros((nj, ni))
+        vt_G = self.current_v 
+        for s in self.srf_cell.functions:
+            j1 = s.index
+            s.f_iG = f_iGs[j1]
+            j2 = j1 + len(s)
+            for t, t_kin in zip(self.tip_cell.functions,\
+                                self.tip_cell.functions_kin):
+                i1 = t.index
+                i2 = i1 + len(t)
+                V = (s | vt_G | t) 
+                if V is None:
+                    V = 0
+                kin = (s | t_kin)
+                if kin is None:
+                    kin = 0
+                V_ij[j1:j2, i1:i2] += V + kin
+            s.f_iG = None
+        return V_ij * Hartree  
+
+    def get_V2(self, position_c):
         """Returns the overlap hamiltonian for a position of the tip_atom """
         if not self.initialized:
             self.initialize()
@@ -404,7 +446,7 @@ class STM:
                 if S is not None:
                     S_ij[j1:j2,i1:i2] += S
             s.f_iG = None
-        return V_ij * Hartree - S_ij * self.ediff.real
+        return V_ij * Hartree - S_ij * self.ediff.real 
 
     def get_transmission(self, position_c):
         V_ts = self.get_V(position_c)       
@@ -422,10 +464,11 @@ class STM:
     def get_s(self, position_c):
         self.set_tip_position(position_c)
         S_ij = np.zeros((self.nj, self.ni))
-        for s in self.srf_functions:
+        for s in self.srf_cell.functions:
             j1 = s.index
+            s.f_iG = self.srf_cell.f_iGs[j1]
             j2 = j1 + len(s)
-            for t in self.tip_functions:
+            for t in self.tip_cell.functions:
                 i1 = t.index
                 i2 = i1 + len(t)
                 overlap = (s | t) 
@@ -572,11 +615,16 @@ class STM:
         self.log.flush()
 
     def hs_from_paw(self): # Do not even try this for larger systems
-        p=self.input_parameters
-        self.set(**{'hs1':dump_hs(self.tip, 'hs1', 1, 1),
-                    'hs2':dump_hs(self.srf, 'hs2', 1, 1),
-                    'hs10':dump_lead_hs(self.lead1, 'hs10', 1, 1),
-                    'hs20':dump_lead_hs(self.lead2, 'hs20', 1, 1)})
+        p = self.input_parameters
+        h1, s1 = dump_hs(self.tip, 'hs1', return_hs = True)[-2:]   
+        h2, s2 = dump_hs(self.tip, 'hs2', return_hs = True)[-2:]   
+        h10, s10 = dump_lead_hs(self.lead1, 'hs10', return_hs = True)[-2:]
+        h20, s20 = dump_lead_hs(self.lead2, 'hs20', return_hs = True)[-2:]
+        self.set(**{'hs1': (h1[0], s1[0]),
+                    'hs2': (h2[0], s2[0]),
+                    'hs10':(h10[0], s10[0]),
+                    'hs20':(h20[0], s20[0]),
+                    'k_c': (0,0)})
 
     def mem_estimate(self):
         # basis functions
@@ -713,6 +761,7 @@ class TipCell:
         self.tip_atom_index = None
         self.functions = []
         self.functions_kin = []
+        self.energy_shift = 0        
 
     def initialize(self, tip_indices, tip_atom_index, debug=False):
         self.tip_indices = tip_indices
@@ -831,7 +880,7 @@ class TipCell:
         for f, f_kin in zip(functions, functions_kin):
             f.restrict()
             f_kin.restrict()
- 
+        
         self.attach(functions,functions_kin)
   
         if dointerpolate:
@@ -857,7 +906,9 @@ class TipCell:
             f_kin.corner_c = position_c + self.p0_kin[f_kin]
     
     def shift_potential(self, shift):
-        pass
+        self.vt_G -= self.energy_shift
+        self.vt_G += shift
+        self.energy_shift = shift
 
     def interpolate_vt_G(self, theta_min, origo_c):
         """Interpolates the effective potential of the tip calculation onto
@@ -936,8 +987,9 @@ class SrfCell:
     def __init__(self, srf):
         self.srf = srf
         self.functions = []
+        self.energy_shift = 0.0
 
-    def initialize(self, tip_cell, srf_indices):
+    def initialize(self, tip_cell, srf_indices, k_c):
         self.srf_indices = srf_indices
         # determine the extended unitcell
         srf_vt_G = self.srf.hamiltonian.vt_sG[0]
@@ -1015,7 +1067,7 @@ class SrfCell:
                 j += len(f.f_iG)
         self.nj = j
 
-        # shift corners so that the origin now is the one of the extended surface cell
+        # shift corners so that the origin now is the extended surface
         for f in self.functions:
             f.corner_c[:2] += ext1_c  
 
@@ -1023,14 +1075,14 @@ class SrfCell:
 
         # Add an appropriate number of periodic images.
         # Translation vectors:
-        Rs =np.array([[0,  1],
-                     [1,   1],
-                     [1,   0],
-                     [1,  -1],
-                     [0,  -1],
-                     [-1, -1],
-                     [-1,  0],
-                     [-1,  1]])
+        Rs = np.array([[0,  1],
+                      [1,   1],
+                      [1,   0],
+                      [1,  -1],
+                      [0,  -1],
+                      [-1, -1],
+                      [-1,  0],
+                      [-1,  1]])
 
         origo = np.array([0, 0])
         list = []
@@ -1056,16 +1108,20 @@ class SrfCell:
                                                   index=f.index,
                                                   vt_G=f.vt_G)
                         newf.f_iG = None
-                        newf.set_phase_vector(n * R)
+                        newf.sdisp_c = n * R
+                        newf.set_phase_factor(k_c)
                         list.append(newf)
                     else:
                         add_function = False
+
         self.functions = list
         self.f_iGs = f_iGs
         self.atoms = srf_atoms
 
     def shift_potential(self, shift):
-        pass
+        self.vt_G -= self.energy_shift
+        self.vt_G += shift
+        self.energy_shift = shift
 
 def dump_hs(calc, filename, return_hs=False):
     """Pickle LCAO - Hamiltonian and overlap matrix for a tip or surface
@@ -1073,14 +1129,12 @@ def dump_hs(calc, filename, return_hs=False):
     """
     h_skmm, s_kmm = get_lcao_hamiltonian(calc)
 
-    
     atoms = calc.atoms
     atoms.set_calculator(calc)
 
     ibzk2d_kc = calc.get_ibz_k_points()[:, :2]
     weight2d_k = calc.get_k_point_weights()
 
-   
     if w.rank == 0:
         efermi = calc.get_fermi_level()
         h_kmm = h_skmm[0] - s_kmm * efermi
@@ -1120,9 +1174,8 @@ def dump_lead_hs(calc, filename, direction='z', return_hs=False):
         fd.close()
         if return_hs:
             return ibzk2d_c, weight2d_k, h_kmm, s_kmm
-        
-    else:
-        return None, None, None, None
+        else:
+            return None, None, None, None
 
 def intersection(l1, l2):
     """Intersection (x, y, t) between two lines.
@@ -1165,7 +1218,6 @@ def get_lead_lcao_hamiltonian(calc, direction='z'):
     else:
         return None, None, None, None
 
-
 def get_real_space_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
                       R_c=(0, 0, 0), direction='z', usesymm=None):
 
@@ -1175,7 +1227,7 @@ def get_real_space_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
     nspins, nk, nbf = h_skmm.shape[:3]
     dir = 'xyz'.index(direction)
 
-    # find all bz - kpoints in the transport direction 
+    # find all bz - kpoints in the transport (parallel) direction 
     bzk_p_kc = [bzk_kc[0, dir]]
     for k in bzk_kc:
         if (np.asarray(bzk_p_kc) - k[dir]).all():
@@ -1184,45 +1236,44 @@ def get_real_space_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
     nkpts_p = len(bzk_p_kc)
     weight_p_k = 1./nkpts_p
 
-    # find all ibz - kpoints in the transverse directions
+    # find ibz - kpoints in the transverse directions
     transverse_dirs = np.delete([0, 1, 2], [dir])
-    ibzk_o_kc = [ibzk_kc[0, transverse_dirs]]
+    ibzk_t_kc = [ibzk_kc[0, transverse_dirs]]
     for k in ibzk_kc:
-        if np.any((np.asarray(ibzk_o_kc) -k[transverse_dirs]), axis = 1).all():
-            ibzk_o_kc.append(k[transverse_dirs])
+        if np.any((np.asarray(ibzk_t_kc)-k[transverse_dirs]), axis=1).all():
+            ibzk_t_kc.append(k[transverse_dirs])
 
-    nkpts_o = len(ibzk_o_kc)
-    h_skii = np.zeros((nspins, nkpts_o, nbf, nbf))
-    s_kii = np.zeros((nkpts_o, nbf, nbf))
+    nkpts_t = len(ibzk_t_kc)
+    h_skii = np.zeros((nspins, nkpts_t, nbf, nbf))
+    s_kii = np.zeros((nkpts_t, nbf, nbf))
 
-    for j, k_o in enumerate(ibzk_o_kc):
+    for j, k_t in enumerate(ibzk_t_kc):
         for k_p in bzk_p_kc:   
             k = np.zeros((3,))
             k[dir] = k_p
-            k[transverse_dirs] = k_o
-            bools = np.any(np.round(ibzk_kc - k, 7), axis=1)# kpt in the ibz?
+            k[transverse_dirs] = k_t
+            bools = np.any(np.round(ibzk_kc - k, 7), axis=1)# kpt in ibz?
             index = np.where(bools == False)[0]
             if len(index) == 0: # kpt not in ibz, find corresponding one in the ibz
                 k = -k # inversion 
                 bools = np.any(np.round(ibzk_kc - k, 7), axis=1)
                 index = np.where(bools == False)[0][0]
-            else: # kpoint is in the ibz
+            else: # kpoint in the ibz
                 index = index[0]
             c_k = np.exp(2.j * np.pi * np.dot(k, R_c)) * weight_p_k
             h_skii[:, j] += c_k * h_skmm[:, index]
             s_kii[j] += c_k * s_kmm[index]   
 
-    weights_o_k = np.zeros((len(ibzk_o_kc),)) + 2
-    # is the gamma point part of the ibzk ?
-    bools = np.any(np.round(ibzk_o_kc, 7), axis=1)
+    weights_t_k = np.zeros((len(ibzk_t_kc),)) + 2
+    bools = np.any(np.round(ibzk_t_kc, 7), axis=1) # gamma point in ibz?
     index = np.where(bools == False)[0]
     if len(index) == 0:
-        weights_o_k = weights_o_k / (2 * nkpts_o)
+        weights_t_k = weights_t_k / (2 * nkpts_t)
     else:
-        weights_o_k[index[0]] = 1
-        weights_o_k = weights_o_k / (2 * nkpts_o - 1)
+        weights_t_k[index[0]] = 1
+        weights_t_k = weights_t_k / (2 * nkpts_t - 1)
 
-    return ibzk_o_kc, weights_o_k, h_skii, s_kii
+    return ibzk_t_kc, weights_t_k, h_skii, s_kii
 
 def lead_kspace2realspace(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
                           direction='z', usesymm=None):
@@ -1232,7 +1283,7 @@ def lead_kspace2realspace(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
 
     dir = 'xyz'.index(direction)
     R_c = [0, 0, 0]
-    ibz2d_kc, weight2d_k, h_skii, s_kii =\
+    ibz_t_kc, weight_t_k, h_skii, s_kii =\
     get_real_space_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k, R_c, direction)
 
     R_c[dir] = 1
@@ -1251,7 +1302,7 @@ def lead_kspace2realspace(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
     s_kmm[:, :nbf, nbf:] = s_kij
     s_kmm[:, nbf:, :nbf] = s_kij.swapaxes(1,2).conj()
 
-    return ibz2d_kc, weight2d_k, h_skmm, s_kmm
+    return ibz_t_kc, weight_t_k, h_skmm, s_kmm
 
 def smallestbox(cell1, cell2, theta, plot=False):
     """Determines the smallest 2d unit cell which encloses cell1 rotated at 
