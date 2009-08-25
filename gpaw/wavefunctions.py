@@ -877,7 +877,7 @@ class GridWaveFunctions(WaveFunctions):
             self.timer.stop('Wavefunction: random')
             return
         
-        self.timer.start('Wavefunction: lcao')
+        self.timer.start('Wavefunction: lcao initialization')
         if self.nbands <= self.setups.nao:
             lcaonbands = self.nbands
             lcaomynbands = self.mynbands
@@ -919,7 +919,7 @@ class GridWaveFunctions(WaveFunctions):
             # less than the desired number of bands, then extra random
             # wave functions are added.
             self.random_wave_functions(lcaomynbands)
-        self.timer.stop('Wavefunction: lcao')
+        self.timer.stop('Wavefunction: lcao initialization')
 
     def initialize_wave_functions_from_restart_file(self):
         if not isinstance(self.kpt_u[0].psit_nG, TarFileReference):
