@@ -460,28 +460,30 @@ class HGHParameterSet:
         self.rloc = rloc # Characteristic radius of local part
         self.c_n = c_n # Polynomial coefficients for local part
         self.v_l = [] # Non-local parts
+
+    def __str__(self):
+        strings = ['HGH setup for %s\n' % self.symbol,
+                   '    Valence Z=%d, rloc=%.05f\n' % (self.Nv, self.rloc)]
+
+        if self.c_n:
+            coef_string = ', '.join(['%.05f' % c for c in self.c_n])
+        else:
+            coef_string = 'zeros'
+        strings.append('    Local part coeffs: %s\n' % coef_string)
+        #strings.extend(['\n',
+        strings.append('    Projectors:\n')
+        for v in self.v_l:
+            strings.append('        l=%d, rc=%.05f\n' % (v.l, v.r0))
+        strings.append('    Diagonal coefficients of nonlocal parts')
+        for v in self.v_l:
+            strings.append('\n')
+            strings.append('        l=%d: ' % v.l +
+                           ', '.join(['%8.05f' % h for h in v.h_n]))
+        return ''.join(strings)
         
     def print_info(self, txt):
-        # XXX the print_info methods are not compatible with just
-        # file-like objects, for some reason it has to be a PAWOutput
-        # thing.  We should fix this.
-        txt0 = txt
-        def txt(arg):
-            txt0(arg, end='')
-        txt('HGH setup for %s\n' % self.symbol)
-        txt('    Valence Z=%d, rloc=%.05f\n' % (self.Nv, self.rloc))
-        txt('    Local part coeffs: ' +
-            ', '.join(['%.05f' % c for c in self.c_n]))
-        txt('\n')
-        txt('    Projectors:\n')
-        for v in self.v_l:
-            txt('        l=%d, rc=%.05f\n' % (v.l, v.r0))
-        txt('    Diagonal coefficients of nonlocal parts\n')
-        for v in self.v_l:
-            txt('        l=%d: ' % v.l + ', '.join(['%8.05f' % h
-                                                    for h in v.h_n]))
-            txt('\n')
-        txt('\n')
+        txt(str(self))
+        txt()
 
     def nl_iter(self):
         for n in range(4):
@@ -498,12 +500,32 @@ class HGHParameterSet:
         for n, l, f, e in nlfe_j:
             Nv += f
             f_n = f_ln[l]
-            assert f_n == []
+            assert f_n == [] or self.symbol.endswith('.sc')
             f_n.append(f)
             if Nv >= self.Nv:
                 break
         assert Nv == self.Nv
         return f_ln
+
+    def zeropad(self):
+        """Return a new HGHParameterSet with all arrays zero padded so they
+        have the same (max) length for all such HGH setups.  Makes
+        plotting multiple HGH setups easier because they have compatible
+        arrays."""
+        c_n = np.zeros(4)
+        for n, c in enumerate(self.c_n):
+            c_n[n] = c
+        copy = HGHParameterSet(self.symbol, self.Z, self.Nv, self.rloc, c_n)
+        v_l = copy.v_l
+        for l, v in enumerate(self.v_l):
+            h_n = np.zeros(3)
+            k_n = np.zeros(3)
+            h_n[:len(v.h_n)] = list(v.h_n)
+            v2 = VNonLocal(l, v.r0, h_n)
+            v_l.append(v2)
+        for l in range(len(self.v_l), 3):
+            v_l.append(VNonLocal(l, 0.5, np.zeros(3)))
+        return copy
         
 def parse_local_part(string):
     """Create HGHParameterSet object with local part initialized."""
@@ -517,6 +539,11 @@ def parse_local_part(string):
     hgh = HGHParameterSet(symbol, Z, Nv, rloc, c_n)
     return hgh
 
+class HGHBogusNumbersError(ValueError):
+    """Error which is raised when the HGH parameters contain f-type
+    or higher projectors.  The HGH article only defines atomic Hamiltonian
+    matrices up to l=2, so these are meaningless."""
+    pass
 
 def parse_hgh_setup(lines):
     """Initialize HGHParameterSet object from text representation."""
@@ -536,6 +563,8 @@ def parse_hgh_setup(lines):
         k_n = [float(token) for token in sotokens]
         vnl = VNonLocal(l, r0, h_n, k_n)
         hgh.v_l.append(vnl)
+        if l > 2:
+            raise HGHBogusNumbersError
     return hgh
 
 
@@ -555,7 +584,10 @@ def parse(filename=None):
     lines_by_element.append(all_lines[entry_lines[-1]:])
 
     for lines in lines_by_element:
-        hgh = parse_hgh_setup(lines)
+        try:
+            hgh = parse_hgh_setup(lines)
+        except HGHBogusNumbersError:
+            continue
         symbol_sc = hgh.symbol.split('.')
         symbol = symbol_sc[0]
         if len(symbol_sc) > 1:
@@ -566,7 +598,11 @@ def parse(filename=None):
 
 def plot(symbol, extension=None):
     import pylab as pl
-    s = HGHSetup(symbol)
+    try:
+        s = HGHSetupData(symbol)
+    except IndexError:
+        print 'Nooooo'
+        return
     s.plot()
     if extension is not None:
         pl.savefig('hgh.%s.%s' % (symbol, extension))
