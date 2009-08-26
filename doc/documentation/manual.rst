@@ -487,8 +487,8 @@ There exist three special names, that if used, does not specify a file name:
   atom. I.e. no PAW or pseudo potential is used.
 * ``'hgh'`` is used to specify a Hartwigsen-Goedecker-Hutter
   pseudopotential (no file necessary).
-* ``'ghost'`` is used to indicated a *ghost* atom in LCAO mode. XXX
-  more info needed?
+* ``'ghost'`` is used to indicated a *ghost* atom in LCAO mode, 
+  see :ref:`ghost-atoms`. 
 
 If a dictionary contains both chemical element specifications *and*
 atomic number specifications, the latter is dominant.

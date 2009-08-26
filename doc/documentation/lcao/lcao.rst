@@ -146,6 +146,46 @@ first matching file in the GPAW setups paths, rather than the precise
 specified files.  Run ``analyse-basis --help`` for more
 options.
 
+.. _ghost-atoms:
+
+Ghost atoms and basis set superposition errors
+----------------------------------------------
+
+In the vicinity of a surface with many basis functions, an adsorbate
+can "benefit" from the degrees of freedom from the surface basis
+functions, resulting in a lower energy compared to a calculation on
+the isolated adsorbate and thus too strong binding energy.  This error
+referred to as the *basis set superposition error*. It can be
+eliminated by adding *ghost* atoms to the calculation on the isolated
+adsorbate.  Ghost atoms possess basis functions as normal but do not
+otherwise affect the calculation (no projectors, compensation charges
+and so on), thereby ensuring that the same degrees of freedom are
+available to the wave functions in any calculation.
+
+A calculation with ghost atoms is performed precisely like a normal
+calculation, in the sense that the ASE atoms object should contain all
+the involved atoms including those which are ghosts, with the only
+difference being that ghost atoms have their setup type set to
+``ghost``.  It is stressed that the *only* difference between an
+ordinary atom and the corresponding ghost atom is the setup type.
+
+Perform a calculation using ghost copper atoms and ordinary oxygen and
+hydrogen atoms::
+  
+  >>> GPAW(setups={'Cu' : 'ghost', 'O' : 'paw', 'H' : 'paw'}, 
+           basis='dzp',
+           mode='lcao',
+           ...)
+
+Perform a calculation where atom 17 and atom 42 (designated by their
+indices in the ``Atoms`` object) use ordinary setups, while all other
+atoms are ghosts::
+
+  >>> GPAW(setups={None: 'ghost', 17: 'paw', 42:'paw'},
+           basis='dzp',
+           mode='lcao',
+           ...)
+
 
 Notes on performance
 --------------------
