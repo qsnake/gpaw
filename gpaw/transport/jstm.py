@@ -1,6 +1,5 @@
 from ase.units import Bohr, Hartree
 import gpaw.mpi as mpi
-from gpaw.mpi import rank, MASTER
 from gpaw.mpi import world as w
 from gpaw import GPAW
 from gpaw.operators import Laplace
@@ -9,7 +8,7 @@ from gpaw.lcao.projected_wannier import dots
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.lfc import NewLocalizedFunctionsCollection as LFC
 from gpaw.lcao.tools import remove_pbc, get_lcao_hamiltonian, get_lead_lcao_hamiltonian
-from gpaw.mpi import world as w
+from gpaw.mpi import world
 import time
 import numpy as np
 import numpy.linalg as la
@@ -122,7 +121,7 @@ class AtomCenteredFunctions(LocalizedFunctions):
         diagonal = cell[0]+cell[1]
         diagonal = diagonal/np.linalg.norm(diagonal)
 
-        a = np.zeros_like(diagonal)
+        a = np.zeros_like(diagonal).astype(float)
         a[0]=cell[0][1]
         a[1]=-cell[0][0]
         a=-a/np.linalg.norm(a)
@@ -161,8 +160,7 @@ class STM:
         self.lead1 = lead1
         self.lead2 = lead2
         self.stm_calc = None
-        self.ediff = None #XXX       
-        self.scans ={}
+        self.scans = {}
 
         self.input_parameters = {'tip_atom_index': 0,
                                  'dmin': 6.0,
@@ -180,9 +178,23 @@ class STM:
                                  'w': 0.0,
                                  'eta1': 1e-3,
                                  'eta2': 1e-3,
+                                 'cpu_grid': (3, 2), # XXX temporary
                                  'logfile': '-', # '-' for stdin
                                  'verbose': False}
-
+        
+        # initialize communicators
+        cpu_grid = self.input_parameters['cpu_grid']
+        n = cpu_grid[0]
+        m = cpu_grid[1]
+        assert n * m == world.size
+        ranks = np.arange(world.rank % m, world.size, m)
+        domain_comm = world.new_communicator(ranks)
+        r = world.rank // m * m
+        bfs_comm = world.new_communicator(np.arange(r, r + m))
+        
+        self.world = world
+        self.domain_comm = domain_comm
+        self.bfs_comm = bfs_comm
         self.initialized = False
         self.transport_uptodate = False
         self.set(**kwargs)
@@ -255,10 +267,28 @@ class STM:
         self.tip_cell = TipCell(self.tip, self.srf)
         self.tip_cell.initialize(tip_indices, tip_atom_index)
         self.ni = self.tip_cell.ni       
+        
+        # distribution of surface bfs over processors
+        bcomm = self.bfs_comm
+        bfs_indices = [] # indices of surface bfs stored on this processor
+        j = 0
+        for a in srf_indices:
+            setup = self.srf.wfs.setups[a]
+            spos_c = self.srf.atoms.get_scaled_positions()[a]
+            for phit in setup.phit_j:
+                f = AtomCenteredFunctions(self.srf.gd, [phit], spos_c, j)
+                bfs_indices.append(j)
+                j += len(f.f_iG)
+        
+        assert bfs_indices >= bcomm.size
+        l = np.ceil(len(bfs_indices) / float(bcomm.size)).astype(int)
+        start = l * bcomm.rank
+        stop = l * (bcomm.rank + 1)
+        bfs_indices = bfs_indices[start:stop]
 
         # surface initialization
         self.srf_cell = SrfCell(self.srf)
-        self.srf_cell.initialize(self.tip_cell, srf_indices, p['k_c'])
+        self.srf_cell.initialize(self.tip_cell, srf_indices, bfs_indices, p['k_c'])
         self.nj = self.srf_cell.nj
          
         self.set_tip_position([0, 0])
@@ -278,7 +308,7 @@ class STM:
         self.initialized = True
         self.log.flush()
 
-    def initialize_transport(self, restart = False, ediff_only = False):
+    def initialize_transport(self, restart = False):
         p = self.input_parameters        
         h1, s1 = p['hs1']
         h10, s10 = p['hs10']
@@ -317,7 +347,7 @@ class STM:
         diff1 = (h10[-1, -1] - h1[-1, -1]) / s1[-1, -1]
         h10 -= diff1 * s10
 
-        if not ediff_only and not self.transport_uptodate:
+        if not self.transport_uptodate:
             from ase.transport.stm import STM as STMCalc
 
             T = time.localtime()
@@ -330,6 +360,14 @@ class STM:
                 energies.sort()
             else:
                 energies = p['energies']
+
+            # distribute energy grid over all cpu's
+            self.energies = energies # global energy grid
+
+            l = np.ceil(len(energies) / float(world.size))
+            start = l * world.rank
+            stop = l * (world.rank + 1) + 1 # +1, very important!
+            energies = energies[start:stop] # energy grid on this cpu 
 
             stm_calc = STMCalc(h2,  s2, 
                                h1,  s1, 
@@ -347,6 +385,7 @@ class STM:
             self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
                            ' Done\n')
             self.log.flush()
+            #world.barrier()
 
     def set_tip_position(self, position_c):   
         """Positions tip atom as close as possible above the surface at 
@@ -388,7 +427,7 @@ class STM:
         self.current_v = current_Vt 
 
     def get_V(self, position_c):
-        """Returns the overlap hamiltonian for a position of the tip_atom """
+        """Returns the overlap hamiltonian at position_c"""
         if not self.initialized:
             self.initialize()
         
@@ -414,6 +453,9 @@ class STM:
                     kin = 0
                 V_ij[j1:j2, i1:i2] += V + kin
             s.f_iG = None
+        self.bfs_comm.barrier()
+        self.bfs_comm.sum(V_ij)
+        self.bfs_comm.barrier()
         return V_ij * Hartree  
     
     def get_transmission(self, position_c):
@@ -447,6 +489,106 @@ class STM:
 
     def reset(self):
         self.scans = {}
+
+    def scan_parallel(self):
+        #distribute grid points over cpu's
+        dcomm = self.domain_comm
+        n_c = self.srf.gd.n_c[:2]
+        gpts_i = np.arange(n_c[0] * n_c[1])
+        gpts_gl = gpts_i.copy()
+        l = np.ceil(len(gpts_i) / float(dcomm.size)).astype(int)
+        start = l * dcomm.rank
+        stop = l * (dcomm.rank + 1)
+        gpts_i = gpts_i[start:stop] # gridpoints on this cpu
+        V_g = np.zeros((len(gpts_i), self.nj, self.ni)) # V_ij's on this cpu
+        I_g = np.zeros_like(gpts_i).astype(float) # currents on this cpu
+        self.gpts_i = gpts_i
+        
+        for i, gpt in enumerate(gpts_i):
+            x = gpt / n_c[1]
+            y = gpt % n_c[1]
+            V_g[i] =  self.get_V((x, y))
+
+        # calculate part of the current for each grid points
+        #energies = self.energies # global energy grid
+        
+        bias = self.stm_calc.bias
+        for j, V in enumerate(V_g):
+            I_g[j] += self.stm_calc.get_current(bias, V) * 77466.1509 
+        world.barrier()
+        
+        #send green functions
+        self.stm_calc.energies_req = self.stm_calc.energies.copy()
+        for i in range(dcomm.size - 1):
+
+            rank_send = (dcomm.rank + 1) % dcomm.size
+            rank_receive = (dcomm.rank - 1) % dcomm.size
+
+            # tip and surface green functions have to be send separately since
+            # in general they do not have the same shapes
+            
+            # first send the shape and then the green function of the tip
+            gft1 = self.stm_calc.gft1_emm
+            
+            request = dcomm.send(np.asarray(gft1.shape), rank_send,
+                                 block=False)
+            shape = np.array((0, 0, 0), dtype=int)
+            dcomm.receive(shape, rank_receive)
+            dcomm.wait(request)
+            energies = self.stm_calc.energies
+            energies_receive = np.zeros((shape[0],))
+            
+            request = dcomm.send(energies, rank_send, block=False)
+            dcomm.receive(energies_receive, rank_receive)
+            dcomm.wait(request)            
+
+            gft1_receive = np.empty(tuple(shape), dtype = complex)
+            request = dcomm.send(gft1, rank_send, block=False)
+            dcomm.receive(gft1_receive, rank_receive)
+            dcomm.wait(request)
+            self.stm_calc.gft1_emm = gft1_receive
+            self.stm_calc.energies = energies_receive
+
+            # first send th shape and then the green function of the surface
+            gft2 = self.stm_calc.gft2_emm
+            
+            request = dcomm.send(np.asarray(gft2.shape), rank_send,
+                                 block=False)
+            shape = np.array((0, 0, 0), dtype=int)
+            dcomm.receive(shape, rank_receive)
+            dcomm.wait(request)
+            gft2_receive = np.empty(tuple(shape), dtype=complex)
+            request = dcomm.send(gft2, rank_send, block=False)
+            dcomm.receive(gft2_receive, rank_receive)
+            dcomm.wait(request)
+            self.stm_calc.gft2_emm = gft2_receive
+
+            bias = self.stm_calc.bias
+            for j, V in enumerate(V_g):
+                I_g[j] += self.stm_calc.get_current(bias, V) * 77466.1509
+
+        world.barrier()
+        self.I_g = I_g
+        self.bfs_comm.sum(I_g) 
+        print world.rank, (self.domain_comm.rank, self.bfs_comm.rank), I_g.max()
+        
+        if dcomm.rank == 0:
+            gather = np.zeros((dcomm.size, len(I_g)))
+            dcomm.gather(I_g, 0, gather)
+            final = gather[0]
+            for i in range(1, len(gather)):
+                final = np.concatenate((final, gather[i]), axis=0)
+            self.final = final
+            scan = np.zeros((n_c[0], n_c[1]))
+            for i, gpt in enumerate(gpts_gl):
+                x = i / n_c[1]
+                y = i % n_c[1]
+                #print (x,y)
+                scan[x, y] = final[i]
+
+            self.scans['fullscan'] = scan
+        else:
+            dcomm.gather(I_g,0)
 
     def scan(self):
         n_c = self.srf.gd.n_c
@@ -583,6 +725,7 @@ class STM:
         self.log.flush()
 
     def hs_from_paw(self): # Do not even try this for larger systems
+        # Not working in parallel
         p = self.input_parameters
         h1, s1 = dump_hs(self.tip, 'hs1', return_hs = True)[-2:]   
         h2, s2 = dump_hs(self.tip, 'hs2', return_hs = True)[-2:]   
@@ -593,29 +736,6 @@ class STM:
                     'hs10':(h10[0], s10[0]),
                     'hs20':(h20[0], s20[0]),
                     'k_c': (0,0)})
-
-    def mem_estimate(self):
-        # basis functions
-        M_bfs = 0
-        for ft, ft_kin in zip(self.tip_cell.functions, self.tip_cell.functions_kin):
-            M_bfs += len(np.ravel(ft.f_iG))
-            M_bfs += len(np.ravel(ft_kin.f_iG))
-        for f_iG in self.srf_cell.f_iGs.values():
-                M_bfs += len(np.ravel(f_iG))
-        M_bfs *= 8 / 1024.**2
-        print 'LFC-objects:', np.round(M_bfs, 2), 'Mb'
-        
-        # tip green functions
-        es = len(self.stm_calc.energies)
-        M_tgft = len(self.stm_calc.h2)**2 * es
-        M_tgft *= 2 * 8 / 1024.**2 # complex
-        print 'tip green functions:', np.round(M_tgft, 2), 'Mb'
-
-        # surface green function
-        M_sgft = len(self.stm_calc.h1)**2 * es
-        M_sgft *= 2 * 8 /1024.**2 # complex
-        print 'surface green functions:', np.round(M_sgft, 2), 'Mb'
-        print 'total:', np.round(M_bfs + M_tgft + M_sgft, 2), 'Mb'
 
     def plot(self, repeat=[1,1], vmin=None, gd = None):
         import matplotlib
@@ -780,7 +900,7 @@ class TipCell:
             dointerpolate = True
             steps = 500 # XXX crap
             thetas = np.arange(0, pi, pi/steps) 
-            areas = np.zeros_like(thetas)
+            areas = np.zeros_like(thetas).astype(float)
             for i, theta in enumerate(thetas):
                 cell = smallestbox(tip_cell_cv, srf_cell_cv, theta)[0]
                 area = np.cross(cell[0, :2], cell[1, :2])
@@ -801,7 +921,9 @@ class TipCell:
         else:
             dointerpolate = False
             newsize_c = tgd.N_c
-            vt_G = self.tip.hamiltonian.vt_sG[0]
+            vt_sG = self.tip.hamiltonian.vt_sG
+            vt_sG = self.tip.gd.collect(vt_sG, broadcast=True)
+            vt_G = vt_sG[0]
             vt_G = vt_G[:, :, cell_zmin_grpt:cell_zmax_grpt]
             theta_min = 0.0
             origo_c = np.array([0,0,0])
@@ -894,7 +1016,9 @@ class TipCell:
            Outside the unitcell of the original tip calculation 
            the effective potential is set to zero"""
 
-        vt_G0 = self.tip.hamiltonian.vt_sG[0]
+        vt_sG0 = self.tip.hamiltonian.vt_sG
+        vt_sG0 = self.tip.gd.collect(vt_sG0, broadcast = True)        
+        vt_G0 = vt_sG0[0]
         vt_G0 = vt_G0[:, :, self.cell_zmin_grpt:self.cell_zmax_grpt]
         tgd = self.tip.gd
         newgd = self.gd
@@ -957,10 +1081,13 @@ class SrfCell:
         self.functions = []
         self.energy_shift = 0.0
 
-    def initialize(self, tip_cell, srf_indices, k_c):
+    def initialize(self, tip_cell, srf_indices, bfs_indices, k_c):
         self.srf_indices = srf_indices
         # determine the extended unitcell
-        srf_vt_G = self.srf.hamiltonian.vt_sG[0]
+        srf_vt_sG = self.srf.hamiltonian.vt_sG
+        srf_vt_sG = self.srf.gd.collect(srf_vt_sG, broadcast = True)
+        srf_vt_G = srf_vt_sG[0]        
+
         tip = tip_cell
         tip_atom_index = tip.tip_atom_index
         spos_ac = tip.atoms.get_scaled_positions()
@@ -1023,7 +1150,6 @@ class SrfCell:
         srf_atoms = self.srf.atoms.copy()[srf_indices]
         
         self.atoms = srf_atoms
-        
         # add functions
         j = 0
         for a in srf_indices:
@@ -1031,7 +1157,8 @@ class SrfCell:
             spos_c = self.srf.atoms.get_scaled_positions()[a]
             for phit in setup.phit_j:
                 f = AtomCenteredFunctions(self.srf.gd, [phit], spos_c, j)
-                self.functions.append(f)
+                if j in bfs_indices:
+                    self.functions.append(f)
                 j += len(f.f_iG)
         self.nj = j
 
