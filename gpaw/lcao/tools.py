@@ -66,7 +66,7 @@ def get_mulliken(calc, a_list):
     return Q_a        
 
 
-def get_real_space_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
+def get_realspace_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
                       R_c=(0, 0, 0), direction='x', usesymm=None):
 
     if usesymm == True:
