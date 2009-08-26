@@ -22,7 +22,8 @@ class LCAO:
         self.world = None
         self.has_initialized = False # XXX
 
-    def initialize(self, gd, band_comm, dtype, nao, mynbands, world):
+    def initialize(self, kpt_comm, gd, band_comm, dtype, nao, mynbands, world):
+        self.kpt_comm = kpt_comm
         self.gd = gd
         self.band_comm = band_comm
         self.dtype = dtype
@@ -114,28 +115,30 @@ class LCAO:
         self.timer.start(dsyev_zheev_string)
         if extra_parameters.get('blacs'):
             import _gpaw
+            isreal = self.dtype == float
             nao = self.H_MM.shape[1]
             band_comm = self.band_comm
-            B = band_comm.size
-            c1 = self.world.new_communicator(np.arange(B) * self.gd.comm.size)
+            kpt_comm = self.kpt_comm
+            shiftks = kpt_comm.rank*B*self.gd.comm.size
+            c1_ranks = shiftks + np.arange(B)*self.gd.comm.size
+            c1 = self.world.new_communicator(c1_ranks)
             d1 = _gpaw.blacs_create(c1, nao, nao, 1, band_comm.size,
                                     nao, -((-nao) // band_comm.size))
             n, m, nb = sl_diagonalize[:3]
-            c2 = self.world.new_communicator(np.arange(n * m))
+            # n, m, nb = 2, 2, 64
+            c2_ranks = shiftks + np.arange(B*self.gd.comm.size)
+            c2 = self.world.new_communicator(c2_ranks)
             d2 = _gpaw.blacs_create(c2, nao, nao, n, m, nb, nb)
-            S_MM = _gpaw.scalapack_redist(self.S_MM, d1, d2)
-            H_MM = _gpaw.scalapack_redist(self.H_MM, d1, d2)
-            if self.world.rank < n * m:
-                assert S_MM is not None
-                self.eps_n[:], H_MM = _gpaw.scalapack_general_diagonalize(H_MM,
-                                                                          S_MM,
-                                                                          d2)
-            else:
-                assert S_MM is None
+            S_MM = _gpaw.scalapack_redist(self.S_MM, d1, d2, isreal, c2, 0,0)
+            H_MM = _gpaw.scalapack_redist(self.H_MM, d1, d2, isreal, c2, 0,0)
+            
+            self.eps_n[:], H_MM = _gpaw.scalapack_general_diagonalize(H_MM,
+                                                                      S_MM,
+                                                                      d2)
             d1b = _gpaw.blacs_create(c1, nao, nao, 1, band_comm.size,
                                      nao, mynbands)
             
-            H_MM = _gpaw.scalapack_redist(H_MM, d2, d1b)
+            H_MM = _gpaw.scalapack_redist(H_MM, d2, d1b, isreal, c2, 0, 0)
             _gpaw.blacs_destroy(d1b)
             _gpaw.blacs_destroy(d2)
             _gpaw.blacs_destroy(d1)

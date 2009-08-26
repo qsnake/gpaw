@@ -430,7 +430,7 @@ class LCAOWaveFunctions(WaveFunctions):
 
     def set_eigensolver(self, eigensolver):
         WaveFunctions.set_eigensolver(self, eigensolver)
-        eigensolver.initialize(self.gd, self.band_comm, self.dtype, 
+        eigensolver.initialize(self.kpt_comm, self.gd, self.band_comm, self.dtype, 
                                self.setups.nao, self.mynbands, self.world)
 
     def set_positions(self, spos_ac):
@@ -897,7 +897,7 @@ class GridWaveFunctions(WaveFunctions):
         lcaowfs.timer = self.timer
         lcaowfs.set_positions(spos_ac)
         eigensolver = get_eigensolver('lcao', 'lcao')
-        eigensolver.initialize(self.gd, self.band_comm, self.dtype,
+        eigensolver.initialize(self.kpt_comm, self.gd, self.band_comm, self.dtype,
                                self.setups.nao, lcaomynbands, self.world)
         eigensolver.iterate(hamiltonian, lcaowfs)
 
