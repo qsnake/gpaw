@@ -290,11 +290,11 @@ def lead_kspace2realspace(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
     dir = 'xyz'.index(direction)
     R_c = [0, 0, 0]
     ibz_t_kc, weight_t_k, h_skii, s_kii =\
-    get_real_space_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k, R_c, direction)
+    get_realspace_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k, R_c, direction)
 
     R_c[dir] = 1
     h_skij, s_kij =\
-    get_real_space_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k, R_c, direction)[-2:]
+    get_realspace_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k, R_c, direction)[-2:]
 
     nspins, nk, nbf = h_skii.shape[:-1]
 
