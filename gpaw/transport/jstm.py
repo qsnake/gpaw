@@ -178,14 +178,19 @@ class STM:
                                  'w': 0.0,
                                  'eta1': 1e-3,
                                  'eta2': 1e-3,
-                                 'cpu_grid': (3, 2), # XXX temporary
+                                 'cpu_grid': None, 
                                  'logfile': '-', # '-' for stdin
                                  'verbose': False}
         
-        # initialize communicators
+        #initialize communicators
+        if kwargs.has_key('cpu_grid'):
+            self.input_parameters['cpu_grid'] = kwargs['cpu_grid']
+        
+        if self.input_parameters['cpu_grid'] == None: # parallelization over domains only
+             self.input_parameters['cpu_grid'] = (world.size, 1)
+
         cpu_grid = self.input_parameters['cpu_grid']
-        n = cpu_grid[0]
-        m = cpu_grid[1]
+        n, m = cpu_grid[:]
         assert n * m == world.size
         ranks = np.arange(world.rank % m, world.size, m)
         domain_comm = world.new_communicator(ranks)
@@ -280,7 +285,7 @@ class STM:
                 bfs_indices.append(j)
                 j += len(f.f_iG)
         
-        assert bfs_indices >= bcomm.size
+        assert len(bfs_indices) >= bcomm.size
         l = np.ceil(len(bfs_indices) / float(bcomm.size)).astype(int)
         start = l * bcomm.rank
         stop = l * (bcomm.rank + 1)
@@ -385,7 +390,7 @@ class STM:
             self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
                            ' Done\n')
             self.log.flush()
-            #world.barrier()
+            self.world.barrier()
 
     def set_tip_position(self, position_c):   
         """Positions tip atom as close as possible above the surface at 
@@ -490,7 +495,7 @@ class STM:
     def reset(self):
         self.scans = {}
 
-    def scan_parallel(self):
+    def scan(self):
         #distribute grid points over cpu's
         dcomm = self.domain_comm
         n_c = self.srf.gd.n_c[:2]
@@ -590,7 +595,7 @@ class STM:
         else:
             dcomm.gather(I_g,0)
 
-    def scan(self):
+    def scan_old(self):
         n_c = self.srf.gd.n_c
         scan = np.zeros(tuple(n_c[:2]))
         for x in range(n_c[0]):
