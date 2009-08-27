@@ -1122,7 +1122,7 @@ class Transport_Plotter:
         step1 = self.bias_steps[steps_indices[1]]
         data0 = 's' + str(s[0]) + info
         data1 = 's' + str(s[1]) + info        
-        ydata = eval('step0.' + data0) - eval('step1.' + data1)
+        ydata = eval('step0.dv.' + data0) - eval('step1.dv' + data1)
         p.matshow(ydata)
         p.title(title)
         p.legend(str(steps_indices[0]) + '-' + str(steps_indices[0]))
