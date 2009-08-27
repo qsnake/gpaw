@@ -1599,7 +1599,7 @@ class Transport(GPAW):
             D_asp = self.extended_D_asp
             self.wfs.calculate_atomic_density_matrices(D_asp)
             all_D_asp = collect_D_asp2(D_asp, self.wfs.setups, self.nspins,
-                                                self.gd.comm, density.rank_a)
+                                                self.gd.comm, self.extended_calc.wfs.rank_a)
             D_asp = all_D_asp[:len(self.atoms)]
             distribute_D_asp(D_asp, density)
 
@@ -1740,7 +1740,7 @@ class Transport(GPAW):
         ham.Exc += ham.Enlxc
         ham.Ekin0 += ham.Enlkin
 
-        dH_asp = collect_D_asp3(ham)
+        dH_asp = collect_D_asp3(ham, self.wfs.rank_a)
         self.surround.combine_dH_asp(dH_asp)
         self.timer.stop('Hamiltonian')      
 
@@ -2093,7 +2093,7 @@ class Transport(GPAW):
                         ni = setup.ni
                         D_sp = np.empty((density.nspins, ni * (ni + 1) // 2))
                     if density.gd.comm.size > 1:
-                        density.gd.comm.broadcast(D_sp, density.rank_a[a])
+                        density.gd.comm.broadcast(D_sp, self.extended_calc.hamiltonian.rank_a[a])
                     all_D_asp.append(D_sp)      
                 
                 D_asp = all_D_asp[:len(self.atoms)]
