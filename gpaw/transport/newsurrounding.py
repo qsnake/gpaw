@@ -25,15 +25,17 @@ def collect_D_asp2(D_asp, setups, ns, comm, rank_a):
         all_D_asp.append(D_sp)      
     return all_D_asp
 
-def collect_D_asp3(ham):
+def collect_D_asp3(ham, rank_a=None):
     all_D_asp = []
+    if rank_a == None:
+        rank_a = ham.rank_a
     for a, setup in enumerate(ham.setups):
         D_sp = ham.dH_asp.get(a)
         if D_sp is None:
             ni = setup.ni
             D_sp = np.empty((ham.nspins, ni * (ni + 1) // 2))
         if ham.gd.comm.size > 1:
-            ham.gd.comm.broadcast(D_sp, ham.rank_a[a])
+            ham.gd.comm.broadcast(D_sp, rank_a[a])
         all_D_asp.append(D_sp)      
     return all_D_asp
 
@@ -246,7 +248,7 @@ class Surrounding:
         gd = self.tp.extended_calc.gd
         bias_shift0 = self.bias_index['-'] / Hartree
         bias_shift1 = self.bias_index['+'] / Hartree        
-        vt_sG = gd.collect(self.tp.extended_calc.hamiltonian.vt_sG)
+        vt_sG = gd.collect(self.tp.extended_calc.hamiltonian.vt_sG, True)
         vt_sG[:, :, :, :nn] = self.sides['-'].boundary_vt_sG + bias_shift0
         vt_sG[:, :, :, -nn:] = self.sides['+'].boundary_vt_sG + bias_shift1
         gd.distribute(vt_sG, self.tp.extended_calc.hamiltonian.vt_sG)
