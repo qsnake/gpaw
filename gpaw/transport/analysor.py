@@ -99,7 +99,7 @@ class Transport_Analysor:
         tp = self.tp
         if tp.plot_option == None:
             ef = tp.lead_fermi[0]
-            self.energies = np.linspace(ef - 3, ef + 5, 60) + 1e-4 * 1.j
+            self.energies = np.linspace(ef - 3, ef + 3, 61) + 1e-4 * 1.j
             self.lead_pairs = [[0,1]]
         else:
             self.energies = tp.plot_option['energies']
@@ -834,7 +834,7 @@ class Transport_Plotter:
         self.ele_steps = self.bias_steps[n_bias_step].ele_steps
         
     def plot_ele_step(self, nstep, s, k):
-        ee = np.linspace(-3, 5, 60)
+        ee = np.linspace(-3, 3, 61)
         step = self.ele_steps[nstep]
         import pylab as p
         p.plot(step.dd[s, k], 'b--o')
@@ -866,7 +866,7 @@ class Transport_Plotter:
         self.ele_steps_cmp = pickle.load(fd)
         fd.close()
         
-        ee = np.linspace(-3, 5, 60)
+        ee = np.linspace(-3, 3, 61)
         step = self.ele_steps[nstep]
         step_cmp = self.ele_steps_cmp[nstep]
         
@@ -897,7 +897,7 @@ class Transport_Plotter:
        
     def plot_ele_step_info(self, info, steps_indices, s, k,
                                                      height=None, unit=None):
-        xdata = np.linspace(-3, 5, 60)
+        xdata = np.linspace(-3, 3, 61)
         energy_axis = False        
         import pylab as p
         legends = []
@@ -985,7 +985,7 @@ class Transport_Plotter:
         p.show()        
 
     def compare_ele_step_info(self, info, steps_indices, s, k, height=None, unit=None):
-        xdata = np.linspace(-3, 5, 60)
+        xdata = np.linspace(-3, 3, 61)
         energy_axis = False        
         import pylab as p
         legends = []
@@ -1041,7 +1041,7 @@ class Transport_Plotter:
         p.show()
 
     def compare_bias_step_info(self, info, steps_indices, s, k, height=None, unit=None):
-        xdata = np.linspace(-3, 5, 60)
+        xdata = np.linspace(-3, 3, 61)
         energy_axis = False        
         import pylab as p
         legends = []
@@ -1095,3 +1095,89 @@ class Transport_Plotter:
         if height != None:
             p.axis([xdata[0], xdata[-1], 0, height])
         p.show()
+
+    def show_bias_step_info(self, info, steps_indices, s, k):
+        import pylab as p
+        if info[:2] == 'nt':
+            title = 'density overview in axis ' + info[-1]
+        elif info[:2] == 'vt':
+            title = 'hamiltonian overview in axis ' + info[-1]
+        for i, step in enumerate(self.bias_steps):
+            if i in steps_indices:
+                ydata = eval('step.' + data)
+                p.matshow(ydata)
+                p.title(title)
+                p.show()
+    
+    def compare_bias_step_info(self, info, steps_indices, s, k):
+        import pylab as p
+        if info[:2] == 'nt':
+            title = 'density difference overview in axis ' + info[-1]
+        elif info[:2] == 'vt':
+            title = 'hamiltonian difference overview in axis ' + info[-1]
+        assert steps_indices[0] in self.bias_steps
+        assert steps_indices[1] in self.bias_steps
+        step0 = self.bias_steps[steps_indices[0]]
+        step1 = self.bias_steps[steps_indices[1]]
+        ydata = eval('step0.' + data) - eval('step1.' + data)
+        p.matshow(ydata)
+        p.title(title)
+        p.legend(str(steps_indices[0]) + '-' + str(steps_indices[0]))
+        p.show()        
+             
+    def set_cmp_step0(self, ele_step, bias_step=None):
+        if bias_step == None:
+            self.cmp_step0 = self.ele_steps[ele_step]
+        else:
+            self.cmp_step0 = self.bias_steps[bias_step].ele_steps[ele_step]
+                                  
+    def cmp_steps(self, info, ele_step, bias_step=None):
+        if bias_step == None:
+            step = self.ele_steps[ele_step]
+        else:
+            step = self.bias_steps[bias_step].ele_steps[ele_step]            
+        xdata = np.linspace(-3, 3, 61)
+        energy_axis = False        
+        import pylab as p
+        if info == 'dd':
+            data = 'dd[s, k]'
+            title = 'density matrix diagonal elements'
+        elif info == 'df':
+            data = 'df[s, k]'
+            title = 'hamiltonian matrix diagonal elements'
+        elif info == 'den':
+            data = 'nt'
+            title = 'density'
+        elif info == 'ham':
+            data = 'vt'
+            title = 'hamiltonian'
+        elif info == 'rho':
+            data = 'rho'
+            title = 'total poisson density'
+        elif info == 'vHt':
+            data = 'vHt'
+            title = 'total Hartree potential'             
+        elif info == 'tc':
+            data = 'tc[s, k, 0]'
+            title = 'trasmission coefficeints'
+            energy_axis = True
+        elif info == 'dos':
+            data = 'dos[s, k]'
+            title = 'density of states'
+            energy_axis = True
+        else:
+            raise ValueError('no this info type---' + info)        
+
+        ydata0 = eval('self.cmp_step0.' + data)
+        ydata1 = eval('step.' + data)
+           
+        if not energy_axis:
+            p.plot(ydata1 - ydata0)
+        else:
+            p.plot(xdata, ydata1 - ydata0)
+
+        p.title(title)
+        if height != None:
+            p.axis([xdata[0], xdata[-1], 0, height])
+        p.show()
+        
