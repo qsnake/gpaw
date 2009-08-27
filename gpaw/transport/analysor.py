@@ -1096,12 +1096,13 @@ class Transport_Plotter:
             p.axis([xdata[0], xdata[-1], 0, height])
         p.show()
 
-    def show_bias_step_info(self, info, steps_indices, s, k):
+    def show_bias_step_info(self, info, steps_indices, s):
         import pylab as p
         if info[:2] == 'nt':
             title = 'density overview in axis ' + info[-1]
         elif info[:2] == 'vt':
             title = 'hamiltonian overview in axis ' + info[-1]
+        data = 's' + str(s) + info
         for i, step in enumerate(self.bias_steps):
             if i in steps_indices:
                 ydata = eval('step.' + data)
@@ -1109,17 +1110,19 @@ class Transport_Plotter:
                 p.title(title)
                 p.show()
     
-    def compare_bias_step_info(self, info, steps_indices, s, k):
+    def compare_bias_step_info(self, info, steps_indices, s):
         import pylab as p
         if info[:2] == 'nt':
             title = 'density difference overview in axis ' + info[-1]
         elif info[:2] == 'vt':
             title = 'hamiltonian difference overview in axis ' + info[-1]
-        assert steps_indices[0] in self.bias_steps
-        assert steps_indices[1] in self.bias_steps
+        assert steps_indices[0] < len(self.bias_steps)
+        assert steps_indices[1] < len(self.bias_steps)
         step0 = self.bias_steps[steps_indices[0]]
         step1 = self.bias_steps[steps_indices[1]]
-        ydata = eval('step0.' + data) - eval('step1.' + data)
+        data0 = 's' + str(s[0]) + info
+        data1 = 's' + str(s[1]) + info        
+        ydata = eval('step0.' + data0) - eval('step1.' + data1)
         p.matshow(ydata)
         p.title(title)
         p.legend(str(steps_indices[0]) + '-' + str(steps_indices[0]))
