@@ -1585,6 +1585,7 @@ class Transport(GPAW):
         self.timer.stop('dmm recover')        
         
         density = self.density
+        self.timer.start('construct density')
         if not self.fixed:
             density.calculate_pseudo_density(self.wfs)
         else:
@@ -1593,6 +1594,8 @@ class Transport(GPAW):
             nn = self.surround.nn[0]
             density.nt_sG = self.surround.uncapsule(nn, nt_sG, self.gd1, self.gd)
             density.nt_sG += density.nct_G
+        self.timer.stop('construct density')
+        self.timer.start('atomic density')
         if not self.fixed:
             self.wfs.calculate_atomic_density_matrices(density.D_asp)
         else:
@@ -1602,7 +1605,7 @@ class Transport(GPAW):
                                                 self.gd.comm, self.extended_calc.wfs.rank_a)
             D_asp = all_D_asp[:len(self.atoms)]
             distribute_D_asp(D_asp, density)
-
+        self.timer.stop('atomic density')
         comp_charge = density.calculate_multipole_moments()
 
         density.normalize(comp_charge)
@@ -1682,7 +1685,7 @@ class Transport(GPAW):
         
         if self.fixed:
             self.surround.refresh_vt_sG()
-        self.timer.start('Atomic Hamiltonians')
+        self.timer.start('atomic hamiltonian')
         
         ham = self.hamiltonian
         W_aL = {}
@@ -1722,7 +1725,7 @@ class Transport(GPAW):
 
             Ekin -= (D_sp * dH_sp).sum()
 
-        self.timer.stop('Atomic Hamiltonians')
+        self.timer.stop('atomic hamiltonian')
 
         xcfunc = ham.xc.xcfunc
         ham.Enlxc = xcfunc.get_non_local_energy()
