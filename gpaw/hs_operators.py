@@ -5,7 +5,7 @@ from __future__ import division
 
 import numpy as np
 from gpaw.utilities.blas import rk, r2k, gemm
-
+from gpaw.mpi import world
 
 class Operator:
     """Base class for overlap and hamiltonian operators.
@@ -341,6 +341,9 @@ class Operator:
             if B > 1:
                 rbuf_In = np.empty_like(sbuf_In)
 
+        # Because of the amount of communication involved, we need to
+        # be syncronized up to this point
+        world.barrier()
         for j in range(J):
             n1 = j * M
             n2 = n1 + M
@@ -461,6 +464,9 @@ class Operator:
             if B > 1:
                 rbuf_In = np.empty_like(sbuf_In)
 
+        # Because of the amount of communication involved, we need to
+        # be syncronized up to this point
+        world.barrier()
         for j in range(J):
             G1 = j * g
             G2 = G1 + g
