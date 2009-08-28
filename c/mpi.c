@@ -368,6 +368,7 @@ static PyObject * mpi_reduce(MPIObject *self, PyObject *args, PyObject *kwargs,
 {
   PyObject* obj;
   int root = -1;
+  int ret;
   static char *kwlist[] = {"a", "root", NULL};
 
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|i:reduce", kwlist,
@@ -379,9 +380,18 @@ static PyObject * mpi_reduce(MPIObject *self, PyObject *args, PyObject *kwargs,
       double din = PyFloat_AS_DOUBLE(obj);
       double dout;
       if (root == -1)
-        MPI_Allreduce(&din, &dout, 1, MPI_DOUBLE, operation, self->comm);
+        ret = MPI_Allreduce(&din, &dout, 1, MPI_DOUBLE, operation, self->comm);
       else
-        MPI_Reduce(&din, &dout, 1, MPI_DOUBLE, operation, root, self->comm);
+        ret = MPI_Reduce(&din, &dout, 1, MPI_DOUBLE, operation, root, 
+                         self->comm);
+#ifdef GPAW_MPI_DEBUG
+      if (ret != MPI_SUCCESS)
+        {
+	  PyErr_SetString(PyExc_RuntimeError, 
+                          "MPI_Allreduce/reduce DOUBLE error.");
+	  return NULL;
+        }	
+#endif
       return PyFloat_FromDouble(dout);
     }
   if (PyInt_Check(obj))
@@ -389,9 +399,18 @@ static PyObject * mpi_reduce(MPIObject *self, PyObject *args, PyObject *kwargs,
       long din = PyInt_AS_LONG(obj);
       long dout;
       if (root == -1)
-        MPI_Allreduce(&din, &dout, 1, MPI_LONG, operation, self->comm);
+        ret = MPI_Allreduce(&din, &dout, 1, MPI_LONG, operation, self->comm);
       else
-        MPI_Reduce(&din, &dout, 1, MPI_LONG, operation, root, self->comm);
+        ret = MPI_Reduce(&din, &dout, 1, MPI_LONG, operation, root, 
+                         self->comm);
+#ifdef GPAW_MPI_DEBUG
+      if (ret != MPI_SUCCESS)
+        {
+	  PyErr_SetString(PyExc_RuntimeError, 
+                          "MPI_Allreduce/reduce LONG error.");
+	  return NULL;
+        }	
+#endif
       return PyInt_FromLong(dout);
     }
   else if (PyComplex_Check(obj) && allowcomplex)
@@ -401,9 +420,18 @@ static PyObject * mpi_reduce(MPIObject *self, PyObject *args, PyObject *kwargs,
       din[0] = PyComplex_RealAsDouble(obj);
       din[1] = PyComplex_ImagAsDouble(obj);
       if (root == -1)
-        MPI_Allreduce(&din, &dout, 2, MPI_DOUBLE, MPI_SUM, self->comm);
+        ret = MPI_Allreduce(&din, &dout, 2, MPI_DOUBLE, MPI_SUM, self->comm);
       else
-        MPI_Reduce(&din, &dout, 2, MPI_DOUBLE, MPI_SUM, root, self->comm);
+        ret = MPI_Reduce(&din, &dout, 2, MPI_DOUBLE, MPI_SUM, root, 
+                         self->comm);
+#ifdef GPAW_MPI_DEBUG
+      if (ret != MPI_SUCCESS)
+        {
+	  PyErr_SetString(PyExc_RuntimeError, 
+                          "MPI_Allreduce/reduce COMPLEX error.");
+	  return NULL;
+        }
+#endif
       return PyComplex_FromDoubles(dout[0], dout[1]);
     }
   else if (PyComplex_Check(obj))
@@ -416,7 +444,6 @@ static PyObject * mpi_reduce(MPIObject *self, PyObject *args, PyObject *kwargs,
     {
       int n;
       int elemsize;
-      int ret;
       MPI_Datatype datatype;
       CHK_ARRAY(obj);
       datatype = get_mpi_datatype(obj);
@@ -454,7 +481,8 @@ static PyObject * mpi_reduce(MPIObject *self, PyObject *args, PyObject *kwargs,
 #ifdef GPAW_MPI_DEBUG
           if (ret != MPI_SUCCESS)
 	    {
-	      PyErr_SetString(PyExc_RuntimeError, "MPI_Allreduce error.");
+	      PyErr_SetString(PyExc_RuntimeError, 
+                              "MPI_Allreduce Array error.");
 	      return NULL;
 	    }	
 #endif
@@ -486,7 +514,8 @@ static PyObject * mpi_reduce(MPIObject *self, PyObject *args, PyObject *kwargs,
 #ifdef GPAW_MPI_DEBUG
           if (ret != MPI_SUCCESS)
             {
-	      PyErr_SetString(PyExc_RuntimeError, "MPI_Reduce error occured.");
+	      PyErr_SetString(PyExc_RuntimeError, 
+                              "MPI_Reduce Array error occured.");
               return NULL;
 	    }
 #endif
