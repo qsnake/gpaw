@@ -904,7 +904,8 @@ def aa1d(a, d=2):
     # array average in one dimension
     dim = a.shape
     b = [np.sum(np.take(a, [i], axis=d)) for i in range(dim[d])]
-    b *= dim[d] / np.product(dim)
+    b = np.array(b)
+    b = (b * dim[d]) / np.product(dim)
     return b
     
 def aa2d(a, d=0):
@@ -1155,10 +1156,10 @@ def get_pk_hsd(d, ntk, kpts, hl_skmm, sl_kmm, dl_skmm, txt=None,
     matmax = np.max(abs(s_test))
     if matmax > tol:
         if txt != None:
-            txt('Warning*: the principle layer should be lagger, \
+            txt('Warning*: the principle layer should be larger, \
                                                       matmax=%f' % matmax)
         else:
-            print 'Warning*: the principle layer should be lagger, \
+            print 'Warning*: the principle layer should be larger, \
                                                       matmax=%f' % matmax
     if dtype == float:
         hl_spkmm = np.real(hl_spkmm).copy()
