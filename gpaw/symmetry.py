@@ -86,15 +86,13 @@ class Symmetry:
             if np.any(metric_vv - opcellmetric_vv):
                 continue
 
-            # XXX explain this condition
+            # Operation must not swap axes that are not both periodic
+            # and of equal length
             if np.any([not cellsyms_cc[i, (i + 1) % 3] and
                        (abs(operation_vv[i, (i + 1) % 3]) +
                         abs(operation_vv[(i + 1) % 3, i]) != 0)
                        for i in range(3)]):
                 continue
-
-            # operation must not swap axes that are not both periodic
-            # and of equal length
             if np.any((operation_vv.diagonal() == -1) &
                       ~cellsyms_cc.diagonal()):
                 continue
