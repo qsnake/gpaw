@@ -265,9 +265,6 @@ class Transport_Analysor:
         tp.wfs.kpt_comm.all_gather(df, total_df)
 
         dim = tp.gd.N_c
-        d1 = dim[0] // 2
-        d2 = dim[1] // 2
-        
         assert tp.d == 2
         
         gd = tp.extended_calc.gd
@@ -275,16 +272,16 @@ class Transport_Analysor:
         nt_sG = gd.collect(tp.density.nt_sG, True)
         vt_sG = gd.collect(tp.extended_calc.hamiltonian.vt_sG, True)
 
-        nt = nt_sG[0, d1, d2].copy()
-        vt = vt_sG[0, d1, d2].copy()
+        nt = aa1d(nt_sG[0]) 
+        vt = aa1d(vt_sG[0])
 
         gd = tp.extended_calc.finegd
         rhot_g = gd.empty(tp.nspins, global_array=True)
         rhot_g = gd.collect(tp.density.rhot_g, True)
-        rho = rhot_g[d1*2, d2*2].copy()
+        rho = aa1d(rhot_g)
         
         vHt_g = gd.collect(tp.extended_calc.hamiltonian.vHt_g, True)
-        vHt = vHt_g[d1*2, d2*2].copy()
+        vHt = aa1d(vHt_g)
         
         D_asp = copy.deepcopy(tp.density.D_asp)
         dH_asp = copy.deepcopy(tp.extended_calc.hamiltonian.dH_asp)
@@ -329,11 +326,13 @@ class Transport_Analysor:
         cost['eq fock2den'] = time('eq fock2den')
         cost['ne fock2den'] = time('ne fock2den')
         cost['Poisson'] = time('Poisson')
-        #cost['construct density'] = time('LCAO WaveFunctions: construct density')
-        #if self.tp.step == 0:
-        #    cost['project hamiltonian'] = 0
-        #else:
-        #    cost['project hamiltonian'] = time('project hamiltonian')            
+        cost['construct density'] = time('construct density')
+        cost['atomic density'] = time('atomic density')
+        cost['atomic hamiltonian'] = time('atomic hamiltonian')
+        if self.tp.step == 0:
+            cost['project hamiltonian'] = 0
+        else:
+            cost['project hamiltonian'] = time('project hamiltonian')            
         return cost
 
     def collect_transmission_and_dos(self, energies=None):
@@ -1105,9 +1104,10 @@ class Transport_Plotter:
         data = 's' + str(s) + info
         for i, step in enumerate(self.bias_steps):
             if i in steps_indices:
-                ydata = eval('step.' + data)
+                ydata = eval("step.dv['" + data + "']")
                 p.matshow(ydata)
                 p.title(title)
+                p.colorbar()
                 p.show()
     
     def compare_bias_step_info(self, info, steps_indices, s):
@@ -1122,10 +1122,11 @@ class Transport_Plotter:
         step1 = self.bias_steps[steps_indices[1]]
         data0 = 's' + str(s[0]) + info
         data1 = 's' + str(s[1]) + info        
-        ydata = eval('step0.dv[' + data0 + ']') - eval('step1.dv[' + data1 + ']')
+        ydata = eval("step0.dv['" + data0 + "']") - eval("step1.dv['" + data1 + "']")
         p.matshow(ydata)
         p.title(title)
-        p.legend(str(steps_indices[0]) + '-' + str(steps_indices[0]))
+        p.colorbar()
+        #p.legend([str(steps_indices[0]) + '-' + str(steps_indices[0])])
         p.show()        
              
     def set_cmp_step0(self, ele_step, bias_step=None):
@@ -1180,7 +1181,5 @@ class Transport_Plotter:
             p.plot(xdata, ydata1 - ydata0)
 
         p.title(title)
-        if height != None:
-            p.axis([xdata[0], xdata[-1], 0, height])
         p.show()
         
