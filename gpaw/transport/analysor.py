@@ -269,17 +269,18 @@ class Transport_Analysor:
         
         gd = tp.extended_calc.gd
    
-        nt_sG = gd.collect(tp.density.nt_sG, True)
+        nt_sG = tp.gd.collect(tp.density.nt_sG, True)
         vt_sG = gd.collect(tp.extended_calc.hamiltonian.vt_sG, True)
 
         nt = aa1d(nt_sG[0]) 
         vt = aa1d(vt_sG[0])
 
-        gd = tp.extended_calc.finegd
+        gd = tp.finegd
         rhot_g = gd.empty(tp.nspins, global_array=True)
         rhot_g = gd.collect(tp.density.rhot_g, True)
         rho = aa1d(rhot_g)
         
+        gd = tp.extended_calc.finegd
         vHt_g = gd.collect(tp.extended_calc.hamiltonian.vHt_g, True)
         vHt = aa1d(vHt_g)
         
@@ -314,8 +315,6 @@ class Transport_Analysor:
         cost = {}
         cost['update lead hamiltonian'] = time('update lead hamiltonian0') * self.tp.lead_num
         cost['init lead'] = time('init lead0') * self.tp.lead_num
-        cost['scat guess'] = time('scat guess')
-        cost['init scat'] = time('init scat')
         cost['init surround'] = time('init surround')
         cost['init scf'] = time('init scf')
         return cost
@@ -413,7 +412,7 @@ class Transport_Analysor:
         nt = gd.empty()
         vt = gd.empty()
         for s in range(self.tp.nspins):
-            nt = gd.collect(self.tp.density.nt_sG[s], True)
+            nt = self.tp.gd.collect(self.tp.density.nt_sG[s], True)
             vt = gd.collect(calc.hamiltonian.vt_sG[s], True)
             for name, d in [('x', 0), ('y', 1), ('z', 2)]:
                 data['s' + str(s) + 'nt_1d_' + name] = aa1d(nt, d)
