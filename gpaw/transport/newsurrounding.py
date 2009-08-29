@@ -227,8 +227,8 @@ class Surrounding:
     def combine_vHt_g(self, vHt_g):
         nn = self.nn[0] * 2
         extended_vHt_g = self.tp.extended_calc.hamiltonian.vHt_g
-        vHt_g = self.capsule(nn, vHt_g, extended_vHt_g,
-                                             self.tp.finegd1, self.tp.finegd)
+        self.tp.extended_calc.hamiltonian.vHt_g = self.capsule(nn, vHt_g, extended_vHt_g,
+                                            self.tp.finegd1, self.tp.finegd)
         
     def combine_dH_asp(self, dH_asp):
         ham = self.tp.extended_calc.hamiltonian
