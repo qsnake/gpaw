@@ -1,9 +1,12 @@
 from gpaw.transport.selfenergy import LeadSelfEnergy, CellSelfEnergy
 from gpaw.transport.greenfunction import GreenFunction
 from gpaw.transport.tools import get_matrix_index, aa1d, aa2d, sum_by_unit, dot
+
+from ase.units import Hartree
 import numpy as np
 import copy
 import pickle
+
 
 class Structure_Info:
     def __init__(self, ion_step):
@@ -273,7 +276,7 @@ class Transport_Analysor:
         vt_sG = gd.collect(tp.extended_calc.hamiltonian.vt_sG, True)
 
         nt = aa1d(nt_sG[0]) 
-        vt = aa1d(vt_sG[0])
+        vt = aa1d(vt_sG[0]) * Hartree
 
         gd = tp.finegd
         rhot_g = gd.empty(tp.nspins, global_array=True)
@@ -282,7 +285,7 @@ class Transport_Analysor:
         
         gd = tp.extended_calc.finegd
         vHt_g = gd.collect(tp.extended_calc.hamiltonian.vHt_g, True)
-        vHt = aa1d(vHt_g)
+        vHt = aa1d(vHt_g) * Hartree
         
         D_asp = copy.deepcopy(tp.density.D_asp)
         dH_asp = copy.deepcopy(tp.extended_calc.hamiltonian.dH_asp)
