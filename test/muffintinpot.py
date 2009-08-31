@@ -16,7 +16,7 @@ try:
     f.close()
     for l in lines[2:]:
         # TODO: Improve accuracy
-        assert eval(l.split(' ')[3])<0.10
+        assert eval(l.split(' ')[3])<0.01
 except:
     extra_parameters['usenewxc'] = usenewxc
     raise
