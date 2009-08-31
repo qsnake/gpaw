@@ -5,6 +5,7 @@ from gpaw.utilities.blas import gemmdot
 from gpaw.atom.all_electron import AllElectron
 from gpaw import extra_parameters
 from gpaw.sphere import weights, points
+
 import numpy as npy
 
 
@@ -52,16 +53,23 @@ class AllElectronPotential:
       xccorr = setup.xc_correction
       
       radf_g = npy.zeros(xccorr.ng)
+      target_g = npy.zeros(xccorr.ng)
+      
       for w,p in zip(weights, points):
-         print '.'
+         scaled_nc = []
          # Very inefficient loop
          for i, r in enumerate(xccorr.rgd.r_g):
             # Obtain the position of this integration quadrature point in specified grid
             pos_c = atom_c + (r * bohr_to_ang) * p
             # And in scaled coordinates 
             scaled_c = get_scaled_positions(self.paw.atoms, pos_c)
-            # Use scaled coordinates to interpolate (trilinear interpolation) correct value
-            radf_g[i] += w * gd.interpolate_grid_point(scaled_c, f_g, mlsqr=False)
+            scaled_nc.append(scaled_c)
+
+         scaled_nc = npy.array(scaled_nc)
+
+         gd.interpolate_grid_points(scaled_nc, f_g, target_g, use_mlsqr=True)
+         radf_g += w * target_g
+
       return radf_g
       
    def get_spherical_ks_potential(self,a):
@@ -73,7 +81,7 @@ class AllElectronPotential:
       # Get xccorr for atom a
       setup = self.paw.density.setups[a]
       xccorr = setup.xc_correction
-
+      
       # Get D_sp for atom a
       D_sp = self.paw.density.D_asp[a]
 

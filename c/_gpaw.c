@@ -72,6 +72,10 @@ PyObject* scalapack_general_diagonalize(PyObject *self, PyObject *args);
 PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args);
 #endif
 
+// Moving least squares interpolation
+PyObject* mlsqr(PyObject *self, PyObject *args); 
+
+
 static PyMethodDef functions[] = {
   {"scal", scal, METH_VARARGS, 0},
   {"gemm", gemm, METH_VARARGS, 0},
@@ -138,6 +142,7 @@ static PyMethodDef functions[] = {
   {"craypat_region_begin", craypat_region_begin, METH_VARARGS, 0},
   {"craypat_region_end", craypat_region_end, METH_VARARGS, 0},
 #endif
+  {"mlsqr", mlsqr, METH_VARARGS, 0}, 
   {0, 0, 0, 0}
 };
 

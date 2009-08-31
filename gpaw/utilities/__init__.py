@@ -379,6 +379,27 @@ if not debug:
     hartree = _gpaw.hartree
     wignerseitz = _gpaw.wigner_seitz_grid
 
+def mlsqr(order, cutoff, coords_nc, N_c, beg_c, data_g, target_n):
+    """Interpolate a point using moving least squares algorithm.
+
+    Python wrapper for a c-function. See c/mlsqr.c.
+
+    order:       Polynomial order (1 or 2)
+    coords_nc:   List of scaled coordinates
+    N_c:         Total number of grid points
+    beg_c:       The start of grid points
+    data_g:      3D-data to be interpolated
+    target_n:    Output array
+    """
+
+    assert is_contiguous(coords_nc, float)
+    assert is_contiguous(data_g, float)
+    N_c = contiguous(N_c, float)
+    beg_c = contiguous(beg_c, float)    
+    assert is_contiguous(target_n, float)
+
+    return _gpaw.mlsqr(order, cutoff, coords_nc, N_c, beg_c, data_g, target_n)
+    
 def interpolate_mlsqr(dg_c, vt_g, order):
     """Interpolate a point using moving least squares algorithm.
 
