@@ -1094,7 +1094,7 @@ class Transport_Plotter:
             p.axis([xdata[0], xdata[-1], 0, height])
         p.show()
 
-    def show_bias_step_info(self, info, steps_indices, s):
+    def show_bias_step_info2(self, info, steps_indices, s):
         import pylab as p
         if info[:2] == 'nt':
             title = 'density overview in axis ' + info[-1]
