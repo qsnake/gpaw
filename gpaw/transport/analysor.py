@@ -1113,7 +1113,26 @@ class Transport_Plotter:
                 p.title(title)
                 p.colorbar()
                 p.show()
-    
+
+    def compare_ele_step_info2(self, info, steps_indices, s):
+        import pylab as p
+        if info[:2] == 'nt':
+            title = 'density difference overview in axis ' + info[-1]
+        elif info[:2] == 'vt':
+            title = 'hamiltonian difference overview in axis ' + info[-1]
+        assert steps_indices[0] < len(self.ele_steps)
+        assert steps_indices[1] < len(self.ele_steps)
+        step0 = self.ele_steps[steps_indices[0]]
+        step1 = self.ele_steps[steps_indices[1]]
+        data0 = 's' + str(s[0]) + info
+        data1 = 's' + str(s[1]) + info        
+        ydata = eval("step0.dv['" + data0 + "']") - eval("step1.dv['" + data1 + "']")
+        p.matshow(ydata)
+        p.title(title)
+        p.colorbar()
+        #p.legend([str(steps_indices[0]) + '-' + str(steps_indices[0])])
+        p.show()
+        
     def compare_bias_step_info2(self, info, steps_indices, s):
         import pylab as p
         if info[:2] == 'nt':
