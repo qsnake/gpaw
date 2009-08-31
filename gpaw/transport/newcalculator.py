@@ -481,7 +481,7 @@ class Transport(GPAW):
         if tp_mat.extended:
             ex_index = [self.lead_index[0] + tp_mat.nb]
             ex_index.append(self.lead_index[1] +
-                                       self.nblead[0] + self.nblead[1])
+                                       self.nblead[0] + self.nblead[1] + tp_mat.nb - self.lead_index[1][-1] - 1)
             self.hsd.append_lead_as_buffer(self.lead_hsd,
                                            self.lead_couple_hsd, ex_index)                      
                  
