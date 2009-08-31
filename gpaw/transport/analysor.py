@@ -57,7 +57,7 @@ class Electron_Step_Info:
     def __init__(self, ion_step, bias_step, ele_step):
         self.ion_step, self.bias_step, self.ele_step = ion_step, bias_step, ele_step
         
-    def initialize_data(self, bias, gate, dd, df, nt, vt, rho, vHt, D_asp, dH_asp, tc, dos, time_cost):
+    def initialize_data(self, bias, gate, dd, df, nt, vt, rho, vHt, D_asp, dH_asp, tc, dos, time_cost, dv):
         self.bias = bias
         self.gate = gate
         self.dd = dd
@@ -71,6 +71,7 @@ class Electron_Step_Info:
         self.tc = tc
         self.dos = dos
         self.time_cost = time_cost
+        self.dv = dv  
     
     def initialize_extended_data(self, ent_G, evt_G, ent_g,
                                  evt_g, ehot_g, evHt_g, edmm):
@@ -292,7 +293,8 @@ class Transport_Analysor:
         
         tc_array, dos_array = self.collect_transmission_and_dos()
         time_cost = self.ele_step_time_collect()
-        step.initialize_data(tp.bias, tp.gate, total_dd, total_df, nt, vt, rho, vHt, D_asp, dH_asp, tc_array, dos_array, time_cost)
+        dv = self.abstract_d_and_v()        
+        step.initialize_data(tp.bias, tp.gate, total_dd, total_df, nt, vt, rho, vHt, D_asp, dH_asp, tc_array, dos_array, time_cost, dv)
         
         self.ele_steps.append(step)
         self.n_ele_step += 1
