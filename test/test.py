@@ -109,6 +109,7 @@ if len(tests) == 0:
         'bee1.py',
         'refine.py',
         'revPBE.py',
+        'jstm.py',
         'lcao_largecellforce.py',
         'lcao_h2o.py',
         'lrtddft2.py',
@@ -268,6 +269,7 @@ if opt.distribute:
 from ase.parallel import size
 if size > 1:
     exclude += ['pes.py',
+                'jstm.py',
                 'nscfsic.py',
                 'asewannier.py',
                 'wannier-ethylene.py',
