@@ -1104,5 +1104,5 @@ if __name__ == '__main__':
             filename = symbol + '.' + XCFunctional(xcname).get_name()
             if os.path.isfile(filename):
                 continue
-            g = Generator(symbol, xcname, scalarrel=True, nofiles=not True)
+            g = Generator(symbol, xcname, scalarrel=True, nofiles=True)
             g.run(exx=True, logderiv=False, **par)
