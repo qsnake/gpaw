@@ -269,7 +269,6 @@ if opt.distribute:
 from ase.parallel import size
 if size > 1:
     exclude += ['pes.py',
-                'jstm.py',
                 'nscfsic.py',
                 'asewannier.py',
                 'wannier-ethylene.py',

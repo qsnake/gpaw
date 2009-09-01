@@ -1,13 +1,15 @@
+import cPickle as pickle
 import numpy as np
 from ase import Atoms
 from gpaw import GPAW, setup_paths
 from gpaw.transport.jstm import STM, dump_hs, dump_lead_hs
 from gpaw.atom.basis import BasisMaker
-import cPickle as pickle
+from gpaw.mpi import world
 
-
-basis = BasisMaker('H', 'sz').generate(1, 0)
-basis.write_xml()
+if world.rank == 0:
+    basis = BasisMaker('H', 'sz').generate(1, 0)
+    basis.write_xml()
+world.barrier()
 setup_paths.insert(0, '.')
 
 # GPAW calculations
