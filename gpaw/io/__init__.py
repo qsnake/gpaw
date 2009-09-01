@@ -608,16 +608,20 @@ def read(paw, reader):
                     kpt.P_ani[a] = P_ni[nslice, i1:i2].copy()
                 i1 = i2
 
+    # Manage mode change:
     paw.scf.check_convergence(density, wfs.eigensolver)
-
+    newmode =  paw.input_parameters.mode
     try:
-        if r['Mode'] == 'lcao':
-            spos_ac = paw.atoms.get_scaled_positions()
-            paw.wfs.load_lazily(hamiltonian, spos_ac)
-        if paw.input_parameters.mode != r['Mode']:
-            paw.scf.reset()
-    except(AttributeError, KeyError):
-        pass
+        oldmode = r['Mode']
+    except (AttributeError, KeyError):
+        oldmode = 'fd' # This is an old gpw file from before lcao existed
+        
+    if newmode == 'lcao':
+        spos_ac = paw.atoms.get_scaled_positions()
+        paw.wfs.load_lazily(hamiltonian, spos_ac)
+
+    if newmode != oldmode:
+        paw.scf.reset()
 
     # Get the forces from the old calculation:
     if r.has_array('CartesianForces'):
