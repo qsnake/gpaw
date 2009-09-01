@@ -67,9 +67,9 @@ def get_mulliken(calc, a_list):
 
 
 def get_realspace_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
-                      R_c=(0, 0, 0), direction='x', usesymm=None):
+                     R_c=(0, 0, 0), direction='x', usesymm=None):
 
-    if usesymm == True:
+    if usesymm is True:
         raise NotImplementedError, 'Only None and False have been implemented'
 
     nspins, nk, nbf = h_skmm.shape[:3]
@@ -103,7 +103,8 @@ def get_realspace_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
             k[transverse_dirs] = k_t
             bools = np.any(np.round(ibzk_kc - k, 7), axis=1)# kpt in ibz?
             index = np.where(bools == False)[0]
-            if len(index) == 0: # kpt not in ibz, find corresponding one in the ibz
+            if len(index) == 0:
+                # kpt not in ibz, find corresponding one in the ibz
                 k = -k # inversion 
                 bools = np.any(np.round(ibzk_kc - k, 7), axis=1)
                 index = np.where(bools == False)[0][0]
@@ -127,6 +128,7 @@ def get_realspace_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
         return ibzk_t_kc, weights_t_k, h_skii
     else:
         return ibzk_t_kc, weights_t_k, h_skii, s_kii
+
 
 def remove_pbc(atoms, h, s=None, d=0, centers_ic=None, cutoff=None):
     L = atoms.cell[d, d]
@@ -212,7 +214,10 @@ def dump_hamiltonian_parallel(filename, atoms, direction=None):
         calc_data['skpt_qc'][kpt.q] = calc.wfs.ibzk_kc[kpt.k]
         calc_data['weight_q'][kpt.q] = calc.wfs.weight_k[kpt.k]
         calc_data['k_q'][kpt.q] = kpt.k
-#        print 'Calc. H matrix on proc. %i: (rk, rd, q, k)=(%i, %i, %i, %i)' % (wfs.world.rank, wfs.kpt_comm.rank, wfs.gd.domain.comm.rank, kpt.q, kpt.k)
+##         print ('Calc. H matrix on proc. %i: '
+##                '(rk, rd, q, k) = (%i, %i, %i, %i)') % (
+##             wfs.world.rank, wfs.kpt_comm.rank,
+##             wfs.gd.domain.comm.rank, kpt.q, kpt.k)
         wfs.eigensolver.calculate_hamiltonian_matrix(calc.hamiltonian,
                                                      wfs, 
                                                      kpt)
@@ -225,9 +230,9 @@ def dump_hamiltonian_parallel(filename, atoms, direction=None):
             if direction!=None:
                 remove_pbc(atoms, H_qMM[kpt.s, kpt.q], S_qMM[kpt.q], d)
         else:
-            if direction!=None:
+            if direction is not None:
                 remove_pbc(atoms, H_qMM[kpt.s, kpt.q], None, d)
-        if calc.occupations.kT>0:
+        if calc.occupations.kT > 0:
             H_qMM[kpt.s, kpt.q] -= S_qMM[kpt.q] * \
                                    calc.occupations.get_fermi_level()    
     
@@ -269,32 +274,39 @@ def get_lcao_hamiltonian(calc):
 
 def get_lead_lcao_hamiltonian(calc, direction='x'):
     H_skMM, S_kMM = get_lcao_hamiltonian(calc)
-    usesymm = calc.input_parameters['usesymm']
     if rank == MASTER:
-        return lead_kspace2realspace(H_skMM, S_kMM, calc.wfs.ibzk_kc,
-                                     calc.wfs.bzk_kc, calc.wfs.weight_k, 
-                                     direction, usesymm)  
+        return lead_kspace2realspace(H_skMM, S_kMM,
+                                     ibzk_kc=calc.wfs.ibzk_kc,
+                                     bzk_kc=calc.wfs.bzk_kc,
+                                     weight_k=calc.wfs.weight_k,
+                                     direction=direction,
+                                     usesymm=calc.input_parameters['usesymm'])
     else:
         return None, None, None, None
 
+
 def lead_kspace2realspace(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
                           direction='x', usesymm=None):
-    """Convert a k-dependent Hamiltonian representing
-    a lead to a set of real space hamiltonians, one for each transverse k-point, 
-    of double size representing two principal layers and the coupling between."""
+    """Convert a k-dependent Hamiltonian to tight-binding onsite and coupling.
+
+    For each transverse k-point:
+    Convert k-dependent (in transport direction) Hamiltonian
+    representing a lead to a real space tight-binding Hamiltonian
+    of double size representing two principal layers and the coupling between.
+    """
 
     dir = 'xyz'.index(direction)
-    if usesymm==True:
+    if usesymm is True:
         raise NotImplementedError
 
     dir = 'xyz'.index(direction)
     R_c = [0, 0, 0]
-    ibz_t_kc, weight_t_k, h_skii, s_kii =\
-    get_realspace_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k, R_c, direction)
+    ibz_t_kc, weight_t_k, h_skii, s_kii = get_realspace_hs(
+        h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k, R_c, direction)
 
     R_c[dir] = 1
-    h_skij, s_kij =\
-    get_realspace_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k, R_c, direction)[-2:]
+    h_skij, s_kij = get_realspace_hs(
+        h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k, R_c, direction)[-2:]
 
     nspins, nk, nbf = h_skii.shape[:-1]
 
@@ -309,6 +321,7 @@ def lead_kspace2realspace(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
     s_kmm[:, nbf:, :nbf] = s_kij.swapaxes(1,2).conj()
 
     return ibz_t_kc, weight_t_k, h_skmm, s_kmm
+
 
 def zeta_pol(basis):
     """Get number of zeta func. and polarization func. indices in Basis."""
