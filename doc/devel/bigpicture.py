@@ -19,7 +19,7 @@ latex = r"""\documentclass[10pt,landscape]{article}
 \psset{framesep=2mm,arrowscale=1.75}
 
 \begin{pspicture}(0,0)(27,18)
-\psframe*[linecolor=green!15](21.5,13)(26,17.9)
+\psframe*[linecolor=green!20](21.5,13)(26,17.9)
 \rput(22,17.5){ASE}
 %\newrgbcolor{yellow7}{0.97 0.5 0.85}
 """
@@ -89,8 +89,8 @@ class Box:
                                 sin(angle) * distance])
 
 atoms = Box('Atoms', '', ['positions', 'numbers', 'cell', 'pbc'],
-            color='black!5')
-paw = Box('PAW', None, ['initialized'], 'green!70')
+            color='white')
+paw = Box('PAW', None, ['initialized'], 'green!75')
 scf = Box('SCFLoop', None)
 density = Box('Density', 
               [r'$\tilde{n}_\sigma = \sum_{\mathbf{k}n}' +
@@ -98,8 +98,7 @@ density = Box('Density',
                r'+\frac{1}{2}\sum_a \tilde{n}_c^a$',
                r'$\tilde{\rho}(\mathbf{r}) = ' +
                r'\sum_\sigma\tilde{n}_\sigma + \sum_{aL}Q_L^a \hat{g}_L^a$'],
-              ['nspins', 'nt_sG', 'nt_sg', 'rhot_g', 'Q_aL', 'D_asp'],
-              'green!30')
+              ['nspins', 'nt_sG', 'nt_sg', 'rhot_g', 'Q_aL', 'D_asp'])
 mixer = Box('Mixer')#, color='blue!30')
 hamiltonian = Box('Hamiltonian',
                   r"""$-\frac{1}{2}\nabla^2 +
@@ -111,12 +110,12 @@ hamiltonian = Box('Hamiltonian',
 wfs = Box('WaveFunctions',
           r"""$\tilde{\psi}_{\sigma\mathbf{k}n}(\mathbf{r})$""",
           ['nspins', 'ibzk_qc', 'mynbands',
-           'kpt_comm', 'band_comm'], width=2.5)
+           'kpt_comm', 'band_comm'], width=2.5, color='magenta!60')
 gd = Box('GridDescriptor', '(coarse grid)',
-         ['cell_cv', 'N_c', 'pbc_c', 'dv', 'comm'], 'orange!30')
+         ['cell_cv', 'N_c', 'pbc_c', 'dv', 'comm'], 'orange!90')
 finegd = Box('GridDescriptor', '(fine grid)',
-         ['cell_cv', 'N_c', 'pbc_c', 'dv', 'comm'], 'orange!30')
-rgd = Box('RadialGridDescriptor', None, ['r_g, dr_g, rcut'], color='orange!30')
+         ['cell_cv', 'N_c', 'pbc_c', 'dv', 'comm'], 'orange!90')
+rgd = Box('RadialGridDescriptor', None, ['r_g, dr_g, rcut'], color='orange!90')
 setups = Box('Setups', ['', '', '', ''], ['nvalence', 'nao', 'Eref'],
              width=4.2)
 xccorrection = Box('XCCorrection')
@@ -125,13 +124,13 @@ vbar = Box('LFC', r'$\bar{v}^a(r)$', None, 'red!70')
 ghat = Box('LFC', r'$\hat{g}_{\ell m}^a(\mathbf{r})$', None, 'red!70')
 grid = Box('GridWaveFunctions',
            r"""$\tilde{\psi}_{\sigma\mathbf{k}n}(ih,jh,kh)$""",
-           None, 'magenta!45')
+           None, 'magenta!60')
 pt = Box('LFC', r'$\tilde{p}_i^a(\mathbf{r})$', None, 'red!70')
 lcao = Box('LCAOWaveFunctions',
            r"""$\tilde{\psi}_{\sigma\mathbf{k}n}(\mathbf{r})=
 \sum_{\mu\mathbf{R}} C_{\sigma\mathbf{k}n\mu}
 \Phi_\mu(\mathbf{r} - \mathbf{R}) \exp(i\mathbf{k}\cdot\mathbf{R})$""",
-           ['S_qMM', 'T_qMM', 'P_aqMi'], 'magenta!45')
+           ['S_qMM', 'T_qMM', 'P_aqMi'], 'magenta!60')
 atoms0 = Box('Atoms', '(copy)', ['positions', 'numbers', 'cell', 'pbc'],
              color='black!5')
 parameters = Box('InputParameters', None, ['xc', 'nbands', '...'])
@@ -144,12 +143,12 @@ poisson = Box('PoissonSolver',
 eigensolver = Box('EigenSolver')
 symmetry = Box('Symmetry')
 restrictor = Box('Transformer', '(fine -> coarse)',
-                 color='red!60!green!30!yellow!34')
+                 color='yellow!80')
 interpolator = Box('Transformer', '(coarse -> fine)',
-                   color='red!60!green!30!yellow!34')
+                   color='yellow!80')
 xcfunc = Box('XCFunctional')
-xc3dgrid = Box('XC3DGrid', color='red!15')
-xc1dgrid = Box('XCRadialGrid', color='red!15')
+xc3dgrid = Box('XC3DGrid', color='brown!80')
+xc1dgrid = Box('XCRadialGrid', color='brown!80')
 kin = Box('FDOperator', r'$-\frac{1}{2}\nabla^2$')
 hsoperator = Box('HSOperator',
                  r"$\langle \psi_n | A | \psi_{n'} \rangle,~" +
@@ -216,8 +215,8 @@ xccorrection.has(rgd, 'rgd', -105, 2.4, 0.4)
 xccorrection.has(xc1dgrid, 'xc', -170, 10.03)
 xc1dgrid.has(xcfunc, 'xcfunc')
 
-kpts = [Box('KPoint', None, ['psit_nG', 'C_nM', 'eps_n', 'f_n', 'P_ani'])
-        for i in range(3)]
+kpts = [Box('KPoint', None, ['psit_nG', 'C_nM', 'eps_n', 'f_n', 'P_ani'],
+            color='cyan!50') for i in range(3)]
 wfs.has(kpts[1], 'kpt_u', 0, 5.4, 0.48)
 kpts[0].set_position(kpts[1].position - 0.14)
 kpts[2].set_position(kpts[1].position + 0.14)
