@@ -210,7 +210,7 @@ class GPAWRunner(Runner):
     """GPAW implementation"""
     def set_parameters(self, mode='fd', basis=None, kpts=None,
                        h=None, xc='LDA', stencils=None, width=0.1,
-                       vacuum=3.0):
+                       nbands=None, vacuum=3.0):
         if basis is None:
             basis = {}
         if stencils is None:
@@ -223,6 +223,7 @@ class GPAWRunner(Runner):
         self.xc = xc
         self.stencils = stencils
         self.width = width
+        self.nbands = nbands
         self.vacuum = vacuum
     
     def set_calculator(self, config, filename):
@@ -250,6 +251,7 @@ class GPAWRunner(Runner):
                     stencils=self.stencils,
                     xc=self.xc,
                     poissonsolver=PoissonSolver(nn=3, relax='GS'),
+                    nbands=self.nbands,
                     **kwargs)
         config.set_calculator(calc)
 

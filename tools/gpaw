@@ -83,6 +83,8 @@ parser.add_option('-s', '--finite-difference-stencils', default='3,3',
                   'interpolation.  Deafault is -s 3,3.')
 parser.add_option('-f', '--xc-functional', default='LDA',
                   help='Exchange-Correlation functional (default value LDA).')
+parser.add_option('-N', '--number-of-bands', type='int',
+                  help='Number of bands / states.')
 
 opt, args = parser.parse_args()
 
@@ -179,7 +181,7 @@ def run():
         runner.set_parameters(mode=opt.mode, basis=opt.basis, kpts=kpts,
                               h=opt.grid_spacing, xc=opt.xc_functional,
                               stencils=stencils, width=opt.smearing_width,
-                              vacuum=opt.vacuum)
+                              nbands=opt.number_of_bands, vacuum=opt.vacuum)
 
     runner.run()
 
