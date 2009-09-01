@@ -87,6 +87,7 @@ from gpaw.ae import AllElectronSetup
 from gpaw.utilities.blas import gemm, r2k
 from gpaw.pair_density import PairDensity2 as PairDensity
 from gpaw.poisson import PoissonSolver, PoissonFFTSolver
+from gpaw.utilities.tools import apply_subspace_mask
 
 usefft = False
 verbose = False
@@ -173,6 +174,8 @@ class EXX:
             dH_p = unpack(hamiltonian.dH_asp[a][kpt.s])
             gemm(1.0, P_ni, npy.dot(P_ni, dH_p), 1.0, H_nn, 'c')
         domain_comm.sum(H_nn, 0)
+        if kpt.f_n is not None:
+            apply_subspace_mask(H_nn, kpt.f_n)
         return H_nn
 
     def apply(self, kpt, Htpsit_nG, H_nn, dH_asp, hybrid):
@@ -188,10 +191,7 @@ class EXX:
         fmin= 1e-9              # Occupations less than this counts as empty
 
         if f_n is None:
-            raise RuntimeError(
-                'You should do an initial rough convergence using an\n'
-                'inexpensive xc functinal, e.g. LDA/GGA, before switching on\n'
-                'exact exchange.')
+            return
 
         P_ani = kpt.P_ani
         setups = self.density.setups
@@ -423,6 +423,8 @@ class EXX:
         dR_G += kpt.vt_nG[n] * pR_G
 
     def rotate(self, kpt, U_nn):
+        if not hasattr(kpt, 'vxx_anii'):
+            return
         # Rotate EXX related stuff
         vt_nG = kpt.vt_nG
         gemm(1.0, vt_nG.copy(), U_nn, 0.0, vt_nG)

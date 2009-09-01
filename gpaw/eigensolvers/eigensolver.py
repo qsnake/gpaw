@@ -113,7 +113,7 @@ class Eigensolver:
             c_ni = (np.dot(P_ni, dH_ii) -
                     np.dot(P_ni * eps_n[:, np.newaxis], dO_ii))
 
-            if hamiltonian.xc.xcfunc.hybrid > 0.0:
+            if hamiltonian.xc.xcfunc.hybrid > 0.0 and hasattr(kpt, 'vxx_ani'):
                 if n is None:
                     c_ni += kpt.vxx_ani[a]
                 else:

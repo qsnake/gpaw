@@ -329,8 +329,6 @@ class Hamiltonian:
         xcfunc = self.xc.xcfunc
         self.Enlxc = xcfunc.get_non_local_energy()
         self.Enlkin = xcfunc.get_non_local_kinetic_corrections()
-        if self.Enlxc != 0 or self.Enlkin != 0:
-            print 'Where should we do comm.sum() ?'
 
         energies = np.array([Ekin, Epot, Ebar, Eext, Exc])
         self.gd.comm.sum(energies)
