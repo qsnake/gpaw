@@ -498,7 +498,7 @@ class STM:
     def scan(self):
         #distribute grid points over cpu's
         dcomm = self.domain_comm
-        n_c = self.srf.gd.n_c[:2]
+        n_c = self.srf.gd.N_c[:2]
         gpts_i = np.arange(n_c[0] * n_c[1])
         gpts_gl = gpts_i.copy()
         l = np.ceil(len(gpts_i) / float(dcomm.size)).astype(int)
@@ -512,6 +512,7 @@ class STM:
         for i, gpt in enumerate(gpts_i):
             x = gpt / n_c[1]
             y = gpt % n_c[1]
+            #print 'gpt',world.rank, i, (x, y)
             V_g[i] =  self.get_V((x, y))
 
         # calculate part of the current for each grid points
@@ -519,6 +520,7 @@ class STM:
         
         bias = self.stm_calc.bias
         for j, V in enumerate(V_g):
+            #print world.rank, j
             I_g[j] += self.stm_calc.get_current(bias, V) * 77466.1509 
         world.barrier()
         
@@ -730,17 +732,16 @@ class STM:
         self.log.flush()
 
     def hs_from_paw(self): # Do not even try this for larger systems
-        # Not working in parallel
         p = self.input_parameters
         h1, s1 = dump_hs(self.tip, 'hs1', return_hs = True)[-2:]   
         h2, s2 = dump_hs(self.tip, 'hs2', return_hs = True)[-2:]   
         h10, s10 = dump_lead_hs(self.lead1, 'hs10', return_hs = True)[-2:]
         h20, s20 = dump_lead_hs(self.lead2, 'hs20', return_hs = True)[-2:]
         self.set(**{'hs1': (h1[0], s1[0]),
-                    'hs2': (h2[0], s2[0]),
-                    'hs10':(h10[0], s10[0]),
-                    'hs20':(h20[0], s20[0]),
-                    'k_c': (0,0)})
+                        'hs2': (h2[0], s2[0]),
+                        'hs10':(h10[0], s10[0]),
+                        'hs20':(h20[0], s20[0]),
+                        'k_c': (0,0)})
 
     def plot(self, repeat=[1,1], vmin=None, gd = None):
         import matplotlib
@@ -843,7 +844,10 @@ class STM:
                 p0.plot([start[0], stop[0]], [start[1], stop[1]],'-b')
                 p0.set_xlim(tuple(extent[:2]))
                 p0.set_ylim(tuple(extent[-2:]))
-        pylab.show()
+        if world.rank == 0:
+            pylab.show()
+        else:
+            return None
 
 class TipCell:
     def __init__(self, tip, srf):
@@ -1109,13 +1113,13 @@ class SrfCell:
         assert not (np.round(tip_basis - srf_basis, 5)).all()
         extension1_c = tip_atom_spos * tip_cell_c / srf_cell_c
         extension2_c = (1 - tip_atom_spos) * tip_cell_c / srf_cell_c
-        ext1_c = np.ceil(extension1_c * sgd.n_c[:2]).astype(int)
-        ext2_c = np.ceil(extension2_c * sgd.n_c[:2]).astype(int)
+        ext1_c = np.ceil(extension1_c * sgd.N_c[:2]).astype(int)
+        ext2_c = np.ceil(extension2_c * sgd.N_c[:2]).astype(int)
 
-        srf_shape  = sgd.n_c[:2]
+        srf_shape  = sgd.N_c[:2]
         extension1 = ext1_c / srf_shape.astype(float)
         extension2 = ext2_c / srf_shape.astype(float)
-        newsize_c = ext1_c + ext2_c + sgd.n_c[:2]
+        newsize_c = ext1_c + ext2_c + sgd.N_c[:2]
         vt_G = np.zeros(tuple(newsize_c) + (srf_vt_G.shape[2],))
  
         intexa = ext1_c / srf_shape[:2]
@@ -1144,7 +1148,7 @@ class SrfCell:
         
         self.vt_G = vt_G
         newsize_c = np.resize(newsize_c, 3)
-        newsize_c[2] = sgd.n_c[2]
+        newsize_c[2] = sgd.N_c[2]
         newcell_cv = (newsize_c + 1) * sgd.cell_cv.T / sgd.cell_c * sgd.h_c
         newgd = GridDescriptor(N_c=newsize_c + 1,
                                cell_cv=newcell_cv,
@@ -1196,7 +1200,7 @@ class SrfCell:
                 add_function = True
                 while add_function == True:
                     n += 1
-                    newcorner_c = f.corner_c[:2] +  n * R * sgd.n_c[:2]
+                    newcorner_c = f.corner_c[:2] +  n * R * sgd.N_c[:2]
                     start_c = np.maximum(newcorner_c, origo)
                     stop_c = np.minimum(newcorner_c + f.size_c[:2],
                                         newgd.n_c[:2])
