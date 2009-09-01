@@ -284,22 +284,32 @@ def bulk(name, crystalstructure, a=None, covera=None, orthorhombic=False):
     """
 
     if covera is None:
-        covera = np.sqrt(8.0 / 3)
+        covera = sqrt(8.0 / 3.0)
         
     if a is None:
         a = estimate_lattice_constant(name, crystalstructure, covera)
 
     x = crystalstructure.lower()
 
-    if orthorhombic:
+    if orthorhombic and x != 'sc':
         return orthorhombic_bulk(name, x, a, covera)
     
-    if x == 'fcc':
+    if x == 'sc':
+        atoms = Atoms(name, cell=(a, a, a), pbc=True)
+    elif x == 'fcc':
         b = a / 2
         atoms = Atoms(name, cell=[(0, b, b), (b, 0, b), (b, b, 0)], pbc=True)
     elif x == 'bcc':
         b = a / 2
         atoms = Atoms(name, cell=[(-b, b, b), (b, -b, b), (b, b, -b)],
+                      pbc=True)
+    elif x == 'hcp':
+        atoms = Atoms(2 * name,
+                      scaled_positions=[(0, 0, 0),
+                                        (1.0 / 3.0, 1.0 / 3.0, 0.5)],
+                      cell=[(a, 0, 0),
+                            (a / 2, a * sqrt(3) / 2, 0),
+                            (0, 0, covera * a)],
                       pbc=True)
     elif x == 'diamond':
         atoms = bulk(2 * name, 'zincblende', a)
@@ -311,6 +321,9 @@ def bulk(name, crystalstructure, a=None, covera=None, orthorhombic=False):
         s1, s2 = string2symbols(name)
         atoms = bulk(s1, 'fcc', a) + bulk(s2, 'fcc', a)
         atoms.positions[1, 0] += a / 2
+    else:
+        raise ValueError('Unknown crystal structure: ' + crystalstructure)
+    
     return atoms
 
 def estimate_lattice_constant(name, crystalstructure, covera):
@@ -330,6 +343,14 @@ def orthorhombic_bulk(name, x, a, covera=None):
     elif x == 'bcc':
         atoms = Atoms(2 * name, cell=(a, a, a), pbc=True,
                       scaled_positions=[(0, 0, 0), (0.5, 0.5, 0.5)])
+    elif x == 'hcp':
+        atoms = Atoms(4 * name,
+                      cell=(a, a * sqrt(3), covera * a),
+                      scaled_positions=[(0, 0, 0),
+                                        (0.5, 0.5, 0),
+                                        (0.5, 1.0 / 6.0, 0.5),
+                                        (0, 2.0 / 3.0, 0.5)],
+                      pbc=True)
     elif x == 'diamond':
         atoms = orthorhombic_bulk(2 * name, 'zincblende', a)
     elif x == 'zincblende':
@@ -344,4 +365,7 @@ def orthorhombic_bulk(name, x, a, covera=None):
         atoms = Atoms(2 * name, cell=(b, b, a), pbc=True,
                       scaled_positions=[(0, 0, 0), (0.5, 0.5, 0),
                                         (0.5, 0.5, 0.5), (0, 0, 0.5)])
+    else:
+        raise RuntimeError
+    
     return atoms
