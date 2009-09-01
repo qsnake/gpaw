@@ -11,7 +11,7 @@ import pickle
 import sys
 import os
 
-import numpy as npy
+import numpy as np
 from ase.data import atomic_names
 
 from gpaw.atom.configurations import configurations
@@ -135,15 +135,15 @@ class AllElectron:
         for l, e, u in zip(self.l_j, self.e_j, self.u_j):
             a = sqrt(-2.0 * e)
 
-            # This one: "u[:] = r**(1 + l) * npy.exp(-a * r)" gives
+            # This one: "u[:] = r**(1 + l) * np.exp(-a * r)" gives
             # OverflowError: math range error XXX
             u[:] = r**(1 + l)
             rmax = 350.0 / a     # numpy!
             gmax = int(rmax * self.N / (self.beta + rmax))
-            u[:gmax] *= npy.exp(-a * r[:gmax])
+            u[:gmax] *= np.exp(-a * r[:gmax])
             u[gmax:] = 0.0
 
-            norm = npy.dot(u**2, dr)
+            norm = np.dot(u**2, dr)
             u *= 1.0 / sqrt(norm)
 
     def run(self):
@@ -159,7 +159,7 @@ class AllElectron:
         N = self.N
         beta = self.beta
         t(N, 'radial gridpoints.')
-        g = npy.arange(N, dtype=float)
+        g = np.arange(N, dtype=float)
         self.r = beta * g / (N - g)
         self.dr = beta * N / (N - g)**2
         self.rgd = RadialGridDescriptor(self.r, self.dr)
@@ -169,13 +169,13 @@ class AllElectron:
         nj = len(self.n_j)
 
         # Radial wave functions multiplied by radius:
-        self.u_j = npy.zeros((nj, self.N))
+        self.u_j = np.zeros((nj, self.N))
 
         # Effective potential multiplied by radius:
-        self.vr = npy.zeros(N)
+        self.vr = np.zeros(N)
 
         # Electron density:
-        self.n = npy.zeros(N)
+        self.n = np.zeros(N)
 
         # Always spinpaired nspins=1
         self.xcfunc = XCFunctional(self.xcname, 1)
@@ -197,8 +197,8 @@ class AllElectron:
         n = self.n    # electron density
         vr = self.vr  # effective potential multiplied by r
 
-        vHr = npy.zeros(self.N)
-        self.vXC = npy.zeros(self.N)
+        vHr = np.zeros(self.N)
+        self.vXC = np.zeros(self.N)
 
         restartfile = '%s/%s.restart' % (tempdir, self.symbol)
         if self.xc.is_non_local():
@@ -218,8 +218,8 @@ class AllElectron:
                 except (ValueError, IndexError):
                     fd = None
                 else:
-                    norm = npy.dot(n * r**2, dr) * 4 * pi
-                    if abs(norm - sum(f_j)) > 0.01:
+                    norm = np.dot(n * r**2, dr) * 4 * pi
+                    if abs(norm - sum(f_j)) > 2.01:
                         fd = None
                     else:
                         t('Using old density for initial guess.')
@@ -265,7 +265,7 @@ class AllElectron:
             n += dn
 
             # estimate error from the square of the density change integrated
-            q = log(npy.sum((r * dn)**2))
+            q = log(np.sum((r * dn)**2))
 
             # print progress bar
             if niter == 0:
@@ -290,12 +290,12 @@ class AllElectron:
 
 ##         print
         tau = self.calculate_kinetic_energy_density()
-##         print "Ekin(tau)=",npy.dot(tau *r**2 , dr) * 4*pi
+##         print "Ekin(tau)=",np.dot(tau *r**2 , dr) * 4*pi
 ##         self.write(tau,'tau1')
 ##         tau2 = self.calculate_kinetic_energy_density2()
 ##         self.write(tau2,'tau2')
 ##         self.write(tau-tau2,'tau12')
-##         print "Ekin(tau2)=",npy.dot(tau2 *r**2 , dr) * 4*pi
+##         print "Ekin(tau2)=",np.dot(tau2 *r**2 , dr) * 4*pi
 
         # When iterations are over calculate the correct exchange energy
         #if self.xc.is_non_local():
@@ -315,8 +315,8 @@ class AllElectron:
             except OSError:
                 pass
 
-        Epot = 2 * pi * npy.dot(n * r * (vHr - Z), dr)
-        Ekin = -4 * pi * npy.dot(n * vr * r, dr)
+        Epot = 2 * pi * np.dot(n * r * (vHr - Z), dr)
+        Ekin = -4 * pi * np.dot(n * vr * r, dr)
         for f, e in zip(f_j, e_j):
             Ekin += f * e
 
@@ -336,8 +336,8 @@ class AllElectron:
         t('-----------------------------------------------')
         for m, l, f, e, u in zip(n_j, l_j, f_j, e_j, self.u_j):
             # Find kinetic energy:
-            k = e - npy.sum((npy.where(abs(u) < 1e-160, 0, u)**2 * #XXXNumeric!
-                             vr * dr)[1:] / r[1:])
+            k = e - np.sum((np.where(abs(u) < 1e-160, 0, u)**2 * #XXXNumeric!
+                            vr * dr)[1:] / r[1:])
 
             # Find outermost maximum:
             g = self.N - 4
@@ -345,8 +345,8 @@ class AllElectron:
                 g -= 1
             x = r[g - 1:g + 2]
             y = u[g - 1:g + 2]
-            A = npy.transpose(npy.array([x**i for i in range(3)]))
-            c, b, a = npy.linalg.solve(A, y)
+            A = np.transpose(np.array([x**i for i in range(3)]))
+            c, b, a = np.linalg.solve(A, y)
             assert a < 0.0
             rmax = -0.5 * b / a
 
@@ -369,7 +369,7 @@ class AllElectron:
         self.Exc = Exc
 
 #mathiasl
-       # for x in range(npy.size(self.r)):
+       # for x in range(np.size(self.r)):
        #     print self.r[x] , self.u_j[self.jcorehole,x]
 
 
@@ -396,9 +396,9 @@ class AllElectron:
 
     def calculate_density(self):
         """Return the electron charge density divided by 4 pi"""
-        n = npy.dot(self.f_j,
-                    npy.where(abs(self.u_j) < 1e-160, 0,
-                              self.u_j)**2) / (4 * pi)
+        n = np.dot(self.f_j,
+                   np.where(abs(self.u_j) < 1e-160, 0,
+                            self.u_j)**2) / (4 * pi)
         n[1:] /= self.r[1:]**2
         n[0] = n[1]
         return n
@@ -410,17 +410,17 @@ class AllElectron:
     def radial_kinetic_energy_density(self, f_j, l_j, u_j):
         """Kinetic energy density from a restricted set of wf's
         """
-        shape = npy.shape(u_j[0])
-        dudr = npy.zeros(shape)
-        tau = npy.zeros(shape)
+        shape = np.shape(u_j[0])
+        dudr = np.zeros(shape)
+        tau = np.zeros(shape)
         for f, l, u in zip(f_j, l_j, u_j):
             self.rgd.derivative(u,dudr)
             # contribution from angular derivatives
             if l > 0:
-                tau += f * l * (l + 1) * npy.where(abs(u) < 1e-160, 0, u)**2
+                tau += f * l * (l + 1) * np.where(abs(u) < 1e-160, 0, u)**2
             # contribution from radial derivatives
             dudr = u - self.r * dudr
-            tau += f * npy.where(abs(dudr) < 1e-160, 0, dudr)**2
+            tau += f * np.where(abs(dudr) < 1e-160, 0, dudr)**2
         tau[1:] /= self.r[1:]**4
         tau[0] = tau[1]
 
@@ -434,9 +434,9 @@ class AllElectron:
         """
 
         shape = self.u_j.shape[1]
-        R = npy.zeros(shape)
-        dRdr = npy.zeros(shape)
-        tau = npy.zeros(shape)
+        R = np.zeros(shape)
+        dRdr = np.zeros(shape)
+        tau = np.zeros(shape)
         for f, l, u in zip(self.f_j, self.l_j, self.u_j):
             R[1:] = u[1:] / self.r[1:]
             if l == 0:
@@ -449,7 +449,7 @@ class AllElectron:
                 R[0] = 0
             self.rgd.derivative(R, dRdr)
             # contribution from radial derivatives
-            tau += f * npy.where(abs(dRdr) < 1e-160, 0, dRdr)**2
+            tau += f * np.where(abs(dRdr) < 1e-160, 0, dRdr)**2
             # contribution from angular derivatives
             if l > 0:
                 R[1:] = R[1:] / self.r[1:]
@@ -457,7 +457,7 @@ class AllElectron:
                     R[0] = R[1]
                 else:
                     R[0] = 0
-                tau += f * l * (l + 1) * npy.where(abs(R) < 1e-160, 0, R)**2
+                tau += f * l * (l + 1) * np.where(abs(R) < 1e-160, 0, R)**2
 
         return 0.5 * tau / (4 * pi)
 
@@ -526,7 +526,7 @@ class AllElectron:
         c10 = -self.d2gdr2 * r**2 # first part of c1 vector
 
         if self.scalarrel:
-            self.r2dvdr = npy.zeros(self.N)
+            self.r2dvdr = np.zeros(self.N)
             self.rgd.derivative(vr, self.r2dvdr)
             self.r2dvdr *= r
             self.r2dvdr -= vr
@@ -552,7 +552,7 @@ class AllElectron:
             # adjust eigenenergy until u is smooth at the turning point
             de = 1.0
             while abs(de) > 1e-9:
-                norm = npy.dot(npy.where(abs(u) < 1e-160, 0, u)**2, dr)
+                norm = np.dot(np.where(abs(u) < 1e-160, 0, u)**2, dr)
                 u *= 1.0 / sqrt(norm)
                 de = 0.5 * A / norm
                 x = abs(de / e)
@@ -563,7 +563,7 @@ class AllElectron:
                 nn, A = shoot(u, l, vr, e, self.r2dvdr, r, dr, c10, c2,
                               self.scalarrel)
             self.e_j[j] = e
-            u *= 1.0 / sqrt(npy.dot(npy.where(abs(u) < 1e-160, 0, u)**2, dr))
+            u *= 1.0 / sqrt(np.dot(np.where(abs(u) < 1e-160, 0, u)**2, dr))
 
 
     def solve_confined(self, j, rc, vconf=None):
@@ -607,7 +607,7 @@ class AllElectron:
         # adjust eigenenergy until u is smooth at the turning point
         de = 1.0
         while abs(de) > 1e-9:
-            norm = npy.dot(npy.where(abs(u) < 1e-160, 0, u)**2, dr)
+            norm = np.dot(np.where(abs(u) < 1e-160, 0, u)**2, dr)
             u *= 1.0 / sqrt(norm)
             de = 0.5 * A / norm
             x = abs(de / e)
@@ -618,7 +618,7 @@ class AllElectron:
 
             nn, A = shoot_confined(u, l, vr, e, self.r2dvdr, r, dr, c10, c2,
                                    self.scalarrel, rc=rc, beta=self.beta)
-        u *= 1.0 / sqrt(npy.dot(npy.where(abs(u) < 1e-160, 0, u)**2, dr))
+        u *= 1.0 / sqrt(np.dot(np.where(abs(u) < 1e-160, 0, u)**2, dr))
         return u, e
 
     def kin(self, l, u, e=None): # XXX move to Generator
@@ -639,7 +639,7 @@ class AllElectron:
         fp = c2 + 0.5 * c1
         fm = c2 - 0.5 * c1
         f0 = c0 - 2 * c2
-        kr = npy.zeros(self.N)
+        kr = np.zeros(self.N)
         kr[1:] = f0 * u[1:] + fm * u[:-1]
         kr[1:-1] += fp[:-1] * u[2:]
         kr[0] = 0.0
@@ -668,11 +668,11 @@ class AllElectron:
             # exactly with a grid point (which actually happens sometimes)
             i_rc -= 1
 
-        potential = npy.zeros(npy.shape(self.r))
+        potential = np.zeros(np.shape(self.r))
         r = self.r[i_ri + 1:i_rc + 1]
         exponent = - (rc - ri) / (r - ri)
         denom = rc - r
-        value = npy.exp(exponent) / denom
+        value = np.exp(exponent) / denom
         potential[i_ri + 1:i_rc + 1] = value
         potential[i_rc + 1:] = float('nan')
 
@@ -718,7 +718,7 @@ def shoot(u, l, vr, e, r2dvdr, r, dr, c10, c2, scalarrel=False, gmax=None):
     else:
         Mr = r
     c0 = l * (l + 1) + 2 * Mr * (vr - e * r)
-    if gmax is None and npy.alltrue(c0 > 0):
+    if gmax is None and np.alltrue(c0 > 0):
         raise ConvergenceError('Bad initial electron density guess!')
 
     c1 = c10
@@ -793,7 +793,7 @@ def shoot_confined(u, l, vr, e, r2dvdr, r, dr, c10, c2, scalarrel=False,
     else:
         Mr = r
     c0 = l * (l + 1) + 2 * Mr * (vr - e * r)
-    if gmax is None and npy.alltrue(c0 > 0):
+    if gmax is None and np.alltrue(c0 > 0):
         print """
 Problem with initial electron density guess!  Try to run the program
 with the '-n' option (non-scalar-relativistic calculation) and then
