@@ -133,19 +133,16 @@ class AllElectron:
         dr = self.dr
         # Initialize with Slater function:
         for l, e, u in zip(self.l_j, self.e_j, self.u_j):
-            a = sqrt(-2.0 * e)
+            if self.symbol in ['W', 'Pt', 'Ta', 'Os', 'Ir', 'Au']:
+                # For some reason this works better for these atoms:
+                a = sqrt(-4.0 * e)
+            else:
+                a = sqrt(-2.0 * e)
 
-            # This one: "u[:] = r**(1 + l) * np.exp(-a * r)" gives
-            # OverflowError: math range error XXX
-            u[:] = r**(1 + l)
-            rmax = 350.0 / a     # numpy!
-            gmax = int(rmax * self.N / (self.beta + rmax))
-            u[:gmax] *= np.exp(-a * r[:gmax])
-            u[gmax:] = 0.0
-
+            u[:] = r**(1 + l) * np.exp(-a * r)
             norm = np.dot(u**2, dr)
             u *= 1.0 / sqrt(norm)
-
+            
     def run(self):
         #     beta g
         # r = ------, g = 0, 1, ..., N - 1
@@ -219,7 +216,7 @@ class AllElectron:
                     fd = None
                 else:
                     norm = np.dot(n * r**2, dr) * 4 * pi
-                    if abs(norm - sum(f_j)) > 2.01:
+                    if abs(norm - sum(f_j)) > 0.01:
                         fd = None
                     else:
                         t('Using old density for initial guess.')
