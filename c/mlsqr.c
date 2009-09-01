@@ -1,9 +1,10 @@
 #include <Python.h>
+#define NO_IMPORT_ARRAY
 #include <numpy/arrayobject.h>
 #include "extensions.h"
 
 // Predefine dgels function of lapack
-int dgels_(char* trans, int *m, int *n, int *nrhs, double* a, int *lda, double* b, int *ldb, double* work, double* lwork, int *info);
+int dgels_(char* trans, int *m, int *n, int *nrhs, double* a, int *lda, double* b, int *ldb, double* work, int* lwork, int *info);
 
 
 // Perform a moving linear least squares interpolation to arrays
