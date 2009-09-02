@@ -829,9 +829,8 @@ class Transport(GPAW):
             self.cvgflag = self.d_cvg and self.h_cvg
             self.step +=  1
         
-        if self.fixed:
-            self.analysor.save_bias_step()
-            self.analysor.save_data_to_file()            
+        self.analysor.save_bias_step()
+        self.analysor.save_data_to_file()            
          
         self.scf.converged = self.cvgflag
         
@@ -936,7 +935,7 @@ class Transport(GPAW):
             self.text(bias_info)
             self.text('Gate: %f V' % self.gate)
 
-        if self.fixed and not hasattr(self, 'analysor'):
+        if not hasattr(self, 'analysor'):
             self.analysor = Transport_Analysor(self)
         #------for check convergence------
         #self.ham_vt_old = np.empty(self.hamiltonian.vt_sG.shape)
@@ -1473,13 +1472,15 @@ class Transport(GPAW):
 
     def den2fock(self):
         self.update_density()
-        self.update_hamiltonian()
+        if self.fixed:
+            self.update_hamiltonian()
+        else:
+            self.hamiltonian.update(self.density)
         if self.use_linear_vt_array:
             self.hamiltonian.vt_sG += self.get_linear_potential()
         
-        if self.fixed:
-            self.analysor.save_ele_step()
-            self.analysor.save_data_to_file('ele')
+        self.analysor.save_ele_step()
+        self.analysor.save_data_to_file('ele')
         
         self.timer.start('project hamiltonian')
         if self.fixed:    
@@ -1504,9 +1505,8 @@ class Transport(GPAW):
         else:
             self.negf_prepare(atoms)
             self.get_selfconsistent_hamiltonian()
-            if self.fixed:
-                self.analysor.save_ion_step()
-                self.analysor.save_data_to_file()
+            self.analysor.save_ion_step()
+            self.analysor.save_data_to_file()
         self.forces.F_av = None
         f = GPAW.get_forces(self, atoms)
         return f
@@ -1888,8 +1888,8 @@ class Transport(GPAW):
             v = bias[i]
             self.bias = [v/2., -v /2.]
             self.get_selfconsistent_hamiltonian()
+        del self.analysor
         if self.fixed:
-            del self.analysor
             del self.surround
  
     def recover_kpts(self, calc):
