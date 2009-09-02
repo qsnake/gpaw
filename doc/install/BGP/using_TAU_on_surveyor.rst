@@ -55,7 +55,7 @@ towards a resolution this fall.
 Run time environment variables
 ================================
 Please see:
-https://wiki.alcf.anl.gov/index.php/Tuning_and_Analysis_Utilities_(TAU)#Running_With_TAU
+`<https://wiki.alcf.anl.gov/index.php/Tuning_and_Analysis_Utilities_(TAU)#Running_With_TAU>`_.
 
 Here are the recommended run time environment variables that should be passed to Cobalt via qsub::
 
