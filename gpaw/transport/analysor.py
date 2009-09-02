@@ -270,10 +270,15 @@ class Transport_Analysor:
         dim = tp.gd.N_c
         assert tp.d == 2
         
-        gd = tp.extended_calc.gd
-   
+        if tp.fixed:
+            calc = tp.extended_calc
+        else:
+            calc = tp
+        gd = calc.gd
+        finegd = calc.finegd
+  
         nt_sG = tp.gd.collect(tp.density.nt_sG, True)
-        vt_sG = gd.collect(tp.extended_calc.hamiltonian.vt_sG, True)
+        vt_sG = gd.collect(calc.hamiltonian.vt_sG, True)
 
         nt = aa1d(nt_sG[0]) 
         vt = aa1d(vt_sG[0]) * Hartree
@@ -283,12 +288,12 @@ class Transport_Analysor:
         rhot_g = gd.collect(tp.density.rhot_g, True)
         rho = aa1d(rhot_g)
         
-        gd = tp.extended_calc.finegd
-        vHt_g = gd.collect(tp.extended_calc.hamiltonian.vHt_g, True)
+        gd = finegd
+        vHt_g = gd.collect(calc.hamiltonian.vHt_g, True)
         vHt = aa1d(vHt_g) * Hartree
         
         D_asp = copy.deepcopy(tp.density.D_asp)
-        dH_asp = copy.deepcopy(tp.extended_calc.hamiltonian.dH_asp)
+        dH_asp = copy.deepcopy(calc.hamiltonian.dH_asp)
         
         tc_array, dos_array = self.collect_transmission_and_dos()
         time_cost = self.ele_step_time_collect()
@@ -316,9 +321,6 @@ class Transport_Analysor:
     def bias_step_time_collect(self):
         time = self.tp.timer.gettime
         cost = {}
-        cost['update lead hamiltonian'] = time('update lead hamiltonian0') * self.tp.lead_num
-        cost['init lead'] = time('init lead0') * self.tp.lead_num
-        cost['init surround'] = time('init surround')
         cost['init scf'] = time('init scf')
         return cost
         
@@ -330,7 +332,10 @@ class Transport_Analysor:
         cost['Poisson'] = time('Poisson')
         cost['construct density'] = time('construct density')
         cost['atomic density'] = time('atomic density')
-        cost['atomic hamiltonian'] = time('atomic hamiltonian')
+        if self.tp.fixed:
+            cost['atomic hamiltonian'] = time('atomic hamiltonian')
+        else:
+            cost['atomic hamiltonian'] = time('Hamiltonian: atomic')
         if self.tp.step == 0:
             cost['project hamiltonian'] = 0
         else:
@@ -410,10 +415,13 @@ class Transport_Analysor:
   
     def abstract_d_and_v(self):
         data = {}
-        calc = self.tp.extended_calc
+        
+        if self.tp.fixed:
+            calc = self.tp.extended_calc
+        else:
+            calc = self.tp
+            
         gd = calc.gd
-        nt = gd.empty()
-        vt = gd.empty()
         for s in range(self.tp.nspins):
             nt = self.tp.gd.collect(self.tp.density.nt_sG[s], True)
             vt = gd.collect(calc.hamiltonian.vt_sG[s], True)
