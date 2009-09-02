@@ -346,8 +346,10 @@ class STM:
         h2 -= diff * s2      
         h1 -= diff * s1        
         
-        self.tip_cell.shift_potential(-diff / Hartree  - tip_efermi)
-        self.srf_cell.shift_potential(-diff / Hartree  - srf_efermi)
+        #fermi_diff = tip_fermi - srf_fermi
+        
+        #self.tip_cell.shift_potential(-diff / Hartree - fermi_diff - srf_efermi)
+        #self.srf_cell.shift_potential(-diff / Hartree - srf_efermi)
 
         diff1 = (h10[-1, -1] - h1[-1, -1]) / s1[-1, -1]
         h10 -= diff1 * s10
@@ -458,9 +460,7 @@ class STM:
                     kin = 0
                 V_ij[j1:j2, i1:i2] += V + kin
             s.f_iG = None
-        self.bfs_comm.barrier()
         self.bfs_comm.sum(V_ij)
-        self.bfs_comm.barrier()
         return V_ij * Hartree  
     
     def get_transmission(self, position_c):
@@ -1233,7 +1233,7 @@ def dump_hs(calc, filename, return_hs=False):
     """
     h_skmm, s_kmm = get_lcao_hamiltonian(calc)
 
-    atoms = calc.atoms
+    atoms = calc.atoms.copy()
     atoms.set_calculator(calc)
 
     ibzk2d_kc = calc.get_ibz_k_points()[:, :2]
