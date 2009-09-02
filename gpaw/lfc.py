@@ -690,22 +690,22 @@ class NewLocalizedFunctionsCollection(BaseLFC):
             M2 = M1 + sphere.Mmax
             if c_iv is not None:
                 I = self.integral_a[a]
-                if I < 1e-15:
+                if I > 1e-15:
+                    if len(sphere.ranks) > 0:
+                        c_Mv[M1:M2] += c_ariv[a].sum(axis=0)
+                    I_L = sphere.I_M
+                    I0 = I_L[0]
+                    c_Lv = c_Mv[M1:M2, :3]
+                    b_Lv = c_Mv[M1:M2, 3:6]
+                    A0 = c_Mv[M1, 6]
+                    c_iv[0, :] = (I / I0 * c_Lv[0] -
+                                  I / I0**2 * b_Lv[0] * A0)
+                    c_iv[1:, :] = (c_Lv[1:] -
+                                   np.outer(I_L[1:] / I0, c_Lv[0]) -
+                                   A0 / I0 * b_Lv[1:] +
+                                   A0 / I0**2 * np.outer(I_L[1:], b_Lv[0]))
+                else:
                     c_iv[:] = 0.0
-                    continue
-                if len(sphere.ranks) > 0:
-                    c_Mv[M1:M2] += c_ariv[a].sum(axis=0)
-                I_L = sphere.I_M
-                I0 = I_L[0]
-                c_Lv = c_Mv[M1:M2, :3]
-                b_Lv = c_Mv[M1:M2, 3:6]
-                A0 = c_Mv[M1, 6]
-                c_iv[0, :] = (I / I0 * c_Lv[0] -
-                              I / I0**2 * b_Lv[0] * A0)
-                c_iv[1:, :] = (c_Lv[1:] -
-                               np.outer(I_L[1:] / I0, c_Lv[0]) -
-                               A0 / I0 * b_Lv[1:] +
-                               A0 / I0**2 * np.outer(I_L[1:], b_Lv[0]))
                                
             M1 = M2
 
