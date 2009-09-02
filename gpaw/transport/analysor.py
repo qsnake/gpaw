@@ -270,10 +270,7 @@ class Transport_Analysor:
         dim = tp.gd.N_c
         assert tp.d == 2
         
-        if tp.fixed:
-            calc = tp.extended_calc
-        else:
-            calc = tp
+        calc = tp.extended_calc
         gd = calc.gd
         finegd = calc.finegd
   
@@ -332,10 +329,8 @@ class Transport_Analysor:
         cost['Poisson'] = time('Poisson')
         cost['construct density'] = time('construct density')
         cost['atomic density'] = time('atomic density')
-        if self.tp.fixed:
-            cost['atomic hamiltonian'] = time('atomic hamiltonian')
-        else:
-            cost['atomic hamiltonian'] = time('Hamiltonian: atomic')
+        cost['atomic hamiltonian'] = time('atomic hamiltonian')
+
         if self.tp.step == 0:
             cost['project hamiltonian'] = 0
         else:
@@ -416,10 +411,7 @@ class Transport_Analysor:
     def abstract_d_and_v(self):
         data = {}
         
-        if self.tp.fixed:
-            calc = self.tp.extended_calc
-        else:
-            calc = self.tp
+        calc = self.tp.extended_calc
             
         gd = calc.gd
         for s in range(self.tp.nspins):
