@@ -9,11 +9,13 @@ from gpaw.utilities import erf
 
 
 def I(R, a, b, alpha, beta):
-    """Calculate integral and derivatives wrt. positions of Gaussian product:
+    """Calculate integral and derivatives wrt. positions of Gaussian product.
+
+    ::
 
                 /                              2             2
                |  a0+b0  a1+b1  a2+b2  -alpha r   -beta (r-R)
-       value = | x      y      z      e          e             dr ,
+       value = | x      y      z      e          e             dr,
                |
               /
 
