@@ -311,17 +311,13 @@ class Transport(GPAW):
                     calc.set_positions(atoms)
             self.nbenv.append(calc.wfs.setups.nao)
         
-        if not self.initialized:
-            if not self.fixed:
-                self.initialize()
-            else:
-                self.initialize()
-                self.get_extended_atoms()
-                calc = self.extended_atoms.calc
-                calc.initialize(self.extended_atoms)
-                del calc.density
-                self.extended_calc = calc
-                self.gd1, self.finegd1 = calc.gd, calc.finegd
+        self.initialize()
+        self.get_extended_atoms()
+        calc = self.extended_atoms.calc
+        calc.initialize(self.extended_atoms)
+        del calc.density
+        self.extended_calc = calc
+        self.gd1, self.finegd1 = calc.gd, calc.finegd
         
         self.nspins = self.wfs.nspins
         self.npk = len(self.wfs.ibzk_kc)
@@ -380,28 +376,23 @@ class Transport(GPAW):
         self.fermi = self.lead_fermi[0]
         world.barrier()
         
-        if self.fixed:
-            self.timer.start('init surround')
-            self.surround = Surrounding(self)  
-            self.timer.stop('init surround')
+        self.timer.start('init surround')
+        self.surround = Surrounding(self)  
+        self.timer.stop('init surround')
         
         # save memory
         del self.atoms_l
         del self.atoms_e
         
-        if not self.fixed:
-            self.set_positions()
-            self.get_hamiltonian_initial_guess()            
-        else:
-            self.timer.start('surround set_position')
-            self.inner_poisson = PoissonSolver(nn=self.hamiltonian.poisson.nn)
-            self.inner_poisson.set_grid_descriptor(self.finegd)    
-            self.surround.combine()
-            self.set_extended_positions()
-            self.timer.stop('surround set_position')
-            self.get_hamiltonian_initial_guess()
-            del self.wfs
-            self.wfs = self.extended_calc.wfs
+        self.timer.start('surround set_position')
+        self.inner_poisson = PoissonSolver(nn=self.hamiltonian.poisson.nn)
+        self.inner_poisson.set_grid_descriptor(self.finegd)    
+        self.surround.combine()
+        self.set_extended_positions()
+        self.timer.stop('surround set_position')
+        self.get_hamiltonian_initial_guess()
+        del self.wfs
+        self.wfs = self.extended_calc.wfs
 
         self.initialized_transport = True
         self.matrix_mode = 'sparse'
@@ -593,8 +584,6 @@ class Transport(GPAW):
         self.get_basis_indices()
         
         extended = True
-        if not self.fixed and not self.use_buffer:
-            extended = False
         self.hsd = Tp_Sparse_HSD(dtype, self.my_nspins, self.my_npk,
                                               self.lead_layer_index, extended)              
 
@@ -703,18 +692,17 @@ class Transport(GPAW):
             atoms = self.atoms
         else:
             self.atoms = atoms.copy()
-            if self.fixed:
-                self.initialize()
-                self.get_extended_atoms()
-                calc = self.extended_atoms.calc
-                calc.initialize(self.extended_atoms)
-                del calc.density
-                self.extended_calc = calc
-                self.gd1, self.finegd1 = calc.gd, calc.finegd
-                self.set_extended_positions()                
-            else:
-                self.initialize()
-                self.set_positions()
+            self.initialize()
+            self.atoms_l = []
+            for i in range(self.lead_num):
+                self.atoms_l.append(self.get_lead_atoms[i])
+            self.get_extended_atoms()
+            calc = self.extended_atoms.calc
+            calc.initialize(self.extended_atoms)
+            del calc.density
+            self.extended_calc = calc
+            self.gd1, self.finegd1 = calc.gd, calc.finegd
+            self.set_extended_positions()                
                 
         if self.scat_restart:
             self.recover_kpts(self)
@@ -920,8 +908,7 @@ class Transport(GPAW):
         bias = self.bias + self.env_bias
         self.intctrl = IntCtrl(self.occupations.kT * Hartree,
                                                         self.lead_fermi, bias)            
-        if self.fixed:
-            self.surround.reset_bias(bias) 
+        self.surround.reset_bias(bias) 
         self.initialize_green_function()
         self.calculate_integral_path()
         self.distribute_energy_points()
@@ -937,6 +924,9 @@ class Transport(GPAW):
 
         if not hasattr(self, 'analysor'):
             self.analysor = Transport_Analysor(self)
+        
+        if not self.fixed:
+            self.get_linear_hartree_potential()
         #------for check convergence------
         #self.ham_vt_old = np.empty(self.hamiltonian.vt_sG.shape)
         self.ham_vt_diff = None
@@ -1472,10 +1462,8 @@ class Transport(GPAW):
 
     def den2fock(self):
         self.update_density()
-        if self.fixed:
-            self.update_hamiltonian()
-        else:
-            self.hamiltonian.update(self.density)
+        self.update_hamiltonian()
+        
         if self.use_linear_vt_array:
             self.hamiltonian.vt_sG += self.get_linear_potential()
         
@@ -1483,14 +1471,8 @@ class Transport(GPAW):
         self.analysor.save_data_to_file('ele')
         
         self.timer.start('project hamiltonian')
-        if self.fixed:    
-            h_spkmm, s_pkmm = self.get_hs(self.extended_calc)
-        else:
-            h_spkmm, s_pkmm = self.get_hs(self)
-            if self.use_linear_vt_mm:
-                if self.linear_mm == None:
-                    self.linear_mm = self.get_linear_potential_matrix()            
-                h_spkmm += self.linear_mm
+        h_spkmm, s_pkmm = self.get_hs(self.extended_calc)
+
         self.timer.stop('project hamiltonian')                  
        
         for q in range(self.my_npk):
@@ -1529,37 +1511,31 @@ class Transport(GPAW):
         for kpt in self.wfs.kpt_u:
             if self.my_nspins == 2:
                 kpt.rho_MM = self.hsd.D[kpt.s][kpt.q].recover(True)
-                if not self.fixed and self.atoms.pbc[2] == 1:
-                    self.add_density_matrix_corner(kpt.rho_MM, kpt.s, kpt.q)                
             else:
                 kpt.rho_MM = self.hsd.D[0][kpt.q].recover(True)
-                if not self.fixed and self.atoms.pbc[2] == 1:
-                    self.add_density_matrix_corner(kpt.rho_MM, 0, kpt.q)                      
         self.timer.stop('dmm recover')        
         
         density = self.density
         self.timer.start('construct density')
-        if not self.fixed:
-            density.calculate_pseudo_density(self.wfs)
-        else:
-            nt_sG = self.gd1.zeros(self.nspins)
-            self.wfs.calculate_density_contribution(nt_sG)
-            nn = self.surround.nn[0]
-            density.nt_sG = self.surround.uncapsule(nn, nt_sG, self.gd1,
+
+        nt_sG = self.gd1.zeros(self.nspins)
+        self.wfs.calculate_density_contribution(nt_sG)
+        nn = self.surround.nn[0]
+        density.nt_sG = self.surround.uncapsule(nn, nt_sG, self.gd1,
                                                     self.gd)
-            density.nt_sG += density.nct_G
+        density.nt_sG += density.nct_G
+
         self.timer.stop('construct density')
         self.timer.start('atomic density')
-        if not self.fixed:
-            self.wfs.calculate_atomic_density_matrices(density.D_asp)
-        else:
-            D_asp = self.extended_D_asp
-            self.wfs.calculate_atomic_density_matrices(D_asp)
-            all_D_asp = collect_D_asp2(D_asp, self.wfs.setups, self.nspins,
-                                self.gd.comm, self.extended_calc.wfs.rank_a)
+
+        D_asp = self.extended_D_asp
+        self.wfs.calculate_atomic_density_matrices(D_asp)
+        all_D_asp = collect_D_asp2(D_asp, self.wfs.setups, self.nspins,
+                            self.gd.comm, self.extended_calc.wfs.rank_a)
             
-            D_asp = all_D_asp[:len(self.atoms)]
-            distribute_D_asp(D_asp, density)
+        D_asp = all_D_asp[:len(self.atoms)]
+        distribute_D_asp(D_asp, density)
+
         self.timer.stop('atomic density')
         comp_charge = density.calculate_multipole_moments()
 
@@ -1605,30 +1581,30 @@ class Transport(GPAW):
 
         self.timer.start('Poisson')
         # npoisson is the number of iterations:
-        if not self.fixed:
-            ham.npoisson = ham.poisson.solve(ham.vHt_g, density.rhot_g,
-                                                  charge=-density.charge)
-        else:
+        if self.fixed:
             density.rhot_g -= self.surround.extra_rhot_g
-            if self.hamiltonian.vHt_g is None:
-                self.hamiltonian.vHt_g = self.finegd.zeros()
-            ham.npoisson = self.inner_poisson.solve(self.hamiltonian.vHt_g,
+        if self.hamiltonian.vHt_g is None:
+            self.hamiltonian.vHt_g = self.finegd.zeros()
+        ham.npoisson = self.inner_poisson.solve(self.hamiltonian.vHt_g,
                                                   density.rhot_g,
                                                   charge=-density.charge)
+        if not self.fixed and hasattr(self, 'step'):
+            self.hamiltonian.vHt_g += self.linear_vHt_g
+        
+        vHt_g = self.extended_calc.finegd.collect(ham.vHt_g, True)    
+        vHt_g0 = self.finegd.collect(self.hamiltonian.vHt_g, True)
             
-            vHt_g = self.extended_calc.finegd.collect(ham.vHt_g, True)    
-            vHt_g0 = self.finegd.collect(self.hamiltonian.vHt_g, True)
-            
-            ham_diff = np.sum(vHt_g[:,:,0]) - np.sum(vHt_g0[:,:,0])
-            ham_diff /= np.product(vHt_g.shape[:2])
+        ham_diff = np.sum(vHt_g[:,:,0]) - np.sum(vHt_g0[:,:,0])
+        ham_diff /= np.product(vHt_g.shape[:2])
 
-            self.text('Hartree_diff', str(ham_diff))
+       
+        self.text('Hartree_diff', str(ham_diff))
             
-            self.hamiltonian.vHt_g += ham_diff
+        self.hamiltonian.vHt_g += ham_diff
             
-            self.surround.combine_vHt_g(self.hamiltonian.vHt_g)
+        self.surround.combine_vHt_g(self.hamiltonian.vHt_g)
             
-            self.text('poisson interations :' + str(ham.npoisson))
+        self.text('poisson interations :' + str(ham.npoisson))
         self.timer.stop('Poisson')
       
       
@@ -1642,8 +1618,8 @@ class Transport(GPAW):
             #Ekin -= ham.gd.integrate(vt_G, nt_G - density.nct_G,
             #                                           global_integral=False)            
         
-        if self.fixed:
-            self.surround.refresh_vt_sG()
+    
+        self.surround.refresh_vt_sG()
         self.timer.start('atomic hamiltonian')
         
         ham = self.hamiltonian
@@ -1889,8 +1865,7 @@ class Transport(GPAW):
             self.bias = [v/2., -v /2.]
             self.get_selfconsistent_hamiltonian()
         del self.analysor
-        if self.fixed:
-            del self.surround
+        del self.surround
  
     def recover_kpts(self, calc):
         wfs = calc.wfs
@@ -1947,70 +1922,14 @@ class Transport(GPAW):
         p['poissonsolver'] = PoissonSolver(nn=2)        
         self.extended_atoms.set_calculator(Lead_Calc(**p))
 
-    def get_linear_potential_matrix(self):
-        nn = 64
-        N_c = self.gd.N_c.copy()
-        h_c = self.gd.h_c
-        N_c[self.d] += nn
-        pbc = self.atoms._pbc
-        cell = N_c * h_c
-        GD = GridDescriptor(N_c, cell, pbc, self.gd.comm)
-        basis_functions = self.initialize_projector(extend=True, nn=nn)
-        local_linear_potential = GD.empty(self.my_nspins)
-        linear_potential = GD.zeros(self.my_nspins, global_array=True)
-        dim_s = self.gd.N_c[self.d] #scat
-        dim_t = linear_potential.shape[3]#transport direction
-        dim_p = linear_potential.shape[1:3] #transverse 
-        bias = np.array(self.bias) /Hartree
-        vt = np.empty([dim_t])
-        vt[:nn / 2] = bias[0] / 2.0
-        vt[-nn / 2:] = bias[1] / 2.0
-        vt[nn / 2: -nn / 2] = np.linspace(bias[0]/2.0, bias[1]/2.0, dim_s)
-        for s in range(self.my_nspins):
-            for i in range(dim_t):
-                linear_potential[s,:,:,i] = vt[i] * (np.zeros(dim_p) + 1)
-        GD.distribute(linear_potential, local_linear_potential)
-        wfs = self.wfs
-        nq = len(wfs.ibzk_qc)
-        nao = wfs.setups.nao
-        H_sqMM = np.empty([self.my_nspins, nq, nao, nao], wfs.dtype)
-        H_MM = np.empty([nao, nao], wfs.dtype) 
-        for kpt in wfs.kpt_u:
-            basis_functions.calculate_potential_matrix(local_linear_potential[0],
-                                                       H_MM, kpt.q)
-            tri2full(H_MM)
-            H_MM *= Hartree
-            if self.my_nspins == 2:
-                H_sqMM[kpt.s, kpt.q] = H_MM
-            else:
-                H_sqMM[0, kpt.q] = H_MM
-        self.gd.comm.sum(H_sqMM)  
-        return H_sqMM
-
-    def initialize_projector(self, extend=False, nn=64):
-        N_c = self.gd.N_c.copy()
-        h_c = self.gd.h_c
-        N_c[self.d] += nn
-        pbc = self.atoms._pbc
-        cell = N_c * h_c
-        from gpaw.grid_descriptor import GridDescriptor
-        comm = self.gd.comm
-        GD = GridDescriptor(N_c, cell, pbc, comm)
-        from gpaw.lfc import BasisFunctions
-        basis_functions = BasisFunctions(GD,     
-                                        [setup.phit_j
-                                        for setup in self.wfs.setups],
-                                        self.wfs.kpt_comm,
-                                        cut=True)
-        pos = self.atoms.positions.copy()
-        if extend:
-            for i in range(len(pos)):
-                pos[i, self.d] += nn * h_c[self.d] * Bohr / 2.
-        spos_ac = np.linalg.solve(np.diag(cell) * Bohr, pos.T).T % 1.0
-        if not self.wfs.gamma:
-            basis_functions.set_k_points(self.wfs.ibzk_qc)
-        basis_functions.set_positions(spos_ac)
-        return basis_functions
+    def get_linear_hartree_potential(self):
+        global_linear_vHt = self.finegd.zeros(global_array=True)
+        dim = self.finegd.N_c[2]
+        vt = np.linspace(self.bias[0]/Hartree, self.bias[1]/Hartree, dim)
+        for i in range(dim):
+            global_linear_vHt[:, :, i] = vt[i]
+        self.linear_vHt_g = self.finegd.zeros()
+        self.finegd.distribute(global_linear_vHt, self.linear_vHt_g)
 
     def set_extended_positions(self):
         spos_ac0 = self.atoms.get_scaled_positions() % 1.0
@@ -2088,57 +2007,4 @@ class Transport(GPAW):
         self.forces.reset()
         self.print_positions()
         
-    #def print_iteration(self, iter):
-    #    t = self.text
-    #    nvalence = self.wfs.setups.nvalence        
-    #    if self.verbose != 0:
-    #        T = time.localtime()
-    #        t()
-    #        t('------------------------------------')
-    #        t('iter: %d %d:%02d:%02d' % (iter, T[3], T[4], T[5]))
-    #        t()
-    #        t('Poisson Solver Converged in %d Iterations' %
-    #          self.hamiltonian.npoisson)
-    #        ne = self.eqpathinfo[0][0] + self.nepathinfo[0][0].num
-    #        t('%d energy point in integral contour' % ne)
-    #        t()
-    #        #self.print_all_information()
-    #    else:
-    #        if iter == 1:
-    #            header = """\
-    #                 log10-error:   diagonal      Iterations:
-    #       Time        Density     Hamiltonian     Poisson"""
-    #            if self.wfs.nspins == 2:
-    #                header += '  MagMom'
-    #            t(header)
-    #        T = time.localtime()
-    #        denserr = self.density.mixer.get_charge_sloshing()
-    #        if denserr is None or denserr == 0 or nvalence == 0:
-    #            denserr = ''
-    #        else:
-    #            denserr = '%+.1f' % (log(denserr / nvalence) / log(10))
-    #        niterpoisson = '%d' % self.hamiltonian.npoisson
-    #        if niterpoisson == '0':
-    #            niterpoisson = ' fixed '
-
-    #        t("iter: %3d  %02d:%02d:%02d  %-5s  %-5s  %-7s" %
-    #          (iter,
-    #           T[3], T[4], T[5],
-    #           eigerr,
-    #           niterocc,
-    #           niterpoisson), end='')
-
-    #        if self.wfs.nspins == 2:
-    #            t('  %+.4f' % self.occupations.magmom)
-    #        else:
-    #            t()
-
-    #    self.txt.flush()
-
-    def add_density_matrix_corner(self, rho_MM, s, k):
-        index = self.hsd.S[0].ex_ll_index
-        ind0 = get_matrix_index(index[0][-1])
-        ind1 = get_matrix_index(index[1][-1])
-        rho_MM[ind0.T, ind1] += self.lead_couple_hsd[0].D[s][k].recover()
-        rho_MM[ind1.T, ind0] += self.lead_couple_hsd[0].D[s][k].recover().T.conj()
 
