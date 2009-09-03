@@ -226,7 +226,7 @@ class Transport_Analysor:
                 transmission =  dot(dot(gamma[l1], gr_sub),
                                                 dot(gamma[l2], gr_sub.T.conj()))
        
-                trans_coff.append(np.trace(transmission))
+                trans_coff.append(np.real(np.trace(transmission)))
             transmission_list.append(trans_coff)
             del trans_coff
             
@@ -346,12 +346,12 @@ class Transport_Analysor:
         ne = len(energies)
         ns, npk = tp.nspins, tp.npk
 
-        tc_array = np.empty([ns, npk, nlp, ne])
-        dos_array = np.empty([ns, npk, ne])
+        tc_array = np.empty([ns, npk, nlp, ne], float)
+        dos_array = np.empty([ns, npk, ne], float)
 
         ns, npk = tp.my_nspins, tp.my_npk
-        local_tc_array = np.empty([ns, npk, nlp, ne])
-        local_dos_array = np.empty([ns, npk, ne])
+        local_tc_array = np.empty([ns, npk, nlp, ne], float)
+        local_dos_array = np.empty([ns, npk, ne], float)
         
         for s in range(ns):
             for q in range(npk):
@@ -1203,3 +1203,6 @@ class Transport_Plotter:
 
         p.title(title)
         p.show()
+
+
+
