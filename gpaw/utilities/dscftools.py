@@ -1,5 +1,5 @@
 
-import numpy as npy
+import numpy as np
 
 from gpaw import debug, parsize, parsize_bands
 from gpaw import mpi
@@ -14,17 +14,17 @@ def dscf_find_lumo(paw,band):
 
     #Find band corresponding to lumo
     lumo = paw.get_pseudo_wave_function(band=band, kpt=0, spin=0)
-    lumo = npy.reshape(lumo, -1)
+    lumo = np.reshape(lumo, -1)
 
     wf1_k = [paw.get_pseudo_wave_function(band=5, kpt=k, spin=0) for k in range(paw.wfs.nibzkpts)]
     wf2_k = [paw.get_pseudo_wave_function(band=6, kpt=k, spin=0) for k in range(paw.wfs.nibzkpts)]
 
     band_k = []
     for k in range(paw.wfs.nibzkpts):
-        wf1 = npy.reshape(wf1_k[k], -1)
-        wf2 = npy.reshape(wf2_k[k], -1)
-        p1 = npy.abs(npy.dot(wf1, lumo))
-        p2 = npy.abs(npy.dot(wf2, lumo))
+        wf1 = np.reshape(wf1_k[k], -1)
+        wf2 = np.reshape(wf2_k[k], -1)
+        p1 = np.abs(np.dot(wf1, lumo))
+        p2 = np.abs(np.dot(wf2, lumo))
 
         if p1 > p2:
             band_k.append(5)
@@ -71,9 +71,114 @@ def mpi_debug(data, ordered=True):
 
 def dscf_find_atoms(atoms,symbol):
     chemsyms = atoms.get_chemical_symbols()
-    return npy.where(map(lambda s: s==symbol,chemsyms))[0]
+    return np.where(map(lambda s: s==symbol,chemsyms))[0]
 
 # -------------------------------------------------------------------
+
+# Helper function in case of hs_operators having ngroups > 1
+def SliceGen(psit_nG, overlap):
+    assert psit_nG.ndim == 4
+    assert psit_nG.shape[0] == overlap.bd.mynbands
+    assert np.all(psit_nG.shape[1:] == overlap.gd.n_c)
+    assert overlap.bd.mynbands % overlap.nblocks == 0
+    M = overlap.bd.mynbands // overlap.nblocks
+    for j in range(overlap.nblocks):
+        n1 = j * M
+        n2 = n1 + M
+        yield psit_nG[n1:n2]
+    raise StopIteration
+
+from gpaw.kpoint import GlobalKPoint
+from gpaw.kpt_descriptor import KPointDescriptor
+from gpaw.hs_operators import Operator
+
+def dscf_kpoint_overlaps(paw, phasemod=True):
+    bd = paw.wfs.bd
+    gd = paw.wfs.gd
+    kd = KPointDescriptor(paw.wfs.nspins, paw.wfs.nibzkpts, \
+        paw.wfs.kpt_comm, paw.wfs.gamma, paw.wfs.dtype)
+    overlap = Operator(bd, gd, hermitian=False)
+    atoms = paw.get_atoms()
+
+    # Find the kpoint with lowest kpt.k_c (closest to gamma point)
+    k0 = np.argmin(np.sum(paw.wfs.ibzk_kc**2,axis=1)**0.5)
+
+    # Maintain list of a single global reference kpoint for each spin
+    kpt0_s = []
+    for s0 in range(kd.nspins):
+        q0 = k0 - kd.beg % kd.nibzkpts
+        kpt0 = GlobalKPoint(None, s0, k0, q0, None)
+        kpt0.update(paw.wfs)
+        kpt0_s.append(kpt0)
+
+    if phasemod:
+        # Scaled grid point positions used for exponential with ibzk_kc
+        # cf. wavefunctions.py lines 90-91 rev 4500(ca)
+        # phase_cd = np.exp(2j * np.pi * sdisp_cd * ibzk_kc[k, :, np.newaxis])
+        r_cG = gd.empty(3)
+        for c, r_G in enumerate(r_cG):
+            slice_c2G = [np.newaxis, np.newaxis, np.newaxis]
+            slice_c2G[c] = slice(None) #this means ':'
+            r_G[:] = np.arange(gd.beg_c[c], gd.end_c[c], \
+                               dtype=float)[slice_c2G] / gd.N_c[c]
+
+    X_unn = np.empty((kd.mynks, bd.nbands, bd.nbands), dtype=kd.dtype)
+    for myu, kpt in enumerate(paw.wfs.kpt_u):
+        u = kd.global_index(myu)
+        s, k = kd.what_is(u)
+        kpt0 = kpt0_s[s]
+        X_nn = X_unn[myu]
+
+        if phasemod:
+            assert paw.wfs.dtype == complex, 'Phase modification is complex!'
+
+            k0_c = paw.wfs.ibzk_kc[k0]
+            k_c = paw.wfs.ibzk_kc[k]
+            eirk_G = np.exp(2j*np.pi*np.sum(r_cG*(k_c-k0_c)[:,np.newaxis,np.newaxis,np.newaxis], axis=0))
+            psit0_nG = eirk_G[np.newaxis,...]*kpt0.psit_nG
+
+            P0_ani = paw.wfs.pt.dict(bd.mynbands)
+            spos_ac = atoms.get_scaled_positions() % 1.0
+            for a, P0_ni in P0_ani.items():
+                # Expanding the exponential exp(ikr)=exp(ikR)*exp(ik(r-R))
+                # and neglecting the changed P_ani integral exp(ik(r-R))~1
+                P0_ni[:] = np.exp(2j*np.pi*np.sum(spos_ac[a]*(k_c-k0_c), axis=0)) * kpt0.P_ani[a]
+
+            ## NB: No exp(ikr) approximate here, but has a parallelization bug
+            #kpt0_rank, myu0 = kd.who_has_and_where_is(kpt0.s, kpt0.k)
+            #if kd.comm.rank == kpt0_rank:
+            #    paw.wfs.pt.integrate(psit0_nG, P0_ani, kpt0.q)
+            #for a, P0_ni in P0_ani.items():
+            #    kd.comm.broadcast(P0_ni, kpt0_rank)
+        else:
+            psit0_nG = kpt0.psit_nG
+            P0_ani = kpt0.P_ani
+
+        """
+        if paw.wfs.world.size == 1:
+            for n, psit_G in enumerate(kpt.psit_nG):
+                for n0, psit0_G in enumerate(psit0_nG):
+                    X_nn[n,n0] = np.vdot(psit_G, psit0_G)*gd.dv
+            for a in range(len(paw.get_atoms())):
+                P_ni, P0_ni, O_ii = kpt.P_ani[a], P0_ani[a], paw.wfs.setups[a].O_ii
+                for n, P_i in enumerate(P_ni):
+                    for n0, P0_i in enumerate(P0_ni):
+                        X_nn[n,n0] += np.vdot(P_i, np.dot(O_ii, P0_i))
+        """
+        X = lambda psit_nG, g=SliceGen(psit0_nG, overlap): g.next()
+        dX = lambda a, P_ni: np.dot(P0_ani[a], paw.wfs.setups[a].O_ii)
+        X_nn[:] = overlap.calculate_matrix_elements(kpt.psit_nG, kpt.P_ani, X, dX).T
+
+        """
+        if bd.comm.rank == 0:
+            gd.comm.broadcast(X_nn, 0)
+        bd.comm.broadcast(X_nn, 0)
+        """
+
+    return kpt0_s, X_unn
+
+# -------------------------------------------------------------------
+
 
 def dscf_find_bands(paw,bands,data=None):
     """Entirely serial, but works regardless of parallelization. DOES NOT WORK WITH DOMAIN-DECOMPOSITION IN GPAW v0.5.2725 """ #TODO!
@@ -107,7 +212,7 @@ def dscf_find_bands(paw,bands,data=None):
         for n in range(len(bands)):
             # Find the band for this k-point which corresponds to bands[n] of the Gamma point
             wf = wf_knG[k][n]
-            p = npy.argmax([npy.abs(npy.dot(wf,gamma_nG[m])) for m in range(len(bands))])
+            p = np.argmax([np.abs(np.dot(wf,gamma_nG[m])) for m in range(len(bands))])
             band_n.append(bands[p])
             data_n.append(datas[p])
 
@@ -133,15 +238,16 @@ def dscf_find_bands(paw,bands,data=None):
             if kpt.k == k0:
                 wf = gamma_siG[kpt.s][i]
             else:
+                #wf = paw.get_pseudo_wave_function(n, kpt.k, kpt.s, pad=False).ravel()
                 wf = paw.get_pseudo_wave_function(band=n,kpt=kpt.k,spin=kpt.s).ravel()
 
-            overlaps = [npy.abs(npy.dot(wf,gamma_siG[kpt.s][i])) for i in range(len(bands))]
+            overlaps = [np.abs(np.dot(wf,gamma_siG[kpt.s][i])) for i in range(len(bands))]
             if debug: mpi_debug('u=%d, i=%d, band=%d, overlaps=%s' % (u,i,n,str(overlaps)))
-            p = npy.argmax(overlaps)
+            p = np.argmax(overlaps)
             band_i.append(bands[p])
             data_i.append(data[p])
 
-        assert len(npy.unique(band_i))==len(npy.sort(band_i)), 'Non-unique band range' #TODO!
+        assert len(np.unique(band_i))==len(np.sort(band_i)), 'Non-unique band range' #TODO!
 
         band_ui.append(band_i)
         data_ui.append(data_i)
@@ -162,7 +268,7 @@ def dscf_linear_combination(paw, molecule, bands, coefficients):
     P_aui = {}
     for m,a in enumerate(molecule):
         if debug: mpi_debug('a=%d, paw.wfs.nibzkpts=%d, len(paw.wfs.kpt_u)=%d, paw.wfs.setups[%d].ni=%d' % (a,paw.wfs.nibzkpts,len(paw.wfs.kpt_u),a,paw.wfs.setups[a].ni))
-        P_aui[m] = npy.zeros((len(paw.wfs.kpt_u),paw.wfs.setups[a].ni),dtype=complex)
+        P_aui[m] = np.zeros((len(paw.wfs.kpt_u),paw.wfs.setups[a].ni),dtype=complex)
 
     for u,kpt in enumerate(paw.wfs.kpt_u):
 
@@ -177,14 +283,14 @@ def dscf_linear_combination(paw, molecule, bands, coefficients):
                 for n in bands:
                     print 'mpi.rank=%d, paw.nuclei[%d].P_uni[:,%d,:].shape=' % (mpi.rank,a,n), paw.nuclei[a].P_uni[:,n,:].shape
 
-                print 'mpi.rank=%d, test.shape=' % mpi.rank, npy.sum([c*paw.nuclei[a].P_uni[:,n,:] for (c,n) in zip(coefficients,bands)],axis=0).shape
+                print 'mpi.rank=%d, test.shape=' % mpi.rank, np.sum([c*paw.nuclei[a].P_uni[:,n,:] for (c,n) in zip(coefficients,bands)],axis=0).shape
             """
 
-            #P_aui[m] += npy.sum([c*paw.nuclei[a].P_uni[:,n,:] for (c,n) in zip(coefficients,bands)],axis=0)
+            #P_aui[m] += np.sum([c*paw.nuclei[a].P_uni[:,n,:] for (c,n) in zip(coefficients,bands)],axis=0)
 
             #if paw.nuclei[a].in_this_domain: #TODO what happened to this one in guc?
             if True:
-                P_aui[m][u,:] += npy.sum([c*kpt.P_ani[a][n,:] for (c,n) in zip(coeff_i,band_i)],axis=0)
+                P_aui[m][u,:] += np.sum([c*kpt.P_ani[a][n,:] for (c,n) in zip(coeff_i,band_i)],axis=0)
 
                 if debug: kpt.P_ani[a][:,:].dump('dscf_tool_P_ani_a%01d_k%01ds%01d_%s%02d.pickle' % (a,kpt.k,kpt.s,dumpkey,mpi.rank))
 
@@ -206,8 +312,8 @@ def dscf_linear_combination(paw, molecule, bands, coefficients):
 
     if debug: mpi_debug('P_aui.shape='+str(P_aui.shape))
 
-    #wf_u = [npy.sum([c*paw.wfs.kpt_u[u].psit_nG[n] for (c,n) in zip(coefficients,bands)],axis=0) for u in range(0,len(paw.wfs.kpt_u))]
-    #wf_u = npy.zeros((paw.wfs.nibzkpts,paw.gd.N_c[0]-1,paw.gd.N_c[1]-1,paw.gd.N_c[2]-1))#,dtype=complex)
+    #wf_u = [np.sum([c*paw.wfs.kpt_u[u].psit_nG[n] for (c,n) in zip(coefficients,bands)],axis=0) for u in range(0,len(paw.wfs.kpt_u))]
+    #wf_u = np.zeros((paw.wfs.nibzkpts,paw.gd.N_c[0]-1,paw.gd.N_c[1]-1,paw.gd.N_c[2]-1))#,dtype=complex)
     wf_u = paw.gd.zeros(len(paw.wfs.kpt_u),dtype=complex)
 
     gd_slice = paw.gd.get_slice()
@@ -215,17 +321,17 @@ def dscf_linear_combination(paw, molecule, bands, coefficients):
     if debug: mpi_debug('gd_slice='+str(gd_slice))
 
     for u,kpt in enumerate(paw.wfs.kpt_u):
-        if debug: mpi_debug('u=%d, k=%d, s=%d, paw.wfs.kpt_comm.rank=%d, paw.wfs.kpt_comm.rank=%d, gd.shape=%s, psit.shape=%s' % (u,kpt.k,kpt.s,paw.wfs.kpt_comm.rank,paw.wfs.kpt_comm.rank,str(wf_u[0].shape),str(npy.array(kpt.psit_nG[0])[gd_slice].shape)))
+        if debug: mpi_debug('u=%d, k=%d, s=%d, paw.wfs.kpt_comm.rank=%d, paw.wfs.kpt_comm.rank=%d, gd.shape=%s, psit.shape=%s' % (u,kpt.k,kpt.s,paw.wfs.kpt_comm.rank,paw.wfs.kpt_comm.rank,str(wf_u[0].shape),str(np.array(kpt.psit_nG[0])[gd_slice].shape)))
 
-        #wf_u[u] += npy.sum([c*npy.array(kpt.psit_nG[n])[gd_slice] for (c,n) in zip(coefficients,bands)],axis=0)
+        #wf_u[u] += np.sum([c*np.array(kpt.psit_nG[n])[gd_slice] for (c,n) in zip(coefficients,bands)],axis=0)
 
         band_i = band_ui[u]
         coeff_i = coeff_ui[u]
-        wf_u[u] += npy.sum([c*npy.array(kpt.psit_nG[n])[gd_slice] for (c,n) in zip(coeff_i,band_i)],axis=0)
+        wf_u[u] += np.sum([c*np.array(kpt.psit_nG[n])[gd_slice] for (c,n) in zip(coeff_i,band_i)],axis=0)
 
     #paw.gd.comm.sum(wf_u)
 
-    if debug: mpi_debug('|wf_u|^2=%s' % str([npy.sum(npy.abs(wf.flatten())**2) for wf in wf_u]))
+    if debug: mpi_debug('|wf_u|^2=%s' % str([np.sum(np.abs(wf.flatten())**2) for wf in wf_u]))
 
     """
     if debug and mpi.rank == 0:
@@ -249,10 +355,10 @@ def dscf_decompose_occupations(ft_mn):
 
     # Assuming c[i] is positive real for some i, i.e. v[i] = 0, then
     # c[m] = f[m,i]/r[i] = r[m]*exp(1j*v[m]) , where r[i] = sqrt(f[i,i])
-    i = npy.argmax(npy.abs(ft_mn.diagonal()))
-    c_n = ft_mn[:,i]/npy.abs(ft_mn[i,i])**0.5
+    i = np.argmax(np.abs(ft_mn.diagonal()))
+    c_n = ft_mn[:,i]/np.abs(ft_mn[i,i])**0.5
 
-    if (npy.abs(ft_mn-npy.outer(c_n,c_n.conj()))>1e-12).any():
+    if (np.abs(ft_mn-np.outer(c_n,c_n.conj()))>1e-12).any():
         raise RuntimeError('Hermitian matrix cannot be decomposed')
 
     # Note that c_n is only defined up to an arbitrary phase factor
@@ -260,21 +366,60 @@ def dscf_decompose_occupations(ft_mn):
 
 # -------------------------------------------------------------------
 
+from gpaw.utilities import unpack
+from gpaw.utilities.tools import tri2full
+
+def dscf_matrix_elements(paw, kpt, A, dA):
+    operator = paw.wfs.overlap.operator
+    A_nn = operator.calculate_matrix_elements(kpt.psit_nG, kpt.P_ani, \
+        A, dA).T.copy() # transpose to get A_nn[m,n] = <m|A|n>
+    tri2full(A_nn, 'U') # fill in from upper to lower...
+
+    # Calculate <o|A|o'> = sum_nn' <o|n><n|A|n'><n'|o'> where c_on = <n|o>
+    A_oo = np.dot(kpt.c_on.conj(), np.dot(A_nn, kpt.c_on.T))
+    return A_oo, A_nn
+
+def dscf_overlap_elements(paw, kpt):
+    # Copy/paste from gpaw/overlap.py lines 83-86 rev. 4808
+    S = lambda x: x
+    dS_aii = dict([(a, paw.wfs.setups[a].O_ii) for a in kpt.P_ani.keys()])
+    return dscf_matrix_elements(paw, kpt, S, dS_aii)
+
+def dscf_hamiltonian_elements(paw, kpt):
+    # Copy/paste from gpaw/eigensolvers/eigensolver.py lines 155-170 rev. 4808
+    operator = paw.wfs.overlap.operator
+    assert operator.nblocks == 1
+    Htpsit_xG = operator.suggest_temporary_buffer(kpt.psit_nG.dtype)
+
+    def H(psit_xG):
+        paw.wfs.kin.apply(psit_xG, Htpsit_xG, kpt.phase_cd)
+        paw.hamiltonian.apply_local_potential(psit_xG, Htpsit_xG, kpt.s)
+        paw.hamiltonian.xc.add_non_local_terms(psit_xG, Htpsit_xG, kpt.s)
+        return Htpsit_xG
+    dH_aii = dict([(a, unpack(dH_sp[kpt.s])) for a, dH_sp \
+        in paw.hamiltonian.dH_asp.items()])
+
+    H_oo, H_nn = dscf_matrix_elements(paw, kpt, H, dH_aii)
+    eps_o = H_oo.real.diagonal()
+    return eps_o, H_oo, H_nn
+
+# -------------------------------------------------------------------
+
 """
 def dscf_reconstruct_orbital(paw, c_un, mol):
 
     nkpts = len(paw.wfs.kpt_u)
-    f_u = npy.zeros(nkpts,dtype=float)
+    f_u = np.zeros(nkpts,dtype=float)
     wf_u = paw.gd.zeros(nkpts,dtype=complex)
 
     P_aui = {}
     for a in mol:
-        P_aui[a] = npy.zeros((nkpts,paw.wfs.setups[a].ni) dtype=complex)
+        P_aui[a] = np.zeros((nkpts,paw.wfs.setups[a].ni) dtype=complex)
 
     for c_n,kpt in zip(c_un, wfs.kpt_u):
-        f = npy.dot(c_n, c_n.conj())
+        f = np.dot(c_n, c_n.conj())
 
-        wf = npy.zeros_like(kpt.psit_nG, dtype=complex)
+        wf = np.zeros_like(kpt.psit_nG, dtype=complex)
 
         for n,psit_G in enumerate(kpt.psit_nG):
             #wf += c/f**0.5*psit_G
@@ -285,41 +430,44 @@ def dscf_reconstruct_orbital(paw, c_un, mol):
         for a in mol:
             #for n,P_i in enumerate(kpt.P_ani[a]):
             #    P_ani[a][n,:] += c_n[n]/f**0.5*P_i
-            P_aui[a][u,:] += npy.sum(c_n[:,npy.newaxis] / f**0.5 * kpt.P_ani[a], axis=0)
+            P_aui[a][u,:] += np.sum(c_n[:,np.newaxis] / f**0.5 * kpt.P_ani[a], axis=0)
 
     return (f_u,wf_u,P_aui)
 """
 
-
 def dscf_reconstruct_orbitals_k_point(paw, norbitals, mol, kpt):
 
-    f_o = npy.zeros(norbitals, dtype=float)
-    eps_o = npy.zeros(norbitals, dtype=float)
+    assert paw.wfs.bd.comm.size == 1, 'Band parallelization not implemented.'
+
+    f_o = np.zeros(norbitals, dtype=float)
+    eps_o = np.zeros(norbitals, dtype=float)
     wf_oG = paw.gd.zeros(norbitals, dtype=complex)
 
     P_aoi = {}
     for a in mol:
-        P_aoi[a] = npy.zeros((norbitals,paw.wfs.setups[a].ni), dtype=complex)
+        P_aoi[a] = np.zeros((norbitals,paw.wfs.setups[a].ni), dtype=complex)
 
     for o, c_n in enumerate(kpt.c_on):
-        f = npy.dot(c_n.conj(), c_n)
+        f = np.dot(c_n.conj(), c_n)
 
-        for n, psit_G in enumerate(npy.asarray(kpt.psit_nG)):
+        for n, psit_G in enumerate(np.asarray(kpt.psit_nG)):
             wf_oG[o] += c_n[n] / f**0.5 * psit_G
             #axpy(c_n[n] / f**0.5, psit_G, wf_oG[o,:])
 
         for a, P_oi in P_aoi.items():
             #for n,P_i in enumerate(kpt.P_ani[a]):
             #    P_aoi[a][o,:] += c_n[n]/f**0.5*P_i
-            P_oi[o] += npy.sum(c_n[:,npy.newaxis] / f**0.5 * kpt.P_ani[a], axis=0)
+            P_oi[o] += np.sum(c_n[:,np.newaxis] / f**0.5 * kpt.P_ani[a], axis=0)
 
         f_o[o] = f
-        eps_o[o] = npy.dot(npy.abs(c_n)**2 / f, kpt.eps_n)
+        eps_o[o] = np.dot(np.abs(c_n)**2 / f, kpt.eps_n) # XXX use dscf_hamiltonian_elements for accuracy
 
     return (f_o, eps_o, wf_oG, P_aoi,)
 
 
 def dscf_collapse_orbitals(paw, norbitals, nmaxbands, mol):
+
+    assert paw.wfs.bd.comm.size == 1, 'Band parallelization not implemented.'
 
     for kpt in paw.wfs.kpt_u:
         (f_o, eps_o, wf_oG, P_aoi,) = dscf_reconstruct_orbitals_k_point(paw, norbitals, mol, kpt)
@@ -327,18 +475,20 @@ def dscf_collapse_orbitals(paw, norbitals, nmaxbands, mol):
         assert abs(f_o-1)<1e-9
         f_o = kpt.ne_o
 
-        #unocc_bands = npy.argwhere(abs(kpt.f_n)<1e-12).ravel()
-        neworder = npy.argsort(npy.hstack((kpt.eps_n, eps_o)))[:nmaxbands]
+        #unocc_bands = np.argwhere(abs(kpt.f_n)<1e-12).ravel()
+        neworder = np.argsort(np.hstack((kpt.eps_n, eps_o)))[:nmaxbands]
 
-        kpt.f_n = npy.hstack((kpt.f_n, f_o))[neworder]
-        kpt.eps_n = npy.hstack((kpt.eps_n, eps_o))[neworder]
+        assert np.all(eps_o < kpt.eps_n[nmaxbands]), 'Too few bands...'
+
+        kpt.f_n = np.hstack((kpt.f_n, f_o))[neworder]
+        kpt.eps_n = np.hstack((kpt.eps_n, eps_o))[neworder]
 
         for a, P_ni in kpt.P_ani.items():
             assert a in mol #XXX
-            kpt.P_ani[a] = npy.vstack((P_ni, P_aoi[a]))[neworder,:]
+            kpt.P_ani[a] = np.vstack((P_ni, P_aoi[a]))[neworder,:]
 
         #shape = (nmaxbands,) + psit_nG_old.shape[1:]
-        #kpt.psit_nG = npy.empty(shape, dtype=paw.wfs.dtype)
+        #kpt.psit_nG = np.empty(shape, dtype=paw.wfs.dtype)
         psit_nG_old = kpt.psit_nG
         kpt.psit_nG = paw.wfs.gd.empty(nmaxbands, dtype=paw.wfs.dtype)
 
@@ -354,12 +504,12 @@ def dscf_collapse_orbitals(paw, norbitals, nmaxbands, mol):
     del paw.occupations.norbitals
 
     par = paw.input_parameters
-
     if 'convergence' in par:
-        conv = par['convergence']
-        if 'bands' in conv:
-            conv['bands'] = min(nmaxbands,conv['bands'])
+        cc = par['convergence']
+        if 'bands' in cc:
+            cc['bands'] = min(nmaxbands, cc['bands'])
 
-    paw.wfs.mynbands = nmaxbands
-    paw.wfs.nbands = nmaxbands
+    paw.wfs.mynbands = paw.wfs.bd.mynbands = nmaxbands
+    paw.wfs.nbands = paw.wfs.bd.nbands = nmaxbands
+
 
