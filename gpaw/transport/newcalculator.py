@@ -1594,7 +1594,8 @@ class Transport(GPAW):
         vHt_g = self.extended_calc.finegd.collect(ham.vHt_g, True)    
         vHt_g0 = self.finegd.collect(self.hamiltonian.vHt_g, True)
             
-        ham_diff = np.sum(vHt_g[:,:,0]) - np.sum(vHt_g0[:,:,0])
+        ham_diff = (np.sum(vHt_g[:,:,0]) - np.sum(vHt_g0[:,:,0]) +
+                    np.sum(vHt_g[:,:,-1]) - np.sum(vHt_g0[:,:,-1])) / 2
         ham_diff /= np.product(vHt_g.shape[:2])
 
        
