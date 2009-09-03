@@ -439,7 +439,12 @@ class Transport(GPAW):
         h_spkmm = substract_pk(self.d, self.my_npk, ntk, kpts, h_skmm, 'h')
         s_pkmm = substract_pk(self.d, self.my_npk, ntk, kpts, s_kmm)
         d_spkmm = substract_pk(self.d, self.my_npk, ntk, kpts, d_skmm, 'h')
-        
+        h00 = self.lead_hsd[0].H[0][0].recover()[0,0]
+        h01 = h_spkmm[0,0,0,0]
+        s00 = self.lead_hsd[0].S[0].recover()[0,0]
+        e_shift = (h00 - h01) / s00
+        h_spkmm += e_shift * s_pkmm
+        print 'e_shift', e_shift       
         if self.wfs.dtype == float:
             h_spkmm = np.real(h_spkmm).copy()
             s_pkmm = np.real(s_pkmm).copy()
