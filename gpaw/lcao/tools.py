@@ -6,13 +6,14 @@ import numpy as np
 from gpaw.mpi import world, rank, MASTER
 from gpaw.basis_data import Basis
 from gpaw.setup import types2atomtypes
+from ase.calculators import SinglePointCalculator
 
 
 def get_bf_centers(atoms, basis=None):
     calc = atoms.get_calculator()
-    if calc is None:
-        basis_a = types2atomtypes(symbols, basis, 'dzp')
+    if calc is None or isinstance(calc, SinglePointCalculator):
         symbols = atoms.get_chemical_symbols()
+        basis_a = types2atomtypes(symbols, basis, 'dzp')
         nao_a = [Basis(symbol, type).nao
                  for symbol, type in zip(symbols, basis_a)]
     else:
