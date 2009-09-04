@@ -203,6 +203,8 @@ class DummyMixer(BaseMixer):
     def mix(self, nt_G):
         pass
 
+    def estimate_memory(self, mem, gd):
+        pass
 
 class Mixer(BaseMixer):
     """Mix spin up and down densities separately"""
