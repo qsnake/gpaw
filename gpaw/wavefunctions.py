@@ -1,9 +1,9 @@
 import numpy as np
 
 from gpaw.lfc import BasisFunctions
-from gpaw.utilities.blas import axpy
+from gpaw.utilities.blas import axpy, gemm
 from gpaw.utilities import pack, unpack2
-from gpaw.utilities.tools import tri2full
+from gpaw.utilities.tools import tri2full, get_matrix_index
 from gpaw.kpoint import KPoint
 from gpaw.transformers import Transformer
 from gpaw.operators import Gradient
@@ -11,7 +11,6 @@ from gpaw.utilities.timing import nulltimer
 from gpaw.band_descriptor import BandDescriptor
 import gpaw.mpi as mpi
 from gpaw import extra_parameters, debug
-
 
 class EmptyWaveFunctions:
     def __nonzero__(self):
@@ -135,9 +134,17 @@ class WaveFunctions(EmptyWaveFunctions):
     
     def calculate_atomic_density_matrices_k_point(self, D_sii, kpt, a, f_n):
         if kpt.rho_MM is not None:
-            P_Mi = kpt.P_aMi[a] 
-            D_sii[kpt.s] += np.dot(np.dot(P_Mi.T.conj(), kpt.rho_MM),
-                                   P_Mi).real
+            #P_Mi = kpt.P_aMi[a]
+            P_Mi = kpt.P_aMi_sparse[a]
+            ind = get_matrix_index(kpt.P_aMi_index[a])
+            #D_sii[kpt.s] += np.dot(np.dot(P_Mi.T.conj(), kpt.rho_MM),
+            #                       P_Mi).real
+            tmp = np.zeros_like(P_Mi)
+            gemm(1.0, P_Mi, kpt.rho_MM[ind.T, ind], 0.0, tmp)
+            gemm(1.0, tmp, P_Mi.T.conj().copy(), 1.0, D_sii[kpt.s])
+            #D_sii[kpt.s] += dot(dot(P_Mi.T.conj().copy(),
+            #                        kpt.rho_MM[ind.T, ind]), P_Mi).real            
+            
         else:
             P_ni = kpt.P_ani[a]
             D_sii[kpt.s] += np.dot(P_ni.T.conj() * f_n, P_ni).real
@@ -476,6 +483,8 @@ class LCAOWaveFunctions(WaveFunctions):
         self.tci.set_positions(spos_ac)
         self.tci.calculate(spos_ac, self.S_qMM, self.T_qMM, self.P_aqMi)
 
+        self.sparse_initialize()
+         
         if debug:
             from numpy.linalg import eigvalsh
             for S_MM in self.S_qMM:
@@ -501,6 +510,22 @@ class LCAOWaveFunctions(WaveFunctions):
             density.calculate_normalized_charges_and_mix()
         hamiltonian.update(density)
 
+    def sparse_initialize(self):
+        tol = 1e-12
+        for kpt in self.kpt_u:
+            kpt.P_aMi_index = {}
+            kpt.P_aMi_sparse = {}
+            for a in self.basis_functions.my_atom_indices:            
+                P_aMi = kpt.P_aMi[a]
+                P_aMi_sum = np.sum(abs(P_aMi), axis=1)
+                kpt.P_aMi_index[a] = []
+                for i, tmp in enumerate(P_aMi_sum):
+                    if tmp > tol:
+                        kpt.P_aMi_index[a].append(i)
+                kpt.P_aMi_index[a] = np.array(kpt.P_aMi_index[a])
+                ind = kpt.P_aMi_index[a]
+                kpt.P_aMi_sparse[a] = kpt.P_aMi[a][ind].copy()
+           
     def calculate_density_matrix(self, f_n, C_nM, rho_MM):
         # ATLAS can't handle uninitialized output array:
         rho_MM.fill(42)
@@ -1100,3 +1125,5 @@ class GridWaveFunctions(WaveFunctions):
                                          self.nbands)
         self.pt.estimate_memory(mem.subnode('Projectors'))
         self.overlap.estimate_memory(mem.subnode('Overlap op'), self.dtype)
+
+
