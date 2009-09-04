@@ -210,7 +210,7 @@ class GPAWRunner(Runner):
     """GPAW implementation"""
     def set_parameters(self, mode='fd', basis=None, kpts=None,
                        h=None, xc='LDA', stencils=None, width=0.1,
-                       nbands=None, vacuum=3.0):
+                       nbands=None, vacuum=3.0, stdout=False):
         if basis is None:
             basis = {}
         if stencils is None:
@@ -225,7 +225,8 @@ class GPAWRunner(Runner):
         self.width = width
         self.nbands = nbands
         self.vacuum = vacuum
-    
+        self.stdout = stdout
+        
     def set_calculator(self, config, filename):
         if config.pbc.any():
             # Bulk calculation:
@@ -246,6 +247,9 @@ class GPAWRunner(Runner):
                           txt=filename[:-4] + 'txt')
             config.center(vacuum=self.vacuum)
 
+        if self.stdout:
+            kwargs['txt'] = '-'
+            
         calc = GPAW(mode=self.mode,
                     basis=self.basis,
                     stencils=self.stencils,

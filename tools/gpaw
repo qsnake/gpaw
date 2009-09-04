@@ -85,6 +85,9 @@ parser.add_option('-f', '--xc-functional', default='LDA',
                   help='Exchange-Correlation functional (default value LDA).')
 parser.add_option('-N', '--number-of-bands', type='int',
                   help='Number of bands / states.')
+parser.add_option('--stdout',
+                  action='store_true',
+                  help="Write GPAW's output standard output.")
 
 opt, args = parser.parse_args()
 
@@ -181,7 +184,8 @@ def run():
         runner.set_parameters(mode=opt.mode, basis=opt.basis, kpts=kpts,
                               h=opt.grid_spacing, xc=opt.xc_functional,
                               stencils=stencils, width=opt.smearing_width,
-                              nbands=opt.number_of_bands, vacuum=opt.vacuum)
+                              nbands=opt.number_of_bands, vacuum=opt.vacuum,
+                              stdout=opt.stdout)
 
     runner.run()
 
