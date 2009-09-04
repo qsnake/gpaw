@@ -1472,8 +1472,11 @@ class Transport(GPAW):
         if self.use_linear_vt_array:
             self.hamiltonian.vt_sG += self.get_linear_potential()
         
+        self.timer.start('record')
         self.analysor.save_ele_step()
         self.analysor.save_data_to_file('ele')
+        self.timer.stop('record')
+        self.record_time_cost = self.timer.gettime('record')
         
         self.timer.start('project hamiltonian')
         h_spkmm, s_pkmm = self.get_hs(self.extended_calc)
