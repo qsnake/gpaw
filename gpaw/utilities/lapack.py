@@ -128,7 +128,7 @@ def inverse_symmetric(a):
     n = len(a)
     assert a.shape == (n, n)
     info = _gpaw.inverse_symmetric(a)
-    tri2full(a)
+    tri2full(a, 'L', 'symm')
     return info 
 
 def right_eigenvectors(a, w, v):
