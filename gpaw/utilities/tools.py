@@ -134,6 +134,15 @@ def normalize(U):
     for col in U.T:
         col /= np.linalg.norm(col)
 
+def get_matrix_index(ind1, ind2=None):
+    if ind2 == None:
+        dim1 = len(ind1)
+        return np.resize(ind1, (dim1, dim1))
+    else:
+        dim1 = len(ind1)
+        dim2 = len(ind2)
+    return np.resize(ind1, (dim2, dim1)).T, np.resize(ind2, (dim1, dim2))
+
 def gram_schmidt(U):
     """Orthonormalize columns of U according to the Gram-Schmidt procedure."""
     for i, col in enumerate(U.T):
