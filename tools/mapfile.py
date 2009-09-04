@@ -5,39 +5,48 @@
 # bands along Z-axis from bottom (0,0,0) to top (0,0,P_z). This
 # should also work for spin polarized calculation for a judicous
 # choice of --state-parallelization=B.
-
 from sys import argv
-import numpy as np
-nodes = int(argv[1])
+mode = argv[1]
+nodes = int(argv[2])
 ppn = 4
-shape = [int(x) for x in argv[2].split(',')]
-mode = 'normal'
-# print "Shape =", shape
-if len(argv) == 4:
-    mode = argv[3]
-layout = {   64: (4,  4,  4 ),
-            128: (4,  4,  8 ),
-            256: (8,  4,  8 ), 
-            512: (8,  8,  8 ),
-           1024: (8,  8,  16),
-           2048: (8,  8,  32),
-           4096: (8,  16, 32),
-           8192: (8,  32, 32),
-          16384: (16, 32, 32),
-          24576: (24, 32, 32),
-          32768: (32, 32, 32),
-          40960: (40, 32, 32)}[nodes]
-domains = shape[0] * shape[1] * shape[2]
+assert mode == 'domain' or 'band'
+if mode == 'domain':
+    shape = [int(d) for d in argv[3].split(',')]
+    assert len(shape) == 4
+
+if mode == 'band':
+    strides = [str(d) for d in argv[3].split(',')]
+    assert len(strides) == 4
+    for i in range(4):
+        print strides
+        assert strides[i] in ['X','x','Y','y','Z','z','T','t']
+        stride2dim = { 'X':0, 'x': 0,
+                       'Y':1, 'y': 1,
+                       'Z':2, 'z': 2,
+                       'T':3, 't': 3}
+        
+layout = {   64: (4,  4,  4, ppn ),
+            128: (4,  4,  8, ppn ),
+            256: (8,  4,  8, ppn ), 
+            512: (8,  8,  8, ppn ),
+           1024: (8,  8,  16, ppn),
+           2048: (8,  8,  32, ppn),
+           4096: (8,  16, 32, ppn),
+           8192: (8,  32, 32, ppn),
+          16384: (16, 32, 32, ppn),
+          24576: (24, 32, 32, ppn),
+          32768: (32, 32, 32, ppn),
+          40960: (40, 32, 32, ppn)}[nodes]
 cores = nodes * ppn
-blocks = cores // domains
-# print "State parallelization = ", blocks
-assert blocks * domains == nodes * ppn
-A = layout[0] // shape[0]
-B = layout[1] // shape[1]
-C = layout[2] // shape[2] * ppn # torus dimension folds into z-axes
-check = np.zeros(layout + (4,), int)
-rank = 0
-if mode == 'normal':
+if mode == 'domain':
+    domains = shape[0] * shape[1] * shape[2]
+    blocks = cores // domains
+    assert blocks * domains == nodes * ppn
+    assert blocks == shape[3]
+    A = layout[0] // shape[0]
+    B = layout[1] // shape[1]
+    C = layout[2] // shape[2] * ppn # torus dimension folds into z-axes
+    rank = 0
     for n in range(blocks):
         x0 = (n // (B*C)) * shape[0]
         y0 = ((n // C) % B) * shape[1]
@@ -55,29 +64,6 @@ if mode == 'normal':
                         reflections = (-1)**(cores // A - 1)
                         if reflections == -1:
                             z = layout[2] - 1 - z
-                    check[x, y, z, t] = 1
-                    # For dual mode on BG/P, we *may* need
-                    # to use core 2 (not core 1) as the
-                    # 2nd core
-                    # if (ppn == 2) and (t == 1):
-                    #     t = 2
-                    print x, y, z, t
-                    rank += 1
-else:
-    assert mode == 'shared'
-    for n in range(blocks):
-        t = n % ppn
-        m = n // ppn
-        x0 = (m % A) * shape[0]
-        y0 = ((m // A) % B) * shape[1]
-        z0 = (m // (A * B)) * shape[2]
-        for a in range(shape[0]):
-            for b in range(shape[1]):
-                for c in range(shape[2]):
-                    x = x0 + a
-                    y = y0 + b
-                    z = z0 + c
-                    check[x, y, z, t] = 1
                     # For dual mode on BG/P, we *may* need
                     # to use core 2 (not core 1) as the
                     # 2nd core
@@ -86,4 +72,17 @@ else:
                     print x, y, z, t
                     rank += 1
 
-assert check.sum() == nodes * ppn
+if mode == 'band':
+    var0 = strides[0]
+    var1 = strides[1]
+    var2 = strides[2]
+    var3 = strides[3]
+    stride0 = layout[stride2dim[strides[0]]]
+    stride1 = layout[stride2dim[strides[1]]]
+    stride2 = layout[stride2dim[strides[2]]]
+    stride3 = layout[stride2dim[strides[3]]]                 
+    for var3 in range(stride3): # bands
+        for var0 in range(stride0): # x
+            for var1 in range(stride1): # y 
+                for var2 in range(stride2): # z domains are the fastest
+                    print var0, var1, var2, var3
