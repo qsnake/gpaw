@@ -176,8 +176,8 @@ def symmetrize(matrix):
     np.multiply(.5, matrix, matrix)
     return matrix
 
-def tri2full(H_nn, UL='L'):
-    """Fill in values of hermitian matrix.
+def tri2full(H_nn, UL='L', symm='hermit'):
+    """Fill in values of hermitian or symmetric matrix.
 
     Fill values in lower or upper triangle of H_nn based on the opposite
     triangle, such that the resulting matrix is symmetric/hermitian.
@@ -195,7 +195,10 @@ def tri2full(H_nn, UL='L'):
         H_nn = H_nn.T
 
     for n in range(N - 1):
-        H_nn[n, n + 1:] = H_nn[n + 1:, n].conj()
+        if symm == 'hermit'
+            H_nn[n, n + 1:] = H_nn[n + 1:, n].conj()
+        else:
+            H_nn[n, n + 1:] = H_nn[n + 1:, n]
 
 def apply_subspace_mask(H_nn, f_n):
     """Uncouple occupied and unoccupied subspaces.
