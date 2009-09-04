@@ -195,7 +195,7 @@ def tri2full(H_nn, UL='L', symm='hermit'):
         H_nn = H_nn.T
 
     for n in range(N - 1):
-        if symm == 'hermit'
+        if symm == 'hermit':
             H_nn[n, n + 1:] = H_nn[n + 1:, n].conj()
         else:
             H_nn[n, n + 1:] = H_nn[n + 1:, n]
