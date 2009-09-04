@@ -9,8 +9,10 @@ mode_choices = ['molecule', 'slab']
 xc_choices = ['PW91', 'LDA', 'PBE']
 
 parser = OptionParser(usage='%prog [options] package.\nExample of call:\n'+
-                      'Calculate adsorption on Ru001 system'
+                      'Calculate adsorption on Ru001 system:'
                       'python %prog --code=dacapo\n'+
+                      'python %prog --code=dacapo --adsorbate=N\n'+
+                      'python %prog --code=dacapo --adsorbate=O\n'+
                       'python %prog --code=dacapo --mode=slab\n'+
                       'python %prog --code=dacapo --mode=slab --adsorbate=N\n'+
                       'python %prog --code=dacapo --mode=slab --adsorbate=O\n',
@@ -117,9 +119,9 @@ def initialize_parameters(code, width, h):
         #parameters['autokpt'] = True
         #parameters['nosym'] = True
         #parameters['radkpt'] = 10.0 # default 40.0
-        parameters['gmaxvr'] = 16 # default 12
-        parameters['rgkmax'] = 7.5 # default 7
-        #parameters['gmaxvr'] = 18 # default 12
+        parameters['gmaxvr'] = 16 # default 12 #
+        parameters['rgkmax'] = 7.0 # default 7 #
+        #parameters['gmaxvr'] = 19 # default 12
         #parameters['rgkmax'] = 9.5 # default 7
         parameters['beta0'] = 0.02 # default 0.05
         parameters['betamax'] = 0.05 # default 0.5
@@ -129,12 +131,18 @@ def initialize_parameters(code, width, h):
         #parameters['rmtapm'] = '0.25 0.90' # default (0.25,0.95)
     return parameters
 
-def run_molecule(geometry, xc, code):
+def run_molecule(adsorbate, geometry, xc, code):
 
     parameters = initialize_parameters(code, 0.01, h)
     parameters['xc'] = xc
 
-    for name, nbands in [('N2', 8), ('O2', 8), ('NO', 8)]:
+    molecules = {
+        'None': ('NO', 8),
+        'N': ('N2', 8),
+        'O': ('O2', 8),
+        }
+
+    for name, nbands in [molecules[adsorbate]]:
         if code != 'elk':
             parameters['nbands'] = nbands
         if geometry == 'fix':
@@ -262,8 +270,8 @@ if __name__ == '__main__':
     assert opt.geometry in geometry_choices, opt.geometry+' not in '+str(geometry_choices)
     assert opt.mode in mode_choices, opt.mode+' not in '+str(mode_choices)
     assert opt.xc in xc_choices, opt.xc+' not in '+str(xc_choices)
-    if opt.mode == 'molecule':
-        assert opt.adsorbate == 'None', 'adsorbate in molecule: not implemented yet'
+    ##if opt.mode == 'molecule':
+    ##    assert opt.adsorbate == 'None', 'adsorbate in molecule: not implemented yet'
 
     if opt.code == 'dacapo':
         try:
@@ -272,6 +280,6 @@ if __name__ == '__main__':
             raise SystemExit('ASE (2) is not installed!')
 
     if opt.mode == 'molecule':
-        run_molecule(opt.geometry, opt.xc, opt.code)
+        run_molecule(str(opt.adsorbate), opt.geometry, opt.xc, opt.code)
     elif opt.mode == 'slab':
         run_slab(str(opt.adsorbate), opt.geometry, opt.xc, opt.code)
