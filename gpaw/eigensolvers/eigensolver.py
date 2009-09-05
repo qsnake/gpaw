@@ -33,7 +33,9 @@ class Eigensolver:
         self.nbands = wfs.nbands
         self.mynbands = wfs.mynbands
 
-        if self.mynbands != self.nbands:
+        self.operator = wfs.overlap.operator
+
+        if self.mynbands != self.nbands or self.operator.nblocks != 1:
             self.keep_htpsit = False
 
         self.eps_n = np.empty(self.nbands)
@@ -51,8 +53,6 @@ class Eigensolver:
         for kpt in wfs.kpt_u:
             if kpt.eps_n is None:
                 kpt.eps_n = np.empty(self.mynbands)
-
-        self.operator = wfs.overlap.operator
         
         self.initialized = True
 
