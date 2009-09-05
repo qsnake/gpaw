@@ -3,6 +3,10 @@
 #include <numpy/arrayobject.h>
 #include "extensions.h"
 
+#ifdef GPAW_AIX
+#  define dgels_ dgels
+#endif
+
 // Predefine dgels function of lapack
 int dgels_(char* trans, int *m, int *n, int *nrhs, double* a, int *lda, double* b, int *ldb, double* work, int* lwork, int *info);
 
@@ -65,11 +69,11 @@ PyObject* mlsqr(PyObject *self, PyObject *args)
 
   double* coord_nc = DOUBLEP(coords);
   double* grid_points = DOUBLEP(N_c);
-  double* grid_start = DOUBLEP(beg_c);  
+  double* grid_start = DOUBLEP(beg_c);
   double* target_n = DOUBLEP(target);
   double* data_g = DOUBLEP(data);
 
-  
+
   // TODO: Calculate fit
   const int sizex = ceil(cutoff)+1;
   const int sizey = ceil(cutoff)+1;
@@ -97,7 +101,7 @@ PyObject* mlsqr(PyObject *self, PyObject *args)
       int cx2 = round(x);
       int cy2 = round(y);
       int cz2 = round(z);
-      
+
       // Scaled to grid
       int cx = cx2 % data->dimensions[0];
       int cy = cy2 % data->dimensions[1];
@@ -121,7 +125,7 @@ PyObject* mlsqr(PyObject *self, PyObject *args)
 	         w*=(4*d+1);
 	      }
 	      //double w = exp(-d*d);
-	 
+
 	      // Coordinates centered on x,y,z
 	      double sx = (cx2 + dx) - x;
 	      double sy = (cy2 + dy) - y;
@@ -131,26 +135,26 @@ PyObject* mlsqr(PyObject *self, PyObject *args)
 	      *i_X++ = w*sx;
 	      *i_X++ = w*sy;
 	      *i_X++ = w*sz;
-	    
+
 	      if (order == 2)
 		{
 		  *i_X++ = w*sx*sy;
 		  *i_X++ = w*sy*sz;
 		  *i_X++ = w*sz*sx;
-		  *i_X++ = w*sx*sx;		  
-		  *i_X++ = w*sy*sy;		  
-		  *i_X++ = w*sz*sz;		  
+		  *i_X++ = w*sx*sx;
+		  *i_X++ = w*sy*sy;
+		  *i_X++ = w*sz*sz;
 		}
 	      *i_b++ = w*data_g[ (cx+dx) % data->dimensions[0] * ldx +
 				 (cy+dy) % data->dimensions[1] * ldy +
 				 (cz+dz) % data->dimensions[2] * ldz ];
 	    }
-     
+
       int info = 0;
       int rhs = 1;
       int worksize = coeffs*source_points;
       int ldb = source_points;
-      dgels_("T",         
+      dgels_("T",
 	    &coeffs,              // ...times 4.
 	    &source_points,  // lhs is of size sourcepoints...
 	    &rhs,            // one rhs.
@@ -167,7 +171,7 @@ PyObject* mlsqr(PyObject *self, PyObject *args)
       // Evaluate the polynomial
       // Due to centered coordinates, it's just the constant term
       double value = b[0];
-      
+
       *target_n++ = value;
 
       //Nearest neighbour

@@ -6,7 +6,16 @@ version = '0.6'
 ase_required_version = '3.2.0'
 ase_required_svnrevision = '1062'
 
-from os import popen3, path
+from os import path
+try:
+    from subprocess import Popen, PIPE
+except ImportError:
+    from os import popen3
+else:
+    def popen3(cmd):
+        p = Popen(cmd, shell=True, close_fds=True,
+                  stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        return p.stdin, p.stdout, p.stderr
 
 def write_svnrevision(output):
     f = open(path.join('gpaw', 'svnrevision.py'),'w')
@@ -29,13 +38,7 @@ def read_svnrevision(filename):
 
 def get_svnversion(dir='gpaw'):
     # try to get the last svn revision number from svnversion
-    try: 
-        # subprocess was introduced with python 2.4
-        from subprocess import Popen, PIPE
-        cmd = Popen('svnversion -n '+dir, 
-                    shell=True, stdout=PIPE, stderr=PIPE, close_fds=True).stdout
-    except:
-        cmd = popen3('svnversion -n '+dir)[1] # assert that we are in gpaw project
+    cmd = popen3('svnversion -n '+dir)[1] # assert that we are in gpaw project
     output = cmd.read()
     cmd.close()
     svnrevisionfile = path.join(dir, 'svnrevision.py')
