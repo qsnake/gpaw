@@ -1,10 +1,15 @@
 # Mostly been tested on BG/P at Argonne National Laboratory
-# Longest partition dimensions (P_x, P_y, P_z) for this BG/P
-# is Z-axis. We fold the torus dimension into the Z-axis, making
-# it even longer. For band parallelization, we "stack" adjacent
-# bands along Z-axis from bottom (0,0,0) to top (0,0,P_z). This
-# should also work for spin polarized calculation for a judicous
-# choice of --state-parallelization=B.
+# There are two modes for generating map files "domain" and "band".
+# "band" should be used for the band parallelization in ground
+# state DFT. "domain" could be useful for band parallelization
+# in TDDFT but is mostly here for historical reasons.
+#
+# usage:
+#
+# python mapfile.py domain 128 4,4,4,8 > <BGP_MAPFILE>
+#
+# python mapfile.py band 128 X,Y,T,Z > <BGP_MAPFILE>
+#
 from sys import argv
 mode = argv[1]
 nodes = int(argv[2])
@@ -18,7 +23,6 @@ if mode == 'band':
     strides = [str(d) for d in argv[3].split(',')]
     assert len(strides) == 4
     for i in range(4):
-        print strides
         assert strides[i] in ['X','x','Y','y','Z','z','T','t']
         stride2dim = { 'X':0, 'x': 0,
                        'Y':1, 'y': 1,
@@ -39,6 +43,12 @@ layout = {   64: (4,  4,  4, ppn ),
           40960: (40, 32, 32, ppn)}[nodes]
 cores = nodes * ppn
 if mode == 'domain':
+    # Longest partition dimensions (P_x, P_y, P_z) for this BG/P
+    # is Z-axis. We fold the torus dimension into the Z-axis, making
+    # it even longer. For band parallelization, we "stack" adjacent
+    # bands along Z-axis from bottom (0,0,0) to top (0,0,P_z). This
+    # should also work for spin polarized and k-points for a judicous
+    # of the fourth parameter.
     domains = shape[0] * shape[1] * shape[2]
     blocks = cores // domains
     assert blocks * domains == nodes * ppn
@@ -60,6 +70,8 @@ if mode == 'domain':
                     y = y0 + b
                     z = z0 + c // ppn
                     t = c % ppn
+                    # The reflection term causes ranks to reflect of the 
+                    # boundary instead of wrapping to the other side.
                     if (rank > (cores // A - 1)) or (rank > (cores // B - 1)):
                         reflections = (-1)**(cores // A - 1)
                         if reflections == -1:
@@ -73,10 +85,10 @@ if mode == 'domain':
                     rank += 1
 
 if mode == 'band':
-    var0 = strides[0]
-    var1 = strides[1]
-    var2 = strides[2]
-    var3 = strides[3]
+    # The fourth comma seperated parameters will assign dimensions
+    # in order of domain_x, domain_y, domain_z, blocks of bands.
+    # Here we assume that GPAW ranks are assigned in the following order
+    # Z, Y, X, bands, spins and k-points
     stride0 = layout[stride2dim[strides[0]]]
     stride1 = layout[stride2dim[strides[1]]]
     stride2 = layout[stride2dim[strides[2]]]
@@ -84,5 +96,5 @@ if mode == 'band':
     for var3 in range(stride3): # bands
         for var0 in range(stride0): # x
             for var1 in range(stride1): # y 
-                for var2 in range(stride2): # z domains are the fastest
+                for var2 in range(stride2): # z 
                     print var0, var1, var2, var3
