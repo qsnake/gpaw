@@ -92,7 +92,7 @@ from gpaw.kpoint import GlobalKPoint
 from gpaw.kpt_descriptor import KPointDescriptor
 from gpaw.hs_operators import Operator
 
-def dscf_kpoint_overlaps(paw, phasemod=True):
+def dscf_kpoint_overlaps(paw, phasemod=True, broadcast=True):
     bd = paw.wfs.bd
     gd = paw.wfs.gd
     kd = KPointDescriptor(paw.wfs.nspins, paw.wfs.nibzkpts, \
@@ -169,11 +169,10 @@ def dscf_kpoint_overlaps(paw, phasemod=True):
         dX = lambda a, P_ni: np.dot(P0_ani[a], paw.wfs.setups[a].O_ii)
         X_nn[:] = overlap.calculate_matrix_elements(kpt.psit_nG, kpt.P_ani, X, dX).T
 
-        """
+    if broadcast:
         if bd.comm.rank == 0:
-            gd.comm.broadcast(X_nn, 0)
-        bd.comm.broadcast(X_nn, 0)
-        """
+            gd.comm.broadcast(X_unn, 0)
+        bd.comm.broadcast(X_unn, 0)
 
     return kpt0_s, X_unn
 
