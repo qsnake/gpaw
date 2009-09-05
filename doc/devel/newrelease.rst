@@ -31,7 +31,7 @@ When it is time for a new release of the code, here is what you have to do:
 * Create the tar file::
 
    cd gpaw-0.4
-   rm -f gpaw/svnrevision.py*; python setup.py sdist
+   rm -f MANIFEST gpaw/svnrevision.py*; python setup.py sdist
 
   Note that the ``tags_revision`` is put into the name of the
   tar file automatically. Make sure that you are getting only
