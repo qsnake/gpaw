@@ -140,9 +140,11 @@ class WaveFunctions(EmptyWaveFunctions):
             #D_sii[kpt.s] += np.dot(np.dot(P_Mi.T.conj(), kpt.rho_MM),
             #                       P_Mi).real
             tmp = np.zeros_like(P_Mi)
+            tmp_D = np.zeros(D_sii[kpt.s].shape, kpt.rho_MM.dtype)
             #gemm(1.0, P_Mi, kpt.rho_MM[ind.T, ind], 0.0, tmp)
             gemm(1.0, P_Mi, kpt.rho_MM, 0.0, tmp)
-            gemm(1.0, tmp, P_Mi.T.conj().copy(), 1.0, D_sii[kpt.s])
+            gemm(1.0, tmp, P_Mi.T.conj().copy(), 0.0, tmp_D)
+            D_sii[kpt.s] += np.real(tmp_D)
             #D_sii[kpt.s] += dot(dot(P_Mi.T.conj().copy(),
             #                        kpt.rho_MM[ind.T, ind]), P_Mi).real            
             
