@@ -134,13 +134,14 @@ class WaveFunctions(EmptyWaveFunctions):
     
     def calculate_atomic_density_matrices_k_point(self, D_sii, kpt, a, f_n):
         if kpt.rho_MM is not None:
-            #P_Mi = kpt.P_aMi[a]
-            P_Mi = kpt.P_aMi_sparse[a]
-            ind = get_matrix_index(kpt.P_aMi_index[a])
+            P_Mi = kpt.P_aMi[a]
+            #P_Mi = kpt.P_aMi_sparse[a]
+            #ind = get_matrix_index(kpt.P_aMi_index[a])
             #D_sii[kpt.s] += np.dot(np.dot(P_Mi.T.conj(), kpt.rho_MM),
             #                       P_Mi).real
             tmp = np.zeros_like(P_Mi)
-            gemm(1.0, P_Mi, kpt.rho_MM[ind.T, ind], 0.0, tmp)
+            #gemm(1.0, P_Mi, kpt.rho_MM[ind.T, ind], 0.0, tmp)
+            gemm(1.0, P_Mi, kpt.rho_MM, 0.0, tmp)
             gemm(1.0, tmp, P_Mi.T.conj().copy(), 1.0, D_sii[kpt.s])
             #D_sii[kpt.s] += dot(dot(P_Mi.T.conj().copy(),
             #                        kpt.rho_MM[ind.T, ind]), P_Mi).real            
