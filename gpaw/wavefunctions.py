@@ -485,8 +485,6 @@ class LCAOWaveFunctions(WaveFunctions):
 
         self.tci.set_positions(spos_ac)
         self.tci.calculate(spos_ac, self.S_qMM, self.T_qMM, self.P_aqMi)
-
-        self.sparse_initialize()
          
         if debug:
             from numpy.linalg import eigvalsh
@@ -512,22 +510,6 @@ class LCAOWaveFunctions(WaveFunctions):
             # of already by this time, so we should improve the code elsewhere
             density.calculate_normalized_charges_and_mix()
         hamiltonian.update(density)
-
-    def sparse_initialize(self):
-        tol = 1e-12
-        for kpt in self.kpt_u:
-            kpt.P_aMi_index = {}
-            kpt.P_aMi_sparse = {}
-            for a in self.basis_functions.my_atom_indices:            
-                P_aMi = kpt.P_aMi[a]
-                P_aMi_sum = np.sum(abs(P_aMi), axis=1)
-                kpt.P_aMi_index[a] = []
-                for i, tmp in enumerate(P_aMi_sum):
-                    if tmp > tol:
-                        kpt.P_aMi_index[a].append(i)
-                kpt.P_aMi_index[a] = np.array(kpt.P_aMi_index[a])
-                ind = kpt.P_aMi_index[a]
-                kpt.P_aMi_sparse[a] = kpt.P_aMi[a][ind].copy()
            
     def calculate_density_matrix(self, f_n, C_nM, rho_MM):
         # ATLAS can't handle uninitialized output array:
