@@ -902,14 +902,19 @@ class Transport(GPAW):
         if var == 'd':
             if self.step > 0:
                 self.diff_d = self.density.mixer.get_charge_sloshing()
+                if self.ground:
+                    tol = 1.5 * self.scf.max_density_error
+                else:
+                    tol = 10 * self.scf.max_density_error
+ 
                 if self.master:
                     self.text('density: diff = %f  tol=%f' % (self.diff_d,
-                                            1.5 * self.scf.max_density_error))
+                                            tol))
                 if self.ground:
-                    if self.diff_d < 1.5 * self.scf.max_density_error:
+                    if self.diff_d < tol:
                       cvg = True
                 else:
-                    if self.diff_d < 10 * self.scf.max_density_error:
+                    if self.diff_d < tol:
                       cvg = True                    
         return cvg
  
