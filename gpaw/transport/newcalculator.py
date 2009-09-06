@@ -905,8 +905,12 @@ class Transport(GPAW):
                 if self.master:
                     self.text('density: diff = %f  tol=%f' % (self.diff_d,
                                             1.5 * self.scf.max_density_error))
-                if self.diff_d < 1.5 * self.scf.max_density_error:
-                    cvg = True
+                if self.ground:
+                    if self.diff_d < 1.5 * self.scf.max_density_error:
+                      cvg = True
+                else:
+                    if self.diff_d < 10 * self.scf.max_density_error:
+                      cvg = True                    
         return cvg
  
     def initialize_scf(self):
