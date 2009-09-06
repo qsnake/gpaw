@@ -305,7 +305,7 @@ class PWF2:
                 self.H_qww.append(pwf.rotate_matrix(self.eps_kn[q]))
 
         for S in self.S_qww:
-            print 'Condition number:', condition_number(S)
+            print 'Condition number: %0.1e' % condition_number(S)
 
     def get_hamiltonian(self, q=0, indices=None):
         if indices is None:

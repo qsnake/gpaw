@@ -59,7 +59,7 @@ class PoissonSolver:
         
         # Weights for the relaxation,
         # only used if 'J' (Jacobi) is chosen as method
-        self.weights = [2.0/3.0]
+        self.weights = [2.0 / 3.0]
         
         while level < 4:
             try:
