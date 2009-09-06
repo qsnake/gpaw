@@ -139,7 +139,7 @@ class ExternalPotential:
                             + cxyz[0] * xij + cxyz[1] * yij + cxyz[2] * zij )
             
         # add partial wave pt_nG to psit_nG with proper coefficient
-        wfs.pt.add(b_nG, coef_ani, kpt.k)
+        wfs.pt.add(b_nG, coef_ani, kpt.q)
 
 
     # BAD, VERY VERY SLOW, DO NOT USE IN REAL CALCULATIONS!!!
