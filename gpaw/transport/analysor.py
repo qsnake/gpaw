@@ -435,6 +435,17 @@ class Transport_Analysor:
         ep = np.array(tp.nepathinfo[0][0].energy)
         weight = np.array(tp.nepathinfo[0][0].weight)
         fermi_factor = np.array(tp.nepathinfo[0][0].fermi_factor)
+
+        nep = np.array(ep.shape)
+        ff_dim = np.array(fermi_factor.shape)
+
+        world.broadcast(nep, 0)
+        world.broadcast(ff_dim, 0)
+
+        if world.rank != 0: 
+            ep = np.zeros(nep, ep.dtype) 
+            weight = np.zeros(nep, weight.dtype)
+            fermi_factor = np.zeros(ff_dim, fermi_factor.dtype)
         world.broadcast(ep, 0)
         world.broadcast(weight, 0)
         world.broadcast(fermi_factor,0)
