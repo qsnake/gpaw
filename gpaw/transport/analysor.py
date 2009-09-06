@@ -1,6 +1,7 @@
 from gpaw.transport.selfenergy import LeadSelfEnergy, CellSelfEnergy
 from gpaw.transport.greenfunction import GreenFunction
 from gpaw.transport.tools import get_matrix_index, aa1d, aa2d, sum_by_unit, dot
+from gpaw.mpi import world
 
 from ase.units import Hartree
 import numpy as np
@@ -431,9 +432,12 @@ class Transport_Analysor:
         # and also for multi-terminal, energies is wrong
         tp = self.tp
         assert hasattr(tp, 'nepathinfo')
-        ep = tp.nepathinfo[0][0].energy
-        weight = tp.nepathinfo[0][0].weight
-        fermi_factor = tp.nepathinfo[0][0].fermi_factor
+        ep = np.array(tp.nepathinfo[0][0].energy)
+        weight = np.array(tp.nepathinfo[0][0].weight)
+        fermi_factor = np.array(tp.nepathinfo[0][0].fermi_factor)
+        world.broadcast(ep, 0)
+        world.broadcast(weight, 0)
+        world.broadcast(fermi_factor,0)
         
         tc_array, dos_array = self.collect_transmission_and_dos(ep)
         current = np.zeros([tp.nspins, len(self.lead_pairs)])
