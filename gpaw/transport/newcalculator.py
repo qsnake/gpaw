@@ -1530,6 +1530,7 @@ class Transport(GPAW):
        
     def update_density(self):
         self.timer.start('dmm recover')
+        #self.fill_guess_with_leads()
         for kpt in self.wfs.kpt_u:
             if self.my_nspins == 2:
                 kpt.rho_MM = self.hsd.D[kpt.s][kpt.q].recover(True)
@@ -1615,15 +1616,28 @@ class Transport(GPAW):
         
         vHt_g = self.extended_calc.finegd.collect(ham.vHt_g, True)    
         vHt_g0 = self.finegd.collect(self.hamiltonian.vHt_g, True)
-            
+        
+        dim1, dim2 = vHt_g.shape[:2]    
         ham_diff = (np.sum(vHt_g[:,:,0]) - np.sum(vHt_g0[:,:,0]) +
                     np.sum(vHt_g[:,:,-1]) - np.sum(vHt_g0[:,:,-1])) / 2
         ham_diff /= np.product(vHt_g.shape[:2])
 
-       
-        self.text('Hartree_diff', str(ham_diff))
+        ham_diff2 = (vHt_g[dim1/2,dim2/2,0] - vHt_g0[dim1/2,dim2/2,0] +
+                    vHt_g[dim1/2,dim2/2,-1] - vHt_g0[dim1/2,dim2/2,-1]) / 2
+        
+        ham_diff3 = (np.sum(vHt_g[:,:,:4]) - np.sum(vHt_g0[:,:,:4]) +
+                    np.sum(vHt_g[:,:,-4:]) - np.sum(vHt_g0[:,:,-4:])) / 2
+        ham_diff3 /= np.product(vHt_g.shape[:2]) * 4
+        
+        ham_diff4 = vHt_g[dim1/2,dim2/2,0] - vHt_g0[dim1/2,dim2/2,0]
+        
+
+        ham_diff5 = (np.sum(vHt_g[dim1/2,dim2/2,:4]) - np.sum(vHt_g0[dim1/2,dim2/2,:4]) +
+                    np.sum(vHt_g[dim1/2,dim2/2,-4:]) - np.sum(vHt_g0[dim1/2,dim2/2,-4:])) / (2 * 4)
+        
+        self.text('Hartree_diff', str(ham_diff), str(ham_diff2), str(ham_diff3), str(ham_diff4))
         if self.atoms.pbc.all():    
-            self.hamiltonian.vHt_g += ham_diff
+            self.hamiltonian.vHt_g += ham_diff5
             
         self.surround.combine_vHt_g(self.hamiltonian.vHt_g)
             
