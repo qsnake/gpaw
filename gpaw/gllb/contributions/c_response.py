@@ -171,7 +171,7 @@ class C_Response(Contribution):
         lumo = self.occupations.get_zero_kelvin_lumo_eigenvalue(self.kpt_u)
         Ksgap = lumo-homo
 
-        for a in self.density.nct.my_atom_indices:
+        for a in self.density.D_asp.keys():
             ni = self.setups[a].ni
             self.Dxc_Dresp_asp[a] = npy.zeros((self.nlfunc.nspins, ni * (ni + 1) // 2))
             self.Dxc_D_asp[a] = npy.zeros((self.nlfunc.nspins, ni * (ni + 1) // 2))
@@ -227,7 +227,7 @@ class C_Response(Contribution):
                 nt_G[:] = 0.0
                 self.wfs.add_orbital_density(nt_G, kpt, n)
                 E = 0
-                for a in self.D_asp:
+                for a in self.density.D_asp:
                     D_sp = self.Dxc_D_asp[a]
                     Dresp_sp = self.Dxc_Dresp_asp[a]
                     P_ni = kpt.P_ani[a]
@@ -267,7 +267,7 @@ class C_Response(Contribution):
         self.Dresp_asp = {}
         self.D_asp = {}
         
-        for a in self.density.nct.my_atom_indices:
+        for a in self.density.D_asp.keys():
             ni = self.setups[a].ni
             self.Dresp_asp[a] = npy.zeros((self.nlfunc.nspins, ni * (ni + 1) // 2))
             self.D_asp[a] = npy.zeros((self.nlfunc.nspins, ni * (ni + 1) // 2))
@@ -275,7 +275,7 @@ class C_Response(Contribution):
         f_sM = npy.empty((self.nspins, basis_functions.Mmax))
         self.D_asp = {}
         f_asi = {}
-        w_asi = {}
+        w_asi = {}              
 
         assert self.nspins == 1  # Note: All initializations with magmom=0, hund=False and charge=0
         for a in basis_functions.atom_indices:
