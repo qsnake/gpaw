@@ -329,7 +329,7 @@ class GridDescriptor(Domain):
         assert mpi.world.size==1
 
         if use_mlsqr:
-            mlsqr(2, 1.5, spos_nc, self.N_c, self.beg_c, vt_g, target_n)     
+            mlsqr(3, 2.3, spos_nc, self.N_c, self.beg_c, vt_g, target_n)     
         else:
             for n, spos_c in enumerate(spos_nc):
                 g_c = self.N_c * spos_c - self.beg_c

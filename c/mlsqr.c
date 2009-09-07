@@ -63,7 +63,13 @@ PyObject* mlsqr(PyObject *self, PyObject *args)
       coeffs = 10;
       // 1 x y z xy yz zx xx yy zz
     }
-
+  if (order == 3)
+    {
+      // 1 x y z xy yz zx xx yy zz 
+      // xxy xxz yyx yyz zzx zzy
+      // xxx yyy zzz zyz
+      coeffs = 20;
+    }
   int points = coords->dimensions[0];
   //printf( "Interpolating %d points\n", points);
 
@@ -75,9 +81,9 @@ PyObject* mlsqr(PyObject *self, PyObject *args)
 
 
   // TODO: Calculate fit
-  const int sizex = ceil(cutoff)+1;
-  const int sizey = ceil(cutoff)+1;
-  const int sizez = ceil(cutoff)+1;
+  const int sizex = ceil(cutoff);
+  const int sizey = ceil(cutoff);
+  const int sizez = ceil(cutoff);
 
   // Allocate X-matrix and b-vector
   int source_points = (2*sizex+1)*(2*sizey+1)*(2*sizez+1);
@@ -115,8 +121,13 @@ PyObject* mlsqr(PyObject *self, PyObject *args)
 	for (int dy=-sizey;dy<=sizey;dy++)
 	  for (int dz=-sizez;dz<=sizez;dz++)
 	    {
+	      // Coordinates centered on x,y,z
+	      double sx = (cx2 + dx) - x;
+	      double sy = (cy2 + dy) - y;
+	      double sz = (cz2 + dz) - z;
+
 	      // Normalized distance from center
-	      double d = sqrt(dx*dx+dy*dy+dz*dz) / cutoff;
+	      double d = sqrt(sx*sx+sy*sy+sz*sz) / cutoff;
 	      double w = 0.0;
 	      if (d < 1)
 	      {
@@ -124,19 +135,15 @@ PyObject* mlsqr(PyObject *self, PyObject *args)
 	         w*=w;
 	         w*=(4*d+1);
 	      }
+              
 	      //double w = exp(-d*d);
-
-	      // Coordinates centered on x,y,z
-	      double sx = (cx2 + dx) - x;
-	      double sy = (cy2 + dy) - y;
-	      double sz = (cz2 + dz) - z;
 
 	      *i_X++ = w*1.0;
 	      *i_X++ = w*sx;
 	      *i_X++ = w*sy;
 	      *i_X++ = w*sz;
 
-	      if (order == 2)
+	      if (order > 1)
 		{
 		  *i_X++ = w*sx*sy;
 		  *i_X++ = w*sy*sz;
@@ -145,6 +152,21 @@ PyObject* mlsqr(PyObject *self, PyObject *args)
 		  *i_X++ = w*sy*sy;
 		  *i_X++ = w*sz*sz;
 		}
+	      
+	      if (order > 2)
+		{
+		  *i_X++ = w*sx*sy*sz; // xyz
+		  *i_X++ = w*sx*sx*sx; // xxx
+		  *i_X++ = w*sy*sy*sy; // yyy
+		  *i_X++ = w*sz*sz*sz; // zzz
+		  *i_X++ = w*sx*sx*sy; // xxy
+		  *i_X++ = w*sx*sx*sz; // xxz
+		  *i_X++ = w*sy*sy*sx; // yyx
+		  *i_X++ = w*sy*sy*sz; // yyz
+		  *i_X++ = w*sz*sz*sx; // zzx
+		  *i_X++ = w*sz*sz*sy; // zzy
+		}
+
 	      *i_b++ = w*data_g[ (cx+dx) % data->dimensions[0] * ldx +
 				 (cy+dy) % data->dimensions[1] * ldy +
 				 (cz+dz) % data->dimensions[2] * ldz ];
