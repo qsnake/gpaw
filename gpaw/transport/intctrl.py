@@ -142,7 +142,7 @@ class IntCtrl:
         # -- Integral eta --
 
         for i in range(len(self.neintpath)):                         
-            self.neintpath[i] += 1e-4j 
+            self.neintpath[i] += 1e-6j 
 
         if len(self.neintpath) == 0:
             if verbose:
