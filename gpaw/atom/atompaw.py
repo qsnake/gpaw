@@ -187,6 +187,7 @@ class AtomGridDescriptor(EquidistantRadialGridDescriptor):
         self.comm = mpi.serial_comm
         self.pbc_c = np.zeros(3, bool)
         self.cell_c = np.ones(3) * rcut
+        self.cell_cv = np.eye(3) * rcut
         self.N_c = np.ones(3, dtype=int) * 2 * ng
         self.h_c = np.ones(3) * h
     def _get_position_array(self, h, ng):
