@@ -16,7 +16,8 @@ class IntCtrl:
         neintpath    // [ minfermi leadfermi maxfermi ] + eta ( 1e-8 )}
     """
     
-    def __init__(self, kt, efermi, bias, env_bias=[], verbose=False):
+    def __init__(self, kt, efermi, bias, env_bias=[], min_energy=-100,
+                                                            verbose=False):
         #if u_l>u_r,bias>0
         self.kt = kt
         self.leadfermi = []
@@ -47,8 +48,8 @@ class IntCtrl:
             dkt = 10 * npy.pi * self.kt
             #self.eqintpath = [-20.0, -20.0 + dkt * 1.j, -nkt + dkt * 1.j,
             #                  dkt * 1.j + nkt]
-            self.eqintpath = [-100, 
-                              -100 + (10 + dkt)*1.j, 
+            self.eqintpath = [ min_energy, 
+                               min_energy + (10 + dkt)*1.j, 
                               -nkt + (10 + dkt)* 1.j, 
                               -nkt + dkt * 1.j, 
                                dkt *1.j +nkt]
