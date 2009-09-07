@@ -1,6 +1,6 @@
 from ase import *
 from gpaw.utilities import equal
-from gpaw import GPAW
+from gpaw import GPAW, Mixer
 
 ref_3775 = [ # Values from revision 3775.
     # d         Energy
@@ -20,7 +20,8 @@ atoms = Atoms([Atom('C', (0.0, 0.0, 0.0)),
                Atom('H', (x, -x, -x)),
                Atom('H', (-x, x, -x))],
               cell=(a, a, a), pbc=True)
-atoms.set_calculator(GPAW(gpts=(n, n, n), nbands=4, txt=None))
+atoms.set_calculator(GPAW(gpts=(n, n, n), nbands=4, txt=None,
+                          mixer=Mixer(0.25, 3, 1)))
 e0 = atoms.get_potential_energy()
 
 for d, eref in ref_3775:

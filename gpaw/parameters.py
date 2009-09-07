@@ -108,14 +108,15 @@ class InputParameters(dict):
             if version <= 0.6:
                 mixer = 'Mixer'
                 weight = r['MixMetric']
-                if weight == 1.0:
-                    metric = None
-                else:
-                    metric = 'old'
-            else:
+            elif version <= 0.7:
                 mixer = r['MixClass']
                 weight = r['MixWeight']
                 metric = r['MixMetric']
+                if metric is None:
+                    weight = 1.0
+            else:
+                mixer = r['MixClass']
+                weight = r['MixWeight']
 
             if mixer == 'Mixer':
                 from gpaw.mixer import Mixer
@@ -129,7 +130,7 @@ class InputParameters(dict):
             if Mixer is None:
                 self.mixer = None
             else:
-                self.mixer = Mixer(r['MixBeta'], r['MixOld'], metric, weight)
+                self.mixer = Mixer(r['MixBeta'], r['MixOld'], weight)
             
         if version == 0.3:
             # Old version: XXX

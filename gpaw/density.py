@@ -272,10 +272,17 @@ class Density:
                                    'nor with finite Fermi-width.')
             self.mixer = mixer
         else:
-            if self.nspins == 2 and (not fixmom or width != 0):
-                self.mixer = MixerSum()
+            if self.gd.pbc_c.any():
+                beta = 0.1
+                weight = 50.0
             else:
-                self.mixer = Mixer()
+                beta = 0.25
+                weight = 1.0
+                
+            if self.nspins == 2 and (not fixmom or width != 0):
+                self.mixer = MixerSum(beta=beta, weight=weight)
+            else:
+                self.mixer = Mixer(beta=beta, weight=weight)
 
         if self.nspins == 1 and isinstance(mixer, MixerSum):
             raise RuntimeError('Cannot use MixerSum with nspins==1')

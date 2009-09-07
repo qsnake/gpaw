@@ -13,7 +13,7 @@ bulk = Atoms('Fe2',
 calc = GPAW(kpts=(6, 6, 6),
             h=0.20,
             nbands=18,
-            mixer=MixerSum(beta=0.2, nmaxold=5, metric=None, weight=100.0),
+            mixer=MixerSum(beta=0.2, nmaxold=5),
             eigensolver='dav',
             txt='anti.txt')
 

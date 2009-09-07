@@ -1,14 +1,15 @@
 from ase import *
 from ase.calculators import numeric_force
 from gpaw.utilities import equal
-from gpaw import GPAW
+from gpaw import GPAW, Mixer
 
 a = 4.0
 n = 16
 atoms = Atoms([Atom('H', [1.234, 2.345, 3.456])],
                     cell=(a, a, a), pbc=True)
 calc = GPAW(nbands=1, gpts=(n, n, n), txt=None,
-                  convergence={'eigenstates': 1e-13})
+            mixer=Mixer(0.25, 3, 1),
+            convergence={'energy': 1e-7})
 atoms.set_calculator(calc)
 f1 = atoms.get_forces()[0]
 for i in range(3):

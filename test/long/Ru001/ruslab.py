@@ -21,7 +21,7 @@ slab.set_constraint(FixAtoms(mask=slab.get_tags() >= 3))
 
 calc = GPAW(xc='PBE',
             h=0.2,
-            mixer=Mixer(0.1, 5, metric='new', weight=100.0),
+            mixer=Mixer(0.1, 5, weight=100.0),
             stencils=(3, 3),
             width=0.1,
             kpts=[4, 4, 1],

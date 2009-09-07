@@ -33,7 +33,7 @@ molecule.set_constraint(FixAtoms(indices=[0]))
 molecule[0].magmom = 1
 # Calculator
 name = 'osam5cl3'
-mixer = MixerSum(0.05, 5, metric='new', weight=100.0)
+mixer = MixerSum(0.05, 5, weight=100.0)
 calc = GPAW(h=0.18,
             xc='PBE',
             #nbands=-5,

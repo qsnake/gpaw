@@ -467,7 +467,7 @@ class Transport(GPAW):
         kpts = kpts[:2] + (3,)
         kwargs['kpts'] = kpts
      
-        kwargs['mixer'] = Mixer(0.1, 5, metric='new', weight=100.0)
+        kwargs['mixer'] = Mixer(0.1, 5, weight=100.0)
         atoms.set_calculator(gpaw.GPAW(**kwargs))
         atoms.get_potential_energy()
         h_skmm, s_kmm =  self.get_hs(atoms.calc, 'lead')
@@ -922,9 +922,9 @@ class Transport(GPAW):
         p['kpts'] = kpts
         if 'mixer' in p:
             if not self.spinpol:
-                p['mixer'] = Mixer(0.1, 5, metric='new', weight=100.0)
+                p['mixer'] = Mixer(0.1, 5, weight=100.0)
             else:
-                p['mixer'] = MixerDif(0.1, 5, metric='new', weight=100.0)
+                p['mixer'] = MixerDif(0.1, 5, weight=100.0)
         p['poissonsolver'] = PoissonSolver(nn=2)
         if 'txt' in p and p['txt'] != '-':
             p['txt'] = 'lead%i_' % (l + 1) + p['txt']
@@ -936,7 +936,7 @@ class Transport(GPAW):
         #p['usesymm'] = True
         p['kpts'] = self.env_kpts
         if 'mixer' in p:
-            p['mixer'] = Mixer(0.1, 5, metric='new', weight=100.0)
+            p['mixer'] = Mixer(0.1, 5, weight=100.0)
         if 'txt' in p and p['txt'] != '-':
             p['txt'] = 'env%i_' % (l + 1) + p['txt']
         return gpaw.GPAW(**p)

@@ -254,7 +254,7 @@ class PAWTextOutput:
             mixer = self.density.mixer
             t('Linear Mixing Parameter:           %g' % mixer.beta)
             t('Pulay Mixing with %d Old Densities' % mixer.nmaxold)
-            if mixer.metric_type is None:
+            if mixer.weight == 1:
                 t('No Damping of Long Wave Oscillations')
             else:
                 t('Damping of Long Wave Oscillations: %g' % mixer.weight)

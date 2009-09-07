@@ -12,7 +12,7 @@ if not isfile('al8.gpw'):
     atoms*=(8, 1, 1)
     calc = GPAW(h=0.2, basis='szp', kpts=(1, 1, 1), 
                 convergence={'bands':4*8}, width=0.1,
-                maxiter=200, mixer=Mixer(0.1,7,metric='new', weight=100.))
+                maxiter=200, mixer=Mixer(0.1, 7, weight=100.))
     atoms.set_calculator(calc)
     atoms.get_potential_energy()
     calc.write('al8.gpw', 'all')

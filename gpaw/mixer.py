@@ -13,7 +13,7 @@ from gpaw.operators import Operator
 class BaseMixer:
     """Pulay density mixer."""
     
-    def __init__(self, beta=0.25, nmaxold=3, metric=None, weight=50.0):
+    def __init__(self, beta=0.1, nmaxold=3, weight=50.0):
         """Construct density-mixer object.
 
         Parameters
@@ -23,8 +23,6 @@ class BaseMixer:
             aggressive).
         nmaxold: int
             Maximum number of old densities.
-        metric: None, 'old' or 'new'
-            Type of metric to use.
         weight: float
             Weight parameter for special metric (for long wave-length
             changes).
@@ -33,7 +31,6 @@ class BaseMixer:
 
         self.beta = beta
         self.nmaxold = nmaxold
-        self.metric_type = metric
         self.weight = weight
 
         self.dNt = None
@@ -43,22 +40,10 @@ class BaseMixer:
     def initialize_metric(self, gd):
         self.gd = gd
 
-        if self.metric_type is None:
+        if self.weight == 1:
             self.metric = None
 
-        elif self.metric_type == 'old':
-            b = 0.25 * (self.weight - 1)
-            a = 1.0 - 2.0 * b
-            self.metric = Operator([a,
-                                    b, b, b, b, b, b],
-                                   [(0, 0, 0),
-                                    (-1, 0, 0), (1, 0, 0),
-                                    (0, -1, 0), (0, 1, 0),
-                                    (0, 0, -1), (0, 0, 1)],
-                                   gd, float).apply
-            self.mR_G = gd.empty()
-
-        elif self.metric_type == 'new':
+        else:
             a = 0.125 * (self.weight + 7)
             b = 0.0625 * (self.weight - 1)
             c = 0.03125 * (self.weight - 1)
@@ -81,9 +66,6 @@ class BaseMixer:
                                     ],
                                    gd, float).apply
             self.mR_G = gd.empty()
-
-        else:
-            raise RuntimeError('Unknown metric type: "%s".' % self.metric_type)
         
     def initialize(self, density):
         self.initialize_metric(density.gd)
@@ -212,8 +194,7 @@ class Mixer(BaseMixer):
     def initialize(self, density):
         self.mixers = []
         for s in range(density.nspins):
-            mixer = BaseMixer(self.beta, self.nmaxold,
-                              self.metric_type, self.weight)
+            mixer = BaseMixer(self.beta, self.nmaxold, self.weight)
             mixer.initialize_metric(density.gd)
             self.mixers.append(mixer)
     
@@ -300,8 +281,8 @@ class MixerSum2(BaseMixer):
 class MixerDif(BaseMixer):
     """Mix the charge density and magnetization density separately"""
     
-    def __init__(self, beta=0.25, nmaxold=3, metric=None, weight=50.0,
-                 beta_m=0.7, nmaxold_m=2, metric_m=None, weight_m=10.0):
+    def __init__(self, beta=0.1, nmaxold=3, weight=50.0,
+                 beta_m=0.7, nmaxold_m=2, weight_m=10.0):
         """Construct density-mixer object.
 
         Parameters
@@ -311,8 +292,6 @@ class MixerDif(BaseMixer):
             aggressive).
         nmaxold: int
             Maximum number of old densities.
-        metric: None, 'old' or 'new'
-            Type of metric to use.
         weight: float
             Weight parameter for special metric (for long wave-length
             changes).
@@ -320,12 +299,10 @@ class MixerDif(BaseMixer):
 
         self.beta = beta
         self.nmaxold = nmaxold
-        self.metric_type = metric
         self.weight = weight
 
         self.beta_m = beta_m
         self.nmaxold_m = nmaxold_m
-        self.metric_type_m = metric_m
         self.weight_m = weight_m
         self.dNt = None
 
@@ -334,11 +311,9 @@ class MixerDif(BaseMixer):
 
     def initialize(self, density):
         assert density.nspins == 2
-        self.mixer = BaseMixer(self.beta, self.nmaxold,
-                               self.metric_type, self.weight)
+        self.mixer = BaseMixer(self.beta, self.nmaxold, self.weight)
         self.mixer.initialize_metric(density.gd)
-        self.mixer_m = BaseMixer(self.beta_m, self.nmaxold_m,
-                                 self.metric_type_m, self.weight_m)
+        self.mixer_m = BaseMixer(self.beta_m, self.nmaxold_m, self.weight_m)
         self.mixer_m.initialize_metric(density.gd)
 
     def reset(self):
@@ -413,7 +388,6 @@ class BaseMixer_Broydn:
         self.u_D = []
         self.beta = beta
         self.nmaxold = nmaxold
-        self.metric_type ='new'
         self.weight = 1
         self.dNt = None
         self.mix_rho = False

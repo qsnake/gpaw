@@ -28,7 +28,7 @@ direction = 'z'
 calc = GPAW(h=0.3,
             xc='PBE',
             mode='lcao',
-            mixer=Mixer(0.1, 5, metric='new',weight=80.),
+            mixer=Mixer(0.1, 5, weight=80.0),
             width=0.1,
             basis=basis)
 

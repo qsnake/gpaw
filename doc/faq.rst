@@ -103,7 +103,7 @@ However, note that this might change also the symmetry of your system
 Sometimes it is possible to improve the convergence by changing the
 default parameters for :ref:`manual_mixer`, try e.g.::
 
-  mixer=Mixer(0.1, 5, metric='new', weight=100.0)
+  mixer=Mixer(0.05, 5, weight=100.0)
   GPAW(..., mixer=mixer)
 
 In rare occasions the default :ref:`eigensolver <manual_eigensolver>`

@@ -16,7 +16,7 @@ calc = GPAW(#h      = 0.18,
             nbands = 250,
             xc     = 'PBE',
             width  = 0.01,
-            mixer  = Mixer(0.1, 5, metric='new', weight=100.0),
+            mixer  = Mixer(0.1, 5, weight=100.0),
             txt    = x + '.out',
             **kwargs)
 cobocta.set_calculator(calc)

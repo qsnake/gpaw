@@ -229,7 +229,7 @@ def run_slab(adsorbate, geometry, xc, code):
         from gpaw.mpi import rank
         parameters['txt'] = code+'_'+name+'.txt'
         from gpaw.mixer import Mixer, MixerSum
-        parameters['mixer'] = Mixer(beta=0.2, nmaxold=5, metric='new', weight=100.0)
+        parameters['mixer'] = Mixer(beta=0.2, nmaxold=5, weight=100.0)
     if code == 'dacapo':
         from ase.calculators.dacapo import Dacapo as Calculator
         rank = 0

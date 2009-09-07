@@ -427,14 +427,25 @@ XXX Missing doc
 Density mixing
 --------------
 
-The default is to use Pulay mixing using the three last densities, a
-linear mixing coefficient of 0.25 and no special metric for estimating
-the magnitude of the change from input density to output density -
-this is equivalent to ``mixer=Mixer(0.25, 3)``.  In some cases
-(metals) it can be an advantage to use something like
-``mixer=Mixer(0.1, 5, metric='new', weight=100.0)``.  Here, long
-wavelength changes are weighted 100 times higher than short wavelength
-changes. In spin-polarized calculations using Fermi-distribution
+Three parameters determine how GPAW does Pulay mixing of the
+densities:
+
+* ``beta``: linear mixing coefficient
+* ``nmaxold``: number of old densities to mix
+* ``weight``: when measuring the change from input to output density,
+  long wavelength changes are weighted ``weight`` times higher than
+  short wavelength changes
+
+For small molecules, the best choice is to use
+``mixer=Mixer(beta=0.25, nmaxold=3, weight=1.0)``, which is what GPAW
+will choose if the system has zero-boundary conditions.
+
+If your system is a big molecule or a cluster, it is an advantage to
+use something like ``mixer=Mixer(beta=0.1, nmaxold=5, weight=50.0)``,
+which is also what GPAW will choose if the system has periodic
+boundary conditions in one or more directions.
+
+In spin-polarized calculations using Fermi-distribution
 occupations one has to use :class:`~gpaw.mixer.MixerSum` instead of
 :class:`~gpaw.mixer.Mixer`.
 

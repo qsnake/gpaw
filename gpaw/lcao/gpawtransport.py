@@ -293,7 +293,7 @@ class GPAWTransport:
         self.ntklead = kpts[self.d]
         p['kpts'] = kpts
         if 'mixer' in p: # XXX Works only if spin-paired
-            p['mixer'] = Mixer(0.1, 5, metric='new', weight=100.0)
+            p['mixer'] = Mixer(0.1, 5, weight=100.0)
         if 'txt' in p and p['txt'] != '-':
             p['txt'] = 'lead%i_' % (l + 1) + p['txt']
         return GPAW(**p)
@@ -1662,7 +1662,7 @@ class GPAWTransport:
                           width=0.2,
                           mode='lcao',
                           usesymm=None,
-                          mixer=Mixer(0.1, 5, metric='new', weight=100.0)
+                          mixer=Mixer(0.1, 5, weight=100.0)
                           ))
         
         calc = atoms_extend.calc

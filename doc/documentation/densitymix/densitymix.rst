@@ -55,8 +55,8 @@ weight, given as the input parameter `\beta`.
   n_{i+1}^{in}=\sum \alpha_i (n_i^{in}+\beta R_i)
 
 
-Special Metrics
----------------
+Special Metric
+--------------
 
 Convergence is improved by an optimized metric `\hat{M}` for
 calculation of scalar products in the mixing scheme, `\langle A | B
@@ -123,7 +123,7 @@ Specifying the mixing scheme and metric is done using the ``mixer``
 keyword of the GPAW calculator::
 
   from gpaw import GPAW, Mixer
-  calc = GPAW(mixer=Mixer(beta=0.1, nmaxold=5, metric='new', weight=100))
+  calc = GPAW(mixer=Mixer(beta=0.05, nmaxold=5, weight=50.0))
 
 which is the recommended value if the default fails to converge.
 
@@ -141,14 +141,13 @@ Where the magnetization density is the difference between the two spin
 densities.
 
 All mixer classes takes the arguments ``(beta=0.25, nmaxold=3,
-metric=None, weight=50.0)``. In addition, the ``MixerDif`` also takes
-the arguments ``(beta_m=0.7, nmaxold_m=2, metric_m=None,
+weight=50.0)``. In addition, the ``MixerDif`` also takes
+the arguments ``(beta_m=0.7, nmaxold_m=2,
 weight_m=10.0)`` which is the corresponding mixing parameters for the
 magnetization density.
 
 Here ``beta`` is the linear mixing coefficient, ``nmaxold`` is the
-number of old densities used, ``metric`` is either ``None`` or
-``'new'`` as described in `Special Metrics`_, and ``weight`` is the
+number of old densities used, and ``weight`` is the
 weight used by the metric, if any.
 
 MixerDif seems to be a good choice for spin polarized
