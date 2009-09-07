@@ -55,7 +55,8 @@ class Transport(GPAW):
                        'env_bias', 'env_pbc', 'env_restart',                     
                        
                        'LR_leads', 'gate',  'cal_loc', 'align',                       
-                       'recal_path', 'use_qzk_boundary', 'use_linear_vt_mm',
+                       'recal_path', 'min_energy',
+                       'use_qzk_boundary', 'use_linear_vt_mm',
                        'use_linear_vt_array',
                        'scat_restart', 'save_file', 'restart_file', 'fixed_boundary']:
                 
@@ -119,6 +120,8 @@ class Transport(GPAW):
                 p['cal_loc'] = kw['cal_loc']
             if key in ['recal_path']:
                 p['recal_path'] = kw['recal_path']
+            if key in ['min_energy']:
+                p['min_energy'] = kw['min_energy']
             if key in ['align']:
                 p['align'] = kw['align']
             if key in ['use_qzk_boundary']:
@@ -187,6 +190,7 @@ class Transport(GPAW):
         self.gate = p['gate']
         self.cal_loc = p['cal_loc']
         self.recal_path = p['recal_path']
+        self.min_energy = p['min_energy']
         self.use_qzk_boundary = p['use_qzk_boundary']
         self.align =  p['align']
         self.use_linear_vt_mm = p['use_linear_vt_mm']
@@ -262,6 +266,7 @@ class Transport(GPAW):
         p['gate'] = 0
         p['cal_loc'] = False
         p['recal_path'] = False
+        p['min_energy'] = -100
         p['use_qzk_boundary'] = False
         p['align'] = False
         p['use_linear_vt_mm'] = False
@@ -919,10 +924,10 @@ class Transport(GPAW):
         return cvg
  
     def initialize_scf(self):
-        bias = self.bias + self.env_bias
         self.intctrl = IntCtrl(self.occupations.kT * Hartree,
-                                                        self.lead_fermi, bias)            
-        self.surround.reset_bias(bias) 
+                                self.lead_fermi, self.bias,
+                                self.env_bias, self.min_energy)            
+        self.surround.reset_bias(self.bias) 
         self.initialize_green_function()
         self.calculate_integral_path()
         self.distribute_energy_points()
