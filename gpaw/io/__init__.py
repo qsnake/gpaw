@@ -604,7 +604,7 @@ def read(paw, reader):
             for a, setup in enumerate(wfs.setups):
                 i2 = i1 + setup.ni
                 if domain_comm.rank == 0:
-                    kpt.P_ani[a] = P_ni[nslice, i1:i2].copy()
+                    kpt.P_ani[a] = npy.array(P_ni[nslice, i1:i2], wfs.dtype)
                 i1 = i2
 
     # Manage mode change:

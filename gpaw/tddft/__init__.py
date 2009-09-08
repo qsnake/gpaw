@@ -114,7 +114,7 @@ class TDDFT(GPAW):
 
         # Initialize wavefunctions and density 
         # (necessary after restarting from file)
-        self.set_positions() # TODO why is this done twice?
+        self.set_positions()
 
         # Don't be too strict
         self.density.charge_eps = 1e-5
@@ -124,20 +124,25 @@ class TDDFT(GPAW):
         
         # Convert PAW-object to complex
         if wfs.dtype == float:
+            raise DeprecationWarning('This should not happen.')
+
             wfs.dtype = complex
             from gpaw.operators import Laplace
             nn = self.input_parameters.stencils[0]
             wfs.kin = Laplace(wfs.gd, -0.5, nn, complex)
             wfs.pt = LFC(wfs.gd, [setup.pt_j for setup in wfs.setups],
                          self.kpt_comm, dtype=complex)
-            
+
+            for kpt in wfs.kpt_u:
+                for a,P_ni in kpt.P_ani.items():
+                    assert not np.isnan(P_ni).any()
+                    kpt.P_ani[a] = np.array(P_ni, complex)
+
             self.set_positions()
 
             # Wave functions
             for kpt in wfs.kpt_u:
                 kpt.psit_nG = np.array(kpt.psit_nG[:], complex)
-        else:
-            self.set_positions()
 
         self.text('')
         self.text('')
