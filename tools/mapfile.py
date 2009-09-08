@@ -22,12 +22,15 @@ if mode == 'domain':
 if mode == 'band':
     strides = [str(d) for d in argv[3].split(',')]
     assert len(strides) == 4
+    stride2dim = [0, 0, 0, 0]
     for i in range(4):
         assert strides[i] in ['X','x','Y','y','Z','z','T','t']
-        stride2dim = { 'X':0, 'x': 0,
-                       'Y':1, 'y': 1,
-                       'Z':2, 'z': 2,
-                       'T':3, 't': 3}
+        str2num = { 'X':0, 'x': 0,
+                    'Y':1, 'y': 1,
+                    'Z':2, 'z': 2,
+                    'T':3, 't': 3}[strides[i]]
+        stride2dim[i] = str2num
+    assert sum(stride2dim) == 6
         
 layout = {   64: (4,  4,  4, ppn ),
             128: (4,  4,  8, ppn ),
@@ -89,12 +92,52 @@ if mode == 'band':
     # in order of domain_x, domain_y, domain_z, blocks of bands.
     # Here we assume that GPAW ranks are assigned in the following order
     # Z, Y, X, bands, spins and k-points
-    stride0 = layout[stride2dim[strides[0]]]
-    stride1 = layout[stride2dim[strides[1]]]
-    stride2 = layout[stride2dim[strides[2]]]
-    stride3 = layout[stride2dim[strides[3]]]                 
+    stride0 = layout[stride2dim[0]]
+    stride1 = layout[stride2dim[1]]
+    stride2 = layout[stride2dim[2]]
+    stride3 = layout[stride2dim[3]]
+    swap01 = False
+    swap02 = False
+    swap03 = False
+    swap12 = False
+    swap13 = False
+    swap23 = False
+    if stride2dim[0] == 1:
+        swap01 = True
+    if stride2dim[0] == 2:
+        swap02 = True
+    if stride2dim[0] == 3:
+        swap03 = True
+    if stride2dim[1] == 2:
+        swap12 = True
+    if stride2dim[1] == 3:
+        swap13 = True
+    if stride2dim[2] == 3:
+        swap23 = True
     for var3 in range(stride3): # bands
         for var0 in range(stride0): # x
-            for var1 in range(stride1): # y 
-                for var2 in range(stride2): # z 
-                    print var0, var1, var2, var3
+            for var1 in range(stride1): # y
+                for var2 in range(stride2): #x
+                    tmp0 = var0
+                    tmp1 = var1
+                    tmp2 = var2
+                    tmp3 = var3
+                    if swap01:
+                        tmp0 = var1
+                        tmp1 = var0
+                    if swap02:
+                        tmp0 = var2
+                        tmp2 = var0
+                    if swap03:
+                        tmp0 = var3
+                        tmp3 = var0
+                    if swap12:
+                        tmp1 = var2
+                        tmp2 = var1
+                    if swap13:
+                        tmp1 = var3
+                        tmp3 = var1
+                    if swap23:
+                        tmp2 = var3
+                        tmp3 = var2
+                    print tmp0, tmp1, tmp2, tmp3
