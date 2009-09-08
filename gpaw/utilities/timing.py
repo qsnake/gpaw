@@ -24,7 +24,7 @@ try:
 except ImportError:
     pass
 
-from gpaw.mpi import world
+import gpaw.mpi as mpi
 MASTER = 0
 
 wrap = 1e-6 * 2**32
@@ -189,7 +189,7 @@ class TauTimer(Timer):
         self.timers = {}
         self.t0 = time.time()
         self.running = []
-        pytau.setNode(world.rank)
+        pytau.setNode(mpi.rank)
         self.start('PAW_calc') 
 
     def start(self, name):
