@@ -910,7 +910,7 @@ class Transport(GPAW):
                 if self.ground:
                     tol = 1.5 * self.scf.max_density_error
                 else:
-                    tol = 10 * self.scf.max_density_error
+                    tol = 5 * self.scf.max_density_error
  
                 if self.master:
                     self.text('density: diff = %f  tol=%f' % (self.diff_d,
