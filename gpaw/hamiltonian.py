@@ -151,23 +151,28 @@ class Hamiltonian:
             self.xc.set_positions(spos_ac)
             
         self.rank_a = rank_a
-    def aoom(self,DM,a,l,scale=1):
-        """
-        Atomic Orbital Occupation Matrix (aoom) for a given l-quantum number,
-        This operation, takes the  density matrix
-        (DM), which for example is given by unpack2(D_asq[i][spin]),
-        and corrects for the overlap between the selected orbitals (l)
-        upon which the the density is expanded  (ex <p|p*>,<p|p>,<p*|p*> ).
-        Returned is only the "corrected"  part of the density matrix,
-        which represents the orbital occupation matrix
-        for l=2 this is a 5x5 matrix
+
+    def aoom(self, DM, a, l, scale=1):
+        """Atomic Orbital Occupation Matrix.
+        
+        Determine the Atomic Orbital Occupation Matrix (aoom) for a
+        given l-quantum number.
+        
+        This operation, takes the density matrix (DM), which for
+        example is given by unpack2(D_asq[i][spin]), and corrects for
+        the overlap between the selected orbitals (l) upon which the
+        the density is expanded (ex <p|p*>,<p|p>,<p*|p*> ).
+
+        Returned is only the "corrected" part of the density matrix,
+        which represents the orbital occupation matrix for l=2 this is
+        a 5x5 matrix.
         """
         S=self.setups[a]
-        l_j =S.l_j
-        n_j =S.n_j
-        lq  =S.lq
-        nl  =np.where(np.equal(l_j,l))[0]
-        if len(nl)==2:
+        l_j = S.l_j
+        n_j = S.n_j
+        lq  = S.lq
+        nl  = np.where(np.equal(l_j, l))[0]
+        if len(nl) == 2:
             
             # cup and cdown gives us the index of Delta_lq we need
             cup     = (nl[0]-1)*(nl[0])/2
@@ -177,34 +182,32 @@ class Hamiltonian:
             
             # lets find the correct entrances in the lq,
             # and enable scaling eg. force <p|p>=1
-            aa      = nl[0]*len(l_j)-cup
-            ab      = nl[0]*len(l_j)-cup+nl[1]-l
-            bb      = nl[1]*len(l_j)-cdown
+            aa = nl[0]*len(l_j)-cup
+            ab = nl[0]*len(l_j)-cup+nl[1]-l
+            bb = nl[1]*len(l_j)-cdown
             
             if(scale==0 or scale=='False' or scale =='false'):
-                lq_a    =lq[aa]
-                lq_ab   =lq[ab]
-                lq_b    =lq[ab]
+                lq_a  = lq[aa]
+                lq_ab = lq[ab]
+                lq_b  = lq[ab]
             else:
-                lq_a    =1
-                lq_ab   =lq[ab]/lq[aa]
-                lq_b    =lq[ab]/lq[aa]
+                lq_a  = 1
+                lq_ab = lq[ab]/lq[aa]
+                lq_b  = lq[ab]/lq[aa]
  
             # and the correct entrances in the DM
-            nn      =(2*np.array(l_j)+1)[0:nl[0]].sum()
-            mm      =(2*np.array(l_j)+1)[0:nl[1]].sum()
+            nn = (2*np.array(l_j)+1)[0:nl[0]].sum()
+            mm = (2*np.array(l_j)+1)[0:nl[1]].sum()
             
             # finally correct and add the four submatrices of NC_DM
-            A       = DM[nn:nn+2*l+1,nn:nn+2*l+1]*(lq_a)
-            B       = DM[nn:nn+2*l+1,mm:mm+2*l+1]*(lq_ab)
-            C       = DM[mm:mm+2*l+1,nn:nn+2*l+1]*(lq_ab)
-            D       = DM[mm:mm+2*l+1,mm:mm+2*l+1]*(lq_b)
+            A = DM[nn:nn+2*l+1,nn:nn+2*l+1]*(lq_a)
+            B = DM[nn:nn+2*l+1,mm:mm+2*l+1]*(lq_ab)
+            C = DM[mm:mm+2*l+1,nn:nn+2*l+1]*(lq_ab)
+            D = DM[mm:mm+2*l+1,mm:mm+2*l+1]*(lq_b)
             return  A+B+C+D
         else:
-            nn      =(2*np.array(l_j)+1)[0:nl[0]].sum()
-            return  DM[nn:nn+2*l+1,nn:nn+2*l+1]*lq[-1]
-
-
+            nn =(2*np.array(l_j)+1)[0:nl[0]].sum()
+            return DM[nn:nn+2*l+1,nn:nn+2*l+1]*lq[-1]
 
     def update(self, density):
         """Calculate effective potential.
@@ -212,7 +215,6 @@ class Hamiltonian:
         The XC-potential and the Hartree potential are evaluated on
         the fine grid, and the sum is then restricted to the coarse
         grid."""
-
 
         self.timer.start('Hamiltonian')
 
@@ -316,8 +318,6 @@ class Hamiltonian:
                     Htemp = unpack(H_p)
                     Htemp[i0:i1,i0:i1] += Vorb
                     H_p[:] = pack2(Htemp)
-
-
 
             dH_sp += dH_p
 
