@@ -80,19 +80,28 @@ class GPAWTransport:
         atoms1 = self.atoms_l[0]
         calc1 = atoms1.calc
         R_c = [0,0,0] 
-        h1_sii, s1_ii = get_realspace_hs(self.h1_skmm,
+        h1_skii, s1_kii = get_realspace_hs(self.h1_skmm,
                                          self.s1_kmm,
-                                         calc1.wfs.ibzk_kc, 
+                                         calc1.wfs.ibzk_kc,
+                                         calc1.wfs.bzk_kc,
                                          calc1.wfs.weight_k,
-                                         R_c=R_c, usesymm=False)
+                                         R_c=R_c, usesymm=False)[-2:]
+    
+        h1_sii = h1_skii[:,0]
+        s1_ii = s1_kii[0]
+    
         R_c = [0,0,0]
         R_c[self.d] = 1.0
-        h1_sij, s1_ij = get_realspace_hs(self.h1_skmm,
+        h1_skij, s1_kij = get_realspace_hs(self.h1_skmm,
                                          self.s1_kmm,
-                                         calc1.wfs.ibzk_kc, 
+                                         calc1.wfs.ibzk_kc,
+                                         calc1.wfs.bzk_kc,
                                          calc1.wfs.weight_k,
-                                         R_c=R_c, usesymm=False)
+                                         R_c=R_c, usesymm=False)[-2:]
 
+        h1_sij = h1_skij[:,0]
+        s1_ij = s1_kij[0]
+    
         h1[:pl1, :pl1] = h1_sii[0]
         h1[pl1:2 * pl1, pl1:2 * pl1] = h1_sii[0]
         h1[:pl1, pl1:2 * pl1] = h1_sij[0]
@@ -119,20 +128,31 @@ class GPAWTransport:
         atoms2 = self.atoms_l[1]
         calc2 = atoms2.calc
         
-        h2_sii, s2_ii = get_realspace_hs(self.h2_skmm,
+        h2_skii, s2_kii = get_realspace_hs(self.h2_skmm,
                                          self.s2_kmm,
-                                         calc2.wfs.ibzk_kc, 
+                                         calc2.wfs.ibzk_kc,
+                                         calc2.wfs.bzk_kc,
                                          calc2.wfs.weight_k,
-                                         R_c=(0,0,0), usesymm=False)
+                                         R_c=(0,0,0), usesymm=False)[-2:]
+
+
+        h2_sii = h2_skii[:,0]
+        s2_ii = s2_kii[0]
+    
         R_c = [0,0,0]
         R_c[self.d] = 1.0
 
-        h2_sij, s2_ij = get_realspace_hs(self.h2_skmm,
+        h2_skij, s2_kij = get_realspace_hs(self.h2_skmm,
                                          self.s2_kmm,
-                                         calc2.wfs.ibzk_kc, 
+                                         calc2.wfs.ibzk_kc,
+                                         calc2.wfs.bzk_kc,
                                          calc2.wfs.weight_k,
-                                         R_c=R_c, usesymm=False)
+                                         R_c=R_c, usesymm=False)[-2:]
 
+ 
+        h2_sij = h2_skij[:,0]
+        s2_ij = s2_kij[0]
+ 
         h2[:pl2,:pl2] = h2_sii[0]
         h2[pl2:2*pl2,pl2:2*pl2] = h2_sii[0]
         h2[:pl2,pl2:2*pl2] = h2_sij[0]
