@@ -184,7 +184,7 @@ class SetupData:
 
     def find_core_density_cutoff(self, r_g, dr_g, nc_g):
         if self.Nc == 0:
-            return 0.5
+            return 1.0
         else:
             N = 0.0
             g = self.ng - 1

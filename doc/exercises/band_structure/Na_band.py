@@ -17,6 +17,7 @@ nkpt = 40
 kpts = [(0.5 * k / (nkpt - 1), 0, 0) for k in range(nkpt)]
 calc = GPAW('Na_sc.gpw', txt='Na_harris.txt',
             kpts=kpts, fixdensity=True, nbands=7,
+            parsize=1,
             eigensolver='cg', convergence={'bands': 'all'})
 calc.get_potential_energy()
 calc.write('Na_harris.gpw')

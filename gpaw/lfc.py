@@ -290,7 +290,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         # Holm-Nielsen check:
         if ((self.gd.comm.sum(float(sum(self.my_atom_indices))) !=
              natoms * (natoms - 1) // 2)):
-            raise RuntimeError('Use finer grid!')
+            raise RuntimeError('Grid too coarse. Use h < 0.306 Ang.')
 
         self.M_W = np.empty(nW, np.intc)
         self.G_B = np.empty(nB, np.intc)
