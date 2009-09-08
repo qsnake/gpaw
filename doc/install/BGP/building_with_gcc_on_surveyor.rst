@@ -9,9 +9,10 @@ NumPy
 
 If you do not wish to build NumPy for yourself, you can use one of the following versions::
 
-  /home/dulak/numpy-1.0.4-1
-  /home/naromero/numpy-1.0.4-1.essl
-  /home/naromero/numpy-1.0.4-1.goto
+  /soft/apps/python/python-2.5-cnk-gcc/numpy-1.0.4-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages
+  /soft/apps/python/python-2.5-cnk-gcc/numpy-1.0.4-1.essl-4.4/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages
+  /soft/apps/python/python-2.5-cnk-gcc/numpy-1.0.4-1.goto/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages
+  /soft/apps/python/python-2.5-cnk-gcc/numpy-1.2.1
 
 Instructions for the ``V1R3M0_460_2008-081112P`` driver,
 compilation with gcc compiler.
