@@ -370,3 +370,71 @@ class PWF2:
         else:
             return self.pwf_q[q].rotate_matrix(get_ks_xc(self.calc,
                                                          spin=self.spin))
+
+
+class LCAOwrap:
+    def __init__(self, calc, spin=0):
+        from gpaw.lcao.tools import get_lcao_hamiltonian
+        H_skMM, S_kMM = get_lcao_hamiltonian(calc)
+
+        self.calc = calc
+        self.dtype = calc.wfs.dtype
+        self.spin = spin
+        self.H_qww = H_skMM[spin]
+        self.S_qww = S_kMM
+        self.P_aqwi = calc.wfs.P_aqMi
+        self.Nw = self.S_qww.shape[-1]
+        
+        for S in self.S_qww:
+            print 'Condition number: %0.1e' % condition_number(S)
+    
+    def get_hamiltonian(self, q=0, indices=None):
+        if indices is None:
+            return self.H_qww[q]
+        else:
+            return self.H_qww[q].take(indices, 0).take(indices, 1)
+
+    def get_overlap(self, q=0, indices=None):
+        if indices is None:
+            return self.S_qww[q]
+        else:
+            return self.S_qww[q].take(indices, 0).take(indices, 1)
+
+    def get_projections(self, q=0, indices=None):
+        if indices is None:
+            return dict([(a, P_qwi[q]) for a, P_qwi in self.P_aqwi.items()])
+        else:
+            return dict([(a, P_qwi[q].take(indices, 0))
+                         for a, P_qwi in self.P_aqwi.items()])
+
+    def get_orbitals(self, q=-1, indices=None):
+        assert q == -1
+        if indices is None:
+            indices = range(self.Nw)
+        Ni = len(indices)
+        C_wM = np.zeros((Ni, self.Nw), self.dtype)
+        for i, C_M in zip(indices, C_wM):
+            C_M[i] = 1.0
+        w_wG = self.calc.gd.zeros(Ni, dtype=self.dtype)
+        self.calc.wfs.basis_functions.lcao_to_grid(C_wM, w_wG, q=-1)
+        return w_wG
+
+    def get_Fcore(self, q=0, indices=None):
+        if indices is None:
+            Fcore_ww = np.zeros_like(self.H_qww[q])
+        else:
+            Fcore_ww = np.zeros((len(indices), len(indices)))
+        for a, P_wi in self.get_projections(q, indices).items():
+            X_ii = unpack(self.calc.wfs.setups[a].X_p)
+            Fcore_ww -= dots(P_wi, X_ii, P_wi.T.conj())
+        return Fcore_ww * Hartree
+
+    def get_xc(self, q=0, indices=None):
+        if not hasattr(self, 'Vxc_qww'):
+            self.Vxc_qww = get_lcao_xc(self.calc, self.P_aqwi,
+                                       bfs=self.calc.wfs.basis_functions,
+                                       spin=self.spin)
+        if indices is None:
+            return self.Vxc_qww[q]
+        else:
+            return self.Vxc_qww[q].take(indices, 0).take(indices, 1)
