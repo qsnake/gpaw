@@ -53,6 +53,9 @@ algorithms used <features_and_algorithms>`.
 News
 ====
 
+* `QuantumWise <http://www.quantumwise.com>`_ adds GPAW-support to
+  `Virtual NanoLab`_ (Sep 8 2009)
+
 * Join the new IRC channel ``#gpaw`` on FreeNode (Jul 15 2009)
 
 * :ref:`GPAW version 0.5 <releasenotes>` released (Apr 1 2009)
@@ -90,3 +93,4 @@ News
 .. _Sphinx: http://sphinx.pocoo.org
 .. _CAMd summer school 2008: http://www.camd.dtu.dk/English/Events/CAMD_Summer_School_2008/Programme.aspx
 .. _code sprint 2007: http://www.dtu.dk/Nyheder/Nyt_fra_Institutterne.aspx?guid={38B92D63-FB09-4DFA-A074-504146A2D678}
+.. _Virtual NanoLab: http://www.quantumwise.com/products/12-products/28-atk-se-200906#GPAW
