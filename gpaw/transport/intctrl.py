@@ -127,7 +127,7 @@ class IntCtrl:
 
         # -- Integral Step--
 
-        self.neintstep = 1e-3                    
+        self.neintstep = 2e-2                    
         
         # -- Integral Path --
 
@@ -142,7 +142,7 @@ class IntCtrl:
         # -- Integral eta --
 
         for i in range(len(self.neintpath)):                         
-            self.neintpath[i] += 1e-6j 
+            self.neintpath[i] += 1e-2j 
 
         if len(self.neintpath) == 0:
             if verbose:
