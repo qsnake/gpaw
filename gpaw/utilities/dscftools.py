@@ -178,47 +178,15 @@ def dscf_kpoint_overlaps(paw, phasemod=True, broadcast=True):
 
 # -------------------------------------------------------------------
 
-
 def dscf_find_bands(paw,bands,data=None):
     """Entirely serial, but works regardless of parallelization. DOES NOT WORK WITH DOMAIN-DECOMPOSITION IN GPAW v0.5.2725 """ #TODO!
+
+    raise DeprecationWarning('About to be replaced with something better.')
 
     if data is None:
         data = range(len(bands))
     else:
         assert len(data)==len(bands), 'Length mismatch.'
-
-    """
-    if allspins:
-        raise NotImplementedError, 'Currently only the spin-down case is considered...' #TODO!
-
-    # Extract wave functions for each band and k-point
-    wf_knG = []
-    for k in range(paw.wfs.nkpts):
-        wf_knG.append([paw.get_pseudo_wave_function(band=n,kpt=k,spin=0).ravel() for n in bands]) #paw.get_pseudo fails with domain-decomposition from tar-file
-
-    # Extract wave function for each band of the Gamma point
-    gamma_nG = wf_knG[0]
-
-    if debug: mpi_debug('wf_knG='+str(wf_knG))
-
-    band_kn = []
-    data_kn = []
-
-    for k in range(paw.wfs.nibzkpts):
-        band_n = []
-        data_n = []
-
-        for n in range(len(bands)):
-            # Find the band for this k-point which corresponds to bands[n] of the Gamma point
-            wf = wf_knG[k][n]
-            p = np.argmax([np.abs(np.dot(wf,gamma_nG[m])) for m in range(len(bands))])
-            band_n.append(bands[p])
-            data_n.append(datas[p])
-
-        band_kn.append(band_n)
-        data_kn.append(data_n)
-
-    """
 
     k0 = 0 #TODO find kpt with lowest kpt.k_c (closest to gamma point)
 
@@ -257,6 +225,8 @@ def dscf_find_bands(paw,bands,data=None):
 
 def dscf_linear_combination(paw, molecule, bands, coefficients):
     """Full parallelization over k-point - grid-decomposition parallelization needs heavy testing.""" #TODO!
+
+    raise DeprecationWarning('About to be replaced with something better.')
 
     if debug: dumpkey = mpi.world.size == 1 and 'serial' or 'mpi'
 
@@ -380,6 +350,9 @@ def dscf_matrix_elements(paw, kpt, A, dA):
 
 def dscf_overlap_elements(paw, kpt):
     # Copy/paste from gpaw/overlap.py lines 83-86 rev. 4808
+    operator = paw.wfs.overlap.operator
+    assert operator.nblocks == 1
+
     S = lambda x: x
     dS_aii = dict([(a, paw.wfs.setups[a].O_ii) for a in kpt.P_ani.keys()])
     return dscf_matrix_elements(paw, kpt, S, dS_aii)
@@ -395,6 +368,7 @@ def dscf_hamiltonian_elements(paw, kpt):
         paw.hamiltonian.apply_local_potential(psit_xG, Htpsit_xG, kpt.s)
         paw.hamiltonian.xc.add_non_local_terms(psit_xG, Htpsit_xG, kpt.s)
         return Htpsit_xG
+
     dH_aii = dict([(a, unpack(dH_sp[kpt.s])) for a, dH_sp \
         in paw.hamiltonian.dH_asp.items()])
 
@@ -463,52 +437,123 @@ def dscf_reconstruct_orbitals_k_point(paw, norbitals, mol, kpt):
 
     return (f_o, eps_o, wf_oG, P_aoi,)
 
+from gpaw.io.tar import TarFileReference
+from gpaw.occupations import FermiDiracFixed
+from gpaw.kpt_descriptor import KPointDescriptor
 
-def dscf_collapse_orbitals(paw, norbitals, nmaxbands, mol):
+def dscf_collapse_orbitals(paw, nbands_max='occupied', f_tol=1e-4,
+                           verify_density=True, nt_tol=1e-5, D_tol=1e-3):
+
+    bd = paw.wfs.bd
+    gd = paw.wfs.gd
+    kd = KPointDescriptor(paw.wfs.nspins, paw.wfs.nibzkpts, \
+        paw.wfs.kpt_comm, paw.wfs.gamma, paw.wfs.dtype)
 
     assert paw.wfs.bd.comm.size == 1, 'Band parallelization not implemented.'
 
+    f_skn = np.empty((kd.nspins, kd.nibzkpts, bd.nbands), dtype=float)
+    for s, f_kn in enumerate(f_skn):
+        for k, f_n in enumerate(f_kn):
+            kpt_rank, myu = kd.who_has_and_where_is(s, k)
+            if kd.comm.rank == kpt_rank:
+                f_n[:] = paw.wfs.kpt_u[myu].f_n
+            kd.comm.broadcast(f_n, kpt_rank)
+
+    # Find smallest band index, from which all bands have negligeble occupations
+    n0 = np.argmax(f_skn<f_tol, axis=-1).max()
+    assert np.all(f_skn[...,n0:]<f_tol) # XXX use f_skn[...,n0:].sum()<f_tol
+
+    # Read the number of Delta-SCF orbitals
+    norbitals = paw.occupations.norbitals
+    if debug: mpi_debug('n0=%d, norbitals=%d, bd:%d, gd:%d, kd:%d' % (n0,norbitals,bd.comm.size,gd.comm.size,kd.comm.size))
+
+    if nbands_max < 0:
+        nbands_max = n0 + norbitals - nbands_max
+    elif nbands_max == 'occupied':
+        nbands_max = n0 + norbitals
+
+    assert nbands_max >= n0 + norbitals, 'Too few bands to include occupations.'
+    ncut = nbands_max-norbitals
+
+    if debug: mpi_debug('nbands_max=%d' % nbands_max) 
+
+    paw.wfs.initialize_wave_functions_from_restart_file() # hurts memmory
+
     for kpt in paw.wfs.kpt_u:
+        mol = kpt.P_ani.keys() # XXX stupid
         (f_o, eps_o, wf_oG, P_aoi,) = dscf_reconstruct_orbitals_k_point(paw, norbitals, mol, kpt)
 
-        assert abs(f_o-1)<1e-9
-        f_o = kpt.ne_o
+        assert abs(f_o-1) < 1e-9, 'Orbitals must be properly normalized.'
+        f_o = kpt.ne_o # actual ocupatiion numbers
 
-        #unocc_bands = np.argwhere(abs(kpt.f_n)<1e-12).ravel()
-        neworder = np.argsort(np.hstack((kpt.eps_n, eps_o)))[:nmaxbands]
-
-        assert np.all(eps_o < kpt.eps_n[nmaxbands]), 'Too few bands...'
-
-        kpt.f_n = np.hstack((kpt.f_n, f_o))[neworder]
-        kpt.eps_n = np.hstack((kpt.eps_n, eps_o))[neworder]
-
+        # Crop band-data and inject data for Delta-SCF orbitals
+        kpt.f_n = np.hstack((kpt.f_n[:n0], f_o, kpt.f_n[n0:ncut]))
+        kpt.eps_n = np.hstack((kpt.eps_n[:n0], eps_o, kpt.eps_n[n0:ncut]))
         for a, P_ni in kpt.P_ani.items():
-            assert a in mol #XXX
-            kpt.P_ani[a] = np.vstack((P_ni, P_aoi[a]))[neworder,:]
+            kpt.P_ani[a] = np.vstack((P_ni[:n0], P_aoi[a], P_ni[n0:ncut]))
 
-        #shape = (nmaxbands,) + psit_nG_old.shape[1:]
-        #kpt.psit_nG = np.empty(shape, dtype=paw.wfs.dtype)
-        psit_nG_old = kpt.psit_nG
-        kpt.psit_nG = paw.wfs.gd.empty(nmaxbands, dtype=paw.wfs.dtype)
+        old_psit_nG = kpt.psit_nG
+        kpt.psit_nG = gd.empty(nbands_max, dtype=kd.dtype)
 
-        for m, n in enumerate(neworder):
-            if n < len(psit_nG_old):
-                kpt.psit_nG[m] = psit_nG_old[n]
-            else:
-                o = n - len(psit_nG_old)
-                kpt.psit_nG[m] = wf_oG[o]
+        if isinstance(old_psit_nG, TarFileReference):
+            assert old_psit_nG.shape[-3:] == wf_oG.shape[-3:], 'Shape mismatch!'
 
-        del kpt.ne_o, kpt.c_on
+            # Read band-by-band to save memory as full psit_nG may be large
+            for n,psit_G in enumerate(kpt.psit_nG):
+                if n < n0:
+                    full_psit_G = old_psit_nG[n]
+                elif n in range(n0,n0+norbitals):
+                    full_psit_G = wf_oG[n-n0]
+                else:
+                    full_psit_G = old_psit_nG[n-norbitals]
+                gd.distribute(full_psit_G, psit_G)
+        else:
+            kpt.psit_nG[:n0] = old_psit_nG[:n0]
+            kpt.psit_nG[n0:n0+norbitals] = wf_oG
+            kpt.psit_nG[n0+norbitals:] = old_psit_nG[n0:ncut]
+
+        del kpt.ne_o, kpt.c_on, old_psit_nG
 
     del paw.occupations.norbitals
 
+    # Change various parameters related to new number of bands
+    paw.wfs.mynbands = bd.mynbands = nbands_max
+    paw.wfs.nbands = bd.nbands = nbands_max
+    if paw.wfs.eigensolver:
+        paw.wfs.eigensolver.initialized = False
+
+    # Crop convergence criteria nbands_converge to new number of bands
     par = paw.input_parameters
     if 'convergence' in par:
         cc = par['convergence']
         if 'bands' in cc:
-            cc['bands'] = min(nmaxbands, cc['bands'])
+            cc['bands'] = min(nbands_max, cc['bands'])
 
-    paw.wfs.mynbands = paw.wfs.bd.mynbands = nmaxbands
-    paw.wfs.nbands = paw.wfs.bd.nbands = nmaxbands
+    # Replace occupations class with a fixed variant (gets the magmom right)
+    paw.occupations = FermiDiracFixed(paw.occupations.ne, kd.nspins,
+                                      paw.occupations.kT, paw.occupations.epsF)
+    paw.occupations.set_communicator(kd.comm, bd.comm)
+    paw.occupations.find_fermi_level(paw.wfs.kpt_u) # just regenerates magmoms
+
+    # For good measure, self-consistency information should be destroyed
+    paw.scf.reset()
+
+    if verify_density:
+        paw.initialize_positions()
+
+        # Re-calculate pseudo density and watch for changes
+        old_nt_sG = paw.density.nt_sG.copy()
+        paw.density.calculate_pseudo_density(paw.wfs)
+        if debug: mpi_debug('delta-density: %g' % np.abs(old_nt_sG-paw.density.nt_sG).max())
+        assert np.all(np.abs(paw.density.nt_sG-old_nt_sG)<nt_tol), 'Density changed!'
+
+        # Re-calculate atomic density matrices and watch for changes
+        old_D_asp = {}
+        for a,D_sp in paw.density.D_asp.items():
+            old_D_asp[a] = D_sp.copy()
+        paw.wfs.calculate_atomic_density_matrices(paw.density.D_asp)
+        if debug: mpi_debug('delta-D_asp: %g' % max([np.abs(D_sp-old_D_asp[a]).max() for a,D_sp in paw.density.D_asp.items()]))
+        for a,D_sp in paw.density.D_asp.items():
+            assert np.all(np.abs(D_sp-old_D_asp[a])< D_tol), 'Atom %d changed!' % a
 
 
