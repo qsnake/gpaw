@@ -76,13 +76,13 @@ def dscf_find_atoms(atoms,symbol):
 # -------------------------------------------------------------------
 
 # Helper function in case of hs_operators having ngroups > 1
-def SliceGen(psit_nG, overlap):
+def SliceGen(psit_nG, operator):
     assert psit_nG.ndim == 4
-    assert psit_nG.shape[0] == overlap.bd.mynbands
-    assert np.all(psit_nG.shape[1:] == overlap.gd.n_c)
-    assert overlap.bd.mynbands % overlap.nblocks == 0
-    M = overlap.bd.mynbands // overlap.nblocks
-    for j in range(overlap.nblocks):
+    assert psit_nG.shape[0] == operator.bd.mynbands
+    assert np.all(psit_nG.shape[1:] == operator.gd.n_c)
+    assert operator.bd.mynbands % operator.nblocks == 0
+    M = operator.bd.mynbands // operator.nblocks
+    for j in range(operator.nblocks):
         n1 = j * M
         n2 = n1 + M
         yield psit_nG[n1:n2]
@@ -97,7 +97,7 @@ def dscf_kpoint_overlaps(paw, phasemod=True, broadcast=True):
     gd = paw.wfs.gd
     kd = KPointDescriptor(paw.wfs.nspins, paw.wfs.nibzkpts, \
         paw.wfs.kpt_comm, paw.wfs.gamma, paw.wfs.dtype)
-    overlap = Operator(bd, gd, hermitian=False)
+    operator = Operator(bd, gd, hermitian=False)
     atoms = paw.get_atoms()
 
     # Find the kpoint with lowest kpt.k_c (closest to gamma point)
@@ -165,9 +165,9 @@ def dscf_kpoint_overlaps(paw, phasemod=True, broadcast=True):
                     for n0, P0_i in enumerate(P0_ni):
                         X_nn[n,n0] += np.vdot(P_i, np.dot(O_ii, P0_i))
         """
-        X = lambda psit_nG, g=SliceGen(psit0_nG, overlap): g.next()
+        X = lambda psit_nG, g=SliceGen(psit0_nG, operator): g.next()
         dX = lambda a, P_ni: np.dot(P0_ani[a], paw.wfs.setups[a].O_ii)
-        X_nn[:] = overlap.calculate_matrix_elements(kpt.psit_nG, kpt.P_ani, X, dX).T
+        X_nn[:] = operator.calculate_matrix_elements(kpt.psit_nG, kpt.P_ani, X, dX).T
 
     if broadcast:
         if bd.comm.rank == 0:
