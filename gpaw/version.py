@@ -4,7 +4,7 @@
 version = '0.6'
 
 ase_required_version = '3.2.0'
-ase_required_svnrevision = '1062'
+ase_required_svnrevision = '1113'
 
 from os import path
 try:
