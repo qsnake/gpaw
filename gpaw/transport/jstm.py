@@ -330,6 +330,9 @@ class STM:
 
         tip_efermi = self.tip.get_fermi_level() / Hartree
         srf_efermi = self.srf.get_fermi_level() / Hartree
+        fermi_diff = tip_efermi - srf_efermi
+
+        
 
         if cvl1 == 0: # XXX nessesary???
             cvl1 = 1
@@ -339,6 +342,8 @@ class STM:
         h2 = h2[cvl2:, cvl2:]
         s2 = s2[cvl2:, cvl2:]
 
+        h1 -= s1 * fermi_diff * Hartree
+
         # Align bfs with the surface lead as a reference
         diff = (h2[align_bf, align_bf] - h20[align_bf, align_bf]) \
                / s2[align_bf, align_bf]
@@ -346,12 +351,11 @@ class STM:
         h2 -= diff * s2      
         h1 -= diff * s1        
         
-        fermi_diff = tip_efermi - srf_efermi
+
         
         self.tip_cell.shift_potential(-diff / Hartree\
-                                      -fermi_diff - srf_efermi)
+                                      - (srf_efermi + tip_efermi) / 2)
 
-        self.diffff = diff / Hartree #+ fermi_diff + srf_efermi
 
         diff1 = (h10[-1, -1] - h1[-1, -1]) / s1[-1, -1]
         h10 -= diff1 * s10
@@ -1269,7 +1273,7 @@ def dump_lead_hs(calc, filename, direction='z', return_hs=False):
              = get_lead_lcao_hamiltonian(calc, direction=direction)
 
     if w.rank == 0:
-        h_kmm = h_skmm[0]
+        h_kmm = h_skmm[0] - efermi * s_kmm
     
         fd = open(filename + '_hs.pckl', 'wb')
         pickle.dump((h_kmm, s_kmm), fd, 2)
