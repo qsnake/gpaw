@@ -139,7 +139,10 @@ class PAW(PAWTextOutput):
         self.initialized = False
 
         for key in kwargs:
-            if key in ['fixmom', 'mixer', 'basis',
+            if key == 'basis' and  p['mode'] == 'fd':
+                continue
+            
+            if key in ['fixmom', 'mixer',
                        'verbose', 'txt', 'hund', 'random',
                        'eigensolver', 'poissonsolver', 'idiotproof', 'notify']:
                 continue
@@ -167,7 +170,7 @@ class PAW(PAWTextOutput):
                 self.occupations = None
                 self.hamiltonian = None
                 self.wfs = EmptyWaveFunctions()
-            elif key in ['mode']:
+            elif key in ['mode', 'basis']:
                 self.wfs = EmptyWaveFunctions()
             else:
                 raise TypeError('Unknown keyword argument:' + key)
