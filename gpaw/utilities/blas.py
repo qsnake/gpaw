@@ -17,6 +17,7 @@ from gpaw.utilities import is_contiguous
 from gpaw import debug
 import _gpaw
 
+
 def scal(alpha, x):
     """alpha x
 
@@ -33,6 +34,7 @@ def scal(alpha, x):
         assert x.flags.contiguous
     _gpaw.scal(alpha, x)
     
+
 def gemm(alpha, a, b, beta, c, transa='n'):
     """General Matrix Multiply.
 
