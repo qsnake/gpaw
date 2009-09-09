@@ -348,7 +348,7 @@ class Operator:
                 rbuf_In = np.empty_like(sbuf_In)
 
         # Because of the amount of communication involved, we need to
-        # be syncronized up to this point
+        # be syncronized up to this point.
         world.barrier()
         for j in range(J):
             n1 = j * M
@@ -404,7 +404,9 @@ class Operator:
 
         if domain_comm.rank == 0:
             self.bd.matrix_assembly(A_qnn, A_NN, self.hermitian)
-
+        # Because of the amount of communication involved, we need to
+        # be syncronized up to this point.           
+        world.barrier()
         return A_NN
         
     def matrix_multiply(self, C_NN, psit_nG, P_ani=None):
