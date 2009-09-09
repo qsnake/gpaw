@@ -346,10 +346,12 @@ class STM:
         h2 -= diff * s2      
         h1 -= diff * s1        
         
-        #fermi_diff = tip_fermi - srf_fermi
+        fermi_diff = tip_efermi - srf_efermi
         
-        #self.tip_cell.shift_potential(-diff / Hartree - fermi_diff - srf_efermi)
-        #self.srf_cell.shift_potential(-diff / Hartree - srf_efermi)
+        self.tip_cell.shift_potential(-diff / Hartree\
+                                      -fermi_diff - srf_efermi)
+
+        self.diffff = diff / Hartree #+ fermi_diff + srf_efermi
 
         diff1 = (h10[-1, -1] - h1[-1, -1]) / s1[-1, -1]
         h10 -= diff1 * s10
@@ -654,8 +656,8 @@ class STM:
 
     def linescan(self, startstop=None):
         if startstop == None:
-            start = np.array([0,0])
-            stop = self.srf.gd.n_c[:2]-1
+            start = np.array([0, 0])
+            stop = self.srf.gd.N_c[:2] - 1
         else:
             start = np.asarray(startstop[0])
             stop = np.asarray(startstop[1])
@@ -665,32 +667,32 @@ class STM:
         n_c = self.srf.gd.n_c[:2]
         h_c = self.srf.gd.h_c[:2]
         h = np.linalg.norm(v*h_c)
-        n = np.floor(np.linalg.norm((stop-start)*h_c)/h).astype(int) + 1
-        linescan_n = np.zeros((n,))
+        n = np.floor(np.linalg.norm((stop - start) * h_c) / h).astype(int) + 1
+        linescan_n = np.zeros((n, ))
         line = np.arange(n)*Bohr*h
         for i in range(n):
-            grpt = start + v*i
-            if np.round((grpt%1),5).any(): # Interpolate if nessesary
-                C = np.empty((2,2,2)) # find four nearest neighbours
+            grpt = start + v * i
+            if np.round((grpt % 1), 5).any(): # Interpolate if nessesary
+                C = np.empty((2, 2, 2)) # find four nearest neighbours
                 C[0,0] = np.floor(grpt)
-                C[1,0] = C[0,0] + np.array([1,0])
-                C[0,1] = C[0,0] + np.array([0,1])
-                C[1,1] = C[0,0] + np.array([1,1])
-                xd = (grpt%1)[0]
-                yd = (grpt%1)[1]
+                C[1,0] = C[0, 0] + np.array([1, 0])
+                C[0,1] = C[0, 0] + np.array([0, 1])
+                C[1,1] = C[0, 0] + np.array([1, 1])
+                xd = (grpt % 1)[0]
+                yd = (grpt % 1)[1]
                 if not self.scans.has_key('fullscan'):
-                    I1 = self.get_current(C[0,0])*(1-xd) \
-                        + self.get_current(C[1,0])*xd
-                    I2 = self.get_current(C[0,1])*(1-xd) \
-                        + self.get_current(C[1,1])*xd
-                    I = I1 * (1-yd) + I2*yd
+                    I1 = self.get_current(C[0, 0]) * (1 - xd) \
+                        + self.get_current(C[1, 0]) * xd
+                    I2 = self.get_current(C[0, 1]) * (1 - xd) \
+                        + self.get_current(C[1, 1]) * xd
+                    I = I1 * (1 - yd) + I2 * yd
                 else:
                     fullscan = self.scans['fullscan']
-                    I1 = fullscan[tuple(C[0,0])]*(1-xd) \
-                       + fullscan[tuple(C[1,0])]*xd
-                    I2 = fullscan[tuple(C[0,1])]*(1-xd) \
-                       + fullscan[tuple(C[1,1])]*xd
-                    I = I1 * (1-yd) + I2*yd
+                    I1 = fullscan[tuple(C[0, 0])] * (1 - xd) \
+                       + fullscan[tuple(C[1, 0])] * xd
+                    I2 = fullscan[tuple(C[0, 1])] * (1 - xd) \
+                       + fullscan[tuple(C[1, 1])] * xd
+                    I = I1 * (1 - yd) + I2 * yd
 
             else:
                 if not self.scans.has_key('fullscan'):
@@ -698,14 +700,14 @@ class STM:
                 else:                
                     I = self.scans['fullscan'][tuple(grpt.astype(int))]
             linescan_n[i] = I
-        self.scans['linescan']=([start,stop],line,linescan_n) 
+        self.scans['linescan'] = ([start, stop], line, linescan_n) 
 
     def write(self, filename):
         stmc = self.stm_calc
-        fd = open(filename,'wb')
+        fd = open(filename, 'wb')
         pickle.dump({'p': self.input_parameters,
                      'egft12_emm': [stmc.energies, stmc.gft1_emm, stmc.gft2_emm]
-                    },fd,2)
+                    }, fd, 2)
         fd.close()
 
     def get_dmin(self):
@@ -1241,7 +1243,7 @@ def dump_hs(calc, filename, return_hs=False):
 
     if w.rank == 0:
         efermi = calc.get_fermi_level()
-        h_kmm = h_skmm[0] - s_kmm * efermi
+        h_kmm = h_skmm[0] 
     
         for i in range(len(h_kmm)):
             remove_pbc(atoms, h_kmm[i], s_kmm[i], 2)
@@ -1267,7 +1269,7 @@ def dump_lead_hs(calc, filename, direction='z', return_hs=False):
              = get_lead_lcao_hamiltonian(calc, direction=direction)
 
     if w.rank == 0:
-        h_kmm = h_skmm[0] - efermi * s_kmm
+        h_kmm = h_skmm[0]
     
         fd = open(filename + '_hs.pckl', 'wb')
         pickle.dump((h_kmm, s_kmm), fd, 2)
