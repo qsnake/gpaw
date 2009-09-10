@@ -122,7 +122,12 @@ class PAW(PAWTextOutput):
 
     def set(self, **kwargs):
         p = self.input_parameters
-        
+
+        # Prune input for things that didn't change
+        for key, value in kwargs.items():
+            if p[key] == value:
+                kwargs.pop(key)
+
         if (kwargs.get('h') is not None) and (kwargs.get('gpts') is not None):
             raise TypeError("""You can't use both "gpts" and "h"!""")
         if 'h' in kwargs:
