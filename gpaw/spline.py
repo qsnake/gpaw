@@ -61,6 +61,9 @@ class Spline:
         assert r >= 0.0
         return self.spline(r)
 
+    def map(self, r_g):
+        return np.array(map(self, r_g))
+
     def get_functions(self, gd, start_c, end_c, spos_c):
         h_cv = gd.cell_cv / gd.N_c[:, np.newaxis]
         # start_c is the new origin so we translate gd.beg_c to start_c
