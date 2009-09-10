@@ -21,10 +21,10 @@ from gpaw.version import version
 class BasisMaker:
     """Class for creating atomic basis functions."""
     def __init__(self, generator, name=None, run=True, gtxt='-',
-                 non_relativistic_guess=False):
+                 non_relativistic_guess=False, xc='PBE'):
         if isinstance(generator, str): # treat 'generator' as symbol
             generator = Generator(generator, scalarrel=True,
-                                  xcname='PBE', txt=gtxt,
+                                  xcname=xc, txt=gtxt,
                                   nofiles=True)
             generator.N *= 4
         self.generator = generator
@@ -32,7 +32,7 @@ class BasisMaker:
         if run:
             if non_relativistic_guess:
                 ae0 = AllElectron(generator.symbol, scalarrel=False,
-                                  nofiles=False, txt=gtxt)
+                                  nofiles=False, txt=gtxt, xcname=xc)
                 ae0.N = generator.N
                 ae0.beta = generator.beta
                 ae0.run()
@@ -346,7 +346,8 @@ class BasisMaker:
     def generate(self, zetacount=2, polarizationcount=1,
                  tailnorm=(0.16, 0.3, 0.6), energysplit=0.1, tolerance=1.0e-3,
                  referencefile=None, referenceindex=None, rcutpol_rel=1.0, 
-                 rcutmax=20.0, ngaussians=None, rcharpol_rel=None,
+                 rcutmax=20.0, #ngaussians=None,
+                 rcharpol_rel=None,
                  vconf_args=(12.0, 0.6), txt='-',
                  include_energy_derivatives=False,
                  lvalues=None):
@@ -367,7 +368,6 @@ class BasisMaker:
         ``referenceindex``    Index in reference system of relevant atom
         ``rcutpol_rel``       Polarization rcut relative to largest other rcut
         ``rcutmax``           No cutoff will be greater than this value
-        ``ngaussians``        Number of gaussians for polarization function
         ``vconf_args``        Parameters (alpha, ri/rc) for conf. potential
         ``txt``               Log filename or '-' for stdout
         ===================== =================================================
@@ -421,9 +421,9 @@ class BasisMaker:
             if lvalues[0] != 0: # Always include s-orbital !
                 lvalues = npy.array([0] + list(lvalues))
             
-        
-        print >> txt, 'Basis functions for %s' % g.symbol
-        print >> txt, '====================' + '='*len(g.symbol)
+        title = '%s Basis functions for %s' % (g.xcname, g.symbol)
+        print >> txt, title
+        print >> txt, '=' * len(title)
         
         j_l = {} # index j by l rather than the other way around
         reversed_l_j = list(g.l_j)
@@ -527,41 +527,40 @@ class BasisMaker:
             msg = 'Polarization function: l=%d, rc=%.02f' % (l_pol, rcut)
             print >> txt, '\n' + msg
             print >> txt, '-' * len(msg)
-            if referencefile is None:
-                # Make a single Gaussian for polarization function.
-                #
-                # It is known that for given l, the sz cutoff defined
-                # by some fixed energy is strongly correlated to the
-                # value of the characteristic radius which best reproduces
-                # the wave function found by interpolation.
-                #
-                # We know that for e.g. d orbitals:
-                #   rchar ~= .37 rcut[sz](.3eV)
-                # Since we don't want to spend a lot of time finding
-                # these value for other energies, we just find the energy
-                # shift at .3 eV now
+            # Make a single Gaussian for polarization function.
+            #
+            # It is known that for given l, the sz cutoff defined
+            # by some fixed energy is strongly correlated to the
+            # value of the characteristic radius which best reproduces
+            # the wave function found by interpolation.
+            #
+            # We know that for e.g. d orbitals:
+            #   rchar ~= .37 rcut[sz](.3eV)
+            # Since we don't want to spend a lot of time finding
+            # these value for other energies, we just find the energy
+            # shift at .3 eV now
 
-                j = max(j_l.values())
-                u, e, de, vconf, rc_fixed = self.rcut_by_energy(j, .3, 1e-2,
-                                                                6., (12., .6))
-                
-                if rcharpol_rel is None:
-                    rcharpol_rel = rchar_rels.get(l_pol, default_rchar_rel)
-                rchar = rcharpol_rel * rc_fixed
-                gaussian = QuasiGaussian(1./rchar**2, rcut)
-                psi_pol = gaussian(g.r) * g.r**(l_pol + 1)
-                norm = npy.dot(g.dr, psi_pol * psi_pol) ** .5
-                psi_pol /= norm
-                print >> txt, 'Single quasi Gaussian'
-                msg = 'Rchar = %.03f*rcut = %.03f Bohr' % (rcharpol_rel, rchar)
-                adjective = 'Gaussian'
-                print >> txt, msg
-            else:
-                psi_pol = self.make_polarization_function(rcut, l_pol,
-                                                          referencefile,
-                                                          referenceindex,
-                                                          ngaussians, txt)
-                adjective = 'interpolated'
+            j = max(j_l.values())
+            u, e, de, vconf, rc_fixed = self.rcut_by_energy(j, .3, 1e-2,
+                                                            6., (12., .6))
+
+            if rcharpol_rel is None:
+                rcharpol_rel = rchar_rels.get(l_pol, default_rchar_rel)
+            rchar = rcharpol_rel * rc_fixed
+            gaussian = QuasiGaussian(1./rchar**2, rcut)
+            psi_pol = gaussian(g.r) * g.r**(l_pol + 1)
+            norm = npy.dot(g.dr, psi_pol * psi_pol) ** .5
+            psi_pol /= norm
+            print >> txt, 'Single quasi Gaussian'
+            msg = 'Rchar = %.03f*rcut = %.03f Bohr' % (rcharpol_rel, rchar)
+            adjective = 'Gaussian'
+            print >> txt, msg
+            #else:
+            #    psi_pol = self.make_polarization_function(rcut, l_pol,
+            #                                              referencefile,
+            #                                              referenceindex,
+            #                                              ngaussians, txt)
+            #    adjective = 'interpolated'
 
             type = '%s-type %s polarization' % ('spdfg'[l_pol], adjective)
             bf_pol = BasisFunction(l_pol, rcut, psi_pol, type)

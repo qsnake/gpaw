@@ -20,6 +20,8 @@ parser.add_option('-T', '--tail-norm', metavar='<norm>', type='string',
                   default='0.16,0.3,0.6', dest='tailnorm',
                   help='use the given fractions to define the split'+
                   '-valence cutoffs.  Default: [%default]')
+parser.add_option('-f', '--xcfunctional', default='PBE', metavar='<XC>',
+                  help='Exchange-Correlation functional [default: %default]')
 parser.add_option('-g', '--non-relativistic-guess', action='store_true',
                   help='Run non-scalar relativistic AE calculation for '
                   'initial guess')
@@ -28,13 +30,13 @@ parser.add_option('-g', '--non-relativistic-guess', action='store_true',
 #                  help='include derivative of atomic orbital with respect '+
 #                  'to confinement potential inner cutoff as second '+
 #                  'basis function')
-parser.add_option('-P', '--plot', action='store_true',
-                  help='plot basis functions')
-parser.add_option('-N', '--no-files', action='store_true',
-                  help='Do not write basis function files')
-parser.add_option('-X', '--exclude', action='store_true',
-                  help='generate basis sets for all g2 elements, excluding '+
-                  'those specified')
+#parser.add_option('-P', '--plot', action='store_true',
+#                  help='plot basis functions')
+#parser.add_option('-N', '--no-files', action='store_true',
+#                  help='Do not write basis function files')
+#parser.add_option('-X', '--exclude', action='store_true',
+#                  help='generate basis sets for all g2 elements, excluding '+
+#                  'those specified')
 parser.add_option('--rcut-max', type='float', default=16., metavar='<rcut>',
                   help='max cutoff for confined atomic orbitals.  This '+
                   'option has no effect on orbitals with smaller cutoff '+
@@ -47,9 +49,9 @@ parser.add_option('--rchar-pol-rel', type='float', default=None,
                   metavar='<rchar>',
                   help='characteristic radius of Gaussian when not using '+
                   'interpolation scheme, relative to rcut')
-parser.add_option('--gaussians', type='int', metavar='<n>',
-                  help='use the specified number of Gaussians for '+
-                  'polarization function interpolation')
+#parser.add_option('--gaussians', type='int', metavar='<n>',
+#                  help='use the specified number of Gaussians for '+
+#                  'polarization function interpolation')
 parser.add_option('--vconf-amplitude', type='float', default=12.,
                   metavar='<alpha>',
                   help='set proportionality constant of smooth confinement '+
@@ -65,33 +67,13 @@ parser.add_option('--debug', action='store_true',
 
 opts, args = parser.parse_args()
 
-if __name__ == '__main__' and len(args) == 0 and not opts.exclude:
+if __name__ == '__main__' and len(args) == 0:
     parser.print_help()
     sys.exit(0)
 
-from gpaw.atom.generator import Generator
 from gpaw.atom.basis import BasisMaker
 from gpaw import ConvergenceError
 from gpaw.atom import polarization
-
-if opts.exclude: # Invert selection of elements
-    from ase.data import molecules
-    # If the user specifies N:<reference_system> then remember that
-    # because we don't want to exclude those
-    special_args = [arg for arg in args if ':' in arg]
-
-    # List of the actual element names in argv
-    elements = [arg.split(':')[0] for arg in args]
-    inverted_args = [arg for arg in molecules.atoms if not arg in elements]
-    inverted_args.remove('Mg') # g2 contains no Mg reference systems
-
-    # Now re-add those we remembered earlier
-    inverted_args.extend(special_args)
-
-    args = inverted_args
-    if len(args) == 0:
-        print 'Another job well done!'
-        sys.exit(0)
 
 bad_density_warning = """\
 Bad initial electron density guess!  Try rerunning the basis generator
@@ -158,7 +140,8 @@ def main():
                                                      reference_atom_indices):
         try:
             bm = BasisMaker(symbol, name, gtxt=None,
-                            non_relativistic_guess=opts.non_relativistic_guess)
+                            non_relativistic_guess=opts.non_relativistic_guess,
+                            xc=opts.xcfunctional)
         except ConvergenceError:
             if opts.non_relativistic_guess:
                 print >> sys.stderr, very_bad_density_warning
@@ -168,10 +151,6 @@ def main():
                 print >> sys.stderr, bad_density_warning
             continue
         
-        if opts.no_files:
-            figfile = None
-        else:
-            figfile = '%s.%s.png' % (symbol, name)
         tailnorm = [float(norm) for norm in opts.tailnorm.split(',')]
         vconf_args = None
         if not opts.vconf_sharp_confinement:
@@ -184,17 +163,10 @@ def main():
                             referenceindex=referenceindex,
                             rcutpol_rel=opts.rcut_pol_rel,
                             rcutmax=opts.rcut_max,
-                            ngaussians=opts.gaussians,
+                            #ngaussians=opts.gaussians,
                             rcharpol_rel=opts.rchar_pol_rel,
                             vconf_args=vconf_args)
-        
-        if opts.plot:
-            bm.plot(basis, title=referencefile, filename=figfile)
-        if not opts.no_files:
-            basis.write_xml()
-    if opts.plot and opts.no_files:
-        import pylab
-        pylab.show()
+        basis.write_xml()
 
 if __name__ == '__main__':    
     main()
