@@ -79,9 +79,9 @@ class Overlap:
         nbands = mynbands * self.band_comm.size
 
         # Construct the overlap matrix:
-        self.timer.start('Orthonormalize: calc_matrix')
         S = lambda x: x
         dS_aii = dict([(a, self.setups[a].O_ii) for a in P_ani])
+        self.timer.start('Orthonormalize: calc_matrix')
         S_nn = self.operator.calculate_matrix_elements(psit_nG, P_ani,
                                                        S, dS_aii)
         self.timer.stop('Orthonormalize: calc_matrix')
