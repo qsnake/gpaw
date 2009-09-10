@@ -76,12 +76,11 @@ class WaveFunctions(EmptyWaveFunctions):
         mynks = nks // kpt_comm.size
 
         ks0 = kpt_comm.rank * mynks
-        k0 = ks0 % self.nibzkpts
         kpt_u = []
         sdisp_cd = gd.sdisp_cd
         for ks in range(ks0, ks0 + mynks):
             s, k = divmod(ks, self.nibzkpts)
-            q = k - k0
+            q = ks - ks0
             weight = weight_k[k] * 2 / nspins
             if gamma:
                 phase_cd = np.ones((3, 2), complex)
@@ -91,7 +90,7 @@ class WaveFunctions(EmptyWaveFunctions):
             kpt_u.append(KPoint(weight, s, k, q, phase_cd))
 
         self.kpt_u = kpt_u
-        self.ibzk_qc = ibzk_kc[k0:k + 1]
+        self.ibzk_qc = np.vstack((ibzk_kc, ibzk_kc))[ks0:ks0 + mynks]
 
         self.eigensolver = None
         self.positions_set = False
