@@ -1608,9 +1608,9 @@ class Transport(GPAW):
             density.rhot_g -= self.surround.extra_rhot_g
         if self.hamiltonian.vHt_g is None:
             self.hamiltonian.vHt_g = self.finegd.zeros()
-        else:
-            self.surround.update_correction_density()
-            density.rhot_g += self.surround.correction_rhot_g
+        #else:
+        #    self.surround.update_correction_density()
+        #    density.rhot_g += self.surround.correction_rhot_g
 
         ham.npoisson = self.inner_poisson.solve(self.hamiltonian.vHt_g,
                                                   density.rhot_g,
