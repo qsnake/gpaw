@@ -8,7 +8,7 @@ try:
     if 1:
         be = Atoms(symbols='Be',positions=[(0,0,0)])
         be.center(vacuum=5)
-        calc = GPAW(h=0.17, xc='LDA', nbands=1) #0.1 required for accuracy
+        calc = GPAW(gpts=(64,64,64), xc='LDA', nbands=1) #0.1 required for accuracy
         be.set_calculator(calc)
         be.get_potential_energy()
         #calc.write("be.gpw")
@@ -23,7 +23,7 @@ try:
         mmax = max(abs(eval(l.split(' ')[3])), mmax)
 
     print "Max error: ", mmax
-    assert mmax<0.009
+    assert mmax<0.005
 except:
     extra_parameters['usenewxc'] = usenewxc
     raise

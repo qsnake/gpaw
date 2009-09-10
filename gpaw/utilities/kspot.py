@@ -32,7 +32,7 @@ class AllElectronPotential:
          r_g, vKS_g = self.get_spherical_ks_potential(a)
          setup = self.paw.density.setups[a]
          # Calculate also atomic LDA for reference
-         g = AllElectron(setup.symbol, xcname='LDA',nofiles=True, txt=None)
+         g = AllElectron(setup.symbol, xcname='LDA',nofiles=True, scalarrel=True, txt=None)
          g.run()
          g.vr[1:] /= g.r[1:]
          g.vr[0] = g.vr[1]
@@ -73,6 +73,8 @@ class AllElectronPotential:
       return radf_g
       
    def get_spherical_ks_potential(self,a):
+      #self.paw.restore_state()
+
       # If the calculation is just loaded, density needs to be interpolated
       if self.paw.density.nt_sg is None:
          print "Interpolating density"
