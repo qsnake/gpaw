@@ -8,7 +8,7 @@ import glob
 from gpaw.atom.generator import parameters as setup_parameters
 
 class Job:
-    def __init__(self, path, tmax=20, ncpu=4, deps=None, arg=''):
+    def __init__(self, path, tmax=20, ncpu=8, deps=None, arg=''):
         self.dir = os.path.dirname(path)
         self.name = os.path.basename(path)
         self.id = self.name + arg
@@ -27,7 +27,7 @@ jobs = [
     Job(path + 'neb/neb1'),
     Job(path + 'aluminium/Al_fcc'),
     Job(path + 'aluminium/Al_fcc_convergence'),
-    Job(path + 'surface/work_function', 20, deps=['testAl100']),
+    Job(path + 'surface/work_function', ncpu=1, deps=['testAl100']),
     Job(path + 'surface/testAl100'),
     Job(path + 'diffusion/initial'),
     Job(path + 'diffusion/densitydiff', 20, deps=['solution']),
@@ -36,8 +36,8 @@ jobs = [
     Job(path + 'vibrations/h2o'),
     Job(path + 'band_structure/Na_band'),
     Job(path + 'band_structure/plot_band', 20, deps=['Na_band']),
-    Job(path + 'wannier/wannier-si'),
-    Job(path + 'wannier/wannier-benzene', 20, deps=['benzene']),
+    Job(path + 'wannier/wannier-si', ncpu=1, deps=['si']),
+    Job(path + 'wannier/wannier-benzene', ncpu=1, deps=['benzene']),
     Job(path + 'wannier/benzene'),
     Job(path + 'lrtddft/ground_state'),
     Job(path + 'transport/pt_h2_tb_transport'),
@@ -56,27 +56,30 @@ jobs = [
     Job(path + 'stm/teststm', 20, 1, deps=['HAl100']),
     ]
 
-jobs = []
+#jobs = []
 #setup_parameters = ['H', 'Li']
 for symbol in setup_parameters:
     jobs.append(Job('../../doc/setups/make_setup_pages_data',
-                    tmax=60, ncpu=1, arg=symbol))
-jobs.append(Job('../../doc/setups/make_setup_pages_data', tmax=60, ncpu=1, 
+                    tmax=3*60, ncpu=1, arg=symbol))
+jobs.append(Job('../../doc/setups/make_setup_pages_data', tmax=120, ncpu=1, 
                 deps=['make_setup_pages_data' + symbol
                       for symbol in setup_parameters]))
 
-jobs = [
-    Job('Ru001/ruslab', tmax=5*60, ncpu=4),
+jobs += [
+    Job('Ru001/ruslab', tmax=5*60, ncpu=8),
     Job('Ru001/ruslab', tmax=5*60, ncpu=8, arg='H'),
     Job('Ru001/ruslab', tmax=5*60, ncpu=8, arg='N'),
-    Job('Ru001/ruslab', tmax=5*60, ncpu=12, arg='O'),
-    Job('Ru001/molecules', tmax=20, ncpu=4),
-#   Job('Ru001/result', ncpu=1, deps=['ruslab', 'ruslabN', 'ruslabO', 'NO']),
+    Job('Ru001/ruslab', tmax=5*60, ncpu=16, arg='O'),
+    Job('Ru001/molecules', tmax=20, ncpu=8),
+    Job('Ru001/result', ncpu=1, deps=['ruslab', 'ruslabN', 'ruslabO',
+                                      'molecules']),
 #    Job('COAu38/Au038to', 10),
 #    Job('O2Pt/o2pt', 40),
-#    Job('../vdw/interaction', 60, deps=['dimers']),
-#    Job('../vdw/dimers', 60),
+    Job('../vdw/interaction', 60, deps=['dimers']),
+    Job('../vdw/dimers', 60),
     ]
+
+#jobs = [Job('Ru001/molecules', tmax=20, ncpu=8)]
 
 class Jobs:
     def __init__(self, log=sys.stdout):
@@ -167,17 +170,12 @@ class Jobs:
             pass
 
         gpaw_python = (self.gpawdir +
-                       '/gpaw/build/bin.linux-x86_64-2.3/gpaw-python')
+                       '/gpaw/build/bin.linux-x86_64-xeon-2.4/gpaw-python')
         cmd = (
             'cd %s/gpaw/test/long/%s; ' % (self.gpawdir, job.dir) +
-            'export LD_LIBRARY_PATH=/opt/acml-4.0.1/gfortran64/lib:' +
-            '/opt/acml-4.0.1/gfortran64/lib:' +
-            '/usr/local/openmpi-1.2.5-gfortran/lib64 && ' +
-            'export PATH=/usr/local/openmpi-1.2.5-gfortran/bin:${PATH} && '+
-            'mpirun ' +
-            '-x PYTHONPATH=%s/gpaw ' % self.gpawdir +
+            'mpiexec --mca mpi_paffinity_alone 1 ' +
+            '-x PYTHONPATH=%s/gpaw:$PYTHONPATH ' % self.gpawdir +
             '-x GPAW_SETUP_PATH=%s ' % self.setupsdir +
-            '-x GPAW_VDW=/home/camp/jensj/VDW ' +
             '%s _%s.py %s > %s.output' %
             (gpaw_python, job.id, job.arg, job.id))
         header = '\n'.join(
@@ -212,10 +210,10 @@ class Jobs:
             ppn = 1
             nodes = 1
         else:
-            assert job.ncpu % 4 == 0
-            ppn = 4
-            nodes = job.ncpu // 4
-        options = ('-l nodes=%d:ppn=%d:ethernet -l walltime=%d:%02d:00' %
+            assert job.ncpu % 8 == 0
+            ppn = 8
+            nodes = job.ncpu // 8
+        options = ('-l nodes=%d:ppn=%d:xeon5570 -l walltime=%d:%02d:00' %
                    (nodes, ppn, job.tmax // 60, job.tmax % 60))
         
         x = os.popen('qsub %s %s-job.py' %
@@ -226,7 +224,7 @@ class Jobs:
 
     def install(self):
         """Install ASE and GPAW."""
-        dir = '/home/camp/jensj/test-gpaw-%s' % time.asctime()
+        dir = '/home/camp/jensj/long-test-gpaw-%s' % time.asctime()
         dir = dir.replace(' ', '_').replace(':', '.')
         os.mkdir(dir)
         os.chdir(dir)
@@ -242,9 +240,8 @@ class Jobs:
         os.chdir('gpaw')
         
         if os.system(
-            'source /usr/local/openmpi-1.2.5-gfortran/bin/mpivars-1.2.5.sh; ' +
-            'cp doc/install/Linux/Niflheim/customize_ethernet.py customize.py;'
-            +
+            'cp doc/install/Linux/Niflheim/customize-thul-acml.py ' +
+            'customize.py;' +
             'python setup.py build_ext ' +
             '2>&1 | grep -v "c/libxc/src"') != 0:
             raise RuntimeError('Installation failed!')

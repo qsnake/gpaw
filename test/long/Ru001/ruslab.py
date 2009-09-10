@@ -2,7 +2,7 @@ from sys import argv
 from gpaw import *
 from ase import *
 from ase.lattice.surface import *
-from ase.optimize.lbfgs import HessLBFGS
+from ase.optimize.lbfgs import LBFGS
 
 tag = 'Ru001'
 
@@ -28,6 +28,6 @@ calc = GPAW(xc='PBE',
             txt=tag + '.txt')
 slab.set_calculator(calc)
   
-opt = HessLBFGS(slab, logfile=tag + '.log', trajectory=tag + '.traj')
+opt = LBFGS(slab, logfile=tag + '.log', trajectory=tag + '.traj')
 opt.run(fmax=0.05)
 calc.write(tag)

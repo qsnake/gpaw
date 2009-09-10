@@ -1,7 +1,9 @@
 import pickle
 from ase import *
-from gpaw import GPAW
+from gpaw import GPAW, setup_paths
 from gpaw.vdw import FFTVDWFunctional, RealSpaceVDWFunctional
+
+setup_paths.insert(0, '.')
 
 d = np.linspace(3.0, 5.5, 11)
 for symbol in ['Ar', 'Kr']:

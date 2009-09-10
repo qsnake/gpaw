@@ -60,7 +60,7 @@ See tests for %s here: :ref:`molecule_tests`.
 Convergence tests
 =================
 
-The energy af %s dimer (`E_d`) and %s atom (`E_a`) is
+The energy of %s dimer (`E_d`) and %s atom (`E_a`) is
 calculated at diferent grid-spacings (`h`).
 
 .. image:: ../_static/%s-dimer-eggbox.png
