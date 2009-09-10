@@ -485,7 +485,7 @@ class Operator:
             rbuf_ng = self.work2_xG.reshape(-1)[:N * g].reshape(N, g)
             sbuf_ng[:] = psit_nG[:, G1:G2]
             beta = 0.0
-            cycle_P_ani = (j == 0 and P_ani)
+            cycle_P_ani = (j == J - 1 and P_ani)
             for q in range(Q):
                 # Start sending currently buffered kets to rank below
                 # and receiving next set of kets from rank above us.
