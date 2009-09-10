@@ -50,10 +50,6 @@ class Electron_Step_Info:
     # nt(density in a line along transport direction),
     # vt(potential in a line along transport direction)
     
-    # ------------------------------(optional)
-    # ent(the nt variable in extended region), evt
-    # ehot_g(the rho density in a line along transport direction)
-    # evHt_g(the Hartree potential)
    
     def __init__(self, ion_step, bias_step, ele_step):
         self.ion_step, self.bias_step, self.ele_step = ion_step, bias_step, ele_step
@@ -67,22 +63,9 @@ class Electron_Step_Info:
         self.vt = vt
         self.rho = rho
         self.vHt = vHt
-        #self.D_asp = D_asp
-        #self.dH_asp = dH_asp
         #self.tc = tc
         #self.dos = dos
         self.time_cost = time_cost
-    
-    def initialize_extended_data(self, ent_G, evt_G, ent_g,
-                                 evt_g, ehot_g, evHt_g, edmm):
-        #capital 'e' represents 'extended region'
-        self.ent_G = ent_G
-        self.evt_G = evt_G
-        self.ent_g = ent_g
-        self.evt_g = evt_g
-        self.ehot_g = ehot_g
-        self.evHt_g = evHt_g
-        self.edmm = edmm
     
 class Transport_Analysor:
     def __init__(self, transport, restart=False):
@@ -284,11 +267,14 @@ class Transport_Analysor:
         gd = tp.finegd
         rhot_g = gd.empty(tp.nspins, global_array=True)
         rhot_g = gd.collect(tp.density.rhot_g, True)
-        rho = aa1d(rhot_g)
+        dim1, dim2 = rhot_g.shape[:2]
+        rho = rhot_g[dim1/2, dim2/2]
+        #rho = aa1d(rhot_g)
         
         gd = finegd
         vHt_g = gd.collect(calc.hamiltonian.vHt_g, True)
-        vHt = aa1d(vHt_g) * Hartree
+        #vHt = aa1d(vHt_g) * Hartree
+        vHt = vHt_g[dim1/2, dim2/2] * Hartree
         
         #D_asp = copy.deepcopy(tp.density.D_asp)
         #dH_asp = copy.deepcopy(calc.hamiltonian.dH_asp)
