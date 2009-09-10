@@ -23,7 +23,7 @@ try:
         mmax = max(abs(eval(l.split(' ')[3])), mmax)
 
     print "Max error: ", mmax
-    assert mmax<0.005
+    assert mmax<0.009
 except:
     extra_parameters['usenewxc'] = usenewxc
     raise
