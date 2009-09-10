@@ -908,9 +908,9 @@ class Transport(GPAW):
             if self.step > 0:
                 self.diff_d = self.density.mixer.get_charge_sloshing()
                 if self.ground:
-                    tol = 1.5 * self.scf.max_density_error
+                    tol =  self.scf.max_density_error
                 else:
-                    tol = 5 * self.scf.max_density_error
+                    tol =  self.scf.max_density_error
  
                 if self.master:
                     self.text('density: diff = %f  tol=%f' % (self.diff_d,
@@ -1608,6 +1608,10 @@ class Transport(GPAW):
             density.rhot_g -= self.surround.extra_rhot_g
         if self.hamiltonian.vHt_g is None:
             self.hamiltonian.vHt_g = self.finegd.zeros()
+        else:
+            self.surround.update_correction_density()
+            density.rhot_g += self.surround.correction_rhot_g
+
         ham.npoisson = self.inner_poisson.solve(self.hamiltonian.vHt_g,
                                                   density.rhot_g,
                                                   charge=-density.charge)
