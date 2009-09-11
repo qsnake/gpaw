@@ -8,54 +8,78 @@ from gpaw.cluster import Cluster
 from gpaw.analyse.simple_stm import SimpleStm
 from gpaw.utilities import equal
 
+from gpaw.output import eigenvalue_string
+
 load=True
 load=False
 txt = '/dev/null'
+#txt='-'
 
 me = ''
 if size > 1:
     me += 'rank ' + str(rank) + ': '
 
-LiH = Atoms([Atom('Li', [.0, .0, .41]),
+BH = Atoms([Atom('B', [.0, .0, .41]),
              Atom('H', [.0, .0, -1.23]),
              ], cell=[5, 5, 6.5])
-LiH.center()
-fname = 'LiH-wfs.gpw'
+BH.center()
 
-# finite system
+f3dname = 'stm3d.plt'
+def testSTM(calc):
+    stm = SimpleStm(calc)
+    stm.write_3D([1,0,0], f3dname) # single wf
+    wf = stm.gd.integrate(stm.ldos)
+##    print "wf=", wf
+
+    if size == 1: # XXXX we have problem with reading plt in parallel
+        stm2 = SimpleStm(f3dname)
+        wf2 = stm2.gd.integrate(stm2.ldos)
+        print 'Integrals: written, read=', wf, wf2
+        equal(wf, wf2, 1.e-7)
+
+##    print eigenvalue_string(calc)
+    stm.write_3D(3.1, f3dname)
+    wf2 = stm.gd.integrate(stm.ldos)
+##    print "wf2=", wf2
+    equal(wf2, 2, 0.03)
+
+    return wf
+
+# finite system without spin and width
+fname='BH-nospin_wfs.gpw'
 if not load:
-    LiH.set_pbc(False)
-    cf = GPAW(spinpol=True, nbands=2, h=.3, txt=txt)
-    LiH.set_calculator(cf)
-    LiH.get_potential_energy()
+    BH.set_pbc(False)
+    cf = GPAW(nbands=3, h=.3, txt=txt)
+    BH.set_calculator(cf)
+    BH.get_potential_energy()
     cf.write(fname, 'all')
 else:
     cf = GPAW(fname, txt=txt)
+wf = testSTM(cf)
 
-f3dname = 'stm3d.plt'
-
-stmf = SimpleStm(cf)
-stmf.write_3D([1,0,0], f3dname)
-wf = stmf.gd.integrate(stmf.ldos)
-
-if size == 1: # XXXX we have problem with reading plt in parallel
-    stm2 = SimpleStm(f3dname)
-    wf2 = stm2.gd.integrate(stm2.ldos)
-    print 'Integrals: written, read=', wf, wf2
-    equal(wf, wf2, 1.e-7)
-
-#stm2.scan_const_density(dens, [1,0,0])
-#stm2.write('stm2_raw.dat')
+# finite system with spin
+fname='BH-spin_Sz2_wfs.gpw'
+BH.set_initial_magnetic_moments([1, 1])
+if not load:
+    BH.set_pbc(False)
+    cf = GPAW(spinpol=True, fixmom=True,
+              nbands=5, h=.3, txt=txt, width=.1)
+    BH.set_calculator(cf)
+    BH.get_potential_energy()
+    cf.write(fname, 'all')
+else:
+    cf = GPAW(fname, txt=txt)
+testSTM(cf)
 
 # periodic system
 if not load:
-    LiH.set_pbc(True)
-    cp = GPAW(spinpol=True, nbands=2, h=.3, kpts=(2,2,2), txt=txt)
-    LiH.set_calculator(cp)
-    LiH.get_potential_energy()
-    cp.write('LiH-8kpts_wfs.gpw', 'all')
+    BH.set_pbc(True)
+    cp = GPAW(spinpol=True, nbands=3, h=.3, kpts=(2,1,1), txt=txt)
+    BH.set_calculator(cp)
+    BH.get_potential_energy()
+    cp.write('BH-8kpts_wfs.gpw', 'all')
 else:
-    cp = GPAW('LiH-8kpts_wfs.gpw', txt=txt)
+    cp = GPAW('BH-8kpts_wfs.gpw', txt=txt)
 
 stmp = SimpleStm(cp)
 

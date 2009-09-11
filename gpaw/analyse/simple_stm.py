@@ -61,28 +61,21 @@ class SimpleStm:
             try:
                 efermi = self.calc.get_fermi_level()
             except:
-                efermi = self.calc.get_homo_lumo().mean() 
+                efermi = self.calc.get_homo_lumo().mean()
                 
-            def is_number(x):
-                try:
-                    x + 1
-                    return True
-                except:
-                    return False
-
-            if is_number(bias):
+            if isinstance(bias, (int, long, float)):
                 # bias given
                 if bias > 0:
                     # positive bias = negative tip
                     # -> probe unoccupied states
-                    emin = efermi
-                    emax = efermi + bias
+                    emin_s = efermi
+                    emax_s = efermi + bias
                     occupied = False
                 else:
                     # negative bias = positive tip
                     # -> probe occupied states
-                    emin = efermi + bias
-                    emax = efermi
+                    emin_s = efermi + bias
+                    emax_s = efermi
                     occupied = True
             else:
                 # emin and emax given
@@ -91,14 +84,19 @@ class SimpleStm:
                     occupied = True
                 else:
                     occupied = False
-                emin += efermi
-                emax += efermi
+                emin_s = emin + efermi
+                emax_s = emin + efermi
 
-            emin /= Hartree
-            emax /= Hartree
-            
+            emin_s /= Hartree
+            emax_s /= Hartree
+            if isinstance(emin_s, (int, long, float)):
+                emin_s = [emin_s, emin_s]
+                emax_s = [emax_s, emax_s]
+                
             for u in range(len(self.calc.wfs.kpt_u)):
                 kpt = self.calc.wfs.kpt_u[u]
+                emin = emin_s[kpt.s]
+                emax = emax_s[kpt.s]
                 for n, eps in enumerate(kpt.eps_n):
                     if eps > emin and eps < emax:
                         if occupied:
