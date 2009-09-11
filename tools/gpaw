@@ -69,7 +69,8 @@ parser.add_option('-m', '--mode', default='fd', choices=['fd', 'lcao'],
                   help='Mode of calculation.')
 parser.add_option('-b', '--basis',
                   help='Basis set.')
-parser.add_option('-k', '--brillouin-zone-sampling', metavar='K1,K2,K3',
+parser.add_option('-k', '--brillouin-zone-sampling',
+                  default='1,1,1', metavar='K1,K2,K3',
                   help='Number of k-points.  Example: -k 4,4,1.')
 parser.add_option('-g', '--grid-spacing', type='float', default=0.2,
                   help='Grid spacing in Angstrom.  Deafault is 0.2.')
@@ -170,10 +171,7 @@ def run():
                     out=out)
 
     if not opt.effective_medium_theory:
-        if opt.brillouin_zone_sampling:
-            kpts = [int(x) for x in opt.brillouin_zone_sampling.split(',')]
-        else:
-            kpts = None
+        kpts = [int(x) for x in opt.brillouin_zone_sampling.split(',')]
 
         if opt.finite_difference_stencils:
             stencils = [int(x)
