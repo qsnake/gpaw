@@ -95,6 +95,7 @@ if len(tests) == 0:
         'gauss_wave.py',
         'gauss_func.py',
         'xcatom.py',
+        'kptpar.py',
         'parallel/overlap.py',
         'symmetry.py',
         'pes.py',
