@@ -125,7 +125,10 @@ class PAW(PAWTextOutput):
 
         # Prune input for things that didn't change
         for key, value in kwargs.items():
-            if p[key] == value:
+            if key == 'kpts':
+                if (kpts2ndarray(p.kpts) == kpts2ndarray(value)).all():
+                    kwargs.pop('kpts')
+            elif p[key] == value:
                 kwargs.pop(key)
 
         if (kwargs.get('h') is not None) and (kwargs.get('gpts') is not None):
@@ -297,13 +300,7 @@ class PAW(PAWTextOutput):
         magmom_a = atoms.get_initial_magnetic_moments()
         
         # Set the scaled k-points:
-        kpts = par.kpts
-        if kpts is None:
-            bzk_kc = np.zeros((1, 3))
-        elif isinstance(kpts[0], int):
-            bzk_kc = monkhorst_pack(kpts)
-        else:
-            bzk_kc = np.array(kpts)
+        bzk_kc = kpts2ndarray(par.kpts)
         
         # Is this a gamma-point calculation?
         gamma = len(bzk_kc) == 1 and not bzk_kc[0].any()
@@ -668,3 +665,12 @@ class PAW(PAWTextOutput):
     def construct_grid_descriptor(self, N_c, cell_cv,
                                   pbc_c, domain_comm, parsize):
         self.gd = GridDescriptor(N_c, cell_cv, pbc_c, domain_comm, parsize)
+
+
+def kpts2ndarray(kpts):
+    """Convert kpts keyword to 2d ndarray of scaled k-points."""
+    if kpts is None:
+        return np.zeros((1, 3))
+    if isinstance(kpts[0], int):
+        return monkhorst_pack(kpts)
+    return np.array(kpts)
