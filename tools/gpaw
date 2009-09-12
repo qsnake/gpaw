@@ -62,9 +62,11 @@ parser.add_option('-o', '--output', default='-',
                   '(the default).')
 
 # Calculator:
-parser.add_option('-e', '--effective-medium-theory',
+parser.add_option('-E', '--effective-medium-theory',
                   action='store_true',
                   help='Use EMT calculator.')
+parser.add_option('-e', '--eigensolver', default='rmm-diis', choices=['rmm-diis', 'cg'],
+                  help='Eigensolver.')
 parser.add_option('-m', '--mode', default='fd', choices=['fd', 'lcao'],
                   help='Mode of calculation.')
 parser.add_option('-b', '--basis',
@@ -97,7 +99,7 @@ def run():
     if len(args) != 1:
         parser.error("incorrect number of arguments")
     name = args[0]
-    
+
     if world.rank == 0:
         if opt.output == '-':
             out = sys.stdout
@@ -156,7 +158,7 @@ def run():
     if opt.write_to_file:
         write(opt.write_to_file, atoms)
         return
-    
+
     if opt.effective_medium_theory:
         Runner = EMTRunner
     else:
@@ -166,7 +168,7 @@ def run():
         strains = np.linspace(0.98, 1.02, 5)
     else:
         strains = None
-        
+
     runner = Runner(name, atoms, strains, tag=opt.identifier, clean=opt.clean,
                     out=out)
 
@@ -178,10 +180,11 @@ def run():
                         for x in opt.finite_difference_stencils.split(',')]
         else:
             stencils = None
-            
+
         runner.set_parameters(mode=opt.mode, basis=opt.basis, kpts=kpts,
                               h=opt.grid_spacing, xc=opt.xc_functional,
                               stencils=stencils, width=opt.smearing_width,
+                              eigensolver=opt.eigensolver,
                               nbands=opt.number_of_bands, vacuum=opt.vacuum,
                               stdout=opt.stdout)
 
@@ -189,7 +192,7 @@ def run():
 
     if opt.atomization_energy:
         runner.atomize()
-        
+
     runner.summary(plot=opt.plot, a0=a)
 
 

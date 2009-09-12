@@ -210,6 +210,7 @@ class GPAWRunner(Runner):
     """GPAW implementation"""
     def set_parameters(self, mode='fd', basis=None, kpts=None,
                        h=None, xc='LDA', stencils=None, width=0.1,
+                       eigensolver='rmm-diis',
                        nbands=None, vacuum=3.0, stdout=False):
         if basis is None:
             basis = {}
@@ -223,6 +224,7 @@ class GPAWRunner(Runner):
         self.xc = xc
         self.stencils = stencils
         self.width = width
+        self.eigensolver = eigensolver
         self.nbands = nbands
         self.vacuum = vacuum
         self.stdout = stdout
@@ -250,6 +252,9 @@ class GPAWRunner(Runner):
         if self.stdout:
             kwargs['txt'] = '-'
             
+        if self.mode == 'fd':
+            kwargs['eigensolver'] = self.eigensolver
+
         calc = GPAW(mode=self.mode,
                     basis=self.basis,
                     stencils=self.stencils,
