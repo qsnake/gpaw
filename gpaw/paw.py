@@ -126,7 +126,10 @@ class PAW(PAWTextOutput):
         # Prune input for things that didn't change
         for key, value in kwargs.items():
             if key == 'kpts':
-                if (kpts2ndarray(p.kpts) == kpts2ndarray(value)).all():
+                oldbzk_kc = kpts2ndarray(p.kpts)
+                newbzk_kc = kpts2ndarray(value)
+                if (len(oldbzk_kc) == len(newbzk_kc) and
+                    (oldbzk_kc == newbzk_kc).all()):
                     kwargs.pop('kpts')
             elif p[key] == value:
                 kwargs.pop(key)
