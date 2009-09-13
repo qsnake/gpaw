@@ -44,8 +44,8 @@ class IntCtrl:
             if verbose:
                 print '--eqIntCtrl:  Tol =', self.eqinttol
         else:        #T>0K
-            nkt = 20 * self.kt
-            dkt = 10 * npy.pi * self.kt
+            nkt = 10 * self.kt
+            dkt = 4 * npy.pi * self.kt
             #self.eqintpath = [-20.0, -20.0 + dkt * 1.j, -nkt + dkt * 1.j,
             #                  dkt * 1.j + nkt]
             self.eqintpath = [ min_energy, 
@@ -54,7 +54,7 @@ class IntCtrl:
                               -nkt + dkt * 1.j, 
                                dkt *1.j +nkt]
             self.eqdelta = dkt
-            nRes = 10
+            nRes = 4
             if abs( nRes - (npy.round((nRes - 1) / 2) * 2 + 1)) < 1e-3 :
                 print 'Warning: Residue Point too close to IntPath!'
             self.eqresz = range(1, nRes, 2)
@@ -92,8 +92,8 @@ class IntCtrl:
             if verbose:
                 print '--locInt: Tol', self.lcointtol    
         else:
-            nkt = 20 * self.kt
-            dkt = 10 * npy.pi * self.kt
+            nkt = 10 * self.kt
+            dkt = 4 * npy.pi * self.kt
 
             if self.maxfermi-self.minfermi < 0.2 + 2 * nkt or dkt > 0.5:
                 self.locintpath = [self.minfermi - nkt + dkt * 1.j,
@@ -105,7 +105,7 @@ class IntCtrl:
                                    self.maxfermi - nkt + dkt * 1.j,
                                    self.maxfermi + nkt + dkt * 1.j]
             self.locdelta = dkt
-            nRes = 10
+            nRes = 4
             self.locresz = npy.array(range(1, nRes, 2)
                                                    ) * 1.j * npy.pi * self.kt
             tmp = len(range(1, nRes, 2))
@@ -123,7 +123,7 @@ class IntCtrl:
         # -------------------------------------------------- 
         # -- Integral Method -- 
         self.neinttol = 1e-3        
-        self.neintmethod= 1 # 0: Linear 1: Auto
+        self.neintmethod= 0 # 0: Linear 1: Auto
 
         # -- Integral Step--
 
@@ -136,7 +136,7 @@ class IntCtrl:
         elif self.kt < self.kttol : #T=0K
             self.neintpath = [self.minfermi, self.maxfermi]
         else :
-            nkt = 20 * kt
+            nkt = 10 * kt
             self.neintpath = [self.minfermi - nkt, self.maxfermi + nkt]
 
         # -- Integral eta --
