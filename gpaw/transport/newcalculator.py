@@ -10,7 +10,7 @@ from gpaw.utilities.memory import maxrss
 
 from gpaw.transport.tools import tri2full, dot, Se_Sparse_Matrix, PathInfo,\
           get_atom_indices, substract_pk, get_lcao_density_matrix, \
-          get_pk_hsd, diag_cell, get_matrix_index
+          get_pk_hsd, diag_cell, get_matrix_index, aa1d, aa2d
 
 from gpaw.transport.tools import Tp_Sparse_HSD, Banded_Sparse_HSD, \
                                                                  CP_Sparse_HSD
@@ -434,6 +434,7 @@ class Transport(GPAW):
             scf.energies.append(energy)
             scf.check_convergence(density, wfs.eigensolver)
             density.update(wfs)
+            density.rhot_g += self.surround.extra_rhot_g
             hamiltonian.update(density)
       
         #atoms.get_potential_energy()
@@ -1249,10 +1250,6 @@ class Transport(GPAW):
             self.zint[self.cntint] = zp[i]
 
             for j in range(self.lead_num):
-                if j == 0:
-                    tri_type = 'L'
-                else:
-                    tri_type = 'R'
                 tgt = self.selfenergies[j](zp[i])
                 self.tgtint[j].append(tgt)
             
@@ -1626,10 +1623,11 @@ class Transport(GPAW):
        
         self.text('Hartree_diff', str(ham_diff))
         if self.atoms.pbc.all():    
-            self.hamiltonian.vHt_g += ham_diff
-            
+            #self.hamiltonian.vHt_g += ham_diff
+            self.hamiltonian.vHt_g += self.get_linear_hartree_potential2(vHt_g, vHt_g0)
+        
         self.surround.combine_vHt_g(self.hamiltonian.vHt_g)
-            
+           
         self.text('poisson interations :' + str(ham.npoisson))
         self.timer.stop('Poisson')
       
@@ -1957,6 +1955,63 @@ class Transport(GPAW):
         self.linear_vHt_g = self.finegd.zeros()
         self.finegd.distribute(global_linear_vHt, self.linear_vHt_g)
 
+
+    def find_pot_first_min_and_max(self, vHt_g):
+        vHt = aa1d(vHt_g)
+        nn = self.surround.nn[0] * 2 
+        g_vHt = np.gradient(vHt[:nn], self.finegd.h_c[2])
+        minf = False
+        maxf = False
+        for i, tmp in enumerate(g_vHt):
+            if tmp >= 0 and i > 3 and not minf:
+                lmin = i
+                minf = True
+            if minf and not maxf and tmp <= 0:
+                lmax = i
+                maxf = True
+        lmin = vHt[lmin]
+        lmax = vHt[lmax] 
+
+        g_vHt = np.gradient(vHt[-nn:], self.finegd.h_c[2])
+        minf = False
+        maxf = False
+        for i in range(nn):
+            tmp = g_vHt[-i - 1]
+            if tmp <= 0 and i > 3 and not minf:
+                rmin = i
+                minf = True
+            if minf and not maxf and tmp >= 0:
+                rmax = i
+                maxf = True
+        rmin = vHt[-rmin - 1]
+        rmax = vHt[-rmax - 1]
+        return lmin, lmax, rmin, rmax
+
+    def get_linear_hartree_potential2(self, vHt_g, vHt_g0):
+        global_linear_vHt = self.finegd.zeros(global_array=True)
+        dim = self.finegd.N_c[2]
+        
+        vHt = aa1d(vHt_g)
+        vHt0 = aa1d(vHt_g0)
+        
+        lshift = vHt[0] - vHt0[0]
+        rshift = vHt[-1] - vHt0[-1]
+        #lmin, lmax, rmin, rmax = self.find_pot_first_min_and_max(vHt_g)
+        #lmin0, lmax0, rmin0, rmax0 = self.find_pot_first_min_and_max(vHt_g0)
+        
+        #print lmin, lmax, rmin, rmax, 'vHt'
+        #print lmin0, lmax0, rmin0, rmax0, 'vHt0'
+
+        #lshift = (lmin - lmin0 + lmax - lmax0) / 2
+        #rshift = (rmin - rmin0 + rmax - rmax0) / 2
+       
+        vt = np.linspace(lshift, rshift, dim)
+        for i in range(dim):
+            global_linear_vHt[:, :, i] = vt[i]
+        linear_vHt_g = self.finegd.zeros()
+        self.finegd.distribute(global_linear_vHt, linear_vHt_g)
+        return linear_vHt_g
+
     def set_extended_positions(self):
         spos_ac0 = self.atoms.get_scaled_positions() % 1.0
         spos_ac = self.extended_atoms.get_scaled_positions() % 1.0
@@ -2033,4 +2088,3 @@ class Transport(GPAW):
         self.forces.reset()
         self.print_positions()
         
-
