@@ -4,6 +4,7 @@ from gpaw.transport.tools import get_matrix_index, aa1d, aa2d, sum_by_unit, dot
 from gpaw.mpi import world
 
 from ase.units import Hartree
+from gpaw.utilities.memory import maxrss
 import numpy as np
 import copy
 import pickle
@@ -54,7 +55,7 @@ class Electron_Step_Info:
     def __init__(self, ion_step, bias_step, ele_step):
         self.ion_step, self.bias_step, self.ele_step = ion_step, bias_step, ele_step
         
-    def initialize_data(self, bias, gate, dd, df, nt, vt, rho, vHt, time_cost):
+    def initialize_data(self, bias, gate, dd, df, nt, vt, rho, vHt, time_cost, mem_cost):
         self.bias = bias
         self.gate = gate
         self.dd = dd
@@ -66,6 +67,7 @@ class Electron_Step_Info:
         #self.tc = tc
         #self.dos = dos
         self.time_cost = time_cost
+        self.mem_cost = mem_cost
     
 class Transport_Analysor:
     def __init__(self, transport, restart=False):
@@ -267,21 +269,22 @@ class Transport_Analysor:
         gd = tp.finegd
         rhot_g = gd.empty(tp.nspins, global_array=True)
         rhot_g = gd.collect(tp.density.rhot_g, True)
-        dim1, dim2 = rhot_g.shape[:2]
-        rho = rhot_g[dim1/2, dim2/2]
-        #rho = aa1d(rhot_g)
+        #dim1, dim2 = rhot_g.shape[:2]
+        #rho = rhot_g[dim1/2, dim2/2]
+        rho = aa1d(rhot_g)
         
         gd = finegd
         vHt_g = gd.collect(calc.hamiltonian.vHt_g, True)
-        #vHt = aa1d(vHt_g) * Hartree
-        vHt = vHt_g[dim1/2, dim2/2] * Hartree
+        vHt = aa1d(vHt_g) * Hartree
+        #vHt = vHt_g[dim1/2, dim2/2] * Hartree
         
         #D_asp = copy.deepcopy(tp.density.D_asp)
         #dH_asp = copy.deepcopy(calc.hamiltonian.dH_asp)
         
         #tc_array, dos_array = self.collect_transmission_and_dos()
+        mem_cost = maxrss()
         time_cost = self.ele_step_time_collect()
-        step.initialize_data(tp.bias, tp.gate, total_dd, total_df, nt, vt, rho, vHt, time_cost)
+        step.initialize_data(tp.bias, tp.gate, total_dd, total_df, nt, vt, rho, vHt, time_cost, mem_cost)
         
         self.ele_steps.append(step)
         self.n_ele_step += 1
