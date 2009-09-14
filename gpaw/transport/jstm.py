@@ -241,7 +241,7 @@ class STM:
         elif not self.transport_uptodate and self.initialized:
             self.initialize_transport()
             return
-
+        
         T = time.localtime()
         self.log.write('#%d:%02d:%02d' % (T[3], T[4], T[5]) + ' Initializing\n')
 
@@ -332,8 +332,6 @@ class STM:
         srf_efermi = self.srf.get_fermi_level() / Hartree
         fermi_diff = tip_efermi - srf_efermi
 
-        
-
         if cvl1 == 0: # XXX nessesary???
             cvl1 = 1
             
@@ -350,8 +348,6 @@ class STM:
         diff = diff.real
         h2 -= diff * s2      
         h1 -= diff * s1        
-        
-
         
         self.tip_cell.shift_potential(-diff / Hartree\
                                       - (srf_efermi + tip_efermi) / 2)
@@ -511,10 +507,11 @@ class STM:
         start = l * dcomm.rank
         stop = l * (dcomm.rank + 1)
         gpts_i = gpts_i[start:stop] # gridpoints on this cpu
+        print self.world.rank, 'gpts', (gpts_i.min(), gpts_i.max()) 
         V_g = np.zeros((len(gpts_i), self.nj, self.ni)) # V_ij's on this cpu
         I_g = np.zeros_like(gpts_i).astype(float) # currents on this cpu
         self.gpts_i = gpts_i
-        
+        print world.rank, 'Vs'
         for i, gpt in enumerate(gpts_i):
             x = gpt / n_c[1]
             y = gpt % n_c[1]
@@ -523,17 +520,25 @@ class STM:
 
         # calculate part of the current for each grid points
         #energies = self.energies # global energy grid
-        
+        print world.rank, 'Is', len(V_g)
         bias = self.stm_calc.bias
+
+        T = time.localtime()
+        self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
+                       str(world.rank) + ' Is start\n')
+
         for j, V in enumerate(V_g):
-            #print world.rank, j
             I_g[j] += self.stm_calc.get_current(bias, V) * 77466.1509 
         world.barrier()
+    
+        T = time.localtime()
+        self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
+                        str(world.rank) +' Is stop\n')
         
         #send green functions
         self.stm_calc.energies_req = self.stm_calc.energies.copy()
         for i in range(dcomm.size - 1):
-
+            print world.rank, 'sending gft'
             rank_send = (dcomm.rank + 1) % dcomm.size
             rank_receive = (dcomm.rank - 1) % dcomm.size
 
@@ -576,9 +581,20 @@ class STM:
             dcomm.wait(request)
             self.stm_calc.gft2_emm = gft2_receive
 
+            T = time.localtime()
+            self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
+                           str(world.rank) + ' Is22222 start\n')
+
+
             bias = self.stm_calc.bias
             for j, V in enumerate(V_g):
                 I_g[j] += self.stm_calc.get_current(bias, V) * 77466.1509
+
+
+            T = time.localtime()
+            self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
+                           str(world.rank) + ' Is22222 stop\n')
+
 
         world.barrier()
         self.I_g = I_g
@@ -596,12 +612,14 @@ class STM:
             for i, gpt in enumerate(gpts_gl):
                 x = i / n_c[1]
                 y = i % n_c[1]
-                #print (x,y)
                 scan[x, y] = final[i]
 
             self.scans['fullscan'] = scan
         else:
             dcomm.gather(I_g,0)
+        world.barrier()
+
+
 
     def scan_old(self):
         n_c = self.srf.gd.n_c
@@ -620,14 +638,19 @@ class STM:
         hz = self.srf_cell.gd.h_c[2] * Bohr
         dmins = np.arange(zmin, zmax + hz, hz)
         for dmin in dmins:
-            fd = open('scan_' + str(np.round(dmin, 2)) + '_bias_'\
-                      + str(bias) + '_.pckl', 'wb')
+            if world.rank == 0:
+                fd = open('scan_' + str(np.round(dmin, 2)) + '_bias_'\
+                        + str(bias) + '_.pckl', 'wb')
+            world.barrier()
+
             self.set(dmin=dmin)
             self.initialize()
             self.scan()
             dmin = self.get_dmin()
-            pickle.dump((dmin, bias, self.scans['fullscan']), fd, 2)
-            self.scans['scan3d'][dmin] = self.scans['fullscan'].copy()
+            if world.rank == 0:
+                pickle.dump((dmin, bias, self.scans['fullscan']), fd, 2)
+                self.scans['scan3d'][dmin] = self.scans['fullscan'].copy()
+            world.barrier()
 
     def get_constantI(self, I):
         assert self.scans.has_key('scan3d')
@@ -870,7 +893,6 @@ class TipCell:
         self.tip_indices = tip_indices
         self.tip_atom_index =  tip_atom_index
         assert tip_atom_index in tip_indices
-
         tgd = self.tip.gd
         sgd = self.srf.gd
         tip_atoms = self.tip.atoms.copy()[tip_indices]      
@@ -925,17 +947,17 @@ class TipCell:
             newcell_cv, origo_c = smallestbox(tip_cell_cv, srf_cell_cv, theta_min)
             tip_pos_av = np.dot(rotate(theta_min), tip_pos_av.T).T + origo_c
             newcell_c = np.array([la.norm(cell_cv[x]) for x in range(3)])
-            newsize_c = np.around(newcell_c / sgd.h_c).astype(int)
+            newsize2_c = np.around(newcell_c / sgd.h_c).astype(int)
         elif (sgd.h_c - tgd.h_c).any(): # different grid spacings
             dointerpolate = True
             newcell_cv = tip_cell_cv
             newcell_c = tgd.cell_c
-            newsize_c = np.around(newcell_c / sgd.h_c).astype(int)
+            newsize2_c = np.around(newcell_c / sgd.h_c).astype(int)
             theta_min = 0.0
             origo_c = np.array([0,0,0])
         else:
             dointerpolate = False
-            newsize_c = tgd.N_c
+            newsize2_c = tgd.N_c
             vt_sG = self.tip.hamiltonian.vt_sG
             vt_sG = self.tip.gd.collect(vt_sG, broadcast=True)
             vt_G = vt_sG[0]
@@ -943,15 +965,22 @@ class TipCell:
             theta_min = 0.0
             origo_c = np.array([0,0,0])
             self.vt_G = vt_G
-
+        
+        N_c_bak = self.tip.gd.N_c.copy()
         tip_pos_av[:,2] -= cell_zmin_grpt * tgd.h_c[2]
-        newsize_c[2] = new_sizez
-        newcell_c = (newsize_c + 1) * sgd.h_c 
+        print 'N_c', self.tip.gd.N_c, newsize2_c
+        newsize2_c[2] = new_sizez.copy()
+        self.tip.gd.N_c = N_c_bak
+        print 'N_c2', self.tip.gd.N_c, newsize2_c, self.tip.hamiltonian.vt_sG.shape
+
+        newcell_c = (newsize2_c + 1) * sgd.h_c 
         newcell_cv = srf_basis * newcell_c
-        newgd = GridDescriptor(N_c=newsize_c+1,
+
+        newgd = GridDescriptor(N_c=newsize2_c+1,
                                cell_cv=newcell_cv,
                                pbc_c=False,
                                comm=mpi.serial_comm)
+ 
         new_basis = newgd.cell_cv.T / newgd.cell_c
 
         origo_c += np.dot(new_basis, newgd.h_c)
@@ -1126,7 +1155,9 @@ class SrfCell:
         extension1 = ext1_c / srf_shape.astype(float)
         extension2 = ext2_c / srf_shape.astype(float)
         newsize_c = ext1_c + ext2_c + sgd.N_c[:2]
-        vt_G = np.zeros(tuple(newsize_c) + (srf_vt_G.shape[2],))
+        sizez = srf_vt_G.shape[2]
+        newsizez = sizez + 10.0 / Bohr / sgd.h_c[2]
+        vt_G = np.zeros(tuple(newsize_c) + (newsizez,))
  
         intexa = ext1_c / srf_shape[:2]
         rest1 = ext1_c % srf_shape[:2]
@@ -1138,7 +1169,7 @@ class SrfCell:
                 vt_G[rest1[0] + n * srf_shape[0]:\
                      rest1[0] + (n + 1) * srf_shape[0],\
                      rest1[1] + m * srf_shape[1]:\
-                     rest1[1] + (m + 1) * srf_shape[1]] = srf_vt_G
+                     rest1[1] + (m + 1) * srf_shape[1], :sizez] = srf_vt_G
 
         if rest2[1] == 0:
             rest2[1] += 1
