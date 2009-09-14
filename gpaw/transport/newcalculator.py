@@ -58,7 +58,8 @@ class Transport(GPAW):
                        'recal_path', 'min_energy',
                        'use_qzk_boundary', 'use_linear_vt_mm',
                        'use_linear_vt_array',
-                       'scat_restart', 'save_file', 'restart_file', 'fixed_boundary']:
+                       'scat_restart', 'save_file', 'restart_file',
+                       'non_sc', 'fixed_boundary']:
                 
                 del self.gpw_kwargs[key]
             #----descript the lead-----    
@@ -110,6 +111,8 @@ class Transport(GPAW):
                 p['env_bias'] = kw['env_bias']
             if key in ['env_restart']:
                 p['env_restart'] = kw['env_restart']
+            if key in ['non_sc']:
+                p['non_sc'] = kw['non_sc']
 
             #----descript the scattering region----     
             if key in ['LR_leads']:         
@@ -199,6 +202,7 @@ class Transport(GPAW):
         self.save_file = p['save_file']
         self.restart_file = p['restart_file']
         self.fixed = p['fixed_boundary']
+        self.non_sc = p['non_sc']
         self.spinpol = p['spinpol']
         self.verbose = p['verbose']
         self.d = p['d']
@@ -275,6 +279,7 @@ class Transport(GPAW):
         p['save_file'] = False
         p['restart_file'] = None
         p['fixed_boundary'] = True
+        p['non_sc'] = False
         p['spinpol'] = False
         p['verbose'] = False
         return p     
@@ -389,12 +394,13 @@ class Transport(GPAW):
         del self.atoms_l
         del self.atoms_e
         
-        self.timer.start('surround set_position')
-        self.inner_poisson = PoissonSolver(nn=self.hamiltonian.poisson.nn)
-        self.inner_poisson.set_grid_descriptor(self.finegd)    
-        self.surround.combine()
-        self.set_extended_positions()
-        self.timer.stop('surround set_position')
+        if not self.non_sc:
+            self.timer.start('surround set_position')
+            self.inner_poisson = PoissonSolver(nn=self.hamiltonian.poisson.nn)
+            self.inner_poisson.set_grid_descriptor(self.finegd)    
+            self.surround.combine()
+            self.set_extended_positions()
+            self.timer.stop('surround set_position')
         self.get_hamiltonian_initial_guess()
         del self.wfs
         self.wfs = self.extended_calc.wfs
@@ -427,15 +433,24 @@ class Transport(GPAW):
         density = calc.density
         scf = calc.scf
         
-        for iter in range(20):
-            wfs.eigensolver.iterate(hamiltonian, wfs)
-            occupations.calculate(wfs)
-            energy = hamiltonian.get_energy(occupations)
-            scf.energies.append(energy)
-            scf.check_convergence(density, wfs.eigensolver)
-            density.update(wfs)
-            density.rhot_g += self.surround.extra_rhot_g
-            hamiltonian.update(density)
+        if self.non_sc:
+            if not self.scat_restart:
+                atoms.get_potential_energy()
+                if self.save_file:
+                    atoms.calc.write('scat.gpw')
+            else:
+                atoms.calc = self
+                self.recover_kpts(atoms.calc)                
+        else:        
+            for iter in range(20):
+                wfs.eigensolver.iterate(hamiltonian, wfs)
+                occupations.calculate(wfs)
+                energy = hamiltonian.get_energy(occupations)
+                scf.energies.append(energy)
+                scf.check_convergence(density, wfs.eigensolver)
+                density.update(wfs)
+                density.rhot_g += self.surround.extra_rhot_g
+                hamiltonian.update(density)
       
         #atoms.get_potential_energy()
         h_skmm, s_kmm =  self.get_hs(atoms.calc)
@@ -715,8 +730,8 @@ class Transport(GPAW):
             self.gd1, self.finegd1 = calc.gd, calc.finegd
             self.set_extended_positions()                
                 
-        if self.scat_restart:
-            self.recover_kpts(self)
+        #if self.scat_restart:
+        #    self.recover_kpts(self)
        
         self.append_buffer_hsd()
         #self.fill_guess_with_leads()           
@@ -844,7 +859,13 @@ class Transport(GPAW):
         if not self.scf.converged:
             raise RuntimeError('Transport do not converge in %d steps' %
                                                               self.max_steps)
-    
+        
+    def non_sc_analysis(self):
+        if not hasattr(self, 'analysor'):
+            self.analysor = Transport_Analysor(self, True)
+        self.analysor.save_bias_step()
+        self.analysor.save_data_to_file()
+  
     def get_hamiltonian_matrix(self):
         self.timer.start('HamMM')            
         self.den2fock()
