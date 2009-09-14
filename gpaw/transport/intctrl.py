@@ -123,7 +123,7 @@ class IntCtrl:
         # -------------------------------------------------- 
         # -- Integral Method -- 
         self.neinttol = 1e-3        
-        self.neintmethod= 0 # 0: Linear 1: Auto
+        self.neintmethod= 1 # 0: Linear 1: Auto
 
         # -- Integral Step--
 
