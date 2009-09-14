@@ -1,79 +1,71 @@
+from gpaw.transport.tools import dagger, dot
+from gpaw.transport.tools import Banded_Sparse_Matrix
+import copy
 import numpy as np
-from gpaw import GPAW
-from gpaw.transport.tools import k2r_hs, get_hs, dagger, dot
-from gpaw.utilities.lapack import inverse_general, inverse_symmetric
-from gpaw.lcao.tools import get_realspace_hs
 
 class LeadSelfEnergy:
     conv = 1e-8 # Convergence criteria for surface Green function
     
-    def __init__(self, hs_dii, hs_dij, hs_dim, eta=1e-4):
-        self.h_ii, self.s_ii = hs_dii # onsite principal layer
-        self.h_ij, self.s_ij = hs_dij # coupling between principal layers
-        self.h_im, self.s_im = hs_dim # coupling to the central region
-        self.nbf = self.h_im.shape[1] # nbf for the scattering region
+    def __init__(self, hsd_ii, hsd_ij, eta=1e-8):
+        self.hsd_ii = hsd_ii
+        self.hsd_ij = hsd_ij
         self.eta = eta
         self.energy = None
         self.bias = 0
-        self.sigma_mm = np.empty((self.nbf, self.nbf), complex)
+        self.s = 0
+        self.pk = 0
 
     def __call__(self, energy):
-        """Return self-energy (sigma) evaluated at specified energy."""
-        if self.h_im.dtype == float:
-            inv = inverse_symmetric
-        if self.h_im.dtype == complex:
-            inv = inverse_general
         self.energy = energy
         z = energy - self.bias + self.eta * 1.j           
-        tau_im = z * self.s_im - self.h_im
+        tau_ij = z * self.hsd_ij.S[self.pk].recover() - \
+                                     self.hsd_ij.H[self.s][self.pk].recover()
+        tau_ji = z * dagger(self.hsd_ij.S[self.pk].recover()) - \
+                             dagger(self.hsd_ij.H[self.s][self.pk].recover())
         ginv = self.get_sgfinv(energy)
-        inv(ginv)
-        a_im = dot(ginv, tau_im)
-        tau_mi = z * dagger(self.s_im) - dagger(self.h_im)
-        self.sigma_mm[:] = dot(tau_mi, a_im)
-        return self.sigma_mm
-
+        a_ij = dot(ginv, tau_ij)        
+        return Banded_Sparse_Matrix(complex, dot(tau_ji, a_ij),
+                                    self.hsd_ii.S[self.pk].band_index)
+       
     def set_bias(self, bias):
         self.bias = bias
         
     def get_lambda(self, energy):
-        """Return the lambda (aka Gamma) defined by i(S-S^d).
-
-        Here S is the retarded selfenergy, and d denotes the hermitian
-        conjugate.
-        """
-        sigma_mm = self(energy)
+        sigma = self(energy)
+        sigma_mm = sigma.recover()
         return 1.j * (sigma_mm - dagger(sigma_mm))
-        
+    
     def get_sgfinv(self, energy):
         """The inverse of the retarded surface Green function"""
-        if self.h_im.dtype == float:
-            inv = inverse_symmetric
-        if self.h_im.dtype == complex:
-            inv = inverse_general
         z = energy - self.bias + self.eta * 1.0j
+        v_00 = Banded_Sparse_Matrix(complex,
+                                     None,
+                                     self.hsd_ii.S[self.pk].band_index)
         
-        v_00 = z * dagger(self.s_ii) - dagger(self.h_ii)
-        v_11 = v_00.copy()
-        v_10 = z * self.s_ij - self.h_ij
-        v_01 = z * dagger(self.s_ij) - dagger(self.h_ij)
+        v_00.reset_from_others(self.hsd_ii.S[self.pk],
+                                self.hsd_ii.H[self.s][self.pk],
+                                z, -1.0)
+        
+        v_11 = copy.deepcopy(v_00)
+        
+        v_10 = z * self.hsd_ij.S[self.pk].recover()- \
+                                     self.hsd_ij.H[self.s][self.pk].recover()
+        v_01 = z * dagger(self.hsd_ij.S[self.pk].recover()) - \
+                              dagger(self.hsd_ij.H[self.s][self.pk].recover())
         delta = self.conv + 1
-        n = 0
         while delta > self.conv:
-            inv_v_11 = np.copy(v_11)
-            inv(inv_v_11)
+            inv_v_11 = v_11.inv()
             a = dot(inv_v_11, v_01)
             b = dot(inv_v_11, v_10)
             v_01_dot_b = dot(v_01, b)
-            v_00 -= v_01_dot_b
-            v_11 -= dot(v_10, a)
-            v_11 -= v_01_dot_b
+            v_00.reset_minus(v_01_dot_b, full=True)
+            v_11.reset_minus(dot(v_10, a), full=True)
+            v_11.reset_minus(v_01_dot_b, full=True)
             v_01 = -dot(v_01, a)
             v_10 = -dot(v_10, b)
             delta = np.abs(v_01).max()
-            n += 1
-        return v_00
-    
+        return v_00.inv()
+
 class CellSelfEnergy:
     def __init__(self, h_skmm, s_kmm, kpts, td=2, eta=1e-4):
         self.h_skmm, self.s_kmm = h_skmm, s_kmm
@@ -307,3 +299,5 @@ class CellSelfEnergy:
         self.s_mm = np.sum(self.s_kmm, axis=0) / len(self.kpts) 
         self.g_spkmm = np.empty(self.h_spkmm.shape, self.h_spkmm.dtype)
         self.g_smm = np.empty(self.h_smm.shape, self.h_smm.dtype)
+
+
