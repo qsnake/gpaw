@@ -1,4 +1,5 @@
-from gpaw.transport.selfenergy import LeadSelfEnergy, CellSelfEnergy
+from gpaw.transport.newselfenergy import LeadSelfEnergy
+from gpaw.transport.selfenergy import CellSelfEnergy
 from gpaw.transport.greenfunction import GreenFunction
 from gpaw.transport.tools import get_matrix_index, aa1d, aa2d, sum_by_unit, dot
 from gpaw.mpi import world
@@ -132,7 +133,12 @@ class Transport_Analysor:
                                                H=tp.h_spkmm[0,0],
                                                S=tp.s_pkmm[0], eta=0)
         else:  #sparse_matrix
-            raise NotImplementError
+            if tp.use_lead:
+                for i in range(tp.lead_num):
+                    self.selfenergies.append(LeadSelfEnergy(tp.lead_hsd[i],
+                                                      tp.lead_couple_hsd[i]))
+    
+                    self.selfenergies[i].set_bias(tp.bias[i])
             
     def reset_selfenergy_and_green_function(self, s, k):
         tp = self.tp
@@ -295,7 +301,10 @@ class Transport_Analysor:
         time_cost = self.bias_step_time_collect()
         tc_array, dos_array = self.collect_transmission_and_dos()
         dv = self.abstract_d_and_v()
-        current = self.calculate_current()
+        if not tp.non_sc:
+            current = self.calculate_current()
+        else:
+            current = 0
         step.initialize_data(tp.bias, tp.gate, self.energies, self.lead_pairs,
                              tc_array, dos_array, dv, current, tp.lead_fermi, time_cost)
         step.ele_steps = self.ele_steps
@@ -308,7 +317,8 @@ class Transport_Analysor:
     def bias_step_time_collect(self):
         time = self.tp.timer.gettime
         cost = {}
-        cost['init scf'] = time('init scf')
+        if not self.tp.non_sc:
+            cost['init scf'] = time('init scf')
         return cost
         
     def ele_step_time_collect(self):    
@@ -403,7 +413,10 @@ class Transport_Analysor:
     def abstract_d_and_v(self):
         data = {}
         
-        calc = self.tp.extended_calc
+        if not self.tp.non_sc:
+            calc = self.tp.extended_calc
+        else:
+            calc = self.tp
             
         gd = calc.gd
         for s in range(self.tp.nspins):
