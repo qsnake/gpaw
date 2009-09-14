@@ -452,7 +452,7 @@ class Transport(GPAW):
                 atoms.calc = self
                 self.recover_kpts(atoms.calc)                
         else:        
-            for iter in range(20):
+            for iter in range(self.guess_steps):
                 wfs.eigensolver.iterate(hamiltonian, wfs)
                 occupations.calculate(wfs)
                 energy = hamiltonian.get_energy(occupations)
