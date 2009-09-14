@@ -10,6 +10,11 @@
 // Predefine dgels function of lapack
 int dgels_(char* trans, int *m, int *n, int *nrhs, double* a, int *lda, double* b, int *ldb, double* work, int* lwork, int *info);
 
+int safemod(int x, int m)
+{
+  return (x%m + m)%m;
+}
+
 
 // Perform a moving linear least squares interpolation to arrays
 // Input arguments:
@@ -48,10 +53,6 @@ PyObject* mlsqr(PyObject *self, PyObject *args)
       return NULL;
     }
 
-  //printf( "Performing moving linear least squares interpolation\n" );
-  //printf( "Using polynomial order %d\n", order);
-  //printf( "Source data size %d %d %d\n", data->dimensions[0], data->dimensions[1], data->dimensions[2]);
-
   int coeffs = -1;
 
   if (order == 1)
@@ -71,7 +72,6 @@ PyObject* mlsqr(PyObject *self, PyObject *args)
       coeffs = 20;
     }
   int points = coords->dimensions[0];
-  //printf( "Interpolating %d points\n", points);
 
   double* coord_nc = DOUBLEP(coords);
   double* grid_points = DOUBLEP(N_c);
@@ -109,13 +109,12 @@ PyObject* mlsqr(PyObject *self, PyObject *args)
       int cz2 = round(z);
 
       // Scaled to grid
-      int cx = cx2 % data->dimensions[0];
-      int cy = cy2 % data->dimensions[1];
-      int cz = cz2 % data->dimensions[2];
+      int cx = safemod(cx2,data->dimensions[0]);
+      int cy = safemod(cy2,data->dimensions[1]);
+      int cz = safemod(cz2,data->dimensions[2]);
 
       double* i_X = X;
       double* i_b = b;
-      //printf("at point %d", p);
       // For each point to take into account
       for (int dx=-sizex;dx<=sizex;dx++)
 	for (int dy=-sizey;dy<=sizey;dy++)
@@ -167,9 +166,9 @@ PyObject* mlsqr(PyObject *self, PyObject *args)
 		  *i_X++ = w*sz*sz*sy; // zzy
 		}
 
-	      *i_b++ = w*data_g[ (cx+dx) % data->dimensions[0] * ldx +
-				 (cy+dy) % data->dimensions[1] * ldy +
-				 (cz+dz) % data->dimensions[2] * ldz ];
+	      *i_b++ = w*data_g[ safemod(cx+dx, data->dimensions[0]) * ldx +
+				 safemod(cy+dy, data->dimensions[1]) * ldy +
+				 safemod(cz+dz, data->dimensions[2]) * ldz ];
 	    }
 
       int info = 0;
