@@ -32,6 +32,7 @@ t = Transport(h=0.3,
               pl_kpts=(1,1,5),
               edge_atoms=[[0, 3], [0, 8]],
               mol_atoms=[4],
-              guess_steps=1)
+              guess_steps=1,
+              foot_print=False)
 atoms.set_calculator(t)
 t.calculate_iv(0.5, 2)
