@@ -171,7 +171,6 @@ if len(tests) == 0:
         'nsc_MGGA.py',
         '8Si.py',
         'transport.py',
-        'fixed_boundary.py',
         'Cu.py',
         'IP-oxygen.py',
         'exx.py',
