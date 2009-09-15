@@ -1,6 +1,4 @@
-from gpaw.transport.newselfenergy import LeadSelfEnergy
-from gpaw.transport.selfenergy import CellSelfEnergy
-from gpaw.transport.greenfunction import GreenFunction
+from gpaw.transport.selfenergy import LeadSelfEnergy, CellSelfEnergy
 from gpaw.transport.tools import get_matrix_index, aa1d, aa2d, sum_by_unit, dot
 from gpaw.mpi import world
 
@@ -81,6 +79,7 @@ class Transport_Analysor:
         self.n_ele_step = 0
         self.n_bias_step = 0
         self.n_ion_step = 0
+        self.matrix_foot_print = False
         self.reset = False
         self.set_plot_option()
         self.initialize()
@@ -107,31 +106,7 @@ class Transport_Analysor:
         self.selfenergies = []
         tp = self.tp
         if tp.matrix_mode == 'full':
-            if tp.use_lead:
-                for i in range(tp.lead_num):
-                    self.selfenergies.append(LeadSelfEnergy((tp.hl_spkmm[i][0,0],
-                                                         tp.sl_pkmm[i][0]), 
-                                                        (tp.hl_spkcmm[i][0,0],
-                                                         tp.sl_pkcmm[i][0]),
-                                                        (tp.hl_spkcmm[i][0,0],
-                                                         tp.sl_pkcmm[i][0]),
-                                                 1e-8))
-    
-                    self.selfenergies[i].set_bias(tp.bias[i])
-
-            if tp.use_env:
-                self.env_selfenergies = []
-                for i in range(tp.env_num):
-                    self.env_selfenergies.append(CellSelfEnergy((tp.he_skmm[i],
-                                                             tp.se_kmm[i]),
-                                                            (tp.he_smm[i],
-                                                             tp.se_mm[i]),
-                                                             tp.env_ibzk_kc[i],
-                                                             tp.env_weight[i],
-                                                            1e-8))
-            self.greenfunction = GreenFunction(selfenergies=self.selfenergies,
-                                               H=tp.h_spkmm[0,0],
-                                               S=tp.s_pkmm[0], eta=0)
+            raise NotImplementError
         else:  #sparse_matrix
             if tp.use_lead:
                 for i in range(tp.lead_num):
@@ -247,6 +222,12 @@ class Transport_Analysor:
         total_dd = np.empty([tp.nspins, tp.npk, nbmol], dtype)
         total_df = np.empty([tp.nspins, tp.npk, nbmol], dtype)
         
+        if not self.matrix_foot_print:
+            fd = file('matrix_sample', 'wb')
+            pickle.dump(tp.hsd.S[0], fd, 2)
+            fd.close()
+            self.matrix_foot_print = True
+            
         for s in range(tp.my_nspins):
             for k in range(tp.my_npk):
                 if tp.matrix_mode == 'full':
