@@ -97,7 +97,7 @@ data. Follow the vendor installation instructions for ``pdtoolkit``.
 **Note**: if you want to use only TAU's ``paraprof`` and/or ``perfexplorer`` for
 analysing profile data made elsewhere - skip the installation of
 ``pdtoolkit``.
-Then follow the vendor installation instructions for ``TAU``.
+Follow the vendor installation instructions for ``TAU``.
 
 PerfDMF are a set of utilities that allow you to create a database for storing and analayzing your profile data. If you plan to collect any significant amount of profile data, it is highly recommend that you set one up. There are a number of options for the perfmdf database. For must users, the default based on derby is the simplest and it can be created by ``perfdmf_configure --create-default``. Other options are
 also available:
@@ -105,6 +105,28 @@ also available:
 Note that altough Paraprof is the simplest way to load profile data into your database,
 it is also possible to accomplish this directly with the PerfDMF utilities.
 `<http://www.cs.uoregon.edu/research/tau/docs/newguide/ch19.html>`_
+
+Configure the PerfDMF environment by running first ``perfdmf_configure``. 
+Choose the default answer for most of the questions, the only important 
+points are to provide a reasonable path to the database directory 
+(the database may grow to GB's), and ignore the password question:: 
+	 
+  Please enter the path to the database directory. 
+  (/home/camp/user/.ParaProf/perfdmf):/scratch/user/perfdmf 
+  Please enter the database username. 
+  (): 
+  Store the database password in CLEAR TEXT in your configuration file? (y/n):y 
+  Please enter the database password: 
+
+  Would you like to upload the schema? [y/n]: y
+ 
+Similarly, run ``perfexplorer_configure`` letting the default settings::
+
+  Would you like to attempt to automatically download the Weka jar file? (y/n) y
+
+  Would you like to attempt to automatically download the required jar files? (y/n) y
+
+  Perfexplorer tables not found.Would you like to upload the schema? [y/n]: y
 
 Generating profile data
 ------------------------
