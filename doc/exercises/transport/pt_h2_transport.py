@@ -34,8 +34,8 @@ atoms.set_calculator(
                            pl_cells=[pl_cell1, pl_cell2], 
                            pl_kpts=(1,1,13), 
                            mol_atoms=range(4, 8),
-                           lead_restart=True,
-                           scat_restart=True,
+                           lead_restart=False,
+                           scat_restart=False,
                            edge_atoms=[[0, 3],[0,11]], 
                            non_sc=True))
 
