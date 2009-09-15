@@ -58,6 +58,9 @@ when installating GPAW for the first time:
 
 .. literalinclude:: compile.sh
 
+Note the  versions of gpaw compiled with `TAU Performance System <http://www.cs.uoregon.edu/research/tau/>`_.
+See `Modules in batch jobs <https://wiki.fysik.dtu.dk/niflheim/Installed_software?action=show#modules-in-batch-jobs>`_ for details of using these on Niflheim.
+
 If you have login passwords active,
 this will force you to type your password four times. It is
 possible to remove the need for typing passwords on internal CAMd systems,

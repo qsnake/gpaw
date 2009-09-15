@@ -93,17 +93,11 @@ Installation and configuration
 
 TAU requires `Program Database Toolkit
 <http://www.cs.uoregon.edu/research/pdt/>`_ to produce profiling
-data. Follow the vendor installation instructions for ``pdtoolkit``
-or, on an RPM-based system (El4/EL5 and FC8/FC9 are currently
-supported), build RPM following
-`<https://wiki.fysik.dtu.dk/niflheim/Cluster_software_-_RPMS?action=show#pdtoolkit>`_. **Note**:
-If you want to use only TAU's ``paraprof`` and/or ``perfexplorer`` for
+data. Follow the vendor installation instructions for ``pdtoolkit``.
+**Note**: if you want to use only TAU's ``paraprof`` and/or ``perfexplorer`` for
 analysing profile data made elsewhere - skip the installation of
 ``pdtoolkit``.
-
-Follow the vendor installation instructions for ``TAU`` or, on an RPM-based
-system (El4/EL5 and FC8/FC9 are currently supported), build RPM following
-`<https://wiki.fysik.dtu.dk/niflheim/Cluster_software_-_RPMS?action=show#tau>`_.
+Then follow the vendor installation instructions for ``TAU``.
 
 PerfDMF are a set of utilities that allow you to create a database for storing and analayzing your profile data. If you plan to collect any significant amount of profile data, it is highly recommend that you set one up. There are a number of options for the perfmdf database. For must users, the default based on derby is the simplest and it can be created by ``perfdmf_configure --create-default``. Other options are
 also available:
@@ -118,9 +112,9 @@ TAU has a number of capabilities including generating a call path, memory profil
 
 Manual
 ^^^^^^^^^^
-This is the most intuitive way to create profiles because it requires that you understand the fundamental algorithms. A TauTimer class is available that includes the most essential profiling commands. See gpaw/utilities/timing.py. Time is measured  **only** for each instance of ``timer.start(<text>)`` and ``timer.stop(<text>)``. There are a number of pre-defined timers for the most time consuming parts of GPAW, e.g. RMM-DIIS, subspace diagonalization, etc. It is very straightforward to add your own timers.
+This is the most intuitive way to create profiles however it requires that you understand gpaw's program flow. A TauTimer class is available that includes the most essential profiling commands. See gpaw/utilities/timing.py. Time is measured  **only** for each instance of ``timer.start(<text>)`` and ``timer.stop(<text>)``. There are a number of pre-defined timers for the most time consuming parts of GPAW, e.g. RMM-DIIS, subspace diagonalization, etc. It is very straightforward to add your own timers.
 
-Here is an example of how the TauTimer class can be used to profile a calculation. Note that the TAU binding library (\*.so) **must** be in your *PYTHON_PATH* and *LD_LIBRARY_PATH*::
+Here is an example of how the TauTimer class can be used to profile a calculation. Note that the TAU binding library (\*.so) **must** be in your *PYTHONPATH* and *LD_LIBRARY_PATH*::
 
   from gpaw.utilties.timing import TauTimer
 
@@ -132,28 +126,35 @@ Here is an example of how the TauTimer class can be used to profile a calculatio
 
 Automatic
 ^^^^^^^^^^^^
-Timing information for every Python and C function is measured. You will need to compile a special version of gpaw. This is often referred to as the instrumented binary. It is important to understand that instrumentation will be performed on three distinctlevels:
+Timing information for every Python and C function is measured. You will need to compile a special version of gpaw. This is often referred to as the instrumented binary. It is important to understand that instrumentation will be performed on three distinct levels:
 * MPI
 * Python
 * C
 
-Simply include the following into ``customize.py`` and run ``python setup.py build_ext``::
+**Note**: instructions were tested with pdtoolkit-3.14.1 and tau-2.18.2p4.
+It is necessary to remove any mpi libraries from the `libraries` variable
+in ``customize.py``: TAU will perform linking on it's own.
+
+Simply add the following to the ``customize.py`` and run ``python setup.py build_ext --remove-default-flags``::
 
   import tau
+  import os
   tau_path = tau.__file__[0:tau.__file__.find('lib')]
-  tau_make = tau_path+'lib/Makefile.tau-mpi-pthread-compensate-python-pdt'
-  mpicompiler = "tau_cc.sh -tau_options='-optShared -optCompInst -optVerbose -optMpi' -tau_makefile="+tau_make
+  tau_make = tau_path+'lib/Makefile.tau-mpi-pthread-python-pdt'
+  mpicompiler = "tau_cc.sh -tau_options='-optShared -optCompInst -optVerbose -optMpi' -optTau='-rn Py_RETURN_NONE -i"+os.path.join(os.environ['TAUROOT'], 'include', 'TAU_PYTHON_FIX.h')+"' -tau_makefile="+tau_make
+  #mpicompiler = "tau_cc.sh -tau_options='-optShared -optCompInst -optVerbose -optMpi' -optTau='-rn Py_RETURN_NONE' -tau_makefile="+tau_make
   mpilinker = mpicompiler
   compiler = mpicompiler
 
   extra_link_args += ['-Wl,-rpath='+tau_path+'lib/']
 
-**Note**: March 10 2009: pdtoolkit-3.14.1 and tau-2.18.1p1: you may need to decrease optimization level to `-O2` to get rid of::
+There may be a number of Makefile TAU stubs available. Choose the one that is appropriate for the profile data that you wish to collect and the compiler. Because automatic instrumentation generally has larger overhead than manual instrumentation, it is recommended to set the compensate option. In this way, the instrumentation time will be substracted out from the time reported by TAU. Without this compensation option, light weight functions may be over-represented in the flat profile.
 
-  c/libxc/src/gga_x_pbea.c: In function `func':
-  c/libxc/src/gga_x_pbea.c:53: internal compiler error: in cgraph_expand_function, at cgraphunit.c:540
+You may set the following::
 
-There should be a number of Makefile TAU stubs available. Choose the one that is appropriate for the profile data that you wish to collect and the compiler. Because automatic instrumentation generally has larger overhead than manual instrumentation, it is highly recommend that you chose a  Makefile TAU stub with the compensate option. In this way, the instrumentation time will be substracted out from the time reported by TAU. Without this compensation option, light weight functions may be over-represented in the flat profile
+  export TAU_VERBOSE=1
+  export TAU_THROTTLE=0
+  export TAU_COMPENSATE=1
 
 Note that an alternate (and simpler) way to specify the long parameter list to ``tau_cc.sh`` is through the use of the environment variables *TAU_MAKEFILE* and *TAU_OPTIONS*. Ultimately, the the profile data collected and how it is collected is determined by these two environment variables.
  
@@ -185,7 +186,7 @@ There are a number of other *TAU_OPTIONS* which are helpful but
 may not work if TAU is not configured correctly.
 
 * **-optCompInst**: Performs the compiler-based instrumentation. This enables instrumentation by modifying the object files. This is only supported with certain compilers. The default is source-based instrumentation. This applies only to C code.
-* **-optShared**: Specifies the use of a dynamic TAU library binding (\*.so) instead of the default static library that would otherwise be linked into ``gpaw-python``. Instrumentation on all three distinct levels requires this option. This should **always** be used, otherwise profile information will only be collected for the Python layer. Additionally,  the library binding is chosen at runtime by specifying the TAU library binding directory in your *PYTHON_PATH* and *LD_LIBRARY_PATH*
+* **-optShared**: Specifies the use of a dynamic TAU library binding (\*.so) instead of the default static library that would otherwise be linked into ``gpaw-python``. Instrumentation on all three distinct levels requires this option. This should **always** be used, otherwise profile information will only be collected for the Python layer. Additionally,  the library binding is chosen at runtime by specifying the TAU library binding directory in your *PYTHONPATH* and *LD_LIBRARY_PATH*
 * **-optTau**: This is frequently very platform and compiler specific. See the BG/P page for examples.
 * **-optTauSelectFile**: A file containing a list of functions that are to be excluded or included. This is necessary to reduce the instrumentation overhead from lightweight function calls. The following selective instrumentation file is recommended for use with TAU as a number of functions called by libxc created substantial overhead: `select.tau <https://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/profiling/select.tau>`_
 * **-optVerbose**: Useful for debugging, all the details of the invocation of ``tau_cc.sh`` are passed to stdout.
