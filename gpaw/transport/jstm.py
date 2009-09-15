@@ -178,7 +178,9 @@ class STM:
                                  'w': 0.0,
                                  'eta1': 1e-3,
                                  'eta2': 1e-3,
-                                 'cpu_grid': None, 
+                                 'cpu_grid': None,
+                                 'molecular_subspace': [],
+                                 'pdos': True,
                                  'logfile': '-', # '-' for stdin
                                  'verbose': False}
         
@@ -242,8 +244,10 @@ class STM:
             self.initialize_transport()
             return
         
-        T = time.localtime()
-        self.log.write('#%d:%02d:%02d' % (T[3], T[4], T[5]) + ' Initializing\n')
+        if world.rank == 0:
+            T = time.localtime()
+            self.log.write('#%d:%02d:%02d' % (T[3], T[4], T[5]) + ' Initializing\n')    
+            self.log.flush()
 
         p = self.input_parameters        
         self.dmin = p['dmin'] / Bohr
@@ -298,20 +302,21 @@ class STM:
          
         self.set_tip_position([0, 0])
         
-        self.log.write(' dmin = %.3f\n' % (self.dmin * Bohr) +
-                       ' tip atoms: %i to %i,  tip functions: %i\n' 
-                       % (tip_indices.min(), tip_indices.max(),
-                          len(self.tip_cell.functions))
-                      +' surface atoms: %i to %i, srf functions %i\n' 
-                        %(srf_indices.min(), srf_indices.max(),
-                          len(self.srf_cell.functions))
-                      )
+        if world.rank == 0:
+            self.log.write(' dmin = %.3f\n' % (self.dmin * Bohr) +
+                           ' tip atoms: %i to %i,  tip functions: %i\n' 
+                           % (tip_indices.min(), tip_indices.max(),
+                              len(self.tip_cell.functions))
+                           +' surface atoms: %i to %i, srf functions %i\n' 
+                            %(srf_indices.min(), srf_indices.max(),
+                              len(self.srf_cell.functions))
+                             )
+            self.log.flush()            
 
         if not self.transport_uptodate:
             self.initialize_transport()            
 
         self.initialized = True
-        self.log.flush()
 
     def initialize_transport(self, restart = False):
         p = self.input_parameters        
@@ -327,6 +332,7 @@ class STM:
         w = p['w']
         eta1 = p['eta1']
         eta2 = p['eta2']
+        bfs = p['molecular_subspace']
 
         tip_efermi = self.tip.get_fermi_level() / Hartree
         srf_efermi = self.srf.get_fermi_level() / Hartree
@@ -356,12 +362,18 @@ class STM:
         diff1 = (h10[-1, -1] - h1[-1, -1]) / s1[-1, -1]
         h10 -= diff1 * s10
 
+        from ase.transport.tools import subdiagonalize
+        if bfs != []:
+            h2, s2, c_pp, e_p = subdiagonalize(h2, s2, bfs)
+
         if not self.transport_uptodate:
             from ase.transport.stm import STM as STMCalc
 
-            T = time.localtime()
-            self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
-                           ' Precalculating green functions\n')
+            if world.rank == 0:
+                T = time.localtime()
+                self.log.write('\n  %d:%02d:%02d' % (T[3], T[4], T[5]) + 
+                               ' Precalculating green functions\n')
+                self.log.flush()            
 
             if p['energies'] == None:
                 energies = np.sign(bias) * \
@@ -383,17 +395,20 @@ class STM:
                                h20, s20, 
                                h10, s10, 
                                eta1, eta2, 
-                               w=w)
+                               w=w, logfile = self.log)
+
             if not restart:
                 stm_calc.initialize(energies, bias = bias)
             
             self.stm_calc = stm_calc
             self.transport_uptodate = True            
 
-            T = time.localtime()
-            self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
-                           ' Done\n')
-            self.log.flush()
+            if world.rank == 0:
+                T = time.localtime()
+                self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
+                               ' Done\n')
+                self.log.flush()
+            
             self.world.barrier()
 
     def set_tip_position(self, position_c):   
@@ -507,11 +522,9 @@ class STM:
         start = l * dcomm.rank
         stop = l * (dcomm.rank + 1)
         gpts_i = gpts_i[start:stop] # gridpoints on this cpu
-        print self.world.rank, 'gpts', (gpts_i.min(), gpts_i.max()) 
         V_g = np.zeros((len(gpts_i), self.nj, self.ni)) # V_ij's on this cpu
         I_g = np.zeros_like(gpts_i).astype(float) # currents on this cpu
         self.gpts_i = gpts_i
-        print world.rank, 'Vs'
         for i, gpt in enumerate(gpts_i):
             x = gpt / n_c[1]
             y = gpt % n_c[1]
@@ -520,25 +533,21 @@ class STM:
 
         # calculate part of the current for each grid points
         #energies = self.energies # global energy grid
-        print world.rank, 'Is', len(V_g)
         bias = self.stm_calc.bias
 
-        T = time.localtime()
-        self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
-                       str(world.rank) + ' Is start\n')
+        if world.rank == 0:
+            T = time.localtime()
+            self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
+                           + 'Fullscan\n')
 
         for j, V in enumerate(V_g):
             I_g[j] += self.stm_calc.get_current(bias, V) * 77466.1509 
         world.barrier()
     
-        T = time.localtime()
-        self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
-                        str(world.rank) +' Is stop\n')
-        
+       
         #send green functions
         self.stm_calc.energies_req = self.stm_calc.energies.copy()
         for i in range(dcomm.size - 1):
-            print world.rank, 'sending gft'
             rank_send = (dcomm.rank + 1) % dcomm.size
             rank_receive = (dcomm.rank - 1) % dcomm.size
 
@@ -581,25 +590,16 @@ class STM:
             dcomm.wait(request)
             self.stm_calc.gft2_emm = gft2_receive
 
-            T = time.localtime()
-            self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
-                           str(world.rank) + ' Is22222 start\n')
-
-
             bias = self.stm_calc.bias
             for j, V in enumerate(V_g):
                 I_g[j] += self.stm_calc.get_current(bias, V) * 77466.1509
 
 
             T = time.localtime()
-            self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
-                           str(world.rank) + ' Is22222 stop\n')
-
 
         world.barrier()
         self.I_g = I_g
         self.bfs_comm.sum(I_g) 
-        print world.rank, (self.domain_comm.rank, self.bfs_comm.rank), I_g.max()
         
         if dcomm.rank == 0:
             gather = np.zeros((dcomm.size, len(I_g)))
@@ -615,34 +615,27 @@ class STM:
                 scan[x, y] = final[i]
 
             self.scans['fullscan'] = scan
+
+            T = time.localtime()
+            self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
+                           'Fullscan done\n')
+
         else:
             dcomm.gather(I_g,0)
         world.barrier()
-
-
-
-    def scan_old(self):
-        n_c = self.srf.gd.n_c
-        scan = np.zeros(tuple(n_c[:2]))
-        for x in range(n_c[0]):
-             for y in range(n_c[1]):
-                 I  = self.get_current([x,y])                       
-                 scan[x,y] = I
-                 if self.input_parameters['verbose']:
-                    print self.tip_cell.position, I
-        self.scans['fullscan'] = scan
 
     def scan3d(self, zmin, zmax):
         bias = self.stm_calc.bias
         self.scans['scan3d'] = {}
         hz = self.srf_cell.gd.h_c[2] * Bohr
-        dmins = np.arange(zmin, zmax + hz, hz)
+        dmins = -np.arange(zmin, zmax + hz, hz)
+        dmins.sort()
+        dmins = -dmins        
         for dmin in dmins:
             if world.rank == 0:
                 fd = open('scan_' + str(np.round(dmin, 2)) + '_bias_'\
                         + str(bias) + '_.pckl', 'wb')
             world.barrier()
-
             self.set(dmin=dmin)
             self.initialize()
             self.scan()
@@ -651,6 +644,12 @@ class STM:
                 pickle.dump((dmin, bias, self.scans['fullscan']), fd, 2)
                 self.scans['scan3d'][dmin] = self.scans['fullscan'].copy()
             world.barrier()
+            
+        if rank == 0:
+            fd = open('scan3d' + '_bias_' + str(np.round(bias, 2)) + '_.pckl', 'wb') 
+            pickle.dump((bias, self.scans['scan3d']), fd, 2)   
+            fd.close()
+        world.barrier()
 
     def get_constantI(self, I):
         assert self.scans.has_key('scan3d')
@@ -968,10 +967,10 @@ class TipCell:
         
         N_c_bak = self.tip.gd.N_c.copy()
         tip_pos_av[:,2] -= cell_zmin_grpt * tgd.h_c[2]
-        print 'N_c', self.tip.gd.N_c, newsize2_c
+        #print 'N_c', self.tip.gd.N_c, newsize2_c
         newsize2_c[2] = new_sizez.copy()
         self.tip.gd.N_c = N_c_bak
-        print 'N_c2', self.tip.gd.N_c, newsize2_c, self.tip.hamiltonian.vt_sG.shape
+        #print 'N_c2', self.tip.gd.N_c, newsize2_c, self.tip.hamiltonian.vt_sG.shape
 
         newcell_c = (newsize2_c + 1) * sgd.h_c 
         newcell_cv = srf_basis * newcell_c
