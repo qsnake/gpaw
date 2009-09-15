@@ -106,6 +106,7 @@ class HGHSetup(BaseSetup):
         self.extra_xc_data = {}
 
         self.wg_lg = None
+        self.g_lg = None
 
 class HGHSetupData:
     """Setup-compatible class implementing HGH pseudopotential.
