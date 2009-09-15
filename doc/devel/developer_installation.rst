@@ -23,7 +23,8 @@ Do the following:
 
   * :file:`_gpaw.so`:  A shared library for serial calculations containing
     GPAW's C-extension module.  The module will be in
-    :file:`~/gpaw/build/lib.{<platform>}-2.5/`.
+    :file:`~/gpaw/build/lib.{<platform>}-2.5/`. `{<platform>}`
+    could be for example `linux-x86_64`.
   * :file:`gpaw-python`: A special Python interpreter for parallel
     calculations.  The interpreter has GPAW's C-code build in.  The
     :file:`gpaw-python` executable is
@@ -32,16 +33,19 @@ Do the following:
   **Note** the :file:`gpaw-python` interpreter will only be made if
   :file:`setup.py` found an ``mpicc`` compiler.
 
-  * Prepend :file:`~/gpaw` onto your :envvar:`$PYTHONPATH` and
+  * Prepend :file:`~/gpaw` and :file:`~/gpaw/build/bin.{<platform>}-2.5/`
+    onto your :envvar:`$PYTHONPATH` and
     :file:`~/gpaw/build/bin.{<platform>}-2.5:~/gpaw/tools` onto
     :envvar:`$PATH`, e.g. put into :file:`~/.tcshrc`::
 
      setenv PYTHONPATH ${HOME}/gpaw:${PYTHONPATH}
+     setenv PYTHONPATH ${HOME}/gpaw/build/lib.<platform>-2.5:${PYTHONPATH}
      setenv PATH ${HOME}/gpaw/build/bin.<platform>-2.5:${HOME}/gpaw/tools:${PATH}
 
     or if you use bash, put these lines into :file:`~/.bashrc`::
 
      export PYTHONPATH=${HOME}/gpaw:${PYTHONPATH}
+     export PYTHONPATH=${HOME}/gpaw/build/lib.<platform>-2.5:${PYTHONPATH}
      export PATH=${HOME}/gpaw/build/bin.<platform>-2.5:${HOME}/gpaw/tools:${PATH}
 
   * install gpaw setups (:ref:`installationguide` step 4).
