@@ -1656,8 +1656,8 @@ class Transport(GPAW):
        
         self.text('Hartree_diff', str(ham_diff))
         if self.atoms.pbc.all():    
-            #self.hamiltonian.vHt_g += ham_diff
-            self.hamiltonian.vHt_g += self.get_linear_hartree_potential2(vHt_g, vHt_g0)
+            self.hamiltonian.vHt_g += ham_diff
+            #self.hamiltonian.vHt_g += self.get_linear_hartree_potential2(vHt_g, vHt_g0)
         
         self.surround.combine_vHt_g(self.hamiltonian.vHt_g)
            
