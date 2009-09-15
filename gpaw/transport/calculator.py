@@ -59,7 +59,8 @@ class Transport(GPAW):
                        'use_qzk_boundary', 'use_linear_vt_mm',
                        'use_linear_vt_array',
                        'scat_restart', 'save_file', 'restart_file',
-                       'non_sc', 'fixed_boundary', 'guess_steps', 'foot_print']:
+                       'non_sc', 'fixed_boundary', 'guess_steps', 'foot_print',
+                        'align_har']:
                 
                 del self.gpw_kwargs[key]
             #----descript the lead-----    
@@ -145,6 +146,8 @@ class Transport(GPAW):
                 p['guess_steps'] = kw['guess_steps']
             if key in ['fixed_boundary']:
                 p['fixed_boundary'] = kw['fixed_boundary']
+            if key in ['align_har']:
+                p['align_har'] = kw['align_har']
             if key in ['spinpol']:
                 p['spinpol'] = kw['spinpol']
             if key in ['verbose']:
@@ -209,6 +212,7 @@ class Transport(GPAW):
         self.restart_file = p['restart_file']
         self.fixed = p['fixed_boundary']
         self.non_sc = p['non_sc']
+        self.align_har = p['align_har']
         self.spinpol = p['spinpol']
         self.verbose = p['verbose']
         self.d = p['d']
@@ -280,6 +284,7 @@ class Transport(GPAW):
         p['guess_steps'] = 20
         p['foot_print'] = True
         p['use_qzk_boundary'] = False
+        p['align_har'] = 0
         p['align'] = False
         p['use_linear_vt_mm'] = False
         p['use_linear_vt_array'] = False        
@@ -1651,14 +1656,21 @@ class Transport(GPAW):
         vHt_g = self.extended_calc.finegd.collect(ham.vHt_g, True)    
         vHt_g0 = self.finegd.collect(self.hamiltonian.vHt_g, True)
 
-        ham_diff = np.sum(vHt_g[:,:,0]) - np.sum(vHt_g0[:,:,0])
+        if self.align_har == -1:
+            ham_diff = np.sum(vHt_g[:,:,0]) - np.sum(vHt_g0[:,:,0])
+        elif self.align_har == 1:
+            ham_diff = np.sum(vHt_g[:,:,1]) - np.sum(vHt_g0[:,:,1])
+        else:
+            ham_diff = np.sum(vHt_g[:,:,0]) - np.sum(vHt_g0[:,:,0])            
+            ham_diff += np.sum(vHt_g[:,:,1]) - np.sum(vHt_g0[:,:,1])
+            ham_diff /= 2
+       
         ham_diff /= np.product(vHt_g.shape[:2])
        
         self.text('Hartree_diff', str(ham_diff))
         if self.atoms.pbc.all():    
             self.hamiltonian.vHt_g += ham_diff
-            #self.hamiltonian.vHt_g += self.get_linear_hartree_potential2(vHt_g, vHt_g0)
-        
+
         self.surround.combine_vHt_g(self.hamiltonian.vHt_g)
            
         self.text('poisson interations :' + str(ham.npoisson))
