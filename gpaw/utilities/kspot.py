@@ -34,10 +34,9 @@ class AllElectronPotential:
          # Calculate also atomic LDA for reference
          g = AllElectron(setup.symbol, xcname='LDA',nofiles=True, scalarrel=True, txt=None)
          g.run()
-         g.vr[1:] /= g.r[1:]
-         g.vr[0] = g.vr[1]
-         for r, vKS,vr in zip(r_g,vKS_g, g.vr):
-            print >> f, r, vKS,vr, (vKS-vr)
+         print >>f, r_g[0], vKS_g[0], g.vr[0], 0.0
+         for r, vKS,vr in zip(r_g[1:],vKS_g[1:], g.vr[1:]):
+            print >> f, r, vKS,vr, (vKS-vr)/r
 
       f.close()
 
@@ -116,12 +115,16 @@ class AllElectronPotential:
       
       # Interpolate the smooth electrostatic potential from fine grid to radial grid
       radHt_g = self.grid_to_radial(a, gd, self.paw.hamiltonian.vHt_g)
-
+      radHt_g *= xccorr.rgd.r_g
+      
       print "D_sp", D_sp
 
       # Calculate the difference in density and pseudo density
       dn_g = Y0 * (xccorr.expand_density(D_sLq, xccorr.n_qg, xccorr.nc_g, xccorr.ncorehole_g).n_sLg[0][0]
                    - xccorr.expand_density(D_sLq, xccorr.nt_qg, xccorr.nct_g).n_sLg[0][0])
+
+      # Add the compensation charge contribution
+      dn_g -= Y0 * self.paw.density.Q_aL[a][0] * setup.g_lg[0]
       
       # Calculate the Hartree potential for this
       vHr = npy.zeros((xccorr.ng,))
@@ -129,15 +132,7 @@ class AllElectronPotential:
 
       # Add the core potential contribution
       vHr -= setup.Z
-      vHr[1:] /= xccorr.rgd.r_g[1:]
-      vHr[0] = vHr[1]
 
-      # Calculate the compensation charge contribution
-      comp = self.paw.density.Q_aL[a][0] * setup.wg_lg[0] / Y0
-      comp[1:] /=  xccorr.rgd.dv_g[1:]
-      comp[0] = comp[1]
-      vHr -= comp
-      
       radHt_g += vHr
       
       # --------------------------------------------
@@ -169,7 +164,7 @@ class AllElectronPotential:
          xccorr.calculate_potential_slice(e_g, nt_sg, vxc_sg)
          radvxct_g -= integrator.weight * vxc_sg[0]
 
-      radvks_g = radvxct_g + radHt_g
+      radvks_g = radvxct_g*xccorr.rgd.r_g + radHt_g
       return (xccorr.rgd.r_g, radvks_g)
 
 if not extra_parameters.get('usenewxc'):

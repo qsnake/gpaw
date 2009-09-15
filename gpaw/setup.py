@@ -448,7 +448,7 @@ class LeanSetup(BaseSetup):
         self.dEH_p = s.dEH_p
 
         # Required by utilities/kspot.py (AllElectronPotential)
-        self.wg_lg = s.wg_lg
+        self.g_lg = s.g_lg
         
         # Probably empty dictionary, required by GLLB
         self.extra_xc_data = s.extra_xc_data
