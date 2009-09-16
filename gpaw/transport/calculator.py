@@ -1696,7 +1696,8 @@ class Transport(GPAW):
             ham_diff /= np.product(vHt_g.shape[:2])            
             self.ham_diff = ham_diff
             self.text('Hartree_diff', str(ham_diff))
-        if self.atoms.pbc.all():    
+        
+        if hasattr(self, 'step') and self.atoms.pbc.all():    
             self.hamiltonian.vHt_g += self.ham_diff
 
         self.surround.combine_vHt_g(self.hamiltonian.vHt_g)
