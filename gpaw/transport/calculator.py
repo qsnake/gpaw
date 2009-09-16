@@ -1618,11 +1618,10 @@ class Transport(GPAW):
         nn = self.surround.nn[0] * 2
         density.nt_sg = self.surround.uncapsule(nn, nt_sg, self.finegd1,
                                                     self.finegd)
-        if not self.gd.pbc_c.all():
-            pseudo_charge = -(density.charge + comp_charge)
-            if abs(pseudo_charge) > 1.0e-14:
-                x = pseudo_charge / self.finegd.integrate(density.nt_sg).sum()
-                density.nt_sg *= x
+        pseudo_charge = -(density.charge + comp_charge)
+        if abs(pseudo_charge) > 1.0e-14:
+            x = pseudo_charge / self.finegd.integrate(density.nt_sg).sum()
+            density.nt_sg *= x
         density.calculate_pseudo_charge(comp_charge)
 
         if density.mixer.mix_rho:
