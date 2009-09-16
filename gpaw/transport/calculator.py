@@ -3,6 +3,7 @@ from ase import Atoms, Atom, Hartree, Bohr
 from gpaw import GPAW, debug, dry_run, Mixer, MixerDif, PoissonSolver
 from gpaw import restart as restart_gpaw
 from gpaw.grid_descriptor import GridDescriptor
+from gpaw.transformers import Transformer
 from gpaw.lcao.tools import get_realspace_hs
 from gpaw.mpi import world
 from gpaw.utilities.lapack import diagonalize
@@ -410,7 +411,11 @@ class Transport(GPAW):
         if not self.non_sc:
             self.timer.start('surround set_position')
             self.inner_poisson = PoissonSolver(nn=self.hamiltonian.poisson.nn)
-            self.inner_poisson.set_grid_descriptor(self.finegd)    
+            self.inner_poisson.set_grid_descriptor(self.finegd)
+            self.interpolator = Transformer(self.gd1, self.finegd1,
+                                            self.input_parameters.stencils[1],
+                                            allocate=False)
+            self.interpolator.allocate()
             self.surround.combine()
             self.set_extended_positions()
             self.timer.stop('surround set_position')
@@ -1598,7 +1603,30 @@ class Transport(GPAW):
         comp_charge = density.calculate_multipole_moments()
 
         density.normalize(comp_charge)
-        density.mix(comp_charge)          
+
+        if not density.mixer.mix_rho:
+            density.mixer.mix(density)
+            
+        if density.nt_sg is None:
+            density.nt_sg = density.finegd.empty(density.nspins)
+
+        nt_sG = self.surround.combine_nt_sG(density.nt_sG)
+        nt_sg = self.finegd1.zeros(self.nspins)
+        for s in range(density.nspins):
+            self.interpolator.apply(nt_sG[s], nt_sg[s])
+        
+        nn = self.surround.nn[0] * 2
+        density.nt_sg = self.surround.uncapsule(nn, nt_sg, self.finegd1,
+                                                    self.finegd)
+        if not self.gd.pbc_c.all():
+            pseudo_charge = -(density.charge + comp_charge)
+            if abs(pseudo_charge) > 1.0e-14:
+                x = pseudo_charge / self.finegd.integrate(density.nt_sg).sum()
+                density.nt_sg *= x
+        density.calculate_pseudo_charge(comp_charge)
+
+        if density.mixer.mix_rho:
+            density.mixer.mix(density)        
             
     def update_hamiltonian(self):
         # only used by fixed bc
@@ -1656,20 +1684,20 @@ class Transport(GPAW):
         vHt_g = self.extended_calc.finegd.collect(ham.vHt_g, True)    
         vHt_g0 = self.finegd.collect(self.hamiltonian.vHt_g, True)
 
-        if self.align_har == -1:
-            ham_diff = np.sum(vHt_g[:,:,0]) - np.sum(vHt_g0[:,:,0])
-        elif self.align_har == 1:
-            ham_diff = np.sum(vHt_g[:,:,1]) - np.sum(vHt_g0[:,:,1])
-        else:
-            ham_diff = np.sum(vHt_g[:,:,0]) - np.sum(vHt_g0[:,:,0])            
-            ham_diff += np.sum(vHt_g[:,:,1]) - np.sum(vHt_g0[:,:,1])
-            ham_diff /= 2
-       
-        ham_diff /= np.product(vHt_g.shape[:2])
-       
-        self.text('Hartree_diff', str(ham_diff))
+        if hasattr(self, 'step') and self.ground:
+            if self.align_har == -1:
+                ham_diff = np.sum(vHt_g[:,:,0]) - np.sum(vHt_g0[:,:,0])
+            elif self.align_har == 1:
+                ham_diff = np.sum(vHt_g[:,:,1]) - np.sum(vHt_g0[:,:,1])
+            else:
+                ham_diff = np.sum(vHt_g[:,:,0]) - np.sum(vHt_g0[:,:,0])            
+                ham_diff += np.sum(vHt_g[:,:,1]) - np.sum(vHt_g0[:,:,1])
+                ham_diff /= 2
+            ham_diff /= np.product(vHt_g.shape[:2])            
+            self.ham_diff = ham_diff
+            self.text('Hartree_diff', str(ham_diff))
         if self.atoms.pbc.all():    
-            self.hamiltonian.vHt_g += ham_diff
+            self.hamiltonian.vHt_g += self.ham_diff
 
         self.surround.combine_vHt_g(self.hamiltonian.vHt_g)
            
