@@ -204,6 +204,7 @@ class STM:
         self.bfs_comm = bfs_comm
         self.initialized = False
         self.transport_uptodate = False
+        self.hs_aligned = False
         self.set(**kwargs)
 
     def set(self, **kwargs):
@@ -333,34 +334,36 @@ class STM:
         eta1 = p['eta1']
         eta2 = p['eta2']
         bfs = p['molecular_subspace']
-
-        tip_efermi = self.tip.get_fermi_level() / Hartree
-        srf_efermi = self.srf.get_fermi_level() / Hartree
-        fermi_diff = tip_efermi - srf_efermi
-
-        if cvl1 == 0: # XXX nessesary???
-            cvl1 = 1
-            
-        h1 = h1[:-cvl1, :-cvl1]
-        s1 = s1[:-cvl1, :-cvl1]
-        h2 = h2[cvl2:, cvl2:]
-        s2 = s2[cvl2:, cvl2:]
-
-        h1 -= s1 * fermi_diff * Hartree
-
-        # Align bfs with the surface lead as a reference
-        diff = (h2[align_bf, align_bf] - h20[align_bf, align_bf]) \
-               / s2[align_bf, align_bf]
-        diff = diff.real
-        h2 -= diff * s2      
-        h1 -= diff * s1        
         
-        self.tip_cell.shift_potential(-diff / Hartree\
-                                      - (srf_efermi + tip_efermi) / 2)
+        if not self.hs_aligned:
+            tip_efermi = self.tip.get_fermi_level() / Hartree
+            srf_efermi = self.srf.get_fermi_level() / Hartree
+            fermi_diff = tip_efermi - srf_efermi
+
+            if cvl1 == 0: # XXX nessesary???
+                cvl1 = 1
+            
+            h1 = h1[:-cvl1, :-cvl1]
+            s1 = s1[:-cvl1, :-cvl1]
+            h2 = h2[cvl2:, cvl2:]
+            s2 = s2[cvl2:, cvl2:]
+        
+            h1 -= s1 * fermi_diff * Hartree
+            print h1.shape, (h1.min(), h1.max())
+            # Align bfs with the surface lead as a reference
+            diff = (h2[align_bf, align_bf] - h20[align_bf, align_bf]) \
+                   / s2[align_bf, align_bf]
+            diff = diff.real
+            h2 -= diff * s2      
+            h1 -= diff * s1        
+        
+            self.tip_cell.shift_potential(-diff / Hartree\
+                                          - (srf_efermi + tip_efermi) / 2)
 
 
-        diff1 = (h10[-1, -1] - h1[-1, -1]) / s1[-1, -1]
-        h10 -= diff1 * s10
+            diff1 = (h10[-1, -1] - h1[-1, -1]) / s1[-1, -1]
+            h10 -= diff1 * s10
+            self.hs_aligned = True
 
         from ase.transport.tools import subdiagonalize
         if bfs != []:
@@ -528,7 +531,6 @@ class STM:
         for i, gpt in enumerate(gpts_i):
             x = gpt / n_c[1]
             y = gpt % n_c[1]
-            #print 'gpt',world.rank, i, (x, y)
             V_g[i] =  self.get_V((x, y))
 
         # calculate part of the current for each grid points
@@ -615,7 +617,6 @@ class STM:
                 scan[x, y] = final[i]
 
             self.scans['fullscan'] = scan
-
             T = time.localtime()
             self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
                            'Fullscan done\n')
@@ -956,7 +957,7 @@ class TipCell:
             origo_c = np.array([0,0,0])
         else:
             dointerpolate = False
-            newsize2_c = tgd.N_c
+            newsize2_c = tgd.N_c.copy()
             vt_sG = self.tip.hamiltonian.vt_sG
             vt_sG = self.tip.gd.collect(vt_sG, broadcast=True)
             vt_G = vt_sG[0]
@@ -967,11 +968,8 @@ class TipCell:
         
         N_c_bak = self.tip.gd.N_c.copy()
         tip_pos_av[:,2] -= cell_zmin_grpt * tgd.h_c[2]
-        #print 'N_c', self.tip.gd.N_c, newsize2_c
+        
         newsize2_c[2] = new_sizez.copy()
-        self.tip.gd.N_c = N_c_bak
-        #print 'N_c2', self.tip.gd.N_c, newsize2_c, self.tip.hamiltonian.vt_sG.shape
-
         newcell_c = (newsize2_c + 1) * sgd.h_c 
         newcell_cv = srf_basis * newcell_c
 
