@@ -206,8 +206,10 @@ class Surrounding:
             vHt_g = ham.finegd.zeros(global_array=True)
             extra_vHt_g = ham.finegd.zeros(global_array=True)
             loc_extra_vHt_g = ham.finegd.zeros()
+            nt_sg = ham.finegd.zeros(self.tp.nspins, global_array=True)
+            nt_sG = ham.gd.zeros(self.tp.nspins, global_array=True)
             self.nt_sg = ham.finegd.zeros(self.tp.nspins)
-            
+            self.nt_sG = ham.gd.zeros(self.tp.nspins)            
 
             bias_shift0 = self.bias_index['-'] / Hartree
             bias_shift1 = self.bias_index['+'] / Hartree
@@ -216,9 +218,16 @@ class Surrounding:
             extra_vHt_g[:, :, :nn] = bias_shift0 + self.sides['-'].boundary_vHt_g - self.sides['+'].boundary_vHt_g
             extra_vHt_g[:, :, -nn:] = bias_shift1 + self.sides['+'].boundary_vHt_g - self.sides['-'].boundary_vHt_g
             
-            self.nt_sg[:, :, :, :nn] = self.sides['-'].boundary_nt_sg
-            self.nt_sg[:, :, :, -nn:] = self.sides['+'].boundary_nt_sg
+            nt_sg[:, :, :, :nn] = self.sides['-'].boundary_nt_sg
+            nt_sg[:, :, :, -nn:] = self.sides['+'].boundary_nt_sg
 
+            nn /= 2
+            nt_sG[:, :, :, :nn] = self.sides['-'].boundary_nt_sG
+            nt_sG[:, :, :, -nn:] = self.sides['+'].boundary_nt_sG
+            
+            ham.gd.distribute(nt_sG, self.nt_sG)
+            ham.finegd.distribute(nt_sg, self.nt_sg)
+            
             ham.finegd.distribute(vHt_g, ham.vHt_g)
             ham.finegd.distribute(extra_vHt_g, loc_extra_vHt_g)
             self.get_extra_density(loc_extra_vHt_g)
@@ -231,6 +240,12 @@ class Surrounding:
         extended_vHt_g = self.tp.extended_calc.hamiltonian.vHt_g
         self.tp.extended_calc.hamiltonian.vHt_g = self.capsule(nn, vHt_g, extended_vHt_g,
                                             self.tp.finegd1, self.tp.finegd)
+        
+    def combine_nt_sG(self, nt_sG):
+        nn = self.nn[0]
+        self.nt_sG = self.capsule(nn, nt_sG, self.nt_sG, self.tp.gd1,
+                                  self.tp.gd)
+        return self.nt_sG  
         
     def combine_dH_asp(self, dH_asp):
         ham = self.tp.extended_calc.hamiltonian
