@@ -401,7 +401,7 @@ class STM:
                                w=w, logfile = self.log)
 
             if not restart:
-                stm_calc.initialize(energies, bias = bias)
+                stm_calc.initialize(energies, bias=bias)
             
             self.stm_calc = stm_calc
             self.transport_uptodate = True            
@@ -493,8 +493,12 @@ class STM:
             bias = self.stm_calc.bias
         position_c = tuple(position_c)+(0,)
         V_ts = self.get_V(position_c)
-        Is = self.stm_calc.get_current(bias,V_ts)    
-        return Is*77466.1509   #units: nA
+        Is = self.stm_calc.get_current(bias,V_ts)
+        I = np.array([Is])
+        self.world.sum(I)
+        ens = self.stm_calc.energies
+        #print world.rank, I, self.stm_calc.bias, len(ens) 
+        return I[0] * 77466.1509   #units: nA
     
     def get_s(self, position_c):
         self.set_tip_position(position_c)
@@ -596,11 +600,8 @@ class STM:
             for j, V in enumerate(V_g):
                 I_g[j] += self.stm_calc.get_current(bias, V) * 77466.1509
 
-
-            T = time.localtime()
-
         world.barrier()
-        self.I_g = I_g
+        #self.I_g = I_g XXX
         self.bfs_comm.sum(I_g) 
         
         if dcomm.rank == 0:
