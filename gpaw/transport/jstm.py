@@ -154,7 +154,7 @@ class AtomCenteredFunctions(LocalizedFunctions):
                                      index=index)
 
 class STM:
-    def __init__(self, tip, surface, lead1 = None, lead2 = None, **kwargs):
+    def __init__(self, tip=None, surface=None, lead1=None, lead2 = None, **kwargs):
         self.tip = tip
         self.srf = surface
         self.lead1 = lead1
@@ -489,15 +489,13 @@ class STM:
         return T_stm
 
     def get_current(self, position_c, bias=None):
+        self.initialize()
         if bias == None:
             bias = self.stm_calc.bias
         position_c = tuple(position_c)+(0,)
         V_ts = self.get_V(position_c)
-        Is = self.stm_calc.get_current(bias,V_ts)
-        I = np.array([Is])
+        I = np.array([self.stm_calc.get_current(bias, V_ts)])
         self.world.sum(I)
-        ens = self.stm_calc.energies
-        #print world.rank, I, self.stm_calc.bias, len(ens) 
         return I[0] * 77466.1509   #units: nA
     
     def get_s(self, position_c):
@@ -520,6 +518,12 @@ class STM:
         self.scans = {}
 
     def scan(self):
+        if world.rank == 0:
+            T = time.localtime()
+            self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
+                           + 'Fullscan\n')
+            self.log.flush()
+        
         #distribute grid points over cpu's
         dcomm = self.domain_comm
         n_c = self.srf.gd.N_c[:2]
@@ -538,19 +542,12 @@ class STM:
             V_g[i] =  self.get_V((x, y))
 
         # calculate part of the current for each grid points
-        #energies = self.energies # global energy grid
         bias = self.stm_calc.bias
-
-        if world.rank == 0:
-            T = time.localtime()
-            self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
-                           + 'Fullscan\n')
 
         for j, V in enumerate(V_g):
             I_g[j] += self.stm_calc.get_current(bias, V) * 77466.1509 
         world.barrier()
     
-       
         #send green functions
         self.stm_calc.energies_req = self.stm_calc.energies.copy()
         for i in range(dcomm.size - 1):
@@ -601,7 +598,6 @@ class STM:
                 I_g[j] += self.stm_calc.get_current(bias, V) * 77466.1509
 
         world.barrier()
-        #self.I_g = I_g XXX
         self.bfs_comm.sum(I_g) 
         
         if dcomm.rank == 0:
@@ -616,8 +612,10 @@ class STM:
                 x = i / n_c[1]
                 y = i % n_c[1]
                 scan[x, y] = final[i]
-
-            self.scans['fullscan'] = scan
+            
+            sgd = self.srf.gd
+            data = (bias, sgd.N_c, sgd.h_c, sgd.cell_cv, sgd.cell_c)
+            self.scans['fullscan'] = (data, scan)
             T = time.localtime()
             self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
                            'Fullscan done\n')
@@ -627,8 +625,10 @@ class STM:
         world.barrier()
 
     def scan3d(self, zmin, zmax):
+        sgd = self.srf.gd
         bias = self.stm_calc.bias
-        self.scans['scan3d'] = {}
+        data = (bias, sgd.N_c, sgd.h_c, sgd.cell_cv, sgd.cell_c)
+        self.scans['scan3d'] = (data, {})
         hz = self.srf_cell.gd.h_c[2] * Bohr
         dmins = -np.arange(zmin, zmax + hz, hz)
         dmins.sort()
@@ -643,19 +643,20 @@ class STM:
             self.scan()
             dmin = self.get_dmin()
             if world.rank == 0:
-                pickle.dump((dmin, bias, self.scans['fullscan']), fd, 2)
-                self.scans['scan3d'][dmin] = self.scans['fullscan'].copy()
+                pickle.dump((dmin, data, self.scans['fullscan'][1]), fd, 2)
+                self.scans['scan3d'][1][dmin] = self.scans['fullscan'][1].copy()
             world.barrier()
             
-        if rank == 0:
-            fd = open('scan3d' + '_bias_' + str(np.round(bias, 2)) + '_.pckl', 'wb') 
-            pickle.dump((bias, self.scans['scan3d']), fd, 2)   
+        if world.rank == 0:
+            fd = open('scan3d.pckl', 'wb')
+            pickle.dump(self.scans['scan3d'], fd, 2)   
             fd.close()
         world.barrier()
 
-    def get_constantI(self, I):
+    def get_constant_current_image(self, I):
         assert self.scans.has_key('scan3d')
-        scans = self.scans['scan3d']
+        data, scans = self.scans['scan3d']
+        hz = data[2][2] * Bohr
         dmins = []
         for dmin in scans.keys():
             dmins.append(dmin)
@@ -666,7 +667,6 @@ class STM:
         scans = scans3d.copy()
         shape = tuple(scans.shape[:2])
         cons = np.zeros(shape)
-        hz = self.srf_cell.gd.h_c[2] * Bohr
         for x in range(shape[0]):
             for y in range(shape[1]):
                 x_I = scans[x, y, :]
@@ -680,20 +680,46 @@ class STM:
                 if i2 < 0:
                     result = 0
                 cons[x, y] = result * hz + dmins[0]
-        self.scans['fullscan'] = cons
+        self.scans['fullscan'] = (data, cons)
+
+    def get_constant_height_image(self, index):
+        assert self.scans.has_key('scan3d')
+        data, scans = self.scans['scan3d']
+        dmins = []
+        for dmin in scans.keys():
+            dmins.append(dmin)
+        dmins.sort()
+        key = dmins[index]
+        print key
+        self.scans['fullscan'] = (data, scans[key])
+
+
 
     def linescan(self, startstop=None):
+        if self.scans.has_key('fullscan'):
+            data, scan = self.scans['fullscan']
+            cell_cv = data[3] #XXX
+            cell_c = data[4] #XXX
+            h_c = data[2] #XXX
+            N_c = data[1] #XXX
+        else:
+            sgd = self.srf.gd
+            cell_cv = sgd.cell_cv
+            cell_c = sgd.cell_c
+            h_c = sgd.h_c
+            N_c = sgd.N_c
+
         if startstop == None:
             start = np.array([0, 0])
-            stop = self.srf.gd.N_c[:2] - 1
+            stop = N_c[:2] - 1
         else:
             start = np.asarray(startstop[0])
             stop = np.asarray(startstop[1])
-        assert ((self.srf.gd.n_c[:2]-stop)>=0).all()
-        v = (stop-start)/np.linalg.norm(stop-start)
-        self.v = v
-        n_c = self.srf.gd.n_c[:2]
-        h_c = self.srf.gd.h_c[:2]
+
+        assert ((N_c[:2] - stop)>=0).all()
+        v = (stop - start) / np.linalg.norm(stop - start)
+        n_c = N_c[:2]
+        h_c = h_c[:2]
         h = np.linalg.norm(v*h_c)
         n = np.floor(np.linalg.norm((stop - start) * h_c) / h).astype(int) + 1
         linescan_n = np.zeros((n, ))
@@ -715,7 +741,7 @@ class STM:
                         + self.get_current(C[1, 1]) * xd
                     I = I1 * (1 - yd) + I2 * yd
                 else:
-                    fullscan = self.scans['fullscan']
+                    fullscan = scan
                     I1 = fullscan[tuple(C[0, 0])] * (1 - xd) \
                        + fullscan[tuple(C[1, 0])] * xd
                     I2 = fullscan[tuple(C[0, 1])] * (1 - xd) \
@@ -726,7 +752,7 @@ class STM:
                 if not self.scans.has_key('fullscan'):
                     I = self.get_current(grpt.astype(int))
                 else:                
-                    I = self.scans['fullscan'][tuple(grpt.astype(int))]
+                    I = scan[tuple(grpt.astype(int))]
             linescan_n[i] = I
         self.scans['linescan'] = ([start, stop], line, linescan_n) 
 
@@ -773,17 +799,20 @@ class STM:
                         'hs20':(h20[0], s20[0]),
                         'k_c': (0,0)})
 
-    def plot(self, repeat=[1,1], vmin=None, gd = None):
+    def plot(self, repeat=(1, 1), vmin=None, vmax = None):
         import matplotlib
         import pylab
         from pylab import ogrid, imshow, cm, colorbar
         
         repeat = np.asarray(repeat)
-        if gd == None:
-            gd = self.srf.gd
         
         if self.scans.has_key('fullscan'):
-            scan0_iG = self.scans['fullscan']
+            data, scan0_iG = self.scans['fullscan']
+            cell_cv = data[3] #XXX
+            cell_c = data[4] #XXX
+            h_c = data[2] #XXX
+            gdN_C = data[1] #XXX
+
             shape0 = np.asarray(scan0_iG.shape)    
             scan1_iG = np.zeros(shape0 * repeat)
             
@@ -801,16 +830,16 @@ class STM:
             scan_iG[:,-1] = scan_iG[:,0]
 
             h = 0.2         
-            N_c = np.floor((gd.cell_cv[0,:2] * repeat[0]\
-                + gd.cell_cv[1, :2] * repeat[1]) / h).astype(int) 
-            ortho_cell_c = np.array(N_c * gd.h_c[:2])
+            N_c = np.floor((cell_cv[0,:2] * repeat[0]\
+                + cell_cv[1, :2] * repeat[1]) / h).astype(int) 
+            ortho_cell_c = np.array(N_c * h_c[:2])
             plot = np.zeros(tuple(N_c))
 
             # Basis change matrix
             # e -> usual basis {(1,0),(0,1)}
             # o -> basis descrining original original cell
             # n -> basis describing the new cell
-            eMo = (gd.cell_cv.T / gd.cell_c * gd.h_c)[:2,:2]
+            eMo = (cell_cv.T / cell_c * h_c)[:2,:2]
             eMn = np.eye(2) * h           
             oMn = np.dot(np.linalg.inv(eMo), eMn)
             
@@ -866,9 +895,9 @@ class STM:
             f1 = pylab.figure()
             p1 = f1.add_subplot(111)
             p1.plot(line, linescan_n)
-            eMo = (gd.cell_cv.T / gd.cell_c)[:2,:2]
-            start = np.dot(eMo, start * gd.h_c[:2]) * Bohr
-            stop = np.dot(eMo, stop * gd.h_c[:2]) * Bohr
+            eMo = (cell_cv.T / cell_c)[:2,:2]
+            start = np.dot(eMo, start * h_c[:2]) * Bohr
+            stop = np.dot(eMo, stop * h_c[:2]) * Bohr
              
             if self.scans.has_key('fullscan'): #Add a line
                 p0.plot([start[0], stop[0]], [start[1], stop[1]],'-b')
