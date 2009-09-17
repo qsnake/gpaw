@@ -186,7 +186,7 @@ class HGHSetupData:
         self.Nv = hghdata.Nv
         
         threshold = 1e-8
-        if hghdata.c_n:
+        if len(hghdata.c_n) > 0:
             vloc_g = create_local_shortrange_potential(rgd.r_g, hghdata.rloc,
                                                        hghdata.c_n)
             gcutvbar, rcutvbar = self.find_cutoff(rgd.r_g, rgd.dr_g, vloc_g,
@@ -204,7 +204,7 @@ class HGHSetupData:
         if not hghdata.v_l:
             # No projectors.  But the remaining code assumes that everything
             # has projectors!  We'll just add the zero function then
-            hghdata.v_l = [VNonLocal(0, 0.01, np.array([[0.]]), [])]
+            hghdata.v_l = [VNonLocal(0, 0.01, [[0.]])]
 
         n_j = []
         l_j = []
@@ -279,7 +279,8 @@ class HGHSetupData:
             for n2, l2 in self.hghdata.nl_iter():
                 M2end = M2start + 2 * l2 + 1
                 if l1 == l2:
-                    H_mm = np.identity(M2end - M2start) * v.h_nn[n1, n2]
+                    h_nn = v.expand_hamiltonian_diagonal()
+                    H_mm = np.identity(M2end - M2start) * h_nn[n1, n2]
                     H_ii[M1start:M1end, M2start:M2end] += H_mm
                 M2start = M2end
             M1start = M1end
@@ -426,30 +427,37 @@ hcoefs_l = [
 
 class VNonLocal:
     """Wrapper class for one nonlocal term of an HGH potential."""
-    def __init__(self, l, r0, h_n, k_n=None):
-        # We don't deal with spin-orbit coupling so ignore k_n
+    def __init__(self, l, r0, h_n):
         self.l = l
         self.r0 = r0
-        #assert (l == 0 and len(k_n) == 0) or (len(h_n) == len(k_n))
+        h_n = np.asarray(h_n)
         nn = len(h_n)
         self.nn = nn
-        h_nn = np.zeros((nn, nn))
         self.h_n = h_n
-        self.h_nn = h_nn
+
+    def expand_hamiltonian_diagonal(self):
+        """Construct full atomic Hamiltonian from diagonal elements."""
+        nn = self.nn
+        h_n = self.h_n
+        h_nn = np.zeros((nn, nn))
         for n, h in enumerate(h_n):
             h_nn[n, n] = h
-        if l > 2:
+        if self.l > 2:
             #print 'Warning: no diagonal elements for l=%d' % l
             # Some elements have projectors corresponding to l=3, but
             # the HGH article only specifies how to calculate the
             # diagonal elements of the atomic hamiltonian for l = 0, 1, 2 !
             return
-        coefs = hcoefs_l[l]
+        coefs = hcoefs_l[self.l]
         if nn > 2:
             h_nn[0, 2] = h_nn[2, 0] = coefs[1] * h_n[2]
             h_nn[1, 2] = h_nn[2, 1] = coefs[2] * h_n[2]
         if nn > 1:
             h_nn[0, 1] = h_nn[1, 0] = coefs[0] * h_n[1]
+        return h_nn
+
+    def copy(self):
+        return VNonLocal(self.l, self.r0, self.h_n.copy())
 
 
 class HGHParameterSet:
@@ -459,14 +467,14 @@ class HGHParameterSet:
         self.Z = Z # Actual atomic number
         self.Nv = Nv # Valence electron count
         self.rloc = rloc # Characteristic radius of local part
-        self.c_n = c_n # Polynomial coefficients for local part
+        self.c_n = np.asarray(c_n) # Polynomial coefficients for local part
         self.v_l = [] # Non-local parts
 
     def __str__(self):
         strings = ['HGH setup for %s\n' % self.symbol,
                    '    Valence Z=%d, rloc=%.05f\n' % (self.Nv, self.rloc)]
 
-        if self.c_n:
+        if len(self.c_n) > 0:
             coef_string = ', '.join(['%.05f' % c for c in self.c_n])
         else:
             coef_string = 'zeros'
@@ -481,6 +489,12 @@ class HGHParameterSet:
             strings.append('        l=%d: ' % v.l +
                            ', '.join(['%8.05f' % h for h in v.h_n]))
         return ''.join(strings)
+
+    def copy(self):
+        other = HGHParameterSet(self.symbol, self.Z, self.Nv, self.rloc,
+                                self.c_n.copy())
+        other.v_l = [v.copy() for v in self.v_l]
+        return other
         
     def print_info(self, txt):
         txt(str(self))
@@ -520,7 +534,6 @@ class HGHParameterSet:
         v_l = copy.v_l
         for l, v in enumerate(self.v_l):
             h_n = np.zeros(3)
-            k_n = np.zeros(3)
             h_n[:len(v.h_n)] = list(v.h_n)
             v2 = VNonLocal(l, v.r0, h_n)
             v_l.append(v2)
@@ -557,12 +570,11 @@ def parse_hgh_setup(lines):
             yield lines.next(), lines.next()
 
     for l, (nonlocal, spinorbit) in enumerate(pair_up_nonlocal_lines(lines)):
+        # we discard the spinorbit 'k_n' data so far
         nltokens = nonlocal.split()
-        sotokens = spinorbit.split()
         r0 = float(nltokens[0])
         h_n = [float(token) for token in nltokens[1:]]
-        k_n = [float(token) for token in sotokens]
-        vnl = VNonLocal(l, r0, h_n, k_n)
+        vnl = VNonLocal(l, r0, h_n)
         hgh.v_l.append(vnl)
         if l > 2:
             raise HGHBogusNumbersError
