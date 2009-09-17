@@ -366,8 +366,8 @@ class STM:
             self.hs_aligned = True
 
         from ase.transport.tools import subdiagonalize
-        if bfs != []:
-            h2, s2, c_pp, e_p = subdiagonalize(h2, s2, bfs)
+        if bfs != []: #XXX
+            h2, s2, c_pp, e_p = subdiagonalize(h2, s2, bfs) #XXX
 
         if not self.transport_uptodate:
             from ase.transport.stm import STM as STMCalc
@@ -544,8 +544,21 @@ class STM:
         # calculate part of the current for each grid points
         bias = self.stm_calc.bias
 
+        if world.rank == 0: #XXX
+            T = time.localtime()
+            self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
+                           + 'Done Vs, starting Is\n')
+            self.log.flush()
+        
         for j, V in enumerate(V_g):
             I_g[j] += self.stm_calc.get_current(bias, V) * 77466.1509 
+
+        if world.rank == 0: #XXX
+            T = time.localtime()
+            self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
+                           + 'Is\n')
+            self.log.flush()
+        
         world.barrier()
     
         #send green functions
@@ -593,10 +606,22 @@ class STM:
             dcomm.wait(request)
             self.stm_calc.gft2_emm = gft2_receive
 
+            if world.rank == 0: #XXX
+                T = time.localtime()
+                self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
+                               + 'Received another gft, start Is\n')
+                self.log.flush()
+        
             bias = self.stm_calc.bias
             for j, V in enumerate(V_g):
                 I_g[j] += self.stm_calc.get_current(bias, V) * 77466.1509
 
+            if world.rank == 0: #XXX 
+                T = time.localtime()
+                self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
+                               + 'Done another round of Is\n')
+                self.log.flush()
+        
         world.barrier()
         self.bfs_comm.sum(I_g) 
         
@@ -692,8 +717,6 @@ class STM:
         key = dmins[index]
         print key
         self.scans['fullscan'] = (data, scans[key])
-
-
 
     def linescan(self, startstop=None):
         if self.scans.has_key('fullscan'):
