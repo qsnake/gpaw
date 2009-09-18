@@ -203,9 +203,13 @@ class Surrounding:
                 ham.poisson.initialize()
                 if not self.tp.use_fd_poisson:
                     self.tp.inner_poisson.initialize()
-                else:
-                    self.tp.inner_poisson.initialize(self.sides['-'].boundary_vHt_g,
-                                                 self.sides['+'].boundary_vHt_g)
+
+
+            bias_shift0 = self.bias_index['-'] / Hartree
+            bias_shift1 = self.bias_index['+'] / Hartree            
+            if self.tp.use_fd_poisson:
+                self.tp.inner_poisson.initialize(self.sides['-'].boundary_vHt_g + bias_shift0,
+                                                 self.sides['+'].boundary_vHt_g + bias_shift1)
               
             vHt_g = ham.finegd.zeros(global_array=True)
             extra_vHt_g = ham.finegd.zeros(global_array=True)
@@ -215,8 +219,6 @@ class Surrounding:
             self.nt_sg = ham.finegd.zeros(self.tp.nspins)
             self.nt_sG = ham.gd.zeros(self.tp.nspins)            
 
-            bias_shift0 = self.bias_index['-'] / Hartree
-            bias_shift1 = self.bias_index['+'] / Hartree
             vHt_g[:, :, :nn] = self.sides['-'].boundary_vHt_g + bias_shift0
             vHt_g[:, :, -nn:] = self.sides['+'].boundary_vHt_g + bias_shift1
             extra_vHt_g[:, :, :nn] = bias_shift0 + self.sides['-'].boundary_vHt_g - self.sides['+'].boundary_vHt_g
