@@ -13,7 +13,7 @@ from gpaw.utilities.blas import axpy
 from gpaw.utilities.gauss import Gaussian
 from gpaw.utilities.ewald import Ewald
 import gpaw.mpi as mpi
-
+import _gpaw
 
 class PoissonSolver:
     def __init__(self, nn='M', relax='GS', eps=2e-10):
@@ -123,7 +123,6 @@ class PoissonSolver:
 
         if charge is None:
             charge = actual_charge
-
         if abs(charge) <= maxcharge:
             # System is charge neutral. Use standard solver
             return self.solve_neutral(phi, rho - background, eps=eps)
@@ -294,7 +293,7 @@ class PoissonSolver:
             self.B.estimate_memory(mem.subnode('B [%s]' % name))
 
 
-from numpy.fft import fftn, ifftn
+from numpy.fft import fftn, ifftn, fft2, ifft2
 from gpaw.utilities.tools import construct_reciprocal
 
 
@@ -353,3 +352,75 @@ class FFTPoissonSolver(PoissonSolver):
                 globalphi_g = None
             self.gd.distribute(globalphi_g, phi_g)
         return 1
+
+class FixedBoundaryPoissonSolver(PoissonSolver):
+    #solve the poisson equation with fft in two directions,
+    #and with central differential method in the third direction.
+    def __init__(self, nn=1):
+        self.nn = nn
+        assert self.nn == 1
+        
+    def set_grid_descriptor(self, gd):
+        assert gd.pbc_c.all()
+        assert gd.comm.size == 1
+        self.gd = gd
+        
+    def initialize(self, b_phi1, b_phi2):
+        d3 = b_phi1.shape[2]
+        gd = self.gd
+        N_c1 = gd.N_c[:2, npy.newaxis]
+        i_cq = npy.indices(gd.N_c[:2]).reshape((2, -1))
+        i_cq += N_c1 // 2
+        i_cq %= N_c1
+        i_cq -= N_c1 // 2
+        B_vc = 2.0 * npy.pi * gd.icell_cv.T[:2, :2]
+        k_vq = npy.dot(B_vc, i_cq) 
+        k_vq *= k_vq
+        self.k_vq2 = npy.sum(k_vq, axis=0)
+
+        b_phi1 = fft2(b_phi1, None, (0,1))
+        b_phi2 = fft2(b_phi2, None, (0,1))
+        
+        self.b_phi1 = b_phi1[:, :, 0].reshape(-1)
+        self.b_phi2 = b_phi2[:, :, -1].reshape(-1)
+   
+    def solve(self, phi_g, rho_g):
+        self.solve_neutral(phi_g, rho_g)
+        
+    def solve_neutral(self, phi_g, rho_g):
+        # b_phi1 and b_phi2 are the boundary Hartree potential values
+        # of left and right sides
+        d1, d2, d3 = phi_g.shape
+        phi_g.shape = (d1 * d2, d3)
+        rho_g1 = fft2(rho_g, None, (0, 1))
+        rho_g1 = rho_g1.reshape(d1 * d2, d3)
+        h = self.gd.h_c[2]
+        
+        phi_g2 = npy.zeros(phi_g.shape, complex) + phi_g
+
+        du0 = npy.zeros(d3 - 1, dtype=complex)
+        du20 = npy.zeros(d3 - 2, dtype=complex)       
+        
+        for phi, rho, rv2, bp1, bp2, i in zip(phi_g2, rho_g1,
+                                           self.k_vq2,
+                                           self.b_phi1,
+                                           self.b_phi2, range(d1*d2)):
+            A = npy.zeros(d3, dtype=complex) + 2 + h ** 2 * rv2
+            phi = rho * npy.pi * 4 * h ** 2
+            phi[0] += bp1
+            phi[-1] += bp2
+            du = du0 - 1
+            dl = du0 - 1
+            du2 = du20 - 1            
+            _gpaw.linear_solve_tridiag(d3, A, du, dl, du2, phi)
+            phi_g[i, :] = phi
+        
+        phi_g.shape = (d1, d2, d3)
+        rho_g.shape = (d1, d2, d3)
+        phi_g[:] = ifft2(phi_g, None, (0, 1)).real
+
+
+        
+        
+    
+    
