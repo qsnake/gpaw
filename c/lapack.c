@@ -26,6 +26,8 @@
 #  define dgetri_ dgetri
 #  define zgetri_ zgetri
 #  define zgbsv_ zgbsv
+#  define zgttrf_ zgttrf
+#  define zgttrs_ zgttrs
 #endif
 
 int dsyev_(char *jobz, char *uplo, int *n, double *
@@ -79,6 +81,11 @@ int zgetri_(int *n, void *a, int *lda, int *ipiv,
             void *work, int *lwork, int *info); 
 int zgbsv_(int*n, int* kl, int* ku, int* nrhs, void* ab, int*ldab, 
                  int*ipiv, void* b, int*ldb, int*info);
+int zgttrf_(int* n, void* dl, void* d, void* du, 
+                      void* du2, int* ipiv, int* info);
+int zgttrs_(char* tran, int* n, int* nrhs, void* dl, 
+               void* d, void* du, void* du2,
+               int* ipiv, void* b, int* ldb, int* info);
 
 PyObject* diagonalize(PyObject *self, PyObject *args)
 {
@@ -324,5 +331,30 @@ int nrhs=b->dimensions[1];
    free(ipiv);
  return Py_BuildValue("i",info);
 }
+
+PyObject* linear_solve_tridiag(PyObject *self, PyObject *args)
+{
+ PyArrayObject* A;
+ PyArrayObject* du;
+ PyArrayObject* du2;
+ PyArrayObject* dl;
+ PyArrayObject* phi;
+ int dim=0, one=1, info=0;
+ if(!PyArg_ParseTuple(args,"iOOOOO", &dim, &A, &du, &dl, &du2, &phi))
+   return NULL;
+ int ldb = dim;
+ int *ipiv = GPAW_MALLOC(int, dim);
+ zgttrf_(&dim, (void*)COMPLEXP(dl), (void*)COMPLEXP(A), (void*)COMPLEXP(du), (void*)COMPLEXP(du2), ipiv, &info);
+ zgttrs_("N", &dim, &one, (void*)COMPLEXP(dl), (void*)COMPLEXP(A), (void*)COMPLEXP(du), 
+                                   (void*)COMPLEXP(du2), ipiv, (void*)COMPLEXP(phi), &ldb, &info);
+ free(ipiv);
+ return Py_BuildValue("i",info);
+}
+
+
+
+ 
+ 
+
 
 
