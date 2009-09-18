@@ -174,7 +174,9 @@ if scalapack:
 
 # distutils clean does not remove the _gpaw.so library and gpaw-python
 # binary so do it here:
-plat = distutils.util.get_platform() + '-' + sys.version[0:3]
+plat = distutils.util.get_platform()
+msg += ['* Architecture: '+plat]
+plat = plat + '-' + sys.version[0:3]
 gpawso = 'build/lib.%s/' % plat + '_gpaw.so'
 gpawbin = 'build/bin.%s/' % plat + 'gpaw-python'
 if "clean" in sys.argv:

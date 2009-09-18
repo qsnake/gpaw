@@ -19,7 +19,18 @@ Use like this::
 
 import os
 import sys
-from distutils.util import get_platform
+try:
+    from distutils.util import get_platform
+except ImportError:
+    modulepath = os.environ.get('GPAW_GET_PLATFORM')
+    if modulepath is None:
+        errmsg = ('Error: Could not get platform from distutils. '
+                  'Set the GPAW_GET_PLATFORM environment variable to '
+                  'the architecture string printed during build.')
+        raise ImportError(errmsg)
+    def get_platform():
+        return modulepath
+
 from glob import glob
 from os.path import join, isfile
 
