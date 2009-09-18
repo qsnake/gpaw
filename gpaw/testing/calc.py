@@ -5,9 +5,9 @@ import pickle
 import numpy as npy
 from numpy.linalg import inv
 
-#from gpaw.testing import g2
+from gpaw.testing import g2
 from gpaw.utilities.bulk import Bulk
-#from gpaw.paw import ConvergenceError
+from gpaw.paw import ConvergenceError
 from gpaw import Calculator
 
 
@@ -16,7 +16,7 @@ def calculate_energy(formula, a=12., h=.16, sep=None, dislocation=None,
     try:
         if quick:
             (a, h) = (6., .3)
-        system = molecule(formula, cell = (a,a,a))
+        system = g2.get_g2(formula, (a,a,a))
         hund = (len(system) == 1)
         calc = Calculator(xc='PBE', h=h, setups=setups, txt=txt, hund=hund)
         system.set_calculator(calc)
@@ -36,7 +36,7 @@ def molecular_energies(formula, a=12., h=.16, displacements=None,
         if displacements is None:
             displacements = [(i - 2) * 0.015 for i in range(5)]
 
-        system = molecule(formula, cell = (a,a,a))
+        system = g2.get_g2(formula, (a,a,a))
         calc = Calculator(h=h, setups=setups, txt=txt, xc='PBE')
         system.set_calculator(calc)
 
@@ -70,7 +70,7 @@ def eggbox_energies(formula, a=10., gpts=48, direction=(1.,1.,1.), periods=.5,
 
         direction = npy.asarray(direction)
         direction = direction / npy.dot(direction, direction) ** .5
-        system = molecule(formula, cell = (a,a,a))
+        system = g2.get_g2(formula, (a,a,a))
         system.set_pbc(1)
         calc = Calculator(xc='PBE', gpts=(gpts, gpts, gpts), setups=setups,
                           txt=txt)
@@ -105,7 +105,7 @@ def grid_convergence_energies(formula, a=10., gpts=None, setups='paw',
             hvalues = [.15, .2]
             gptmax, gptmin = [int(a/h)/4*4 for h in hvalues]
             gpts = range(gptmin, gptmax+1, 4)
-        system = molecule(formula, cell = (a,a,a))
+        system = g2.get_g2(formula, (a,a,a))
         system.set_pbc(1)
         calc = Calculator(gpts=gpts[0], txt=txt, xc='PBE', setups=setups)
         system.set_calculator(calc)

@@ -7,9 +7,8 @@ import pickle
 from optparse import OptionParser
 
 from gpaw.utilities import locked
-#from gpaw.testing import g2
-from gpaw.utilities.tools import split_formula
-#from gpaw.paw import ConvergenceError
+from gpaw.testing import g2
+from gpaw.paw import ConvergenceError
 from gpaw.testing import calc
 
 tests = {'a' : calc.calculate_energy,
@@ -100,8 +99,7 @@ def testmultiple(testfunctions='acme', formulae=None, setups='paw',
     symbollist = [] # Obtain the atomic symbols of all constituents
     if 'a' in testfunctions:
         for formula in formulae:
-            #symbollist.extend(g2.get_g2(formula).get_chemical_symbols())
-            symbollist.extend(split_formula(formula))
+            symbollist.extend(g2.get_g2(formula).get_chemical_symbols())
     # The 'set' builtin is not included in some python versions. Using hack
     symbols = dict(zip(symbollist, symbollist)).keys()
     #symbols = set(symbollist)
@@ -132,7 +130,7 @@ def testmultiple(testfunctions='acme', formulae=None, setups='paw',
             results[testname][formula] = result
         except KeyboardInterrupt:
             raise sys.exc_info()[0] # Don't ignore keyboard interrupts
-        #except: #(RuntimeError, ConvergenceError, AssertionError):
+        except: #(RuntimeError, ConvergenceError, AssertionError):
             pass
     return results
 
