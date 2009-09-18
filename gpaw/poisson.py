@@ -381,8 +381,8 @@ class FixedBoundaryPoissonSolver(PoissonSolver):
         b_phi1 = fft2(b_phi1, None, (0,1))
         b_phi2 = fft2(b_phi2, None, (0,1))
         
-        self.b_phi1 = b_phi1[:, :, 0].reshape(-1)
-        self.b_phi2 = b_phi2[:, :, -1].reshape(-1)
+        self.b_phi1 = b_phi1[:, :, -1].reshape(-1)
+        self.b_phi2 = b_phi2[:, :, 0].reshape(-1)
    
     def solve(self, phi_g, rho_g):
         self.solve_neutral(phi_g, rho_g)
