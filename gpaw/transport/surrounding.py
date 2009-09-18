@@ -201,7 +201,11 @@ class Surrounding:
                 ham.vHt_g = ham.finegd.zeros()
                 ham.vt_sG = ham.gd.zeros(ham.nspins)
                 ham.poisson.initialize()
-                self.tp.inner_poisson.initialize()
+                if not self.tp.use_fd_poisson:
+                    self.tp.inner_poisson.initialize()
+                else:
+                    self.tp.inner_poisson.initialize(self.sides['-'].boundary_vHt_g,
+                                                 self.sides['+'].boundary_vHt_g)
               
             vHt_g = ham.finegd.zeros(global_array=True)
             extra_vHt_g = ham.finegd.zeros(global_array=True)
