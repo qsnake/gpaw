@@ -38,8 +38,6 @@ class Overlap:
         self.domain_comm = wfs.gd.comm
         self.band_comm = wfs.bd.comm
         self.setups = wfs.setups
-
-        self.S_nn = None
         
     def orthonormalize(self, wfs, kpt):
         """Orthonormalizes the vectors a_nG with respect to the overlap.
