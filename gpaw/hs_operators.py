@@ -92,6 +92,7 @@ class Operator:
     def estimate_memory(self, mem, dtype):
         ngroups = self.bd.comm.size
         mynbands = self.bd.mynbands
+        nbands = ngroups * mynbands
         gdbytes = self.gd.bytecount(dtype)
         # Code semipasted from allocate_work_arrays
         if ngroups == 1 and self.nblocks == 1:
@@ -108,6 +109,7 @@ class Operator:
                     Q = ngroups
                 count = Q * mynbands**2
                 mem.subnode('A_qnn', count * mem.itemsize[dtype])
+        mem.subnode('A_nn', nbands * nbands * mem.itemsize[dtype])
 
     def _pseudo_braket(self, bra_xG, ket_yG, A_yx, square=None):
         """Calculate matrix elements of braket pairs of pseudo wave functions.

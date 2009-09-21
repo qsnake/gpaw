@@ -30,12 +30,22 @@ class Davidson(Eigensolver):
         Eigensolver.initialize(self, wfs)
         self.overlap = wfs.overlap
         # Allocate arrays
+        self.H_nn = np.zeros((self.nbands, self.nbands), self.dtype)
         self.S_nn = np.zeros((self.nbands, self.nbands), self.dtype)
         self.H_2n2n = np.empty((2 * self.nbands, 2 * self.nbands),
                                 self.dtype)
         self.S_2n2n = np.empty((2 * self.nbands, 2 * self.nbands),
                                 self.dtype)        
-        self.eps_2n = np.empty(2 * self.nbands)        
+        self.eps_2n = np.empty(2 * self.nbands)
+
+    def estimate_memory(self, mem, gd, dtype, mynbands, nbands):
+        Eigensolver.estimate_memory(self, mem, gd, dtype, mynbands, nbands)
+        itemsize = mem.itemsize[dtype]
+        mem.subnode('H_nn', nbands * nbands * mem.itemsize[dtype])
+        mem.subnode('S_nn', nbands * nbands * mem.itemsize[dtype])
+        mem.subnode('H_2n2n', 4 * nbands * nbands * mem.itemsize[dtype])
+        mem.subnode('S_2n2n', 4 * nbands * nbands * mem.itemsize[dtype])
+        mem.subnode('eps_2n', 2 * nbands * mem.floatsize)
 
     def iterate_one_k_point(self, hamiltonian, wfs, kpt):
         """Do Davidson iterations for the kpoint"""
@@ -155,5 +165,8 @@ class Davidson(Eigensolver):
         self.timer.stop('Davidson')
         error = self.gd.comm.sum(error)
         return error
+
+
+
 
     

@@ -47,9 +47,6 @@ class Eigensolver:
             # Soft part of the Hamiltonian times psit:
             self.Htpsit_nG = self.gd.zeros(self.nbands, self.dtype)
 
-        # Hamiltonian matrix
-        self.H_nn = np.zeros((self.nbands, self.nbands), self.dtype)
-
         for kpt in wfs.kpt_u:
             if kpt.eps_n is None:
                 kpt.eps_n = np.empty(self.mynbands)
@@ -229,7 +226,7 @@ class Eigensolver:
         else:
             mem.subnode('No Htpsit', 0)
 
-        itemsize = np.array(1, dtype).itemsize
+        mem.subnode('eps_n', nbands*mem.floatsize)
         mem.subnode('Preconditioner', 4 * gridmem)
         mem.subnode('Work', gridmem)
-        mem.subnode('H_nn', nbands * nbands * itemsize)
+

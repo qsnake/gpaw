@@ -37,6 +37,12 @@ class CG(Eigensolver):
 
         # self.f = open('CG_debug','w')
 
+    def estimate_memory(self, mem, gd, dtype, mynbands, nbands):
+        Eigensolver.estimate_memory(self, mem, gd, dtype, mynbands, nbands)
+        gridmem = gd.bytecount(dtype)
+        mem.subnode('phi_G', gridmem)
+        mem.subnode('phi_old_G', gridmem)
+
     def iterate_one_k_point(self, hamiltonian, wfs, kpt):      
         """Do a conjugate gradient iterations for the kpoint"""
         
