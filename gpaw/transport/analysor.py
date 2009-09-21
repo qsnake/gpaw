@@ -250,20 +250,23 @@ class Transport_Analysor:
         nt_sG = tp.gd.collect(tp.density.nt_sG, True)
         vt_sG = gd.collect(calc.hamiltonian.vt_sG, True)
 
-        nt = aa1d(nt_sG[0]) 
-        vt = aa1d(vt_sG[0]) * Hartree
+        dim1, dim2 = nt_sG.shape[:2]
+        #nt = aa1d(nt_sG[0]) 
+        #vt = aa1d(vt_sG[0]) * Hartree
+        nt = nt_sG[0, dim1, dim2]
+        vt = vt_sG[0, dim1, dim2] * Hartree
 
         gd = tp.finegd
         rhot_g = gd.empty(tp.nspins, global_array=True)
         rhot_g = gd.collect(tp.density.rhot_g, True)
-        #dim1, dim2 = rhot_g.shape[:2]
-        #rho = rhot_g[dim1/2, dim2/2]
-        rho = aa1d(rhot_g)
+        dim1, dim2 = rhot_g.shape[:2]
+        rho = rhot_g[dim1/2, dim2/2]
+        #rho = aa1d(rhot_g)
         
         gd = finegd
         vHt_g = gd.collect(calc.hamiltonian.vHt_g, True)
-        vHt = aa1d(vHt_g) * Hartree
-        #vHt = vHt_g[dim1/2, dim2/2] * Hartree
+        #vHt = aa1d(vHt_g) * Hartree
+        vHt = vHt_g[dim1/2, dim2/2] * Hartree
         
         #D_asp = copy.deepcopy(tp.density.D_asp)
         #dH_asp = copy.deepcopy(calc.hamiltonian.dH_asp)
