@@ -214,14 +214,14 @@ def apply_subspace_mask(H_nn, f_n):
 def cutoff2gridspacing(E):
     """Convert planewave energy cutoff to a real-space gridspacing."""
     from ase import Hartree, Bohr
-    return .5 * np.pi / np.sqrt(E / Hartree) * Bohr
+    return np.pi / np.sqrt(2 * E / Hartree) * Bohr
 
 def gridspacing2cutoff(h):
     """Convert real-space gridspacing to planewave energy cutoff."""
     # In Hartree units, E = k^2 / 2, where k_max is approx. given by pi / h
     # See PRB, Vol 54, 14362 (1996)
     from ase import Hartree, Bohr
-    return (.5 * np.pi * Bohr / h)**2 * Hartree
+    return 0.5 * (np.pi * Bohr / h)**2 * Hartree
 
 def geth(cell, h=.2, nodes=None):
     """Convert suggested gridspacing to the actual gridspacing used by gpaw.
