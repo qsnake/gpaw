@@ -349,7 +349,6 @@ class STM:
             s2 = s2[cvl2:, cvl2:]
         
             h1 -= s1 * fermi_diff * Hartree
-            print h1.shape, (h1.min(), h1.max())
             # Align bfs with the surface lead as a reference
             diff = (h2[align_bf, align_bf] - h20[align_bf, align_bf]) \
                    / s2[align_bf, align_bf]
@@ -536,6 +535,8 @@ class STM:
         V_g = np.zeros((len(gpts_i), self.nj, self.ni)) # V_ij's on this cpu
         I_g = np.zeros_like(gpts_i).astype(float) # currents on this cpu
         self.gpts_i = gpts_i
+        print world.rank, V_g.shape
+
         for i, gpt in enumerate(gpts_i):
             x = gpt / n_c[1]
             y = gpt % n_c[1]
@@ -550,13 +551,21 @@ class STM:
                            + 'Done Vs, starting Is\n')
             self.log.flush()
         
+        I_g = self.stm_calc.get_current2(bias, V_g) * 77466.1509
+        if world.rank == 0: #XXX
+            T = time.localtime()
+            self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
+                           + 'Is1 finished\n')
+            self.log.flush()
+
+
         for j, V in enumerate(V_g):
             I_g[j] += self.stm_calc.get_current(bias, V) * 77466.1509 
 
         if world.rank == 0: #XXX
             T = time.localtime()
             self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
-                           + 'Is\n')
+                           + 'I2 finished\n')
             self.log.flush()
         
         world.barrier()
@@ -694,7 +703,7 @@ class STM:
         cons = np.zeros(shape)
         for x in range(shape[0]):
             for y in range(shape[1]):
-                x_I = scans[x, y, :]
+                x_I = abs(scans[x, y, :])
                 i1 = np.where(x_I <= I)[0].min()
                 i2 = i1 - 1
                 I1 = x_I[i1]
@@ -716,7 +725,7 @@ class STM:
         dmins.sort()
         key = dmins[index]
         print key
-        self.scans['fullscan'] = (data, scans[key])
+        self.scans['fullscan'] = (data, abs(scans[key]))
 
     def linescan(self, startstop=None):
         if self.scans.has_key('fullscan'):
@@ -822,6 +831,10 @@ class STM:
                         'hs20':(h20[0], s20[0]),
                         'k_c': (0,0)})
 
+    def read_scans_from_file(self, filename):
+        scan3d = pickle.load(open(filename))
+        self.scans['scan3d'] = scan3d
+
     def plot(self, repeat=(1, 1), vmin=None, vmax = None):
         import matplotlib
         import pylab
@@ -893,15 +906,16 @@ class STM:
             if vmin == None:
                 vmin = scan0_iG.min()
             norm = matplotlib.colors.normalize(vmin=vmin, vmax=scan0_iG.max())
-            
+            self.pylab = pylab
             f0 = pylab.figure()
+            self.figure1 = f0
             p0 = f0.add_subplot(111)
             x,y = ogrid[0:plot.shape[0]:1, 0:plot.shape[1]:1]
             extent=[0, plot.shape[1] * h * Bohr,
                     0, plot.shape[0] * h * Bohr]        
             
-            p0.set_ylabel('\xc5')
-            p0.set_xlabel('\xc5')
+            #p0.set_ylabel('\xc5')
+            #p0.set_xlabel('\xc5')
             imshow(plot,
                    norm=norm,
                    interpolation='bicubic',
@@ -909,7 +923,7 @@ class STM:
                    cmap=cm.hot,
                    extent=extent)
             cb = colorbar()            
-            cb.set_label('I[nA]')
+            #cb.set_label('I[nA]')
                        
         if self.scans.has_key('linescan'):
             startstop, line, linescan_n = self.scans['linescan']
