@@ -1,6 +1,4 @@
 from ase.units import Bohr, Hartree
-import gpaw.mpi as mpi
-from gpaw.mpi import world as w
 from gpaw import GPAW
 from gpaw.operators import Laplace
 from gpaw.utilities.tools import tri2full
@@ -8,7 +6,7 @@ from gpaw.lcao.projected_wannier import dots
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.lfc import NewLocalizedFunctionsCollection as LFC
 from gpaw.lcao.tools import remove_pbc, get_lcao_hamiltonian, get_lead_lcao_hamiltonian
-from gpaw.mpi import world
+from gpaw.mpi import mpi, world
 import time
 import numpy as np
 import numpy.linalg as la
@@ -639,6 +637,7 @@ class STM:
             self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5]) #XXX
                           + 'Received another gft, start T\n') #XXX
             self.log.flush() #XXX
+
             for j, V in enumerate(V_g):
                 T_pe[j, estart:estart + nepts] = self.stm_calc.get_transmission(V)
         
@@ -663,6 +662,11 @@ class STM:
             start = l * bcomm.rank + rest
             stop = l * (bcomm.rank + 1) + rest + 1
 
+        T = time.localtime() # XXX
+        self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5]) #XXX
+                       + 'start Current\n') #XXX
+        self.log.flush() #XXX
+
         energies = energies[start:stop] # energy grid on this CPU 
         T_pe = T_pe[:, start:stop]
         ngpts = len(T_pe)
@@ -685,6 +689,12 @@ class STM:
         I_g = np.sign(bias)*np.trapz(x=energies[i1:i2:step], y=T_pe[:,i1:i2:step])
         bcomm.sum(I_g)
         I_g *= 77466.1509 # units are nA
+
+        T = time.localtime() # XXX
+        self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5]) #XXX
+                       + 'stop current\n') #XXX
+        self.log.flush() #XXX
+
 
         # next gather the domains
         scan = np.zeros(N_c)
