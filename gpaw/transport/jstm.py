@@ -541,7 +541,6 @@ class STM:
         dcomm = self.domain_comm
         N_c = self.srf.gd.N_c[:2]
         gpts_i = np.arange(N_c[0] * N_c[1])
-        gpts_gl = gpts_i.copy() # grpts globally
         l = len(gpts_i) / dcomm.size
         rest = len(gpts_i) % dcomm.size
         if dcomm.rank < rest:
@@ -553,7 +552,6 @@ class STM:
 
         gpts_i = gpts_i[start:stop] # gridpoints on this cpu
         V_g = np.zeros((len(gpts_i), self.nj, self.ni)) # V_ij's on this cpu
-        I_g = np.zeros_like(gpts_i).astype(float) # currents on this cpu
         
         for i, gpt in enumerate(gpts_i):
             x = gpt / N_c[1]
@@ -574,18 +572,9 @@ class STM:
         #if world.rank == 0: #XXX
         T = time.localtime()
         self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
-                           + 'Done Vs, starting Is\n') # XXX
+                           + 'Done VS, starting T\n') # XXX
         self.log.flush() #XXX
- 
-        for j, V in enumerate(V_g):
-            I_g[j] += self.stm_calc.get_current(bias, V) * 77466.1509 
         
-        #if world.rank == 0: #XXX
-        T = time.localtime()
-        self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
-                           + 'Is1 finished\n') #XXX
-        self.log.flush() #XXX
-
         nepts = len(self.stm_calc.energies) # number of e-points on this cpu
         T_pe = np.zeros((len(V_g), len(self.energies))) # Transmission function
 
@@ -595,7 +584,7 @@ class STM:
         #if world.rank == 0: #XXX
         T = time.localtime() #XXX
         self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
-                           + 'I2 finished\n') #XXX
+                           + 'T done\n') #XXX
         self.log.flush() #XXX 
         world.barrier()
     
@@ -709,7 +698,7 @@ class STM:
         data = (bias, sgd.N_c, sgd.h_c, sgd.cell_cv, sgd.cell_c)
         
         fullscan = (data, scan)
-        fd = open('fullscan_' + str(np.round(self.get_dmin(), 2)) + '_bias_'\
+        fd = open('scan_' + str(np.round(self.get_dmin(), 2)) + '_bias_'\
                                     + str(bias) + '_.pckl', 'wb')
 
         self.scans['fullscan'] = fullscan
@@ -717,7 +706,6 @@ class STM:
         T = time.localtime()
         self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
                        'Fullscan done\n')
-
 
     def scan3d(self, zmin, zmax):
         sgd = self.srf.gd
@@ -729,17 +717,13 @@ class STM:
         dmins.sort()
         dmins = -dmins        
         for dmin in dmins:
-            if world.rank == 0:
-                fd = open('scan_' + str(np.round(dmin, 2)) + '_bias_'\
-                        + str(bias) + '_.pckl', 'wb')
             world.barrier()
             self.set(dmin=dmin)
             self.initialize()
             self.scan()
             dmin = self.get_dmin()
-            if world.rank == 0:
-                pickle.dump((dmin, data, self.scans['fullscan'][1]), fd, 2)
-                self.scans['scan3d'][1][dmin] = self.scans['fullscan'][1].copy()
+            pickle.dump((dmin, data, self.scans['fullscan'][1]), fd, 2)
+            self.scans['scan3d'][1][dmin] = self.scans['fullscan'][1].copy()
             world.barrier()
             
         if world.rank == 0:
@@ -860,7 +844,7 @@ class STM:
     def get_dmin(self):
         return self.dmin * Bohr
 
-    def restart(self, filename):
+    def restart(self, filename): #XXX
         restart = pickle.load(open(filename))
         p = restart['p']
         self.set(**p)
@@ -880,7 +864,7 @@ class STM:
         self.stm_calc.selfenergy2 = Dummy(p['bias'] * (p['w'] - 1))    
         self.log.flush()
 
-    def hs_from_paw(self): # Do not even try this for larger systems
+    def hs_from_paw(self): # XXX
         p = self.input_parameters
         h1, s1 = dump_hs(self.tip, 'hs1', return_hs = True)[-2:]   
         h2, s2 = dump_hs(self.tip, 'hs2', return_hs = True)[-2:]   
