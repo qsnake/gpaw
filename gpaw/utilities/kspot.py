@@ -74,6 +74,10 @@ class AllElectronPotential:
    def get_spherical_ks_potential(self,a):
       #self.paw.restore_state()
 
+      print "XC:", self.paw.hamiltonian.xc.xcfunc.xcname
+      if not self.paw.hamiltonian.xc.xcfunc.xcname == 'LDA':
+         raise NotImplementedError
+
       # If the calculation is just loaded, density needs to be interpolated
       if self.paw.density.nt_sg is None:
          print "Interpolating density"
@@ -167,6 +171,67 @@ class AllElectronPotential:
       radvks_g = radvxct_g*xccorr.rgd.r_g + radHt_g
       return (xccorr.rgd.r_g, radvks_g)
 
+class CoreEigenvalues(AllElectronPotential):
+   
+   def get_core_eigenvalues(self, a, scalarrel=True):
+      """Return the core eigenvalues by solving the radial schrodinger equation.
+
+      Using AllElectron potential class, the spherically averaged Kohn--Sham potential
+      is obtained around the spesified atom. The eigenstates for this potential are solved,
+      the the resulting core states returned. Still experimental.
+      
+      """
+      
+      r, v_g = self.get_spherical_ks_potential(a)
+
+      # Get xccorr for atom a
+      setup = self.paw.density.setups[a]
+      xccorr = setup.xc_correction
+      symbol = setup.symbol
+
+      # Create AllElectron object for eigensolver
+      atom = AllElectron(symbol, txt=None, scalarrel=scalarrel)
+      # Calculate initial guess
+      atom.run()
+
+      # Set the potential
+      atom.vr[:len(v_g)] = v_g
+      # After the setups cutoff, arbitrary barrier is used
+      atom.vr[len(v_g):] = 10.0
+
+      # Solve the eigenstates
+      atom.solve()
+
+      # The display format is just copy paste from AllElectron class
+      # TODO: Make it a method in AllElectron class, thus it can be called directly
+      def t(a):
+         print a
+
+      t('Calculated core eigenvalues of atom '+str(a)+':'+symbol)
+      t('state      eigenvalue         ekin         rmax')
+      t('-----------------------------------------------')
+      for m, l, f, e, u in zip(atom.n_j, atom.l_j, atom.f_j, atom.e_j, atom.u_j):
+         # Find kinetic energy:
+         k = e - npy.sum((npy.where(abs(u) < 1e-160, 0, u)**2 * #XXXNumeric!
+                            atom.vr * atom.dr)[1:] / atom.r[1:])
+
+         # Find outermost maximum:
+         g = atom.N - 4
+         while u[g - 1] >= u[g]:
+            g -= 1
+         x = atom.r[g - 1:g + 2]
+         y = u[g - 1:g + 2]
+         A = npy.transpose(npy.array([x**i for i in range(3)]))
+         c, b, a = npy.linalg.solve(A, y)
+         assert a < 0.0
+         rmax = -0.5 * b / a
+
+         s = 'spdf'[l]
+         t('%d%s^%-4.1f: %12.6f %12.6f %12.3f' % (m, s, f, e, k, rmax))
+      t('-----------------------------------------------')
+      t('(units: Bohr and Hartree)')
+      return atom.e_j
+      
 if not extra_parameters.get('usenewxc'):
     raise "New XC-corrections required. Add --gpaw usenewxc=1 to command line and try again."
 

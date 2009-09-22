@@ -170,6 +170,7 @@ if len(tests) == 0:
         'atomize.py',
         'nsc_MGGA.py',
         '8Si.py',
+        'coreeig.py',
         'transport.py',
         'Cu.py',
         'IP-oxygen.py',
