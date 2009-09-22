@@ -24,6 +24,12 @@ try:
 except ImportError:
     pass
 
+try:
+   from _gpaw import craypat_region_begin
+   from _gpaw import craypat_region_end
+except ImportError:
+    pass
+
 import gpaw.mpi as mpi
 MASTER = 0
 
@@ -208,4 +214,37 @@ class TauTimer(Timer):
     def write(self, out=sys.stdout):
         self.stop('PAW_calc')
         Timer.write(self, out)
+
+class CrayPAT_timer(Timer):
+    """Interface to CrayPAT API. In addition to regular timers,
+    the corresponding regions are profiled by CrayPAT. The gpaw-python has
+    to be compiled under CrayPAT.
+    """
+
+    def __init__(self):
+        self.regions = {}
+        self.region_id = 5 # leave room for regions in C
+        self.timers = {}
+        self.t0 = time.time()
+        self.running = []
+
+    def start(self, name):
+        self.timers[name] = self.timers.get(name, 0.0) - time.time()
+        if self.regions.has_key(name):
+            id = self.regions[name]
+        else:
+            id = self.region_id
+            self.regions[name] = id
+            self.region_id += 1
+
+        craypat_region_begin(id, name)
+        self.running.append(name)
+
+    def stop(self, name=None):
+        if name is None: name = self.running[-1]
+        if name != self.running.pop():
+            raise RuntimeError
+        self.timers[name] += time.time()
+        id = self.regions[name]
+        craypat_region_end(id)
 
