@@ -20,7 +20,7 @@ class PairOverlap:
         self.ni_a = np.cumsum([0]+[setup.ni for setup in self.setups])
 
     def __len__(self):
-        return self.ni_a[-1]
+        return self.ni_a[-1].item()
 
     def assign_atomic_pair_matrix(self, X_aa, a1, a2, dX_ii):
         X_aa[self.ni_a[a1]:self.ni_a[a1+1],\
