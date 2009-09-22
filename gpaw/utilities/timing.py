@@ -25,8 +25,13 @@ except ImportError:
     pass
 
 try:
-   from _gpaw import craypat_region_begin
-   from _gpaw import craypat_region_end
+    from _gpaw import hpm_start, hpm_stop
+except ImportError:
+    pass
+
+try:
+    from _gpaw import craypat_region_begin
+    from _gpaw import craypat_region_end
 except ImportError:
     pass
 
@@ -184,32 +189,50 @@ class StepTimer(Timer):
         self.start(self.now)
 
 class TauTimer(Timer):
-    """TauTimers require installation of the TAU Performance System
+    """TauTimer requires installation of the TAU Performance System
     http://www.cs.uoregon.edu/research/tau/home.php
 
     The TAU Python API will not output any data if there are any
     unmatched starts/stops in the code."""
     
     def __init__(self):
+        Timer.__init__(self)
         self.tau_timers = {}
-        self.timers = {}
-        self.t0 = time.time()
-        self.running = []
         pytau.setNode(mpi.rank)
         self.start('PAW_calc') 
 
     def start(self, name):
+        Timer.start(self, name)
         self.tau_timers[name] = pytau.profileTimer(name)
-        self.timers[name] = self.timers.get(name, 0.0) - time.time()
-        self.running.append(name)
         pytau.start(self.tau_timers[name])
         
     def stop(self, name=None):
-        if name is None: name = self.running[-1]
-        if name != self.running.pop():
-            raise RuntimeError
-        self.timers[name] += time.time()
+        Timer.stop(self, name)
         pytau.stop(self.tau_timers[name])
+
+    def write(self, out=sys.stdout):
+        self.stop('PAW_calc')
+        Timer.write(self, out)
+
+class HPMTimer(Timer):
+    """HPMTimer requires installation of the IBM BlueGene/P HPM
+    middleware interface to the low-level UPC library. This will
+    most likely only work at ANL's BlueGene/P. Must compile
+    with GPAW_HPM macro in customize.py.
+    WARNING: You will need to comment out the following timer in
+    hamiltonian.py,  'Hamiltonian: atomic: xc_correction'"""
+    
+    def __init__(self):
+        Timer.__init__(self)
+        self.start('PAW_calc') 
+
+    def start(self, name):
+        Timer.start(self, name)
+        hpm_start(name)
+        
+    def stop(self, name=None):
+        Timer.stop(self, name)
+        hpm_stop(name)
 
     def write(self, out=sys.stdout):
         self.stop('PAW_calc')
