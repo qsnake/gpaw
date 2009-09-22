@@ -236,7 +236,7 @@ class STM:
             from sys import stdout
             self.log = stdout
         elif 'logfile' in kwargs:
-            self.log = open(log, 'w')
+            self.log = open(log + str(world.rank), 'w') #XXX
 
     def initialize(self):
         if self.initialized and self.transport_uptodate:
@@ -245,10 +245,10 @@ class STM:
             self.initialize_transport()
             return
         
-        if world.rank == 0:
-            T = time.localtime()
-            self.log.write('#%d:%02d:%02d' % (T[3], T[4], T[5]) + ' Initializing\n')    
-            self.log.flush()
+        #if world.rank == 0: #XXX
+        T = time.localtime()
+        self.log.write('#%d:%02d:%02d' % (T[3], T[4], T[5]) + ' Initializing\n')    
+        self.log.flush()
 
         p = self.input_parameters        
         self.dmin = p['dmin'] / Bohr
@@ -303,8 +303,8 @@ class STM:
          
         self.set_tip_position([0, 0])
         
-        if world.rank == 0:
-            self.log.write(' dmin = %.3f\n' % (self.dmin * Bohr) +
+        #if world.rank == 0: #XXX
+        self.log.write(' dmin = %.3f\n' % (self.dmin * Bohr) +
                            ' tip atoms: %i to %i,  tip functions: %i\n' 
                            % (tip_indices.min(), tip_indices.max(),
                               len(self.tip_cell.functions))
@@ -312,7 +312,7 @@ class STM:
                             %(srf_indices.min(), srf_indices.max(),
                               len(self.srf_cell.functions))
                              )
-            self.log.flush()            
+        self.log.flush()            
 
         if not self.transport_uptodate:
             self.initialize_transport()            
@@ -371,11 +371,11 @@ class STM:
         if not self.transport_uptodate:
             from ase.transport.stm import STM as STMCalc
 
-            if world.rank == 0:
-                T = time.localtime()
-                self.log.write('\n  %d:%02d:%02d' % (T[3], T[4], T[5]) + 
+            #if world.rank == 0: #XXX
+            T = time.localtime()
+            self.log.write('\n  %d:%02d:%02d' % (T[3], T[4], T[5]) + 
                                ' Precalculating green functions\n')
-                self.log.flush()            
+            self.log.flush()            
 
             if p['energies'] == None:
                 energies = np.sign(bias) * \
@@ -386,11 +386,22 @@ class STM:
 
             # distribute energy grid over all cpu's
             self.energies = energies # global energy grid
+            l = len(energies) / world.size # minimum number of enpts per cpu
+            rest = len(energies) % world.size # first #rest cpus get +1 enpt
 
-            l = np.ceil(len(energies) / float(world.size))
-            start = l * world.rank
-            stop = l * (world.rank + 1) + 1 # +1, very important!
+            if world.rank < rest:
+                start = (l + 1) * world.rank
+                stop = (l + 1) * (world.rank + 1)
+            else:
+                start = l * world.rank + rest
+                stop = l * (world.rank + 1) + rest
+
             energies = energies[start:stop] # energy grid on this cpu 
+
+            self.log.write('%d,%s,%d,%d' % (world.rank,\
+                           str((energies.min(), energies.max())),\
+                            len(energies), len(self.energies)) + '\n') #XXX
+            self.log.flush() #XXX
 
             stm_calc = STMCalc(h2,  s2, 
                                h1,  s1, 
@@ -405,13 +416,16 @@ class STM:
             self.stm_calc = stm_calc
             self.transport_uptodate = True            
 
-            if world.rank == 0:
-                T = time.localtime()
-                self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
+            #if world.rank == 0: XXX
+            T = time.localtime()
+            self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
                                ' Done\n')
-                self.log.flush()
+            self.log.flush()
             
             self.world.barrier()
+            self.log.write('rank ' + str( world.rank) + ' I passed \n') #XXX
+
+
 
     def set_tip_position(self, position_c):   
         """Positions tip atom as close as possible above the surface at 
@@ -438,8 +452,8 @@ class STM:
         self.tip_position = cell_corner_c + \
                            tip_pos_av_grpt[tip_atom_index] - extension_c        
         self.dmin = self.tip_position[2] * h_c[2] - srf_zmax
-        self.srf_zmax = srf_zmax
-        self.tip_zmin = tip_zmin
+        self.srf_zmax = srf_zmax #XXX
+        self.tip_zmin = tip_zmin #XXX
         self.tip_cell.set_position(cell_corner_c)        
 
         # sum potentials
@@ -517,91 +531,103 @@ class STM:
         self.scans = {}
 
     def scan(self):
-        if world.rank == 0:
-            T = time.localtime()
-            self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
-                           + 'Fullscan\n')
-            self.log.flush()
+        #if world.rank == 0: #XXX
+        T = time.localtime()
+        self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
+                     + 'Fullscan\n')
+        self.log.flush()
         
         #distribute grid points over cpu's
         dcomm = self.domain_comm
-        n_c = self.srf.gd.N_c[:2]
-        gpts_i = np.arange(n_c[0] * n_c[1])
-        gpts_gl = gpts_i.copy()
-        l = np.ceil(len(gpts_i) / float(dcomm.size)).astype(int)
-        start = l * dcomm.rank
-        stop = l * (dcomm.rank + 1)
+        N_c = self.srf.gd.N_c[:2]
+        gpts_i = np.arange(N_c[0] * N_c[1])
+        gpts_gl = gpts_i.copy() # grpts globally
+        l = len(gpts_i) / dcomm.size
+        rest = len(gpts_i) % dcomm.size
+        if dcomm.rank < rest:
+            start = (l + 1) * dcomm.rank
+            stop = (l + 1) * (dcomm.rank + 1)
+        else:
+            start = l * dcomm.rank +rest
+            stop = l * (dcomm.rank + 1) + rest
+
         gpts_i = gpts_i[start:stop] # gridpoints on this cpu
         V_g = np.zeros((len(gpts_i), self.nj, self.ni)) # V_ij's on this cpu
         I_g = np.zeros_like(gpts_i).astype(float) # currents on this cpu
-        self.gpts_i = gpts_i
-        print world.rank, V_g.shape
-
+        
         for i, gpt in enumerate(gpts_i):
-            x = gpt / n_c[1]
-            y = gpt % n_c[1]
+            x = gpt / N_c[1]
+            y = gpt % N_c[1]
             V_g[i] =  self.get_V((x, y))
+
+        # distribution of the energy grid over all cpu's
+        el = len(self.energies) / world.size # minimum number of enpts per cpu
+        erest = len(self.energies) % world.size # first #rest cpus get +1 enpt
+        if world.rank < erest:
+            estart = (el + 1) * world.rank
+        else:
+            estart = el * world.rank + erest
 
         # calculate part of the current for each grid points
         bias = self.stm_calc.bias
 
-        if world.rank == 0: #XXX
-            T = time.localtime()
-            self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
-                           + 'Done Vs, starting Is\n')
-            self.log.flush()
-        
-        I_g = self.stm_calc.get_current2(bias, V_g) * 77466.1509
-        if world.rank == 0: #XXX
-            T = time.localtime()
-            self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
-                           + 'Is1 finished\n')
-            self.log.flush()
-
-
+        #if world.rank == 0: #XXX
+        T = time.localtime()
+        self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
+                           + 'Done Vs, starting Is\n') # XXX
+        self.log.flush() #XXX
+ 
         for j, V in enumerate(V_g):
             I_g[j] += self.stm_calc.get_current(bias, V) * 77466.1509 
-
-        if world.rank == 0: #XXX
-            T = time.localtime()
-            self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
-                           + 'I2 finished\n')
-            self.log.flush()
         
+        #if world.rank == 0: #XXX
+        T = time.localtime()
+        self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
+                           + 'Is1 finished\n') #XXX
+        self.log.flush() #XXX
+
+        nepts = len(self.stm_calc.energies) # number of e-points on this cpu
+        T_pe = np.zeros((len(V_g), len(self.energies))) # Transmission function
+
+        for j, V in enumerate(V_g):
+            T_pe[j, estart:estart + nepts] = self.stm_calc.get_transmission(V)
+
+        #if world.rank == 0: #XXX
+        T = time.localtime() #XXX
+        self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
+                           + 'I2 finished\n') #XXX
+        self.log.flush() #XXX 
         world.barrier()
     
         #send green functions
-        self.stm_calc.energies_req = self.stm_calc.energies.copy()
-        for i in range(dcomm.size - 1):
+        self.stm_calc.energies_req = self.stm_calc.energies.copy()#XXX
+        for i in range(dcomm.size - 1): # parallel run over domains
+            # send Green functions along the domain_comm axis
+            # 
+            # tip and surface green functions have to be send separately since
+            # in general they do not have the same shapes
             rank_send = (dcomm.rank + 1) % dcomm.size
             rank_receive = (dcomm.rank - 1) % dcomm.size
 
-            # tip and surface green functions have to be send separately since
-            # in general they do not have the same shapes
-            
-            # first send the shape and then the green function of the tip
+            # send shape of gft, send also the initial index of the
+            # local energy list
             gft1 = self.stm_calc.gft1_emm
             
-            request = dcomm.send(np.asarray(gft1.shape), rank_send,
+            request = dcomm.send(np.asarray((estart,) + gft1.shape), rank_send,
                                  block=False)
-            shape = np.array((0, 0, 0), dtype=int)
-            dcomm.receive(shape, rank_receive)
+            data = np.array((0, 0, 0, 0), dtype=int)
+            dcomm.receive(data, rank_receive)
             dcomm.wait(request)
-            energies = self.stm_calc.energies
-            energies_receive = np.zeros((shape[0],))
+            estart, nepts = data[:2]
+            shape = data[1:]
             
-            request = dcomm.send(energies, rank_send, block=False)
-            dcomm.receive(energies_receive, rank_receive)
-            dcomm.wait(request)            
-
+            # sent Green function of the tip
             gft1_receive = np.empty(tuple(shape), dtype = complex)
             request = dcomm.send(gft1, rank_send, block=False)
             dcomm.receive(gft1_receive, rank_receive)
             dcomm.wait(request)
-            self.stm_calc.gft1_emm = gft1_receive
-            self.stm_calc.energies = energies_receive
 
-            # first send th shape and then the green function of the surface
+            # send shape the surface green functions
             gft2 = self.stm_calc.gft2_emm
             
             request = dcomm.send(np.asarray(gft2.shape), rank_send,
@@ -609,54 +635,89 @@ class STM:
             shape = np.array((0, 0, 0), dtype=int)
             dcomm.receive(shape, rank_receive)
             dcomm.wait(request)
+            
+            #send surface green function
             gft2_receive = np.empty(tuple(shape), dtype=complex)
             request = dcomm.send(gft2, rank_send, block=False)
             dcomm.receive(gft2_receive, rank_receive)
             dcomm.wait(request)
-            self.stm_calc.gft2_emm = gft2_receive
-
-            if world.rank == 0: #XXX
-                T = time.localtime()
-                self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
-                               + 'Received another gft, start Is\n')
-                self.log.flush()
-        
-            bias = self.stm_calc.bias
-            for j, V in enumerate(V_g):
-                I_g[j] += self.stm_calc.get_current(bias, V) * 77466.1509
-
-            if world.rank == 0: #XXX 
-                T = time.localtime()
-                self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
-                               + 'Done another round of Is\n')
-                self.log.flush()
-        
-        world.barrier()
-        self.bfs_comm.sum(I_g) 
-        
-        if dcomm.rank == 0:
-            gather = np.zeros((dcomm.size, len(I_g)))
-            dcomm.gather(I_g, 0, gather)
-            final = gather[0]
-            for i in range(1, len(gather)):
-                final = np.concatenate((final, gather[i]), axis=0)
-            self.final = final
-            scan = np.zeros((n_c[0], n_c[1]))
-            for i, gpt in enumerate(gpts_gl):
-                x = i / n_c[1]
-                y = i % n_c[1]
-                scan[x, y] = final[i]
             
-            sgd = self.srf.gd
-            data = (bias, sgd.N_c, sgd.h_c, sgd.cell_cv, sgd.cell_c)
-            self.scans['fullscan'] = (data, scan)
-            T = time.localtime()
-            self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
-                           'Fullscan done\n')
+            self.stm_calc.gft1_emm = gft1_receive
+            self.stm_calc.gft2_emm = gft2_receive
+            self.stm_calc.energies = self.energies[estart:estart + nepts] 
 
+            T = time.localtime() # XXX
+            self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5]) #XXX
+                          + 'Received another gft, start T\n') #XXX
+            self.log.flush() #XXX
+            for j, V in enumerate(V_g):
+                T_pe[j, estart:estart + nepts] = self.stm_calc.get_transmission(V)
+        
+            T = time.localtime() #XXX
+            self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5]) #XXX
+                               + 'Done\n') #XXX
+            self.log.flush() #XXX
+        
+        self.bfs_comm.sum(T_pe)
+
+        # next calculate the current. Parallelize over bfs_comm
+        # distribute energy grid over all cpu's
+        bcomm = self.bfs_comm
+        energies = self.energies # global energy grid
+        l = len(energies) / bcomm.size 
+        rest = len(energies) % bcomm.size
+
+        if bcomm.rank < rest:
+            start = (l + 1) * bcomm.rank
+            stop = (l + 1) * (bcomm.rank + 1) + 1 # +1 is important
         else:
-            dcomm.gather(I_g,0)
-        world.barrier()
+            start = l * bcomm.rank + rest
+            stop = l * (bcomm.rank + 1) + rest + 1
+
+        energies = energies[start:stop] # energy grid on this CPU 
+        T_pe = T_pe[:, start:stop]
+        ngpts = len(T_pe)
+
+        fd = open('1T.dat' + str(world.rank), 'w') #XXX
+        for e, T_p in zip(energies, T_pe[0]): #XXX
+            print >> fd, e, T_p #XXX
+        fd.close() #XXX
+        bias = self.stm_calc.bias #XXX
+
+        w = self.stm_calc.w
+        bias_window = -np.array([bias * w, bias * (w - 1)])
+        bias_window.sort()
+        i1 = sum(energies < bias_window[0])
+        i2 = sum(energies < bias_window[1])
+        step = 1
+        if i2 < i1:
+            step = -1
+
+        I_g = np.sign(bias)*np.trapz(x=energies[i1:i2:step], y=T_pe[:,i1:i2:step])
+        bcomm.sum(I_g)
+        I_g *= 77466.1509 # units are nA
+
+        # next gather the domains
+        scan = np.zeros(N_c)
+        for i, gpt in enumerate(gpts_i):
+            x = gpt / N_c[1]
+            y = gpt % N_c[1]
+            scan[x, y] = I_g[i]
+
+        self.domain_comm.sum(scan) # gather image
+        sgd = self.srf.gd
+        data = (bias, sgd.N_c, sgd.h_c, sgd.cell_cv, sgd.cell_c)
+        
+        fullscan = (data, scan)
+        fd = open('fullscan_' + str(np.round(self.get_dmin(), 2)) + '_bias_'\
+                                    + str(bias) + '_.pckl', 'wb')
+
+        self.scans['fullscan'] = fullscan
+
+        T = time.localtime()
+        self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
+                       'Fullscan done\n')
+
 
     def scan3d(self, zmin, zmax):
         sgd = self.srf.gd
