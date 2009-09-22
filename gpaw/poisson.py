@@ -385,7 +385,10 @@ class FixedBoundaryPoissonSolver(PoissonSolver):
         self.b_phi2 = b_phi2[:, :, 0].reshape(-1)
    
     def solve(self, phi_g, rho_g):
-        self.solve_neutral(phi_g, rho_g)
+        actual_charge = self.gd.integrate(rho)
+        background = (actual_charge / self.gd.dv /
+                      self.gd.get_size_of_global_array().prod())        
+        self.solve_neutral(phi_g, rho_g - background)
         
     def solve_neutral(self, phi_g, rho_g):
         # b_phi1 and b_phi2 are the boundary Hartree potential values
