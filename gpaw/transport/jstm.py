@@ -374,10 +374,6 @@ class STM:
             h10 -= diff1 * s10
             self.hs_aligned = True
 
-        from ase.transport.tools import subdiagonalize
-        if bfs != []: #XXX
-            h2, s2, c_pp, e_p = subdiagonalize(h2, s2, bfs) #XXX
-
         if not self.transport_uptodate:
             from ase.transport.stm import STM as STMCalc
 
@@ -568,7 +564,7 @@ class STM:
             y = gpt % N_c[1]
             V_g[i] =  self.get_V((x, y))
 
-        # distribution of the energy grid over all cpu's
+        #get the distribution of the energy grid over CPUs
         el = len(self.energies) / world.size # minimum number of enpts per cpu
         erest = len(self.energies) % world.size # first #rest cpus get +1 enpt
         if world.rank < erest:
@@ -576,7 +572,6 @@ class STM:
         else:
             estart = el * world.rank + erest
 
-        # calculate part of the current for each grid points
         bias = self.stm_calc.bias
 
         #if world.rank == 0: #XXX
@@ -707,7 +702,6 @@ class STM:
                        + 'stop current\n') #XXX
         self.log.flush() #XXX
 
-
         # next gather the domains
         scan = np.zeros(N_c)
         for i, gpt in enumerate(gpts_i):
@@ -718,13 +712,16 @@ class STM:
         self.domain_comm.sum(scan) # gather image
         sgd = self.srf.gd
         data = (bias, sgd.N_c, sgd.h_c, sgd.cell_cv, sgd.cell_c)
-        
+        dmin = self.get_dmin()
         fullscan = (data, scan)
-        fd = open('scan_' + str(np.round(self.get_dmin(), 2)) + '_bias_'\
-                                    + str(bias) + '_.pckl', 'wb')
-
+        if world.rank == 0:
+            fd = open('scan_' + str(np.round(self.get_dmin(), 2)) + '_bias_'\
+                                        + str(bias) + '_.pckl', 'wb')
+            pickle.dump(dmin,fullscan[0], fullscan[1]), fd, 2)
+            fd.close()
+        
+        world.barrier()       
         self.scans['fullscan'] = fullscan
-
         T = time.localtime()
         self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
                        'Fullscan done\n')
@@ -744,7 +741,6 @@ class STM:
             self.initialize()
             self.scan()
             dmin = self.get_dmin()
-            pickle.dump((dmin, data, self.scans['fullscan'][1]), fd, 2)
             self.scans['scan3d'][1][dmin] = self.scans['fullscan'][1].copy()
             world.barrier()
             
@@ -855,16 +851,41 @@ class STM:
             linescan_n[i] = I
         self.scans['linescan'] = ([start, stop], line, linescan_n) 
 
-    def write(self, filename):
-        stmc = self.stm_calc
-        fd = open(filename, 'wb')
-        pickle.dump({'p': self.input_parameters,
-                     'egft12_emm': [stmc.energies, stmc.gft1_emm, stmc.gft2_emm]
-                    }, fd, 2)
-        fd.close()
-
     def get_dmin(self):
         return self.dmin * Bohr
+
+    def write(self, filename):
+        energies = self.energies # global energy grid
+        l = len(energies) / world.size 
+        rest = len(energies) % world.size 
+
+        if world.rank < rest:
+            start = (l + 1) * world.rank
+            stop = (l + 1) * (world.rank + 1)
+        else:
+            start = l * world.rank + rest
+            stop = l * (world.rank + 1) + rest
+
+        stmc = self.stm_calc
+        shape1 = stmc.gft1_emm.shape[-2:]
+        shape2 = stmc.gft2_emm.shape[-2:]
+
+        gft1_emm = np.zeros((len(energies), ) + shape1, dtype=complex)
+        gft1_emm[start:stop] = stmc.gft1_emm
+        gft2_emm = np.zeros((len(energies), ) + shape2, dtype=complex)
+        gft2_emm[start:stop] = stmc.gft2_emm
+        world.sum(gft1_emm)
+        world.sum(gft2_emm)
+
+        if world.rank == 0:
+            fd = open(filename, 'wb')
+            pickle.dump({'p': self.input_parameters,
+                         'energies': energies,
+                         'gft1_emm': gft1_emm,
+                         'gft2_emm': gft2_emm,
+                          }, fd, 2)
+            fd.close()
+        world.barrier()
 
     def restart(self, filename): #XXX
         restart = pickle.load(open(filename))
@@ -874,10 +895,31 @@ class STM:
         print >> self.log, '#   bias = ' + str(p['bias'])
         print >> self.log, '#   de = ' + str(p['de'])
         print >> self.log, '#   w = ' + str(p['w'])
+        self.transport_uptodate = True
+        self.initialize()
+        self.transport_uptodate = False
+
         self.initialize_transport(restart = True) 
-        self.stm_calc.energies = restart['egft12_emm'][0]
-        self.stm_calc.gft1_emm = restart['egft12_emm'][1]    
-        self.stm_calc.gft2_emm = restart['egft12_emm'][2]    
+        energies = restart['energies'] 
+        self.energies = energies.copy()
+
+        l = len(energies) / world.size 
+        rest = len(energies) % world.size 
+
+        if world.rank < rest:
+            start = (l + 1) * world.rank
+            stop = (l + 1) * (world.rank + 1)
+        else:
+            start = l * world.rank + rest
+            stop = l * (world.rank + 1) + rest
+
+        energies = energies[start:stop]       
+        gft1_emm = restart['gft1_emm'][start:stop]
+        gft2_emm = restart['gft2_emm'][start:stop]
+
+        self.stm_calc.energies = energies
+        self.stm_calc.gft1_emm = gft1_emm    
+        self.stm_calc.gft2_emm = gft2_emm    
         self.stm_calc.bias = p['bias']
         class Dummy:
             def __init__(self, bias):
@@ -885,6 +927,8 @@ class STM:
         self.stm_calc.selfenergy1 = Dummy(p['bias'] * p['w'])    
         self.stm_calc.selfenergy2 = Dummy(p['bias'] * (p['w'] - 1))    
         self.log.flush()
+        self.initialize()
+
 
     def hs_from_paw(self): # XXX
         p = self.input_parameters
