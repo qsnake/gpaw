@@ -7,6 +7,7 @@ from gpaw.grid_descriptor import GridDescriptor
 from gpaw.lfc import NewLocalizedFunctionsCollection as LFC
 from gpaw.lcao.tools import remove_pbc, get_lcao_hamiltonian, get_lead_lcao_hamiltonian
 from gpaw.mpi import world
+from gpaw.mpi import world as w
 from gpaw import mpi
 import time
 import numpy as np
