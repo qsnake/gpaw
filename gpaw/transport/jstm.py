@@ -191,13 +191,12 @@ class STM:
         if self.input_parameters['cpu_grid'] == None: # parallelization over domains only
              self.input_parameters['cpu_grid'] = (world.size, 1)
 
-        cpu_grid = self.input_parameters['cpu_grid']
-        n, m = cpu_grid[:]
+        n, m = self.input_parameters['cpu_grid']
         assert n * m == world.size
         ranks = np.arange(world.rank % m, world.size, m)
-        domain_comm = world.new_communicator(ranks)
-        r = world.rank // m * m
-        bfs_comm = world.new_communicator(np.arange(r, r + m))
+        domain_comm = world.new_communicator(ranks) # comm for tip positions
+        r = world.rank // m * m 
+        bfs_comm = world.new_communicator(np.arange(r, r + m)) # comm for bfs
         
         self.world = world
         self.domain_comm = domain_comm
@@ -278,9 +277,9 @@ class STM:
         self.tip_cell.initialize(tip_indices, tip_atom_index)
         self.ni = self.tip_cell.ni       
         
-        # distribution of surface bfs over processors
+        # distribution of surface bfs over CPUs in bfs-communicator
         bcomm = self.bfs_comm
-        bfs_indices = [] # indices of surface bfs stored on this processor
+        bfs_indices = []
         j = 0
         for a in srf_indices:
             setup = self.srf.wfs.setups[a]
@@ -291,10 +290,21 @@ class STM:
                 j += len(f.f_iG)
         
         assert len(bfs_indices) >= bcomm.size
-        l = np.ceil(len(bfs_indices) / float(bcomm.size)).astype(int)
-        start = l * bcomm.rank
-        stop = l * (bcomm.rank + 1)
-        bfs_indices = bfs_indices[start:stop]
+
+        l = len(bfs_indices) / bcomm.size
+        rest = len(bfs_indices) % bcomm.size
+
+        if bcomm.rank < rest:
+            start = (l + 1) * bcomm.rank
+            stop = (l + 1) * (bcomm.rank + 1)
+        else:
+            start = l * bcomm.rank + rest
+            stop = l * (bcomm.rank + 1) + rest 
+        
+        bfs_indices = bfs_indices[start:stop] # surface bfs on this CPU
+
+        self.log.write('bfs on this cpu:' + '%d to %d\n'
+                     % (min(bfs_indices), max(bfs_indices))) #XXX
 
         # surface initialization
         self.srf_cell = SrfCell(self.srf)
