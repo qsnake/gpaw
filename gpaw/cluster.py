@@ -75,7 +75,8 @@ class Cluster(Atoms):
         The border argument can be used to add a border of empty space
         around the structure.
 
-        If h is set, the box is extended to ensure that box/h is a multiple of 4. 
+        If h is set, the box is extended to ensure that box/h is 
+        a multiple of 4. 
         This ensures that GPAW uses the desired h.
 
         The shift applied to the structure is returned.
@@ -97,12 +98,14 @@ class Cluster(Atoms):
 
         # check for multiple of 4
         if h is not None:
+            if not hasattr(h, '__len__'):
+                h = npy.array([h, h, h])
             for c in range(3):
                 # apply the same as in paw.py 
                 L = extr[1][c] # shifted already
-                N = max(4, int(L / h / 4 + 0.5) * 4)
+                N = max(4, int(L / h[c] / 4 + 0.5) * 4)
                 # correct L
-                dL = N * h - L
+                dL = N * h[c] - L
                 # move accordingly
                 extr[1][c] += dL # shifted already
                 extr[0][c] -= dL / 2.
