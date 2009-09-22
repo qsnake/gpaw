@@ -1682,7 +1682,9 @@ class Transport(GPAW):
         if self.hamiltonian.vHt_g is None:
             self.hamiltonian.vHt_g = self.finegd.zeros()
 
-        if self.fixed and self.use_fd_poisson: 
+        actural_charge = self.finegd.integrate(density.rhot_g)
+        self.text('actual_charge' + str(actual_charge))
+        if self.fixed and self.use_fd_poisson:
             ham.npoisson = self.inner_poisson.solve(self.hamiltonian.vHt_g,
                                                        density.rhot_g)
         
