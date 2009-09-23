@@ -946,7 +946,7 @@ class STM:
         scan3d = pickle.load(open(filename))
         self.scans['scan3d'] = scan3d
 
-    def plot(self, repeat=(1, 1), vmin=None, vmax = None):
+    def plot(self, repeat=(1, 1), vmin=None, vmax = None, show = True):
         import matplotlib
         import pylab
         from pylab import ogrid, imshow, cm, colorbar
@@ -982,35 +982,41 @@ class STM:
             ortho_cell_c = np.array(N_c * h_c[:2])
             plot = np.zeros(tuple(N_c))
 
-            # Basis change matrix
-            # e -> usual basis {(1,0),(0,1)}
-            # o -> basis descrining original original cell
-            # n -> basis describing the new cell
-            eMo = (cell_cv.T / cell_c * h_c)[:2,:2]
-            eMn = np.eye(2) * h           
-            oMn = np.dot(np.linalg.inv(eMo), eMn)
+            # is srf_cell orthogonal ?
+            is_orthogonal = np.round(np.trace(cell_cv)-np.sum(cell_c), 5) == 0
+
+            if not is_orthogonal:
+                # Basis change matrix
+                # e -> usual basis {(1,0),(0,1)}
+                # o -> basis descrining original original cell
+                # n -> basis describing the new cell
+                eMo = (cell_cv.T / cell_c * h_c)[:2,:2]
+                eMn = np.eye(2) * h           
+                oMn = np.dot(np.linalg.inv(eMo), eMn)
             
-            for i in range(N_c[0]):
-                for j in range(N_c[1]):
-                    grpt = np.dot(oMn, [i,j])
-                    if (grpt<0).any() or (np.ceil(grpt)>shape).any():
-                        plot[i,j] = plot.min() - 1000
-                    else: # interpolate
-                        C00 = np.floor(grpt).astype(int)
-                        C01 = C00.copy()
-                        C01[0] += 1
-                        C10 = C00.copy()
-                        C10[1] += 1
-                        C11 = C10.copy()
-                        C11[0] += 1
+                for i in range(N_c[0]):
+                    for j in range(N_c[1]):
+                        grpt = np.dot(oMn, [i,j])
+                        if (grpt<0).any() or (np.ceil(grpt)>shape).any():
+                            plot[i,j] = plot.min() - 1000
+                        else: # interpolate
+                            C00 = np.floor(grpt).astype(int)
+                            C01 = C00.copy()
+                            C01[0] += 1
+                            C10 = C00.copy()
+                            C10[1] += 1
+                            C11 = C10.copy()
+                            C11[0] += 1
                         
-                        x0 = grpt[0] - C00[0]
-                        y0 = grpt[1] - C00[1]
-                        P0 = scan_iG[tuple(C00)] * (1 - x0)\
-                           + scan_iG[tuple(C01)] * x0
-                        P1 = scan_iG[tuple(C10)] * (1 - x0)\
-                           + scan_iG[tuple(C11)] * x0
-                        plot[i,j] = P0 * (1 - y0) + P1 * y0
+                            x0 = grpt[0] - C00[0]
+                            y0 = grpt[1] - C00[1]
+                            P0 = scan_iG[tuple(C00)] * (1 - x0)\
+                               + scan_iG[tuple(C01)] * x0
+                            P1 = scan_iG[tuple(C10)] * (1 - x0)\
+                               + scan_iG[tuple(C11)] * x0
+                            plot[i,j] = P0 * (1 - y0) + P1 * y0a
+            else:
+                plot = scan_iG.copy()
 
             plot = plot.T # origin to the lower left corner
             self.scans['interpolated_plot'] = plot
@@ -1052,7 +1058,8 @@ class STM:
                 p0.set_xlim(tuple(extent[:2]))
                 p0.set_ylim(tuple(extent[-2:]))
         if world.rank == 0:
-            pylab.show()
+            if show == True:
+                pylab.show()
         else:
             return None
 
@@ -1453,7 +1460,7 @@ def dump_hs(calc, filename, return_hs=False):
 
     if w.rank == 0:
         efermi = calc.get_fermi_level()
-        h_kmm = h_skmm[0] 
+        h_kmm = h_skmm[0] - s_kmm * efermi
     
         for i in range(len(h_kmm)):
             remove_pbc(atoms, h_kmm[i], s_kmm[i], 2)
