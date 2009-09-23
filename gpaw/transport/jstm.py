@@ -367,8 +367,8 @@ class STM:
             self.tip_cell.shift_potential(-diff / Hartree\
                                           - (srf_efermi + tip_efermi) / 2)
 
-            diff1 = (h10[align_bf-1,align_bf-1]\
-                   - h1[align_bf-1, align_bf-1]) / s1[align_bf-1, alignbf-1]
+            diff1 = (h10[-align_bf-1, -align_bf-1]\
+                   - h1[-align_bf-1, -align_bf-1]) / s1[-align_bf-1, -align_bf-1]
             h10 -= diff1 * s10
             self.hs_aligned = True
 
