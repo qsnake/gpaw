@@ -168,7 +168,7 @@ class STM:
                                  'hs10': None,
                                  'hs2': None,
                                  'hs20': None,
-                                 'align_bf': 0,
+                                 'align_bf': 1,
                                  'cvl1': 0,
                                  'cvl2': 0,
                                  'bias': 1.0,
@@ -358,19 +358,17 @@ class STM:
             h2 = h2[cvl2:, cvl2:]
             s2 = s2[cvl2:, cvl2:]
         
-            h1 -= s1 * fermi_diff * Hartree
             # Align bfs with the surface lead as a reference
             diff = (h2[align_bf, align_bf] - h20[align_bf, align_bf]) \
                    / s2[align_bf, align_bf]
-            diff = diff.real
             h2 -= diff * s2      
             h1 -= diff * s1        
         
             self.tip_cell.shift_potential(-diff / Hartree\
                                           - (srf_efermi + tip_efermi) / 2)
 
-
-            diff1 = (h10[-1, -1] - h1[-1, -1]) / s1[-1, -1]
+            diff1 = (h10[align_bf-1,align_bf-1]\
+                   - h1[align_bf-1, align_bf-1]) / s1[align_bf-1, alignbf-1]
             h10 -= diff1 * s10
             self.hs_aligned = True
 
