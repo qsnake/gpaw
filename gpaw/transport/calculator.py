@@ -63,7 +63,7 @@ class Transport(GPAW):
                        'use_linear_vt_array',
                        'scat_restart', 'save_file', 'restart_file',
                        'non_sc', 'fixed_boundary', 'guess_steps', 'foot_print',
-                        'align_har', 'use_fd_poisson']:
+                        'align_har', 'use_fd_poisson', 'data_file']:
                 
                 del self.gpw_kwargs[key]
             #----descript the lead-----    
@@ -121,6 +121,8 @@ class Transport(GPAW):
                 p['foot_print'] = kw['foot_print']
             if key in ['use_fd_poisson']:
                 p['use_fd_poisson'] = kw['use_fd_poisson']
+            if key in ['data_file']:
+                p['data_file'] = kw['data_file']
 
             #----descript the scattering region----     
             if key in ['LR_leads']:         
@@ -219,6 +221,7 @@ class Transport(GPAW):
         self.non_sc = p['non_sc']
         self.align_har = p['align_har']
         self.use_fd_poisson = p['use_fd_poisson']
+        self.data_file = p['data_file']
         self.spinpol = p['spinpol']
         self.verbose = p['verbose']
         self.d = p['d']
@@ -282,6 +285,7 @@ class Transport(GPAW):
         p['env_bias'] = []
         p['env_restart'] = False
         p['use_fd_poisson'] = False
+        p['data_file'] = None
         
         p['LR_leads'] = True
         p['gate'] = 0
@@ -434,9 +438,15 @@ class Transport(GPAW):
 
         self.initialized_transport = True
         self.matrix_mode = 'sparse'
-        self.plot_option = None
+        if not hasattr(self, 'plot_option'):
+            self.plot_option = None
         self.ground = True
 
+    def set_energies(self, energies, lead_pairs=[[0,1]]):
+        self.plot_option = {}
+        self.plot_option['energies'] = energies
+        self.plot_option['lead_pairs'] = lead_pairs
+                 
     def get_hamiltonian_initial_guess(self):
         atoms = self.atoms.copy()
         atoms.pbc[self.d] = True
@@ -467,6 +477,7 @@ class Transport(GPAW):
                     atoms.calc.write('scat.gpw')
                 self.hamiltonian = atoms.calc.hamiltonian
                 self.density = atoms.calc.density
+                self.extended_calc.hamiltonian = self.hamiltonian
             else:
                 atoms.calc = self
                 self.recover_kpts(atoms.calc)                
@@ -874,7 +885,7 @@ class Transport(GPAW):
         
         if self.foot_print:
             self.analysor.save_bias_step()
-            self.analysor.save_data_to_file()            
+            self.analysor.save_data_to_file('bias', self.data_file)            
          
         self.scf.converged = self.cvgflag
         
@@ -893,8 +904,9 @@ class Transport(GPAW):
     def non_sc_analysis(self):
         if not hasattr(self, 'analysor'):
             self.analysor = Transport_Analysor(self, True)
+        self.analysor.save_ele_step()            
         self.analysor.save_bias_step()
-        self.analysor.save_data_to_file()
+        self.analysor.save_data_to_file('bias', self.data_file)
   
     def get_hamiltonian_matrix(self):
         self.timer.start('HamMM')            
@@ -1537,7 +1549,7 @@ class Transport(GPAW):
         self.timer.start('record')        
         if self.foot_print:
             self.analysor.save_ele_step()
-            self.analysor.save_data_to_file('ele')
+            self.analysor.save_data_to_file('ele', self.data_file)
         self.timer.stop('record')
         self.record_time_cost = self.timer.gettime('record')
         
