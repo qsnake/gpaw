@@ -525,7 +525,7 @@ class GridDescriptor(Domain):
         rho_cg = [np.sum(rho_xy, axis=1),
                   np.sum(rho_xy, axis=0),
                   np.sum(rho_xz, axis=0)]
-        d_c = np.zeros(3)
+        d_c = np.zeros(3, dtype=rho_xyz.dtype)
         for c in range(3):
             r_g = (np.arange(self.n_c[c], dtype=float) +
                    self.beg_c[c]) * self.h_c[c]
