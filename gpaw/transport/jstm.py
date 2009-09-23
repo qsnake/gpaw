@@ -717,7 +717,7 @@ class STM:
         if world.rank == 0:
             fd = open('scan_' + str(np.round(self.get_dmin(), 2)) + '_bias_'\
                                         + str(bias) + '_.pckl', 'wb')
-            pickle.dump(dmin,fullscan[0], fullscan[1]), fd, 2)
+            pickle.dump((dmin,fullscan[0], fullscan[1]), fd, 2)
             fd.close()
         
         world.barrier()       
