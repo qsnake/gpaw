@@ -5,6 +5,7 @@ from ase.parallel import paropen
 from gpaw.utilities import pack, wignerseitz
 from gpaw.setup_data import SetupData
 from gpaw.gauss import Gauss
+from gpaw.io.fmf import FMF
 
 import gpaw.mpi as mpi
 
@@ -269,26 +270,47 @@ class RawLDOS:
         """
         ldbe = self.by_element()
 
-        f = paropen(filename,'w')
+        f = paropen(filename, 'w')
+
+        def append_weight_strings(ldbe, data):
+            s = ''
+            for key in ldbe:
+                for l in 'spd':
+                    data.append(key + '(' + l + ')-weight')
+                if len(key) == 1: 
+                    key = ' ' + key
+                s +=  ' ' + key + ':s     p        d       '
+            return s
 
         wfs = self.paw.wfs
+        
         if width is None:
             # unfolded ldos
-            eu = '[eV]'
-            print >> f, '# e_i' + eu + '  spin  kpt     n   kptwght',
-            for key in ldbe:
-                if len(key) == 1: key=' '+key
-                print  >> f, ' '+key+':s     p        d      ',
-            print  >> f,' sum'
+            fmf = FMF(['Raw LDOS obtained from projector weights'])
+            print >> f, fmf.header(),
+            data = ['energy: energy [eV]',
+                    'occupation number: occ',
+                    'spin index: s',
+                    'k-point index: k',
+                    'band index: n',
+                    'k-point weight: weight']
+            string = '# e_i[eV]  occ     s     k      n   kptwght '
+            string += append_weight_strings(ldbe, data)
+            data.append('summed weights: sum')
+            string += ' sum'
+            print >> f, fmf.data(data),
+            print >> f, string
             for k in range(wfs.nibzkpts):
                 for s in range(wfs.nspins):
                     e_n = self.paw.get_eigenvalues(kpt=k, spin=s)
+                    f_n = self.paw.get_occupation_numbers(kpt=k, spin=s)
                     if e_n is None:
                         continue
                     w = wfs.weight_k[k]
                     for n in range(wfs.nbands):
                         sum = 0.0
-                        print >> f, '%10.5f %2d %5d' % (e_n[n], s, k), 
+                        print >> f, '%10.5f %6.4f %2d %5d' % (e_n[n], f_n[n], 
+                                                              s, k), 
                         print >> f, '%6d %8.4f' % (n, w),
                         for key in ldbe:
                             spd = ldbe[key][s, k, n]
@@ -298,8 +320,19 @@ class RawLDOS:
                         print >> f, '%8.4f' % sum
         else:
             # folded ldos
+            fmf = FMF(['Folded raw LDOS obtained from projector weights'])
+            print >> f, fmf.header(),
 
             gauss = Gauss(width)
+            print >> f, fmf.field('folding',
+                                  ['function: Gauss',
+                                   'width: ' + str(width) + ' [eV]']),
+
+            data = ['energy: energy [eV]',
+                    'spin index: s',
+                    'k-point index: k',
+                    'band index: n',
+                    'k-point weight: weight']
 
             # minimal and maximal energies
             emin = 1.e32
@@ -328,7 +361,12 @@ class RawLDOS:
             # set de to sample 4 points in the width
             de = width / 4
             
+            string = '# e[eV]     s  '
+            string += append_weight_strings(ldbe, data)
+
             for s in range(wfs.nspins):
+                print >> f, fmf.data(data),
+
                 print >> f, '# Gauss folded, width=%g [eV]' % width
                 if shift:
                     print >> f, '# shifted to Fermi energy = 0'
@@ -336,11 +374,7 @@ class RawLDOS:
                 else:
                     print >> f, '# Fermi energy',
                 print  >> f, efermi, 'eV'
-                print >> f, '# e[eV]  spin ',
-                for key in ldbe:
-                    if len(key) == 1: key=' '+key
-                    print  >> f, ' '+key+':s     p        d      ',
-                print  >> f
+                print >> f, string
 
                 # loop over energies
                 emax=emax+.5*de

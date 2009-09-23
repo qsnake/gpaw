@@ -53,6 +53,13 @@ class FMF:
         data += ec + '[* data]\n'
         return data
 
+    def field(self, title, entries):
+        ec = self.escape
+        res = ec + '[' + title + ']\n'
+        for entry in entries:
+            res += ec + entry + '\n'
+        return res
+
     def estimate_creator(self, creator=None):
         if creator is not None:
             self.creator = creator
