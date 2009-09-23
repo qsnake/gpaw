@@ -90,7 +90,7 @@ parser.add_option('-N', '--number-of-bands', type='int',
                   help='Number of bands / states.')
 parser.add_option('--stdout',
                   action='store_true',
-                  help="Write GPAW's output standard output.")
+                  help="Write GPAW's output to standard output.")
 
 opt, args = parser.parse_args()
 
