@@ -549,6 +549,23 @@ class PAW(PAWTextOutput):
         self.txt.flush()
         raise SystemExit
 
+    def restore_state(self):
+        """After restart, calculate fine density and poisson solution.
+
+        These are not initialized by default.
+        TODO: Is this really the most efficient way?
+        """
+        spos_ac = self.atoms.get_scaled_positions() % 1.0
+        self.density.nct.set_positions(spos_ac)
+        self.density.ghat.set_positions(spos_ac)
+        self.density.nct_G = self.gd.zeros()
+        self.density.nct.add(self.density.nct_G, 1.0 / self.density.nspins)
+        self.density.interpolate()
+        self.density.calculate_pseudo_charge(0)
+        self.hamiltonian.set_positions(spos_ac)
+        self.hamiltonian.update(self.density)
+
+
     def attach(self, function, n, *args, **kwargs):
         """Register observer function.
 
