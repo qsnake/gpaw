@@ -1,6 +1,7 @@
 from ase import *
 from gpaw import *
 from gpaw.transport.calculator import Transport
+import numpy as np
 
 a = 2.41 # Pt binding lenght
 b = 0.90 # H2 binding lenght
@@ -37,7 +38,9 @@ atoms.set_calculator(
                            lead_restart=False,
                            scat_restart=False,
                            edge_atoms=[[0, 3],[0,11]], 
+                           data_file='Pt_Ht_nsc.dat',
                            non_sc=True))
-
-atoms.calc.negf_prepare()
-atoms.calc.non_sc_analysis()
+t = atoms.calc
+t.set_energies(np.linspace(-3, 3, 61))
+t.negf_prepare()
+t.non_sc_analysis()
