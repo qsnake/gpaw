@@ -91,8 +91,8 @@ class Transport_Analysor:
             self.energies = np.linspace(ef - 3, ef + 3, 61) + 1e-4 * 1.j
             self.lead_pairs = [[0,1]]
         else:
-            self.energies = tp.plot_option['energies']
-            self.lead_pairs = tp.plot_option['lead_paris']
+            self.energies = tp.plot_option['energies'] + 1e-4 * 1.j
+            self.lead_pairs = tp.plot_option['lead_pairs']
        
     def initialize(self):
         if self.restart:
@@ -273,7 +273,10 @@ class Transport_Analysor:
         
         #tc_array, dos_array = self.collect_transmission_and_dos()
         mem_cost = maxrss()
-        time_cost = self.ele_step_time_collect()
+        if not self.tp.non_sc:  
+            time_cost = self.ele_step_time_collect()
+        else:
+            time_cost = None
         step.initialize_data(tp.bias, tp.gate, total_dd, total_df, nt, vt, rho, vHt, time_cost, mem_cost)
         
         self.ele_steps.append(step)
@@ -361,15 +364,17 @@ class Transport_Analysor:
         self.ion_steps.append(step)
         self.n_ion_step += 1
  
-    def save_data_to_file(self, flag='bias'):
+    def save_data_to_file(self, flag='bias', data_file=None):
         if flag == 'ion':
             steps = self.ion_steps
         elif flag == 'bias':
             steps = self.bias_steps
         else:
             steps = self.ele_steps
-        fd = file('analysis_data_' + flag, 'wb')
-        pickle.dump(steps, fd, 2)
+        if data_file is None:
+            data_file = 'analysis_data_' + flag
+        fd = file(data_file, 'wb')
+        pickle.dump((steps, self.energies), fd, 2)
         fd.close()
    
     def calculate_t_and_dos(self, E_range=[-6,2],
@@ -822,23 +827,26 @@ class Transport_Analysor:
         pylab.show()
           
 class Transport_Plotter:
-    def __init__(self, flag='bias'):
-        fd = file('analysis_data_' + flag, 'r')
+    def __init__(self, flag='bias', data_file=None):
+        if data_file is None:
+            data_file = 'analysis_data_' + flag
+        fd = file(data_file, 'r')
         if flag == 'ion':
-            self.ion_steps = pickle.load(fd)
+            self.ion_steps, self.energies = pickle.load(fd)
         elif flag == 'bias':
-            self.bias_steps = pickle.load(fd)
+            self.bias_steps, self.energies = pickle.load(fd)
         else:
-            self.ele_steps = pickle.load(fd)
+            self.ele_steps, self.energies = pickle.load(fd)
         fd.close()
 
-    def filter(self, n_ion_step=None, n_bias_step=0):
+    def set_ele_steps(self, n_ion_step=None, n_bias_step=0):
         if n_ion_step != None:
             self.bias_steps = self.ion_steps[n_ion_step].bias_steps
         self.ele_steps = self.bias_steps[n_bias_step].ele_steps
         
     def plot_ele_step(self, nstep, s, k):
-        ee = np.linspace(-3, 3, 61)
+        #ee = np.linspace(-3, 3, 61)
+        ee = self.energies
         step = self.ele_steps[nstep]
         import pylab as p
         p.plot(step.dd[s, k], 'b--o')
@@ -869,8 +877,8 @@ class Transport_Plotter:
         fd = file('analysis_data_cmp', 'r')
         self.ele_steps_cmp = pickle.load(fd)
         fd.close()
-        
-        ee = np.linspace(-3, 3, 61)
+        ee = self.energies
+        #ee = np.linspace(-3, 3, 61)
         step = self.ele_steps[nstep]
         step_cmp = self.ele_steps_cmp[nstep]
         
@@ -901,7 +909,8 @@ class Transport_Plotter:
        
     def plot_ele_step_info(self, info, steps_indices, s, k,
                                                      height=None, unit=None):
-        xdata = np.linspace(-3, 3, 61)
+        ee = self.energies
+        #xdata = np.linspace(-3, 3, 61)
         energy_axis = False        
         import pylab as p
         legends = []
@@ -989,7 +998,8 @@ class Transport_Plotter:
         p.show()        
 
     def compare_ele_step_info(self, info, steps_indices, s, k, height=None, unit=None):
-        xdata = np.linspace(-3, 3, 61)
+        xdata = self.energies
+        #xdata = np.linspace(-3, 3, 61)
         energy_axis = False        
         import pylab as p
         legends = []
@@ -1045,7 +1055,8 @@ class Transport_Plotter:
         p.show()
 
     def compare_bias_step_info(self, info, steps_indices, s, k, height=None, unit=None):
-        xdata = np.linspace(-3, 3, 61)
+        xdata = self.energies
+        #xdata = np.linspace(-3, 3, 61)
         energy_axis = False        
         import pylab as p
         legends = []
@@ -1164,7 +1175,8 @@ class Transport_Plotter:
             step = self.ele_steps[ele_step]
         else:
             step = self.bias_steps[bias_step].ele_steps[ele_step]            
-        xdata = np.linspace(-3, 3, 61)
+        #xdata = np.linspace(-3, 3, 61)
+        xdata = self.energies
         energy_axis = False        
         import pylab as p
         if info == 'dd':
