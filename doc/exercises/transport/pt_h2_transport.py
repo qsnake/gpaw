@@ -38,7 +38,7 @@ atoms.set_calculator(
                            lead_restart=False,
                            scat_restart=False,
                            edge_atoms=[[0, 3],[0,11]], 
-                           data_file='Pt_Ht_nsc.dat',
+                           data_file='Pt_H2_nsc.dat',
                            non_sc=True))
 t = atoms.calc
 t.set_energies(np.linspace(-3, 3, 61))
