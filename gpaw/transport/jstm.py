@@ -963,6 +963,12 @@ class STM:
                     stop = start + shape0 
                     scan1_iG[start[0]:stop[0], start[1]:stop[1]] = scan0_iG
 
+            is_orthogonal = np.round(np.trace(cell_cv)-np.sum(cell_c), 5) == 0
+            if not is_orthogonal:
+                h = [0.2, 0.2]                
+
+            h = h_c[:2]
+
             scan0_iG = scan1_iG
             shape = scan0_iG.shape
             scan_iG = np.zeros(tuple(np.asarray(shape)+1))
@@ -970,16 +976,15 @@ class STM:
             scan_iG[-1,:shape[1]] = scan0_iG[0,:]
             scan_iG[:,-1] = scan_iG[:,0]
 
-            h = 0.2         
             N_c = np.floor((cell_cv[0,:2] * repeat[0]\
-                + cell_cv[1, :2] * repeat[1]) / h).astype(int) 
+                + cell_cv[1, :2] * repeat[1]) / h[0]).astype(int) 
             ortho_cell_c = np.array(N_c * h_c[:2])
             plot = np.zeros(tuple(N_c))
 
             # is srf_cell orthogonal ?
-            is_orthogonal = np.round(np.trace(cell_cv)-np.sum(cell_c), 5) == 0
-
+           
             if not is_orthogonal:
+                h = [0.2, 0.2]         
                 # Basis change matrix
                 # e -> usual basis {(1,0),(0,1)}
                 # o -> basis descrining original original cell
@@ -1008,10 +1013,11 @@ class STM:
                                + scan_iG[tuple(C01)] * x0
                             P1 = scan_iG[tuple(C10)] * (1 - x0)\
                                + scan_iG[tuple(C11)] * x0
-                            plot[i,j] = P0 * (1 - y0) + P1 * y0a
+                            plot[i,j] = P0 * (1 - y0) + P1 * y0
             else:
                 plot = scan_iG.copy()
-
+            
+            print h
             plot = plot.T # origin to the lower left corner
             self.scans['interpolated_plot'] = plot
             if vmin == None:
@@ -1022,8 +1028,8 @@ class STM:
             self.figure1 = f0
             p0 = f0.add_subplot(111)
             x,y = ogrid[0:plot.shape[0]:1, 0:plot.shape[1]:1]
-            extent=[0, plot.shape[1] * h * Bohr,
-                    0, plot.shape[0] * h * Bohr]        
+            extent=[0, plot.shape[1] * h[1] * Bohr,
+                    0, plot.shape[0] * h[0] * Bohr]        
             
             #p0.set_ylabel('\xc5')
             #p0.set_xlabel('\xc5')
