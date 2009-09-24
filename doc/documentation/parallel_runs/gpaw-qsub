@@ -19,9 +19,6 @@ for line in open(script, 'r'):
     if line.startswith('#PBS'):
         qsub += line
 
-# Lock script until it starts running:
-os.chmod(script, 0444)
-
 qsub += """\
 import os
 import sys
@@ -62,9 +59,6 @@ elif c == 'p':
 else:
     raise RuntimeError('Unknown node type')
 """
-
-# Release script:
-qsub += "os.chmod('%s', 0644)\n" % script
 
 # Start script:
 qsub += """
