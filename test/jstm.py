@@ -47,7 +47,7 @@ calc.set(kpts=(1, 1, 1))
 tip.set_calculator(calc)
 tip.get_potential_energy()
 calc.write('tip.gpw')
-dump_hs(calc, 'tip')
+dump_hs(calc, 'tip', region='tip', cvl=2)
 
 # Surface calculation
 srf = atoms.copy()
@@ -55,13 +55,12 @@ del srf[8:]
 srf.cell[2, 2] += 10
 srf.set_calculator(calc)
 srf.get_potential_energy()
-calc.write('srf.gpw')
-dump_hs(calc, 'srf')
+calc.write('srf.gpw', region='surface', cvl=2)
+dump_hs(calc, 'srf', region='surface', cvl=2)
 
 #STM simulation
 tip = GPAW('tip')
 srf = GPAW('srf')
-lead = GPAW('lead')
 
 h0, s0 = pickle.load(open('lead_hs.pckl'))
 h1, s1 = pickle.load(open('tip_hs.pckl'))
@@ -72,9 +71,7 @@ stm = STM(tip, srf,
           hs1=(h1[0], s1[0]),
           hs2=(h2[0], s2[0]),
           hs20=(h0[0], s0[0]),
-          align_bf=0,
-          cvl1=2,
-          cvl2=2)
+          align_bf=0)
 
 stm.set(dmin=5)
 stm.initialize()
