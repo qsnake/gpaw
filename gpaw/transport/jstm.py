@@ -66,13 +66,12 @@ class LocalizedFunctions:
                 bstart_c[0]:bstop_c[0],
                 bstart_c[1]:bstop_c[1],
                 bstart_c[2]:bstop_c[2]].reshape((len(other.f_iG), -1))
-            b_iG *= other.phase
-            a_iG1 = a_iG.copy() * self.phase
+            a_iG1 = a_iG.copy()
             if self.vt_G is not None:
                 a_iG1 *= self.vt_G[start_c[0]:stop_c[0],
                                   start_c[1]:stop_c[1],
                                   start_c[2]:stop_c[2]].reshape((-1,))
-            return self.gd.dv * np.inner(a_iG1, b_iG)
+            return self.gd.dv * np.inner(a_iG1, b_iG) * self.phase * other.phase  
         else:
             return None
         
@@ -350,14 +349,11 @@ class STM:
             srf_efermi = self.srf.get_fermi_level() / Hartree
             fermi_diff = tip_efermi - srf_efermi
 
-            if cvl1 == 0: # XXX nessesary???
-                cvl1 = 1
-            
-            h1 = h1[:-cvl1, :-cvl1]
-            s1 = s1[:-cvl1, :-cvl1]
-            h2 = h2[cvl2:, cvl2:]
-            s2 = s2[cvl2:, cvl2:]
-        
+            #h1 = h1[:-cvl1, :-cvl1]
+            #s1 = s1[:-cvl1, :-cvl1]
+            #h2 = h2[cvl2:, cvl2:]
+            #s2 = s2[cvl2:, cvl2:]
+
             # Align bfs with the surface lead as a reference
             diff = (h2[align_bf, align_bf] - h20[align_bf, align_bf]) \
                    / s2[align_bf, align_bf]
@@ -1444,10 +1440,12 @@ class SrfCell:
         self.vt_G += shift
         self.energy_shift = shift
 
-def dump_hs(calc, filename, return_hs=False):
+def dump_hs(calc, filename, region, cvl=0, return_hs=False):
     """Pickle LCAO - Hamiltonian and overlap matrix for a tip or surface
     calculation.
     """
+    assert region in ['tip', 'surface', 'None']
+
     h_skmm, s_kmm = get_lcao_hamiltonian(calc)
 
     atoms = calc.atoms.copy()
@@ -1462,6 +1460,14 @@ def dump_hs(calc, filename, return_hs=False):
     
         for i in range(len(h_kmm)):
             remove_pbc(atoms, h_kmm[i], s_kmm[i], 2)
+            
+        if region == 'tip':
+            if cvl!=0:
+                h_kmm = h_kmm[:, :-cvl, :-cvl]
+                s_kmm = s_kmm[:, :-cvl, :-cvl]
+        if region == 'surface':
+            h_kmm = h_kmm[:, cvl:, cvl:]
+            s_kmm = s_kmm[:, cvl:, cvl:]
 
         fd = open(filename + '_hs.pckl', 'wb')        
         pickle.dump((h_kmm, s_kmm), fd)
@@ -1474,7 +1480,6 @@ def dump_hs(calc, filename, return_hs=False):
         if return_hs:
             return ibzk2d_kc, weight2d_k, h_kmm, s_kmm
     
-
 def dump_lead_hs(calc, filename, direction='z', return_hs=False):
     """Pickle real space LCAO - Hamiltonian and overlap matrix for a 
     periodic lead calculation.
@@ -1485,7 +1490,7 @@ def dump_lead_hs(calc, filename, direction='z', return_hs=False):
 
     if w.rank == 0:
         h_kmm = h_skmm[0] - efermi * s_kmm
-    
+     
         fd = open(filename + '_hs.pckl', 'wb')
         pickle.dump((h_kmm, s_kmm), fd, 2)
         fd.close()
