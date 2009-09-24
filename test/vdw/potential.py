@@ -32,7 +32,7 @@ def paired():
     E2 -= xc.get_energy_and_potential(n2, v)
     x2 = E2 / 0.00004
     print i, x, x2, x - x2, x / x2
-    equal(x, x2, 1e-12)
+    equal(x, x2, 5e-12)
 
 # Spin polarized:
 def polarized():
