@@ -356,9 +356,9 @@ ormance.'
         print >> f, 'mpiexec -np', cores, 
         print >> f, '-env PYTHONPATH $PYTHONPATH',
         print >> f, '-env GPAW_SETUP_PATH $GPAW_SETUP_PATH',
-        print >> f, '$GPAW_PYTHON', set['script']#,
-#        print >> f, '>', set['out']+'_$PBS_JOBID',
-#        print >> f, '2>', set['err']+'_$PBS_JOBID'
+        print >> f, '$GPAW_PYTHON', set['script'],
+        print >> f, '>', set['out']+'_$PBS_JOBID',
+        print >> f, '2>', set['err']+'_$PBS_JOBID'
 
     def sepeli(self, f, set, env):
         print >> f,"#$ -N",set['name']
