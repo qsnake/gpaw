@@ -319,7 +319,6 @@ class PAWTextOutput:
             t('Fermi Level:', Hartree * epsF)
 
         self.print_eigenvalues()
-        self.print_forces()
 
         if self.density.rhot_g is None:
             return
