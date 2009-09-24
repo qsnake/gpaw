@@ -8,8 +8,6 @@ helper functins for parallel domain decomposition.  """
 
 import numpy as np
 
-from gpaw.mpi import serial_comm
-
 
 class Domain:
     """Domain class.
