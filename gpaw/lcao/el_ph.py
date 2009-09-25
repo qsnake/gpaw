@@ -60,7 +60,7 @@ class ElectronPhononCouplingMatrix:
                 bfsd = open('data.pckl','wb')
 
             self.calc.calculate(self.atoms)
-            Vt_G = self.calc.get_effective_potential()
+            Vt_G = self.calc.get_effective_potential(pad=False)
             Vt_G = self.calc.gd.collect(Vt_G,broadcast=False)/Hartree
             dH_asp = self.calc.hamiltonian.dH_asp
             forces = self.atoms.get_forces()
@@ -83,7 +83,7 @@ class ElectronPhononCouplingMatrix:
             P_ani = pt.dict(len(phi_MG))
             pt.integrate(phi_MG,P_ani)           
             
-            dP_anix = pt.dict(len(phi_MG), derivative = True)
+            dP_anix = pt.dict(len(phi_MG), derivative=True)
             pt.derivative(phi_MG, dP_anix)
 
             if rank == 0:
@@ -113,7 +113,7 @@ class ElectronPhononCouplingMatrix:
                             fd = open('vib'+name, 'w')
                         self.atoms.positions[a,j]=p[a,j] + sign*ndis*self.delta
                         self.calc.calculate(self.atoms)
-                        Vt_G = self.calc.get_effective_potential()
+                        Vt_G = self.calc.get_effective_potential(pad=False)
                         Vt_G =self.calc.gd.collect(Vt_G,broadcast=False)/Hartree
                         print Vt_G.shape
                         dH_asp = self.calc.hamiltonian.dH_asp
