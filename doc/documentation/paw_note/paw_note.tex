@@ -106,7 +106,8 @@
 
 %
 %----------------------------SETUP OF TITLE PAGE-------------------------------
-\title{\textbf{Projector Augmented Wave Method}}
+\title{\textbf{Projector Augmented Wave Method}\\%
+  {\small Available online at \url{https://wiki.fysik.dtu.dk/gpaw/paw_note.pdf}}}
 \author{Carsten Rostgaard}
 \date{December 19, 2008}
 
@@ -1483,8 +1484,14 @@ all-electron density is given by (for a complete set of partial waves)
 
 This can be used to assign a local magnetic moment to each atom acording to
 \begin{equation*}
-  M^a = \sum_{i_1i_2} \Delta S^a_{i_1i_2} \left[ D^a_{i_1i_2}(\uparrow) - D^a_{i_1i_2}(\downarrow) \right].
+  M^a = \sum_{i_1i_2} \Delta N^a_{i_1i_2} \left[ D^a_{i_1i_2}(\uparrow) - D^a_{i_1i_2}(\downarrow) \right],
 \end{equation*}
+where $\Delta N$ is an integration over products of AE waves truncated
+to the interior of the augmentation sphere
+\begin{equation*}
+  \Delta N^a_{i_1i_2} = \int_{\br \in \Omega^a} d\br \phi_{i_1}^a(\br)\phi_{i_2}^a(\br).
+\end{equation*}
+
 Note that this will not add up to the total magnetic moment $\int d\br
 (n_\uparrow(\br) - n_\downarrow(\br))$, due to the interstitial space
 between augmentation spheres, and must be scaled if this is desired.
