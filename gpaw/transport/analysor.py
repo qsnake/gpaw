@@ -831,12 +831,22 @@ class Transport_Plotter:
         if data_file is None:
             data_file = 'analysis_data_' + flag
         fd = file(data_file, 'r')
+        data = pickle.load(fd)
         if flag == 'ion':
-            self.ion_steps, self.energies = pickle.load(fd)
+            if len(data) == 2:
+                self.ion_steps, self.energies = data
+            else:
+                self.ion_steps = data
         elif flag == 'bias':
-            self.bias_steps, self.energies = pickle.load(fd)
+            if len(data) == 2:
+                self.bias_steps, self.energies = data
+            else:
+                self.bias_steps = data
         else:
-            self.ele_steps, self.energies = pickle.load(fd)
+            if len(data) == 2:
+                self.ele_steps, self.energies = data
+            else:
+                self.ele_steps = data
         fd.close()
 
     def set_ele_steps(self, n_ion_step=None, n_bias_step=0):
