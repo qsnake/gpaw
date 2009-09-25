@@ -385,7 +385,7 @@ class FixedBoundaryPoissonSolver(PoissonSolver):
         self.b_phi2 = b_phi2[:, :, 0].reshape(-1)
    
     def solve(self, phi_g, rho_g):
-        actual_charge = self.gd.integrate(rho)
+        actual_charge = self.gd.integrate(rho_g)
         background = (actual_charge / self.gd.dv /
                       self.gd.get_size_of_global_array().prod())        
         self.solve_neutral(phi_g, rho_g - background)
@@ -394,33 +394,34 @@ class FixedBoundaryPoissonSolver(PoissonSolver):
         # b_phi1 and b_phi2 are the boundary Hartree potential values
         # of left and right sides
         d1, d2, d3 = phi_g.shape
-        phi_g.shape = (d1 * d2, d3)
+
         rho_g1 = fft2(rho_g, None, (0, 1))
         rho_g1 = rho_g1.reshape(d1 * d2, d3)
-        h = self.gd.h_c[2]
         
         phi_g2 = npy.zeros(phi_g.shape, complex) + phi_g
+        phi_g2.shape = (d1 * d2, d3)
 
         du0 = npy.zeros(d3 - 1, dtype=complex)
         du20 = npy.zeros(d3 - 2, dtype=complex)       
         
+        h2 = self.gd.h_c[2] ** 2       
         for phi, rho, rv2, bp1, bp2, i in zip(phi_g2, rho_g1,
                                            self.k_vq2,
                                            self.b_phi1,
                                            self.b_phi2, range(d1*d2)):
-            A = npy.zeros(d3, dtype=complex) + 2 + h ** 2 * rv2
-            phi = rho * npy.pi * 4 * h ** 2
+            A = npy.zeros(d3, dtype=complex) + 2 + h2 * rv2
+            phi = rho * npy.pi * 4 * h2
             phi[0] += bp1
             phi[-1] += bp2
             du = du0 - 1
             dl = du0 - 1
             du2 = du20 - 1            
             _gpaw.linear_solve_tridiag(d3, A, du, dl, du2, phi)
-            phi_g[i, :] = phi
+            phi_g2[i, :] = phi
         
-        phi_g.shape = (d1, d2, d3)
-        rho_g.shape = (d1, d2, d3)
-        phi_g[:] = ifft2(phi_g, None, (0, 1)).real
+        phi_g2.shape = (d1, d2, d3)
+        phi_g[:] = ifft2(phi_g2, None, (0, 1)).real
+
 
 
         
