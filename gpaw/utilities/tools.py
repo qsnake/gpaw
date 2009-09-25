@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def function_timer(func, *args, **kwargs):
     if 'timeout' in kwargs:
         out = kwargs.pop('timeout')
@@ -13,15 +14,18 @@ def function_timer(func, *args, **kwargs):
     print >>out, t2 - t1
     return r
 
+
 def L_to_lm(L):
     """Convert L index to (l, m) index."""
     l = int(np.sqrt(L))
     m = L - l**2 - l
     return l, m
 
+
 def lm_to_L(l, m):
     """Convert (l, m) index to L index."""
     return l**2 + l + m
+
 
 def core_states(symbol):
     """Method returning the number of core states for given element."""
@@ -40,6 +44,7 @@ def core_states(symbol):
     Njcore = j + len(core) // 2
     return Njcore
 
+
 def split_formula(formula):
     """Count elements in a chemical formula.
 
@@ -54,6 +59,7 @@ def split_formula(formula):
         else:
             res.extend([res[-1],] * (eval(c) - 1))
     return res
+
 
 def construct_reciprocal(gd):
     """Construct the reciprocal lattice vectors correspoding to the
@@ -76,6 +82,7 @@ def construct_reciprocal(gd):
     N3 = gd.n_c[0] * gd.n_c[1] * gd.n_c[2]
 
     return k2_Q, N3
+
 
 def coordinates(gd):
     """Constructs and returns matrices containing cartesian coordinates,
@@ -103,6 +110,7 @@ def coordinates(gd):
     # Return r^2 matrix
     return xyz, r2
 
+
 def pick(a_ix, i):
     """Take integer index of a, or a linear combination of the elements of a"""
     if isinstance(i, int):
@@ -110,6 +118,7 @@ def pick(a_ix, i):
     shape = a_ix.shape
     a_x = np.dot(i, a_ix[:].reshape(shape[0], -1))
     return a_x.reshape(shape[1:])
+
 
 def dagger(a, copy=True):
     """Return Hermitian conjugate of input
@@ -125,14 +134,17 @@ def dagger(a, copy=True):
             a.imag *= -1
         return a
 
+
 def project(a, b):
     """Return the projection of b onto a."""
     return a * (np.dot(a.conj(), b) / np.linalg.norm(a))
+
 
 def normalize(U):
     """Normalize columns of U."""
     for col in U.T:
         col /= np.linalg.norm(col)
+
 
 def get_matrix_index(ind1, ind2=None):
     if ind2 == None:
@@ -143,12 +155,14 @@ def get_matrix_index(ind1, ind2=None):
         dim2 = len(ind2)
     return np.resize(ind1, (dim2, dim1)).T, np.resize(ind2, (dim1, dim2))
 
+
 def gram_schmidt(U):
     """Orthonormalize columns of U according to the Gram-Schmidt procedure."""
     for i, col in enumerate(U.T):
         for col2 in U.T[:i]:
             col -= col2 * np.dot(col2.conj(), col)
         col /= np.linalg.norm(col)
+
 
 def lowdin(U, S=None):
     """Orthonormalize columns of U according to the Lowdin procedure.
@@ -161,6 +175,7 @@ def lowdin(U, S=None):
     rot = np.dot(rot / np.sqrt(eig), dagger(rot))
     U[:] = np.dot(U, rot)
 
+
 def lowdin_svd(U):
     """Orthogonalize according to the Lowdin procedure
        using singular value decomposition.
@@ -170,13 +185,15 @@ def lowdin_svd(U):
     Z, D, V = np.linalg.svd(U, full_matrices=0)
     return np.dot(Z, V)
 
+
 def symmetrize(matrix):
     """Symmetrize input matrix."""
     np.add(dagger(matrix), matrix, matrix)
     np.multiply(.5, matrix, matrix)
     return matrix
 
-def tri2full(H_nn, UL='L', symm='hermit'):
+
+def tri2full(H_nn, UL='L', map=np.conj):
     """Fill in values of hermitian or symmetric matrix.
 
     Fill values in lower or upper triangle of H_nn based on the opposite
@@ -195,10 +212,8 @@ def tri2full(H_nn, UL='L', symm='hermit'):
         H_nn = H_nn.T
 
     for n in range(N - 1):
-        if symm == 'hermit':
-            H_nn[n, n + 1:] = H_nn[n + 1:, n].conj()
-        else:
-            H_nn[n, n + 1:] = H_nn[n + 1:, n]
+        map(H_nn[n + 1:, n], H_nn[n, n + 1:])
+
 
 def apply_subspace_mask(H_nn, f_n):
     """Uncouple occupied and unoccupied subspaces.
@@ -211,10 +226,12 @@ def apply_subspace_mask(H_nn, f_n):
     while occ < nbands and f_n[occ] > 1e-3: occ += 1
     H_nn[occ:, :occ] = H_nn[:occ, occ:] = 0
 
+
 def cutoff2gridspacing(E):
     """Convert planewave energy cutoff to a real-space gridspacing."""
     from ase import Hartree, Bohr
     return np.pi / np.sqrt(2 * E / Hartree) * Bohr
+
 
 def gridspacing2cutoff(h):
     """Convert real-space gridspacing to planewave energy cutoff."""
@@ -222,6 +239,7 @@ def gridspacing2cutoff(h):
     # See PRB, Vol 54, 14362 (1996)
     from ase import Hartree, Bohr
     return 0.5 * (np.pi * Bohr / h)**2 * Hartree
+
 
 def geth(cell, h=.2, nodes=None):
     """Convert suggested gridspacing to the actual gridspacing used by gpaw.
@@ -237,6 +255,7 @@ def geth(cell, h=.2, nodes=None):
     if nodes is not None:
         from gpaw.domain import decompose_domain
         print 'Domain decomposition:', decompose_domain(N_c, nodes)
+
 
 def tridiag(a, b, c, r, u):
     """Solve linear system with tridiagonal coefficient matrix.
@@ -272,6 +291,7 @@ def tridiag(a, b, c, r, u):
         # Backward substitution
         u[i-1] -= tmp[i-1] * u[i]
 
+
 def signtrim(data, decimals=None):
     """Trim off the sign of potential zeros, usually occuring after round.
 
@@ -295,12 +315,14 @@ def signtrim(data, decimals=None):
 
     return data.reshape(shape)
 
+
 try:
     from hashlib import md5 as md5_new
     import hashlib as md5
 except ImportError:
     from md5 import new as md5_new
     import md5
+
 
 def md5_array(data, numeric=False):
     """Create MD5 hex digest from NumPy array.
@@ -340,6 +362,7 @@ def md5_array(data, numeric=False):
     else:
         return datahash.hexdigest()
 
+
 def split_nodes(length, parrank, parsize):
     """Split length over nodes.
 
@@ -352,6 +375,7 @@ def split_nodes(length, parrank, parsize):
     if parrank == parsize - 1:
         return parrank * pernode, length
     return parrank * pernode, (parrank + 1) * pernode
+
 
 class Spline:
     def __init__(self, xi, yi, leftderiv=None, rightderiv=None):

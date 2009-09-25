@@ -416,6 +416,7 @@ class WaveFunctions(EmptyWaveFunctions):
 
 
 from gpaw.lcao.overlap import TwoCenterIntegrals
+from gpaw.lcao.overlap import NewTwoCenterIntegrals as NewTCI
 from gpaw.utilities.blas import gemm, gemmdot
 if extra_parameters.get('blacs'):
     from gpaw.lcao.overlap import BlacsTwoCenterIntegrals as TwoCenterIntegrals
@@ -426,8 +427,13 @@ class LCAOWaveFunctions(WaveFunctions):
         self.S_qMM = None
         self.T_qMM = None
         self.P_aqMi = None
-        self.tci = TwoCenterIntegrals(self.gd, self.setups,
-                                      self.gamma, self.ibzk_qc)
+
+        if extra_parameters.get('usenewtci'):
+            self.tci = NewTCI(self.gd.cell_cv, self.gd.pbc_c, self.setups,
+                              self.ibzk_qc, self.gamma)
+        else:
+            self.tci = TwoCenterIntegrals(self.gd, self.setups,
+                                          self.gamma, self.ibzk_qc)
         self.basis_functions = BasisFunctions(self.gd,
                                               [setup.phit_j
                                                for setup in self.setups],
@@ -481,9 +487,36 @@ class LCAOWaveFunctions(WaveFunctions):
             kpt.P_aMi = dict([(a, P_qMi[q])
                               for a, P_qMi in self.P_aqMi.items()])
 
-        self.tci.set_positions(spos_ac)
-        self.tci.calculate(spos_ac, self.S_qMM, self.T_qMM, self.P_aqMi)
-         
+        try:
+            self.tci.set_positions(spos_ac)
+            self.tci.calculate(spos_ac, self.S_qMM, self.T_qMM, self.P_aqMi)
+        except AttributeError:
+            self.tci.calculate(spos_ac, self.S_qMM, self.T_qMM, self.P_aqMi)
+            nao = self.setups.nao
+            for a, P_qMi in self.P_aqMi.items():
+                dO_ii = np.asarray(self.setups[a].O_ii, P_qMi.dtype)
+                for S_MM, P_Mi in zip(self.S_qMM, P_qMi):
+                    dOP_iM = np.zeros((dO_ii.shape[1], nao), P_Mi.dtype)
+                    # (ATLAS can't handle uninitialized output array)
+                    gemm(1.0, P_Mi, dO_ii, 0.0, dOP_iM, 'c')
+                    gemm(1.0, dOP_iM, P_Mi, 1.0, S_MM, 'n')
+
+            comm = self.gd.comm
+            comm.sum(self.S_qMM)
+            comm.sum(self.T_qMM)
+
+        dtype=self.dtype
+        dThetadR_qvMM = np.empty((nq, 3, nao, nao), dtype)
+        dTdR_qvMM = np.empty((nq, 3, nao, nao), dtype)
+        dPdR_aqvMi = {}
+        for a in self.basis_functions.my_atom_indices:
+            ni = self.setups[a].ni
+            dPdR_aqvMi[a] = np.empty((nq, 3, nao, ni), dtype)
+        #self.timer.start('LCAO forces: tci derivative')
+        self.tci.calculate_derivative(spos_ac, dThetadR_qvMM, dTdR_qvMM,
+                                      dPdR_aqvMi)
+        #self.timer.stop('LCAO forces: tci derivative')
+
         if debug:
             from numpy.linalg import eigvalsh
             for S_MM in self.S_qMM:
