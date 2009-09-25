@@ -909,7 +909,7 @@ class Transport_Plotter:
        
     def plot_ele_step_info(self, info, steps_indices, s, k,
                                                      height=None, unit=None):
-        ee = self.energies
+        xdata = self.energies
         #xdata = np.linspace(-3, 3, 61)
         energy_axis = False        
         import pylab as p
@@ -958,7 +958,41 @@ class Transport_Plotter:
         if height != None:
             p.axis([xdata[0], xdata[-1], 0, height])
         p.show()
-        
+
+    def plot_bias_step_info(self, info, steps_indices, s, k,
+                                                     height=None, unit=None):
+        xdata = self.energies
+        #xdata = np.linspace(-3, 3, 61)
+        energy_axis = False        
+        import pylab as p
+        legends = []
+        if info == 'tc':
+            data = 'tc[s, k, 0]'
+            title = 'trasmission coefficeints'
+            energy_axis = True
+        elif info == 'dos':
+            data = 'dos[s, k]'
+            title = 'density of states'
+            energy_axis = True
+        else:
+            raise ValueError('no this info type---' + info)        
+
+        for i, step in enumerate(self.bias_steps):
+            if i in steps_indices:
+                ydata = eval('step.' + data)
+                if unit != None:
+                    ydata = sum_by_unit(ydata, unit)
+                if not energy_axis:
+                    p.plot(ydata)
+                else:
+                    p.plot(xdata, ydata)
+                legends.append('step' + str(step.bias_step))
+        p.title(title)
+        p.legend(legends)
+        if height != None:
+            p.axis([xdata[0], xdata[-1], 0, height])
+        p.show()
+
     def plot_ele_step_extended_info(self, info, steps_indices, s, k, unit=None):
         import pylab as p
         legends = []
