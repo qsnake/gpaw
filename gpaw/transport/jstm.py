@@ -71,7 +71,7 @@ class LocalizedFunctions:
                 a_iG1 *= self.vt_G[start_c[0]:stop_c[0],
                                   start_c[1]:stop_c[1],
                                   start_c[2]:stop_c[2]].reshape((-1,))
-            return self.gd.dv * np.inner(a_iG1, b_iG) * self.phase * other.phase  
+            return self.gd.dv * np.inner(a_iG1, b_iG) * self.phase * np.conj(other.phase)
         else:
             return None
         
@@ -160,6 +160,7 @@ class STM:
         self.lead2 = lead2
         self.stm_calc = None
         self.scans = {}
+        self.potential_shift = 0
 
         self.input_parameters = {'tip_atom_index': 0,
                                  'dmin': 6.0,
@@ -275,7 +276,7 @@ class STM:
         self.tip_cell = TipCell(self.tip, self.srf)
         self.tip_cell.initialize(tip_indices, tip_atom_index)
         self.ni = self.tip_cell.ni       
-        
+       
         # distribution of surface bfs over CPUs in bfs-communicator
         bcomm = self.bfs_comm
         bfs_indices = []
@@ -326,6 +327,14 @@ class STM:
         if not self.transport_uptodate:
             self.initialize_transport()            
 
+        
+        srf_efermi = self.srf.get_fermi_level() / Hartree
+        tip_efermi = self.tip.get_fermi_level() / Hartree
+
+        self.tip_cell.shift_potential(-self.potential_shift
+                                      -(srf_efermi + tip_efermi) / 2)
+
+
         self.initialized = True
 
     def initialize_transport(self, restart = False):
@@ -349,28 +358,22 @@ class STM:
             srf_efermi = self.srf.get_fermi_level() / Hartree
             fermi_diff = tip_efermi - srf_efermi
 
-            #h1 = h1[:-cvl1, :-cvl1]
-            #s1 = s1[:-cvl1, :-cvl1]
-            #h2 = h2[cvl2:, cvl2:]
-            #s2 = s2[cvl2:, cvl2:]
-
             # Align bfs with the surface lead as a reference
             diff = (h2[align_bf, align_bf] - h20[align_bf, align_bf]) \
                    / s2[align_bf, align_bf]
+
+            self.potential_shift = diff / Hartree
             h2 -= diff * s2      
             h1 -= diff * s1        
         
-            self.tip_cell.shift_potential(-diff / Hartree\
-                                          - (srf_efermi + tip_efermi) / 2)
-
-            diff1 = (h10[-align_bf-1, -align_bf-1]\
+            diff1 = (h10[-align_bf-1, -align_bf-1]
                    - h1[-align_bf-1, -align_bf-1]) / s1[-align_bf-1, -align_bf-1]
             h10 -= diff1 * s10
             self.hs_aligned = True
-
+            
         if not self.transport_uptodate:
             from ase.transport.stm import STM as STMCalc
-
+            
             #if world.rank == 0: #XXX
             T = time.localtime()
             self.log.write('\n  %d:%02d:%02d' % (T[3], T[4], T[5]) + 
@@ -397,7 +400,6 @@ class STM:
                 stop = l * (world.rank + 1) + rest
 
             energies = energies[start:stop] # energy grid on this cpu 
-
             self.log.write('%d,%s,%d,%d' % (world.rank,\
                            str((energies.min(), energies.max())),\
                             len(energies), len(self.energies)) + '\n') #XXX
@@ -424,8 +426,6 @@ class STM:
             
             self.world.barrier()
             self.log.write('rank ' + str( world.rank) + ' I passed \n') #XXX
-
-
 
     def set_tip_position(self, position_c):   
         """Positions tip atom as close as possible above the surface at 
@@ -859,21 +859,24 @@ class STM:
         else:
             start = l * world.rank + rest
             stop = l * (world.rank + 1) + rest
-
+     
         stmc = self.stm_calc
         shape1 = stmc.gft1_emm.shape[-2:]
         shape2 = stmc.gft2_emm.shape[-2:]
 
         gft1_emm = np.zeros((len(energies), ) + shape1, dtype=complex)
         gft1_emm[start:stop] = stmc.gft1_emm
+
         gft2_emm = np.zeros((len(energies), ) + shape2, dtype=complex)
         gft2_emm[start:stop] = stmc.gft2_emm
         world.sum(gft1_emm)
         world.sum(gft2_emm)
 
+        print (stmc.gft2_emm.shape, gft2_emm[start:stop].shape)
         if world.rank == 0:
             fd = open(filename, 'wb')
             pickle.dump({'p': self.input_parameters,
+                         'epot_shift': self.potential_shift,
                          'energies': energies,
                          'gft1_emm': gft1_emm,
                          'gft2_emm': gft2_emm,
@@ -881,18 +884,12 @@ class STM:
             fd.close()
         world.barrier()
 
-    def restart(self, filename): #XXX
+    def restart(self, filename):
         restart = pickle.load(open(filename))
         p = restart['p']
         self.set(**p)
-        print >> self.log, '#Restarting from restart file'
-        print >> self.log, '#   bias = ' + str(p['bias'])
-        print >> self.log, '#   de = ' + str(p['de'])
-        print >> self.log, '#   w = ' + str(p['w'])
-        self.transport_uptodate = True
-        self.initialize()
-        self.transport_uptodate = False
-
+        self.potential_shift = restart['epot_shift']
+        self.hs_aligned = True
         self.initialize_transport(restart = True) 
         energies = restart['energies'] 
         self.energies = energies.copy()
@@ -919,22 +916,9 @@ class STM:
             def __init__(self, bias):
                 self.bias = bias
         self.stm_calc.selfenergy1 = Dummy(p['bias'] * p['w'])    
-        self.stm_calc.selfenergy2 = Dummy(p['bias'] * (p['w'] - 1))    
+        self.stm_calc.selfenergy2 = Dummy(p['bias'] * (1 - p['w']))    
         self.log.flush()
         self.initialize()
-
-
-    def hs_from_paw(self): # XXX
-        p = self.input_parameters
-        h1, s1 = dump_hs(self.tip, 'hs1', return_hs = True)[-2:]   
-        h2, s2 = dump_hs(self.tip, 'hs2', return_hs = True)[-2:]   
-        h10, s10 = dump_lead_hs(self.lead1, 'hs10', return_hs = True)[-2:]
-        h20, s20 = dump_lead_hs(self.lead2, 'hs20', return_hs = True)[-2:]
-        self.set(**{'hs1': (h1[0], s1[0]),
-                        'hs2': (h2[0], s2[0]),
-                        'hs10':(h10[0], s10[0]),
-                        'hs20':(h20[0], s20[0]),
-                        'k_c': (0,0)})
 
     def read_scans_from_file(self, filename):
         scan3d = pickle.load(open(filename))
@@ -966,8 +950,8 @@ class STM:
             is_orthogonal = np.round(np.trace(cell_cv)-np.sum(cell_c), 5) == 0
             if not is_orthogonal:
                 h = [0.2, 0.2]                
-
-            h = h_c[:2]
+            else:
+                h = h_c[:2]
 
             scan0_iG = scan1_iG
             shape = scan0_iG.shape
@@ -1028,8 +1012,8 @@ class STM:
             self.figure1 = f0
             p0 = f0.add_subplot(111)
             x,y = ogrid[0:plot.shape[0]:1, 0:plot.shape[1]:1]
-            extent=[0, plot.shape[1] * h[1] * Bohr,
-                    0, plot.shape[0] * h[0] * Bohr]        
+            extent=[0, (plot.shape[1] - 1) * h[1] * Bohr,
+                    0, (plot.shape[0] - 1) * h[0] * Bohr]        
             
             #p0.set_ylabel('\xc5')
             #p0.set_xlabel('\xc5')
@@ -1091,10 +1075,12 @@ class TipCell:
 
         # size of the simulation cell in the z-direction
         m = 0
+        print tip_indices
         for a, setup in enumerate(self.tip.wfs.setups):
             if a in tip_indices:
+                print world.rank, tip_indices,m,a,tip_zmin_a.shape
                 rcutmax = max([phit.get_cutoff() for phit in setup.phit_j])
-                tip_zmin_a[m] = tip_pos_av[a, 2] - rcutmax - tip_zmin
+                tip_zmin_a[m] = tip_pos_av[m, 2] - rcutmax - tip_zmin
                 m+=1
         p=2
         zmax_index = np.where(tip_pos_av[:, 2] == tip_pos_av[:, 2].max())[0][0]
@@ -1143,7 +1129,7 @@ class TipCell:
         else:
             dointerpolate = False
             newsize2_c = tgd.N_c.copy()
-            vt_sG = self.tip.hamiltonian.vt_sG
+            vt_sG = self.tip.hamiltonian.vt_sG.copy()
             vt_sG = self.tip.gd.collect(vt_sG, broadcast=True)
             vt_G = vt_sG[0]
             vt_G = vt_G[:, :, cell_zmin_grpt:cell_zmax_grpt]
@@ -1242,7 +1228,7 @@ class TipCell:
            Outside the unitcell of the original tip calculation 
            the effective potential is set to zero"""
 
-        vt_sG0 = self.tip.hamiltonian.vt_sG
+        vt_sG0 = self.tip.hamiltonian.vt_sG.copy()
         vt_sG0 = self.tip.gd.collect(vt_sG0, broadcast = True)        
         vt_G0 = vt_sG0[0]
         vt_G0 = vt_G0[:, :, self.cell_zmin_grpt:self.cell_zmax_grpt]
@@ -1310,7 +1296,7 @@ class SrfCell:
     def initialize(self, tip_cell, srf_indices, bfs_indices, k_c):
         self.srf_indices = srf_indices
         # determine the extended unitcell
-        srf_vt_sG = self.srf.hamiltonian.vt_sG
+        srf_vt_sG = self.srf.hamiltonian.vt_sG.copy()
         srf_vt_sG = self.srf.gd.collect(srf_vt_sG, broadcast = True)
         srf_vt_G = srf_vt_sG[0]        
 
@@ -1446,11 +1432,18 @@ class SrfCell:
         self.vt_G += shift
         self.energy_shift = shift
 
-def dump_hs(calc, filename, region, cvl=0, return_hs=False):
+def dump_hs(calc, filename, region, cvl=0, direction= 'z', return_hs=False):
     """Pickle LCAO - Hamiltonian and overlap matrix for a tip or surface
     calculation.
-    """
+    """    
     assert region in ['tip', 'surface', 'None']
+    if calc.wfs.S_qMM is None:
+        calc.initialize(calc.atoms)
+        calc.initialize_positions(calc.atoms)
+
+
+    dir = 'xyz'.index(direction)
+
 
     h_skmm, s_kmm = get_lcao_hamiltonian(calc)
 
@@ -1465,7 +1458,7 @@ def dump_hs(calc, filename, region, cvl=0, return_hs=False):
         h_kmm = h_skmm[0] - s_kmm * efermi
     
         for i in range(len(h_kmm)):
-            remove_pbc(atoms, h_kmm[i], s_kmm[i], 2)
+            remove_pbc(atoms, h_kmm[i], s_kmm[i], dir)
             
         if region == 'tip':
             if cvl!=0:
@@ -1476,11 +1469,11 @@ def dump_hs(calc, filename, region, cvl=0, return_hs=False):
             s_kmm = s_kmm[:, cvl:, cvl:]
 
         fd = open(filename + '_hs.pckl', 'wb')        
-        pickle.dump((h_kmm, s_kmm), fd)
+        pickle.dump((h_kmm, s_kmm), fd, 2)
         fd.close()
     
         fd = open(filename + '_data.pckl', 'wb')        
-        pickle.dump((ibzk2d_kc, weight2d_k), fd)
+        pickle.dump((ibzk2d_kc, weight2d_k), fd, 2)
         fd.close()
     
         if return_hs:
