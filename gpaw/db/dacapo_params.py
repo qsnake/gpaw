@@ -48,6 +48,7 @@ class dacapo_info(params.params):
             'ase_dir':{"xml_name":'ase_dir'},
             'ase_version':{"xml_name":'ase_version'},
             'numpy_dir':{"xml_name":'numpy_dir'},
+            'nc_file':{"xml_name":'nc_file'},
             'gpaw_dir':{"xml_name":'gpaw_dir'},
             'gpaw_version':{"xml_name":'gpaw_version'},
             'units':{"xml_name":'units'},

@@ -21,7 +21,7 @@ class Writer:
 
         #0st write the user arguments, if present
         for k in kwargs.keys():
-            w[k] = kwargs[k]
+            w._set_internal(k, kwargs[k])
 
 
         #1st we write the parameters that can be

@@ -101,11 +101,28 @@ class Writer:
 
 
     def set(self, name, value, unit=None):
+        """
+        adds a name-value pair (name = value), if
+        the filter accepts it.
+        """
         if not self.params.has_key(name):
            #print "Key \""+name+"\" is unknown or marked to be ignored and therefor not written."
            return
 
-        import Numeric 
+        self._set_internal(name, value, unit)
+
+    def _set_internal(self, name, value, unit=None):
+        """
+        adds a name-value pair (name = value), but
+        does not check if it is accepted by the filter
+        """
+        if self.params.has_key(name):
+            user_value=False
+        else:
+            user_value=True
+
+        import Numeric
+        
         #for array types use fill
         #numpy.ndarray
         if type(value)==type(Numeric.array([])):
@@ -132,8 +149,12 @@ class Writer:
            t = ' pythontype="%s"'%self.get_type(value)
         else:
            t = ''
-        self.xml1 += ['  <parameter %-20s value="%s"%s/>' %
+        if not user_value:
+           self.xml1 += ['  <parameter %-20s value="%s"%s/>' %
                         ('name="%s"' % self.params[name]["xml_name"], value, u+t)]
+        else:
+           self.xml1 += ['  <parameter %-20s value="%s"%s/>' %
+                        ('name="%s"' % name, value, u+t)]
         
 
     # @return gets the type as a string without the <' 
@@ -256,7 +277,7 @@ class Writer:
            #write all user-keywords to the file
            for k in kwargs.keys():
               if kwargs.get('desc') is not None:
-                 self[k] = kwargs.get(k)
+                 self._set_internal(k, kwargs.get(k), None)
 
 
     def close_array(self):
