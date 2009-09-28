@@ -63,7 +63,7 @@ class Transport(GPAW):
                        'use_linear_vt_array',
                        'scat_restart', 'save_file', 'restart_file',
                        'non_sc', 'fixed_boundary', 'guess_steps', 'foot_print',
-                        'align_har', 'use_fd_poisson', 'data_file']:
+                        'align_har', 'use_fd_poisson', 'data_file', 'neintmethod']:
                 
                 del self.gpw_kwargs[key]
             #----descript the lead-----    
@@ -95,6 +95,8 @@ class Transport(GPAW):
                 p['bias'] = kw['bias']                
             if key in ['lead_restart']:
                 p['lead_restart'] = kw['lead_restart']
+            if key in ['neintmethod']:
+                p['neintmethod'] = kw['neintmethod']
 
             #----descript the environment----   
             if key in ['use_env']:
@@ -217,6 +219,7 @@ class Transport(GPAW):
         self.foot_print = p['foot_print']
         self.save_file = p['save_file']
         self.restart_file = p['restart_file']
+        self.neintmethod = p['neintmethod']
         self.fixed = p['fixed_boundary']
         self.non_sc = p['non_sc']
         self.align_har = p['align_har']
@@ -286,6 +289,7 @@ class Transport(GPAW):
         p['env_restart'] = False
         p['use_fd_poisson'] = False
         p['data_file'] = None
+        p['neintmethod'] = 0
         
         p['LR_leads'] = True
         p['gate'] = 0
@@ -990,7 +994,8 @@ class Transport(GPAW):
     def initialize_scf(self):
         self.intctrl = IntCtrl(self.occupations.kT * Hartree,
                                 self.lead_fermi, self.bias,
-                                self.env_bias, self.min_energy)            
+                                self.env_bias, self.min_energy,
+                                self.neintmethod)            
         self.surround.reset_bias(self.bias) 
         self.initialize_green_function()
         self.calculate_integral_path()
