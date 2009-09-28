@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# Emacs: treat this as -*- python -*-
 import os
 import gc
 import sys
@@ -70,4 +69,3 @@ if mpi.rank == 0:
         open('failed-tests.txt', 'w').write('\n'.join(failed) + '\n')
     else:
         os.system('rm -rf ' + tmpdir)
-

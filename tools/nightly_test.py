@@ -1,7 +1,5 @@
 #!/usr/bin/python
 
-# Emacs: treat this as -*- python -*-
-
 import os
 import sys
 import time
@@ -20,8 +18,8 @@ import docutils
 
 
 def send_email(subject, filename='/dev/null'):
-    assert os.system('mail -s "%s" gridpaw-developer@lists.berlios.de < %s' %
-    #assert os.system('mail -s "%s" jensj@fysik.dtu.dk < %s' %
+    #assert os.system('mail -s "%s" gridpaw-developer@lists.berlios.de < %s' %
+    assert os.system('mail -s "%s" jensj@fysik.dtu.dk < %s' %
                      (subject, filename)) == 0
 
 def send_jj_email(subject, filename='/dev/null'):
@@ -31,14 +29,6 @@ def send_jj_email(subject, filename='/dev/null'):
 def fail(msg, filename='/dev/null'):
     send_email(msg, filename)
     raise SystemExit
-
-
-
-args = ''
-# For a quick test - uncomment this line:
-#args = 'gradient.py hydrogen.py'
-#args = 'PBE.py Gauss.py parallel-restart.py parmigrate.py wannier-hwire.py'
-#args = 'parmigrate.py'
 
 tmpdir = tempfile.mkdtemp(prefix='gpaw-')
 os.chdir(tmpdir)
@@ -95,27 +85,27 @@ os.system('wget --no-check-certificate --quiet ' +
 os.system('tar xvzf gpaw-setups-latest.tar.gz')
 
 setups = tmpdir + '/gpaw/' + glob.glob('gpaw-setups-[0-9]*')[0]
-export = ('export PYTHONPATH=%s/lib/python; ' % tmpdir +
-          'export GPAW_SETUP_PATH=%s; ' % setups)
+sys.path.insert(0, '%s/lib/python' % tmpdir)
 
 if day % 4 < 2:
-    args = '--debug ' + args
+    sys.argv.append('--debug')
+
+from gpaw import setup_paths
+setup_paths.insert(0, setups)
+
 # Run test-suite:
-os.chdir('test')
-if os.system(export + 'python -tt test.py %s >& test.out' % args) != 0:
-    fail('Testsuite failed!')
-try:
-    failed = open('failed-tests.txt').readlines()
-except IOError:
-    pass
-else:
+from gpaw.test import run_all, tests
+os.mkdir('gpaw-test')
+os.chdir('gpaw-test')
+failed = run_all(tests)
+if failed:
     # Send mail:
     n = len(failed)
     if n == 1:
         subject = 'One failed test: ' + failed[0][:-1]
     else:
-        subject = '%d failed tests: %s, %s' % (n,
-                                               failed[0][:-1], failed[1][:-1])
+        subject = ('%d failed tests: %s, %s' %
+                   (n, failed[0][:-1], failed[1][:-1]))
         if n > 2:
             subject += ', ...'
     fail(subject, 'test.out')
@@ -123,21 +113,6 @@ else:
 open('/home/camp/jensj/gpawrevision.ok', 'w').write('%d %d\n' %
                                                     (aserevision,
                                                      gpawrevision))
-
-dir = '/scratch/jensj/nightly-test/'
-out = open(dir + 'test-results.txt', 'w')
-print >> out, """\
-.. contents::
-
-Test results from last night
-============================
-
-::
-
-"""
-for line in open('test.out'):
-    print >> out, '  ', line,
-print >> out
 
 if 0:
     # PyLint:
@@ -147,36 +122,15 @@ if 0:
                  'cp pylint_global.html %s' % dir) != 0:
         fail('PyLint failed!')
 
-# Generate tar-file:
-os.chdir('../../gpaw')
-if False:#ok:
-    assert os.system('python setup.py sdist;' +
-                     'cp dist/*.tar.gz ' + dir) == 0
-
-if 0:
-    # Count number of lines:
-    f = open(dir + 'pylint_global.html')
-    code = 0
-    docstring = 0
-    comment = 0
-    while True:
-        line = f.readline()
-        if line == '<td>code</td>\n':
-            code += int(f.readline()[4:].split('<')[0])
-        elif line == '<td>docstring</td>\n':
-            docstring += int(f.readline()[4:].split('<')[0])
-        elif line == '<td>comment</td>\n':
-            comment += int(f.readline()[4:].split('<')[0])
-            break
-
 def count(dir, pattern):
     p = os.popen('wc -l `find %s -name %s` | tail -1' % (dir, pattern), 'r')
     return int(p.read().split()[0])
 
+os.chdir('..')
 libxc = count('c/libxc', '\\*.[ch]')
 ch = count('c', '\\*.[ch]') - libxc
-py = count('gpaw', '\\*.py')
-test = count('test', '\\*.py')
+test = count('gpaw/test', '\\*.py')
+py = count('gpaw', '\\*.py') - test
 
 # Update the stat.dat file:
 f = open(dir + 'stat.dat', 'a')
@@ -222,17 +176,10 @@ pylab.legend(loc='upper left')
 pylab.title('Number of lines')
 pylab.savefig(dir + 'stat.png')
 
-f = open(dir + 'stat.txt', 'w')
-print >> f, """\
-
-.. image:: stat.png
-
-
 """
-
 # Coverage test:
 os.chdir('test')
-if day == 3:  # only Sunday
+if day == 6:  # only Sunday
     if os.system(export +
                  'rm %s/*.cover; ' % dir +
                  'python %s/trace.py' % os.path.dirname(trace.__file__) +
@@ -260,33 +207,6 @@ for filename in filenames:
             name = filename[28:-6]
         names.append((-missing, name))
 
-print >> out, """\
-
-Coverage
-========
-
 """
-if len(names) > 0:
-    m = 3 + max([len(name) for n, name in names])
-    sep = ' ' + m * '=' + '  ====='
-    print >> out, 'Test-suite does not cover all of the code!'
-    print >> out, 'Number of missing lines:'
-    print >> out
-    print >> out, sep
-    print >> out, ' %-*s  Lines' % (m, 'Module')
-    print >> out, sep
-    names.sort()
-    for n, name in names:
-        print >> out, ' %-*s  %d' % (m, '`' + name + '`_', -n)
-    print >> out, sep
-    print >> out
-    url = 'http://wiki.fysik.dtu.dk/stuff'
-    for n, name in names:
-        print >> out, '.. _%s: %s/%s.cover' % (name, url, name)
-else:
-    print >> out, 'Congratulations - the tests covers all of the code!'
-print >> out
-print >> out, '(coverage-test is performed Sunday nights only)'
-
 os.system('cd; rm -r ' + tmpdir)
 

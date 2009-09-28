@@ -44,7 +44,6 @@ else:
     args = ''
     
 # Run test-suite:
-os.chdir('test')
 if os.system('source /home/camp/modulefiles.sh; ' +
              'module load NUMPY; ' +
              'module load openmpi/1.3.3-1.el5.fys.gfortran43.4.3.2; ' +
@@ -52,7 +51,7 @@ if os.system('source /home/camp/modulefiles.sh; ' +
              'export GPAW_SETUP_PATH=%s; ' % setups +
              'mpiexec -np %d ' % cpus +
              tmpdir + '/bin/gpaw-python ' +
-             'test.py -u %s >& test.out' % args) != 0:
+             'tools/gpaw-test %s >& test.out' % args) != 0:
     fail('Testsuite failed!')
 
 try:

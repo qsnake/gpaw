@@ -254,3 +254,4 @@ def run_all(tests, jobs=1):
     failed = [test.filename for test, msg in result.failures + result.errors]
     sys.stdout = sys.__stdout__
     return failed
+
