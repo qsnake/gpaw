@@ -30,7 +30,7 @@ else:
     shapeopt = None
 
 if partest:
-    from gpaw.testing.parunittest import ParallelTestCase as TestCase, \
+    from gpaw.test.parunittest import ParallelTestCase as TestCase, \
         ParallelTextTestRunner as TextTestRunner, ParallelTextTestRunner as \
         CustomTextTestRunner, defaultParallelTestLoader as defaultTestLoader
     def CustomTextTestRunner(logname, verbosity=1):

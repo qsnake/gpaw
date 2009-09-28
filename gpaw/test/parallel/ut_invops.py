@@ -24,7 +24,7 @@ from gpaw.pair_overlap import GridPairOverlap, ProjectorPairOverlap
 
 # -------------------------------------------------------------------
 
-from gpaw.testing.ut_common import ase_svnrevision, shapeopt, TestCase, \
+from gpaw.test.ut_common import ase_svnrevision, shapeopt, TestCase, \
     TextTestRunner, CustomTextTestRunner, defaultTestLoader, \
     initialTestLoader, create_random_atoms, create_parsize_maxbands
 

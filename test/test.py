@@ -290,7 +290,7 @@ for test in exclude:
 import gpaw.mpi as mpi
 
 if opt.new_unittest:
-    from gpaw.testing.parunittest import ParallelTestCase as TestCase, \
+    from gpaw.test.parunittest import ParallelTestCase as TestCase, \
         _ParallelTextTestResult as _TextTestResult, ParallelTextTestRunner as \
         TextTestRunner, ParallelTestSuite as TestSuite
 else:
@@ -376,6 +376,7 @@ if opt.dry:
 
 ts = TestSuite()
 for test in tests:
+    test = '../gpaw/test/' + test.replace('-', '_')
     ts.addTest(ScriptTestCase(filename=test))
 
 from gpaw.utilities import devnull

@@ -5,8 +5,8 @@ import time
 import numpy as np
 
 from gpaw.mpi import world
-from gpaw.testing.parunittest import ParallelTestCase, ParallelTextTestRunner, \
-                                     defaultParallelTestLoader, main
+from gpaw.test.parunittest import ParallelTestCase, ParallelTextTestRunner, \
+     defaultParallelTestLoader, main
 
 # ------------------------------------------------------------------
 

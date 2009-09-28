@@ -57,39 +57,13 @@ packages = ['gpaw',
             'gpaw.mpi',
             'gpaw.pes',
             'gpaw.tddft',
+            'gpaw.test',
+            'gpaw.test.parallel',
+            'gpaw.test.vdw',
             'gpaw.testing',
             'gpaw.transport',
             'gpaw.utilities'
             ]
-
-if 0:
-    examples_files = glob('examples/*')
-    # subdirectories must not be referenced directly
-    for dir_to_remove in ['examples/exercises', 'examples/tutorials']:
-        if dir_to_remove in examples_files:
-            examples_files.remove(dir_to_remove)
-            examples_exercises_files = glob('examples/exercises/*')
-            examples_tutorials_files = glob('examples/tutorials/*')
-
-test_files = glob('test/*')
-# subdirectories must not be referenced directly
-for dir_to_remove in ['test/analyse', 'test/parallel', 'test/long',
-                      'test/gllb', 'test/vdw', 'test/problems']:
-    if dir_to_remove in test_files:
-        test_files.remove(dir_to_remove)
-test_analyse_files = glob('test/analyse/*')
-test_parallel_files = glob('test/parallel/*')
-test_vdw_files = glob('test/vdw/*')
-
-data_files=[
-    #('share/gpaw/examples', examples_files),
-    #('share/gpaw/examples/exercises', examples_exercises_files),
-    #('share/gpaw/examples/tutorials', examples_tutorials_files),
-    ('share/gpaw/test', test_files),
-    ('share/gpaw/test/analyse', test_analyse_files),
-    ('share/gpaw/test/parallel', test_parallel_files),
-    ('share/gpaw/test/vdw', test_vdw_files)
-    ]
 
 include_ase = False
 if '--include-ase' in sys.argv:
@@ -216,7 +190,8 @@ extension = Extension('_gpaw',
                       extra_objects=extra_objects)
 
 scripts = [join('tools', script)
-           for script in ('gpaw', 'gpaw-setup', 'gpaw-basis', 'gpaw-mpisim')]
+           for script in ('gpaw', 'gpaw-test', 'gpaw-setup', 'gpaw-basis',
+                          'gpaw-mpisim')]
 
 write_configuration(define_macros, include_dirs, libraries, library_dirs,
                     extra_link_args, extra_compile_args,
@@ -234,7 +209,6 @@ setup(name = 'gpaw',
       platforms=['unix'],
       packages=packages,
       ext_modules=[extension],
-      data_files=data_files,
       scripts=scripts,
       long_description=long_description,
       )
@@ -242,12 +216,14 @@ setup(name = 'gpaw',
 
 if custom_interpreter:
     scripts.append('build/bin.%s/' % plat + 'gpaw-python')
-    error, par_msg = build_interpreter(define_macros, include_dirs, libraries,
-                             library_dirs, extra_link_args, extra_compile_args,
-                             runtime_library_dirs, extra_objects,
-                             mpicompiler, mpilinker, mpi_libraries, mpi_library_dirs,
-                             mpi_include_dirs,
-                             mpi_runtime_library_dirs, mpi_define_macros)
+    error, par_msg = build_interpreter(
+        define_macros, include_dirs, libraries,
+        library_dirs, extra_link_args, extra_compile_args,
+        runtime_library_dirs, extra_objects,
+        mpicompiler, mpilinker, mpi_libraries,
+        mpi_library_dirs,
+        mpi_include_dirs,
+        mpi_runtime_library_dirs, mpi_define_macros)
     msg += par_msg
     # install also gpaw-python
     if 'install' in sys.argv and error == 0:

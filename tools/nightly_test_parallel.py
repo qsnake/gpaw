@@ -71,4 +71,4 @@ else:
             subject += ', ...'
     fail(subject, 'test.out')
 
-#os.system('cd; rm -r ' + tmpdir)
+os.system('cd; rm -r ' + tmpdir)
