@@ -123,15 +123,15 @@ class ElectronPhononCouplingMatrix:
                             pickle.dump(forces,fd)
                             vd.close()
                             fd.close()
-                        self.atoms.positions[a,j]=p[a,j]
+                        self.atoms.positions[a, j] = p[a, j]
         self.atoms.set_positions(p)
     
     def get_gradient(self):
         """Calculates gradient"""
-        nx = len(self.indices)*3	
-        veqt_G, dHeq_asp = pickle.load(open(self.name+'.eq.pckl'))
+        nx = len(self.indices) * 3	
+        veqt_G, dHeq_asp = pickle.load(open(self.name + '.eq.pckl'))
         gpts = veqt_G.shape 
-        dvt_Gx = npy.zeros(gpts+(nx,)) 
+        dvt_Gx = npy.zeros(gpts + (nx, )) 
         ddH_aspx = {}
         for a, dH_sp in dHeq_asp.items():
             ddH_aspx[a] = npy.empty(dH_sp.shape + (nx,))
@@ -152,20 +152,23 @@ class ElectronPhononCouplingMatrix:
                     dvt_Gx[:,:,:,x] = dvtdx_G
                     for atom, ddH_spx in ddH_aspx.items():
                         ddH_aspx[atom][:,:,x] =(-dHpp_asp[atom]
-                                                +8.0*dHp_asp[atom]
-                                                -8.0*dHm_asp[atom]
-                                                +dHmm_asp[atom])/(12*self.delta/Bohr)
+                                                +8.0 * dHp_asp[atom]
+                                                -8.0 * dHm_asp[atom]
+                                                +dHmm_asp[atom]) / (12 * self.delta / Bohr)
                 else: # nfree = 2
-                    dvtdx_G = (vtp_G-vtm_G)/(2*self.delta/Bohr)
+                    dvtdx_G = (vtp_G - vtm_G) / (2 * self.delta / Bohr)
                     dvt_Gx[:,:,:,x] = dvtdx_G
                     for atom, ddH_spx in ddH_aspx.items():
                         ddH_aspx[atom][:, :, x] = (dHp_asp[atom]
-                                    -dHm_asp[atom])/(2 * self.delta/Bohr)
+                                    -dHm_asp[atom]) / (2 * self.delta / Bohr)
                 x+=1
         return dvt_Gx, ddH_aspx
 
     def get_Mlii(self, modes, vtonly = False):
-        """bla bla.
+        """Note that modes must be given as a dictionary with mode
+           frequencies in eV and corresponding mode vectors in units of 1/sqrt(amu), 
+           where amu = 1.6605402e-27 Kg is an atomic mass unit.    
+           In short frequencies and mode vectors must be given in ase units.
 
         ::
         
@@ -192,12 +195,22 @@ class ElectronPhononCouplingMatrix:
                               a,ij
 
         """
- 
+
+        #convert to atomic units
+        for i in range(len(modes.keys())):        
+            modes.keys()[i] /= Hartree
+
+        amu = 1.6605402e-27 # atomic unit mass [Kg]
+        me = 9.1093897e-31  # electron mass    [Kg]
+
+        for f, mode in modes.items(): # unit of mass is  mass me
+            modes[f] *= 1/ np.sqrt(amu / me)       
+
         d  = pickle.load(open('data.pckl')) # bfs
         phi_MG = d['phi_MG']
         dv = d['dv']
         dvt_Gx, ddH_aspx = self.get_gradient()
-        dim =len(phi_MG)
+        dim = len(phi_MG)
         M_lii = {}
         for f, mode in modes.items():
             mo = []    
@@ -205,23 +218,23 @@ class ElectronPhononCouplingMatrix:
             for a in self.indices:
                 mo.append(mode[a])
             mode = np.asarray(mo).flatten()
-            dvtdP_G = np.dot(dvt_Gx,mode)   
+            dvtdP_G = np.dot(dvt_Gx, mode)   
         # calculate upper part of the coupling matrix. The integrations
         # should be done like this to avoid memory problems for larger
         # systems
             for i in range(dim): 
-                for j in range(i,dim):
-                    phi_i = np.expand_dims(phi_MG[i],axis=0)
-                    phi_j = np.expand_dims(phi_MG[j],axis=0)
-                    dvdP_ij = np.zeros((1,1),dtype=phi_i.dtype)
-                    r2k(.5*dv,phi_i,dvtdP_G*phi_j,0.,dvdP_ij)
-                    M_ii[i,j]=dvdP_ij[0,0] 
+                for j in range(i, dim):
+                    phi_i = np.expand_dims(phi_MG[i], axis=0)
+                    phi_j = np.expand_dims(phi_MG[j], axis=0)
+                    dvdP_ij = np.zeros((1, 1), dtype = phi_i.dtype)
+                    r2k(.5*dv, phi_i, dvtdP_G * phi_j, 0., dvdP_ij)
+                    M_ii[i, j] = dvdP_ij[0, 0] 
             tri2full(M_ii,'U')
             M_lii[f]=M_ii               
            
         if vtonly:
             for mode, M_ii in M_lii.items():
-                M_lii[mode]*=Hartree/Bohr
+                M_lii[mode] *= Hartree / Bohr
             
             return M_lii
 
@@ -258,27 +271,33 @@ class ElectronPhononCouplingMatrix:
 
         for f, mode in modes.items():
             for a, dP_nix in dP_anix.items():
-                dPdP_ni = npy.dot(dP_nix,mode[a])
+                dPdP_ni = npy.dot(dP_nix, mode[a])
                 dH_ii = unpack2(dH_asp[a][0])    
-                dPdP_MM = dots(dPdP_ni,dH_ii,P_ani[a].T) 
-                Mb_lii[f]+=dPdP_MM + dPdP_MM.T           
-        
-        
-        for mode, M_ii in M_lii.items():
-            M_lii[mode]*=Hartree/Bohr
-            Ma_lii[mode]*=Hartree/Bohr
-            Mb_lii[mode]*=Hartree/Bohr
-        
+                dPdP_MM = dots(dPdP_ni, dH_ii, P_ani[a].T) 
+                Mb_lii[f] -= dPdP_MM + dPdP_MM.T 
+                # XXX The minus sign here is quite subtle. It is related to how 
+                # the derivative of projector functions in GPAW is calculated.
+                # More thorough explanations, anyone...?
+                
+        # Units of M_lii are Hartree/(Bohr * sqrt(m_e))
         for mode in M_lii.keys():
             M_lii[mode] += Ma_lii[mode] + Mb_lii[mode]
 
+        # conversion to eV. The prefactor 1 / sqrt(hb^2 / 2 * hb * f) has units Bohr * sqrt(me)
+        for f in M_lii.keys():
+            M_lii[f] *= 1 / np.sqrt(2 * f) * Hartree
+
+        for i in range(len(M_lii.keys())):
+            M_lii.keys()[i] *= Hartree
+
+
         return M_lii
 
-        
-
     def get_Mlii2(self, modes, atoms, calc, vtonly=True):
-        """bla bla ..
-        
+        """XXX
+           In the future this function should replace get_Mlii. It
+           should be more efficient since it avoids putting the basis functions
+           on the grid
         ::
         
                   d                   d  ~
@@ -317,17 +336,17 @@ class ElectronPhononCouplingMatrix:
         M_lii = {}
         for f, mode in modes.items():
             mo = []    
-            M_ii=np.zeros((nao,nao))
+            M_ii=np.zeros((nao, nao))
             for a in self.indices:
                 mo.append(mode[a])
             mode = np.asarray(mo).flatten()
-            dvtdP_G = np.dot(dvt_Gx,mode)   
-            bfs.calculate_potential_matrix(dvtdP_G,M_ii,q=0)
-            tri2full(M_ii,'L')
-            M_lii[f]=M_ii               
+            dvtdP_G = np.dot(dvt_Gx, mode)   
+            bfs.calculate_potential_matrix(dvtdP_G, M_ii, q=0)
+            tri2full(M_ii, 'L')
+            M_lii[f] = M_ii               
            
         if vtonly:
             for mode, M_ii in M_lii.items():
-                M_lii[mode]*=Hartree/Bohr
+                M_lii[mode] *= Hartree / Bohr
             
             return M_lii
