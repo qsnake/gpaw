@@ -885,7 +885,7 @@ class Transport_Plotter:
         
     def compare_two_calculations(self, nstep, s, k):
         fd = file('analysis_data_cmp', 'r')
-        self.ele_steps_cmp = pickle.load(fd)
+        self.ele_steps_cmp, self.energies_cmp = pickle.load(fd)
         fd.close()
         ee = self.energies
         #ee = np.linspace(-3, 3, 61)
