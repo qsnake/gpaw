@@ -1543,9 +1543,6 @@ class Transport(GPAW):
         self.update_density()
         self.update_hamiltonian()
         
-        if self.use_linear_vt_array:
-            self.hamiltonian.vt_sG += self.get_linear_potential()
-        
         self.timer.start('record')        
         if self.foot_print:
             self.analysor.save_ele_step()
@@ -1708,21 +1705,28 @@ class Transport(GPAW):
         if not self.fixed and hasattr(self, 'step'):
             self.hamiltonian.vHt_g += self.linear_vHt_g
         
-        vHt_g = self.extended_calc.finegd.collect(ham.vHt_g, True)    
-        vHt_g0 = self.finegd.collect(self.hamiltonian.vHt_g, True)
+        
+        vHt_g = self.extended_calc.finegd.collect(ham.vHt_g)    
+        vHt_g0 = self.finegd.collect(self.hamiltonian.vHt_g)
+        if self.finegd.comm.rank == 0:
+            if hasattr(self, 'step') and self.ground:
+                if self.align_har == -1:
+                    ham_diff = np.sum(vHt_g[:,:,0]) - np.sum(vHt_g0[:,:,0])
+                elif self.align_har == 1:
+                    ham_diff = np.sum(vHt_g[:,:,1]) - np.sum(vHt_g0[:,:,1])
+                else:
+                    ham_diff = np.sum(vHt_g[:,:,0]) - np.sum(vHt_g0[:,:,0])            
+                    ham_diff += np.sum(vHt_g[:,:,1]) - np.sum(vHt_g0[:,:,1])
+                    ham_diff /= 2
+                ham_diff /= np.product(vHt_g.shape[:2])            
+                self.ham_diff = np.array(ham_diff)
+        else:
+            if hasattr(self, 'step') and self.ground:
+                self.ham_diff = np.zeros([1])
 
-        if hasattr(self, 'step') and self.ground:
-            if self.align_har == -1:
-                ham_diff = np.sum(vHt_g[:,:,0]) - np.sum(vHt_g0[:,:,0])
-            elif self.align_har == 1:
-                ham_diff = np.sum(vHt_g[:,:,1]) - np.sum(vHt_g0[:,:,1])
-            else:
-                ham_diff = np.sum(vHt_g[:,:,0]) - np.sum(vHt_g0[:,:,0])            
-                ham_diff += np.sum(vHt_g[:,:,1]) - np.sum(vHt_g0[:,:,1])
-                ham_diff /= 2
-            ham_diff /= np.product(vHt_g.shape[:2])            
-            self.ham_diff = ham_diff
-            self.text('Hartree_diff', str(ham_diff))
+        if hasattr(self, 'step') and self.ground:       
+            self.finegd.comm.broadcast(self.ham_diff, 0)
+            self.text('Hartree_diff', str(self.ham_diff))
         
         if hasattr(self, 'step') and self.atoms.pbc.all() and not self.use_fd_poisson:    
             self.hamiltonian.vHt_g += self.ham_diff
@@ -1835,29 +1839,6 @@ class Transport(GPAW):
                 print_info += '******'
             print_info += str(boundary_charge[i])
         self.text(print_info)
-
-    def get_linear_potential(self):
-        local_linear_potential = self.gd.zeros(self.nspins)
-        linear_potential = self.gd.collect(local_linear_potential, True)
-        dimt = linear_potential.shape[-1]
-        dimp = linear_potential.shape[1:3]
-        buffer_dim = self.dimt_buffer
-        scat_dim = dimt - np.sum(buffer_dim)
-        bias= np.array(self.bias)
-        bias /= Hartree
-        vt = np.empty([dimt])
-        if buffer_dim[1] !=0:
-            vt[:buffer_dim[0]] = bias[0]
-            vt[-buffer_dim[1]:] = bias[1]         
-            vt[buffer_dim[0]: -buffer_dim[1]] = np.linspace(bias[0],
-                                                         bias[1], scat_dim)
-        else:
-            vt = np.linspace(bias[0], bias[1], scat_dim)
-        for s in range(self.nspins):
-            for i in range(dimt):
-                linear_potential[s,:,:,i] = vt[i] * (np.zeros(dimp) + 1)
-        self.gd.distribute(linear_potential, local_linear_potential)  
-        return local_linear_potential
     
     def set_buffer(self):
         self.nbmol_inner = self.nbmol 
