@@ -267,6 +267,8 @@ class ManySiteDictionaryWrapper(BaseOverlapExpansionSet):
         return xdict_aqxMi[a2][..., Mstart:Mend, :], tsoe
 
     def evaluate_slice(self, disp, x_aqxMi):
+        if not disp.a2 in x_aqxMi:
+            return
         x_qxmi, oe = self.getslice(disp.a1, disp.a2, x_aqxMi)
         rdisp = disp.reverse() # XXX yuck
         rdisp.evaluate_overlap(oe, x_qxmi)
