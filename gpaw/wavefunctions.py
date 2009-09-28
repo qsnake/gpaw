@@ -76,22 +76,25 @@ class WaveFunctions(EmptyWaveFunctions):
         mynks = nks // kpt_comm.size
 
         ks0 = kpt_comm.rank * mynks
-        kpt_u = []
+        self.kpt_u = []
         sdisp_cd = gd.sdisp_cd
         for ks in range(ks0, ks0 + mynks):
             s, k = divmod(ks, self.nibzkpts)
-            q = ks - ks0
+            q = (ks - ks0) % self.nibzkpts
             weight = weight_k[k] * 2 / nspins
             if gamma:
                 phase_cd = np.ones((3, 2), complex)
             else:
                 phase_cd = np.exp(2j * np.pi *
                                   sdisp_cd * ibzk_kc[k, :, np.newaxis])
-            kpt_u.append(KPoint(weight, s, k, q, phase_cd))
+            self.kpt_u.append(KPoint(weight, s, k, q, phase_cd))
 
-        self.kpt_u = kpt_u
-        self.ibzk_qc = np.vstack((ibzk_kc, ibzk_kc))[ks0:ks0 + mynks]
-
+        if nspins == 2 and kpt_comm.size == 1:
+            # Avoid duplicating k-points in local list of k-points.
+            self.ibzk_qc = ibzk_kc.copy()
+        else:
+            self.ibzk_qc = np.vstack((ibzk_kc, ibzk_kc))[ks0:ks0 + mynks]
+        
         self.eigensolver = None
         self.positions_set = False
         
