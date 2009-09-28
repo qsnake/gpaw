@@ -250,14 +250,20 @@ class ManySiteOverlapExpansions(BaseOverlapExpansionSet):
         x_qxmm, oe = self.getslice(disp.a1, disp.a2, x_qxMM)
         disp.reverse().evaluate_overlap(oe, x_qxmm)
 
+class DomainDecomposedExpansions(BaseOverlapExpansionSet):
+    def __init__(self, msoe, local_indices):
+        self.msoe = msoe
+        self.local_indices = local_indices
+        BaseOverlapExpansionSet.__init__(self, msoe.shape)
 
-class ManySiteDictionaryWrapper(BaseOverlapExpansionSet):
+    def evaluate_slice(self, disp, x_xqMM):
+        if disp.a2 in self.local_indices:
+            self.msoe.evaluate_slice(disp, x_xqMM)
+
+class ManySiteDictionaryWrapper(DomainDecomposedExpansions):
     # Used with dictionaries such as P_aqMi and dPdR_aqcMi
     # Works only with NeighborPairs, not SimpleAtomIter, since it
     # compensates for only seeing the atoms once
-    def __init__(self, msoe):
-        self.msoe = msoe
-        BaseOverlapExpansionSet.__init__(self, msoe.shape)
 
     def getslice(self, a1, a2, xdict_aqxMi):
         msoe = self.msoe
@@ -267,12 +273,11 @@ class ManySiteDictionaryWrapper(BaseOverlapExpansionSet):
         return xdict_aqxMi[a2][..., Mstart:Mend, :], tsoe
 
     def evaluate_slice(self, disp, x_aqxMi):
-        if not disp.a2 in x_aqxMi:
-            return
-        x_qxmi, oe = self.getslice(disp.a1, disp.a2, x_aqxMi)
-        rdisp = disp.reverse() # XXX yuck
-        rdisp.evaluate_overlap(oe, x_qxmi)
-        if disp.a1 != disp.a2:
+        if disp.a2 in x_aqxMi:
+            x_qxmi, oe = self.getslice(disp.a1, disp.a2, x_aqxMi)
+            rdisp = disp.reverse() # XXX yuck
+            rdisp.evaluate_overlap(oe, x_qxmi)
+        if disp.a1 in x_aqxMi and (disp.a1 != disp.a2):
             x2_qxmi, oe2 = self.getslice(disp.a2, disp.a1, x_aqxMi)
             disp.evaluate_overlap(oe2, x2_qxmi)
 
@@ -607,20 +612,19 @@ class NewTwoCenterIntegrals:
         self.Theta_expansions = msoc.calculate_expansions(l_Ij, phit_Ijq,
                                                           l_Ij, phit_Ijq)
         self.T_expansions = msoc.calculate_kinetic_expansions(l_Ij, phit_Ijq)
-        P_expansions = msoc.calculate_expansions(l_Ij, phit_Ijq,
-                                                 pt_l_Ij, pt_Ijq)
-        self.P_expansions = ManySiteDictionaryWrapper(P_expansions)
+        self.P_expansions = msoc.calculate_expansions(l_Ij, phit_Ijq,
+                                                      pt_l_Ij, pt_Ijq)
 
     def _calculate(self, calc, spos_ac, Theta_qxMM, T_qxMM, P_aqxMi):
         for X_xMM in [Theta_qxMM, T_qxMM] + P_aqxMi.values():
             X_xMM.fill(0.0)
         
         self.atompairs.set_positions(spos_ac)
-        expansions = [self.Theta_expansions, self.T_expansions,
-                      self.P_expansions]
+        expansions = [DomainDecomposedExpansions(self.Theta_expansions,
+                                                 P_aqxMi),
+                      DomainDecomposedExpansions(self.T_expansions, P_aqxMi),
+                      ManySiteDictionaryWrapper(self.P_expansions, P_aqxMi)]
         arrays = [Theta_qxMM, T_qxMM, P_aqxMi]
-        #ap = SimpleAtomIter(self.atompairs.atoms.cell, spos_ac, spos_ac, 0)
-        #calc.calculate(ap, expansions, arrays)
         calc.calculate(self.atompairs, expansions, arrays)
 
     def evaluate(self, spos_ac, Theta_qMM, T_qMM, P_aqMi):

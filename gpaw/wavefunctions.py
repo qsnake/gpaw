@@ -508,18 +508,6 @@ class LCAOWaveFunctions(WaveFunctions):
             comm.sum(self.S_qMM)
             comm.sum(self.T_qMM)
 
-        dtype=self.dtype
-        dThetadR_qvMM = np.empty((nq, 3, nao, nao), dtype)
-        dTdR_qvMM = np.empty((nq, 3, nao, nao), dtype)
-        dPdR_aqvMi = {}
-        for a in self.basis_functions.my_atom_indices:
-            ni = self.setups[a].ni
-            dPdR_aqvMi[a] = np.empty((nq, 3, nao, ni), dtype)
-        #self.timer.start('LCAO forces: tci derivative')
-        self.tci.calculate_derivative(spos_ac, dThetadR_qvMM, dTdR_qvMM,
-                                      dPdR_aqvMi)
-        #self.timer.stop('LCAO forces: tci derivative')
-
         if debug:
             from numpy.linalg import eigvalsh
             for S_MM in self.S_qMM:
@@ -599,6 +587,10 @@ class LCAOWaveFunctions(WaveFunctions):
         self.timer.start('LCAO forces: tci derivative')
         self.tci.calculate_derivative(spos_ac, dThetadR_qvMM, dTdR_qvMM,
                                       dPdR_aqvMi)
+        if not hasattr(self.tci, 'set_positions'): # XXX newtci
+            comm = self.gd.comm
+            comm.sum(dThetadR_qvMM)
+            comm.sum(dTdR_qvMM)
         self.timer.stop('LCAO forces: tci derivative')
         
         # TODO: Most contributions will be the same for each spin.
