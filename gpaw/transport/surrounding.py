@@ -69,31 +69,32 @@ class Side:
         d1 = dim[0] // 2
         d2 = dim[1] // 2
         
-        vHt_g = finegd.collect(calc.hamiltonian.vHt_g, True)
-        self.boundary_vHt_g = self.slice(nn, vHt_g)
+        vHt_g = finegd.collect(calc.hamiltonian.vHt_g)
+        vt_sg = finegd.collect(calc.hamiltonian.vt_sg)        
+        nt_sg = finegd.collect(calc.density.nt_sg)
+        rhot_g = finegd.collect(calc.density.rhot_g)
+        vt_sG = gd.collect(calc.hamiltonian.vt_sG)        
+        nt_sG = gd.collect(calc.density.nt_sG)
+
+        self.boundary_vHt_g = None
+        self.boundary_vt_sg_line = None
+        self.boundary_nt_sg = None
+        self.boundary_rhot_g_line = None
+        self.boundary_vt_sG = None
+        self.boundary_nt_sG = None
         
-        vt_sg = finegd.collect(calc.hamiltonian.vt_sg, True)
-        self.boundary_vt_sg_line = self.slice(nn, vt_sg[:, d1 * 2, d2 * 2])
-        
-        nt_sg = finegd.collect(calc.density.nt_sg, True)
-        self.boundary_nt_sg = self.slice(nn, nt_sg)        
-        
-        rhot_g = finegd.collect(calc.density.rhot_g, True)
-        self.boundary_rhot_g_line = self.slice(nn, rhot_g[d1 * 2, d2 * 2])
-        
-        if self.direction == '-':
-            self.boundary_rhot_g = self.slice(1, rhot_g)
-  
-        nn /= 2
-        vt_sG = gd.collect(calc.hamiltonian.vt_sG, True)
-        self.boundary_vt_sG = self.slice(nn, vt_sG)
-        
-        nt_sG = calc.gd.collect(calc.density.nt_sG, True)
-        self.boundary_nt_sG = self.slice(nn, nt_sG)
+        if gd.comm.rank == 0: 
+            self.boundary_vHt_g = self.slice(nn, vHt_g)
+            self.boundary_vt_sg_line = self.slice(nn, vt_sg[:, d1 * 2, d2 * 2])
+            self.boundary_nt_sg = self.slice(nn, nt_sg)        
+            self.boundary_rhot_g_line = self.slice(nn, rhot_g[d1 * 2, d2 * 2])
+            nn /= 2
+            self.boundary_vt_sG = self.slice(nn, vt_sG)
+            self.boundary_nt_sG = self.slice(nn, nt_sG)
         
         self.D_asp = collect_D_asp(calc.density)
         self.dH_asp = collect_D_asp3(calc.hamiltonian)
-        
+       
         del self.atoms
         
     def slice(self, nn, in_array):
@@ -158,20 +159,24 @@ class Surrounding:
             nn = self.nn[0] * 2
             self.extra_rhot_g = self.uncapsule(nn, rhot_g, self.tp.finegd1,
                                                        self.tp.finegd)
-            self.boundary_charge = np.sum(
-                        self.sides['-'].boundary_rhot_g) * self.tp.finegd.dv
-            
 
     def capsule(self, nn, loc_in_array, in_cap_array, gd, gd0):
         ns = self.tp.nspins
-        cap_array = gd.collect(in_cap_array, True)
-        in_array = gd0.collect(loc_in_array, True)
-        if len(in_array.shape) == 4:
-            local_cap_array = gd.zeros(ns)
-            cap_array[:, :, :, nn:-nn] = in_array
+        cap_array = gd.collect(in_cap_array)
+        in_array = gd0.collect(loc_in_array)
+        
+        if gd.comm.rank == 0:
+            if len(loc_in_array.shape) == 4:
+                local_cap_array = gd.zeros(ns)
+                cap_array[:, :, :, nn:-nn] = in_array
+            else:
+                local_cap_array = gd.zeros()
+                cap_array[:, :, nn:-nn] = in_array
         else:
-            local_cap_array = gd.zeros()
-            cap_array[:, :, nn:-nn] = in_array
+            if len(loc_in_array.shape) == 4:
+                local_cap_array = gd.zeros(ns)
+            else:
+                local_cap_array = gd.zeros()
         gd.distribute(cap_array, local_cap_array)
         return local_cap_array
     
@@ -185,10 +190,13 @@ class Surrounding:
             di += 1
             local_uncap_array = gd0.zeros(ns)
         else:
-            local_uncap_array = gd0.zeros()            
-        global_in_array = gd.collect(in_array, True)
-        seq = np.arange(nn1, global_in_array.shape[di] - nn2)    
-        uncap_array = np.take(global_in_array, seq, axis=di)
+            local_uncap_array = gd0.zeros()
+        global_in_array = gd.collect(in_array)
+        if gd.comm.rank == 0:
+            seq = np.arange(nn1, global_in_array.shape[di] - nn2)    
+            uncap_array = np.take(global_in_array, seq, axis=di)
+        else:
+            uncap_array = None
         gd0.distribute(uncap_array, local_uncap_array)
         return local_uncap_array
       
@@ -204,39 +212,52 @@ class Surrounding:
                 if not self.tp.use_fd_poisson:
                     self.tp.inner_poisson.initialize()
 
-
             bias_shift0 = self.bias_index['-'] / Hartree
-            bias_shift1 = self.bias_index['+'] / Hartree            
-            if self.tp.use_fd_poisson:
-                self.tp.inner_poisson.initialize(self.sides['-'].boundary_vHt_g + bias_shift0,
-                                                 self.sides['+'].boundary_vHt_g + bias_shift1)
-              
-            vHt_g = ham.finegd.zeros(global_array=True)
-            extra_vHt_g = ham.finegd.zeros(global_array=True)
-            loc_extra_vHt_g = ham.finegd.zeros()
-            nt_sg = ham.finegd.zeros(self.tp.nspins, global_array=True)
-            nt_sG = ham.gd.zeros(self.tp.nspins, global_array=True)
-            self.nt_sg = ham.finegd.zeros(self.tp.nspins)
-            self.nt_sG = ham.gd.zeros(self.tp.nspins)            
+            bias_shift1 = self.bias_index['+'] / Hartree
 
-            vHt_g[:, :, :nn] = self.sides['-'].boundary_vHt_g + bias_shift0
-            vHt_g[:, :, -nn:] = self.sides['+'].boundary_vHt_g + bias_shift1
-            extra_vHt_g[:, :, :nn] = bias_shift0 + self.sides['-'].boundary_vHt_g - self.sides['+'].boundary_vHt_g
-            extra_vHt_g[:, :, -nn:] = bias_shift1 + self.sides['+'].boundary_vHt_g - self.sides['-'].boundary_vHt_g
+            if self.tp.use_fd_poisson and self.tp.gd.comm.rank == 0:
+                self.tp.inner_poisson.initialize(
+                        self.sides['-'].boundary_vHt_g + bias_shift0,
+                        self.sides['+'].boundary_vHt_g + bias_shift1)
             
-            nt_sg[:, :, :, :nn] = self.sides['-'].boundary_nt_sg
-            nt_sg[:, :, :, -nn:] = self.sides['+'].boundary_nt_sg
+            if self.tp.gd.comm.rank == 0:
+                vHt_g = ham.finegd.zeros(global_array=True)
+                extra_vHt_g = ham.finegd.zeros(global_array=True)
+                nt_sg = ham.finegd.zeros(self.tp.nspins, global_array=True)
+                nt_sG = ham.gd.zeros(self.tp.nspins, global_array=True)
+                    
+                vHt_g[:, :, :nn] = self.sides['-'].boundary_vHt_g + \
+                                                                  bias_shift0
+                vHt_g[:, :, -nn:] = self.sides['+'].boundary_vHt_g + \
+                                                                  bias_shift1
+                extra_vHt_g[:, :, :nn] = bias_shift0 + \
+                                             self.sides['-'].boundary_vHt_g -\
+                                             self.sides['+'].boundary_vHt_g
+                extra_vHt_g[:, :, -nn:] = bias_shift1 + \
+                                             self.sides['+'].boundary_vHt_g -\
+                                             self.sides['-'].boundary_vHt_g            
+                nt_sg[:, :, :, :nn] = self.sides['-'].boundary_nt_sg
+                nt_sg[:, :, :, -nn:] = self.sides['+'].boundary_nt_sg
 
-            nn /= 2
-            nt_sG[:, :, :, :nn] = self.sides['-'].boundary_nt_sG
-            nt_sG[:, :, :, -nn:] = self.sides['+'].boundary_nt_sG
+                nn /= 2
+                nt_sG[:, :, :, :nn] = self.sides['-'].boundary_nt_sG
+                nt_sG[:, :, :, -nn:] = self.sides['+'].boundary_nt_sG
+            else:
+                nt_sG = None
+                nt_sg = None
+                vHt_g = None
+                extra_vHt_g = None
+               
+            loc_extra_vHt_g = ham.finegd.zeros()
+            self.nt_sg = ham.finegd.zeros(self.tp.nspins)
+            self.nt_sG = ham.gd.zeros(self.tp.nspins)           
             
             ham.gd.distribute(nt_sG, self.nt_sG)
             ham.finegd.distribute(nt_sg, self.nt_sg)
-            
             ham.finegd.distribute(vHt_g, ham.vHt_g)
             ham.finegd.distribute(extra_vHt_g, loc_extra_vHt_g)
             self.get_extra_density(loc_extra_vHt_g)
+            
             #self.get_extra_density(ham.vHt_g)
             #self.calculate_extra_hartree_potential()
             #self.calculate_gate()
@@ -244,8 +265,10 @@ class Surrounding:
     def combine_vHt_g(self, vHt_g):
         nn = self.nn[0] * 2
         extended_vHt_g = self.tp.extended_calc.hamiltonian.vHt_g
-        self.tp.extended_calc.hamiltonian.vHt_g = self.capsule(nn, vHt_g, extended_vHt_g,
-                                            self.tp.finegd1, self.tp.finegd)
+        self.tp.extended_calc.hamiltonian.vHt_g = self.capsule(nn, vHt_g,
+                                                               extended_vHt_g,
+                                                              self.tp.finegd1,
+                                                              self.tp.finegd)
         
     def combine_nt_sG(self, nt_sG):
         nn = self.nn[0]
@@ -271,9 +294,11 @@ class Surrounding:
         gd = self.tp.extended_calc.gd
         bias_shift0 = self.bias_index['-'] / Hartree
         bias_shift1 = self.bias_index['+'] / Hartree        
-        vt_sG = gd.collect(self.tp.extended_calc.hamiltonian.vt_sG, True)
-        vt_sG[:, :, :, :nn] = self.sides['-'].boundary_vt_sG + bias_shift0
-        vt_sG[:, :, :, -nn:] = self.sides['+'].boundary_vt_sG + bias_shift1
+        vt_sG = gd.collect(self.tp.extended_calc.hamiltonian.vt_sG)
+        if gd.comm.rank == 0:
+            vt_sG[:, :, :, :nn] = self.sides['-'].boundary_vt_sG + bias_shift0
+            vt_sG[:, :, :, -nn:] = self.sides['+'].boundary_vt_sG + \
+                                                                   bias_shift1
         gd.distribute(vt_sG, self.tp.extended_calc.hamiltonian.vt_sG)
        
     def calculate_gate(self):
@@ -293,74 +318,4 @@ class Surrounding:
         self.operator.apply(gate_vHt_g, gate_rhot_g)
         self.gate_vHt_g = self.uncapsule(nn, gate_vHt_g, gd, gd0)
         self.gate_rhot_g = self.uncapsule(nn, gate_rhot_g, gd, gd0)
-        
-        
-    def normalize(self, comp_charge):    
-        nn = self.nn[0]
-        density = self.tp.density
-        nt_sG = self.uncapsule(nn, density.nt_sG,
-                                self.tp.gd, self.tp.gd0)
-        pseudo_charge = self.tp.gd0.integrate(nt_sG).sum()
-        if pseudo_charge != 0:
-            x = -(density.charge + comp_charge) / pseudo_charge
-            density.nt_sG *= x
-            print 'surround scaling', x
-
-    def normalize2(self):
-        density = self.tp.density
-        finegd, finegd0 = self.tp.finegd, self.tp.finegd0
-        nn = self.nn[0] * 2
-        rhot_g_plus = self.tp.finegd.zeros()
-        density.ghat.add(rhot_g_plus, density.Q_aL)
-        inner_rhot_g_plus = self.uncapsule(nn, rhot_g_plus, finegd, finegd0)
-        inner_rhot_g = self.uncapsule(nn, density.rhot_g, finegd, finegd0)
-        charge0 = finegd0.integrate(inner_rhot_g)
-        charge1 = finegd0.integrate(inner_rhot_g_plus)
-        if charge0 != 0:
-            scaling = -charge1 / charge0
-            density.rhot_g *= scaling
-            density.nt_sg *= scaling
-            self.tp.text('surround scaling', scaling)
-        density.rhot_g += rhot_g_plus
-        
-    def normalize3(self):
-        density = self.tp.density
-        finegd, finegd0 = self.tp.finegd, self.tp.finegd0
-        nn = self.nn[0] * 2
-        rhot_g_plus = self.tp.finegd.zeros()
-        density.ghat.add(rhot_g_plus, density.Q_aL)
-        inner_rhot_g_plus = self.uncapsule(nn, rhot_g_plus, finegd, finegd0)
-        inner_rhot_g = self.uncapsule(nn, density.rhot_g, finegd, finegd0)
-        charge0 = finegd0.integrate(inner_rhot_g)
-        charge1 = finegd0.integrate(inner_rhot_g_plus)
-        
-        gate_charge = finegd0.integrate(self.gate_rhot_g)
-        self.gate_scaling = -(charge0 + charge1) / gate_charge
-        print self.gate_scaling, charge0, charge1, gate_charge
-        density.rhot_g += rhot_g_plus
-        
-        total_rhot_g = finegd.collect(density.rhot_g)
-        total_rhot_g[:, :, nn:-nn] += self.gate_rhot_g * self.gate_scaling
-        finegd.distribute(total_rhot_g, density.rhot_g)
-        
-    def update_correction_density(self):
-        tp = self.tp
-        vHt_g = tp.hamiltonian.vHt_g
-        global_vHt_g = tp.finegd.collect(vHt_g, True)
-        nn = self.nn[0] * 2
-           
-        global_extended_vHt_g = tp.finegd1.zeros(global_array=True)
-        global_extended_vHt_g[:, :, :nn] = self.sides['-'].boundary_vHt_g - global_vHt_g[:, :, -nn:]
-        global_extended_vHt_g[:, :, -nn:] = self.sides['+'].boundary_vHt_g - global_vHt_g[:, :, :nn]
-        
-        local_extended_vHt_g = tp.finegd1.zeros()
-        tp.finegd1.distribute(global_extended_vHt_g, local_extended_vHt_g)
-        correction_rhot_g = tp.finegd1.zeros()
-        self.operator.apply(local_extended_vHt_g, correction_rhot_g)        
-        self.correction_rhot_g = self.uncapsule(nn, correction_rhot_g, tp.finegd1,
-                                                            tp.finegd)        
-        
-        
-        
-        
        
