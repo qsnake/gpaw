@@ -62,7 +62,7 @@ cwd = os.getcwd()
 os.chdir(tmpdir)
 if mpi.rank == 0:
     print 'Running tests in', tmpdir
-failed = run_all(tests, opt.jobs)
+failed = run_all(tests, jobs=opt.jobs)
 if mpi.rank == 0:
     os.chdir(cwd)
     if len(failed) > 0:

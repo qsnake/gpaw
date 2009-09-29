@@ -4,7 +4,7 @@ from gpaw.setup import create_setup
 from gpaw.xc_functional import XCFunctional
 from gpaw.utilities import equal
 from gpaw import setup_paths
-from lxc_testsetups import Lxc_testsetups
+from gpaw.test.lxc_testsetups import Lxc_testsetups
 
 setup_paths.insert(0, '.')
 

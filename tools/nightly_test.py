@@ -97,7 +97,9 @@ setup_paths.insert(0, setups)
 from gpaw.test import run_all, tests
 os.mkdir('gpaw-test')
 os.chdir('gpaw-test')
-failed = run_all(tests)
+out = open('test.out', 'w')
+failed = run_all(tests, out)
+out.close()
 if failed:
     # Send mail:
     n = len(failed)

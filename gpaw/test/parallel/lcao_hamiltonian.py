@@ -1,8 +1,14 @@
+import cPickle as pickle
 from ase import *
 from gpaw import *
 from gpaw.lcao.tools import get_lcao_hamiltonian
-from gpaw.mpi import rank, MASTER
-import cPickle as pickle
+from gpaw.mpi import world
+from gpaw.atom.basis import BasisMaker
+
+if world.rank == 0:
+    basis = BasisMaker('Li', 'szp').generate(1, 1)
+    basis.write_xml()
+world.barrier()
 
 if 1:
     a = 2.7
@@ -16,7 +22,7 @@ atoms, calc = restart('temp.gpw')
 H_skMM, S_kMM = get_lcao_hamiltonian(calc)
 eigs = calc.get_eigenvalues(kpt=2)
 
-if rank == MASTER:
+if world.rank == 0:
     eigs2 = np.linalg.eigvals(np.linalg.solve(S_kMM[2], H_skMM[0, 2])).real
     eigs2.sort()
     assert abs(sum(eigs - eigs2)) < 1e-8

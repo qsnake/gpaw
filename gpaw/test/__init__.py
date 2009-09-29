@@ -242,14 +242,14 @@ class MyTextTestRunner(TextTestRunner):
         return MyTextTestResult(*args)
 
 
-def run_all(tests, jobs=1):
+def run_all(tests, stream=sys.__stdout__, jobs=1):
     ts = TestSuite()
     path = gpaw.__path__[0] + '/test/'
     for test in tests:
         ts.addTest(ScriptTestCase(filename=path + test))
 
     sys.stdout = devnull
-    ttr = MyTextTestRunner(verbosity=2, stream=sys.__stdout__)
+    ttr = MyTextTestRunner(verbosity=2, stream=stream)
     result = ttr.run(ts)
     failed = [test.filename for test, msg in result.failures + result.errors]
     sys.stdout = sys.__stdout__
