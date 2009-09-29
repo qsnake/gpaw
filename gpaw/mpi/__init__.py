@@ -259,7 +259,7 @@ def compare_atoms(atoms, comm=world):
     return not fingerprints.ptp(0).any()
 
 
-def broadcast_string(string=None, root=MASTER, comm=world):
+def broadcast_string(string=None, root=0, comm=world):
     if rank == root:
         assert isinstance(string, str)
         n = npy.array(len(string), int)

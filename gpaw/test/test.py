@@ -57,7 +57,11 @@ for test in exclude:
 
 from gpaw.test import run_all
 
-tmpdir = tempfile.mkdtemp(prefix='gpaw-test-')
+if mpi.rank == 0:
+    tmpdir = tempfile.mkdtemp(prefix='gpaw-test-')
+else:
+    tmpdir = None
+tmpdir = mpi.broadcast_string(tmpdir)
 cwd = os.getcwd()
 os.chdir(tmpdir)
 if mpi.rank == 0:
