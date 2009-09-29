@@ -218,7 +218,9 @@ class Banded_Sparse_Matrix:
         times = []
         methods = ['full_numpy', 'full_lapack', 'sparse_lapack']
         for name in methods:
-            times.append(timer.gettime(name))
+            time = timer.gettime(name)
+            print name, time
+            times.append(time)
         
         mintime = np.min(times)
         self.inv_method = methods[np.argmin(times)]
