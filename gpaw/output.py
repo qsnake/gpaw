@@ -228,7 +228,7 @@ class PAWTextOutput:
         nibzkpts = self.wfs.nibzkpts
 
         # Print parallelization details
-        t('Total number of nodes used: %d' % self.wfs.world.size)
+        t('Total number of cores used: %d' % self.wfs.world.size)
         if self.wfs.kpt_comm.size > 1: # kpt/spin parallization
             if self.wfs.nspins == 2 and nibzkpts == 1:
                 t('Parallelization Over Spin')
