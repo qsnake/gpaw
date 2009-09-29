@@ -164,7 +164,7 @@ class ElectronPhononCouplingMatrix:
                 x+=1
         return dvt_Gx, ddH_aspx
 
-    def get_Mlii(self, modes, vtonly = False):
+    def get_Mlii(self, modes):
         """Note that modes must be given as a dictionary with mode
            frequencies in eV and corresponding mode vectors in units of 1/sqrt(amu), 
            where amu = 1.6605402e-27 Kg is an atomic mass unit.    
@@ -195,16 +195,16 @@ class ElectronPhononCouplingMatrix:
                               a,ij
 
         """
-
+        modes1 = modes.copy()
         #convert to atomic units
-        for i in range(len(modes.keys())):        
-            modes.keys()[i] /= Hartree
-
         amu = 1.6605402e-27 # atomic unit mass [Kg]
         me = 9.1093897e-31  # electron mass    [Kg]
+        modes = {}
+        for k in modes1.keys():        
+            modes[k / Hartree] = modes1[k] / np.sqrt(amu / me)
 
-        for f, mode in modes.items(): # unit of mass is  mass me
-            modes[f] *= 1/ np.sqrt(amu / me)       
+        #for f, mode in modes.items(): # unit of mass is  mass me
+        #    modes[f] /= np.sqrt(amu / me)       
 
         d  = pickle.load(open('data.pckl')) # bfs
         phi_MG = d['phi_MG']
@@ -232,12 +232,6 @@ class ElectronPhononCouplingMatrix:
             tri2full(M_ii,'U')
             M_lii[f]=M_ii               
            
-        if vtonly:
-            for mode, M_ii in M_lii.items():
-                M_lii[mode] *= Hartree / Bohr
-            
-            return M_lii
-
         P_ani = d['P_ani']
         # Add the term
         #  _
@@ -284,13 +278,15 @@ class ElectronPhononCouplingMatrix:
             M_lii[mode] += Ma_lii[mode] + Mb_lii[mode]
 
         # conversion to eV. The prefactor 1 / sqrt(hb^2 / 2 * hb * f) has units Bohr * sqrt(me)
-        for f in M_lii.keys():
-            M_lii[f] *= 1 / np.sqrt(2 * f) * Hartree
+        M_lii_1 = M_lii.copy()
+        M_lii = {}
 
-        for i in range(len(M_lii.keys())):
-            M_lii.keys()[i] *= Hartree
+        for f in M_lii_1.keys():
+            print f
+            M_lii[f * Hartree] =  M_lii_1[f] * Hartree / np.sqrt(2 * f)
+            #M_lii[f] *= 1 / np.sqrt(2 * f) * Hartree
 
-
+        print M_lii.keys()
         return M_lii
 
     def get_Mlii2(self, modes, atoms, calc, vtonly=True):
