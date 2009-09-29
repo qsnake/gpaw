@@ -237,7 +237,6 @@ if custom_interpreter:
               platforms=['unix'],
               packages=packages,
               ext_modules=[extension],
-              data_files=data_files,
               scripts=scripts,
               long_description=long_description,
               )
