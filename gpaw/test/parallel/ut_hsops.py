@@ -311,6 +311,7 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
     def allocate_projections(self):
         """
         Construct dummy projection of pseudo wavefunction according to::
+
            ___
            \     ~   ~a    a   ~a  ~             1     _____    i*phase*(n-m)
             )  <psi |p > dO   <p |psi > =  +/-  --- * V m*n  * e
