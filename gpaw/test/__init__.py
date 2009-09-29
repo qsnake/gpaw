@@ -145,7 +145,7 @@ if mpi.size > 1:
                 'nscfsic.py',
                 'coreeig.py',
                 'asewannier.py',
-                'wannier-ethylene.py',
+                'wannier_ethylene.py',
                 'muffintinpot.py']
 if mpi.size > 2:
     exclude += ['neb.py']
