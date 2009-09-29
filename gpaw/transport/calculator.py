@@ -1812,7 +1812,7 @@ class Transport(GPAW):
         ham.Exc += ham.Enlxc
         ham.Ekin0 += ham.Enlkin
 
-        dH_asp = collect_D_asp3(ham, self.wfs.rank_a)
+        dH_asp = collect_D_asp3(ham, self.density.rank_a)
         self.surround.combine_dH_asp(dH_asp)
         self.timer.stop('Hamiltonian')      
 
