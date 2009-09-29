@@ -733,6 +733,38 @@ class Tp_Sparse_Matrix:
                     self.upc_h[j][k] +=  self.dotdot(inv_mat[i][j][k - 1], se_less[i],
                                                     inv_mat[i][j][k].T.conj())
 
+    def test_inv_speed(self):
+        full_mat = self.recover()
+        timer = Timer()
+        timer.start('full_numpy')
+        tmp0 = np.linalg.inv(full_mat)
+        timer.stop('full_numpy')
+        
+        timer.start('full_lapack')
+        inverse_general(full_mat)
+        timer.stop('full_lapack')
+        
+        timer.start('sparse_lapack')
+        self.inv_eq()
+        timer.stop('sparse_lapack')
+        
+        timer.start('sparse_lapack_ne')
+        self.inv_ne()
+        timer.stop('sparse_lapack_ne')
+        
+        times = []
+        methods = ['full_numpy', 'full_lapack', 'sparse_lapack']
+        for name in methods:
+            time = timer.gettime(name)
+            print name, time
+            times.append(time)
+        
+        mintime = np.min(times)
+        self.inv_method = methods[np.argmin(times)]
+        print 'mintime', mintime
+        
+        print  'sparse_lapack_ne', timer.gettime('sparse_lapack_ne')
+
 class CP_Sparse_HSD:
     def __init__(self, dtype, ns, npk, index=None):
         self.index = index
