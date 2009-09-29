@@ -42,7 +42,8 @@ class PoissonSolver:
 
         if self.nn == 'M':
             if gd.is_non_orthogonal():
-                raise RuntimeError('Cannot use Mehrstellen stencil with non orthogonal cell.')
+                raise RuntimeError('Cannot use Mehrstellen stencil with '
+                                   'non orthogonal cell.')
 
             self.operators = [LaplaceA(gd, -scale, allocate=False)]
             self.B = LaplaceB(gd, allocate=False)
@@ -353,6 +354,7 @@ class FFTPoissonSolver(PoissonSolver):
             self.gd.distribute(globalphi_g, phi_g)
         return 1
 
+
 class FixedBoundaryPoissonSolver(PoissonSolver):
     #solve the poisson equation with fft in two directions,
     #and with central differential method in the third direction.
@@ -426,7 +428,3 @@ class FixedBoundaryPoissonSolver(PoissonSolver):
             globalphi_g = None
         self.gd.distribute(globalphi_g, phi_g)
         return 1
-   
-        
-    
-    
