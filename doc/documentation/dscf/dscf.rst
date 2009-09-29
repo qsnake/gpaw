@@ -79,7 +79,7 @@ Exciting the LUMO in CO::
     # state which is to be occupied. n=5,6 is the 2pix and 2piy orbitals
     n = 5
     molecule = [0,1]
-    wf_u = [kpt.psit_nG[5] for kpt in calc.wfs.kpt_u]
+    wf_u = [kpt.psit_nG[n] for kpt in calc.wfs.kpt_u]
     p_uai = [dict([(molecule[a], P_ni[n]) for a, P_ni in kpt.P_ani.items()])
              for kpt in calc.wfs.kpt_u]
 

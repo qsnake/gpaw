@@ -274,7 +274,7 @@ class LrTDDFT(ExcitationList):
         spa = self.kss
         for i in range(len(spa)):
             E = sqrt(self.Om.full[i][i])
-            print "<SPA> E was", spa[i].get_energy()*27.211," and is ",E*27.211
+            print "<SPA> E was", spa[i].get_energy() * Hartree, " and is ", E * Hartree
             spa[i].set_energy(E)
         return spa
 
@@ -401,12 +401,12 @@ class LrTDDFTExcitation(Excitation):
         if m>0: me = self.me/m
         else:   me = self.me
         str = "<LrTDDFTExcitation> om=%g[eV] |me|=%g (%.2f,%.2f,%.2f)" % \
-              (self.energy*27.211,m,me[0],me[1],me[2])
+              (self.energy * Hartree, m, me[0], me[1], me[2])
         return str
 
     def analyse(self,min=.1):
         """Return an analysis string of the excitation"""
-        s='E=%.3f'%(self.energy*27.211)+' eV, f=%.3g'\
+        s='E=%.3f'%(self.energy * Hartree)+' eV, f=%.3g'\
            %(self.GetOscillatorStrength()[0])+'\n'
 
         def sqr(x): return x*x
