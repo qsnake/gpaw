@@ -148,7 +148,7 @@ if mpi.size > 1:
                 'wannier_ethylene.py',
                 'muffintinpot.py']
 if mpi.size > 2:
-    exclude += ['neb.py']
+    exclude += ['neb.py', 'transport.py']
 
 if mpi.size != 4:
     exclude += ['parallel/scalapack.py']
