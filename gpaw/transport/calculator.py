@@ -235,7 +235,7 @@ class Transport(GPAW):
         self.master = (world.rank==0)
     
         bias = self.bias + self.env_bias
-        self.cal_loc = self.cal_loc and max(abs(bias)) != 0
+        self.cal_loc = self.cal_loc and np.max(np.abs(bias)) != 0
  
         if self.use_linear_vt_mm:
             self.use_buffer = False
