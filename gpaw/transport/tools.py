@@ -5,6 +5,7 @@ import numpy as np
 from gpaw.mpi import world, rank
 from gpaw.utilities.blas import gemm
 from gpaw.utilities.timing import Timer
+from gpaw.utilities.lapack import inverse_general
 import copy
 import _gpaw
 
@@ -95,7 +96,7 @@ class Banded_Sparse_HSD:
             self.band_index = spar[pk].band_index
        
 class Banded_Sparse_Matrix:
-    def __init__(self, dtype, mat=None, band_index=None, tol=1e-12):
+    def __init__(self, dtype, mat=None, band_index=None, tol=1e-9):
         self.tol = tol
         self.dtype = dtype
         self.band_index = band_index
@@ -199,6 +200,30 @@ class Banded_Sparse_Matrix:
         else:
             self.spar += mat.recover()[index1, index2]           
 
+    def test_inv_speed(self):
+        full_mat = self.recover()
+        timer = Timer()
+        timer.start('full_numpy')
+        tmp0 = np.linalg.inv(full_mat)
+        timer.stop('full_numpy')
+        
+        timer.start('full_lapack')
+        inverse_general(full_mat)
+        timer.stop('full_lapack')
+        
+        timer.start('sparse_lapack')
+        self.inv()
+        timer.stop('sparse_lapack')
+        
+        times = []
+        methods = ['full_numpy', 'full_lapack', 'sparse_lapack']
+        for name in methods:
+            times.append(timer.gettime(name))
+        
+        mintime = np.min(times)
+        self.inv_method = methods[np.argmin(times)]
+        print 'mintime', mintime
+                
     def inv(self):
         kl, ku, index0 = self.band_index[:3]
         dim = index0.shape[0]
@@ -492,7 +517,7 @@ class Tp_Sparse_Matrix:
                 mat[indr2, indc2] = self.dwnc_h[i][j]
         return mat        
 
-    def test_inv_eq(self, tol=1e-12):
+    def test_inv_eq(self, tol=1e-9):
         tp_mat = copy.deepcopy(self)
         tp_mat.inv_eq()
         mol_h = dot(tp_mat.mol_h.recover(), self.mol_h.recover())
@@ -743,7 +768,7 @@ class CP_Sparse_HSD:
             self.index = spar[pk].index
      
 class CP_Sparse_Matrix:
-    def __init__(self, dtype, mat=None, index=None, flag=None, tol=1e-12):
+    def __init__(self, dtype, mat=None, index=None, flag=None, tol=1e-9):
         self.tol = tol
         self.index = index
         self.dtype = dtype
@@ -814,7 +839,7 @@ class CP_Sparse_Matrix:
         return mat
 
 class Se_Sparse_Matrix:
-    def __init__(self, mat, tri_type, nn=None, tol=1e-12):
+    def __init__(self, mat, tri_type, nn=None, tol=1e-9):
         # coupling sparse matrix A_ij!=0 if i>dim-nn and j>dim-nn (for right selfenergy)
         # or A_ij!=0 if i<nn and j<nn (for left selfenergy, dim is the shape of A)
         self.tri_type = tri_type
