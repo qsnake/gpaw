@@ -970,7 +970,7 @@ class Transport_Plotter:
         p.show()
 
     def plot_bias_step_info(self, info, steps_indices, s, k,
-                                                     height=None, unit=None):
+                                            height=None, unit=None, all=False):
         xdata = self.energies
         #xdata = np.linspace(-3, 3, 61)
         energy_axis = False        
@@ -979,17 +979,24 @@ class Transport_Plotter:
         if info == 'tc':
             data = 'tc[s, k, 0]'
             title = 'trasmission coefficeints'
+            dim = 3
             energy_axis = True
         elif info == 'dos':
             data = 'dos[s, k]'
             title = 'density of states'
+            dim = 2
             energy_axis = True
         else:
             raise ValueError('no this info type---' + info)        
 
         for i, step in enumerate(self.bias_steps):
             if i in steps_indices:
-                ydata = eval('step.' + data)
+                if not all:
+                    ydata = eval('step.' + data)
+                else:
+                    ydata = eval('step.' + info)
+                    for j in range(dim):
+                        ydata = np.sum(ydata, axis=0)
                 if unit != None:
                     ydata = sum_by_unit(ydata, unit)
                 if not energy_axis:
