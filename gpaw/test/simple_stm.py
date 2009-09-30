@@ -21,7 +21,7 @@ if size > 1:
 
 BH = Atoms([Atom('B', [.0, .0, .41]),
              Atom('H', [.0, .0, -1.23]),
-             ], cell=[5, 5, 6.5])
+             ], cell=[5, 6, 6.5])
 BH.center()
 
 f3dname = 'stm3d.plt'
@@ -41,7 +41,7 @@ def testSTM(calc):
     stm.write_3D(3.1, f3dname)
     wf2 = stm.gd.integrate(stm.ldos)
 ##    print "wf2=", wf2
-    equal(wf2, 2, 0.03)
+    equal(wf2, 2, 0.12)
 
     return wf
 
