@@ -24,6 +24,13 @@ BGP:
 
    BGP/performance
 
+BSD:
+
+.. toctree::
+   :maxdepth: 1
+
+   BSD/FreeBSD
+
 Cray:
 
 .. toctree::

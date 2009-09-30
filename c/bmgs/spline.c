@@ -1,4 +1,8 @@
+#ifdef __FreeBSD__
+#include <stdlib.h>
+#else
 #include <malloc.h>
+#endif
 #include <math.h>
 #include <assert.h>
 #include "bmgs.h"
