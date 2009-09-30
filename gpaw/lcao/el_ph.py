@@ -291,11 +291,13 @@ class ElectronPhononCouplingMatrix:
 
     def get_Mlii2(self, modes, atoms, calc, vtonly=True):
         """XXX
-           In the future this function should replace get_Mlii. It
-           should be more efficient since it avoids putting the basis functions
-           on the grid
-        ::
         
+        In the future this function should replace get_Mlii. It
+        should be more efficient since it avoids putting the basis functions
+        on the grid
+        
+        ::
+
                   d                   d  ~
             < w | -- v | w' > = < w | -- v | w'>
                   dP                  dP
