@@ -7,15 +7,6 @@ import glob
 import trace
 import tempfile
 
-home = os.environ['HOME']
-
-os.environ['DISPLAY'] = ':0.0'
-import matplotlib
-matplotlib.use('Agg')
-import pylab
-
-import docutils
-
 
 def send_email(subject, filename='/dev/null'):
     #assert os.system('mail -s "%s" gridpaw-developer@lists.berlios.de < %s' %
@@ -134,7 +125,9 @@ ch = count('c', '\\*.[ch]') - libxc
 test = count('gpaw/test', '\\*.py')
 py = count('gpaw', '\\*.py') - test
 
+import pylab
 # Update the stat.dat file:
+dir = '/scratch/jensj/nightly-test/'
 f = open(dir + 'stat.dat', 'a')
 print >> f, pylab.epoch2num(time.time()), libxc, ch, py, test
 f.close()
