@@ -36,7 +36,7 @@ class Transport(GPAW):
     def __init__(self, **transport_kwargs):
         self.set_transport_kwargs(**transport_kwargs)
         if self.scat_restart:
-            GPAW.__init__(self, self.restart_file + '.gpw')
+            GPAW.__init__(self, self.restart_file + '.gpw', **self.gpw_kwargs)
             self.set_positions()
         else:
             GPAW.__init__(self, **self.gpw_kwargs)            
@@ -484,6 +484,7 @@ class Transport(GPAW):
                 self.extended_calc.hamiltonian = self.hamiltonian
             else:
                 atoms.calc = self
+                self.extended_calc.hamiltonian = self.hamiltonian                
                 self.recover_kpts(atoms.calc)                
         else:        
             for iter in range(self.guess_steps):
@@ -701,7 +702,18 @@ class Transport(GPAW):
         else:
             if restart_file == None:
                 restart_file = 'lead' + str(l)
-            atoms, calc = restart_gpaw(restart_file +'.gpw')
+            p = self.gpw_kwargs.copy()
+            p['nbands'] = None
+            p['kpts'] = self.pl_kpts
+            if 'mixer' in p:
+                if not self.spinpol:
+                    p['mixer'] = Mixer(0.1, 5, weight=100.0)
+                else:
+                    p['mixer'] = MixerDif(0.1, 5, weight=100.0)
+            p['poissonsolver'] = PoissonSolver(nn=2)
+            if 'txt' in p and p['txt'] != '-':
+                p['txt'] = 'lead%i_' % (l + 1) + p['txt']                
+            atoms, calc = restart_gpaw(restart_file +'.gpw', **p)
             calc.set_positions()
             self.recover_kpts(calc)
             self.atoms_l[l] = atoms
