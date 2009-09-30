@@ -1,6 +1,6 @@
 import numpy as np
 from gpaw.xc_functional import XCFunctional
-from gpaw.utilities import equal
+from gpaw.test import equal
 
 nspins = 2
 for xc in [XCFunctional('PBE', nspins),

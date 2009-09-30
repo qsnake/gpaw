@@ -4,7 +4,7 @@ import os
 
 from ase import Atom, Atoms
 from gpaw import GPAW, Mixer, restart
-from gpaw.utilities import equal
+from gpaw.test import equal
 
 if not os.path.isfile('Na4_fd.gpw'):
     # Do grid kpts calculation

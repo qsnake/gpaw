@@ -1,6 +1,6 @@
 import numpy as np
 
-from gpaw.utilities import equal
+from gpaw.test import equal
 from gpaw.utilities.lapack import sqrt_matrix
 
 # check sqrt of a matrix

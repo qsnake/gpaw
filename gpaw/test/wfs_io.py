@@ -5,7 +5,7 @@ import sys
 import time
 from gpaw import GPAW
 from ase import *
-from gpaw.utilities import equal
+from gpaw.test import equal
 from ase.parallel import rank, barrier, size
 
 endings = ['gpw']

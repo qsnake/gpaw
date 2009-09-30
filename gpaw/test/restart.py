@@ -1,7 +1,7 @@
 import os
 from gpaw import *
 from ase import *
-from gpaw.utilities import equal
+from gpaw.test import equal
 
 d = 3.0
 atoms = Atoms('Na3', positions=[( 0, 0, 0),

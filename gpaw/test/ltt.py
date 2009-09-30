@@ -1,7 +1,7 @@
 import os
 from ase import *
 from gpaw import GPAW
-from gpaw.utilities import equal
+from gpaw.test import equal
 h = 0.2
 n = 24
 a = n * h

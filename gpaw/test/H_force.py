@@ -1,6 +1,6 @@
 from ase import *
 from ase.calculators import numeric_force
-from gpaw.utilities import equal
+from gpaw.test import equal
 from gpaw import GPAW, Mixer
 
 a = 4.0

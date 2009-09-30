@@ -1,7 +1,7 @@
 import glob
 
 import numpy as np
-from gpaw.utilities import equal
+from gpaw.test import equal
 from ase import *
 
 from gpaw.setup import Setup

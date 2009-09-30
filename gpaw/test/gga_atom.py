@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.random as ra
-from gpaw.utilities import equal
+from gpaw.test import equal
 from gpaw.setup import create_setup
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.localized_functions import create_localized_functions

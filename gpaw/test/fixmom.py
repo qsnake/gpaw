@@ -1,6 +1,6 @@
 from gpaw import GPAW
 from ase import *
-from gpaw.utilities import equal
+from gpaw.test import equal
 
 a = 2.87
 bulk = Atoms('Fe2',

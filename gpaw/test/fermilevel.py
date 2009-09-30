@@ -2,7 +2,7 @@ import numpy as np
 
 from ase import Atoms
 from gpaw import GPAW
-from gpaw.utilities import equal
+from gpaw.test import equal
 
 calc = GPAW(nbands=3, txt=None)
 atoms = Atoms('H', pbc=True, calculator=calc)

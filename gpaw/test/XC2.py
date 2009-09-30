@@ -2,7 +2,7 @@ from math import pi
 from gpaw.grid_descriptor import RadialGridDescriptor, GridDescriptor
 from gpaw.xc_functional import XC3DGrid, XCRadialGrid
 import numpy as np
-from gpaw.utilities import equal
+from gpaw.test import equal
 
 
 for name in ['LDA', 'PBE']:

@@ -4,7 +4,7 @@ from ase import *
 from ase.parallel import barrier, rank, size
 #from gpaw.utilities.vector import Vector3d
 from gpaw.cluster import Cluster
-from gpaw.utilities import equal
+from gpaw.test import equal
 
 R = 2.0
 CO = Atoms([Atom('C', (1, 0, 0)), Atom('O', (1, 0, R))])

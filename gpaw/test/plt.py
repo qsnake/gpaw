@@ -4,7 +4,7 @@ import numpy as np
 
 from ase import *
 from ase.io.plt import write_plt
-from gpaw.utilities import equal
+from gpaw.test import equal
 from gpaw import GPAW
 from gpaw.cluster import Cluster
 from gpaw.io.plt import read_plt

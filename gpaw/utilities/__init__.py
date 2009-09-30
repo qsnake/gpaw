@@ -307,11 +307,6 @@ def divrl(a_g, l, r_g):
     return b_g
 
 
-# Function used by test-suite:
-def equal(a, b, e=0):
-    assert abs(a - b) <= e, '%g != %g (error: %g > %g)' % (a, b, abs(a - b), e)
-
-
 def locked(filename):
     try:
         os.open(filename, os.O_EXCL | os.O_RDWR | os.O_CREAT)

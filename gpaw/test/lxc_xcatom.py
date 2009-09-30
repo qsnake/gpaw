@@ -2,7 +2,7 @@ import numpy as np
 import numpy.random as ra
 from gpaw.setup import create_setup
 from gpaw.xc_functional import XCFunctional
-from gpaw.utilities import equal
+from gpaw.test import equal
 from gpaw import setup_paths
 from gpaw.test.lxc_testsetups import Lxc_testsetups
 

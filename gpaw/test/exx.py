@@ -2,7 +2,7 @@
 import os
 from ase import *
 from gpaw import GPAW
-from gpaw.utilities import equal
+from gpaw.test import equal
 from gpaw.atom.generator import Generator, parameters
 from gpaw import setup_paths
 

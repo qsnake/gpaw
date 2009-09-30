@@ -1,5 +1,5 @@
 import numpy as np
-from gpaw.utilities import equal
+from gpaw.test import equal
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.spline import Spline
 import gpaw.mpi as mpi

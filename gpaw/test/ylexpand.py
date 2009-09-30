@@ -2,7 +2,7 @@ import os
 
 from ase import *
 from gpaw import GPAW
-from gpaw.utilities import equal
+from gpaw.test import equal
 from gpaw.analyse.expandyl import ExpandYl
 
 R=0.7 # approx. experimental bond length

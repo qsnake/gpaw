@@ -1,6 +1,6 @@
 import os
 from ase import *
-from gpaw.utilities import equal
+from gpaw.test import equal
 from gpaw import GPAW
 
 a = 7.5 * Bohr

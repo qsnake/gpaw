@@ -7,6 +7,11 @@ import gpaw.mpi as mpi
 import gpaw
 
 
+# Function used by tests:
+def equal(a, b, e=0):
+    assert abs(a - b) <= e, '%g != %g (error: %g > %g)' % (a, b, abs(a - b), e)
+
+
 tests = [
     'ase3k_version.py',
     'lapack.py',

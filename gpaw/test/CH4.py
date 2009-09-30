@@ -1,5 +1,5 @@
 from ase import *
-from gpaw.utilities import equal
+from gpaw.test import equal
 from gpaw import GPAW, Mixer
 
 ref_3775 = [ # Values from revision 3775.

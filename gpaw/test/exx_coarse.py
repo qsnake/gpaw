@@ -3,7 +3,7 @@ import sys
 from ase import Atoms, Atom
 
 from gpaw import GPAW
-from gpaw.utilities import equal
+from gpaw.test import equal
 from gpaw.utilities.timing import Timer
 
 timer = Timer()

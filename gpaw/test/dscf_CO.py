@@ -1,7 +1,7 @@
 from ase import *
 from gpaw import *
 from gpaw import dscf
-from gpaw.utilities import equal
+from gpaw.test import equal
 
 # Ground state calculation
 #------------------------------------------------------------------

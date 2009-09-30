@@ -4,7 +4,7 @@ import os
 import filecmp
 from gpaw import GPAW
 from ase import *
-from gpaw.utilities import equal
+from gpaw.test import equal
 restart = 'gpaw-restart'
 result  = 'gpaw-result'
 # H atom:

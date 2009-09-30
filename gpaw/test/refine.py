@@ -3,7 +3,7 @@
 import os
 from gpaw import GPAW
 from ase import *
-from gpaw.utilities import equal
+from gpaw.test import equal
 
 ##endings = ['nc']
 endings = ['gpw']

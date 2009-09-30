@@ -1,6 +1,6 @@
 from ase import *
 from gpaw import GPAW, extra_parameters
-from gpaw.utilities import equal
+from gpaw.test import equal
 
 a = 2.8
 k = 6

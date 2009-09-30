@@ -6,7 +6,7 @@ from ase.parallel import size, rank
 from gpaw import GPAW
 from gpaw.cluster import Cluster 
 from gpaw.analyse.simple_stm import SimpleStm
-from gpaw.utilities import equal
+from gpaw.test import equal
 
 from gpaw.output import eigenvalue_string
 

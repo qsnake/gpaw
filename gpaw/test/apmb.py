@@ -1,5 +1,5 @@
 from ase import *
-from gpaw.utilities import equal
+from gpaw.test import equal
 from gpaw import GPAW
 from gpaw.lrtddft import LrTDDFT
 import numpy

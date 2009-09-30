@@ -1,4 +1,4 @@
-from gpaw.utilities import equal
+from gpaw.test import equal
 from gpaw.gauss import test_derivatives
 
 for i in range(3):

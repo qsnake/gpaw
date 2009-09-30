@@ -2,7 +2,7 @@ from gpaw import *
 from ase import *
 from ase.parallel import paropen
 from gpaw.utilities.tools import split_formula
-from gpaw.utilities import equal
+from gpaw.test import equal
 
 cell = [8., 8., 8.]
 data = paropen('data.txt', 'w')

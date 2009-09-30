@@ -1,7 +1,7 @@
 from math import log
 from ase import *
 from gpaw import GPAW
-from gpaw.utilities import equal
+from gpaw.test import equal
 
 a = 4.0
 h = 0.2

@@ -4,7 +4,7 @@ from gpaw.coulomb import Coulomb
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.mpi import world, parallel
 from gpaw.utilities.gauss import coordinates
-from gpaw.utilities import equal
+from gpaw.test import equal
 import time
 
 def test_coulomb(N=2**6, a=20):

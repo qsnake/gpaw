@@ -1,6 +1,6 @@
 from ase import *
 from gpaw import *
-from gpaw.utilities import equal
+from gpaw.test import equal
 
 a = 5.475
 atoms = Atoms(symbols='Si2', pbc=True,

@@ -1,7 +1,7 @@
 from gpaw import GPAW, restart
 from ase import *
 from ase.calculators import numeric_force
-from gpaw.utilities import equal
+from gpaw.test import equal
 
 a = 5.404
 bulk = Atoms(symbols='Si8',

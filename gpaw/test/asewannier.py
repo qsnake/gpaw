@@ -1,6 +1,6 @@
 from ase import *
 from gpaw import GPAW
-from gpaw.utilities import equal
+from gpaw.test import equal
 from ase.dft import Wannier
 
 # Test of ase wannier using gpaw

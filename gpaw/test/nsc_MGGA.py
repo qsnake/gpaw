@@ -1,11 +1,11 @@
 import os
 from ase import *
-from gpaw.utilities import equal
+from gpaw.test import equal
 from gpaw import GPAW
 from gpaw.atom.generator import Generator, parameters
 from gpaw.xc_functional import XCFunctional
 from gpaw import setup_paths
-from gpaw.utilities import equal
+from gpaw.test import equal
 
 # test with revision 4432
 

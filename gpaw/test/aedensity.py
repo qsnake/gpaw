@@ -5,7 +5,7 @@ from ase import *
 from ase.parallel import rank
 
 from gpaw import GPAW
-from gpaw.utilities import equal
+from gpaw.test import equal
 
 try:
     calc = GPAW('NaCl.gpw')

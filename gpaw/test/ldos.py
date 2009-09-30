@@ -3,7 +3,7 @@ import numpy as np
 from ase import *
 from gpaw import GPAW
 from gpaw.utilities.dos import raw_orbital_LDOS, raw_wignerseitz_LDOS, RawLDOS
-from gpaw.utilities import equal
+from gpaw.test import equal
 import gpaw.mpi as mpi
 import numpy as np
 
