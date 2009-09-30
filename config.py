@@ -419,14 +419,14 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
     libs = ' '.join([libs, cfgDict['LIBS'], cfgDict['LIBM']])
 
     #Hack taken from distutils to determine option for runtime_libary_dirs
-    if sys.platform[:6] == "darwin":
+    if sys.platform[:6] == 'darwin':
         # MacOSX's linker doesn't understand the -R flag at all
         runtime_lib_option = '-L'
-    elif sys.platform[:5] == "hp-ux":
+    elif sys.platform[:5] == 'hp-ux':
         runtime_lib_option = '+s -L'
-    elif os.popen3('mpicc --showme')[1].read()[:3] == "gcc":
+    elif os.popen('mpicc --showme', 'r').read()[:3] == 'gcc':
         runtime_lib_option = '-Wl,-R'
-    elif os.popen3('mpicc -show')[1].read()[:3] == "gcc":
+    elif os.popen('mpicc -show', 'r').read()[:3] == 'gcc':
         runtime_lib_option = '-Wl,-R'
     else:
         runtime_lib_option = '-R'
@@ -451,7 +451,7 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
                obj,
                src)
         print cmd
-        if "--dry-run" not in sys.argv:
+        if '--dry-run' not in sys.argv:
             error=os.system(cmd)
             if error != 0:
                 msg = ['* compiling FAILED!  Only serial version of code will work.']
@@ -470,7 +470,7 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
 
     msg = ['* Building a custom interpreter']
     print cmd
-    if "--dry-run" not in sys.argv:
+    if '--dry-run' not in sys.argv:
         error=os.system(cmd)
         if error != 0:
             msg += ['* linking FAILED!  Only serial version of code will work.']

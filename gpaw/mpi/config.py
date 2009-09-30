@@ -18,14 +18,14 @@ def get_mpi_implementation():
     if sys.platform == 'ia64':
         return 'mpich'
                 
-    output = os.popen3('mpicc --showme')[1].read()
+    output = os.popen('mpicc --showme', 'r').read()
     if output != '':
         if 'openmpi' in output:
             return 'openmpi'
         else:
             return 'lam'
 
-    output = os.popen3('mpicc -show')[1].read()
+    output = os.popen('mpicc -show', 'r').read()
     if output != '':
         if 'mvapich' in output:
             return 'mvapich'
@@ -52,10 +52,10 @@ def get_mpi_command(debug=False):
             return "poe '%(job)s' -procs %(np)d -hfile %(hostfile)s &"
                 
     if mpi == 'mpich':
-        output = os.popen3('mpiexec')[1].read()
+        output = os.popen('mpiexec', 'r').read()
         if output != '':
             return 'mpiexec -n %(np)d %(job)s'
-        output = os.popen3('mpirun')[1].read()
+        output = os.popen('mpirun', 'r').read()
         if output != '':
             return 'mpirun -n %(np)d %(job)s'
         raise NotImplementedError
