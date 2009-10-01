@@ -154,15 +154,19 @@ class ElectronPhononCouplingMatrix:
                                                 +dHmm_asp[atom]) / (12 * self.delta / Bohr)
                 else: # nfree = 2
                     dvtdx_G = (vtp_G - vtm_G) / (2 * self.delta / Bohr)
-                    dvt_Gx[:,:,:,x] = dvtdx_G
+                    dvt_Gx[..., x] = dvtdx_G
                     for atom, ddH_spx in ddH_aspx.items():
                         ddH_aspx[atom][:, :, x] = (dHp_asp[atom]
                                     -dHm_asp[atom]) / (2 * self.delta / Bohr)
                 x+=1
         return dvt_Gx, ddH_aspx
 
-    def get_M(self, modes, log=None):
+    def get_M(self, modes, log=None, q=0):
         """Calculate el-ph coupling matrix for given modes(s).
+
+        XXX:
+        kwarg "q=0" is an ugly hack for k-points.
+        There shuold be loops over q!
 
         Note that modes must be given as a dictionary with mode
         frequencies in eV and corresponding mode vectors in units
@@ -222,10 +226,8 @@ class ElectronPhononCouplingMatrix:
         nao = wfs.setups.nao
         bfs = wfs.basis_functions
         dtype = wfs.dtype
-        q = 0 # XXX hack for k-points. There shuold be loops over q!
 
         M_lii = {}
-
         timer.write_now('Starting gradient of pseudo part')
         for f, mode in modes.items():
             mo = []    
