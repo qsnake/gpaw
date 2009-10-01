@@ -827,6 +827,7 @@ class Transport_Analysor:
         pylab.show()
           
 class Transport_Plotter:
+    flags = ['b-o', 'r--']
     def __init__(self, flag='bias', data_file=None):
         if data_file is None:
             data_file = 'analysis_data_' + flag
@@ -989,20 +990,31 @@ class Transport_Plotter:
         else:
             raise ValueError('no this info type---' + info)        
 
+        eye = np.zeros([10, 1]) + 1
+        
         for i, step in enumerate(self.bias_steps):
             if i in steps_indices:
                 if not all:
                     ydata = eval('step.' + data)
                 else:
                     ydata = eval('step.' + info)
+                    npk = ydata.shape[1]
                     for j in range(dim):
                         ydata = np.sum(ydata, axis=0)
+                    if info == 'dos':
+                        ydata /= npk
                 if unit != None:
                     ydata = sum_by_unit(ydata, unit)
+                f1 = (step.lead_fermis[0] + step.bias[0]) * eye
+                f2 = (step.lead_fermis[1] + step.bias[1]) * eye
+                a1 = np.max(ydata)
+                l1 = np.linspace(0, a1, 10)
+                flags = self.flags
                 if not energy_axis:
                     p.plot(ydata)
                 else:
-                    p.plot(xdata, ydata)
+                    p.plot(xdata, ydata, flags[0], f1, l1, flags[1],
+                                                             f2, l1, flags[1])
                 legends.append('step' + str(step.bias_step))
         p.title(title)
         p.legend(legends)
