@@ -463,6 +463,8 @@ class Transport(GPAW):
             kwargs['mixer'] = MixerDif(0.1, 5, weight=100.0)
         else:
             kwargs['mixer'] = Mixer(0.1, 5, weight=100.0)
+        if 'txt' in kwargs and kwargs['txt'] != '-':
+            kwargs['txt'] = 'guess_' + kwargs['txt']            
         atoms.set_calculator(gpaw.GPAW(**kwargs))
         calc = atoms.calc
         calc.initialize(atoms)
