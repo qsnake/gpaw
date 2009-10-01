@@ -164,7 +164,7 @@ class OverlapExpansion(BaseOverlapExpansionSet):
             x_mi += spline(r) * np.dot(G_mmm, rlY_lm[l])
         return x_mi
 
-    def derivative(self, r, R, rlY_lm, drlYdR_lmc):
+    def derivative(self, r, Rhat_c, rlY_lm, drlYdR_lmc):
         """Get derivative of overlap between localized functions.
 
         This function assumes r > 0.  If r = 0, i.e. if the functions
@@ -173,7 +173,7 @@ class OverlapExpansion(BaseOverlapExpansionSet):
         for l, spline, G_mmm in self.gaunt_iter():
             x, dxdr = spline.get_value_and_derivative(r)
             GrlY_mi = np.dot(G_mmm, rlY_lm[l])
-            dxdR_cmi += dxdr / r * GrlY_mi * R[:, None, None]
+            dxdR_cmi += dxdr * GrlY_mi * Rhat_c[:, None, None]
             dxdR_cmi += x * np.dot(G_mmm, drlYdR_lmc[l]).transpose(2, 0, 1)
         return dxdR_cmi
 
@@ -204,10 +204,10 @@ class TwoSiteOverlapExpansions(BaseOverlapExpansionSet):
             x_mm += oe.evaluate(r, rlY_lm)
         return x_MM
 
-    def derivative(self, r, R, rlY_lm, drlYdR_lmc):
+    def derivative(self, r, Rhat, rlY_lm, drlYdR_lmc):
         x_cMM = self.zeros(3)
         for x_cmm, oe in self.slice(x_cMM):
-            x_cmm += oe.derivative(r, R, rlY_lm, drlYdR_lmc)
+            x_cmm += oe.derivative(r, Rhat, rlY_lm, drlYdR_lmc)
         return x_cMM
 
 
@@ -497,9 +497,13 @@ class AtomicDisplacement:
 class DerivativeAtomicDisplacement(AtomicDisplacement):
     def _set_spherical_harmonics(self, R_c):
         self.rlY_lm, self.drlYdr_lmc = spherical_harmonics_and_derivatives(R_c)
+        if R_c.any():
+            self.Rhat_c = R_c / self.r
+        else:
+            self.Rhat_c = np.zeros(3)
 
     def _evaluate_without_phases(self, oe):
-        x = oe.derivative(self.r, self.R_c, self.rlY_lm, self.drlYdr_lmc)
+        x = oe.derivative(self.r, self.Rhat_c, self.rlY_lm, self.drlYdr_lmc)
         return x
 
 
@@ -552,8 +556,8 @@ class TwoCenterIntegralCalculator:
 
     def iter(self, atompairs):
         for a1, a2, R_c, offset in atompairs.iter():
-            if a1 == a2 and self.derivative:
-                continue
+            #if a1 == a2 and self.derivative:
+            #    continue
             phase_applier = self.phaseclass(self.ibzk_qc, offset)
             yield self.displacementclass(self, a1, a2, R_c, offset,
                                          phase_applier)
