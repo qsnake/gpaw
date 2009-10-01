@@ -37,7 +37,8 @@ class ElectronPhononCouplingMatrix:
   
     """
     
-    def __init__(self, atoms, indices=None, name='v', delta=0.005, nfree=2):
+    def __init__(self, atoms, indices=None, name='v', delta=0.005, nfree=2,
+                 derivativemethod='grid'):
         assert nfree in [2,4]
         self.nfree = nfree
         self.delta = delta
@@ -49,8 +50,15 @@ class ElectronPhononCouplingMatrix:
         self.indices = np.asarray(indices)
         self.name = name
         self.p0 = self.atoms.positions.copy()
-    
 
+        self.derivativemethod = derivativemethod
+        if derivativemethod == 'grid':
+            self.get_dP_aMix = get_grid_dP_aMix
+        elif derivativemethod == 'tci':
+            self.get_dP_aMix = get_tci_dP_aMix
+        else:
+            raise ValueError('derivativemethod must be grid or tci')
+    
     def run(self):
         if not isfile(self.name + '.eq.pckl'):
             
@@ -267,34 +275,10 @@ class ElectronPhononCouplingMatrix:
                 Ma_lii[f] += dots(P_aqMi[a][q], ddHdP_ii, P_aqMi[a][q].T)
         timer.write_now('Finished gradient of dH^a part')
 
-        C_MM = np.identity(nao, dtype=dtype)
         gd = wfs.gd
 
-        dP_aMix = {} # XXX In the future use the New Two-Center integrals
-                     # to evaluate this
-        timer.write_now('Starting gradient of projectors part')
-        for a, setup in enumerate(wfs.setups):
-            ni = 0 
-            dP_Mix = np.zeros((nao, setup.ni, 3))
-            pt = LFC(wfs.gd, [setup.pt_j],
-                     wfs.kpt_comm, dtype=dtype, forces=True)
-            spos_ac = [self.atoms.get_scaled_positions()[a]]
-            pt.set_positions(spos_ac)
-
-            for b, setup_b in enumerate(wfs.setups):
-                niAO = setup_b.niAO
-                phi_MG = gd.zeros(niAO)
-                phi_MG = gd.collect(phi_MG, broadcast=False)
-                bfs.lcao_to_grid(C_MM[ni:ni+niAO], phi_MG, q)
-                dP_bMix = pt.dict(len(phi_MG), derivative=True)
-                pt.derivative(phi_MG, dP_bMix)
-                dP_Mix[ni:ni+niAO] = dP_bMix[0]            
-                ni += niAO
-                timer.write_now('projector grad. doing atoms (%s, %s) ' %
-                                (a, b))
-                #print a,b, ni-niAO, ni    
-                
-            dP_aMix[a] = dP_Mix
+        spos_ac = self.atoms.get_scaled_positions() % 1.0
+        dP_aMix = self.get_dP_aMix(spos_ac, gd, wfs, nao, timer)
         timer.write_now('Finished gradient of projectors part')
 
         dH_asp = pickle.load(open('v.eq.pckl'))[1]
@@ -327,3 +311,55 @@ class ElectronPhononCouplingMatrix:
             M_lii[f * Hartree] =  M_lii_1[f] * Hartree / np.sqrt(2 * f)
 
         return M_lii
+
+
+def get_grid_dP_aMix(spos_ac, gd, wfs, nao, timer, q=0): # XXXXXX q
+    C_MM = np.identity(nao, dtype=wfs.dtype)
+    dP_aMix = {} # XXX In the future use the New Two-Center integrals
+                 # to evaluate this
+    timer.write_now('Starting gradient of projectors part')
+    for a, setup in enumerate(wfs.setups):
+        ni = 0 
+        dP_Mix = np.zeros((nao, setup.ni, 3))
+        pt = LFC(wfs.gd, [setup.pt_j],
+                 wfs.kpt_comm, dtype=wfs.dtype, forces=True)
+        spos1_ac = [spos_ac[a]]#[self.atoms.get_scaled_positions()[a]]
+        pt.set_positions(spos1_ac)
+        for b, setup_b in enumerate(wfs.setups):
+            niAO = setup_b.niAO
+            phi_MG = gd.zeros(niAO)
+            phi_MG = gd.collect(phi_MG, broadcast=False)
+            wfs.basis_functions.lcao_to_grid(C_MM[ni:ni+niAO], phi_MG, q)
+            dP_bMix = pt.dict(len(phi_MG), derivative=True)
+            pt.derivative(phi_MG, dP_bMix)
+            dP_Mix[ni:ni+niAO] = dP_bMix[0]            
+            ni += niAO
+            timer.write_now('projector grad. doing atoms (%s, %s) ' %
+                            (a, b))
+            #print a,b, ni-niAO, ni    
+
+        dP_aMix[a] = dP_Mix
+    return dP_aMix
+
+def get_tci_dP_aMix(spos_ac, gd, wfs, nao, timer):
+    # container for spline expansions of basis function-projector pairs
+    # (note to self: remember to conjugate/negate because of that)
+    from gpaw.lcao.overlap import ManySiteDictionaryWrapper,\
+         TwoCenterIntegralCalculator, NewTwoCenterIntegrals
+
+    if not isinstance(wfs.tci, NewTwoCenterIntegrals):
+        raise RuntimeError('Please remember --gpaw=usenewtci=True')
+
+    dP_aqxMi = {}
+    nq = len(wfs.ibzk_qc)
+    for a, setup in enumerate(wfs.setups):
+        dP_aqxMi[a] = np.zeros((nq, 3, nao, setup.ni))
+    
+    calc = TwoCenterIntegralCalculator(wfs.ibzk_qc, derivative=True)
+    expansions = ManySiteDictionaryWrapper(wfs.tci.P_expansions, dP_aqxMi)
+    calc.calculate(wfs.tci.atompairs, [expansions], [dP_aqxMi])
+
+    dP_aMix = {}
+    for a in dP_aqxMi:
+        dP_aMix[a] = dP_aqxMi[a].transpose(0, 2, 3, 1).copy()
+    return dP_aMix
