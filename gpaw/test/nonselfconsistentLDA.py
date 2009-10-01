@@ -18,8 +18,8 @@ de21 = calc.get_xc_difference('LDA')
 print e1ref + e1 + de12, e2ref + e2
 print e1ref + e1, e2ref + e2 + de21
 print de12, de21
-equal(e1ref + e1 + de12, e2ref + e2, 56e-5 * 27)
-equal(e1ref + e1, e2ref + e2 + de21, 93e-5 * 27)
+equal(e1ref + e1 + de12, e2ref + e2, 0.02)
+equal(e1ref + e1, e2ref + e2 + de21, 0.025)
 
 calc.write('PBE.gpw')
 

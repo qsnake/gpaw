@@ -14,9 +14,9 @@ loa.set_calculator(calc)
 
 ref_1871 = { # Values from revision 1871. Not true reference values
     # xc         Energy          eigenvalue 0    eigenvalue 1
-    'PBE' : (   5.36043449926, -3.86524565488, -0.989950689923),
-    'PBE0': (-790.98523889100, -5.09079115492, -1.826444460780),
-    'EXX' : (-785.59780385600, -7.21083921161, -2.782087866830),
+    'PBE' : ( 5.42745031912, -3.84092348806, -0.961920795759),
+    'PBE0': (-790.9165299,   -5.06696420379, -1.79936014312),
+    'EXX' : (-785.521919866, -7.18798034247, -2.75482604483)
     }
 
 current = {} # Current revision
@@ -40,4 +40,5 @@ for setup in ['PBE', 'PBE0', 'EXX', 'PBE']:#, 'oldPBE', 'LDA']:
         
 for setup in current:
     for ref, cur in zip(ref_1871[setup], current[setup]):
+        print ref, cur, ref-cur
         equal(ref, cur, 2e-3)

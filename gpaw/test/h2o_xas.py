@@ -45,10 +45,10 @@ if mpi.size == 1:
     w_n = np.sum(xas.sigma_cn.real**2, axis=0)
     de2 = e2_n[1] - e2_n[0]
 
-    print de2 - 2.0801
-    assert abs(de2 - 2.0801) < 0.001
+    print de2 - 2.0992
+    assert abs(de2 - 2.0992) < 0.001
     print w_n[1] / w_n[0]
-    assert abs(w_n[1] / w_n[0] - 2.19) < 0.01
+    assert abs(w_n[1] / w_n[0] - 2.18) < 0.01
 
     if mpi.size == 1:
         assert de1 == de2

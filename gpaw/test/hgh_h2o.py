@@ -26,19 +26,17 @@ mol.center(vacuum=2.0)
 calc = GPAW(nbands=6,
             gpts=(32, 40, 40),
             setups='hgh',
-            poissonsolver=PoissonSolver(relax='GS'),
-            convergence=dict(eigenstates=1e-9, density=1e-5, energy=1e-4),
+            convergence=dict(eigenstates=1e-9, density=1e-5, energy=1e-5),
             txt='-')
 mol.set_calculator(calc)
 e = mol.get_potential_energy()
 F_ac = mol.get_forces()
 
-F_ac_ref = np.array([[ 9.22651716,  4.69341829, -6.15529718],
-                     [-0.94608984, -1.28176225,  3.50473655],
-                     [-0.65317874, -0.29196963,  2.44196361]])
+F_ac_ref = np.array([[ 7.33694397,  3.81614796, -6.07914715],
+                     [-0.90850061, -1.17060449,  3.43945632],
+                     [-0.61183534, -0.41462055,  2.3438572 ]])
 
-
-eref = 722.39463463
+eref = 724.496374168
 
 eerr = abs(e - eref)
 
@@ -77,7 +75,7 @@ psit_nG = wfs.kpt_u[0].psit_nG
 dH_asp = calc.hamiltonian.dH_asp
 
 assert eerr < 1e-3, 'energy changed from reference'
-assert ferr < 0.02, 'forces do not match FD check'
+assert ferr < 0.006, 'forces do not match FD check'
 
 # Sanity check.  In HGH, the atomic Hamiltonian is constant.
 # Also the projectors should be normalized

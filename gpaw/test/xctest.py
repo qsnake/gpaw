@@ -16,35 +16,35 @@ def printstr(calc):
 atom_kwargs = dict(pbc=True, cell=[a, a, a])
 calc_kwargs = dict(gpts=(g, g, g), kpts=(k, k, k), nbands=2, txt=None)
 
-# Reference value are from gpaw rev. 4362
+# Reference value are from gpaw rev. 5066 with stencils=(3,3)
 def run_test(tests=[0, 1, 2, 3]):
     if 0 in tests: # spin polarized LDA (libxc)
         calc = GPAW(xc='LDA', **calc_kwargs)
         bulk = Atoms('Li', magmoms=[1.], calculator=calc, **atom_kwargs)
         E = bulk.get_potential_energy()
         printstr(calc)
-        equal(E, -1.87472627206, 1e-4)
+        equal(E, -1.87364, 1e-4)
 
     if 1 in tests:# spin paired GGA (libxc)
         calc = GPAW(xc='PBE', **calc_kwargs)
         bulk = Atoms('Li', calculator=calc, **atom_kwargs)
         E = bulk.get_potential_energy()
         printstr(calc)
-        equal(E, -1.74718132024, 1e-4)
+        equal(E, -1.74626, 1e-4)
 
     if 2 in tests: # spin polarized GGA (libxc)
         calc = GPAW(xc='PBE', **calc_kwargs)
         bulk = Atoms('Li', magmoms=[1.], calculator=calc, **atom_kwargs)
         E = bulk.get_potential_energy()
         printstr(calc)
-        equal(E, -1.74848080152, 1e-4)
+        equal(E, -1.74752, 1e-4)
 
     if 3 in tests: # spin polarized GGA (gpaw built_in)
         calc = GPAW(xc='oldPBE', **calc_kwargs)
         bulk = Atoms('Li', magmoms=[1.], calculator=calc, **atom_kwargs)
         E = bulk.get_potential_energy()
         printstr(calc)
-        equal(E, -1.74853307793, 1e-4)
+        equal(E, -1.74763, 1e-4)
 
 usenewxc = extra_parameters.get('usenewxc')
 try:

@@ -13,7 +13,7 @@ from gpaw.output import eigenvalue_string
 load=True
 load=False
 txt = '/dev/null'
-#txt='-'
+txt='-'
 
 me = ''
 if size > 1:

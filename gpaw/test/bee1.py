@@ -10,7 +10,7 @@ atoms.get_potential_energy()
 e1 = calc.get_xc_difference(XCFunctional('BEE1', parameters=[-100.0]))
 e2 = calc.get_xc_difference('X-C_PBE')
 print e1, e2
-assert abs(e1 - e2) < 2e-5
+assert abs(e1 - e2) < 3e-5
 e1 = calc.get_xc_difference(XCFunctional('BEE1', parameters=[0.0]))
 e2 = calc.get_xc_difference('PBE')
 print e1, e2

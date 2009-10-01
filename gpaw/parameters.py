@@ -5,44 +5,45 @@ from ase.units import Hartree
 from gpaw.notify import InputNotifier
 from gpaw.poisson import PoissonSolver, FFTPoissonSolver
 
+
 class InputParameters(dict):
     def __init__(self):
         dict.__init__(self, [
-            ('h',             None,   ),  # Angstrom
-            ('xc',            'LDA',  ),
-            ('gpts',          None,   ),
-            ('kpts',          None,   ),
-            ('lmax',          2,      ),
-            ('charge',        0,      ),
-            ('fixmom',        False,  ),
-            ('nbands',        None,   ),
-            ('setups',        'paw',  ),
-            ('basis',         {},     ),
-            ('width',         None,   ),  # eV
-            ('spinpol',       None,   ),
-            ('usesymm',       True,   ),
-            ('stencils',      (2, 3), ),
-            ('fixdensity',    False   ),
-            ('mixer',         None,   ),
-            ('txt',           '-',    ),
-            ('hund',          False,  ),
-            ('random',        False,  ),
-            ('maxiter',       120,    ),
-            ('parsize',       None,   ),
-            ('parsize_bands', 1   ,   ),
-            ('parstride_bands', False,),
-            ('external',      None,   ),  # eV
-            ('verbose',       0,      ),
-            ('eigensolver',   None,   ),
-            ('poissonsolver', None,   ),
-            ('communicator' , None,   ),
-            ('idiotproof'   , True,   ),
-            ('mode',          'fd',   ),
-            ('convergence',   {'energy':      0.001,  # eV / atom
-                               'density':     1.0e-4,
-                               'eigenstates': 1.0e-9,
-                               'bands':       'occupied'}),
-            ('notify', InputNotifier(),)
+            ('h',               None),  # Angstrom
+            ('xc',              'LDA'),
+            ('gpts',            None),
+            ('kpts',            [(0, 0, 0)]),
+            ('lmax',            2),
+            ('charge',          0),
+            ('fixmom',          False),
+            ('nbands',          None),
+            ('setups',          'paw'),
+            ('basis',           {}),
+            ('width',           None),  # eV
+            ('spinpol',         None),
+            ('usesymm',         True),
+            ('stencils',        (3, 3)),
+            ('fixdensity',      False),
+            ('mixer',           None),
+            ('txt',             '-'),
+            ('hund',            False),
+            ('random',          False),
+            ('maxiter',         120),
+            ('parsize',         None),
+            ('parsize_bands',   1),
+            ('parstride_bands', False),
+            ('external',        None),  # eV
+            ('verbose',         0),
+            ('eigensolver',     None),
+            ('poissonsolver',   None),
+            ('communicator' ,   None),
+            ('idiotproof'   ,   True),
+            ('mode',            'fd'),
+            ('convergence',     {'energy':      0.001,  # eV / atom
+                                 'density':     1.0e-4,
+                                 'eigenstates': 1.0e-9,
+                                 'bands':       'occupied'}),
+            ('notify',          InputNotifier())
             ])
     
     def __getattr__(self, key):

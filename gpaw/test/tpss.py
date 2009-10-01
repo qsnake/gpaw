@@ -12,8 +12,7 @@ tpss_de = {
 'LiH': 59.1,
 }
 tpss_old = {
-#'LiH': 56.1625,
-'LiH': 57.4,
+'LiH': 57.0628,
 }
 
 exp_bonds_dE = {

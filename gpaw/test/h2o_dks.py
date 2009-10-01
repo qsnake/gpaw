@@ -31,5 +31,5 @@ e3 = atoms.get_potential_energy() + calc.get_reference_energy()
 print 'Energy difference %.3f eV' % (e2 - e1)
 print 'XPS %.3f eV' % (e3 - e1)
 
-assert abs(e2 - e1 - 533.117) < 0.001
-assert abs(e3 - e1 - 538.623) < 0.001 
+assert abs(e2 - e1 - 533.349) < 0.001
+assert abs(e3 - e1 - 538.844) < 0.001 

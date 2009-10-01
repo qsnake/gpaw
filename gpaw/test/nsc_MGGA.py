@@ -31,8 +31,8 @@ print 'tpss = ', e1+de12t
 print 'm06l = ', e1+de12m
 print '================'
 
-equal(e1+de12t, 15.5749645819, 0.005)
-equal(e1+de12m, 15.6913237136, 0.005)
+equal(e1+de12t, 15.70495612949, 0.005)
+equal(e1+de12m, 15.775609818, 0.005)
 
 symbol = 'He'
 g = Generator(symbol, 'TPSS', scalarrel=True, nofiles=True)
@@ -56,5 +56,5 @@ print 'tpss = ', e1He+de12tHe
 print 'm06l = ', e1He+de12mHe
 print '================'
 
-equal(e1He+de12tHe, 2.23392895229, 0.005)
-equal(e1He+de12mHe, 1.64218259886, 0.005)
+equal(e1He+de12tHe, 3.21494509843, 0.005)
+equal(e1He+de12mHe, 2.60645239522, 0.005)

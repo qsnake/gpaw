@@ -8,8 +8,13 @@ import gpaw
 
 
 # Function used by tests:
-def equal(a, b, e=0):
-    assert abs(a - b) <= e, '%g != %g (error: %g > %g)' % (a, b, abs(a - b), e)
+def equal(x, y, tolerance=0, fail=True):
+    if abs(x - y) > tolerance:
+        msg = '%g != %g (error: %g > %g)' % (x, y, abs(x - y), tolerance)
+        if fail:
+            raise AssertionError(msg)
+        else:
+            sys.stderr.write('WARNING: %s\n' % msg)
 
 
 tests = [

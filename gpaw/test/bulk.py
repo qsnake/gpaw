@@ -1,14 +1,6 @@
 from ase import *
 from gpaw import GPAW
 
-# Values from revision 3775.
-eref = np.array([ # Values from revision 3775.
-    -1.9857831386443334,
-    -1.9878176493286341,
-    -1.9846919084343240,
-    -1.9773280974295946,
-    -1.9662827649879555])
-
 bulk = Atoms([Atom('Li')], pbc=True)
 k = 4
 g = 8
@@ -20,9 +12,9 @@ for x in a:
     bulk.set_cell((x, x, x))
     e.append(bulk.get_potential_energy())
 
-print e, e - eref
-assert abs(e - eref).max() < 2e-5
-
-a0 = np.roots(np.polyder(np.polyfit(a, e, 2), 1))[0]
-print 'a =', a0
-assert abs(a0 - 2.6430) < 0.0001
+fit = np.polyfit(a, e, 2)
+a0 = np.roots(np.polyder(fit, 1))[0]
+e0 = np.polyval(fit, a0)
+print 'a,e =', a0, e0
+assert abs(a0 - 2.6418) < 0.0001
+assert abs(e0 - -1.98323) < 0.00002

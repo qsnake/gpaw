@@ -39,4 +39,4 @@ print PBETPSSdifference
 print PBEM06Ldifference 
 # TPSS value is from JCP 120 (15) 6898, 2004
 equal(PBETPSSdifference, -0.3599, 0.002)
-equal(PBEM06Ldifference, -0.169, 0.002)
+equal(PBEM06Ldifference, -0.169, 0.003)

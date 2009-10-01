@@ -12,7 +12,6 @@ atoms = Atoms(symbols='Si2', pbc=True,
               calculator=GPAW(h=.24, kpts=(4, 4, 4), width=.1, nbands=5))
 E = atoms.get_potential_energy()
 
-# *Not* actual reference values, just the numbers from revision 4478
-equal(E, -12.02747, 0.005)
+equal(E, -12.0736, 0.005)
 equal(atoms.calc.get_fermi_level(), 5.16301, 0.005)
 assert 22 <= atoms.calc.iter <= 26

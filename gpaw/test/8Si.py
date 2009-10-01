@@ -20,7 +20,7 @@ calc = GPAW(gpts=(n, n, n),
             nbands=8*3,
             width=0.01,
             kpts=(2, 2, 2),
-            #convergence={'eigenstates': 1e-11}
+            convergence={'energy': 1e-6}
             )
 bulk.set_calculator(calc)
 f1 = bulk.get_forces()[0, 2]
@@ -31,4 +31,5 @@ equal(f1, f2, 0.005)
 # Volume per atom:
 vol = a**3 / 8
 de = calc.get_electrostatic_corrections() / vol
-assert abs(de[0] - -2.19) < 0.001
+print de
+assert abs(de[0] - -2.190) < 0.001

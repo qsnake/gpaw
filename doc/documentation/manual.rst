@@ -106,7 +106,7 @@ keyword            type       default value        description
                    file obj.
 ``parsize``        *seq*                           Parallel
                                                    :ref:`manual_parsize`
-``stencils``       tuple      ``(2, 3)``           Number of neighbors for
+``stencils``       tuple      ``(3, 3)``           Number of neighbors for
                                                    :ref:`manual_stencils`
 ``mixer``          Object                          Pulay :ref:`manual_mixer`
                                                    scheme

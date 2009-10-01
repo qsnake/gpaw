@@ -2,14 +2,6 @@ from ase import *
 from gpaw.test import equal
 from gpaw import GPAW, Mixer
 
-ref_3775 = [ # Values from revision 3775.
-    # d         Energy
-    (1.00, -23.4215573953),
-    (1.05, -23.541808956),
-    (1.10, -23.5629210099),
-    (1.15, -23.50919649),
-    ]
-
 a = 4.0
 n = 20
 d = 1.0
@@ -24,9 +16,18 @@ atoms.set_calculator(GPAW(gpts=(n, n, n), nbands=4, txt=None,
                           mixer=Mixer(0.25, 3, 1)))
 e0 = atoms.get_potential_energy()
 
-for d, eref in ref_3775:
+D = [1, 1.05, 1.1, 1.15]
+E = []
+for d in D:
     x = d / 3**0.5
     atoms.positions[1] = (x, x, x)
     e = atoms.get_potential_energy()
-    print d, e - e0, e-eref
-    equal(eref, e, 7e-5)
+    print d, e - e0
+    E.append(e)
+
+fit = np.polyfit(D, E, 2)
+d0 = np.roots(np.polyder(fit, 1))[0]
+e0 = np.polyval(fit, d0)
+print 'd,e =', d0, e0
+equal(d0, 1.0931, 0.0001)
+equal(e0, -23.228, 0.001)
