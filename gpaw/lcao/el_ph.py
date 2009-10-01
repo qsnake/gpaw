@@ -135,7 +135,7 @@ class ElectronPhononCouplingMatrix:
                 x+=1
         return dvt_Gx, ddH_aspx
 
-    def get_M(self, modes, log='-'):
+    def get_M(self, modes, log=None):
         """Calculate el-ph coupling matrix for given modes(s).
 
         Note that modes must be given as a dictionary with mode
