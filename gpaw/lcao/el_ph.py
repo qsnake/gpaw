@@ -1,5 +1,4 @@
 import cPickle as pickle
-import numpy as npy
 import numpy as np
 from os.path import isfile
 from ase.vibrations import Vibrations
@@ -13,6 +12,7 @@ from gpaw.utilities.tools import tri2full
 from ase import Bohr
 from gpaw.lfc import NewLocalizedFunctionsCollection as LFC
 from ase.units import Bohr, Hartree
+from gpaw.utilities.timing import StepTimer, nulltimer
 
 """This module is used to calculate the electron-phonon coupling matrix,
     expressed in terms of GPAW LCAO orbitals."""
@@ -23,7 +23,7 @@ class ElectronPhononCouplingMatrix:
 
     ::
    
-                  _                   _____
+                  __                   _____
                   \     l   cc        /  h             cc
         H      =   )   M   c   c     /------   ( b  + b   ),
          el-ph    /_    ij  i   j  \/   2 W       l    l
@@ -31,13 +31,13 @@ class ElectronPhononCouplingMatrix:
     
     where the electron phonon coupling matrix is given by::
                 
-            l           _ 
+            l           ___
             M   = < i | \ /  V   * v  |j>
              ij          'u   eff   l
   
     """
     
-    def __init__(self, atoms, indices=None, name = 'v',delta=0.005, nfree=2):
+    def __init__(self, atoms, indices=None, name='v', delta=0.005, nfree=2):
         assert nfree in [2,4]
         self.nfree = nfree
         self.delta = delta
@@ -102,10 +102,10 @@ class ElectronPhononCouplingMatrix:
         nx = len(self.indices) * 3	
         veqt_G, dHeq_asp = pickle.load(open(self.name + '.eq.pckl'))
         gpts = veqt_G.shape 
-        dvt_Gx = npy.zeros(gpts + (nx, )) 
+        dvt_Gx = np.zeros(gpts + (nx, )) 
         ddH_aspx = {}
         for a, dH_sp in dHeq_asp.items():
-            ddH_aspx[a] = npy.empty(dH_sp.shape + (nx,))
+            ddH_aspx[a] = np.empty(dH_sp.shape + (nx,))
 
         x = 0
         for a in self.indices:
@@ -135,11 +135,13 @@ class ElectronPhononCouplingMatrix:
                 x+=1
         return dvt_Gx, ddH_aspx
 
-    def get_M(self, modes):
-        """Note that modes must be given as a dictionary with mode
-           frequencies in eV and corresponding mode vectors in units of 1/sqrt(amu), 
-           where amu = 1.6605402e-27 Kg is an atomic mass unit.    
-           In short frequencies and mode vectors must be given in ase units.
+    def get_M(self, modes, log='-'):
+        """Calculate el-ph coupling matrix for given modes(s).
+
+        Note that modes must be given as a dictionary with mode
+        frequencies in eV and corresponding mode vectors in units
+        of 1/sqrt(amu), where amu = 1.6605402e-27 Kg is an atomic mass unit.
+        In short frequencies and mode vectors must be given in ase units.
 
         ::
         
@@ -166,6 +168,13 @@ class ElectronPhononCouplingMatrix:
                               a,ij
 
         """
+        if log is None:
+            timer = nulltimer
+        elif log == '-':
+            timer = StepTimer(name='EPCM')
+        else:
+            timer = StepTimer(name='EPCM', out=open(log, 'w'))
+
         modes1 = modes.copy()
         #convert to atomic units
         amu = 1.6605402e-27 # atomic unit mass [Kg]
@@ -177,7 +186,7 @@ class ElectronPhononCouplingMatrix:
         dvt_Gx, ddH_aspx = self.get_gradient()
 
         from gpaw import restart
-        atoms, calc = restart('eq.gpw')
+        atoms, calc = restart('eq.gpw', txt=None)
         spos_ac = atoms.get_scaled_positions()
         if calc.wfs.S_qMM is None:
             calc.initialize(atoms)
@@ -185,19 +194,24 @@ class ElectronPhononCouplingMatrix:
 
         wfs = calc.wfs
         nao = wfs.setups.nao
-        bfs = wfs.basis_functions       
+        bfs = wfs.basis_functions
+        dtype = wfs.dtype
+        q = 0 # XXX hack for k-points. There shuold be loops over q!
 
         M_lii = {}
+
+        timer.write_now('Starting gradient of pseudo part')
         for f, mode in modes.items():
             mo = []    
-            M_ii=np.zeros((nao, nao))
+            M_ii=np.zeros((nao, nao), dtype)
             for a in self.indices:
                 mo.append(mode[a])
             mode = np.asarray(mo).flatten()
             dvtdP_G = np.dot(dvt_Gx, mode)   
-            bfs.calculate_potential_matrix(dvtdP_G, M_ii, q=0)
+            bfs.calculate_potential_matrix(dvtdP_G, M_ii, q=q)
             tri2full(M_ii, 'L')
             M_lii[f] = M_ii               
+        timer.write_now('Finished gradient of pseudo part')
 
         P_aqMi = calc.wfs.P_aqMi
         # Add the term
@@ -208,10 +222,11 @@ class ElectronPhononCouplingMatrix:
         # a,ij
 
         Ma_lii = {}
-        for f,mode in modes.items():
-            Ma_lii[f]=np.zeros_like(M_lii.values()[0])
+        for f, mode in modes.items():
+            Ma_lii[f] = np.zeros_like(M_lii.values()[0])
         
         spin = 0
+        timer.write_now('Starting gradient of dH^a part')
         for f, mode in modes.items():
             mo = []
             for a in self.indices:
@@ -221,18 +236,20 @@ class ElectronPhononCouplingMatrix:
             for a, ddH_spx in ddH_aspx.items():
                 ddHdP_sp = np.dot(ddH_spx, mode)
                 ddHdP_ii = unpack2(ddHdP_sp[spin])
-                Ma_lii[f]+=dots(P_aqMi[a][0], ddHdP_ii, P_aqMi[a][0].T)
+                Ma_lii[f] += dots(P_aqMi[a][q], ddHdP_ii, P_aqMi[a][q].T)
+        timer.write_now('Finished gradient of dH^a part')
 
-        C_MM = np.identity(nao)
+        C_MM = np.identity(nao, dtype=dtype)
         gd = wfs.gd
 
         dP_aMix = {} # XXX In the future use the New Two-Center integrals
                      # to evluate this
+        timer.write_now('Starting gradient of projectors part')
         for a, setup in enumerate(wfs.setups):
             ni = 0 
             dP_Mix = np.zeros((nao, setup.ni, 3))
             pt = LFC(wfs.gd, [setup.pt_j],
-                     wfs.kpt_comm, dtype=wfs.dtype, forces=True)
+                     wfs.kpt_comm, dtype=dtype, forces=True)
             spos_ac = [self.atoms.get_scaled_positions()[a]]
             pt.set_positions(spos_ac)
 
@@ -240,36 +257,41 @@ class ElectronPhononCouplingMatrix:
                 niAO = setup_b.niAO
                 phi_MG = gd.zeros(niAO)
                 phi_MG = gd.collect(phi_MG, broadcast=False)
-                bfs.lcao_to_grid(C_MM[ni:ni+niAO], phi_MG, 0)
+                bfs.lcao_to_grid(C_MM[ni:ni+niAO], phi_MG, q)
                 dP_bMix = pt.dict(len(phi_MG), derivative=True)
                 pt.derivative(phi_MG, dP_bMix)
                 dP_Mix[ni:ni+niAO] = dP_bMix[0]            
                 ni += niAO
-                print a,b, ni-niAO, ni    
-
+                timer.write_now('projector grad. doing atoms (%s, %s) ' %
+                                (a, b))
+                #print a,b, ni-niAO, ni    
+                
             dP_aMix[a] = dP_Mix
+        timer.write_now('Finished gradient of projectors part')
 
         dH_asp = pickle.load(open('v.eq.pckl'))[1]
         
         Mb_lii = {}
         for f,mode in modes.items():
-            Mb_lii[f]=np.zeros_like(M_lii.values()[0])
+            Mb_lii[f] = np.zeros_like(M_lii.values()[0])
 
         for f, mode in modes.items():
             for a, dP_Mix in dP_aMix.items():
-                dPdP_Mi = npy.dot(dP_Mix, mode[a])
-                dH_ii = unpack2(dH_asp[a][0])    
-                dPdP_MM = dots(dPdP_Mi, dH_ii, P_aqMi[a][0].T) 
+                dPdP_Mi = np.dot(dP_Mix, mode[a])
+                dH_ii = unpack2(dH_asp[a][q])    
+                dPdP_MM = dots(dPdP_Mi, dH_ii, P_aqMi[a][q].T) 
                 Mb_lii[f] -= dPdP_MM + dPdP_MM.T 
-                # XXX The minus sign here is quite subtle. It is related to how 
-                # the derivative of projector functions in GPAW is calculated.
+                # XXX The minus sign here is quite subtle.
+                # It is related to how the derivative of projector
+                # functions in GPAW is calculated.
                 # More thorough explanations, anyone...?
                 
         # Units of M_lii are Hartree/(Bohr * sqrt(m_e))
         for mode in M_lii.keys():
             M_lii[mode] += Ma_lii[mode] + Mb_lii[mode]
 
-        # conversion to eV. The prefactor 1 / sqrt(hb^2 / 2 * hb * f) has units Bohr * sqrt(me)
+        # conversion to eV. The prefactor 1 / sqrt(hb^2 / 2 * hb * f)
+        # has units Bohr * sqrt(me)
         M_lii_1 = M_lii.copy()
         M_lii = {}
 
@@ -277,4 +299,3 @@ class ElectronPhononCouplingMatrix:
             M_lii[f * Hartree] =  M_lii_1[f] * Hartree / np.sqrt(2 * f)
 
         return M_lii
-
