@@ -58,6 +58,21 @@ class ElectronPhononCouplingMatrix:
             Vt_G = self.calc.get_effective_potential(pad=False)
             Vt_G = self.calc.gd.collect(Vt_G, broadcast=True) / Hartree
             dH_asp = self.calc.hamiltonian.dH_asp
+            setups = self.calc.wfs.setups
+            nspins = self.calc.wfs.nspins
+            gd_comm = self.calc.gd.comm
+
+
+            alldH_asp = {}
+            for a, setup in enumerate(setups):
+                ni = setup.ni
+                nii = ni * (ni + 1) // 2
+                tmpdH_sp = np.zeros((nspins, nii))
+                if a in dH_asp:
+                    tmpdH_sp[:] = dH_asp[a]
+                gd_comm.sum(tmpdH_sp)
+                alldH_asp[a] = tmpdH_sp
+                
             forces = self.atoms.get_forces()
             self.calc.write('eq.gpw')
 
@@ -65,7 +80,7 @@ class ElectronPhononCouplingMatrix:
             if rank == 0:
                 vd = open(self.name + '.eq.pckl', 'wb')
                 fd = open('vib.eq.pckl','wb')
-                pickle.dump((Vt_G, dH_asp), vd,2)
+                pickle.dump((Vt_G, alldH_asp), vd,2)
                 pickle.dump(forces,fd)
                 vd.close()
                 fd.close()
@@ -84,12 +99,23 @@ class ElectronPhononCouplingMatrix:
                         Vt_G = self.calc.get_effective_potential(pad=False)
                         Vt_G =self.calc.gd.collect(Vt_G, broadcast=True) / Hartree
                         dH_asp = self.calc.hamiltonian.dH_asp
+
+                        alldH_asp = {}
+                        for a, setup in enumerate(setups):
+                            ni = setup.ni
+                            nii = ni * (ni + 1) // 2
+                            tmpdH_sp = np.zeros((nspins, nii))
+                            if a in dH_asp:
+                                tmpdH_sp[:] = dH_asp[a]
+                            gd_comm.sum(tmpdH_sp)
+                            alldH_asp[a] = tmpdH_sp
+
                         forces = self.atoms.get_forces()
                         barrier()
                         if rank == 0:
                             vd = open(self.name + name , 'w')
                             fd = open('vib' + name, 'w')
-                            pickle.dump((Vt_G, dH_asp), vd)
+                            pickle.dump((Vt_G, alldH_asp), vd)
                             pickle.dump(forces, fd)
                             vd.close()
                             fd.close()
@@ -243,7 +269,7 @@ class ElectronPhononCouplingMatrix:
         gd = wfs.gd
 
         dP_aMix = {} # XXX In the future use the New Two-Center integrals
-                     # to evluate this
+                     # to evaluate this
         timer.write_now('Starting gradient of projectors part')
         for a, setup in enumerate(wfs.setups):
             ni = 0 
