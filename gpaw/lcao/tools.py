@@ -75,6 +75,9 @@ def get_realspace_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
 
     nspins, nk, nbf = h_skmm.shape[:3]
     dir = 'xyz'.index(direction)
+    dtype = float
+    if len(bzk_kc) > 1 or np.any(bzk_kc != [0, 0, 0]):
+        dtype = complex
 
     # find all bz - kpoints in the transport (parallel) direction 
     bzk_p_kc = [bzk_kc[0, dir]]
@@ -89,13 +92,14 @@ def get_realspace_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
     transverse_dirs = np.delete([0, 1, 2], [dir])
     ibzk_t_kc = [ibzk_kc[0, transverse_dirs]]
     for k in ibzk_kc:
-        if np.any((np.asarray(ibzk_t_kc)-k[transverse_dirs]), axis=1).all():
+        if np.any(np.asarray(ibzk_t_kc)-k[transverse_dirs], axis=1).all():
             ibzk_t_kc.append(k[transverse_dirs])
+    ibzk_t_kc = np.array(ibzk_t_kc)
 
     nkpts_t = len(ibzk_t_kc)
-    h_skii = np.zeros((nspins, nkpts_t, nbf, nbf))
+    h_skii = np.zeros((nspins, nkpts_t, nbf, nbf), dtype)
     if s_kmm is not None:
-        s_kii = np.zeros((nkpts_t, nbf, nbf))
+        s_kii = np.zeros((nkpts_t, nbf, nbf), dtype)
 
     for j, k_t in enumerate(ibzk_t_kc):
         for k_p in bzk_p_kc:   
