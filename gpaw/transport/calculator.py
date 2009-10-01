@@ -498,6 +498,7 @@ class Transport(GPAW):
                 density.update(wfs)
                 density.rhot_g += self.surround.extra_rhot_g
                 hamiltonian.update(density)
+                calc.print_iteration(iter)
       
         #atoms.get_potential_energy()
         h_skmm, s_kmm =  self.get_hs(atoms.calc)
