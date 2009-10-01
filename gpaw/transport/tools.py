@@ -96,7 +96,7 @@ class Banded_Sparse_HSD:
             self.band_index = spar[pk].band_index
        
 class Banded_Sparse_Matrix:
-    def __init__(self, dtype, mat=None, band_index=None, tol=1e-3):
+    def __init__(self, dtype, mat=None, band_index=None, tol=1e-9):
         self.tol = tol
         self.dtype = dtype
         self.band_index = band_index
@@ -227,14 +227,15 @@ class Banded_Sparse_Matrix:
         print 'mintime', mintime
                 
     def inv(self):
-        kl, ku, index0 = self.band_index[:3]
-        dim = index0.shape[0]
-        inv_mat = np.eye(dim, dtype=complex)
-        ldab = 2*kl + ku + 1
-        source_mat = self.spar[index0]
-        assert source_mat.flags.contiguous
-        info = _gpaw.linear_solve_band(source_mat, inv_mat, kl, ku)            
-        return inv_mat
+        #kl, ku, index0 = self.band_index[:3]
+        #dim = index0.shape[0]
+        #inv_mat = np.eye(dim, dtype=complex)
+        #ldab = 2*kl + ku + 1
+        #source_mat = self.spar[index0]
+        #assert source_mat.flags.contiguous
+        #info = _gpaw.linear_solve_band(source_mat, inv_mat, kl, ku)            
+        #return inv_mat
+        return np.linalg.inv(self.recover()).copy()
        
 class Tp_Sparse_HSD:
     def __init__(self, dtype, ns, npk, ll_index, ex=True):
@@ -519,7 +520,7 @@ class Tp_Sparse_Matrix:
                 mat[indr2, indc2] = self.dwnc_h[i][j]
         return mat        
 
-    def test_inv_eq(self, tol=1e-3):
+    def test_inv_eq(self, tol=1e-9):
         tp_mat = copy.deepcopy(self)
         tp_mat.inv_eq()
         mol_h = dot(tp_mat.mol_h.recover(), self.mol_h.recover())
@@ -802,7 +803,7 @@ class CP_Sparse_HSD:
             self.index = spar[pk].index
      
 class CP_Sparse_Matrix:
-    def __init__(self, dtype, mat=None, index=None, flag=None, tol=1e-3):
+    def __init__(self, dtype, mat=None, index=None, flag=None, tol=1e-9):
         self.tol = tol
         self.index = index
         self.dtype = dtype
@@ -873,7 +874,7 @@ class CP_Sparse_Matrix:
         return mat
 
 class Se_Sparse_Matrix:
-    def __init__(self, mat, tri_type, nn=None, tol=1e-3):
+    def __init__(self, mat, tri_type, nn=None, tol=1e-9):
         # coupling sparse matrix A_ij!=0 if i>dim-nn and j>dim-nn (for right selfenergy)
         # or A_ij!=0 if i<nn and j<nn (for left selfenergy, dim is the shape of A)
         self.tri_type = tri_type
