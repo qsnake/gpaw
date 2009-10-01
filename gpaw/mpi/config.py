@@ -18,14 +18,14 @@ def get_mpi_implementation():
     if sys.platform == 'ia64':
         return 'mpich'
                 
-    output = os.popen('mpicc --showme', 'r').read()
+    output = os.popen('mpicc --showme 2> /dev/null', 'r').read()
     if output != '':
         if 'openmpi' in output:
             return 'openmpi'
         else:
             return 'lam'
 
-    output = os.popen('mpicc -show', 'r').read()
+    output = os.popen('mpicc -show 2> /dev/null', 'r').read()
     if output != '':
         if 'mvapich' in output:
             return 'mvapich'

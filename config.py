@@ -424,9 +424,9 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
         runtime_lib_option = '-L'
     elif sys.platform[:5] == 'hp-ux':
         runtime_lib_option = '+s -L'
-    elif os.popen('mpicc --showme', 'r').read()[:3] == 'gcc':
+    elif os.popen('mpicc --showme 2> /dev/null', 'r').read()[:3] == 'gcc':
         runtime_lib_option = '-Wl,-R'
-    elif os.popen('mpicc -show', 'r').read()[:3] == 'gcc':
+    elif os.popen('mpicc -show 2> /dev/null', 'r').read()[:3] == 'gcc':
         runtime_lib_option = '-Wl,-R'
     else:
         runtime_lib_option = '-R'
