@@ -136,6 +136,9 @@ def get_realspace_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
 
 
 def remove_pbc(atoms, h, s=None, d=0, centers_ic=None, cutoff=None):
+    if h.ndim > 2:
+        raise KeyError('You have to run remove_pbc for each '
+                       'spin/kpoint seperately.')
     L = atoms.cell[d, d]
     nao = len(h)
     if centers_ic is None:
