@@ -109,14 +109,14 @@ class ElectronPhononCouplingMatrix:
                         dH_asp = self.calc.hamiltonian.dH_asp
 
                         alldH_asp = {}
-                        for a, setup in enumerate(setups):
+                        for a2, setup in enumerate(setups):
                             ni = setup.ni
                             nii = ni * (ni + 1) // 2
                             tmpdH_sp = np.zeros((nspins, nii))
-                            if a in dH_asp:
-                                tmpdH_sp[:] = dH_asp[a]
+                            if a2 in dH_asp:
+                                tmpdH_sp[:] = dH_asp[a2]
                             gd_comm.sum(tmpdH_sp)
-                            alldH_asp[a] = tmpdH_sp
+                            alldH_asp[a2] = tmpdH_sp
 
                         forces = self.atoms.get_forces()
                         barrier()
@@ -291,7 +291,7 @@ class ElectronPhononCouplingMatrix:
             for a, dP_Mix in dP_aMix.items():
                 dPdP_Mi = np.dot(dP_Mix, mode[a])
                 dH_ii = unpack2(dH_asp[a][q])    
-                dPdP_MM = dots(dPdP_Mi, dH_ii, P_aqMi[a][q].T) 
+                dPdP_MM = dots(dPdP_Mi, dH_ii, P_aqMi[a][q].T)
                 Mb_lii[f] -= dPdP_MM + dPdP_MM.T 
                 # XXX The minus sign here is quite subtle.
                 # It is related to how the derivative of projector
@@ -341,7 +341,7 @@ def get_grid_dP_aMix(spos_ac, gd, wfs, nao, timer, q=0): # XXXXXX q
         dP_aMix[a] = dP_Mix
     return dP_aMix
 
-def get_tci_dP_aMix(spos_ac, gd, wfs, nao, timer):
+def get_tci_dP_aMix(spos_ac, gd, wfs, nao, timer, q=0):
     # container for spline expansions of basis function-projector pairs
     # (note to self: remember to conjugate/negate because of that)
     from gpaw.lcao.overlap import ManySiteDictionaryWrapper,\
@@ -361,5 +361,5 @@ def get_tci_dP_aMix(spos_ac, gd, wfs, nao, timer):
 
     dP_aMix = {}
     for a in dP_aqxMi:
-        dP_aMix[a] = dP_aqxMi[a].transpose(0, 2, 3, 1).copy()
+        dP_aMix[a] = dP_aqxMi[a].transpose(0, 2, 3, 1).copy()[q] # XXX q
     return dP_aMix
