@@ -510,7 +510,7 @@ class LCAOWaveFunctions(WaveFunctions):
             comm.sum(self.S_qMM)
             comm.sum(self.T_qMM)
 
-        if debug:
+        if debug and mynao == nao:
             from numpy.linalg import eigvalsh
             for S_MM in self.S_qMM:
                 smin = eigvalsh(S_MM).real.min()
