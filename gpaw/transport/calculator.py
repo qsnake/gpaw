@@ -63,7 +63,8 @@ class Transport(GPAW):
                        'use_linear_vt_array',
                        'scat_restart', 'save_file', 'restart_file',
                        'non_sc', 'fixed_boundary', 'guess_steps', 'foot_print',
-                        'align_har', 'use_fd_poisson', 'data_file', 'neintmethod']:
+                        'align_har', 'use_fd_poisson', 'data_file',
+                        'neintmethod', 'neintstep']:
                 
                 del self.gpw_kwargs[key]
             #----descript the lead-----    
@@ -97,6 +98,8 @@ class Transport(GPAW):
                 p['lead_restart'] = kw['lead_restart']
             if key in ['neintmethod']:
                 p['neintmethod'] = kw['neintmethod']
+            if key in ['neintstep']:
+                p['neintstep'] = kw['neintstep']
 
             #----descript the environment----   
             if key in ['use_env']:
@@ -220,6 +223,7 @@ class Transport(GPAW):
         self.save_file = p['save_file']
         self.restart_file = p['restart_file']
         self.neintmethod = p['neintmethod']
+        self.neintstep = p['neintstep']
         self.fixed = p['fixed_boundary']
         self.non_sc = p['non_sc']
         self.align_har = p['align_har']
@@ -290,6 +294,7 @@ class Transport(GPAW):
         p['use_fd_poisson'] = False
         p['data_file'] = None
         p['neintmethod'] = 0
+        p['neintstep'] = 0.02
         
         p['LR_leads'] = True
         p['gate'] = 0
@@ -1010,7 +1015,7 @@ class Transport(GPAW):
         self.intctrl = IntCtrl(self.occupations.kT * Hartree,
                                 self.lead_fermi, self.bias,
                                 self.env_bias, self.min_energy,
-                                self.neintmethod)            
+                                self.neintmethod, self.neintstep)            
         self.surround.reset_bias(self.bias) 
         self.initialize_green_function()
         self.calculate_integral_path()
