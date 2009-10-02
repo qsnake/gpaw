@@ -396,8 +396,7 @@ class FourierTransformer:
             else:
                 a_g[0] = a_g[1]  # XXXX
             a_g *= (-1)**((-l1 + l2 - l) // 2)
-            # XXX what's with all the division in the next line?
-            s = Spline(l, self.Q // self.ng // 2 * self.rcmax, a_g)
+            s = Spline(l, 2 * self.rcmax, np.concatenate((a_g, [0.0])))
             splines.append(s)
         return OverlapExpansion(l1, l2, splines)
 
@@ -798,7 +797,7 @@ class TwoCenterIntegralSplines:
             else:
                 a_g[0] = a_g[1]  # XXXX
             a_g *= (-1)**((-l1 + l2 - l) // 2)
-            s = Spline(l, self.Q // self.ng // 2 * self.rcmax, a_g)
+            s = Spline(l, 2 * self.rcmax, np.concatenate((a_g, [0.0])))
             splines.append(s)
         return splines
 
