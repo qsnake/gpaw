@@ -69,7 +69,7 @@ if len(tests) == 0:
         'pbe-pw91.py',
         'cg2.py',
         'd2Excdn2.py',
-        'test_dot.py',
+        'dot.py',
         'blas.py',
         'gp2.py',
         'non-periodic.py',
