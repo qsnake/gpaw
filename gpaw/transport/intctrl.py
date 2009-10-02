@@ -17,7 +17,8 @@ class IntCtrl:
     """
     
     def __init__(self, kt, efermi, bias, env_bias=[], min_energy=-100,
-                                                 neintmethod=0, verbose=False):
+                                                 neintmethod=0,
+                                            neintstep=0.02, verbose=False):
         #if u_l>u_r,bias>0
         self.kt = kt
         self.leadfermi = []
@@ -127,7 +128,7 @@ class IntCtrl:
 
         # -- Integral Step--
 
-        self.neintstep = 2e-2                    
+        self.neintstep = neintstep                    
         
         # -- Integral Path --
 
