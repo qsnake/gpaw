@@ -353,6 +353,23 @@ class Transport_Analysor:
 
         return tc_array, dos_array
 
+    def calculate_transmission_and_dos_with_real_ham(self, energies=None):
+        if energies == None:
+            energies = self.energies
+        tp = self.tp
+      
+        nlp = len(self.lead_pairs)
+        ne = len(energies)
+        ns, npk = tp.nspins, tp.npk
+
+        tc_array = np.empty([ns, nlp, ne], float)
+        dos_array = np.empty([ns, ne], float)
+        
+        for s in range(ns):
+            tc_array[s], dos_array[s] = \
+                          self.calculate_transmission_and_dos(s, q, energies)
+        return tc_array, dos_array
+
     def save_ion_step(self):
         tp = self.tp
         step = Structure_Info(self.n_ion_step)
@@ -971,7 +988,8 @@ class Transport_Plotter:
         p.show()
 
     def plot_bias_step_info(self, info, steps_indices, s, k,
-                                            height=None, unit=None, all=False):
+                                            height=None, unit=None,
+                                            all=False, show=True):
         xdata = self.energies
         #xdata = np.linspace(-3, 3, 61)
         energy_axis = False        
@@ -1020,47 +1038,11 @@ class Transport_Plotter:
         p.legend(legends)
         if height != None:
             p.axis([xdata[0], xdata[-1], 0, height])
-        p.show()
+        if show:
+            p.show()
 
-    def plot_ele_step_extended_info(self, info, steps_indices, s, k, unit=None):
-        import pylab as p
-        legends = []
-        if info == 'edd':
-            data = 'edmm[s, k]'
-            title = 'extended density matrix diagonal elements'
-        elif info == 'ent_G':
-            data = 'ent_G'
-            title = 'extended density on coarse gird'
-        elif info == 'evt_G':
-            data = 'evt_G'
-            title = 'extended hamiltonian on coarse grid'
-        elif info == 'ent_g':
-            data = 'ent_g'
-            title = 'extended density on fine grid'
-        elif info == 'evt_g':
-            data = 'evt_g'
-            title = 'extended hamiltonian on fine grid'
-        elif info == 'ehot_g':
-            data = 'ehot_g'
-            title = 'extended rho-density'
-        elif info == 'vHt_g':
-            data = 'evHt_g'
-            title = 'extended Hartree potential'
-        else:
-            raise ValueError('no this info type---' + info)        
-
-        for i, step in enumerate(self.ele_steps):
-            if i in steps_indices:
-                ydata = eval('step.' + data)
-                if unit != None:
-                    ydata = sum_by_unit(ydata, unit)
-                p.plot(ydata)
-                legends.append('step' + str(step.ele_step))
-        p.title(title)
-        p.legend(legends)
-        p.show()        
-
-    def compare_ele_step_info(self, info, steps_indices, s, k, height=None, unit=None):
+    def compare_ele_step_info(self, info, steps_indices, s, k, height=None,
+                                                                   unit=None):
         xdata = self.energies
         #xdata = np.linspace(-3, 3, 61)
         energy_axis = False        
@@ -1198,8 +1180,8 @@ class Transport_Plotter:
             bias.append(step.bias[0] - step.bias[1])
             current.append(np.real(step.current))
         import pylab as p
-        unit = 6.624 * 1e3 / np.pi
-        current = np.array(current)
+        unit = 6.624 * 1e3
+        current = np.array(current) / (2 * np.pi)
         current = current.reshape(-1)
         if current.shape[0] == 1:
             current *= 2
