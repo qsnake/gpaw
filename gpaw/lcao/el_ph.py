@@ -234,12 +234,13 @@ class ElectronPhononCouplingMatrix:
         nao = wfs.setups.nao
         bfs = wfs.basis_functions
         dtype = wfs.dtype
+        spin = 0 # XXX
 
         M_lii = {}
         timer.write_now('Starting gradient of pseudo part')
         for f, mode in modes.items():
             mo = []    
-            M_ii=np.zeros((nao, nao), dtype)
+            M_ii = np.zeros((nao, nao), dtype)
             for a in self.indices:
                 mo.append(mode[a])
             mode = np.asarray(mo).flatten()
@@ -261,7 +262,6 @@ class ElectronPhononCouplingMatrix:
         for f, mode in modes.items():
             Ma_lii[f] = np.zeros_like(M_lii.values()[0])
         
-        spin = 0
         timer.write_now('Starting gradient of dH^a part')
         for f, mode in modes.items():
             mo = []
@@ -275,22 +275,21 @@ class ElectronPhononCouplingMatrix:
                 Ma_lii[f] += dots(P_aqMi[a][q], ddHdP_ii, P_aqMi[a][q].T)
         timer.write_now('Finished gradient of dH^a part')
 
-        gd = wfs.gd
-
+        timer.write_now('Starting gradient of projectors part')
         spos_ac = self.atoms.get_scaled_positions() % 1.0
-        dP_aMix = self.get_dP_aMix(spos_ac, gd, wfs, nao, timer)
+        dP_aMix = self.get_dP_aMix(spos_ac, wfs, nao, timer)
         timer.write_now('Finished gradient of projectors part')
 
         dH_asp = pickle.load(open('v.eq.pckl'))[1]
         
         Mb_lii = {}
-        for f,mode in modes.items():
+        for f, mode in modes.items():
             Mb_lii[f] = np.zeros_like(M_lii.values()[0])
 
         for f, mode in modes.items():
             for a, dP_Mix in dP_aMix.items():
                 dPdP_Mi = np.dot(dP_Mix, mode[a])
-                dH_ii = unpack2(dH_asp[a][q])    
+                dH_ii = unpack2(dH_asp[a][spin])    
                 dPdP_MM = dots(dPdP_Mi, dH_ii, P_aqMi[a][q].T)
                 Mb_lii[f] -= dPdP_MM + dPdP_MM.T 
                 # XXX The minus sign here is quite subtle.
@@ -313,22 +312,21 @@ class ElectronPhononCouplingMatrix:
         return M_lii
 
 
-def get_grid_dP_aMix(spos_ac, gd, wfs, nao, timer, q=0): # XXXXXX q
+def get_grid_dP_aMix(spos_ac, wfs, nao, timer, q=0): # XXXXXX q
     C_MM = np.identity(nao, dtype=wfs.dtype)
     dP_aMix = {} # XXX In the future use the New Two-Center integrals
                  # to evaluate this
-    timer.write_now('Starting gradient of projectors part')
     for a, setup in enumerate(wfs.setups):
         ni = 0 
         dP_Mix = np.zeros((nao, setup.ni, 3))
         pt = LFC(wfs.gd, [setup.pt_j],
                  wfs.kpt_comm, dtype=wfs.dtype, forces=True)
-        spos1_ac = [spos_ac[a]]#[self.atoms.get_scaled_positions()[a]]
+        spos1_ac = [spos_ac[a]]
         pt.set_positions(spos1_ac)
         for b, setup_b in enumerate(wfs.setups):
             niAO = setup_b.niAO
-            phi_MG = gd.zeros(niAO)
-            phi_MG = gd.collect(phi_MG, broadcast=False)
+            phi_MG = wfs.gd.zeros(niAO)
+            phi_MG = wfs.gd.collect(phi_MG, broadcast=False)
             wfs.basis_functions.lcao_to_grid(C_MM[ni:ni+niAO], phi_MG, q)
             dP_bMix = pt.dict(len(phi_MG), derivative=True)
             pt.derivative(phi_MG, dP_bMix)
@@ -336,12 +334,11 @@ def get_grid_dP_aMix(spos_ac, gd, wfs, nao, timer, q=0): # XXXXXX q
             ni += niAO
             timer.write_now('projector grad. doing atoms (%s, %s) ' %
                             (a, b))
-            #print a,b, ni-niAO, ni    
 
         dP_aMix[a] = dP_Mix
     return dP_aMix
 
-def get_tci_dP_aMix(spos_ac, gd, wfs, nao, timer, q=0):
+def get_tci_dP_aMix(spos_ac, wfs, nao, timer, q=0):
     # container for spline expansions of basis function-projector pairs
     # (note to self: remember to conjugate/negate because of that)
     from gpaw.lcao.overlap import ManySiteDictionaryWrapper,\
