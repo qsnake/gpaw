@@ -281,7 +281,46 @@ class ManySiteDictionaryWrapper(DomainDecomposedExpansions):
             x2_qxmi, oe2 = self.getslice(disp.a2, disp.a1, x_aqxMi)
             disp.evaluate_overlap(oe2, x2_qxmi)
 
+class BlacsOverlapExpansions(BaseOverlapExpansionSet):
+    def __init__(self, msoe, local_indices, Mmystart, mynao):
+        self.msoe = msoe
+        self.local_indices = local_indices
+        BaseOverlapExpansionSet.__init__(self, msoe.shape)
         
+        self.Mmystart = Mmystart
+        self.mynao = mynao
+        
+        M_a = msoe.M1_a
+        natoms = len(M_a)
+        a = 0
+        while a < natoms and M_a[a] <= Mmystart:
+            a += 1
+        a -= 1
+        self.astart = a
+        
+        while a < natoms and M_a[a] < Mmystart + mynao:
+            a += 1
+        self.aend = a
+            
+    def evaluate_slice(self, disp, x_xqNM):
+        a1 = disp.a1
+        a2 = disp.a2
+        if (a2 in self.local_indices and (self.astart <= a1 < self.aend)):
+            msoe = self.msoe
+            I1 = msoe.I1_a[a1]
+            I2 = msoe.I2_a[a2]
+            tsoe = msoe.tsoe_II[I1, I2]
+            x_qxmm = tsoe.zeros(*x_xqNM.shape[:-2])
+            disp.reverse().evaluate_overlap(tsoe, x_qxmm)
+            Mstart1 = msoe.M1_a[a1] - self.Mmystart
+            Mend1 = Mstart1 + tsoe.shape[0]
+            Mstart1b = max(0, Mstart1)
+            Mend1b = min(self.mynao, Mend1)
+            Mstart2 = msoe.M2_a[a2]
+            Mend2 = Mstart2 + tsoe.shape[1]
+            x_xqNM[..., Mstart1b:Mend1b, Mstart2:Mend2] = \
+                        x_qxmm[..., Mstart1b - Mstart1:Mend1b - Mstart1, :]
+            
 class SimpleAtomIter:
     def __init__(self, cell_cv, spos1_ac, spos2_ac, offsetsteps=0):
         self.cell_cv = cell_cv
@@ -598,6 +637,15 @@ class NewTwoCenterIntegrals:
 
         self.calculate = self.evaluate # XXX compatibility
 
+        self.set_matrix_distribution(None, None)
+        
+    def set_matrix_distribution(self, Mmystart, mynao):
+        """Distribute matrices using BLACS."""
+        # Range of basis functions for BLACS distribution of matrices:
+        self.Mmystart = Mmystart
+        self.mynao = mynao
+        self.blacs = mynao is not None
+
     def calculate_expansions(self):
         phit_Ij = [setup.phit_j for setup in self.setups_I]
         l_Ij = []
@@ -623,18 +671,31 @@ class NewTwoCenterIntegrals:
             X_xMM.fill(0.0)
         
         self.atompairs.set_positions(spos_ac)
-        expansions = [DomainDecomposedExpansions(self.Theta_expansions,
-                                                 P_aqxMi),
-                      DomainDecomposedExpansions(self.T_expansions, P_aqxMi),
-                      ManySiteDictionaryWrapper(self.P_expansions, P_aqxMi)]
+
+        if self.blacs:
+            # S and T matrices are distributed:
+            expansions = [
+                BlacsOverlapExpansions(self.Theta_expansions,
+                                       P_aqxMi, self.Mmystart, self.mynao),
+                BlacsOverlapExpansions(self.T_expansions,
+                                       P_aqxMi, self.Mmystart, self.mynao)]
+        else:
+            expansions = [DomainDecomposedExpansions(self.Theta_expansions,
+                                                     P_aqxMi),
+                          DomainDecomposedExpansions(self.T_expansions,
+                                                     P_aqxMi)]
+            
+        expansions.append(ManySiteDictionaryWrapper(self.P_expansions,
+                                                    P_aqxMi))
         arrays = [Theta_qxMM, T_qxMM, P_aqxMi]
         calc.calculate(self.atompairs, expansions, arrays)
 
     def evaluate(self, spos_ac, Theta_qMM, T_qMM, P_aqMi):
         calc = TwoCenterIntegralCalculator(self.ibzk_qc, derivative=False)
         self._calculate(calc, spos_ac, Theta_qMM, T_qMM, P_aqMi)
-        for X_MM in list(Theta_qMM) + list(T_qMM):
-            tri2full(X_MM, UL=UL)
+        if not self.blacs:
+            for X_MM in list(Theta_qMM) + list(T_qMM):
+                tri2full(X_MM, UL=UL)
 
     def derivative(self, spos_ac, dThetadR_qcMM, dTdR_qcMM, dPdR_aqcMi):
         calc = TwoCenterIntegralCalculator(self.ibzk_qc, derivative=True)
@@ -1087,12 +1148,11 @@ class TwoCenterIntegrals:
 
 
 class BlacsTwoCenterIntegrals(TwoCenterIntegrals):
-    def set_matrix_distribution(self, band_comm, Mstart, Mstop):
+    def set_matrix_distribution(self, Mstart, mynao):
         """Distribute matrices using BLACS."""
-        self.band_comm = band_comm
         # Range of basis functions for BLACS distribution of matrices:
         self.Mstart = Mstart
-        self.Mstop = Mstop
+        self.Mstop = Mstart + mynao
         
     def set_positions(self, spos_ac):
         TwoCenterIntegrals.set_positions(self, spos_ac)

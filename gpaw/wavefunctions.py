@@ -467,8 +467,10 @@ class LCAOWaveFunctions(WaveFunctions):
                 Mstop = self.basis_functions.Mstop
                 Mstart = self.basis_functions.Mstart
                 mynao = Mstop - Mstart
-                self.tci.set_matrix_distribution(self.band_comm, Mstart, Mstop)
+                self.tci.set_matrix_distribution(Mstart, mynao)
             else:
+                Mstart = 0
+                Mstop = nao
                 mynao = nao
                 
             self.S_qMM = np.empty((nq, mynao, nao), self.dtype)
@@ -504,8 +506,8 @@ class LCAOWaveFunctions(WaveFunctions):
                     dOP_iM = np.zeros((dO_ii.shape[1], nao), P_Mi.dtype)
                     # (ATLAS can't handle uninitialized output array)
                     gemm(1.0, P_Mi, dO_ii, 0.0, dOP_iM, 'c')
-                    gemm(1.0, dOP_iM, P_Mi, 1.0, S_MM, 'n')
-
+                    gemm(1.0, dOP_iM, P_Mi[Mstart:Mstop], 1.0, S_MM, 'n')
+                    
             comm = self.gd.comm
             comm.sum(self.S_qMM)
             comm.sum(self.T_qMM)

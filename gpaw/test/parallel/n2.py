@@ -20,3 +20,4 @@ c = GPAW(width=0.01)
 a.set_calculator(c)
 e2 = a.get_potential_energy()
 assert c.gd.comm.size == 4
+assert abs(e1 -e2) < 1e-9
