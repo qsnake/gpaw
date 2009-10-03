@@ -81,7 +81,7 @@ def get_realspace_hs(h_skmm, s_kmm, bzk_kc, weight_k,
     dir = 'xyz'.index(direction)
     transverse_dirs = np.delete([0, 1, 2], [dir])
     dtype = float
-    if len(bzk_kc) > 1 or np.any(bzk_kc != [0, 0, 0]):
+    if len(bzk_kc) > 1 or np.any(bzk_kc[0] != [0, 0, 0]):
         dtype = complex
 
     kpts_grid = get_monkhorst_shape(bzk_kc)
@@ -95,9 +95,10 @@ def get_realspace_hs(h_skmm, s_kmm, bzk_kc, weight_k,
     bzk_t_kc = monkhorst_pack(tuple(kpts_grid[transverse_dirs]) + (1, ))
     if usesymm == False:
         #XXX a somewhat ugly hack:
-        # By default GPAW reduces inversion sym in the z direction, The steps 
-        # below assure reduction in the transverse dirs. For now this part seems to
-        # do the job, but it may be written in a smarter way in the future.
+        # By default GPAW reduces inversion sym in the z direction. The steps 
+        # below assure reduction in the transverse dirs.
+        # For now this part seems to do the job, but it may be written
+        # in a smarter way in the future.
         symmetry = Symmetry([1], [1, 1, 1], 1)
         symmetry.prune_symmetries([[0, 0, 0]])
         ibzk_kc, ibzweight_k = symmetry.reduce(bzk_kc)
@@ -143,6 +144,7 @@ def get_realspace_hs(h_skmm, s_kmm, bzk_kc, weight_k,
         return ibzk_t_kc, weights_t_k, h_skii
     else:
         return ibzk_t_kc, weights_t_k, h_skii, s_kii
+
 
 def remove_pbc(atoms, h, s=None, d=0, centers_ic=None, cutoff=None):
     if h.ndim > 2:
