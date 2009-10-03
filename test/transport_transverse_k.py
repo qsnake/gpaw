@@ -4,8 +4,8 @@ from ase.transport.calculators import TransportCalculator as TC
 from gpaw.lcao.tools import get_lead_lcao_hamiltonian
 
 '''
-1. calculate the transmission function through a chain of Sodium atoms,
-   with kpoint sampling over (n, m) k-points of the transverse ibz.
+1. calculate the transmission function of Sodium bulk with one atom in the
+   unit cell and sampling over (n, m) k-points in the transverse ibz.
 
 2. calculate the transmission function of that same system repeated n, m 
    times in the transverse directions and where the transverse bz is sampled 
@@ -16,10 +16,10 @@ Ideally the two transmission functions should be the same.
 '''
 
 a = 3.00 # Na binding length
-L= 7.00 # width of the unit cell
+L= 3.00 # width of the unit cell
 n = 1 # number of atoms in the transport direction
 
-kpts = (5, 5, 14)
+kpts = (3, 3, 3)
 energies = np.arange(-5, 20, 0.3)
 usesymm = False
 basis = 'szp'
