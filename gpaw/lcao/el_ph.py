@@ -54,10 +54,12 @@ class ElectronPhononCouplingMatrix:
         self.derivativemethod = derivativemethod
         if derivativemethod == 'grid':
             self.get_dP_aMix = get_grid_dP_aMix
+        elif derivativemethod == 'grid2':
+            self.get_dP_aMix = get_grid2_dP_aMix
         elif derivativemethod == 'tci':
             self.get_dP_aMix = get_tci_dP_aMix
         else:
-            raise ValueError('derivativemethod must be grid or tci')
+            raise ValueError('derivativemethod must be grid, grid2, or tci')
     
     def run(self):
         if not isfile(self.name + '.eq.pckl'):
@@ -277,7 +279,7 @@ class ElectronPhononCouplingMatrix:
 
         timer.write_now('Starting gradient of projectors part')
         spos_ac = self.atoms.get_scaled_positions() % 1.0
-        dP_aMix = self.get_dP_aMix(spos_ac, wfs, nao, timer)
+        dP_aMix = self.get_dP_aMix(spos_ac, wfs, q, timer)
         timer.write_now('Finished gradient of projectors part')
 
         dH_asp = pickle.load(open('v.eq.pckl'))[1]
@@ -312,7 +314,14 @@ class ElectronPhononCouplingMatrix:
         return M_lii
 
 
-def get_grid_dP_aMix(spos_ac, wfs, nao, timer, q=0): # XXXXXX q
+
+#####################################################
+# XXX grid and grid 2 sometimes gives random numbers,
+# XXX sometimes even nan!
+#####################################################
+
+def get_grid_dP_aMix(spos_ac, wfs, q, timer=nulltimer): # XXXXXX q
+    nao = wfs.setups.nao
     C_MM = np.identity(nao, dtype=wfs.dtype)
     dP_aMix = {} # XXX In the future use the New Two-Center integrals
                  # to evaluate this
@@ -325,7 +334,7 @@ def get_grid_dP_aMix(spos_ac, wfs, nao, timer, q=0): # XXXXXX q
         pt.set_positions(spos1_ac)
         for b, setup_b in enumerate(wfs.setups):
             niAO = setup_b.niAO
-            phi_MG = wfs.gd.zeros(niAO)
+            phi_MG = wfs.gd.zeros(niAO, wfs.dtype)
             phi_MG = wfs.gd.collect(phi_MG, broadcast=False)
             wfs.basis_functions.lcao_to_grid(C_MM[ni:ni+niAO], phi_MG, q)
             dP_bMix = pt.dict(len(phi_MG), derivative=True)
@@ -338,7 +347,23 @@ def get_grid_dP_aMix(spos_ac, wfs, nao, timer, q=0): # XXXXXX q
         dP_aMix[a] = dP_Mix
     return dP_aMix
 
-def get_tci_dP_aMix(spos_ac, wfs, nao, timer, q=0):
+
+def get_grid2_dP_aMix(spos_ac, wfs, q, *args, **kwargs): # XXXXXX q
+    nao = wfs.setups.nao
+    C_MM = np.identity(nao, dtype=wfs.dtype)
+    bfs = wfs.basis_functions
+    phi_MG = wfs.gd.zeros(nao, wfs.dtype)
+    bfs.lcao_to_grid(C_MM, phi_MG, q)
+    setups = wfs.setups
+    pt = LFC(wfs.gd, [setup.pt_j for setup in setups],
+             wfs.kpt_comm, dtype=wfs.dtype, forces=True)
+    pt.set_positions(spos_ac)
+    dP_aMix = pt.dict(len(phi_MG), derivative=True)
+    pt.derivative(phi_MG, dP_aMix)
+    return dP_aMix
+
+
+def get_tci_dP_aMix(spos_ac, wfs, q, *args, **kwargs):
     # container for spline expansions of basis function-projector pairs
     # (note to self: remember to conjugate/negate because of that)
     from gpaw.lcao.overlap import ManySiteDictionaryWrapper,\
@@ -348,9 +373,10 @@ def get_tci_dP_aMix(spos_ac, wfs, nao, timer, q=0):
         raise RuntimeError('Please remember --gpaw=usenewtci=True')
 
     dP_aqxMi = {}
+    nao = wfs.setups.nao
     nq = len(wfs.ibzk_qc)
     for a, setup in enumerate(wfs.setups):
-        dP_aqxMi[a] = np.zeros((nq, 3, nao, setup.ni))
+        dP_aqxMi[a] = np.zeros((nq, 3, nao, setup.ni), wfs.dtype)
     
     calc = TwoCenterIntegralCalculator(wfs.ibzk_qc, derivative=True)
     expansions = ManySiteDictionaryWrapper(wfs.tci.P_expansions, dP_aqxMi)
