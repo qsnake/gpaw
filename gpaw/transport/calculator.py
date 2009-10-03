@@ -1155,7 +1155,7 @@ class Transport(GPAW):
             self.timer.start('ne fock2den')        
         intpathtol = 1e-8
         nbmol = self.nbmol_inner
-        den = np.zeros([nbmol, nbmol], self.wfs.dtype)
+        den = np.zeros([nbmol, nbmol], complex)
         maxintcnt = 50
         intctrl = self.intctrl
 
@@ -1501,10 +1501,10 @@ class Transport(GPAW):
             ff = []
             for n in range(self.lead_num):
                 if ov == 'occ':
-                    fermifactor = np.real(pathinfo.fermi_factor[n][0][i])
+                    fermifactor = pathinfo.fermi_factor[n][0][i]
                     ff.append(fermifactor)
                 elif ov == 'vir':
-                    fermifactor = np.real(pathinfo.fermi_factor[n][1][i])
+                    fermifactor = pathinfo.fermi_factor[n][1][i]
                     ff.append(fermifactor)                    
            
             if self.use_env:
