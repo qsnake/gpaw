@@ -359,7 +359,7 @@ PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args)
   char jobz = 'V'; // eigenvectors also
   char uplo = 'U'; // work with upper
 
-  if (!PyArg_ParseTuple(args, "OO", &a_obj, &adesc))
+  if (!PyArg_ParseTuple(args, "OO|c", &a_obj, &adesc, &uplo))
     return NULL;
 
   // adesc
@@ -515,7 +515,7 @@ PyObject* scalapack_general_diagonalize(PyObject *self, PyObject *args)
   char cmach = 'U'; // most orthogonal eigenvectors    
   // char cmach = 'S'; // most acccurate eigenvalues
 
-  if (!PyArg_ParseTuple(args, "OOO", &a_obj, &b_obj, &adesc))
+  if (!PyArg_ParseTuple(args, "OOO|c", &a_obj, &b_obj, &adesc, &uplo))
     return NULL;
 
   // adesc,
@@ -691,7 +691,7 @@ PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args)
   char diag = 'N'; // non-unit triangular
   char uplo = 'U'; // work with upper
   
-  if (!PyArg_ParseTuple(args, "OO", &a_obj, &adesc))
+  if (!PyArg_ParseTuple(args, "OO|c", &a_obj, &adesc, &uplo))
     return NULL;
   
   // adesc

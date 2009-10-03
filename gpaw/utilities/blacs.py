@@ -57,15 +57,16 @@ def scalapack_redist(a_obj, adesc, bdesc, isreal=True, comm_obj=mpi.world, m=0, 
     # There is no simple may to check if adesc and bdesc are disjoint to comm_obj
     return _gpaw.scalapack_redist(a_obj, adesc, bdesc, isreal, comm_obj, m, n)
 
-def scalapack_diagonalize_dc(a_obj, adesc):
+def scalapack_diagonalize_dc(a_obj, adesc, uplo='U'):
     if a_obj is not None:
         assert a_obj.ndim == 2
         assert (a_obj.dtype == float) or (a_obj.dtype == complex)
         assert a_obj.flags.f_contiguous
     assert len(adesc) == 9
-    return _gpaw.scalapack_diagonalize_dc(a_obj, adesc)
+    assert uplo in ['U','u','L','l']
+    return _gpaw.scalapack_diagonalize_dc(a_obj, adesc, uplo)
 
-def scalapack_general_diagonalize(a_obj, b_obj, adesc):
+def scalapack_general_diagonalize(a_obj, b_obj, adesc, uplo='U'):
     if a_obj is not None:
         assert a_obj.ndim == 2
         assert (a_obj.dtype == float) or (a_obj.dtype == complex)
@@ -77,15 +78,17 @@ def scalapack_general_diagonalize(a_obj, b_obj, adesc):
     if a_obj is None:
         assert b_obj is None
     assert len(adesc) == 9
-    return _gpaw.scalapack_general_diagonalize(a_obj, b_obj, adesc)
+    assert uplo in ['U','u','L','l']
+    return _gpaw.scalapack_general_diagonalize(a_obj, b_obj, adesc, uplo)
 
-def scalapack_inverse_cholesky(a_obj, adesc):
+def scalapack_inverse_cholesky(a_obj, adesc, uplo='U'):
     if a_obj is not None:
         assert a_obj.ndim == 2
         assert (a_obj.dtype == float) or (a_obj.dtype == complex)
         assert a_obj.flags.f_contiguous
     assert len(adesc) == 9
-    _gpaw.scalapack_inverse_cholesky(a_obj, adesc)
+    assert uplo in ['U','u','L','l']
+    _gpaw.scalapack_inverse_cholesky(a_obj, adesc, uplo)
     
 if not debug:
     blacs_create = _gpaw.blacs_create
