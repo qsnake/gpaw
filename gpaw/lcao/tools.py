@@ -67,73 +67,82 @@ def get_mulliken(calc, a_list):
     return Q_a        
 
 
-def get_realspace_hs(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
-                     R_c=(0, 0, 0), direction='x', usesymm=None):
+def get_realspace_hs(h_skmm, s_kmm, bzk_kc, weight_k,
+                     R_c=(0, 0, 0), direction='x', 
+                     usesymm=None):
 
+    from gpaw.symmetry import Symmetry
+    from ase.dft.kpoints import get_monkhorst_shape, monkhorst_pack
+    
     if usesymm is True:
         raise NotImplementedError, 'Only None and False have been implemented'
 
     nspins, nk, nbf = h_skmm.shape[:3]
     dir = 'xyz'.index(direction)
+    transverse_dirs = np.delete([0, 1, 2], [dir])
     dtype = float
     if len(bzk_kc) > 1 or np.any(bzk_kc != [0, 0, 0]):
         dtype = complex
 
-    # find all bz - kpoints in the transport (parallel) direction 
-    bzk_p_kc = [bzk_kc[0, dir]]
-    for k in bzk_kc:
-        if (np.asarray(bzk_p_kc) - k[dir]).all():
-            bzk_p_kc.append(k[dir])
+    kpts_grid = get_monkhorst_shape(bzk_kc)
 
-    nkpts_p = len(bzk_p_kc)
-    weight_p_k = 1./nkpts_p
+    # kpts in the transport direction
+    nkpts_p = kpts_grid[dir]
+    bzk_p_kc = monkhorst_pack((nkpts_p,1,1))[:, 0]
+    weight_p_k = 1. / nkpts_p
 
-    # find ibz - kpoints in the transverse directions
-    transverse_dirs = np.delete([0, 1, 2], [dir])
-    ibzk_t_kc = [ibzk_kc[0, transverse_dirs]]
-    for k in ibzk_kc:
-        if np.any(np.asarray(ibzk_t_kc)-k[transverse_dirs], axis=1).all():
-            ibzk_t_kc.append(k[transverse_dirs])
-    ibzk_t_kc = np.array(ibzk_t_kc)
+   # kpts in the transverse directions
+    bzk_t_kc = monkhorst_pack(tuple(kpts_grid[transverse_dirs]) + (1, ))
+    if usesymm == False:
+        #XXX a somewhat ugly hack:
+        # By default GPAW reduces inversion sym in the z direction, The steps 
+        # below assure reduction in the transverse dirs. For now this part seems to
+        # do the job, but it may be written in a smarter way in the future.
+        symmetry = Symmetry([1], [1, 1, 1], 1)
+        symmetry.prune_symmetries([[0, 0, 0]])
+        ibzk_kc, ibzweight_k = symmetry.reduce(bzk_kc)
+        ibzk_t_kc, weights_t_k = symmetry.reduce(bzk_t_kc)
+        ibzk_t_kc = ibzk_t_kc[:, :2]
+        nkpts_t = len(ibzk_t_kc)
+    else: # usesymm = None
+        ibzk_kc = bzk_kc.copy()
+        ibzk_t_kc = bzk_t_kc
+        nkpts_t = len(bzk_t_kc)
+        weights_t_k = [1. / nkpts_t for k in range(nkpts_t)]
 
-    nkpts_t = len(ibzk_t_kc)
     h_skii = np.zeros((nspins, nkpts_t, nbf, nbf), dtype)
     if s_kmm is not None:
         s_kii = np.zeros((nkpts_t, nbf, nbf), dtype)
 
+    tol = 7
     for j, k_t in enumerate(ibzk_t_kc):
-        for k_p in bzk_p_kc:   
+        for k_p in bzk_p_kc:
             k = np.zeros((3,))
             k[dir] = k_p
             k[transverse_dirs] = k_t
-            bools = np.any(np.round(ibzk_kc - k, 7), axis=1)# kpt in ibz?
-            index = np.where(bools == False)[0]
-            if len(index) == 0:
-                # kpt not in ibz, find corresponding one in the ibz
-                k = -k # inversion 
-                bools = np.any(np.round(ibzk_kc - k, 7), axis=1)
-                index = np.where(bools == False)[0][0]
+            kpoint_list = [list(np.round(k_kc, tol)) for k_kc in ibzk_kc]
+            if list(np.round(k, tol)) not in kpoint_list:
+                k = -k # inversion
+                index = kpoint_list.index(list(np.round(k,tol)))
+                h = h_skmm[:, index].conjugate()
+                if s_kmm is not None:
+                    s = s_kmm[index].conjugate()
+                k=-k
             else: # kpoint in the ibz
-                index = index[0]
+                index = kpoint_list.index(list(np.round(k, tol)))
+                h = h_skmm[:, index]
+                if s_kmm is not None:
+                    s = s_kmm[index]
+
             c_k = np.exp(2.j * np.pi * np.dot(k, R_c)) * weight_p_k
-            h_skii[:, j] += c_k * h_skmm[:, index]
+            h_skii[:, j] += c_k * h
             if s_kmm is not None:
-                s_kii[j] += c_k * s_kmm[index]   
-
-    weights_t_k = np.zeros((len(ibzk_t_kc),)) + 2
-    bools = np.any(np.round(ibzk_t_kc, 7), axis=1) # gamma point in ibz?
-    index = np.where(bools == False)[0]
-    if len(index) == 0:
-        weights_t_k = weights_t_k / (2 * nkpts_t)
-    else:
-        weights_t_k[index[0]] = 1
-        weights_t_k = weights_t_k / (2 * nkpts_t - 1)
-
+                s_kii[j] += c_k * s 
+    
     if s_kmm is None:
         return ibzk_t_kc, weights_t_k, h_skii
     else:
         return ibzk_t_kc, weights_t_k, h_skii, s_kii
-
 
 def remove_pbc(atoms, h, s=None, d=0, centers_ic=None, cutoff=None):
     if h.ndim > 2:
@@ -284,7 +293,6 @@ def get_lead_lcao_hamiltonian(calc, direction='x'):
     H_skMM, S_kMM = get_lcao_hamiltonian(calc)
     if rank == MASTER:
         return lead_kspace2realspace(H_skMM, S_kMM,
-                                     ibzk_kc=calc.wfs.ibzk_kc,
                                      bzk_kc=calc.wfs.bzk_kc,
                                      weight_k=calc.wfs.weight_k,
                                      direction=direction,
@@ -293,8 +301,8 @@ def get_lead_lcao_hamiltonian(calc, direction='x'):
         return None, None, None, None
 
 
-def lead_kspace2realspace(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
-                          direction='x', usesymm=None):
+def lead_kspace2realspace(h_skmm, s_kmm, bzk_kc, weight_k, direction='x', 
+                          usesymm=None):
     """Convert a k-dependent Hamiltonian to tight-binding onsite and coupling.
 
     For each transverse k-point:
@@ -307,14 +315,13 @@ def lead_kspace2realspace(h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k,
     if usesymm is True:
         raise NotImplementedError
 
-    dir = 'xyz'.index(direction)
     R_c = [0, 0, 0]
     ibz_t_kc, weight_t_k, h_skii, s_kii = get_realspace_hs(
-        h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k, R_c, direction)
+        h_skmm, s_kmm, bzk_kc, weight_k, R_c, direction, usesymm)
 
     R_c[dir] = 1
     h_skij, s_kij = get_realspace_hs(
-        h_skmm, s_kmm, ibzk_kc, bzk_kc, weight_k, R_c, direction)[-2:]
+        h_skmm, s_kmm, bzk_kc, weight_k, R_c, direction, usesymm)[-2:]
 
     nspins, nk, nbf = h_skii.shape[:-1]
 
