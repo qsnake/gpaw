@@ -9,7 +9,7 @@ import gpaw.mpi as mpi
 
 
 class XAS:
-    def __init__(self, paw, mode="xas"):
+    def __init__(self, paw, mode="xas", center=None):
         wfs = paw.wfs
         assert wfs.world.size == 1 #assert not mpi.parallel
 
@@ -37,10 +37,17 @@ class XAS:
             nocc = int(nocc + 0.5)
             print "nocc", nocc
                  
-        for a, setup in enumerate(wfs.setups):
-            #print "i"
-            if setup.phicorehole_g is not None:  
-                break
+
+        # look for the center with the corehole
+        if center is not None:
+            print "center", center
+            setup = wfs.setups[center]
+            a = center
+            
+        else:
+            for a, setup in enumerate(wfs.setups):
+                if setup.phicorehole_g is not None:  
+                    break
 
         A_ci = setup.A_ci
 
