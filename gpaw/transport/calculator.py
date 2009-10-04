@@ -239,7 +239,7 @@ class Transport(GPAW):
         self.master = (world.rank==0)
     
         bias = self.bias + self.env_bias
-        self.cal_loc = self.cal_loc and np.max(np.abs(bias)) != 0
+        #self.cal_loc = self.cal_loc and np.max(np.abs(bias)) != 0
  
         if self.use_linear_vt_mm:
             self.use_buffer = False
@@ -671,6 +671,8 @@ class Transport(GPAW):
         rank = self.energy_comm.rank
         ns = self.my_nspins
         self.par_energy_index = np.empty([ns, self.my_npk, 2, 2], int)
+        if self.cal_loc and not self.ground:
+            self.loc_par_energy_index = np.empty([ns, self.my_npk, 2], int)
         for s in range(ns):
             for k in range(self.my_npk):
                 neeq = self.eqpathinfo[s][k].num
@@ -685,6 +687,19 @@ class Transport(GPAW):
                     end = begin + neeq_each
                     
                 self.par_energy_index[s, k, 0] = [begin, end]
+
+                if self.cal_loc and not self.ground:
+                    neeq = self.locpathinfo[s][k].num
+                    neeq_each = neeq // self.energy_comm.size
+                
+                    if neeq % self.energy_comm.size != 0:
+                        neeq_each += 1
+                    begin = rank % self.energy_comm.size * neeq_each
+                    if (rank + 1) % self.energy_comm.size == 0:
+                        end = neeq 
+                    else:
+                        end = begin + neeq_each
+                    self.loc_par_energy_index[s, k] = [begin, end]
 
                 nene = self.nepathinfo[s][k].num
                 nene_each = nene // self.energy_comm.size
@@ -1055,14 +1070,14 @@ class Transport(GPAW):
         for s in range(self.my_nspins):
             self.eqpathinfo.append([])
             self.nepathinfo.append([])
-            if self.cal_loc:
+            if self.cal_loc and not self.ground:
                 self.locpathinfo.append([])                
-            if self.cal_loc:
+            if self.cal_loc and not self.ground:
                 self.locpathinfo.append([])
             for k in range(self.my_npk):
                 self.eqpathinfo[s].append(PathInfo('eq', self.lead_num + self.env_num))
                 self.nepathinfo[s].append(PathInfo('ne', self.lead_num + self.env_num))    
-                if self.cal_loc:
+                if self.cal_loc and not self.ground:
                     self.locpathinfo[s].append(PathInfo('eq',
                                                          self.lead_num + self.env_num))
                     
@@ -1072,7 +1087,7 @@ class Transport(GPAW):
             for k in range(self.my_npk):      
                 self.get_eqintegral_points(s, k)
                 self.get_neintegral_points(s, k)
-                if self.cal_loc:
+                if self.cal_loc and not self.ground:
                     self.get_neintegral_points(s, k, 'locInt')
         ne = self.eqpathinfo[0][0].num + self.nepathinfo[0][0].num
         self.text('energy point' + str(ne))           
@@ -1463,7 +1478,7 @@ class Transport(GPAW):
         denocc = self.ne_fock2den(s, k, ov='occ')    
         den += denocc
 
-        if self.cal_loc:
+        if self.cal_loc and not self.ground:
             denloc = self.eq_fock2den(s, k, el='loc')
             denvir = self.ne_fock2den(s, k, ov='vir')
             weight_mm = self.integral_diff_weight(denocc, denvir,
@@ -1534,13 +1549,15 @@ class Transport(GPAW):
     def eq_fock2den(self, s, k, el='eq'):
         if el =='loc':
             pathinfo = self.locpathinfo[s][k]
+            begin = self.loc_par_energy_index[s, k, 0]
+            end = self.loc_par_energy_index[s, k, 1]
         else:
             pathinfo = self.eqpathinfo[s][k]
-        
+            begin = self.par_energy_index[s, k, 0, 0]
+            end = self.par_energy_index[s, k, 0, 1]        
+
         nbmol = self.nbmol_inner
         den = np.zeros([nbmol, nbmol], complex)
-        begin = self.par_energy_index[s, k, 0, 0]
-        end = self.par_energy_index[s, k, 0, 1]
         zp = pathinfo.energy
         self.timer.start('eq fock2den')
         for i in range(begin, end):
