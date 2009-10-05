@@ -259,7 +259,7 @@ class Symmetry:
 
     def symmetrize_forces(self, F0_av):
         F_ac = np.zeros_like(F0_av)
-        for map_a, operation in zip(self.maps, self.operations):
+        for map_a, operation in zip(self.opmaps, self.operations):
             for a1, a2 in enumerate(map_a):
                 F_ac[a2] += np.dot(operation, F0_av[a1])
         return F_ac / len(self.operations)
