@@ -443,13 +443,15 @@ class LCAOWaveFunctions(WaveFunctions):
                                               [setup.phit_j
                                                for setup in self.setups],
                                               self.kpt_comm,
-                                              cut=True)
+                                              cut=True,
+                                              orbital_comm=self.band_comm)
         if not self.gamma:
             self.basis_functions.set_k_points(self.ibzk_qc)
 
     def set_eigensolver(self, eigensolver):
         WaveFunctions.set_eigensolver(self, eigensolver)
-        eigensolver.initialize(self.kpt_comm, self.gd, self.band_comm, self.dtype, 
+        eigensolver.initialize(self.kpt_comm, self.gd, self.band_comm,
+                               self.dtype, 
                                self.setups.nao, self.mynbands, self.world)
 
     def set_positions(self, spos_ac):
@@ -460,18 +462,14 @@ class LCAOWaveFunctions(WaveFunctions):
         nao = self.setups.nao
         mynbands = self.mynbands
         
+        Mstop = self.basis_functions.Mstop
+        Mstart = self.basis_functions.Mstart
+        mynao = Mstop - Mstart
+
         if self.S_qMM is None: # XXX
             # First time:
             if extra_parameters.get('blacs'):
-                self.basis_functions.set_matrix_distribution(self.band_comm)
-                Mstop = self.basis_functions.Mstop
-                Mstart = self.basis_functions.Mstart
-                mynao = Mstop - Mstart
                 self.tci.set_matrix_distribution(Mstart, mynao)
-            else:
-                Mstart = 0
-                Mstop = nao
-                mynao = nao
                 
             self.S_qMM = np.empty((nq, mynao, nao), self.dtype)
             self.T_qMM = np.empty((nq, mynao, nao), self.dtype)
@@ -512,7 +510,7 @@ class LCAOWaveFunctions(WaveFunctions):
             comm.sum(self.S_qMM)
             comm.sum(self.T_qMM)
 
-        if debug and mynao == nao:
+        if debug and self.band_comm.size == 1:
             from numpy.linalg import eigvalsh
             for S_MM in self.S_qMM:
                 smin = eigvalsh(S_MM).real.min()
