@@ -489,10 +489,15 @@ class Transport(GPAW):
                 self.hamiltonian = atoms.calc.hamiltonian
                 self.density = atoms.calc.density
                 self.extended_calc.hamiltonian = self.hamiltonian
+                self.extended_calc.gd = self.gd
+                self.extended_calc.finegd = self.finegd
+   
             else:
                 atoms.calc = self
-                self.extended_calc.hamiltonian = self.hamiltonian                
                 self.recover_kpts(atoms.calc)                
+                self.extended_calc.hamiltonian = self.hamiltonian
+                self.extended_calc.gd = self.gd
+                self.extended_calc.finegd = self.finegd   
         else:        
             for iter in range(self.guess_steps):
                 wfs.eigensolver.iterate(hamiltonian, wfs)
