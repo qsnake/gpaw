@@ -338,7 +338,7 @@ def get_grid_dP_aMix(spos_ac, wfs, q, timer=nulltimer): # XXXXXX q
             phi_MG = wfs.gd.collect(phi_MG, broadcast=False)
             wfs.basis_functions.lcao_to_grid(C_MM[ni:ni+niAO], phi_MG, q)
             dP_bMix = pt.dict(len(phi_MG), derivative=True)
-            pt.derivative(phi_MG, dP_bMix)
+            pt.derivative(phi_MG, dP_bMix, q=q)
             dP_Mix[ni:ni+niAO] = dP_bMix[0]            
             ni += niAO
             timer.write_now('projector grad. doing atoms (%s, %s) ' %
@@ -359,7 +359,7 @@ def get_grid2_dP_aMix(spos_ac, wfs, q, *args, **kwargs): # XXXXXX q
              wfs.kpt_comm, dtype=wfs.dtype, forces=True)
     pt.set_positions(spos_ac)
     dP_aMix = pt.dict(len(phi_MG), derivative=True)
-    pt.derivative(phi_MG, dP_aMix)
+    pt.derivative(phi_MG, dP_aMix, q=q)
     return dP_aMix
 
 
