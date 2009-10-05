@@ -184,21 +184,19 @@ PyObject* calculate_potential_matrix(LFCObject *lfc, PyObject *args)
     GRID_LOOP_START(lfc, -1) { // ORDINARY/GAMMA-POINT
       for (int i1 = 0; i1 < ni; i1++) {
 	LFVolume* v1 = volume_i + i1;
-	const double* A1_gm = v1->A_gm;
 	int M1 = v1->M;
 	int nm1 = v1->nm;
-	
 	int M1p = MAX(M1, Mstart);
 	int nm1p = MIN(M1 + nm1, Mstop) - M1p;
 	if (nm1p <= 0)
 	  continue;
 	int gm = M1p - M1;
-	
 	int gm1 = 0;
+	const double* A1_gm = v1->A_gm;
 	for (int G = Ga; G < Gb; G++, gm += nm1 - nm1p) {
 	  double vtdv = vt_G[G] * dv;
 	  for (int m1 = 0; m1 < nm1p; m1++, gm1++, gm++)
-	    lfc->work_gm[gm1] = vtdv * A1_gm[gm];
+	    work_gm[gm1] = vtdv * A1_gm[gm];
 	}
 	for (int i2 = 0; i2 < ni; i2++) {
 	  LFVolume* v2 = volume_i + i2;
@@ -230,14 +228,17 @@ PyObject* calculate_potential_matrix(LFCObject *lfc, PyObject *args)
         double complex conjphase1 = conj(phase_i[i1]);
         int M1 = v1->M;
         int nm1 = v1->nm;
+	int M1p = MAX(M1, Mstart);
+	int nm1p = MIN(M1 + nm1, Mstop) - M1p;
+	if (nm1p <= 0)
+	  continue;
+	int gm = M1p - M1;
         int gm1 = 0;
-        double vtdv;
         const double* A1_gm = v1->A_gm;
-        for (int G = Ga; G < Gb; G++) {
-          vtdv = vt_G[G] * dv;
-          for (int m1 = 0; m1 < nm1; m1++, gm1++) {
-            work_gm[gm1] = vtdv * A1_gm[gm1];
-          }
+        for (int G = Ga; G < Gb; G++, gm += nm1 - nm1p) {
+          double vtdv = vt_G[G] * dv;
+          for (int m1 = 0; m1 < nm1p; m1++, gm1++, gm++)
+            work_gm[gm1] = vtdv * A1_gm[gm];
         }
         for (int i2 = 0; i2 < ni; i2++) {
           LFVolume* v2 = volume_i + i2;
@@ -246,14 +247,13 @@ PyObject* calculate_potential_matrix(LFCObject *lfc, PyObject *args)
           if (M1 >= M2) {
             int nm2 = v2->nm;
             double complex phase = conjphase1 * phase_i[i2];
-            double complex* Vt_mm = Vt_MM + M1 * nM + M2;
-            complex double wphase;
+            double complex* Vt_mm = Vt_MM + (M1p - Mstart) * nM + M2;
             for (int g = 0; g < nG; g++) {
+              int gnm1 = g * nm1p;
               int gnm2 = g * nm2;
-              int gnm1 = g * nm1;
               int m1nM = 0;
-              for (int m1 = 0; m1 < nm1; m1++, m1nM+=nM) {
-                wphase = work_gm[gnm1 + m1] * phase;
+              for (int m1 = 0; m1 < nm1p; m1++, m1nM += nM) {
+                complex double wphase = work_gm[gnm1 + m1] * phase;
                 for (int m2 = 0; m2 < nm2; m2++) {
                   Vt_mm[m1nM + m2] += A2_gm[gnm2 + m2] * wphase;
                 }
