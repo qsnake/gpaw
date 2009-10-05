@@ -751,13 +751,18 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
 
     def set_positions(self, spos_ac):
         NewLocalizedFunctionsCollection.set_positions(self, spos_ac)
-        # Distribute matrices using BLACS.
-        B = self.orbital_comm.size
-        b = self.orbital_comm.rank
-        blocksize = -((-self.Mmax) // B)
-        # Range of basis functions for BLACS distribution of matrices:
-        self.Mstart = b * blocksize
-        self.Mstop = min(self.Mstart + blocksize, self.Mmax)
+
+        if not extra_parameters.get('blacs'):
+            self.Mstart = 0
+            self.Mstop = self.Mmax
+        else:
+            # Distribute matrices using BLACS.
+            B = self.orbital_comm.size
+            b = self.orbital_comm.rank
+            blocksize = -((-self.Mmax) // B)
+            # Range of basis functions for BLACS distribution of matrices:
+            self.Mstart = b * blocksize
+            self.Mstop = min(self.Mstart + blocksize, self.Mmax)
         
     def add_to_density(self, nt_sG, f_asi):
         """Add linear combination of squared localized functions to density.

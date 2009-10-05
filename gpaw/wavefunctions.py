@@ -465,7 +465,7 @@ class LCAOWaveFunctions(WaveFunctions):
         Mstop = self.basis_functions.Mstop
         Mstart = self.basis_functions.Mstart
         mynao = Mstop - Mstart
-
+        
         if self.S_qMM is None: # XXX
             # First time:
             if extra_parameters.get('blacs'):
@@ -878,7 +878,8 @@ class GridWaveFunctions(WaveFunctions):
             basis_functions = BasisFunctions(self.gd,
                                              [setup.phit_j
                                               for setup in self.setups],
-                                             cut=True)
+                                             cut=True,
+                                             orbital_comm=self.band_comm)
             if not self.gamma:
                 basis_functions.set_k_points(self.ibzk_qc)
             basis_functions.set_positions(spos_ac)
