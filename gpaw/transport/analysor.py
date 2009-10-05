@@ -867,6 +867,13 @@ class Transport_Plotter:
                 self.ele_steps = data
         fd.close()
 
+    def plot_setup(self):
+        from matplotlib import rcParams
+        rcParams['xtick.labelsize'] = 18
+        rcParams['ytick.labelsize'] = 18
+        rcParams['legend.fontsize'] = 18
+        rcParams['axes.titlesize'] = 18
+        
     def set_ele_steps(self, n_ion_step=None, n_bias_step=0):
         if n_ion_step != None:
             self.bias_steps = self.ion_steps[n_ion_step].bias_steps
