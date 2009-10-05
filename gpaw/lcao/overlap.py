@@ -390,8 +390,8 @@ class PairsBothWays(PairFilter):
 
 
 class FourierTransformer:
-    def __init__(self, rcmax):
-        self.ng = 2**12
+    def __init__(self, rcmax, ng):
+        self.ng = ng
         self.rcmax = rcmax
         self.dr = rcmax / self.ng
         self.r_g = np.arange(self.ng) * self.dr
@@ -402,7 +402,7 @@ class FourierTransformer:
     def transform(self, spline):
         assert spline.get_cutoff() <= self.rcmax
         l = spline.get_angular_momentum_number()
-        f_g = np.array(map(spline, self.r_g))
+        f_g = spline.map(self.r_g)
         f_q = fbt(l, f_g, self.r_g, self.k_q)
         return f_q
 
@@ -629,8 +629,9 @@ class NewTwoCenterIntegrals:
         self.atoms = self.atompairs.pairs.atoms # XXX compatibility
 
         rcmax = max(cutoff_I)
-        
-        transformer = FourierTransformer(rcmax)
+
+        ng = 2**extra_parameters.get('log2ng', 12)
+        transformer = FourierTransformer(rcmax, ng)
         tsoc = TwoSiteOverlapCalculator(transformer)
         self.msoc = ManySiteOverlapCalculator(tsoc, I_a, I_a)
         self.calculate_expansions()
