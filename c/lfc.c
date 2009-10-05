@@ -180,79 +180,47 @@ PyObject* calculate_potential_matrix(LFCObject *lfc, PyObject *args)
   double dv = lfc->dv;
   double* work_gm = lfc->work_gm;
   if (!lfc->bloch_boundary_conditions) {
-    if (Mstart == -1) {
-      double* Vt_MM = (double*)Vt_MM_obj->data;
-      GRID_LOOP_START(lfc, -1) { // ORDINARY/GAMMA-POINT
-        for (int i1 = 0; i1 < ni; i1++) {
-          LFVolume* v1 = volume_i + i1;
-          const double* A1_gm = v1->A_gm;
-          int M1 = v1->M;
-          int nm1 = v1->nm;
-          int gm1 = 0;
-          double vtdv;
-          for (int G = Ga; G < Gb; G++){
-            vtdv = vt_G[G] * dv;
-            for (int m1 = 0; m1 < nm1; m1++, gm1++){
-              lfc->work_gm[gm1] = vtdv * A1_gm[gm1];
-            }
-          }
-          for (int i2 = 0; i2 < ni; i2++) {
-            LFVolume* v2 = volume_i + i2;
-            int M2 = v2->M;
-            if (M1 >= M2) {
-              int nm2 = v2->nm;
-              const double* A2_gm = v2->A_gm;
-              double* Vt_mm = Vt_MM + M1 * nM + M2;
-              for (int g = 0; g < nG; g++){
-                int gnm1 = g * nm1;
-                int gnm2 = g * nm2;
-                for (int m1 = 0; m1 < nm1; m1++){
-                  int m1nM = m1 * nM;
-                  for (int m2 = 0; m2 < nm2; m2++){
-                    Vt_mm[m2 + m1nM] += A2_gm[gnm2 + m2] * work_gm[gnm1 + m1];
-                  }
-                }
-              }
-            }
-          }
-        }
+    double* Vt_MM = (double*)Vt_MM_obj->data;
+    GRID_LOOP_START(lfc, -1) { // ORDINARY/GAMMA-POINT
+      for (int i1 = 0; i1 < ni; i1++) {
+	LFVolume* v1 = volume_i + i1;
+	const double* A1_gm = v1->A_gm;
+	int M1 = v1->M;
+	int nm1 = v1->nm;
+	
+	int M1p = MAX(M1, Mstart);
+	int nm1p = MIN(M1 + nm1, Mstop) - M1p;
+	if (nm1p <= 0)
+	  continue;
+	int gm = M1p - M1;
+	
+	int gm1 = 0;
+	for (int G = Ga; G < Gb; G++, gm += nm1 - nm1p) {
+	  double vtdv = vt_G[G] * dv;
+	  for (int m1 = 0; m1 < nm1p; m1++, gm1++, gm++)
+	    lfc->work_gm[gm1] = vtdv * A1_gm[gm];
+	}
+	for (int i2 = 0; i2 < ni; i2++) {
+	  LFVolume* v2 = volume_i + i2;
+	  int M2 = v2->M;
+	  if (M1 >= M2) {
+	    int nm2 = v2->nm;
+	    const double* A2_gm = v2->A_gm;
+	    double* Vt_mm = Vt_MM + (M1p - Mstart) * nM + M2;
+	    for (int g = 0; g < nG; g++){
+	      int gnm1 = g * nm1p;
+	      int gnm2 = g * nm2;
+	      for (int m1 = 0; m1 < nm1p; m1++) {
+		int m1nM = m1 * nM;
+		for (int m2 = 0; m2 < nm2; m2++)
+		  Vt_mm[m2 + m1nM] += A2_gm[gnm2 + m2] * work_gm[gnm1 + m1];
+	      }
+	    }
+	  }
+	}
       }
-      GRID_LOOP_STOP(lfc, -1);
     }
-    else {
-      double* Vt_MM = (double*)Vt_MM_obj->data;
-      GRID_LOOP_START(lfc, -1) { // BLACS THINGY
-        for (int i1 = 0; i1 < ni; i1++) {
-          LFVolume* v1 = volume_i + i1;
-          int M1 = v1->M;
-          int nm1 = v1->nm;
-          int M1p = MAX(M1, Mstart);
-          int nm1p = MIN(M1 + nm1, Mstop) - M1p;
-          if (nm1p <= 0)
-            continue;
-          int m1start = M1p - M1;
-
-          int gm = m1start;
-          int gm1 = 0;
-          for (int G = Ga; G < Gb; G++, gm += nm1 - nm1p)
-            for (int m1 = 0; m1 < nm1p; m1++, gm1++, gm++)
-              lfc->work_gm[gm1] = vt_G[G] * v1->A_gm[gm];
-          for (int i2 = 0; i2 < ni; i2++) {
-            LFVolume* v2 = volume_i + i2;
-            int M2 = v2->M;
-            int nm2 = v2->nm;
-            double* Vt_mm = Vt_MM + (M1p - Mstart) * nM + M2;
-            gm1 = 0;
-            for (int g = 0; g < nG; g++)
-              for (int m1 = 0; m1 < nm1p; m1++, gm1++)
-                for (int m2 = 0; m2 < nm2; m2++)
-                  Vt_mm[m2 + m1 * nM] += (v2->A_gm[g * nm2 + m2] * 
-                                          work_gm[gm1] * dv);
-          }
-        }
-      }
-      GRID_LOOP_STOP(lfc, -1);
-    }
+    GRID_LOOP_STOP(lfc, -1);
   }
   else {
     complex double* Vt_MM = (complex double*)Vt_MM_obj->data;
