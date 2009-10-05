@@ -873,6 +873,7 @@ class Transport_Plotter:
         rcParams['ytick.labelsize'] = 18
         rcParams['legend.fontsize'] = 18
         rcParams['axes.titlesize'] = 18
+        rcParams['axes.labelsize'] = 18
         
     def set_ele_steps(self, n_ion_step=None, n_bias_step=0):
         if n_ion_step != None:
@@ -1005,13 +1006,29 @@ class Transport_Plotter:
         if info == 'tc':
             data = 'tc[s, k, 0]'
             title = 'trasmission coefficeints'
+            xlabel = 'Energy(eV)'
+            ylabel = 'T'
             dim = 3
             energy_axis = True
         elif info == 'dos':
             data = 'dos[s, k]'
             title = 'density of states'
+            xlabel = 'Energy(eV)'
+            ylabel = 'DOS(Electron / eV)'
             dim = 2
             energy_axis = True
+        elif info == 'den':
+            data = "dv['s0nt_1d_z']"
+            title = 'density'
+            xlabel = 'Transport axis'
+            ylabel = 'Electron'
+            energy_axis = False
+        elif info == 'ham':
+            data = "dv['s0vt_1d_z']"
+            title = 'hamiltonian'
+            xlabel = 'Transport axis'
+            ylabel = 'Energy(eV)'
+            energy_axis = False
         else:
             raise ValueError('no this info type---' + info)        
 
@@ -1036,12 +1053,17 @@ class Transport_Plotter:
                 l1 = np.linspace(0, a1, 10)
                 flags = self.flags
                 if not energy_axis:
-                    p.plot(ydata)
+                    if info == 'ham':
+                        p.plot(ydata * Hartree)
+                    else:
+                        p.plot(ydata)
                 else:
                     p.plot(xdata, ydata, flags[0], f1, l1, flags[1],
                                                              f2, l1, flags[1])
                 legends.append('step' + str(step.bias_step))
         p.title(title)
+        p.xlabel(xlabel)
+        p.ylabel(ylabel)
         p.legend(legends)
         if height != None:
             p.axis([xdata[0], xdata[-1], 0, height])
@@ -1116,28 +1138,50 @@ class Transport_Plotter:
         if info == 'dd':
             data = 'dd[s, k]'
             title = 'density matrix diagonal elements'
+            xlabel = 'Basis Sequence'
+            ylabel = 'Number'
+            energy_axis = False      
         elif info == 'df':
             data = 'df[s, k]'
             title = 'hamiltonian matrix diagonal elements'
+            xlabel = 'Basis Sequence'
+            ylabel = 'Number'
+            energy_axis = False           
         elif info == 'den':
             data = 'nt'
             title = 'density'
+            xlabel = 'Transport Axis'
+            ylabel = 'Electron'
+            energy_axis = False            
         elif info == 'ham':
             data = 'vt'
             title = 'hamiltonian'
+            xlabel = 'Transport Axis'
+            ylabel = 'Energy(eV)'
+            energy_axis = False             
         elif info == 'rho':
             data = 'rho'
             title = 'total poisson density'
+            xlabel = 'Transport Axis'
+            ylabel = 'Electron'
+            energy_axis = False             
         elif info == 'vHt':
             data = 'vHt'
-            title = 'total Hartree potential'             
+            title = 'total Hartree potential'
+            xlabel = 'Transport Axis'
+            ylabel = 'Energy(eV)'
+            energy_axis = False             
         elif info == 'tc':
             data = 'tc[s, k, 0]'
             title = 'trasmission coefficeints'
+            xlabel = 'Energy(eV)'
+            ylabel = 'T'            
             energy_axis = True
         elif info == 'dos':
             data = 'dos[s, k]'
             title = 'density of states'
+            xlabel = 'Energy(eV)'
+            ylabel = 'DOS(Electron/eV)'              
             energy_axis = True
         else:
             raise ValueError('no this info type---' + info)        
@@ -1159,6 +1203,8 @@ class Transport_Plotter:
         legends.append('step' + str(steps_indices[1]) +
                        'minus step' + str(steps_indices[0]))
         p.title(title)
+        p.xlabel(xlabel)
+        p.ylabel(ylabel)
         p.legend(legends)
         if height != None:
             p.axis([xdata[0], xdata[-1], 0, height])
