@@ -94,6 +94,11 @@ class XCFunctional:
             code = 'lxc' # libxc
             self.uses_libxc = True
             xcname = 'X_PBE-C_PBE'
+       elif xcname == 'BLYP':
+           assert (nspins is not None)
+           code = 'lxc' # libxc
+           self.uses_libxc = True
+           xcname = 'X_B88-C_LYP'
         elif xcname == 'TPSS':
             assert (nspins is not None)
             code = 'lxc' # libxc
