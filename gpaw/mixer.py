@@ -410,7 +410,7 @@ class BaseMixer_Broydn:
             self.d_nt_G.append(nt_G - self.nt_iG[-1])
             for d_Dp, D_p, D_ip in zip(self.d_D_ap, D_ap, self.D_iap):
                 d_Dp.append(D_p - D_ip[-1])
-            fmin_G = npy.sum(self.d_nt_G[-1] * self.d_nt_G[-1])
+            fmin_G = self.gd.integrate(self.d_nt_G[-1] * self.d_nt_G[-1])
             self.dNt = self.gd.integrate(npy.fabs(self.d_nt_G[-1]))
             if self.verbose:
                 print 'Mixer: broydn: fmin_G = %f fmin_D = %f'% fmin_G
@@ -431,20 +431,22 @@ class BaseMixer_Broydn:
                     for u_D in self.u_D:
                         del u_D[0]
                 temp_nt_G = self.d_nt_G[1] - self.d_nt_G[0]
-                self.v_G.append(temp_nt_G / npy.sum(temp_nt_G * temp_nt_G))
+                self.v_G.append(temp_nt_G / self.gd.integrate(temp_nt_G
+                                                                 * temp_nt_G))
                 if len(self.v_G) < self.nmaxold:
                     nstep = self.step - 1
                 else:
                     nstep = self.nmaxold 
                 for i in range(nstep):
-                    self.c_G.append(npy.sum(self.v_G[i] * self.d_nt_G[1]))
+                    self.c_G.append(self.gd.integrate(self.v_G[i] *
+                                                             self.d_nt_G[1]))
                 self.u_G.append(self.beta  * temp_nt_G + self.nt_iG[1] - self.nt_iG[0])
                 for d_Dp, u_D, D_ip in zip(self.d_D_ap, self.u_D, self.D_iap):
                     temp_D_ap = d_Dp[1] - d_Dp[0]
                     u_D.append(self.beta  * temp_D_ap + D_ip[1] - D_ip[0])
                 usize = len(self.u_G)
                 for i in range(usize - 1):
-                    a_G = npy.sum(self.v_G[i] * temp_nt_G)
+                    a_G = self.gd.integrate(self.v_G[i] * temp_nt_G)
                     axpy(-a_G, self.u_G[i], self.u_G[usize - 1])
                     for u_D in self.u_D:
                         axpy(-a_G, u_D[i], u_D[usize - 1])
@@ -510,3 +512,21 @@ class Mixer_Broydn(BaseMixer_Broydn):
         for mixer in self.mixers:
             mixer.set_charge_sloshing(dNt / len(self.mixers))
 
+class MixerSum_Broydn(BaseMixer_Broydn):
+    def mix(self, density):
+        nt_sG = density.nt_sG
+        D_asp = density.D_asp.values()
+
+        # Mix density
+        nt_G = density.nt_sG.sum(0)
+        BaseMixer_Broydn.mix(self, nt_G, D_asp)
+
+        # Only new magnetization for spin density
+        dnt_G = nt_sG[0] - nt_sG[1]
+        #dD_ap = [D_sp[0] - D_sp[1] for D_sp in D_asp]
+
+        # Construct new spin up/down densities 
+        nt_sG[0] = 0.5 * (nt_G + dnt_G)
+        nt_sG[1] = 0.5 * (nt_G - dnt_G)
+        
+        
