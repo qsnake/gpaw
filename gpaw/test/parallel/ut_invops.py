@@ -28,12 +28,6 @@ from gpaw.test.ut_common import ase_svnrevision, shapeopt, TestCase, \
     TextTestRunner, CustomTextTestRunner, defaultTestLoader, \
     initialTestLoader, create_random_atoms, create_parsize_maxbands
 
-if shapeopt is None:
-    # Bogus function only valid for one set of parameters.
-    def shapeopt(maxseed, size, ndims, ecc): 
-        assert (maxseed,size,ndims,ecc) == (300, 90**3, 3, 0.2)
-        return -np.inf, (75.0, 108.0, 90.0)
-
 # -------------------------------------------------------------------
 
 class UTDomainParallelSetup(TestCase):

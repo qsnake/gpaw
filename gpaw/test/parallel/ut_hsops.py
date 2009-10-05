@@ -29,12 +29,6 @@ from gpaw.test.ut_common import ase_svnrevision, shapeopt, TestCase, \
     TextTestRunner, CustomTextTestRunner, defaultTestLoader, \
     initialTestLoader, create_random_atoms, create_parsize_maxbands
 
-if shapeopt is None:
-    # Bogus function only valid for one set of parameters.
-    def shapeopt(maxseed, size, ndims, ecc): 
-        assert (maxseed,size,ndims,ecc) == (100, 8000, 3, 0.2)
-        return -np.inf, (20.0, 16.0, 25.0)
-
 memstats = False
 if memstats:
     # Developer use of this feature requires ASE 3.1.0 svn.rev. 905 or later.
