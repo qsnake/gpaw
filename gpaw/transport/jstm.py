@@ -1001,7 +1001,6 @@ class STM:
             else:
                 plot = scan_iG.copy()
             
-            print h
             plot = plot.T # origin to the lower left corner
             self.scans['interpolated_plot'] = plot
             if vmin == None:
@@ -1075,10 +1074,8 @@ class TipCell:
 
         # size of the simulation cell in the z-direction
         m = 0
-        print tip_indices
         for a, setup in enumerate(self.tip.wfs.setups):
             if a in tip_indices:
-                print world.rank, tip_indices,m,a,tip_zmin_a.shape
                 rcutmax = max([phit.get_cutoff() for phit in setup.phit_j])
                 tip_zmin_a[m] = tip_pos_av[m, 2] - rcutmax - tip_zmin
                 m+=1
@@ -1088,10 +1085,16 @@ class TipCell:
         cell_zmax = 2 * tip_pos_av[zmax_index, 2]\
                   - tip_zmin - tip_zmin_a[zmax_index]
         
+        self.cell_zmin = cell_zmin
+        self.cell_zmax = cell_zmax
+
         if cell_zmax > tgd.cell_c[2] - tgd.h_c[2]:
             cell_zmax = tgd.cell_c[2] - tgd.h_c[2]
 
         cell_zmin_grpt = np.floor(cell_zmin / tgd.h_c[2] - p).astype(int)
+        if cell_zmin_grpt < 0:
+            cell_zmin_grpt = 0
+
         cell_zmax_grpt = np.floor(cell_zmax / tgd.h_c[2]).astype(int)
         new_sizez = cell_zmax_grpt - cell_zmin_grpt
         self.cell_zmax_grpt = cell_zmax_grpt
