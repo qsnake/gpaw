@@ -38,7 +38,7 @@ class ElectronPhononCouplingMatrix:
     """
     
     def __init__(self, atoms, indices=None, name='v', delta=0.005, nfree=2,
-                 derivativemethod='grid'):
+                 derivativemethod='tci'):
         assert nfree in [2,4]
         self.nfree = nfree
         self.delta = delta
