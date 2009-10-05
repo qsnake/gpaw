@@ -8,12 +8,12 @@ partest = False
 
 # -------------------------------------------------------------------
 
-# Maintain backwards compatibility with ASE 3.1.0 svn. rev. 846 or later
+# Maintain backwards compatibility with ASE 3.1.0 svn. rev. 1158 or later
 try:
     from ase.svnrevision import svnrevision as ase_svnrevision
 except ImportError:
     # Fall back on minimum required ASE svn.rev.
-    ase_svnrevision = 846
+    ase_svnrevision = 1158
 else:
     # From test/ase3k_version.py.
     full_ase_svnrevision = ase_svnrevision
@@ -23,11 +23,8 @@ else:
         ase_svnrevision = ase_svnrevision[:ase_svnrevision.rfind(':')]
     ase_svnrevision = int(ase_svnrevision)
 
-# Hack to use a feature from ASE 3.1.0 svn. rev. 1001 or later.
-if ase_svnrevision >= 1001: # wasn't bug-free between rev. 893 and 1000
-    from ase.utils.memory import shapeopt
-else:
-    shapeopt = None
+# Using a feature from ASE 3.1.0 svn. rev. 1001 or later.
+from ase.utils.memory import shapeopt
 
 if partest:
     from gpaw.test.parunittest import ParallelTestCase as TestCase, \
@@ -35,36 +32,10 @@ if partest:
         CustomTextTestRunner, defaultParallelTestLoader as defaultTestLoader
     def CustomTextTestRunner(logname, verbosity=1):
         return TextTestRunner(stream=logname, verbosity=verbosity)
-elif ase_svnrevision >= 929:
+else:
+    # Using a features from ASE 3.1.0 svn. rev. 929 or later.
     from ase.test import CustomTestCase as TestCase, CustomTextTestRunner
     from unittest import TextTestRunner, defaultTestLoader
-else:
-    # Hack to use features from ASE 3.1.0 svn. rev. 929 or later.
-    import sys
-    from ase.parallel import paropen
-    from unittest import TextTestRunner, defaultTestLoader, TestCase as _UTC
-
-    if sys.version_info < (2, 4, 0, 'final', 0):
-        class TestCase(_UTC): 
-            assertTrue = _UTC.failUnless 
-            assertFalse = _UTC.failIf 
-    else: 
-        TestCase = _UTC
-
-    class CustomTextTestRunner(TextTestRunner): 
-        def __init__(self, logname, descriptions=1, verbosity=1): 
-            self.f = paropen(logname, 'w') 
-            TextTestRunner.__init__(self, self.f, descriptions, verbosity) 
- 
-        def run(self, test): 
-            stderr_old = sys.stderr 
-            try: 
-                sys.stderr = self.f 
-                testresult = TextTestRunner.run(self, test) 
-            finally: 
-                sys.stderr = stderr_old 
-            return testresult 
-
 
 from copy import copy
 initialTestLoader = copy(defaultTestLoader)
