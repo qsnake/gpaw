@@ -331,6 +331,7 @@ def get_grid_dP_aMix(spos_ac, wfs, q, timer=nulltimer): # XXXXXX q
         pt = LFC(wfs.gd, [setup.pt_j],
                  wfs.kpt_comm, dtype=wfs.dtype, forces=True)
         spos1_ac = [spos_ac[a]]
+        pt.set_k_points(wfs.ibzk_qc)
         pt.set_positions(spos1_ac)
         for b, setup_b in enumerate(wfs.setups):
             niAO = setup_b.niAO
@@ -357,6 +358,7 @@ def get_grid2_dP_aMix(spos_ac, wfs, q, *args, **kwargs): # XXXXXX q
     setups = wfs.setups
     pt = LFC(wfs.gd, [setup.pt_j for setup in setups],
              wfs.kpt_comm, dtype=wfs.dtype, forces=True)
+    pt.set_k_points(wfs.ibzk_qc)
     pt.set_positions(spos_ac)
     dP_aMix = pt.dict(len(phi_MG), derivative=True)
     pt.derivative(phi_MG, dP_aMix, q=q)
