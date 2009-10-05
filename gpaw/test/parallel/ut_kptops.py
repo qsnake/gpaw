@@ -21,7 +21,7 @@ from gpaw.kpt_descriptor import KPointDescriptor
 from gpaw.test.ut_common import ase_svnrevision, shapeopt, TestCase, \
     TextTestRunner, CustomTextTestRunner, defaultTestLoader, \
     initialTestLoader
-from hs_ops import UTBandParallelSetup
+from gpaw.test.parallel.ut_hsops import UTBandParallelSetup
 
 # -------------------------------------------------------------------
 
