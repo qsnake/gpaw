@@ -1617,8 +1617,12 @@ class Transport(GPAW):
             self.analysor.save_ion_step()
             self.analysor.save_data_to_file()
         self.forces.F_av = None
-        f = GPAW.get_forces(self, atoms)
+        #f = GPAW.get_forces(self, atoms)
+        f = self.calculate_force(atoms)
         return f
+
+    def calculate_force(self, atoms):
+        pass
     
     def get_potential_energy(self, atoms=None, force_consistent=False):
         if hasattr(self.scf, 'converged') and self.scf.converged:
