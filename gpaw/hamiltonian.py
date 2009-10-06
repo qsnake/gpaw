@@ -114,6 +114,7 @@ class Hamiltonian:
         self.allocated = True
 
     def set_positions(self, spos_ac, rank_a=None):
+        self.spos_ac = spos_ac
         if not self.allocated:
             self.allocate()
         self.vbar.set_positions(spos_ac)
@@ -287,13 +288,14 @@ class Hamiltonian:
             Epot += setup.M + np.dot(D_p, (setup.M_p +
                                            np.dot(setup.M_pp, D_p)))
 
-            if 0:#vext is not None:
+            if self.vext_g is not None:
+                vext = self.vext_g.get_taylor(spos_c=self.spos_ac[a, :])
                 # Tailor expansion to the zeroth order
-                Eext += vext[0][0] * (sqrt(4 * pi) * self.Q_L[0] + setup.Z)
+                Eext += vext[0][0] * (sqrt(4 * pi) * density.Q_aL[a][0] + setup.Z)
                 dH_p += vext[0][0] * sqrt(4 * pi) * setup.Delta_pL[:, 0]
                 if len(vext) > 1:
                     # Tailor expansion to the first order
-                    Eext += sqrt(4 * pi / 3) * np.dot(vext[1], self.Q_L[1:4])
+                    Eext += sqrt(4 * pi / 3) * np.dot(vext[1], density.Q_aL[a][1:4])
                     # there must be a better way XXXX
                     Delta_p1 = np.array([setup.Delta_pL[:, 1],
                                           setup.Delta_pL[:, 2],

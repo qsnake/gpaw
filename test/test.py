@@ -145,6 +145,7 @@ if len(tests) == 0:
         'Hubbard_U.py',    
         'lrtddft.py',
         'lcao_force.py',
+        'external_potential.py',
         'parallel/lcao_hamiltonian.py',
         'wannier-ethylene.py',
         'CH4.py',
@@ -191,7 +192,6 @@ if len(tests) == 0:
 
 disabled_tests = [
     'vdw/quick_spin.py',
-    'external_potential.py',
     'dscf_H2Al.py',
     'lb.py',
     'kli.py',

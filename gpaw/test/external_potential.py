@@ -5,7 +5,7 @@ from ase import *
 from ase.units import Bohr, Hartree
 from ase.io.cube import write_cube
 from gpaw import GPAW
-from gpaw.utilities import equal
+from gpaw.test import equal
 
 from gpaw.cluster import Cluster
 from gpaw.point_charges import PointCharges
