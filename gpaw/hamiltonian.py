@@ -236,7 +236,7 @@ class Hamiltonian:
         Eext = 0.0
         if self.vext_g is not None:
             vt_g += self.vext_g.get_potential(self.finegd)
-            Eext = np.vdot(vt_g, density.nt_g) * self.finegd.dv - Ebar
+            Eext = self.finegd.integrate(vt_g, density.nt_g, global_integral=False) - Ebar
 
         if self.nspins == 2:
             self.vt_sg[1] = vt_g
