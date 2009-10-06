@@ -46,10 +46,10 @@ fd = 0
 
 # Values taken from FD calculation below
 # (Symmetry means only z-component may be nonzero)
-ref = array([[ 0.        ,  0.        ,  4.61423124],
-             [ 0.        ,  0.        , -2.74089382],
-             [ 0.        ,  0.        ,  2.74089382],
-             [ 0.        ,  0.        , -4.61423124]])
+ref = array([[0.0, 0.0,  4.61722829],
+             [0.0, 0.0, -2.74218082],
+             [0.0, 0.0,  2.74217255],
+             [0.0, 0.0, -4.61716028]])
 
 if fd:
     from ase.calculators import numeric_forces
@@ -66,4 +66,4 @@ print ref
 print 'Calculated'
 print F_ac
 print 'Max error', err
-assert err < 2e-3
+assert err < 6e-4

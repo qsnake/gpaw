@@ -37,7 +37,7 @@ def run_test(tests=[0, 1, 2, 3]):
         bulk = Atoms('Li', magmoms=[1.], calculator=calc, **atom_kwargs)
         E = bulk.get_potential_energy()
         printstr(calc)
-        equal(E, -1.74752, 1e-4)
+        equal(E, -1.74787, 1e-4)
 
     if 3 in tests: # spin polarized GGA (gpaw built_in)
         calc = GPAW(xc='oldPBE', **calc_kwargs)

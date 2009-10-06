@@ -435,7 +435,8 @@ class FourierTransformer:
             else:
                 a_g[0] = a_g[1]  # XXXX
             a_g *= (-1)**((-l1 + l2 - l) // 2)
-            s = Spline(l, 2 * self.rcmax, a_g)#np.concatenate((a_g, [0.0])))
+            n = len(a_g) // 256
+            s = Spline(l, 2 * self.rcmax, np.concatenate((a_g[::n], [0.0])))
             splines.append(s)
         return OverlapExpansion(l1, l2, splines)
 
@@ -630,7 +631,7 @@ class NewTwoCenterIntegrals:
 
         rcmax = max(cutoff_I)
 
-        ng = 2**extra_parameters.get('log2ng', 12)
+        ng = 2**extra_parameters.get('log2ng', 10)
         transformer = FourierTransformer(rcmax, ng)
         tsoc = TwoSiteOverlapCalculator(transformer)
         self.msoc = ManySiteOverlapCalculator(tsoc, I_a, I_a)
@@ -773,7 +774,7 @@ class TwoCenterIntegralSplines:
 
     def __init__(self, rcmax):
         self.rcmax = rcmax
-        self.set_ng(2**extra_parameters.get('log2ng', 12))
+        self.set_ng(2**extra_parameters.get('log2ng', 10))
 
     def set_ng(self, ng):
         # The ng parameter is rather sensitive.  2**11 might be sufficient,
@@ -859,7 +860,8 @@ class TwoCenterIntegralSplines:
             else:
                 a_g[0] = a_g[1]  # XXXX
             a_g *= (-1)**((-l1 + l2 - l) // 2)
-            s = Spline(l, 2 * self.rcmax, a_g)#np.concatenate((a_g, [0.0])))
+            n = len(a_g) // 256
+            s = Spline(l, 2 * self.rcmax, np.concatenate((a_g[::n], [0.0])))
             splines.append(s)
         return splines
 

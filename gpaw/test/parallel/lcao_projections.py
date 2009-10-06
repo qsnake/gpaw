@@ -15,9 +15,10 @@ V_qnM, H_qMM, S_qMM, P_aqMi = get_lcao_projections_HSP(
 # Test H and S
 eig = np.linalg.eigvals(np.linalg.solve(S_qMM[0], H_qMM[0])).real
 eig.sort()
-eig_ref = np.array([-17.87399385, -13.24617235, -11.42975105,  -7.12310627,
-                    -7.12310627, 0.59035302, 0.59035302, 3.91884056,
-                    7.44475507, 26.74799869])
+eig_ref = np.array([-17.87825765, -13.24801225, -11.43053856, -7.12479272,
+                    -7.12479272, 0.59317328, 0.59317328, 3.92555938, 7.4516439,
+                    26.7354098])
+print eig
 assert np.allclose(eig, eig_ref)
 
 # Test V

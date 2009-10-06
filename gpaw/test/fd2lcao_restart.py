@@ -40,4 +40,4 @@ if os.path.isfile('Na4_fd.gpw'):
     calc.write('Na4_lcao.gpw')
     del atoms, calc
 
-    equal(etot_lcao, -1.9555, 0.001)
+    equal(etot_lcao, -1.9599, 0.001)
