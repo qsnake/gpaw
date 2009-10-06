@@ -919,6 +919,10 @@ class Se_Sparse_Matrix:
             mat[-self.nn:, -self.nn:] = self.spar
         return mat   
 
+def fermidistribution(energy, kt):
+    #fermi level is fixed to zero
+    return 1.0 / (1.0 + np.exp(energy / kt) )
+
 def get_tri_type(mat):
     #mat is lower triangular or upper triangular matrix
     tol = 1e-10
