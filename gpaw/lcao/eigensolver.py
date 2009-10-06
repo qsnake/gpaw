@@ -114,7 +114,9 @@ class LCAO:
 
         self.timer.start(dsyev_zheev_string)
         if extra_parameters.get('blacs'):
-            import _gpaw
+            from gpaw.utilities.blacs import blacs_create, blacs_destroy
+            from gpaw.utilities.blacs import scalapack_redist
+            from gpaw.utilities.blacs import scalapack_general_diagonalize
             isreal = self.dtype == float
             nao = self.H_MM.shape[1]
             band_comm = self.band_comm
@@ -122,26 +124,24 @@ class LCAO:
             shiftks = kpt_comm.rank*B*self.gd.comm.size
             c1_ranks = shiftks + np.arange(B)*self.gd.comm.size
             c1 = self.world.new_communicator(c1_ranks)
-            d1 = _gpaw.blacs_create(c1, nao, nao, 1, band_comm.size,
-                                    nao, -((-nao) // band_comm.size))
+            d1 = blacs_create(c1, nao, nao, 1, band_comm.size,
+                              nao, -((-nao) // band_comm.size))
             n, m, nb = sl_diagonalize[:3]
             # n, m, nb = 2, 2, 64
             c2_ranks = shiftks + np.arange(B*self.gd.comm.size)
             c2 = self.world.new_communicator(c2_ranks)
-            d2 = _gpaw.blacs_create(c2, nao, nao, n, m, nb, nb)
-            S_MM = _gpaw.scalapack_redist(self.S_MM, d1, d2, isreal, c2, 0,0)
-            H_MM = _gpaw.scalapack_redist(self.H_MM, d1, d2, isreal, c2, 0,0)
+            d2 = blacs_create(c2, nao, nao, n, m, nb, nb)
+            S_MM = scalapack_redist(self.S_MM, d1, d2, isreal, c2, 0,0)
+            H_MM = scalapack_redist(self.H_MM, d1, d2, isreal, c2, 0,0)
             
-            self.eps_n[:], H_MM = _gpaw.scalapack_general_diagonalize(H_MM,
-                                                                      S_MM,
-                                                                      d2)
-            d1b = _gpaw.blacs_create(c1, nao, nao, 1, band_comm.size,
-                                     nao, mynbands)
+            self.eps_n[:], H_MM = scalapack_general_diagonalize(H_MM, S_MM,
+                                                                d2, 'L')
+            d1b = blacs_create(c1, nao, nao, 1, band_comm.size, nao, mynbands)
             
-            H_MM = _gpaw.scalapack_redist(H_MM, d2, d1b, isreal, c2, 0, 0)
-            _gpaw.blacs_destroy(d1b)
-            _gpaw.blacs_destroy(d2)
-            _gpaw.blacs_destroy(d1)
+            H_MM = scalapack_redist(H_MM, d2, d1b, isreal, c2, 0, 0)
+            blacs_destroy(d1b)
+            blacs_destroy(d2)
+            blacs_destroy(d1)
             if H_MM is not None:
                 assert self.gd.comm.rank == 0
                 kpt.C_nM[:] = H_MM[:, :mynbands].T
