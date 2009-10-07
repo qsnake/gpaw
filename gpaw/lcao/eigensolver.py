@@ -135,7 +135,7 @@ class LCAO:
             H_MM = scalapack_redist(self.H_MM, d1, d2, isreal, c2, 0,0)
             
             self.eps_n[:], H_MM = scalapack_general_diagonalize(H_MM, S_MM,
-                                                                d2, 'L')
+                                                                d2)
             d1b = blacs_create(c1, nao, nao, 1, band_comm.size, nao, mynbands)
             
             H_MM = scalapack_redist(H_MM, d2, d1b, isreal, c2, 0, 0)
