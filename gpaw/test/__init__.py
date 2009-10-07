@@ -4,7 +4,9 @@ import time
 
 from gpaw.utilities import devnull
 import gpaw.mpi as mpi
-import gpaw
+import gpaw # XXX
+from gpaw.atom.generator import Generator, parameters
+from gpaw import setup_paths
 
 
 # Function used by tests:
@@ -111,7 +113,6 @@ tests = [
     'hgh_h2o.py',
     'apmb.py',
     'relax.py',
-    'generatesetups.py',
     'muffintinpot.py',
     'restart_band_structure.py',
     'ldos.py',
@@ -257,7 +258,7 @@ class MyTextTestRunner(TextTestRunner):
         return MyTextTestResult(*args)
 
 
-def run_all(tests, stream=sys.__stdout__, jobs=1):
+def run_all(tests, stream=sys.__stdout__, jobs=1, subprocesses=False):
     ts = TestSuite()
     path = gpaw.__path__[0] + '/test/'
     for test in tests:
@@ -270,3 +271,13 @@ def run_all(tests, stream=sys.__stdout__, jobs=1):
     sys.stdout = sys.__stdout__
     return failed
 
+
+def gen(symbol, name=None, **kwargs):
+    if mpi.rank == 0:
+        if 'scalarrel' not in kwargs:
+            kwargs['scalarrel'] = True
+        g = Generator(symbol, **kwargs)
+        g.run(name=name, **parameters[symbol])
+    mpi.world.barrier()
+    if '.' not in setup_paths:
+        setup_paths.append('.')

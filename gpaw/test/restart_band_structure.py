@@ -1,11 +1,11 @@
 from gpaw import GPAW, restart
 from ase import *
 from ase.calculators import numeric_force
-from gpaw.test import equal
+from gpaw.test import equal, gen
 import os
-from gpaw import setup_paths
 from gpaw.mpi import world
-setup_paths.insert(0, '.')
+
+gen('Si', xcname='GLLBSC')
 
 for xc in ['LDA','GLLBSC']:
     a = 4.23

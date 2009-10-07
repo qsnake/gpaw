@@ -27,8 +27,11 @@ parser.add_option('--from', metavar='TESTFILE', dest='from_test',
 parser.add_option('--after', metavar='TESTFILE', dest='after_test',
                   help='Run remaining tests, starting after TESTFILE')
 
-parser.add_option('-j', '--jobs', type='int',
+parser.add_option('-j', '--jobs', type='int', default=1,
                   help='Run JOBS threads.')
+
+parser.add_option('-s', '--subprocesses', action='store_true',
+                  help='Run tests in subprocesses.')
 
 opt, tests = parser.parse_args()
 
@@ -66,7 +69,7 @@ cwd = os.getcwd()
 os.chdir(tmpdir)
 if mpi.rank == 0:
     print 'Running tests in', tmpdir
-failed = run_all(tests, jobs=opt.jobs)
+failed = run_all(tests, jobs=opt.jobs, subprocesses=opt.subprocesses)
 if mpi.rank == 0:
     os.chdir(cwd)
     if len(failed) > 0:

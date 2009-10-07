@@ -1,6 +1,8 @@
 from ase import *
 from gpaw import GPAW, extra_parameters
-from gpaw.test import equal
+from gpaw.test import equal, gen
+
+gen('Li', xcname='oldPBE')
 
 a = 2.8
 k = 6
@@ -37,14 +39,14 @@ def run_test(tests=[0, 1, 2, 3]):
         bulk = Atoms('Li', magmoms=[1.], calculator=calc, **atom_kwargs)
         E = bulk.get_potential_energy()
         printstr(calc)
-        equal(E, -1.74787, 1e-4)
+        equal(E, -1.74759, 1e-4)
 
     if 3 in tests: # spin polarized GGA (gpaw built_in)
         calc = GPAW(xc='oldPBE', **calc_kwargs)
         bulk = Atoms('Li', magmoms=[1.], calculator=calc, **atom_kwargs)
         E = bulk.get_potential_energy()
         printstr(calc)
-        equal(E, -1.74763, 1e-4)
+        equal(E, -1.74751, 1e-4)
 
 usenewxc = extra_parameters.get('usenewxc')
 try:
