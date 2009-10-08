@@ -256,7 +256,23 @@ def compare_atoms(atoms, comm=world):
     # Compare fingerprints:
     fingerprints = npy.empty((comm.size, 4), fingerprint.dtype)
     comm.all_gather(fingerprint, fingerprints)
-    return not fingerprints.ptp(0).any()
+    mismatches = fingerprints.ptp(0)
+
+    if debug:
+        dumpfile = 'compare_atoms'
+        for i in npy.argwhere(mismatches).ravel():
+            itemname = ['positions','cell','pbc','magmoms'][i]
+            itemfps = fingerprints[:,i]
+            itemdata = [atoms.positions,
+                        atoms.cell,
+                        atoms.pbc * 1.0,
+                        atoms.get_initial_magnetic_moments()][i]
+            if comm.rank == 0:
+                print 'DEBUG: compare_atoms failed for %s' % itemname
+                itemfps.dump('%s_fps_%s.pickle' % (dumpfile,itemname))
+            itemdata.dump('%s_r%04d_%s.pickle' % (dumpfile,comm.rank,itemname))
+
+    return not mismatches.any()
 
 
 def broadcast_string(string=None, root=0, comm=world):
