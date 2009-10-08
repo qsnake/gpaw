@@ -32,8 +32,8 @@ M = N/B
 # blacs grid dimensions DxD and non-even blocking factors just
 # to make things more non-trivial.
 D = 2 
-nb = 64
-mb = 64
+nb = 8
+mb = 8
 
 assert world.size == B
 assert world.size >= D*D
@@ -66,11 +66,6 @@ def test(complex_type):
     if debug and world.rank == 0:
         print "A = ", A
         
-    # We should really use Fortran ordered array but this gives
-    # a false positive in LAPACK's debug mode
-    # A = A.copy("Fortran")
-    A = A.transpose().copy()
-
     S = np.zeros_like(A)
         
     S[0:M,:] = 1.0*np.eye(M,N,0)
@@ -84,11 +79,6 @@ def test(complex_type):
     if debug and world.rank == 0:
         print "S = ", S
         
-    # We should really use Fortran ordered array but this gives
-    # a false positive in LAPACK's debug mode
-    # S = S.copy("Fortran")
-    S = S.transpose().copy()
-
     w = np.zeros(N,dtype=float)
     # We need to make a backup of A since LAPACK diagonalize will overwrite
     Ag = A.copy()
