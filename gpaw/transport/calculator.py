@@ -326,6 +326,7 @@ class Transport(GPAW):
                 self.dimt_lead = []
                 self.dimt_buffer = []
             self.nblead = []
+            self.bnc = []
             self.edge_index = [[None] * self.lead_num, [None] * self.lead_num]
 
         if self.use_env:
@@ -341,6 +342,7 @@ class Transport(GPAW):
                 if not dry_run:
                     calc.set_positions(atoms)
             self.nblead.append(calc.wfs.setups.nao)
+            self.bnc.append(calc.gd.N_c[2])
             if self.LR_leads:
                 self.dimt_lead.append(calc.gd.N_c[self.d])
 
@@ -439,6 +441,7 @@ class Transport(GPAW):
                                             allocate=False)
             self.interpolator.allocate()
             self.surround.combine()
+            self.get_inner_setups()
             self.set_extended_positions()
             self.timer.stop('surround set_position')
         self.get_hamiltonian_initial_guess()
@@ -450,6 +453,8 @@ class Transport(GPAW):
         if not hasattr(self, 'plot_option'):
             self.plot_option = None
         self.ground = True
+        self.F_av = None
+        self.optimize = False
 
     def set_energies(self, energies, lead_pairs=[[0,1]]):
         self.plot_option = {}
@@ -805,19 +810,21 @@ class Transport(GPAW):
             self.initialize()
             self.atoms_l = []
             for i in range(self.lead_num):
-                self.atoms_l.append(self.get_lead_atoms[i])
+                self.atoms_l.append(self.get_lead_atoms(i))
             self.get_extended_atoms()
             calc = self.extended_atoms.calc
             calc.initialize(self.extended_atoms)
             del calc.density
             self.extended_calc = calc
             self.gd1, self.finegd1 = calc.gd, calc.finegd
-            self.set_extended_positions()                
+            self.set_extended_positions()
+            del self.wfs
+            self.wfs = self.extended_calc.wfs
                 
         #if self.scat_restart:
         #    self.recover_kpts(self)
-       
-        self.append_buffer_hsd()
+        if not self.optimize:
+            self.append_buffer_hsd()
         #self.fill_guess_with_leads()           
         self.scat_restart = False
 
@@ -934,10 +941,10 @@ class Transport(GPAW):
         self.scf.converged = self.cvgflag
         
         ## these temperary lines is for storage the transport object
-        for kpt in self.wfs.kpt_u:
-            kpt.rho_MM = None
-            kpt.eps_n = np.zeros((self.nbmol))
-            kpt.f_n = np.zeros((self.nbmol))
+        #for kpt in self.wfs.kpt_u:
+        #    kpt.rho_MM = None
+        #    kpt.eps_n = np.zeros((self.nbmol))
+        #    kpt.f_n = np.zeros((self.nbmol))
         ##
         self.ground = False
         self.linear_mm = None
@@ -1613,16 +1620,78 @@ class Transport(GPAW):
             pass
         else:
             self.negf_prepare(atoms)
+            if np.sum(self.bias) < 1e-3:
+                self.ground = True
             self.get_selfconsistent_hamiltonian()
             self.analysor.save_ion_step()
             self.analysor.save_data_to_file()
-        self.forces.F_av = None
+        self.F_av = None
         #f = GPAW.get_forces(self, atoms)
         f = self.calculate_force(atoms)
+        self.optimize = True
         return f
 
     def calculate_force(self, atoms):
-        pass
+        """Return the atomic forces.""" 
+        if self.F_av is not None:
+            return self.F_av[:len(self.atoms)]
+        natoms = len(self.wfs.setups)
+        self.F_av = np.zeros((natoms, 3))
+
+        hamiltonian = self.extended_calc.hamiltonian
+        vt_sG = hamiltonian.vt_sG
+        if len(vt_sG) == 2:
+            vt_G = 0.5 * (vt_sG[0] + vt_sG[1])
+        else:
+            vt_G = vt_sG[0]
+
+        # Force from projector functions (and basis set):
+        self.wfs.calculate_forces(hamiltonian, self.F_av)
+
+        self.wfs.band_comm.sum(self.F_av)
+        self.wfs.kpt_comm.sum(self.F_av)
+        
+        # Force from compensation charges:
+        dF_aLv = self.density.ghat.dict(derivative=True)
+        nn = self.surround.nn[0] * 2
+        vHt_g = self.surround.uncapsule(nn, hamiltonian.vHt_g,
+                                                    self.finegd1, self.finegd)
+        self.density.ghat.derivative(vHt_g, dF_aLv)
+        for a, dF_Lv in dF_aLv.items():
+            self.F_av[a] += np.dot(self.density.Q_aL[a], dF_Lv)
+
+        # Force from smooth core charge:
+        dF_av = self.density.nct.dict(derivative=True)
+        vt_G0 = self.surround.uncapsule(nn / 2, vt_G, self.gd1, self.gd)        
+        self.density.nct.derivative(vt_G0, dF_av)
+        for a, dF_v in dF_av.items():
+            self.F_av[a] += dF_v[0]
+
+        # Force from zero potential:
+        dF_av = self.hamiltonian.vbar.dict(derivative=True)
+        self.hamiltonian.vbar.derivative(self.density.nt_g, dF_av)
+        for a, dF_v in dF_av.items():
+            self.F_av[a] += dF_v[0]
+
+        self.wfs.gd.comm.sum(self.F_av)
+
+        # Add non-local contributions:
+        for kpt in self.wfs.kpt_u:
+            self.F_av += hamiltonian.xcfunc.get_non_local_force(kpt)
+    
+        if self.wfs.symmetry:
+            self.F_av = self.wfs.symmetry.symmetrize_forces(self.F_av)
+
+        return self.F_av[:len(self.atoms)]
+
+    def calculate_to_bias(self, v_limit, num_v):
+        bias = np.linspace(0, v_limit, num_v)
+        current = np.empty([num_v])
+        self.negf_prepare() 
+        for i in range(num_v):
+            v = bias[i]
+            self.bias = [v/2., -v /2.]
+            self.get_selfconsistent_hamiltonian()        
     
     def get_potential_energy(self, atoms=None, force_consistent=False):
         if hasattr(self.scf, 'converged') and self.scf.converged:
@@ -1704,11 +1773,11 @@ class Transport(GPAW):
         ham = self.extended_calc.hamiltonian
         density = self.density
         self.timer.start('Hamiltonian')
-        #if ham.vt_sg is None:
-        #    ham.vt_sg = ham.finegd.empty(ham.nspins)
-        #    ham.vHt_g = ham.finegd.zeros()
-        #    ham.vt_sG = ham.gd.empty(ham.nspins)
-        #    self.inner_poisson.initialize()
+        if ham.vt_sg is None:
+            ham.vt_sg = ham.finegd.empty(ham.nspins)
+            ham.vHt_g = ham.finegd.zeros()
+            ham.vt_sG = ham.gd.empty(ham.nspins)
+            #self.inner_poisson.initialize()
  
         nn = self.surround.nn[0] * 2
         nt_sg = self.surround.capsule(nn, density.nt_sg, self.surround.nt_sg,
@@ -2012,18 +2081,10 @@ class Transport(GPAW):
                                                             1e-8))
   
     def calculate_iv(self, v_limit=3, num_v=16):
-        bias = np.linspace(0, v_limit, num_v)
-        self.file_num = num_v
-        current = np.empty([num_v])
-        result = {}
-        self.negf_prepare() 
-        for i in range(num_v):
-            v = bias[i]
-            self.bias = [v/2., -v /2.]
-            self.get_selfconsistent_hamiltonian()
+        self.calculate_to_bias(v_limit, num_v)
         del self.analysor
         del self.surround
- 
+  
     def recover_kpts(self, calc):
         wfs = calc.wfs
         wfs.eigensolver.iterate(calc.hamiltonian, wfs)
@@ -2069,7 +2130,7 @@ class Transport(GPAW):
         p['h'] = None
         N_c = self.gd.N_c.copy()
         for i in range(self.lead_num):
-            N_c[2] += self.atoms_l[i].calc.gd.N_c[2]
+            N_c[2] += self.bnc[i]
         p['gpts'] = N_c
         if 'mixer' in p:
             if not self.spinpol:
@@ -2145,13 +2206,22 @@ class Transport(GPAW):
         self.finegd.distribute(global_linear_vHt, linear_vHt_g)
         return linear_vHt_g
 
+
+    def get_inner_setups(self):
+        spos_ac0 = self.atoms.get_scaled_positions() % 1.0
+        self.wfs.set_positions(spos_ac0)
+        self.inner_setups = self.wfs.setups
+        self.inner_atom_indices = self.wfs.basis_functions.atom_indices
+        self.inner_my_atom_indices = self.wfs.basis_functions.my_atom_indices
+        self.inner_rank_a = self.wfs.rank_a
+        
     def set_extended_positions(self):
         spos_ac0 = self.atoms.get_scaled_positions() % 1.0
         spos_ac = self.extended_atoms.get_scaled_positions() % 1.0
-
         self.extended_calc.wfs.set_positions(spos_ac)
-        self.wfs.set_positions(spos_ac0)
-        self.density.set_positions(spos_ac0, self.wfs.rank_a)
+
+        self.density.set_positions(spos_ac0, self.inner_rank_a)
+        self.hamiltonian.set_positions(spos_ac0, self.inner_rank_a)
         self.extended_calc.hamiltonian.set_positions(spos_ac,
                                                 self.extended_calc.wfs.rank_a)
 
@@ -2177,11 +2247,11 @@ class Transport(GPAW):
                                 wfs.setups[a].initialize_density_matrix(f_si)
                     f_asi[a] = f_si
 
-                for a in self.wfs.basis_functions.atom_indices:
-                    setup = self.wfs.setups[a]
+                for a in self.inner_atom_indices:
+                    setup = self.inner_setups[a]
                     f_si = setup.calculate_initial_occupation_numbers(
                                   density.magmom_a[a], density.hund, charge=c)
-                    if a in self.wfs.basis_functions.my_atom_indices:
+                    if a in self.inner_my_atom_indices:
                         density.D_asp[a] = setup.initialize_density_matrix(
                                                                          f_si)                    
 
@@ -2205,17 +2275,17 @@ class Transport(GPAW):
                 density.nt_sG = self.surround.uncapsule(nn, nt_sG, gd1, gd)
                 density.nt_sG += density.nct_G
                 density.normalize()
-                comp_charge = density.calculate_multipole_moments()
-                density.interpolate(comp_charge)
-                density.calculate_pseudo_charge(comp_charge)
+
             else:
                 density.nt_sG = self.gd.empty(self.nspins)
                 density.calculate_pseudo_density(wfs)
                 density.nt_sG += density.nct_G
-                comp_charge = density.calculate_multipole_moments()
-                density.interpolate(comp_charge)
-                density.calculate_pseudo_charge(comp_charge)
-
+                density.normalize() 
+        
+        comp_charge = density.calculate_multipole_moments()
+        density.interpolate(comp_charge)
+        density.calculate_pseudo_charge(comp_charge)            
+            
         self.update_hamiltonian()
         self.scf.reset()
         self.forces.reset()
