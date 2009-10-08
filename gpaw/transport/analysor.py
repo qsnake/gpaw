@@ -1,5 +1,6 @@
 from gpaw.transport.selfenergy import LeadSelfEnergy, CellSelfEnergy
-from gpaw.transport.tools import get_matrix_index, aa1d, aa2d, sum_by_unit, dot
+from gpaw.transport.tools import get_matrix_index, aa1d, aa2d, sum_by_unit, \
+                                                      dot, fermidistribution
 from gpaw.mpi import world
 
 from ase.units import Hartree
@@ -91,7 +92,8 @@ class Transport_Analysor:
             self.energies = np.linspace(ef - 3, ef + 3, 61) + 1e-4 * 1.j
             self.lead_pairs = [[0,1]]
         else:
-            self.energies = tp.plot_option['energies'] + 1e-4 * 1.j
+            self.energies = tp.plot_option['energies'] + tp.lead_fermi[0] + \
+                                                              1e-4 * 1.j
             self.lead_pairs = tp.plot_option['lead_pairs']
        
     def initialize(self):
@@ -289,7 +291,7 @@ class Transport_Analysor:
         tc_array, dos_array = self.collect_transmission_and_dos()
         dv = self.abstract_d_and_v()
         if not tp.non_sc:
-            current = self.calculate_current()
+            current = self.calculate_current2(0)
         else:
             current = 0
         step.initialize_data(tp.bias, tp.gate, self.energies, self.lead_pairs,
@@ -351,23 +353,6 @@ class Transport_Analysor:
         kpt_comm.all_gather(local_tc_array, tc_array)
         kpt_comm.all_gather(local_dos_array, dos_array)            
 
-        return tc_array, dos_array
-
-    def calculate_transmission_and_dos_with_real_ham(self, energies=None):
-        if energies == None:
-            energies = self.energies
-        tp = self.tp
-      
-        nlp = len(self.lead_pairs)
-        ne = len(energies)
-        ns, npk = tp.nspins, tp.npk
-
-        tc_array = np.empty([ns, nlp, ne], float)
-        dos_array = np.empty([ns, ne], float)
-        
-        for s in range(ns):
-            tc_array[s], dos_array[s] = \
-                          self.calculate_transmission_and_dos(s, q, energies)
         return tc_array, dos_array
 
     def save_ion_step(self):
@@ -470,6 +455,44 @@ class Transport_Analysor:
                                                        fermi_factor[i][0][j]
         return current
 
+    def calculate_current_of_energy(self, epts, lead_pair_index, s):
+        # temperary, because different lead_pairs have different energy points
+        tp = self.tp
+        tc_array, dos_array = self.collect_transmission_and_dos(epts)
+        tc_all = np.sum(tc_array, axis=1) / tp.npk
+        #attention here, pk weight should be changed
+        fd = fermidistribution
+        intctrl = tp.intctrl
+        kt = intctrl.kt
+        lead_ef1 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][0]]
+        lead_ef2 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][1]]
+        fermi_factor = fd(epts - lead_ef1, kt) - fd(epts - lead_ef2, kt)
+        current = tc_all[s, lead_pair_index] * fermi_factor
+        return current
+    
+    def calculate_current2(self, lead_pair_index=0, s=0):
+        from scipy.integrate import simps
+        intctrl = self.tp.intctrl
+        kt = intctrl.kt
+        lead_ef1 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][0]]
+        lead_ef2 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][1]]
+        if lead_ef2 > lead_ef1:
+            lead_ef1, lead_ef2 = lead_ef2, lead_ef1
+        lead_ef1 += 2 * kt
+        lead_ef2 -= 2 * kt
+        ne = int(abs(lead_ef1 -lead_ef2) / 0.02)
+        epts = np.linspace(lead_ef1, lead_ef2, ne) + 1e-4 * 1.j
+        interval = epts[1] - epts[0]
+        #ne = len(self.energies)
+        #epts = self.energies
+        #interval = self.energies[1] - self.energies[0]
+        cures = self.calculate_current_of_energy(epts, lead_pair_index, s)
+        if ne != 0:
+            current =  simps(cures, None, interval)
+        else:
+            current = 0
+        return current
+    
     def plot_transmission_and_dos(self, ni, nb, s, k, leads=[0,1]):
         l0, l1 = leads
         ep = self.energies
@@ -1225,7 +1248,7 @@ class Transport_Plotter:
                 p.colorbar()
                 p.show()
 
-    def plot_current(self, atomic_unit=True, dense_level=0):
+    def plot_current(self, au=True, spinpol=False, dense_level=0):
         bias = []
         current = []
         
@@ -1233,13 +1256,13 @@ class Transport_Plotter:
             bias.append(step.bias[0] - step.bias[1])
             current.append(np.real(step.current))
         import pylab as p
-        unit = 6.624 * 1e3
-        current = np.array(current) / (2 * np.pi)
+        unit = 6.624 * 1e3 
+        current = np.array(current) / (Hartree * 2 * np.pi)
         current = current.reshape(-1)
-        if current.shape[0] == 1:
+        if not spinpol:
             current *= 2
         ylabel = 'Current(au.)'
-        if not atomic_unit:
+        if not au:
             current *= unit
             ylabel = 'Current($\mu$A)'
         p.plot(bias, current, self.flags[0])
@@ -1258,7 +1281,7 @@ class Transport_Plotter:
             p.ylabel(ylabel)
             p.show()
 
-    def plot_didv(self, atomic_unit=True, dense_level=0):
+    def plot_didv(self, au=True, spinpol=False, dense_level=0):
         bias = []
         current = []
         
@@ -1266,18 +1289,17 @@ class Transport_Plotter:
             bias.append(step.bias[0] - step.bias[1])
             current.append(np.real(step.current))
         import pylab as p
-        unit = 6.624 * 1e3 / np.pi
-        current = np.array(current)
+        unit = 6.624 * 1e3 
+        current = np.array(current) / (Hartree * np.pi)
         current = current.reshape(-1)
-        if current.shape[0] == 1:
+        if not spinpol:
             current *= 2
-
         from scipy import interpolate
         tck = interpolate.splrep(bias, current, s=0)
         numb = len(bias)
         newbias = np.linspace(bias[0], bias[-1], numb * (dense_level + 1))
         newcurrent = interpolate.splev(newbias, tck, der=0)
-        if not atomic_unit:
+        if not au:
             newcurrent *= unit
             ylabel = 'dI/dV($\mu$A/V)'
         else:
