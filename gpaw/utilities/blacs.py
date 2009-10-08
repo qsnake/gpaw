@@ -94,6 +94,6 @@ if not debug:
     blacs_create = _gpaw.blacs_create
     blacs_destroy = _gpaw.blacs_destroy
     scalapack_redist = _gpaw.scalapack_redist
-    scalapack_diagonalize = _gpaw.scalapack_diagonalize_dc
+    scalapack_diagonalize_dc = _gpaw.scalapack_diagonalize_dc
     scalapack_general_diagonalize = _gpaw.scalapack_general_diagonalize
     scalapack_inverse_cholesky = _gpaw.scalapack_inverse_cholesky
