@@ -134,6 +134,10 @@ def test(complex_type):
     S_nm = S_nm.copy("Fortran") # Fortran order required for ScaLAPACK
     C_nm = S_nm.copy("Fortran")
 
+    if debug:
+        print "A_nm = ", A_nm
+        print "S_nm = ", S_nm
+
     # Create descriptors
     # Desc for serial : 0-D grid
     desc0 = blacs_create(world,N,N,1,1,N,N)
