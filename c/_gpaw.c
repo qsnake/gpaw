@@ -69,7 +69,7 @@ PyObject* blacs_create(PyObject *self, PyObject *args);
 PyObject* blacs_destroy(PyObject *self, PyObject *args);
 PyObject* scalapack_redist(PyObject *self, PyObject *args);
 PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args);
-PyObject* scalapack_general_diagonalize(PyObject *self, PyObject *args);
+PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args);
 PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args);
 #endif
 
@@ -133,7 +133,7 @@ static PyMethodDef functions[] = {
   {"blacs_destroy",     blacs_destroy,      METH_VARARGS, 0},
   {"scalapack_redist",      scalapack_redist,     METH_VARARGS, 0},
   {"scalapack_diagonalize_dc", scalapack_diagonalize_dc, METH_VARARGS, 0}, 
-  {"scalapack_general_diagonalize", scalapack_general_diagonalize, METH_VARARGS, 0},
+  {"scalapack_diagonalize_ex", scalapack_diagonalize_ex, METH_VARARGS, 0},
   {"scalapack_inverse_cholesky", scalapack_inverse_cholesky, METH_VARARGS, 0},
 #endif
 #ifdef GPAW_HPM

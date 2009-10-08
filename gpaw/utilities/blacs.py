@@ -66,7 +66,7 @@ def scalapack_diagonalize_dc(a_obj, adesc, uplo='U'):
     assert uplo in ['U','L']
     return _gpaw.scalapack_diagonalize_dc(a_obj, adesc, uplo)
 
-def scalapack_general_diagonalize(a_obj, b_obj, adesc, uplo='U'):
+def scalapack_diagonalize_ex(a_obj, adesc, b_obj=None, uplo='U'):
     if a_obj is not None:
         assert a_obj.ndim == 2
         assert (a_obj.dtype == float) or (a_obj.dtype == complex)
@@ -79,7 +79,7 @@ def scalapack_general_diagonalize(a_obj, b_obj, adesc, uplo='U'):
         assert b_obj is None
     assert len(adesc) == 9
     assert uplo in ['U','L']
-    return _gpaw.scalapack_general_diagonalize(a_obj, b_obj, adesc, uplo)
+    return _gpaw.scalapack_diagonalize_ex(a_obj, adesc, b_obj, uplo)
 
 def scalapack_inverse_cholesky(a_obj, adesc, uplo='U'):
     if a_obj is not None:
@@ -95,5 +95,5 @@ if not debug:
     blacs_destroy = _gpaw.blacs_destroy
     scalapack_redist = _gpaw.scalapack_redist
     scalapack_diagonalize_dc = _gpaw.scalapack_diagonalize_dc
-    scalapack_general_diagonalize = _gpaw.scalapack_general_diagonalize
+    scalapack_diagonalize_ex = _gpaw.scalapack_diagonalize_ex
     scalapack_inverse_cholesky = _gpaw.scalapack_inverse_cholesky
