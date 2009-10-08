@@ -63,7 +63,7 @@ def scalapack_diagonalize_dc(a_obj, adesc, uplo='U'):
         assert (a_obj.dtype == float) or (a_obj.dtype == complex)
         assert a_obj.flags.f_contiguous
     assert len(adesc) == 9
-    assert uplo in ['U','u','L','l']
+    assert uplo in ['U','L']
     return _gpaw.scalapack_diagonalize_dc(a_obj, adesc, uplo)
 
 def scalapack_general_diagonalize(a_obj, b_obj, adesc, uplo='U'):
@@ -78,7 +78,7 @@ def scalapack_general_diagonalize(a_obj, b_obj, adesc, uplo='U'):
     if a_obj is None:
         assert b_obj is None
     assert len(adesc) == 9
-    assert uplo in ['U','u','L','l']
+    assert uplo in ['U','L']
     return _gpaw.scalapack_general_diagonalize(a_obj, b_obj, adesc, uplo)
 
 def scalapack_inverse_cholesky(a_obj, adesc, uplo='U'):
@@ -87,7 +87,7 @@ def scalapack_inverse_cholesky(a_obj, adesc, uplo='U'):
         assert (a_obj.dtype == float) or (a_obj.dtype == complex)
         assert a_obj.flags.f_contiguous
     assert len(adesc) == 9
-    assert uplo in ['U','u','L','l']
+    assert uplo in ['U','L']
     _gpaw.scalapack_inverse_cholesky(a_obj, adesc, uplo)
     
 if not debug:
