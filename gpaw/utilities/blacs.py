@@ -66,17 +66,17 @@ def scalapack_diagonalize_dc(a_obj, adesc, uplo='U'):
     assert uplo in ['U','L']
     return _gpaw.scalapack_diagonalize_dc(a_obj, adesc, uplo)
 
-def scalapack_diagonalize_ex(a_obj, adesc, b_obj=None, uplo='U'):
+def scalapack_diagonalize_ex(a_obj, adesc, b_obj=0, uplo='U'):
     if a_obj is not None:
         assert a_obj.ndim == 2
         assert (a_obj.dtype == float) or (a_obj.dtype == complex)
         assert a_obj.flags.f_contiguous
-    if b_obj is not None:
+    if b_obj != 0:
         assert b_obj.ndim == 2
         assert (b_obj.dtype == float) or (b_obj.dtype == complex)
         assert b_obj.flags.f_contiguous
     if a_obj is None:
-        assert b_obj is None
+        assert b_obj == 0
     assert len(adesc) == 9
     assert uplo in ['U','L']
     return _gpaw.scalapack_diagonalize_ex(a_obj, adesc, b_obj, uplo)

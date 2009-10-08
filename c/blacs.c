@@ -518,7 +518,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   // Computes *all* eigenvalues and eigenvectors
  
   PyArrayObject* a_obj; // Hamiltonian matrix
-  PyArrayObject* b_obj = Py_None; // overlap matrix
+  PyArrayObject* b_obj = 0; // overlap matrix
   PyArrayObject* adesc; // Hamintonian matrix descriptor
   PyArrayObject* z_obj; // eigenvector matrix
   PyArrayObject* w_obj; // eigenvalue array
@@ -635,10 +635,10 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
       double_complex c_work;
       if (a_obj->descr->type_num == PyArray_DOUBLE)
         {
-	  if (b_obj == Py_None)
+	  if (b_obj == 0)
 	    pdsyevx_(&jobz, &range, &uplo, &n, DOUBLEP(a_obj), 
-		     &one, &one, INTP(adesc), &one, &one, 
-		     INTP(adesc), &vl, &vu, &il, &iu, &abstol, &eigvalm, 
+		     &one, &one, INTP(adesc), 
+		     &vl, &vu, &il, &iu, &abstol, &eigvalm, 
 		     &nz, DOUBLEP(w_obj), &orfac, DOUBLEP(z_obj), 
 		     &one, &one, zdesc, &d_work, &querywork, 
 		     &i_work, &liwork, ifail, iclustr, gap, &info);
@@ -653,10 +653,10 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
         }
       else
         {
-	  if (b_obj == Py_None)
+	  if (b_obj == 0)
 	    pzheevx_(&jobz, &range, &uplo, &n, (void*)COMPLEXP(a_obj),
-		     &one, &one, INTP(adesc), &one, &one,
-		     INTP(adesc), &vl, &vu, &il, &iu, &abstol, &eigvalm, 
+		     &one, &one, INTP(adesc), 
+		     &vl, &vu, &il, &iu, &abstol, &eigvalm, 
 		     &nz, DOUBLEP(w_obj), &orfac, (void*)COMPLEXP(z_obj), 
 		     &one, &one, zdesc, &c_work, &querywork, &d_work, &querywork,
 		     &i_work, &liwork, ifail, iclustr, gap, &info);
@@ -681,8 +681,8 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
           double* work = GPAW_MALLOC(double, lwork);
 	  if (b_obj == 0)
 	    pdsyevx_(&jobz, &range, &uplo, &n, DOUBLEP(a_obj), 
-		     &one, &one, INTP(adesc), &one, &one,
-		     INTP(adesc), &vl, &vu, &il, &iu, &abstol, &eigvalm, 
+		     &one, &one, INTP(adesc), 
+		     &vl, &vu, &il, &iu, &abstol, &eigvalm, 
 		     &nz, DOUBLEP(w_obj), &orfac, DOUBLEP(z_obj), 
 		     &one, &one,  zdesc, work, &lwork, 
 		     iwork, &liwork, ifail, iclustr, gap, &info);
@@ -701,8 +701,8 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
           double* rwork = GPAW_MALLOC(double, lrwork);
 	  if (b_obj == 0)
 	    pzheevx_(&jobz, &range, &uplo, &n, (void*)COMPLEXP(a_obj), 
-		     &one, &one, INTP(adesc), &one, &one,
-		     INTP(adesc), &vl, &vu, &il, &iu, &abstol, &eigvalm, 
+		     &one, &one, INTP(adesc), 
+		     &vl, &vu, &il, &iu, &abstol, &eigvalm, 
 		     &nz, DOUBLEP(w_obj), &orfac, (void*)COMPLEXP(z_obj), 
 		     &one, &one, zdesc, work, &lwork, rwork, &lrwork,
 		     iwork, &liwork, ifail, iclustr, gap, &info);
