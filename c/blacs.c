@@ -250,7 +250,7 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
   int nprocs;
   int iam = 0;
   int c_ConTxt;
-  int isreal = 1;
+  int isreal;
   int m = 0;
   int n = 0;
   static int one = 1;
@@ -382,9 +382,9 @@ PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args)
   static int one = 1;
 
   char jobz = 'V'; // eigenvectors also
-  char uplo = 'U'; // work with upper
+  char uplo;
 
-  if (!PyArg_ParseTuple(args, "OO|c", &a_obj, &adesc, &uplo))
+  if (!PyArg_ParseTuple(args, "OOc", &a_obj, &adesc, &uplo))
     return NULL;
 
   // adesc
@@ -518,7 +518,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   // Computes *all* eigenvalues and eigenvectors
  
   PyArrayObject* a_obj; // Hamiltonian matrix
-  PyArrayObject* b_obj = 0; // overlap matrix
+  PyArrayObject* b_obj; // overlap matrix
   PyArrayObject* adesc; // Hamintonian matrix descriptor
   PyArrayObject* z_obj; // eigenvector matrix
   PyArrayObject* w_obj; // eigenvalue array
@@ -536,11 +536,12 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
 
   char jobz = 'V'; // eigenvectors also
   char range = 'A'; // all eigenvalues
-  char uplo = 'U'; // work with upper
+  char uplo;
   char cmach = 'U'; // most orthogonal eigenvectors    
   // char cmach = 'S'; // most acccurate eigenvalues
 
-  if (!PyArg_ParseTuple(args, "OO|Oc", &a_obj, &adesc, &b_obj, &uplo))
+  int isgeneral; // flag for general diagonalize
+  if (!PyArg_ParseTuple(args, "OOc|O", &a_obj, &adesc, &uplo, &b_obj))
     return NULL;
 
   // adesc,
@@ -591,6 +592,11 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   
   if (z_ConTxt != -1)
     {
+      if (PyArray_Check(b_obj))
+        isgeneral = 1;
+      else
+        isgeneral = 0;
+
       // Convergence tolerance
       // most orthogonal eigenvectors
       double abstol = pdlamch_(&z_ConTxt, &cmach);      
@@ -635,7 +641,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
       double_complex c_work;
       if (a_obj->descr->type_num == PyArray_DOUBLE)
         {
-	  if (b_obj == 0)
+	  if(!isgeneral)
 	    pdsyevx_(&jobz, &range, &uplo, &n, DOUBLEP(a_obj), 
 		     &one, &one, INTP(adesc), 
 		     &vl, &vu, &il, &iu, &abstol, &eigvalm, 
@@ -653,7 +659,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
         }
       else
         {
-	  if (b_obj == 0)
+	  if(!isgeneral)
 	    pzheevx_(&jobz, &range, &uplo, &n, (void*)COMPLEXP(a_obj),
 		     &one, &one, INTP(adesc), 
 		     &vl, &vu, &il, &iu, &abstol, &eigvalm, 
@@ -670,7 +676,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
           lwork = (int)(c_work);
           lrwork = (int)(d_work);
         }      
-      // printf("query info = %d\n", info);
+      printf("query info = %d\n", info);
 
       // Computation part
       lwork = lwork + (n-1)*n;
@@ -679,7 +685,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
       if (a_obj->descr->type_num == PyArray_DOUBLE)
         {
           double* work = GPAW_MALLOC(double, lwork);
-	  if (b_obj == 0)
+	  if (!isgeneral)
 	    pdsyevx_(&jobz, &range, &uplo, &n, DOUBLEP(a_obj), 
 		     &one, &one, INTP(adesc), 
 		     &vl, &vu, &il, &iu, &abstol, &eigvalm, 
@@ -699,7 +705,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
         {
           double_complex* work = GPAW_MALLOC(double_complex, lwork);
           double* rwork = GPAW_MALLOC(double, lrwork);
-	  if (b_obj == 0)
+	  if (!isgeneral)
 	    pzheevx_(&jobz, &range, &uplo, &n, (void*)COMPLEXP(a_obj), 
 		     &one, &one, INTP(adesc), 
 		     &vl, &vu, &il, &iu, &abstol, &eigvalm, 
@@ -716,7 +722,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
           free(rwork);
           free(work);
         }
-      // printf("computation info = %d\n", info);                
+      printf("computation info = %d\n", info);                
       free(iwork);
       free(gap);
       free(iclustr);
@@ -746,9 +752,9 @@ PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args)
   static int one = 1;
   
   char diag = 'N'; // non-unit triangular
-  char uplo = 'U'; // work with upper
+  char uplo;
   
-  if (!PyArg_ParseTuple(args, "OO|c", &a_obj, &adesc, &uplo))
+  if (!PyArg_ParseTuple(args, "OOc", &a_obj, &adesc, &uplo))
     return NULL;
   
   // adesc
