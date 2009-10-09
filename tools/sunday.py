@@ -21,7 +21,7 @@ class Job:
         self.arg = arg
         self.status = 'waiting'
 
-# Exercises:
+# Run exercises:
 path = '../../doc/exercises/'
 jobs = [
     Job(path + 'neb/neb1'),
@@ -56,15 +56,6 @@ jobs = [
     Job(path + 'stm/teststm', 20, 1, deps=['HAl100']),
     ]
 
-#jobs = []
-#setup_parameters = ['H', 'Li']
-for symbol in setup_parameters:
-    jobs.append(Job('../../doc/setups/make_setup_pages_data',
-                    tmax=3*60, ncpu=1, arg=symbol))
-jobs.append(Job('../../doc/setups/make_setup_pages_data', tmax=120, ncpu=1, 
-                deps=['make_setup_pages_data' + symbol
-                      for symbol in setup_parameters]))
-
 jobs += [
     Job('Ru001/ruslab', tmax=5*60, ncpu=8),
     Job('Ru001/ruslab', tmax=5*60, ncpu=8, arg='H'),
@@ -75,11 +66,9 @@ jobs += [
                                       'molecules']),
 #    Job('COAu38/Au038to', 10),
 #    Job('O2Pt/o2pt', 40),
-    Job('../vdw/interaction', 60, deps=['dimers']),
-    Job('../vdw/dimers', 60),
+    Job('vdw/interaction', 60, deps=['dimers']),
+    Job('vdw/dimers', 60),
     ]
-
-#jobs = [Job('Ru001/molecules', tmax=20, ncpu=8)]
 
 class Jobs:
     def __init__(self, log=sys.stdout):
@@ -169,12 +158,11 @@ class Jobs:
         except OSError:
             pass
 
-        gpaw_python = (self.gpawdir +
-                       '/gpaw/build/bin.linux-x86_64-xeon-2.4/gpaw-python')
+        gpaw_python = self.gpawdir + '/bin/gpaw-python'
         cmd = (
-            'cd %s/gpaw/test/long/%s; ' % (self.gpawdir, job.dir) +
+            'cd %s/gpaw/gpaw/sunday/%s; ' % (self.gpawdir, job.dir) +
             'mpiexec --mca mpi_paffinity_alone 1 ' +
-            '-x PYTHONPATH=%s/gpaw:$PYTHONPATH ' % self.gpawdir +
+            '-x PYTHONPATH=%s/lib64/python:$PYTHONPATH ' % self.gpawdir +
             '-x GPAW_SETUP_PATH=%s ' % self.setupsdir +
             '%s _%s.py %s > %s.output' %
             (gpaw_python, job.id, job.arg, job.id))
@@ -224,7 +212,7 @@ class Jobs:
 
     def install(self):
         """Install ASE and GPAW."""
-        dir = '/home/camp/jensj/long-test-gpaw-%s' % time.asctime()
+        dir = '/home/camp/jensj/sunday-%s' % time.asctime()
         dir = dir.replace(' ', '_').replace(':', '.')
         os.mkdir(dir)
         os.chdir(dir)
@@ -239,21 +227,23 @@ class Jobs:
 
         os.chdir('gpaw')
         
-        if os.system(
-            'cp doc/install/Linux/Niflheim/customize-thul-acml.py ' +
-            'customize.py;' +
-            'python setup.py build_ext ' +
-            '2>&1 | grep -v "c/libxc/src"') != 0:
+        if os.system('source /home/camp/modulefiles.sh&& ' +
+                     'module load NUMPY&& ' +
+                     'python setup.py --remove-default-flags ' +
+                     '--customize=doc/install/Linux/Niflheim/' +
+                     'customize-thul-acml.py ' +
+                     'install --home=.. 2>&1 | ' +
+                     'grep -v "c/libxc/src"') != 0:
             raise RuntimeError('Installation failed!')
 
-        os.system('mv ../ase/ase .')
+        os.system('mv ../ase/ase ../lib64/python')
 
         os.system('wget --no-check-certificate --quiet ' +
                   'http://wiki.fysik.dtu.dk/stuff/gpaw-setups-latest.tar.gz')
         os.system('tar xzf gpaw-setups-latest.tar.gz')
         self.setupsdir = dir + '/gpaw/' + glob.glob('gpaw-setups-[0-9]*')[0]
         self.gpawdir = dir
-        os.chdir(self.gpawdir + '/gpaw/test/long')
+        os.chdir(self.gpawdir + '/gpaw/gpaw/sunday')
 
     def cleanup(self):
         for id in self.ids:
@@ -262,7 +252,7 @@ class Jobs:
                    j.tmax, j.ncpu, j.deps, j.arg, j.status)
 
         
-j = Jobs('long.log')
+j = Jobs('sunday.log')
 j.add(jobs)
 j.install()
 try:
