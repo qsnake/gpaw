@@ -129,13 +129,11 @@ The installation of user's packages on neolith described below uses
 
 - test gpaw installation::
 
-   cp -r ~/apps/gpaw-0.6.3934/test ~/apps/gpaw-0.6.3934.test
-   cd ~/apps/gpaw-0.6.3934.test
    module load campos-ase3
    module load campos-gpaw-setups
    module load campos-gpaw
    export OMP_NUM_THREADS=1
-   python test.py 2>&1 | tee test.log
+   gpaw-test 2>&1 | tee test.log
 
 - **logout**, and login again.
 

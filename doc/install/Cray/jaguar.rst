@@ -243,7 +243,7 @@ Test gpaw::
   export GPAW_SETUP_PATH=/tmp/work/$USER/gpaw-setups-0.5.3574
   export PYTHONPATH=/tmp/work/$USER/gpaw:/tmp/work/$USER/ase
 
-  cd /tmp/work/$USER/gpaw/test
+  cd /tmp/work/$USER/gpaw/gpaw/test
   env | grep PYTHON
   env | grep LD_LIBRARY_PATH
   aprun -n4 /tmp/work/$USER/gpaw/build/bin.linux-x86_64-2.5/gpaw-python -v ./test.py

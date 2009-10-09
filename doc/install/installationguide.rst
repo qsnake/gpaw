@@ -88,15 +88,15 @@ Run the tests
 
 Make sure that everything works by running the test suite (using bash)::
 
-  [gpaw]$ cd ~/gpaw/test
-  [test]$ python test.py 2>&1 | tee test.log
+  [gpaw]$ gpaw-test 2>&1 | tee test.log
 
-This will take around 20 minutes.  Please report errors to the
-``gridpaw-developer`` mailing list (see :ref:`mailing_lists`)
-Send us :file:`test.log`, as well as the information about your
-environment (processor architecture, versions of python and numpy,
-C-compiler, BLAS and LAPACK libraries, MPI library),
-and (only when requested) :file:`install.log`.
+This will take around 40 minutes.  If you have a multicore CPU, you
+can speed up the test by using ``gpaw-test -j <number-of-cores>``.
+Please report errors to the ``gridpaw-developer`` mailing list (see
+:ref:`mailing_lists`) Send us :file:`test.log`, as well as the
+information about your environment (processor architecture, versions
+of python and numpy, C-compiler, BLAS and LAPACK libraries, MPI
+library), and (only when requested) :file:`install.log`.
 
 If tests pass, and the parallel version is built, test the parallel code::
 
@@ -139,10 +139,10 @@ lines::
 
 Now, gpaw would be built with "``-Lpath_to_myblas -lmyblas
 -lmylapack``" linker flags. Look at the file :svn:`customize.py`
-itself for more possible options.
-:ref:`platforms_and_architectures` provides examples of :file:`customize.py` for different platforms.
-After editing :svn:`customize.py`,
-follow the instructions for the :ref:`installationguide` from step 3 on.
+itself for more possible options.  :ref:`platforms_and_architectures`
+provides examples of :file:`customize.py` for different platforms.
+After editing :svn:`customize.py`, follow the instructions for the
+:ref:`installationguide` from step 3 on.
 
 .. _PGO:
 
@@ -162,7 +162,8 @@ By default, setup looks if :program:`mpicc` is available, and if setup
 finds one, a parallel version is build. If the setup does not find
 mpicc, a user can specify one in the :svn:`customize.py` file.
 
-Additionally a user may want to enable ScaLAPACK, setting in :file:`customize.py`::
+Additionally a user may want to enable ScaLAPACK, setting in
+:file:`customize.py`::
 
  scalapack = True
 
