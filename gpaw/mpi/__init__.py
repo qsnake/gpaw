@@ -290,6 +290,16 @@ def broadcast_string(string=None, root=0, comm=world):
     comm.broadcast(string, root)
     return string.tostring()
 
+def send_string(string, rank, comm=world):
+    comm.send(npy.array(len(string)), rank)
+    comm.send(npy.fromstring(string, npy.int8), rank)
+
+def receive_string(rank, comm=world):
+    n = npy.array(0)
+    comm.receive(n, rank)
+    string = npy.empty(n, npy.int8)
+    comm.receive(string, rank)
+    return string.tostring()
 
 def all_gather_array(comm, a): #???
     # Gather array into flat array
@@ -297,7 +307,6 @@ def all_gather_array(comm, a): #???
     all = npy.zeros(shape)
     comm.all_gather(a, all)
     return all.ravel()
-
 
 def run(iterators):
     """Run through list of iterators one step at a time."""

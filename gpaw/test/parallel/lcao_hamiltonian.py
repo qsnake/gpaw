@@ -1,6 +1,6 @@
 import cPickle as pickle
 from ase import *
-from gpaw import *
+from gpaw import GPAW, restart, setup_paths
 from gpaw.lcao.tools import get_lcao_hamiltonian
 from gpaw.mpi import world
 from gpaw.atom.basis import BasisMaker
@@ -9,7 +9,9 @@ if world.rank == 0:
     basis = BasisMaker('Li', 'szp').generate(1, 1)
     basis.write_xml()
 world.barrier()
-
+if '.' not in setup_paths:
+    setup_paths.append('.')
+    
 if 1:
     a = 2.7
     bulk = Atoms('Li', pbc=True, cell=[a, a, a])

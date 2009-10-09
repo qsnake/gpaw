@@ -1,15 +1,19 @@
+import os
 import gc
 import sys
 import time
+import signal
+import traceback
 
-from gpaw.utilities import devnull
-import gpaw.mpi as mpi
-import gpaw # XXX
+import numpy as np
+
 from gpaw.atom.generator import Generator, parameters
+from gpaw.utilities import devnull
 from gpaw import setup_paths
+import gpaw.mpi as mpi
+import gpaw
 
 
-# Function used by tests:
 def equal(x, y, tolerance=0, fail=True):
     if abs(x - y) > tolerance:
         msg = '%g != %g (error: %g > %g)' % (x, y, abs(x - y), tolerance)
@@ -18,6 +22,15 @@ def equal(x, y, tolerance=0, fail=True):
         else:
             sys.stderr.write('WARNING: %s\n' % msg)
 
+def gen(symbol, name=None, **kwargs):
+    if mpi.rank == 0:
+        if 'scalarrel' not in kwargs:
+            kwargs['scalarrel'] = True
+        g = Generator(symbol, **kwargs)
+        g.run(name=name, **parameters[symbol])
+    mpi.world.barrier()
+    if '.' not in setup_paths:
+        setup_paths.append('.')
 
 tests = [
     'ase3k_version.py',
@@ -151,7 +164,6 @@ tests = [
     'parallel/n2.py',
     ]
 
-
 exclude = []
 if mpi.size > 1:
     exclude += ['pes.py',
@@ -160,6 +172,7 @@ if mpi.size > 1:
                 'asewannier.py',
                 'wannier_ethylene.py',
                 'muffintinpot.py']
+
 if mpi.size > 2:
     exclude += ['neb.py']
 
@@ -173,111 +186,153 @@ for test in exclude:
     if test in tests:
         tests.remove(test)
 
-if mpi.size > 1:
-    from gpaw.test.parunittest import ParallelTestCase as TestCase
-    from gpaw.test.parunittest import _ParallelTextTestResult as \
-         _TextTestResult
-    from gpaw.test.parunittest import ParallelTextTestRunner as \
-         TextTestRunner
-    from gpaw.test.parunittest import ParallelTestSuite as TestSuite
-else:
-    from unittest import TestCase, _TextTestResult, TextTestRunner, TestSuite
 
-
-class ScriptTestCase(TestCase):
-    garbage = []
-    def __init__(self, filename):
-        TestCase.__init__(self, 'testfile')
-        self.filename = filename
-
-    def setUp(self):
-        pass
-
-    def testfile(self):
+class TestRunner:
+    def __init__(self, tests, stream=sys.__stdout__, jobs=1):
+        if mpi.size > 1:
+            assert jobs == 1
+        self.jobs = jobs
+        self.tests = tests
+        self.failed = []
+        self.garbage = []
+        if mpi.rank == 0:
+            self.log = stream
+        else:
+            self.log = devnull
+        
+    def run(self):
+        self.log.write('=' * 77 + '\n')
+        sys.stdout = devnull
+        ntests = len(self.tests)
+        t0 = time.time()
+        if self.jobs == 1:
+            self.run_single()
+        else:
+            # Run several processes using fork:
+            self.run_forked()
+            
+        sys.stdout = sys.__stdout__
+        self.log.write('=' * 77 + '\n')
+        self.log.write('Ran %d tests out of %d in %.1f seconds\n' %
+                       (ntests - len(self.tests), ntests, time.time() - t0))
+        if self.failed:
+            self.log.write('Tests failed: %d\n' % len(self.failed))
+        else:
+            self.log.write('All tests passed!\n')
+        self.log.write('=' * 77 + '\n')
+        return self.failed
+    
+    def run_single(self):
+        while self.tests:
+            test = self.tests.pop(0)
+            try:
+                self.run_one(test)
+            except KeyboardInterrupt:
+                self.tests.append(test)
+                break
+            
+    def run_forked(self):
+        j = 0
+        pids = {}
+        while self.tests or j > 0:
+            if self.tests and j < self.jobs:
+                test = self.tests.pop(0)
+                pid = os.fork()
+                if pid == 0:
+                    exitcode = self.run_one(test)
+                    os._exit(exitcode)
+                else:
+                    j += 1
+                    pids[pid] = test
+            else:
+                try:
+                    while True:
+                        pid, exitcode = os.wait()
+                        if pid in pids:
+                            break
+                except KeyboardInterrupt:
+                    for pid, test in pids.items():
+                        os.kill(pid, signal.SIGHUP)
+                        self.write_result(test, 'STOPPED', time.time())
+                        self.tests.append(test)
+                    break
+                if exitcode:
+                    self.failed.append(pids[pid])
+                del pids[pid]
+                j -= 1
+                
+    def run_one(self, test):
+        if self.jobs == 1:
+            self.log.write('%-30s' % test)
+            self.log.flush()
+            
+        t0 = time.time()
+        filename = gpaw.__path__[0] + '/test/' + test
+        
         try:
-            execfile(self.filename, {})
-        finally:
-            mpi.world.barrier()
+            execfile(filename, {})
+            self.check_garbage()
+        except KeyboardInterrupt:
+            self.write_result(test, 'STOPPED', t0)
+            raise
+        except:
+            failed = True
+        else:
+            failed = False
 
-    def tearDown(self):
+        me = np.array(failed)
+        everybody = np.empty(mpi.size, bool)
+        mpi.world.all_gather(me, everybody)
+        failed = everybody.any()
+        
+        if failed:
+            self.fail(test, np.argwhere(everybody).ravel(), t0)
+        else:
+            self.write_result(test, 'OK', t0)
+            
+        return failed
+
+    def check_garbage(self):
         gc.collect()
         n = len(gc.garbage)
-        ScriptTestCase.garbage += gc.garbage
+        self.garbage += gc.garbage
         del gc.garbage[:]
         assert n == 0, ('Leak: Uncollectable garbage (%d object%s) %s' %
-                        (n, 's'[:n > 1], ScriptTestCase.garbage))
+                        (n, 's'[:n > 1], self.garbage))
+        
+    def fail(self, test, ranks, t0):
+        if mpi.rank in ranks:
+            tb = traceback.format_exc()
+        else:
+            tb = ''
+        if mpi.size == 1:
+            text = 'FAILED!\n%s\n%s%s' % ('#' * 77, tb, '#' * 77)
+            self.write_result(test, text, t0)
+        else:
+            tbs = {tb: [0]}
+            for r in range(1, mpi.size):
+                if mpi.rank == r:
+                    mpi.send_string(tb, 0)
+                elif mpi.rank == 0:
+                    tb = mpi.receive_string(r)
+                    if tb in tbs:
+                        tbs[tb].append(r)
+                    else:
+                        tbs[tb] = [r]
+            if mpi.rank == 0:
+                text = ('FAILED! (rank %s)\n%s' %
+                        (','.join([str(r) for r in ranks]), '#' * 77))
+                for tb, ranks in tbs.items():
+                    if tb:
+                        text += ('\nRANK %s:\n' %
+                                 ','.join([str(r) for r in ranks]))
+                        text += '%s%s' % (tb, '#' * 77)
+                self.write_result(test, text, t0)
 
-    def run(self, result=None):
-        if result is None: result = self.defaultTestResult()
-        try:
-            TestCase.run(self, result)
-        except KeyboardInterrupt:
-            result.stream.write('SKIPPED\n')
-            try:
-                time.sleep(0.5)
-            except KeyboardInterrupt:
-                result.stop()
-
-    def id(self):
-        return self.filename
-
-    def __str__(self):
-        return '%s' % self.filename
-
-    def __repr__(self):
-        return "ScriptTestCase('%s')" % self.filename
-
-
-class MyTextTestResult(_TextTestResult):
-    def startTest(self, test):
-        _TextTestResult.startTest(self, test)
-        self.stream.flush()
-        self.t0 = time.time()
-
-    def _write_time(self):
-        if self.showAll:
-            self.stream.write('(%.3fs) ' % (time.time() - self.t0))
-
-    def addSuccess(self, test):
-        self._write_time()
-        _TextTestResult.addSuccess(self, test)
-    def addError(self, test, err):
-        self._write_time()
-        _TextTestResult.addError(self, test, err)
-    def addFailure(self, test, err):
-        self._write_time()
-        _TextTestResult.addFailure(self, test, err)
-
-
-class MyTextTestRunner(TextTestRunner):
-    parallel = (mpi.size > 1)
-    def _makeResult(self):
-        args = (self.stream, self.descriptions, self.verbosity)
-        if self.parallel:
-            args = (mpi.world,) + args
-        return MyTextTestResult(*args)
-
-
-def run_all(tests, stream=sys.__stdout__, jobs=1, subprocesses=False):
-    ts = TestSuite()
-    path = gpaw.__path__[0] + '/test/'
-    for test in tests:
-        ts.addTest(ScriptTestCase(filename=path + test))
-
-    sys.stdout = devnull
-    ttr = MyTextTestRunner(verbosity=2, stream=stream)
-    result = ttr.run(ts)
-    failed = [test.filename for test, msg in result.failures + result.errors]
-    sys.stdout = sys.__stdout__
-    return failed
-
-
-def gen(symbol, name=None, **kwargs):
-    if mpi.rank == 0:
-        if 'scalarrel' not in kwargs:
-            kwargs['scalarrel'] = True
-        g = Generator(symbol, **kwargs)
-        g.run(name=name, **parameters[symbol])
-    mpi.world.barrier()
-    if '.' not in setup_paths:
-        setup_paths.append('.')
+        self.failed.append(test)
+        
+    def write_result(self, test, text, t0):
+        t = time.time() - t0
+        if self.jobs > 1:
+            self.log.write('%-30s' % test)
+        self.log.write('%9.3f  %s\n' % (t, text))

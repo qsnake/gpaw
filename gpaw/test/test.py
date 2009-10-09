@@ -30,9 +30,6 @@ parser.add_option('--after', metavar='TESTFILE', dest='after_test',
 parser.add_option('-j', '--jobs', type='int', default=1,
                   help='Run JOBS threads.')
 
-parser.add_option('-s', '--subprocesses', action='store_true',
-                  help='Run tests in subprocesses.')
-
 opt, tests = parser.parse_args()
 
 
@@ -58,7 +55,7 @@ for test in exclude:
     if test in tests:
         tests.remove(test)
 
-from gpaw.test import run_all
+from gpaw.test import TestRunner
 
 if mpi.rank == 0:
     tmpdir = tempfile.mkdtemp(prefix='gpaw-test-')
@@ -69,7 +66,7 @@ cwd = os.getcwd()
 os.chdir(tmpdir)
 if mpi.rank == 0:
     print 'Running tests in', tmpdir
-failed = run_all(tests, jobs=opt.jobs, subprocesses=opt.subprocesses)
+failed = TestRunner(tests, jobs=opt.jobs).run()
 if mpi.rank == 0:
     os.chdir(cwd)
     if len(failed) > 0:

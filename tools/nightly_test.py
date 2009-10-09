@@ -9,8 +9,8 @@ import tempfile
 
 
 def send_email(subject, filename='/dev/null'):
-    #assert os.system('mail -s "%s" gridpaw-developer@lists.berlios.de < %s' %
-    assert os.system('mail -s "%s" jensj@fysik.dtu.dk < %s' %
+    assert os.system('mail -s "%s" gridpaw-developer@lists.berlios.de < %s' %
+    #assert os.system('mail -s "%s" jensj@fysik.dtu.dk < %s' %
                      (subject, filename)) == 0
 
 def send_jj_email(subject, filename='/dev/null'):
@@ -85,11 +85,11 @@ from gpaw import setup_paths
 setup_paths.insert(0, setups)
 
 # Run test-suite:
-from gpaw.test import run_all, tests
+from gpaw.test import TestRunner, tests
 os.mkdir('gpaw-test')
 os.chdir('gpaw-test')
 out = open('test.out', 'w')
-failed = run_all(tests, out)
+failed = TestRunner(tests, stream=out).run()
 out.close()
 if failed:
     # Send mail:
