@@ -4,7 +4,17 @@
 Release notes
 =============
 
-(The development version in trunk is now the version that will once become 0.6)
+(The development version in trunk is now the version that will once become 0.7)
+
+Version 0.6
+===========
+
+9 October 2009: :trac:`tags/0.6 <../tags/0.6>`.
+
+* Much improved default parameters.
+* Using higher order finite-difference stencil for kinetic energy.
+* Many many other improvements like: better parallelization, fewer bugs and
+  smaller memory footprint.
 
 Version 0.5
 ===========

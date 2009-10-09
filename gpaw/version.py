@@ -1,7 +1,7 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
-version = '0.6'
+version = '0.7'
 
 ase_required_version = '3.2.0'
 ase_required_svnrevision = '1158'

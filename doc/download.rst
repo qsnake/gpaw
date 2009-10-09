@@ -28,9 +28,19 @@ When using svn please set the following variable:
 ======= =========== ========================================== ===================== ===========
 Release Date        Retrieve as svn checkout                   Retrieve as tarball   ASE release
 ======= =========== ========================================== ===================== ===========
+   0.6_ Oct  9 2009 ``svn co -r 5147 $GPAW_TAGS/0.6 gpaw-0.6`` gpaw-0.6.5147.tar.gz_ ase-3.2.0_
    0.5_ Apr  1 2009 ``svn co -r 3667 $GPAW_TAGS/0.5 gpaw-0.5`` gpaw-0.5.3667.tar.gz_ ase-3.1.0_
    0.4_ Nov 16 2008 ``svn co -r 2734 $GPAW_TAGS/0.4 gpaw-0.4`` gpaw-0.4.2734.tar.gz_ ase-3.0.0_
 ======= =========== ========================================== ===================== ===========
+
+.. _0.6:
+    https://trac.fysik.dtu.dk/projects/gpaw/browser/tags/0.6
+
+.. _gpaw-0.6.5147.tar.gz:
+    https://wiki.fysik.dtu.dk/gpaw-files/gpaw-0.6.5147.tar.gz
+
+.. _ase-3.2.0:
+    https://svn.fysik.dtu.dk/projects/ase/tags/3.2.0
 
 .. _0.5:
     https://trac.fysik.dtu.dk/projects/gpaw/browser/tags/0.5
@@ -80,12 +90,12 @@ After downloading create the link to the requested version, e.g.:
 - if retrieved from ``svn``::
 
    $ cd $HOME
-   $ ln -s gpaw-0.4 gpaw
+   $ ln -s gpaw-0.6 gpaw
 
 - if retrieved as ``tarball``::
 
    $ cd $HOME
-   $ tar xtzf gpaw-0.4.2734.tar.gz
-   $ ln -s gpaw-0.4.2734 gpaw
+   $ tar xtzf gpaw-0.6.5147.tar.gz
+   $ ln -s gpaw-0.6.5147 gpaw
 
 When you have the code, go to the :ref:`installationguide`.
