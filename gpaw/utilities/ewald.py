@@ -16,6 +16,8 @@ class Ewald:
     
     'G' is a normalized Ewald parameter. Large G results in fast
     real-space convergence but slow convergence in reciprocal space.
+    This describes the width (in reciprocal space, and inverse width
+    in real space) of the Gaussian shaped probe charge.
     
     Ng and Nl are lists specifying the number or nearest neighbors in
     sums over the reciprocal lattice and the real space lattice
@@ -106,7 +108,7 @@ class Ewald:
         
         r_B : matrix with the lattice basis (in cartesian coordinates).
         
-        q_B : point charges (in units of e).
+        q_B : probe charges (in units of e).
         
         excludefroml0 : integer specifying if a point charge is not to
         be included in the central (l=0) unit cell. Used for Madelung
@@ -141,3 +143,8 @@ class Ewald:
         E0 += q_hom * pi / (self.G**2 * self.Vcell)
         
         return E0
+
+
+def madelung(cell):
+    return Ewald(cell).get_electrostatic_potential(np.zeros(3), np.zeros(3),
+                                                   [-1], 0)

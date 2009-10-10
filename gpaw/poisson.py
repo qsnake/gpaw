@@ -11,7 +11,7 @@ from gpaw.operators import Laplace, LaplaceA, LaplaceB
 from gpaw import PoissonConvergenceError
 from gpaw.utilities.blas import axpy
 from gpaw.utilities.gauss import Gaussian
-from gpaw.utilities.ewald import Ewald
+from gpaw.utilities.ewald import madelung
 import gpaw.mpi as mpi
 import _gpaw
 
@@ -134,14 +134,10 @@ class PoissonSolver:
             if self.charged_periodic_correction is None:
                 print "+-----------------------------------------------------+"
                 print "| Calculating charged periodic correction using the   |"
-                print "| Ewald potential from a lattice of point charges in  |"
+                print "| Ewald potential from a lattice of probe charges in  |"
                 print "| a homogenous background density                     |"
                 print "+-----------------------------------------------------+"
-                ewald = Ewald(self.gd.cell_cv)
-                self.charged_periodic_correction = (
-                    ewald.get_electrostatic_potential([.0,.0,.0],
-                                                      npy.array([[.0,.0,.0]]),
-                                                      [-1], 0))
+                self.charged_periodic_correction = madelung(self.gd.cell_cv)
                 print "Potential shift will be ", \
                       self.charged_periodic_correction , "Ha."
                        
