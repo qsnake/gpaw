@@ -1,8 +1,8 @@
 # see changeset 4891
-
 from ase import *
 from gpaw import *
 from gpaw.mpi import world
+from gpaw.test import equal
 
 a = 2.5
 H = Atoms('H', cell=[a, a, a], pbc=True)
@@ -23,6 +23,6 @@ if world.size >= 3:
                               txt='H-b.txt'))
         e2 = H.get_potential_energy()
         assert H.get_calculator().wfs.kpt_comm.size == 3
-        print e1 - e2
-        assert abs(e1 - e2) < 1e-12
+        equal(e1, e2, 1e-11)
+        
 
