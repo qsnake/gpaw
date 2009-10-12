@@ -53,6 +53,8 @@ algorithms used <features_and_algorithms>`.
 News
 ====
 
+* :ref:`GPAW version 0.6 <releasenotes>` released (Oct 9 2009)
+
 * `QuantumWise <http://www.quantumwise.com>`_ adds GPAW-support to
   `Virtual NanoLab`_ (Sep 8 2009)
 
