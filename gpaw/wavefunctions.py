@@ -730,7 +730,7 @@ class LCAOWaveFunctions(WaveFunctions):
         #
         #           -----                        -----
         #  a         \      a                     \     b
-        # F += -2 Re  )    Z      E        + 2 Re  )   Z      E
+        # F +=  2 Re  )    Z      E        - 2 Re  )   Z      E
         #            /      mu nu  nu mu          /     mu nu  nu mu
         #           -----                        -----
         #           mu nu                    b; mu in a; nu
@@ -758,18 +758,18 @@ class LCAOWaveFunctions(WaveFunctions):
                 ZE_MM = (work_MM * ET_MM).real
                 for a, M1, M2 in slices():
                     dE = 2 * ZE_MM[M1:M2].sum()
-                    Frho_av[a, v] += dE # the "b; mu in a; nu" term
-                    Frho_av[b, v] -= dE # the "mu nu" term
+                    Frho_av[a, v] -= dE # the "b; mu in a; nu" term
+                    Frho_av[b, v] += dE # the "mu nu" term
         del work_MM, ZE_MM
         self.timer.stop('LCAO forces: paw correction')
         
         # Atomic density contribution
-        #           -----                         -----
-        #  a         \     a                       \     b
-        # F  += 2 Re  )   A      rho       - 2 Re   )   A      rho
-        #            /     mu nu    nu mu          /     mu nu    nu mu
-        #           -----                         -----
-        #           mu nu                     b; mu in a; nu
+        #            -----                         -----
+        #  a          \     a                       \     b
+        # F  += -2 Re  )   A      rho       + 2 Re   )   A      rho
+        #             /     mu nu    nu mu          /     mu nu    nu mu
+        #            -----                         -----
+        #            mu nu                     b; mu in a; nu
         #
         #                  b*
         #         ----- d P
@@ -789,8 +789,8 @@ class LCAOWaveFunctions(WaveFunctions):
                 ArhoT_MM = (gemmdot(dPdR_Mi, HP_iM) * rhoT_MM).real
                 for a, M1, M2 in slices():
                     dE = 2 * ArhoT_MM[M1:M2].sum()
-                    Fatom_av[a, v] -= dE # the "b; mu in a; nu" term
-                    Fatom_av[b, v] += dE # the "mu nu" term
+                    Fatom_av[a, v] += dE # the "b; mu in a; nu" term
+                    Fatom_av[b, v] -= dE # the "mu nu" term
         self.timer.stop('LCAO forces: atomic density')
         
         F_av += Fkin_av + Fpot_av + Frho_av + Fatom_av
@@ -938,6 +938,8 @@ class GridWaveFunctions(WaveFunctions):
         eigensolver = get_eigensolver('lcao', 'lcao')
         eigensolver.initialize(self.kpt_comm, self.gd, self.band_comm, self.dtype,
                                self.setups.nao, lcaomynbands, self.world)
+        # XXX when density matrix is properly distributed, be sure to
+        # update the density here also
         eigensolver.iterate(hamiltonian, lcaowfs)
 
         # Transfer coefficients ...
