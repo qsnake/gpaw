@@ -159,9 +159,9 @@ def test(complex_type):
         print "A_mm = ", A_mm
         print "S_mm = ", S_mm
     
-    W, Z_mm = scalapack_diagonalize_dc(A_mm, desc2)
-    Wg, Zg_mm = scalapack_general_diagonalize(Ag_mm, S_mm, desc2)
-    scalapack_inverse_cholesky(C_mm, desc2)
+    W, Z_mm = scalapack_diagonalize_ex(A_mm, desc2, 'U')
+    Wg, Zg_mm = scalapack_diagonalize_ex(Ag_mm, desc2, 'U', S_mm)
+    scalapack_inverse_cholesky(C_mm, desc2, 'U')
 
     # Check eigenvalues and eigenvectors
     # Easier to do this if everything if everything is collected on one node
