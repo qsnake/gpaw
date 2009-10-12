@@ -1310,7 +1310,33 @@ class Transport_Plotter:
         p.xlabel('Bias(V)')
         p.ylabel(ylabel)
         p.show()
-        
+
+    def plot_tvs_curve(self, spinpol=False, dense_level=0):
+        bias = []
+        current = []
+        for step in self.bias_steps:
+            bias.append(step.bias[0] - step.bias[1])
+            current.append(np.real(step.current))
+        import pylab as p
+        unit = 6.624 * 1e-3
+        current = np.array(current) / (Hartree * np.pi)
+        current = current.reshape(-1)
+        if not spinpol:
+            current *= 2
+        from scipy import interpolate
+        tck = interpolate.splrep(bias, current, s=0)
+        numb = len(bias)
+        newbias = np.linspace(bias[0], bias[-1], numb * (dense_level + 1))
+        newcurrent = interpolate.splev(newbias, tck, der=0)
+        newcurrent *= unit
+        ylabel = '$ln(I/V^2)$'
+        ydata = np.log(abs(newcurrent[1:]) / (newbias[1:] * newbias[1:]))
+        xdata = 1 / newbias[1:]
+        p.plot(xdata, ydata, self.flags[0])
+        p.xlabel('1/V')
+        p.ylabel(ylabel)
+        p.show()        
+           
     def compare_ele_step_info2(self, info, steps_indices, s):
         import pylab as p
         if info[:2] == 'nt':
