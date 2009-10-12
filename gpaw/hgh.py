@@ -430,7 +430,7 @@ class VNonLocal:
     def __init__(self, l, r0, h_n):
         self.l = l
         self.r0 = r0
-        h_n = np.asarray(h_n)
+        h_n = np.array(h_n)
         nn = len(h_n)
         self.nn = nn
         self.h_n = h_n
@@ -459,16 +459,19 @@ class VNonLocal:
     def copy(self):
         return VNonLocal(self.l, self.r0, self.h_n.copy())
 
+    def serialize(self): # no spin-orbit part
+        return ' '.join(['    ', '%-10s' % self.r0] +
+                        ['%10f' % h for h in self.h_n])
 
 class HGHParameterSet:
     """Wrapper class for HGH-specific data corresponding to one element."""
-    def __init__(self, symbol, Z, Nv, rloc, c_n):
+    def __init__(self, symbol, Z, Nv, rloc, c_n, v_l):
         self.symbol = symbol # Identifier, e.g. 'Na', 'Na.sc', ...
         self.Z = Z # Actual atomic number
         self.Nv = Nv # Valence electron count
         self.rloc = rloc # Characteristic radius of local part
-        self.c_n = np.asarray(c_n) # Polynomial coefficients for local part
-        self.v_l = [] # Non-local parts
+        self.c_n = np.array(c_n) # Polynomial coefficients for local part
+        self.v_l = list(v_l) # Non-local parts
 
     def __str__(self):
         strings = ['HGH setup for %s\n' % self.symbol,
@@ -492,8 +495,7 @@ class HGHParameterSet:
 
     def copy(self):
         other = HGHParameterSet(self.symbol, self.Z, self.Nv, self.rloc,
-                                self.c_n.copy())
-        other.v_l = [v.copy() for v in self.v_l]
+                                self.c_n, self.v_l)
         return other
         
     def print_info(self, txt):
@@ -530,8 +532,7 @@ class HGHParameterSet:
         c_n = np.zeros(4)
         for n, c in enumerate(self.c_n):
             c_n[n] = c
-        copy = HGHParameterSet(self.symbol, self.Z, self.Nv, self.rloc, c_n)
-        v_l = copy.v_l
+        v_l = []
         for l, v in enumerate(self.v_l):
             h_n = np.zeros(3)
             h_n[:len(v.h_n)] = list(v.h_n)
@@ -539,7 +540,15 @@ class HGHParameterSet:
             v_l.append(v2)
         for l in range(len(self.v_l), 3):
             v_l.append(VNonLocal(l, 0.5, np.zeros(3)))
+        copy = HGHParameterSet(self.symbol, self.Z, self.Nv, self.rloc, c_n,
+                               v_l)
         return copy
+
+    def serialize(self):
+        string1 = '%-5s %-12s %10s ' % (self.symbol, self.Z, self.rloc)
+        string2 = ' '.join(['%.10s' % c for c in self.c_n])
+        nonlocal_strings = [v.serialize() for v in self.v_l]
+        return '\n'.join([string1 + string2] + nonlocal_strings)
         
 def parse_local_part(string):
     """Create HGHParameterSet object with local part initialized."""
@@ -550,8 +559,8 @@ def parse_local_part(string):
     Nv = int(tokens.next())
     rloc = float(tokens.next())
     c_n = [float(token) for token in tokens]
-    hgh = HGHParameterSet(symbol, Z, Nv, rloc, c_n)
-    return hgh
+    return symbol, Z, Nv, rloc, c_n
+
 
 class HGHBogusNumbersError(ValueError):
     """Error which is raised when the HGH parameters contain f-type
@@ -559,55 +568,62 @@ class HGHBogusNumbersError(ValueError):
     matrices up to l=2, so these are meaningless."""
     pass
 
+
 def parse_hgh_setup(lines):
     """Initialize HGHParameterSet object from text representation."""
     lines = iter(lines)
-    hgh = parse_local_part(lines.next())
+    symbol, Z, Nv, rloc, c_n = parse_local_part(lines.next())
 
     def pair_up_nonlocal_lines(lines):
         yield lines.next(), ''
         while True:
             yield lines.next(), lines.next()
 
+    v_l = []
     for l, (nonlocal, spinorbit) in enumerate(pair_up_nonlocal_lines(lines)):
         # we discard the spinorbit 'k_n' data so far
         nltokens = nonlocal.split()
         r0 = float(nltokens[0])
         h_n = [float(token) for token in nltokens[1:]]
         vnl = VNonLocal(l, r0, h_n)
-        hgh.v_l.append(vnl)
+        v_l.append(vnl)
         if l > 2:
             raise HGHBogusNumbersError
+
+    hgh = HGHParameterSet(symbol, Z, Nv, rloc, c_n, v_l)
     return hgh
 
 
-def parse(filename=None):
-    """Read HGH data from file."""
-    if filename is None:
-        from hgh_parameters import parameters
-        all_lines = parameters.splitlines()
-    else:
-        src = open(filename, 'r')
-        all_lines = src.readlines()
-        src.close()
-    entry_lines = [i for i in xrange(len(all_lines)) 
-                   if all_lines[i][0].isalpha()]
-    lines_by_element = [all_lines[entry_lines[i]:entry_lines[i + 1]]
-                        for i in xrange(len(entry_lines) - 1)]
-    lines_by_element.append(all_lines[entry_lines[-1]:])
+def str2hgh(string):
+    return parse_hgh_setups(string.splitlines())
 
-    for lines in lines_by_element:
+
+def hgh2str(hgh):
+    return hgh.serialize()
+    
+
+def parse_setups(lines):
+    """Read HGH data from file."""
+    setups = {}
+    entry_lines = [i for i in xrange(len(lines)) 
+                   if lines[i][0].isalpha()]
+    lines_by_element = [lines[entry_lines[i]:entry_lines[i + 1]]
+                        for i in xrange(len(entry_lines) - 1)]
+    lines_by_element.append(lines[entry_lines[-1]:])
+
+    for elines in lines_by_element:
         try:
-            hgh = parse_hgh_setup(lines)
+            hgh = parse_hgh_setup(elines)
         except HGHBogusNumbersError:
             continue
         symbol_sc = hgh.symbol.split('.')
         symbol = symbol_sc[0]
         if len(symbol_sc) > 1:
             assert symbol_sc[1] == 'sc'
-            sc_setups[symbol] = hgh
-        else:
-            setups[symbol] = hgh
+            #sc_setups[symbol] = hgh
+        #else:
+        setups[symbol] = hgh
+    return setups
 
 def plot(symbol, extension=None):
     import pylab as pl
@@ -620,6 +636,7 @@ def plot(symbol, extension=None):
     if extension is not None:
         pl.savefig('hgh.%s.%s' % (symbol, extension))
 
+
 def plot_many(*symbols):
     import pylab as pl
     if not symbols:
@@ -629,4 +646,14 @@ def plot_many(*symbols):
         plot(symbol, extension='png')
         pl.clf()
 
-parse()
+def parse_default_setups():
+    from hgh_parameters import parameters
+    lines = parameters.splitlines()
+    setups0 = parse_setups(lines)
+    for key, value in setups0.items():
+        if key.endswith('.sc'):
+            sc_setups[key] = value
+        else:
+            setups[key] = value
+
+parse_default_setups()
