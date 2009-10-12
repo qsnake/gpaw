@@ -298,7 +298,7 @@ class Transport(GPAW):
         
         p['LR_leads'] = True
         p['gate'] = 0
-        p['cal_loc'] = False
+        p['cal_loc'] = True
         p['recal_path'] = False
         p['min_energy'] = -100
         p['guess_steps'] = 20
