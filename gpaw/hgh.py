@@ -326,10 +326,6 @@ class HGHSetupData:
 
     def get_projectors(self):
         # XXX equal-range projectors still required for some reason
-        #from gpaw import extra_parameters
-        #if extra_parameters.get('usenewlfc', True):
-        #    pt_jg = self.pt_jg
-        #else: # give projectors equal range
         maxlen = max([len(pt_g) for pt_g in self.pt_jg])
         pt_jg = []        
         for pt1_g in self.pt_jg:
@@ -411,7 +407,6 @@ def create_hgh_projector(r_g, l, n, r0):
     A = r0**(l + (4 * n - 1) / 2.0)
     assert (4 * n - 1) % 2 == 1
     B = half_integer_gamma[l + (4 * n - 1) // 2]**.5
-    #print l, n, B, r0
     pt_g = 2.**.5 / A / B * poly_g * gauss_g
     return pt_g
     
@@ -616,13 +611,8 @@ def parse_setups(lines):
             hgh = parse_hgh_setup(elines)
         except HGHBogusNumbersError:
             continue
-        symbol_sc = hgh.symbol.split('.')
-        symbol = symbol_sc[0]
-        if len(symbol_sc) > 1:
-            assert symbol_sc[1] == 'sc'
-            #sc_setups[symbol] = hgh
-        #else:
-        setups[symbol] = hgh
+        assert hgh.symbol not in setups
+        setups[hgh.symbol] = hgh
     return setups
 
 def plot(symbol, extension=None):
@@ -652,7 +642,8 @@ def parse_default_setups():
     setups0 = parse_setups(lines)
     for key, value in setups0.items():
         if key.endswith('.sc'):
-            sc_setups[key] = value
+            sym, sc = key.split('.')
+            sc_setups[sym] = value
         else:
             setups[key] = value
 
