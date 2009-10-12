@@ -296,3 +296,11 @@ Publications using the gpaw code
    __ http://dx.doi.org/10.1021/ja905182g
 
    .. 14 August 2009
+
+#) Jiří Klimeš, David R. Bowler, and Angelos Michaelides
+
+   `Chemical accuracy for the van der Waals density functional`__
+
+   __ http://arxiv.org/abs/0910.0438
+
+   .. 2 October 2009
