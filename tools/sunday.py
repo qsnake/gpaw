@@ -1,11 +1,10 @@
+#!/usr/bin/env python
 """Run longer test jobs in parallel on Niflheim."""
 
 import os
 import sys
 import time
 import glob
-
-from gpaw.atom.generator import parameters as setup_parameters
 
 class Job:
     def __init__(self, path, tmax=20, ncpu=8, deps=None, arg=''):
@@ -62,8 +61,8 @@ jobs += [
     Job('Ru001/ruslab', tmax=5*60, ncpu=8, arg='N'),
     Job('Ru001/ruslab', tmax=5*60, ncpu=16, arg='O'),
     Job('Ru001/molecules', tmax=20, ncpu=8),
-    Job('Ru001/result', ncpu=1, deps=['ruslab', 'ruslabN', 'ruslabO',
-                                      'molecules']),
+    Job('Ru001/results', ncpu=1, deps=['ruslab', 'ruslabN', 'ruslabO',
+                                       'molecules']),
 #    Job('COAu38/Au038to', 10),
 #    Job('O2Pt/o2pt', 40),
     Job('vdw/interaction', 60, deps=['dimers']),
@@ -176,6 +175,8 @@ class Jobs:
              "    pylab.savefig('x%d.png' % _n)",
              '    _n += 1',
              'pylab.show = show',
+             'import ase',
+             'ase.view = lambda *args, **kwargs: None'
              ''])
         i = open('%s-job.py' % job.id, 'w')
         i.write('\n'.join(
@@ -204,8 +205,10 @@ class Jobs:
         options = ('-l nodes=%d:ppn=%d:xeon5570 -l walltime=%d:%02d:00' %
                    (nodes, ppn, job.tmax // 60, job.tmax % 60))
         
-        x = os.popen('qsub %s %s-job.py' %
+        print 'qsub %s %s-job.py' % (options, job.id)
+        x = os.popen('/usr/local/bin/qsub %s %s-job.py' %
                      (options, job.id), 'r').readline().split('.')[0]
+        #x = os.system('/usr/local/bin/qsub %s %s-job.py' % (options, job.id))
 
         self.log('Started: %s, %s' % (job.id, x))
         job.status = 'running'
