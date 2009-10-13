@@ -25,18 +25,17 @@ z_tol = 1.e-8
 c_tol = 1.e-8
 
 
-N = 16
+N = 512
 B = 4
 M = N/B
 
 # blacs grid dimensions DxD and non-even blocking factors just
 # to make things more non-trivial.
 D = 2 
-nb = 8
-mb = 8
+nb = 64
+mb = 64
 
-assert world.size == B
-assert world.size >= D*D
+assert world.size == B == D*D
 
 def test(complex_type):
 
@@ -111,11 +110,8 @@ def test(complex_type):
     # both the source and destination communications. As this is a
     # simple example, we should be OK here without it. 
     A_nm = None
-    A_mm = None
-    Ag_mm = None
     S_nm = None
     C_nm = None
-    C_mm = None
 
     # Create arrays in parallel
     A_nm = world.rank*np.eye(M,N,+M*world.rank)
@@ -129,6 +125,7 @@ def test(complex_type):
     if debug:
         print "A_nm = ", A_nm
         print "S_nm = ", S_nm
+        print "C_nm = ", C_nm
         
     # Create descriptors
     # Desc for serial : 0-D grid
@@ -141,26 +138,26 @@ def test(complex_type):
     # Redistribute from 1-D -> 2-D grid
     # in practice we must do this for performance
     # reasons so this is not hypothetical
-    A_mm = scalapack_redist(A_nm, desc1, desc0, isreal, world, 0, 0)
-    if A_mm is not None:
-        Ag_mm = A_mm.copy("Fortran") # A_mm will be destroy upon call to
-        # scalapack_diagonalize_dc 
-    S_mm = scalapack_redist(S_nm, desc1, desc0, isreal, world, 0, 0)
-    C_mm = scalapack_redist(C_nm, desc1, desc0, isreal, world, 0, 0)
+    A_mm = scalapack_redist(A_nm, desc1, desc2, isreal, world, 0, 0)
+    Ag_mm = A_mm.copy("Fortran") # A_mm will be destroy upon call to
+                                 # scalapack_diagonalize_dc 
+    S_mm = scalapack_redist(S_nm, desc1, desc2, isreal, world, 0, 0)
+    C_mm = scalapack_redist(C_nm, desc1, desc2, isreal, world, 0, 0)
 
     if debug:
         print "A_mm = ", A_mm
         print "S_mm = ", S_mm
-    
-    W, Z_mm = scalapack_diagonalize_ex(A_mm, desc0, 'L')
-    Wg, Zg_mm = scalapack_diagonalize_ex(Ag_mm, desc0, 'L', S_mm)
-    scalapack_inverse_cholesky(C_mm, desc0, 'L')
+        print "C_mm = ", C_mm
+
+    W, Z_mm = scalapack_diagonalize_dc(A_mm, desc2, 'L')
+    Wg, Zg_mm = scalapack_diagonalize_ex(Ag_mm, desc2, 'L', S_mm)
+    scalapack_inverse_cholesky(C_mm, desc2, 'L')
 
     # Check eigenvalues and eigenvectors
     # Easier to do this if everything if everything is collected on one node
-    Z_0 = scalapack_redist(Z_mm, desc0, desc0, isreal, world, 0, 0)
-    Zg_0 = scalapack_redist(Zg_mm, desc0, desc0, isreal, world, 0, 0)
-    C_0 = scalapack_redist(C_mm, desc0, desc0, isreal, world, 0, 0)
+    Z_0 = scalapack_redist(Z_mm, desc2, desc0, isreal, world, 0, 0)
+    Zg_0 = scalapack_redist(Zg_mm, desc2, desc0, isreal, world, 0, 0)
+    C_0 = scalapack_redist(C_mm, desc2, desc0, isreal, world, 0, 0)
 
     if world.rank == 0:
         Z_0 = Z_0.copy("C")
@@ -193,11 +190,11 @@ def test(complex_type):
         print "Zg_0", Zg_0
         print "general diag: eigenvectors = ", Ag
     
-    # for i in range(len(W)):
-    #     if abs(W[i]-w[i]) > w_tol:
-    #         raise NameError('sca_diag_dc: incorrect eigenvalues!')
-    #     
-    # assert len(Wg) == len(wg)
+    for i in range(len(W)):
+        if abs(W[i]-w[i]) > w_tol:
+            raise NameError('sca_diag_dc: incorrect eigenvalues!')
+        
+    assert len(Wg) == len(wg)
 
     for i in range(len(W)):
         if abs(Wg[i]-wg[i]) > w_tol:
@@ -219,7 +216,7 @@ def test(complex_type):
             if abs(abs(Zg_0[i,j])-abs(Ag[j,i])) > z_tol:
                 print "i, j, Zg_0, Ag", i, j, Zg_0[i,j], Ag[j,i]
                 raise NameError('sca_general_diag: incorrect eigenvectors!')   
-            if abs(abs(C_0[i,j])-abs(C[j,i])) > c_tol:
+            if abs(abs(C_0[j,i])-abs(C[j,i])) > c_tol:
                 print "i, j, C_0, C", i, j, C_0[i,j], C[j,i]
                 raise NameError('sca_inverse_cholesky: failed!')
 
@@ -233,11 +230,10 @@ if not scalapack():
     print('Not built with ScaLAPACK. Test does not apply.')
 else:
     ta = time()
-    for x in range(20):
-        # Test real scalapack
-        test(False)
-        # Test complex scalapack
-        test(True)
+    # Test real scalapack
+    test(False)
+    # Test complex scalapack
+    test(True)
     tb = time()
 
     if world.rank == 0:

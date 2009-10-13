@@ -35,8 +35,7 @@ D = 2
 nb = 64
 mb = 64
 
-assert world.size == B
-assert world.size >= D*D
+assert world.size == B == D*D
 
 def test(complex_type):
 
@@ -123,7 +122,6 @@ def test(complex_type):
     A_nm = None
     S_nm = None
     C_nm = None
-    C_mm = None
 
     # Create arrays in parallel
     A_nm = world.rank*np.eye(N,M,-M*world.rank)
@@ -137,6 +135,7 @@ def test(complex_type):
     if debug:
         print "A_nm = ", A_nm
         print "S_nm = ", S_nm
+        print "C_nm = ", C_nm
 
     # Create descriptors
     # Desc for serial : 0-D grid
@@ -151,15 +150,16 @@ def test(complex_type):
     # reasons so this is not hypothetical
     A_mm = scalapack_redist(A_nm, desc1, desc2, isreal, world, 0, 0)
     Ag_mm = A_mm.copy("Fortran") # A_mm will be destroy upon call to
-                                  # scalapack_diagonalize_dc 
+                                 # scalapack_diagonalize_dc 
     S_mm = scalapack_redist(S_nm, desc1, desc2, isreal, world, 0, 0)
     C_mm = scalapack_redist(C_nm, desc1, desc2, isreal, world, 0, 0)
 
     if debug:
         print "A_mm = ", A_mm
         print "S_mm = ", S_mm
-    
-    W, Z_mm = scalapack_diagonalize_ex(A_mm, desc2, 'U')
+        print "C_mm = ", C_mm
+        
+    W, Z_mm = scalapack_diagonalize_dc(A_mm, desc2, 'U')
     Wg, Zg_mm = scalapack_diagonalize_ex(Ag_mm, desc2, 'U', S_mm)
     scalapack_inverse_cholesky(C_mm, desc2, 'U')
 
@@ -240,11 +240,10 @@ if not scalapack():
     print('Not built with ScaLAPACK. Test does not apply.')
 else:
     ta = time()
-    for x in range(20):
-        # Test real scalapack
-        test(False)
-        # Test complex scalapack
-        test(True)
+    # Test real scalapack
+    test(False)
+    # Test complex scalapack
+    test(True)
     tb = time()
 
     if world.rank == 0:
