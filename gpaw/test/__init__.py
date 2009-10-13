@@ -160,6 +160,7 @@ tests = [
     'parallel/ut_invops.py',
     'parallel/ut_kptops.py',
     'parallel/scalapack.py',
+    'parallel/scalapack2.py',
     'parallel/lcao_projections.py',
     'parallel/n2.py',
     ]
@@ -177,7 +178,7 @@ if mpi.size > 2:
     exclude += ['neb.py']
 
 if mpi.size != 4:
-    exclude += ['parallel/scalapack.py']
+    exclude += ['parallel/scalapack.py', 'parallel/scalapack2.py']
 
 if mpi.size != 4 or not gpaw.debug:
     exclude += ['parallel/n2.py']
