@@ -19,21 +19,7 @@ def analyse(generator, show=False):
 
     r_g = gen.r
     g = np.arange(gen.N)
-    dr_g = gen.beta * gen.N / (gen.N - g)**2
     rmax = max(gen.rcut_l)
-    rcutcomp = gen.rcutcomp
-    rcutfilter = gen.rcutfilter
-
-    # Find cutoff for core density:
-    if gen.Nc == 0:
-        rcore = 0.5
-    else:
-        N = 0.0
-        g = gen.N - 1
-        while N < 1e-7:
-            N += sqrt(4 * pi) * gen.nc[g] * r_g[g]**2 * dr_g[g]
-            g -= 1
-        rcore = r_g[g]
 
     # Construct logarithmic derivatives
     if len(gen.logd) > 0:
@@ -45,38 +31,6 @@ def analyse(generator, show=False):
             i = elog.searchsorted(e)
             ref.append((elog[i], logd[l][1][i]))
         ref = np.array(ref)
-
-    table1 = ['=========  =========',
-              'total      %d' % gen.Z,
-              'valence    %d' % gen.Nv,
-              'core       %d' % gen.Nc,
-              '=========  =========']
-    table2 = ['====================  ==============',
-              'compensation charges  %4.2f Bohr' % rcutcomp,
-              'filtering             %4.2f Bohr' % rcutfilter,
-              'core density          %4.2f Bohr' % rcore,
-              '====================  ==============']
-    table3 = ['========= ====================',
-              'Kinetic   %.4f Ha' % gen.Ekin,
-              'Potential %.4f Ha' % gen.Epot,
-              'XC        %.4f Ha' % gen.Exc,
-              '--------- --------------------',
-              'Total     %.4f Ha' % gen.ETotal,
-              '========= ====================']
-    table4 = ['=== === ============== =========',
-              'id  occ eigenvals      cutoff',
-              '--- --- -------------- ---------']
-    for j in range(gen.njcore):
-        n = gen.n_j[j]
-        l = gen.l_j[j]
-        f = gen.f_j[j]
-        e = gen.e_j[j]
-        table4.append(' %d%s %2d  %6.3f Ha' % (n, 'spdf'[l], f, e))
-    table4.append('--- --- -------------- ---------')
-    for id, f, eps, l in zip(id_j, gen.vf_j, gen.ve_j, gen.vl_j):
-        table4.append('%3s %2d  %6.3f Ha      %4.2f Bohr' % (id.replace('*','\*'), f,
-                                                         eps, gen.rcut_l[l]))
-    table4.append('=== === ============== =========')
 
     dpi = 80
     fig = plt.figure(figsize=(8.0, 12.0), dpi=dpi)
@@ -173,5 +127,3 @@ def analyse(generator, show=False):
     
     if show:
         plt.show()
-
-    return (table1, table2, table3, table4)
