@@ -138,10 +138,10 @@ else:
     Operator = _Operator
 
 
-def Gradient(gd, c, scale=1.0, dtype=float, allocate=True):
+def Gradient(gd, v, scale=1.0, dtype=float, allocate=True):
     h = gd.h_c
     a = 0.5 / h * scale
-    d = gd.iucell_cv[:,c] 
+    d = gd.iucell_cv[:,v]
 
     coef_p = []
     offset_pc = []  
