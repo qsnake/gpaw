@@ -23,14 +23,15 @@ scalapack = True
 # Goto is hand-tuned assembly, it will most
 # likely always be faster than ESSL-4.x,
 # but ESSL is more likely to be bug free.
+# Bug found in Goto BLAS on 10/12/2009.
 
 libraries = [
            'scalapack',
            'blacsCinit_MPI-BGP-0',
            'blacs_MPI-BGP-0',
            'lapack_bgp',
-#           'esslbg',
-           'goto',
+           'esslbg',
+#           'goto',
            'xlf90_r',
            'xlopt',
            'xl',
@@ -43,8 +44,8 @@ library_dirs = [
            '/soft/apps/SCALAPACK',
            '/soft/apps/BLACS',
            '/soft/apps/LAPACK',
-#           '/soft/apps/ESSL-4.4.1-0/lib',
-           '/soft/apps/LIBGOTO',
+           '/soft/apps/ESSL-4.4.1-0/lib',
+#           '/soft/apps/LIBGOTO',
            '/opt/ibmcmp/xlf/bg/11.1/bglib',
            '/opt/ibmcmp/xlsmp/bg/1.7/bglib',
            '/bgsys/drivers/ppcfloor/gnu-linux/lib',
