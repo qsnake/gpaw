@@ -498,15 +498,15 @@ class Operator:
 
                 # Calculate wave-function contributions from the current slice
                 # of grid data by the current mynbands x mynbands matrix block.
-                C_mm = self.bd.extract_block(C_NN, rank, (rank + q) % B)
-                gemm(1.0, sbuf_ng, C_mm, beta, psit_nG[:, G1:G2])
+                C_nn = self.bd.extract_block(C_NN, rank, (rank + q) % B)
+                gemm(1.0, sbuf_ng, C_nn, beta, psit_nG[:, G1:G2])
 
                 # If we're at the first slice, add contributions to P_ani's.
                 if cycle_P_ani:
                     I1 = 0
                     for P_ni in P_ani.values():
                         I2 = I1 + P_ni.shape[1]
-                        gemm(1.0, sbuf_In[I1:I2].T.copy(), C_mm, beta, P_ni)
+                        gemm(1.0, sbuf_In[I1:I2].T.copy(), C_nn, beta, P_ni)
                         I1 = I2
 
                 # Wait for all send/receives to finish before next iteration.
