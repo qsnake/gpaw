@@ -1376,7 +1376,7 @@ class Transport_Plotter:
         #p.legend([str(steps_indices[0]) + '-' + str(steps_indices[0])])
         p.show()
         
-    def compare_bias_step_info2(self, info, steps_indices, s):
+    def compare_bias_step_info2(self, info, steps_indices, s, shrink=1.0):
         import pylab as p
         if info[:2] == 'nt':
             title = 'density difference overview in axis ' + info[-1]
@@ -1391,7 +1391,7 @@ class Transport_Plotter:
         ydata = eval("step0.dv['" + data0 + "']") - eval("step1.dv['" + data1 + "']")
         p.matshow(ydata)
         p.title(title)
-        p.colorbar()
+        p.colorbar(shrink=shrink)
         #p.legend([str(steps_indices[0]) + '-' + str(steps_indices[0])])
         p.show()        
              
