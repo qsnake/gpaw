@@ -26,7 +26,7 @@ from gpaw.pair_overlap import GridPairOverlap, ProjectorPairOverlap
 
 from gpaw.test.ut_common import ase_svnrevision, shapeopt, TestCase, \
     TextTestRunner, CustomTextTestRunner, defaultTestLoader, \
-    initialTestLoader, create_random_atoms, create_parsize_maxbands
+    initialTestLoader, create_random_atoms, create_parsize_minbands
 
 # -------------------------------------------------------------------
 
@@ -52,7 +52,7 @@ class UTDomainParallelSetup(TestCase):
         for virtvar in ['boundaries']:
             assert getattr(self,virtvar) is not None, 'Virtual "%s"!' % virtvar
 
-        parsize, parsize_bands = create_parsize_maxbands(self.nbands, world.size)
+        parsize, parsize_bands = create_parsize_minbands(self.nbands, world.size)
         assert self.nbands % np.prod(parsize_bands) == 0
         domain_comm, kpt_comm, band_comm = distribute_cpus(parsize,
             parsize_bands, self.nspins, self.nibzkpts)

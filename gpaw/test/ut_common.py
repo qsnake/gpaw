@@ -2,7 +2,7 @@
 
 __all__ = ['ase_svnrevision', 'shapeopt', 'TestCase', 'TextTestRunner', \
     'CustomTextTestRunner', 'defaultTestLoader', 'initialTestLoader', \
-    'create_random_atoms', 'create_parsize_maxbands']
+    'create_random_atoms', 'create_parsize_maxbands', 'create_parsize_minbands']
 
 partest = False
 
@@ -116,4 +116,8 @@ def create_parsize_maxbands(nbands, world_size):
         B = parsize_bands
         D = parsize or world_size // B
     return D, B
+
+def create_parsize_minbands(nbands, world_size):
+    __doc__ = create_parsize_maxbands.__doc__
+    return create_parsize_maxbands(1, world_size)
 
