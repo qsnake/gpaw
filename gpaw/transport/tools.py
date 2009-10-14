@@ -1378,3 +1378,20 @@ def orbital_matrix_rotate_transformation(mat, X, basis_info):
         else:
             raise NotImplementError('undown shell name')
 
+def interpolate_2d(mat):
+    from gpaw.grid_descriptor import GridDescriptor
+    from gpaw.transformers import Transformer
+    nn = 10
+    N_c = np.zeros([3], dtype=int)
+    N_c[1:] = mat.shape[:2]
+    N_c[0] = nn
+    bmat = np.resize(mat, N_c)
+    gd = GridDescriptor(N_c, N_c)
+    finegd = GridDescriptor(N_c * 2, N_c)
+    interpolator = Transformer(gd, finegd, 3, allocate=False)
+    interpolator.allocate()
+    fine_bmat = finegd.zeros()
+    interpolator.apply(bmat, fine_bmat)
+    return fine_bmat[0]
+    
+    
