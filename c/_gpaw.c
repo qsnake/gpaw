@@ -55,6 +55,7 @@ PyObject* NewXCFunctionalObject(PyObject *self, PyObject *args);
 PyObject* NewMGGAFunctionalObject(PyObject *self, PyObject *args);
 PyObject* NewlxcXCFunctionalObject(PyObject *self, PyObject *args);
 PyObject *exterior_electron_density_region(PyObject *self, PyObject *args);
+PyObject *plane_wave_grid(PyObject *self, PyObject *args);
 PyObject* overlap(PyObject *self, PyObject *args);
 PyObject* wigner_seitz_grid(PyObject *self, PyObject *args);
 PyObject* vdw(PyObject *self, PyObject *args);
@@ -104,6 +105,7 @@ static PyMethodDef functions[] = {
   {"utilities_vdot", utilities_vdot, METH_VARARGS, 0},
   {"utilities_vdot_self", utilities_vdot_self, METH_VARARGS, 0},
   {"eed_region", exterior_electron_density_region, METH_VARARGS, 0},
+  {"plane_wave_grid", plane_wave_grid, METH_VARARGS, 0},
   {"erf",        errorfunction,        METH_VARARGS, 0},
   {"unpack",       unpack,           METH_VARARGS, 0},
   {"unpack_complex",       unpack_complex,           METH_VARARGS, 0},
