@@ -42,7 +42,8 @@ class Domain:
                                     for x in range(3)])
 
         self.icell_cv = np.linalg.inv(self.cell_cv).T
-        self.iucell_cv = np.linalg.inv((self.cell_cv / self.cell_c).T)#Jacobian
+        self.ucell_cv = np.array([self.cell_cv[x] / self.cell_c[x] for x in range(3)])
+        self.iucell_cv = np.linalg.inv(self.ucell_cv.T) # Jacobian        
 
         self.pbc_c = np.asarray(pbc, bool)
 
