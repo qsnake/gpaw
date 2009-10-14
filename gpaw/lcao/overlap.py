@@ -58,7 +58,7 @@ from gpaw.utilities.tools import tri2full
 from gpaw.utilities.blas import gemm
 from gpaw import extra_parameters
 
-UL='U'
+UL = 'L'
 
 # Generate the coefficients for the Fourier-Bessel transform
 C = []
@@ -250,6 +250,7 @@ class ManySiteOverlapExpansions(BaseOverlapExpansionSet):
         x_qxmm, oe = self.getslice(disp.a1, disp.a2, x_qxMM)
         disp.evaluate_overlap(oe, x_qxmm)
 
+
 class DomainDecomposedExpansions(BaseOverlapExpansionSet):
     def __init__(self, msoe, local_indices):
         self.msoe = msoe
@@ -306,7 +307,7 @@ class BlacsOverlapExpansions(BaseOverlapExpansionSet):
         a1 = disp.a1
         a2 = disp.a2
         if (a2 in self.local_indices and (self.astart <= a1 < self.aend)):
-            assert a1 <= a2
+            assert a2 <= a1
             msoe = self.msoe
             I1 = msoe.I1_a[a1]
             I2 = msoe.I2_a[a2]
@@ -339,7 +340,7 @@ class SimpleAtomIter:
             for a2, spos2_c in enumerate(self.spos2_ac):
                 for offset in offsets:
                     R_c = np.dot(spos2_c - spos1_c + offset, self.cell_cv)
-                    yield a1, a2, -R_c, -offset
+                    yield a1, a2, R_c, offset
         
 
 class NeighborPairs:
@@ -387,6 +388,12 @@ class PairsBothWays(PairFilter):
     def iter(self):
         for a1, a2, R_c, offset in self.pairs.iter():
             yield a1, a2, R_c, offset
+            yield a2, a1, -R_c, -offset
+
+
+class OppositeDirection(PairFilter):
+    def iter(self):
+        for a1, a2, R_c, offset in self.pairs.iter():
             yield a2, a1, -R_c, -offset
 
 
@@ -691,7 +698,7 @@ class NewTwoCenterIntegrals:
         expansions.append(ManySiteDictionaryWrapper(self.P_expansions,
                                                     P_aqxMi))
         arrays = [Theta_qxMM, T_qxMM, P_aqxMi]
-        calc.calculate(self.atompairs, expansions, arrays)
+        calc.calculate(OppositeDirection(self.atompairs), expansions, arrays)
 
     def evaluate(self, spos_ac, Theta_qMM, T_qMM, P_aqMi):
         calc = TwoCenterIntegralCalculator(self.ibzk_qc, derivative=False)
