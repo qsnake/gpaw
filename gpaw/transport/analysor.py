@@ -1241,7 +1241,7 @@ class Transport_Plotter:
             p.axis([xdata[0], xdata[-1], 0, height])
         p.show()
 
-    def show_bias_step_info(self, info, steps_indices, s, dense_level=0):
+    def show_bias_step_info(self, info, steps_indices, s, dense_level=0, shrink=1.0):
         import pylab as p
         if info[:2] == 'nt':
             title = 'density overview in axis ' + info[-1]
@@ -1265,7 +1265,7 @@ class Transport_Plotter:
                 p.matshow(zdata)
                 #p.pcolor(xdata, ydata, zdata)
                 p.title(title)
-                p.colorbar()
+                p.colorbar(shrink=shrink)
                 p.show()
 
     def plot_current(self, au=True, spinpol=False, dense_level=0):
