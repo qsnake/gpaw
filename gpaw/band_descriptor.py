@@ -468,7 +468,7 @@ class BandDescriptor:
 
         Note that a Hermitian matrix requires just Q=B//2+1 blocks of M x M
         elements where B is the communicator size and M=N//B for N bands.
-        Therefor, case should be taken to only request q1,q2 pairs which
+        Therefor, care should be taken to only request q1,q2 pairs which
         are connected by Q shifts or less if A_NN is lower triangular.
         """
         N = self.mynbands
