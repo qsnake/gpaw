@@ -1020,8 +1020,8 @@ class Transport_Plotter:
 
     def plot_bias_step_info(self, info, steps_indices, s, k,
                                             height=None, unit=None,
-                                            all=False, show=True):
-        xdata = self.energies
+                                            all=False, show=True, dense_level=0):
+        xdata = np.real(self.energies)
         #xdata = np.linspace(-3, 3, 61)
         energy_axis = False        
         import pylab as p
@@ -1076,10 +1076,18 @@ class Transport_Plotter:
                 l1 = np.linspace(0, a1, 10)
                 flags = self.flags
                 if not energy_axis:
+                    xdata = np.arange(len(ydata))
+                if dense_level != 0:
+                    from scipy import interpolate
+                    tck = interpolate.splrep(xdata, ydata, s=0)
+                    num = len(xdata)
+                    xdata = np.linspace(xdata[0], xdata[-1], num * (dense_level + 1))
+                    ydata = interpolate.splev(xdata, tck, der=0)                                
+                if not energy_axis:
                     if info == 'ham':
-                        p.plot(ydata * Hartree)
+                        p.plot(xdata, ydata * Hartree)
                     else:
-                        p.plot(ydata)
+                        p.plot(xdata, ydata)
                 else:
                     p.plot(xdata, ydata, flags[0], f1, l1, flags[1],
                                                              f2, l1, flags[1])
@@ -1233,7 +1241,7 @@ class Transport_Plotter:
             p.axis([xdata[0], xdata[-1], 0, height])
         p.show()
 
-    def show_bias_step_info(self, info, steps_indices, s):
+    def show_bias_step_info(self, info, steps_indices, s, dense_level=0):
         import pylab as p
         if info[:2] == 'nt':
             title = 'density overview in axis ' + info[-1]
@@ -1242,8 +1250,20 @@ class Transport_Plotter:
         data = 's' + str(s) + info
         for i, step in enumerate(self.bias_steps):
             if i in steps_indices:
-                ydata = eval("step.dv['" + data + "']")
-                p.matshow(ydata)
+                zdata = eval("step.dv['" + data + "']")
+                nx, ny = zdata.shape[:2]
+                xdata, ydata = np.mgrid[0:nx:nx*1j,0:ny:ny*1j]
+                if dense_level != 0:
+                    #from scipy import interpolate
+                    #tck = interpolate.bisplrep(xdata, ydata, zdata, s=0)
+                    dl = dense_level + 1
+                   #xdata, ydata = np.mgrid[0:nx:nx*dl*1j, 0:ny:ny*dl*1j]
+                    #zdata = interpolate.bisplev(xdata[:,0],ydata[0,:],tck)
+                    from gpaw.transport.tools import interpolate_2d
+                    for i in range(dl):
+                        zdata = interpolate_2d(zdata)
+                p.matshow(zdata)
+                #p.pcolor(xdata, ydata, zdata)
                 p.title(title)
                 p.colorbar()
                 p.show()
