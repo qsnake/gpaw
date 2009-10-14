@@ -586,6 +586,22 @@ class GridDescriptor(Domain):
     def is_non_orthogonal(self):
         return (self.cell_cv - np.diag(self.cell_cv.diagonal())).any()
 
+    def get_grid_point_coordinates(self, dtype=float, global_array=False):
+        """Construct cartesian coordinates of grid points in the domain."""
+        r_vG = self.empty(3, dtype=dtype)
+        for c,r_G in enumerate(r_vG):
+           c2G = [np.newaxis, np.newaxis, np.newaxis]
+           c2G[c] = slice(None) #this means ':'
+           r_G[:] = self.h_c[c]*np.arange(self.beg_c[c], self.end_c[c])[c2G]
+
+        if self.is_non_orthogonal():
+            basis_vc = self.cell_cv.T / (self.h_c * self.N_c)[np.newaxis,:]
+            r_vG[:] = np.dot(basis_vc, r_vG.reshape((3,-1))).reshape(r_vG.shape)
+
+        if global_array:
+            return self.collect(r_vG, broadcast=True)
+
+        return r_vG
 
 class RadialGridDescriptor:
     """Descriptor-class for radial grid."""
