@@ -64,14 +64,15 @@ try:
 except AttributeError:
     world = serial_comm
 
+class DryRunCommunicator(SerialCommunicator):
+    def __init__(self, size=1):
+        self.size = size
+    
+    def new_communicator(self, ranks):
+        return DryRunCommunicator(len(ranks))
+
 if dry_run_size > 1:
-    class DryRunCommunicator(SerialCommunicator):
-        def new_communicator(self, ranks):
-            new_comm = DryRunCommunicator()
-            new_comm.size = len(ranks)
-            return new_comm
-    world = DryRunCommunicator()
-    world.size = dry_run_size
+    world = DryRunCommunicator(dry_run_size)
 
 size = world.size
 rank = world.rank
