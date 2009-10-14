@@ -268,6 +268,22 @@ class BandDescriptor:
                 self.comm.wait(request)
 
     def matrix_assembly(self, A_qnn, A_NN, hermitian):
+        """Assign all distributed sub-blocks pertaining from various rank to
+        the relevant parts of a Hermitian or non-Hermitian matrix A_NN.
+
+        Parameters:
+
+        A_qnn: ndarray
+            Sub-blocks belonging to the specified rank.
+        A_NN: ndarray
+            Full matrix in which to write contributions from sub-blocks.
+        hermitian: bool
+            Indicates whether A_NN is a Hermitian matrix, in which
+            case only the lower triangular part is assigned to.
+
+        Note that the sub-block buffers are used for communicating across the
+        band communicator, hence A_qnn will be altered during the assembly.
+        """
         if self.comm.size == 1:
             self.blockwise_assign(A_qnn, A_NN, 0, hermitian)
             return
@@ -281,12 +297,45 @@ class BandDescriptor:
             self.comm.send(A_qnn, 0, 13)
 
     def blockwise_assign(self, A_qnn, A_NN, band_rank, hermitian):
+        """Assign the sub-blocks pertaining from a given rank to part of a
+        blocked Hermitian or non-Hermitian matrix A_NN. This subroutine is
+        used for matrix assembly.
+
+        Parameters:
+
+        A_qnn: ndarray
+            Sub-blocks belonging to the specified rank.
+        A_NN: ndarray
+            Full matrix in which to write contributions from sub-blocks.
+        band_rank: int
+            Communicator rank to which the sub-blocks belongs.
+        hermitian: bool
+            Indicates whether A_NN is a Hermitian matrix, in which
+            case only the lower triangular part is assigned to.
+
+        """
         if hermitian:
             self.triangular_blockwise_assign(A_qnn, A_NN, band_rank)
         else:
             self.full_blockwise_assign(A_qnn, A_NN, band_rank)
 
     def triangular_blockwise_assign(self, A_qnn, A_NN, band_rank):
+        """Assign the sub-blocks pertaining from a given rank to the lower
+        triangular part of a Hermitian matrix A_NN. This subroutine is used
+        for matrix assembly.
+
+        Parameters:
+
+        A_qnn: ndarray
+            Sub-blocks belonging to the specified rank.
+        A_NN: ndarray
+            Full matrix in which to write contributions from sub-blocks.
+        band_rank: int
+            Communicator rank to which the sub-blocks belongs.
+
+        Note that a Hermitian matrix requires Q=B//2+1 blocks of M x M
+        elements where B is the communicator size and M=N//B for N bands.
+        """
         N = self.mynbands
         B = self.comm.size
         assert band_rank in xrange(B)
@@ -357,6 +406,21 @@ class BandDescriptor:
                     A_bnbn[q1, :, q1 + q2 - B] = A_qnn[q2].T.conj()
 
     def full_blockwise_assign(self, A_qnn, A_NN, band_rank):
+        """Assign the sub-blocks pertaining from a given rank to the full
+        non-Hermitian matrix A_NN. This subroutine is used for matrix assembly.
+
+        Parameters:
+
+        A_qnn: ndarray
+            Sub-blocks belonging to the specified rank.
+        A_NN: ndarray
+            Full matrix, in which to write contributions from sub-blocks.
+        band_rank: int
+            Communicator rank to which the sub-blocks belongs.
+
+        Note that a non-Hermitian matrix requires Q=B blocks of M x M
+        elements where B is the communicator size and M=N//B for N bands.
+        """
         N = self.mynbands
         B = self.comm.size
         assert band_rank in xrange(B)
@@ -389,6 +453,24 @@ class BandDescriptor:
                 A_bnbn[(q1+q2)%B, :, q1] = A_qnn[q2]
 
     def extract_block(self, A_NN, q1, q2):
+        """Extract the sub-block pertaining from a given pair of ranks within
+        the full matrix A_NN. Extraction may result in copies to assure unit
+        stride, thus one should not utilize this routine for altering A_NN.
+
+        Parameters:
+
+        A_NN: ndarray
+            Full matrix, from which to read the requested sub-block.
+        q1: int
+            Communicator rank to which the sub-block belongs (row index).
+        q2: int
+            Communicator rank the sub-block originated from (column index).
+
+        Note that a Hermitian matrix requires just Q=B//2+1 blocks of M x M
+        elements where B is the communicator size and M=N//B for N bands.
+        Therefor, case should be taken to only request q1,q2 pairs which
+        are connected by Q shifts or less if A_NN is lower triangular.
+        """
         N = self.mynbands
         B = self.comm.size
 
