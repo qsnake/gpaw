@@ -306,6 +306,7 @@ class BlacsOverlapExpansions(BaseOverlapExpansionSet):
         a1 = disp.a1
         a2 = disp.a2
         if (a2 in self.local_indices and (self.astart <= a1 < self.aend)):
+            assert a1 <= a2
             msoe = self.msoe
             I1 = msoe.I1_a[a1]
             I2 = msoe.I2_a[a2]
@@ -647,7 +648,7 @@ class NewTwoCenterIntegrals:
         self.Mmystart = Mmystart
         self.mynao = mynao
         self.blacs = mynao is not None
-
+        
     def calculate_expansions(self):
         phit_Ij = [setup.phit_j for setup in self.setups_I]
         l_Ij = []
