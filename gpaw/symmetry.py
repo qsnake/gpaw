@@ -274,7 +274,7 @@ class Symmetry:
         line2 = []
         for swap, mirror in self.symmetries:
             line1.extend(['_  '[int(s) + 1] for s in mirror] + [' '])
-            line2.extend(['XYZ'[c] for c in swap] + [' '])
+            line2.extend(['123'[c] for c in swap] + [' '])
         line1 = ''.join(line1)
         line2 = ''.join(line2)
         n1 = 0
