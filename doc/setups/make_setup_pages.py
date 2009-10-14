@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import sys
 import pickle
 
@@ -9,16 +10,16 @@ from ase.data.molecules import rest
 from ase.data.molecules import data as molecule_data
 
 from gpaw.testing.atomization_data import atomization_vasp
+from gpaw.atom.generator import parameters
 
-page = """.. index:: %(name)s
-
+page = """.. Computer generated reST (make_setup_pages.py)
+.. index:: %(name)s
+.. default-role:: math
 .. _%(name)s:
 
 ================
 %(name)s
 ================
-
-.. default-role:: math
 
 
 Tests
@@ -84,6 +85,15 @@ Back to :ref:`setups`.
 """
 
 def make_page(symbol):
+    filename = symbol + '.rst'
+    if os.path.isfile(filename):
+        return
+    try:
+        data = pickle.load(open('%s.pckl' % symbol, 'rb'))
+    except EOFError:
+        print symbol
+        return
+    f = open(filename, 'w')
     Z = atomic_numbers[symbol]
     name = atomic_names[Z]
 
@@ -126,13 +136,15 @@ def make_page(symbol):
     else:
         aname = 'a ' + name.lower()
 
-    data = pickle.load(open('%s.pckl' % symbol, 'rb'))
-    
     table = ''
-    for n, l, f, e in data['nlfe_core']:
-        table += '%d%s   %3d  %10.3f Ha\n' % (n, 'spdf'[l], f, e)
-    for id, f, e, rcut in data['ifer_valence']:
-        table += '%3s  %3d  %10.3f Ha  %.2f Bohr\n' % (id, f, e, rcut)
+    for n, l, f, e, rcut in data['nlfer']:
+        if n == -1:
+            n = '\*'
+        table += '%2s%s  %3d  %10.3f Ha' % (n, 'spdf'[l], f, e)
+        if rcut:
+            table += '  %.2f Bohr\n' % rcut
+        else:
+            table += '\n'
 
     f = open(symbol + '.rst', 'w')
     f.write(page % {
@@ -169,8 +181,10 @@ def make_page(symbol):
         Edimer0[i] = E0
         ddimer0[i] = d0
 
-    assert d[0] < ddimer[-1] < d[-1]
+    assert d[0] < d0 < d[-1], (d,d0,symbol)
 
+    print '%2s %.3f %+7.1f %%' % (symbol, d0, 100 * (d0 / d[3] - 1))
+    
     Ediss = 2 * Eegg[:, 0] - Edimer0
 
     import pylab as plt
@@ -210,10 +224,13 @@ def make_page(symbol):
     plt.ylabel(u'bond length [Å]')
 
     plt.savefig(symbol + '-dimer-eggbox.png', dpi=dpi)
-    plt.show()
+    #plt.show()
 
 args = sys.argv[1:]
 if len(args) == 0:
     args = parameters.keys()
+    args.remove('Cr')
+    args.remove('Cu')
+    args.remove('Sn')
 for symbol in args:
     make_page(symbol)

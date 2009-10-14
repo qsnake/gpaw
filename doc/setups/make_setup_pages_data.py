@@ -2,17 +2,21 @@ import os
 import sys
 import pickle
 
+import matplotlib
+matplotlib.use('Agg')
+
 import numpy as np
 from ase.atoms import Atoms
-from ase.data import atomic_numbers, atomic_names
+from ase.utils import devnull
+from ase.data import atomic_numbers, atomic_names, covalent_radii
 
 from gpaw.atom.generator import Generator, parameters
 from gpaw.atom.analyse_setup import analyse
-from gpaw import GPAW, ConvergenceError
+from gpaw import GPAW, ConvergenceError, Mixer
 import gpaw.mpi as mpi
 
 
-b0 = {'Ni': 2.143, 'Pd': 2.485, 'Pt': 2.373, 'Ru': 2.125, 'Na': 3.289, 'Nb': 2.005, 'Mg': 4.0, 'Li': 2.8, 'Pb': 2.873, 'Rb': 4.360, 'Ti': 2.055, 'Rh': 2.231, 'Ta': 2.2, 'Be': 2.618, 'Ba': 4.871, 'La': 2.872, 'Si': 2.218, 'As': 2.071, 'Fe': 1.837, 'Br': 2.281, 'He': 1.972, 'C': 1.279, 'B': 1.694, 'F': 1.413, 'H': 0.753, 'K': 4.108, 'Mn': 1.665, 'O': 1.234, 'Ne': 1.976, 'P': 1.878, 'S': 1.893, 'Kr': 4.3, 'W': 2.1, 'V': 1.672, 'N': 1.102, 'Se': 2.154, 'Zn': 2.8, 'Co': 2.0, 'Ag': 2.626, 'Cl': 1.989, 'Ca': 2.805, 'Ir': 2.227, 'Al': 2.868, 'Cd': 3.0, 'Ge': 2.319, 'Ar': 2.589, 'Au': 2.555, 'Zr': 2.385, 'Ga': 2.837, 'Cs': 4.819, 'Cu': 2.281, 'Cr': 1.8, 'Mo': 1.9, 'Sr': 2.7}
+b0 = {'Ni': 2.143, 'Pd': 2.485, 'Pt': 2.373, 'Ru': 2.125, 'Na': 3.289, 'Nb': 2.005, 'Mg': 3.5, 'Li': 2.99, 'Pb': 2.873, 'Rb': 4.360, 'Ti': 2.055, 'Rh': 2.231, 'Ta': 2.2, 'Be': 2.618, 'Ba': 4.871, 'La': 2.872, 'Si': 2.218, 'As': 2.071, 'Fe': 1.837, 'Br': 2.281, 'He': 1.972, 'C': 1.279, 'B': 1.694, 'F': 1.413, 'H': 0.753, 'K': 4.108, 'Mn': 1.665, 'O': 1.234, 'Ne': 1.976, 'P': 1.878, 'S': 1.893, 'Kr': 4.3, 'W': 2.1, 'V': 1.672, 'N': 1.102, 'Se': 2.154, 'Zn': 2.8, 'Co': 2.0, 'Ag': 2.626, 'Cl': 1.989, 'Ca': 2.805, 'Ir': 2.227, 'Al': 2.868, 'Cd': 3.3, 'Ge': 2.319, 'Ar': 2.3, 'Au': 2.555, 'Zr': 2.385, 'Ga': 2.837, 'Cs': 4.819, 'Cu': 2.281, 'Cr': 1.8, 'Mo': 1.9, 'Sr': 2.7}
 
 
 class MakeSetupPageData:
@@ -44,8 +48,10 @@ class MakeSetupPageData:
         if mpi.rank == 0:
             gen = Generator(self.symbol, 'PBE', scalarrel=True)
             gen.run(logderiv=True, **parameters[self.symbol])
-            data = analyse(self.gen, show=False)
+            data = analyse(gen, show=False)
 
+            g = np.arange(gen.N)
+            r_g = gen.r
             dr_g = gen.beta * gen.N / (gen.N - g)**2
             rcutcomp = gen.rcutcomp
             rcutfilter = gen.rcutfilter
@@ -57,16 +63,16 @@ class MakeSetupPageData:
                 N = 0.0
                 g = gen.N - 1
                 while N < 1e-7:
-                    N += sqrt(4 * pi) * gen.nc[g] * r_g[g]**2 * dr_g[g]
+                    N += np.sqrt(4 * np.pi) * gen.nc[g] * r_g[g]**2 * dr_g[g]
                     g -= 1
                 rcore = r_g[g]
 
-            nlfe_core = []
+            nlfer = []
             for j in range(gen.njcore):
-                nlfe_core.append((gen.n_j[j], gen.l_j[j], gen.f_j[j], gen.e_j[j]))
-            ifer_valence = []
-            for id, f, eps, l in zip(id_j, gen.vf_j, gen.ve_j, gen.vl_j):
-                ifer_valence.append((id, f, eps, gen.rcut_l[l]))
+                nlfer.append((gen.n_j[j], gen.l_j[j], gen.f_j[j], gen.e_j[j],
+                              0.0))
+            for n, l, f, eps in zip(gen.vn_j, gen.vl_j, gen.vf_j, gen.ve_j):
+                nlfer.append((n, l, f, eps, gen.rcut_l[l]))
 
             self.data = dict(Z=gen.Z,
                              Nv=gen.Nv,
@@ -77,8 +83,7 @@ class MakeSetupPageData:
                              Ekin=gen.Ekin,
                              Epot=gen.Epot,
                              Exc=gen.Exc,
-                             nlfe_core=nlfe_core,
-                             ifer_valence=ifer_valence)
+                             nlfer=nlfer)
 
     def prepare_box(self):
         if symbol in b0:
@@ -106,6 +111,7 @@ class MakeSetupPageData:
         for i in range(self.ng):
             h = self.gridspacings[i]
             calc = GPAW(h=h, txt='%s-eggbox-%.3f.txt' % (self.symbol, h),
+                        mixer=Mixer(beta=0.25, weight=1),
                         **self.parameters)
             atom.set_calculator(calc)
 
@@ -130,6 +136,7 @@ class MakeSetupPageData:
         for i in range(self.ng):
             h = self.gridspacings[i]
             calc = GPAW(h=h, txt='%s-dimer-%.3f.txt' % (self.symbol, h),
+                        mixer=Mixer(beta=0.25, weight=1),
                         **self.parameters)
             dimer.set_calculator(calc)
 

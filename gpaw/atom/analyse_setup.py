@@ -13,12 +13,12 @@ def analyse(generator, show=False):
     colors = []
     id_j = []
     for j, n in enumerate(gen.vn_j):
-        if n == -1: n = '*'
+        if n == -1:
+            n = '*'
         id_j.append(str(n) + 'spdf'[gen.vl_j[j]])
         colors.append('krgbymc'[j])
 
     r_g = gen.r
-    g = np.arange(gen.N)
     rmax = max(gen.rcut_l)
 
     # Construct logarithmic derivatives

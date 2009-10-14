@@ -175,7 +175,7 @@ class Jobs:
              '    _n += 1',
              'pylab.show = show',
              'import ase',
-             'ase.view = lambda *args, **kwargs: None'
+             'ase.view = lambda *args, **kwargs: None',
              ''])
         i = open('%s-job.py' % job.id, 'w')
         i.write('\n'.join(
