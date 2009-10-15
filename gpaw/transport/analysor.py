@@ -28,7 +28,7 @@ class Transmission_Info:
         self.ion_step, self.bias_step = ion_step, bias_step
     
     def initialize_data(self, bias, gate, ep, lead_pairs,
-                                   tc, dos, dv, current, lead_fermis, time_cost):
+                                   tc, dos, dv, current, lead_fermis, time_cost, f):
         self.bias = bias
         self.gate = gate
         self.ep = ep
@@ -39,6 +39,7 @@ class Transmission_Info:
         self.current = current
         self.lead_fermis = lead_fermis
         self.time_cost = time_cost
+        self.force = f 
 
 class Electron_Step_Info:
     # member variables:
@@ -294,8 +295,10 @@ class Transport_Analysor:
             current = self.calculate_current2(0)
         else:
             current = 0
+        f = tp.calculate_force()
+        tp.F_av = None
         step.initialize_data(tp.bias, tp.gate, self.energies, self.lead_pairs,
-                             tc_array, dos_array, dv, current, tp.lead_fermi, time_cost)
+                             tc_array, dos_array, dv, current, tp.lead_fermi, time_cost, f)
         step.ele_steps = self.ele_steps
         del self.ele_steps
         self.ele_steps = []
@@ -375,6 +378,8 @@ class Transport_Analysor:
             steps = self.ele_steps
         if data_file is None:
             data_file = 'analysis_data_' + flag
+        else:
+            data_file += '_' + flag
         fd = file(data_file, 'wb')
         pickle.dump((steps, self.energies), fd, 2)
         fd.close()
@@ -868,6 +873,8 @@ class Transport_Analysor:
           
 class Transport_Plotter:
     flags = ['b-o', 'r--']
+    #xlabel, ylabel, title, legend, xtick, ytick,
+    
     def __init__(self, flag='bias', data_file=None):
         if data_file is None:
             data_file = 'analysis_data_' + flag
@@ -897,41 +904,15 @@ class Transport_Plotter:
         rcParams['legend.fontsize'] = 18
         rcParams['axes.titlesize'] = 18
         rcParams['axes.labelsize'] = 18
+
+    def set_default_options(self):
+        pass
         
     def set_ele_steps(self, n_ion_step=None, n_bias_step=0):
         if n_ion_step != None:
             self.bias_steps = self.ion_steps[n_ion_step].bias_steps
         self.ele_steps = self.bias_steps[n_bias_step].ele_steps
-        
-    def plot_ele_step(self, nstep, s, k):
-        #ee = np.linspace(-3, 3, 61)
-        ee = self.energies
-        step = self.ele_steps[nstep]
-        import pylab as p
-        p.plot(step.dd[s, k], 'b--o')
-        p.title('density matrix')
-        p.show()
-        
-        p.plot(step.df[s, k], 'b--o')
-        p.title('hamiltonian matrix')
-        p.show()
-        
-        p.plot(step.nt, 'b--o')
-        p.title('density')
-        p.show()
- 
-        p.plot(step.vt, 'b--o')
-        p.title('hamiltonian')
-        p.show()
-        
-        p.plot(ee, step.tc[s, k, 0], 'b--o')
-        p.title('transmission')
-        p.show()
-        
-        p.plot(ee, step.dos[s, k], 'b--o')
-        p.title('dos')
-        p.show()
-        
+       
     def compare_two_calculations(self, nstep, s, k):
         fd = file('analysis_data_cmp', 'r')
         self.ele_steps_cmp, self.energies_cmp = pickle.load(fd)
@@ -1357,7 +1338,7 @@ class Transport_Plotter:
         p.ylabel(ylabel)
         p.show()        
            
-    def compare_ele_step_info2(self, info, steps_indices, s):
+    def compare_ele_step_info2(self, info, steps_indices, s, dense_level=0):
         import pylab as p
         if info[:2] == 'nt':
             title = 'density difference overview in axis ' + info[-1]
@@ -1376,7 +1357,7 @@ class Transport_Plotter:
         #p.legend([str(steps_indices[0]) + '-' + str(steps_indices[0])])
         p.show()
         
-    def compare_bias_step_info2(self, info, steps_indices, s, shrink=1.0):
+    def compare_bias_step_info2(self, info, steps_indices, s, shrink=1.0, dense_level=0):
         import pylab as p
         if info[:2] == 'nt':
             title = 'density difference overview in axis ' + info[-1]
@@ -1389,6 +1370,11 @@ class Transport_Plotter:
         data0 = 's' + str(s[0]) + info
         data1 = 's' + str(s[1]) + info        
         ydata = eval("step0.dv['" + data0 + "']") - eval("step1.dv['" + data1 + "']")
+        if dense_level != 0:
+            dl = dense_level + 1
+            from gpaw.transport.tools import interpolate_2d
+            for i in range(dl):
+                ydata = interpolate_2d(ydata) 
         p.matshow(ydata)
         p.title(title)
         p.colorbar(shrink=shrink)
