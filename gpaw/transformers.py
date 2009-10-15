@@ -130,6 +130,9 @@ class TransformerWrapper:
         assert self.allocated
         self.transformer.apply(input, output, phases)
 
+    def get_async_sizes(self):
+        return self.transformer.get_async_sizes()
+
     def estimate_memory(self, mem):
         self.transformer.estimate_memory(mem)
 

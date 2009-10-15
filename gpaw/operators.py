@@ -126,6 +126,9 @@ class OperatorWrapper:
     def get_diagonal_element(self):
         return self.operator.get_diagonal_element()
 
+    def get_async_sizes(self):
+        return self.operator.get_async_sizes()
+
     def estimate_memory(self, mem):
         self.operator.estimate_memory(mem)
 
