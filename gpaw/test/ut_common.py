@@ -52,16 +52,15 @@ from ase.units import Bohr
 from gpaw.mpi import compare_atoms
 from gpaw.utilities.tools import md5_array
 
-def create_random_atoms(gd, nmolecules=10, name='H2O', mindist=4.5):
+def create_random_atoms(gd, nmolecules=10, name='H2O', mindist=4.5 / Bohr):
     """Create gas-like collection of atoms from randomly placed molecules.
     Applies rigid motions to molecules, translating the COM and/or rotating
-    by a given angle around an axis of rotation through the new COM.
+    by a given angle around an axis of rotation through the new COM. These
+    atomic positions obey the minimum distance requirement to zero-boundaries.
 
     Warning: This is only intended for testing parallel grid/LFC consistency.
     """
-    assert not gd.is_non_orthogonal(), 'Orthogonal grid required.'
-    cell_c = gd.cell_cv.diagonal() * Bohr
-    atoms = Atoms(cell=cell_c, pbc=gd.pbc_c)
+    atoms = Atoms(cell=gd.cell_cv * Bohr, pbc=gd.pbc_c)
 
     # Store the original state of the random number generator
     randstate = np.random.get_state()
@@ -70,6 +69,7 @@ def create_random_atoms(gd, nmolecules=10, name='H2O', mindist=4.5):
 
     for m in range(nmolecules):
         amol = molecule(name)
+        amol.set_cell(gd.cell_cv * Bohr)
 
         # Rotate the molecule around COM according to three random angles
         # The rotation axis is given by spherical angles phi and theta
@@ -77,17 +77,30 @@ def create_random_atoms(gd, nmolecules=10, name='H2O', mindist=4.5):
         axis = np.array([cos(phi)*sin(theta), sin(phi)*sin(theta), cos(theta)])
         amol.rotate(axis, v)
 
-        # Dimensions of the smallest possible box centered on the COM
-        dpos_ac = amol.get_positions()-amol.get_center_of_mass()[np.newaxis,:]
-        combox_c = np.abs(dpos_ac).max(axis=0)
-        delta_c = (1-np.array(gd.pbc_c)) * (combox_c + mindist)
-        assert (delta_c < cell_c-delta_c).all(), 'Box is too tight to fit atoms.'
-        center_c = [np.random.uniform(d,w-d) for d,w in zip(delta_c, cell_c)]
+        # Find the scaled length we must transverse along the given axes such
+        # that the resulting displacement vector is `mindist` from the cell
+        # face corresponding to that direction (plane with unit normal n_v).
+        sdist_c = np.empty(3)
+        if gd.is_non_orthogonal():
+            for c in range(3):
+                n_v = gd.iucell_cv[c] / np.linalg.norm(gd.iucell_cv[c])
+                sdist_c[c] = mindist / np.dot(gd.cell_cv[c], n_v)
+        else:
+            sdist_c[:] = mindist / gd.cell_c
+
+        # Scaled dimensions of the smallest possible box centered on the COM
+        spos_ac = amol.get_scaled_positions() # NB! must not do a "% 1.0"
+        scom_c = np.dot(gd.icell_cv, amol.get_center_of_mass())
+        sbox_c = np.abs(spos_ac-scom_c[np.newaxis,:]).max(axis=0)
+        sdelta_c = (1-np.array(gd.pbc_c)) * (sbox_c + sdist_c)
+        assert (sdelta_c < 1.0-sdelta_c).all(), 'Box is too tight to fit atoms.'
+        scenter_c = [np.random.uniform(d,1-d) for d in sdelta_c]
+        center_v = np.dot(scenter_c, gd.cell_cv)
 
         # Translate the molecule such that COM is located at random center
-        offset_ac = (center_c-amol.get_center_of_mass())[np.newaxis,:]
-        amol.set_positions(amol.get_positions()+offset_ac)
-        assert np.linalg.norm(amol.get_center_of_mass()-center_c) < 1e-12
+        offset_av = (center_v-amol.get_center_of_mass()/Bohr)[np.newaxis,:]
+        amol.set_positions(amol.get_positions()+offset_av*Bohr)
+        assert np.linalg.norm(center_v-amol.get_center_of_mass()/Bohr) < 1e-9
         atoms.extend(amol)
 
     # Restore the original state of the random number generator
