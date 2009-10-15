@@ -196,13 +196,7 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
         self.allocated = False
 
     def allocate(self):
-        self.r_cG = self.gd.empty(3)
-        for c, r_G in enumerate(self.r_cG):
-            slice_c2G = [np.newaxis, np.newaxis, np.newaxis]
-            slice_c2G[c] = slice(None) #this means ':'
-            r_G[:] = self.gd.h_c[c]*np.arange(self.gd.beg_c[c], \
-                                              self.gd.end_c[c])[slice_c2G]
-
+        self.r_cG = self.gd.get_grid_point_coordinates()
         cell_cv = self.atoms.get_cell() / Bohr
         assert np.abs(cell_cv-self.gd.cell_cv).max() < 1e-9
         center_c = 0.5*cell_cv.diagonal()

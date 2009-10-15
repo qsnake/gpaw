@@ -87,6 +87,7 @@ def create_random_atoms(gd, nmolecules=10, name='H2O', mindist=4.5 / Bohr):
                 sdist_c[c] = mindist / np.dot(gd.cell_cv[c], n_v)
         else:
             sdist_c[:] = mindist / gd.cell_c
+        assert np.all(sdist_c > 0), 'Displacment vectors must be inside cell.'
 
         # Scaled dimensions of the smallest possible box centered on the COM
         spos_ac = amol.get_scaled_positions() # NB! must not do a "% 1.0"
