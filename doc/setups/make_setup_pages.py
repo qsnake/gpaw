@@ -89,11 +89,12 @@ def make_page(symbol):
     if os.path.isfile(filename):
         return
     try:
-        data = pickle.load(open('%s.pckl' % symbol, 'rb'))
+        data = pickle.load(open(
+            '../_static/setup-data/%s.pckl' % symbol, 'rb'))
     except EOFError:
         print symbol
         return
-    f = open(filename, 'w')
+
     Z = atomic_numbers[symbol]
     name = atomic_names[Z]
 
@@ -181,7 +182,8 @@ def make_page(symbol):
         Edimer0[i] = E0
         ddimer0[i] = d0
 
-    assert d[0] < d0 < d[-1], (d,d0,symbol)
+    if not (d[0] < d0 < d[-1]):
+        print d, d0, symbol
 
     print '%2s %.3f %+7.1f %%' % (symbol, d0, 100 * (d0 / d[3] - 1))
     
@@ -229,8 +231,5 @@ def make_page(symbol):
 args = sys.argv[1:]
 if len(args) == 0:
     args = parameters.keys()
-    args.remove('Cr')
-    args.remove('Cu')
-    args.remove('Sn')
 for symbol in args:
     make_page(symbol)
