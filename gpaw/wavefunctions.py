@@ -849,7 +849,7 @@ class GridWaveFunctions(WaveFunctions):
     def __init__(self, stencil, *args):
         WaveFunctions.__init__(self, *args)
         # Kinetic energy operator:
-        self.kin = Laplace(self.gd, -0.5, stencil, self.dtype)
+        self.kin = Laplace(self.gd, -0.5, stencil, self.dtype, allocate=False)
         self.set_orthonormalized(False)
         self.overlap = Overlap(self) # Object needed by memory estimate
         # (it has to be overwritten on each initialize() anyway, because of
@@ -866,6 +866,8 @@ class GridWaveFunctions(WaveFunctions):
         self.orthonormalized = flag
 
     def set_positions(self, spos_ac):
+        if not self.kin.allocated:
+            self.kin.allocate()
         WaveFunctions.set_positions(self, spos_ac)
         self.set_orthonormalized(False)
         self.pt.set_positions(spos_ac)
@@ -1132,7 +1134,6 @@ class GridWaveFunctions(WaveFunctions):
         return psit_nG[n][:] # dereference possible tar-file content
 
     def estimate_memory(self, mem):
-        # XXX Laplacian operator?
         gridbytes = self.gd.bytecount(self.dtype)
         mem.subnode('Arrays psit_nG', 
                     len(self.kpt_u) * self.mynbands * gridbytes)
@@ -1141,5 +1142,4 @@ class GridWaveFunctions(WaveFunctions):
                                          self.nbands)
         self.pt.estimate_memory(mem.subnode('Projectors'))
         self.overlap.estimate_memory(mem.subnode('Overlap op'), self.dtype)
-
-
+        self.kin.estimate_memory(mem.subnode('Kinetic operator'))
