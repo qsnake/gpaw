@@ -180,8 +180,22 @@ static PyObject* Transformer_apply(TransformerObject *self, PyObject *args)
   Py_RETURN_NONE;
 }
 
+static PyObject * Transformer_get_async_sizes(TransformerObject *self, PyObject *args)
+{
+  if (!PyArg_ParseTuple(args, ""))
+    return NULL;
+
+#ifdef GPAW_ASYNC
+  return Py_BuildValue("(ii)", 1, GPAW_ASYNC_D);
+#else
+  return Py_BuildValue("(ii)", 0, GPAW_ASYNC_D);
+#endif
+}
+
 static PyMethodDef Transformer_Methods[] = {
     {"apply", (PyCFunction)Transformer_apply, METH_VARARGS, NULL},
+    {"get_async_sizes",
+     (PyCFunction)Transformer_get_async_sizes, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}
 };
 

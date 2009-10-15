@@ -80,6 +80,9 @@ class _Operator:
     def get_diagonal_element(self):
         return self.operator.get_diagonal_element()
 
+    def get_async_sizes(self):
+        return self.operator.get_async_sizes()
+
     def estimate_memory(self, mem):
         bufsize_c = npy.array(self.gd.n_c) + 2 * self.mp
         itemsize = mem.itemsize[self.dtype]

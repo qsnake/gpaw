@@ -79,6 +79,9 @@ class _Transformer:
     def apply(self, input, output, phases=None):
         self.transformer.apply(input, output, phases)
 
+    def get_async_sizes(self):
+        return self.transformer.get_async_sizes()
+
     def estimate_memory(self, mem):
         # Read transformers.c and bc.c for details
         # Notes: estimates are somewhat off, mostly around 100%-110%, but

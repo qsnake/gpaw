@@ -397,6 +397,17 @@ static PyObject * Operator_get_diagonal_element(OperatorObject *self,
   return Py_BuildValue("d", d);
 }
 
+static PyObject * Operator_get_async_sizes(OperatorObject *self, PyObject *args)
+{
+  if (!PyArg_ParseTuple(args, ""))
+    return NULL;
+
+#ifdef GPAW_ASYNC
+  return Py_BuildValue("(iii)", 1, GPAW_ASYNC2, GPAW_ASYNC3);
+#else
+  return Py_BuildValue("(iii)", 0, GPAW_ASYNC2, GPAW_ASYNC3);
+#endif
+}
 
 static PyMethodDef Operator_Methods[] = {
     {"apply",
@@ -405,6 +416,8 @@ static PyMethodDef Operator_Methods[] = {
      (PyCFunction)Operator_relax, METH_VARARGS, NULL},
     {"get_diagonal_element",
      (PyCFunction)Operator_get_diagonal_element, METH_VARARGS, NULL},
+    {"get_async_sizes",
+     (PyCFunction)Operator_get_async_sizes, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}
 
 };
