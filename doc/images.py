@@ -94,8 +94,8 @@ get('performance', 'dacapoperf.png  goldwire.png  gridperf.png'.split(),
 get('documentation/xc', ['phi.dat', 'makephi.tar.gz'], '_static')
 
 # Generate one page for each setup:
-if get('setups', ['setup-images.tar.gz', 'setup-data.pckl'], '_static'):
-    print 'Extracting setup images ...'
-    os.system('tar --directory=_static -xzf _static/setup-images.tar.gz')
+if get('setups', ['setups-data.tar.gz'], '_static'):
+    print 'Extracting setup data ...'
+    os.system('tar --directory=_static -xzf _static/setups-data.tar.gz')
     print 'Generating setup pages ...'
     os.system('cd setups; %s make_setup_pages.py' % executable)

@@ -34,7 +34,7 @@ Convergence tests
 The energy of %(aname)s dimer (`E_d`) and %(aname)s atom (`E_a`) is
 calculated at diferent grid-spacings (`h`).
 
-.. image:: ../_static/%(symbol)s-dimer-eggbox.png
+.. image:: ../_static/setups-data/%(symbol)s-dimer-eggbox.png
 
 
 Setup details
@@ -54,11 +54,11 @@ id   occ  eigenvals       cutoff
 
 Other cutoffs:
 
-====================  =========
-compensation charges  %(rcutcomp).2f Bohr
-filtering             %(rcutfilter).2f Bohr
-core density          %(rcutcore).2f Bohr
-====================  =========
+==========================  =====================
+compensation charges        %(rcutcomp).2f Bohr
+filtering                   %(rcutfilter).2f Bohr
+core density                %(rcutcore).2f Bohr
+==========================  =====================
 
 Energy Contributions:
 
@@ -74,7 +74,7 @@ Total      %(Etot).4f Ha
 Wave functions, projectors, ...
 -------------------------------
 
-.. image:: ../_static/%(symbol)s-setup.png
+.. image:: ../_static/setups-data/%(symbol)s-setup.png
 
 
 
@@ -86,13 +86,11 @@ Back to :ref:`setups`.
 
 def make_page(symbol):
     filename = symbol + '.rst'
-    if os.path.isfile(filename):
-        return
     try:
         data = pickle.load(open(
-            '../_static/setup-data/%s.pckl' % symbol, 'rb'))
+            '../_static/setups-data/%s.pckl' % symbol, 'rb'))
     except EOFError:
-        print symbol
+        print symbol, 'missing!'
         return
 
     Z = atomic_numbers[symbol]
@@ -225,7 +223,7 @@ def make_page(symbol):
     plt.axis(ymin=d * 0.98, ymax=d * 1.02)
     plt.ylabel(u'bond length [Å]')
 
-    plt.savefig(symbol + '-dimer-eggbox.png', dpi=dpi)
+    plt.savefig('../_static/setups-data/%s-dimer-eggbox.png' % symbol, dpi=dpi)
     #plt.show()
 
 args = sys.argv[1:]
