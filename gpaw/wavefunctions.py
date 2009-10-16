@@ -866,7 +866,7 @@ class GridWaveFunctions(WaveFunctions):
         self.orthonormalized = flag
 
     def set_positions(self, spos_ac):
-        if not self.kin.allocated:
+        if not self.kin.is_allocated():
             self.kin.allocate()
         WaveFunctions.set_positions(self, spos_ac)
         self.set_orthonormalized(False)

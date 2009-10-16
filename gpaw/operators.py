@@ -63,10 +63,13 @@ class _Operator:
             self.allocate()
 
     def allocate(self):
-        assert not self.allocated
+        assert not self.is_allocated()
         self.operator = _gpaw.Operator(*self.args)
         self.args = None
         self.allocated = True
+
+    def is_allocated(self):
+        return self.allocated
 
     def apply(self, in_xg, out_xg, phase_cd=None):
         self.operator.apply(in_xg, out_xg, phase_cd)
@@ -94,6 +97,9 @@ class OperatorWrapper:
         self.operator = operator
         self.shape = operator.shape
         self.dtype = operator.dtype
+
+    def is_allocated(self):
+        return self.operator.is_allocated()
 
     def apply(self, in_xg, out_xg, phase_cd=None):
         assert in_xg.shape == out_xg.shape
