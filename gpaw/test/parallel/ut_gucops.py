@@ -201,7 +201,8 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
             self.gamma, self.dtype)
 
         # Choose a sufficiently small width of gaussian test functions
-        self.sigma = 0.1*np.min(np.sum(self.gd.cell_cv**2,axis=1)**0.5)
+        self.sigma = np.min((0.1+0.4*self.gd.pbc_c)*self.gd.cell_c)
+
         if debug and world.rank == 0:
             print 'sigma=%8.5f Ang' % (self.sigma*Bohr), 'cell_c:', self.gd.cell_c*Bohr, 'Ang', 'N_c:', self.gd.N_c
         self.atoms = create_random_atoms(self.gd, 4, 'H', 4*self.sigma)
@@ -250,7 +251,6 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
                 print 'Adding gaussian at a=%d, spos=%s, sigma=%8.5f Ang' % (a,spos_c+sdisp_c,self.sigma*Bohr)
 
             r0_v = np.dot(spos_c+sdisp_c, self.gd.cell_cv)
-            #dr2_G = np.sum((self.r_vG-r0_v[:,np.newaxis,np.newaxis,np.newaxis])**2, axis=0)/self.sigma**4
 
             for myu in range(self.kd.mynks):
                 u = self.kd.global_index(myu)
@@ -258,7 +258,8 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
                 ibzk_v = self.ibzk_kv[k]
 
                 # f(r) = sum_a A exp(-|r-R^a|^2 / 2sigma^2) exp(i k.r)
-                gaussian_wave(self.r_vG, r0_v, self.sigma, ibzk_v, dtype=self.dtype, out_G=buf_G)
+                gaussian_wave(self.r_vG, r0_v, self.sigma, ibzk_v, A=1.0,
+                              dtype=self.dtype, out_G=buf_G)
                 self.wf_uG[myu] += buf_G
 
                 # d^2/dx^2 exp(ikx-(x-x0)^2/2sigma^2)
