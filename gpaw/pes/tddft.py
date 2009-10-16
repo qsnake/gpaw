@@ -180,14 +180,14 @@ class TDDFTPES(BasePES):
     def _create_qnr(self,c,nmax): #[n, spin, kpt, occ?]
         qnr=np.zeros((2 * nmax , 4,), dtype=int)
 
-        if len(c.wfs.kpt_u)==1:
+        if c.get_number_of_spins()==1:
             for j in range(0, 2 * nmax, 2): 
                 qnr[j,0]=j/2
                 qnr[j+1,0]=j/2
                 qnr[j,1]=0
                 qnr[j+1,1]=1
 
-        if len(c.wfs.kpt_u)==2: # Make this properly 
+        if c.get_number_of_spins()==2:
             
             for j in range(nmax):
                 qnr[2*j,0]=j
@@ -202,7 +202,9 @@ class TDDFTPES(BasePES):
                 qnr[2*j+1,3]=-c.wfs.kpt_u[1].f_n[j]
 
             qnr=qnr[qnr[:,3].argsort(),]
-            qnr=np.abs(qnr) # Haha my code is so ugly that its funny... Want to sort but with 1 comming before 0           
+            qnr=np.abs(qnr) # Haha my code is so ugly that its funny... Want to sort but with 1 comming before 0
+            qnr=qnr[qnr[:,0].argsort(),]            
+            
             if 2*nmax>(c.wfs.kpt_u[1].f_n+c.wfs.kpt_u[0].f_n).sum():
                 qnr_empty=qnr[int((c.wfs.kpt_u[1].f_n+c.wfs.kpt_u[0].f_n).sum()):,:]
                 qnr_empty=qnr_empty[qnr_empty[:,0].argsort(),]
