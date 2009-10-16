@@ -55,7 +55,8 @@ if __name__ == '__main__':
     # Rev  383: 08/28/06 08:21:40  gridpaw -> gpaw
     # Rev  887: 07/11/07 10:33:37  libxc introduced
     # Rev 2050: 06/20/08 09:54:24  /doc in svn
-
+    # Rev 5020: 09/28/09 14:43:03  /test starts moving to /gpaw/test
+    
     # Check if stat file already exists, and stat from last checked day
     if os.path.isfile('stat.dat'):
         date1 = int(os.popen('tail -1 stat.dat','r').read().split()[0]) + 1
@@ -86,6 +87,7 @@ if __name__ == '__main__':
         py = count('temp-gpaw/gridpaw', '\*.py')
         py += count('temp-gpaw/gpaw', '\*.py')
         test = count('temp-gpaw/test', '\*.py')
+        test += count('temp-gpaw/gpaw/test', '\*.py')
         doc = count('temp-gpaw/doc', '\*.py -or -name \*.rst')
 
         # Clean up
