@@ -3,6 +3,9 @@ import os
 import sys
 import pickle
 
+import matplotlib
+matplotlib.use('Agg')
+
 import numpy as np
 from ase.data import atomic_numbers, atomic_names
 from ase.atoms import string2symbols
