@@ -387,7 +387,7 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
                 abserr[:] = np.abs(self.psit_nG[myn] - res_nG[myn]).max()
                 self.gd.comm.max(abserr)
             self.bd.comm.broadcast(abserr, band_rank)
-            self.assertAlmostEqual(abserr.item(), 0, 12)
+            self.assertAlmostEqual(abserr.item(), 0, 11)
 
         self.check_and_plot(P_ani, P0_ani, 12, 'overlap,inverse,after')
 
@@ -422,7 +422,7 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
                 abserr[:] = np.abs(self.psit_nG[myn] - res_nG[myn]).max()
                 self.gd.comm.max(abserr)
             self.bd.comm.broadcast(abserr, band_rank)
-            self.assertAlmostEqual(abserr.item(), 0, 12)
+            self.assertAlmostEqual(abserr.item(), 0, 11)
 
         self.check_and_plot(P_ani, P0_ani, 12, 'overlap,inverse,before')
 
