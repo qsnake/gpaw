@@ -258,13 +258,35 @@ class Transport_Analysor:
         vt = aa1d(vt_sG[0]) * Hartree
         #nt = nt_sG[0, dim1 / 2, dim2 / 2]
         #vt = vt_sG[0, dim1 / 2, dim2 / 2] * Hartree
+        if gd.comm.rank == 0:
+            nt1 = aa1d(tp.surround.sides['-'].boundary_nt_sG[0])
+            nt2 = aa1d(tp.surround.sides['+'].boundary_nt_sG[0])
+        else:
+            nt1 = np.zeros(tp.surround.sides['-'].N_c[2])
+            nt2 = np.zeros(tp.surround.sides['+'].N_c[2])
+        gd.comm.broadcast(nt1, 0)
+        gd.comm.broadcast(nt2, 0)        
+        
+        nt = np.append(nt1, nt)
+        nt = np.append(nt, nt2)
 
         gd = tp.finegd
         rhot_g = gd.empty(tp.nspins, global_array=True)
         rhot_g = gd.collect(tp.density.rhot_g, True)
         #dim1, dim2 = rhot_g.shape[:2]
         #rho = rhot_g[dim1 / 2, dim2 / 2]
+        if gd.comm.rank == 0:
+            rho1 = tp.surround.sides['-'].boundary_rhot_g_line
+            rho2 = tp.surround.sides['+'].boundary_rhot_g_line
+        else:
+            rho1 = np.zeros(tp.surround.sides['-'].N_c[2] * 2)
+            rho2 = np.zeros(tp.surround.sides['+'].N_c[2] * 2)
+        gd.comm.broadcast(rho1, 0)
+        gd.comm.broadcast(rho2, 0)            
+            
         rho = aa1d(rhot_g)
+        rho = np.append(rho1, rho)
+        rho = np.append(rho, rho2)
         
         gd = finegd
         vHt_g = gd.collect(calc.hamiltonian.vHt_g, True)
@@ -896,6 +918,7 @@ class Transport_Plotter:
             else:
                 self.ele_steps = data
         fd.close()
+        self.my_options = False
 
     def plot_setup(self):
         from matplotlib import rcParams
@@ -904,10 +927,45 @@ class Transport_Plotter:
         rcParams['legend.fontsize'] = 18
         rcParams['axes.titlesize'] = 18
         rcParams['axes.labelsize'] = 18
-
+   
     def set_default_options(self):
-        pass
-        
+        self.xlabel = []
+        self.ylabel = []
+        self.legend = []
+        self.title = []
+
+    def set_my_options(self, xlabel=None, ylabel=None, legend=None, title=None):
+        self.xlabel = xlabel
+        self.ylabel = ylabel
+        self.legend = legend
+        self.title = title
+        self.my_options = True
+            
+    def set_options(self, xlabel=None, ylabel=None, legend=None, title=None):
+        if self.my_options:
+            pass
+        else:
+            self.xlabel = xlabel
+            self.ylabel = ylabel
+            self.legend = legend
+            self.title = title
+      
+    def show(self, p, option='default'):
+        if option == None:
+            p.show()
+        elif option == 'default':
+            if self.legend != None:
+                p.legend(self.legend)
+            if self.xlabel != None:
+                p.xlabel(self.xlabel)
+            if self.ylabel != None:
+                p.ylabel(self.ylabel)
+            if self.title != None:
+                p.title(self.title)
+            p.show()
+        else:
+            pass
+    
     def set_ele_steps(self, n_ion_step=None, n_bias_step=0):
         if n_ion_step != None:
             self.bias_steps = self.ion_steps[n_ion_step].bias_steps
@@ -993,11 +1051,11 @@ class Transport_Plotter:
                 else:
                     p.plot(xdata, ydata)
                 legends.append('step' + str(step.ele_step))
-        p.title(title)
-        p.legend(legends)
+        self.set_options(None, None, legends, title)
         if height != None:
             p.axis([xdata[0], xdata[-1], 0, height])
-        p.show()
+        #p.show()
+        self.show(p)
 
     def plot_bias_step_info(self, info, steps_indices, s, k,
                                             height=None, unit=None,
@@ -1073,14 +1131,11 @@ class Transport_Plotter:
                     p.plot(xdata, ydata, flags[0], f1, l1, flags[1],
                                                              f2, l1, flags[1])
                 legends.append('step' + str(step.bias_step))
-        p.title(title)
-        p.xlabel(xlabel)
-        p.ylabel(ylabel)
-        p.legend(legends)
+        self.set_options(xlabel, ylabel, legends, title)
         if height != None:
             p.axis([xdata[0], xdata[-1], 0, height])
         if show:
-            p.show()
+            self.show(p)
 
     def compare_ele_step_info(self, info, steps_indices, s, k, height=None,
                                                                    unit=None):
@@ -1134,11 +1189,10 @@ class Transport_Plotter:
         
         legends.append('step' + str(steps_indices[1]) +
                        'minus step' + str(steps_indices[0]))
-        p.title(title)
-        p.legend(legends)
+        self.set_options(None, None, legends, title)
         if height != None:
             p.axis([xdata[0], xdata[-1], 0, height])
-        p.show()
+        self.show(p)
 
     def compare_bias_step_info(self, info, steps_indices, s, k,
                                height=None, unit=None):
@@ -1214,13 +1268,10 @@ class Transport_Plotter:
         
         legends.append('step' + str(steps_indices[1]) +
                        'minus step' + str(steps_indices[0]))
-        p.title(title)
-        p.xlabel(xlabel)
-        p.ylabel(ylabel)
-        p.legend(legends)
+        self.set_options(xlabel, ylabel, legends, title)
         if height != None:
             p.axis([xdata[0], xdata[-1], 0, height])
-        p.show()
+        self.show(p)
 
     def show_bias_step_info(self, info, steps_indices, s, dense_level=0, shrink=1.0):
         import pylab as p
@@ -1245,9 +1296,9 @@ class Transport_Plotter:
                         zdata = interpolate_2d(zdata)
                 p.matshow(zdata)
                 #p.pcolor(xdata, ydata, zdata)
-                p.title(title)
+                self.set_options(None, None, None, title)
                 p.colorbar(shrink=shrink)
-                p.show()
+                self.show(p)
 
     def plot_current(self, au=True, spinpol=False, dense_level=0):
         bias = []
@@ -1267,9 +1318,6 @@ class Transport_Plotter:
             current *= unit
             ylabel = 'Current($\mu$A)'
         p.plot(bias, current, self.flags[0])
-        p.xlabel('Bias(V)')
-        p.ylabel(ylabel)
-        p.show()
         
         if dense_level != 0:
             from scipy import interpolate
@@ -1278,9 +1326,8 @@ class Transport_Plotter:
             newbias = np.linspace(bias[0], bias[-1], numb * (dense_level + 1))
             newcurrent = interpolate.splev(newbias, tck, der=0)
             p.plot(newbias, newcurrent, self.flags[0])
-            p.xlabel('Bias(V)')
-            p.ylabel(ylabel)
-            p.show()
+        self.set_options('Bias(V)', ylabel)
+        self.show(p)
 
     def plot_didv(self, au=True, spinpol=False, dense_level=0):
         bias = []
@@ -1308,9 +1355,8 @@ class Transport_Plotter:
             ylabel = 'dI/dV(au.)'            
 
         p.plot(newbias[:-1], np.diff(newcurrent), self.flags[0])
-        p.xlabel('Bias(V)')
-        p.ylabel(ylabel)
-        p.show()
+        self.set_options('Bias(V)', ylabel)
+        self.show(p)
 
     def plot_tvs_curve(self, spinpol=False, dense_level=0):
         bias = []
@@ -1334,9 +1380,8 @@ class Transport_Plotter:
         ydata = np.log(abs(newcurrent[1:]) / (newbias[1:] * newbias[1:]))
         xdata = 1 / newbias[1:]
         p.plot(xdata, ydata, self.flags[0])
-        p.xlabel('1/V')
-        p.ylabel(ylabel)
-        p.show()        
+        self.set_options('1/V', ylabel)
+        self.show(p)      
            
     def compare_ele_step_info2(self, info, steps_indices, s, dense_level=0):
         import pylab as p
@@ -1352,10 +1397,11 @@ class Transport_Plotter:
         data1 = 's' + str(s[1]) + info        
         ydata = eval("step0.dv['" + data0 + "']") - eval("step1.dv['" + data1 + "']")
         p.matshow(ydata)
-        p.title(title)
+        self.set_options(None, None, None, title)
+        self.show(p)
         p.colorbar()
         #p.legend([str(steps_indices[0]) + '-' + str(steps_indices[0])])
-        p.show()
+        self.show(p)
         
     def compare_bias_step_info2(self, info, steps_indices, s, shrink=1.0, dense_level=0):
         import pylab as p
@@ -1376,10 +1422,10 @@ class Transport_Plotter:
             for i in range(dl):
                 ydata = interpolate_2d(ydata) 
         p.matshow(ydata)
-        p.title(title)
+        self.set_options(None, None, None, title)
         p.colorbar(shrink=shrink)
         #p.legend([str(steps_indices[0]) + '-' + str(steps_indices[0])])
-        p.show()        
+        self.show(p)        
              
     def set_cmp_step0(self, ele_step, bias_step=None):
         if bias_step == None:
@@ -1433,8 +1479,8 @@ class Transport_Plotter:
         else:
             p.plot(xdata, ydata1 - ydata0)
 
-        p.title(title)
-        p.show()
+        self.set_options(None, None, None, title)
+        self.show(p)
 
 
 
