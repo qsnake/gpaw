@@ -29,7 +29,7 @@ class IntCtrl:
             self.envfermi.append(efermi + env_bias[i])
         self.minfermi = min(self.leadfermi + self.envfermi)
         self.maxfermi = max(self.leadfermi + self.envfermi)
-        self.eqinttol = 1e-4
+        self.eqinttol = 1e-5
         self.kttol = 1e-5
         self.biastol = 1e-10
         
