@@ -1,5 +1,6 @@
 from ase import Hartree
 import numpy as np
+from gpaw.transport.tools import aa1d
 
 def collect_D_asp(density):
     all_D_asp = []
@@ -87,7 +88,7 @@ class Side:
             self.boundary_vHt_g = self.slice(nn, vHt_g)
             self.boundary_vt_sg_line = self.slice(nn, vt_sg[:, d1 * 2, d2 * 2])
             self.boundary_nt_sg = self.slice(nn, nt_sg)        
-            self.boundary_rhot_g_line = self.slice(nn, rhot_g[d1 * 2, d2 * 2])
+            self.boundary_rhot_g_line = aa1d(rhot_g)
             nn /= 2
             self.boundary_vt_sG = self.slice(nn, vt_sG)
             self.boundary_nt_sG = self.slice(nn, nt_sG)
