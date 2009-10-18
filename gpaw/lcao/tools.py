@@ -152,6 +152,7 @@ def remove_pbc(atoms, h, s=None, d=0, centers_ic=None, cutoff=None):
                        'spin/kpoint seperately.')
     L = atoms.cell[d, d]
     nao = len(h)
+    dtype = h.dtype
     if centers_ic is None:
         centers_ic = get_bf_centers(atoms) # requires an attached LCAO calc
     ni = len(centers_ic)
@@ -166,7 +167,7 @@ def remove_pbc(atoms, h, s=None, d=0, centers_ic=None, cutoff=None):
     pos_i = centers_ic[:, d]
     for i in range(nao):
         dpos_i = abs(pos_i - pos_i[i])
-        mask_i = (dpos_i < cutoff).astype(int)
+        mask_i = (dpos_i < cutoff).astype(dtype)
         h[i, :] *= mask_i
         h[:, i] *= mask_i
         if s != None:
@@ -259,7 +260,6 @@ def dump_hamiltonian_parallel(filename, atoms, direction=None):
         fd = file(filename+'%i.pckl' % wfs.kpt_comm.rank, 'wb')
         H_qMM *= Hartree
         pickle.dump((H_qMM, S_qMM),fd , 2)
-        calc_data
         pickle.dump(calc_data, fd, 2) 
         fd.close()
 
