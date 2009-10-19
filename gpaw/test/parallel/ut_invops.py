@@ -20,6 +20,7 @@ from gpaw.parameters import InputParameters
 from gpaw.xc_functional import XCFunctional
 from gpaw.setup import Setups
 from gpaw.wavefunctions import GridWaveFunctions, WaveFunctions
+from gpaw.operators import Laplace # required but not really used
 from gpaw.pair_overlap import GridPairOverlap, ProjectorPairOverlap
 
 # -------------------------------------------------------------------
@@ -107,7 +108,7 @@ class GDWFS(GridWaveFunctions):
         assert kpt_comm.size == 1
         WaveFunctions.__init__(self, gd, 1, setups, bd, dtype, world, \
             kpt_comm, True, [None], [None], [1.], None)
-        self.kin = None
+        self.kin = Laplace(gd, -0.5, dtype=dtype, allocate=False)
         self.overlap = None
         self.rank_a = None
 
