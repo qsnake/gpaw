@@ -291,11 +291,32 @@ Publications using the gpaw code
 
    `Characterization of Iron-Carbonyl-Protected Gold Clusters`__
 
-   Journal of the American Chemical Society, (2009)
+   Journal of the American Chemical Society, Vol. **131**, 12573 (2009)
 
    __ http://dx.doi.org/10.1021/ja905182g
 
    .. 14 August 2009
+
+#) Michael Walter and Michael Moseler
+
+   `Ligand protected gold alloy clusters: doping the superatom`__
+
+   Journal of Physical Chemistry C **113**, 15834 (2009)
+
+   __ http://pubs.acs.org/doi/abs/10.1021/jp9023298
+
+   .. 17 August 2009
+
+#) Engelbert Redel, Michael Walter, Ralf Thomann, Christian Vollmer, 
+   Laith Hussein, Harald Scherer, Michael Krüger and Christoph Janiak
+
+   `Synthesis, stabilization, functionalization and DFT calculations of gold nanoparticles in fluorous phases (PTFE and ILs)`__
+
+   Chem. Eur. J. **15**, 10047 (2009)
+
+   __ http://www3.interscience.wiley.com/journal/122564324/abstract
+
+   .. 20 August 2009
 
 #) Jiří Klimeš, David R. Bowler, and Angelos Michaelides
 
