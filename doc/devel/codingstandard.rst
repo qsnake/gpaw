@@ -22,5 +22,6 @@ Code C in the C99 style::
 
 and try to follow PEP7_.
 
+Use **M-x c++-mode** in emacs.
 
 .. _PEP7: http://www.python.org/dev/peps/pep-0007

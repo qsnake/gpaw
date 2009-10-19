@@ -387,6 +387,30 @@ class XCFunctional:
         if self.timer is not None:
             self.timer.stop('Local xc')
 
+    def calculate_fxc_spinpaired(self, n_g, dvdn_g, a2_g=None,
+                                 dvdnda2_g=None, dvda2da2_g=None):
+        if self.timer is not None:
+            self.timer.start('Local fxc')
+        if self.gga:
+            self.xc.calculate_fxc_spinpaired(n_g, dvdn_g, a2_g,
+                                             dvdnda2_g, dvda2da2_g)
+        else:
+            self.xc.calculate_fxc_spinpaired(n_g, dvdn_g)
+        if self.timer is not None:
+            self.timer.stop('Local fxc')
+
+    def calculate_fxc_fd_spinpaired(self, n_g, dvdn_g, a2_g=None,
+                                 dvdnda2_g=None, dvda2da2_g=None):
+        if self.timer is not None:
+            self.timer.start('Local fxc fd')
+        if self.gga:
+            self.xc.calculate_fxc_fd_spinpaired(n_g, dvdn_g, a2_g,
+                                             dvdnda2_g, dvda2da2_g)
+        else:
+            self.xc.calculate_fxc_fd_spinpaired(n_g, dvdn_g)
+        if self.timer is not None:
+            self.timer.stop('Local fxc fd')
+
     def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g,
                                a2_g=None, aa2_g=None, ab2_g=None,
                                deda2_g=None, dedaa2_g=None, dedab2_g=None,

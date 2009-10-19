@@ -45,6 +45,12 @@
 // dEdtau = ---------
 //           d(tau)
 //
+//                                  2
+//                                 d E
+// fxc_{\alpha \beta} =  -----------------------
+//                        dn_{\alpha}dn_{\beta}
+//
+
 
 typedef struct {
   int family; /* used very often, so declared redundantly here */
@@ -58,9 +64,19 @@ typedef struct {
 typedef struct
 {
   PyObject_HEAD
-  void (*get_point_xc)(functionals_type *func, double point[7], double *e, double der[7]);
-  void (*get_point_x)(functionals_type *func, double point[7], double *e, double der[7]);
-  void (*get_point_c)(functionals_type *func, double point[7], double *e, double der[7]);
+  /* see http://www.tddft.org/programs/octopus/wiki/index.php/Libxc:manual#Evaluation */
+  /* exchange-correlation energy and derivatives */
+  void (*get_vxc_xc)(functionals_type *func, double point[7], double *e, double der[7]);
+  void (*get_vxc_x)(functionals_type *func, double point[7], double *e, double der[7]);
+  void (*get_vxc_c)(functionals_type *func, double point[7], double *e, double der[7]);
+  /* exchange-correlation energy second derivatives */
+  void (*get_fxc_xc)(functionals_type *func, double point[7], double der[5][5]);
+  void (*get_fxc_x)(functionals_type *func, double point[7], double der[5][5]);
+  void (*get_fxc_c)(functionals_type *func, double point[7], double der[5][5]);
+  /* exchange-correlation energy second derivatives - finite difference */
+  void (*get_fxc_fd_xc)(functionals_type *func, double point[7], double der[5][5]);
+  void (*get_fxc_fd_x)(functionals_type *func, double point[7], double der[5][5]);
+  void (*get_fxc_fd_c)(functionals_type *func, double point[7], double der[5][5]);
   functionals_type xc_functional;
   functionals_type x_functional;
   functionals_type c_functional;
@@ -69,25 +85,243 @@ typedef struct
 } lxcXCFunctionalObject;
 
 /* a general call for an LDA functional */
-void get_point_lda(functionals_type *func, double point[7], double *e, double der[7])
+void get_vxc_lda(functionals_type *func, double point[7], double *e, double der[7])
 {
 /*   XC(lda_vxc)(&(func->lda_func), &(point[0]), e, &(der[0])); */
   XC(lda_vxc)(&(func->lda_func), point, e, der);
 }
 
 /* a general call for a GGA functional */
-void get_point_gga(functionals_type *func, double point[7], double *e, double der[7])
+void get_vxc_gga(functionals_type *func, double point[7], double *e, double der[7])
 {
   XC(gga_vxc)(&(func->gga_func), &(point[0]), &(point[2]),
               e, &(der[0]), &(der[2]));
 }
 
 /* a general call for a MGGA functional */
-void get_point_mgga(functionals_type *func, double point[7], double *e, double der[7])
+void get_vxc_mgga(functionals_type *func, double point[7], double *e, double der[7])
 {
 
-	XC(mgga)(&(func->mgga_func), &(point[0]), &(point[2]), &(point[5]), 
-			e, &(der[0]), &(der[2]),  &(der[5])); 
+  XC(mgga)(&(func->mgga_func), &(point[0]), &(point[2]), &(point[5]),
+           e, &(der[0]), &(der[2]),  &(der[5]));
+}
+
+/* a general call for an LDA functional */
+void get_fxc_lda(functionals_type *func, double point[7], double der[5][5])
+{
+  double v2rho2[3], v2rhosigma[6], v2sigma2[6];
+
+  for(int i=0; i<3; i++) v2rho2[i] = 0.0;
+  for(int i=0; i<6; i++){
+    v2rhosigma[i] = 0.0;
+    v2sigma2[i]    = 0.0;
+  }
+  XC(lda_fxc)(&(func->lda_func), point, v2rho2);
+  der[0][0] = v2rho2[0];
+  der[0][1] = der[1][0] = v2rho2[1];
+  der[1][1] = v2rho2[2];
+  der[0][2] = der[2][0] = v2rhosigma[0];
+  der[0][3] = der[3][0] = v2rhosigma[1];
+  der[0][4] = der[4][0] = v2rhosigma[2];
+  der[1][2] = der[2][1] = v2rhosigma[3];
+  der[1][3] = der[3][1] = v2rhosigma[4];
+  der[1][4] = der[4][1] = v2rhosigma[5];
+  der[2][2] = v2sigma2[0];
+  der[2][3] = der[3][2] = v2sigma2[1];
+  der[2][4] = der[4][2] = v2sigma2[2];
+  der[3][3] = v2sigma2[3];
+  der[3][4] = der[4][3] = v2sigma2[4];
+  der[4][4] = v2sigma2[5];
+}
+
+/* a general call for a GGA functional */
+void get_fxc_gga(functionals_type *func, double point[7], double der[5][5])
+{
+  double v2rho2[3], v2rhosigma[6], v2sigma2[6];
+
+  for(int i=0; i<3; i++) v2rho2[i] = 0.0;
+  for(int i=0; i<6; i++){
+    v2rhosigma[i] = 0.0;
+    v2sigma2[i]    = 0.0;
+  }
+  XC(gga_fxc)(&(func->gga_func), &(point[0]), &(point[2]),
+              v2rho2, v2rhosigma, v2sigma2);
+  der[0][0] = v2rho2[0];
+  der[0][1] = der[1][0] = v2rho2[1];
+  der[1][1] = v2rho2[2];
+  der[0][2] = der[2][0] = v2rhosigma[0];
+  der[0][3] = der[3][0] = v2rhosigma[1];
+  der[0][4] = der[4][0] = v2rhosigma[2];
+  der[1][2] = der[2][1] = v2rhosigma[3];
+  der[1][3] = der[3][1] = v2rhosigma[4];
+  der[1][4] = der[4][1] = v2rhosigma[5];
+  der[2][2] = v2sigma2[0];
+  der[2][3] = der[3][2] = v2sigma2[1];
+  der[2][4] = der[4][2] = v2sigma2[2];
+  der[3][3] = v2sigma2[3];
+  der[3][4] = der[4][3] = v2sigma2[4];
+  der[4][4] = v2sigma2[5];
+}
+
+/* a general call for an LDA functional - finite difference */
+void get_fxc_fd_lda(functionals_type *func, double point[7], double der[5][5])
+{
+  double v2rho2[3], v2rhosigma[6], v2sigma2[6];
+
+  for(int i=0; i<3; i++) v2rho2[i] = 0.0;
+  for(int i=0; i<6; i++){
+    v2rhosigma[i] = 0.0;
+    v2sigma2[i]    = 0.0;
+  }
+  XC(lda_fxc_fd)(&(func->lda_func), point, v2rho2);
+  der[0][0] = v2rho2[0];
+  der[0][1] = der[1][0] = v2rho2[1];
+  der[1][1] = v2rho2[2];
+  der[0][2] = der[2][0] = v2rhosigma[0];
+  der[0][3] = der[3][0] = v2rhosigma[1];
+  der[0][4] = der[4][0] = v2rhosigma[2];
+  der[1][2] = der[2][1] = v2rhosigma[3];
+  der[1][3] = der[3][1] = v2rhosigma[4];
+  der[1][4] = der[4][1] = v2rhosigma[5];
+  der[2][2] = v2sigma2[0];
+  der[2][3] = der[3][2] = v2sigma2[1];
+  der[2][4] = der[4][2] = v2sigma2[2];
+  der[3][3] = v2sigma2[3];
+  der[3][4] = der[4][3] = v2sigma2[4];
+  der[4][4] = v2sigma2[5];
+}
+
+// finite difference calculation of second functional derivative
+// stolen from libxc/testsuite/xc-consistency.c
+
+double get_point(functionals_type *func, double point[7], double *e, double der[5], int which)
+{
+  switch(func->family)
+    {
+    case XC_FAMILY_LDA:
+      xc_lda_vxc(&(func->lda_func), &(point[0]), e, &(der[0]));
+      break;
+    case XC_FAMILY_GGA:
+      xc_gga_vxc(&(func->gga_func), &(point[0]), &(point[2]),
+                 e, &(der[0]), &(der[2]));
+      break;
+    }
+
+  if(which == 0)
+    return (*e)*(point[0] + point[1]);
+  else
+    return der[which-1];
+}
+
+void first_derivative(functionals_type *func, double point[7], double der[5], int which,
+                      int nspin)
+{
+  int i;
+
+  for(i=0; i<5; i++){
+    const double delta = 5e-10;
+
+    double dd, p[5], v[5];
+    int j;
+
+    if(nspin==1 && (i!=0 && i!=2)){
+      der[i] = 0.0;
+      continue;
+    }
+
+    dd = point[i]*delta;
+    if(dd < delta) dd = delta;
+
+    for(j=0; j<5; j++) p[j] = point[j];
+
+    if(point[i]>=3.0*dd){ /* centered difference */
+      double e, em1, em2, ep1, ep2;
+
+      p[i] = point[i] + dd;
+      ep1 = get_point(func, p, &e, v, which);
+
+      p[i] = point[i] + 2*dd;
+      ep2 = get_point(func, p, &e, v, which);
+
+      p[i] = point[i] - dd;  /* backward point */
+      em1 = get_point(func, p, &e, v, which);
+
+      p[i] = point[i] - 2*dd;  /* backward point */
+      em2 = get_point(func, p, &e, v, which);
+
+      der[i]  = 1.0/2.0*(ep1 - em1);
+      der[i] += 1.0/12.0*(em2 - 2*em1 + 2*ep1 - ep2);
+
+      der[i] /= dd;
+
+    }else{  /* we use a 5 point forward difference */
+      double e, e1, e2, e3, e4, e5;
+
+      p[i] = point[i];
+      e1 = get_point(func, p, &e, v, which);
+
+      p[i] = point[i] + dd;
+      e2 = get_point(func, p, &e, v, which);
+
+      p[i] = point[i] + 2.0*dd;
+      e3 = get_point(func, p, &e, v, which);
+
+      p[i] = point[i] + 3.0*dd;
+      e4 = get_point(func, p, &e, v, which);
+
+      p[i] = point[i] + 4.0*dd;
+      e5 = get_point(func, p, &e, v, which);
+
+      der[i]  =          (-e1 + e2);
+      der[i] -=  1.0/2.0*( e1 - 2*e2 + e3);
+      der[i] +=  1.0/3.0*(-e1 + 3*e2 - 3*e3 + e4);
+      der[i] -=  1.0/4.0*( e1 - 4*e2 + 6*e3 - 4*e4 + e5);
+
+      der[i] /= dd;
+    }
+  }
+}
+
+void first_derivative_spinpaired(functionals_type *func, double point[7], double der[5],
+                                 int which)
+{
+  first_derivative(func, point, der, which, XC_UNPOLARIZED);
+}
+
+void first_derivative_spinpolarized(functionals_type *func, double point[7], double der[5],
+                                    int which)
+{
+  first_derivative(func, point, der, which, XC_POLARIZED);
+}
+
+void second_derivatives_spinpaired(functionals_type *func, double point[7], double der[5][5])
+{
+  int i;
+
+  for(i=0; i<5; i++){
+    first_derivative_spinpaired(func, point, der[i], i+1);
+  }
+}
+
+void second_derivatives_spinpolarized(functionals_type *func, double point[7], double der[5][5])
+{
+  int i;
+
+  for(i=0; i<5; i++){
+    first_derivative_spinpolarized(func, point, der[i], i+1);
+  }
+}
+
+/* a general call for a functional - finite difference */
+void get_fxc_fd_spinpaired(functionals_type *func, double point[7], double der[5][5])
+{
+  second_derivatives_spinpaired(func, point, der);
+}
+
+/* a general call for a functional - finite difference */
+void get_fxc_fd_spinpolarized(functionals_type *func, double point[7], double der[5][5])
+{
+  second_derivatives_spinpolarized(func, point, der);
 }
 
 static void lxcXCFunctional_dealloc(lxcXCFunctionalObject *self)
@@ -112,7 +346,7 @@ static void lxcXCFunctional_dealloc(lxcXCFunctionalObject *self)
   switch(self->x_functional.family)
     {
     case XC_FAMILY_LDA:
-       /*XC(lda_end)(&(self->x_functional.lda_func)); */
+      /*XC(lda_end)(&(self->x_functional.lda_func)); */
       break;
     case XC_FAMILY_GGA:
       XC(gga_end)(&(self->x_functional.gga_func));
@@ -127,7 +361,7 @@ static void lxcXCFunctional_dealloc(lxcXCFunctionalObject *self)
   switch(self->c_functional.family)
     {
     case XC_FAMILY_LDA:
-/*      XC(lda_end)(&(self->c_functional.lda_func)); */
+      /*      XC(lda_end)(&(self->c_functional.lda_func)); */
       break;
     case XC_FAMILY_GGA:
       XC(gga_end)(&(self->c_functional.gga_func));
@@ -160,9 +394,9 @@ lxcXCFunctional_is_mgga(lxcXCFunctionalObject *self, PyObject *args)
   int success = 0; /* assume functional is not MGGA */
 
   /* any of xc x c can be mgga */
-  if (self->xc_functional.family == XC_FAMILY_MGGA) success = XC_FAMILY_MGGA; 
-  if (self->x_functional.family == XC_FAMILY_MGGA) success = XC_FAMILY_MGGA; 
-  if (self->c_functional.family == XC_FAMILY_MGGA) success = XC_FAMILY_MGGA; 
+  if (self->xc_functional.family == XC_FAMILY_MGGA) success = XC_FAMILY_MGGA;
+  if (self->x_functional.family == XC_FAMILY_MGGA) success = XC_FAMILY_MGGA;
+  if (self->c_functional.family == XC_FAMILY_MGGA) success = XC_FAMILY_MGGA;
 
   return Py_BuildValue("i", success);
 }
@@ -173,7 +407,7 @@ lxcXCFunctional_CalculateSpinPaired(lxcXCFunctionalObject *self, PyObject *args)
   PyArrayObject* e_array;             /* energy per particle*/
   PyArrayObject* n_array;             /* rho */
   PyArrayObject* v_array;             /* dE/drho */
-  PyArrayObject* a2_array = 0;         /* |nabla rho|^2*/ 
+  PyArrayObject* a2_array = 0;         /* |nabla rho|^2*/
   PyArrayObject* dEda2_array = 0;      /* dE/d|nabla rho|^2 */
   PyArrayObject* tau_array = 0;        /* tau*/
   PyArrayObject* dEdtau_array = 0;     /* dE/dtau */
@@ -210,9 +444,9 @@ lxcXCFunctional_CalculateSpinPaired(lxcXCFunctionalObject *self, PyObject *args)
       (self->c_functional.family == XC_FAMILY_MGGA))
     {
       a2_g = DOUBLEP(a2_array);
-      tau_g = DOUBLEP(tau_array); 
+      tau_g = DOUBLEP(tau_array);
       dEda2_g = DOUBLEP(dEda2_array);
-      dEdtau_g = DOUBLEP(dEdtau_array); 
+      dEdtau_g = DOUBLEP(dEdtau_array);
     }
 
   assert (self->xc_functional.family == XC_FAMILY_UNKNOWN); /* MDTMP not implemented */
@@ -221,13 +455,13 @@ lxcXCFunctional_CalculateSpinPaired(lxcXCFunctionalObject *self, PyObject *args)
   switch(self->x_functional.family)
     {
     case XC_FAMILY_LDA:
-      self->get_point_x = get_point_lda;
+      self->get_vxc_x = get_vxc_lda;
       break;
     case XC_FAMILY_GGA:
-      self->get_point_x = get_point_gga;
+      self->get_vxc_x = get_vxc_gga;
       break;
     case XC_FAMILY_MGGA:
-      self->get_point_x = get_point_mgga;
+      self->get_vxc_x = get_vxc_mgga;
       break;
 /*     default: */
 /*       printf("lxcXCFunctional_CalculateSpinPaired: exchange functional '%d' not found\n", */
@@ -237,13 +471,13 @@ lxcXCFunctional_CalculateSpinPaired(lxcXCFunctionalObject *self, PyObject *args)
   switch(self->c_functional.family)
     {
     case XC_FAMILY_LDA:
-      self->get_point_c = get_point_lda;
+      self->get_vxc_c = get_vxc_lda;
       break;
     case XC_FAMILY_GGA:
-      self->get_point_c = get_point_gga;
+      self->get_vxc_c = get_vxc_gga;
       break;
     case XC_FAMILY_MGGA:
-      self->get_point_c = get_point_mgga;
+      self->get_vxc_c = get_vxc_mgga;
       break;
 /*     default: */
 /*       printf("lxcXCFunctional_CalculateSpinPaired: correlation functional '%d' not found\n", */
@@ -254,30 +488,28 @@ lxcXCFunctional_CalculateSpinPaired(lxcXCFunctionalObject *self, PyObject *args)
     {
       double n = n_g[g];
       if (n < NMIN)
-	      n = NMIN;
+        n = NMIN;
       double a2 = 0.0; /* initialize for lda */
       if ((self->x_functional.family == XC_FAMILY_GGA) ||
 	  (self->c_functional.family == XC_FAMILY_GGA))
 	{
 	  a2 = a2_g[g];
-    }
-	  double tau = 0.0;
-	  if ((self->x_functional.family == XC_FAMILY_MGGA) ||
-	         (self->c_functional.family == XC_FAMILY_MGGA))
-	  {
-		  a2 = a2_g[g];
-
-		  tau = tau_g[g];
-
-	  }
+        }
+      double tau = 0.0;
+      if ((self->x_functional.family == XC_FAMILY_MGGA) ||
+          (self->c_functional.family == XC_FAMILY_MGGA))
+        {
+          a2 = a2_g[g];
+          tau = tau_g[g];
+        }
       double dExdn = 0.0;
       double dExda2 = 0.0;
       double ex  = 0.0;
       double dEcdn = 0.0;
       double dEcda2 = 0.0;
       double ec = 0.0;
-	  double dExdtau=0.0;  
-	  double dEcdtau=0.0;  
+      double dExdtau=0.0;
+      double dEcdtau=0.0;
 
       double point[7]; /* generalized point */
       // from http://www.tddft.org/programs/octopus/wiki/index.php/Libxc:manual
@@ -293,36 +525,35 @@ lxcXCFunctional_CalculateSpinPaired(lxcXCFunctionalObject *self, PyObject *args)
       // {\rm vsigma}_{\alpha} = \frac{\partial E}{\partial \sigma_\alpha}
       // {\rm dedtau}_{\alpha} = \frac{\partial E}{\partial \tau_\alpha}
 
-      for(int j=0; j<7; j++) 
-	  {
-		  point[j] = derivative_x[j] = derivative_c[j] = 0.0;
-      }
+      for(int j=0; j<7; j++)
+        {
+          point[j] = derivative_x[j] = derivative_c[j] = 0.0;
+        }
 
-	  point[0] = n;   /* -> rho */
+      point[0] = n;   /* -> rho */
       point[2] = a2;  /* -> sigma */
       point[5] = tau; /* -> tau */
-	  
-	
+
       /* calculate exchange */
       if (self->x_functional.family != XC_FAMILY_UNKNOWN) {
-		  self->get_point_x(&(self->x_functional), point, &ex, derivative_x);
-		  dExdn = derivative_x[0];
-	      dExda2 = derivative_x[2];
-	      dExdtau = derivative_x[5];
-	  }
+        self->get_vxc_x(&(self->x_functional), point, &ex, derivative_x);
+        dExdn = derivative_x[0];
+        dExda2 = derivative_x[2];
+        dExdtau = derivative_x[5];
+      }
       /* calculate correlation */
       if (self->c_functional.family != XC_FAMILY_UNKNOWN) {
-		  self->get_point_c(&(self->c_functional), point, &ec, derivative_c);
-		  dEcdn = derivative_c[0];
-	      dEcda2 = derivative_c[2];
-	      dEcdtau = derivative_c[5];
-	  }
+        self->get_vxc_c(&(self->c_functional), point, &ec, derivative_c);
+        dEcdn = derivative_c[0];
+        dEcda2 = derivative_c[2];
+        dEcdtau = derivative_c[5];
+      }
       if ((self->x_functional.family == XC_FAMILY_GGA) ||
 	  (self->c_functional.family == XC_FAMILY_GGA))
-	  {
-		dEda2_g[g] = dExda2 + dEcda2;
-	  }
-	  if ((self->x_functional.family == XC_FAMILY_MGGA) ||
+        {
+          dEda2_g[g] = dExda2 + dEcda2;
+        }
+      if ((self->x_functional.family == XC_FAMILY_MGGA) ||
 	  (self->c_functional.family == XC_FAMILY_MGGA))
 	{
 	  dEda2_g[g] = dExda2 + dEcda2;
@@ -355,7 +586,7 @@ lxcXCFunctional_CalculateSpinPolarized(lxcXCFunctionalObject *self, PyObject *ar
   PyArrayObject* dEdtaub = 0;       /* dE/dtaub */
   if (!PyArg_ParseTuple(args, "OOOOO|OOOOOOOOOOOOOOO", &e, &na, &va, &nb, &vb,
                         &a2, &aa2, &ab2, &dEda2, &dEdaa2, &dEdab2,
-						&taua, &taub, &dEdtaua, &dEdtaub))
+                        &taua, &taub, &dEdtaua, &dEdtaub))
     return NULL;
 
   /* find nspin */
@@ -401,13 +632,13 @@ lxcXCFunctional_CalculateSpinPolarized(lxcXCFunctionalObject *self, PyObject *ar
       a2_g = DOUBLEP(a2);
       aa2_g = DOUBLEP(aa2);
       ab2_g = DOUBLEP(ab2);
-      taua_g = DOUBLEP(taua); 
-      taub_g = DOUBLEP(taub); 
+      taua_g = DOUBLEP(taua);
+      taub_g = DOUBLEP(taub);
       dEda2_g = DOUBLEP(dEda2);
       dEdaa2_g = DOUBLEP(dEdaa2);
       dEdab2_g = DOUBLEP(dEdab2);
-      dEdtaua_g = DOUBLEP(dEdtaua); 
-      dEdtaub_g = DOUBLEP(dEdtaub); 
+      dEdtaua_g = DOUBLEP(dEdtaua);
+      dEdtaub_g = DOUBLEP(dEdtaub);
     }
   assert (self->xc_functional.family == XC_FAMILY_UNKNOWN); /* MDTMP not implemented */
 
@@ -415,13 +646,13 @@ lxcXCFunctional_CalculateSpinPolarized(lxcXCFunctionalObject *self, PyObject *ar
   switch(self->x_functional.family)
     {
     case XC_FAMILY_LDA:
-      self->get_point_x = get_point_lda;
+      self->get_vxc_x = get_vxc_lda;
       break;
     case XC_FAMILY_GGA:
-      self->get_point_x = get_point_gga;
+      self->get_vxc_x = get_vxc_gga;
       break;
     case XC_FAMILY_MGGA:
-      self->get_point_x = get_point_mgga;
+      self->get_vxc_x = get_vxc_mgga;
       break;
 /*     default: */
 /*       printf("lxcXCFunctional_CalculateSpinPolarized: exchange functional '%d' not found\n", */
@@ -431,13 +662,13 @@ lxcXCFunctional_CalculateSpinPolarized(lxcXCFunctionalObject *self, PyObject *ar
   switch(self->c_functional.family)
     {
     case XC_FAMILY_LDA:
-      self->get_point_c = get_point_lda;
+      self->get_vxc_c = get_vxc_lda;
       break;
     case XC_FAMILY_GGA:
-      self->get_point_c = get_point_gga;
+      self->get_vxc_c = get_vxc_gga;
       break;
     case XC_FAMILY_MGGA:
-      self->get_point_c = get_point_mgga;
+      self->get_vxc_c = get_vxc_mgga;
       break;
 /*     default: */
 /*       printf("lxcXCFunctional_CalculateSpinPolarized: correlation functional '%d' not found\n", */
@@ -446,128 +677,459 @@ lxcXCFunctional_CalculateSpinPolarized(lxcXCFunctionalObject *self, PyObject *ar
   /* ################################################################ */
   for (int g = 0; g < ng; g++)
   {
-	  double na = na_g[g];
-      if (na < NMIN)
-		  na = NMIN;
-      double sigma0 = 0.0; /* initialize for lda */
-      double sigma1 = 0.0; /* initialize for lda */
-      double sigma2 = 0.0; /* initialize for lda */
-	  double taua = 0.0, taub =0.0;
-	  double dExdtaua = 0.0;
-	  double dExdtaub = 0.0;
-	  double dEcdtaua = 0.0;
-	  double dEcdtaub = 0.0;
+    double na = na_g[g];
+    if (na < NMIN)
+      na = NMIN;
+    double sigma0 = 0.0; /* initialize for lda */
+    double sigma1 = 0.0; /* initialize for lda */
+    double sigma2 = 0.0; /* initialize for lda */
+    double taua = 0.0, taub =0.0;
+    double dExdtaua = 0.0;
+    double dExdtaub = 0.0;
+    double dEcdtaua = 0.0;
+    double dEcdtaub = 0.0;
 
+    if ((self->x_functional.family == XC_FAMILY_GGA) ||
+        (self->c_functional.family == XC_FAMILY_GGA))
+      {
+        sigma0 = aa2_g[g];
+        sigma2 = ab2_g[g];
+        sigma1 = (a2_g[g] - (sigma0 + sigma2))/2.0;
+      }
+    double nb = nb_g[g];
+    if (nb < NMIN)
+      nb = NMIN;
+    if ((self->x_functional.family == XC_FAMILY_MGGA) ||
+        (self->c_functional.family == XC_FAMILY_MGGA))
+      {
+        double aa2 = aa2_g[g];
+        double ab2 = ab2_g[g];
+        double a2 = a2_g[g];
+        sigma0 = aa2;
+        sigma2 = ab2;
+        sigma1 = (a2 - (sigma0 + sigma2))/2.0;
+        taua = taua_g[g];
+        taub = taub_g[g];
+      }
+    double n = na + nb;
+
+    double dExdna = 0.0;
+    double dExdsigma0 = 0.0;
+    double dExdnb = 0.0;
+    double dExdsigma2 = 0.0;
+    double ex = 0.0;
+    double dExdsigma1 = 0.0;
+
+    double dEcdna = 0.0;
+    double dEcdsigma0 = 0.0;
+    double dEcdnb = 0.0;
+    double dEcdsigma2 = 0.0;
+    double ec = 0.0;
+    double dEcdsigma1 = 0.0;
+
+    double point[7]; /* generalized point */
+    // from http://www.tddft.org/programs/octopus/wiki/index.php/Libxc:manual
+    // rhoa rhob sigmaaa sigmaab sigmabb taua taub
+    // \sigma[0] = \nabla n_\uparrow \cdot \nabla n_\uparrow \qquad
+    // \sigma[1] = \nabla n_\uparrow \cdot \nabla n_\downarrow \qquad
+    // \sigma[2] = \nabla n_\downarrow \cdot \nabla n_\downarrow \qquad
+    double derivative_x[7]; /* generalized potential */
+    double derivative_c[7]; /* generalized potential */
+    // vrhoa vrhob vsigmaaa vsigmaab vsigmabb dedtaua dedtaub
+    // {\rm vrho}_{\alpha} = \frac{\partial E}{\partial n_\alpha} \qquad
+    // {\rm vsigma}_{\alpha} = \frac{\partial E}{\partial \sigma_\alpha}
+    // {\rm dedtau}_{\alpha} = \frac{\partial E}{\partial \tau_\alpha}
+
+    for(int j=0; j<7; j++)
+      {
+        point[j] = derivative_x[j] = derivative_c[j]= 0.0;
+      }
+
+    point[0] = na;
+    point[1] = nb;
+    point[2] = sigma0;
+    point[3] = sigma1;
+    point[4] = sigma2;
+    point[5] = taua;
+    point[6] = taub;
+
+    /* calculate exchange */
+    if (self->x_functional.family != XC_FAMILY_UNKNOWN) {
+      self->get_vxc_x(&(self->x_functional), point, &ex, derivative_x);
+      dExdna = derivative_x[0];
+      dExdnb = derivative_x[1];
+      dExdsigma0 = derivative_x[2];
+      dExdsigma1 = derivative_x[3];
+      dExdsigma2 = derivative_x[4];
+      dExdtaua = derivative_x[5];
+      dExdtaub = derivative_x[6];
+    }
+    /* calculate correlation */
+    if (self->c_functional.family != XC_FAMILY_UNKNOWN) {
+      self->get_vxc_c(&(self->c_functional), point, &ec, derivative_c);
+      dEcdna = derivative_c[0];
+      dEcdnb = derivative_c[1];
+      dEcdsigma0 = derivative_c[2];
+      dEcdsigma1 = derivative_c[3];
+      dEcdsigma2 = derivative_c[4];
+      dEcdtaua = derivative_c[5];
+      dEcdtaub = derivative_c[6];
+    }
+
+    if ((self->x_functional.family == XC_FAMILY_GGA) ||
+        (self->c_functional.family == XC_FAMILY_GGA))
+      {
+        dEdaa2_g[g] = dExdsigma0 + dEcdsigma0;
+        dEdab2_g[g] = dExdsigma2 + dEcdsigma2;
+        dEda2_g[g] = dExdsigma1 + dEcdsigma1;
+      }
+    if ((self->x_functional.family == XC_FAMILY_MGGA) ||
+        (self->c_functional.family == XC_FAMILY_MGGA))
+      {
+        dEdaa2_g[g] = dExdsigma0 + dEcdsigma0;
+        dEdab2_g[g] = dExdsigma2 + dEcdsigma2;
+        dEda2_g[g] = dExdsigma1 + dEcdsigma1;
+        dEdtaua_g[g] = dExdtaua + dEcdtaua;
+        dEdtaub_g[g] = dExdtaub + dEcdtaub;
+      }
+    double h1 = 1.0 - self->hybrid;
+    e_g[g] = n* (h1 * ex + ec);
+    va_g[g] += (h1 * dExdna + dEcdna);
+    vb_g[g] += (h1 * dExdnb + dEcdnb);
+  }
+  Py_RETURN_NONE;
+}
+
+static PyObject*
+lxcXCFunctional_CalculateFXCSpinPaired(lxcXCFunctionalObject *self, PyObject *args)
+{
+  PyArrayObject* n_array;              /* rho */
+  PyArrayObject* v2rho2_array;         /* d2E/drho2 */
+  PyArrayObject* a2_array = 0;         /* |nabla rho|^2*/
+  PyArrayObject* v2rhosigma_array = 0; /* d2E/drhod|nabla rho|^2 */
+  PyArrayObject* v2sigma2_array = 0;   /* d2E/drhod|nabla rho|^2 */
+  if (!PyArg_ParseTuple(args, "OO|OOO", &n_array, &v2rho2_array, /* object | optional objects*/
+                        &a2_array, &v2rhosigma_array, &v2sigma2_array))
+    return NULL;
+
+  /* find nspin */
+  int nspin = self->nspin;
+
+  assert(nspin == XC_UNPOLARIZED); /* we are spinpaired */
+
+  assert (self->hybrid == 0.0); /* MDTMP - not implemented yet */
+
+  int ng = n_array->dimensions[0]; /* number of grid points */
+
+  const double* n_g = DOUBLEP(n_array); /* density on the grid */
+  double* v2rho2_g = DOUBLEP(v2rho2_array); /* v on the grid */
+
+  const double* a2_g = 0; /* a2 on the grid */
+  double* v2rhosigma_g = 0;    /* d2Ednda2 on the grid */
+  double* v2sigma2_g = 0;    /* d2Eda2da2 on the grid */
+
+  if ((self->x_functional.family == XC_FAMILY_GGA) ||
+      (self->c_functional.family == XC_FAMILY_GGA))
+    {
+      a2_g = DOUBLEP(a2_array);
+      v2rhosigma_g = DOUBLEP(v2rhosigma_array);
+      v2sigma2_g = DOUBLEP(v2sigma2_array);
+    }
+
+  //assert (self->x_functional.family != XC_FAMILY_MGGA); /* MDTMP - not implemented yet */
+
+  //assert (self->c_functional.family != XC_FAMILY_MGGA); /* MDTMP - not implemented yet */
+
+  assert (self->xc_functional.family == XC_FAMILY_UNKNOWN); /* MDTMP not implemented */
+
+  /* find x functional */
+  switch(self->x_functional.family)
+    {
+    case XC_FAMILY_LDA:
+      self->get_fxc_x = get_fxc_lda;
+      break;
+    case XC_FAMILY_GGA:
+      self->get_fxc_x = get_fxc_gga;
+      break;
+/*     default: */
+/*       printf("lxcXCFunctional_CalculateSpinPaired: exchange functional '%d' not found\n", */
+/*	     self->x_functional.family); */
+    }
+  /* find c functional */
+  switch(self->c_functional.family)
+    {
+    case XC_FAMILY_LDA:
+      self->get_fxc_c = get_fxc_lda;
+      break;
+    case XC_FAMILY_GGA:
+      self->get_fxc_c = get_fxc_gga;
+      break;
+/*     default: */
+/*       printf("lxcXCFunctional_CalculateSpinPaired: correlation functional '%d' not found\n", */
+/*	     self->c_functional.family); */
+    }
+  /* ################################################################ */
+  for (int g = 0; g < ng; g++)
+    {
+      double n = n_g[g];
+      if (n < NMIN)
+        n = NMIN;
+      double a2 = 0.0; /* initialize for lda */
       if ((self->x_functional.family == XC_FAMILY_GGA) ||
           (self->c_functional.family == XC_FAMILY_GGA))
-	{
-      sigma0 = aa2_g[g];
-	  sigma2 = ab2_g[g];
-	  sigma1 = (a2_g[g] - (sigma0 + sigma2))/2.0;
-	}
-      double nb = nb_g[g];
-      if (nb < NMIN)
-          nb = NMIN;
-	  if ((self->x_functional.family == XC_FAMILY_MGGA) ||
-	  	  (self->c_functional.family == XC_FAMILY_MGGA))
-	{
-
-		double aa2 = aa2_g[g];
-	  	double ab2 = ab2_g[g];
-	  	double a2 = a2_g[g];
-      	sigma0 = aa2;
-	  	sigma2 = ab2;
-	  	sigma1 = (a2 - (sigma0 + sigma2))/2.0;
-
-	  	taua = taua_g[g];
-	  	taub = taub_g[g];
-	}
-      double n = na + nb;
-
-      double dExdna = 0.0;
-      double dExdsigma0 = 0.0;
-      double dExdnb = 0.0;
-      double dExdsigma2 = 0.0;
-      double ex = 0.0;
-      double dExdsigma1 = 0.0;
-
-      double dEcdna = 0.0;
-      double dEcdsigma0 = 0.0;
-      double dEcdnb = 0.0;
-      double dEcdsigma2 = 0.0;
-      double ec = 0.0;
-      double dEcdsigma1 = 0.0;
+        {
+          a2 = a2_g[g];
+        }
 
       double point[7]; /* generalized point */
       // from http://www.tddft.org/programs/octopus/wiki/index.php/Libxc:manual
       // rhoa rhob sigmaaa sigmaab sigmabb taua taub
-	  // \sigma[0] = \nabla n_\uparrow \cdot \nabla n_\uparrow \qquad
+      // \sigma[0] = \nabla n_\uparrow \cdot \nabla n_\uparrow \qquad
       // \sigma[1] = \nabla n_\uparrow \cdot \nabla n_\downarrow \qquad
       // \sigma[2] = \nabla n_\downarrow \cdot \nabla n_\downarrow \qquad
-      double derivative_x[7]; /* generalized potential */
-      double derivative_c[7]; /* generalized potential */
-      // vrhoa vrhob vsigmaaa vsigmaab vsigmabb dedtaua dedtaub
-      // {\rm vrho}_{\alpha} = \frac{\partial E}{\partial n_\alpha} \qquad
-      // {\rm vsigma}_{\alpha} = \frac{\partial E}{\partial \sigma_\alpha}
-      // {\rm dedtau}_{\alpha} = \frac{\partial E}{\partial \tau_\alpha}
 
-      for(int j=0; j<7; j++) 
-	  {
-		  point[j] = derivative_x[j] = derivative_c[j]= 0.0;
-	  }
+      double derivative_x[5][5]; /* generalized derivative */
+      double derivative_c[5][5]; /* generalized derivative */
+      double v2rho2_x[3];
+      double v2rhosigma_x[6];
+      double v2sigma2_x[6];
+      double v2rho2_c[3];
+      double v2rhosigma_c[6];
+      double v2sigma2_c[6];
+      // one that uses this: please add description of spin derivative order notation
+      // (see c/libxc/src/gga_perdew.c) MDTMP
 
-      point[0] = na;
-      point[1] = nb;
-      point[2] = sigma0;
-      point[3] = sigma1;
-      point[4] = sigma2;
-      point[5] = taua;
-      point[6] = taub;
+      for(int i=0; i<3; i++) v2rho2_x[i] = 0.0;
+      for(int i=0; i<3; i++) v2rho2_c[i] = 0.0;
+      for(int i=0; i<6; i++){
+        v2rhosigma_x[i] = 0.0;
+        v2sigma2_x[i]    = 0.0;
+        v2rhosigma_c[i] = 0.0;
+        v2sigma2_c[i]    = 0.0;
+      }
 
+      for(int j=0; j<7; j++)
+        {
+          point[j] = 0.0;
+        }
+
+      for(int i=0; i<7; i++)
+        {
+          for(int j=0; j<7; j++)
+            {
+              derivative_x[i][j] = derivative_c[i][j] = 0.0;
+            }
+        }
+
+      point[0] = n;   /* -> rho */
+      point[2] = a2;  /* -> sigma */
 
       /* calculate exchange */
       if (self->x_functional.family != XC_FAMILY_UNKNOWN) {
-	self->get_point_x(&(self->x_functional), point, &ex, derivative_x);
-	dExdna = derivative_x[0];
-	dExdnb = derivative_x[1];
-	dExdsigma0 = derivative_x[2];
-	dExdsigma1 = derivative_x[3];
-	dExdsigma2 = derivative_x[4];
-	dExdtaua = derivative_x[5];
-	dExdtaub = derivative_x[6];
+        self->get_fxc_x(&(self->x_functional), point, derivative_x);
+        //printf("fxc_x '%f'\n", derivative_x[0][0]); // MDTMP
+        v2rho2_x[0] = derivative_x[0][0];
+        v2rho2_x[1] = derivative_x[0][1]; // XC_POLARIZED
+        v2rho2_x[2] = derivative_x[1][1]; // XC_POLARIZED
+        //printf("fxc_x '%f'\n", derivative_x[0][2]); // MDTMP
+        v2rhosigma_x[0] = derivative_x[0][2];
+        v2rhosigma_x[1] = derivative_x[0][3]; // XC_POLARIZED
+        v2rhosigma_x[2] = derivative_x[0][4]; // XC_POLARIZED
+        v2rhosigma_x[3] = derivative_x[1][2]; // XC_POLARIZED
+        v2rhosigma_x[4] = derivative_x[1][3]; // XC_POLARIZED
+        v2rhosigma_x[5] = derivative_x[1][4]; // XC_POLARIZED
+        //printf("fxc_x '%f'\n", derivative_x[2][2]); // MDTMP
+        v2sigma2_x[0] = derivative_x[2][2]; /* aa_aa */
+        v2sigma2_x[1] = derivative_x[2][3]; // XC_POLARIZED /* aa_ab */
+        v2sigma2_x[2] = derivative_x[2][4]; // XC_POLARIZED /* aa_bb */
+        v2sigma2_x[3] = derivative_x[3][3]; // XC_POLARIZED /* ab_ab */
+        v2sigma2_x[4] = derivative_x[3][4]; // XC_POLARIZED /* ab_bb */
+        v2sigma2_x[5] = derivative_x[4][4]; // XC_POLARIZED /* bb_bb */
       }
       /* calculate correlation */
       if (self->c_functional.family != XC_FAMILY_UNKNOWN) {
-	self->get_point_c(&(self->c_functional), point, &ec, derivative_c);
-	dEcdna = derivative_c[0];
-	dEcdnb = derivative_c[1];
-	dEcdsigma0 = derivative_c[2];
-	dEcdsigma1 = derivative_c[3];
-	dEcdsigma2 = derivative_c[4];
-	dEcdtaua = derivative_c[5];
-	dEcdtaub = derivative_c[6];
+        self->get_fxc_c(&(self->c_functional), point, derivative_c);
+        v2rho2_c[0] = derivative_c[0][0];
+        v2rho2_c[1] = derivative_c[0][1]; // XC_POLARIZED
+        v2rho2_c[2] = derivative_c[1][1]; // XC_POLARIZED
+        v2rhosigma_c[0] = derivative_c[0][2];
+        v2rhosigma_c[1] = derivative_c[0][3]; // XC_POLARIZED
+        v2rhosigma_c[2] = derivative_c[0][4]; // XC_POLARIZED
+        v2rhosigma_c[3] = derivative_c[1][2]; // XC_POLARIZED
+        v2rhosigma_c[4] = derivative_c[1][3]; // XC_POLARIZED
+        v2rhosigma_c[5] = derivative_c[1][4]; // XC_POLARIZED
+        v2sigma2_c[0] = derivative_c[2][2]; /* aa_aa */
+        v2sigma2_c[1] = derivative_c[2][3]; // XC_POLARIZED /* aa_ab */
+        v2sigma2_c[2] = derivative_c[2][4]; // XC_POLARIZED /* aa_bb */
+        v2sigma2_c[3] = derivative_c[3][3]; // XC_POLARIZED /* ab_ab */
+        v2sigma2_c[4] = derivative_c[3][4]; // XC_POLARIZED /* ab_bb */
+        v2sigma2_c[5] = derivative_c[4][4]; // XC_POLARIZED /* bb_bb */
+      }
+      if ((self->x_functional.family == XC_FAMILY_GGA) ||
+          (self->c_functional.family == XC_FAMILY_GGA))
+        {
+          v2rhosigma_g[g] = v2rhosigma_x[0] + v2rhosigma_c[0];
+          v2sigma2_g[g] = v2sigma2_x[0] + v2sigma2_c[0];
+        }
+      v2rho2_g[g] += v2rho2_x[0] + v2rho2_c[0];
+    }
+  Py_RETURN_NONE;
+}
+
+static PyObject*
+lxcXCFunctional_CalculateFXC_FD_SpinPaired(lxcXCFunctionalObject *self, PyObject *args)
+{
+  PyArrayObject* n_array;              /* rho */
+  PyArrayObject* v2rho2_array;         /* d2E/drho2 */
+  PyArrayObject* a2_array = 0;         /* |nabla rho|^2*/
+  PyArrayObject* v2rhosigma_array = 0; /* d2E/drhod|nabla rho|^2 */
+  PyArrayObject* v2sigma2_array = 0;   /* d2E/drhod|nabla rho|^2 */
+  if (!PyArg_ParseTuple(args, "OO|OOO", &n_array, &v2rho2_array, /* object | optional objects*/
+                        &a2_array, &v2rhosigma_array, &v2sigma2_array))
+    return NULL;
+
+  /* find nspin */
+  int nspin = self->nspin;
+
+  assert(nspin == XC_UNPOLARIZED); /* we are spinpaired */
+
+  assert (self->hybrid == 0.0); /* MDTMP - not implemented yet */
+
+  int ng = n_array->dimensions[0]; /* number of grid points */
+
+  const double* n_g = DOUBLEP(n_array); /* density on the grid */
+  double* v2rho2_g = DOUBLEP(v2rho2_array); /* v on the grid */
+
+  const double* a2_g = 0; /* a2 on the grid */
+  double* v2rhosigma_g = 0;    /* d2Ednda2 on the grid */
+  double* v2sigma2_g = 0;    /* d2Eda2da2 on the grid */
+
+  if ((self->x_functional.family == XC_FAMILY_GGA) ||
+      (self->c_functional.family == XC_FAMILY_GGA))
+    {
+      a2_g = DOUBLEP(a2_array);
+      v2rhosigma_g = DOUBLEP(v2rhosigma_array);
+      v2sigma2_g = DOUBLEP(v2sigma2_array);
+    }
+
+  //assert (self->x_functional.family != XC_FAMILY_GGA); /* MDTMP - not implemented yet */
+
+  //assert (self->c_functional.family != XC_FAMILY_GGA); /* MDTMP - not implemented yet */
+
+  assert (self->x_functional.family != XC_FAMILY_MGGA); /* MDTMP - not implemented yet */
+
+  assert (self->c_functional.family != XC_FAMILY_MGGA); /* MDTMP - not implemented yet */
+
+  assert (self->xc_functional.family == XC_FAMILY_UNKNOWN); /* MDTMP not implemented */
+
+  /* find x functional */
+  self->get_fxc_x = get_fxc_fd_spinpaired;
+  /* find c functional */
+  self->get_fxc_c = get_fxc_fd_spinpaired;
+  /* ################################################################ */
+  for (int g = 0; g < ng; g++)
+    {
+      double n = n_g[g];
+      if (n < NMIN)
+        n = NMIN;
+      double a2 = 0.0; /* initialize for lda */
+      if ((self->x_functional.family == XC_FAMILY_GGA) ||
+          (self->c_functional.family == XC_FAMILY_GGA))
+        {
+          a2 = a2_g[g];
+        }
+
+      double point[7]; /* generalized point */
+      // from http://www.tddft.org/programs/octopus/wiki/index.php/Libxc:manual
+      // rhoa rhob sigmaaa sigmaab sigmabb taua taub
+      // \sigma[0] = \nabla n_\uparrow \cdot \nabla n_\uparrow \qquad
+      // \sigma[1] = \nabla n_\uparrow \cdot \nabla n_\downarrow \qquad
+      // \sigma[2] = \nabla n_\downarrow \cdot \nabla n_\downarrow \qquad
+
+      double derivative_x[5][5]; /* generalized derivative */
+      double derivative_c[5][5]; /* generalized derivative */
+      double v2rho2_x[3];
+      double v2rhosigma_x[6];
+      double v2sigma2_x[6];
+      double v2rho2_c[3];
+      double v2rhosigma_c[6];
+      double v2sigma2_c[6];
+      // one that uses this: please add description of spin derivative order notation
+      // (see c/libxc/src/gga_perdew.c) MDTMP
+
+      for(int i=0; i<3; i++) v2rho2_x[i] = 0.0;
+      for(int i=0; i<3; i++) v2rho2_c[i] = 0.0;
+      for(int i=0; i<6; i++){
+        v2rhosigma_x[i] = 0.0;
+        v2sigma2_x[i]    = 0.0;
+        v2rhosigma_c[i] = 0.0;
+        v2sigma2_c[i]    = 0.0;
       }
 
+      for(int j=0; j<7; j++)
+        {
+          point[j] = 0.0;
+        }
+
+      for(int i=0; i<7; i++)
+        {
+          for(int j=0; j<7; j++)
+            {
+              derivative_x[i][j] = derivative_c[i][j] = 0.0;
+            }
+        }
+
+      point[0] = n;   /* -> rho */
+      point[2] = a2;  /* -> sigma */
+
+      /* calculate exchange */
+      if (self->x_functional.family != XC_FAMILY_UNKNOWN) {
+        self->get_fxc_x(&(self->x_functional), point, derivative_x);
+        //printf("fxc_fd_x '%f'\n", derivative_x[0][0]); // MDTMP
+        v2rho2_x[0] = derivative_x[0][0];
+        v2rho2_x[1] = derivative_x[0][1]; // XC_POLARIZED
+        v2rho2_x[2] = derivative_x[1][1]; // XC_POLARIZED
+        //printf("fxc_fd_x '%f'\n", derivative_x[0][2]); // MDTMP
+        v2rhosigma_x[0] = derivative_x[0][2];
+        v2rhosigma_x[1] = derivative_x[0][3]; // XC_POLARIZED
+        v2rhosigma_x[2] = derivative_x[0][4]; // XC_POLARIZED
+        v2rhosigma_x[3] = derivative_x[1][2]; // XC_POLARIZED
+        v2rhosigma_x[4] = derivative_x[1][3]; // XC_POLARIZED
+        v2rhosigma_x[5] = derivative_x[1][4]; // XC_POLARIZED
+        //printf("fxc_fd_x '%f'\n", derivative_x[2][2]); // MDTMP
+        v2sigma2_x[0] = derivative_x[2][2]; /* aa_aa */
+        v2sigma2_x[1] = derivative_x[2][3]; // XC_POLARIZED /* aa_ab */
+        v2sigma2_x[2] = derivative_x[2][4]; // XC_POLARIZED /* aa_bb */
+        v2sigma2_x[3] = derivative_x[3][3]; // XC_POLARIZED /* ab_ab */
+        v2sigma2_x[4] = derivative_x[3][4]; // XC_POLARIZED /* ab_bb */
+        v2sigma2_x[5] = derivative_x[4][4]; // XC_POLARIZED /* bb_bb */
+      }
+      /* calculate correlation */
+      if (self->c_functional.family != XC_FAMILY_UNKNOWN) {
+        self->get_fxc_c(&(self->c_functional), point, derivative_c);
+        v2rho2_c[0] = derivative_c[0][0];
+        v2rho2_c[1] = derivative_c[0][1]; // XC_POLARIZED
+        v2rho2_c[2] = derivative_c[1][1]; // XC_POLARIZED
+        v2rhosigma_c[0] = derivative_c[0][2];
+        v2rhosigma_c[1] = derivative_c[0][3]; // XC_POLARIZED
+        v2rhosigma_c[2] = derivative_c[0][4]; // XC_POLARIZED
+        v2rhosigma_c[3] = derivative_c[1][2]; // XC_POLARIZED
+        v2rhosigma_c[4] = derivative_c[1][3]; // XC_POLARIZED
+        v2rhosigma_c[5] = derivative_c[1][4]; // XC_POLARIZED
+        v2sigma2_c[0] = derivative_c[2][2]; /* aa_aa */
+        v2sigma2_c[1] = derivative_c[2][3]; // XC_POLARIZED /* aa_ab */
+        v2sigma2_c[2] = derivative_c[2][4]; // XC_POLARIZED /* aa_bb */
+        v2sigma2_c[3] = derivative_c[3][3]; // XC_POLARIZED /* ab_ab */
+        v2sigma2_c[4] = derivative_c[3][4]; // XC_POLARIZED /* ab_bb */
+        v2sigma2_c[5] = derivative_c[4][4]; // XC_POLARIZED /* bb_bb */
+      }
       if ((self->x_functional.family == XC_FAMILY_GGA) ||
-	  (self->c_functional.family == XC_FAMILY_GGA))
-	{
-          dEdaa2_g[g] = dExdsigma0 + dEcdsigma0;
-          dEdab2_g[g] = dExdsigma2 + dEcdsigma2;
-          dEda2_g[g] = dExdsigma1 + dEcdsigma1;
-	}
-      if ((self->x_functional.family == XC_FAMILY_MGGA) ||
-	  (self->c_functional.family == XC_FAMILY_MGGA))
-	{
-          dEdaa2_g[g] = dExdsigma0 + dEcdsigma0;
-          dEdab2_g[g] = dExdsigma2 + dEcdsigma2;
-          dEda2_g[g] = dExdsigma1 + dEcdsigma1;
-	  	  dEdtaua_g[g] = dExdtaua + dEcdtaua;
-	  	  dEdtaub_g[g] = dExdtaub + dEcdtaub;
-	}
-      double h1 = 1.0 - self->hybrid;
-      e_g[g] = n* (h1 * ex + ec);
-      va_g[g] += (h1 * dExdna + dEcdna);
-      vb_g[g] += (h1 * dExdnb + dEcdnb);
+          (self->c_functional.family == XC_FAMILY_GGA))
+        {
+          v2rhosigma_g[g] = v2rhosigma_x[0] + v2rhosigma_c[0];
+          v2sigma2_g[g] = v2sigma2_x[0] + v2sigma2_c[0];
+        }
+      v2rho2_g[g] += v2rho2_x[0] + v2rho2_c[0];
     }
   Py_RETURN_NONE;
 }
@@ -575,183 +1137,184 @@ lxcXCFunctional_CalculateSpinPolarized(lxcXCFunctionalObject *self, PyObject *ar
 static PyObject*
 lxcXCFunctional_XCEnergy(lxcXCFunctionalObject *self, PyObject *args)
 {
-     double na = 0.0;
-     double nb = 0.0;
-     double sigma0 = 0.0;
-     double sigma1 = 0.0;
-     double sigma2 = 0.0;
-     double taua = 0.0;
-     double taub = 0.0;
-     if (!PyArg_ParseTuple(args, "ddddd|dd", &na, &nb,
-                           &sigma0, &sigma1, &sigma2, &taua, &taub))
-          return NULL;
+  double na = 0.0;
+  double nb = 0.0;
+  double sigma0 = 0.0;
+  double sigma1 = 0.0;
+  double sigma2 = 0.0;
+  double taua = 0.0;
+  double taub = 0.0;
+  if (!PyArg_ParseTuple(args, "ddddd|dd", &na, &nb,
+                        &sigma0, &sigma1, &sigma2, &taua, &taub))
+    return NULL;
 
-     /* find nspin */
-     // int nspin = self->nspin;
+  /* find nspin */
+  // int nspin = self->nspin;
 
-     /* assert (self->hybrid == 0.0); */ /* MDTMP - not implemented yet */
+  /* assert (self->hybrid == 0.0); */ /* MDTMP - not implemented yet */
 
-     assert (self->xc_functional.family == XC_FAMILY_UNKNOWN); /* MDTMP not implemented */
+  assert (self->xc_functional.family == XC_FAMILY_UNKNOWN); /* MDTMP not implemented */
 
-     double exc = 0.0; /* output */
-     double ex = 0.0; /* output */
-     double ec = 0.0; /* output */
+  double exc = 0.0; /* output */
+  double ex = 0.0; /* output */
+  double ec = 0.0; /* output */
 
-     /* find x functional */
-     switch(self->x_functional.family)
-     {
-     case XC_FAMILY_LDA:
-          self->get_point_x = get_point_lda;
-          break;
-     case XC_FAMILY_GGA:
-          self->get_point_x = get_point_gga;
-          break;
-     case XC_FAMILY_MGGA:
-          self->get_point_x = get_point_mgga;
-          break;
+  /* find x functional */
+  switch(self->x_functional.family)
+    {
+    case XC_FAMILY_LDA:
+      self->get_vxc_x = get_vxc_lda;
+      break;
+    case XC_FAMILY_GGA:
+      self->get_vxc_x = get_vxc_gga;
+      break;
+    case XC_FAMILY_MGGA:
+      self->get_vxc_x = get_vxc_mgga;
+      break;
 /*     default: */
 /*       printf("lxcXCFunctional_CalculateSpinPolarized: exchange functional '%d' not found\n", */
 /*	     self->x_functional.family); */
-     }
+    }
      /* find c functional */
-     switch(self->c_functional.family)
-     {
-     case XC_FAMILY_LDA:
-          self->get_point_c = get_point_lda;
-          break;
-     case XC_FAMILY_GGA:
-          self->get_point_c = get_point_gga;
-          break;
-     case XC_FAMILY_MGGA:
-          self->get_point_c = get_point_mgga;
-          break;
+  switch(self->c_functional.family)
+    {
+    case XC_FAMILY_LDA:
+      self->get_vxc_c = get_vxc_lda;
+      break;
+    case XC_FAMILY_GGA:
+      self->get_vxc_c = get_vxc_gga;
+      break;
+    case XC_FAMILY_MGGA:
+      self->get_vxc_c = get_vxc_mgga;
+      break;
 /*     default: */
 /*       printf("lxcXCFunctional_CalculateSpinPolarized: correlation functional '%d' not found\n", */
 /*	     self->c_functional.family); */
-     }
-     /* ################################################################ */
+    }
+  /* ################################################################ */
 
-     if (na < NMIN)
-          na = NMIN;
-     if (nb < NMIN)
-          nb = NMIN;
+  if (na < NMIN)
+    na = NMIN;
+  if (nb < NMIN)
+    nb = NMIN;
 
-     double n = na + nb;
+  double n = na + nb;
 
-     double dExdna = 0.0;
-     double dExdsigma0 = 0.0;
-     double dExdnb = 0.0;
-     double dExdsigma2 = 0.0;
-     double dExdsigma1 = 0.0;
-	 double dExdtaua = 0.0 ; /* dex/dtaua */
-	 double dExdtaub= 0.0 ;  /* dex/dtaub */
+  double dExdna = 0.0;
+  double dExdsigma0 = 0.0;
+  double dExdnb = 0.0;
+  double dExdsigma2 = 0.0;
+  double dExdsigma1 = 0.0;
+  double dExdtaua = 0.0 ; /* dex/dtaua */
+  double dExdtaub= 0.0 ;  /* dex/dtaub */
 
-     double dEcdna = 0.0;
-     double dEcdsigma0 = 0.0;
-     double dEcdnb = 0.0;
-     double dEcdsigma2 = 0.0;
-     double dEcdsigma1 = 0.0;
-	 double dEcdtaua = 0.0; /* de_corr/dtau */
-	 double dEcdtaub = 0.0; /* de_corr/dtau */
+  double dEcdna = 0.0;
+  double dEcdsigma0 = 0.0;
+  double dEcdnb = 0.0;
+  double dEcdsigma2 = 0.0;
+  double dEcdsigma1 = 0.0;
+  double dEcdtaua = 0.0; /* de_corr/dtau */
+  double dEcdtaub = 0.0; /* de_corr/dtau */
+
+  double point[7]; /* generalized point */
+  // from http://www.tddft.org/programs/octopus/wiki/index.php/Libxc:manual
+  // rhoa rhob sigmaaa sigmaab sigmabb taua taub
+  // \sigma[0] = \nabla n_\uparrow \cdot \nabla n_\uparrow \qquad
+  // \sigma[1] = \nabla n_\uparrow \cdot \nabla n_\downarrow \qquad
+  // \sigma[2] = \nabla n_\downarrow \cdot \nabla n_\downarrow \qquad
+  double derivative_xc[7]; /* generalized potential */
+  double derivative_x[7]; /* generalized potential */
+  double derivative_c[7]; /* generalized potential */
+  // vrhoa vrhob vsigmaaa vsigmaab vsigmabb
+  // {\rm vrho}_{\alpha} = \frac{\partial E}{\partial n_\alpha} \qquad
+  // {\rm vsigma}_{\alpha} = \frac{\partial E}{\partial \sigma_\alpha}
+
+  for(int j=0; j<7; j++) {
+    point[j] =derivative_xc[j] = derivative_x[j] = derivative_c[j]= 0.0;
+  }
+
+  point[0] = na;
+  point[1] = nb;
+  point[2] = sigma0;
+  point[3] = sigma1;
+  point[4] = sigma2;
+  point[5] = taua;
+  point[6] = taub;
 
 
-     double point[7]; /* generalized point */
-     // from http://www.tddft.org/programs/octopus/wiki/index.php/Libxc:manual
-     // rhoa rhob sigmaaa sigmaab sigmabb taua taub
-     // \sigma[0] = \nabla n_\uparrow \cdot \nabla n_\uparrow \qquad
-     // \sigma[1] = \nabla n_\uparrow \cdot \nabla n_\downarrow \qquad
-     // \sigma[2] = \nabla n_\downarrow \cdot \nabla n_\downarrow \qquad
-     double derivative_xc[7]; /* generalized potential */
-     double derivative_x[7]; /* generalized potential */
-     double derivative_c[7]; /* generalized potential */
-     // vrhoa vrhob vsigmaaa vsigmaab vsigmabb
-     // {\rm vrho}_{\alpha} = \frac{\partial E}{\partial n_\alpha} \qquad
-     // {\rm vsigma}_{\alpha} = \frac{\partial E}{\partial \sigma_\alpha}
+  /* calculate exchange */
+  if (self->x_functional.family != XC_FAMILY_UNKNOWN) {
+    self->get_vxc_x(&(self->x_functional), point, &ex, derivative_x);
+    dExdna = derivative_x[0];
+    dExdnb = derivative_x[1];
+    dExdsigma0 = derivative_x[2];
+    dExdsigma1 = derivative_x[3];
+    dExdsigma2 = derivative_x[4];
+    dExdtaua   = derivative_x[5];
+    dExdtaub   = derivative_x[6];
+  }
+  /* calculate correlation */
+  if (self->c_functional.family != XC_FAMILY_UNKNOWN) {
+    self->get_vxc_c(&(self->c_functional), point, &ec, derivative_c);
+    dEcdna = derivative_c[0];
+    dEcdnb = derivative_c[1];
+    dEcdsigma0 = derivative_c[2];
+    dEcdsigma1 = derivative_c[3];
+    dEcdsigma2 = derivative_c[4];
+    dEcdtaua   = derivative_c[5];
+    dEcdtaub   = derivative_c[6];
+  }
 
-     for(int j=0; j<7; j++) {
-	point[j] =derivative_xc[j] = derivative_x[j] = derivative_c[j]= 0.0;
-     }
+  // MDTMP: temporary for xc functional
+  exc = ex + ec;
+  for(int j=0; j<7; j++) {
+    derivative_xc[j] = derivative_x[j] + derivative_c[j];
+  }
 
-     point[0] = na;
-     point[1] = nb;
-     point[2] = sigma0;
-     point[3] = sigma1;
-     point[4] = sigma2;
-     point[5] = taua;
-     point[6] = taub;
-
-
-     /* calculate exchange */
-     if (self->x_functional.family != XC_FAMILY_UNKNOWN) {
-          self->get_point_x(&(self->x_functional), point, &ex, derivative_x);
-          dExdna = derivative_x[0];
-          dExdnb = derivative_x[1];
-          dExdsigma0 = derivative_x[2];
-          dExdsigma1 = derivative_x[3];
-          dExdsigma2 = derivative_x[4];
-          dExdtaua   = derivative_x[5];
-	      dExdtaub   = derivative_x[6];
-
-     }
-     /* calculate correlation */
-     if (self->c_functional.family != XC_FAMILY_UNKNOWN) {
-          self->get_point_c(&(self->c_functional), point, &ec, derivative_c);
-          dEcdna = derivative_c[0];
-          dEcdnb = derivative_c[1];
-          dEcdsigma0 = derivative_c[2];
-          dEcdsigma1 = derivative_c[3];
-          dEcdsigma2 = derivative_c[4];
-		  dEcdtaua   = derivative_c[5];
-	      dEcdtaub   = derivative_c[6];
-
-     }
-
-     // MDTMP: temporary for xc functional
-     exc = ex + ec;
-     for(int j=0; j<7; j++) {
-          derivative_xc[j] = derivative_x[j] + derivative_c[j];
-     }
-
-     return Py_BuildValue("dddddddddddddddddddddddd", n*exc, n*ex, n*ec,
-                          derivative_xc[0], derivative_xc[1],
-                          derivative_xc[2], derivative_xc[3], derivative_xc[4],
-                          derivative_xc[5], derivative_xc[6],
-                          derivative_x[0], derivative_x[1],
-                          derivative_x[2], derivative_x[3], derivative_x[4],
-                          derivative_x[5], derivative_x[6],
-                          derivative_c[0], derivative_c[1],
-                          derivative_c[2], derivative_c[3], derivative_c[4],
-                          derivative_c[5], derivative_c[6]);
+  return Py_BuildValue("dddddddddddddddddddddddd", n*exc, n*ex, n*ec,
+                       derivative_xc[0], derivative_xc[1],
+                       derivative_xc[2], derivative_xc[3], derivative_xc[4],
+                       derivative_xc[5], derivative_xc[6],
+                       derivative_x[0], derivative_x[1],
+                       derivative_x[2], derivative_x[3], derivative_x[4],
+                       derivative_x[5], derivative_x[6],
+                       derivative_c[0], derivative_c[1],
+                       derivative_c[2], derivative_c[3], derivative_c[4],
+                       derivative_c[5], derivative_c[6]);
 }
 
 static PyMethodDef lxcXCFunctional_Methods[] = {
-     {"is_gga",
-      (PyCFunction)lxcXCFunctional_is_gga, METH_VARARGS, 0},
-     {"is_mgga",
-      (PyCFunction)lxcXCFunctional_is_mgga, METH_VARARGS, 0},
-     {"calculate_spinpaired",
-      (PyCFunction)lxcXCFunctional_CalculateSpinPaired, METH_VARARGS, 0},
-     {"calculate_spinpolarized",
-      (PyCFunction)lxcXCFunctional_CalculateSpinPolarized, METH_VARARGS, 0},
-     {"calculate_xcenergy",
-      (PyCFunction)lxcXCFunctional_XCEnergy, METH_VARARGS, 0},
-     {NULL, NULL, 0, NULL}
+  {"is_gga",
+   (PyCFunction)lxcXCFunctional_is_gga, METH_VARARGS, 0},
+  {"is_mgga",
+   (PyCFunction)lxcXCFunctional_is_mgga, METH_VARARGS, 0},
+  {"calculate_spinpaired",
+   (PyCFunction)lxcXCFunctional_CalculateSpinPaired, METH_VARARGS, 0},
+  {"calculate_spinpolarized",
+   (PyCFunction)lxcXCFunctional_CalculateSpinPolarized, METH_VARARGS, 0},
+  {"calculate_fxc_spinpaired",
+   (PyCFunction)lxcXCFunctional_CalculateFXCSpinPaired, METH_VARARGS, 0},
+  {"calculate_fxc_fd_spinpaired",
+   (PyCFunction)lxcXCFunctional_CalculateFXC_FD_SpinPaired, METH_VARARGS, 0},
+  {"calculate_xcenergy",
+   (PyCFunction)lxcXCFunctional_XCEnergy, METH_VARARGS, 0},
+  {NULL, NULL, 0, NULL}
 };
 
 static PyObject* lxcXCFunctional_getattr(PyObject *obj, char *name)
 {
-     return Py_FindMethod(lxcXCFunctional_Methods, obj, name);
+  return Py_FindMethod(lxcXCFunctional_Methods, obj, name);
 }
 
 static PyTypeObject lxcXCFunctionalType = {
-     PyObject_HEAD_INIT(&PyType_Type)
-     0,
-     "lxcXCFunctional",
-     sizeof(lxcXCFunctionalObject),
-     0,
-     (destructor)lxcXCFunctional_dealloc,
-     0,
-     lxcXCFunctional_getattr
+  PyObject_HEAD_INIT(&PyType_Type)
+  0,
+  "lxcXCFunctional",
+  sizeof(lxcXCFunctionalObject),
+  0,
+  (destructor)lxcXCFunctional_dealloc,
+  0,
+  lxcXCFunctional_getattr
 };
 
 PyObject * NewlxcXCFunctionalObject(PyObject *obj, PyObject *args)
@@ -790,7 +1353,7 @@ PyObject * NewlxcXCFunctionalObject(PyObject *obj, PyObject *args)
     case XC_FAMILY_LDA:
       if(x == XC_LDA_X)
 	XC(lda_x_init)(&(self->x_functional.lda_func),
-		      nspin, 3, XC_NON_RELATIVISTIC);
+                       nspin, 3, XC_NON_RELATIVISTIC);
       else
 	XC(lda_init)(&(self->x_functional.lda_func), x, nspin);
       break;

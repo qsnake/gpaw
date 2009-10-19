@@ -49,6 +49,7 @@ tests = [
     'non_periodic.py',
     'lf.py',
     'lxc_xc.py',
+    'lxc_fxc.py',
     'Gauss.py',
     'cluster.py',
     'derivatives.py',
