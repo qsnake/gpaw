@@ -32,6 +32,7 @@ class LocalizedFunctions:
 
     def set_phase_factor(self, k_c):
         self.phase = np.exp(2.j * pi * np.inner(k_c, self.sdisp_c))
+        #self.phase = np.exp(-2.j * pi * np.inner(k_c, self.sdisp_c))
 
     def apply_t(self):
         """Apply kinetic energy operator and return new object."""
@@ -69,9 +70,9 @@ class LocalizedFunctions:
             a_iG1 = a_iG.copy()
             if self.vt_G is not None:
                 a_iG1 *= self.vt_G[start_c[0]:stop_c[0],
-                                  start_c[1]:stop_c[1],
-                                  start_c[2]:stop_c[2]].reshape((-1,))
-            return self.gd.dv * np.inner(a_iG1, b_iG) * self.phase * np.conj(other.phase)
+                                   start_c[1]:stop_c[1],
+                                   start_c[2]:stop_c[2]].reshape((-1,))
+            return self.gd.dv * np.inner(a_iG1, b_iG)  * self.phase * np.conj(other.phase)
         else:
             return None
         
@@ -103,8 +104,12 @@ class LocalizedFunctions:
 
         # other is a potential:
         vt_G = other
-        return LocalizedFunctions(self.gd, self.f_iG, self.corner_c,
+        newf = LocalizedFunctions(self.gd, self.f_iG, self.corner_c,
                                   self.index, vt_G)
+        newf.sdisp_c = self.sdisp_c
+        newf.phase = self.phase
+        return newf
+
 
 class WannierFunction(LocalizedFunctions):
     def __init__(self, gd, wanf_G, corner_c, index=None):
@@ -460,22 +465,25 @@ class STM:
         size_c = self.tip_cell.gd.n_c
         current_Vt = self.srf_cell.vt_G.copy()
 
-        current_Vt[cell_corner_c[0] + 1:cell_corner_c[0] + size_c[0] + 1,
-                   cell_corner_c[1] + 1:cell_corner_c[1] + size_c[1] + 1,
-                   cell_corner_c[2] + 1:cell_corner_c[2] + size_c[2] + 1]\
+        current_Vt[cell_corner_c[0]:cell_corner_c[0] + size_c[0],
+                   cell_corner_c[1]:cell_corner_c[1] + size_c[1],
+                   cell_corner_c[2]:cell_corner_c[2] + size_c[2]]\
                 += self.tip_cell.vt_G # +1 since grid starts at (1,1,1), pbc = 0
         self.current_v = current_Vt 
+        #self.current_v[:] =1
 
     def get_V(self, position_c):
         """Returns the overlap hamiltonian at position_c"""
         if not self.initialized:
             self.initialize()
-        
+        dtype = 'float'        
+        if np.any(self.input_parameters['k_c']):
+            dtype = 'complex'
         f_iGs = self.srf_cell.f_iGs
         self.set_tip_position(position_c)
         nj = self.nj
         ni = self.ni
-        V_ij = np.zeros((nj, ni))
+        V_ij = np.zeros((nj, ni), dtype=dtype )
         vt_G = self.current_v 
         for s in self.srf_cell.functions:
             j1 = s.index
@@ -485,10 +493,11 @@ class STM:
                                 self.tip_cell.functions_kin):
                 i1 = t.index
                 i2 = i1 + len(t)
-                V = (s | vt_G | t) 
+                V = (s | vt_G | t)
                 if V is None:
                     V = 0
                 kin = (s | t_kin)
+                kin=None
                 if kin is None:
                     kin = 0
                 V_ij[j1:j2, i1:i2] += V + kin
@@ -512,8 +521,12 @@ class STM:
         return I[0] * 77466.1509   #units: nA
     
     def get_s(self, position_c):
+        dtype = 'float'        
+        if np.any(self.input_parameters['k_c']):
+            dtype = 'complex'
         self.set_tip_position(position_c)
-        S_ij = np.zeros((self.nj, self.ni))
+        S_ij = np.zeros((self.nj, self.ni), dtype=dtype )
+        f_iGs = self.srf_cell.f_iGs
         for s in self.srf_cell.functions:
             j1 = s.index
             s.f_iG = self.srf_cell.f_iGs[j1]
@@ -531,6 +544,9 @@ class STM:
         self.scans = {}
 
     def scan(self):
+        dtype = 'float'        
+        if np.any(self.input_parameters['k_c']):
+            dtype = 'complex'
         #if world.rank == 0: #XXX
         T = time.localtime()
         self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
@@ -551,7 +567,7 @@ class STM:
             stop = l * (dcomm.rank + 1) + rest
 
         gpts_i = gpts_i[start:stop] # gridpoints on this cpu
-        V_g = np.zeros((len(gpts_i), self.nj, self.ni)) # V_ij's on this cpu
+        V_g = np.zeros((len(gpts_i), self.nj, self.ni), dtype=dtype) # V_ij's on this cpu
         
         for i, gpt in enumerate(gpts_i):
             x = gpt / N_c[1]
