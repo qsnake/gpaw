@@ -489,7 +489,7 @@ class STM:
             j1 = s.index
             s.f_iG = f_iGs[j1]
             j2 = j1 + len(s)
-            for t, t_kin in zip(self.tip_cell.functions,\
+            for t, t_kin in zip(self.tip_cell.functions,
                                 self.tip_cell.functions_kin):
                 i1 = t.index
                 i2 = i1 + len(t)
@@ -497,7 +497,6 @@ class STM:
                 if V is None:
                     V = 0
                 kin = (s | t_kin)
-                kin=None
                 if kin is None:
                     kin = 0
                 V_ij[j1:j2, i1:i2] += V + kin
