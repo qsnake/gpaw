@@ -8,6 +8,7 @@ from gpaw.grid_descriptor import GridDescriptor
 from gpaw.transformers import Transformer
 from gpaw.lcao.tools import get_realspace_hs
 from gpaw.mpi import world
+from gpaw.utilities import h2gpts
 from gpaw.utilities.lapack import diagonalize
 from gpaw.utilities.memory import maxrss
 
@@ -166,7 +167,7 @@ class Transport(GPAW):
                 p['verbose'] = kw['verbose']
 
         self.transport_parameters = p
-
+        self.adjust_spacing()     
         self.use_lead = p['use_lead']
         self.identical_leads = p['identical_leads']
         self.pl_atoms = p['pl_atoms']
@@ -264,6 +265,20 @@ class Transport(GPAW):
                                   pbc_c, domain_comm, parsize)
         self.gd.use_fixed_bc = True
 
+    def adjust_spacing(self):
+        p = self.gpw_kwargs
+        tp = self.transport_parameters
+        if p['h'] == None:
+            h = 0.2 / Bohr
+        else:
+            h = p['h'] / Bohr
+            
+        lead_cell1 = np.diag(tp['pl_cells'][0]) / Bohr
+        #lead_cell2 = np.diag(p['pl_cells'][1]) / Bohr
+        Nc_lead1 = h2gpts(h, lead_cell1)
+        #Nc_lead2 = h2gpts(h, lead_cell2)
+        p['h'] = lead_cell1[2, 2] / Nc_lead1[2] * Bohr 
+       
     def set_default_transport_parameters(self):
         p = {}
         p['use_lead'] = True
@@ -363,6 +378,12 @@ class Transport(GPAW):
         del calc.density
         self.extended_calc = calc
         self.gd1, self.finegd1 = calc.gd, calc.finegd
+        
+        h1 = self.atoms_l[0].calc.gd.h_c[2]
+        h2 = self.gd.h_c[2]
+        h3 = self.gd1.h_c[2] 
+        if abs(h1 -h2) > 0.001 or abs(h1 - h3) > 0.001:
+            print 'Warning, the spacing need to be more close', h1, h2, h3
         
         self.nspins = self.wfs.nspins
         self.npk = len(self.wfs.ibzk_kc)
