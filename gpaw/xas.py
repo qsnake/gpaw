@@ -9,7 +9,7 @@ import gpaw.mpi as mpi
 
 
 class XAS:
-    def __init__(self, paw, mode="xas", center=None):
+    def __init__(self, paw, mode="xas", center=None, spin=0):
         wfs = paw.wfs
         assert wfs.world.size == 1 #assert not mpi.parallel
 
@@ -18,14 +18,22 @@ class XAS:
         #
         nkpts = len(wfs.ibzk_kc)
         if wfs.nspins == 1:
+            if spin is not 0:
+                raise RuntimeError(
+                    "use spin=0 for a spin paired calculation")            
             nocc = wfs.setups.nvalence // 2
             self.list_kpts = range(nkpts)
         else:
             self.list_kpts=[]
 
-            #find kpoints with up spin 
+            if spin is not 0 and spin is not 1:
+                print "spin",spin    
+                raise RuntimeError(
+                    "use either spin=0 or spin=1")            
+
+            #find kpoints with correct spin
             for i, kpt in  enumerate(wfs.kpt_u):
-                if kpt.s == 0:
+                if kpt.s == spin:
                     self.list_kpts.append(i)
                 print self.list_kpts
             assert len(self.list_kpts) == nkpts
@@ -74,7 +82,7 @@ class XAS:
         self.sigma_cn = npy.empty((3, nkpts * n), complex)
         n1 = 0
         for kpt in wfs.kpt_u:
-            if kpt.s != 0:
+            if kpt.s != spin:
                 continue
             
             n2 = n1 + n
