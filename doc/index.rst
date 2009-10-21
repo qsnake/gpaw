@@ -53,6 +53,8 @@ algorithms used <features_and_algorithms>`.
 News
 ====
 
+* A third GPAW code sprint was successfully hosted at CAMD (Oct 20 2009)
+
 * :ref:`GPAW version 0.6 <releasenotes>` released (Oct 9 2009)
 
 * `QuantumWise <http://www.quantumwise.com>`_ adds GPAW-support to
