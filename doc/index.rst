@@ -25,7 +25,7 @@ algorithms used <features_and_algorithms>`.
         :target: http://www.phys.jyu.fi
 .. |i4| image:: _static/logo-fmf.png
         :height: 44 px
-        :target: http://www.fmf.uni-freiburg.de/index.html-en/view?set_language=en
+        :target: http://www.fmf.uni-freiburg.de
 .. |i5| image:: _static/logo-tut.png
         :height: 44 px
         :target: http://www.tut.fi
@@ -44,7 +44,7 @@ algorithms used <features_and_algorithms>`.
 * `CAMd, Technical University of Denmark <http://www.camp.dtu.dk>`_
 * `CSC, the Finnish IT center for science <http://www.csc.fi>`_
 * `Department of Physics, University of Jyväskylä <http://www.phys.jyu.fi>`_
-* `Freiburg Materials Research Center <http://www.fmf.uni-freiburg.de/index.html-en/view?set_language=en>`_
+* `Freiburg Materials Research Center <http://www.fmf.uni-freiburg.de>`_
 * `Institute of Physics, Tampere University of Technology <http://www.tut.fi>`_
 * `Laboratory of Physics, Helsinki University of Technology <http://www.fyslab.hut.fi>`_
 
