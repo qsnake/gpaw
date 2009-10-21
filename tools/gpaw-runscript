@@ -30,6 +30,7 @@ hosts = { 'batman'             : 'pbs_batman',
           'ui.bfg.uni'         : 'pbs_bfg',
           'xc2n992'            : 'xc2',
           'xc2n993'            : 'xc2',
+          'xc2.rz.uni-karlsruhe.de' : 'xc2',
           'juropa.fz-juelich.de': 'juropa'
           }
 
