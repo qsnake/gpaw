@@ -1643,7 +1643,8 @@ class Transport(GPAW):
     def get_forces(self, atoms):
         if (atoms.positions != self.atoms.positions).any():
             self.scf.converged = False
-        if hasattr(self.scf, 'converged') and self.scf.converged:
+        if not self.initialized_transport or (
+                       hasattr(self.scf, 'converged') and self.scf.converged):
             pass
         else:
             self.negf_prepare(atoms)
@@ -1652,7 +1653,8 @@ class Transport(GPAW):
             self.get_selfconsistent_hamiltonian()
             self.analysor.save_ion_step()
             self.analysor.save_data_to_file('ion')
-        self.F_av = None
+        if self.initialized_transport:
+            self.F_av = None
         #f = GPAW.get_forces(self, atoms)
         f = self.calculate_force()
         self.optimize = True
