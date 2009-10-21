@@ -919,7 +919,7 @@ class Transport_Plotter:
                 self.ele_steps = data
         fd.close()
         self.my_options = False
-        self.show = False
+        self.show_window = False
 
     def plot_setup(self):
         from matplotlib import rcParams
@@ -952,7 +952,7 @@ class Transport_Plotter:
             self.title = title
       
     def show(self, p, option='default'):
-        if not self.show:
+        if not self.show_window:
             if option == None:
                 p.show()
             elif option == 'default':
