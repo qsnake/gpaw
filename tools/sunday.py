@@ -137,7 +137,8 @@ class Jobs:
                 self.log('Disabling %s' % id)
                 self.fail(id)
 
-    def print_results(self, stream):
+    def print_results(self):
+        self.log('Results:')
         for id in self.ids:
             job = self.jobs[id]
             status = job.status
@@ -148,7 +149,7 @@ class Jobs:
                 t = '%8.1f' % t
             else:
                 t = '        '
-            stream.write('%20s %s %s\n' % (id, t, status))
+            self.log('%20s %s %s' % (id, t, status))
 
     def start(self, job):
         try:
@@ -254,7 +255,7 @@ class Jobs:
                    j.tmax, j.ncpu, j.deps, j.arg, j.status)
 
         
-j = Jobs('sunday.log')
+j = Jobs(time.strftime('sunday-%b-%d-%Y.log'), 'w'))
 j.add(jobs)
 j.install()
 try:
@@ -263,5 +264,5 @@ except:
     j.cleanup()
     raise
 else:
-    j.print_results(open(time.strftime('results-%b-%d-%Y.log'), 'w'))
+    j.print_results()
     

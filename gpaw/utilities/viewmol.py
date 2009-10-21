@@ -1,7 +1,7 @@
 """Trajectory module with viewmol support.""" 
 
 from math import sqrt
-import numpy as npy
+import numpy as np
 
 from ase import Angstrom, Atoms, Atom, Hartree, PickleTrajectory
 from ase.io import filetype as ase_filetype
@@ -124,7 +124,7 @@ class Trajectory(PickleTrajectory):
             forces = atoms.get_forces() * (Hartree / Angstrom)
             max_force = 0
             for f in forces:
-                max_force = max(max_force, sqrt(npy.sum(f * f)))
+                max_force = max(max_force, sqrt(np.sum(f * f)))
         except:
             forces = atoms.get_positions() * 0.
             max_force = 0
@@ -225,7 +225,7 @@ class ViewmolTrajectory(Trajectory):
         forces = atoms.get_forces() * (Hartree / Angstrom)
         max_force = 0
         for f in forces:
-            max_force = max(max_force, sqrt(npy.sum(f * f)))
+            max_force = max(max_force, sqrt(np.sum(f * f)))
         print >> self.file, '|max dE/dxyz|=', max_force
         self.write_viewmol_positions(self.file, atoms)
         for atom, f in zip(self.atoms, forces):

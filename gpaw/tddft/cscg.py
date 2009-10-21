@@ -3,7 +3,7 @@
 """This module defines CSCG-class, which implements conjugate gradient
 for complex symmetric matrices. Requires Numpy and GPAW's own BLAS."""
 
-import numpy as npy
+import numpy as np
 
 from gpaw.utilities.blas import axpy
 from gpaw.utilities.blas import dotu
@@ -88,12 +88,12 @@ class CSCG:
         q = self.gd.zeros(nvec, dtype=complex)
         z = self.gd.zeros(nvec, dtype=complex)
 
-        alpha = npy.zeros((nvec,), dtype=complex) 
-        beta = npy.zeros((nvec,), dtype=complex) 
-        rho  = npy.zeros((nvec,), dtype=complex) 
-        rhop  = npy.zeros((nvec,), dtype=complex) 
-        scale = npy.zeros((nvec,), dtype=complex) 
-        tmp = npy.zeros((nvec,), dtype=complex) 
+        alpha = np.zeros((nvec,), dtype=complex) 
+        beta = np.zeros((nvec,), dtype=complex) 
+        rho  = np.zeros((nvec,), dtype=complex) 
+        rhop  = np.zeros((nvec,), dtype=complex) 
+        scale = np.zeros((nvec,), dtype=complex) 
+        tmp = np.zeros((nvec,), dtype=complex) 
 
         rhop[:] = 1.
 
@@ -114,7 +114,7 @@ class CSCG:
 
         # scale = square of the norm of b
         multi_zdotu(scale, b,b, nvec)
-        scale = npy.abs( scale )
+        scale = np.abs( scale )
 
         # if scale < eps, then convergence check breaks down
         if (scale < self.eps).any():
@@ -142,8 +142,8 @@ class CSCG:
 
             # if abs(beta) / scale < eps, then CSCG breaks down
             if ( (i > 0) and
-                 ((npy.abs(beta) / scale) < self.eps).any() ):
-                raise RuntimeError("Conjugate gradient method failed (abs(beta)=%le < eps = %le)." % (npy.min(npy.abs(beta)),self.eps))
+                 ((np.abs(beta) / scale) < self.eps).any() ):
+                raise RuntimeError("Conjugate gradient method failed (abs(beta)=%le < eps = %le)." % (np.min(np.abs(beta)),self.eps))
 
 
             # p = z + beta p
@@ -168,7 +168,7 @@ class CSCG:
 
             # if ( |r|^2 < tol^2 ) done
             multi_zdotu(tmp, r,r, nvec)
-            if ( (npy.abs(tmp) / scale) < self.tol*self.tol ).all():
+            if ( (np.abs(tmp) / scale) < self.tol*self.tol ).all():
                 #print 'R2 of proc #', rank, '  = ' , tmp, \
                 #    ' after ', i+1, ' iterations'
                 break

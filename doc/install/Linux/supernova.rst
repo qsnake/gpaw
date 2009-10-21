@@ -46,8 +46,9 @@ Make sure that you have the right mpicc::
   which mpicc
  /usr/local/ompi-1.2.5-pgi/bin/mpicc
 
-and build GPAW (``python setup.py build_ext | tee build_ext.log``) with this
-:file:`customize.py` file::
+and build GPAW (``python setup.py build_ext | tee build_ext.log``)
+with this :file:`customize.py` file
+(**Note**: instructions valid from the **5232* release)::
 
   scalapack = True
 
@@ -80,9 +81,8 @@ and build GPAW (``python setup.py build_ext | tee build_ext.log``) with this
   mkl_lib_path+'libmkl_core.a',
   ]
 
-  define_macros += [
-    ('GPAW_MKL', '1')
-  ]
+  define_macros += [('GPAW_NO_UNDERSCORE_CBLACS', '1')]
+  define_macros += [('GPAW_NO_UNDERSCORE_CSCALAPACK', '1')]
 
 
 **Note**: is case of problems similar to those found on :ref:`akka` static linking is required.
@@ -107,9 +107,9 @@ where :file:`run.sh` looks like this::
   echo This jobs runs on the following $NPROCS processors:
   cat $PBS_NODEFILE
 
-  export PYTHONPATH=~/opt/gpaw-0.5.3667:~/opt/python-ase-3.1.0.846:${PYTHONPATH}
+  export PYTHONPATH=~/opt/gpaw-0.7.5232:~/opt/python-ase-3.1.0.846:${PYTHONPATH}
   export PYTHONPATH=~/opt/python/lib/python2.4/site-packages:${PYTHONPATH}
-  export PATH=~/opt/gpaw-0.5.3667/build/bin.linux-x86_64-2.4:${PATH}
+  export PATH=~/opt/gpaw-0.7.5232/build/bin.linux-x86_64-2.4:${PATH}
   export GPAW_SETUP_PATH=~/opt/gpaw-setups-0.5.3574
   export OMP_NUM_THREADS=1
 

@@ -47,7 +47,7 @@ from os import remove
 from os.path import exists, join
 
 try:
-    import numpy as npy
+    import numpy as np
 except ImportError:
     raise SystemExit('numpy is not installed!')
 

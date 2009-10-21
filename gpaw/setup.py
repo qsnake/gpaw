@@ -62,6 +62,9 @@ class BaseSetup:
     def print_info(self, text):
         self.data.print_info(text, self)
 
+    def get_basis_description(self):
+        return self.basis.get_description()
+
     def calculate_initial_occupation_numbers(self, magmom, hund, charge,
                                              f_j=None):
         """If f_j is specified, custom occupation numbers will be used.
@@ -329,27 +332,6 @@ class BaseSetup:
 
         return self.I4_pp
 
-    def read_basis_functions(self, basis):
-        if isinstance(basis, str):
-            basis = Basis(self.symbol, basis)
-
-        rc = basis.d * (basis.ng - 1)
-        r_g = np.linspace(0., rc, basis.ng)
-
-        # enable if-statement to revert to 'inefficient' equal-range basis
-        # functions.  Left for testing purposes
-        if 0:
-            for j, bf in enumerate(basis.bf_j):
-                phit_g = np.zeros(r_g.shape)
-                phit_g[:bf.ng] = bf.phit_g
-                bf.phit_g = phit_g
-                bf.ng = basis.ng
-                bf.rc = rc
-
-        phit_j = [Spline(bf.l, bf.rc, divrl(bf.phit_g, bf.l, r_g[:bf.ng]))
-                       for bf in basis.bf_j]
-        return phit_j
-
 
 class LeanSetup(BaseSetup):
     """Setup class with minimal attribute set.
@@ -418,6 +400,8 @@ class LeanSetup(BaseSetup):
         # Required by print_info
         self.rcutfilter = s.rcutfilter
         self.rcore = s.rcore
+        self.basis = s.basis # we don't need niAO if we use this instead
+        # Can also get rid of the phit_j splines if need be
 
         self.N0_p = s.N0_p # req. by estimate_magnetic_moments
         self.Delta1_jj = s.Delta1_jj # req. by lrtddft
@@ -616,11 +600,15 @@ class Setup(BaseSetup):
         self.pt_j = self.create_projectors(r_g, rcutfilter, beta)
 
         if basis is None:
-            phit_j = self.create_basis_functions(phit_jg, beta, ng, rcut2,
-                                                 gcut2, r_g)
+            basis = self.create_basis_functions(phit_jg, beta, ng, rcut2,
+                                                gcut2, r_g)
+            
         else:
-            phit_j = self.read_basis_functions(basis)
+            if isinstance(basis, str):
+                basis = Basis(self.symbol, basis)
+        phit_j = basis.tosplines()
         self.phit_j = phit_j
+        self.basis = basis #?
 
         self.niAO = 0
         for phit in self.phit_j:
@@ -930,6 +918,19 @@ class Setup(BaseSetup):
         a_g = 4 * x**3 * (1 - 0.75 * x)
         b_g = x**3 * (x - 1) * (rcut3 - rcut2)
 
+        class PartialWaveBasis(Basis): # yuckkk
+            def __init__(self, symbol, phit_j):
+                Basis.__init__(self, symbol, 'partial-waves', readxml=False)
+                self.phit_j = phit_j
+                
+            def tosplines(self):
+                return self.phit_j
+
+            def get_description(self):
+                template = 'Using partial waves for %s as LCAO basis'
+                string = template % self.symbol
+                return string
+
         phit_j = []
         for j, phit_g in enumerate(phit_jg):
             if self.n_j[j] > 0:
@@ -939,9 +940,9 @@ class Setup(BaseSetup):
                            (r_g[gcut3] - r_g[gcut3 - 1]))
                 phit_g[gcut2:gcut3] -= phit * a_g + dphitdr * b_g
                 phit_g[gcut3:] = 0.0
-                phit_j.append(Spline(l, rcut3, phit_g, r_g, beta,
-                                     points=100))
-        return phit_j
+                phit_j.append(Spline(l, rcut3, phit_g, r_g, beta, points=100))
+        basis = PartialWaveBasis(self.symbol, phit_j)
+        return basis
 
     def calculate_oscillator_strengths(self, r_g, dr_g, phi_jg):
         self.A_ci = np.zeros((3, self.ni))

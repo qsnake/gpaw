@@ -30,6 +30,9 @@ parser.add_option('--after', metavar='TESTFILE', dest='after_test',
 parser.add_option('-j', '--jobs', type='int', default=1,
                   help='Run JOBS threads.')
 
+parser.add_option('-k', '--keep-temp-dir', action='store_true',
+                  dest='keep_tmpdir', help='Do not delete temporary files.')
+
 opt, tests = parser.parse_args()
 
 
@@ -71,5 +74,5 @@ if mpi.rank == 0:
     os.chdir(cwd)
     if len(failed) > 0:
         open('failed-tests.txt', 'w').write('\n'.join(failed) + '\n')
-    else:
+    elif not opt.keep_tmpdir:
         os.system('rm -rf ' + tmpdir)

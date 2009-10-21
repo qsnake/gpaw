@@ -30,11 +30,6 @@ class ForceCalculator:
         # Force from projector functions (and basis set):
         wfs.calculate_forces(hamiltonian, self.F_av)
 
-        wfs.band_comm.sum(self.F_av, 0)
-
-        if wfs.band_comm.rank == 0:
-            wfs.kpt_comm.sum(self.F_av, 0)
-
         if wfs.band_comm.rank == 0 and wfs.kpt_comm.rank == 0:
             # Force from compensation charges:
             dF_aLv = density.ghat.dict(derivative=True)

@@ -1,7 +1,7 @@
 from math import pi, sqrt
 
-import numpy as npy
-from ase.units import Bohr
+import numpy as np
+from ase.units import Bohr, Hartree
 
 import gpaw.mpi as mpi
 from gpaw import debug
@@ -67,10 +67,10 @@ class KSSingles(ExcitationList):
 
         self.select(nspins, eps, istart, jend, energyrange)
 
-        trkm = self.GetTRK()
+        trkm = self.get_trk()
         print >> self.txt, 'KSS TRK sum %g (%g,%g,%g)' % \
-              (npy.sum(trkm)/3.,trkm[0],trkm[1],trkm[2])
-        pol = self.GetPolarizabilities(lmax=3)
+              (np.sum(trkm)/3.,trkm[0],trkm[1],trkm[2])
+        pol = self.get_polarizabilities(lmax=3)
         print >> self.txt, \
               'KSS polarisabilities(l=0-3) %g, %g, %g, %g' % \
               tuple(pol.tolist())
@@ -251,7 +251,7 @@ class KSSingle(Excitation, PairDensity):
         me = - gd.calculate_dipole_moment(self.get())
 
         # augmentation contributions
-        ma = npy.zeros(me.shape)
+        ma = np.zeros(me.shape)
         pos_av = paw.atoms.get_positions() / Bohr
         for a, P_ni in kpt.P_ani.items():
             Ra = pos_av[a]
@@ -260,7 +260,7 @@ class KSSingle(Excitation, PairDensity):
             Delta_pL = wfs.setups[a].Delta_pL
             ni=len(Pi_i)
             ma0 = 0
-            ma1 = npy.zeros(me.shape)
+            ma1 = np.zeros(me.shape)
             for i in range(ni):
                 for j in range(ni):
                     pij = Pi_i[i]*Pj_i[j]
@@ -271,8 +271,8 @@ class KSSingle(Excitation, PairDensity):
                     if wfs.setups[a].lmax >= 1:
                         # see spherical_harmonics.py for
                         # L=1:y L=2:z; L=3:x
-                        ma1 += npy.array([Delta_pL[ij,3], Delta_pL[ij,1],
-                                          Delta_pL[ij,2]]) * pij
+                        ma1 += np.array([Delta_pL[ij,3], Delta_pL[ij,1],
+                                         Delta_pL[ij,2]]) * pij
             ma += sqrt(4 * pi / 3) * ma1 + Ra * sqrt(4 * pi) * ma0
         gd.comm.sum(ma)
 
@@ -297,7 +297,7 @@ class KSSingle(Excitation, PairDensity):
             
         # XXXX local corrections are missing here
         # augmentation contributions
-        ma = npy.zeros(me.shape)
+        ma = np.zeros(me.shape)
         for a, P_ni in kpt.P_ani.items():
             setup = paw.wfs.setups[a]
 #            print setup.Delta1_jj
@@ -318,7 +318,7 @@ class KSSingle(Excitation, PairDensity):
             Pj_i = P_ni[self.j]
             ni = len(Pi_i)
             
-            ma1 = npy.zeros(me.shape)
+            ma1 = np.zeros(me.shape)
             for i1 in range(ni):
                 L1 = setup.l_i[i1]
                 j1 = setup.j_i[i1]
@@ -329,9 +329,9 @@ class KSSingle(Excitation, PairDensity):
                     pi1i2 = Pi_i[i1] * Pj_i[i2]
                     p = packed_index(i1, i2, ni)
                     
-                    v1 = sqrt(4 * pi / 3) * npy.array([G_LLL[L1, L2, 3],
-                                                       G_LLL[L1, L2, 1],
-                                                       G_LLL[L1, L2, 2]])
+                    v1 = sqrt(4 * pi / 3) * np.array([G_LLL[L1, L2, 3],
+                                                      G_LLL[L1, L2, 1],
+                                                      G_LLL[L1, L2, 2]])
                     v2 = ylnyl[L1, L2, :]
                     ma1 += pij * (v1 * setup.Delta1_jj[j1, j2] +
                                   v2 * setup.Delta_pL[p, 0]      )
@@ -393,11 +393,11 @@ class KSSingle(Excitation, PairDensity):
         self.energy = float(l.pop(0))
         self.fij = float(l.pop(0))
         if len(l) == 3: # old writing style
-            self.me = npy.array([float(l.pop(0)) for i in range(3)])
+            self.me = np.array([float(l.pop(0)) for i in range(3)])
         else:
-            self.mur = npy.array([float(l.pop(0)) for i in range(3)])
+            self.mur = np.array([float(l.pop(0)) for i in range(3)])
             self.me = - self.mur * sqrt(self.energy*self.fij)
-            self.muv = npy.array([float(l.pop(0)) for i in range(3)])
+            self.muv = np.array([float(l.pop(0)) for i in range(3)])
         return None
 
     def outstring(self):
@@ -413,7 +413,7 @@ class KSSingle(Excitation, PairDensity):
     def __str__(self):
         str = "# <KSSingle> %d->%d %d(%d) eji=%g[eV]" % \
               (self.i, self.j, self.pspin, self.spin,
-               self.energy*27.211)
+               self.energy * Hartree)
         str += " (%g,%g,%g)" % (self.me[0],self.me[1],self.me[2])
         return str
     
@@ -421,9 +421,6 @@ class KSSingle(Excitation, PairDensity):
     ## User interface: ##
     #####################
 
-    def GetEnergy(self):
-        return self.energy
-
-    def GetWeight(self):
+    def get_weight(self):
         return self.fij
 

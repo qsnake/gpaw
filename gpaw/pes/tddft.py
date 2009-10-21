@@ -1,13 +1,12 @@
 import numpy as np
 
-from ase import *
+from ase.units import Hartree
 
 from gpaw.pes import BasePES
-from gpaw import *
 import gpaw.mpi as mpi
-from gpaw.lrtddft import *
 from gpaw.utilities import packed_index
 
+from numpy import sqrt, pi
 
 class TDDFTPES(BasePES):
     def __init__(self, Mother, ExcitedDaughter, Daughter=None):
@@ -26,7 +25,7 @@ class TDDFTPES(BasePES):
         
         self.check_systems()
         self.lr_d.jend=self.lr_d.kss[-1].j        
-	
+        
         # Make good way for initialising these
 
         self.imax=0
@@ -41,7 +40,7 @@ class TDDFTPES(BasePES):
 
         self.f=None
         self.be=None
-	self.first_peak_energy=None
+        self.first_peak_energy=None
 
     def _calculate(self):
         self._create_d()
@@ -155,7 +154,7 @@ class TDDFTPES(BasePES):
             self.first_peak_energy=(self.c_d.get_potential_energy()
                                   -self.c_m.get_potential_energy())
 
-        self.be = self.first_peak_energy + np.array([0] + list(self.lr_d.GetEnergies()))
+        self.be = self.first_peak_energy + np.array([0] + list(self.lr_d.get_energies() * Hartree))
 
     def _nuc_corr(self, i_m, j_d, k_m, k_d):
         ma = 0

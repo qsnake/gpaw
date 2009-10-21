@@ -3,7 +3,7 @@
 
 import weakref
 
-import numpy as npy
+import numpy as np
 
 from gpaw.interaction import GInteraction2 as GInteraction
 from gpaw.neighbor_list import NeighborList
@@ -68,8 +68,8 @@ class PairPotential:
                 symbol2 = nucleus2.setup.symbol
                 interaction = self.interactions[(symbol1, symbol2)]
                 diff_c = pos_ac[a2] - pos_ac[a1]
-                V_LL = npy.zeros(interaction.v_LL.shape)  #  XXXX!
-                dVdr_LLc = npy.zeros(interaction.dvdr_LLc.shape)
+                V_LL = np.zeros(interaction.v_LL.shape)  #  XXXX!
+                dVdr_LLc = np.zeros(interaction.dvdr_LLc.shape)
                 r_c = pos_ac[a2] - cell_c / 2
                 for offset in offsets:
                     d_c = diff_c + offset
@@ -79,8 +79,8 @@ class PairPotential:
                 nucleus1.neighbors.append(Neighbor(V_LL, dVdr_LLc, nucleus2))
                 if nucleus2 is not nucleus1:
                     nucleus2.neighbors.append(
-                        Neighbor(npy.transpose(V_LL),
-                                 -npy.transpose(dVdr_LLc, (1, 0, 2)),
+                        Neighbor(np.transpose(V_LL),
+                                 -np.transpose(dVdr_LLc, (1, 0, 2)),
                                  nucleus1))
 
     def print_info(self, out):

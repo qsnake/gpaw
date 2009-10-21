@@ -30,10 +30,10 @@ extra_link_args += [
   '-Wl,-rpath=/usr/local/scalapack-1.8.0-1.infiniband/lib64',
   '-Wl,-rpath=/usr/local/infinipath-2.0/lib64'
 ]
-define_macros += [
-  ('GPAW_MKL', '1'),
-  ('SL_SECOND_UNDERSCORE', '1')
-]
+define_macros += [('GPAW_NO_UNDERSCORE_CBLACS', '1')]
+define_macros += [('GPAW_NO_UNDERSCORE_CSCALAPACK', '1')]
+define_macros += [('GPAW_SECOND_UNDERSCORE_SL_INIT', '1')]
+
 mpicompiler = '/usr/local/infinipath-2.0/bin/mpicc'
 mpilinker = mpicompiler
 platform_id = 'infiniband'

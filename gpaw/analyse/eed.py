@@ -1,6 +1,6 @@
 import sys
 
-import numpy as npy
+import numpy as np
 from ase.units import Bohr, Hartree
 from ase.parallel import paropen
 
@@ -21,7 +21,7 @@ class ExteriorElectronDensity:
 
         n = len(atoms)
         atom_c = atoms.positions / Bohr
-        vdWradius = npy.empty((n))
+        vdWradius = np.empty((n))
         for a, atom in enumerate(atoms):
             vdWradius[a] = self.get_vdWradius(atom.get_atomic_number())
 
@@ -37,7 +37,7 @@ class ExteriorElectronDensity:
         does not contribute."""
 
         # smooth part
-        weigth = self.gd.integrate(npy.where(self.mask == 1, 
+        weigth = self.gd.integrate(np.where(self.mask == 1, 
                                              psit_G * psit_G.conj(), 0.0))
 
         return weigth
@@ -45,7 +45,7 @@ class ExteriorElectronDensity:
     def get_vdWradius(self, Z):
         """Return van der Waals radius in Bohr"""
         r = vdW_radii[Z] / Bohr
-        if npy.isnan(r):
+        if np.isnan(r):
             msg = 'van der Waals radius for Z=' + str(Z) + ' not known!'
             raise RuntimeError(msg)
         else:
@@ -85,13 +85,13 @@ class ExteriorElectronDensity:
                 
 # van der Waals radii in [A] taken from
 # http://www.webelements.com/periodicity/van_der_waals_radius/
-vdW_radii = npy.array([
- npy.nan, # X
+vdW_radii = np.array([
+ np.nan, # X
  1.20, # H
  1.40, # He
  1.82, # Li
- npy.nan, # Be
- npy.nan, # B
+ np.nan, # Be
+ np.nan, # B
  1.70, # C
  1.55, # N
  1.52, # O
@@ -99,94 +99,94 @@ vdW_radii = npy.array([
  1.54, # Ne
  2.27, # Na
  1.73, # Mg
- npy.nan, # Al
+ np.nan, # Al
  2.10, # Si
  1.80, # P
  1.80, # S
  1.75, # Cl
  1.88, # Ar
  2.75, # K
- npy.nan, # Ca
- npy.nan, # Sc
- npy.nan, # Ti
- npy.nan, # V
- npy.nan, # Cr
- npy.nan, # Mn
- npy.nan, # Fe
- npy.nan, # Co
+ np.nan, # Ca
+ np.nan, # Sc
+ np.nan, # Ti
+ np.nan, # V
+ np.nan, # Cr
+ np.nan, # Mn
+ np.nan, # Fe
+ np.nan, # Co
  1.63, # Ni
  1.40, # Cu
  1.39, # Zn
  1.87, # Ga
- npy.nan, # Ge
+ np.nan, # Ge
  1.85, # As
  1.90, # Se
  1.85, # Br
  2.02, # Kr
- npy.nan, # Rb
- npy.nan, # Sr
- npy.nan, # Y
- npy.nan, # Zr
- npy.nan, # Nb
- npy.nan, # Mo
- npy.nan, # Tc
- npy.nan, # Ru
- npy.nan, # Rh
+ np.nan, # Rb
+ np.nan, # Sr
+ np.nan, # Y
+ np.nan, # Zr
+ np.nan, # Nb
+ np.nan, # Mo
+ np.nan, # Tc
+ np.nan, # Ru
+ np.nan, # Rh
  1.63, # Pd
  1.72, # Ag
  1.58, # Cd
  1.93, # In
  2.17, # Sn
- npy.nan, # Sb
+ np.nan, # Sb
  2.06, # Te
  1.98, # I
  2.16, # Xe
- npy.nan, # Cs
- npy.nan, # Ba
- npy.nan, # La
- npy.nan, # Ce
- npy.nan, # Pr
- npy.nan, # Nd
- npy.nan, # Pm
- npy.nan, # Sm
- npy.nan, # Eu
- npy.nan, # Gd
- npy.nan, # Tb
- npy.nan, # Dy
- npy.nan, # Ho
- npy.nan, # Er
- npy.nan, # Tm
- npy.nan, # Yb
- npy.nan, # Lu
- npy.nan, # Hf
- npy.nan, # Ta
- npy.nan, # W
- npy.nan, # Re
- npy.nan, # Os
- npy.nan, # Ir
+ np.nan, # Cs
+ np.nan, # Ba
+ np.nan, # La
+ np.nan, # Ce
+ np.nan, # Pr
+ np.nan, # Nd
+ np.nan, # Pm
+ np.nan, # Sm
+ np.nan, # Eu
+ np.nan, # Gd
+ np.nan, # Tb
+ np.nan, # Dy
+ np.nan, # Ho
+ np.nan, # Er
+ np.nan, # Tm
+ np.nan, # Yb
+ np.nan, # Lu
+ np.nan, # Hf
+ np.nan, # Ta
+ np.nan, # W
+ np.nan, # Re
+ np.nan, # Os
+ np.nan, # Ir
  1.75, # Pt
  1.66, # Au
  1.55, # Hg
  1.96, # Tl
  2.02, # Pb
- npy.nan, # Bi
- npy.nan, # Po
- npy.nan, # At
- npy.nan, # Rn
- npy.nan, # Fr
- npy.nan, # Ra
- npy.nan, # Ac
- npy.nan, # Th
- npy.nan, # Pa
+ np.nan, # Bi
+ np.nan, # Po
+ np.nan, # At
+ np.nan, # Rn
+ np.nan, # Fr
+ np.nan, # Ra
+ np.nan, # Ac
+ np.nan, # Th
+ np.nan, # Pa
  1.86, # U
- npy.nan, # Np
- npy.nan, # Pu
- npy.nan, # Am
- npy.nan, # Cm
- npy.nan, # Bk
- npy.nan, # Cf
- npy.nan, # Es
- npy.nan, # Fm
- npy.nan, # Md
- npy.nan, # No
- npy.nan]) # Lr
+ np.nan, # Np
+ np.nan, # Pu
+ np.nan, # Am
+ np.nan, # Cm
+ np.nan, # Bk
+ np.nan, # Cf
+ np.nan, # Es
+ np.nan, # Fm
+ np.nan, # Md
+ np.nan, # No
+ np.nan]) # Lr

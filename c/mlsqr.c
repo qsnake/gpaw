@@ -4,7 +4,7 @@
 #include <numpy/arrayobject.h>
 #include "extensions.h"
 
-#ifdef GPAW_AIX
+#ifdef GPAW_NO_UNDERSCORE_LAPACK
 #  define dgels_ dgels
 #endif
 
@@ -67,7 +67,7 @@ PyObject* mlsqr(PyObject *self, PyObject *args)
     }
   if (order == 3)
     {
-      // 1 x y z xy yz zx xx yy zz 
+      // 1 x y z xy yz zx xx yy zz
       // xxy xxz yyx yyz zzx zzy
       // xxx yyy zzz zyz
       coeffs = 20;
@@ -135,7 +135,7 @@ PyObject* mlsqr(PyObject *self, PyObject *args)
 	         w*=w;
 	         w*=(4*d+1);
 	      }
-              
+
 	      //double w = exp(-d*d);
 
 	      *i_X++ = w*1.0;
@@ -152,7 +152,7 @@ PyObject* mlsqr(PyObject *self, PyObject *args)
 		  *i_X++ = w*sy*sy;
 		  *i_X++ = w*sz*sz;
 		}
-	      
+
 	      if (order > 2)
 		{
 		  *i_X++ = w*sx*sy*sz; // xyz

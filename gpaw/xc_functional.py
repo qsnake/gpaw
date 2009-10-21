@@ -2,7 +2,7 @@
 # Please see the accompanying LICENSE file for further information.
 
 import array
-import numpy as npy
+import numpy as np
 
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.operators import Gradient
@@ -244,7 +244,7 @@ class XCFunctional:
             self.xc = _gpaw.XCFunctional(code, self.gga, s0, i)
         elif code in [5, 17]:
             self.xc = _gpaw.XCFunctional(code, self.gga,
-                                         0.0, 0, npy.array(parameters))
+                                         0.0, 0, np.array(parameters))
         elif code == 18:
             if parameters is None:
                 parameters = [(-100.0,-5.17947467923,23.3572146909,
@@ -254,7 +254,7 @@ class XCFunctional:
                                0.160492491676, 0.0932604619238)]
             elif len(parameters) == 1:
                 parameters = [parameters[0], 1.0]
-            parameters = npy.asarray(parameters, float)
+            parameters = np.asarray(parameters, float)
             self.xc = _gpaw.XCFunctional(code, self.gga,
                                          0.0, 0, parameters.ravel())
         elif code == 6:
@@ -472,9 +472,9 @@ class XCFunctional:
                            sigma0=None, sigma1=None, sigma2=None,
                            taua=0.0,taub=0.0):
         # see c/libxc.c for the input and output values
-        d_exc = npy.zeros(7)
-        d_ex = npy.zeros(7)
-        d_ec = npy.zeros(7)
+        d_exc = np.zeros(7)
+        d_ex = np.zeros(7)
+        d_ec = np.zeros(7)
         (exc, ex, ec,
          d_exc[0], d_exc[1],
          d_exc[2], d_exc[3], d_exc[4],
@@ -484,8 +484,9 @@ class XCFunctional:
          d_ex[5], d_ex[6], 
          d_ec[0], d_ec[1],
          d_ec[2], d_ec[3], d_ec[4],
-         d_ec[5], d_ec[6]
-		 ) = self.xc.calculate_xcenergy(na, nb, sigma0, sigma1, sigma2, taua, taub)
+         d_ec[5], d_ec[6]) = self.xc.calculate_xcenergy(na, nb, sigma0,
+                                                        sigma1, sigma2,
+                                                        taua, taub)
         return exc, ex, ec, d_exc, d_ex, d_ec
 
 class XCGrid:
@@ -831,18 +832,18 @@ class XCRadialGrid(XCGrid):
 
         if xcfunc.gga:
             self.rgd = gd
-            self.dndr_g = npy.empty(self.shape)
-            self.a2_g = npy.empty(self.shape)
-            self.deda2_g = npy.empty(self.shape)
+            self.dndr_g = np.empty(self.shape)
+            self.a2_g = np.empty(self.shape)
+            self.deda2_g = np.empty(self.shape)
             if self.nspins == 2:
-                self.dnadr_g = npy.empty(self.shape)
-                self.dnbdr_g = npy.empty(self.shape)
-                self.aa2_g = npy.empty(self.shape)
-                self.ab2_g = npy.empty(self.shape)
-                self.dedaa2_g = npy.empty(self.shape)
-                self.dedab2_g = npy.empty(self.shape)
+                self.dnadr_g = np.empty(self.shape)
+                self.dnbdr_g = np.empty(self.shape)
+                self.aa2_g = np.empty(self.shape)
+                self.ab2_g = np.empty(self.shape)
+                self.dedaa2_g = np.empty(self.shape)
+                self.dedab2_g = np.empty(self.shape)
 
-        self.e_g = npy.empty(self.shape)
+        self.e_g = np.empty(self.shape)
 
     # True, if this xc-potential depends on more than just density
     def is_non_local(self):
@@ -881,7 +882,7 @@ class XCRadialGrid(XCGrid):
         else:
             self.xcfunc.calculate_spinpaired(e_g, n_g, v_g)
 
-        return npy.dot(self.e_g.ravel(), self.dv_g)
+        return np.dot(self.e_g.ravel(), self.dv_g)
 
     def get_energy_and_potential_spinpolarized(self, na_g, va_g, nb_g, vb_g):
         if self.xcfunc.mgga:
@@ -981,7 +982,7 @@ class XCRadialGrid(XCGrid):
                                                 na_g, va_g,
                                                 nb_g, vb_g)
 
-        return npy.dot(self.e_g, self.dv_g)
+        return np.dot(self.e_g, self.dv_g)
 
 def xcgrid(xcfunc, gd, nspins=1):
     if isinstance(gd, GridDescriptor):

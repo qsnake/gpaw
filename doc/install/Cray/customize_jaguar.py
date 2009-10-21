@@ -33,7 +33,6 @@ extra_link_args = [
     '-L'+acml_base+' -lacml',
 ]
 
-define_macros += [
-  ('GPAW_MKL', '1'),
-  ('NO_SOCKET', '1')
-]
+define_macros += [('GPAW_NO_UNDERSCORE_CBLACS', '1')]
+define_macros += [('GPAW_NO_UNDERSCORE_CSCALAPACK', '1')]
+define_macros += [('NO_SOCKET', '1')]

@@ -9,7 +9,7 @@ This file defines a series of finite difference operators used in grid mode.
 from __future__ import division
 from math import pi
 
-import numpy as npy
+import numpy as np
 
 from gpaw import debug
 from gpaw.utilities import contiguous, is_contiguous
@@ -36,11 +36,11 @@ class _Operator:
             mp = max(maxoffset_c)
         n_c = gd.n_c
         M_c = n_c + 2 * mp
-        stride_c = npy.array([M_c[1] * M_c[2], M_c[2], 1])
-        offset_p = npy.dot(offset_pc, stride_c)
+        stride_c = np.array([M_c[1] * M_c[2], M_c[2], 1])
+        offset_p = np.dot(offset_pc, stride_c)
         coef_p = contiguous(coef_p, float)
         neighbor_cd = gd.neighbor_cd
-        assert npy.rank(coef_p) == 1
+        assert np.rank(coef_p) == 1
         assert coef_p.shape == offset_p.shape
         assert dtype in [float, complex]
         self.dtype = dtype
@@ -87,9 +87,9 @@ class _Operator:
         return self.operator.get_async_sizes()
 
     def estimate_memory(self, mem):
-        bufsize_c = npy.array(self.gd.n_c) + 2 * self.mp
+        bufsize_c = np.array(self.gd.n_c) + 2 * self.mp
         itemsize = mem.itemsize[self.dtype]
-        mem.setsize(npy.prod(bufsize_c) * itemsize)
+        mem.setsize(np.prod(bufsize_c) * itemsize)
 
 
 class OperatorWrapper:
@@ -161,7 +161,7 @@ def Gradient(gd, v, scale=1.0, dtype=float, allocate=True):
         if abs(d[i])>1e-11:
             coef_p.extend([-a[i] * d[i], a[i] * d[i]])
 
-            offset = npy.zeros((2, 3), int)
+            offset = np.zeros((2, 3), int)
             offset[0, i] = -1
             offset[1, i] =  1                    
             offset_pc.extend(offset)
@@ -210,13 +210,13 @@ def Laplace(gd, scale=1.0, n=1, dtype=float, allocate=True):
     d2 = (iucell_cv**2).sum(1) # gradient magnitudes squared [(Delta_xyzLattice_vector_i)**2]
 
     offsets = [(0, 0, 0)]
-    coefs = [scale * npy.sum(d2 * npy.divide(laplace[n][0],h2))]
+    coefs = [scale * np.sum(d2 * np.divide(laplace[n][0],h2))]
 
     for d in range(1, n + 1):
         offsets.extend([(-d, 0, 0), (d, 0, 0),
                         (0, -d, 0), (0, d, 0),
                         (0, 0, -d), (0, 0, d)])
-        c = scale * d2 * npy.divide(laplace[n][d], h2)
+        c = scale * d2 * np.divide(laplace[n][d], h2)
 
         coefs.extend([c[0], c[0],
                       c[1], c[1],
@@ -233,7 +233,7 @@ def Laplace(gd, scale=1.0, n=1, dtype=float, allocate=True):
                     [( d2+1, 0   , d1+1),( d2+1 , 0    ,-d1-1),(-d2-1 , 0   , d1+1),(-d2-1,0    ,-d1-1)]]
 
             for i in range(3):
-                c = scale * 2. * cross[n][ci] * npy.dot(iucell_cv[i],iucell_cv[(i+1)%3]) / (h[i]*h[(i+1)%3])
+                c = scale * 2. * cross[n][ci] * np.dot(iucell_cv[i],iucell_cv[(i+1)%3]) / (h[i]*h[(i+1)%3])
 
                 if abs(c)>1E-11: #extend stencil only to points of non zero coefficient
                     offsets.extend(offset[i])
@@ -241,7 +241,7 @@ def Laplace(gd, scale=1.0, n=1, dtype=float, allocate=True):
 
                     if (d2>d1):  #extend stencil to symmetric points (ex. [1,2,3] <-> [2,1,3])
                         ind=[0,1,2]; ind[i]=(i+1)%3; ind[(i+1)%3]=i
-                        offsets.extend([tuple(npy.take(offset[i][i2],ind)) for i2 in range(4)])
+                        offsets.extend([tuple(np.take(offset[i][i2],ind)) for i2 in range(4)])
                         coefs.extend([c,-c,-c,c])
 
             ci+=1
@@ -254,13 +254,13 @@ class FTLaplace:
     def __init__(self, gd, scale, dtype):
         assert gd.comm.size == 1 and gd.pbc_c.all()
 
-        N_c1 = gd.N_c[:, npy.newaxis]
-        i_cq = npy.indices(gd.N_c).reshape((3, -1))
+        N_c1 = gd.N_c[:, np.newaxis]
+        i_cq = np.indices(gd.N_c).reshape((3, -1))
         i_cq += N_c1 // 2
         i_cq %= N_c1
         i_cq -= N_c1 // 2
         B_vc = 2.0 * pi * gd.icell_cv.T
-        k_vq = npy.dot(B_vc, i_cq)
+        k_vq = np.dot(B_vc, i_cq)
         k_vq *= k_vq
         self.k2_Q = k_vq.sum(axis=0).reshape(gd.N_c)
         self.k2_Q *= -scale
@@ -284,11 +284,11 @@ class FTLaplace:
 
 
 def LaplaceA(gd, scale, dtype=float, allocate=True):
-    c = npy.divide(-1/12, gd.h_c**2) * scale  # Why divide? XXX
+    c = np.divide(-1/12, gd.h_c**2) * scale  # Why divide? XXX
     c0 = c[1] + c[2]
     c1 = c[0] + c[2]
     c2 = c[1] + c[0]
-    a = -16.0 * npy.sum(c)
+    a = -16.0 * np.sum(c)
     b = 10.0 * c + 0.125 * a
     return Operator([a,
                      b[0], b[0],

@@ -4,7 +4,7 @@ import os
 import sys
 from StringIO import StringIO
 
-import numpy as npy
+import numpy as np
 from numpy.linalg import solve
 from ase.units import Hartree
 
@@ -72,7 +72,7 @@ class BasisMaker:
 
         which is exact if the projectors/pseudo partial waves are complete.
         """  
-        if npy.rank(psi_mg) == 1:
+        if np.rank(psi_mg) == 1:
             return self.smoothify(psi_mg[None], l)[0]
 
         g = self.generator
@@ -80,17 +80,17 @@ class BasisMaker:
         q_ng = g.q_ln[l]
         s_ng = g.s_ln[l]
 
-        Pi_nn = npy.dot(g.r * q_ng, u_ng.T)
-        Q_nm = npy.dot(g.r * q_ng, psi_mg.T)
-        Qt_nm = npy.linalg.solve(Pi_nn, Q_nm)
+        Pi_nn = np.dot(g.r * q_ng, u_ng.T)
+        Q_nm = np.dot(g.r * q_ng, psi_mg.T)
+        Qt_nm = np.linalg.solve(Pi_nn, Q_nm)
 
         # Weight-function for truncating all-electron parts smoothly near core
         gmerge = g.r2g(g.rcut_l[l])
-        w_g = npy.ones(g.r.shape)
+        w_g = np.ones(g.r.shape)
         w_g[0:gmerge] = (g.r[0:gmerge] / g.r[gmerge])**2.
         w_g = w_g[None]
         
-        psit_mg = psi_mg * w_g + npy.dot(Qt_nm.T, s_ng - u_ng * w_g)
+        psit_mg = psi_mg * w_g + np.dot(Qt_nm.T, s_ng - u_ng * w_g)
         return psit_mg
 
     def get_unsmoothed_projector_coefficients(self, psi_jg, l):
@@ -114,7 +114,7 @@ class BasisMaker:
         where p_i-tilde are the projectors and phi_k the AE partial waves.
         """
         raise DeprecationWarning
-        if npy.rank(psi_jg) == 1:
+        if np.rank(psi_jg) == 1:
             # vector/matrix polymorphism hack
             return self.get_unsmoothed_projector_coefficients([psi_jg], l)[0]
 
@@ -125,18 +125,18 @@ class BasisMaker:
         m = len(q)
         n = len(u)
 
-        A = npy.zeros((m, n))
-        b = npy.zeros((m, len(psi_jg)))
+        A = np.zeros((m, n))
+        b = np.zeros((m, len(psi_jg)))
 
         # This can probably be done in the constructor once and for all
         # Not to mention that it can be replaced by a matrix multiplication
         for i in range(m):
             for j in range(n):
-                A[i, j] = npy.dot(g.dr, q[i] * u[j])
+                A[i, j] = np.dot(g.dr, q[i] * u[j])
 
         for i in range(m):
             for j in range(len(psi_jg)):
-                b[i, j] = npy.dot(g.dr, q[i] * psi_jg[j])
+                b[i, j] = np.dot(g.dr, q[i] * psi_jg[j])
 
         p = solve(A, b)
         return p
@@ -155,7 +155,7 @@ class BasisMaker:
                                     j
         """
         raise DeprecationWarning
-        if npy.rank(psit_jg) == 1:
+        if np.rank(psit_jg) == 1:
             # vector/matrix polymorphism hack
             return self.unsmoothify([psit_jg], l)[0]
         g = self.generator
@@ -181,7 +181,7 @@ class BasisMaker:
 
         """
         raise DeprecationWarning
-        if npy.rank(psi_jg) == 1:
+        if np.rank(psi_jg) == 1:
             # vector/matrix polymorphism hack
             return self.old_smoothify([psi_jg], l)[0]
         
@@ -327,7 +327,7 @@ class BasisMaker:
     def rsplit_by_norm(self, l, u, tailnorm_squared, txt):
         """Find radius outside which remaining tail has a particular norm."""
         g = self.generator
-        norm_squared = npy.dot(g.dr, u*u)
+        norm_squared = np.dot(g.dr, u*u)
         partial_norm_squared = 0.
         i = len(u) - 1
         absolute_tailnorm_squared = tailnorm_squared * norm_squared
@@ -415,11 +415,11 @@ class BasisMaker:
         # Get (only) one occupied valence state for each l
         # Not including polarization in this list
         if lvalues is None:
-            lvalues = npy.unique([l for l, f in zip(g.l_j[g.njcore:], 
+            lvalues = np.unique([l for l, f in zip(g.l_j[g.njcore:], 
                                                     g.f_j[g.njcore:])
                                   if f > 0])
             if lvalues[0] != 0: # Always include s-orbital !
-                lvalues = npy.array([0] + list(lvalues))
+                lvalues = np.array([0] + list(lvalues))
             
         title = '%s Basis functions for %s' % (g.xcname, g.symbol)
         print >> txt, title
@@ -476,7 +476,7 @@ class BasisMaker:
             phit_g = self.smoothify(u, l)
             bf = BasisFunction(l, rc, phit_g,
                                '%s-sz confined orbital' % orbitaltype)
-            norm = npy.dot(g.dr, phit_g * phit_g)**.5
+            norm = np.dot(g.dr, phit_g * phit_g)**.5
             print >> txt, 'Norm=%.03f' % norm
             singlezetas.append(bf)
 
@@ -492,7 +492,7 @@ class BasisMaker:
                 
                 phit2_g = self.smoothify(u2, l)
                 dphit_g = phit2_g - phit_g
-                dphit_norm = npy.dot(g.dr, dphit_g * dphit_g) ** .5
+                dphit_norm = np.dot(g.dr, dphit_g * dphit_g) ** .5
                 dphit_g /= dphit_norm
                 descr = '%s-dz E-derivative of sz' % orbitaltype
                 bf = BasisFunction(l, rc, dphit_g, descr)
@@ -549,7 +549,7 @@ class BasisMaker:
             rchar = rcharpol_rel * rc_fixed
             gaussian = QuasiGaussian(1./rchar**2, rcut)
             psi_pol = gaussian(g.r) * g.r**(l_pol + 1)
-            norm = npy.dot(g.dr, psi_pol * psi_pol) ** .5
+            norm = np.dot(g.dr, psi_pol * psi_pol) ** .5
             psi_pol /= norm
             print >> txt, 'Single quasi Gaussian'
             msg = 'Rchar = %.03f*rcut = %.03f Bohr' % (rcharpol_rel, rchar)
@@ -592,7 +592,7 @@ class BasisMaker:
 
         # The non-equidistant grids are really only suited for AE WFs
         d = 1./64.
-        equidistant_grid = npy.arange(0., rcmax + d, d)
+        equidistant_grid = np.arange(0., rcmax + d, d)
         ng = len(equidistant_grid)
 
         for bf in bf_j:
@@ -614,7 +614,7 @@ class BasisMaker:
             spline = Spline(bf.l, g.r[g.r2g(bf.rc)],
                             bf.phit_g,
                             g.r, beta=g.beta, points=100)
-            bf.phit_g = npy.array([spline(r) * r**bf.l
+            bf.phit_g = np.array([spline(r) * r**bf.l
                                    for r in equidistant_grid[:bf.ng]])
             bf.phit_g[-1] = 0.
 
@@ -649,7 +649,7 @@ class BasisMaker:
         # XXX method should no longer belong to a basis maker
         import pylab
         rc = max([bf.rc for bf in basis.bf_j])
-        r = npy.linspace(0., basis.d * (basis.ng - 1), basis.ng)
+        r = np.linspace(0., basis.d * (basis.ng - 1), basis.ng)
         g = self.generator
         if figure is not None:
             pylab.figure(figure)
@@ -661,7 +661,7 @@ class BasisMaker:
         for bf in basis.bf_j:
             label = bf.type
             # XXX times g.r or not times g.r ?
-            phit_g = npy.zeros_like(r)
+            phit_g = np.zeros_like(r)
             phit_g[:len(bf.phit_g)] = bf.phit_g
             pylab.plot(r, phit_g * r, label=label[:12])
         axis = pylab.axis()

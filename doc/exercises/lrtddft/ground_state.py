@@ -14,7 +14,7 @@ atoms.set_calculator(calc)
 e = atoms.get_potential_energy()
 
 # Calculate also unoccupied states with the fixed density
-calc.set(nbands=20, convergence={'bands': 'all'}, 
+calc.set(nbands=20, convergence={'bands': 20}, 
          eigensolver='cg', # unoccupied states converge often better with cg
          fixdensity=True)
 e = atoms.get_potential_energy()

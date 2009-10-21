@@ -1,11 +1,11 @@
 from time import time
 try:
-    import numpy as npy
-    npy_float = npy.float
+    import numpy as np
+    np_float = np.float
 except ImportError:
     try:
-        import Numeric as npy
-        npy_float = npy.Float
+        import Numeric as np
+        np_float = np.Float
     except ImportError:
         raise SystemExit('numpy nor Numeric not installed!')
 from gpaw import mpi
@@ -23,7 +23,7 @@ def run(ngpts, repeat, narrays, prec=False):
     while p <= mpi.size and ngpts**3 / p > 4**3:
         if mpi.rank == 0:
             out.write('%4d' % p)
-        comm = mpi.world.new_communicator(npy.arange(p))
+        comm = mpi.world.new_communicator(np.arange(p))
         if comm is not None:
             go(comm, ngpts, repeat, narrays, out, prec)
         mpi.world.barrier()
@@ -32,7 +32,7 @@ def run(ngpts, repeat, narrays, prec=False):
         out.close()
 
 def go(comm, ngpts, repeat, narrays, out, prec):
-    N_c = npy.array((ngpts, ngpts, ngpts))
+    N_c = np.array((ngpts, ngpts, ngpts))
     a = 10.0
     gd = GridDescriptor(N_c, (a, a, a), comm=comm))
     gdcoarse = gd.coarsen()
@@ -42,7 +42,7 @@ def go(comm, ngpts, repeat, narrays, out, prec):
     kin2 = laplace.apply
     restrict = Transformer(gd, gdcoarse, 1).apply
     interpolate = Transformer(gd, gdfine, 1).apply
-    precondition = Preconditioner(gd, laplace, npy_float)
+    precondition = Preconditioner(gd, laplace, np_float)
     a1 = gd.empty(narrays)
     a1[:] = 1.0
     a2 = gd.empty(narrays)

@@ -10,7 +10,7 @@ class DOSPES(BasePES):
         self.c_d=Daughter
         self.f=None
         self.be=None
-	self.first_peak_energy=None
+        self.first_peak_energy=None
 
 
     def _calculate(self):

@@ -5,7 +5,7 @@ functional theory calculations."""
 
 import sys
 
-import numpy as npy
+import numpy as np
 
 from gpaw.utilities.blas import axpy
 from gpaw.utilities.blas import dotc
@@ -465,7 +465,7 @@ class SemiImplicitCrankNicolson(ExplicitCrankNicolson):
         self.niter += self.solver.solve(self, kpt.psit_nG, rhs_kpt.psit_nG)
 
         # Apply shift exp(i eps t)
-        #self.phase_shift = npy.exp(1.0J * self.shift * time_step)
+        #self.phase_shift = np.exp(1.0J * self.shift * time_step)
         #self.mblas.multi_scale(self.phase_shift, kpt.psit_nG, nvec)
 
     # ( S + i H dt/2 ) psi
@@ -795,21 +795,21 @@ class SemiImplicitKrylovExponential(DummyPropagator):
 
         # em = (wfs, degree)
         if self.em is None:
-            self.em = npy.zeros((nvec, self.kdim), float)
+            self.em = np.zeros((nvec, self.kdim), float)
 
         # lm = (wfs)
         if self.lm is None:
-            self.lm = npy.zeros((nvec,), complex)
+            self.lm = np.zeros((nvec,), complex)
 
         # hm = (wfs, degree, degree)
         if self.hm is None:
-            self.hm = npy.zeros((nvec, self.kdim, self.kdim), complex)
+            self.hm = np.zeros((nvec, self.kdim, self.kdim), complex)
         # sm = (wfs, degree, degree)
         if self.sm is None:
-            self.sm = npy.zeros((nvec, self.kdim, self.kdim), complex)
+            self.sm = np.zeros((nvec, self.kdim, self.kdim), complex)
         # xm = (wfs, degree, degree)
         if self.xm is None:
-            self.xm = npy.zeros((nvec, self.kdim, self.kdim), complex)
+            self.xm = np.zeros((nvec, self.kdim, self.kdim), complex)
 
         # qm = (degree, wfs, nx, ny, nz) 
         if self.qm is None:
@@ -885,8 +885,8 @@ class SemiImplicitKrylovExponential(DummyPropagator):
     def solve_propagation_equation(self, kpt, time_step):
 
         nvec = len(kpt.psit_nG)
-        tmp = npy.zeros((nvec,), complex)
-        xm_tmp = npy.zeros((nvec, self.kdim), complex)
+        tmp = np.zeros((nvec,), complex)
+        xm_tmp = np.zeros((nvec, self.kdim), complex)
 
         qm = self.qm
         Hqm = self.Hqm
@@ -913,13 +913,13 @@ class SemiImplicitKrylovExponential(DummyPropagator):
                     self.sm[k][i][j] = tmp[k]
 
         #print 'Hm ='
-        #print npy.round(self.hm*1e4) / 1e4
+        #print np.round(self.hm*1e4) / 1e4
         #print 'log Hm ='
-        #print npy.round(npy.log(self.hm)*1e2)/1e2
+        #print np.round(np.log(self.hm)*1e2)/1e2
         #print 'Sm ='
-        #print npy.round(self.sm*1e4) / 1e4
+        #print np.round(self.sm*1e4) / 1e4
 
-        #print npy.round(npy.log10(npy.abs(npy.linalg.eigh(self.hm[0])[1]))*1e6)/1e6
+        #print np.round(np.log10(np.abs(np.linalg.eigh(self.hm[0])[1]))*1e6)/1e6
 
         # Diagonalize
         # Propagate
@@ -931,19 +931,19 @@ class SemiImplicitKrylovExponential(DummyPropagator):
         # if Sm = I then y is the first row of Xm^*
         # and z = exp(-i Em t) y
         for k in range(nvec):
-            (self.em[k], self.xm[k]) = npy.linalg.eigh(self.hm[k])
+            (self.em[k], self.xm[k]) = np.linalg.eigh(self.hm[k])
         #print 'Em = ', self.em
         #for k in range(nvec):
             #print 'Xm',k,' = '
             #print self.xm[k]
 
         #print self.em[0] * (-1.0J*self.time_step)
-        self.em = npy.exp(self.em * (-1.0j*time_step))
+        self.em = np.exp(self.em * (-1.0j*time_step))
         #print self.em[0]
-        #print npy.linalg.eigh(self.hm[0])
+        #print np.linalg.eigh(self.hm[0])
         for k in range(nvec):
-            z = self.em[k] * npy.conj(self.xm[k,0])
-            xm_tmp[k][:] = npy.dot(self.xm[k], z)
+            z = self.em[k] * np.conj(self.xm[k,0])
+            xm_tmp[k][:] = np.dot(self.xm[k], z)
         #print xm_tmp
         kpt.psit_nG[:] = 0.0
         for k in range(nvec):
@@ -961,8 +961,8 @@ class SemiImplicitKrylovExponential(DummyPropagator):
     def create_krylov_subspace(self, kpt, h, s, qm, Hqm, Sqm):
         nvec = len(kpt.psit_nG)
         # tmp = (wfs)
-        tmp = npy.zeros((nvec,), complex)
-        scale = npy.zeros((nvec,), complex)
+        tmp = np.zeros((nvec,), complex)
+        scale = np.zeros((nvec,), complex)
         scale[:] = 0.0
         rqm = self.rqm
 
@@ -977,17 +977,17 @@ class SemiImplicitKrylovExponential(DummyPropagator):
             for j in range(i):
                 self.mblas.multi_zdotc(tmp, qm[i], Sqm[j], nvec)
                 tmp *= self.gd.dv
-                tmp = npy.conj(tmp)
+                tmp = np.conj(tmp)
                 self.mblas.multi_zaxpy(-tmp, qm[j], qm[i], nvec)
 
             # S q_i
             s.apply(kpt, qm[i], Sqm[i])
             self.mblas.multi_zdotc(tmp, qm[i], Sqm[i], nvec)
             tmp *= self.gd.dv
-            self.mblas.multi_scale(1./npy.sqrt(tmp), qm[i], nvec)
-            self.mblas.multi_scale(1./npy.sqrt(tmp), Sqm[i], nvec)
+            self.mblas.multi_scale(1./np.sqrt(tmp), qm[i], nvec)
+            self.mblas.multi_scale(1./np.sqrt(tmp), Sqm[i], nvec)
             if i == 0:
-                scale[:] = 1/npy.sqrt(tmp)
+                scale[:] = 1/np.sqrt(tmp)
                 #print 'Scale', scale
 
             # H q_i
@@ -1018,14 +1018,14 @@ class SemiImplicitKrylovExponential(DummyPropagator):
         self.dot = self.Sdot
         self.kpt = kpt_u[0]
         nvec = len(self.kpt.psit_nG)
-        nrm2 = npy.zeros(nvec, dtype=complex)
+        nrm2 = np.zeros(nvec, dtype=complex)
         self.tmp = self.gd.zeros(n=nvec, dtype=complex)
 
         for i in range(10):
             self.solver.solve(self, self.kpt.psit_nG, self.kpt.psit_nG)
             self.mblas.multi_zdotc(nrm2, self.kpt.psit_nG, self.kpt.psit_nG, nvec)
             nrm2 *= self.gd.dv
-            self.mblas.multi_scale(1/npy.sqrt(nrm2), self.kpt.psit_nG, nvec)
+            self.mblas.multi_scale(1/np.sqrt(nrm2), self.kpt.psit_nG, nvec)
         self.td_overlap.apply(self.kpt, self.kpt.psit_nG, self.tmp)
         self.mblas.multi_zdotc(nrm2, self.kpt.psit_nG, self.tmp, nvec)
         nrm2 *= self.gd.dv
@@ -1036,7 +1036,7 @@ class SemiImplicitKrylovExponential(DummyPropagator):
         self.dot = self.Sdot
         self.kpt = kpt_u[0]
         nvec = len(self.kpt.psit_nG)
-        nrm2 = npy.zeros(nvec, dtype=complex)
+        nrm2 = np.zeros(nvec, dtype=complex)
         self.tmp = self.gd.zeros(n=nvec, dtype=complex)
 
         for i in range(100):
@@ -1044,7 +1044,7 @@ class SemiImplicitKrylovExponential(DummyPropagator):
             self.td_overlap.apply(self.kpt, self.tmp, self.kpt.psit_nG)
             self.mblas.multi_zdotc(nrm2, self.kpt.psit_nG, self.kpt.psit_nG, nvec)
             nrm2 *= self.gd.dv
-            self.mblas.multi_scale(1/npy.sqrt(nrm2), self.kpt.psit_nG, nvec)
+            self.mblas.multi_scale(1/np.sqrt(nrm2), self.kpt.psit_nG, nvec)
         self.td_overlap.apply(self.kpt, self.kpt.psit_nG, self.tmp)
         self.mblas.multi_zdotc(nrm2, self.kpt.psit_nG, self.tmp, nvec)
         nrm2 *= self.gd.dv
@@ -1055,14 +1055,14 @@ class SemiImplicitKrylovExponential(DummyPropagator):
         self.dot = self.Hdot
         self.kpt = kpt_u[0]
         nvec = len(self.kpt.psit_nG)
-        nrm2 = npy.zeros(nvec, dtype=complex)
+        nrm2 = np.zeros(nvec, dtype=complex)
         self.tmp = self.gd.zeros(n=nvec, dtype=complex)
 
         for i in range(10):
             self.solver.solve(self, self.kpt.psit_nG, self.kpt.psit_nG)
             self.mblas.multi_zdotc(nrm2, self.kpt.psit_nG, self.kpt.psit_nG, nvec)
             nrm2 *= self.gd.dv
-            self.mblas.multi_scale(1/npy.sqrt(nrm2), self.kpt.psit_nG, nvec)
+            self.mblas.multi_scale(1/np.sqrt(nrm2), self.kpt.psit_nG, nvec)
         self.td_hamiltonian.apply(self.kpt, self.kpt.psit_nG, self.tmp)
         self.mblas.multi_zdotc(nrm2, self.kpt.psit_nG, self.tmp, nvec)
         nrm2 *= self.gd.dv
@@ -1073,7 +1073,7 @@ class SemiImplicitKrylovExponential(DummyPropagator):
         self.dot = self.Hdot
         self.kpt = kpt_u[0]
         nvec = len(self.kpt.psit_nG)
-        nrm2 = npy.zeros(nvec, dtype=complex)
+        nrm2 = np.zeros(nvec, dtype=complex)
         self.tmp = self.gd.zeros(n=nvec, dtype=complex)
 
         for i in range(100):
@@ -1081,7 +1081,7 @@ class SemiImplicitKrylovExponential(DummyPropagator):
             self.td_hamiltonian.apply(self.kpt, self.tmp, self.kpt.psit_nG)
             self.mblas.multi_zdotc(nrm2, self.kpt.psit_nG, self.kpt.psit_nG, nvec)
             nrm2 *= self.gd.dv
-            self.mblas.multi_scale(1/npy.sqrt(nrm2), self.kpt.psit_nG, nvec)
+            self.mblas.multi_scale(1/np.sqrt(nrm2), self.kpt.psit_nG, nvec)
         self.td_hamiltonian.apply(self.kpt, self.kpt.psit_nG, self.tmp)
         self.mblas.multi_zdotc(nrm2, self.kpt.psit_nG, self.tmp, nvec)
         nrm2 *= self.gd.dv

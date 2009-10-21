@@ -1,7 +1,7 @@
 from math import sqrt
 import sys
 
-import numpy as npy
+import numpy as np
 from ase.units import Hartree
 
 import _gpaw
@@ -181,9 +181,6 @@ class LrTDDFT(ExcitationList):
     def get_Om(self):
         return self.Om
 
-    def Read(self, filename=None, fh=None):
-        return self.read(filename, fh)
-        
     def read(self, filename=None, fh=None):
         """Read myself from a file"""
 
@@ -284,9 +281,6 @@ class LrTDDFT(ExcitationList):
         string += self.kss.__str__()
         return string
 
-    def Write(self, filename=None, fh=None):
-        return self.write(filename,fh)
-    
     def write(self, filename=None, fh=None):
         """Write current state to a file.
 
@@ -341,13 +335,13 @@ def d2Excdnsdnt(dup,ddn):
     res=[[0, 0], [0, 0]]
     for ispin in range(2):
         for jspin in range(2):
-            res[ispin][jspin]=npy.zeros(dup.shape)
+            res[ispin][jspin]=np.zeros(dup.shape)
             _gpaw.d2Excdnsdnt(dup, ddn, ispin, jspin, res[ispin][jspin])
     return res
 
 def d2Excdn2(den):
     """Second derivative of Exc unpolarised"""
-    res=npy.zeros(den.shape)
+    res=np.zeros(den.shape)
     _gpaw.d2Excdn2(den, res)
     return res
 
@@ -396,7 +390,7 @@ class LrTDDFTExcitation(Excitation):
         return str
         
     def __str__(self):
-        m2 = npy.sum(self.me*self.me)
+        m2 = np.sum(self.me*self.me)
         m = sqrt(m2)
         if m>0: me = self.me/m
         else:   me = self.me
@@ -407,12 +401,12 @@ class LrTDDFTExcitation(Excitation):
     def analyse(self,min=.1):
         """Return an analysis string of the excitation"""
         s='E=%.3f'%(self.energy * Hartree)+' eV, f=%.3g'\
-           %(self.GetOscillatorStrength()[0])+'\n'
+           %(self.get_oscillator_strength()[0])+'\n'
 
         def sqr(x): return x*x
         spin = ['u','d'] 
         min2 = sqr(min)
-        rest = npy.sum(self.f**2)
+        rest = np.sum(self.f**2)
         for f,k in zip(self.f,self.kss):
             f2 = sqr(f)
             if f2>min2:

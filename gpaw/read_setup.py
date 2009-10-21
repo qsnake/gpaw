@@ -8,7 +8,7 @@ import xml.sax
 import re
 from cStringIO import StringIO
 
-import numpy as npy
+import numpy as np
 
 from gpaw.utilities.tools import md5_new
 from gpaw.xc_functional import XCFunctional
@@ -194,7 +194,7 @@ http://wiki.fysik.dtu.dk/gpaw/install/installationguide.html for details."""
     def endElement(self, name):
         if self.data is None:
             return
-        x_g = npy.array([float(x) for x in ''.join(self.data).split()])
+        x_g = np.array([float(x) for x in ''.join(self.data).split()])
         if name == 'ae_core_density':
             self.nc_g = x_g
         elif name == 'pseudo_core_density':

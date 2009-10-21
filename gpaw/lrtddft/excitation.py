@@ -1,7 +1,7 @@
 import sys
 from math import pi, sqrt
 
-import numpy as npy
+import numpy as np
 from ase.units import Hartree
 
 import _gpaw
@@ -35,26 +35,22 @@ class ExcitationList(list):
         el = []
         for ex in self:
             el.append(ex.get_energy())
-        return npy.array(el)
+        return np.array(el)
 
-    def GetEnergies(self):
-        """Get excitation energies in units of the calculators energy unit"""
-        return self.get_energies() * Hartree
-
-    def GetTRK(self):
+    def get_trk(self):
         """Evaluate the Thonmas Reiche Kuhn sum rule"""
-        trkm = npy.zeros((3))
+        trkm = np.zeros((3))
         for ex in self:
-            trkm += ex.get_energy()*ex.GetDipolME()**2
+            trkm += ex.get_energy()*ex.get_dipol_me()**2
         return 2.*trkm # scale to get the number of electrons
     
-    def GetPolarizabilities(self,lmax=7):
+    def get_polarizabilities(self,lmax=7):
         """Calculate the Polarisabilities
         see Jamorski et al. J. Chem. Phys. 104 (1996) 5134"""
-        S=npy.zeros((lmax+1))
+        S=np.zeros((lmax+1))
         for ex in self:
-            e = ex.GetEnergy()
-            f = ex.GetOscillatorStrength()[0]
+            e = ex.get_energy()
+            f = ex.get_oscillator_strength()[0]
             for l in range(lmax+1):
                 S[l] += e**(-2*l) * f
         return S
@@ -75,14 +71,11 @@ class Excitation:
         """
         return self.energy
     
-    def GetDipolME(self):
+    def get_dipol_me(self):
         """return the excitations dipole matrix element
         including the occupation factor"""
         return self.me / sqrt(self.energy)
     
-    def GetOscillatorStrength(self):
-        return self.get_oscillator_strength()
-
     def get_oscillator_strength(self, form='r'):
         """Return the excitations dipole oscillator strength.
 

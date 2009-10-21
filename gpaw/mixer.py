@@ -5,10 +5,11 @@
 Ref. to Kresse-paper ... XXX
 """
 
-import numpy as npy
+import numpy as np
 
 from gpaw.utilities.blas import axpy
 from gpaw.operators import Operator
+
 
 class BaseMixer:
     """Pulay density mixer."""
@@ -81,7 +82,7 @@ class BaseMixer:
         # History for Pulay mixing of densities:
         self.nt_iG = [] # Pseudo-electron densities
         self.R_iG = []  # Residuals
-        self.A_ii = npy.zeros((0, 0))
+        self.A_ii = np.zeros((0, 0))
         self.dNt = None
         
         self.D_iap = []
@@ -115,14 +116,14 @@ class BaseMixer:
             # Calculate new residual (difference between input and
             # output density):
             R_G = nt_G - self.nt_iG[-1]
-            self.dNt = self.gd.integrate(npy.fabs(R_G))
+            self.dNt = self.gd.integrate(np.fabs(R_G))
             self.R_iG.append(R_G)
             self.dD_iap.append([])
             for D_p, D_ip in zip(D_ap, self.D_iap[-1]):
                 self.dD_iap[-1].append(D_p - D_ip)
 
             # Update matrix:
-            A_ii = npy.zeros((iold, iold))
+            A_ii = np.zeros((iold, iold))
             i1 = 0
             i2 = iold - 1
             
@@ -133,7 +134,7 @@ class BaseMixer:
                 self.metric(R_G, mR_G)
                 
             for R_1G in self.R_iG:
-                a = self.gd.comm.sum(npy.vdot(R_1G, mR_G))
+                a = self.gd.comm.sum(np.vdot(R_1G, mR_G))
                 A_ii[i1, i2] = a
                 A_ii[i2, i1] = a
                 i1 += 1
@@ -141,9 +142,9 @@ class BaseMixer:
             self.A_ii = A_ii
 
             try:
-                B_ii = npy.linalg.inv(A_ii)
-            except npy.linalg.LinAlgError:
-                alpha_i = npy.zeros(iold)
+                B_ii = np.linalg.inv(A_ii)
+            except np.linalg.LinAlgError:
+                alpha_i = np.zeros(iold)
                 alpha_i[-1] = 1.0
             else:
                 alpha_i = B_ii.sum(1)
@@ -179,6 +180,12 @@ class BaseMixer:
         gridbytes = gd.bytecount()
         mem.subnode('nt_iG, R_iG', 2 * self.nmaxold * gridbytes)
 
+    def __repr__(self):
+        classname = self.__class__.__name__
+        template = '%s(beta=%f, nmaxold=%d, weight=%f)'
+        string = template % (classname, self.beta, self.nmaxold, self.weight)
+        return string
+
 
 class DummyMixer(BaseMixer):
     """Dummy mixer for TDDFT, i.e., it does not mix."""
@@ -187,6 +194,7 @@ class DummyMixer(BaseMixer):
 
     def estimate_memory(self, mem, gd):
         pass
+
 
 class Mixer(BaseMixer):
     """Mix spin up and down densities separately"""
@@ -374,6 +382,7 @@ class MixerRho2(BaseMixer):
         rhot_g = density.rhot_g
         BaseMixer.mix(self, rhot_g, density.D_asp.values())
 
+
 class BaseMixer_Broydn:
     def __init__(self, beta=0.1, nmaxold=6):
         self.step = 0
@@ -411,11 +420,11 @@ class BaseMixer_Broydn:
             for d_Dp, D_p, D_ip in zip(self.d_D_ap, D_ap, self.D_iap):
                 d_Dp.append(D_p - D_ip[-1])
             fmin_G = self.gd.integrate(self.d_nt_G[-1] * self.d_nt_G[-1])
-            self.dNt = self.gd.integrate(npy.fabs(self.d_nt_G[-1]))
+            self.dNt = self.gd.integrate(np.fabs(self.d_nt_G[-1]))
             if self.verbose:
                 print 'Mixer: broydn: fmin_G = %f fmin_D = %f'% fmin_G
         if self.step == 0:
-            self.eta_G = npy.empty(nt_G.shape)
+            self.eta_G = np.empty(nt_G.shape)
             self.eta_D = []
             for D_p in D_ap:
                 self.eta_D.append(0)
@@ -467,10 +476,11 @@ class BaseMixer_Broydn:
                 del self.nt_iG[0]
                 for D_ip in self.D_iap:
                     del D_ip[0]
-        self.nt_iG.append(npy.copy(nt_G))
+        self.nt_iG.append(np.copy(nt_G))
         for D_ip, D_p in zip(self.D_iap, D_ap):
-            D_ip.append(npy.copy(D_p))
+            D_ip.append(np.copy(D_p))
         self.step += 1
+
         
 class Mixer_Broydn(BaseMixer_Broydn):
     """Mix spin up and down densities separately"""
@@ -512,6 +522,7 @@ class Mixer_Broydn(BaseMixer_Broydn):
         for mixer in self.mixers:
             mixer.set_charge_sloshing(dNt / len(self.mixers))
 
+
 class MixerSum_Broydn(BaseMixer_Broydn):
     def mix(self, density):
         nt_sG = density.nt_sG
@@ -528,5 +539,3 @@ class MixerSum_Broydn(BaseMixer_Broydn):
         # Construct new spin up/down densities 
         nt_sG[0] = 0.5 * (nt_G + dnt_G)
         nt_sG[1] = 0.5 * (nt_G - dnt_G)
-        
-        

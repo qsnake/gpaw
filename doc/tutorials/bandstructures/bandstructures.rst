@@ -4,13 +4,13 @@
 Calculation of electronic band structures
 =========================================
 
-The script :svn:`tutorials/bandstructures/bandstructure.py` will
+The script :svn:`~doc/tutorials/bandstructures/bandstructure.py` will
 calculate the band structure of Na along the Gamma-X direction.  The
 resulting band structure is shown below.
 
 .. figure:: sodium_bands.png
 
-(This plot was made using :svn:`tutorials/bandstructures/plot_bands.py`)
+(This plot was made using :svn:`~doc/tutorials/bandstructures/plot_bands.py`)
 
 One should note that as GPAW only works with orthorhombic cells, the
 unit cell here is larger than the primitive BCC cell.  Accordingly,

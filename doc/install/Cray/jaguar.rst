@@ -204,7 +204,7 @@ Test python/numpy::
 
  qsub numpyTest.pbs
 
-Install ase/gpaw-setups::
+Install ase/gpaw-setups (**Note**: use the latest releases)::
 
   cd ${sw_home}
   wget --no-check-certificate https://wiki.fysik.dtu.dk/ase-files/python-ase-3.1.0.846.tar.gz
@@ -216,17 +216,17 @@ Install ase/gpaw-setups::
   cd /tmp/work/$USER
   ln -s python-ase-3.1.0.846 ase
 
-Install gpaw::
+Install gpaw (**Note**: instructions valid from the **5232* release)::
 
   cd ${sw_home}
-  wget --no-check-certificate https://wiki.fysik.dtu.dk/gpaw-files/gpaw-0.5.3667.tar.gz
-  tar zxf gpaw-0.5.3667.tar.gz
-  cd gpaw-0.5.3667
+  wget --no-check-certificate https://wiki.fysik.dtu.dk/gpaw/gpaw-0.7.5232.tar.gz
+  tar zxf gpaw-0.7.5232.tar.gz
+  cd gpaw-0.7.5232
   wget --no-check-certificate http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/install/Cray/customize_jaguar.py -O customize.py
   ${PYTHON_DIR}/bin/python setup.py build_ext | tee build_ext.log
-  cp -r ${sw_home}/gpaw-0.5.3667 /tmp/work/$USER
+  cp -r ${sw_home}/gpaw-0.7.5232 /tmp/work/$USER
   cd /tmp/work/$USER
-  ln -s gpaw-0.5.3667 gpaw
+  ln -s gpaw-0.7.5232 gpaw
 
 Test gpaw::
 

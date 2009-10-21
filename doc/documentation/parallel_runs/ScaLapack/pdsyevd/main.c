@@ -7,7 +7,7 @@
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 
 // BLACS
-#ifdef GPAW_MKL
+#ifdef GPAW_NO_UNDERSCORE_CBLACS
 #define   Cblacs_barrier_  Cblacs_barrier
 #define   Cblacs_exit_     Cblacs_exit
 #define   Cblacs_get_      Cblacs_get
@@ -19,7 +19,7 @@
 #define   Cblacs_setup_    Cblacs_setup
 #endif
 
-#ifdef GPAW_AIX
+#ifdef GPAW_NO_UNDERSCORE_BLACS
 #define   dgebr2d_  dgebr2d
 #define   dgebs2d_  dgebs2d
 #define   zgebr2d_  zgebr2d
@@ -60,7 +60,7 @@ void zgebs2d_(int *ConTxt, char* scope, char* top, int *m, int *n,
 
 // ScaLapack
 
-#ifdef GPAW_AIX
+#ifdef GPAW_NO_UNDERSCORE_SCALAPACK
 #define   descinit_  descinit
 #define   numroc_  numroc
 #define   pdelset_  pdelset
@@ -83,11 +83,11 @@ void zgebs2d_(int *ConTxt, char* scope, char* top, int *m, int *n,
 #define   sl_init_  sl_init
 #endif
 
-#ifdef GPAW_MKL
+#ifdef GPAW_NO_UNDERSCORE_CSCALAPACK
 #define   Cpdgemr2d_  Cpdgemr2d
 #endif
 
-#ifdef SL_SECOND_UNDERSCORE
+#ifdef GPAW_SECOND_UNDERSCORE_SL_INIT
 #define   sl_init_  sl_init__
 #endif
 

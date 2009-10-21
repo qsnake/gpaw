@@ -1,5 +1,5 @@
 from math import sqrt, pi
-import numpy as npy
+import numpy as np
 
 from gpaw.utilities import pack
 from gpaw.utilities.tools import pick
@@ -32,7 +32,7 @@ class PairDensity2:
 
     def get_coarse(self, nt_G):
         """Get pair density"""
-        npy.multiply(self.psit1_G.conj(), self.psit2_G, nt_G)
+        np.multiply(self.psit1_G.conj(), self.psit2_G, nt_G)
 
     def add_compensation_charges(self, nt_G, rhot_g):
         """Add compensation charges to input pair density, which
@@ -51,13 +51,13 @@ class PairDensity2:
             # Generate density matrix
             P1_i = P_ni[self.n1]
             P2_i = P_ni[self.n2]
-            D_ii = npy.outer(P1_i.conj(), P2_i)
+            D_ii = np.outer(P1_i.conj(), P2_i)
             # allowed to pack as used in the scalar product with
             # the symmetric array Delta_pL
             D_p  = pack(D_ii, tolerance=1e30)
             
             # Determine compensation charge coefficients:
-            Q_aL[a] = npy.dot(D_p, self.density.setups[a].Delta_pL)
+            Q_aL[a] = np.dot(D_p, self.density.setups[a].Delta_pL)
 
         # Add compensation charges
         if self.finegrid:
@@ -106,13 +106,13 @@ class PairDensity:
             # Generate density matrix
             Pi_i = P_ni[self.i]
             Pj_i = P_ni[self.j]
-            D_ii = npy.outer(Pi_i, Pj_i)
+            D_ii = np.outer(Pi_i, Pj_i)
             # allowed to pack as used in the scalar product with
             # the symmetric array Delta_pL
             D_p  = pack(D_ii, tolerance=1e30)
             
             # Determine compensation charge coefficients:
-            Q_aL[a] = npy.dot(D_p, self.setups[a].Delta_pL)
+            Q_aL[a] = np.dot(D_p, self.setups[a].Delta_pL)
 
         # Add compensation charges
         if finegrid:

@@ -2,8 +2,11 @@
 # Emacs: treat this as -*- python -*-
 
 import sys
+
+# importing GPAW may remove args such as --setups from argv, so save a copy
+argv = sys.argv[1:]
 import traceback
-from optparse import OptionParser
+from optparse import OptionParser, OptionGroup
 
 import numpy as np
 from ase.atoms import Atoms, string2symbols
@@ -14,6 +17,8 @@ from ase.io import read, write
 from gpaw.utilities import devnull
 from gpaw.utilities.bulk2 import bulk, estimate_lattice_constant
 from gpaw.utilities.bulk2 import EMTRunner, GPAWRunner
+from gpaw.utilities.serialization import append_to_optiongroup
+from gpaw.parameters import InputParameters
 from gpaw.mpi import world
 
 
@@ -23,76 +28,88 @@ description = ('Run GPAW calculation for simple atoms, molecules or '
 parser = OptionParser(usage='%prog [options] formula or filename',
                       version='%prog 0.1', description=description)
 
-# Structure:
-parser.add_option('-i', '--identifier',
+struct = OptionGroup(parser, 'Structure')
+struct.add_option('-i', '--identifier',
                   help='String identifier added to filenames.')
-parser.add_option('-x', '--crystal-structure',
+struct.add_option('-x', '--crystal-structure',
                   help='Crystal structure.',
                   choices=['sc', 'fcc', 'bcc', 'diamond', 'hcp', 'rocksalt',
                            'zincblende'])
-parser.add_option('-a', '--lattice-constant', type='float',
+struct.add_option('-a', '--lattice-constant', type='float',
                   help='Lattice constant in Angstrom.')
-parser.add_option('--c_over_a', type='float',
+struct.add_option('--c_over_a', type='float',
                   help='c/a ratio.')
-parser.add_option('-v', '--vacuum', type='float', default=3.0,
+struct.add_option('-v', '--vacuum', type='float', default=3.0,
                   help='Amount of vacuum to add around isolated systems '
                   '(in Angstrom).')
-parser.add_option('--orthorhombic', action='store_true',
+struct.add_option('--orthorhombic', action='store_true',
                   help='Use orthorhombic unit cell.')
-parser.add_option('-r', '--repeat',
+struct.add_option('-r', '--repeat',
                   help='Repeat unit cell.  Use "-r 2" or "-r 2,3,1".')
-parser.add_option('-M', '--magnetic-moment',
+struct.add_option('-M', '--magnetic-moment',
                   help='Magnetic moment(s).  Use "-M 1" or "-M 2.3,-2.3".')
+parser.add_option_group(struct)
 
-# Behavior:
-parser.add_option('-c', '--clean', action='store_true',
-                  help='Recalculate everything.')
-parser.add_option('-p', '--plot', action='store_true',
-                  help='Plot results.')
-parser.add_option('-G', '--gui', action='store_true',
-                  help="Pop up ASE's GUI.")
-parser.add_option('-w', '--write-to-file', metavar='FILENAME',
-                  help="Write configuration to file.")
-parser.add_option('-O', '--optimize', action='store_true',
-                  help='Find optimal volume or bondlength.')
-parser.add_option('-A', '--atomization-energy', action='store_true',
-                  help='Calculate atomization energy or cohesive energy.')
-parser.add_option('-o', '--output', default='-',
-                  help="Write output to file.  Use '-' for stdout "
-                  '(the default).')
+behavior = OptionGroup(parser, 'Behavior')
+behavior.add_option('-c', '--clean', action='store_true',
+                    help='Recalculate everything.')
+behavior.add_option('-p', '--plot', action='store_true',
+                    help='Plot results.')
+behavior.add_option('-G', '--gui', action='store_true',
+                    help="Pop up ASE's GUI.")
+behavior.add_option('-w', '--write-to-file', metavar='FILENAME',
+                    help="Write configuration to file.")
+behavior.add_option('-O', '--optimize', action='store_true',
+                    help='Find optimal volume or bondlength.')
+behavior.add_option('-A', '--atomization-energy', action='store_true',
+                    help='Calculate atomization energy or cohesive energy.')
+behavior.add_option('-o', '--output', default='-',
+                    help="Write output to file.  Use '-' for stdout "
+                    '(the default).')
+behavior.add_option('--parameters',
+                    help='read input parameters from this file')
+parser.add_option_group(behavior)
 
 # Calculator:
-parser.add_option('-E', '--effective-medium-theory',
-                  action='store_true',
-                  help='Use EMT calculator.')
-parser.add_option('-e', '--eigensolver', default='rmm-diis', choices=['rmm-diis', 'cg'],
-                  help='Eigensolver.')
-parser.add_option('-m', '--mode', default='fd', choices=['fd', 'lcao'],
-                  help='Mode of calculation.')
-parser.add_option('-b', '--basis',
-                  help='Basis set.')
-parser.add_option('-k', '--brillouin-zone-sampling',
-                  default='1,1,1', metavar='K1,K2,K3',
-                  help='Number of k-points.  Example: -k 4,4,1.')
-parser.add_option('-g', '--grid-spacing', type='float', default=0.2,
-                  help='Grid spacing in Angstrom.  Deafault is 0.2.')
-parser.add_option('-T', '--smearing-width', type='float', default=0.1,
-                  metavar='WIDTH',
-                  help='Occupation number smearing width in eV.  Default '
-                  'is 0.1 eV.')
-parser.add_option('-s', '--finite-difference-stencils', default='3,3',
-                  metavar='K,I',
-                  help='Range of stencils for kinetic energy and '
-                  'interpolation.  Deafault is -s 3,3.')
-parser.add_option('-f', '--xc-functional', default='LDA',
-                  help='Exchange-Correlation functional (default value LDA).')
-parser.add_option('-N', '--number-of-bands', type='int',
-                  help='Number of bands / states.')
-parser.add_option('--stdout',
-                  action='store_true',
-                  help="Write GPAW's output to standard output.")
+calc_opts = OptionGroup(parser, 'Calculator')
+defaults = InputParameters()
+append_to_optiongroup(defaults, calc_opts)
+parser.add_option_group(calc_opts)
 
-opt, args = parser.parse_args()
+if 0:
+    calc_opts.add_option('-E', '--effective-medium-theory',
+                         action='store_true',
+                         help='Use EMT calculator.')
+    calc_opts.add_option('-e', '--eigensolver', default='rmm-diis',
+                         choices=['rmm-diis', 'cg'],
+                         help='Eigensolver.')
+    calc_opts.add_option('-m', '--mode', default='fd', choices=['fd', 'lcao'],
+                         help='Mode of calculation.')
+    calc_opts.add_option('-b', '--basis',
+                         help='Basis set.')
+    calc_opts.add_option('-k', '--brillouin-zone-sampling',
+                         default='1,1,1', metavar='K1,K2,K3',
+                         help='Number of k-points.  Example: -k 4,4,1.')
+    calc_opts.add_option('-g', '--grid-spacing', type='float', default=0.2,
+                         help='Grid spacing in Angstrom.  Deafault is 0.2.')
+    calc_opts.add_option('-T', '--smearing-width', type='float', default=0.1,
+                         metavar='WIDTH',
+                         help='Occupation number smearing width in eV.  Default '
+                         'is 0.1 eV.')
+    calc_opts.add_option('-s', '--finite-difference-stencils', default='3,3',
+                         metavar='K,I',
+                         help='Range of stencils for kinetic energy and '
+                         'interpolation.  Deafault is -s 3,3.')
+    calc_opts.add_option('-f', '--xc-functional', default='LDA',
+                         help='Exchange-Correlation functional (default value LDA).')
+    calc_opts.add_option('-N', '--number-of-bands', type='int',
+                         help='Number of bands / states.')
+    calc_opts.add_option('--stdout',
+                         action='store_true',
+                         help="Write GPAW's output to standard output.")
+    parser.add_option_group(calc_opts)
+
+opt, args = parser.parse_args(argv)
 
 
 def run():
@@ -181,12 +198,18 @@ def run():
         else:
             stencils = None
 
+        input_parameters = None
+        if opt.parameters:
+            from gpaw.parameters import InputParameters
+            input_parameters = eval(open(opt.parameters).read())
+
         runner.set_parameters(mode=opt.mode, basis=opt.basis, kpts=kpts,
                               h=opt.grid_spacing, xc=opt.xc_functional,
                               stencils=stencils, width=opt.smearing_width,
                               eigensolver=opt.eigensolver,
                               nbands=opt.number_of_bands, vacuum=opt.vacuum,
-                              stdout=opt.stdout)
+                              stdout=opt.stdout,
+                              input_parameters=input_parameters)
 
     runner.run()
 

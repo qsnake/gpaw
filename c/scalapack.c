@@ -1,5 +1,5 @@
 // BLACS
-#ifdef GPAW_MKL
+#ifdef GPAW_NO_UNDERSCORE_CBLACS
 #define   Cblacs_barrier_  Cblacs_barrier
 #define   Cblacs_exit_     Cblacs_exit
 #define   Cblacs_get_      Cblacs_get
@@ -11,11 +11,11 @@
 #define   Cblacs_setup_    Cblacs_setup
 #endif
 
-#ifdef GPAW_AIX
-#define   dgebr2d_  dgebr2d
-#define   dgebs2d_  dgebs2d
-#define   zgebr2d_  zgebr2d
-#define   zgebs2d_  zgebs2d
+#ifdef GPAW_NO_UNDERSCORE_BLACS
+#define   dgebr2d_ dgebr2d
+#define   dgebs2d_ dgebs2d
+#define   zgebr2d_ zgebr2d
+#define   zgebs2d_ zgebs2d
 #endif
 
 void Cblacs_barrier_(int ConTxt, char *scope);
@@ -52,35 +52,35 @@ void zgebs2d_(int *ConTxt, char* scope, char* top, int *m, int *n,
 
 // ScaLapack
 
-#ifdef GPAW_AIX
-#define   descinit_  descinit
-#define   numroc_  numroc
+#ifdef GPAW_NO_UNDERSCORE_SCALAPACK
+#define   descinit_ descinit
+#define   numroc_   numroc
 #define   pdelset_  pdelset
 #define   pzelset_  pzelset
-#define   pdgemr2d_  pdgemr2d
+#define   pdgemr2d_ pdgemr2d
 #define   pdlamch_  pdlamch
 
-#define   pdpotrf_  pdpotrf
-#define   pdpotri_  pdpotri
-#define   pzpotrf_  pzpotrf
-#define   pzpotri_  pzpotri
-#define   pdtrtri_  pdtrtri
-#define   pztrtri_  pztrtri
+#define   pdpotrf_ pdpotrf
+#define   pdpotri_ pdpotri
+#define   pzpotrf_ pzpotrf
+#define   pzpotri_ pzpotri
+#define   pdtrtri_ pdtrtri
+#define   pztrtri_ pztrtri
 
-#define   pdsyevd_  pdsyevd
+#define   pdsyevd_ pdsyevd
 #define   pdsyev_  pdsyev
-#define   pdsyevx_  pdsyevx
-#define   pdsygvx_  pdsygvx
+#define   pdsyevx_ pdsyevx
+#define   pdsygvx_ pdsygvx
 #define   pzheev_  pzheev
-#define   sl_init_  sl_init
+#define   sl_init_ sl_init
 #endif
 
-#ifdef GPAW_MKL
-#define   Cpdgemr2d_  Cpdgemr2d
+#ifdef GPAW_NO_UNDERSCORE_CSCALAPACK
+#define   Cpdgemr2d_ Cpdgemr2d
 #endif
 
-#ifdef SL_SECOND_UNDERSCORE
-#define   sl_init_  sl_init__
+#ifdef GPAW_SECOND_UNDERSCORE_SL_INIT
+#define   sl_init_ sl_init__
 #endif
 
 void descinit_(int* desc, int* m, int* n, int* mb, int* nb, int* irsrc,

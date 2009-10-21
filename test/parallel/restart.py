@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from ase import *
 from gpaw import Calculator
-import numpy as npy
+import numpy as np
 from gpaw.utilities import equal
 from gpaw.mpi import rank, world
 import time

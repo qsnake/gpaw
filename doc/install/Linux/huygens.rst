@@ -30,6 +30,8 @@ Use the following customize.py::
                  ]
 
  define_macros += [('GPAW_AIX', '1')]
+ define_macros += [('GPAW_NO_UNDERSCORE_BLAS', '1')]
+ define_macros += [('GPAW_NO_UNDERSCORE_LAPACK', '1')]
  extra_compile_args += ['-std=c99']
  mpicompiler = 'mpcc'
  mpilinker = 'mpcc

@@ -3,7 +3,7 @@ import sys
 import pickle
 import traceback
 
-import numpy as npy
+import numpy as np
 from numpy.linalg import inv
 
 from gpaw import Calculator
@@ -159,7 +159,7 @@ class DistanceTest(Test):
         system.set_calculator(calculator)
         original_positions = system.positions.copy()
         displ = original_positions[1] - original_positions[0]
-        actual_bondlength = npy.dot(displ, displ) ** .5
+        actual_bondlength = np.dot(displ, displ) ** .5
         energies = []
         displacements = []
         self.niter = []
@@ -225,10 +225,10 @@ class EggboxTest(Test):
         system.set_pbc(1)
         calculator = Calculator(xc='PBE', txt=None, setups=setup, h=self.h)
         system.set_calculator(calculator)
-        displacement_vector = npy.array([1.,1.,1.])/3.**.5
+        displacement_vector = np.array([1.,1.,1.])/3.**.5
         original_positions = system.positions.copy()
         energies = []
-        displacements = npy.linspace(0., self.h/2, 6)
+        displacements = np.linspace(0., self.h/2, 6)
         for dx in displacements:
             system.set_positions(original_positions + displacement_vector * dx)
             energy = system.get_potential_energy()

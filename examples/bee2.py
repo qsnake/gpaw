@@ -1,5 +1,5 @@
 from math import pi
-import numpy as npy
+import numpy as np
 from ASE.Utilities.BEE import GetEnsembleEnergies
 from ASE import Atom, ListOfAtoms
 from gpaw import Calculator
@@ -48,13 +48,13 @@ b_i = 0.5 * (e3_i - e1_i) / dd
 d_i = d0 - 0.5 * b_i / a_i
 
 n = len(d_i)
-d = npy.sum(d_i) / n
-sigma = (npy.sum((d_i - d)**2) / n)**0.5
+d = np.sum(d_i) / n
+sigma = (np.sum((d_i - d)**2) / n)**0.5
 print 'Best fit:',
 print 'd =', d, '+-', sigma, 'Ang'
 hv_i = a_i**0.5 * s
-hv = npy.sum(hv_i) / n
-sigma = (npy.sum((hv_i - hv)**2) / n)**0.5
+hv = np.sum(hv_i) / n
+sigma = (np.sum((hv_i - hv)**2) / n)**0.5
 print 'hv =', hv, '+-', sigma, 'meV'
 
 """

@@ -1,7 +1,7 @@
 # creates: Pt.png paw_note.pdf
 
 import os
-import numpy as npy
+import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import pylab as plt

@@ -4,13 +4,13 @@
 #include <numpy/arrayobject.h>
 #include "extensions.h"
 
-#ifdef GPAW_AIX
-#  define dsyev_ dsyev
-#  define zheev_ zheev
-#  define dsygv_ dsygv
-#  define dhegv_ dhegv
-#  define zhegv_ zhegv
-#  define dgeev_ dgeev
+#ifdef GPAW_NO_UNDERSCORE_LAPACK
+#  define dsyev_  dsyev
+#  define zheev_  zheev
+#  define dsygv_  dsygv
+#  define dhegv_  dhegv
+#  define zhegv_  zhegv
+#  define dgeev_  dgeev
 #  define dpotrf_ dpotrf
 #  define dpotri_ dpotri
 #  define zpotrf_ zpotrf
@@ -25,22 +25,22 @@
 #  define zsytri_ zsytri
 #  define dgetri_ dgetri
 #  define zgetri_ zgetri
-#  define zgbsv_ zgbsv
+#  define zgbsv_  zgbsv
 #  define zgttrf_ zgttrf
 #  define zgttrs_ zgttrs
 #endif
 
 int dsyev_(char *jobz, char *uplo, int *n, double *
-	   a, int *lda, double *w, double *work, int *lwork, 
+	   a, int *lda, double *w, double *work, int *lwork,
 	   int *info);
-int zheev_(char *jobz, char *uplo, int *n, 
-	   void *a, int *lda, double *w, void *work, 
+int zheev_(char *jobz, char *uplo, int *n,
+	   void *a, int *lda, double *w, void *work,
 	   int *lwork, double *rwork, int *lrwork, int *info);
 int dsygv_(int *itype, char *jobz, char *uplo, int *
-	   n, double *a, int *lda, double *b, int *ldb, 
+	   n, double *a, int *lda, double *b, int *ldb,
 	   double *w, double *work, int *lwork, int *info);
 int zhegv_(int *itype, char *jobz, char *uplo, int *
-	   n, void *a, int *lda, void *b, int *ldb, 
+	   n, void *a, int *lda, void *b, int *ldb,
 	   double *w, void *work, int *lwork,
 	   double *rwork,
 	   int *lrwork, int *info);
@@ -48,42 +48,42 @@ int dpotrf_(char *uplo, int *n, double *a, int *
 	    lda, int *info);
 int dpotri_(char *uplo, int *n, double *a, int *
 	    lda, int *info);
-int zpotrf_(char *uplo, int *n, void *a, 
+int zpotrf_(char *uplo, int *n, void *a,
 	    int *lda, int *info);
-int zpotri_(char *uplo, int *n, void *a, 
+int zpotri_(char *uplo, int *n, void *a,
 	    int *lda, int *info);
 int dgeev_(char *jovl, char *jobvr, int *n, double *a, int *lda,
-	   double *wr, double *wl, 
+	   double *wr, double *wl,
 	   double *vl, int *ldvl, double *vr, int *ldvr,
 	   double *work, int *lwork, int *info);
-			        
-int dtrtri_(char *uplo,char *diag, int *n, void *a, 
+
+int dtrtri_(char *uplo,char *diag, int *n, void *a,
 	    int *lda, int *info );
-int ztrtri_(char *uplo,char *diag, int *n, void *a, 
+int ztrtri_(char *uplo,char *diag, int *n, void *a,
 	    int *lda, int *info );
 
-int dsytrf_(char *uplo, int *n, double *a, int *lda, int *ipiv, 
+int dsytrf_(char *uplo, int *n, double *a, int *lda, int *ipiv,
             double *work, int *lwork, int *info);
-int zsytrf_(char *uplo, int *n, void *a, int *lda, int *ipiv, 
+int zsytrf_(char *uplo, int *n, void *a, int *lda, int *ipiv,
             void *work, int *lwork, int *info);
 
-int dgetrf_(int *n, int *m, double *a, int *lda, int *ipiv, int *info); 
-int zgetrf_(int *n, int *m, void *a, int *lda, int *ipiv, int *info); 
+int dgetrf_(int *n, int *m, double *a, int *lda, int *ipiv, int *info);
+int zgetrf_(int *n, int *m, void *a, int *lda, int *ipiv, int *info);
 
-int dsytri_(char *uplo, int *n, double *a, int *lda, int *ipiv, 
+int dsytri_(char *uplo, int *n, double *a, int *lda, int *ipiv,
             double *work, int *info);
-int zsytri_(char *uplo, int *n, void *a, int *lda, int *ipiv, 
+int zsytri_(char *uplo, int *n, void *a, int *lda, int *ipiv,
             void *work, int *info);
 
-int dgetri_(int *n, double *a, int *lda, int *ipiv, 
-            double *work, int *lwork, int *info); 
-int zgetri_(int *n, void *a, int *lda, int *ipiv, 
-            void *work, int *lwork, int *info); 
-int zgbsv_(int*n, int* kl, int* ku, int* nrhs, void* ab, int*ldab, 
+int dgetri_(int *n, double *a, int *lda, int *ipiv,
+            double *work, int *lwork, int *info);
+int zgetri_(int *n, void *a, int *lda, int *ipiv,
+            void *work, int *lwork, int *info);
+int zgbsv_(int*n, int* kl, int* ku, int* nrhs, void* ab, int*ldab,
                  int*ipiv, void* b, int*ldb, int*info);
-int zgttrf_(int* n, void* dl, void* d, void* du, 
+int zgttrf_(int* n, void* dl, void* d, void* du,
                       void* du2, int* ipiv, int* info);
-int zgttrs_(char* tran, int* n, int* nrhs, void* dl, 
+int zgttrs_(char* tran, int* n, int* nrhs, void* dl,
                void* d, void* du, void* du2,
                int* ipiv, void* b, int* ldb, int* info);
 
@@ -92,7 +92,7 @@ PyObject* diagonalize(PyObject *self, PyObject *args)
   PyArrayObject* a;
   PyArrayObject* w;
   PyArrayObject* b = 0;
-  if (!PyArg_ParseTuple(args, "OO|O", &a, &w, &b)) 
+  if (!PyArg_ParseTuple(args, "OO|O", &a, &w, &b))
     return NULL;
   int n = a->dimensions[0];
   int lda = n;
@@ -108,7 +108,7 @@ PyObject* diagonalize(PyObject *self, PyObject *args)
                DOUBLEP(w), work, &lwork, &info);
       else
         dsygv_(&itype, "V", "U", &n, DOUBLEP(a), &lda,
-                DOUBLEP(b), &ldb, DOUBLEP(w), 
+                DOUBLEP(b), &ldb, DOUBLEP(w),
                 work, &lwork, &info);
       free(work);
     }
@@ -120,12 +120,12 @@ PyObject* diagonalize(PyObject *self, PyObject *args)
       double* rwork = GPAW_MALLOC(double, lrwork);
       if (b == 0)
         zheev_("V", "U", &n, (void*)COMPLEXP(a), &lda,
-               DOUBLEP(w), 
+               DOUBLEP(w),
                work, &lwork, rwork, &lrwork, &info);
       else
         zhegv_(&itype, "V", "U", &n, (void*)COMPLEXP(a), &lda,
                 (void*)COMPLEXP(b), &lda,
-                DOUBLEP(w), 
+                DOUBLEP(w),
                 work, &lwork, rwork, &lrwork, &info);
       free(work);
       free(rwork);
@@ -136,7 +136,7 @@ PyObject* diagonalize(PyObject *self, PyObject *args)
 PyObject* inverse_cholesky(PyObject *self, PyObject *args)
 {
   PyArrayObject* a;
-  if (!PyArg_ParseTuple(args, "O", &a)) 
+  if (!PyArg_ParseTuple(args, "O", &a))
     return NULL;
   int n = a->dimensions[0];
   int lda = n;
@@ -217,7 +217,7 @@ PyObject* right_eigenvectors(PyObject *self, PyObject *args)
   PyArrayObject* A;
   PyArrayObject* v; /* eigenvectors */
   PyArrayObject* w; /* eigenvalues */
-  if (!PyArg_ParseTuple(args, "OOO", &A, &w, &v)) 
+  if (!PyArg_ParseTuple(args, "OOO", &A, &w, &v))
     return NULL;
   int n = A->dimensions[0];
   int lda = n;
@@ -233,16 +233,16 @@ PyObject* right_eigenvectors(PyObject *self, PyObject *args)
       double* vl = 0;
       int i;
       /* get size of work needed */
-      dgeev_("No eigenvectors left", "Vectors right", 
-	     &n, DOUBLEP(A), &lda, wr, wi, 
+      dgeev_("No eigenvectors left", "Vectors right",
+	     &n, DOUBLEP(A), &lda, wr, wi,
 	     vl, &ldvl, DOUBLEP(v), &ldvr, work, &lwork, &info);
       lwork = (int) work[0];
       free(work);
       work = GPAW_MALLOC(double, lwork);
 
       transpose(DOUBLEP(A),n); /* transform to Fortran form */
-      dgeev_("No eigenvectors left", "Vectors right", 
-	     &n, DOUBLEP(A), &lda, wr, wi, 
+      dgeev_("No eigenvectors left", "Vectors right",
+	     &n, DOUBLEP(A), &lda, wr, wi,
 	     vl, &ldvl, DOUBLEP(v), &ldvr, work, &lwork, &info);
 
       for(i=0;i<n;i++) {
@@ -345,16 +345,8 @@ PyObject* linear_solve_tridiag(PyObject *self, PyObject *args)
  int ldb = dim;
  int *ipiv = GPAW_MALLOC(int, dim);
  zgttrf_(&dim, (void*)COMPLEXP(dl), (void*)COMPLEXP(A), (void*)COMPLEXP(du), (void*)COMPLEXP(du2), ipiv, &info);
- zgttrs_("N", &dim, &one, (void*)COMPLEXP(dl), (void*)COMPLEXP(A), (void*)COMPLEXP(du), 
+ zgttrs_("N", &dim, &one, (void*)COMPLEXP(dl), (void*)COMPLEXP(A), (void*)COMPLEXP(du),
                                    (void*)COMPLEXP(du2), ipiv, (void*)COMPLEXP(phi), &ldb, &info);
  free(ipiv);
  return Py_BuildValue("i",info);
 }
-
-
-
- 
- 
-
-
-

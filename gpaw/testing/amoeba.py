@@ -2,7 +2,7 @@
 """
 Contains an implementation of the downhill simplex optimization method.
 """
-import numpy as npy
+import numpy as np
 
 reflect = -1.0
 halfway = 0.5
@@ -34,9 +34,9 @@ class Amoeba:
 
     def __init__(self, function, x, dx=.1, y=None,
                  tolerance=0.001, savedata=False):
-        rank = npy.rank(x)
+        rank = np.rank(x)
         if rank == 2: # simplex
-            self.simplex = npy.asarray(x)
+            self.simplex = np.asarray(x)
             np, nc = self.simplex.shape
             assert np == nc + 1, 'Simplex should be (N+1) x N, is %d x %d' % \
                    (np, nc)
@@ -56,17 +56,17 @@ class Amoeba:
             y = map(function, self.simplex)
         elif len(simplex) != len(y):
             raise Exception('Vertex count differs from value count')
-        self.y = npy.asarray(y)
+        self.y = np.asarray(y)
 
         self.itercount = 0
         self.evaluationcount = 0
         self.tolerance = tolerance
         self.function = function
-        self.coord_sums = npy.zeros(self.dimcount)
+        self.coord_sums = np.zeros(self.dimcount)
         self.calc_coord_sums()
         self.analyzepoints()
 
-    def optimize(self, maxiter=npy.inf):
+    def optimize(self, maxiter=np.inf):
         """Run optimization.
 
         Returns minimum point and corresponding function value."""
@@ -196,7 +196,7 @@ class Logger:
         self.y.append(y)
         currentcenter = center(self.amoeba.simplex)
         dcenter = currentcenter - self.center
-        self.dx.append(npy.sqrt(npy.dot(dcenter, dcenter)))        
+        self.dx.append(np.sqrt(np.dot(dcenter, dcenter)))        
         self.dev.append(self.amoeba.relativedeviation)
         self.vol.append(volume(self.amoeba.simplex))
         self.center = currentcenter
@@ -207,31 +207,31 @@ class Logger:
         return [[x[i] for x in self.x] for i in range(len(self.x[0]))]
 
     def numarray(self, transpose = False):
-        arr = npy.array(self.x)
+        arr = np.array(self.x)
         if transpose:
-            arr = npy.transpose(arr)
+            arr = np.transpose(arr)
         return arr
 
 
 def build_simplex(x_c, dx):
     nc = len(x_c)
     nn = nc + 1
-    simplex_nc = npy.repeat(npy.asarray([x_c]), nn, 0)
-    simplex_nc[1:] += npy.identity(nc) * dx
+    simplex_nc = np.repeat(np.asarray([x_c]), nn, 0)
+    simplex_nc[1:] += np.identity(nc) * dx
     return simplex_nc
 
 
 def center(simplex):
     """Get the center of a simplex."""
-    vertices = [npy.array(point) for point in simplex]
+    vertices = [np.array(point) for point in simplex]
     return sum(vertices)/len(simplex)
 
 
 def volume(simplex):
     """Get the volume of a simplex."""
-    vertices = [npy.array(point) for point in simplex]
+    vertices = [np.array(point) for point in simplex]
     differences = [vertices[i]-vertices[i+1] for i in range(len(vertices)-1)]
-    return npy.linalg.det(npy.array(differences))
+    return np.linalg.det(np.array(differences))
 
 
 def standardfunction(x):
@@ -248,7 +248,7 @@ def standardfunction(x):
 def example():
     """Make a simple test optimization."""
     f = standardfunction
-    x = npy.array([2.,1.,5.,4.,6.])
+    x = np.array([2.,1.,5.,4.,6.])
     dx = .1
 
     amoeba = Amoeba(f, x, dx, tolerance=1e-8, savedata=True)

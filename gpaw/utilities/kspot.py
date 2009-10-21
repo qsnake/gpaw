@@ -6,7 +6,7 @@ from gpaw.atom.all_electron import AllElectron
 from gpaw import extra_parameters
 from gpaw.sphere import weights, points
 
-import numpy as npy
+import numpy as np
 
 
 def get_scaled_positions(atoms, positions):
@@ -16,7 +16,7 @@ def get_scaled_positions(atoms, positions):
    those directions with periodic boundary conditions so that the
    scaled coordinates are beween zero and one."""
    
-   scaled = npy.linalg.solve(atoms._cell.T, positions.T).T
+   scaled = np.linalg.solve(atoms._cell.T, positions.T).T
    for i in range(3):
       if atoms._pbc[i]:
          scaled[i] %= 1.0
@@ -51,8 +51,8 @@ class AllElectronPotential:
       setup = self.paw.density.setups[a]
       xccorr = setup.xc_correction
       
-      radf_g = npy.zeros(xccorr.ng)
-      target_g = npy.zeros(xccorr.ng)
+      radf_g = np.zeros(xccorr.ng)
+      target_g = np.zeros(xccorr.ng)
       
       for w,p in zip(weights, points):
          scaled_nc = []
@@ -64,7 +64,7 @@ class AllElectronPotential:
             scaled_c = get_scaled_positions(self.paw.atoms, pos_c)
             scaled_nc.append(scaled_c)
 
-         scaled_nc = npy.array(scaled_nc)
+         scaled_nc = np.array(scaled_nc)
 
          gd.interpolate_grid_points(scaled_nc, f_g, target_g, use_mlsqr=True)
          radf_g += w * target_g
@@ -131,7 +131,7 @@ class AllElectronPotential:
       dn_g -= Y0 * self.paw.density.Q_aL[a][0] * setup.g_lg[0]
       
       # Calculate the Hartree potential for this
-      vHr = npy.zeros((xccorr.ng,))
+      vHr = np.zeros((xccorr.ng,))
       hartree(0, dn_g * xccorr.rgd.r_g * xccorr.rgd.dr_g, setup.beta, setup.ng, vHr)
 
       # Add the core potential contribution
@@ -150,8 +150,8 @@ class AllElectronPotential:
       radvxct_g = self.grid_to_radial(a, gd, vxct_g)
 
       # Arrays for evaluating radial xc potential slice
-      e_g = npy.zeros((xccorr.ng,))
-      vxc_sg = npy.zeros((len(D_sp), xccorr.ng))
+      e_g = np.zeros((xccorr.ng,))
+      vxc_sg = np.zeros((len(D_sp), xccorr.ng))
 
       # Create pseudo/ae density iterators for integration
       n_iter = xccorr.expand_density(D_sLq, xccorr.n_qg, xccorr.nc_g, xccorr.ncorehole_g)
@@ -212,7 +212,7 @@ class CoreEigenvalues(AllElectronPotential):
       t('-----------------------------------------------')
       for m, l, f, e, u in zip(atom.n_j, atom.l_j, atom.f_j, atom.e_j, atom.u_j):
          # Find kinetic energy:
-         k = e - npy.sum((npy.where(abs(u) < 1e-160, 0, u)**2 * #XXXNumeric!
+         k = e - np.sum((np.where(abs(u) < 1e-160, 0, u)**2 * #XXXNumeric!
                             atom.vr * atom.dr)[1:] / atom.r[1:])
 
          # Find outermost maximum:
@@ -221,8 +221,8 @@ class CoreEigenvalues(AllElectronPotential):
             g -= 1
          x = atom.r[g - 1:g + 2]
          y = u[g - 1:g + 2]
-         A = npy.transpose(npy.array([x**i for i in range(3)]))
-         c, b, a = npy.linalg.solve(A, y)
+         A = np.transpose(np.array([x**i for i in range(3)]))
+         c, b, a = np.linalg.solve(A, y)
          assert a < 0.0
          rmax = -0.5 * b / a
 

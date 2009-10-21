@@ -13,7 +13,7 @@
 #include "mympi.h"
 #include "localized_functions.h"
 
-#ifdef GPAW_AIX
+#ifdef GPAW_NO_UNDERSCORE_BLAS
 #  define dgemm_ dgemm
 #  define dgemv_ dgemv
 #endif

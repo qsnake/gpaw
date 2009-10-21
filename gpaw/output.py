@@ -4,7 +4,7 @@ import time
 from math import log
 from math import sqrt
 
-import numpy as npy
+import numpy as np
 import ase
 from ase.version import version as ase_version
 from ase.data import chemical_symbols
@@ -95,7 +95,7 @@ class PAWTextOutput:
         self.text('Dir: ', os.path.dirname(gpaw.__file__))
         self.text('ase:  ', os.path.dirname(ase.__file__),
                   ' version: ', ase_version)
-        self.text('numpy:', os.path.dirname(npy.__file__))
+        self.text('numpy:', os.path.dirname(np.__file__))
         self.text('units: Angstrom and eV')
 
         if extra_parameters:
@@ -136,6 +136,9 @@ class PAWTextOutput:
 
         for setup in self.wfs.setups.setups.values():
             setup.print_info(self.text)
+            basis_descr = setup.get_basis_description()
+            t(basis_descr)
+            t()
             
         t('Using the %s Exchange-Correlation Functional.'
           % self.hamiltonian.xcfunc.xcname)
@@ -429,15 +432,7 @@ class PAWTextOutput:
         print >> self.txt, eigenvalue_string(self)
 
     def plot_atoms(self, atoms):
-        cell_cv = atoms.get_cell()
-        if (cell_cv - npy.diag(cell_cv.diagonal())).any():
-            return
-        
-        cell_c = npy.diagonal(cell_cv) / Bohr
-        pos_ac = atoms.get_positions() / Bohr
-        Z_a = atoms.get_atomic_numbers()
-        pbc_c = atoms.get_pbc()
-        self.text(plot(pos_ac, Z_a, cell_c))
+        self.text(plot(atoms))
 
     def __del__(self):
         """Destructor:  Write timing output before closing."""
@@ -497,88 +492,73 @@ def eigenvalue_string(paw, comment=None):
                       (n,epsa_n[n], fa_n[n], epsb_n[n], fb_n[n]))
     return s
 
-def plot(positions, numbers, cell):
-    """Ascii-art plot of the atoms.
+def plot(atoms):
+    """Ascii-art plot of the atoms."""
 
-    Example::
-
-      from ase import *
-      a = 4.0
-      n = 20
-      d = 1.0
-      x = d / 3**0.5
-      atoms = ListOfAtoms(symbols='CH4',
-                          positions=[(0, 0, 0),
-                                     (x, x, x),
-                                     (-x, -x, x),
-                                     (x, -x, -x),
-                                     (-x, x, -x)],
-                          cell=(a, a, a), pbc=True)
-      for line in plot(2*atoms.GetCartesianPositions() + (a,a,a),
-                       atoms.GetAtomicNumbers(),
-                       2*npy.array(atoms.GetUnitCell().ravel()[::4])):
-          print line
-
-          .-----------.
-         /|           |
-        / |           |
-       *  |      H    |
-       |  | H  C      |
-       |  |  H        |
-       |  .-----H-----.
-       | /           /
-       |/           /
-       *-----------*
-    """
 ##   y
 ##   |
 ##   .-- x
 ##  /
 ## z
 
+    cell_cv = atoms.get_cell()
+    if (cell_cv - np.diag(cell_cv.diagonal())).any():
+        atoms = atoms.copy()
+        atoms.cell = [1, 1, 1]
+        atoms.center(vacuum=2.0)
+        cell_cv = atoms.get_cell()
+        plot_box = False
+    else:
+        plot_box = True
+
+    cell = np.diagonal(cell_cv) / Bohr
+    positions = atoms.get_positions() / Bohr
+    numbers = atoms.get_atomic_numbers()
+
     s = 1.3
     nx, ny, nz = n = (s * cell * (1.0, 0.25, 0.5) + 0.5).astype(int)
     sx, sy, sz = n / cell
     grid = Grid(nx + ny + 4, nz + ny + 1)
     positions = (positions % cell + cell) % cell
-    ij = npy.dot(positions, [(sx, 0), (sy, sy), (0, sz)])
-    ij = npy.around(ij).astype(int)
+    ij = np.dot(positions, [(sx, 0), (sy, sy), (0, sz)])
+    ij = np.around(ij).astype(int)
     for a, Z in enumerate(numbers):
         symbol = chemical_symbols[Z]
         i, j = ij[a]
         depth = positions[a, 1]
         for n, c in enumerate(symbol):
             grid.put(c, i + n + 1, j, depth)
-    k = 0
-    for i, j in [(1, 0), (1 + nx, 0)]:
-        grid.put('*', i, j)
-        grid.put('.', i + ny, j + ny)
-        if k == 0:
-            grid.put('*', i, j + nz)
-        grid.put('.', i + ny, j + nz + ny)
-        for y in range(1, ny):
-            grid.put('/', i + y, j + y, y / sy)
-            if k == 0:
-                grid.put('/', i + y, j + y + nz, y / sy)
-        for z in range(1, nz):
-            if k == 0:
-                grid.put('|', i, j + z)
-            grid.put('|', i + ny, j + z + ny)
-        k = 1
-    for i, j in [(1, 0), (1, nz)]:
-        for x in range(1, nx):
-            if k == 1:
-                grid.put('-', i + x, j)
-            grid.put('-', i + x + ny, j + ny)
+    if plot_box:
         k = 0
+        for i, j in [(1, 0), (1 + nx, 0)]:
+            grid.put('*', i, j)
+            grid.put('.', i + ny, j + ny)
+            if k == 0:
+                grid.put('*', i, j + nz)
+            grid.put('.', i + ny, j + nz + ny)
+            for y in range(1, ny):
+                grid.put('/', i + y, j + y, y / sy)
+                if k == 0:
+                    grid.put('/', i + y, j + y + nz, y / sy)
+            for z in range(1, nz):
+                if k == 0:
+                    grid.put('|', i, j + z)
+                grid.put('|', i + ny, j + z + ny)
+            k = 1
+        for i, j in [(1, 0), (1, nz)]:
+            for x in range(1, nx):
+                if k == 1:
+                    grid.put('-', i + x, j)
+                grid.put('-', i + x + ny, j + ny)
+            k = 0
     return '\n'.join([''.join([chr(x) for x in line])
-                      for line in npy.transpose(grid.grid)[::-1]])
+                      for line in np.transpose(grid.grid)[::-1]])
 
 class Grid:
     def __init__(self, i, j):
-        self.grid = npy.zeros((i, j), npy.int8)
+        self.grid = np.zeros((i, j), np.int8)
         self.grid[:] = ord(' ')
-        self.depth = npy.zeros((i, j))
+        self.depth = np.zeros((i, j))
         self.depth[:] = 1e10
 
     def put(self, c, i, j, depth=1e9):

@@ -63,8 +63,8 @@ Assuming an onsite energy equal to the fermi energy, a nearest
 neighbor hopping energy of -1, and second nearest neighbor hopping of
 0.2, the lead Hamiltonian may be constructed like this::
 
-    import numpy as npy
-    H_lead = npy.array([[ 0. , -1. ,  0.2,  0. ],
+    import numpy as np
+    H_lead = np.array([[ 0. , -1. ,  0.2,  0. ],
 	                [-1. ,  0. , -1. ,  0.2],
                         [ 0.2, -1. ,  0. , -1. ],
                         [ 0. ,  0.2, -1. ,  0. ]])

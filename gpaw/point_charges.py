@@ -1,6 +1,6 @@
 import os.path
 
-import numpy as npy
+import numpy as np
 
 from ase.atom import Atom
 from ase.atoms import Atoms
@@ -102,8 +102,8 @@ class PointCharges(Atoms, ElectrostaticPotential):
         potential = gd.empty()
 
         n = len(self)
-        pc_nc = npy.empty((n, 3))
-        charge_n = npy.empty((n))
+        pc_nc = np.empty((n, 3))
+        charge_n = np.empty((n))
         for a, pc in enumerate(self):
             pc_nc[a] = pc.position / Bohr 
             charge_n[a] = pc.charge
@@ -137,7 +137,7 @@ class PointCharges(Atoms, ElectrostaticPotential):
             v = 0
             for pc in self:
                 # use c function XXXXX
-                d = npy.sqrt(npy.sum((vr - pc.position / Bohr)**2))
+                d = np.sqrt(np.sum((vr - pc.position / Bohr)**2))
                 v -= pc.charge / d
         else:
             v = _gpaw.pc_potential_value(vr, self.pc_nc, self.charge_n)
@@ -156,15 +156,15 @@ class PointCharges(Atoms, ElectrostaticPotential):
             pos = position
         vr = pos / Bohr
 
-        nabla = npy.zeros((3))
+        nabla = np.zeros((3))
         for pc in self:
             dist = vr - pc.position / Bohr
-            d2 = npy.sum(dist**2)
-            nabla += dist * ( pc.charge / (d2 * npy.sqrt(d2)) )
+            d2 = np.sum(dist**2)
+            nabla += dist * ( pc.charge / (d2 * np.sqrt(d2)) )
             
         # see spherical_harmonics.py for the assignment
         return [[self.get_value(position=pos)], 
-                npy.array([nabla[1], nabla[2], nabla[0]])]
+                np.array([nabla[1], nabla[2], nabla[0]])]
         
     def write(self, file='PC.xyz', filetype=None):
 

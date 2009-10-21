@@ -3,7 +3,7 @@
 """This module defines BiCGStab-class, which implements biconjugate
 gradient stabilized method. Requires Numpy and GPAW's own BLAS."""
 
-import numpy as npy
+import numpy as np
 
 from gpaw.utilities.blas import axpy
 from gpaw.utilities.blas import dotc
@@ -91,12 +91,12 @@ class BiCGStab:
         v = self.gd.zeros(nvec, dtype=complex)
         t = self.gd.zeros(nvec, dtype=complex)
         m = self.gd.zeros(nvec, dtype=complex)
-        alpha = npy.zeros((nvec,), dtype=complex) 
-        rho  = npy.zeros((nvec,), dtype=complex) 
-        rhop  = npy.zeros((nvec,), dtype=complex) 
-        omega = npy.zeros((nvec,), dtype=complex) 
-        scale = npy.zeros((nvec,), dtype=complex) 
-        tmp = npy.zeros((nvec,), dtype=complex) 
+        alpha = np.zeros((nvec,), dtype=complex) 
+        rho  = np.zeros((nvec,), dtype=complex) 
+        rhop  = np.zeros((nvec,), dtype=complex) 
+        omega = np.zeros((nvec,), dtype=complex) 
+        scale = np.zeros((nvec,), dtype=complex) 
+        tmp = np.zeros((nvec,), dtype=complex) 
 
         rhop[:] = 1.
         omega[:] = 1.
@@ -118,7 +118,7 @@ class BiCGStab:
 
         # scale = square of the norm of b
         multi_zdotc(scale, b,b, nvec)
-        scale = npy.abs( scale )
+        scale = np.abs( scale )
 
         # if scale < eps, then convergence check breaks down
         if (scale < self.eps).any():
@@ -143,8 +143,8 @@ class BiCGStab:
 
             # if abs(beta) / scale < eps, then BiCGStab breaks down
             if ( (i > 0) and
-                 ((npy.abs(beta) / scale) < self.eps).any() ):
-                raise RuntimeError("Biconjugate gradient stabilized method failed (abs(beta)=%le < eps = %le)." % (npy.min(npy.abs(beta)),self.eps))
+                 ((np.abs(beta) / scale) < self.eps).any() ):
+                raise RuntimeError("Biconjugate gradient stabilized method failed (abs(beta)=%le < eps = %le)." % (np.min(np.abs(beta)),self.eps))
 
 
             # p = r + beta * (p - omega * v)
@@ -172,14 +172,14 @@ class BiCGStab:
 
             # if ( |s|^2 < tol^2 ) done
             multi_zdotc(tmp, r,r, nvec)
-            if ( (npy.abs(tmp) / scale) < self.tol*self.tol ).all():
+            if ( (np.abs(tmp) / scale) < self.tol*self.tol ).all():
                 #print 'R2 of proc #', rank, '  = ' , tmp, \
                 #    ' after ', i+1, ' iterations'
                 break
 
             # print if slow convergence
             if ((i+1) % slow_convergence_iters) == 0:
-                print 'Log10 S2 of proc #', rank, '  = ' , npy.round(npy.log10(npy.abs(tmp)),1), \
+                print 'Log10 S2 of proc #', rank, '  = ' , np.round(np.log10(np.abs(tmp)),1), \
                       ' after ', i+1, ' iterations'
 
             # t = A.(M^-1.s), M = 1
@@ -201,19 +201,19 @@ class BiCGStab:
 
             # if ( |r|^2 < tol^2 ) done
             multi_zdotc(tmp, r,r, nvec)
-            if ( (npy.abs(tmp) / scale) < self.tol*self.tol ).all():
+            if ( (np.abs(tmp) / scale) < self.tol*self.tol ).all():
                 #print 'R2 of proc #', rank, '  = ' , tmp, \
                 #    ' after ', i+1, ' iterations'
                 break
 
             # print if slow convergence
             if ((i+1) % slow_convergence_iters) == 0:
-                print 'Log10 R2 of proc #', rank, '  = ' , npy.round(npy.log10(npy.abs(tmp)),1), \
+                print 'Log10 R2 of proc #', rank, '  = ' , np.round(np.log10(np.abs(tmp)),1), \
                       ' after ', i+1, ' iterations'
 
             # if abs(omega) < eps, then BiCGStab breaks down
-            if ( (npy.abs(omega) / scale) < self.eps ).any():
-                raise RuntimeError("Biconjugate gradient stabilized method failed (abs(omega)/scale=%le < eps = %le)." % (npy.min(npy.abs(omega)) / scale, self.eps))
+            if ( (np.abs(omega) / scale) < self.eps ).any():
+                raise RuntimeError("Biconjugate gradient stabilized method failed (abs(omega)/scale=%le < eps = %le)." % (np.min(np.abs(omega)) / scale, self.eps))
             # finally update rho
             rhop[:] = rho
 

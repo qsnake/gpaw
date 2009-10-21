@@ -47,7 +47,7 @@ from gpaw import setup_paths
 from glob import glob
 from os import remove
 
-import numpy as npy
+import numpy as np
 
 from math import sqrt
 
@@ -220,7 +220,7 @@ if __name__ == '__main__':
                             ref = ref_data[parameters['xc']][XY].get(key, -1)
                             if ref > 0.0:
                                 if key == 'we': value = value[0]
-                                if key == 'm0': value = sqrt(npy.dot(value[0],value[0]))/Debye
+                                if key == 'm0': value = sqrt(np.dot(value[0],value[0]))/Debye
                                 relative_error = (value-ref)/ref
                                 result[XY][key] = value
                                 error[XY][key] = relative_error

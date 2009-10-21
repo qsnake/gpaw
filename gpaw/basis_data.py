@@ -27,6 +27,7 @@ class Basis:
         self.d = None
         self.generatorattrs = {}
         self.generatordata = ''
+        self.filename = None
 
         if readxml:
             self.read_xml()
@@ -81,6 +82,29 @@ class Basis:
             write('\n')
             write('  </basis_function>\n')
         write('</paw_basis>\n')
+
+    def get_description(self):
+        title = 'LCAO basis set for %s:' % self.symbol
+        if self.name is not None:
+            name = 'Name: %s' % self.name
+        else:
+            name = 'This basis set does not have a name'
+        if self.filename is None:
+            fileinfo = 'This basis set was not loaded from a file'
+        else:
+            fileinfo = 'Basis set was loaded from file %s' % self.filename
+        nj = len(self.bf_j)
+        count1 = 'Number of radial functions: %d' % nj
+        count2 = 'Number of spherical harmonics: %d' % self.nao
+
+        bf_lines = []
+        for bf in self.bf_j:
+            line = '  l=%d, rc=%.4f Bohr: %s' % (bf.l, bf.rc, bf.type)
+            bf_lines.append(line)
+            
+        lines = [title, name, fileinfo, count1, count2]
+        lines.extend(bf_lines)
+        return '\n  '.join(lines)
 
 
 class BasisFunction:

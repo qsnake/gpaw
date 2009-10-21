@@ -85,7 +85,7 @@ def spectrum(exlist=None,
             val=np.zeros((4))
             for ex in exlist:
                 wght=func.get(ex.get_energy()*Ha-e)
-                osz=np.array(ex.GetOscillatorStrength())
+                osz=np.array(ex.get_oscillator_strength())
                 val += wght*osz
             print >> out, "%10.5f %12.7e %12.7e %11.7e %11.7e" % \
                   (e,val[0],val[1],val[2],val[3])
@@ -98,7 +98,7 @@ def spectrum(exlist=None,
               % energyunit
         for ex in exlist:
             e=ex.get_energy()*Ha
-            val=ex.GetOscillatorStrength()
+            val=ex.get_oscillator_strength()
             print >> out, "%10.5f %12.7e %12.7e %11.7e %11.7e" % \
                   (e,val[0],val[1],val[2],val[3])
         

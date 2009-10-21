@@ -1,8 +1,18 @@
 from gpaw.operators import Gradient
 import numpy as np
 from gpaw.grid_descriptor import GridDescriptor
+from gpaw.mpi import world
 
-gd = GridDescriptor((8, 1, 1), (8.0, 1.0, 1.0))
+if world.size > 4:
+    # Grid is so small that domain decomposition cannot exceed 4 domains
+    assert world.size % 4 == 0
+    group, other = divmod(world.rank, 4)
+    ranks = np.arange(4*group, 4*(group+1))
+    domain_comm = world.new_communicator(ranks)
+else:
+    domain_comm = world
+
+gd = GridDescriptor((8, 1, 1), (8.0, 1.0, 1.0), comm=domain_comm)
 a = gd.zeros()
 dadx = gd.zeros()
 a[:, 0, 0] = np.arange(gd.beg_c[0], gd.end_c[0])
@@ -20,7 +30,7 @@ gradx.apply(a, dadx)
 dadx = gd.collect(dadx, broadcast=True)
 assert dadx[3, 0, 0] == 1.0 and np.sum(dadx[:, 0, 0]) == 0.0
 
-gd = GridDescriptor((1, 8, 1), (1.0, 8.0, 1.0), (1, 0, 1))
+gd = GridDescriptor((1, 8, 1), (1.0, 8.0, 1.0), (1, 0, 1), comm=domain_comm)
 dady = gd.zeros()
 a = gd.zeros()
 grady = Gradient(gd, v=1)

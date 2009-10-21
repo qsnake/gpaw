@@ -3,7 +3,7 @@
 
 from math import pi, sqrt
 
-import numpy as npy
+import numpy as np
 
 from gpaw.gauss import I
 from gpaw.spherical_harmonics import YL
@@ -24,8 +24,8 @@ class GInteraction2:
         self.beta2 = setupb.alpha2
         self.lmaxa = setupa.lmax
         self.lmaxb = setupb.lmax
-        self.v_LL = npy.zeros(((self.lmaxa + 1)**2, (self.lmaxb + 1)**2))
-        self.dvdr_LLc = npy.zeros(((self.lmaxa + 1)**2,
+        self.v_LL = np.zeros(((self.lmaxa + 1)**2, (self.lmaxb + 1)**2))
+        self.dvdr_LLc = np.zeros(((self.lmaxa + 1)**2,
                                   (self.lmaxb + 1)**2,
                                   3))
 
@@ -39,7 +39,7 @@ class GInteraction2:
 ##         self.mindist = rcutproj * .6
 
     def __call__(self, R):
-##         dist = sqrt(npy.sum(R**2))
+##         dist = sqrt(np.sum(R**2))
 ##         if dist > 0 and dist < self.mindist:
 ##             from sys import stderr
 ##             print >> stderr, warning('Atomic distance: %4.2f Bohr.\n%s' % (
@@ -53,8 +53,8 @@ class GInteraction2:
                 for lb in range(self.lmaxb + 1):
                     for mb in range(2 * lb + 1):
                         Lb = lb**2 + mb
-                        f = npy.zeros(4)
-                        f2 = npy.zeros(4)
+                        f = np.zeros(4)
+                        f2 = np.zeros(4)
                         for ca, xa in YL[La]:
                             for cb, xb in YL[Lb]:
                                 f += ca * cb * I(R, xa, xb,
@@ -66,8 +66,8 @@ class GInteraction2:
                                  self.beta**(1.5 + lb)
                         f2 *= x * self.alpha2**(1.5 + la) * \
                                   self.beta2**(1.5 + lb)
-##                         if npy.sometrue(R):
-##                             assert npy.dot(R, R) > 0.1
+##                         if np.sometrue(R):
+##                             assert np.dot(R, R) > 0.1
 ##                         else:
 ##                             f[:] = 0.0
 ##                             if La == Lb:

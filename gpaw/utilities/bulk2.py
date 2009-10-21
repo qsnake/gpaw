@@ -211,7 +211,8 @@ class GPAWRunner(Runner):
     def set_parameters(self, mode='fd', basis=None, kpts=None,
                        h=None, xc='LDA', stencils=None, width=0.1,
                        eigensolver='rmm-diis',
-                       nbands=None, vacuum=3.0, stdout=False):
+                       nbands=None, vacuum=3.0, stdout=False,
+                       input_parameters=None):
         if basis is None:
             basis = {}
         if stencils is None:
@@ -228,15 +229,22 @@ class GPAWRunner(Runner):
         self.nbands = nbands
         self.vacuum = vacuum
         self.stdout = stdout
+        self.input_parameters = input_parameters
         
     def set_calculator(self, config, filename):
+        kwargs = {}
+
+        if self.input_parameters is not None:
+            kwargs.update(self.input_parameters)
+        
         if config.pbc.any():
             # Bulk calculation:
             gpts = h2gpts(self.h, config.cell)
-            kwargs = dict(kpts=self.kpts,
-                          gpts=gpts,
-                          width=self.width,
-                          txt=filename[:-4] + 'txt')
+            pbc_kwargs = dict(kpts=self.kpts,
+                              gpts=gpts,
+                              width=self.width,
+                              txt=filename[:-4] + 'txt')
+            kwargs.update(pbc_kwargs)
         else:
             # Isolated atom or molecule:
             if (len(config) == 1 and
@@ -244,9 +252,10 @@ class GPAWRunner(Runner):
                 hund = True
             else:
                 hund = False
-            kwargs = dict(hund=hund,
-                          width=0.02,
-                          txt=filename[:-4] + 'txt')
+            isolated_kwargs = dict(hund=hund,
+                                   width=0.02,
+                                   txt=filename[:-4] + 'txt')
+            kwargs.update(isolated_kwargs)
             config.center(vacuum=self.vacuum)
 
         if self.stdout:
@@ -255,13 +264,14 @@ class GPAWRunner(Runner):
         if self.mode == 'fd':
             kwargs['eigensolver'] = self.eigensolver
 
-        calc = GPAW(mode=self.mode,
-                    basis=self.basis,
-                    stencils=self.stencils,
-                    xc=self.xc,
-                    poissonsolver=PoissonSolver(nn=3, relax='GS'),
-                    nbands=self.nbands,
-                    **kwargs)
+        more_kwargs = dict(mode=self.mode,
+                           basis=self.basis,
+                           stencils=self.stencils,
+                           xc=self.xc,
+                           poissonsolver=PoissonSolver(nn=3, relax='GS'),
+                           nbands=self.nbands)
+        kwargs.update(more_kwargs)
+        calc = GPAW(**kwargs)
         config.set_calculator(calc)
 
     def check_occupation_numbers(self, config):

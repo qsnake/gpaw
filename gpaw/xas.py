@@ -1,7 +1,7 @@
 import pickle
 from math import log, pi, sqrt
 
-import numpy as npy
+import numpy as np
 from ase.units import Hartree
 
 from gpaw.utilities.cg import CG
@@ -78,8 +78,8 @@ class XAS:
 
         self.n = n
             
-        self.eps_n = npy.empty(nkpts * n)
-        self.sigma_cn = npy.empty((3, nkpts * n), complex)
+        self.eps_n = np.empty(nkpts * n)
+        self.sigma_cn = np.empty((3, nkpts * n), complex)
         n1 = 0
         for kpt in wfs.kpt_u:
             if kpt.s != spin:
@@ -88,7 +88,7 @@ class XAS:
             n2 = n1 + n
             self.eps_n[n1:n2] = kpt.eps_n[n_start:n_end] * Hartree
             P_ni = kpt.P_ani[a][n_start:n_end]
-            a_cn = npy.inner(A_ci, P_ni)
+            a_cn = np.inner(A_ci, P_ni)
             weight = kpt.weight * wfs.nspins / 2
             print "weight", weight
             self.sigma_cn[:, n1:n2] = weight**0.5 * a_cn #.real
@@ -131,9 +131,9 @@ class XAS:
 
         # proj keyword, check normalization of incoming vectors
         if proj is not None:
-            proj_2 = npy.array(proj,float)
+            proj_2 = np.array(proj,float)
             if len(proj_2.shape) == 1:
-                proj_2 = npy.array([proj],float)
+                proj_2 = np.array([proj],float)
 
             for i,p in enumerate(proj_2):
                 if sum(p ** 2) ** 0.5 != 1.0:
@@ -142,22 +142,22 @@ class XAS:
         
             # make vector of projections
             if proj_xyz:
-                sigma1_cn = npy.empty( (3 + proj_2.shape[0], self.sigma_cn.shape[1]),
+                sigma1_cn = np.empty( (3 + proj_2.shape[0], self.sigma_cn.shape[1]),
                                        complex)
                 sigma1_cn[0:3,:] = self.sigma_cn
                 for i,p in enumerate(proj_2):
-                    sigma1_cn[3 +i,:] = npy.dot(p,self.sigma_cn) 
+                    sigma1_cn[3 +i,:] = np.dot(p,self.sigma_cn) 
             else:
-                sigma1_cn = npy.empty((proj_2.shape[0], self.sigma_cn.shape[1]) ,
+                sigma1_cn = np.empty((proj_2.shape[0], self.sigma_cn.shape[1]) ,
                                        complex)
                 for i,p in enumerate(proj_2):
-                    sigma1_cn[i,:] = npy.dot(p, self.sigma_cn)
+                    sigma1_cn[i,:] = np.dot(p, self.sigma_cn)
                                                 
-            sigma2_cn = npy.empty(sigma1_cn.shape)
-            sigma2_cn = (sigma1_cn*npy.conjugate(sigma1_cn)).real
+            sigma2_cn = np.empty(sigma1_cn.shape)
+            sigma2_cn = (sigma1_cn*np.conjugate(sigma1_cn)).real
 
         else:
-           sigma2_cn = (self.sigma_cn * npy.conjugate(self.sigma_cn)).real
+           sigma2_cn = (self.sigma_cn * np.conjugate(self.sigma_cn)).real
 
         #print sigma2_cn
 
@@ -165,7 +165,7 @@ class XAS:
         if kpoint is not None:
             if self.symmetry is not None:
                 sigma0_cn = sigma2_cn.copy()
-                sigma2_cn = npy.zeros((len(sigma0_cn), len(sigma0_cn[0])))
+                sigma2_cn = np.zeros((len(sigma0_cn), len(sigma0_cn[0])))
                 swaps = {}  # Python 2.4: use a set
                 for swap, mirror in self.symmetry.symmetries:
                     swaps[swap] = None
@@ -193,8 +193,8 @@ class XAS:
         else:
             emin = min(eps_n) - 2 * fwhm
             emax = max(eps_n) + 2 * fwhm
-            e = emin + npy.arange(N + 1) * ((emax - emin) / N)
-            a_c = npy.zeros((len(sigma2_cn), N + 1))
+            e = emin + np.arange(N + 1) * ((emax - emin) / N)
+            a_c = np.zeros((len(sigma2_cn), N + 1))
             
             if linbroad is None:
                 #constant broadening fwhm
@@ -202,9 +202,9 @@ class XAS:
             
                 for n, eps in enumerate(eps_n[eps_start:eps_end]):
                     x = -alpha * (e - eps)**2
-                    x = npy.clip(x, -100.0, 100.0)
-                    a_c += npy.outer(sigma2_cn[:, n + eps_start],
-                                        (alpha / pi)**0.5 * npy.exp(x))
+                    x = np.clip(x, -100.0, 100.0)
+                    a_c += np.outer(sigma2_cn[:, n + eps_start],
+                                        (alpha / pi)**0.5 * np.exp(x))
             else:
 
                 # constant broadening fwhm until linbroad[1] and a
@@ -225,9 +225,9 @@ class XAS:
                         alpha =  4*log(2) / fwhm2**2
                         
                     x = -alpha * (e - eps)**2
-                    x = npy.clip(x, -100.0, 100.0)
-                    a_c += npy.outer(sigma2_cn[:, n],
-                                     (alpha / pi)**0.5 * npy.exp(x))
+                    x = np.clip(x, -100.0, 100.0)
+                    a_c += np.outer(sigma2_cn[:, n],
+                                     (alpha / pi)**0.5 * np.exp(x))
                 
             return  e, a_c
 
@@ -298,9 +298,9 @@ class RecursionMethod:
         if gd.comm.rank == 0:
             if kpt_comm.rank == 0:
                 nmyu, dim, ni = self.a_uci.shape
-                a_kci = npy.empty((kpt_comm.size, nmyu, dim, ni),
+                a_kci = np.empty((kpt_comm.size, nmyu, dim, ni),
                                   self.wfs.dtype)
-                b_kci = npy.empty((kpt_comm.size, nmyu, dim, ni),
+                b_kci = np.empty((kpt_comm.size, nmyu, dim, ni),
                                   self.wfs.dtype)
                 kpt_comm.gather(self.a_uci, 0, a_kci)
                 kpt_comm.gather(self.b_uci, 0, b_kci)
@@ -367,9 +367,9 @@ class RecursionMethod:
 
         #check normalization of incoming vectors
         if proj is not None:
-            proj_2 = npy.array(proj,float)
+            proj_2 = np.array(proj,float)
             if len(proj_2.shape) == 1:
-                proj_2 = npy.array([proj],float)
+                proj_2 = np.array([proj],float)
             
             for i,p in enumerate(proj_2):
                 if sum(p ** 2) ** 0.5 != 1.0:
@@ -378,18 +378,18 @@ class RecursionMethod:
 
             proj_tmp = []
             for p in proj_2:
-               proj_tmp.append(npy.dot(p, A_ci))
-            proj_tmp = npy.array(proj_tmp, float)   
+               proj_tmp.append(np.dot(p, A_ci))
+            proj_tmp = np.array(proj_tmp, float)   
 
             # if proj_xyz is True, append projections to A_ci
             if proj_xyz:
-                A_ci_tmp = npy.zeros((3 + proj_2.shape[0], A_ci.shape[1]))
+                A_ci_tmp = np.zeros((3 + proj_2.shape[0], A_ci.shape[1]))
                 A_ci_tmp[0:3,:] = A_ci 
                 A_ci_tmp[3:,:]= proj_tmp
 
             # otherwise, replace A_ci by projections
             else:
-                A_ci_tmp = npy.zeros((proj_2.shape[0], A_ci.shape[1]))
+                A_ci_tmp = np.zeros((proj_2.shape[0], A_ci.shape[1]))
                 A_ci_tmp = proj_tmp
             A_ci = A_ci_tmp
 
@@ -401,8 +401,8 @@ class RecursionMethod:
         self.wold_ucG = self.wfs.gd.zeros((nmykpts, self.dim), self.wfs.dtype)
         self.y_ucG = self.wfs.gd.zeros((nmykpts, self.dim), self.wfs.dtype)
             
-        self.a_uci = npy.zeros((nmykpts, self.dim, 0), self.wfs.dtype)
-        self.b_uci = npy.zeros((nmykpts, self.dim, 0), self.wfs.dtype)
+        self.a_uci = np.zeros((nmykpts, self.dim, 0), self.wfs.dtype)
+        self.b_uci = np.zeros((nmykpts, self.dim, 0), self.wfs.dtype)
 
         A_aci = self.wfs.pt.dict(3, zero=True)
         if a in A_aci:
@@ -424,8 +424,8 @@ class RecursionMethod:
             
 
         ni = self.a_uci.shape[2]
-        a_uci = npy.empty((self.nmykpts, self.dim, ni + nsteps), self.wfs.dtype)
-        b_uci = npy.empty((self.nmykpts, self.dim, ni + nsteps), self.wfs.dtype)
+        a_uci = np.empty((self.nmykpts, self.dim, ni + nsteps), self.wfs.dtype)
+        b_uci = np.empty((self.nmykpts, self.dim, ni + nsteps), self.wfs.dtype)
         a_uci[:, :, :ni]  = self.a_uci
         b_uci[:, :, :ni]  = self.b_uci
         self.a_uci = a_uci
@@ -444,7 +444,7 @@ class RecursionMethod:
         z_cG = self.z_cG
         
         self.solver(w_cG, self.z_cG, u)
-        I_c = npy.reshape(integrate(npy.conjugate(z_cG) * w_cG)**-0.5,
+        I_c = np.reshape(integrate(np.conjugate(z_cG) * w_cG)**-0.5,
                           (self.dim, 1, 1, 1))
         z_cG *= I_c
         w_cG *= I_c
@@ -452,10 +452,10 @@ class RecursionMethod:
         if i != 0:
             b_c =  1.0 / I_c 
         else:
-            b_c = npy.reshape(npy.zeros(self.dim), (self.dim, 1, 1, 1))
+            b_c = np.reshape(np.zeros(self.dim), (self.dim, 1, 1, 1))
     
         self.hamiltonian.apply(z_cG, y_cG, self.wfs, self.wfs.kpt_u[u])
-        a_c = npy.reshape(integrate(npy.conjugate(z_cG) * y_cG), (self.dim, 1, 1, 1))
+        a_c = np.reshape(integrate(np.conjugate(z_cG) * y_cG), (self.dim, 1, 1, 1))
         wnew_cG = (y_cG - a_c * w_cG - b_c * wold_cG)
         wold_cG[:] = w_cG
         w_cG[:] = wnew_cG
@@ -478,7 +478,7 @@ class RecursionMethod:
         
         n = len(eps_s)
                 
-        sigma_cn = npy.zeros((self.dim, n))
+        sigma_cn = np.zeros((self.dim, n))
         if imax is None:
             imax = self.a_uci.shape[2]
         eps_n = (eps_s + delta * 1.0j) / Hartree
@@ -497,23 +497,23 @@ class RecursionMethod:
 
         if len(self.swaps) > 0:
             sigma0_cn = sigma_cn
-            sigma_cn = npy.zeros((self.dim, n))
+            sigma_cn = np.zeros((self.dim, n))
             for swap in self.swaps:
                 sigma_cn += sigma0_cn.take(swap, axis=0)
             sigma_cn /= len(self.swaps)
 
         # gaussian broadening 
         if fwhm is not None:
-            sigma_tmp = npy.zeros(sigma_cn.shape)
+            sigma_tmp = np.zeros(sigma_cn.shape)
 
             #constant broadening fwhm
             if linbroad is None:
                 alpha = 4 * log(2) / fwhm**2
                 for n, eps in enumerate(eps_s):
                     x = -alpha * (eps_s - eps)**2
-                    x = npy.clip(x, -100.0, 100.0)
-                    sigma_tmp += npy.outer(sigma_cn[:,n],
-                                        (alpha / pi)**0.5 * npy.exp(x))
+                    x = np.clip(x, -100.0, 100.0)
+                    sigma_tmp += np.outer(sigma_cn[:,n],
+                                        (alpha / pi)**0.5 * np.exp(x))
 
             else:
                 # constant broadening fwhm until linbroad[1] and a
@@ -533,9 +533,9 @@ class RecursionMethod:
                         alpha =  4*log(2) / fwhm2**2
 
                     x = -alpha * (eps_s - eps)**2
-                    x = npy.clip(x, -100.0, 100.0)
-                    sigma_tmp += npy.outer(sigma_cn[:, n],
-                                        (alpha / pi)**0.5 * npy.exp(x))
+                    x = np.clip(x, -100.0, 100.0)
+                    sigma_tmp += np.outer(sigma_cn[:, n],
+                                        (alpha / pi)**0.5 * np.exp(x))
             sigma_cn = sigma_tmp
                     
 
@@ -586,8 +586,8 @@ class RecursionMethod:
         n2 = self.a_uci.shape[1]
         ni = self.a_uci.shape[2]
         type_code = self.a_uci.dtype.name #typecode()
-        a_uci = npy.empty((n1 , n2, ni + nsteps*ntimes), type_code)
-        b_uci = npy.empty((n1, n2, ni + nsteps*ntimes), type_code)
+        a_uci = np.empty((n1 , n2, ni + nsteps*ntimes), type_code)
+        b_uci = np.empty((n1, n2, ni + nsteps*ntimes), type_code)
         a_uci[:, :, :ni]  = self.a_uci
         b_uci[:, :, :ni]  = self.b_uci
         

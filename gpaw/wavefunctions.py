@@ -562,9 +562,9 @@ class LCAOWaveFunctions(WaveFunctions):
             nao = self.setups.nao
             rho_MM = np.empty((nao, nao), self.dtype)
             self.calculate_density_matrix(f_n, kpt.C_nM, rho_MM)
-        self.timer.start('LCAO WaveFunctions: construct density')
+        self.timer.start('Construct density')
         self.basis_functions.construct_density(rho_MM, nt_sG[kpt.s], kpt.q)
-        self.timer.stop('LCAO WaveFunctions: construct density')
+        self.timer.stop('Construct density')
 
     def add_to_density_from_k_point(self, nt_sG, kpt):
         """Add contribution to pseudo electron-density. """
@@ -606,6 +606,11 @@ class LCAOWaveFunctions(WaveFunctions):
                                             dThetadR_qvMM[kpt.q],
                                             dTdR_qvMM[kpt.q],
                                             dPdR_aqvMi)
+        self.bd.comm.sum(F_av, 0) # XXX copy/paste - does this make sense?
+
+        if self.bd.comm.rank == 0:
+            self.kpt_comm.sum(F_av, 0)
+
         self.timer.stop('LCAO forces')
 
     def print_arrays_with_ranks(self, names, arrays_nax):
@@ -911,14 +916,14 @@ class GridWaveFunctions(WaveFunctions):
                                                        density, hamiltonian,
                                                        spos_ac):
         if 0:
-            self.timer.start('Wavefunction: random')
+            self.timer.start('Random wavefunction initialization')
             for kpt in self.kpt_u:
                 kpt.psit_nG = self.gd.zeros(self.mynbands, self.dtype)
             self.random_wave_functions(0)
-            self.timer.stop('Wavefunction: random')
+            self.timer.stop('Random wavefunction initialization')
             return
         
-        self.timer.start('Wavefunction: lcao initialization')
+        self.timer.start('LCAO initialization')
         if self.nbands <= self.setups.nao:
             lcaonbands = self.nbands
             lcaomynbands = self.mynbands
@@ -962,7 +967,7 @@ class GridWaveFunctions(WaveFunctions):
             # less than the desired number of bands, then extra random
             # wave functions are added.
             self.random_wave_functions(lcaomynbands)
-        self.timer.stop('Wavefunction: lcao initialization')
+        self.timer.stop('LCAO initialization')
 
     def initialize_wave_functions_from_restart_file(self):
         if not isinstance(self.kpt_u[0].psit_nG, TarFileReference):
@@ -1113,7 +1118,8 @@ class GridWaveFunctions(WaveFunctions):
 
     def calculate_forces(self, hamiltonian, F_av):
         # Calculate force-contribution from k-points:
-        F_aniv = self.pt.dict(self.nbands, derivative=True)
+        F_av.fill(0.0)
+        F_aniv = self.pt.dict(self.bd.mynbands, derivative=True)
         for kpt in self.kpt_u:
             self.pt.derivative(kpt.psit_nG, F_aniv, kpt.q)
             for a, F_niv in F_aniv.items():
@@ -1126,6 +1132,11 @@ class GridWaveFunctions(WaveFunctions):
                 dO_ii = hamiltonian.setups[a].O_ii
                 F_vii -= np.dot(np.dot(F_niv.transpose(), P_ni), dO_ii)
                 F_av[a] += 2 * F_vii.real.trace(0, 1, 2)
+
+        self.bd.comm.sum(F_av, 0)
+
+        if self.bd.comm.rank == 0:
+            self.kpt_comm.sum(F_av, 0)
 
     def _get_wave_function_array(self, u, n):
         psit_nG = self.kpt_u[u].psit_nG

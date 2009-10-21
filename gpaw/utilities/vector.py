@@ -1,5 +1,5 @@
 from math import acos, cos, sin, sqrt
-import numpy as npy
+import numpy as np
 from ase.atoms import string2vector
 
 class Vector3d(list):
@@ -19,13 +19,13 @@ class Vector3d(list):
         return result
 
     def __div__(self,other):
-        return Vector3d(npy.array(self) / other)
+        return Vector3d(np.array(self) / other)
 
     def __mul__(self, x):
         if type(x) == type(self):
-            return npy.dot( self, x )
+            return np.dot( self, x )
         else:
-            return Vector3d(x * npy.array(self))
+            return Vector3d(x * np.array(self))
         
     def __rmul__(self, x):
         return self.__mul__(x)
@@ -74,7 +74,7 @@ class Vector3d(list):
         return self.l
 
     def norm(self):
-        #return npy.sum( self*self )
+        #return np.sum( self*self )
         return self*self  #  XXX drop this class and use numpy arrays ...
 
     def rotation_axis(self, other):

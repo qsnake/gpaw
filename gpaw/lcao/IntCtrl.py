@@ -1,4 +1,4 @@
-import numpy as npy
+import numpy as np
 
 
 class IntCtrl:
@@ -43,18 +43,18 @@ class IntCtrl:
                 print '--eqIntCtrl:  Tol =', self.eqinttol
         else:        #T>0K
             nkt = 20 * self.kt
-            dkt = 10 * npy.pi * self.kt
+            dkt = 10 * np.pi * self.kt
             #self.eqintpath = [-20.0, -20.0 + dkt * 1.j, -nkt + dkt * 1.j,
             #                  dkt * 1.j + nkt]
             self.eqintpath = [-50, -50 + 10*1.j, -nkt + 5*1.j,
                                          -nkt + dkt * 1.j, dkt *1.j +nkt]
             self.eqdelta = dkt
             nRes = 10
-            if abs( nRes - (npy.round((nRes - 1) / 2) * 2 + 1)) < 1e-3 :
+            if abs( nRes - (np.round((nRes - 1) / 2) * 2 + 1)) < 1e-3 :
                 print 'Warning: Residue Point too close to IntPath!'
             self.eqresz = range(1, nRes, 2)
             for i in range(len(self.eqresz)):
-                self.eqresz[i] *=  1.j * npy.pi * self.kt
+                self.eqresz[i] *=  1.j * np.pi * self.kt
             if verbose:
                 print '--eqIntCtrl: Tol = ', self.eqinttol, 'Delta =', \
                                           self.eqdelta, ' nRes =', self.eqresz
@@ -88,7 +88,7 @@ class IntCtrl:
                 print '--locInt: Tol', self.lcointtol    
         else:
             nkt = 20 * self.kt
-            dkt = 10 * npy.pi * self.kt
+            dkt = 10 * np.pi * self.kt
 
             if self.maxfermi-self.minfermi < 0.2 + 2 * nkt or dkt > 0.5:
                 self.locintpath = [self.minfermi - nkt + dkt * 1.j,
@@ -101,10 +101,10 @@ class IntCtrl:
                                    self.maxfermi + nkt + dkt * 1.j]
             self.locdelta = dkt
             nRes = 10
-            self.locresz = npy.array(range(1, nRes, 2)
-                                                   ) * 1.j * npy.pi * self.kt
+            self.locresz = np.array(range(1, nRes, 2)
+                                                   ) * 1.j * np.pi * self.kt
             tmp = len(range(1, nRes, 2))
-            self.locresz = npy.resize(self.locresz, [2, tmp])
+            self.locresz = np.resize(self.locresz, [2, tmp])
             for i in range(tmp):
                 self.locresz[0][i] += self.minfermi
                 self.locresz[1][i] += self.maxfermi
@@ -145,11 +145,11 @@ class IntCtrl:
         elif self.neintmethod == 0:
             if verbose:
                 print ' --neInt: ManualEp -> Step=', self.neintstep, 'Eta =',\
-                                              npy.imag(self.neintpath[0])
+                                              np.imag(self.neintpath[0])
         elif self.neintmethod == 1:
             if verbose:
                 print ' --neInt: AutoEp   -> Tol =', self.neinttol,  'Eta =',\
-                                              npy.imag(self.neintpath[0])
+                                              np.imag(self.neintpath[0])
 
         
             

@@ -1,4 +1,4 @@
-import numpy as npy
+import numpy as np
 from Numeric import pi, sqrt
 from tools import factorial
 from tools import Rational as Q
@@ -263,7 +263,7 @@ def legendre(l, m):
     
     m = abs(m)
     assert l >= 0 and 0 <= m <=l
-    result = npy.zeros(l - m + 1, 'O')
+    result = np.zeros(l - m + 1, 'O')
     if l == m == 0:
         """Use that
              0
@@ -292,8 +292,8 @@ def legendre(l, m):
            P (z)= ---- z P  (z) - ----- r  P  (z)
             l      l-m    l-1      l-m      l-2
         """
-        result[1:] += npy.multiply(legendre(l - 1, m), Q(2 * l - 1, l - m))
-        result[:(l - 2) - m + 1] -= npy.multiply(legendre(l - 2, m),
+        result[1:] += np.multiply(legendre(l - 1, m), Q(2 * l - 1, l - m))
+        result[:(l - 2) - m + 1] -= np.multiply(legendre(l - 2, m),
                                                  Q(l + m - 1, l - m))
     # Store result in global dictionary
     Y_lp[0][(l, m)] = result
@@ -434,7 +434,7 @@ def dYdq(l, m, q):
 def simplify(xyzs):
     """Rescale coefficients to smallest integer value"""
     norm = Q(1)
-    numxyz = npy.array(xyzs.values())
+    numxyz = np.array(xyzs.values())
 
     # up-scale all 'xyz' coefficients to integers
     for xyz in numxyz:
@@ -443,10 +443,10 @@ def simplify(xyzs):
 
     # determine least common divisor for 'xyz' coefficients
     dmax = 1
-    num_max = max(abs(npy.floor(numxyz)))
+    num_max = max(abs(np.floor(numxyz)))
     for d in range(2, num_max + 1):
         test = numxyz / d
-        if npy.alltrue(test == npy.floor(test)): dmax = d
+        if np.alltrue(test == np.floor(test)): dmax = d
 
     # Update simplified dictionary
     norm *= dmax
@@ -479,17 +479,17 @@ def orthogonal(L1, L2):
     I = 0.0
     N = 40
 
-    for theta in npy.arange(0, pi, pi / N):
-        for phi in npy.arange(0, 2 * pi, 2 * pi / N):
-            x = npy.cos(phi) * npy.sin(theta)
-            y = npy.sin(phi) * npy.sin(theta)
-            z = npy.cos(theta)
+    for theta in np.arange(0, pi, pi / N):
+        for phi in np.arange(0, 2 * pi, 2 * pi / N):
+            x = np.cos(phi) * np.sin(theta)
+            y = np.sin(phi) * np.sin(theta)
+            z = np.cos(theta)
             r2 = x*x + y*y + z*z
             
             Y1 = eval(Y_to_string(*L_to_lm(L1)))
             Y2 = eval(Y_to_string(*L_to_lm(L2)))
 
-            I += npy.sin(theta) * Y1 * Y2
+            I += np.sin(theta) * Y1 * Y2
     I *= 2 * (pi / N)**2
 
     return I

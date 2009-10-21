@@ -4,20 +4,20 @@
 #include <numpy/arrayobject.h>
 #include "extensions.h"
 
-#ifdef GPAW_AIX
-#  define dscal_ dscal
-#  define zscal_ zscal
-#  define daxpy_ daxpy
-#  define zaxpy_ zaxpy
-#  define dsyrk_ dsyrk
-#  define zherk_ zherk
+#ifdef GPAW_NO_UNDERSCORE_BLAS
+#  define dscal_  dscal
+#  define zscal_  zscal
+#  define daxpy_  daxpy
+#  define zaxpy_  zaxpy
+#  define dsyrk_  dsyrk
+#  define zherk_  zherk
 #  define dsyr2k_ dsyr2k
 #  define zher2k_ zher2k
-#  define dgemm_ dgemm
-#  define zgemm_ zgemm
-#  define dgemv_ dgemv
-#  define zgemv_ zgemv
-#  define ddot_ ddot
+#  define dgemm_  dgemm
+#  define zgemm_  zgemm
+#  define dgemv_  dgemv
+#  define zgemv_  zgemv
+#  define ddot_   ddot
 #endif
 
 void dscal_(int*n, double* alpha, double* x, int* incx);
@@ -25,32 +25,32 @@ void dscal_(int*n, double* alpha, double* x, int* incx);
 void zscal_(int*n, void* alpha, void* x, int* incx);
 
 void daxpy_(int* n, double* alpha,
-	    double* x, int *incx, 
+	    double* x, int *incx,
 	    double* y, int *incy);
 void zaxpy_(int* n, void* alpha,
-	    void* x, int *incx, 
+	    void* x, int *incx,
 	    void* y, int *incy);
-int dsyrk_(char *uplo, char *trans, int *n, int *k, 
-	   double *alpha, double *a, int *lda, double *beta, 
+int dsyrk_(char *uplo, char *trans, int *n, int *k,
+	   double *alpha, double *a, int *lda, double *beta,
 	   double *c, int *ldc);
-int zherk_(char *uplo, char *trans, int *n, int *k, 
+int zherk_(char *uplo, char *trans, int *n, int *k,
 	   double *alpha, void *a, int *lda,
-	   double *beta, 
+	   double *beta,
 	   void *c, int *ldc);
-int dsyr2k_(char *uplo, char *trans, int *n, int *k, 
-	    double *alpha, double *a, int *lda, 
-	    double *b, int *ldb, double *beta, 
+int dsyr2k_(char *uplo, char *trans, int *n, int *k,
+	    double *alpha, double *a, int *lda,
+	    double *b, int *ldb, double *beta,
 	    double *c, int *ldc);
-int zher2k_(char *uplo, char *trans, int *n, int *k, 
+int zher2k_(char *uplo, char *trans, int *n, int *k,
 	    void *alpha, void *a, int *lda,
-	    void *b, int *ldb, double *beta, 
+	    void *b, int *ldb, double *beta,
 	    void *c, int *ldc);
 int dgemm_(char *transa, char *transb, int *m, int * n,
-	   int *k, double *alpha, double *a, int *lda, 
-	   double *b, int *ldb, double *beta, 
+	   int *k, double *alpha, double *a, int *lda,
+	   double *b, int *ldb, double *beta,
 	   double *c, int *ldc);
 int zgemm_(char *transa, char *transb, int *m, int * n,
-	   int *k, void *alpha, void *a, int *lda, 
+	   int *k, void *alpha, void *a, int *lda,
 	   void *b, int *ldb, void *beta,
 	   void *c, int *ldc);
 int dgemv_(char *trans, int *m, int * n,
@@ -67,7 +67,7 @@ PyObject* scal(PyObject *self, PyObject *args)
 {
   Py_complex alpha;
   PyArrayObject* x;
-  if (!PyArg_ParseTuple(args, "DO", &alpha, &x)) 
+  if (!PyArg_ParseTuple(args, "DO", &alpha, &x))
     return NULL;
   int n = x->dimensions[0];
   for (int d = 1; d < x->nd; d++)
@@ -90,7 +90,7 @@ PyObject* gemm(PyObject *self, PyObject *args)
   Py_complex beta;
   PyArrayObject* c;
   char transa = 'n';
-  if (!PyArg_ParseTuple(args, "DOODO|c", &alpha, &a, &b, &beta, &c, &transa)) 
+  if (!PyArg_ParseTuple(args, "DOODO|c", &alpha, &a, &b, &beta, &c, &transa))
     return NULL;
   int m, k, lda, ldb, ldc;
   if (transa == 'n')
@@ -102,7 +102,7 @@ PyObject* gemm(PyObject *self, PyObject *args)
       lda = m;
       ldb = b->strides[0] / b->strides[1];
       ldc = c->strides[0] / c->strides[c->nd - 1];
-    } 
+    }
   else
     {
       k = a->dimensions[1];
@@ -112,21 +112,21 @@ PyObject* gemm(PyObject *self, PyObject *args)
       lda = k;
       ldb = k;
       ldc = c->strides[0] / c->strides[1];
-    } 
+    }
   int n = b->dimensions[0];
   if (a->descr->type_num == PyArray_DOUBLE)
-    dgemm_(&transa, "n", &m, &n, &k, 
+    dgemm_(&transa, "n", &m, &n, &k,
            &(alpha.real),
-           DOUBLEP(a), &lda, 
+           DOUBLEP(a), &lda,
            DOUBLEP(b), &ldb,
-           &(beta.real), 
+           &(beta.real),
            DOUBLEP(c), &ldc);
   else
-    zgemm_(&transa, "n", &m, &n, &k, 
+    zgemm_(&transa, "n", &m, &n, &k,
            &alpha,
-           (void*)COMPLEXP(a), &lda, 
+           (void*)COMPLEXP(a), &lda,
            (void*)COMPLEXP(b), &ldb,
-           &beta, 
+           &beta,
            (void*)COMPLEXP(c), &ldc);
   Py_RETURN_NONE;
 }
@@ -140,7 +140,7 @@ PyObject* gemv(PyObject *self, PyObject *args)
   Py_complex beta;
   PyArrayObject* y;
   char trans = 't';
-  if (!PyArg_ParseTuple(args, "DOODO|c", &alpha, &a, &x, &beta, &y, &trans)) 
+  if (!PyArg_ParseTuple(args, "DOODO|c", &alpha, &a, &x, &beta, &y, &trans))
     return NULL;
 
   int m, n, lda, itemsize, incx, incy;
@@ -171,18 +171,18 @@ PyObject* gemv(PyObject *self, PyObject *args)
   incy = 1;
 
   if (a->descr->type_num == PyArray_DOUBLE)
-    dgemv_(&trans, &m, &n, 
+    dgemv_(&trans, &m, &n,
            &(alpha.real),
-           DOUBLEP(a), &lda, 
+           DOUBLEP(a), &lda,
            DOUBLEP(x), &incx,
-           &(beta.real), 
+           &(beta.real),
            DOUBLEP(y), &incy);
   else
-    zgemv_(&trans, &m, &n, 
+    zgemv_(&trans, &m, &n,
            &alpha,
-           (void*)COMPLEXP(a), &lda, 
+           (void*)COMPLEXP(a), &lda,
            (void*)COMPLEXP(x), &incx,
-           &beta, 
+           &beta,
            (void*)COMPLEXP(y), &incy);
   Py_RETURN_NONE;
 }
@@ -193,7 +193,7 @@ PyObject* axpy(PyObject *self, PyObject *args)
   Py_complex alpha;
   PyArrayObject* x;
   PyArrayObject* y;
-  if (!PyArg_ParseTuple(args, "DOO", &alpha, &x, &y)) 
+  if (!PyArg_ParseTuple(args, "DOO", &alpha, &x, &y))
     return NULL;
   int n = x->dimensions[0];
   for (int d = 1; d < x->nd; d++)
@@ -201,11 +201,11 @@ PyObject* axpy(PyObject *self, PyObject *args)
   int incx = 1;
   int incy = 1;
   if (x->descr->type_num == PyArray_DOUBLE)
-    daxpy_(&n, &(alpha.real), 
+    daxpy_(&n, &(alpha.real),
            DOUBLEP(x), &incx,
            DOUBLEP(y), &incy);
   else
-    zaxpy_(&n, &alpha, 
+    zaxpy_(&n, &alpha,
            (void*)COMPLEXP(x), &incx,
            (void*)COMPLEXP(y), &incy);
   Py_RETURN_NONE;
@@ -217,7 +217,7 @@ PyObject* rk(PyObject *self, PyObject *args)
   PyArrayObject* a;
   double beta;
   PyArrayObject* c;
-  if (!PyArg_ParseTuple(args, "dOdO", &alpha, &a, &beta, &c)) 
+  if (!PyArg_ParseTuple(args, "dOdO", &alpha, &a, &beta, &c))
     return NULL;
   int n = a->dimensions[0];
   int k = a->dimensions[1];
@@ -225,11 +225,11 @@ PyObject* rk(PyObject *self, PyObject *args)
     k *= a->dimensions[d];
   int ldc = c->strides[0] / c->strides[1];
   if (a->descr->type_num == PyArray_DOUBLE)
-    dsyrk_("u", "c", &n, &k, 
+    dsyrk_("u", "c", &n, &k,
            &alpha, DOUBLEP(a), &k, &beta,
            DOUBLEP(c), &ldc);
   else
-    zherk_("u", "c", &n, &k, 
+    zherk_("u", "c", &n, &k,
            &alpha, (void*)COMPLEXP(a), &k, &beta,
            (void*)COMPLEXP(c), &ldc);
   Py_RETURN_NONE;
@@ -242,7 +242,7 @@ PyObject* r2k(PyObject *self, PyObject *args)
   PyArrayObject* b;
   double beta;
   PyArrayObject* c;
-  if (!PyArg_ParseTuple(args, "DOOdO", &alpha, &a, &b, &beta, &c)) 
+  if (!PyArg_ParseTuple(args, "DOOdO", &alpha, &a, &b, &beta, &c))
     return NULL;
   int n = a->dimensions[0];
   int k = a->dimensions[1];
@@ -250,13 +250,13 @@ PyObject* r2k(PyObject *self, PyObject *args)
     k *= a->dimensions[d];
   int ldc = c->strides[0] / c->strides[1];
   if (a->descr->type_num == PyArray_DOUBLE)
-    dsyr2k_("u", "c", &n, &k, 
-            (double*)(&alpha), DOUBLEP(a), &k, 
+    dsyr2k_("u", "c", &n, &k,
+            (double*)(&alpha), DOUBLEP(a), &k,
             DOUBLEP(b), &k, &beta,
             DOUBLEP(c), &ldc);
   else
-    zher2k_("u", "c", &n, &k, 
-            (void*)(&alpha), (void*)COMPLEXP(a), &k, 
+    zher2k_("u", "c", &n, &k,
+            (void*)(&alpha), (void*)COMPLEXP(a), &k,
             (void*)COMPLEXP(b), &k, &beta,
             (void*)COMPLEXP(c), &ldc);
   Py_RETURN_NONE;
@@ -266,7 +266,7 @@ PyObject* dotc(PyObject *self, PyObject *args)
 {
   PyArrayObject* a;
   PyArrayObject* b;
-  if (!PyArg_ParseTuple(args, "OO", &a, &b)) 
+  if (!PyArg_ParseTuple(args, "OO", &a, &b))
     return NULL;
   int n = a->dimensions[0];
   for (int i = 1; i < a->nd; i++)
@@ -276,7 +276,7 @@ PyObject* dotc(PyObject *self, PyObject *args)
   if (a->descr->type_num == PyArray_DOUBLE)
     {
       double result;
-      result = ddot_(&n, (void*)DOUBLEP(a), 
+      result = ddot_(&n, (void*)DOUBLEP(a),
 	     &incx, (void*)DOUBLEP(b), &incy);
       return PyFloat_FromDouble(result);
     }
@@ -306,7 +306,7 @@ PyObject* dotu(PyObject *self, PyObject *args)
 {
   PyArrayObject* a;
   PyArrayObject* b;
-  if (!PyArg_ParseTuple(args, "OO", &a, &b)) 
+  if (!PyArg_ParseTuple(args, "OO", &a, &b))
     return NULL;
   int n = a->dimensions[0];
   for (int i = 1; i < a->nd; i++)
@@ -316,7 +316,7 @@ PyObject* dotu(PyObject *self, PyObject *args)
   if (a->descr->type_num == PyArray_DOUBLE)
     {
       double result;
-      result = ddot_(&n, (void*)DOUBLEP(a), 
+      result = ddot_(&n, (void*)DOUBLEP(a),
 	     &incx, (void*)DOUBLEP(b), &incy);
       return PyFloat_FromDouble(result);
     }

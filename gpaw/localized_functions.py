@@ -5,7 +5,7 @@
 
 from math import pi, cos, sin
 
-import numpy as npy
+import numpy as np
 
 from gpaw import debug
 from gpaw.utilities import is_contiguous
@@ -67,7 +67,7 @@ class LocFuncs:
         box_b = gd.get_boxes(spos_c, rcut, cut)
 
         self.box_b = []
-        self.sdisp_bc = npy.zeros((len(box_b), 3))
+        self.sdisp_bc = np.zeros((len(box_b), 3))
         b = 0
         for beg_c, end_c, sdisp_c in box_b:
             box = LocalizedFunctions(functions, beg_c, end_c,
@@ -90,11 +90,11 @@ class LocFuncs:
         if gd.comm.size > 1:
             # Find out which ranks have a piece of the
             # localized functions:
-            i_have_a_piece = npy.array(int(b > 0))
-            i_have_a_piece_r = npy.empty(gd.comm.size, int)
+            i_have_a_piece = np.array(int(b > 0))
+            i_have_a_piece_r = np.empty(gd.comm.size, int)
             gd.comm.all_gather(i_have_a_piece, i_have_a_piece_r)
             if i_have_a_piece:
-                self.ranks = npy.arange(self.comm.size)[i_have_a_piece_r == 1]
+                self.ranks = np.arange(self.comm.size)[i_have_a_piece_r == 1]
                 self.root = gd.get_rank_from_position(spos_c)
         else:
             self.ranks = [0]
@@ -102,7 +102,7 @@ class LocFuncs:
 
     def set_phase_factors(self, k_kc):
         """Set phase factors for Bloch boundary conditions."""
-        self.phase_kb = npy.exp(2j * pi * npy.inner(k_kc, self.sdisp_bc))
+        self.phase_kb = np.exp(2j * pi * np.inner(k_kc, self.sdisp_bc))
         
     def add(self, a_xg, coef_xi, k=None, communicate=False):
         """Add localized functions to extended arrays.
@@ -135,7 +135,7 @@ class LocFuncs:
                 else:
                     # Get coefficients from root:
                     shape = a_xg.shape[:-3] + (self.ni,)
-                    coef_xi = npy.zeros(shape, self.dtype)
+                    coef_xi = np.zeros(shape, self.dtype)
                     request = self.comm.receive(coef_xi, self.root,
                                                 1329, False)
 
@@ -175,10 +175,10 @@ class LocFuncs:
         """
 
         shape = a_xg.shape[:-3] + (self.ni,)
-        tmp_xi = npy.zeros(shape, self.dtype)
+        tmp_xi = np.zeros(shape, self.dtype)
 
         if result_xi is None:
-            result_xi = npy.zeros(shape, self.dtype)
+            result_xi = np.zeros(shape, self.dtype)
             
         isum = self.isum(result_xi)
         isum.next()
@@ -229,7 +229,7 @@ class LocFuncs:
         if ndomains > 1:
             if self.comm.rank == self.root:
                 requests = []
-                a_dx = npy.empty((ndomains - 1,) + a_x.shape, self.dtype)
+                a_dx = np.empty((ndomains - 1,) + a_x.shape, self.dtype)
                 d = 0
                 for rank in self.ranks:
                     if rank == self.root:
@@ -291,9 +291,9 @@ class LocFuncs:
     def iderivative(self, a_xg, result_xic, k=None):
         """Iterator for calculating derivatives of localized integrals."""
         shape = a_xg.shape[:-3] + (self.ni, 3)
-        tmp_xic = npy.zeros(shape, self.dtype)
+        tmp_xic = np.zeros(shape, self.dtype)
         if result_xic is None:
-            result_xic = npy.zeros(shape, self.dtype)
+            result_xic = np.zeros(shape, self.dtype)
             
         isum = self.isum(result_xic)
         isum.next()
@@ -341,7 +341,7 @@ class LocFuncs:
     def norm(self):
         """Calculate norm of localized functions."""
 
-        I_ic = npy.zeros((self.ni, 4))
+        I_ic = np.zeros((self.ni, 4))
         for box in self.box_b:
             box.norm(I_ic)
         self.sum(I_ic, broadcast=True)

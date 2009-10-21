@@ -1,4 +1,4 @@
-import numpy as npy
+import numpy as np
 
 class Polynomial:
     """Polynomial p(x,y,z). 
@@ -14,11 +14,11 @@ class Polynomial:
         
         self.order = order
         if order == 0:
-            self.c = npy.zeros([1.0])
-            self.c[0] = npy.sum(values) / len(values)
+            self.c = np.zeros([1.0])
+            self.c[0] = np.sum(values) / len(values)
         elif order == 1:
-            A = npy.zeros([len(coords), 4])
-            b = npy.zeros([len(coords)])
+            A = np.zeros([len(coords), 4])
+            b = np.zeros([len(coords)])
             # c0 + c1 x + c2 y + c3 z = b
             for i in range(len(coords)):
                 A[i][0] = 1
@@ -26,13 +26,13 @@ class Polynomial:
                 A[i][2] = coords[i][1]
                 A[i][3] = coords[i][2]
                 b[i] = values[i]
-            c = npy.linalg.lstsq(A, b)
+            c = np.linalg.lstsq(A, b)
             c = c[0]
             self.c = [c[0]]
             self.c += [[c[1], c[2], c[3]]]
         elif order == 2:
-            A = npy.zeros([len(coords), 10])
-            b = npy.zeros([len(coords)])
+            A = np.zeros([len(coords), 10])
+            b = np.zeros([len(coords)])
             # c0 + c1 x + c2 y + c3 z 
             #    + c4 x^2 + c5 y^2 + c6 z^2 
             #    + c7 x y + c8 x z + c9 y z = b
@@ -48,7 +48,7 @@ class Polynomial:
                 A[i][8] = coords[i][0] * coords[i][2]
                 A[i][9] = coords[i][1] * coords[i][2]
                 b[i] = values[i]
-            c = npy.linalg.lstsq(A, b)
+            c = np.linalg.lstsq(A, b)
             #print c
             c = c[0]
             self.c = [c[0]]

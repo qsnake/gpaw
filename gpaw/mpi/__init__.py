@@ -5,7 +5,7 @@ import os
 import sys
 import time
 import atexit
-import numpy as npy
+import numpy as np
 
 from gpaw import debug
 from gpaw import dry_run as dry_run_size
@@ -87,7 +87,7 @@ if debug:
 
         def new_communicator(self, ranks):
             assert is_contiguous(ranks, int)
-            sranks = npy.sort(ranks)
+            sranks = np.sort(ranks)
             # Are all ranks in range?
             assert 0 <= sranks[0] and sranks[-1] < self.size
             # No duplicates:
@@ -229,15 +229,15 @@ def distribute_cpus(parsize, parsize_bands, nspins, nibzkpts, comm=world):
         ndomains = parsize_c[0] * parsize_c[1] * parsize_c[2]
 
     r0 = (rank // ndomains) * ndomains
-    ranks = npy.arange(r0, r0 + ndomains)
+    ranks = np.arange(r0, r0 + ndomains)
     domain_comm = comm.new_communicator(ranks)
 
     r0 = rank % (ndomains * parsize_bands)
-    ranks = npy.arange(r0, r0 + size, ndomains * parsize_bands)
+    ranks = np.arange(r0, r0 + size, ndomains * parsize_bands)
     kpt_comm = comm.new_communicator(ranks)
 
     r0 = rank % ndomains + kpt_comm.rank * (ndomains * parsize_bands)
-    ranks = npy.arange(r0, r0 + (ndomains * parsize_bands), ndomains)
+    ranks = np.arange(r0, r0 + (ndomains * parsize_bands), ndomains)
     band_comm = comm.new_communicator(ranks)
 
     assert size == domain_comm.size * kpt_comm.size * band_comm.size
@@ -249,19 +249,19 @@ def distribute_cpus(parsize, parsize_bands, nspins, nibzkpts, comm=world):
 def compare_atoms(atoms, comm=world):
     """Check whether atoms objects are identical on all processors."""
     # Construct fingerprint:
-    fingerprint = npy.array([md5_array(array, numeric=True) for array in
+    fingerprint = np.array([md5_array(array, numeric=True) for array in
                              [atoms.positions,
                               atoms.cell,
                               atoms.pbc * 1.0,
                               atoms.get_initial_magnetic_moments()]])
     # Compare fingerprints:
-    fingerprints = npy.empty((comm.size, 4), fingerprint.dtype)
+    fingerprints = np.empty((comm.size, 4), fingerprint.dtype)
     comm.all_gather(fingerprint, fingerprints)
     mismatches = fingerprints.ptp(0)
 
     if debug:
         dumpfile = 'compare_atoms'
-        for i in npy.argwhere(mismatches).ravel():
+        for i in np.argwhere(mismatches).ravel():
             itemname = ['positions','cell','pbc','magmoms'][i]
             itemfps = fingerprints[:,i]
             itemdata = [atoms.positions,
@@ -279,33 +279,33 @@ def compare_atoms(atoms, comm=world):
 def broadcast_string(string=None, root=0, comm=world):
     if rank == root:
         assert isinstance(string, str)
-        n = npy.array(len(string), int)
+        n = np.array(len(string), int)
     else:
         assert string is None
-        n = npy.zeros(1, int)
+        n = np.zeros(1, int)
     comm.broadcast(n, root)
     if rank == root:
-        string = npy.fromstring(string, npy.int8)
+        string = np.fromstring(string, np.int8)
     else:
-        string = npy.zeros(n, npy.int8)
+        string = np.zeros(n, np.int8)
     comm.broadcast(string, root)
     return string.tostring()
 
 def send_string(string, rank, comm=world):
-    comm.send(npy.array(len(string)), rank)
-    comm.send(npy.fromstring(string, npy.int8), rank)
+    comm.send(np.array(len(string)), rank)
+    comm.send(np.fromstring(string, np.int8), rank)
 
 def receive_string(rank, comm=world):
-    n = npy.array(0)
+    n = np.array(0)
     comm.receive(n, rank)
-    string = npy.empty(n, npy.int8)
+    string = np.empty(n, np.int8)
     comm.receive(string, rank)
     return string.tostring()
 
 def all_gather_array(comm, a): #???
     # Gather array into flat array
-    shape = (comm.size,) + npy.shape(a)
-    all = npy.zeros(shape)
+    shape = (comm.size,) + np.shape(a)
+    all = np.zeros(shape)
     comm.all_gather(a, all)
     return all.ravel()
 

@@ -1,4 +1,4 @@
-import numpy as npy
+import numpy as np
 
 def safe_sqr(u_j):
-    return npy.where(abs(u_j) < 1e-160, 0, u_j)**2
+    return np.where(abs(u_j) < 1e-160, 0, u_j)**2

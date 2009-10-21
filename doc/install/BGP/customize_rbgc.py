@@ -35,8 +35,11 @@ include_dirs += [gpfsdir+'/Numeric-24.2-1/'+python_site+'/include/python2.5',
 
 extra_compile_args += ['-std=c99']
 
-define_macros += [
-          ('GPAW_AIX', '1'),
-          ('GPAW_MKL', '1'),
-          ('GPAW_BGP', '1')
-          ]
+define_macros += [('GPAW_AIX', '1')]
+define_macros += [('GPAW_BGP', '1')]
+define_macros += [('GPAW_NO_UNDERSCORE_BLAS', '1')]
+define_macros += [('GPAW_NO_UNDERSCORE_LAPACK', '1')]
+define_macros += [('GPAW_NO_UNDERSCORE_CBLACS', '1')]
+define_macros += [('GPAW_NO_UNDERSCORE_CSCALAPACK', '1')]
+define_macros += [('GPAW_NO_UNDERSCORE_BLACS', '1')]
+define_macros += [('GPAW_NO_UNDERSCORE_SCALAPACK', '1')]

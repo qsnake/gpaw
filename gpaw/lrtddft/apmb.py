@@ -1,8 +1,10 @@
 import sys
 from math import sqrt
 
-import numpy as npy
+import numpy as np
 from numpy.linalg import inv
+
+from ase.units import Hartree
 
 import _gpaw
 import gpaw.mpi as mpi
@@ -62,8 +64,8 @@ class ApmB(OmegaMatrix):
         nij = len(kss)
         print >> self.txt, 'RPAhyb', nij, 'transitions'
         
-        AmB = npy.zeros((nij,nij))
-        ApB = npy.zeros((nij,nij))
+        AmB = np.zeros((nij,nij))
+        ApB = np.zeros((nij,nij))
 
         # storage place for Coulomb integrals
         integrals = {}
@@ -83,7 +85,7 @@ class ApmB(OmegaMatrix):
             
             # integrate with 1/|r_1-r_2|
             timer2.start('poisson')
-            phit_p = npy.zeros(rhot_p.shape, rhot_p.dtype)
+            phit_p = np.zeros(rhot_p.shape, rhot_p.dtype)
             self.poisson.solve(phit_p,rhot_p, charge=None)
             timer2.stop()
 
@@ -119,7 +121,7 @@ class ApmB(OmegaMatrix):
                 timer2.stop()
                 
                 if ij == kq:
-                    epsij =  kss[ij].GetEnergy() / kss[ij].GetWeight()
+                    epsij =  kss[ij].get_energy() / kss[ij].get_weight()
                     AmB[ij,kq] += epsij
                     ApB[ij,kq] += epsij
 
@@ -180,7 +182,7 @@ class ApmB(OmegaMatrix):
 
         rhot_p = kss_ij.with_compensation_charges(
             self.finegrid is not 0)
-        phit_p = npy.zeros(rhot_p.shape, rhot_p.dtype)
+        phit_p = np.zeros(rhot_p.shape, rhot_p.dtype)
         self.poisson.solve(phit_p, rhot_p, charge=None)
 
         if self.finegrid == 1:
@@ -209,18 +211,18 @@ class ApmB(OmegaMatrix):
         for a, Pij_ni in Pij_ani.items():
             Pi_i = Pij_ni[kss_ij.i]
             Pj_i = Pij_ni[kss_ij.j]
-            Dij_ii = npy.outer(Pi_i, Pj_i)
+            Dij_ii = np.outer(Pi_i, Pj_i)
             Dij_p = pack(Dij_ii, tolerance=1e3)
             Pk_i = Pkq_ani[a][kss_kq.i]
             Pq_i = Pkq_ani[a][kss_kq.j]
-            Dkq_ii = npy.outer(Pk_i, Pq_i)
+            Dkq_ii = np.outer(Pk_i, Pq_i)
             Dkq_p = pack(Dkq_ii, tolerance=1e3)
             C_pp = wfs.setups[a].M_pp
             #   ----
             # 2 >      P   P  C    P  P
             #   ----    ip  jr prst ks qt
             #   prst
-            Ia += 2.0*npy.dot(Dkq_p,npy.dot(C_pp,Dij_p))
+            Ia += 2.0*np.dot(Dkq_p, np.dot(C_pp, Dij_p))
         I += self.gd.comm.sum(Ia)
 
         return I
@@ -274,15 +276,15 @@ class ApmB(OmegaMatrix):
             nij = len(kss)
             print >> self.txt, '# diagonalize: %d transitions now' % nij
 
-            ApB = npy.empty((nij,nij))
-            AmB = npy.empty((nij,nij))
+            ApB = np.empty((nij, nij))
+            AmB = np.empty((nij, nij))
             for ij in range(nij):
                 for kq in range(nij):
                     ApB[ij,kq] = self.ApB[map[ij],map[kq]]
                     AmB[ij,kq] = self.AmB[map[ij],map[kq]]
 
         # the occupation matrix
-        C = npy.empty((nij,))
+        C = np.empty((nij,))
         for ij in range(nij):
             C[ij] = 1. / kss[ij].fij
 
@@ -290,12 +292,12 @@ class ApmB(OmegaMatrix):
         S = sqrt_matrix(inv(S).copy())
 
         # get Omega matrix
-        M = npy.zeros(ApB.shape)
+        M = np.zeros(ApB.shape)
         gemm(1.0, ApB, S, 0.0, M)
-        self.eigenvectors = npy.zeros(ApB.shape)
+        self.eigenvectors = np.zeros(ApB.shape)
         gemm(1.0, S, M, 0.0, self.eigenvectors)
         
-        self.eigenvalues = npy.zeros((len(kss)))
+        self.eigenvalues = np.zeros((len(kss)))
         self.kss = kss
         info = diagonalize(self.eigenvectors, self.eigenvalues)
         if info != 0:
@@ -311,7 +313,7 @@ class ApmB(OmegaMatrix):
 
             f.readline()
             nij = int(f.readline())
-            ApB = npy.zeros((nij,nij))
+            ApB = np.zeros((nij, nij))
             for ij in range(nij):
                 l = f.readline().split()
                 for kq in range(ij,nij):
@@ -321,7 +323,7 @@ class ApmB(OmegaMatrix):
 
             f.readline()
             nij = int(f.readline())
-            AmB = npy.zeros((nij,nij))
+            AmB = np.zeros((nij, nij))
             for ij in range(nij):
                 l = f.readline().split()
                 for kq in range(ij,nij):
@@ -369,7 +371,7 @@ class ApmB(OmegaMatrix):
             str += 'dimension '+ ('%d'%len(self.eigenvalues))
             str += "\neigenvalues: "
             for ev in self.eigenvalues:
-                str += ' ' + ('%f'%(sqrt(ev)*27.211))
+                str += ' ' + ('%f'%(sqrt(ev) * Hartree))
         return str
     
 

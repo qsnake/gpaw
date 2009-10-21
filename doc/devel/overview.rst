@@ -290,6 +290,9 @@ group, every element (i.e. processor) is assigned a unique index
 a *domain_comm* rank of zero signifies that the processor is first in
 the group, hence it functions as a domain master.
 
+For an example on how to use an MPI communicator to perform simple
+data communication, please refer to :svn:`~doc/devel/parallelization.py`.
+
 To investigate the way GPAW distributes calculated quantities across the
 various MPI groups, simulating an MPI run can be done using ``gpaw-mpisim``::
 

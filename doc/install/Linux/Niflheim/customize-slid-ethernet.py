@@ -23,7 +23,8 @@ extra_link_args += [
   '-Wl,-rpath=/usr/local/scalapack-1.8.0-1.gfortran.acml/lib64',
   '-Wl,-rpath=/usr/local/openmpi-1.2.5-gfortran/lib64'
   ]
-define_macros += [('GPAW_MKL', '1'),]
+define_macros += [('GPAW_NO_UNDERSCORE_CBLACS', '1')]
+define_macros += [('GPAW_NO_UNDERSCORE_CSCALAPACK', '1')]
 mpicompiler = '/usr/local/openmpi-1.2.5-gfortran/bin/mpicc'
 mpilinker = mpicompiler
 platform_id = 'ethernet'

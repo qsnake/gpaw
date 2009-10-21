@@ -1,4 +1,4 @@
-import numpy as npy
+import numpy as np
 
 from ase.units import Bohr
 
@@ -14,7 +14,7 @@ class ExternalPotential:
         self.vext_g = vext_g
         self.gd = gd
         if self.gd is not None:
-            if npy.alltrue(vext_g.shape ==
+            if np.alltrue(vext_g.shape ==
                            gd.get_size_of_global_array()):
                 # this is a global array and has to be distributed
                 self.vext_g = self.gd.zeros()
@@ -100,7 +100,7 @@ class ExternalPotential:
 
         coef_ani = {}
         for a, P_ni in P_ani.items():
-            c0 = npy.dot(spos_ac[a] * gd.cell_c, strength)
+            c0 = np.dot(spos_ac[a] * gd.cell_c, strength)
             cxyz = strength
             # calculate coefficient 
             # ---------------------
@@ -123,14 +123,14 @@ class ExternalPotential:
             #   y_ij = sqrt(4pi/3) Delta_1ij
             #   z_ij = sqrt(4pi/3) Delta_2ij
             #   x_ij = sqrt(4pi/3) Delta_3ij
-            oneij = npy.sqrt(4.*npy.pi) \
-                * npy.dot(P_ni, Delta_iiL[:,:,0])
-            yij = npy.sqrt(4.*npy.pi / 3.) \
-                * npy.dot(P_ni, Delta_iiL[:,:,1])
-            zij = npy.sqrt(4.*npy.pi / 3.) \
-                * npy.dot(P_ni, Delta_iiL[:,:,2])
-            xij = npy.sqrt(4.*npy.pi / 3.) \
-                * npy.dot(P_ni, Delta_iiL[:,:,3])
+            oneij = np.sqrt(4.*np.pi) \
+                * np.dot(P_ni, Delta_iiL[:,:,0])
+            yij = np.sqrt(4.*np.pi / 3.) \
+                * np.dot(P_ni, Delta_iiL[:,:,1])
+            zij = np.sqrt(4.*np.pi / 3.) \
+                * np.dot(P_ni, Delta_iiL[:,:,2])
+            xij = np.sqrt(4.*np.pi / 3.) \
+                * np.dot(P_ni, Delta_iiL[:,:,3])
 
             # coefficients
             # coefs_ni = sum_j ( <phi_i| f(x,y,z) | phi_j>
@@ -184,7 +184,7 @@ class ExternalPotential:
                 # factor sqrt(1/3) because (dr,dr,dr)^2 = Delta r
                 rcut = max(nucleus.setup.rcut_j)
                 a = rcut * 3.0 / 8.0
-                b = 2.0 * a / npy.sqrt(3.0)
+                b = 2.0 * a / np.sqrt(3.0)
                 
                 # evaluate function at (0,0,0), 3/8 (r_cut,0,0),
                 # sqrt(3)/4 (r_cut,r_cut,rcut), and at symmetric points 
@@ -207,7 +207,7 @@ class ExternalPotential:
                            [x_c-b, y_c-b, z_c+b], \
                            [x_c-b, y_c-b, z_c-b] ]
                 # values
-                values = npy.zeros(len(coords))
+                values = np.zeros(len(coords))
                 for i in range(len(coords)):
                     values[i] = func.value( coords[i][0],
                                             coords[i][1],
@@ -239,7 +239,7 @@ class ConstantPotential(ExternalPotential):
         return self.vext_g
     def get_ion_energy_and_forces(self, atoms):
         """Return the ionic energy and force contribution."""
-        forces = npy.zeros((len(atoms),3))
+        forces = np.zeros((len(atoms),3))
         energy = 0
         return energy, forces
 
@@ -251,7 +251,7 @@ class ElectrostaticPotential(ExternalPotential):
     """
     def get_ion_energy_and_forces(self, atoms):
         """Return the ionic energy and force contribution."""
-        forces = npy.zeros((len(atoms),3))
+        forces = np.zeros((len(atoms),3))
         energy = 0
         for i, atom in enumerate(atoms):
             taylor = self.get_taylor(atom.position)
@@ -260,7 +260,7 @@ class ElectrostaticPotential(ExternalPotential):
             energy -= Z * taylor[0][0]
             if len(taylor) > 1:
                 # see spherical_harmonics.py for the assignment
-                forces[i] += Z * npy.array([taylor[1][2], # x
+                forces[i] += Z * np.array([taylor[1][2], # x
                                             taylor[1][0], # y
                                             taylor[1][1]])# z
         return energy, forces
@@ -277,11 +277,11 @@ class ConstantElectricField(ElectrostaticPotential):
         if center is None:
             self.center = None
         else:
-            self.center = npy.array(center) / Bohr
+            self.center = np.array(center) / Bohr
 
         # normalise the direction
-        dir = npy.array(direction)
-        dir /= npy.sqrt(npy.dot(dir, dir))
+        dir = np.array(direction)
+        dir /= np.sqrt(np.dot(dir, dir))
         self.direction = dir
         
     def get_potential(self, gd=None):
@@ -306,7 +306,7 @@ class ConstantElectricField(ElectrostaticPotential):
                 jj = j - gd.beg_c[1]
                 for k in range(gd.beg_c[2],gd.end_c[2]):
                     kk = k - gd.beg_c[2]
-                    pos_c = npy.array([i, j, k]) * sp_c
+                    pos_c = np.array([i, j, k]) * sp_c
                     potential[ii,jj,kk] = self.get_value(pos_c)
         self.potential = potential
         return potential
@@ -337,4 +337,4 @@ class ConstantElectricField(ElectrostaticPotential):
             vr = spos_c * gd.h_c * gd.N_c - self.center
         else:
             vr =  position / Bohr - self.center
-        return self.strength * npy.dot(vr, self.direction)
+        return self.strength * np.dot(vr, self.direction)

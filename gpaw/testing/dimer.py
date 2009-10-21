@@ -22,7 +22,7 @@ import pickle
 import tempfile
 from math import sqrt
 
-import numpy as npy
+import numpy as np
 from ase.atoms import Atoms
 from ase.data import atomic_names, covalent_radii, atomic_numbers
 
@@ -70,7 +70,7 @@ class TestAtom:
         
         self.ng = (gmax + 4 - gmin) // 4
 
-        self.h = self.a / npy.arange(gmin, gmax + 4, 4)
+        self.h = self.a / np.arange(gmin, gmax + 4, 4)
 
     def run(self, summary, lcao):
         self.lcao = lcao
@@ -107,8 +107,8 @@ class TestAtom:
         atom = Atoms(self.symbol, pbc=True, cell=(self.a, self.a, self.a))
 
         negg = 25
-        self.Eegg = npy.zeros((self.ng, negg))
-        self.Fegg = npy.zeros((self.ng, negg))
+        self.Eegg = np.zeros((self.ng, negg))
+        self.Fegg = np.zeros((self.ng, negg))
         
         for i in range(self.ng):
             h = self.h[i]
@@ -141,8 +141,8 @@ class TestAtom:
         dimer = Atoms([self.symbol, self.symbol],
                       pbc=True, cell=(self.a, self.a, self.a))
 
-        self.Edimer = npy.zeros((self.ng, 7))
-        self.Fdimer = npy.zeros((self.ng, 7, 2))
+        self.Edimer = np.zeros((self.ng, 7))
+        self.Fdimer = np.zeros((self.ng, 7, 2))
         
         q0 = self.d0 / sqrt(3)
         for i in range(self.ng):
@@ -175,14 +175,14 @@ class TestAtom:
 
     def summary(self, show=True):
         dd = 0.02 * self.d0
-        d = self.d0 + dd * npy.arange(-3, 4)
-        M = npy.array([(1, 0, 0, 0),
+        d = self.d0 + dd * np.arange(-3, 4)
+        M = np.array([(1, 0, 0, 0),
                       (1, 1, 1, 1),
                       (0, 1, 0, 0),
                       (0, 1, 2, 3)])
 
-        Edimer0 = npy.empty(self.ng)
-        ddimer0 = npy.empty(self.ng)
+        Edimer0 = np.empty(self.ng)
+        ddimer0 = np.empty(self.ng)
         Eegg = self.Eegg
         Edimer = self.Edimer
         h = self.h
@@ -191,17 +191,17 @@ class TestAtom:
             ia = E.argsort()[0]
             E0 = E[ia]
             d0 = d[ia]
-            energy = npy.polyfit(d**-1, E, 3)
-            der = npy.polyder(energy, 1)
-            roots = npy.roots(der)
+            energy = np.polyfit(d**-1, E, 3)
+            der = np.polyder(energy, 1)
+            roots = np.roots(der)
             if isinstance(roots[0], float):
-                der2 = npy.polyder(der, 1)
-                if npy.polyval(der2, roots[0]) > 0:
+                der2 = np.polyder(der, 1)
+                if np.polyval(der2, roots[0]) > 0:
                     root = roots[0]
                 else:
                     root = roots[1]
                 d0 = 1.0 / root
-                E0 = npy.polyval(energy, root)
+                E0 = np.polyval(energy, root)
             Edimer0[i] = E0
             ddimer0[i] = d0
         
@@ -220,8 +220,8 @@ class TestAtom:
                     Ediss[j:].ptp(),
                     Eegg.ptp(axis=1)[j:].max(),
                     ddimer0[j:].ptp(),
-                    npy.abs(self.Fegg[j:]).max(1).max(),
-                    npy.abs(self.Fdimer[j:].sum(2)).max(1).max(),
+                    np.abs(self.Fegg[j:]).max(1).max(),
+                    np.abs(self.Fdimer[j:].sum(2)).max(1).max(),
                     Ediss[-1], d0,
                     d0 - self.d0,B,C
                    ))
@@ -250,7 +250,7 @@ class TestAtom:
                 
             plt.subplot(323)
             for i in range(self.ng):
-                x, y = f(npy.linspace(0, 0.5 * h[i], 25),
+                x, y = f(np.linspace(0, 0.5 * h[i], 25),
                          Eegg[i] - Eegg[i, 0],
                          -self.Fegg[i])
                 plt.plot(x, 1000 * y, color=colors[i])
@@ -268,8 +268,8 @@ class TestAtom:
             plt.legend(loc='best')
 
             plt.subplot(325)
-            plt.plot(h, npy.abs(self.Fegg).max(axis=1), '-o', label='eggbox')
-            plt.plot(h, npy.abs(self.Fdimer.sum(axis=2)).max(axis=1), '-o',
+            plt.plot(h, np.abs(self.Fegg).max(axis=1), '-o', label='eggbox')
+            plt.plot(h, np.abs(self.Fdimer.sum(axis=2)).max(axis=1), '-o',
                      label='dimer')
             plt.title('Forces')
             plt.xlabel(u'h [Å]')
@@ -295,10 +295,10 @@ class TestAtom:
 
 def f(x, y, dydx):
     dx = x[1] - x[0]
-    x2 = npy.empty(2 * len(x))
+    x2 = np.empty(2 * len(x))
     x2[::2] = x - 0.5 * dx
     x2[1::2] = x + 0.5 * dx
-    y2 = npy.empty_like(x2)
+    y2 = np.empty_like(x2)
     y2[::2] = y - dydx * 0.5 * dx
     y2[1::2] = y + dydx * 0.5 * dx
     return x2, y2

@@ -1,6 +1,6 @@
 """Module defining  ``Eigensolver`` classes."""
 
-import numpy as npy
+import numpy as np
 
 from gpaw.utilities.blas import axpy, rk, gemm
 from gpaw.utilities.lapack import inverse_cholesky
@@ -38,7 +38,7 @@ class RMM_DIIS2(Eigensolver):
     def initialize(self, paw):
         Eigensolver.initialize(self, paw)
 
-        self.S_nn = npy.empty((self.nbands, self.nbands), self.dtype)
+        self.S_nn = np.empty((self.nbands, self.nbands), self.dtype)
         self.S_nn[:] = 0.0  # rk fails the first time without this!
 
         self.overlap = paw.overlap
@@ -72,7 +72,7 @@ class RMM_DIIS2(Eigensolver):
             weight = kpt.f_n[n]
             if self.nbands_converge != 'occupied':
                 weight = kpt.weight * float(n < self.nbands_converge)
-            error += weight * npy.vdot(R_G, R_G).real
+            error += weight * np.vdot(R_G, R_G).real
 
             # Precondition the residual
             pR_G = self.preconditioner(R_G, kpt.phase_cd, kpt.psit_nG[n],
@@ -84,8 +84,8 @@ class RMM_DIIS2(Eigensolver):
             axpy(-kpt.eps_n[n], self.work[1], dR_G)
 
             # Find lam that minimizes the norm of R'_G = R_G + lam dR_G
-            RdR = self.gd.comm.sum(npy.vdot(R_G, dR_G).real)
-            dRdR = self.gd.comm.sum(npy.vdot(dR_G, dR_G).real)
+            RdR = self.gd.comm.sum(np.vdot(R_G, dR_G).real)
+            dRdR = self.gd.comm.sum(np.vdot(dR_G, dR_G).real)
             lam = -RdR / dRdR
 
             # Calculate new psi'_G = psi_G + lam pR_G + lam pR'_G

@@ -1,4 +1,4 @@
-import numpy as npy
+import numpy as np
 
 from ase import Atom, Atoms, read, write
 from ase.io.cube import write_cube
@@ -35,7 +35,7 @@ class Cluster(Atoms):
     def extreme_positions(self):
         """get the extreme positions of the structure"""
         pos = self.get_positions()
-        return npy.array([npy.minimum.reduce(pos), npy.maximum.reduce(pos)])
+        return np.array([np.minimum.reduce(pos), np.maximum.reduce(pos)])
 
     def find_connected(self, i, dmax):
         """Find the atoms connected to self[i] and return them."""
@@ -99,7 +99,7 @@ class Cluster(Atoms):
         # check for multiple of 4
         if h is not None:
             if not hasattr(h, '__len__'):
-                h = npy.array([h, h, h])
+                h = np.array([h, h, h])
             for c in range(3):
                 # apply the same as in paw.py 
                 L = extr[1][c] # shifted already
@@ -111,7 +111,7 @@ class Cluster(Atoms):
                 extr[0][c] -= dL / 2.
             
         # move lower corner to (0, 0, 0)
-        shift = tuple(-1. * npy.array(extr[0]))
+        shift = tuple(-1. * np.array(extr[0]))
         self.translate(shift)
         self.set_cell(tuple(extr[1]))
 
@@ -169,7 +169,7 @@ class Cluster(Atoms):
                 for j in range(repeat[1] + 1):
                     for k in range(repeat[2] + 1):
                         copy = self.copy()
-                        copy.translate(npy.array([i, j, k]) * cell)
+                        copy.translate(np.array([i, j, k]) * cell)
                         out += copy
 
         write(filename, out, format)

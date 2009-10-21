@@ -26,7 +26,8 @@ and use this :file:`customize.py`::
         '/v/linux26_x86_64/opt/scalapack/1.8.0gnu/scalapack-1.8.0'
         ]
 
-  define_macros +=[('GPAW_MKL', '1')]
+  define_macros += [('GPAW_NO_UNDERSCORE_CBLACS', '1')]
+  define_macros += [('GPAW_NO_UNDERSCORE_CSCALAPACK', '1')]
 
 Then, compile GPAW ``python setup.py build_ext``.
 

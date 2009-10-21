@@ -6,7 +6,7 @@ Python wrapper functions for the ``C`` package:
 Linear Algebra PACKage (LAPACK)
 """
 
-import numpy as npy
+import numpy as np
 
 from gpaw import debug
 from gpaw.utilities import scalapack
@@ -194,13 +194,13 @@ def sqrt_matrix(a, preserve=False):
 
     # diagonalize to get the form b = Z * D * Z^T
     # where D is diagonal
-    D = npy.empty((n,))
+    D = np.empty((n,))
     diagonalize(b, D)
     ZT = b.copy()
-    Z = npy.transpose(b)
+    Z = np.transpose(b)
 
     # c = Z * sqrt(D)
-    c = Z * npy.sqrt(D)
+    c = Z * np.sqrt(D)
 
     # sqrt(b) = c * Z^T
     gemm(1., ZT, c, 0., b)

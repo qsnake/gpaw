@@ -50,6 +50,7 @@ class HGHSetup(BaseSetup):
         self.ni = sum([2 * l + 1 for l in data.l_j])
         self.pt_j = data.get_projectors()
         self.phit_j = basis.tosplines()
+        self.basis = basis
         self.niAO = sum([2 * phit.get_angular_momentum_number() + 1
                          for phit in self.phit_j])
 

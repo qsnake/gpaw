@@ -6,7 +6,7 @@ from gpaw.utilities import pack
 from gpaw.gllb import safe_sqr
 from math import sqrt, pi
 from gpaw.mpi import world
-import numpy as npy
+import numpy as np
 
 class C_Response(Contribution):
     def __init__(self, nlfunc, weight, coefficients):
@@ -27,7 +27,7 @@ class C_Response(Contribution):
     def add_xc_potential_and_energy_1d(self, v_g):
         w_i = self.coefficients.get_coefficients_1d()
         u2_j = safe_sqr(self.ae.u_j)
-        v_g += self.weight * npy.dot(w_i, u2_j) / (npy.dot(self.ae.f_j, u2_j) +1e-10)
+        v_g += self.weight * np.dot(w_i, u2_j) / (np.dot(self.ae.f_j, u2_j) +1e-10)
         return 0.0 # Response part does not contribute to energy
 
     def initialize(self):
@@ -107,60 +107,60 @@ class C_Response(Contribution):
         Dresp_p = self.Dresp_asp.get(a)[0]
         dEdD_p = H_sp[0][:]
         
-        D_Lq = npy.dot(c.B_Lqp, D_p)
-        n_Lg = npy.dot(D_Lq, c.n_qg) # Construct density
+        D_Lq = np.dot(c.B_Lqp, D_p)
+        n_Lg = np.dot(D_Lq, c.n_qg) # Construct density
         n_Lg[0] += c.nc_g * sqrt(4 * pi)
-        nt_Lg = npy.dot(D_Lq, c.nt_qg) # Construct smooth density (without smooth core)
+        nt_Lg = np.dot(D_Lq, c.nt_qg) # Construct smooth density (without smooth core)
 
-        Dresp_Lq = npy.dot(c.B_Lqp, Dresp_p)
-        nresp_Lg = npy.dot(Dresp_Lq, c.n_qg) # Construct 'response density'
-        nrespt_Lg = npy.dot(Dresp_Lq, c.nt_qg) # Construct smooth 'response density' (w/o smooth core)
+        Dresp_Lq = np.dot(c.B_Lqp, Dresp_p)
+        nresp_Lg = np.dot(Dresp_Lq, c.n_qg) # Construct 'response density'
+        nrespt_Lg = np.dot(Dresp_Lq, c.nt_qg) # Construct smooth 'response density' (w/o smooth core)
 
         for w, Y_L in zip(weights, c.Y_nL):
-            nt_g = npy.dot(Y_L, nt_Lg)
-            nrespt_g = npy.dot(Y_L, nrespt_Lg)
+            nt_g = np.dot(Y_L, nt_Lg)
+            nrespt_g = np.dot(Y_L, nrespt_Lg)
             x_g = nrespt_g / (nt_g + 1e-10)
-            dEdD_p -= self.weight * w * npy.dot(npy.dot(c.B_pqL, Y_L),
-                                                npy.dot(c.nt_qg, x_g * c.rgd.dv_g))
+            dEdD_p -= self.weight * w * np.dot(np.dot(c.B_pqL, Y_L),
+                                                np.dot(c.nt_qg, x_g * c.rgd.dv_g))
 
-            n_g = npy.dot(Y_L, n_Lg)
-            nresp_g = npy.dot(Y_L, nresp_Lg)
+            n_g = np.dot(Y_L, n_Lg)
+            nresp_g = np.dot(Y_L, nresp_Lg)
             x_g = (nresp_g+ncresp_g) / (n_g + 1e-10)
             
-            dEdD_p += self.weight * w * npy.dot(npy.dot(c.B_pqL, Y_L),
-                                                npy.dot(c.n_qg, x_g * c.rgd.dv_g))
+            dEdD_p += self.weight * w * np.dot(np.dot(c.B_pqL, Y_L),
+                                                np.dot(c.n_qg, x_g * c.rgd.dv_g))
             
         return 0.0
 
     def integrate_sphere(self, a, Dresp_sp, D_sp, Dwf_p):
         c = self.nlfunc.setups[a].xc_correction
         Dresp_p, D_p = Dresp_sp[0], D_sp[0]
-        D_Lq = npy.dot(c.B_Lqp, D_p)
-        n_Lg = npy.dot(D_Lq, c.n_qg) # Construct density
+        D_Lq = np.dot(c.B_Lqp, D_p)
+        n_Lg = np.dot(D_Lq, c.n_qg) # Construct density
         n_Lg[0] += c.nc_g * sqrt(4 * pi)
-        nt_Lg = npy.dot(D_Lq, c.nt_qg) # Construct smooth density (without smooth core)
-        Dresp_Lq = npy.dot(c.B_Lqp, Dresp_p) # Construct response
-        nresp_Lg = npy.dot(Dresp_Lq, c.n_qg) # Construct 'response density'
-        nrespt_Lg = npy.dot(Dresp_Lq, c.nt_qg) # Construct smooth 'response density' (w/o smooth core)
-        Dwf_Lq = npy.dot(c.B_Lqp, Dwf_p) # Construct lumo wf
-        nwf_Lg = npy.dot(Dwf_Lq, c.n_qg)
-        nwft_Lg = npy.dot(Dwf_Lq, c.nt_qg)
+        nt_Lg = np.dot(D_Lq, c.nt_qg) # Construct smooth density (without smooth core)
+        Dresp_Lq = np.dot(c.B_Lqp, Dresp_p) # Construct response
+        nresp_Lg = np.dot(Dresp_Lq, c.n_qg) # Construct 'response density'
+        nrespt_Lg = np.dot(Dresp_Lq, c.nt_qg) # Construct smooth 'response density' (w/o smooth core)
+        Dwf_Lq = np.dot(c.B_Lqp, Dwf_p) # Construct lumo wf
+        nwf_Lg = np.dot(Dwf_Lq, c.n_qg)
+        nwft_Lg = np.dot(Dwf_Lq, c.nt_qg)
         E = 0.0
         for w, Y_L in zip(weights, c.Y_nL):
-            v = npy.dot(Y_L, nwft_Lg) * npy.dot(Y_L, nrespt_Lg) / (npy.dot(Y_L, nt_Lg) + 1e-10)
-            E -= self.weight * w * npy.dot(v, c.rgd.dv_g)
-            v = npy.dot(Y_L, nwf_Lg) * npy.dot(Y_L, nresp_Lg) / (npy.dot(Y_L, n_Lg) + 1e-10)
-            E += self.weight * w * npy.dot(v, c.rgd.dv_g)
+            v = np.dot(Y_L, nwft_Lg) * np.dot(Y_L, nrespt_Lg) / (np.dot(Y_L, nt_Lg) + 1e-10)
+            E -= self.weight * w * np.dot(v, c.rgd.dv_g)
+            v = np.dot(Y_L, nwf_Lg) * np.dot(Y_L, nresp_Lg) / (np.dot(Y_L, n_Lg) + 1e-10)
+            E += self.weight * w * np.dot(v, c.rgd.dv_g)
         return E
 
     def add_smooth_xc_potential_and_energy_1d(self, vt_g):
         w_ln = self.coefficients.get_coefficients_1d(smooth=True)
-        v_g = npy.zeros(self.ae.N)
-        n_g = npy.zeros(self.ae.N)
+        v_g = np.zeros(self.ae.N)
+        n_g = np.zeros(self.ae.N)
         for w_n, f_n, u_n in zip(w_ln, self.ae.f_ln, self.ae.s_ln): # For each angular momentum
             u2_n = safe_sqr(u_n)
-            v_g += npy.dot(w_n, u2_n)
-            n_g += npy.dot(f_n, u2_n)
+            v_g += np.dot(w_n, u2_n)
+            n_g += np.dot(f_n, u2_n)
                            
         vt_g += self.weight * v_g / (n_g + 1e-10)
         return 0.0 # Response part does not contribute to energy
@@ -173,8 +173,8 @@ class C_Response(Contribution):
 
         for a in self.density.D_asp.keys():
             ni = self.setups[a].ni
-            self.Dxc_Dresp_asp[a] = npy.zeros((self.nlfunc.nspins, ni * (ni + 1) // 2))
-            self.Dxc_D_asp[a] = npy.zeros((self.nlfunc.nspins, ni * (ni + 1) // 2))
+            self.Dxc_Dresp_asp[a] = np.zeros((self.nlfunc.nspins, ni * (ni + 1) // 2))
+            self.Dxc_D_asp[a] = np.zeros((self.nlfunc.nspins, ni * (ni + 1) // 2))
 
         # Calculate new response potential with LUMO reference 
         w_kn = self.coefficients.get_coefficients_by_kpt(self.kpt_u, lumo_perturbation=True)
@@ -212,7 +212,7 @@ class C_Response(Contribution):
         Ksgap = lumo-homo
 
         # Calculate average of lumo reference response potential
-        method1_dxc = npy.average(self.Dxc_vt_sG[0])
+        method1_dxc = np.average(self.Dxc_vt_sG[0])
 
         nt_G = self.gd.empty()
 
@@ -220,7 +220,7 @@ class C_Response(Contribution):
         assert self.nspins == 1
         lumo_n = ne // 2
         eps_u =[]
-        eps_un = npy.zeros((len(self.kpt_u),len(self.kpt_u[0].psit_nG)))
+        eps_un = np.zeros((len(self.kpt_u),len(self.kpt_u[0].psit_nG)))
         for u, kpt in enumerate(self.kpt_u):
             print "K-Point index: ",u
             for n in range(len(kpt.psit_nG)):
@@ -231,7 +231,7 @@ class C_Response(Contribution):
                     D_sp = self.Dxc_D_asp[a]
                     Dresp_sp = self.Dxc_Dresp_asp[a]
                     P_ni = kpt.P_ani[a]
-                    Dwf_p = pack(npy.outer(P_ni[n].T.conj(), P_ni[n]).real)
+                    Dwf_p = pack(np.outer(P_ni[n].T.conj(), P_ni[n]).real)
                     E += self.integrate_sphere(a, Dresp_sp, D_sp, Dwf_p)
                 print "Atom corrections", E*27.21
                 E = self.grid_comm.sum(E)
@@ -269,10 +269,10 @@ class C_Response(Contribution):
         
         for a in self.density.D_asp.keys():
             ni = self.setups[a].ni
-            self.Dresp_asp[a] = npy.zeros((self.nlfunc.nspins, ni * (ni + 1) // 2))
-            self.D_asp[a] = npy.zeros((self.nlfunc.nspins, ni * (ni + 1) // 2))
+            self.Dresp_asp[a] = np.zeros((self.nlfunc.nspins, ni * (ni + 1) // 2))
+            self.D_asp[a] = np.zeros((self.nlfunc.nspins, ni * (ni + 1) // 2))
             
-        f_sM = npy.empty((self.nspins, basis_functions.Mmax))
+        f_sM = np.empty((self.nspins, basis_functions.Mmax))
         self.D_asp = {}
         f_asi = {}
         w_asi = {}              
@@ -312,28 +312,28 @@ class C_Response(Contribution):
         dict['w_j'] = w_j
 
         w_j = self.coefficients.get_coefficients_1d()
-        x_g = npy.dot(w_j[:njcore], safe_sqr(ae.u_j[:njcore]))
-        x_g[1:] /= ae.r[1:]**2 * 4*npy.pi
+        x_g = np.dot(w_j[:njcore], safe_sqr(ae.u_j[:njcore]))
+        x_g[1:] /= ae.r[1:]**2 * 4*np.pi
         x_g[0] = x_g[1]
         dict['core_response'] = x_g        
 
         # For debugging purposes
         w_j = self.coefficients.get_coefficients_1d()
         u2_j = safe_sqr(self.ae.u_j)
-        v_g = self.weight * npy.dot(w_j, u2_j) / (npy.dot(self.ae.f_j, u2_j) +1e-10)
+        v_g = self.weight * np.dot(w_j, u2_j) / (np.dot(self.ae.f_j, u2_j) +1e-10)
         v_g[0] = v_g[1]
         dict['all_electron_response'] = v_g
 
         # Calculate Hardness of spherical atom, for debugging purposes
-        l = [ npy.where(f<1e-3, e, 1000) for f,e in zip(self.ae.f_j, self.ae.e_j)]
-        h = [ npy.where(f>1e-3, e, -1000) for f,e in zip(self.ae.f_j, self.ae.e_j)]
+        l = [ np.where(f<1e-3, e, 1000) for f,e in zip(self.ae.f_j, self.ae.e_j)]
+        h = [ np.where(f>1e-3, e, -1000) for f,e in zip(self.ae.f_j, self.ae.e_j)]
         lumo_e = min(l)
         homo_e = max(h)
         if lumo_e < 999: # If there is unoccpied orbital
             w_j = self.coefficients.get_coefficients_1d(lumo_perturbation = True)
-            v_g = self.weight * npy.dot(w_j, u2_j) / (npy.dot(self.ae.f_j, u2_j) +1e-10)
-            e2 = [ e+npy.dot(u2*v_g, self.ae.dr) for u2,e in zip(u2_j, self.ae.e_j) ]
-            lumo_2 = min([ npy.where(f<1e-3, e, 1000) for f,e in zip(self.ae.f_j, e2)])
+            v_g = self.weight * np.dot(w_j, u2_j) / (np.dot(self.ae.f_j, u2_j) +1e-10)
+            e2 = [ e+np.dot(u2*v_g, self.ae.dr) for u2,e in zip(u2_j, self.ae.e_j) ]
+            lumo_2 = min([ np.where(f<1e-3, e, 1000) for f,e in zip(self.ae.f_j, e2)])
             print "New lumo eigenvalue:", lumo_2 * 27.2107
             self.hardness = lumo_2 - homo_e
             print "Hardness predicted: %10.3f eV" % (self.hardness * 27.2107)
@@ -382,14 +382,14 @@ class C_Response(Contribution):
                 if master:
                     w.fill(vt_sG)
 
-        print "Integration over vt_sG", domain_comm.sum(npy.sum(self.vt_sG.ravel()))
-        print "Integration over Dxc_vt_sG", domain_comm.sum(npy.sum(self.Dxc_vt_sG.ravel()))
+        print "Integration over vt_sG", domain_comm.sum(np.sum(self.vt_sG.ravel()))
+        print "Integration over Dxc_vt_sG", domain_comm.sum(np.sum(self.Dxc_vt_sG.ravel()))
                 
         if master:
-            all_D_sp = npy.empty((wfs.nspins, nadm))
-            all_Dresp_sp = npy.empty((wfs.nspins, nadm))
-            all_Dxc_D_sp = npy.empty((wfs.nspins, nadm))
-            all_Dxc_Dresp_sp = npy.empty((wfs.nspins, nadm))
+            all_D_sp = np.empty((wfs.nspins, nadm))
+            all_Dresp_sp = np.empty((wfs.nspins, nadm))
+            all_Dxc_D_sp = np.empty((wfs.nspins, nadm))
+            all_Dxc_Dresp_sp = np.empty((wfs.nspins, nadm))
             p1 = 0
             for a in range(natoms):
                 ni = wfs.setups[a].ni
@@ -400,13 +400,13 @@ class C_Response(Contribution):
                     Dxc_D_sp = self.Dxc_D_asp[a]
                     Dxc_Dresp_sp = self.Dxc_Dresp_asp[a]
                 else:
-                    D_sp = npy.empty((wfs.nspins, nii))
+                    D_sp = np.empty((wfs.nspins, nii))
                     domain_comm.receive(D_sp, wfs.rank_a[a], 27)
-                    Dresp_sp = npy.empty((wfs.nspins, nii))
+                    Dresp_sp = np.empty((wfs.nspins, nii))
                     domain_comm.receive(Dresp_sp, wfs.rank_a[a], 271)
-                    Dxc_D_sp = npy.empty((wfs.nspins, nii))
+                    Dxc_D_sp = np.empty((wfs.nspins, nii))
                     domain_comm.receive(Dxc_D_sp, wfs.rank_a[a], 28)
-                    Dxc_Dresp_sp = npy.empty((wfs.nspins, nii))
+                    Dxc_Dresp_sp = np.empty((wfs.nspins, nii))
                     domain_comm.receive(Dxc_Dresp_sp, wfs.rank_a[a], 272)
                     
                 p2 = p1 + nii
@@ -447,8 +447,8 @@ class C_Response(Contribution):
             self.gd.distribute(r.get('GLLBDxcPseudoResponsePotential', s),
                               self.Dxc_vt_sG[s])
             
-        print "Integration over vt_sG", domain_comm.sum(npy.sum(self.vt_sG.ravel()))
-        print "Integration over Dxc_vt_sG", domain_comm.sum(npy.sum(self.Dxc_vt_sG.ravel()))
+        print "Integration over vt_sG", domain_comm.sum(np.sum(self.vt_sG.ravel()))
+        print "Integration over Dxc_vt_sG", domain_comm.sum(np.sum(self.Dxc_vt_sG.ravel()))
         
         # Read atomic density matrices and non-local part of hamiltonian:
         D_sp = r.get('GLLBAtomicDensityMatrices')
@@ -478,11 +478,11 @@ if __name__ == "__main__":
     xc = XCFunctional('LDA')
     dx = 1e-3
     Ntot = 100000
-    x = npy.array(range(1,Ntot+1))*dx
+    x = np.array(range(1,Ntot+1))*dx
     kf = (2*x)**(1./2)
     n_g = kf**3 / (3*pi**2)
-    v_g = npy.zeros(Ntot)
-    e_g = npy.zeros(Ntot)
+    v_g = np.zeros(Ntot)
+    e_g = np.zeros(Ntot)
     xc.calculate_spinpaired(e_g, n_g, v_g)
     vresp = v_g - 2*e_g / n_g
     

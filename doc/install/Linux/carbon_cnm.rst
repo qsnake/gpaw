@@ -81,9 +81,8 @@ and build GPAW (``python setup.py build_ext``) with this
   mkl_lib_path+'libmkl_core.a',
   ]
 
-  define_macros += [
-    ('GPAW_MKL', '1')
-  ]
+  define_macros += [('GPAW_NO_UNDERSCORE_CBLACS', '1')]
+  define_macros += [('GPAW_NO_UNDERSCORE_CSCALAPACK', '1')]
 
 **Note**: due to linking problems similar to those found on :ref:`akka` static linking is required.
 

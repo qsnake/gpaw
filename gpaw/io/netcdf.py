@@ -1,4 +1,4 @@
-import numpy as npy
+import numpy as np
 from ase.io.pupynere import NetCDFFile
 
 
@@ -30,7 +30,7 @@ class Reader:
         else:
             if var.dimensions[-1] == 'two':
                 x = var[indices]
-                array = npy.empty(x.shape[:-1], complex)
+                array = np.empty(x.shape[:-1], complex)
                 array.real = x[..., 0]
                 array.imag = x[..., 1]
                 return array
@@ -63,7 +63,7 @@ class NetCDFReference:
             indices = (indices,)
         if self.cmplx:
             x = self.var[self.indices + indices]
-            array = npy.empty(x.shape[:-1], complex)
+            array = np.empty(x.shape[:-1], complex)
             array.real = x[..., 0]
             array.imag = x[..., 1]
             return array

@@ -1,7 +1,7 @@
 
 from math import sqrt
 
-import numpy as npy
+import numpy as np
 
 from ase.atoms import Atoms
 from ase.units import Bohr, Hartree
@@ -113,7 +113,7 @@ class SimpleStm:
         if w is None:
             w = kpt.weight
 ##        print "w=", w, kpt.weight
-        self.ldos += w * (psi * npy.conj(psi)).real
+        self.ldos += w * (psi * np.conj(psi)).real
 
     def write_3D(self, bias, file, filetype=None):
         """Write the density as a 3D file.
@@ -151,7 +151,7 @@ class SimpleStm:
             cell, grid = read_plt(file)[:2]
 
             pbc_c = [True, True, True]
-            N_c = npy.array(grid.shape)
+            N_c = np.array(grid.shape)
             for c in range(3):
                 if N_c[c] % 2 == 1:
                     pbc_c[c] = False
@@ -163,7 +163,7 @@ class SimpleStm:
             raise NotImplementedError('unknown file type "' + filetype + '"')
 
         self.file = file
-        self.ldos = npy.array(grid * Bohr**3, npy.float)
+        self.ldos = np.array(grid * Bohr**3, np.float)
 ##        print "read: integrated =", self.gd.integrate(self.ldos)
  
     def current_to_density(self, current):
@@ -201,7 +201,7 @@ class SimpleStm:
 
         # each cpu will have the full array, but works on its
         # own part only
-        heights = npy.zeros((nx, ny)) - 1
+        heights = np.zeros((nx, ny)) - 1
         if hmax is None:
             hmax = gd.h_c[2] * self.ldos.shape[2] + h_c[2] / 2.
         else:
@@ -245,7 +245,7 @@ class SimpleStm:
                         else:
                             k = kmax
 
-        self.heights = npy.where(heights > 0,
+        self.heights = np.where(heights > 0,
                                  (heights + self.offset_c[2]) * h_c[2], -1)
 
         return heights
@@ -304,4 +304,4 @@ class SimpleStm:
         heights = self.heights * Bohr
 
         # pylab interprets heights[y_i][x_i]
-        return npy.array(xvals), npy.array(yvals), heights.swapaxes(0,1)
+        return np.array(xvals), np.array(yvals), heights.swapaxes(0,1)

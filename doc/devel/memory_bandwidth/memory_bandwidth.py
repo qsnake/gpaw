@@ -25,7 +25,7 @@ import datetime
 
 from math import sqrt
 
-import numpy as npy
+import numpy as np
 
 colors = [
     'black',
@@ -238,15 +238,15 @@ def analyse_benchmark(ncores=8, startcores=1, machine='TEST', runs=7):
                 temp_q.append(pre_results[p][i][q])
                 temp.append(pre_results[p][i][q])
             # averages for a given core q
-            results[p].append((npy.average(temp_q), npy.std(temp_q)))
+            results[p].append((np.average(temp_q), np.std(temp_q)))
         # max, avrg, and std across all cores
-        results[p].append((npy.average(temp), npy.std(temp), min(temp), max(temp)))
+        results[p].append((np.average(temp), np.std(temp), min(temp), max(temp)))
     #for p in processes:
     #    #N = len(pre_results[p])
     #    #avg = sum(pre_results[p])/N
     #    #q = sqrt(sum([(x-avg)**2/(N) for x in pre_results[p]]))
-    #    avg.append(npy.average(pre_results[p]))
-    #    q.append(npy.std(pre_results[p]))
+    #    avg.append(np.average(pre_results[p]))
+    #    q.append(np.std(pre_results[p]))
     import matplotlib
     matplotlib.use('Agg')
     from matplotlib import pylab, ticker

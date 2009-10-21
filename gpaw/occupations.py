@@ -71,6 +71,10 @@ class ZeroKelvin(OccupationNumbers):
             self.kpt_comm.size > 2):
             raise RuntimeError('width=0 only works for gamma-point ' +
                                'calculations!  Use width > 0.')
+
+        if self.band_comm.size > 1:
+            raise NotImplementedError('State parallelization does not ' +
+                                      'work for width=0. Use width > 0.')
         
         if self.nspins == 1:
             lumo = int(self.ne // 2)

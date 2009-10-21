@@ -1,10 +1,11 @@
 import sys
 from math import sqrt
-import numpy as npy
+import numpy as np
 import gpaw.mpi as mpi
 MASTER = mpi.MASTER
 
 from ase.parallel import paropen
+from ase.units import Hartree
 
 from gpaw import debug
 import gpaw.mpi as mpi
@@ -153,8 +154,8 @@ class OmegaMatrix:
             # spin unpolarised ground state calc.
             if kss.npspins==2:
                 # construct spin polarised densities
-                nt_sg = npy.array([.5*paw.density.nt_sg[0],
-                                   .5*paw.density.nt_sg[0]])
+                nt_sg = np.array([.5*paw.density.nt_sg[0],
+                                  .5*paw.density.nt_sg[0]])
             else:
                 nt_sg = paw.density.nt_sg
         # check if D_sp have been changed before
@@ -162,9 +163,9 @@ class OmegaMatrix:
         for a, D_sp in D_asp.items():
             if len(D_sp) != kss.npspins:
                 if len(D_sp) == 1:
-                    D_asp[a] = npy.array([0.5 * D_sp[0], 0.5 * D_sp[0]])
+                    D_asp[a] = np.array([0.5 * D_sp[0], 0.5 * D_sp[0]])
                 else:
-                    D_asp[a] = npy.array([D_sp[0] + D_sp[1]])
+                    D_asp[a] = np.array([D_sp[0] + D_sp[1]])
                 
         # restrict the density if needed
         if fg:
@@ -213,8 +214,8 @@ class OmegaMatrix:
                 # nucleus.I_sp atom based correction matrices (pack2)
                 #              stored on each nucleus
                 timer2.start('init v grids')
-                vp_s=npy.zeros(nt_s.shape,nt_s.dtype.char)
-                vm_s=npy.zeros(nt_s.shape,nt_s.dtype.char)
+                vp_s=np.zeros(nt_s.shape,nt_s.dtype.char)
+                vm_s=np.zeros(nt_s.shape,nt_s.dtype.char)
                 if kss.npspins==2: # spin polarised
                     nv_s=nt_s.copy()
                     nv_s[kss[ij].pspin] += ns*kss[ij].get(fg)
@@ -239,7 +240,7 @@ class OmegaMatrix:
                     # create the modified density matrix
                     Pi_i = P_ni[kss[ij].i]
                     Pj_i = P_ni[kss[ij].j]
-                    P_ii = npy.outer(Pi_i,Pj_i)
+                    P_ii = np.outer(Pi_i,Pj_i)
                     # we need the symmetric form, hence we can pack
                     P_p = pack(P_ii,tolerance=1e30)
                     D_sp = self.paw.density.D_asp[a].copy()
@@ -324,11 +325,11 @@ class OmegaMatrix:
                         # create the modified density matrix
                         Pk_i = P_ni[kss[kq].i]
                         Pq_i = P_ni[kss[kq].j]
-                        P_ii = npy.outer(Pk_i, Pq_i)
+                        P_ii = np.outer(Pk_i, Pq_i)
                         # we need the symmetric form, hence we can pack
                         # use pack as I_sp used pack2
                         P_p = pack(P_ii, tolerance=1e30)
-                        Exc += npy.dot(I_asp[a][kss[kq].pspin], P_p)
+                        Exc += np.dot(I_asp[a][kss[kq].pspin], P_p)
                     Om[ij, kq] += weight * self.gd.comm.sum(Exc)
                     timer2.stop()
 
@@ -369,7 +370,7 @@ class OmegaMatrix:
         nij = len(kss)
         print >> self.txt,'RPA',nij,'transitions'
         
-        Om = npy.zeros((nij,nij))
+        Om = np.zeros((nij,nij))
         
         for ij in range(nij):
             print >> self.txt,'RPA kss['+'%d'%ij+']=', kss[ij]
@@ -386,7 +387,7 @@ class OmegaMatrix:
             
             # integrate with 1/|r_1-r_2|
             timer2.start('poisson')
-            phit_p = npy.zeros(rhot_p.shape, rhot_p.dtype.char)
+            phit_p = np.zeros(rhot_p.shape, rhot_p.dtype.char)
             self.poisson.solve(phit_p, rhot_p, charge=None)
             timer2.stop()
 
@@ -412,8 +413,8 @@ class OmegaMatrix:
                     timer2.stop()
 
                 timer2.start('integrate')
-                pre = 2.*sqrt(kss[ij].GetEnergy()*kss[kq].GetEnergy()*
-                                  kss[ij].GetWeight()*kss[kq].GetWeight())
+                pre = 2.*sqrt(kss[ij].get_energy()*kss[kq].get_energy()*
+                                  kss[ij].get_weight()*kss[kq].get_weight())
                 Om[ij,kq]= pre * self.gd.integrate(rhot*phit)
 ##                print "int=",Om[ij,kq]
                 timer2.stop()
@@ -424,25 +425,25 @@ class OmegaMatrix:
                 for a, P_ni in wfs.kpt_u[kss[ij].spin].P_ani.items():
                     Pi_i = P_ni[kss[ij].i]
                     Pj_i = P_ni[kss[ij].j]
-                    Dij_ii = npy.outer(Pi_i, Pj_i)
+                    Dij_ii = np.outer(Pi_i, Pj_i)
                     Dij_p = pack(Dij_ii, tolerance=1e3)
                     Pkq_ni = wfs.kpt_u[kss[kq].spin].P_ani[a]
                     Pk_i = Pkq_ni[kss[kq].i]
                     Pq_i = Pkq_ni[kss[kq].j]
-                    Dkq_ii = npy.outer(Pk_i, Pq_i)
+                    Dkq_ii = np.outer(Pk_i, Pq_i)
                     Dkq_p = pack(Dkq_ii, tolerance=1e3)
                     C_pp = wfs.setups[a].M_pp
                     #   ----
                     # 2 >      P   P  C    P  P
                     #   ----    ip  jr prst ks qt
                     #   prst
-                    Ia += 2.0*npy.dot(Dkq_p,npy.dot(C_pp,Dij_p))
+                    Ia += 2.0*np.dot(Dkq_p,np.dot(C_pp,Dij_p))
                 timer2.stop()
                 
                 Om[ij,kq] += pre * self.gd.comm.sum(Ia)
                     
                 if ij == kq:
-                    Om[ij,kq] += kss[ij].GetEnergy()**2
+                    Om[ij,kq] += kss[ij].get_energy()**2
                 else:
                     Om[kq,ij]=Om[ij,kq]
 
@@ -476,9 +477,9 @@ class OmegaMatrix:
 
         # define the singlet and the triplet omega-matrixes
         sOm = OmegaMatrix(kss=skss)
-        sOm.full = npy.empty((nkss, nkss))
+        sOm.full = np.empty((nkss, nkss))
         tOm = OmegaMatrix(kss=tkss)
-        tOm.full = npy.empty((nkss, nkss))
+        tOm.full = np.empty((nkss, nkss))
         for ij in range(nkss):
             for kl in range(nkss):
                 sOm.full[ij, kl] = (self.full[map[ij], map[kl]] +
@@ -534,13 +535,13 @@ class OmegaMatrix:
             nij = len(kss)
             print >> self.txt,'# diagonalize: %d transitions now' % nij
 
-            evec = npy.zeros((nij,nij))
+            evec = np.zeros((nij,nij))
             for ij in range(nij):
                 for kq in range(nij):
                     evec[ij,kq] = self.full[map[ij],map[kq]]
 
         self.eigenvectors = evec        
-        self.eigenvalues = npy.zeros((len(kss)))
+        self.eigenvalues = np.zeros((len(kss)))
         self.kss = kss
         info = diagonalize(self.eigenvectors, self.eigenvalues)
         if info != 0:
@@ -564,7 +565,7 @@ class OmegaMatrix:
 
         f.readline()
         nij = int(f.readline())
-        full = npy.zeros((nij,nij))
+        full = np.zeros((nij,nij))
         for ij in range(nij):
             l = f.readline().split()
             for kq in range(ij,nij):
@@ -597,8 +598,8 @@ class OmegaMatrix:
     def weight_Kijkq(self, ij, kq):
         """weight for the coupling matrix terms"""
         kss = self.fullkss
-        return 2.*sqrt( kss[ij].GetEnergy() * kss[kq].GetEnergy() *
-                        kss[ij].GetWeight() * kss[kq].GetWeight()   )
+        return 2.*sqrt( kss[ij].get_energy() * kss[kq].get_energy() *
+                        kss[ij].get_weight() * kss[kq].get_weight()   )
 
     def __str__(self):
         str='<OmegaMatrix> '
@@ -606,7 +607,7 @@ class OmegaMatrix:
             str += 'dimension '+ ('%d'%len(self.eigenvalues))
             str += "\neigenvalues: "
             for ev in self.eigenvalues:
-                str += ' ' + ('%f'%(sqrt(ev)*27.211))
+                str += ' ' + ('%f'%(sqrt(ev) * Hartree))
         return str
     
 

@@ -1,13 +1,12 @@
-
 import numpy as np
 from ase.units import Hartree
 
-from gpaw.notify import InputNotifier
+#from gpaw.notify import InputNotifier
 from gpaw.poisson import PoissonSolver, FFTPoissonSolver
 
 
 class InputParameters(dict):
-    def __init__(self):
+    def __init__(self, **kwargs):
         dict.__init__(self, [
             ('h',               None),  # Angstrom
             ('xc',              'LDA'),
@@ -43,8 +42,13 @@ class InputParameters(dict):
                                  'density':     1.0e-4,
                                  'eigenstates': 1.0e-9,
                                  'bands':       'occupied'}),
-            ('notify',          InputNotifier())
             ])
+        dict.update(self, kwargs)
+
+    def __repr__(self):
+        dictrepr = dict.__repr__(self)
+        repr = 'InputParameters(**%s)' % dictrepr
+        return repr
     
     def __getattr__(self, key):
         return self[key]
@@ -64,8 +68,8 @@ class InputParameters(dict):
             if isinstance(haschanged, np.ndarray):
                 haschanged = haschanged.any()
 
-            if haschanged:
-                self.notify(key)
+            #if haschanged:
+            #    self.notify(key)
 
         dict.update(self, parameters)
 

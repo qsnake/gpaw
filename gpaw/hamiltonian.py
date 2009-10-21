@@ -251,11 +251,11 @@ class Hamiltonian:
                 density.nt_sg[0], self.vt_sg[0])
         self.timer.stop('Hamiltonian: xc 3D grid')
 
-        self.timer.start('Poisson')
+        self.timer.start('Hamiltonian: Poisson')
         # npoisson is the number of iterations:
         self.npoisson = self.poisson.solve(self.vHt_g, density.rhot_g,
                                            charge=-density.charge)
-        self.timer.stop('Poisson')
+        self.timer.stop('Hamiltonian: Poisson')
 
         Epot = 0.5 * self.finegd.integrate(self.vHt_g, density.rhot_g,
                                            global_integral=False)
@@ -271,9 +271,7 @@ class Hamiltonian:
         W_aL = {}
         for a in density.D_asp:
             W_aL[a] = np.empty((self.setups[a].lmax + 1)**2)
-        self.timer.start('Hamiltonian: atomic: integrate ghat')
         density.ghat.integrate(self.vHt_g, W_aL)
-        self.timer.stop('Hamiltonian: atomic: integrate ghat')
         self.dH_asp = {}
         for a, D_sp in density.D_asp.items():
             W_L = W_aL[a]
@@ -441,7 +439,7 @@ class Hamiltonian:
                 setup.xc_correction.initialize_kinetic(setup.data)
 
         if newxcfunc.hybrid > 0.0 and not self.nuclei[0].ready: #bugged?
-            self.set_positions(npy.array([n.spos_c * self.domain.cell_c
+            self.set_positions(np.array([n.spos_c * self.domain.cell_c
                                           for n in self.nuclei]), self.rank_a)
         if newxcfunc.hybrid > 0.0:
             for nucleus in self.my_nuclei:

@@ -6,7 +6,7 @@ import os.path
 from ase.units import Bohr, Hartree
 from ase.data import atomic_names
 from ase.atoms import Atoms
-import numpy as npy
+import numpy as np
 
 import gpaw.mpi as mpi
 import os,time,tempfile
@@ -113,7 +113,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
             if tag_a is None:
                 raise KeyError
         except KeyError:
-            tag_a = npy.zeros(natoms, int)
+            tag_a = np.zeros(natoms, int)
 
         w.dimension('natoms', natoms)
         w.dimension('3', 3)
@@ -210,7 +210,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
                            ('kick_strength', 'AbsorptionKick')]:
             if hasattr(paw, attr):
                 value = getattr(paw, attr)
-                if isinstance(value, npy.ndarray):
+                if isinstance(value, np.ndarray):
                     w.add(name, ('3',), value)
                 else:
                     w[name] = value
@@ -258,8 +258,8 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
 
     # Write atomic density matrices and non-local part of hamiltonian:
     if master:
-        all_D_sp = npy.empty((wfs.nspins, nadm))
-        all_H_sp = npy.empty((wfs.nspins, nadm))
+        all_D_sp = np.empty((wfs.nspins, nadm))
+        all_H_sp = np.empty((wfs.nspins, nadm))
         p1 = 0
         for a in range(natoms):
             ni = wfs.setups[a].ni
@@ -268,9 +268,9 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
                 D_sp = paw.density.D_asp[a]
                 dH_sp = paw.hamiltonian.dH_asp[a]
             else:
-                D_sp = npy.empty((wfs.nspins, nii))
+                D_sp = np.empty((wfs.nspins, nii))
                 domain_comm.receive(D_sp, wfs.rank_a[a], 207)
-                dH_sp = npy.empty((wfs.nspins, nii))
+                dH_sp = np.empty((wfs.nspins, nii))
                 domain_comm.receive(dH_sp, wfs.rank_a[a], 2071)
             p2 = p1 + nii
             all_D_sp[:, p1:p2] = D_sp
@@ -475,7 +475,7 @@ def read(paw, reader):
 
     # Read atomic density matrices
     D_asp = {}
-    density.rank_a = npy.zeros(natoms, int)
+    density.rank_a = np.zeros(natoms, int)
     if domain_comm.rank == 0:
         D_asp = read_atomic_matrices(r, 'AtomicDensityMatrices',
                                      wfs.setups)
@@ -493,7 +493,7 @@ def read(paw, reader):
 
     # Read non-local part of hamiltonian
     hamiltonian.dH_asp = {}
-    hamiltonian.rank_a = npy.zeros(natoms, int)
+    hamiltonian.rank_a = np.zeros(natoms, int)
 
     if domain_comm.rank == 0 and version > 0.3:
         hamiltonian.dH_asp = read_atomic_matrices(r, \
@@ -510,7 +510,7 @@ def read(paw, reader):
     hamiltonian.S = r['S']
     hamiltonian.Etot = r.get('PotentialEnergy') - 0.5 * hamiltonian.S
 
-    wfs.rank_a = npy.zeros(natoms, int)
+    wfs.rank_a = np.zeros(natoms, int)
 
     if version > 0.3:
         density_error = r['DensityError']
@@ -565,8 +565,8 @@ def read(paw, reader):
             kpt.f_n = f_n[nslice].copy()
 
             if norbitals is not None:
-                kpt.ne_o = npy.empty(norbitals, dtype=float)
-                kpt.c_on = npy.empty((norbitals, wfs.mynbands), dtype=complex)
+                kpt.ne_o = np.empty(norbitals, dtype=float)
+                kpt.c_on = np.empty((norbitals, wfs.mynbands), dtype=complex)
                 for o in range(norbitals):
                     kpt.ne_o[o] = r.get('LinearExpansionOccupations',  s, k, o)
                     c_n = r.get('LinearExpansionCoefficients', s, k, o)
@@ -591,7 +591,7 @@ def read(paw, reader):
                     for myn, psit_G in enumerate(kpt.psit_nG):
                         n = wfs.bd.global_index(myn)
                         if domain_comm.rank == 0:
-                            big_psit_G = npy.array(r.get('PseudoWaveFunctions',
+                            big_psit_G = np.array(r.get('PseudoWaveFunctions',
                                                kpt.s, kpt.k, n), wfs.dtype)
                         else:
                             big_psit_G = None
@@ -604,7 +604,7 @@ def read(paw, reader):
             for a, setup in enumerate(wfs.setups):
                 i2 = i1 + setup.ni
                 if domain_comm.rank == 0:
-                    kpt.P_ani[a] = npy.array(P_ni[nslice, i1:i2], wfs.dtype)
+                    kpt.P_ani[a] = np.array(P_ni[nslice, i1:i2], wfs.dtype)
                 i1 = i2
 
     # Manage mode change:

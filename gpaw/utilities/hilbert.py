@@ -1,4 +1,4 @@
-import numpy as npy
+import numpy as np
 from numpy.fft import fft, ifft
 
 """
@@ -16,7 +16,7 @@ def hilbert_kernel_simple(n):
     
     This is just the discrete Fourier transform of 1 / x.
     """
-    ker = npy.zeros(n, dtype=complex)
+    ker = np.zeros(n, dtype=complex)
     ker[1: n / 2] = 1.j
     ker[n / 2 + 1:] = -1.j
     return ker
@@ -31,15 +31,15 @@ def hilbert_kernel_interpolate(n):
     mid = (n + 1) / 2
 
     # Make auxiliary array
-    aux = npy.arange(mid + 1, dtype=float)
-    npy.multiply(aux[1:], npy.log(aux[1:]), aux[1:])
+    aux = np.arange(mid + 1, dtype=float)
+    np.multiply(aux[1:], np.log(aux[1:]), aux[1:])
 
     # Make kernel
-    ker = npy.zeros(n, float)
+    ker = np.zeros(n, float)
     ker[1: mid] = aux[2:] - 2 * aux[1:-1] + aux[:-2]
     ker[-1: -mid: -1] = -ker[1: mid]
     
-    return -fft(ker) / npy.pi
+    return -fft(ker) / np.pi
 
 def hilbert(f, ker=None, nfft=None, axis=0,
             kerneltype='interpolate', translate=0):
@@ -79,11 +79,11 @@ def hilbert(f, ker=None, nfft=None, axis=0,
     if translate == 0:
         trans = 1
     else:
-        trans = (npy.arange(nfft) + (nfft - 1) / 2) % nfft - (nfft - 1) / 2
+        trans = (np.arange(nfft) + (nfft - 1) / 2) % nfft - (nfft - 1) / 2
 #          nfft = 8 ->       [ 0  1  2  3  4 -3 -2 -1]
-#       trans = (npy.arange(nfft) + nfft / 2) % nfft - nfft / 2
+#       trans = (np.arange(nfft) + nfft / 2) % nfft - nfft / 2
 #          nfft = 8 ->       [ 0  1  2  3 -4 -3 -2 -1]
-        trans = npy.exp(1.j * translate * 2 * npy.pi / nfft * trans)
+        trans = np.exp(1.j * translate * 2 * np.pi / nfft * trans)
         trans.shape = ker.shape
 
     # Make convolution of f and kernel
@@ -92,14 +92,14 @@ def hilbert(f, ker=None, nfft=None, axis=0,
     
 def analytic_transforms(x):
     """Returns a list of functions and their Hilbert transforms"""
-    func_l = [npy.sin(x),
-              npy.cos(x),
-              npy.where(x == 0, 1, npy.sin(x) / x),
+    func_l = [np.sin(x),
+              np.cos(x),
+              np.where(x == 0, 1, np.sin(x) / x),
               1 / (1 + x**2)]
 
-    hfunc_l = [npy.cos(x),
-               -npy.sin(x),
-               npy.where(x == 0, 0, (npy.cos(x) - 1) / x),
+    hfunc_l = [np.cos(x),
+               -np.sin(x),
+               np.where(x == 0, 0, (np.cos(x) - 1) / x),
                -x / (1 + x**2)]
 
     return func_l, hfunc_l

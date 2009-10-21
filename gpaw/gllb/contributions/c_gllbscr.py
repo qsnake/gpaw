@@ -4,7 +4,7 @@ from gpaw.xc_correction import A_Liy, weights
 from gpaw.gllb import safe_sqr
 from math import sqrt, pi
 from gpaw.io.tar import TarFileReference
-import numpy as npy
+import numpy as np
 
 K_G = 0.382106112167171
 
@@ -25,8 +25,8 @@ class C_GLLBScr(Contribution):
     def initialize_1d(self):
         self.ae = self.nlfunc.ae
         self.xc = XCRadialGrid(self.functional, self.ae.rgd) 
-        self.v_g = npy.zeros(self.ae.N)
-        self.e_g = npy.zeros(self.ae.N)
+        self.v_g = np.zeros(self.ae.N)
+        self.e_g = np.zeros(self.ae.N)
 
     # Calcualte the GLLB potential and energy 1d
     def add_xc_potential_and_energy_1d(self, v_g):
@@ -34,7 +34,7 @@ class C_GLLBScr(Contribution):
         self.e_g[:] = 0.0
         self.xc.get_energy_and_potential_spinpaired(self.ae.n, self.v_g, e_g=self.e_g)
         v_g += 2 * self.weight * self.e_g / (self.ae.n + 1e-10)
-        Exc = self.weight * npy.sum(self.e_g * self.ae.rgd.dv_g)
+        Exc = self.weight * np.sum(self.e_g * self.ae.rgd.dv_g)
         return Exc
 
     def initialize(self):
@@ -52,14 +52,14 @@ class C_GLLBScr(Contribution):
         return sqrt(f)
     
     def get_coefficients_1d(self, smooth=False, lumo_perturbation = False):
-        homo_e = max( [ npy.where(f>1e-3, e, -1000) for f,e in zip(self.ae.f_j, self.ae.e_j)]) 
+        homo_e = max( [ np.where(f>1e-3, e, -1000) for f,e in zip(self.ae.f_j, self.ae.e_j)]) 
         if not smooth:
             if lumo_perturbation:
-                lumo_e = min( [ npy.where(f<1e-3, e, 1000) for f,e in zip(self.ae.f_j, self.ae.e_j)])
-                return npy.array([ f * K_G * (self.f( max(0, lumo_e - e)) - self.f(max(0, homo_e -e)))
+                lumo_e = min( [ np.where(f<1e-3, e, 1000) for f,e in zip(self.ae.f_j, self.ae.e_j)])
+                return np.array([ f * K_G * (self.f( max(0, lumo_e - e)) - self.f(max(0, homo_e -e)))
                                         for e,f in zip(self.ae.e_j, self.ae.f_j) ])
             else:
-                return npy.array([ f * K_G * (self.f( max(0, homo_e - e)))
+                return np.array([ f * K_G * (self.f( max(0, homo_e - e)))
                                    for e,f in zip(self.ae.e_j, self.ae.f_j) ])
         else:
             return [ [ f * K_G * self.f( max(0, homo_e - e))
@@ -79,15 +79,15 @@ class C_GLLBScr(Contribution):
 
         if lumo_perturbation:
             e_ref_lumo = self.occupations.get_zero_kelvin_lumo_eigenvalue(kpt_u)
-            return [ npy.array([
-                f * K_G * (self.f( npy.where(e_ref_lumo - e>ee, e_ref_lumo-e,0))
-                         -self.f( npy.where(e_ref      - e>ee, e_ref-e,0)))
+            return [ np.array([
+                f * K_G * (self.f( np.where(e_ref_lumo - e>ee, e_ref_lumo-e,0))
+                         -self.f( np.where(e_ref      - e>ee, e_ref-e,0)))
                      for e, f in zip(kpt.eps_n, kpt.f_n) ])
                      for kpt in kpt_u ]
             
             
         else:
-            coeff = [ npy.array([ f * K_G * self.f( npy.where(e_ref - e>ee, e_ref-e,0))
+            coeff = [ np.array([ f * K_G * self.f( np.where(e_ref - e>ee, e_ref-e,0))
                      for e, f in zip(kpt.eps_n, kpt.f_n) ])
                      for kpt in kpt_u ]
             if self.old_coeffs is None:
@@ -119,36 +119,36 @@ class C_GLLBScr(Contribution):
 
         D_p = D_sp[0]
         dEdD_p = H_sp[0][:]
-        D_Lq = npy.dot(c.B_Lqp, D_p)
-        n_Lg = npy.dot(D_Lq, c.n_qg)
+        D_Lq = np.dot(c.B_Lqp, D_p)
+        n_Lg = np.dot(D_Lq, c.n_qg)
         n_Lg[0] += c.nc_g * sqrt(4 * pi)
-        nt_Lg = npy.dot(D_Lq, c.nt_qg)
+        nt_Lg = np.dot(D_Lq, c.nt_qg)
         nt_Lg[0] += c.nct_g * sqrt(4 * pi)
-        dndr_Lg = npy.zeros((c.Lmax, c.ng))
-        dntdr_Lg = npy.zeros((c.Lmax, c.ng))
+        dndr_Lg = np.zeros((c.Lmax, c.ng))
+        dntdr_Lg = np.zeros((c.Lmax, c.ng))
         for L in range(c.Lmax):
             c.rgd.derivative(n_Lg[L], dndr_Lg[L])
             c.rgd.derivative(nt_Lg[L], dntdr_Lg[L])
         E = 0
-        vt_g = npy.zeros(c.ng)
-        v_g = npy.zeros(c.ng)
-        e_g = npy.zeros(c.ng)
-        deda2_g = npy.zeros(c.ng)
+        vt_g = np.zeros(c.ng)
+        v_g = np.zeros(c.ng)
+        e_g = np.zeros(c.ng)
+        deda2_g = np.zeros(c.ng)
         for y, (w, Y_L) in enumerate(zip(weights, c.Y_nL)):
             # Cut gradient releated coefficient to match the setup's Lmax
             A_Li = A_Liy[:c.Lmax, :, y]
 
             # Expand pseudo density
-            nt_g = npy.dot(Y_L, nt_Lg)
+            nt_g = np.dot(Y_L, nt_Lg)
 
             # Expand pseudo density gradient
-            a1x_g = npy.dot(A_Li[:, 0], nt_Lg)
-            a1y_g = npy.dot(A_Li[:, 1], nt_Lg)
-            a1z_g = npy.dot(A_Li[:, 2], nt_Lg)
+            a1x_g = np.dot(A_Li[:, 0], nt_Lg)
+            a1y_g = np.dot(A_Li[:, 1], nt_Lg)
+            a1z_g = np.dot(A_Li[:, 2], nt_Lg)
             a2_g = a1x_g**2 + a1y_g**2 + a1z_g**2
             a2_g[1:] /= c.rgd.r_g[1:]**2
             a2_g[0] = a2_g[1]
-            a1_g = npy.dot(Y_L, dntdr_Lg)
+            a1_g = np.dot(Y_L, dntdr_Lg)
             a2_g += a1_g**2
             
             vt_g[:] = 0.0
@@ -161,22 +161,22 @@ class C_GLLBScr(Contribution):
             vt_g[:] = 2 * e_g / (nt_g + 1e-10)
 
             
-            dEdD_p -= self.weight * w * npy.dot(npy.dot(c.B_pqL, Y_L),
-                                  npy.dot(c.nt_qg, vt_g * c.rgd.dv_g))
+            dEdD_p -= self.weight * w * np.dot(np.dot(c.B_pqL, Y_L),
+                                  np.dot(c.nt_qg, vt_g * c.rgd.dv_g))
 
-            E -= w * npy.dot(e_g, c.rgd.dv_g)
+            E -= w * np.dot(e_g, c.rgd.dv_g)
             
             # Expand density
-            n_g = npy.dot(Y_L, n_Lg)
+            n_g = np.dot(Y_L, n_Lg)
 
             # Expand density gradient
-            a1x_g = npy.dot(A_Li[:, 0], n_Lg)
-            a1y_g = npy.dot(A_Li[:, 1], n_Lg)
-            a1z_g = npy.dot(A_Li[:, 2], n_Lg)
+            a1x_g = np.dot(A_Li[:, 0], n_Lg)
+            a1y_g = np.dot(A_Li[:, 1], n_Lg)
+            a1z_g = np.dot(A_Li[:, 2], n_Lg)
             a2_g = a1x_g**2 + a1y_g**2 + a1z_g**2
             a2_g[1:] /= c.rgd.r_g[1:]**2
             a2_g[0] = a2_g[1]
-            a1_g = npy.dot(Y_L, dndr_Lg)
+            a1_g = np.dot(Y_L, dndr_Lg)
             a2_g += a1_g**2
             
             v_g[:] = 0.0
@@ -187,9 +187,9 @@ class C_GLLBScr(Contribution):
             # Calculate GLLB-potential from GGA-energy density
             v_g[:] = 2 * e_g / (n_g + 1e-10)
             
-            dEdD_p += self.weight * w * npy.dot(npy.dot(c.B_pqL, Y_L),
-                                  npy.dot(c.n_qg, v_g * c.rgd.dv_g))
-            E += w * npy.dot(e_g, c.rgd.dv_g)
+            dEdD_p += self.weight * w * np.dot(np.dot(c.B_pqL, Y_L),
+                                  np.dot(c.n_qg, v_g * c.rgd.dv_g))
+            E += w * np.dot(e_g, c.rgd.dv_g)
             
         return (E) * self.weight
 
@@ -198,7 +198,7 @@ class C_GLLBScr(Contribution):
         self.e_g[:] = 0.0
         self.xc.get_energy_and_potential_spinpaired(self.ae.nt, self.v_g, e_g=self.e_g)
         vt_g += 2 * self.weight * self.e_g / (self.ae.nt + 1e-10)
-        return self.weight * npy.sum(self.e_g * self.ae.rgd.dv_g)
+        return self.weight * np.sum(self.e_g * self.ae.rgd.dv_g)
 
     def initialize_from_atomic_orbitals(self, basis_functions):
         # GLLBScr needs only density which is already initialized

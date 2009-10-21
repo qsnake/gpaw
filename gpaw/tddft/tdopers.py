@@ -3,7 +3,7 @@
 """This module implements classes for time-dependent variables and
 operators."""
 
-import numpy as npy
+import numpy as np
 
 from gpaw.polynomial import Polynomial
 from gpaw.external_potential import ExternalPotential
@@ -160,7 +160,7 @@ class TimeDependentHamiltonian:
 
         for a, P_xi in P_axi.items():
             dH_ii = unpack(self.dH_asp[a][kpt.s])
-            P_axi[a][:] = npy.dot(P_xi, dH_ii)
+            P_axi[a][:] = np.dot(P_xi, dH_ii)
         self.wfs.pt.add(hpsit, P_axi, kpt.q)
 
         if self.td_potential is not None:
@@ -223,7 +223,7 @@ class AbsorptionKickHamiltonian:
         self.spos_ac = atoms.get_scaled_positions() % 1.0
         
         # magnitude
-        magnitude = npy.sqrt(strength[0]*strength[0] 
+        magnitude = np.sqrt(strength[0]*strength[0] 
                              + strength[1]*strength[1] 
                              + strength[2]*strength[2])
         # iterations
@@ -234,7 +234,7 @@ class AbsorptionKickHamiltonian:
         self.dp = strength / self.iterations
 
         # hamiltonian
-        self.abs_hamiltonian = npy.array([self.dp[0], self.dp[1], self.dp[2]])
+        self.abs_hamiltonian = np.array([self.dp[0], self.dp[1], self.dp[2]])
         
 
     def update(self, density, time):

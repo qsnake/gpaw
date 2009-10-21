@@ -78,7 +78,7 @@ In PAW, equation (5.3) above transforms to::
                              xx         / /
 """
 
-import numpy as npy
+import numpy as np
 
 from gpaw.utilities.tools import core_states, symmetrize
 from gpaw.gaunt import make_gaunt
@@ -164,7 +164,7 @@ class EXX:
     def grr(self, wfs, kpt, Htpsit_nG, hamiltonian):
         nbands = wfs.nbands
         domain_comm = self.density.gd.comm
-        H_nn = npy.zeros((nbands, nbands))
+        H_nn = np.zeros((nbands, nbands))
         wfs.kin.apply(kpt.psit_nG, Htpsit_nG, kpt.phase_cd)
         hamiltonian.apply_local_potential(kpt.psit_nG, Htpsit_nG, kpt.s)
         self.apply(kpt, Htpsit_nG, H_nn, hamiltonian.dH_asp,
@@ -172,7 +172,7 @@ class EXX:
         r2k(0.5 * wfs.gd.dv, kpt.psit_nG, Htpsit_nG, 1.0, H_nn)
         for a, P_ni in kpt.P_ani.items():
             dH_p = unpack(hamiltonian.dH_asp[a][kpt.s])
-            gemm(1.0, P_ni, npy.dot(P_ni, dH_p), 1.0, H_nn, 'c')
+            gemm(1.0, P_ni, np.dot(P_ni, dH_p), 1.0, H_nn, 'c')
         domain_comm.sum(H_nn, 0)
         if kpt.f_n is not None:
             apply_subspace_mask(H_nn, kpt.f_n)
@@ -202,8 +202,8 @@ class EXX:
             kpt.vxx_anii = vxx_anii = {}
             for a, P_ni in P_ani.items():
                 nbands, ni = P_ni.shape
-                vxx_ani[a] = npy.zeros((nbands, ni))
-                vxx_anii[a] = npy.zeros((nbands, ni, ni))
+                vxx_ani[a] = np.zeros((nbands, ni))
+                vxx_anii[a] = np.zeros((nbands, ni, ni))
 
         # Determine pseudo-exchange
         for n1 in range(self.nbands):
@@ -229,7 +229,7 @@ class EXX:
                     if self.use_finegrid:
                         self.interpolate(self.vt_unG[u, n2] / f2, self.vt_g)
                     else:
-                        npy.divide(self.vt_unG[u, n2], f2, self.vt_g)
+                        np.divide(self.vt_unG[u, n2], f2, self.vt_g)
                     
                 # Determine exchange potential:
                 iter = self.poisson_solve(self.vt_g, -self.rhot_g,
@@ -266,13 +266,13 @@ class EXX:
                     v_aL = ghat.dict()
                     ghat.integrate(self.vt_g, v_aL)
                     for a, v_L in v_aL.items():
-                        v_ii = unpack(npy.dot(setups[a].Delta_pL, v_L))
+                        v_ii = unpack(np.dot(setups[a].Delta_pL, v_L))
                         v_ni = vxx_ani[a]
                         v_nii = vxx_anii[a]
                         P_ni = P_ani[a]
-                        v_ni[n1] += f2 * npy.dot(v_ii, P_ni[n2])
+                        v_ni[n1] += f2 * np.dot(v_ii, P_ni[n2])
                         if n1 != n2:
-                            v_ni[n2] += f1 * npy.dot(v_ii, P_ni[n1])
+                            v_ni[n2] += f1 * np.dot(v_ii, P_ni[n1])
                         else:
                             # XXX Check this:
                             v_nii[n1] = f2 * v_ii
@@ -283,9 +283,9 @@ class EXX:
 
             # Add non-trivial corrections the Hamiltonian matrix
             if not self.energy_only:
-                h_nn = symmetrize(npy.inner(P_ni, vxx_ani[a]))
+                h_nn = symmetrize(np.inner(P_ni, vxx_ani[a]))
                 H_nn += h_nn
-                Ekin -= npy.dot(f_n, npy.diagonal(h_nn))
+                Ekin -= np.dot(f_n, np.diagonal(h_nn))
 
             # Get atomic density and Hamiltonian matrices
             D_p  = self.density.D_asp[a][s]
@@ -315,10 +315,10 @@ class EXX:
             # --
             # >  X   D
             # --  ii  ii
-            Exx -= hybrid * npy.dot(D_p, setup.X_p)
+            Exx -= hybrid * np.dot(D_p, setup.X_p)
             if not self.energy_only:
                 dH_p -= hybrid * setup.X_p
-                Ekin += hybrid * npy.dot(D_p, setup.X_p)
+                Ekin += hybrid * np.dot(D_p, setup.X_p)
 
             # Add core-core exchange energy
             if s == 0:
@@ -339,7 +339,7 @@ class EXX:
 
         deg = 2 / self.nspins
         u = kpt.u
-        F_ac = npy.zeros((self.Na, 3))
+        F_ac = np.zeros((self.Na, 3))
         fmin = 1.e-10
         pd = self.pair_density
 
@@ -374,39 +374,39 @@ class EXX:
                     
                     if nucleus.in_this_domain:
                         lmax = nucleus.setup.lmax
-                        F_Lc = npy.zeros(((lmax + 1)**2, 3))
+                        F_Lc = np.zeros(((lmax + 1)**2, 3))
                         ghat_L.derivative(self.vt_g, F_Lc)
-                        D_ii = npy.outer(nucleus.P_uni[u, n1],
+                        D_ii = np.outer(nucleus.P_uni[u, n1],
                                          nucleus.P_uni[u, n2])
                         D_p = pack(D_ii, tolerance=1e30)
-                        Q_L = npy.dot(D_p, nucleus.setup.Delta_pL)
-                        F_ac[nucleus.a] -= (f1 * f2 * dc * npy.dot(Q_L, F_Lc))
+                        Q_L = np.dot(D_p, nucleus.setup.Delta_pL)
+                        F_ac[nucleus.a] -= (f1 * f2 * dc * np.dot(Q_L, F_Lc))
                     else:
                         ghat_L.derivative(self.vt_g, None)
 
                 # Add force contribution from the change in projectors
                 for nucleus in self.ghat_nuclei:
-                    v_L = npy.zeros((nucleus.setup.lmax + 1)**2)
+                    v_L = np.zeros((nucleus.setup.lmax + 1)**2)
                     if self.use_finegrid:
                         nucleus.ghat_L.integrate(self.vt_g, v_L)
                     else:
                         nucleus.Ghat_L.integrate(self.vt_G, v_L)
                     
                     if nucleus.in_this_domain:
-                        v_ii = unpack(npy.dot(nucleus.setup.Delta_pL, v_L))
+                        v_ii = unpack(np.dot(nucleus.setup.Delta_pL, v_L))
 
                         ni = nucleus.setup.ni
-                        F_ic = npy.zeros((ni, 3))
+                        F_ic = np.zeros((ni, 3))
                         nucleus.pt_i.derivative(psit1_G, F_ic)
                         F_ic.shape = (ni * 3,)
-                        F_iic = npy.dot(v_ii, npy.outer(
+                        F_iic = np.dot(v_ii, np.outer(
                             nucleus.P_uni[u, n2], F_ic))
 
                         F_ic[:] = 0.0
                         F_ic.shape =(ni, 3)
                         nucleus.pt_i.derivative(psit2_G, F_ic)
                         F_ic.shape = (ni * 3,)
-                        F_iic += npy.dot(v_ii, npy.outer(
+                        F_iic += np.dot(v_ii, np.outer(
                             nucleus.P_uni[u, n1], F_ic))
 
                         # F_iic *= 2.0
@@ -457,8 +457,8 @@ def atomic_exact_exchange(atom, type = 'all'):
             raise RuntimeError('Unknown type of exchange: ', type)
 
     # Arrays for storing the potential (times radius)
-    vr = npy.zeros(atom.N)
-    vrl = npy.zeros(atom.N)
+    vr = np.zeros(atom.N)
+    vrl = np.zeros(atom.N)
     
     # do actual calculation of exchange contribution
     Exx = 0.0
@@ -491,10 +491,10 @@ def atomic_exact_exchange(atom, type = 'all'):
                 G2 = gaunt[l1**2:(l1+1)**2, l2**2:(l2+1)**2, l**2:(l+1)**2]**2
 
                 # add to total potential
-                vr += vrl * npy.sum(G2)
+                vr += vrl * np.sum(G2)
 
             # add to total exchange the contribution from current two states
-            Exx += -.5 * f12 * npy.dot(vr, nrdr)
+            Exx += -.5 * f12 * np.dot(vr, nrdr)
 
     # double energy if mixed contribution
     if type == 'val-core': Exx *= 2.
@@ -525,10 +525,10 @@ def constructX(gen):
     r, dr, N, beta = gen.r, gen.dr, gen.N, gen.beta
 
     # potential times radius
-    vr = npy.zeros(N)
+    vr = np.zeros(N)
         
     # initialize X_ii matrix
-    X_ii = npy.zeros((Nvi, Nvi))
+    X_ii = np.zeros((Nvi, Nvi))
 
     # make gaunt coeff. list
     lmax = max(gen.l_j[:Njcore] + gen.vl_j)
@@ -560,7 +560,7 @@ def constructX(gen):
                 for l in range(min(lv1, lv2) + lc + 1):
                     # Int density * potential * r^2 * dr:
                     hartree(l, n2c, beta, N, vr)
-                    nv = npy.dot(n1c, vr)
+                    nv = np.dot(n1c, vr)
                     
                     # expansion coefficients
                     A_mm = X_ii[i1:i1 + 2 * lv1 + 1, i2:i2 + 2 * lv2 + 1]
@@ -570,7 +570,7 @@ def constructX(gen):
                                         lc**2 + mc, l**2 + m]
                             G2c = gaunt[lv2**2:(lv2 + 1)**2,
                                         lc**2 + mc, l**2 + m]
-                            A_mm += nv * npy.outer(G1c, G2c)
+                            A_mm += nv * np.outer(G1c, G2c)
                 i2 += 2 * lv2 + 1
             i1 += 2 * lv1 + 1
 
@@ -590,8 +590,8 @@ def H_coulomb_val_core(paw, u=0):
         ij   //       --          |r - r'|
                       k
     """
-    H_nn = npy.zeros((paw.wfs.nbands, paw.wfs.nbands), dtype=paw.wfs.dtype)
+    H_nn = np.zeros((paw.wfs.nbands, paw.wfs.nbands), dtype=paw.wfs.dtype)
     for a, P_ni in paw.wfs.kpt_u[u].P_ani.items():
         X_ii = unpack(paw.wfs.setups[a].X_p)
-        H_nn += 2 * npy.dot(P_ni.conj(), npy.dot(X_ii, P_ni.T))
+        H_nn += 2 * np.dot(P_ni.conj(), np.dot(X_ii, P_ni.T))
     return paw.gd.comm.sum(H_nn) * paw.Ha

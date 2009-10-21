@@ -135,7 +135,7 @@ class ElectronPhononCouplingMatrix:
     
     def get_gradient(self):
         """Calculates gradient"""
-        nx = len(self.indices) * 3	
+        nx = len(self.indices) * 3
         veqt_G, dHeq_asp = pickle.load(open(self.name + '.eq.pckl'))
         gpts = veqt_G.shape 
         dvt_Gx = np.zeros(gpts + (nx, )) 

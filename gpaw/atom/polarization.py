@@ -4,7 +4,7 @@ import sys
 import math
 import traceback
 
-import numpy as npy
+import numpy as np
 from ase import Atom, Atoms
 from ase.data import molecules as g2
 
@@ -39,10 +39,10 @@ class QuasiGaussian:
     def __call__(self, r):
         """Evaluate function values at r, which is a numpy array."""
         condition = (r < self.rcut) & (self.alpha * r**2 < 700.)
-        r2 = npy.where(condition, r**2., 0.) # prevent overflow
-        g = npy.exp(-self.alpha * r2)
+        r2 = np.where(condition, r**2., 0.) # prevent overflow
+        g = np.exp(-self.alpha * r2)
         p = (self.a - self.b * r2)
-        y = npy.where(condition, g - p, 0.)
+        y = np.where(condition, g - p, 0.)
         return self.A * y
 
     def renormalize(self, norm):
@@ -96,7 +96,7 @@ def rotation_test():
 
     from gpaw.output import plot
 
-    rotationvector = npy.array([1.0, 1.0, 1.0])
+    rotationvector = np.array([1.0, 1.0, 1.0])
     angle_increment = 0.3
     
     system = g2.molecule(molecule)
@@ -107,7 +107,7 @@ def rotation_test():
 
     pog = PolarizationOrbitalGenerator(rcut)
 
-    r = npy.linspace(0., rcut, 300)
+    r = np.linspace(0., rcut, 300)
 
     maxvalues = []
     import pylab
@@ -140,7 +140,7 @@ def make_dummy_reference(l, function=None, rcut=6., a=12., n=60,
     """Make a mock reference wave function using a made-up radial function
     as reference"""
     #print 'Dummy reference: l=%d, rcut=%.02f, alpha=%.02f' % (l, rcut, alpha)
-    r = npy.arange(0., rcut, .01)
+    r = np.arange(0., rcut, .01)
 
     if function is None:
         function = QuasiGaussian(4., rcut)
@@ -156,13 +156,13 @@ def make_dummy_reference(l, function=None, rcut=6., a=12., n=60,
     center = (.5, .5, .5)
     lf = create_localized_functions([spline], gd, center, dtype=dtype)
     psit_k = gd.zeros(mcount, dtype=dtype)
-    coef_xi = npy.identity(mcount * fcount, dtype=dtype)
+    coef_xi = np.identity(mcount * fcount, dtype=dtype)
     lf.add(psit_k, coef_xi)
     return gd, psit_k, center, function
 
 def make_dummy_kpt_reference(l, function, k_c,
                              rcut=6., a=10., n=60, dtype=complex):
-    r = npy.linspace(0., rcut, 300)
+    r = np.linspace(0., rcut, 300)
     mcount = 2*l + 1
     fcount = 1
     kcount = 1
@@ -173,7 +173,7 @@ def make_dummy_kpt_reference(l, function, k_c,
     lf = create_localized_functions([spline], gd, center, dtype=dtype)
     lf.set_phase_factors([kpt.k_c])
     psit_nG = gd.zeros(mcount, dtype=dtype)
-    coef_xi = npy.identity(mcount * fcount, dtype=dtype)
+    coef_xi = np.identity(mcount * fcount, dtype=dtype)
     lf.add(psit_nG, coef_xi, k=0)
     kpt.psit_nG = psit_nG
     print 'Number of boxes', len(lf.box_b)
@@ -199,11 +199,11 @@ class CoefficientOptimizer:
         if fix:
             function = self.evaluate_fixed
             ccount -= 1
-        ones = npy.ones((ccount, ccount))
-        diag = npy.identity(ccount)
-        simplex = npy.concatenate((npy.ones((ccount,1)),
+        ones = np.ones((ccount, ccount))
+        diag = np.identity(ccount)
+        simplex = np.concatenate((np.ones((ccount,1)),
                                    ones + .5 * diag), axis=1)
-        simplex = npy.transpose(simplex)
+        simplex = np.transpose(simplex)
         self.amoeba = Amoeba(function, simplex, tolerance=1e-10)
         
     def find_coefficients(self):
@@ -217,12 +217,12 @@ class CoefficientOptimizer:
         return self.evaluate([1.] + list(coef))
 
     def evaluate(self, coef):
-        coef = npy.array(coef) # complex coefficients?
-        terms_km = npy.zeros(self.S_kmii.shape[0:2])
+        coef = np.array(coef) # complex coefficients?
+        terms_km = np.zeros(self.S_kmii.shape[0:2])
         for i, (s_mii, S_mii) in enumerate(zip(self.s_kmii, self.S_kmii)):
             for j, (s_ii, S_ii) in enumerate(zip(s_mii, S_mii)):
-                numerator = npy.vdot(coef, npy.dot(S_ii, coef))
-                denominator = npy.vdot(coef, npy.dot(s_ii, coef))
+                numerator = np.vdot(coef, np.dot(S_ii, coef))
+                denominator = np.vdot(coef, np.dot(s_ii, coef))
                 terms_km[i, j] = numerator / denominator
 
         #print terms_km
@@ -248,7 +248,7 @@ class PolarizationOrbitalGenerator:
         if gaussians is None:
             gaussians = 4
         if isinstance(gaussians, int):
-            self.r_alphas = npy.linspace(1., .6 * rcut, gaussians + 1)[1:]
+            self.r_alphas = np.linspace(1., .6 * rcut, gaussians + 1)[1:]
         else: # assume it is a list of actual characteristic lengths
             self.r_alphas = gaussians
         self.alphas = 1. / self.r_alphas ** 2
@@ -260,7 +260,7 @@ class PolarizationOrbitalGenerator:
         """Generate polarization orbital."""
         rcut = self.rcut
         phi_i = [QuasiGaussian(alpha, rcut) for alpha in self.alphas]
-        r = npy.arange(0, rcut, .01)
+        r = np.arange(0, rcut, .01)
         dr = r[1] # equidistant
         integration_multiplier = r ** (2 * (l + 1))
         for phi in phi_i:
@@ -270,7 +270,7 @@ class PolarizationOrbitalGenerator:
         splines = [Spline(l, r[-1], phi(r)) for phi in phi_i]
 
         if dtype is None:
-            if npy.any([kpt.dtype == complex for kpt in kpt_u]):
+            if np.any([kpt.dtype == complex for kpt in kpt_u]):
                 dtype = complex
             else:
                 dtype = float
@@ -334,20 +334,20 @@ def overlaps(l, gd, splines, kpt_u, spos_ac=((.5, .5, .5),),
 
     # First we have to calculate the scalar products between
     # pairs of basis functions < phi_kmi | phi_kmj >.
-    s_kmii = npy.zeros((kcount, mcount, fcount, fcount), dtype=dtype)
-    coef_xi = npy.identity(mcount * fcount, dtype=dtype)
+    s_kmii = np.zeros((kcount, mcount, fcount, fcount), dtype=dtype)
+    coef_xi = np.identity(mcount * fcount, dtype=dtype)
     #phi_miG = gd.zeros(mcount * fcount, dtype=dtype)
     print >> txt, 'Calculating phi-phi products'
     for kpt in kpt_u:
         gramschmidt(gd, kpt.psit_nG)
-        normsqr = gd.integrate(npy.conjugate(kpt.psit_nG) * kpt.psit_nG)
+        normsqr = gd.integrate(np.conjugate(kpt.psit_nG) * kpt.psit_nG)
         for n in range(bcount):
             kpt.psit_nG[n] /= normsqr[n] ** .5
         phi_nG = gd.zeros(mcount * fcount, dtype=dtype)
         #for lf in lf_a:
         #    lf.add(phi_nG, coef_xi, k=kpt.k)
         lf.add(phi_nG, coef_xi, k=kpt.k)
-        phi_overlaps_ii = npy.zeros((fcount * mcount,
+        phi_overlaps_ii = np.zeros((fcount * mcount,
                                      fcount * mcount), dtype=dtype)
         # XXX products for different m unneeded.  Bottleneck for large fcount
         lf.integrate(phi_nG, phi_overlaps_ii, k=kpt.k)
@@ -362,11 +362,11 @@ def overlaps(l, gd, splines, kpt_u, spos_ac=((.5, .5, .5),),
 
     # Now calculate scalar products between basis functions and
     # reference functions < phi_kmi | psi_kn >.
-    overlaps_knmi = npy.zeros((kcount, bcount, mcount, fcount), dtype=dtype)
+    overlaps_knmi = np.zeros((kcount, bcount, mcount, fcount), dtype=dtype)
     print >> txt, 'Calculating phi-psi products'
     for kpt in kpt_u:
         # Note: will be reashaped to (n, i, m) like its name suggests
-        overlaps_nim = npy.zeros((bcount, mcount * fcount), dtype=dtype)
+        overlaps_nim = np.zeros((bcount, mcount * fcount), dtype=dtype)
         lf.integrate(kpt.psit_nG, overlaps_nim, k=kpt.k)
         overlaps_nim.shape = (bcount, fcount, mcount)
         overlaps_knmi[kpt.u, :, :, :] = overlaps_nim.swapaxes(1, 2)
@@ -382,7 +382,7 @@ def overlaps(l, gd, splines, kpt_u, spos_ac=((.5, .5, .5),),
             #        w = 0.
             overlaps_knmi[k, n, :, :] *= f_n[n]
         
-    S_kmii = npy.zeros((kcount, mcount, fcount, fcount), dtype=dtype)
+    S_kmii = np.zeros((kcount, mcount, fcount, fcount), dtype=dtype)
     conj_overlaps_knmi = overlaps_knmi.conjugate()
 
     for k in range(kcount):
@@ -432,9 +432,9 @@ def old_overlaps(l, gd, splines, kpt_u, center=(.5, .5, .5)):
     #print 'loc funcs boxes',len(phi_lf.box_b)
     
     phi_mi = gd.zeros(fcount * mcount) # one set for each phi
-    coef_xi = npy.identity(fcount * mcount)
+    coef_xi = np.identity(fcount * mcount)
     phi_lf.add(phi_mi, coef_xi)
-    integrals = npy.zeros((fcount * mcount, fcount * mcount))
+    integrals = np.zeros((fcount * mcount, fcount * mcount))
     phi_lf.integrate(phi_mi, integrals)
     """Integral matrix contents (assuming l==1 so there are three m-values)
 
@@ -457,7 +457,7 @@ def old_overlaps(l, gd, splines, kpt_u, center=(.5, .5, .5)):
     is not true in general"""
 
     # phiproducts: for each m, < phi_mi | phi_mj >
-    phiproducts_mij = npy.zeros((mcount, fcount, fcount))
+    phiproducts_mij = np.zeros((mcount, fcount, fcount))
     for i in range(fcount):
         for j in range(fcount):
             ioff = mcount * i
@@ -469,7 +469,7 @@ def old_overlaps(l, gd, splines, kpt_u, center=(.5, .5, .5)):
     # Now calculate scalar products < phi_mi | psit_k >, where psit_k are
     # solutions from reference calculation
     psitcount = len(psit_k)
-    integrals_kim = npy.zeros((psitcount, fcount * mcount))
+    integrals_kim = np.zeros((psitcount, fcount * mcount))
     phi_lf.integrate(psit_k, integrals_kim)
 
     # Now psiproducts[k] is a flat list, but we want it to be a matrix with
@@ -477,7 +477,7 @@ def old_overlaps(l, gd, splines, kpt_u, center=(.5, .5, .5)):
     # The first three elements correspond to the same localized function
     # and so on.
     # What we want is one whole matrix for each m-value.
-    psiproducts_mik = npy.zeros((mcount, fcount, psitcount))
+    psiproducts_mik = np.zeros((mcount, fcount, psitcount))
     for m in range(mcount):
         for i in range(fcount):
             for k in range(psitcount):
@@ -485,10 +485,10 @@ def old_overlaps(l, gd, splines, kpt_u, center=(.5, .5, .5)):
                 psiproducts_mik[m, i, k] = w * integrals_kim[k, mcount * i + m]
 
     # s[mij] = < phi_mi | phi_mj >
-    s = npy.array([phiproducts_mij])
+    s = np.array([phiproducts_mij])
 
     # S[mij] = sum over k: < phi_mi | psit_k > < psit_k | phi_mj >
-    S = npy.array([[npy.dot(psiproducts_ik, npy.transpose(psiproducts_ik))
+    S = np.array([[np.dot(psiproducts_ik, np.transpose(psiproducts_ik))
                     for psiproducts_ik in psiproducts_mik]])
 
     return s, S
@@ -515,7 +515,7 @@ def main():
         
         phi = generator.generate(l, gd, psit_k, center, dtype=float)
         
-        r = npy.arange(0., rcut, .01)
+        r = np.arange(0., rcut, .01)
         norm = get_norm(r, phi(r), l)
 
         quality = generator.quality
@@ -533,7 +533,7 @@ def dummy_kpt_test():
     k_kc = [(.5, .5, .5)]#[(0., 0., 0.), (0.5, 0.5, 0.5)]
     kcount = len(k_kc)
     dtype = complex
-    r = npy.arange(0., rcut, .01)
+    r = np.arange(0., rcut, .01)
 
     spos_ac_ref = [(0., 0., 0.)]#, (.2, .2, .2)]
     spos_ac = [(0., 0., 0.), (.2, .2, .2)]
@@ -542,7 +542,7 @@ def dummy_kpt_test():
     ngaussians = 4
     realgaussindex = (ngaussians - 1) / 2
 
-    rchars = npy.linspace(1., rcut, ngaussians)
+    rchars = np.linspace(1., rcut, ngaussians)
     splines = []
     gaussians = [QuasiGaussian(1./rch**2., rcut) for rch in rchars]
     for g in gaussians:
@@ -568,8 +568,8 @@ def dummy_kpt_test():
         kpt.allocate(1)
         kpt.f_n[0] = 1.
         psit_nG = gd.zeros(1, dtype=dtype)
-        coef_xi = npy.identity(1, dtype=dtype)
-        integral = npy.zeros((1, 1), dtype=dtype)
+        coef_xi = np.identity(1, dtype=dtype)
+        integral = np.zeros((1, 1), dtype=dtype)
         for reflf in reflf_a:
             reflf.add(psit_nG, coef_xi, k=kpt.k)
             reflf.integrate(psit_nG, integral, k=kpt.k)
@@ -586,14 +586,14 @@ def dummy_kpt_test():
     for lf in lf_a:
         lf.set_phase_factors(k_kc)
 
-    s_kii = npy.zeros((kcount, ngaussians, ngaussians), dtype=dtype)
-    S_kii = npy.zeros((kcount, ngaussians, ngaussians), dtype=dtype)
+    s_kii = np.zeros((kcount, ngaussians, ngaussians), dtype=dtype)
+    S_kii = np.zeros((kcount, ngaussians, ngaussians), dtype=dtype)
 
     for kpt in kpt_u:
         k = kpt.k
-        all_integrals = npy.zeros((1, ngaussians), dtype=dtype)
+        all_integrals = np.zeros((1, ngaussians), dtype=dtype)
         tempgrids = gd.zeros(ngaussians, dtype=dtype)
-        tempcoef_xi = npy.identity(ngaussians, dtype=dtype)
+        tempcoef_xi = np.identity(ngaussians, dtype=dtype)
         for lf in lf_a:
             lf.integrate(kpt.psit_nG, all_integrals, k=k)
             lf.add(tempgrids, tempcoef_xi, k=k)
@@ -602,7 +602,7 @@ def dummy_kpt_test():
         print 'all <phi|psi>'
         print all_integrals
 
-        conj_integrals = npy.conj(all_integrals)
+        conj_integrals = np.conj(all_integrals)
         for i in range(ngaussians):
             for j in range(ngaussians):
                 S_kii[k, i, j] = conj_integrals[0, i] * all_integrals[0, j]
@@ -660,10 +660,10 @@ def dummy_kpt_test2():
     a = 5.
     k_c = (0.5,0.5,0.5)
     dtype=complex
-    r = npy.arange(0., rcut, .01)
+    r = np.arange(0., rcut, .01)
 
     ngaussians = 8
-    rchars = npy.linspace(1., rcut/2., ngaussians + 1)[1:]
+    rchars = np.linspace(1., rcut/2., ngaussians + 1)[1:]
     print 'rchars',rchars
     rchar_ref = rchars[ngaussians // 2]
     print 'rchar ref',rchar_ref
@@ -679,7 +679,7 @@ def dummy_kpt_test2():
     gd, kpt, center = make_dummy_kpt_reference(l, ref, k_c,
                                                rcut, a, 40, dtype)
     psit_nG = kpt.psit_nG
-    kpt.f_n = npy.array([1.])
+    kpt.f_n = np.array([1.])
     print 'Norm sqr', gd.integrate(psit_nG * psit_nG)
     #gramschmidt(gd, psit_nG)
     print 'Normalized norm sqr', gd.integrate(psit_nG * psit_nG)
@@ -696,7 +696,7 @@ def dummy_kpt_test2():
 
     orbital = generator.generate(l, gd, [kpt], [center], dtype=complex)
     print 'coefs'
-    print npy.array(orbital.coefs)
+    print np.array(orbital.coefs)
 
     print 'quality'
     print generator.qualities
@@ -712,7 +712,7 @@ def dummy_test(lmax=4, rcut=6., lmin=0): # fix args
     """Run a test using a Gaussian reference function."""
     dtype = complex
     generator = PolarizationOrbitalGenerator(rcut, gaussians=4)
-    r = npy.arange(0., rcut, .01)
+    r = np.arange(0., rcut, .01)
     alpha_ref = 1. / (rcut/4.) ** 2.
     import pylab
     for l in range(lmin, lmax + 1):
@@ -726,7 +726,7 @@ def dummy_test(lmax=4, rcut=6., lmin=0): # fix args
                  for i, k_c in enumerate(k_kc)]
         for kpt in kpt_u:
             kpt.allocate(1)
-            kpt.f_n = npy.array([2.])
+            kpt.f_n = np.array([2.])
             kpt.psit_nG = psit_k
         
         phi = generator.generate(l, gd, kpt_u, [center], dtype=dtype)

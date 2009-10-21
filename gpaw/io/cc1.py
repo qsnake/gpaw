@@ -1,6 +1,6 @@
 from math import pi, cos, sin, sqrt, acos
 
-import numpy as npy
+import numpy as np
 
 from ase.atoms import Atoms
 from ase.parallel import paropen

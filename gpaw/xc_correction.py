@@ -3,7 +3,7 @@
 
 from math import pi, sqrt
 
-import numpy as npy
+import numpy as np
 
 from gpaw.utilities.blas import axpy, gemm, gemv, gemmdot
 from gpaw import extra_parameters
@@ -33,7 +33,7 @@ from itertools import izip
 
 """
 # A_ncL is defined as above, n is an expansion point index (50 Lebedev points).
-A_ncL = npy.empty((len(points), 3, 25))
+A_ncL = np.empty((len(points), 3, 25))
 for A_cL, Y_L, R_c in zip(A_ncL, Y_nL, points):
     for L, Y in enumerate(Y_L):
         l = int(sqrt(L))
@@ -65,7 +65,7 @@ class DensityExpansion(YLExpansion):
           n_g = \sum_L Y_L n_Lg
         """
         for Y_L in self.Y_nL:
-            yield npy.dot(Y_L, self.n_sLg)
+            yield np.dot(Y_L, self.n_sLg)
 
     def get_gradient_expansion(self):
         """Return GradiendExpansion object.
@@ -73,7 +73,7 @@ class DensityExpansion(YLExpansion):
         This is a generator which will yield the gradient of this density.
         """
         # Calculate the radial derivatives of the density expansion dn/dr
-        dndr_sLg = npy.zeros((self.nspins, self.Lmax, self.ng))
+        dndr_sLg = np.zeros((self.nspins, self.Lmax, self.ng))
         for n_Lg, dndr_Lg in zip(self.n_sLg, dndr_sLg):
             for n_g, dndr_g in zip(n_Lg, dndr_Lg):
                 self.rgd.derivative(n_g, dndr_g)
@@ -123,15 +123,15 @@ class GradientExpansion(YLExpansion):
             A_cL = A_cL[:, :self.Lmax].copy()
 
             # Radial gradient
-            a1_sg = npy.dot(Y_L, self.dndr_sLg)
+            a1_sg = np.dot(Y_L, self.dndr_sLg)
 
             # Angular gradient
-            a1_scg = npy.zeros((self.nspins, 3, self.ng))
+            a1_scg = np.zeros((self.nspins, 3, self.ng))
             for a1_cg, n_Lg in zip(a1_scg, self.n_sLg):
                 gemmdot(A_cL, n_Lg, out=a1_cg)
 
             # Square norm of gradient of individual spin channels
-            a2_sg = npy.sum(a1_scg**2, 1)        # \
+            a2_sg = np.sum(a1_scg**2, 1)        # \
             a2_sg[:, 1:] /= self.rgd.r_g[1:]**2  # | angular contribution
             a2_sg[:, 0] = a2_sg[:, 1]            # /
             axpy(1.0, a1_sg**2, a2_sg)           # radial contribution   
@@ -140,7 +140,7 @@ class GradientExpansion(YLExpansion):
             if self.nspins == 1:
                 a2_g = a2_sg[0]
             else:
-                a2_g = npy.sum(a1_scg.sum(0)**2, 0) # \                     
+                a2_g = np.sum(a1_scg.sum(0)**2, 0) # \                     
                 a2_g[1:] /= self.rgd.r_g[1:]**2     # | angular contribution
                 a2_g[0] = a2_g[1]                   # /                     
                 axpy(1.0, a1_sg.sum(0)**2, a2_g)    # radial contribution
@@ -163,11 +163,11 @@ class GradientSlice:
 
         # energy gradient wrt. square norm gradient
         if self.nspins == 1:
-            self.deda2_sg = npy.zeros((1, self.ng))
+            self.deda2_sg = np.zeros((1, self.ng))
             self.a1_g = self.a1_sg[0]
             self.a1_cg = self.a1_scg[0]
         else:
-            self.deda2_sg = npy.zeros((3, self.ng))
+            self.deda2_sg = np.zeros((3, self.ng))
             self.a1_g = self.a1_sg.sum(0)
             self.a1_cg = self.a1_scg.sum(0)
 
@@ -275,13 +275,13 @@ class Integrator:
           grad:    GradientSlice object with all possible details needed for
                    gradient.
         """
-        BY_pq = npy.dot(self.B_pqL, self.Y_L)
+        BY_pq = np.dot(self.B_pqL, self.Y_L)
         v_sq = gemmdot(v_sg, n_qg, trans='t')
 
         # The LDA part
         for H_p, v_g in zip(self.H_sp, v_sg):
-            dEdD_q = npy.dot(n_qg, v_g * self.dv_g)
-            axpy(coeff * self.weight, npy.dot(BY_pq, dEdD_q), H_p)
+            dEdD_q = np.dot(n_qg, v_g * self.dv_g)
+            axpy(coeff * self.weight, np.dot(BY_pq, dEdD_q), H_p)
 
         if grad is None:
             return
@@ -297,7 +297,7 @@ class Integrator:
             # Add contribution from derivative of radial density times Y_L
             x_g = a1_g * deda2_g * self.dv_g
             self.rgd.derivative2(x_g, x_g)
-            gemv(coeff, BY_pq, npy.dot(n_qg, x_g), 1.0, dEdD_p, 't')
+            gemv(coeff, BY_pq, np.dot(n_qg, x_g), 1.0, dEdD_p, 't')
 
             # Add contribution from radial density times gradient of Y_L
             x_cg = a1_cg * deda2_g * self.rgd.dr_g
@@ -336,7 +336,7 @@ class Integrator:
             # de / d |nabla (na + nb)|^2
 
             # This is common to both spin channels
-            dEdD_p = npy.zeros((self.nii))
+            dEdD_p = np.zeros((self.nii))
             energy_gradient(-2.0 * coeff * self.weight,
                             grad.radial_gradient(),
                             grad.angular_gradient(),
@@ -353,7 +353,7 @@ class Integrator:
                                 H_p)
     
     def integrate_e_g(self, e_g):
-        return npy.dot(self.dv_g, e_g) * self.weight
+        return np.dot(self.dv_g, e_g) * self.weight
 
 
 class BaseXCCorrection:
@@ -392,7 +392,7 @@ class BaseXCCorrection:
         njj = nj * (nj + 1) // 2
 
         # 
-        self.B_Lqp = npy.zeros((self.Lmax, njj, nii))
+        self.B_Lqp = np.zeros((self.Lmax, njj, nii))
         p = 0
         i1 = 0
         for j1, l1, L1 in jlL:
@@ -407,8 +407,8 @@ class BaseXCCorrection:
         self.B_pqL = self.B_Lqp.T.copy()
 
         # 
-        self.n_qg = npy.zeros((njj, ng))
-        self.nt_qg = npy.zeros((njj, ng))
+        self.n_qg = np.zeros((njj, ng))
+        self.nt_qg = np.zeros((njj, ng))
         q = 0
         for j1, l1 in jl:
             for j2, l2 in jl[j1:]:
@@ -452,7 +452,7 @@ class BaseXCCorrection:
         The input D_sp is the density matrix in packed(pack) form
         The result is given in packed(pack2) form.
         """
-        I_sp = npy.zeros(D_sp.shape)
+        I_sp = np.zeros(D_sp.shape)
         self.calculate_energy_and_derivatives(D_sp, I_sp)
         return I_sp
 
@@ -469,32 +469,32 @@ class BaseXCCorrection:
         assert ns == 1 and not self.xc.get_functional().gga
 
         D_p = D_sp[0]
-        D_Lq = npy.dot(self.B_Lqp, D_p)
+        D_Lq = np.dot(self.B_Lqp, D_p)
 
         # Expand all-electron density in spherical harmonics:
         n_qg = self.n_qg
-        n_Lg = npy.dot(D_Lq, n_qg)
+        n_Lg = np.dot(D_Lq, n_qg)
         n_Lg[0] += self.nc_g * sqrt(4 * pi)
 
         # Expand pseudo electron density in spherical harmonics:
         nt_qg = self.nt_qg
-        nt_Lg = npy.dot(D_Lq, nt_qg)
+        nt_Lg = np.dot(D_Lq, nt_qg)
         nt_Lg[0] += self.nct_g * sqrt(4 * pi)
 
         # Allocate array for result:
-        J_pp = npy.zeros((nii, nii))
+        J_pp = np.zeros((nii, nii))
 
         # Loop over 50 points on the sphere surface:
         for w, Y_L in zip(weights, self.Y_nL):
-            B_pq = npy.dot(self.B_pqL, Y_L)
+            B_pq = np.dot(self.B_pqL, Y_L)
 
-            fxcdv = fxc(npy.dot(Y_L, n_Lg)) * self.dv_g
-            dn2_qq = npy.inner(n_qg * fxcdv, n_qg)
+            fxcdv = fxc(np.dot(Y_L, n_Lg)) * self.dv_g
+            dn2_qq = np.inner(n_qg * fxcdv, n_qg)
 
-            fxctdv = fxc(npy.dot(Y_L, nt_Lg)) * self.dv_g
-            dn2_qq -= npy.inner(nt_qg * fxctdv, nt_qg)
+            fxctdv = fxc(np.dot(Y_L, nt_Lg)) * self.dv_g
+            dn2_qq -= np.inner(nt_qg * fxctdv, nt_qg)
 
-            J_pp += w * npy.dot(B_pq, npy.inner(dn2_qq, B_pq))
+            J_pp += w * np.dot(B_pq, np.inner(dn2_qq, B_pq))
 
         return J_pp
 
@@ -523,7 +523,7 @@ class BaseXCCorrection:
         nj = len(jl)
         ni = len(jlL)
         nii = ni * (ni + 1) // 2
-        dphidr_jg = npy.zeros(npy.shape(phi_jg))
+        dphidr_jg = np.zeros(np.shape(phi_jg))
         for j in range(nj):
             phi_g = phi_jg[j]
             self.rgd.derivative(phi_g, dphidr_jg[j])
@@ -574,18 +574,18 @@ class BaseXCCorrection:
                 jlL.append((j, l, l**2 + m))
         ni = len(jlL)
         nii = ni * (ni + 1) // 2
-        self.tau_ypg = npy.zeros((ny, nii, ng))
-        self.taut_ypg = npy.zeros((ny, nii, ng))
+        self.tau_ypg = np.zeros((ny, nii, ng))
+        self.taut_ypg = np.zeros((ny, nii, ng))
         phi_jg = data.phi_jg
         phit_jg = data.phit_jg
-        phi_jg = npy.array([phi_g[:ng].copy() for phi_g in phi_jg])
-        phit_jg = npy.array([phit_g[:ng].copy() for phit_g in phit_jg])
+        phi_jg = np.array([phi_g[:ng].copy() for phi_g in phi_jg])
+        phit_jg = np.array([phit_g[:ng].copy() for phit_g in phit_jg])
         self.create_kinetic(jlL,jl,ny, nii,phit_jg, self.taut_ypg)
         self.create_kinetic(jlL,jl,ny, nii,phi_jg, self.tau_ypg)            
         tauc_g = data.tauc_g
         tauct_g = data.tauct_g
-        self.tauc_g = npy.array(tauc_g[:ng].copy())
-        self.tauct_g = npy.array(tauct_g[:ng].copy())
+        self.tauc_g = np.array(tauc_g[:ng].copy())
+        self.tauct_g = np.array(tauct_g[:ng].copy())
 
 
 class NewXCCorrection(BaseXCCorrection):
@@ -593,7 +593,7 @@ class NewXCCorrection(BaseXCCorrection):
         self.nspins = nspins
                 
     def expand_density(self, D_sLq, n_qg, nc_g, ncorehole_g=None):
-        n_sLg = npy.dot(D_sLq, n_qg)
+        n_sLg = np.dot(D_sLq, n_qg)
         if nc_g is not None:
             n_sLg[:, 0] += (sqrt(4 * pi) / self.nspins) * nc_g
         if self.nspins == 2 and ncorehole_g is not None:
@@ -651,8 +651,8 @@ class NewXCCorrection(BaseXCCorrection):
 
     def LDA(self, D_sp, H_sp):
         H_sp[:] = 0.0
-        vxc_sg = npy.zeros((self.nspins, self.ng))
-        e_g = npy.zeros((self.ng,))
+        vxc_sg = np.zeros((self.nspins, self.ng))
+        e_g = np.zeros((self.ng,))
         Etot = 0.0
         
         D_sLq = gemmdot(D_sp, self.B_Lqp, trans='t')
@@ -674,8 +674,8 @@ class NewXCCorrection(BaseXCCorrection):
 
     def GGA(self, D_sp, H_sp):
         H_sp[:] = 0.0
-        vxc_sg = npy.zeros((self.nspins, self.ng))
-        e_g = npy.zeros((self.ng,))
+        vxc_sg = np.zeros((self.nspins, self.ng))
+        e_g = np.zeros((self.ng,))
         Etot = 0
 
         D_sLq = gemmdot(D_sp, self.B_Lqp, trans='t')
@@ -729,15 +729,15 @@ class OldXCCorrection(BaseXCCorrection):
                 
     def quickdot(self, A_mn, x_n, y_m=None, trans='t'):
         if y_m is None and trans == 't':
-            y_m = npy.zeros(A_mn.shape[:-1], dtype=A_mn.dtype)
+            y_m = np.zeros(A_mn.shape[:-1], dtype=A_mn.dtype)
         elif y_m is None and trans == 'n':
-            y_m = npy.zeros(A_mn.shape[1:], dtype=A_mn.dtype)
+            y_m = np.zeros(A_mn.shape[1:], dtype=A_mn.dtype)
         gemv(1.0, A_mn, x_n, 0.0, y_m, trans)
         return y_m
     
     def quickdotmm(self, A_mk, B_kn, C_mn=None):
         if C_mn is None:
-            C_mn = npy.zeros((A_mk.shape[0],B_kn.shape[1]), A_mk.dtype)
+            C_mn = np.zeros((A_mk.shape[0],B_kn.shape[1]), A_mk.dtype)
         gemm(1.0, B_kn, A_mk, 0.0, C_mn, 'n')
         return C_mn
     
@@ -754,11 +754,11 @@ class OldXCCorrection(BaseXCCorrection):
             dEdD_p[:] = 0.0
             for w, Y_L in zip(weights, self.Y_nL):
                 n_g = self.quickdot(n_Lg, Y_L, None, 'n')
-                vxc_g = npy.zeros(self.ng)
+                vxc_g = np.zeros(self.ng)
                 E += self.xc.get_energy_and_potential(n_g, vxc_g) * w
                 dEdD_q = self.quickdot(self.n_qg, vxc_g * self.dv_g)
                 nt_g = self.quickdot(nt_Lg, Y_L, None, 'n')
-                vxct_g = npy.zeros(self.ng)
+                vxct_g = np.zeros(self.ng)
                 E -= self.xc.get_energy_and_potential(nt_g, vxct_g) * w
                 axpy(-1.0, self.quickdot(self.nt_qg, vxct_g * self.dv_g), dEdD_q)
                 axpy(w, self.quickdot(self.quickdot(self.B_pqL, Y_L), dEdD_q), dEdD_p)
@@ -781,17 +781,17 @@ class OldXCCorrection(BaseXCCorrection):
             dEdDb_p[:] = 0.0
             for w, Y_L in zip(weights, self.Y_nL):
                 na_g = self.quickdot(na_Lg, Y_L, None, 'n')
-                vxca_g = npy.zeros(self.ng)
+                vxca_g = np.zeros(self.ng)
                 nb_g = self.quickdot(nb_Lg, Y_L, None, 'n')
-                vxcb_g = npy.zeros(self.ng)
+                vxcb_g = np.zeros(self.ng)
                 E += self.xc.get_energy_and_potential(na_g, vxca_g,
                                                       nb_g, vxcb_g) * w
                 dEdDa_q = self.quickdot(self.n_qg, vxca_g * self.dv_g)
                 dEdDb_q = self.quickdot(self.n_qg, vxcb_g * self.dv_g)
                 nta_g = self.quickdot(nta_Lg, Y_L, None, 'n')
-                vxcta_g = npy.zeros(self.ng)
+                vxcta_g = np.zeros(self.ng)
                 ntb_g = self.quickdot(ntb_Lg, Y_L, None, 'n')
-                vxctb_g = npy.zeros(self.ng)
+                vxctb_g = np.zeros(self.ng)
                 E -= self.xc.get_energy_and_potential(nta_g, vxcta_g,
                                                       ntb_g, vxctb_g) * w
                 axpy(-1.0, self.quickdot(self.nt_qg, vxcta_g * self.dv_g), dEdDa_q)
@@ -811,8 +811,8 @@ class OldXCCorrection(BaseXCCorrection):
             axpy(sqrt(4 * pi), self.nc_g, n_Lg[0])
             nt_Lg = self.quickdotmm(D_Lq, self.nt_qg)
             axpy(sqrt(4 * pi), self.nct_g, nt_Lg[0])
-            dndr_Lg = npy.zeros((self.Lmax, self.ng))
-            dntdr_Lg = npy.zeros((self.Lmax, self.ng))
+            dndr_Lg = np.zeros((self.Lmax, self.ng))
+            dntdr_Lg = np.zeros((self.Lmax, self.ng))
             for L in range(self.Lmax):
                 self.rgd.derivative(n_Lg[L], dndr_Lg[L])
                 self.rgd.derivative(nt_Lg[L], dntdr_Lg[L])
@@ -830,11 +830,11 @@ class OldXCCorrection(BaseXCCorrection):
                 a2_g[0] = a2_g[1]
                 a1_g = self.quickdot(dndr_Lg, Y_L, None, 'n')
                 a2_g += a1_g**2
-                v_g = npy.zeros(self.ng)
-                e_g = npy.zeros(self.ng)
-                deda2_g = npy.zeros(self.ng)
+                v_g = np.zeros(self.ng)
+                e_g = np.zeros(self.ng)
+                deda2_g = np.zeros(self.ng)
                 xcfunc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
-                E += w * npy.dot(e_g, self.dv_g)
+                E += w * np.dot(e_g, self.dv_g)
                 x_g = -2.0 * deda2_g * self.dv_g * a1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += v_g * self.dv_g
@@ -854,11 +854,11 @@ class OldXCCorrection(BaseXCCorrection):
                 a2_g[0] = a2_g[1]
                 a1_g = self.quickdot(dntdr_Lg, Y_L, None, 'n')
                 a2_g += a1_g**2
-                v_g = npy.zeros(self.ng)
-                e_g = npy.zeros(self.ng)
-                deda2_g = npy.zeros(self.ng)
+                v_g = np.zeros(self.ng)
+                e_g = np.zeros(self.ng)
+                deda2_g = np.zeros(self.ng)
                 xcfunc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
-                E -= w * npy.dot(e_g, self.dv_g)
+                E -= w * np.dot(e_g, self.dv_g)
                 x_g = -2.0 * deda2_g * self.dv_g * a1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += v_g * self.dv_g
@@ -877,8 +877,8 @@ class OldXCCorrection(BaseXCCorrection):
             axpy(sqrt(4 * pi), self.nca_g, na_Lg[0])
             nat_Lg = self.quickdotmm(Da_Lq, self.nt_qg)
             axpy(0.5*sqrt(4 * pi), self.nct_g, nat_Lg[0])
-            dnadr_Lg = npy.zeros((self.Lmax, self.ng))
-            dnatdr_Lg = npy.zeros((self.Lmax, self.ng))
+            dnadr_Lg = np.zeros((self.Lmax, self.ng))
+            dnatdr_Lg = np.zeros((self.Lmax, self.ng))
             for L in range(self.Lmax):
                 self.rgd.derivative(na_Lg[L], dnadr_Lg[L])
                 self.rgd.derivative(nat_Lg[L], dnatdr_Lg[L])
@@ -891,8 +891,8 @@ class OldXCCorrection(BaseXCCorrection):
             axpy(sqrt(4 * pi), self.ncb_g, nb_Lg[0])
             nbt_Lg = self.quickdotmm(Db_Lq, self.nt_qg)
             axpy(0.5*sqrt(4 * pi), self.nct_g, nbt_Lg[0])
-            dnbdr_Lg = npy.zeros((self.Lmax, self.ng))
-            dnbtdr_Lg = npy.zeros((self.Lmax, self.ng))
+            dnbdr_Lg = np.zeros((self.Lmax, self.ng))
+            dnbtdr_Lg = np.zeros((self.Lmax, self.ng))
             for L in range(self.Lmax):
                 self.rgd.derivative(nb_Lg[L], dnbdr_Lg[L])
                 self.rgd.derivative(nbt_Lg[L], dnbtdr_Lg[L])
@@ -928,16 +928,16 @@ class OldXCCorrection(BaseXCCorrection):
                 a2_g[0] = a2_g[1]
                 a2_g += (aa1_g + ab1_g)**2
 
-                va_g = npy.zeros(self.ng)
-                vb_g = npy.zeros(self.ng)
-                e_g = npy.zeros(self.ng)
-                deda2_g = npy.zeros(self.ng)
-                dedaa2_g = npy.zeros(self.ng)
-                dedab2_g = npy.zeros(self.ng)
+                va_g = np.zeros(self.ng)
+                vb_g = np.zeros(self.ng)
+                e_g = np.zeros(self.ng)
+                deda2_g = np.zeros(self.ng)
+                dedaa2_g = np.zeros(self.ng)
+                dedab2_g = np.zeros(self.ng)
                 xcfunc.calculate_spinpolarized(e_g, na_g, va_g, nb_g, vb_g,
                                                a2_g, aa2_g, ab2_g,
                                                deda2_g, dedaa2_g, dedab2_g)
-                E += w * npy.dot(e_g, self.dv_g)
+                E += w * np.dot(e_g, self.dv_g)
 
                 x_g = -2.0 * deda2_g * self.dv_g * (aa1_g + ab1_g)
                 self.rgd.derivative2(x_g, x_g)
@@ -996,16 +996,16 @@ class OldXCCorrection(BaseXCCorrection):
                 a2_g[0] = a2_g[1]
                 a2_g += (aa1_g + ab1_g)**2
 
-                va_g = npy.zeros(self.ng)
-                vb_g = npy.zeros(self.ng)
-                e_g = npy.zeros(self.ng)
-                deda2_g = npy.zeros(self.ng)
-                dedaa2_g = npy.zeros(self.ng)
-                dedab2_g = npy.zeros(self.ng)
+                va_g = np.zeros(self.ng)
+                vb_g = np.zeros(self.ng)
+                e_g = np.zeros(self.ng)
+                deda2_g = np.zeros(self.ng)
+                dedaa2_g = np.zeros(self.ng)
+                dedab2_g = np.zeros(self.ng)
                 xcfunc.calculate_spinpolarized(e_g, na_g, va_g, nb_g, vb_g,
                                                a2_g, aa2_g, ab2_g,
                                                deda2_g, dedaa2_g, dedab2_g)
-                E -= w * npy.dot(e_g, self.dv_g)
+                E -= w * np.dot(e_g, self.dv_g)
 
                 x_g = -2.0 * deda2_g * self.dv_g * (aa1_g + ab1_g)
                 self.rgd.derivative2(x_g, x_g)
@@ -1044,13 +1044,13 @@ class OldXCCorrection(BaseXCCorrection):
         E = 0.0
         if len(D_sp) == 1:
             D_p = D_sp[0]
-            D_Lq = npy.dot(self.B_Lqp, D_p)
-            n_Lg = npy.dot(D_Lq, self.n_qg)
+            D_Lq = np.dot(self.B_Lqp, D_p)
+            n_Lg = np.dot(D_Lq, self.n_qg)
             n_Lg[0] += self.nc_g * sqrt(4 * pi)
-            nt_Lg = npy.dot(D_Lq, self.nt_qg)
+            nt_Lg = np.dot(D_Lq, self.nt_qg)
             nt_Lg[0] += self.nct_g * sqrt(4 * pi)
-            dndr_Lg = npy.zeros((self.Lmax, self.ng))
-            dntdr_Lg = npy.zeros((self.Lmax, self.ng))
+            dndr_Lg = np.zeros((self.Lmax, self.ng))
+            dntdr_Lg = np.zeros((self.Lmax, self.ng))
             for L in range(self.Lmax):
                 self.rgd.derivative(n_Lg[L], dndr_Lg[L])
                 self.rgd.derivative(nt_Lg[L], dntdr_Lg[L])
@@ -1059,72 +1059,72 @@ class OldXCCorrection(BaseXCCorrection):
             y = 0
             for w, Y_L in zip(weights, self.Y_nL):
                 A_Li = A_Liy[:self.Lmax, :, y]
-                n_g = npy.dot(Y_L, n_Lg)
-                a1x_g = npy.dot(A_Li[:, 0], n_Lg)
-                a1y_g = npy.dot(A_Li[:, 1], n_Lg)
-                a1z_g = npy.dot(A_Li[:, 2], n_Lg)
+                n_g = np.dot(Y_L, n_Lg)
+                a1x_g = np.dot(A_Li[:, 0], n_Lg)
+                a1y_g = np.dot(A_Li[:, 1], n_Lg)
+                a1z_g = np.dot(A_Li[:, 2], n_Lg)
                 a2_g = a1x_g**2 + a1y_g**2 + a1z_g**2
                 a2_g[1:] /= r_g[1:]**2
                 a2_g[0] = a2_g[1]
-                a1_g = npy.dot(Y_L, dndr_Lg)
+                a1_g = np.dot(Y_L, dndr_Lg)
                 a2_g += a1_g**2
-                v_g = npy.zeros(self.ng)
-                e_g = npy.zeros(self.ng)
-                deda2_g = npy.zeros(self.ng)
+                v_g = np.zeros(self.ng)
+                e_g = np.zeros(self.ng)
+                deda2_g = np.zeros(self.ng)
                 xcfunc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
-                E += w * npy.dot(e_g, self.dv_g)
+                E += w * np.dot(e_g, self.dv_g)
                 x_g = -2.0 * deda2_g * self.dv_g * a1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += v_g * self.dv_g
                 B_Lqp = self.B_Lqp
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                      npy.dot(self.n_qg, x_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL, Y_L),
+                                     np.dot(self.n_qg, x_g))
                 x_g = 8.0 * pi * deda2_g * self.rgd.dr_g
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL, A_Li[:, 0]),
-                                      npy.dot(self.n_qg, x_g * a1x_g))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL, A_Li[:, 1]),
-                                      npy.dot(self.n_qg, x_g * a1y_g))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL, A_Li[:, 2]),
-                                      npy.dot(self.n_qg, x_g * a1z_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL, A_Li[:, 0]),
+                                     np.dot(self.n_qg, x_g * a1x_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL, A_Li[:, 1]),
+                                     np.dot(self.n_qg, x_g * a1y_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL, A_Li[:, 2]),
+                                     np.dot(self.n_qg, x_g * a1z_g))
 
-                n_g = npy.dot(Y_L, nt_Lg)
-                a1x_g = npy.dot(A_Li[:, 0], nt_Lg)
-                a1y_g = npy.dot(A_Li[:, 1], nt_Lg)
-                a1z_g = npy.dot(A_Li[:, 2], nt_Lg)
+                n_g = np.dot(Y_L, nt_Lg)
+                a1x_g = np.dot(A_Li[:, 0], nt_Lg)
+                a1y_g = np.dot(A_Li[:, 1], nt_Lg)
+                a1z_g = np.dot(A_Li[:, 2], nt_Lg)
                 a2_g = a1x_g**2 + a1y_g**2 + a1z_g**2
                 a2_g[1:] /= r_g[1:]**2
                 a2_g[0] = a2_g[1]
-                a1_g = npy.dot(Y_L, dntdr_Lg)
+                a1_g = np.dot(Y_L, dntdr_Lg)
                 a2_g += a1_g**2
-                v_g = npy.zeros(self.ng)
-                e_g = npy.zeros(self.ng)
-                deda2_g = npy.zeros(self.ng)
+                v_g = np.zeros(self.ng)
+                e_g = np.zeros(self.ng)
+                deda2_g = np.zeros(self.ng)
                 xcfunc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
-                E -= w * npy.dot(e_g, self.dv_g)
+                E -= w * np.dot(e_g, self.dv_g)
                 x_g = -2.0 * deda2_g * self.dv_g * a1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += v_g * self.dv_g
                 B_Lqp = self.B_Lqp
-                dEdD_p -= w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                      npy.dot(self.nt_qg, x_g))
+                dEdD_p -= w * np.dot(np.dot(self.B_pqL, Y_L),
+                                     np.dot(self.nt_qg, x_g))
                 x_g = 8.0 * pi * deda2_g * self.rgd.dr_g
-                dEdD_p -= w * npy.dot(npy.dot(self.B_pqL, A_Li[:, 0]),
-                                      npy.dot(self.nt_qg, x_g * a1x_g))
-                dEdD_p -= w * npy.dot(npy.dot(self.B_pqL, A_Li[:, 1]),
-                                      npy.dot(self.nt_qg, x_g * a1y_g))
-                dEdD_p -= w * npy.dot(npy.dot(self.B_pqL, A_Li[:, 2]),
-                                      npy.dot(self.nt_qg, x_g * a1z_g))
+                dEdD_p -= w * np.dot(np.dot(self.B_pqL, A_Li[:, 0]),
+                                     np.dot(self.nt_qg, x_g * a1x_g))
+                dEdD_p -= w * np.dot(np.dot(self.B_pqL, A_Li[:, 1]),
+                                     np.dot(self.nt_qg, x_g * a1y_g))
+                dEdD_p -= w * np.dot(np.dot(self.B_pqL, A_Li[:, 2]),
+                                     np.dot(self.nt_qg, x_g * a1z_g))
 
                 y += 1
         else:
             Da_p = D_sp[0]
-            Da_Lq = npy.dot(self.B_Lqp, Da_p)
-            na_Lg = npy.dot(Da_Lq, self.n_qg)
+            Da_Lq = np.dot(self.B_Lqp, Da_p)
+            na_Lg = np.dot(Da_Lq, self.n_qg)
             na_Lg[0] += self.nca_g * sqrt(4 * pi)
-            nat_Lg = npy.dot(Da_Lq, self.nt_qg)
+            nat_Lg = np.dot(Da_Lq, self.nt_qg)
             nat_Lg[0] += 0.5 * self.nct_g * sqrt(4 * pi)
-            dnadr_Lg = npy.zeros((self.Lmax, self.ng))
-            dnatdr_Lg = npy.zeros((self.Lmax, self.ng))
+            dnadr_Lg = np.zeros((self.Lmax, self.ng))
+            dnatdr_Lg = np.zeros((self.Lmax, self.ng))
             for L in range(self.Lmax):
                 self.rgd.derivative(na_Lg[L], dnadr_Lg[L])
                 self.rgd.derivative(nat_Lg[L], dnatdr_Lg[L])
@@ -1132,13 +1132,13 @@ class OldXCCorrection(BaseXCCorrection):
             dEdDa_p[:] = 0.0
 
             Db_p = D_sp[1]
-            Db_Lq = npy.dot(self.B_Lqp, Db_p)
-            nb_Lg = npy.dot(Db_Lq, self.n_qg)
+            Db_Lq = np.dot(self.B_Lqp, Db_p)
+            nb_Lg = np.dot(Db_Lq, self.n_qg)
             nb_Lg[0] += self.ncb_g * sqrt(4 * pi)
-            nbt_Lg = npy.dot(Db_Lq, self.nt_qg)
+            nbt_Lg = np.dot(Db_Lq, self.nt_qg)
             nbt_Lg[0] += 0.5 * self.nct_g * sqrt(4 * pi)
-            dnbdr_Lg = npy.zeros((self.Lmax, self.ng))
-            dnbtdr_Lg = npy.zeros((self.Lmax, self.ng))
+            dnbdr_Lg = np.zeros((self.Lmax, self.ng))
+            dnbtdr_Lg = np.zeros((self.Lmax, self.ng))
             for L in range(self.Lmax):
                 self.rgd.derivative(nb_Lg[L], dnbdr_Lg[L])
                 self.rgd.derivative(nbt_Lg[L], dnbtdr_Lg[L])
@@ -1148,24 +1148,24 @@ class OldXCCorrection(BaseXCCorrection):
             for w, Y_L in zip(weights, self.Y_nL):
                 A_Li = A_Liy[:self.Lmax, :, y]
 
-                na_g = npy.dot(Y_L, na_Lg)
-                aa1x_g = npy.dot(A_Li[:, 0], na_Lg)
-                aa1y_g = npy.dot(A_Li[:, 1], na_Lg)
-                aa1z_g = npy.dot(A_Li[:, 2], na_Lg)
+                na_g = np.dot(Y_L, na_Lg)
+                aa1x_g = np.dot(A_Li[:, 0], na_Lg)
+                aa1y_g = np.dot(A_Li[:, 1], na_Lg)
+                aa1z_g = np.dot(A_Li[:, 2], na_Lg)
                 aa2_g = aa1x_g**2 + aa1y_g**2 + aa1z_g**2
                 aa2_g[1:] /= r_g[1:]**2
                 aa2_g[0] = aa2_g[1]
-                aa1_g = npy.dot(Y_L, dnadr_Lg)
+                aa1_g = np.dot(Y_L, dnadr_Lg)
                 aa2_g += aa1_g**2
 
-                nb_g = npy.dot(Y_L, nb_Lg)
-                ab1x_g = npy.dot(A_Li[:, 0], nb_Lg)
-                ab1y_g = npy.dot(A_Li[:, 1], nb_Lg)
-                ab1z_g = npy.dot(A_Li[:, 2], nb_Lg)
+                nb_g = np.dot(Y_L, nb_Lg)
+                ab1x_g = np.dot(A_Li[:, 0], nb_Lg)
+                ab1y_g = np.dot(A_Li[:, 1], nb_Lg)
+                ab1z_g = np.dot(A_Li[:, 2], nb_Lg)
                 ab2_g = ab1x_g**2 + ab1y_g**2 + ab1z_g**2
                 ab2_g[1:] /= r_g[1:]**2
                 ab2_g[0] = ab2_g[1]
-                ab1_g = npy.dot(Y_L, dnbdr_Lg)
+                ab1_g = np.dot(Y_L, dnbdr_Lg)
                 ab2_g += ab1_g**2
 
                 a2_g = ((aa1x_g + ab1x_g)**2 +
@@ -1175,91 +1175,91 @@ class OldXCCorrection(BaseXCCorrection):
                 a2_g[0] = a2_g[1]
                 a2_g += (aa1_g + ab1_g)**2
 
-                va_g = npy.zeros(self.ng)
-                vb_g = npy.zeros(self.ng)
-                e_g = npy.zeros(self.ng)
-                deda2_g = npy.zeros(self.ng)
-                dedaa2_g = npy.zeros(self.ng)
-                dedab2_g = npy.zeros(self.ng)
+                va_g = np.zeros(self.ng)
+                vb_g = np.zeros(self.ng)
+                e_g = np.zeros(self.ng)
+                deda2_g = np.zeros(self.ng)
+                dedaa2_g = np.zeros(self.ng)
+                dedab2_g = np.zeros(self.ng)
                 xcfunc.calculate_spinpolarized(e_g, na_g, va_g, nb_g, vb_g,
                                                a2_g, aa2_g, ab2_g,
                                                deda2_g, dedaa2_g, dedab2_g)
-                E += w * npy.dot(e_g, self.dv_g)
+                E += w * np.dot(e_g, self.dv_g)
 
                 x_g = -deda2_g * self.dv_g * aa1_g
                 self.rgd.derivative2(x_g, x_g)
                 B_Lqp = self.B_Lqp
 
-                dEdD_p = w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                     npy.dot(self.n_qg, x_g))
+                dEdD_p = w * np.dot(np.dot(self.B_pqL, Y_L),
+                                    np.dot(self.n_qg, x_g))
                 x_g = 4.0 * pi * deda2_g * self.rgd.dr_g
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL, A_Li[:, 0]),
-                                      npy.dot(self.n_qg, x_g * aa1x_g))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL, A_Li[:, 1]),
-                                      npy.dot(self.n_qg, x_g * aa1y_g))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL, A_Li[:, 2]),
-                                      npy.dot(self.n_qg, x_g * aa1z_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL, A_Li[:, 0]),
+                                     np.dot(self.n_qg, x_g * aa1x_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL, A_Li[:, 1]),
+                                     np.dot(self.n_qg, x_g * aa1y_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL, A_Li[:, 2]),
+                                     np.dot(self.n_qg, x_g * aa1z_g))
                 dEdDb_p += dEdD_p
 
                 x_g = -deda2_g * self.dv_g * ab1_g
                 self.rgd.derivative2(x_g, x_g)
                 B_Lqp = self.B_Lqp
 
-                dEdD_p = w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                     npy.dot(self.n_qg, x_g))
+                dEdD_p = w * np.dot(np.dot(self.B_pqL, Y_L),
+                                    np.dot(self.n_qg, x_g))
                 x_g = 4.0 * pi * deda2_g * self.rgd.dr_g
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL, A_Li[:, 0]),
-                                      npy.dot(self.n_qg, x_g * ab1x_g))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL, A_Li[:, 1]),
-                                      npy.dot(self.n_qg, x_g * ab1y_g))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL, A_Li[:, 2]),
-                                      npy.dot(self.n_qg, x_g * ab1z_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL, A_Li[:, 0]),
+                                     np.dot(self.n_qg, x_g * ab1x_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL, A_Li[:, 1]),
+                                     np.dot(self.n_qg, x_g * ab1y_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL, A_Li[:, 2]),
+                                     np.dot(self.n_qg, x_g * ab1z_g))
                 dEdDa_p += dEdD_p
 
                 x_g = -2.0 * dedaa2_g * self.dv_g * aa1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += va_g * self.dv_g
-                dEdDa_p += w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                       npy.dot(self.n_qg, x_g))
+                dEdDa_p += w * np.dot(np.dot(self.B_pqL, Y_L),
+                                      np.dot(self.n_qg, x_g))
                 x_g = 8.0 * pi * dedaa2_g * self.rgd.dr_g
-                dEdDa_p += w * npy.dot(npy.dot(self.B_pqL, A_Li[:, 0]),
-                                       npy.dot(self.n_qg, x_g * aa1x_g))
-                dEdDa_p += w * npy.dot(npy.dot(self.B_pqL, A_Li[:, 1]),
-                                       npy.dot(self.n_qg, x_g * aa1y_g))
-                dEdDa_p += w * npy.dot(npy.dot(self.B_pqL, A_Li[:, 2]),
-                                       npy.dot(self.n_qg, x_g * aa1z_g))
+                dEdDa_p += w * np.dot(np.dot(self.B_pqL, A_Li[:, 0]),
+                                      np.dot(self.n_qg, x_g * aa1x_g))
+                dEdDa_p += w * np.dot(np.dot(self.B_pqL, A_Li[:, 1]),
+                                      np.dot(self.n_qg, x_g * aa1y_g))
+                dEdDa_p += w * np.dot(np.dot(self.B_pqL, A_Li[:, 2]),
+                                      np.dot(self.n_qg, x_g * aa1z_g))
 
                 x_g = -2.0 * dedab2_g * self.dv_g * ab1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += vb_g * self.dv_g
-                dEdDb_p += w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                       npy.dot(self.n_qg, x_g))
+                dEdDb_p += w * np.dot(np.dot(self.B_pqL, Y_L),
+                                      np.dot(self.n_qg, x_g))
                 x_g = 8.0 * pi * dedab2_g * self.rgd.dr_g
-                dEdDb_p += w * npy.dot(npy.dot(self.B_pqL, A_Li[:, 0]),
-                                       npy.dot(self.n_qg, x_g * ab1x_g))
-                dEdDb_p += w * npy.dot(npy.dot(self.B_pqL, A_Li[:, 1]),
-                                       npy.dot(self.n_qg, x_g * ab1y_g))
-                dEdDb_p += w * npy.dot(npy.dot(self.B_pqL, A_Li[:, 2]),
-                                       npy.dot(self.n_qg, x_g * ab1z_g))
+                dEdDb_p += w * np.dot(np.dot(self.B_pqL, A_Li[:, 0]),
+                                      np.dot(self.n_qg, x_g * ab1x_g))
+                dEdDb_p += w * np.dot(np.dot(self.B_pqL, A_Li[:, 1]),
+                                      np.dot(self.n_qg, x_g * ab1y_g))
+                dEdDb_p += w * np.dot(np.dot(self.B_pqL, A_Li[:, 2]),
+                                      np.dot(self.n_qg, x_g * ab1z_g))
 
-                na_g = npy.dot(Y_L, nat_Lg)
-                aa1x_g = npy.dot(A_Li[:, 0], nat_Lg)
-                aa1y_g = npy.dot(A_Li[:, 1], nat_Lg)
-                aa1z_g = npy.dot(A_Li[:, 2], nat_Lg)
+                na_g = np.dot(Y_L, nat_Lg)
+                aa1x_g = np.dot(A_Li[:, 0], nat_Lg)
+                aa1y_g = np.dot(A_Li[:, 1], nat_Lg)
+                aa1z_g = np.dot(A_Li[:, 2], nat_Lg)
                 aa2_g = aa1x_g**2 + aa1y_g**2 + aa1z_g**2
                 aa2_g[1:] /= r_g[1:]**2
                 aa2_g[0] = aa2_g[1]
-                aa1_g = npy.dot(Y_L, dnatdr_Lg)
+                aa1_g = np.dot(Y_L, dnatdr_Lg)
                 aa2_g += aa1_g**2
 
-                nb_g = npy.dot(Y_L, nbt_Lg)
-                ab1x_g = npy.dot(A_Li[:, 0], nbt_Lg)
-                ab1y_g = npy.dot(A_Li[:, 1], nbt_Lg)
-                ab1z_g = npy.dot(A_Li[:, 2], nbt_Lg)
+                nb_g = np.dot(Y_L, nbt_Lg)
+                ab1x_g = np.dot(A_Li[:, 0], nbt_Lg)
+                ab1y_g = np.dot(A_Li[:, 1], nbt_Lg)
+                ab1z_g = np.dot(A_Li[:, 2], nbt_Lg)
                 ab2_g = ab1x_g**2 + ab1y_g**2 + ab1z_g**2
                 ab2_g[1:] /= r_g[1:]**2
                 ab2_g[0] = ab2_g[1]
-                ab1_g = npy.dot(Y_L, dnbtdr_Lg)
+                ab1_g = np.dot(Y_L, dnbtdr_Lg)
                 ab2_g += ab1_g**2
 
                 a2_g = ((aa1x_g + ab1x_g)**2 +
@@ -1269,84 +1269,84 @@ class OldXCCorrection(BaseXCCorrection):
                 a2_g[0] = a2_g[1]
                 a2_g += (aa1_g + ab1_g)**2
 
-                va_g = npy.zeros(self.ng)
-                vb_g = npy.zeros(self.ng)
-                e_g = npy.zeros(self.ng)
-                deda2_g = npy.zeros(self.ng)
-                dedaa2_g = npy.zeros(self.ng)
-                dedab2_g = npy.zeros(self.ng)
+                va_g = np.zeros(self.ng)
+                vb_g = np.zeros(self.ng)
+                e_g = np.zeros(self.ng)
+                deda2_g = np.zeros(self.ng)
+                dedaa2_g = np.zeros(self.ng)
+                dedab2_g = np.zeros(self.ng)
                 xcfunc.calculate_spinpolarized(e_g, na_g, va_g, nb_g, vb_g,
                                                a2_g, aa2_g, ab2_g,
                                                deda2_g, dedaa2_g, dedab2_g)
-                E -= w * npy.dot(e_g, self.dv_g)
+                E -= w * np.dot(e_g, self.dv_g)
 
                 x_g = -deda2_g * self.dv_g * aa1_g
                 self.rgd.derivative2(x_g, x_g)
                 B_Lqp = self.B_Lqp
 
-                dEdD_p = w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                     npy.dot(self.nt_qg, x_g))
+                dEdD_p = w * np.dot(np.dot(self.B_pqL, Y_L),
+                                    np.dot(self.nt_qg, x_g))
                 x_g = 4.0 * pi * deda2_g * self.rgd.dr_g
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 0]),
-                                      npy.dot(self.nt_qg, x_g * aa1x_g))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 1]),
-                                      npy.dot(self.nt_qg, x_g * aa1y_g))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 2]),
-                                      npy.dot(self.nt_qg, x_g * aa1z_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 0]),
+                                     np.dot(self.nt_qg, x_g * aa1x_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 1]),
+                                     np.dot(self.nt_qg, x_g * aa1y_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 2]),
+                                     np.dot(self.nt_qg, x_g * aa1z_g))
                 dEdDb_p -= dEdD_p
 
                 x_g = -deda2_g * self.dv_g * ab1_g
                 self.rgd.derivative2(x_g, x_g)
                 B_Lqp = self.B_Lqp
 
-                dEdD_p = w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                     npy.dot(self.nt_qg, x_g))
+                dEdD_p = w * np.dot(np.dot(self.B_pqL, Y_L),
+                                    np.dot(self.nt_qg, x_g))
                 x_g = 4.0 * pi * deda2_g * self.rgd.dr_g
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 0]),
-                                      npy.dot(self.nt_qg, x_g * ab1x_g))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 1]),
-                                      npy.dot(self.nt_qg, x_g * ab1y_g))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 2]),
-                                      npy.dot(self.nt_qg, x_g * ab1z_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 0]),
+                                     np.dot(self.nt_qg, x_g * ab1x_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 1]),
+                                     np.dot(self.nt_qg, x_g * ab1y_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 2]),
+                                     np.dot(self.nt_qg, x_g * ab1z_g))
                 dEdDa_p -= dEdD_p
 
                 x_g = -2.0 * dedaa2_g * self.dv_g * aa1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += va_g * self.dv_g
-                dEdDa_p -= w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                       npy.dot(self.nt_qg, x_g))
+                dEdDa_p -= w * np.dot(np.dot(self.B_pqL, Y_L),
+                                       np.dot(self.nt_qg, x_g))
                 x_g = 8.0 * pi * dedaa2_g * self.rgd.dr_g
-                dEdDa_p -= w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 0]),
-                                      npy.dot(self.nt_qg, x_g * aa1x_g))
-                dEdDa_p -= w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 1]),
-                                       npy.dot(self.nt_qg, x_g * aa1y_g))
-                dEdDa_p -= w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 2]),
-                                      npy.dot(self.nt_qg, x_g * aa1z_g))
+                dEdDa_p -= w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 0]),
+                                      np.dot(self.nt_qg, x_g * aa1x_g))
+                dEdDa_p -= w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 1]),
+                                      np.dot(self.nt_qg, x_g * aa1y_g))
+                dEdDa_p -= w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 2]),
+                                      np.dot(self.nt_qg, x_g * aa1z_g))
                 
                 x_g = -2.0 * dedab2_g * self.dv_g * ab1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += vb_g * self.dv_g
-                dEdDb_p -= w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                      npy.dot(self.nt_qg, x_g))
+                dEdDb_p -= w * np.dot(np.dot(self.B_pqL, Y_L),
+                                      np.dot(self.nt_qg, x_g))
                 x_g = 8.0 * pi * dedab2_g * self.rgd.dr_g
-                dEdDb_p -= w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 0]),
-                                       npy.dot(self.nt_qg, x_g * ab1x_g))
-                dEdDb_p -= w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 1]),
-                                       npy.dot(self.nt_qg, x_g * ab1y_g))
-                dEdDb_p -= w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 2]),
-                                       npy.dot(self.nt_qg, x_g * ab1z_g))
+                dEdDb_p -= w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 0]),
+                                      np.dot(self.nt_qg, x_g * ab1x_g))
+                dEdDb_p -= w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 1]),
+                                      np.dot(self.nt_qg, x_g * ab1y_g))
+                dEdDb_p -= w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 2]),
+                                      np.dot(self.nt_qg, x_g * ab1z_g))
 
                 y += 1
 
@@ -1358,13 +1358,13 @@ class OldXCCorrection(BaseXCCorrection):
         xcfunc = self.xc.get_functional()
         if len(D_sp) == 1:
             D_p = D_sp[0]
-            D_Lq = npy.dot(self.B_Lqp, D_p)
-            n_Lg = npy.dot(D_Lq, self.n_qg)
+            D_Lq = np.dot(self.B_Lqp, D_p)
+            n_Lg = np.dot(D_Lq, self.n_qg)
             n_Lg[0] += self.nc_g * sqrt(4 * pi)
-            nt_Lg = npy.dot(D_Lq, self.nt_qg)
+            nt_Lg = np.dot(D_Lq, self.nt_qg)
             nt_Lg[0] += self.nct_g * sqrt(4 * pi)
-            dndr_Lg = npy.zeros((self.Lmax, self.ng))
-            dntdr_Lg = npy.zeros((self.Lmax, self.ng))
+            dndr_Lg = np.zeros((self.Lmax, self.ng))
+            dntdr_Lg = np.zeros((self.Lmax, self.ng))
             for L in range(self.Lmax):
                 self.rgd.derivative(n_Lg[L], dndr_Lg[L])
                 self.rgd.derivative(nt_Lg[L], dntdr_Lg[L])
@@ -1376,91 +1376,91 @@ class OldXCCorrection(BaseXCCorrection):
                 ## Calculate pseudo and all electron kinetic energy 
                 ## from orbitals
                 taut_pg = self.taut_ypg[y]
-                taut_g = npy.dot(D_p,taut_pg)
+                taut_g = np.dot(D_p,taut_pg)
                 tau_pg = self.tau_ypg[y]
-                tau_g = npy.dot(D_p,tau_pg)
+                tau_g = np.dot(D_p,tau_pg)
                 tau_g += self.tauc_g / sqrt(4. * pi)
                 taut_g += self.tauct_g / sqrt(4. * pi)
                 A_Li = A_Liy[:self.Lmax, :, y]
                 
-                n_g = npy.dot(Y_L, n_Lg)
-                a1x_g = npy.dot(A_Li[:, 0], n_Lg)
-                a1y_g = npy.dot(A_Li[:, 1], n_Lg)
-                a1z_g = npy.dot(A_Li[:, 2], n_Lg)
+                n_g = np.dot(Y_L, n_Lg)
+                a1x_g = np.dot(A_Li[:, 0], n_Lg)
+                a1y_g = np.dot(A_Li[:, 1], n_Lg)
+                a1z_g = np.dot(A_Li[:, 2], n_Lg)
                 a2_g = a1x_g**2 + a1y_g**2 + a1z_g**2
                 a2_g[1:] /= r_g[1:]**2
                 a2_g[0] = a2_g[1]
-                a1_g = npy.dot(Y_L, dndr_Lg)
+                a1_g = np.dot(Y_L, dndr_Lg)
                 a2_g += a1_g**2
-                v_g = npy.zeros(self.ng)
-                e_g = npy.zeros(self.ng)
-                deda2_g = npy.zeros(self.ng)
-                dedtaua_g = npy.zeros(self.ng)
+                v_g = np.zeros(self.ng)
+                e_g = np.zeros(self.ng)
+                deda2_g = np.zeros(self.ng)
+                dedtaua_g = np.zeros(self.ng)
                 xcfunc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g,
                                             tau_g,dedtaua_g)
-                E += w * npy.dot(e_g, self.dv_g)
+                E += w * np.dot(e_g, self.dv_g)
                 x_g = -2.0 * deda2_g * self.dv_g * a1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += v_g * self.dv_g
                 B_Lqp = self.B_Lqp
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                      npy.dot(self.n_qg, x_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL, Y_L),
+                                     np.dot(self.n_qg, x_g))
                 x_g = 8.0 * pi * deda2_g * self.rgd.dr_g
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 0]),
-                                      npy.dot(self.n_qg, x_g * a1x_g))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 1]),
-                                      npy.dot(self.n_qg, x_g * a1y_g))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 2]),
-                                      npy.dot(self.n_qg, x_g * a1z_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 0]),
+                                     np.dot(self.n_qg, x_g * a1x_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 1]),
+                                     np.dot(self.n_qg, x_g * a1y_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 2]),
+                                     np.dot(self.n_qg, x_g * a1z_g))
                 dedtaua_g *= self.dv_g
-                dEdD_p += w * npy.dot(tau_pg, dedtaua_g)
+                dEdD_p += w * np.dot(tau_pg, dedtaua_g)
 
-                n_g = npy.dot(Y_L, nt_Lg)
-                a1x_g = npy.dot(A_Li[:, 0], nt_Lg)
-                a1y_g = npy.dot(A_Li[:, 1], nt_Lg)
-                a1z_g = npy.dot(A_Li[:, 2], nt_Lg)
+                n_g = np.dot(Y_L, nt_Lg)
+                a1x_g = np.dot(A_Li[:, 0], nt_Lg)
+                a1y_g = np.dot(A_Li[:, 1], nt_Lg)
+                a1z_g = np.dot(A_Li[:, 2], nt_Lg)
                 a2_g = a1x_g**2 + a1y_g**2 + a1z_g**2
                 a2_g[1:] /= r_g[1:]**2
                 a2_g[0] = a2_g[1]
-                a1_g = npy.dot(Y_L, dntdr_Lg)
+                a1_g = np.dot(Y_L, dntdr_Lg)
                 a2_g += a1_g**2
-                v_g = npy.zeros(self.ng)
-                e_g = npy.zeros(self.ng)
-                deda2_g = npy.zeros(self.ng)
+                v_g = np.zeros(self.ng)
+                e_g = np.zeros(self.ng)
+                deda2_g = np.zeros(self.ng)
                 xcfunc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g,
                                             taut_g,dedtaua_g)
-                E -= w * npy.dot(e_g, self.dv_g)
+                E -= w * np.dot(e_g, self.dv_g)
                 x_g = -2.0 * deda2_g * self.dv_g * a1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += v_g * self.dv_g
                 B_Lqp = self.B_Lqp
-                dEdD_p -= w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                      npy.dot(self.nt_qg, x_g))
+                dEdD_p -= w * np.dot(np.dot(self.B_pqL, Y_L),
+                                     np.dot(self.nt_qg, x_g))
                 x_g = 8.0 * pi * deda2_g * self.rgd.dr_g
-                dEdD_p -= w * npy.dot(npy.dot(self.B_pqL,
+                dEdD_p -= w * np.dot(np.dot(self.B_pqL,
                                             A_Li[:, 0]),
-                                      npy.dot(self.nt_qg, x_g * a1x_g))
-                dEdD_p -= w * npy.dot(npy.dot(self.B_pqL,
+                                     np.dot(self.nt_qg, x_g * a1x_g))
+                dEdD_p -= w * np.dot(np.dot(self.B_pqL,
                                             A_Li[:, 1]),
-                                     npy.dot(self.nt_qg, x_g * a1y_g))
-                dEdD_p -= w * npy.dot(npy.dot(self.B_pqL,
+                                     np.dot(self.nt_qg, x_g * a1y_g))
+                dEdD_p -= w * np.dot(np.dot(self.B_pqL,
                                             A_Li[:, 2]),
-                                     npy.dot(self.nt_qg, x_g * a1z_g))
+                                     np.dot(self.nt_qg, x_g * a1z_g))
                 dedtaua_g *= self.dv_g
-                dEdD_p -= w * npy.dot(taut_pg,dedtaua_g)
+                dEdD_p -= w * np.dot(taut_pg,dedtaua_g)
                 y += 1
         else:
             Da_p = D_sp[0]
-            Da_Lq = npy.dot(self.B_Lqp, Da_p)
-            na_Lg = npy.dot(Da_Lq, self.n_qg)
+            Da_Lq = np.dot(self.B_Lqp, Da_p)
+            na_Lg = np.dot(Da_Lq, self.n_qg)
             na_Lg[0] += self.nca_g * sqrt(4 * pi)
-            nat_Lg = npy.dot(Da_Lq, self.nt_qg)
+            nat_Lg = np.dot(Da_Lq, self.nt_qg)
             nat_Lg[0] += 0.5 * self.nct_g * sqrt(4 * pi)
-            dnadr_Lg = npy.zeros((self.Lmax, self.ng))
-            dnatdr_Lg = npy.zeros((self.Lmax, self.ng))
+            dnadr_Lg = np.zeros((self.Lmax, self.ng))
+            dnatdr_Lg = np.zeros((self.Lmax, self.ng))
             for L in range(self.Lmax):
                 self.rgd.derivative(na_Lg[L], dnadr_Lg[L])
                 self.rgd.derivative(nat_Lg[L], dnatdr_Lg[L])
@@ -1468,13 +1468,13 @@ class OldXCCorrection(BaseXCCorrection):
             dEdDa_p[:] = 0.0
             
             Db_p = D_sp[1]
-            Db_Lq = npy.dot(self.B_Lqp, Db_p)
-            nb_Lg = npy.dot(Db_Lq, self.n_qg)
+            Db_Lq = np.dot(self.B_Lqp, Db_p)
+            nb_Lg = np.dot(Db_Lq, self.n_qg)
             nb_Lg[0] += self.ncb_g * sqrt(4 * pi)
-            nbt_Lg = npy.dot(Db_Lq, self.nt_qg)
+            nbt_Lg = np.dot(Db_Lq, self.nt_qg)
             nbt_Lg[0] += 0.5 * self.nct_g * sqrt(4 * pi)
-            dnbdr_Lg = npy.zeros((self.Lmax, self.ng))
-            dnbtdr_Lg = npy.zeros((self.Lmax, self.ng))
+            dnbdr_Lg = np.zeros((self.Lmax, self.ng))
+            dnbtdr_Lg = np.zeros((self.Lmax, self.ng))
             for L in range(self.Lmax):
                 self.rgd.derivative(nb_Lg[L], dnbdr_Lg[L])
                 self.rgd.derivative(nbt_Lg[L], dnbtdr_Lg[L])
@@ -1483,35 +1483,35 @@ class OldXCCorrection(BaseXCCorrection):
             y = 0
             for w, Y_L in zip(weights, self.Y_nL):
                 taut_pg = self.taut_ypg[y]
-                tauat_g = npy.dot(Da_p,taut_pg)
-                taubt_g = npy.dot(Db_p,taut_pg)
+                tauat_g = np.dot(Da_p,taut_pg)
+                taubt_g = np.dot(Db_p,taut_pg)
                 tau_pg = self.tau_ypg[y]
-                taua_g = npy.dot(Da_p,tau_pg)
-                taub_g = npy.dot(Db_p,tau_pg)
+                taua_g = np.dot(Da_p,tau_pg)
+                taub_g = np.dot(Db_p,tau_pg)
                 taua_g += self.tauc_g * 0.5 / sqrt(4. * pi)
                 taub_g += self.tauc_g * 0.5 / sqrt(4. * pi)
                 tauat_g += self.tauct_g * 0.5 / sqrt(4. * pi)
                 taubt_g += self.tauct_g * 0.5 / sqrt(4. * pi)
                 A_Li = A_Liy[:self.Lmax, :, y]                
 
-                na_g = npy.dot(Y_L, na_Lg)
-                aa1x_g = npy.dot(A_Li[:, 0], na_Lg)
-                aa1y_g = npy.dot(A_Li[:, 1], na_Lg)
-                aa1z_g = npy.dot(A_Li[:, 2], na_Lg)
+                na_g = np.dot(Y_L, na_Lg)
+                aa1x_g = np.dot(A_Li[:, 0], na_Lg)
+                aa1y_g = np.dot(A_Li[:, 1], na_Lg)
+                aa1z_g = np.dot(A_Li[:, 2], na_Lg)
                 aa2_g = aa1x_g**2 + aa1y_g**2 + aa1z_g**2
                 aa2_g[1:] /= r_g[1:]**2
                 aa2_g[0] = aa2_g[1]
-                aa1_g = npy.dot(Y_L, dnadr_Lg)
+                aa1_g = np.dot(Y_L, dnadr_Lg)
                 aa2_g += aa1_g**2
 
-                nb_g = npy.dot(Y_L, nb_Lg)
-                ab1x_g = npy.dot(A_Li[:, 0], nb_Lg)
-                ab1y_g = npy.dot(A_Li[:, 1], nb_Lg)
-                ab1z_g = npy.dot(A_Li[:, 2], nb_Lg)
+                nb_g = np.dot(Y_L, nb_Lg)
+                ab1x_g = np.dot(A_Li[:, 0], nb_Lg)
+                ab1y_g = np.dot(A_Li[:, 1], nb_Lg)
+                ab1z_g = np.dot(A_Li[:, 2], nb_Lg)
                 ab2_g = ab1x_g**2 + ab1y_g**2 + ab1z_g**2
                 ab2_g[1:] /= r_g[1:]**2
                 ab2_g[0] = ab2_g[1]
-                ab1_g = npy.dot(Y_L, dnbdr_Lg)
+                ab1_g = np.dot(Y_L, dnbdr_Lg)
                 ab2_g += ab1_g**2
                  
                 a2_g = ((aa1x_g + ab1x_g)**2 +
@@ -1521,97 +1521,97 @@ class OldXCCorrection(BaseXCCorrection):
                 a2_g[0] = a2_g[1]
                 a2_g += (aa1_g + ab1_g)**2
 
-                va_g = npy.zeros(self.ng)
-                vb_g = npy.zeros(self.ng)
-                e_g = npy.zeros(self.ng)
-                deda2_g = npy.zeros(self.ng)
-                dedaa2_g = npy.zeros(self.ng)
-                dedab2_g = npy.zeros(self.ng)
-                dedtaua_g = npy.zeros(self.ng)
-                dedtaub_g = npy.zeros(self.ng)
+                va_g = np.zeros(self.ng)
+                vb_g = np.zeros(self.ng)
+                e_g = np.zeros(self.ng)
+                deda2_g = np.zeros(self.ng)
+                dedaa2_g = np.zeros(self.ng)
+                dedab2_g = np.zeros(self.ng)
+                dedtaua_g = np.zeros(self.ng)
+                dedtaub_g = np.zeros(self.ng)
                 xcfunc.calculate_spinpolarized(e_g, na_g, va_g, nb_g, vb_g,
                                                a2_g, aa2_g, ab2_g,
                                                deda2_g, dedaa2_g, dedab2_g,
                                                taua_g,taub_g,dedtaua_g,
                                                dedtaub_g)
-                E += w * npy.dot(e_g, self.dv_g)
+                E += w * np.dot(e_g, self.dv_g)
 
                 x_g = -2.0 * deda2_g * self.dv_g * (aa1_g + ab1_g)
                 self.rgd.derivative2(x_g, x_g)
                 B_Lqp = self.B_Lqp
                  
-                dEdD_p = w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                     npy.dot(self.n_qg, x_g))
+                dEdD_p = w * np.dot(np.dot(self.B_pqL, Y_L),
+                                    np.dot(self.n_qg, x_g))
                 x_g = 8.0 * pi * deda2_g * self.rgd.dr_g
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 0]),
-                                      npy.dot(self.n_qg, x_g * (aa1x_g +
-                                                                ab1x_g)))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 1]),
-                                      npy.dot(self.n_qg, x_g * (aa1y_g +
-                                                                ab1y_g)))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 2]),
-                                      npy.dot(self.n_qg, x_g * (aa1z_g +
-                                                                ab1z_g)))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 0]),
+                                     np.dot(self.n_qg, x_g * (aa1x_g +
+                                                              ab1x_g)))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 1]),
+                                     np.dot(self.n_qg, x_g * (aa1y_g +
+                                                              ab1y_g)))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 2]),
+                                     np.dot(self.n_qg, x_g * (aa1z_g +
+                                                              ab1z_g)))
                 dEdDa_p += dEdD_p
                 dEdDb_p += dEdD_p
                  
                 x_g = -4.0 * dedaa2_g * self.dv_g * aa1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += va_g * self.dv_g
-                dEdDa_p += w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                       npy.dot(self.n_qg, x_g))
+                dEdDa_p += w * np.dot(np.dot(self.B_pqL, Y_L),
+                                      np.dot(self.n_qg, x_g))
                 x_g = 16.0 * pi * dedaa2_g * self.rgd.dr_g
-                dEdDa_p += w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 0]),
-                                       npy.dot(self.n_qg, x_g * aa1x_g))
-                dEdDa_p += w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 1]),
-                                       npy.dot(self.n_qg, x_g * aa1y_g))
-                dEdDa_p += w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 2]),
-                                       npy.dot(self.n_qg, x_g * aa1z_g))
+                dEdDa_p += w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 0]),
+                                      np.dot(self.n_qg, x_g * aa1x_g))
+                dEdDa_p += w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 1]),
+                                      np.dot(self.n_qg, x_g * aa1y_g))
+                dEdDa_p += w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 2]),
+                                      np.dot(self.n_qg, x_g * aa1z_g))
 
                 x_g = -4.0 * dedab2_g * self.dv_g * ab1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += vb_g * self.dv_g
-                dEdDb_p += w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                       npy.dot(self.n_qg, x_g))
+                dEdDb_p += w * np.dot(np.dot(self.B_pqL, Y_L),
+                                      np.dot(self.n_qg, x_g))
                 x_g = 16.0 * pi * dedab2_g * self.rgd.dr_g
-                dEdDb_p += w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 0]),
-                                       npy.dot(self.n_qg, x_g * ab1x_g))
-                dEdDb_p += w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 1]),
-                                       npy.dot(self.n_qg, x_g * ab1y_g))
-                dEdDb_p += w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 2]),
-                                       npy.dot(self.n_qg, x_g * ab1z_g))
+                dEdDb_p += w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 0]),
+                                      np.dot(self.n_qg, x_g * ab1x_g))
+                dEdDb_p += w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 1]),
+                                      np.dot(self.n_qg, x_g * ab1y_g))
+                dEdDb_p += w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 2]),
+                                      np.dot(self.n_qg, x_g * ab1z_g))
                 dedtaua_g *= self.dv_g
                 dedtaub_g *= self.dv_g
-                dEdDa_p += w * npy.dot(tau_pg,dedtaua_g)
-                dEdDb_p += w * npy.dot(tau_pg,dedtaub_g)
+                dEdDa_p += w * np.dot(tau_pg,dedtaua_g)
+                dEdDb_p += w * np.dot(tau_pg,dedtaub_g)
 
-                na_g = npy.dot(Y_L, nat_Lg)
-                aa1x_g = npy.dot(A_Li[:, 0], nat_Lg)
-                aa1y_g = npy.dot(A_Li[:, 1], nat_Lg)
-                aa1z_g = npy.dot(A_Li[:, 2], nat_Lg)
+                na_g = np.dot(Y_L, nat_Lg)
+                aa1x_g = np.dot(A_Li[:, 0], nat_Lg)
+                aa1y_g = np.dot(A_Li[:, 1], nat_Lg)
+                aa1z_g = np.dot(A_Li[:, 2], nat_Lg)
                 aa2_g = aa1x_g**2 + aa1y_g**2 + aa1z_g**2
                 aa2_g[1:] /= r_g[1:]**2
                 aa2_g[0] = aa2_g[1]
-                aa1_g = npy.dot(Y_L, dnatdr_Lg)
+                aa1_g = np.dot(Y_L, dnatdr_Lg)
                 aa2_g += aa1_g**2
 
-                nb_g = npy.dot(Y_L, nbt_Lg)
-                ab1x_g = npy.dot(A_Li[:, 0], nbt_Lg)
-                ab1y_g = npy.dot(A_Li[:, 1], nbt_Lg)
-                ab1z_g = npy.dot(A_Li[:, 2], nbt_Lg)
+                nb_g = np.dot(Y_L, nbt_Lg)
+                ab1x_g = np.dot(A_Li[:, 0], nbt_Lg)
+                ab1y_g = np.dot(A_Li[:, 1], nbt_Lg)
+                ab1z_g = np.dot(A_Li[:, 2], nbt_Lg)
                 ab2_g = ab1x_g**2 + ab1y_g**2 + ab1z_g**2
                 ab2_g[1:] /= r_g[1:]**2
                 ab2_g[0] = ab2_g[1]
-                ab1_g = npy.dot(Y_L, dnbtdr_Lg)
+                ab1_g = np.dot(Y_L, dnbtdr_Lg)
                 ab2_g += ab1_g**2
                  
                 a2_g = ((aa1x_g + ab1x_g)**2 +
@@ -1621,75 +1621,75 @@ class OldXCCorrection(BaseXCCorrection):
                 a2_g[0] = a2_g[1]
                 a2_g += (aa1_g + ab1_g)**2
 
-                va_g = npy.zeros(self.ng)
-                vb_g = npy.zeros(self.ng)
-                e_g = npy.zeros(self.ng)
-                deda2_g = npy.zeros(self.ng)
-                dedaa2_g = npy.zeros(self.ng)
-                dedab2_g = npy.zeros(self.ng)
+                va_g = np.zeros(self.ng)
+                vb_g = np.zeros(self.ng)
+                e_g = np.zeros(self.ng)
+                deda2_g = np.zeros(self.ng)
+                dedaa2_g = np.zeros(self.ng)
+                dedab2_g = np.zeros(self.ng)
                 xcfunc.calculate_spinpolarized(e_g, na_g, va_g, nb_g, vb_g,
                                                a2_g, aa2_g, ab2_g,
                                                deda2_g, dedaa2_g, dedab2_g,
                                                tauat_g,taubt_g,dedtaua_g,
                                                dedtaub_g)
-                E -= w * npy.dot(e_g, self.dv_g)
+                E -= w * np.dot(e_g, self.dv_g)
 
                 x_g = -2.0 * deda2_g * self.dv_g * (aa1_g + ab1_g)
                 self.rgd.derivative2(x_g, x_g)
-                dEdD_p = w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                     npy.dot(self.nt_qg, x_g))
+                dEdD_p = w * np.dot(np.dot(self.B_pqL, Y_L),
+                                    np.dot(self.nt_qg, x_g))
                  
                 x_g = 8.0 * pi * deda2_g * self.rgd.dr_g
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 0]),
-                                      npy.dot(self.nt_qg, x_g * (aa1x_g +
-                                                                 ab1x_g)))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 1]),
-                                      npy.dot(self.nt_qg, x_g * (aa1y_g +
-                                                                 ab1y_g)))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 2]),
-                                      npy.dot(self.nt_qg, x_g * (aa1z_g +
-                                                                 ab1z_g)))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 0]),
+                                     np.dot(self.nt_qg, x_g * (aa1x_g +
+                                                               ab1x_g)))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 1]),
+                                     np.dot(self.nt_qg, x_g * (aa1y_g +
+                                                               ab1y_g)))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 2]),
+                                     np.dot(self.nt_qg, x_g * (aa1z_g +
+                                                               ab1z_g)))
                 dEdDa_p -= dEdD_p
                 dEdDb_p -= dEdD_p
                 
                 x_g = -4.0 * dedaa2_g * self.dv_g * aa1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += va_g * self.dv_g
-                dEdDa_p -= w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                       npy.dot(self.nt_qg, x_g))
+                dEdDa_p -= w * np.dot(np.dot(self.B_pqL, Y_L),
+                                      np.dot(self.nt_qg, x_g))
                 x_g = 16.0 * pi * dedaa2_g * self.rgd.dr_g
-                dEdDa_p -= w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 0]),
-                                       npy.dot(self.nt_qg, x_g * aa1x_g))
-                dEdDa_p -= w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 1]),
-                                       npy.dot(self.nt_qg, x_g * aa1y_g))
-                dEdDa_p -= w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 2]),
-                                       npy.dot(self.nt_qg, x_g * aa1z_g))
+                dEdDa_p -= w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 0]),
+                                      np.dot(self.nt_qg, x_g * aa1x_g))
+                dEdDa_p -= w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 1]),
+                                      np.dot(self.nt_qg, x_g * aa1y_g))
+                dEdDa_p -= w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 2]),
+                                      np.dot(self.nt_qg, x_g * aa1z_g))
                 
                 x_g = -4.0 * dedab2_g * self.dv_g * ab1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += vb_g * self.dv_g
-                dEdDb_p -= w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                       npy.dot(self.nt_qg, x_g))
+                dEdDb_p -= w * np.dot(np.dot(self.B_pqL, Y_L),
+                                      np.dot(self.nt_qg, x_g))
                 x_g = 16.0 * pi * dedab2_g * self.rgd.dr_g
-                dEdDb_p -= w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 0]),
-                                       npy.dot(self.nt_qg, x_g * ab1x_g))
-                dEdDb_p -= w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 1]),
-                                       npy.dot(self.nt_qg, x_g * ab1y_g))
-                dEdDb_p -= w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 2]),
-                                       npy.dot(self.nt_qg, x_g * ab1z_g))
+                dEdDb_p -= w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 0]),
+                                      np.dot(self.nt_qg, x_g * ab1x_g))
+                dEdDb_p -= w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 1]),
+                                      np.dot(self.nt_qg, x_g * ab1y_g))
+                dEdDb_p -= w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 2]),
+                                      np.dot(self.nt_qg, x_g * ab1z_g))
                 dedtaua_g *= self.dv_g
                 dedtaub_g *= self.dv_g
-                dEdDa_p -= w * npy.dot(taut_pg,dedtaua_g)
-                dEdDb_p -= w * npy.dot(taut_pg,dedtaub_g)
+                dEdDa_p -= w * np.dot(taut_pg,dedtaua_g)
+                dEdDb_p -= w * np.dot(taut_pg,dedtaub_g)
                 y += 1
 
 #        return 0.0
@@ -1701,13 +1701,13 @@ class OldXCCorrection(BaseXCCorrection):
         E = 0.0
         if len(D_sp) == 1:
             D_p = D_sp[0]
-            D_Lq = npy.dot(self.B_Lqp, D_p)
-            n_Lg = npy.dot(D_Lq, self.n_qg)
+            D_Lq = np.dot(self.B_Lqp, D_p)
+            n_Lg = np.dot(D_Lq, self.n_qg)
             n_Lg[0] += self.nc_g * sqrt(4 * pi)
-            nt_Lg = npy.dot(D_Lq, self.nt_qg)
+            nt_Lg = np.dot(D_Lq, self.nt_qg)
             nt_Lg[0] += self.nct_g * sqrt(4 * pi)
-            dndr_Lg = npy.zeros((self.Lmax, self.ng))
-            dntdr_Lg = npy.zeros((self.Lmax, self.ng))
+            dndr_Lg = np.zeros((self.Lmax, self.ng))
+            dntdr_Lg = np.zeros((self.Lmax, self.ng))
             for L in range(self.Lmax):
                 self.rgd.derivative(n_Lg[L], dndr_Lg[L])
                 self.rgd.derivative(nt_Lg[L], dntdr_Lg[L])
@@ -1719,92 +1719,92 @@ class OldXCCorrection(BaseXCCorrection):
                 ## Calculate pseudo and all electron kinetic energy 
                 ##from orbitals
                 taut_pg = self.taut_ypg[y]
-                taut_g = npy.dot(D_p,taut_pg)
+                taut_g = np.dot(D_p,taut_pg)
                 tau_pg = self.tau_ypg[y]
-                tau_g = npy.dot(D_p,tau_pg)
+                tau_g = np.dot(D_p,tau_pg)
                 tau_g += self.tauc_g / sqrt(4. * pi)
                 taut_g += self.tauct_g / sqrt(4. * pi)
                 A_Li = A_Liy[:self.Lmax, :, y]
                 
-                n_g = npy.dot(Y_L, n_Lg)
-                a1x_g = npy.dot(A_Li[:, 0], n_Lg)
-                a1y_g = npy.dot(A_Li[:, 1], n_Lg)
-                a1z_g = npy.dot(A_Li[:, 2], n_Lg)
+                n_g = np.dot(Y_L, n_Lg)
+                a1x_g = np.dot(A_Li[:, 0], n_Lg)
+                a1y_g = np.dot(A_Li[:, 1], n_Lg)
+                a1z_g = np.dot(A_Li[:, 2], n_Lg)
                 a2_g = a1x_g**2 + a1y_g**2 + a1z_g**2
                 a2_g[1:] /= r_g[1:]**2
                 a2_g[0] = a2_g[1]
-                a1_g = npy.dot(Y_L, dndr_Lg)
+                a1_g = np.dot(Y_L, dndr_Lg)
                 a2_g += a1_g**2
-                v_g = npy.zeros(self.ng)
-                e_g = npy.zeros(self.ng)
-                deda2_g = npy.zeros(self.ng)
-                dedtaua_g = npy.zeros(self.ng)
+                v_g = np.zeros(self.ng)
+                e_g = np.zeros(self.ng)
+                deda2_g = np.zeros(self.ng)
+                dedtaua_g = np.zeros(self.ng)
                 xcfunc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g,
                                             tau_g, dedtaua_g)
-                E += w * npy.dot(e_g, self.dv_g)
+                E += w * np.dot(e_g, self.dv_g)
                 x_g = -2.0 * deda2_g * self.dv_g * a1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += v_g * self.dv_g
                 B_Lqp = self.B_Lqp
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                     npy.dot(self.n_qg, x_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL, Y_L),
+                                     np.dot(self.n_qg, x_g))
                 x_g = 8.0 * pi * deda2_g * self.rgd.dr_g
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 0]),
-                                      npy.dot(self.n_qg, x_g * a1x_g))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 1]),
-                                      npy.dot(self.n_qg, x_g * a1y_g))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 2]),
-                                      npy.dot(self.n_qg, x_g * a1z_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 0]),
+                                     np.dot(self.n_qg, x_g * a1x_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 1]),
+                                     np.dot(self.n_qg, x_g * a1y_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 2]),
+                                     np.dot(self.n_qg, x_g * a1z_g))
                 dedtaua_g *= self.dv_g
-                dEdD_p += w * npy.dot(tau_pg,dedtaua_g)
+                dEdD_p += w * np.dot(tau_pg,dedtaua_g)
 
-                n_g = npy.dot(Y_L, nt_Lg)
-                a1x_g = npy.dot(A_Li[:, 0], nt_Lg)
-                a1y_g = npy.dot(A_Li[:, 1], nt_Lg)
-                a1z_g = npy.dot(A_Li[:, 2], nt_Lg)
+                n_g = np.dot(Y_L, nt_Lg)
+                a1x_g = np.dot(A_Li[:, 0], nt_Lg)
+                a1y_g = np.dot(A_Li[:, 1], nt_Lg)
+                a1z_g = np.dot(A_Li[:, 2], nt_Lg)
                 a2_g = a1x_g**2 + a1y_g**2 + a1z_g**2
                 a2_g[1:] /= r_g[1:]**2
                 a2_g[0] = a2_g[1]
-                a1_g = npy.dot(Y_L, dntdr_Lg)
+                a1_g = np.dot(Y_L, dntdr_Lg)
                 a2_g += a1_g**2
-                v_g = npy.zeros(self.ng)
-                e_g = npy.zeros(self.ng)
-                deda2_g = npy.zeros(self.ng)
+                v_g = np.zeros(self.ng)
+                e_g = np.zeros(self.ng)
+                deda2_g = np.zeros(self.ng)
                 xcfunc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g,
                                             taut_g,dedtaua_g)
-                E -= w * npy.dot(e_g, self.dv_g)
+                E -= w * np.dot(e_g, self.dv_g)
                 x_g = -2.0 * deda2_g * self.dv_g * a1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += v_g * self.dv_g
                 B_Lqp = self.B_Lqp
-                dEdD_p -= w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                     npy.dot(self.nt_qg, x_g))
+                dEdD_p -= w * np.dot(np.dot(self.B_pqL, Y_L),
+                                     np.dot(self.nt_qg, x_g))
                 x_g = 8.0 * pi * deda2_g * self.rgd.dr_g
-                dEdD_p -= w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 0]),
-                                      npy.dot(self.nt_qg, x_g * a1x_g))
-                dEdD_p -= w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 1]),
-                                      npy.dot(self.nt_qg, x_g * a1y_g))
-                dEdD_p -= w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 2]),
-                                      npy.dot(self.nt_qg, x_g * a1z_g))
+                dEdD_p -= w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 0]),
+                                     np.dot(self.nt_qg, x_g * a1x_g))
+                dEdD_p -= w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 1]),
+                                     np.dot(self.nt_qg, x_g * a1y_g))
+                dEdD_p -= w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 2]),
+                                     np.dot(self.nt_qg, x_g * a1z_g))
 
                 dedtaua_g *= self.dv_g
-                dEdD_p -= w * npy.dot(taut_pg,dedtaua_g)
+                dEdD_p -= w * np.dot(taut_pg,dedtaua_g)
                 y += 1
         else:
             Da_p = D_sp[0]
-            Da_Lq = npy.dot(self.B_Lqp, Da_p)
-            na_Lg = npy.dot(Da_Lq, self.n_qg)
+            Da_Lq = np.dot(self.B_Lqp, Da_p)
+            na_Lg = np.dot(Da_Lq, self.n_qg)
             na_Lg[0] += self.nca_g * sqrt(4 * pi)
-            nat_Lg = npy.dot(Da_Lq, self.nt_qg)
+            nat_Lg = np.dot(Da_Lq, self.nt_qg)
             nat_Lg[0] += 0.5 * self.nct_g * sqrt(4 * pi)
-            dnadr_Lg = npy.zeros((self.Lmax, self.ng))
-            dnatdr_Lg = npy.zeros((self.Lmax, self.ng))
+            dnadr_Lg = np.zeros((self.Lmax, self.ng))
+            dnatdr_Lg = np.zeros((self.Lmax, self.ng))
             for L in range(self.Lmax):
                 self.rgd.derivative(na_Lg[L], dnadr_Lg[L])
                 self.rgd.derivative(nat_Lg[L], dnatdr_Lg[L])
@@ -1812,13 +1812,13 @@ class OldXCCorrection(BaseXCCorrection):
             dEdDa_p[:] = 0.0
             
             Db_p = D_sp[1]
-            Db_Lq = npy.dot(self.B_Lqp, Db_p)
-            nb_Lg = npy.dot(Db_Lq, self.n_qg)
+            Db_Lq = np.dot(self.B_Lqp, Db_p)
+            nb_Lg = np.dot(Db_Lq, self.n_qg)
             nb_Lg[0] += self.ncb_g * sqrt(4 * pi)
-            nbt_Lg = npy.dot(Db_Lq, self.nt_qg)
+            nbt_Lg = np.dot(Db_Lq, self.nt_qg)
             nbt_Lg[0] += 0.5 * self.nct_g * sqrt(4 * pi)
-            dnbdr_Lg = npy.zeros((self.Lmax, self.ng))
-            dnbtdr_Lg = npy.zeros((self.Lmax, self.ng))
+            dnbdr_Lg = np.zeros((self.Lmax, self.ng))
+            dnbtdr_Lg = np.zeros((self.Lmax, self.ng))
             for L in range(self.Lmax):
                 self.rgd.derivative(nb_Lg[L], dnbdr_Lg[L])
                 self.rgd.derivative(nbt_Lg[L], dnbtdr_Lg[L])
@@ -1827,35 +1827,35 @@ class OldXCCorrection(BaseXCCorrection):
             y = 0
             for w, Y_L in zip(weights, self.Y_nL):
                 taut_pg = self.taut_ypg[y]
-                tauat_g = npy.dot(Da_p,taut_pg)
-                taubt_g = npy.dot(Db_p,taut_pg)
+                tauat_g = np.dot(Da_p,taut_pg)
+                taubt_g = np.dot(Db_p,taut_pg)
                 tau_pg = self.tau_ypg[y]
-                taua_g = npy.dot(Da_p,tau_pg)
-                taub_g = npy.dot(Db_p,tau_pg)
+                taua_g = np.dot(Da_p,tau_pg)
+                taub_g = np.dot(Db_p,tau_pg)
                 taua_g += self.tauc_g * 0.5 / sqrt(4. * pi)
                 taub_g += self.tauc_g * 0.5 / sqrt(4. * pi)
                 tauat_g += self.tauct_g * 0.5 / sqrt(4. * pi)
                 taubt_g += self.tauct_g * 0.5 / sqrt(4. * pi)
                 A_Li = A_Liy[:self.Lmax, :, y]                
 
-                na_g = npy.dot(Y_L, na_Lg)
-                aa1x_g = npy.dot(A_Li[:, 0], na_Lg)
-                aa1y_g = npy.dot(A_Li[:, 1], na_Lg)
-                aa1z_g = npy.dot(A_Li[:, 2], na_Lg)
+                na_g = np.dot(Y_L, na_Lg)
+                aa1x_g = np.dot(A_Li[:, 0], na_Lg)
+                aa1y_g = np.dot(A_Li[:, 1], na_Lg)
+                aa1z_g = np.dot(A_Li[:, 2], na_Lg)
                 aa2_g = aa1x_g**2 + aa1y_g**2 + aa1z_g**2
                 aa2_g[1:] /= r_g[1:]**2
                 aa2_g[0] = aa2_g[1]
-                aa1_g = npy.dot(Y_L, dnadr_Lg)
+                aa1_g = np.dot(Y_L, dnadr_Lg)
                 aa2_g += aa1_g**2
 
-                nb_g = npy.dot(Y_L, nb_Lg)
-                ab1x_g = npy.dot(A_Li[:, 0], nb_Lg)
-                ab1y_g = npy.dot(A_Li[:, 1], nb_Lg)
-                ab1z_g = npy.dot(A_Li[:, 2], nb_Lg)
+                nb_g = np.dot(Y_L, nb_Lg)
+                ab1x_g = np.dot(A_Li[:, 0], nb_Lg)
+                ab1y_g = np.dot(A_Li[:, 1], nb_Lg)
+                ab1z_g = np.dot(A_Li[:, 2], nb_Lg)
                 ab2_g = ab1x_g**2 + ab1y_g**2 + ab1z_g**2
                 ab2_g[1:] /= r_g[1:]**2
                 ab2_g[0] = ab2_g[1]
-                ab1_g = npy.dot(Y_L, dnbdr_Lg)
+                ab1_g = np.dot(Y_L, dnbdr_Lg)
                 ab2_g += ab1_g**2
                  
                 a2_g = ((aa1x_g + ab1x_g)**2 +
@@ -1865,111 +1865,111 @@ class OldXCCorrection(BaseXCCorrection):
                 a2_g[0] = a2_g[1]
                 a2_g += (aa1_g + ab1_g)**2
 
-                va_g = npy.zeros(self.ng)
-                vb_g = npy.zeros(self.ng)
-                e_g = npy.zeros(self.ng)
-                deda2_g = npy.zeros(self.ng)
-                dedaa2_g = npy.zeros(self.ng)
-                dedab2_g = npy.zeros(self.ng)
-                dedtaua_g = npy.zeros(self.ng)
-                dedtaub_g = npy.zeros(self.ng)
+                va_g = np.zeros(self.ng)
+                vb_g = np.zeros(self.ng)
+                e_g = np.zeros(self.ng)
+                deda2_g = np.zeros(self.ng)
+                dedaa2_g = np.zeros(self.ng)
+                dedab2_g = np.zeros(self.ng)
+                dedtaua_g = np.zeros(self.ng)
+                dedtaub_g = np.zeros(self.ng)
                 xcfunc.calculate_spinpolarized(e_g, na_g, va_g, nb_g, vb_g,
                                                a2_g, aa2_g, ab2_g,
                                                deda2_g, dedaa2_g, dedab2_g,
                                                taua_g, taub_g, dedtaua_g,
                                                dedtaub_g)
-                E += w * npy.dot(e_g, self.dv_g)
+                E += w * np.dot(e_g, self.dv_g)
 
                 x_g = -deda2_g * self.dv_g * aa1_g 
                 self.rgd.derivative2(x_g, x_g)
                 B_Lqp = self.B_Lqp
                  
-                dEdD_p = w * npy.dot(npy.dot(self.B_pqL, Y_L), #is there a +=??
-                                     npy.dot(self.n_qg, x_g))
+                dEdD_p = w * np.dot(np.dot(self.B_pqL, Y_L), #is there a +=??
+                                    np.dot(self.n_qg, x_g))
                 x_g = 4.0 * pi * deda2_g * self.rgd.dr_g
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 0]),
-                                      npy.dot(self.n_qg, x_g * aa1x_g ))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 1]),
-                                      npy.dot(self.n_qg, x_g * aa1y_g ))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 2]),
-                                      npy.dot(self.n_qg, x_g * aa1z_g ))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 0]),
+                                     np.dot(self.n_qg, x_g * aa1x_g ))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 1]),
+                                     np.dot(self.n_qg, x_g * aa1y_g ))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 2]),
+                                     np.dot(self.n_qg, x_g * aa1z_g ))
                 dEdDb_p += dEdD_p
                 
                 x_g = -deda2_g * self.dv_g * ab1_g
                 self.rgd.derivative2(x_g, x_g)
                 B_Lqp = self.B_Lqp
 
-                dEdD_p  = w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                      npy.dot(self.n_qg, x_g))
+                dEdD_p  = w * np.dot(np.dot(self.B_pqL, Y_L),
+                                     np.dot(self.n_qg, x_g))
                 x_g = 4.0 * pi * deda2_g * self.rgd.dr_g
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 0]),
-                                      npy.dot(self.n_qg, x_g * ab1x_g))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 1]),
-                                      npy.dot(self.n_qg, x_g * ab1y_g))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 2]),
-                                      npy.dot(self.n_qg, x_g * ab1z_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 0]),
+                                     np.dot(self.n_qg, x_g * ab1x_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 1]),
+                                     np.dot(self.n_qg, x_g * ab1y_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 2]),
+                                     np.dot(self.n_qg, x_g * ab1z_g))
                 dEdDa_p += dEdD_p
 
                 x_g = -2.0 * dedaa2_g * self.dv_g * aa1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += va_g * self.dv_g
-                dEdDa_p += w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                       npy.dot(self.n_qg, x_g))
+                dEdDa_p += w * np.dot(np.dot(self.B_pqL, Y_L),
+                                      np.dot(self.n_qg, x_g))
                 x_g = 8.0 * pi * dedaa2_g * self.rgd.dr_g
-                dEdDa_p += w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 0]),
-                                       npy.dot(self.n_qg, x_g * aa1x_g))
-                dEdDa_p += w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 1]),
-                                       npy.dot(self.n_qg, x_g * aa1y_g))
-                dEdDa_p += w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 2]),
-                                       npy.dot(self.n_qg, x_g * aa1z_g))
+                dEdDa_p += w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 0]),
+                                      np.dot(self.n_qg, x_g * aa1x_g))
+                dEdDa_p += w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 1]),
+                                      np.dot(self.n_qg, x_g * aa1y_g))
+                dEdDa_p += w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 2]),
+                                      np.dot(self.n_qg, x_g * aa1z_g))
 
                 x_g = -2.0 * dedab2_g * self.dv_g * ab1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += vb_g * self.dv_g
-                dEdDb_p += w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                      npy.dot(self.n_qg, x_g))
+                dEdDb_p += w * np.dot(np.dot(self.B_pqL, Y_L),
+                                      np.dot(self.n_qg, x_g))
                 x_g = 8.0 * pi * dedab2_g * self.rgd.dr_g
-                dEdDb_p += w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 0]),
-                                       npy.dot(self.n_qg, x_g * ab1x_g))
-                dEdDb_p += w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 1]),
-                                       npy.dot(self.n_qg, x_g * ab1y_g))
-                dEdDb_p += w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 2]),
-                                       npy.dot(self.n_qg, x_g * ab1z_g))
+                dEdDb_p += w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 0]),
+                                      np.dot(self.n_qg, x_g * ab1x_g))
+                dEdDb_p += w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 1]),
+                                      np.dot(self.n_qg, x_g * ab1y_g))
+                dEdDb_p += w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 2]),
+                                      np.dot(self.n_qg, x_g * ab1z_g))
                 dedtaua_g *= self.dv_g
                 dedtaub_g *= self.dv_g
-                dEdDa_p += w * npy.dot(tau_pg,dedtaua_g)
-                dEdDb_p += w * npy.dot(tau_pg,dedtaub_g)
+                dEdDa_p += w * np.dot(tau_pg,dedtaua_g)
+                dEdDb_p += w * np.dot(tau_pg,dedtaub_g)
 
-                na_g = npy.dot(Y_L, nat_Lg)
-                aa1x_g = npy.dot(A_Li[:, 0], nat_Lg)
-                aa1y_g = npy.dot(A_Li[:, 1], nat_Lg)
-                aa1z_g = npy.dot(A_Li[:, 2], nat_Lg)
+                na_g = np.dot(Y_L, nat_Lg)
+                aa1x_g = np.dot(A_Li[:, 0], nat_Lg)
+                aa1y_g = np.dot(A_Li[:, 1], nat_Lg)
+                aa1z_g = np.dot(A_Li[:, 2], nat_Lg)
                 aa2_g = aa1x_g**2 + aa1y_g**2 + aa1z_g**2
                 aa2_g[1:] /= r_g[1:]**2
                 aa2_g[0] = aa2_g[1]
-                aa1_g = npy.dot(Y_L, dnatdr_Lg)
+                aa1_g = np.dot(Y_L, dnatdr_Lg)
                 aa2_g += aa1_g**2
 
-                nb_g = npy.dot(Y_L, nbt_Lg)
-                ab1x_g = npy.dot(A_Li[:, 0], nbt_Lg)
-                ab1y_g = npy.dot(A_Li[:, 1], nbt_Lg)
-                ab1z_g = npy.dot(A_Li[:, 2], nbt_Lg)
+                nb_g = np.dot(Y_L, nbt_Lg)
+                ab1x_g = np.dot(A_Li[:, 0], nbt_Lg)
+                ab1y_g = np.dot(A_Li[:, 1], nbt_Lg)
+                ab1z_g = np.dot(A_Li[:, 2], nbt_Lg)
                 ab2_g = ab1x_g**2 + ab1y_g**2 + ab1z_g**2
                 ab2_g[1:] /= r_g[1:]**2
                 ab2_g[0] = ab2_g[1]
-                ab1_g = npy.dot(Y_L, dnbtdr_Lg)
+                ab1_g = np.dot(Y_L, dnbtdr_Lg)
                 ab2_g += ab1_g**2
                  
                 a2_g = ((aa1x_g + ab1x_g)**2 +
@@ -1979,91 +1979,91 @@ class OldXCCorrection(BaseXCCorrection):
                 a2_g[0] = a2_g[1]
                 a2_g += (aa1_g + ab1_g)**2
 
-                va_g = npy.zeros(self.ng)
-                vb_g = npy.zeros(self.ng)
-                e_g = npy.zeros(self.ng)
-                deda2_g = npy.zeros(self.ng)
-                dedaa2_g = npy.zeros(self.ng)
-                dedab2_g = npy.zeros(self.ng)
+                va_g = np.zeros(self.ng)
+                vb_g = np.zeros(self.ng)
+                e_g = np.zeros(self.ng)
+                deda2_g = np.zeros(self.ng)
+                dedaa2_g = np.zeros(self.ng)
+                dedab2_g = np.zeros(self.ng)
                 xcfunc.calculate_spinpolarized(e_g, na_g, va_g, nb_g, vb_g,
                                                a2_g, aa2_g, ab2_g,
                                                deda2_g, dedaa2_g, dedab2_g,
                                                tauat_g, taubt_g, dedtaua_g,
                                                dedtaub_g)
-                E -= w * npy.dot(e_g, self.dv_g)
+                E -= w * np.dot(e_g, self.dv_g)
 
                 x_g = -deda2_g * self.dv_g * aa1_g 
                 self.rgd.derivative2(x_g, x_g)
                 B_Lqp = self.B_Lqp
 
-                dEdD_p = w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                     npy.dot(self.nt_qg, x_g))
+                dEdD_p = w * np.dot(np.dot(self.B_pqL, Y_L),
+                                     np.dot(self.nt_qg, x_g))
                 x_g = 4.0 * pi * deda2_g * self.rgd.dr_g
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 0]),
-                                      npy.dot(self.nt_qg, x_g * aa1x_g ))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 1]),
-                                      npy.dot(self.nt_qg, x_g * aa1y_g ))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 2]),
-                                      npy.dot(self.nt_qg, x_g * aa1z_g ))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 0]),
+                                     np.dot(self.nt_qg, x_g * aa1x_g ))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 1]),
+                                     np.dot(self.nt_qg, x_g * aa1y_g ))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 2]),
+                                     np.dot(self.nt_qg, x_g * aa1z_g ))
                 dEdDb_p -= dEdD_p
                 
                 x_g = -deda2_g * self.dv_g * ab1_g
                 self.rgd.derivative2(x_g, x_g)
                 B_Lqp = self.B_Lqp
 
-                dEdD_p  = w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                      npy.dot(self.nt_qg, x_g))
+                dEdD_p  = w * np.dot(np.dot(self.B_pqL, Y_L),
+                                     np.dot(self.nt_qg, x_g))
                 x_g = 4.0 * pi * deda2_g * self.rgd.dr_g
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 0]),
-                                      npy.dot(self.nt_qg, x_g * ab1x_g))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 1]),
-                                      npy.dot(self.nt_qg, x_g * ab1y_g))
-                dEdD_p += w * npy.dot(npy.dot(self.B_pqL,
-                                              A_Li[:, 2]),
-                                      npy.dot(self.nt_qg, x_g * ab1z_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 0]),
+                                     np.dot(self.nt_qg, x_g * ab1x_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 1]),
+                                     np.dot(self.nt_qg, x_g * ab1y_g))
+                dEdD_p += w * np.dot(np.dot(self.B_pqL,
+                                            A_Li[:, 2]),
+                                     np.dot(self.nt_qg, x_g * ab1z_g))
                 dEdDa_p -= dEdD_p
 
                 x_g = -2.0 * dedaa2_g * self.dv_g * aa1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += va_g * self.dv_g
-                dEdDa_p -= w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                       npy.dot(self.nt_qg, x_g))
+                dEdDa_p -= w * np.dot(np.dot(self.B_pqL, Y_L),
+                                      np.dot(self.nt_qg, x_g))
                 x_g = 8.0 * pi * dedaa2_g * self.rgd.dr_g
-                dEdDa_p -= w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 0]),
-                                       npy.dot(self.nt_qg, x_g * aa1x_g))
-                dEdDa_p -= w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 1]),
-                                       npy.dot(self.nt_qg, x_g * aa1y_g))
-                dEdDa_p -= w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 2]),
-                                       npy.dot(self.nt_qg, x_g * aa1z_g))
+                dEdDa_p -= w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 0]),
+                                      np.dot(self.nt_qg, x_g * aa1x_g))
+                dEdDa_p -= w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 1]),
+                                      np.dot(self.nt_qg, x_g * aa1y_g))
+                dEdDa_p -= w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 2]),
+                                      np.dot(self.nt_qg, x_g * aa1z_g))
                 
                 x_g = -2.0 * dedab2_g * self.dv_g * ab1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += vb_g * self.dv_g
-                dEdDb_p -= w * npy.dot(npy.dot(self.B_pqL, Y_L),
-                                       npy.dot(self.nt_qg, x_g))
+                dEdDb_p -= w * np.dot(np.dot(self.B_pqL, Y_L),
+                                      np.dot(self.nt_qg, x_g))
                 x_g = 8.0 * pi * dedab2_g * self.rgd.dr_g
-                dEdDb_p -= w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 0]),
-                                       npy.dot(self.nt_qg, x_g * ab1x_g))
-                dEdDb_p -= w * npy.dot(npy.dot(self.B_pqL,
-                                            A_Li[:, 1]),
-                                       npy.dot(self.nt_qg, x_g * ab1y_g))
-                dEdDb_p -= w * npy.dot(npy.dot(self.B_pqL,
-                                               A_Li[:, 2]),
-                                       npy.dot(self.nt_qg, x_g * ab1z_g))
+                dEdDb_p -= w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 0]),
+                                      np.dot(self.nt_qg, x_g * ab1x_g))
+                dEdDb_p -= w * np.dot(np.dot(self.B_pqL,
+                                          A_Li[:, 1]),
+                                      np.dot(self.nt_qg, x_g * ab1y_g))
+                dEdDb_p -= w * np.dot(np.dot(self.B_pqL,
+                                             A_Li[:, 2]),
+                                      np.dot(self.nt_qg, x_g * ab1z_g))
                 
                 dedtaua_g *= self.dv_g
                 dedtaub_g *= self.dv_g
-                dEdDa_p -= w * npy.dot(taut_pg, dedtaua_g)
-                dEdDb_p -= w * npy.dot(taut_pg, dedtaub_g)
+                dEdDa_p -= w * np.dot(taut_pg, dedtaua_g)
+                dEdDb_p -= w * np.dot(taut_pg, dedtaub_g)
                 y += 1
         return E - self.Exc0
 

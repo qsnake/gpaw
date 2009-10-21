@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import os
+import sys
 import time
 import glob
 import tempfile
@@ -37,11 +38,12 @@ os.system('tar xvzf gpaw-setups-latest.tar.gz')
 setups = tmpdir + '/gpaw/' + glob.glob('gpaw-setups-[0-9]*')[0]
 
 day = time.localtime()[6]
-cpus = 2 + 2 * (day % 2)
-if day % 4 < 2:
+if sys.argv[-1] == '--debug':
     args = '--debug'
+    cpus = 2 ** (1 + (day+1) % 3)
 else:
     args = ''
+    cpus = 2 ** (1 + day % 3)
     
 # Run test-suite:
 if os.system('source /home/camp/modulefiles.sh; ' +

@@ -1,11 +1,16 @@
-define_macros += [("GPAW_AIX",1)]
-define_macros += [("GPAW_MKL",1)]
-define_macros += [("GPAW_BGP",1)]
+define_macros += [('GPAW_AIX', '1')]
+define_macros += [('GPAW_BGP', '1')]
+define_macros += [('GPAW_NO_UNDERSCORE_BLAS', '1')]
+define_macros += [('GPAW_NO_UNDERSCORE_LAPACK', '1')]
+define_macros += [('GPAW_NO_UNDERSCORE_CBLACS', '1')]
+define_macros += [('GPAW_NO_UNDERSCORE_CSCALAPACK', '1')]
+define_macros += [('GPAW_NO_UNDERSCORE_BLACS', '1')]
+define_macros += [('GPAW_NO_UNDERSCORE_SCALAPACK', '1')]
 define_macros += [("GPAW_ASYNC",1)]
 define_macros += [("GPAW_MPI2",1)]
 # define_macros += [('GPAW_HPM',1)] # FLOP rate measurements
 # define_macros += [("GPAW_MPI_DEBUG",1)] # debugging
-# define_macros += [("GPAW_OMP",1)] # not really working 
+# define_macros += [("GPAW_OMP",1)] # not really working
 
 scalapack = True
 
@@ -15,7 +20,7 @@ scalapack = True
 #
 # DO NOT INTERCHANGE THE ORDER OF LAPACK
 # & ESSL, LAPACK SHOULD BE LINKED FIRST.
-# 
+#
 # Goto appears to be much faster for general
 # DGEMM operations, particularly those with
 # alpha != beta != 0

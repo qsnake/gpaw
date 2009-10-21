@@ -1,5 +1,5 @@
 from gpaw.xc_functional import XCFunctional
-import numpy as npy
+import numpy as np
 from itertools import izip
 from gpaw.mpi import world
 from gpaw.atom.generator import Generator, parameters
@@ -29,20 +29,20 @@ class NSCFSIC:
             for f, l, e, u in zip(g.f_j[:njcore], g.l_j[:njcore], g.e_j[:njcore], g.u_j[:njcore]):
                 # Calculate orbital density
                 # NOTE: It's spherically symmetrized!
-                #n = npy.dot(self.f_j,
+                #n = np.dot(self.f_j,
                 assert l == 0, ("Not tested for l>0 core states")
-                na = npy.where(abs(u) < 1e-160, 0,u)**2 / (4 * pi)
+                na = np.where(abs(u) < 1e-160, 0,u)**2 / (4 * pi)
                 na[1:] /= g.r[1:]**2
                 na[0] = na[1]
-                nb = npy.zeros(g.N)
-                va = npy.zeros(g.N) 
-                vb = npy.zeros(g.N)
-                e_g = npy.zeros(g.N)
-                vHr = npy.zeros(g.N)
+                nb = np.zeros(g.N)
+                va = np.zeros(g.N) 
+                vb = np.zeros(g.N)
+                e_g = np.zeros(g.N)
+                vHr = np.zeros(g.N)
                 xc.calculate_spinpolarized(e_g, na, va, nb, vb)
-                Exc = npy.dot(e_g, g.rgd.dv_g)
+                Exc = np.dot(e_g, g.rgd.dv_g)
                 hartree(0, na * g.r * g.dr, g.beta, g.N, vHr)
-                EHa = 2*pi*npy.dot(vHr*na*g.r , g.dr)
+                EHa = 2*pi*np.dot(vHr*na*g.r , g.dr)
                 print "%10.2f%10.2f%10.2f" % (Exc*27.21, EHa*27.21, -f*(EHa+Exc)*27.21)
                 ESIC += -f*(EHa+Exc)
                 
@@ -81,7 +81,7 @@ class NSCFSIC:
                     # Obtain the atomic density matrix for state
                     D_sp = self.paw.wfs.get_orbital_density_matrix(a, kpt, n)
                     D_p = D_sp[kpt.s]
-                    Q_aL[a] = npy.dot(D_p, self.paw.density.setups[a].Delta_pL)
+                    Q_aL[a] = np.dot(D_p, self.paw.density.setups[a].Delta_pL)
                 self.paw.density.ghat.add(nt_sg[kpt.s], Q_aL)
 
                 # Solve the poisson equation
@@ -98,20 +98,20 @@ class NSCFSIC:
                     D_sp = self.paw.wfs.get_orbital_density_matrix(a, kpt, n)
 
                     # PAW correction to pseudo Hartree-energy
-                    EH+= npy.sum([npy.dot(D_p, npy.dot(self.paw.density.setups[a].M_pp, D_p)) for D_p in D_sp])
+                    EH+= np.sum([np.dot(D_p, np.dot(self.paw.density.setups[a].M_pp, D_p)) for D_p in D_sp])
                     # Expand the density matrix to spin-polarized case
                     if len(D_sp) == 1:
                         D_p2 = D_sp[0].copy()
                         D_p2[:] = 0.0
-                        D_sp = npy.array([ D_sp[0], D_p2 ])
+                        D_sp = np.array([ D_sp[0], D_p2 ])
                     else:
                         raise NotImplementedError
                         
-                    vxc_sg = npy.zeros((2, xccorr.ng))
-                    vxct_sg = npy.zeros((2, xccorr.ng))
+                    vxc_sg = np.zeros((2, xccorr.ng))
+                    vxct_sg = np.zeros((2, xccorr.ng))
                     integrator = xccorr.get_integrator(None)
-                    e = npy.zeros((xccorr.ng))
-                    e2 = npy.zeros((xccorr.ng))
+                    e = np.zeros((xccorr.ng))
+                    e2 = np.zeros((xccorr.ng))
 
                     # Loop over each sline
                     for n1_sg, n1t_sg, i_slice in izip(xccorr.expand_ae_density(D_sp, core=False),

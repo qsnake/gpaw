@@ -631,23 +631,6 @@ static PyObject * mpi_broadcast(MPIObject *self, PyObject *args)
   Py_RETURN_NONE;
 }
 
-static PyObject * mpi_cart_create(MPIObject *self, PyObject *args)
-{
-  int dimx, dimy, dimz;
-  int periodic = 0;
-
-  if (!PyArg_ParseTuple(args, "iii|i:cart_create", &dimx,
-                        &dimy, &dimz, &periodic))
-    return NULL;
-
-  int dims[3] = {dimx, dimy, dimz};
-  int periods[3] = {periodic, periodic, periodic};
-  MPI_Comm comm_new;
-  MPI_Cart_create(self->comm, 3, dims, periods, 1, &comm_new);
-  return Py_BuildValue("s#", &comm_new, sizeof(comm_new));
-  // This looks wrong!  Shouldn't it return a new communincator object?
-}
-
 #ifdef GPAW_WITH_SL
 #include "scalapack.c"
 #endif
@@ -706,8 +689,6 @@ static PyMethodDef mpi_methods[] = {
 #endif
     {"new_communicator", (PyCFunction)MPICommunicator,  METH_VARARGS,
      "new_communicator(ranks) creates a new communicator."},
-    {"cart_create",      (PyCFunction)mpi_cart_create,  METH_VARARGS,
-     "cart_create(nx, ny, nz, periodic=0) creates cartesian grid (BROKEN?)"},
     {0, 0, 0, 0}
 };
 

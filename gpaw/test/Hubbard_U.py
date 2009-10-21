@@ -38,25 +38,25 @@ b=a/sqrt(2)
 m=2
 k=2 # Number of k-points
 atoms = Atoms(symbols='Ni2O2',
-	       pbc=True,
-	       cell=(b, b, a),
-	       positions=[(0, 0, 0),
-	       (b/2, b/2, a/2),
-	       (0, 0, a/2),
-	       (b/2, b/2, 0)],
-           magmoms=(m,-m,0,0)
-	       )
+              pbc=True,
+              cell=(b, b, a),
+              positions=[(0, 0, 0),
+                         (b/2, b/2, a/2),
+                         (0, 0, a/2),
+                         (b/2, b/2, 0)],
+              magmoms=(m,-m,0,0)
+              )
 
 ##############################################################################
 ## Setup the calculator
 calc = GPAW(
-        h=.25,
-		width=.05,
-        spinpol=True,
-        convergence={'eigenstates':1e-4,'density': 1.0e-2,'energy': 0.1, },
-		#txt=name+'.txt',
-		kpts=(k, k, k),
-		xc='PBE')
+    h=.25,
+    width=.05,
+    spinpol=True,
+    convergence={'eigenstates':1e-4,'density': 1.0e-2,'energy': 0.1, },
+    #txt=name+'.txt',
+    kpts=(k, k, k),
+    xc='PBE')
 
 atoms.set_pbc((1,1,1))
 atoms.set_calculator(calc)

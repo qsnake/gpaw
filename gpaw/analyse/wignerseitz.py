@@ -1,5 +1,5 @@
 from math import sqrt, pi
-import numpy as npy
+import numpy as np
 
 from gpaw.utilities import pack, pack2, wignerseitz
 from gpaw.mpi import MASTER
@@ -12,7 +12,7 @@ class WignerSeitz:
         self.gd = gd
 
         n = len(self.nuclei)
-        atom_c = npy.empty((n, 3))
+        atom_c = np.empty((n, 3))
         for a, nucleus in enumerate(nuclei):
             atom_c[a] = nucleus.spos_c * gd.N_c
 
@@ -24,9 +24,9 @@ class WignerSeitz:
     def expand(self, density):
         """Expand a smooth density in Wigner-Seitz cells around the atoms"""
         n = len(self.nuclei)
-        weights = npy.empty((n,))
+        weights = np.empty((n,))
         for a in range(n):
-            mask = npy.where(self.atom_index == a, density, 0.0)
+            mask = np.where(self.atom_index == a, density, 0.0)
             # XXX Optimize! No need to integrate in zero-region
             weights[a] = self.gd.integrate(mask)
 
@@ -51,9 +51,9 @@ class WignerSeitz:
         # add augmentation sphere corrections
         for a, nucleus in enumerate(self.nuclei):
             P_i = nucleus.P_uni[u, n]
-            P_p = pack(npy.outer(P_i, P_i))
+            P_p = pack(np.outer(P_i, P_i))
             Delta_p = sqrt(4 * pi) * nucleus.setup.Delta_pL[:, 0]
-            weigths[a] += npy.dot(Delta_p, P_p) 
+            weigths[a] += np.dot(Delta_p, P_p) 
 
         return weigths
 
@@ -80,7 +80,7 @@ class WignerSeitzLDOS(LDOSbyBand):
         self.ws = WignerSeitz(paw.gd, paw.nuclei)
         
         nu = paw.nkpts * paw.nspins
-        ldos = npy.empty((nu, paw.nbands, len(paw.nuclei)))
+        ldos = np.empty((nu, paw.nbands, len(paw.nuclei)))
         for u, kpt in enumerate(paw.kpt_u):
             for n, psit_G in enumerate(kpt.psit_nG):
                 ldos[u, n, :] = ws.expand_wave_function(psit_G, u, n)

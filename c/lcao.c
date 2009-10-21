@@ -3,7 +3,7 @@
 #include "extensions.h"
 #include "bmgs/bmgs.h"
 
-#ifdef GPAW_AIX
+#ifdef GPAW_NO_UNDERSCORE_BLAS
 #  define dgemv_ dgemv
 #  define dgemm_ dgemm
 #endif

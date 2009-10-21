@@ -1,7 +1,7 @@
 from math import pi
 from pickle import load, dump
 
-import numpy as npy
+import numpy as np
 from ase.units import Bohr
 
 from _gpaw import localize
@@ -18,7 +18,7 @@ class Wannier:
             self.cell_c = calc.gd.cell_c * Bohr
             if nbands is None:
                 nbands = calc.get_number_of_bands()
-            self.Z_nnc = npy.empty((nbands, nbands, 3), complex)
+            self.Z_nnc = np.empty((nbands, nbands, 3), complex)
             print "calculating Z_nnc"
             for c in range(3):
                 self.Z_nnc[:, :, c] = calc.get_wannier_integrals(c, spin,
@@ -26,7 +26,7 @@ class Wannier:
                                                                  0, 0, 1.0,
                                                                  nbands)
             self.value = 0.0
-            self.U_nn = npy.identity(nbands)
+            self.U_nn = np.identity(nbands)
 
     def load(self, filename):
         self.cell_c, self.Z_nnc, self.value, self.U_nn = load(open(filename))
@@ -46,7 +46,7 @@ class Wannier:
         return value # / Bohr**6
 
     def get_centers(self):
-        scaled_c = -npy.angle(self.Z_nnc.diagonal()).T / (2 * pi)
+        scaled_c = -np.angle(self.Z_nnc.diagonal()).T / (2 * pi)
         return (scaled_c % 1.0) * self.cell_c
 
     def get_function(self, calc, n, pad=True):
@@ -54,13 +54,13 @@ class Wannier:
             return calc.gd.zero_pad(self.get_function(calc, n, False))
         psit_nG = calc.wfs.kpt_u[self.spin].psit_nG[:]
         psit_nG = psit_nG.reshape((calc.wfs.nbands, -1))
-        return npy.dot(self.U_nn[:, n],
+        return np.dot(self.U_nn[:, n],
                        psit_nG).reshape(calc.gd.n_c) / Bohr**1.5
 
     def get_hamiltonian(self, calc):
         # U^T diag(eps_n) U
         eps_n = calc.get_eigenvalues(kpt=0, spin=self.spin)
-        return npy.dot(dagger(self.U_nn) * eps_n, self.U_nn)
+        return np.dot(dagger(self.U_nn) * eps_n, self.U_nn)
 
 
 class LocFun(Wannier):
@@ -81,30 +81,30 @@ class LocFun(Wannier):
             self.value = 1
             return self.value
         
-        self.Z_jjc = npy.empty(self.S_jj.shape + (3,))
+        self.Z_jjc = np.empty(self.S_jj.shape + (3,))
         for c in range(3):
-            self.Z_jjc[:, :, c] = npy.dot(dagger(self.U_nn),
-                                     npy.dot(self.Z_nnc[:, :, c], self.U_nn))
+            self.Z_jjc[:, :, c] = np.dot(dagger(self.U_nn),
+                                     np.dot(self.Z_nnc[:, :, c], self.U_nn))
         
-        self.value = npy.sum(npy.abs(self.Z_jjc.diagonal())**2)
+        self.value = np.sum(np.abs(self.Z_jjc.diagonal())**2)
         
         return self.value # / Bohr**6
 
     def get_centers(self):
-        z_jjc = npy.empty(self.S_jj.shape+(3,))
+        z_jjc = np.empty(self.S_jj.shape+(3,))
         for c in range(3):
-            z_jjc = npy.dot(dagger(self.U_nn),
-                            npy.dot(self.Z_nnc[:,:,c], self.U_nn))
+            z_jjc = np.dot(dagger(self.U_nn),
+                            np.dot(self.Z_nnc[:,:,c], self.U_nn))
 
-        scaled_c = -npy.angle(z_jjc.diagonal()).T / (2 * pi)
+        scaled_c = -np.angle(z_jjc.diagonal()).T / (2 * pi)
         return (scaled_c % 1.0) * self.cell_c
 
     def get_eigenstate_centers(self):
-        scaled_c = -npy.angle(self.Z_nnc.diagonal()).T / (2 * pi)
+        scaled_c = -np.angle(self.Z_nnc.diagonal()).T / (2 * pi)
         return (scaled_c % 1.0) * self.cell_c
     
     def get_proj_norm(self, calc):
-        return npy.array([npy.linalg.norm(U_j) for U_j in self.U_nn])
+        return np.array([np.linalg.norm(U_j) for U_j in self.U_nn])
             
 
 def get_locfun_rotation(projections_nj, M=None, T=0, ortho=False):
@@ -127,31 +127,31 @@ def get_locfun_rotation(projections_nj, M=None, T=0, ortho=False):
     a0_vj = projections_nj[M:M + V, :]
 
     if V == 0:
-        D_jj = npy.dot(dagger(projections_nj), projections_nj)
-        U_nj = 1.0 / npy.sqrt(D_jj.diagonal()) * projections_nj
-        S_jj = npy.dot(dagger(U_nj), U_nj)
-        assert npy.diagonal(npy.linalg.cholesky(S_jj)).min() > .01, \
+        D_jj = np.dot(dagger(projections_nj), projections_nj)
+        U_nj = 1.0 / np.sqrt(D_jj.diagonal()) * projections_nj
+        S_jj = np.dot(dagger(U_nj), U_nj)
+        assert np.diagonal(np.linalg.cholesky(S_jj)).min() > .01, \
                'Close to linear dependence.'
         if ortho:
             lowdin(U_nj, S_jj)
-            S_jj = npy.identity(len(S_jj))
+            S_jj = np.identity(len(S_jj))
         return U_nj, S_jj
 
-    #b_v, b_vv = npy.linalg.eigh(npy.dot(a0_vj, dagger(a0_vj)))
-    #T_vp = b_vv[:, npy.argsort(-b_v)[:L]]
-    b_j, b_jj = npy.linalg.eigh(npy.dot(dagger(a0_vj), a0_vj))
-    T_vp = npy.dot(a0_vj, b_jj[:, npy.argsort(-b_j.real)[:L]])
+    #b_v, b_vv = np.linalg.eigh(np.dot(a0_vj, dagger(a0_vj)))
+    #T_vp = b_vv[:, np.argsort(-b_v)[:L]]
+    b_j, b_jj = np.linalg.eigh(np.dot(dagger(a0_vj), a0_vj))
+    T_vp = np.dot(a0_vj, b_jj[:, np.argsort(-b_j.real)[:L]])
 
-    R_vv = npy.dot(T_vp, dagger(T_vp))
-    D_jj = npy.dot(dagger(a0_nj), a0_nj) + npy.dot(dagger(a0_vj),
-                                                   npy.dot(R_vv, a0_vj))
-    D2_j = 1.0 / npy.sqrt(D_jj.diagonal())
+    R_vv = np.dot(T_vp, dagger(T_vp))
+    D_jj = np.dot(dagger(a0_nj), a0_nj) + np.dot(dagger(a0_vj),
+                                                   np.dot(R_vv, a0_vj))
+    D2_j = 1.0 / np.sqrt(D_jj.diagonal())
     ap_nj = D2_j * a0_nj
-    ap_vj = D2_j * npy.dot(R_vv, a0_vj)
-    S_jj = npy.dot(dagger(ap_nj), ap_nj) + npy.dot(dagger(ap_vj), ap_vj)
+    ap_vj = D2_j * np.dot(R_vv, a0_vj)
+    S_jj = np.dot(dagger(ap_nj), ap_nj) + np.dot(dagger(ap_vj), ap_vj)
 
     # Check for linear dependencies
-    Scd = npy.diagonal(npy.linalg.cholesky(S_jj)).min()
+    Scd = np.diagonal(np.linalg.cholesky(S_jj)).min()
     if Scd < 0.01:
         print ('Warning: possibly near linear depedence.\n'
                'Minimum eigenvalue of cholesky decomposition is %s' % Scd)
@@ -159,9 +159,9 @@ def get_locfun_rotation(projections_nj, M=None, T=0, ortho=False):
     if ortho:
         lowdin(ap_nj, S_jj)
         lowdin(ap_vj, S_jj)
-        S_jj = npy.identity(len(S_jj))
+        S_jj = np.identity(len(S_jj))
 
-    U_nj = npy.concatenate([ap_nj.flat, ap_vj.flat]).reshape(M+V, Nw)
+    U_nj = np.concatenate([ap_nj.flat, ap_vj.flat]).reshape(M+V, Nw)
     return U_nj, S_jj
 
 
@@ -187,6 +187,6 @@ def single_zeta(paw, spin, verbose=False):
                     print '%5i %4i %s_%s' % (len(p_jn), a,
                                              'spdf'[l], angular[l][j - i])
             i += 2 * l + 1
-    projections_nj = dagger(npy.array(p_jn))
+    projections_nj = dagger(np.array(p_jn))
     assert projections_nj.shape[0] >= projections_nj.shape[1]
     return projections_nj
