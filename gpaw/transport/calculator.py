@@ -279,9 +279,9 @@ class Transport(GPAW):
         p['h'] = lead_cell1[2, 2] / Nc_lead1[2] * Bohr
         h1 = lead_cell1[2, 2] / Nc_lead1[2] * Bohr
         h2 = lead_cell2[2, 2] / Nc_lead2[2] * Bohr
-        scat_cell = np.diag(self.atoms.cell) / Bohr
+        scat_cell = self.atoms.cell / Bohr
         Nc_scat = h2gpts(h, scat_cell)
-        h3 = scat_cell[2, 2] / Nc_scat
+        h3 = scat_cell[2, 2] / Nc_scat[2] * Bohr
         print 'h_lead1, h_lead2, h_scat', h1, h2, h3
        
     def set_default_transport_parameters(self):
