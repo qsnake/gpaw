@@ -5,7 +5,7 @@ import array
 import numpy as np
 
 from gpaw.grid_descriptor import GridDescriptor
-from gpaw.operators import Gradient
+from gpaw.fd_operators import Gradient
 from gpaw.utilities import is_contiguous
 from gpaw.utilities.blas import axpy
 from gpaw.utilities.timing import Timer

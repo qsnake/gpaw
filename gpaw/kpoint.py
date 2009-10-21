@@ -5,7 +5,7 @@
 
 import numpy as np
 
-from gpaw.operators import Gradient
+from gpaw.fd_operators import Gradient
 from gpaw.utilities.blas import axpy
 
 

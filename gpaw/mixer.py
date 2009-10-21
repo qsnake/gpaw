@@ -8,7 +8,7 @@ Ref. to Kresse-paper ... XXX
 import numpy as np
 
 from gpaw.utilities.blas import axpy
-from gpaw.operators import Operator
+from gpaw.fd_operators import Operator
 
 
 class BaseMixer:

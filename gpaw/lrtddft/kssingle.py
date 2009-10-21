@@ -9,7 +9,7 @@ from gpaw.utilities import pack, packed_index
 from gpaw.lrtddft.excitation import Excitation,ExcitationList
 from gpaw.localized_functions import create_localized_functions
 from gpaw.pair_density import PairDensity
-from gpaw.operators import Gradient
+from gpaw.fd_operators import Gradient
 from gpaw.gaunt import gaunt as G_LLL
 from gpaw.gaunt import ylnyl
 

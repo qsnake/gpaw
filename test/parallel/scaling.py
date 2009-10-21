@@ -9,7 +9,7 @@ except ImportError:
     except ImportError:
         raise SystemExit('numpy nor Numeric not installed!')
 from gpaw import mpi
-from gpaw.operators import Laplace
+from gpaw.fd_operators import Laplace
 from gpaw.transformers import Transformer
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.preconditioner import Preconditioner

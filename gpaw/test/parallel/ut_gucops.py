@@ -21,7 +21,7 @@ from gpaw.parameters import InputParameters
 from gpaw.xc_functional import XCFunctional
 from gpaw.setup import Setups
 from gpaw.utilities.gauss import gaussian_wave
-from gpaw.operators import Laplace
+from gpaw.fd_operators import Laplace
 
 # -------------------------------------------------------------------
 

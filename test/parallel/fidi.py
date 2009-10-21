@@ -1,6 +1,6 @@
 from time import time
 from gpaw.grid_descriptor import GridDescriptor
-from gpaw.operators import Laplace
+from gpaw.fd_operators import Laplace
 import gpaw.mpi as mpi
 
 n = 96

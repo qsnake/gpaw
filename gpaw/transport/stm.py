@@ -7,7 +7,7 @@ from gpaw.transport.greenfunction import GreenFunction
 #from ase.transport.selfenergy import LeadSelfEnergy
 #from ase.transport.greenfunction import GreenFunction
 
-from gpaw.operators import Laplace
+from gpaw.fd_operators import Laplace
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.lfc import NewLocalizedFunctionsCollection as LFC
 import gpaw.mpi as mpi

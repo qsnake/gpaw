@@ -20,7 +20,7 @@ import numpy as np
 from ase.units import kJ, Hartree
 
 from gpaw import debug
-from gpaw.operators import Gradient
+from gpaw.fd_operators import Gradient
 import gpaw.mpi as mpi
 
 

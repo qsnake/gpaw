@@ -20,7 +20,7 @@ import numpy as np
 from numpy.fft import fftn, fftfreq, fft, ifftn
 
 from gpaw.xc_functional import XCFunctional
-from gpaw.operators import Gradient
+from gpaw.fd_operators import Gradient
 from gpaw import setup_paths
 import gpaw.mpi as mpi
 import _gpaw

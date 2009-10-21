@@ -1,6 +1,6 @@
 import numpy as np
 from gpaw.grid_descriptor import GridDescriptor
-from gpaw.operators import Laplace
+from gpaw.fd_operators import Laplace
 from gpaw.mpi import rank, size, world
 
 

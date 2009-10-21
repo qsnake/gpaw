@@ -4,7 +4,7 @@
 
 from numpy import pi
 from ase.units import Bohr, Hartree
-from gpaw.operators import Gradient
+from gpaw.fd_operators import Gradient
 
 def _elf(nt, nt_grad2, taut, ncut, spinpol, elf):
     """Pseudo electron localisation function (ELF) as defined in

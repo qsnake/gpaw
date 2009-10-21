@@ -8,7 +8,7 @@ from gpaw.mpi import world, distribute_cpus
 from gpaw.utilities import gcd
 from gpaw.utilities.lapack import inverse_cholesky
 from gpaw.hs_operators import Operator
-from gpaw.operators import Laplace
+from gpaw.fd_operators import Laplace
    
 G = 120  # number of grid points (G x G x G)
 N = 2000  # number of bands

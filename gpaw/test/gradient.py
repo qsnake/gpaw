@@ -1,4 +1,4 @@
-from gpaw.operators import Gradient
+from gpaw.fd_operators import Gradient
 import numpy as np
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.mpi import world

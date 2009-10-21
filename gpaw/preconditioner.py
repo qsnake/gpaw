@@ -6,7 +6,7 @@ from math import pi
 import numpy as np
 
 from gpaw.transformers import Transformer
-from gpaw.operators import Laplace
+from gpaw.fd_operators import Laplace
 
 from gpaw.utilities.blas import axpy
 

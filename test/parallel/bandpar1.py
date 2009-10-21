@@ -3,7 +3,7 @@ import sys
 import numpy as np
 from gpaw import parsize, parsize_bands
 from gpaw.grid_descriptor import GridDescriptor
-from gpaw.operators import Laplace
+from gpaw.fd_operators import Laplace
 from gpaw.mpi import world
 
 B = parsize_bands   # number of blocks

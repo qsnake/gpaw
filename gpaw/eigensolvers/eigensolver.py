@@ -4,7 +4,7 @@ from math import ceil
 
 import numpy as np
 
-from gpaw.operators import Laplace
+from gpaw.fd_operators import Laplace
 from gpaw.preconditioner import Preconditioner
 from gpaw.utilities.lapack import diagonalize
 from gpaw.utilities.blas import axpy, r2k, gemm

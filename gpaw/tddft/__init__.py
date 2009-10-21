@@ -127,7 +127,7 @@ class TDDFT(GPAW):
             raise DeprecationWarning('This should not happen.')
 
             wfs.dtype = complex
-            from gpaw.operators import Laplace
+            from gpaw.fd_operators import Laplace
             nn = self.input_parameters.stencils[0]
             wfs.kin = Laplace(wfs.gd, -0.5, nn, complex)
             wfs.pt = LFC(wfs.gd, [setup.pt_j for setup in wfs.setups],

@@ -7,7 +7,7 @@ import sys
 import numpy as np
 
 from gpaw.transformers import Transformer
-from gpaw.operators import Laplace, LaplaceA, LaplaceB
+from gpaw.fd_operators import Laplace, LaplaceA, LaplaceB
 from gpaw import PoissonConvergenceError
 from gpaw.utilities.blas import axpy
 from gpaw.utilities.gauss import Gaussian

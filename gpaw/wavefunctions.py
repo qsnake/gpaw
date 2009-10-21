@@ -6,7 +6,7 @@ from gpaw.utilities import pack, unpack2
 from gpaw.utilities.tools import tri2full, get_matrix_index
 from gpaw.kpoint import KPoint
 from gpaw.transformers import Transformer
-from gpaw.operators import Gradient
+from gpaw.fd_operators import Gradient
 from gpaw.utilities.timing import nulltimer
 from gpaw.band_descriptor import BandDescriptor
 import gpaw.mpi as mpi
@@ -845,7 +845,7 @@ class LCAOWaveFunctions(WaveFunctions):
 
 from gpaw.eigensolvers import get_eigensolver
 from gpaw.overlap import Overlap
-from gpaw.operators import Laplace
+from gpaw.fd_operators import Laplace
 from gpaw.lfc import LocalizedFunctionsCollection as LFC
 from gpaw.utilities import unpack
 from gpaw.io.tar import TarFileReference
