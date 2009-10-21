@@ -249,7 +249,7 @@ class Transport(GPAW):
             raise RuntimeError('wrong way to use keyword LR_leads')
        
         self.initialized_transport = False
-       
+        
         self.atoms_l = [None] * self.lead_num
         self.atoms_e = [None] * self.env_num
         
@@ -274,10 +274,16 @@ class Transport(GPAW):
             h = p['h'] / Bohr
             
         lead_cell1 = np.diag(tp['pl_cells'][0]) / Bohr
-        #lead_cell2 = np.diag(p['pl_cells'][1]) / Bohr
+        lead_cell2 = np.diag(tp['pl_cells'][1]) / Bohr
         Nc_lead1 = h2gpts(h, lead_cell1)
-        #Nc_lead2 = h2gpts(h, lead_cell2)
-        p['h'] = lead_cell1[2, 2] / Nc_lead1[2] * Bohr 
+        Nc_lead2 = h2gpts(h, lead_cell2)
+        p['h'] = lead_cell1[2, 2] / Nc_lead1[2] * Bohr
+        h1 = lead_cell1[2, 2] / Nc_lead1[2] * Bohr
+        h2 = lead_cell2[2, 2] / Nc_lead2[2] * Bohr
+        scat_cell = np.diag(self.atoms.cell) / Bohr
+        Nc_scat = h2gpts(h, scat_cell)
+        h3 = scat_cell[2, 2] / Nc_scat
+        print 'h_lead1, h_lead2, h_scat', h1, h2, h3
        
     def set_default_transport_parameters(self):
         p = {}
