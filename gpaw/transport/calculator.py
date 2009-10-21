@@ -167,7 +167,6 @@ class Transport(GPAW):
                 p['verbose'] = kw['verbose']
 
         self.transport_parameters = p
-        self.adjust_spacing()     
         self.use_lead = p['use_lead']
         self.identical_leads = p['identical_leads']
         self.pl_atoms = p['pl_atoms']
@@ -377,6 +376,7 @@ class Transport(GPAW):
                     calc.set_positions(atoms)
             self.nbenv.append(calc.wfs.setups.nao)
         
+        self.adjust_spacing()             
         self.initialize()
         self.get_extended_atoms()
         calc = self.extended_atoms.calc
