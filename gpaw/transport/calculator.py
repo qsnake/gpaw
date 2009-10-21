@@ -338,6 +338,7 @@ class Transport(GPAW):
         return p     
 
     def set_atoms(self, atoms):
+        atoms.center()
         self.atoms = atoms.copy()
         
     def initialize_transport(self):
