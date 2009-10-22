@@ -107,6 +107,9 @@ Publications using the gpaw code
    \A. Einstein so that we don't start an enumerated list (A, B, C,
    ...).
 
+   The date should be the publication date
+
+
 1) The first article introducing the gpaw project:
    
    \J. J. Mortensen, L. B. Hansen, and K. W. Jacobsen
@@ -236,6 +239,16 @@ Publications using the gpaw code
    .. 16 January 2009
 
 
+#) Sami Malola, Hannu Häkkinen and Pekka Koskinen
+
+   `Gold in graphene: In-plane adsorption and diffusion`__
+
+   Appl. Phys. Lett. **94**, 043106 (2009)
+
+   __ http://dx.doi.org/10.1063/1.3075216 
+   
+   .. 26 January 2009
+
 #) A study of gold cluster stability on a rutile TiO\ :sub:`2`
    surface, and CO adsorbed on such clusters:
 
@@ -261,6 +274,33 @@ Publications using the gpaw code
 
    __ http://dx.doi.org/10.1103/PhysRevLett.102.106102
 
+   .. 13 March 2009
+
+#) Poul Georg Moses, Jens J. Mortensen, Bengt I. Lundqvist and Jens
+   K. Nørskov
+
+   `Density functional study of the adsorption and van der Waals
+   binding of aromatic and conjugated compounds on the basal plane of
+   MoS2`__
+
+   \J. Chem. Phys. **130**, 104709 (2009)
+
+   __ http://dx.doi.org/10.1063/1.3086040 
+
+   .. 14 March 2009
+
+#) Jeppe Gavnholt, Angel Rubio, Thomas Olsen, Kristian S. Thygesen and
+   Jakob Schiøtz
+
+   `Hot-electron-assisted femtochemistry at surfaces: A time-dependent
+   density functional theory approach`__
+
+   Phys. Rev. B **79**, 195405 (2009)
+
+   __ http://dx.doi.org/10.1103/PhysRevB.79.195405
+
+   .. 6 May 2009  
+
 #) X. Lin, N. Nilius, H.-J. Freund, M. Walter, P. Frondelius,
    K. Honkala, and H. Häkkinen
 
@@ -271,6 +311,18 @@ Publications using the gpaw code
    __ http://dx.doi.org/10.1103/PhysRevLett.102.206801
 
    .. 5 June 2009
+
+#) Katarzyna A. Kacprzak, Lauri Lehtovaara, Jaakko Akola, Olga
+   Lopez-Acevedo and Hannu Häkkinen
+
+   `A density functional investigation of thiolate-protected bimetal
+   PdAu24(SR)(18)(z) clusters: doping the superatom complex`__
+
+   Physical Chemistry Chemical Physics **11**, 7123-7129 (2009)
+
+   __ http://dx.doi.org/10.1039/b904491d
+
+   .. 11 June 2009
 
 #) The effect of frustrated rotations in HEFatS is calculated using
    the delta SCF method
@@ -285,6 +337,17 @@ Publications using the gpaw code
    __ http://dx.doi.org/10.1103/PhysRevB.79.235414
 
    .. 12 June 2009 
+
+#) \A. K. Kelkkanen, B. I. Lundqvist, J. K. Nørskov
+
+   `Density functional for van der Waals forces accounts for hydrogen
+   bond in benchmark set of water hexamers`__
+
+   Journal of Chemical Physics **131**, 046102 (2009)
+
+   __ http://dx.doi.org/10.1063/1.3193462
+
+   .. 29 July 2009
 
 #) Olga Lopez-Acevedo, Jyri Rintala, Suvi Virtanen, Cristina Femoni,
    Cristina Tiozzo, Henrik Grönbeck, Mika Pettersson and Hannu Häkkinen
@@ -310,7 +373,8 @@ Publications using the gpaw code
 #) Engelbert Redel, Michael Walter, Ralf Thomann, Christian Vollmer, 
    Laith Hussein, Harald Scherer, Michael Krüger and Christoph Janiak
 
-   `Synthesis, stabilization, functionalization and DFT calculations of gold nanoparticles in fluorous phases (PTFE and ILs)`__
+   `Synthesis, stabilization, functionalization and DFT calculations
+   of gold nanoparticles in fluorous phases (PTFE and ILs)`__
 
    Chem. Eur. J. **15**, 10047 (2009)
 
@@ -318,10 +382,20 @@ Publications using the gpaw code
 
    .. 20 August 2009
 
+#) \A. H. Larsen, M. Vanin, J. J. Mortensen, K. S. Thygesen,
+   K. W. Jacobsen
+
+   Localized atomic basis set in the projector augmented wave method
+
+   Phys. Rev. B (accepted)
+
+   .. 2 November 2009
+
 #) Jiří Klimeš, David R. Bowler, and Angelos Michaelides
 
    `Chemical accuracy for the van der Waals density functional`__
 
    __ http://arxiv.org/abs/0910.0438
 
-   .. 2 October 2009
+   .. 10 December 2009
+
