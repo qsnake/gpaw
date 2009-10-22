@@ -84,7 +84,7 @@ Statistics
 ==========
 
 The image below shows the development in the volume of the code as per
-July 24 2009.
+October 22 2009.
 
 .. image:: ../_static/stat.png
 
