@@ -10,7 +10,10 @@ class ExternalPotential:
 
     """
     def __init__(self, vext_g=None, gd=None):
-        """Initialize with a grid and the corresponding grid descriptor."""
+        """Initialize with a grid and the corresponding grid descriptor.
+
+        Grid values should be in Hartree.
+        """
         self.vext_g = vext_g
         self.gd = gd
         if self.gd is not None:
@@ -25,7 +28,7 @@ class ExternalPotential:
             self.gd = gd
         else:
             if gd is not None:
-                # make shure we are talking about the same grid
+                # make sure we are talking about the same grid
                 assert(gd == self.gd)
         return self.vext_g
 
@@ -232,16 +235,19 @@ class ConstantPotential(ExternalPotential):
     def __init__(self, constant=1.):
         self.constant = constant
         ExternalPotential.__init__(self)
+    
     def get_potential(self, gd):
         if self.vext_g is None:
             self.gd = gd
             self.vext_g = gd.zeros() + self.constant
         return self.vext_g
+    
     def get_ion_energy_and_forces(self, atoms):
         """Return the ionic energy and force contribution."""
         forces = np.zeros((len(atoms),3))
         energy = 0
         return energy, forces
+
 
 class ElectrostaticPotential(ExternalPotential):
     """External electrostatic potential
@@ -261,10 +267,11 @@ class ElectrostaticPotential(ExternalPotential):
             if len(taylor) > 1:
                 # see spherical_harmonics.py for the assignment
                 forces[i] += Z * np.array([taylor[1][2], # x
-                                            taylor[1][0], # y
-                                            taylor[1][1]])# z
+                                           taylor[1][0], # y
+                                           taylor[1][1]])# z
         return energy, forces
-    
+
+
 class ConstantElectricField(ElectrostaticPotential):
     """External constant electric field"""
     def __init__(self, strength, direction=[0,0,1], center=None):
