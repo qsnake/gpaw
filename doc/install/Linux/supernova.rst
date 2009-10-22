@@ -48,7 +48,7 @@ Make sure that you have the right mpicc::
 
 and build GPAW (``python setup.py build_ext | tee build_ext.log``)
 with this :file:`customize.py` file
-(**Note**: instructions valid from the **5232* release)::
+(**Note**: instructions valid from the **5232** release)::
 
   scalapack = True
 

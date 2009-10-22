@@ -216,7 +216,7 @@ Install ase/gpaw-setups (**Note**: use the latest releases)::
   cd /tmp/work/$USER
   ln -s python-ase-3.1.0.846 ase
 
-Install gpaw (**Note**: instructions valid from the **5232* release)::
+Install gpaw (**Note**: instructions valid from the **5232** release)::
 
   cd ${sw_home}
   wget --no-check-certificate https://wiki.fysik.dtu.dk/gpaw/gpaw-0.7.5232.tar.gz
