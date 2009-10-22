@@ -276,7 +276,7 @@ class Transport(GPAW):
         lead_cell2 = np.diag(tp['pl_cells'][1]) / Bohr
         Nc_lead1 = h2gpts(h, lead_cell1)
         Nc_lead2 = h2gpts(h, lead_cell2)
-        p['h'] = lead_cell1[2, 2] / Nc_lead1[2] * Bohr
+        #p['h'] = lead_cell1[2, 2] / Nc_lead1[2] * Bohr
         h1 = lead_cell1[2, 2] / Nc_lead1[2] * Bohr
         h2 = lead_cell2[2, 2] / Nc_lead2[2] * Bohr
         scat_cell = self.atoms.cell / Bohr
