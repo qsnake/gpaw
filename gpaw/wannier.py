@@ -13,8 +13,9 @@ class Wannier:
         self.spin = spin
         self.Z_nnc = None
         if calc is not None:
-            if calc.gd.is_non_orthogonal():
-                raise NotImplementedError("Wannier function analysis requires an orthogonal cell.")
+            if not calc.gd.orthogonal:
+                raise NotImplementedError('Wannier function analysis ' +
+                                          'requires an orthogonal cell.')
             self.cell_c = calc.gd.cell_c * Bohr
             if nbands is None:
                 nbands = calc.get_number_of_bands()

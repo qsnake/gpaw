@@ -190,6 +190,7 @@ class AtomGridDescriptor(EquidistantRadialGridDescriptor):
         self.cell_cv = np.eye(3) * rcut
         self.N_c = np.ones(3, dtype=int) * 2 * ng
         self.h_c = np.ones(3) * h
+        self.orthogonal = False
     def _get_position_array(self, h, ng):
         return np.linspace(h, ng * h, ng)
     def r2g_ceil(self, r):
@@ -204,8 +205,6 @@ class AtomGridDescriptor(EquidistantRadialGridDescriptor):
         return np.array([0])
     def refine(self):
         return self
-    def is_non_orthogonal(self):
-        return True
     def get_lfc(self, gd, spline_aj):
         return AtomLocalizedFunctionsCollection(gd, spline_aj)
     def integrate(self, a_xg, b_xg=None, global_integral=True):

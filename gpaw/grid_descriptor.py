@@ -136,6 +136,10 @@ class GridDescriptor(Domain):
             raise ValueError('Very anisotropic grid spacings: %s' % self.h_c)
 
         self.use_fixed_bc = False
+
+        self.orthogonal = not (self.cell_cv -
+                               np.diag(self.cell_cv.diagonal())).any()
+
         
     def get_size_of_global_array(self, pad=False):
         if pad:
@@ -583,9 +587,6 @@ class GridDescriptor(Domain):
         """Get the number of bytes used by a grid of specified dtype."""
         return long(np.prod(self.n_c)) * np.array(1, dtype).itemsize
 
-    def is_non_orthogonal(self):
-        return (self.cell_cv - np.diag(self.cell_cv.diagonal())).any()
-
     def get_grid_point_coordinates(self, dtype=float, global_array=False):
         """Construct cartesian coordinates of grid points in the domain."""
         r_vG = self.empty(3, dtype=dtype)
@@ -594,7 +595,7 @@ class GridDescriptor(Domain):
            c2G[c] = slice(None) #this means ':'
            r_G[:] = self.h_c[c]*np.arange(self.beg_c[c], self.end_c[c])[c2G]
 
-        if self.is_non_orthogonal():
+        if not self.orthogonal:
             basis_vc = self.cell_cv.T / (self.h_c * self.N_c)[np.newaxis,:]
             r_vG[:] = np.dot(basis_vc, r_vG.reshape((3,-1))).reshape(r_vG.shape)
 

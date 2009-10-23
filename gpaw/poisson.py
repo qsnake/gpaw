@@ -42,7 +42,7 @@ class PoissonSolver:
         scale = -0.25 / pi 
 
         if self.nn == 'M':
-            if gd.is_non_orthogonal():
+            if not gd.orthogonal:
                 raise RuntimeError('Cannot use Mehrstellen stencil with '
                                    'non orthogonal cell.')
 

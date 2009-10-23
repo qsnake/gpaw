@@ -150,8 +150,9 @@ class VDWFunctional:
         self.energy_only = False
         
     def set_grid_descriptor(self, gd):
-        if gd.is_non_orthogonal():
-            raise NotImplementedError("vdW calculations require an orthogonal cell.")
+        if not gd.orthogonal:
+            raise NotImplementedError('vdW calculations require an ' +
+                                      'orthogonal cell.')
         self.gd = gd
 
     def set_non_local_things(self, density, hamiltonian, wfs, atoms,

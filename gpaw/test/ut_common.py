@@ -81,7 +81,7 @@ def create_random_atoms(gd, nmolecules=10, name='H2O', mindist=4.5 / Bohr):
         # that the resulting displacement vector is `mindist` from the cell
         # face corresponding to that direction (plane with unit normal n_v).
         sdist_c = np.empty(3)
-        if gd.is_non_orthogonal():
+        if not gd.orthogonal:
             for c in range(3):
                 n_v = gd.iucell_cv[c] / np.linalg.norm(gd.iucell_cv[c])
                 sdist_c[c] = mindist / np.dot(gd.cell_cv[c], n_v)

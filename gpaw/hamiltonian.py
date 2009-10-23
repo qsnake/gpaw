@@ -64,12 +64,12 @@ class Hamiltonian:
         
         # Solver for the Poisson equation:
         if psolver is None:
-            if gd.is_non_orthogonal():
+            if gd.orthogonal:
+                psolver = PoissonSolver(nn='M', relax='J')
+            else:
                 # XXX default nn for non-ortho should be 3 to give
                 # approx. same accuracy as default 'M' for ortho!
                 psolver = PoissonSolver(nn=2, relax='J')
-            else:
-                psolver = PoissonSolver(nn='M', relax='J')
         self.poisson = psolver
         self.poisson.set_grid_descriptor(finegd)
 
