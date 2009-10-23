@@ -103,6 +103,9 @@ A second, more pedagogical, article on PAW by Blöchl and co-workers.
 Publications using the gpaw code
 --------------------------------
 
+.. image:: publications.png
+   :width: 650
+
 .. If the first author is A. Einstein, then remember to use
    \A. Einstein so that we don't start an enumerated list (A, B, C,
    ...).
