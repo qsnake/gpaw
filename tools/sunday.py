@@ -255,7 +255,7 @@ class Jobs:
                    j.tmax, j.ncpu, j.deps, j.arg, j.status)
 
         
-j = Jobs(time.strftime('sunday-%b-%d-%Y.log'), 'w'))
+j = Jobs(time.strftime('sunday-%b-%d-%Y.log'))
 j.add(jobs)
 j.install()
 try:

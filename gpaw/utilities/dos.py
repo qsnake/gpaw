@@ -188,7 +188,7 @@ def raw_wignerseitz_LDOS(paw, a, spin):
     gd = wfs.gd
     atom_index = gd.empty(dtype=int)
     atom_ac = paw.atoms.get_scaled_positions() * gd.N_c
-    wignerseitz(atom_index, atom_ac, gd.beg_c, gd.end_c)
+    wignerseitz(atom_index, atom_ac, gd)
 
     w_k = wfs.weight_k
     nk = len(w_k)

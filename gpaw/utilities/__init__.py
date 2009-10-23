@@ -117,14 +117,20 @@ def hartree(l, nrdr, beta, N, vr):
     return _gpaw.hartree(l, nrdr, beta, N, vr)
 
 
-def wignerseitz(index_G, atom_ac, beg_c, end_c):
+def wignerseitz(index_G, atom_ac, gd):
     """Determine which atom is closest to each grid point.
 
     For a uniform grid defined by the first and last grid point indices
-    beg_c and end_c, determine for each grid point, which atom, specified
+    gd.beg_c and gd.end_c, determine for each grid point, which atom, specified
     by the atomic coordinates in atom_ac, is the closest. Return result as
     atomic indices on the grid index_G.
     """
+    assert gd.orthogonal
+    if gd.pbc_c.any():
+        print "WARNING: Wigner-Seitz code does not take PBC's into account!"
+        
+    beg_c = gd.beg_c
+    end_c = gd.end_c
     assert is_contiguous(index_G, int)
     assert is_contiguous(atom_ac, float)
     assert atom_ac.shape[1] == len(beg_c) == len(end_c) == 3
@@ -372,7 +378,6 @@ def load_balance(paw, atoms):
 
 if not debug:
     hartree = _gpaw.hartree
-    wignerseitz = _gpaw.wigner_seitz_grid
 
 def mlsqr(order, cutoff, coords_nc, N_c, beg_c, data_g, target_n):
     """Interpolate a point using moving least squares algorithm.

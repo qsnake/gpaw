@@ -18,7 +18,7 @@ class WignerSeitz:
 
         # define the atom index for each grid point 
         atom_index = gd.empty(dtype=int)
-        wignerseitz(atom_index, atom_c, gd.beg_c, gd.end_c)
+        wignerseitz(atom_index, atom_c, gd)
         self.atom_index = atom_index
 
     def expand(self, density):

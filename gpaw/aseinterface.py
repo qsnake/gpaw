@@ -237,7 +237,7 @@ class GPAW(PAW):
         from gpaw.utilities import wignerseitz
         atom_index = self.gd.empty(dtype=int)
         atom_ac = self.atoms.get_scaled_positions() * self.gd.N_c
-        wignerseitz(atom_index, atom_ac, self.gd.beg_c, self.gd.end_c)
+        wignerseitz(atom_index, atom_ac, self.gd)
 
         nt_G = self.density.nt_sG[spin]
         weight_a = np.empty(len(self.atoms))
