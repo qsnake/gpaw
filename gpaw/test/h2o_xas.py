@@ -6,6 +6,7 @@ from gpaw import GPAW
 from gpaw.atom.generator import Generator, parameters
 from gpaw import setup_paths
 from gpaw.xas import XAS
+from gpaw.test import equal
 
 if rank == 0:
     # Generate setup for oxygen with half a core-hole:
@@ -25,6 +26,7 @@ H2O.center()
 calc = GPAW(nbands=10, h=0.2, setups={'O': 'hch1s'})
 H2O.set_calculator(calc)
 e = H2O.get_potential_energy()
+niter = calc.get_number_of_iterations()
 
 import gpaw.mpi as mpi
 
@@ -52,7 +54,7 @@ if mpi.size == 1:
 
     if mpi.size == 1:
         assert de1 == de2
-        
+
 
 if 0:
     import pylab as p
@@ -61,3 +63,9 @@ if 0:
     p.show()
 
 del setup_paths[0]
+
+print e, niter
+energy_tolerance = 0.00001
+niter_tolerance = 0
+equal(e, -17.5425138956, energy_tolerance) # svnversion 5252
+equal(niter, 19, niter_tolerance) # svnversion 5252

@@ -6,6 +6,9 @@ from ase import Atom, Atoms
 from gpaw import GPAW, Mixer, restart
 from gpaw.test import equal
 
+energy_tolerance = 0.00001
+niter_tolerance = 0
+
 if not os.path.isfile('Na4_fd.gpw'):
     # Do grid kpts calculation
     a = 3.31
@@ -23,11 +26,13 @@ if not os.path.isfile('Na4_fd.gpw'):
                 txt='Na4_fd.txt')
     atoms.set_calculator(calc)
     etot_fd = atoms.get_potential_energy()
+    niter_fd = calc.get_number_of_iterations()
     print 'Etot:', etot_fd, 'eV in fd-mode'
     calc.write('Na4_fd.gpw')
     del atoms,calc
 
-    equal(etot_fd, -1.98892, 0.001)
+    equal(etot_fd, -1.98891667225, energy_tolerance) # svnversion 5252
+    equal(niter_fd, 18, niter_tolerance) # svnversion 5252
 
 if os.path.isfile('Na4_fd.gpw'):
     # LCAO calculation based on grid kpts calculation
@@ -36,8 +41,10 @@ if os.path.isfile('Na4_fd.gpw'):
                           mode='lcao',
                           txt='Na4_lcao.txt')
     etot_lcao = atoms.get_potential_energy()
+    niter_lcao = calc.get_number_of_iterations()
     print 'Etot:', etot_lcao, 'eV in lcao-mode'
     calc.write('Na4_lcao.gpw')
     del atoms, calc
 
-    equal(etot_lcao, -1.9599, 0.001)
+    equal(etot_lcao, -1.9599011763, energy_tolerance) # svnversion 5252
+    equal(niter_lcao, 6, niter_tolerance) # svnversion 5252

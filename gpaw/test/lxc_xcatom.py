@@ -12,25 +12,26 @@ setups = Lxc_testsetups()
 setups.create()
 
 tolerance = 0.000005 # libxc must reproduce old gpaw energies
-tolerance = 50.000005 # libxc must reproduce old gpaw energies
 # zero Kelvin: in Hartree
-reference_886 = { # version 886
-    'X-C_PW': 2.3306776296, # 'LDA'
-    'X_PBE-C_PBE': 2.36833876588, # 'PBE'
-    'X_PBE_R-C_PBE': 2.37142515318 # 'revPBE'
+
+reference = { # svnversion 5252
+    'X-C_PW': 2.23194461135, # 'LDA'
+    'X_PBE-C_PBE': 2.28208665019, # 'PBE'
+    'X_PBE_R-C_PBE': 2.29201920843, # 'revPBE'
     }
 
 tolerance_libxc = 0.000001 # libxc must reproduce reference libxc energies
-reference_libxc_886 = { # version 886
-    'X-None': 2.04220165015,
-    'X-C_PW': 2.3306776296,
-    'X-C_VWN': 2.33175973998,
-    'X-C_PZ': 2.33011279593,
-    'X_PBE-C_PBE': 2.36833735076,
-    'X_PBE_R-C_PBE': 2.37142425035,
-    'X_B88-C_P86': 2.38801013406,
-    'X_B88-C_LYP': 2.3719969122,
-    'X_FT97_A-C_LYP': 2.34666425237
+
+reference_libxc = { # svnversion 5252
+    'X-None': 1.95030600807,
+    'X-C_PW': 2.23194461135,
+    'X-C_VWN': 2.23297429824,
+    'X-C_PZ': 2.23146045547,
+    'X_PBE-C_PBE': 2.28208665019,
+    'X_PBE_R-C_PBE': 2.29201920843,
+    'X_B88-C_P86': 2.30508027546,
+    'X_B88-C_LYP': 2.28183010548,
+    'X_FT97_A-C_LYP': 2.26846048873,
     }
 
 libxc_set = [
@@ -67,13 +68,13 @@ for xc in libxc_set:
     print E2, E2s
     equal(E2, E2s, 1.0e-12)
 
-    if reference_886.has_key(xc): # compare with old gpaw
-        print 'A:', E2, reference_886[xc]
-        equal(E2, reference_886[xc], tolerance)
+    if reference.has_key(xc): # compare with old gpaw
+        print 'A:', E2, reference[xc]
+        equal(E2, reference[xc], tolerance)
 
-    if reference_libxc_886.has_key(xc): # compare with reference libxc
-        print 'B:', E2, reference_libxc_886[xc]
-        equal(E2, reference_libxc_886[xc], tolerance)
+    if reference_libxc.has_key(xc): # compare with reference libxc
+        print 'B:', E2, reference_libxc[xc]
+        equal(E2, reference_libxc[xc], tolerance)
 
     D_sp = 0.1 * ra.random((2, nii)) + 0.2
     H_sp = np.zeros((2, nii))

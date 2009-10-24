@@ -57,6 +57,19 @@ for i in range(c00.get_number_of_bands()):
         print 'Eigenvalues no pot, expected, error=', e00, e1 + 1, e00 - e1 - 1
         equal(e00, e1 + 1., 0.002)
 
-DeltaE = c00.get_potential_energy() - c1.get_potential_energy()
+E_c00 = c00.get_potential_energy()
+niter_c00 = c00.get_number_of_iterations()
+
+E_c1 = c1.get_potential_energy()
+niter_c1 = c1.get_number_of_iterations()
+
+DeltaE = E_c00 - E_c1
 print 'Energy diff, expected, error=', DeltaE, nelectrons, DeltaE - nelectrons
 equal(DeltaE, nelectrons, 0.002)
+
+energy_tolerance = 0.00001
+niter_tolerance = 0
+equal(E_c00, 10.4409370467, energy_tolerance) # svnversion 5252
+equal(niter_c00, 14, niter_tolerance) # svnversion 5252
+equal(E_c1, -11.5590572387, energy_tolerance) # svnversion 5252
+equal(niter_c1, 14, niter_tolerance) # svnversion 5252

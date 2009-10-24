@@ -1,6 +1,6 @@
 from ase import *
-from gpaw.test import equal
 from gpaw import GPAW, Mixer
+from gpaw.test import equal
 
 a = 4.0
 n = 20
@@ -12,9 +12,11 @@ atoms = Atoms([Atom('C', (0.0, 0.0, 0.0)),
                Atom('H', (x, -x, -x)),
                Atom('H', (-x, x, -x))],
               cell=(a, a, a), pbc=True)
-atoms.set_calculator(GPAW(gpts=(n, n, n), nbands=4, txt=None,
-                          mixer=Mixer(0.25, 3, 1)))
+calc = GPAW(gpts=(n, n, n), nbands=4, txt=None,
+            mixer=Mixer(0.25, 3, 1))
+atoms.set_calculator(calc)
 e0 = atoms.get_potential_energy()
+niter0 = calc.get_number_of_iterations()
 
 D = [1, 1.05, 1.1, 1.15]
 E = []
@@ -31,3 +33,8 @@ e0 = np.polyval(fit, d0)
 print 'd,e =', d0, e0
 equal(d0, 1.0931, 0.0001)
 equal(e0, -23.228, 0.001)
+
+energy_tolerance = 0.00001
+niter_tolerance = 0
+equal(e0, -23.2277303435, energy_tolerance) # svnversion 5252
+equal(niter0, 30, niter_tolerance) # svnversion 5252

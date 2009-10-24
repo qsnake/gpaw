@@ -19,6 +19,7 @@ txt='-'
 txt='/dev/null'
 
 E = {}
+niter = {}
 for fg in fgl:
     if fg:
         tstr = 'Exx on fine grid'
@@ -33,6 +34,7 @@ for fg in fgl:
     E[fg] = loa.get_potential_energy()
     calc.set(xc={'name':'PBE0', 'finegrid': fg})
     E[fg] = loa.get_potential_energy()
+    niter[fg] = calc.get_number_of_iterations()
     timer.stop(tstr)
 
 timer.write(sys.stdout)
@@ -41,3 +43,9 @@ print 'Total energy on the fine grid   =', E[True]
 print 'Total energy on the coarse grid =', E[False]
 equal(E[True], E[False], 0.02)
 
+energy_tolerance = 0.00001
+niter_tolerance = 0
+equal(E[False], -788.69544851733713, energy_tolerance) # svnversion 5252
+equal(niter[False], 19, niter_tolerance) # svnversion 5252
+equal(E[True], -788.69604168904459, energy_tolerance) # svnversion 5252
+equal(niter[True], 19, niter_tolerance) # svnversion 5252

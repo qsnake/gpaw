@@ -19,6 +19,7 @@ from gpaw import GPAW
 from gpaw.utilities import unpack
 from gpaw.poisson import PoissonSolver
 from gpaw.atom.basis import BasisMaker
+from gpaw.test import equal
 
 mol = molecule('H2O')
 mol.rattle(0.2)
@@ -30,6 +31,7 @@ calc = GPAW(nbands=6,
             txt='-')
 mol.set_calculator(calc)
 e = mol.get_potential_energy()
+niter = calc.get_number_of_iterations()
 F_ac = mol.get_forces()
 
 F_ac_ref = np.array([[ 7.33694397,  3.81614796, -6.07914715],
@@ -101,3 +103,8 @@ for a, dH_sp in dH_asp.items():
 for psit_G in psit_nG:
     norm = gd.integrate(psit_G**2) # Around 1e-15 !  Surprisingly good.
     assert abs(1 - norm) < 1e-10, 'Not normconserving'
+
+energy_tolerance = 0.000001
+niter_tolerance = 0
+equal(e, 724.496375344, energy_tolerance) # svnversion 5252
+equal(niter, 34, niter_tolerance) # svnversion 5252

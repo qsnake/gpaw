@@ -34,4 +34,3 @@ calc = GPAW(xc=vdw, width=0.001,
 a.set_calculator(calc)
 e3 = a.get_potential_energy()
 assert abs(e1 - e3) < 1e-12
-

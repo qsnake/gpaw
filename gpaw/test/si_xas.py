@@ -3,6 +3,7 @@ from math import pi, cos, sin
 from ase import *
 from ase.parallel import rank, barrier
 from gpaw import GPAW
+from gpaw.test import equal
 from gpaw.atom.generator import Generator, parameters
 from gpaw import setup_paths
 from gpaw.xas import XAS, RecursionMethod
@@ -30,12 +31,13 @@ si = Atoms([Atom('Si', (0, 0, 0)),
 
 import numpy as np
 calc = GPAW(nbands=None,
-            h=0.25, 
+            h=0.25,
             width=0.05,
             setups={0: 'hch1s'},
             usesymm=True)
 si.set_calculator(calc)
 e = si.get_potential_energy()
+niter = calc.get_number_of_iterations()
 calc.write('si.gpw')
 
 # restart from file
@@ -47,7 +49,7 @@ if mpi.size == 1:
     x, y = xas.get_spectra()
 else:
     x = np.linspace(0, 10, 50)
-    
+
 k = 2
 calc.set(kpts=(k, k, k))
 calc.initialize()
@@ -58,10 +60,16 @@ r = RecursionMethod(calc)
 r.run(40)
 if mpi.size == 1:
     z = r.get_spectra(x)
-    
+
 if 0:
     import pylab as p
     p.plot(x, y[0])
     p.plot(x, sum(y))
     p.plot(x, z[0])
     p.show()
+
+print e, niter
+energy_tolerance = 0.000001
+niter_tolerance = 0
+equal(e, 18.6019063823, energy_tolerance) # svnversion 5252
+equal(niter, 27, niter_tolerance) # svnversion 5252

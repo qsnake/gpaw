@@ -1,6 +1,6 @@
-from gpaw import GPAW
 from ase import *
 from ase.calculators import numeric_force
+from gpaw import GPAW
 from gpaw.test import equal
 
 a = 5.404
@@ -24,6 +24,9 @@ calc = GPAW(gpts=(n, n, n),
             )
 bulk.set_calculator(calc)
 f1 = bulk.get_forces()[0, 2]
+e1 = bulk.get_potential_energy()
+niter1 = calc.get_number_of_iterations()
+
 f2 = numeric_force(bulk, 0, 2)
 print f1,f2,f1-f2
 equal(f1, f2, 0.005)
@@ -33,3 +36,11 @@ vol = a**3 / 8
 de = calc.get_electrostatic_corrections() / vol
 print de
 assert abs(de[0] - -2.190) < 0.001
+
+print e1, f1, niter1
+energy_tolerance = 0.00001
+force_tolerance = 0.0001
+niter_tolerance = 0
+equal(e1, -46.6596470348, energy_tolerance) # svnversion 5252
+equal(f1, -1.38242356123, force_tolerance) # svnversion 5252
+equal(niter1, 53, niter_tolerance) # svnversion 5252

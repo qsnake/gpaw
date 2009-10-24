@@ -14,9 +14,9 @@ import gpaw.mpi as mpi
 import gpaw
 
 
-def equal(x, y, tolerance=0, fail=True):
+def equal(x, y, tolerance=0, fail=True, msg=''):
     if abs(x - y) > tolerance:
-        msg = '%g != %g (error: %g > %g)' % (x, y, abs(x - y), tolerance)
+        msg = msg+'%g != %g (error: %g > %g)' % (x, y, abs(x - y), tolerance)
         if fail:
             raise AssertionError(msg)
         else:
@@ -63,61 +63,59 @@ tests = [
     'proton.py',
     'parallel/ut_parallel.py',
     'parallel/compare.py',
-    'coulomb.py',
     'ase3k.py',
-    'eed.py',
-    'timing.py',
     'gauss_wave.py',
+    'coulomb.py',
+    'timing.py',
     'gauss_func.py',
+    'ylexpand.py',
+    'wfs_io.py',
     'xcatom.py',
-    'kptpar.py',
     'parallel/overlap.py',
     'symmetry.py',
     'pes.py',
     'usesymm.py',
+    'eed.py',
     'mixer.py',
     'mixer_broydn.py',
-    'ylexpand.py',
-    'wfs_io.py',
     'restart.py',
     'gga_atom.py',
-    'nonselfconsistentLDA.py',
     'bee1.py',
     'refine.py',
     'revPBE.py',
-    'jstm.py',
     'lcao_largecellforce.py',
     'lcao_h2o.py',
     'lrtddft2.py',
-    'nonselfconsistent.py',
     'stdout.py',
+    'nonselfconsistentLDA.py',
+    'nonselfconsistent.py',
     'ewald.py',
     'spinpol.py',
+    'kptpar.py',
     'plt.py',
     'parallel/hamiltonian.py',
-    'bulk.py',
     'restart2.py',
     'hydrogen.py',
-    'aedensity.py',
     'H_force.py',
-    'CL_minus.py',
+    'Cl_minus.py',
+    'degeneracy.py',
+    'h2o_xas.py',
     'gemm.py',
     'gemv.py',
     'fermilevel.py',
-    'degeneracy.py',
-    'h2o_xas.py',
+    'bulk.py',
+    'lcao_bulk.py',
     'si.py',
+    'jstm.py',
+    'lxc_xcatom.py',
     'simple_stm.py',
     'asewannier.py',
     'vdw/quick.py',
     'vdw/potential.py',
     'vdw/quick_spin.py',
-    'lxc_xcatom.py',
     'davidson.py',
     'cg.py',
     'h2o_xas_recursion.py',
-    'atomize.py',
-    'Hubbard_U.py',    
     'lrtddft.py',
     'lcao_force.py',
     'parallel/lcao_hamiltonian.py',
@@ -128,26 +126,28 @@ tests = [
     'apmb.py',
     'relax.py',
     'muffintinpot.py',
-    'restart_band_structure.py',
     'ldos.py',
-    'lcao_bulk.py',
-    'revPBE_Li.py',
     'fixmom.py',
-    'xctest.py',
     'td_na2.py',
     'exx_coarse.py',
     'lcao_bsse.py',
     '2Al.py',
-    'si_primitive.py',
+    'aedensity.py',
+    'restart_band_structure.py',
+    'IP_oxygen.py',
+    'atomize.py',
+    'Hubbard_U.py',
+    'revPBE_Li.py',
+    'xctest.py',
     'si_xas.py',
     'tpss.py',
     'atomize.py',
     'nsc_MGGA.py',
+    'si_primitive.py',
     '8Si.py',
     'coreeig.py',
     'transport.py',
     'Cu.py',
-    'IP_oxygen.py',
     'exx.py',
     'dscf_CO.py',
     'h2o_dks.py',
@@ -216,7 +216,7 @@ class TestRunner:
         else:
             # Run several processes using fork:
             self.run_forked()
-            
+
         sys.stdout = sys.__stdout__
         self.log.write('=' * 77 + '\n')
         self.log.write('Ran %d tests out of %d in %.1f seconds\n' %
@@ -227,7 +227,7 @@ class TestRunner:
             self.log.write('All tests passed!\n')
         self.log.write('=' * 77 + '\n')
         return self.failed
-    
+
     def run_single(self):
         while self.tests:
             test = self.tests.pop(0)
@@ -236,7 +236,7 @@ class TestRunner:
             except KeyboardInterrupt:
                 self.tests.append(test)
                 break
-            
+
     def run_forked(self):
         j = 0
         pids = {}
@@ -266,15 +266,15 @@ class TestRunner:
                     self.failed.append(pids[pid])
                 del pids[pid]
                 j -= 1
-                
+
     def run_one(self, test):
         if self.jobs == 1:
             self.log.write('%*s' % (-self.n, test))
             self.log.flush()
-            
+
         t0 = time.time()
         filename = gpaw.__path__[0] + '/test/' + test
-        
+
         try:
             execfile(filename, {})
             self.check_garbage()
@@ -290,12 +290,12 @@ class TestRunner:
         everybody = np.empty(mpi.size, bool)
         mpi.world.all_gather(me, everybody)
         failed = everybody.any()
-        
+
         if failed:
             self.fail(test, np.argwhere(everybody).ravel(), t0)
         else:
             self.write_result(test, 'OK', t0)
-            
+
         return failed
 
     def check_garbage(self):
@@ -305,7 +305,7 @@ class TestRunner:
         del gc.garbage[:]
         assert n == 0, ('Leak: Uncollectable garbage (%d object%s) %s' %
                         (n, 's'[:n > 1], self.garbage))
-        
+
     def fail(self, test, ranks, t0):
         if mpi.rank in ranks:
             tb = traceback.format_exc()
@@ -336,7 +336,7 @@ class TestRunner:
                 self.write_result(test, text, t0)
 
         self.failed.append(test)
-        
+
     def write_result(self, test, text, t0):
         t = time.time() - t0
         if self.jobs > 1:

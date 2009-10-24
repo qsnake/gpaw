@@ -24,19 +24,22 @@ LiH.translate(0.003234)
 
 calc = GPAW(communicator=comm)
 Hnospin.set_calculator(calc)
-Hnospin.get_potential_energy()
+e_Hnospin = Hnospin.get_potential_energy()
+niter_Hnospin = calc.get_number_of_iterations()
 energies, sweight = raw_orbital_LDOS(calc, a=0, spin=0, angular='s')
 energies, pdfweight = raw_orbital_LDOS(calc, a=0, spin=0, angular='pdf')
 
 calc = GPAW(fixmom=True, hund=True, communicator=comm)
 Hspin.set_calculator(calc)
-Hspin.get_potential_energy()
+e_Hspin = Hspin.get_potential_energy()
+niter_Hspin = calc.get_number_of_iterations()
 energies,sweight_spin = raw_orbital_LDOS(calc, a=0, spin=0, angular='s')
 
 calc = GPAW(nbands=2, #eigensolver='dav',
             communicator=comm)
 LiH.set_calculator(calc)
-LiH.get_potential_energy()
+e_LiH = LiH.get_potential_energy()
+niter_LiH = calc.get_number_of_iterations()
 energies, Li_orbitalweight = raw_orbital_LDOS(calc, a=0, spin=0, angular=None)
 energies, H_orbitalweight = raw_orbital_LDOS(calc, a=1, spin=0, angular=None)
 energies, Li_wzweight = raw_wignerseitz_LDOS(calc, a=0, spin=0)
@@ -49,9 +52,9 @@ print Li_wzweight
 print H_wzweight
 print n_a
 
-equal(sweight[0], 1., .06) 
-equal(pdfweight[0], 0., .0001) 
-equal(sweight_spin[0], 1.14, .06) 
+equal(sweight[0], 1., .06)
+equal(pdfweight[0], 0., .0001)
+equal(sweight_spin[0], 1.14, .06)
 assert ((Li_wzweight - [.13, .93]).round(2) == 0).all()
 assert ((H_wzweight - [.87, .07]).round(2) == 0).all()
 assert ((Li_wzweight + H_wzweight).round(5) == 1).all()
@@ -75,3 +78,12 @@ ldos = RawLDOS(calc)
 fname = 'ldbe.dat'
 ldos.by_element_to_file(fname, shift=False)
 ldos.by_element_to_file(fname, 2.0, shift=False)
+
+energy_tolerance = 0.000001
+niter_tolerance = 0
+equal(e_Hnospin, 0.146969814337, energy_tolerance) # svnversion 5252
+equal(niter_Hnospin, 17, niter_tolerance) # svnversion 5252
+equal(e_Hspin,  -0.789272555457, energy_tolerance) # svnversion 5252
+equal(niter_Hspin, 15, niter_tolerance) # svnversion 5252
+equal(e_LiH, -3.74706225051, energy_tolerance) # svnversion 5252
+equal(niter_LiH, 26, niter_tolerance) # svnversion 5252

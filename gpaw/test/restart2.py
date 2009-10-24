@@ -14,7 +14,8 @@ H.center(vacuum=3.0)
 calc = GPAW(nbands=1)
 calc.attach(calc.write, 4, restart)
 H.set_calculator(calc)
-H.get_potential_energy()
+e = H.get_potential_energy()
+niter = calc.get_number_of_iterations()
 calc.write(result)
 
 # the two files should be equal
@@ -25,3 +26,8 @@ if rank == 0:
                   (f, f, f, f))
     assert os.system('diff -r gpaw-restart gpaw-result > /dev/null') == 0
     os.system('rm -rf gpaw-restart gpaw-result')
+
+energy_tolerance = 0.000001
+niter_tolerance = 0
+equal(e, 0.0424437782683, energy_tolerance) # svnversion 5252
+equal(niter, 12, niter_tolerance) # svnversion 5252

@@ -22,4 +22,4 @@ e2 = energy(True)
 print e1
 print e2
 
-assert abs(e2 - e1) < 1e-4
+assert abs(e2 - e1) < 1e-6

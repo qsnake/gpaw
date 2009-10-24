@@ -1,5 +1,6 @@
 from ase import *
 from gpaw import GPAW, restart, extra_parameters
+from gpaw.test import equal
 
 usenewxc = extra_parameters.get('usenewxc')
 extra_parameters['usenewxc'] = True
@@ -10,8 +11,14 @@ try:
         be.center(vacuum=5)
         calc = GPAW(gpts=(64,64,64), xc='LDA', nbands=1) #0.1 required for accuracy
         be.set_calculator(calc)
-        be.get_potential_energy()
+        e = be.get_potential_energy()
+        niter = calc.get_number_of_iterations()
         #calc.write("be.gpw")
+
+        energy_tolerance = 0.000001
+        niter_tolerance = 0
+        equal(e, 0.00348494345278, energy_tolerance) # svnversion 5252
+        equal(niter, 16, niter_tolerance) # svnversion 5252
 
     #be, calc = restart("be.gpw")
     AllElectronPotential(calc).write_spherical_ks_potentials('bepot.txt')
@@ -29,4 +36,3 @@ except:
     raise
 else:
     extra_parameters['usenewxc'] = usenewxc
-    

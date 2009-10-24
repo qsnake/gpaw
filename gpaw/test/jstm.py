@@ -5,6 +5,7 @@ from gpaw import GPAW, setup_paths
 from gpaw.transport.jstm import STM, dump_hs, dump_lead_hs
 from gpaw.atom.basis import BasisMaker
 from gpaw.mpi import world
+from gpaw.test import equal
 
 if world.rank == 0:
     basis = BasisMaker('H', 'sz').generate(1, 0)
@@ -16,7 +17,7 @@ setup_paths.insert(0, '.')
 a = 0.75 # Bond length
 cell = np.diag([5, 5, 12 * a])
 
-atoms = Atoms('H12', pbc=(1, 1, 1), cell=cell) 
+atoms = Atoms('H12', pbc=(1, 1, 1), cell=cell)
 atoms.positions[:, 2] = [i * a for i in range(12)]
 
 calc = GPAW(h=0.2,
@@ -33,7 +34,8 @@ cell_lead[2, 2] = a * len(lead)
 lead.set_cell(cell_lead)
 calc.set(kpts=(1, 1, 14))
 lead.set_calculator(calc)
-lead.get_potential_energy()
+e1 = lead.get_potential_energy()
+niter1 = calc.get_number_of_iterations()
 calc.write('lead.gpw')
 dump_lead_hs(calc, 'lead')
 
@@ -45,7 +47,8 @@ tip.translate([0, 0, 10])
 tip.cell[2, 2] += 10
 calc.set(kpts=(1, 1, 1))
 tip.set_calculator(calc)
-tip.get_potential_energy()
+e2 = tip.get_potential_energy()
+niter2 = calc.get_number_of_iterations()
 calc.write('tip.gpw')
 dump_hs(calc, 'tip', region='tip', cvl=2)
 
@@ -54,7 +57,8 @@ srf = atoms.copy()
 del srf[8:]
 srf.cell[2, 2] += 10
 srf.set_calculator(calc)
-srf.get_potential_energy()
+e3 = srf.get_potential_energy()
+niter3 = calc.get_number_of_iterations()
 calc.write('srf.gpw', region='surface', cvl=2)
 dump_hs(calc, 'srf', region='surface', cvl=2)
 
@@ -82,4 +86,11 @@ stm.linescan()
 if 0:
     stm.plot(repeat=[3, 3])
 
-
+energy_tolerance = 0.000001
+niter_tolerance = 0
+equal(e1, -5.30715477005, energy_tolerance) # svnversion 5252
+equal(niter1, 5, niter_tolerance) # svnversion 5252
+equal(e2, -12.7633318718, energy_tolerance) # svnversion 5252
+equal(niter2, 10, niter_tolerance) # svnversion 5252
+equal(e3, -12.763055856, energy_tolerance) # svnversion 5252
+equal(niter3, 3, niter_tolerance) # svnversion 5252

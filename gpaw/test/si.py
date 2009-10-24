@@ -20,7 +20,8 @@ calc = GPAW(gpts=(n, n, n),
             width=0.01,
             kpts=(1, 1, 1))
 bulk.set_calculator(calc)
-bulk.get_potential_energy()
+e1 = bulk.get_potential_energy()
+niter1 = calc.get_number_of_iterations()
 eigs = calc.get_eigenvalues(kpt=0)
 calc.write('temp.gpw')
 del bulk
@@ -28,10 +29,19 @@ del calc
 
 bulk, calc = restart('temp.gpw', fixdensity=True)
 #calc.scf.reset()
-bulk.get_potential_energy()
+e2 = bulk.get_potential_energy()
+try: # number of iterations needed in restart
+    niter2 = calc.get_number_of_iterations()
+except: pass
 eigs2 = calc.get_eigenvalues(kpt=0)
 print 'Orginal', eigs
 print 'Fixdensity', eigs2
 print 'Difference', eigs2-eigs
 
 assert np.fabs(eigs2 - eigs)[:-1].max() < 3e-5
+
+energy_tolerance = 0.000001
+niter_tolerance = 0
+equal(e1, -36.7229861549, energy_tolerance) # svnversion 5252
+equal(niter1, 23, niter_tolerance) # svnversion 5252
+equal(e2, -36.7229861549, energy_tolerance) # svnversion 5252

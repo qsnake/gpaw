@@ -16,6 +16,7 @@ conv = {'eigenstates': 1e-2, 'energy':2e-1, 'density':1e-1}
 calc = GPAW(h=0.35, nbands=3, convergence=conv)
 atoms.set_calculator(calc)
 e0 = atoms.get_potential_energy()
+niter0 = calc.get_number_of_iterations()
 f0 = atoms.get_forces()
 m0 = atoms.get_magnetic_moments()
 eig00 = calc.get_eigenvalues(spin=0)
@@ -24,6 +25,9 @@ calc.write('tmp.gpw')
 del atoms, calc
 atoms, calc = restart('tmp.gpw')
 e1 = atoms.get_potential_energy()
+try: # number of iterations needed in restart
+    niter1 = calc.get_number_of_iterations()
+except: pass
 f1 = atoms.get_forces()
 m1 = atoms.get_magnetic_moments()
 eig10 = calc.get_eigenvalues(spin=0)
@@ -43,3 +47,9 @@ for eig0, eig1 in zip(eig00, eig10):
 print 'B',eig01, eig11
 for eig0, eig1 in zip(eig01, eig11):
     equal(eig0, eig1, 1e-10)
+
+energy_tolerance = 0.000001
+niter_tolerance = 0
+equal(e0, 27.142964444, energy_tolerance) # svnversion 5252
+equal(niter0, 6, niter_tolerance) # svnversion 5252
+equal(e1, 27.142964444, energy_tolerance) # svnversion 5252

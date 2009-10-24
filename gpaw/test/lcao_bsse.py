@@ -2,6 +2,7 @@ from ase.data.molecules import molecule
 from gpaw import GPAW
 from gpaw.poisson import PoissonSolver
 from gpaw.atom.basis import BasisMaker
+from gpaw.test import equal
 
 # Tests basis set super position error correction
 
@@ -26,6 +27,7 @@ def prepare(setups):
 calc = prepare({0 : 'paw', 1 : 'ghost'})
 system.set_calculator(calc)
 e_bsse = system.get_potential_energy()
+niter_bsse = calc.get_number_of_iterations()
 
 c_nM = calc.wfs.kpt_u[0].C_nM
 print 'coefs'
@@ -37,9 +39,17 @@ sys0 = system[0:1].copy()
 calc = prepare('paw')
 sys0.set_calculator(calc)
 e0 = sys0.get_potential_energy()
+niter0 = calc.get_number_of_iterations()
 print 'e0, e_bsse = ', e0, e_bsse
 
 # One coefficient should be very small (0.012), the other very large (0.99)
 assert abs(1.0 - abs(c_nM[0, 0])) < 0.02
 assert abs(c_nM[0, 1]) < 0.02
 assert abs(e_bsse - e0) < 2e-3
+
+energy_tolerance = 0.000001
+niter_tolerance = 0
+equal(e_bsse, 0.0287208853911, energy_tolerance) # svnversion 5252
+equal(niter_bsse, 7, niter_tolerance) # svnversion 5252
+equal(e0, 0.0299220702846, energy_tolerance) # svnversion 5252
+equal(niter0, 5, niter_tolerance) # svnversion 5252

@@ -53,7 +53,7 @@ for name in ['LDA', 'PBE', 'revPBE', 'RPBE',
     dExcdsigma2_N=((lxc_xc(na, nb, sigma0, sigma1, sigma2 + d,taua,taub)[0] - lxc_xc(na, nb, sigma0, sigma1, sigma2 -d,taua,taub)[0]) / d / 2)
     dExcdtaua_N=((lxc_xc(na, nb, sigma0, sigma1, sigma2, taua +d ,taub)[0] - lxc_xc(na, nb, sigma0, sigma1, sigma2,taua -d ,taub)[0]) / d / 2)
     dExcdtaub_N=((lxc_xc(na, nb, sigma0, sigma1, sigma2, taua ,taub + d)[0] - lxc_xc(na, nb, sigma0, sigma1, sigma2,taua ,taub -d )[0]) / d / 2)
-        
+
 
     dExdna_N=((lxc_xc(na + d, nb, sigma0, sigma1, sigma2,taua,taub)[1] - lxc_xc(na - d, nb, sigma0, sigma1,sigma2,taua,taub)[1]) / d / 2)
     dExdnb_N=((lxc_xc(na, nb + d, sigma0, sigma1, sigma2,taua,taub)[1] - lxc_xc(na, nb - d, sigma0, sigma1,sigma2,taua,taub)[1]) / d / 2)

@@ -5,6 +5,7 @@ from ase.parallel import rank, barrier
 from gpaw import GPAW
 from gpaw.atom.generator import Generator, parameters
 from gpaw import setup_paths
+from gpaw.test import equal
 import numpy as np
 
 if rank == 0:
@@ -27,6 +28,7 @@ if 1:
     calc = GPAW(nbands=10, h=0.2, setups={'O': 'hch1s'})
     H2O.set_calculator(calc)
     e = H2O.get_potential_energy()
+    niter = calc.get_number_of_iterations()
     calc.write('h2o.gpw')
 else:
     calc = GPAW('h2o.gpw')
@@ -52,3 +54,8 @@ if 0:
     legend()
     show()
 
+print e, niter
+energy_tolerance = 0.000001
+niter_tolerance = 0
+equal(e, -17.5425359291, energy_tolerance) # svnversion 5252
+equal(niter, 19, niter_tolerance) # svnversion 5252

@@ -1,5 +1,6 @@
-from gpaw import GPAW
 from ase import *
+from gpaw import GPAW
+from gpaw.test import equal
 
 a = 4.00
 d = a / 2**0.5
@@ -23,9 +24,16 @@ calc = GPAW(h=0.25, nbands=28, kpts=(2, 6, 1),
             convergence={'eigenstates': 1e-5})
 slab.set_calculator(calc)
 e = slab.get_potential_energy()
+niter = calc.get_number_of_iterations()
 assert len(calc.get_k_point_weights()) == 3
 
 for i in range(1):
     slab.positions[-2, 0] -= 0.01
     slab.positions[-1, 0] += 0.01
     e = slab.get_potential_energy()
+
+print e, niter
+energy_tolerance = 0.00001
+niter_tolerance = 0
+equal(e, -44.710596073, energy_tolerance) # svnversion 5252
+equal(niter, 26, niter_tolerance) # svnversion 5252

@@ -4,7 +4,7 @@ from ase import *
 from ase.parallel import size, rank
 
 from gpaw import GPAW
-from gpaw.cluster import Cluster 
+from gpaw.cluster import Cluster
 from gpaw.analyse.simple_stm import SimpleStm
 from gpaw.test import equal
 
@@ -51,7 +51,8 @@ if not load:
     BH.set_pbc(False)
     cf = GPAW(nbands=3, h=.3, txt=txt)
     BH.set_calculator(cf)
-    BH.get_potential_energy()
+    e1 = BH.get_potential_energy()
+    niter1 = cf.get_number_of_iterations()
     cf.write(fname, 'all')
 else:
     cf = GPAW(fname, txt=txt)
@@ -65,7 +66,8 @@ if not load:
     cf = GPAW(spinpol=True, fixmom=True,
               nbands=5, h=.3, txt=txt, width=.1)
     BH.set_calculator(cf)
-    BH.get_potential_energy()
+    e2 = BH.get_potential_energy()
+    niter2 = cf.get_number_of_iterations()
     cf.write(fname, 'all')
 else:
     cf = GPAW(fname, txt=txt)
@@ -76,7 +78,8 @@ if not load:
     BH.set_pbc(True)
     cp = GPAW(spinpol=True, nbands=3, h=.3, kpts=(2,1,1), txt=txt)
     BH.set_calculator(cp)
-    BH.get_potential_energy()
+    e3 = BH.get_potential_energy()
+    niter3 = cp.get_number_of_iterations()
     cp.write('BH-8kpts_wfs.gpw', 'all')
 else:
     cp = GPAW('BH-8kpts_wfs.gpw', txt=txt)
@@ -91,3 +94,12 @@ stmp.write_3D(+4., f3dname)
 print me + 'Integrals(unocc): 2 * wf, bias=',
 print 2 * wf, stmp.gd.integrate(stmp.ldos)
 equal(2 * wf, stmp.gd.integrate(stmp.ldos), 0.02)
+
+energy_tolerance = 0.000001
+niter_tolerance = 0
+equal(e1, -2.77025728207, energy_tolerance) # svnversion 5252
+equal(niter1, 25, niter_tolerance) # svnversion 5252
+equal(e2, -1.74173802003, energy_tolerance) # svnversion 5252
+equal(niter2, 21, niter_tolerance) # svnversion 5252
+equal(e3, -3.06602004348, energy_tolerance) # svnversion 5252
+equal(niter3, 40, niter_tolerance) # svnversion 5252

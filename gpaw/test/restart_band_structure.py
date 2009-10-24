@@ -7,6 +7,15 @@ from gpaw.mpi import world
 
 gen('Si', xcname='GLLBSC')
 
+e = {}
+niter = {}
+
+energy_tolerance = 0.000001
+niter_tolerance = 0
+
+e_ref = {'LDA': {'restart': -5.5728768784094758}, 'GLLBSC': {'restart': -5.4458036264351}} # svnversion 5252
+niter_ref = {'LDA': {'restart': 16}, 'GLLBSC': {'restart': 16}} # svnversion 5252
+
 for xc in ['LDA','GLLBSC']:
     a = 4.23
     bulk = Atoms('Si2', cell=(a, a, a), pbc=True,
@@ -17,14 +26,16 @@ for xc in ['LDA','GLLBSC']:
                 kpts=(3, 3, 3), convergence={'eigenstates':1e-12, 'bands':8}, xc=xc, eigensolver='cg')
 
     bulk.set_calculator(calc)
-    bulk.get_potential_energy()
+    e[xc] = {'direct': bulk.get_potential_energy()}
+    niter[xc] = {'direct': calc.get_number_of_iterations()}
     print calc.get_ibz_k_points()
     old_eigs = calc.get_eigenvalues(kpt=3)
     calc.write('Si_gs.gpw')
     del bulk
     del calc
     bulk, calc = restart('Si_gs.gpw', fixdensity=True, kpts=[[0,0,0],[1./3,1./3,1./3]])
-    bulk.get_potential_energy()
+    e[xc] = {'restart': bulk.get_potential_energy()}
+    niter[xc] = {'restart': calc.get_number_of_iterations()}
 
     if world.rank == 0:
         os.remove('Si_gs.gpw')
@@ -33,3 +44,7 @@ for xc in ['LDA','GLLBSC']:
         print "occ. eig. diff.", diff
         error = max(abs(diff))
         assert error < 5e-6
+
+    for mode in e[xc].keys():
+        equal(e[xc][mode], e_ref[xc][mode], energy_tolerance)
+        equal(niter[xc][mode], niter_ref[xc][mode], niter_tolerance)

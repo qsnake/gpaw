@@ -23,7 +23,8 @@ except IOError:
                 convergence={'eigenstates': 1e-6}, spinpol=1)
 
     NaCl.set_calculator(calc)
-    NaCl.get_potential_energy()
+    e= NaCl.get_potential_energy()
+    niter = calc.get_number_of_iterations()
     calc.write('NaCl.gpw')
 
 dv = calc.get_grid_spacings().prod()
@@ -39,3 +40,8 @@ for gridrefinement in [1, 2, 4]:
     Z = n.sum() * dv / gridrefinement**3
     print 'Integral of all-electron density:', Z
     equal(Z, 28, 1e-5)
+
+energy_tolerance = 0.00001
+niter_tolerance = 0
+equal(e, -4.88369376921, energy_tolerance) # svnversion 5252
+equal(niter, 20, niter_tolerance) # svnversion 5252

@@ -1,6 +1,7 @@
 import os
 from ase import *
 from gpaw import GPAW
+from gpaw.test import equal
 
 a = 4.    # Size of unit cell (Angstrom)
 c = a / 2
@@ -10,7 +11,8 @@ molecule = Atoms([Atom('H', (c - d / 2, c, c)),
                        cell=(a, a, a), pbc=False)
 calc = GPAW(h=0.2, nbands=1, xc='PBE', txt=None)
 molecule.set_calculator(calc)
-e2 = molecule.get_potential_energy()
+e1 = molecule.get_potential_energy()
+niter1 = calc.get_number_of_iterations()
 calc.write('H2.gpw')
 calc.write('H2a.gpw', mode='all')
 molecule.get_forces()
@@ -51,7 +53,7 @@ d0 = positions[1, 0] - positions[0, 0]
 #              second atom       first atom
 
 print 'experimental bond length:'
-print 'hydrogen molecule energy: %7.3f eV' % e2
+print 'hydrogen molecule energy: %7.3f eV' % e1
 print 'bondlength              : %7.3f Ang' % d0
 
 # Find the theoretical bond length:
@@ -59,6 +61,7 @@ relax = QuasiNewton(molecule)
 relax.run(fmax=0.05)
 
 e2 = molecule.get_potential_energy()
+niter2 = calc.get_number_of_iterations()
 
 positions = molecule.get_positions()
 #                 x-coordinate      x-coordinate
@@ -76,6 +79,7 @@ molecule = GPAW('H2fa.gpw', txt='H2.txt').get_atoms()
 relax = QuasiNewton(molecule)
 relax.run(fmax=0.05)
 e2q = molecule.get_potential_energy()
+niter2q = calc.get_number_of_iterations()
 positions = molecule.get_positions()
 d0q = positions[1, 0] - positions[0, 0]
 assert abs(e2 - e2q) < 2e-6
@@ -89,3 +93,11 @@ world.barrier()  # syncronize before reading text output file
 f = read('H2.txt').get_forces()
 assert abs(f - f0).max() < 5e-6  # 5 digits in txt file
 
+energy_tolerance = 0.000001
+niter_tolerance = 0
+equal(e1, -6.2965956371, energy_tolerance) # svnversion 5252
+equal(niter1, 18, niter_tolerance) # svnversion 5252
+equal(e2, -6.29926560584, energy_tolerance) # svnversion 5252
+equal(niter2, 18, niter_tolerance) # svnversion 5252
+equal(e2q, -6.29926560584, energy_tolerance) # svnversion 5252
+equal(niter2q, 18, niter_tolerance) # svnversion 5252

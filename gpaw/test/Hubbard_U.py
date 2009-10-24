@@ -2,6 +2,7 @@
 from ase.units import Hartree
 from ase import *
 from gpaw import *
+from gpaw.test import equal
 import numpy as np
 
 ##############################################################################
@@ -21,11 +22,11 @@ def band_gab(calc):
             x += Nb
     index1=np.where(energies-ef<=0)
     index2=np.where(energies-ef>0)
-    
+
     Vb=max(energies[index1[0]])-ef
     Cb=min(energies[index2[0]])-ef
     return Cb-Vb
-    
+
 
 
 
@@ -63,7 +64,8 @@ atoms.set_calculator(calc)
 
 ##############################################################################
 ## Find the  ground-state and get the band gab
-atoms.get_potential_energy()
+e1 = atoms.get_potential_energy()
+niter1 = calc.get_number_of_iterations()
 Eg_non_Hub=band_gab(calc)
 
 ##############################################################################
@@ -76,13 +78,14 @@ U_au=U_ev / Hartree   # U in atomic units
 scale=1                     # Do not scale (does not seem to matter much)
 store=0                     # Do not store (not in use yet)
 for a in np.arange(2):      # Loops though all Ni atoms
-    calc.hamiltonian.setups[a].set_hubbard_u(U_au,l,scale,store) # Apply U  
+    calc.hamiltonian.setups[a].set_hubbard_u(U_au,l,scale,store) # Apply U
 
 ##############################################################################
 ## Make ready for scf with the DFT+U functional and converge this new system
 ## and get new band bag.....which should be much larger:
 calc.scf.reset()
-calc.get_potential_energy()
+e2 = calc.get_potential_energy()
+niter2 = calc.get_number_of_iterations()
 Eg_Hub=band_gab(calc)
 
 ##############################################################################
@@ -91,3 +94,10 @@ Eg_Hub=band_gab(calc)
 ## Let's compare the new and old band gab and require that is has opened by
 ## at least 0.2 eV
 assert( Eg_Hub- Eg_non_Hub>1.9)
+
+energy_tolerance = 0.00001
+niter_tolerance = 0
+equal(e1, -28.4373310769, energy_tolerance) # svnversion 5252
+equal(niter1, 12, niter_tolerance) # svnversion 5252
+equal(e2, -25.117913239, energy_tolerance) # svnversion 5252
+equal(niter2, 8, niter_tolerance) # svnversion 5252

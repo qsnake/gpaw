@@ -1,6 +1,6 @@
-from gpaw import *
 from ase import *
 from ase.parallel import paropen
+from gpaw import *
 from gpaw.utilities.tools import split_formula
 from gpaw.test import equal
 
@@ -17,7 +17,10 @@ tpss_old = {
 
 exp_bonds_dE = {
 'LiH': (1.595,57.8),
-} 
+}
+
+niters_ref = {'LiH': 22, 'Li': 19, 'H': 14}
+niter_tolerance = 0
 
 systems = ['LiH']
 
@@ -28,6 +31,7 @@ for formula in systems:
         if atom not in systems:
             systems.append(atom)
 energies = {}
+niters = {}
 
 # Calculate energies
 for formula in systems:
@@ -48,6 +52,7 @@ for formula in systems:
     loa.set_calculator(calc)
     try:
         energy = loa.get_potential_energy()
+        niters[formula] = calc.get_number_of_iterations()
         diff = calc.get_xc_difference('TPSS')
         energies[formula] = (energy, energy + diff)
     except:
@@ -85,4 +90,4 @@ for formula in tpss_de.keys():
 
 #comparison to gpaw 0.6.3798 version value in kcal/mol (note the grid:0.3 Ang)
     equal(de_tpss, tpss_old[formula], 0.1)
-
+    equal(niters[formula], niters_ref[formula], niter_tolerance)

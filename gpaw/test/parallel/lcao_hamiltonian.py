@@ -4,6 +4,7 @@ from gpaw import GPAW, restart, setup_paths
 from gpaw.lcao.tools import get_lcao_hamiltonian
 from gpaw.mpi import world
 from gpaw.atom.basis import BasisMaker
+from gpaw.test import equal
 
 if world.rank == 0:
     basis = BasisMaker('Li', 'szp').generate(1, 1)
@@ -11,13 +12,14 @@ if world.rank == 0:
 world.barrier()
 if '.' not in setup_paths:
     setup_paths.append('.')
-    
+
 if 1:
     a = 2.7
     bulk = Atoms('Li', pbc=True, cell=[a, a, a])
     calc = GPAW(gpts=(8, 8, 8), kpts=(4, 4, 4), mode='lcao', basis='szp')
     bulk.set_calculator(calc)
-    bulk.get_potential_energy()
+    e = bulk.get_potential_energy()
+    niter = calc.get_number_of_iterations()
     calc.write('temp.gpw')
 
 atoms, calc = restart('temp.gpw')
@@ -28,3 +30,8 @@ if world.rank == 0:
     eigs2 = np.linalg.eigvals(np.linalg.solve(S_kMM[2], H_skMM[0, 2])).real
     eigs2.sort()
     assert abs(sum(eigs - eigs2)) < 1e-8
+
+    energy_tolerance = 0.000001
+    niter_tolerance = 0
+    equal(e, -1.82829897814, energy_tolerance) # svnversion 5252
+    equal(niter, 5, niter_tolerance) # svnversion 5252

@@ -21,7 +21,13 @@ ethylene.center()
 
 calc = GPAW(nbands=8, h=0.20, convergence={'eigenstates': 1e-6})
 ethylene.set_calculator(calc)
-ethylene.get_potential_energy()
+e = ethylene.get_potential_energy()
+niter = calc.get_number_of_iterations()
+
+energy_tolerance = 0.000001
+niter_tolerance = 0
+equal(e, -33.3201761979, energy_tolerance) # svnversion 5252
+equal(niter, 22, niter_tolerance) # svnversion 5252
 
 def check(calc):
     wannier = Wannier(calc, nbands=6)
@@ -42,7 +48,7 @@ def check(calc):
             i += 1
             if i == len(expected):
                 raise RuntimeError, 'Correct center not found'
-    expected.pop(i)    
+    expected.pop(i)
 
 check(calc)
 calc.write('ethylene.gpw', 'all')

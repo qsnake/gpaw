@@ -8,7 +8,7 @@ a = 2.8
 k = 6
 g = 12
 def printstr(calc):
-    print ('Energy = %0.5f eV, '
+    print ('Energy = %0.6f eV, '
            'niter = %i, '
            'xc_correction = %0.3f sec') % (
         calc.get_potential_energy(),
@@ -24,29 +24,37 @@ def run_test(tests=[0, 1, 2, 3]):
         calc = GPAW(xc='LDA', **calc_kwargs)
         bulk = Atoms('Li', magmoms=[1.], calculator=calc, **atom_kwargs)
         E = bulk.get_potential_energy()
+        niter = calc.get_number_of_iterations()
         printstr(calc)
-        equal(E, -1.87364, 1e-4)
+        equal(E, -1.873575, 1e-6) # svnversion 5252
+        equal(niter, 27, 0) # svnversion 5252
 
     if 1 in tests:# spin paired GGA (libxc)
         calc = GPAW(xc='PBE', **calc_kwargs)
         bulk = Atoms('Li', calculator=calc, **atom_kwargs)
         E = bulk.get_potential_energy()
+        niter = calc.get_number_of_iterations()
         printstr(calc)
-        equal(E, -1.74626, 1e-4)
+        equal(E, -1.746265, 1e-6) # svnversion 5252
+        equal(niter, 19, 0) # svnversion 5252
 
     if 2 in tests: # spin polarized GGA (libxc)
         calc = GPAW(xc='PBE', **calc_kwargs)
         bulk = Atoms('Li', magmoms=[1.], calculator=calc, **atom_kwargs)
         E = bulk.get_potential_energy()
+        niter = calc.get_number_of_iterations()
         printstr(calc)
-        equal(E, -1.74759, 1e-4)
+        equal(E, -1.747591, 1e-6) # svnversion 5252
+        equal(niter, 34, 0) # svnversion 5252
 
     if 3 in tests: # spin polarized GGA (gpaw built_in)
         calc = GPAW(xc='oldPBE', **calc_kwargs)
         bulk = Atoms('Li', magmoms=[1.], calculator=calc, **atom_kwargs)
         E = bulk.get_potential_energy()
+        niter = calc.get_number_of_iterations()
         printstr(calc)
-        equal(E, -1.74751, 1e-4)
+        equal(E, -1.747517, 1e-6) # svnversion 5252
+        equal(niter, 44, 0) # svnversion 5252
 
 usenewxc = extra_parameters.get('usenewxc')
 try:
@@ -61,14 +69,8 @@ try:
 finally:
     extra_parameters['usenewxc'] = usenewxc
 
-## Old xc_correction
-## Energy = -1.87473 eV, niter = 24, xc_correction = 1.093 sec
-## Energy = -1.74718 eV, niter = 13, xc_correction = 0.666 sec
-## Energy = -1.74848 eV, niter = 38, xc_correction = 5.393 sec
-## Energy = -1.74853 eV, niter = 32, xc_correction = 3.010 sec
-
-## New xc_correction
-## Energy = -1.87473 eV, niter = 24, xc_correction = 1.197 sec
-## Energy = -1.74718 eV, niter = 13, xc_correction = 0.727 sec
-## Energy = -1.74848 eV, niter = 38, xc_correction = 5.280 sec
-## Energy = -1.74853 eV, niter = 32, xc_correction = 3.103 sec
+## svnversion 5252
+## Energy = -1.873575 eV, niter = 27, xc_correction = 2.309 sec
+## Energy = -1.746265 eV, niter = 19, xc_correction = 1.967 sec
+## Energy = -1.747591 eV, niter = 34, xc_correction = 8.891 sec
+## Energy = -1.747517 eV, niter = 44, xc_correction = 7.662 sec

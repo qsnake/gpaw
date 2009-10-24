@@ -1,5 +1,5 @@
-from gpaw import GPAW
 from ase import *
+from gpaw import GPAW
 from gpaw.test import equal
 
 a = 2.87
@@ -18,5 +18,11 @@ calc = GPAW(h=h,
             fixmom=True)
 bulk.set_calculator(calc)
 e = bulk.get_potential_energy()
+niter = calc.get_number_of_iterations()
 mom = calc.get_magnetic_moment()
 equal(mom, mom0, 1e-5)
+
+energy_tolerance = 0.00001
+niter_tolerance = 0
+equal(e, -20.3192658805, energy_tolerance) # svnversion 5252
+equal(niter, 9, niter_tolerance) # svnversion 5252
