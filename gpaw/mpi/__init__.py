@@ -277,7 +277,9 @@ def compare_atoms(atoms, comm=world):
 
 
 def broadcast_string(string=None, root=0, comm=world):
-    if rank == root:
+    """Broadcast a Python string across an MPI communicator and return it.
+    NB: Strings are immutable objects in Python, so the input is unchanged."""
+    if comm.rank == root:
         assert isinstance(string, str)
         n = np.array(len(string), int)
     else:
