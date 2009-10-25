@@ -38,7 +38,7 @@ os.system('tar xvzf gpaw-setups-latest.tar.gz')
 setups = tmpdir + '/gpaw/' + glob.glob('gpaw-setups-[0-9]*')[0]
 
 day = time.localtime()[6]
-if sys.argv[-1] == '--debug':
+if '--debug' in sys.argv[1:]:
     args = '--debug'
     cpus = 2 ** (1 + (day+1) % 3)
 else:
