@@ -104,16 +104,18 @@ def main(outfile, tests=None, testfile='test.py'):
         mpi.world.max(filesizes)
 
         # Merge global totals of generated cover files with existing (if any)
+        # NB: Techically, line numbers are one-indexed but empty files may
+        # lead to entries at (filename,0) due to a Python 2.4 quirk.
         for filename,lines in zip(filenames,filesizes):
-            numexecs = np.zeros(lines, dtype=int)
-            for l in range(lines):
-                if (filename,l+1) in mycounts:
-                    numexecs[l] = mycounts.pop((filename,l+1))
+            numexecs = np.zeros(lines+1, dtype=int)
+            for line in range(lines+1):
+                if (filename,line) in mycounts:
+                    numexecs[line] = mycounts.pop((filename,line))
             mpi.world.sum(numexecs, 0)
             if mpi.world.rank == 0:
-                for l in np.argwhere(numexecs).ravel():
-                    counts[(filename,l+1)] = numexecs[l] \
-                        + counts.get((filename,l+1), 0)
+                for line in np.argwhere(numexecs).ravel():
+                    counts[(filename,line)] = numexecs[line] \
+                        + counts.get((filename,line), 0)
 
     # Store as 3-tuple of dicts in a new pickle (i.e. same format)
     if mpi.world.rank == 0:
