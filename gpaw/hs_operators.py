@@ -14,9 +14,9 @@ class Operator:
     transposed both upon input and output.
 
     As both the overlap and Hamiltonian matrices are Hermitian, they
-    can be considered as tranposed *or* conjugated as compared to
+    can be considered as transposed *or* conjugated as compared to
     standard definitions.
-    """ #XXX
+    """
 
     # This class has 100% parallel unittest coverage by parallel/ut_hsops.py!
     # If you add to or change any aspect of the code, please update the test.
