@@ -2,14 +2,15 @@ import numpy as np
 import numpy.random as ra
 from gpaw.setup import create_setup
 from gpaw.xc_functional import XCFunctional
-from gpaw.test import equal
-from gpaw import setup_paths
-from gpaw.test.lxc_testsetups import Lxc_testsetups
+from gpaw.test import equal, gen
 
-setup_paths.insert(0, '.')
-
-setups = Lxc_testsetups()
-setups.create()
+for functional in [
+    'X-None', 'X-C_PW', 'X-C_VWN', 'X-C_PZ',
+    'X_PBE-C_PBE', 'X_PBE_R-C_PBE',
+    'X_B88-C_P86', 'X_B88-C_LYP',
+    'X_FT97_A-C_LYP'
+    ]:
+    gen('N', xcname=functional)
 
 tolerance = 0.000005 # libxc must reproduce old gpaw energies
 # zero Kelvin: in Hartree
@@ -86,5 +87,3 @@ for xc in libxc_set:
     E2 = d.xc_correction.calculate_energy_and_derivatives(D_sp, H_sp)
     print dE, (E2 - E1) / x
     equal(dE, (E2 - E1) / x, 0.005)
-
-setups.clean()

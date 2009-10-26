@@ -1,16 +1,11 @@
 import os
 from ase import *
 from ase.parallel import rank, barrier
-from gpaw import GPAW, setup_paths
-from gpaw.test import equal
+from gpaw import GPAW
+from gpaw.test import equal, gen
 from gpaw.vdw import FFTVDWFunctional
-from gpaw.atom.generator import Generator, parameters
 
-if rank == 0:
-    g = Generator('Ar', 'revPBE', scalarrel=True, nofiles=True)
-    g.run(**parameters['Ar'])
-barrier()
-setup_paths.insert(0, '.')
+gen('Ar', xcname='revPBE')
 
 energy_tolerance = 0.000001
 niter_tolerance = 0

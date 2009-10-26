@@ -1,19 +1,11 @@
 import os
 from ase import *
 from gpaw import GPAW
-from gpaw.test import equal
-from gpaw.atom.generator import Generator, parameters
-from gpaw import setup_paths
+from gpaw.test import equal, gen
 import gpaw.mpi as mpi
 
-if mpi.rank == 0:
-    # Generate non-scalar-relativistic setup for Cu:
-    g = Generator('Cu', scalarrel=False, nofiles=True)
-    g.run(logderiv=True, **parameters['Cu'])
-
-mpi.world.barrier()
-
-setup_paths.insert(0, '.')
+# Generate non-scalar-relativistic setup for Cu:
+gen('Cu', scalarrel=False)
 
 a = 8.0
 c = a / 2
@@ -43,5 +35,3 @@ if mpi.rank == 0:
     niter_tolerance = 0
     equal(e, -0.268653164287, energy_tolerance) # svnversion 5252
     equal(niter, 23, niter_tolerance) # svnversion 5252
-
-del setup_paths[0]

@@ -1,9 +1,8 @@
 from ase import *
 from gpaw import GPAW
-from gpaw.test import equal
-from gpaw.atom.generator import Generator
+from gpaw.test import equal, gen
 
-g = Generator('H', 'TPSS', scalarrel=True, nofiles=True)
+# ??? g = Generator('H', 'TPSS', scalarrel=True, nofiles=True)
 
 atoms = Atoms('H', magmoms=[1], pbc=True)
 atoms.center(vacuum=3)
@@ -27,7 +26,7 @@ print '================'
 equal(e1 + de12t, -1.13140473115, 0.005)
 equal(e1 + de12m, -1.19069632478, 0.005)
 
-g = Generator('He', 'TPSS', scalarrel=True, nofiles=True)
+# ??? g = Generator('He', 'TPSS', scalarrel=True, nofiles=True)
 
 atomsHe = Atoms('He', pbc=True)
 atomsHe.center(vacuum=3)

@@ -3,8 +3,6 @@ import os
 from ase import *
 from gpaw import GPAW
 from gpaw.test import equal
-from gpaw.atom.generator import Generator, parameters
-from gpaw import setup_paths
 
 loa = Atoms([Atom('Be', (0, 0, 0)), Atom('Be', (2.45, 0, 0))])
 loa.center(vacuum=2.0)

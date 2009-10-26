@@ -27,7 +27,7 @@ def gen(symbol, name=None, **kwargs):
         if 'scalarrel' not in kwargs:
             kwargs['scalarrel'] = True
         g = Generator(symbol, **kwargs)
-        g.run(name=name, **parameters[symbol])
+        g.run(name=name, use_restart_file=False, **parameters[symbol])
     mpi.world.barrier()
     if '.' not in setup_paths:
         setup_paths.append('.')

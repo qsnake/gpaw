@@ -38,7 +38,8 @@ class BasisMaker:
                 ae0.run()
                 # Now files will be stored such that they can
                 # automagically be used by the next run()
-            generator.run(write_xml=False, **parameters[generator.symbol])
+            generator.run(write_xml=False, use_restart_file=False,
+                          **parameters[generator.symbol])
 
     def smoothify(self, psi_mg, l):
         """Generate pseudo wave functions from all-electron ones.

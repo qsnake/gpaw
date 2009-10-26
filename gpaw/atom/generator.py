@@ -123,7 +123,7 @@ class Generator(AllElectron):
     def run(self, core='', rcut=1.0, extra=None,
             logderiv=False, vbar=None, exx=False, name=None,
             normconserving='', filter=(0.4, 1.75), rcutcomp=None,
-            write_xml=True):
+            write_xml=True, use_restart_file=True):
 
         self.name = name
 
@@ -198,7 +198,7 @@ class Generator(AllElectron):
         self.Nc = sum(f_j[:njcore])
 
         # Do all-electron calculation:
-        AllElectron.run(self)
+        AllElectron.run(self, use_restart_file)
 
         # Highest occupied atomic orbital:
         self.emax = max(e_j)

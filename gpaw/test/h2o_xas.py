@@ -3,17 +3,11 @@ from math import pi, cos, sin
 from ase import *
 from ase.parallel import rank, barrier
 from gpaw import GPAW
-from gpaw.atom.generator import Generator, parameters
-from gpaw import setup_paths
 from gpaw.xas import XAS
-from gpaw.test import equal
+from gpaw.test import equal, gen
 
-if rank == 0:
-    # Generate setup for oxygen with half a core-hole:
-    g = Generator('O', scalarrel=True, corehole=(1, 0, 0.5), nofiles=True)
-    g.run(name='hch1s', **parameters['O'])
-barrier()
-setup_paths.insert(0, '.')
+# Generate setup for oxygen with half a core-hole:
+gen('O', name='hch1s', corehole=(1, 0, 0.5))
 
 a = 5.0
 d = 0.9575
@@ -61,8 +55,6 @@ if 0:
     p.plot(x, y[0])
     p.plot(x, sum(y))
     p.show()
-
-del setup_paths[0]
 
 print e, niter
 energy_tolerance = 0.00001

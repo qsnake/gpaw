@@ -2,16 +2,11 @@ import os
 from ase import *
 from gpaw import GPAW
 from ase.parallel import rank, barrier
-from gpaw.atom.generator import Generator, parameters
-from gpaw import setup_paths
 from gpaw.vdw import FFTVDWFunctional
+from gpaw.test import gen
 
 # Generate setup
-if rank == 0:
-    g = Generator('H', 'revPBE', scalarrel=True, nofiles=True)
-    g.run(**parameters['H'])
-barrier()
-setup_paths.insert(0, '.')
+gen('H', xcname='revPBE')
 
 L = 2.5
 a = Atoms('H', cell=(L, L, L), pbc=True)

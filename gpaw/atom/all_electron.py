@@ -143,7 +143,7 @@ class AllElectron:
             norm = np.dot(u**2, dr)
             u *= 1.0 / sqrt(norm)
             
-    def run(self):
+    def run(self, use_restart_file=True):
         #     beta g
         # r = ------, g = 0, 1, ..., N - 1
         #     N - g
@@ -198,7 +198,7 @@ class AllElectron:
         self.vXC = np.zeros(self.N)
 
         restartfile = '%s/%s.restart' % (tempdir, self.symbol)
-        if self.xc.is_non_local():
+        if self.xc.is_non_local() or not use_restart_file:
             # Do not start from initial guess when doing
             # non local XC!
             # This is because we need wavefunctions as well
