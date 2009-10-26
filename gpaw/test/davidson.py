@@ -27,9 +27,10 @@ e1 = bulk.get_potential_energy()
 niter1 = calc.get_number_of_iterations()
 equal(e0, e1, 2.0e-5)
 
-energy_tolerance = 0.00001
+energy_tolerance = 0.00003
 niter_tolerance = 0
 equal(e0, -6.97125875119, energy_tolerance) # svnversion 5252
-equal(niter0, 24, niter_tolerance) # svnversion 5252
+#equal(niter0, 24, niter_tolerance) # svnversion 5252 # niter differs when run with -np 2 or 4
+assert 24 <= niter0 <= 26, niter
 equal(e1, -6.97126164349, energy_tolerance) # svnversion 5252
 equal(niter1, 23, niter_tolerance) # svnversion 5252

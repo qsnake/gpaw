@@ -31,7 +31,7 @@ e_ref = [-1.7881215825065007, -1.791655508469838, -1.7894800958944614, -1.781681
 niter_ref = [6, 6, 6, 6, 6] # svnversion 5252
 
 print e
-energy_tolerance = 0.000001
+energy_tolerance = 0.000005
 niter_tolerance = 0
 for i in range(len(A)):
     equal(e[i], e_ref[i], energy_tolerance)

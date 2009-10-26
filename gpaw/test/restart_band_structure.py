@@ -10,7 +10,7 @@ gen('Si', xcname='GLLBSC')
 e = {}
 niter = {}
 
-energy_tolerance = 0.000001
+energy_tolerance = 0.00004
 niter_tolerance = 0
 
 e_ref = {'LDA': {'restart': -5.5728768784094758}, 'GLLBSC': {'restart': -5.4458036264351}} # svnversion 5252

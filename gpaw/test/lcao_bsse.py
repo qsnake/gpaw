@@ -47,7 +47,7 @@ assert abs(1.0 - abs(c_nM[0, 0])) < 0.02
 assert abs(c_nM[0, 1]) < 0.02
 assert abs(e_bsse - e0) < 2e-3
 
-energy_tolerance = 0.000001
+energy_tolerance = 0.00005
 niter_tolerance = 0
 equal(e_bsse, 0.0287208853911, energy_tolerance) # svnversion 5252
 equal(niter_bsse, 7, niter_tolerance) # svnversion 5252

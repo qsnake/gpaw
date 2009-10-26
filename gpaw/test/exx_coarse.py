@@ -43,7 +43,7 @@ print 'Total energy on the fine grid   =', E[True]
 print 'Total energy on the coarse grid =', E[False]
 equal(E[True], E[False], 0.02)
 
-energy_tolerance = 0.00001
+energy_tolerance = 0.0001
 niter_tolerance = 0
 equal(E[False], -788.69544851733713, energy_tolerance) # svnversion 5252
 equal(niter[False], 19, niter_tolerance) # svnversion 5252

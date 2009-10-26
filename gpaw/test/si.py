@@ -40,7 +40,7 @@ print 'Difference', eigs2-eigs
 
 assert np.fabs(eigs2 - eigs)[:-1].max() < 3e-5
 
-energy_tolerance = 0.000001
+energy_tolerance = 0.00005
 niter_tolerance = 0
 equal(e1, -36.7229861549, energy_tolerance) # svnversion 5252
 equal(niter1, 23, niter_tolerance) # svnversion 5252

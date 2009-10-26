@@ -93,7 +93,7 @@ world.barrier()  # syncronize before reading text output file
 f = read('H2.txt').get_forces()
 assert abs(f - f0).max() < 5e-6  # 5 digits in txt file
 
-energy_tolerance = 0.000001
+energy_tolerance = 0.000003
 niter_tolerance = 0
 equal(e1, -6.2965956371, energy_tolerance) # svnversion 5252
 equal(niter1, 18, niter_tolerance) # svnversion 5252

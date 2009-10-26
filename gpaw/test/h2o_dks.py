@@ -30,7 +30,7 @@ print 'XPS %.3f eV' % (e3 - e1)
 assert abs(e2 - e1 - 533.349) < 0.001
 assert abs(e3 - e1 - 538.844) < 0.001
 
-energy_tolerance = 0.00001
+energy_tolerance = 0.00002
 niter_tolerance = 0
 equal(e1, -2080.08367208, energy_tolerance) # svnversion 5252
 equal(niter1, 23, niter_tolerance) # svnversion 5252
