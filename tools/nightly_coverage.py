@@ -24,6 +24,15 @@ def main(outfile, tests=None, testfile='test.py'):
     #import ase
     #ignore_dirs.extend(ase.__path__)
     ignore_dirs.extend(np.__path__)
+
+    try:
+        # Trace module in Python 2.4 dislikes files without newline
+        # at the end. Unfortunately SciPy lacks one in __config__.py
+        import scipy
+        ignore_dirs.extend(scipy.__path__)
+    except ImportError:
+        pass
+
     ignore_modules = []
 
     # Temporary file and directory for coverage results on this core
