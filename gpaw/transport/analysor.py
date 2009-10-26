@@ -317,7 +317,10 @@ class Transport_Analysor:
             current = self.calculate_current2(0)
         else:
             current = 0
-        f = tp.calculate_force()
+        if tp.non_sc:
+            f = None
+        else:       
+            f = tp.calculate_force()
         tp.F_av = None
         step.initialize_data(tp.bias, tp.gate, self.energies, self.lead_pairs,
                              tc_array, dos_array, dv, current, tp.lead_fermi, time_cost, f)
@@ -1483,6 +1486,24 @@ class Transport_Plotter:
 
         self.set_options(None, None, None, title)
         self.show(p)
-
+ 
+    def plot_force(self, atom_indices, direction=2, bias_indices=None):
+        if bias_indices == None:
+            bias_indices = range(len(self.bias_steps))
+        import pylab as p
+        legends = []
+        for i in atom_indices:
+            forces = []
+            bias = []
+            legends.append('force of Atom' + str(i))
+            for j in bias_indices:
+                bias.append(self.bias_steps[j].bias[0] -
+                                         self.bias_steps[j].bias[1])
+                forces.append(self.bias_steps[j].force[i, direction])
+            p.plot(bias, forces)
+        self.set_options('Bias(V)', 'Force(au.)', legends)
+        self.show(p)
+        
+        
 
 
