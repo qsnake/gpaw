@@ -182,12 +182,10 @@ class Eigensolver:
             if info != 0:
                 raise RuntimeError('Failed to diagonalize: info=%d' % info)
         else:
-            if self.gd.comm.rank == 0:
-                if self.band_comm.rank == 0:
-                    info = diagonalize(H_nn, self.eps_n)
-                    if info != 0:
-                        raise RuntimeError('Failed to diagonalize: info=%d' %
-                                           info)
+            if self.gd.comm.rank == 0 and self.band_comm.rank == 0:
+                info = diagonalize(H_nn, self.eps_n)
+                if info != 0:
+                    raise RuntimeError('Failed to diagonalize: info=%d' % info)
         self.timer.stop(dsyev_zheev_string)
 
         if self.gd.comm.rank == 0:
