@@ -68,6 +68,12 @@ behavior.add_option('-o', '--output', default='-',
                     '(the default).')
 behavior.add_option('--parameters',
                     help='read input parameters from this file')
+behavior.add_option('-E', '--effective-medium-theory',
+                    action='store_true',
+                    help='Use EMT calculator.')
+behavior.add_option('--stdout',
+                    action='store_true',
+                    help="Write GPAW's output to standard output.")
 parser.add_option_group(behavior)
 
 # Calculator:
@@ -77,9 +83,6 @@ append_to_optiongroup(defaults, calc_opts)
 parser.add_option_group(calc_opts)
 
 if 0:
-    calc_opts.add_option('-E', '--effective-medium-theory',
-                         action='store_true',
-                         help='Use EMT calculator.')
     calc_opts.add_option('-e', '--eigensolver', default='rmm-diis',
                          choices=['rmm-diis', 'cg'],
                          help='Eigensolver.')
@@ -104,9 +107,6 @@ if 0:
                          help='Exchange-Correlation functional (default value LDA).')
     calc_opts.add_option('-N', '--number-of-bands', type='int',
                          help='Number of bands / states.')
-    calc_opts.add_option('--stdout',
-                         action='store_true',
-                         help="Write GPAW's output to standard output.")
     parser.add_option_group(calc_opts)
 
 opt, args = parser.parse_args(argv)
@@ -190,24 +190,12 @@ def run():
                     out=out)
 
     if not opt.effective_medium_theory:
-        kpts = [int(x) for x in opt.brillouin_zone_sampling.split(',')]
-
-        if opt.finite_difference_stencils:
-            stencils = [int(x)
-                        for x in opt.finite_difference_stencils.split(',')]
-        else:
-            stencils = None
-
         input_parameters = None
         if opt.parameters:
             from gpaw.parameters import InputParameters
             input_parameters = eval(open(opt.parameters).read())
 
-        runner.set_parameters(mode=opt.mode, basis=opt.basis, kpts=kpts,
-                              h=opt.grid_spacing, xc=opt.xc_functional,
-                              stencils=stencils, width=opt.smearing_width,
-                              eigensolver=opt.eigensolver,
-                              nbands=opt.number_of_bands, vacuum=opt.vacuum,
+        runner.set_parameters(vacuum=opt.vacuum,
                               stdout=opt.stdout,
                               input_parameters=input_parameters)
 
