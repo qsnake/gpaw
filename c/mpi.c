@@ -229,6 +229,29 @@ static PyObject * mpi_barrier(MPIObject *self)
   Py_RETURN_NONE;
 }
 
+static PyObject * mpi_test(MPIObject *self, PyObject *args)
+{
+  mpi_request* s;
+  int n;
+  int ret;
+  int flag;
+  if (!PyArg_ParseTuple(args, "s#:test", &s, &n))
+    return NULL;
+  if (n != sizeof(mpi_request))
+    {
+      PyErr_SetString(PyExc_TypeError, "Invalid MPI request object.");
+      return NULL;
+    }
+  ret = MPI_Test(&(s->rq), &flag, MPI_STATUS_IGNORE); // Can this change the Python string?
+#ifdef GPAW_MPI_DEBUG
+  if (ret != MPI_SUCCESS)
+    {
+      PyErr_SetString(PyExc_RuntimeError, "MPI_Test error occured.");
+      return NULL;
+    }
+#endif
+  return Py_BuildValue("i", flag);
+}
 
 static PyObject * mpi_wait(MPIObject *self, PyObject *args)
 {
@@ -659,6 +682,8 @@ static PyMethodDef mpi_methods[] = {
      "name() returns the name of the processor node."},
     {"barrier",          (PyCFunction)mpi_barrier,      METH_VARARGS,
      "barrier() synchronizes all MPI tasks"},
+    {"test",             (PyCFunction)mpi_test,         METH_VARARGS,
+     "test(request) tests if a nonblocking communication is complete."},
     {"wait",             (PyCFunction)mpi_wait,         METH_VARARGS,
      "wait(request) waits for a nonblocking communication to complete."},
     {"waitall",          (PyCFunction)mpi_waitall,      METH_O,

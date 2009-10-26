@@ -50,8 +50,8 @@ class SerialCommunicator:
     def new_communicator(self, ranks):
         return self
 
-    def cart_create(self, dimx, dimy, dimz, periodic):
-        return self
+    def test(self, request):
+        return 1
 
     def wait(self, request):
         raise NotImplementedError('Calls to mpi wait should not happen in '
@@ -179,6 +179,9 @@ if debug:
             assert is_contiguous(a)
             return self.comm.receive(a, src, tag, block)
 
+        def test(self, request):
+            self.comm.test(request)
+
         def wait(self, request):
             self.comm.wait(request)
 
@@ -202,9 +205,6 @@ if debug:
         def inverse_cholesky(self, a,
                              nprow=1, npcol=1, mb=32, root=0):
             return self.comm.inverse_cholesky(a, nprow, npcol, mb, root)
-
-        def cart_create(self, dimx, dimy, dimz, periodic):
-            return self.comm.cart_create(dimx, dimy, dimz, periodic)
 
     serial_comm = _Communicator(serial_comm)
 
