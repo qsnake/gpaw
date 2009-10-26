@@ -12,6 +12,8 @@ for line in open('literature.rst'):
         publications.append(day)
 
 #publications.sort()
+import matplotlib
+matplotlib.use('Agg')
 import pylab as plt
 import numpy as np
 n = 2
