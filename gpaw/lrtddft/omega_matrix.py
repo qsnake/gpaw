@@ -267,44 +267,44 @@ class OmegaMatrix:
                     if kss.npspins==2: # spin polarised
                         nv_g = nt_sg.copy()
                         nv_g[kss[ij].pspin] +=\
-                                        kss[ij].GetFineGridPairDensity()
+                                        kss[ij].get(fg)
                         nv_g[kss[kq].pspin] +=\
-                                        kss[kq].GetFineGridPairDensity()
+                                        kss[kq].get(fg)
                         Excpp = xc.get_energy_and_potential(\
                                         nv_g[0],v_g,nv_g[1],v_g)
                         nv_g = nt_sg.copy()
                         nv_g[kss[ij].pspin] +=\
-                                        kss[ij].GetFineGridPairDensity()
+                                        kss[ij].get(fg)
                         nv_g[kss[kq].pspin] -= \
-                                        kss[kq].GetFineGridPairDensity()
+                                        kss[kq].get(fg)
                         Excpm = xc.get_energy_and_potential(\
                                             nv_g[0],v_g,nv_g[1],v_g)
                         nv_g = nt_sg.copy()
                         nv_g[kss[ij].pspin] -=\
-                                        kss[ij].GetFineGridPairDensity()
+                                        kss[ij].get(fg)
                         nv_g[kss[kq].pspin] +=\
-                                        kss[kq].GetFineGridPairDensity()
+                                        kss[kq].get(fg)
                         Excmp = xc.get_energy_and_potential(\
                                             nv_g[0],v_g,nv_g[1],v_g)
                         nv_g = nt_sg.copy()
                         nv_g[kss[ij].pspin] -= \
-                                        kss[ij].GetFineGridPairDensity()
+                                        kss[ij].get(fg)
                         nv_g[kss[kq].pspin] -=\
-                                        kss[kq].GetFineGridPairDensity()
+                                        kss[kq].get(fg)
                         Excpp = xc.get_energy_and_potential(\
                                             nv_g[0],v_g,nv_g[1],v_g)
                     else: # spin unpolarised
-                        nv_g=nt_sg + ns*kss[ij].GetFineGridPairDensity()\
-                              + ns*kss[kq].GetFineGridPairDensity()
+                        nv_g=nt_sg + ns*kss[ij].get(fg)\
+                              + ns*kss[kq].get(fg)
                         Excpp = xc.get_energy_and_potential(nv_g,v_g)
-                        nv_g=nt_sg + ns*kss[ij].GetFineGridPairDensity()\
-                              - ns*kss[kq].GetFineGridPairDensity()
+                        nv_g=nt_sg + ns*kss[ij].get(fg)\
+                              - ns*kss[kq].get(fg)
                         Excpm = xc.get_energy_and_potential(nv_g,v_g)
-                        nv_g=nt_sg - ns*kss[ij].GetFineGridPairDensity()\
-                              + ns*kss[kq].GetFineGridPairDensity()
+                        nv_g=nt_sg - ns*kss[ij].get(fg)\
+                              + ns*kss[kq].get(fg)
                         Excmp = xc.get_energy_and_potential(nv_g,v_g)
-                        nv_g=nt_sg - ns*kss[ij].GetFineGridPairDensity()\
-                              - ns*kss[kq].GetFineGridPairDensity()
+                        nv_g=nt_sg - ns*kss[ij].get(fg)\
+                              - ns*kss[kq].get(fg)
                         Excmm = xc.get_energy_and_potential(nv_g,v_g)
 
                     Om[ij,kq] += weight *\
@@ -337,13 +337,13 @@ class OmegaMatrix:
                     # fxc is available
                     if kss.npspins==2: # spin polarised
                         Om[ij,kq] += weight *\
-                            gd.integrate(kss[ij].GetFineGridPairDensity()*
-                                         kss[kq].GetFineGridPairDensity()*
+                            gd.integrate(kss[ij].get(fg)*
+                                         kss[kq].get(fg)*
                                          fxc[kss[ij].pspin,kss[kq].pspin])
                     else: # spin unpolarised
                         Om[ij,kq] += weight *\
-                            gd.integrate(kss[ij].GetFineGridPairDensity()*
-                                         kss[kq].GetFineGridPairDensity()*
+                            gd.integrate(kss[ij].get(fg)*
+                                         kss[kq].get(fg)*
                                          fxc)
                 if ij != kq:
                     Om[kq,ij] = Om[ij,kq]
