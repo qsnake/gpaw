@@ -9,9 +9,9 @@ NumPy
 
 If you do not wish to build NumPy for yourself, you can use one of the following versions::
 
-  /soft/apps/python/python-2.5-cnk-gcc/numpy-1.0.4-1/lib/python2.5/site-packages
-  /soft/apps/python/python-2.5-cnk-gcc/numpy-1.0.4-1.essl-4.4/lib/python2.5/site-packages
-  /soft/apps/python/python-2.5-cnk-gcc/numpy-1.0.4-1.goto/lib/python2.5/site-packages
+  /soft/apps/python/python-2.5-cnk-gcc/numpy-1.0.4/lib/python2.5/site-packages
+  /soft/apps/python/python-2.5-cnk-gcc/numpy-1.0.4.essl-4.4/lib/python2.5/site-packages
+  /soft/apps/python/python-2.5-cnk-gcc/numpy-1.0.4.goto/lib/python2.5/site-packages
   /soft/apps/python/python-2.5-cnk-gcc/numpy-1.2.1/lib/python2.5/site-packages
 
 Instructions for the ``V1R3M0_460_2008-081112P`` driver,
