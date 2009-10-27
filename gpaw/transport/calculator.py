@@ -1649,7 +1649,7 @@ class Transport(GPAW):
             pass
         else:
             self.negf_prepare(atoms)
-            if np.sum(self.bias) < 1e-3:
+            if np.sum(abs(self.bias)) < 1e-3:
                 self.ground = True
             self.get_selfconsistent_hamiltonian()
             self.analysor.save_ion_step()
