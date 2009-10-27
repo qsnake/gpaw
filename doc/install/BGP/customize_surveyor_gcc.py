@@ -1,4 +1,3 @@
-define_macros += [('GPAW_AIX', '1')]
 define_macros += [('GPAW_BGP', '1')]
 define_macros += [('GPAW_NO_UNDERSCORE_BLAS', '1')]
 define_macros += [('GPAW_NO_UNDERSCORE_LAPACK', '1')]
