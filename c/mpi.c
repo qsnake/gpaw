@@ -250,6 +250,7 @@ static PyObject * mpi_test(MPIObject *self, PyObject *args)
       return NULL;
     }
 #endif
+  // Note that MPI_Test does not modify the request regardless of flag outcome.
   return Py_BuildValue("i", flag);
 }
 
@@ -258,7 +259,8 @@ static PyObject * mpi_testall(MPIObject *self, PyObject *requests)
   int n;   // Number of requests
   int ret;
   MPI_Request *rqs = NULL;
-  int flag;
+  PyObject **bufs = NULL;
+  int flag = 0;
   if (!PySequence_Check(requests))
     {
       PyErr_SetString(PyExc_TypeError, "mpi.testall: argument must be a sequence");
@@ -268,6 +270,7 @@ static PyObject * mpi_testall(MPIObject *self, PyObject *requests)
   n = PySequence_Size(requests);
   assert(n >= 0);  // This cannot fail.
   rqs = GPAW_MALLOC(MPI_Request, n);
+  bufs = GPAW_MALLOC(PyObject*, n);
   for (int i = 0; i < n; i++)
     {
       PyObject *o = PySequence_GetItem(requests, i);
@@ -277,15 +280,17 @@ static PyObject * mpi_testall(MPIObject *self, PyObject *requests)
 	{
 	  Py_DECREF(o);
 	  free(rqs);
+	  free(bufs);
 	  PyErr_SetString(PyExc_TypeError, "mpi.testall: argument must be a sequence of MPI requests");
 	  return NULL;
 	}
       mpi_request *s = (mpi_request *) PyString_AS_STRING(o);
       //memcpy(rqs[i], &(s->rq), sizeof(MPI_Request));
       rqs[i] = s->rq;
+      bufs[i] = s->buffer;
       Py_DECREF(o);
     }
-  // Do the actual wait.
+  // Do the actual test.
   ret = MPI_Testall(n, rqs, &flag, MPI_STATUSES_IGNORE);
 #ifdef GPAW_MPI_DEBUG
   if (ret != MPI_SUCCESS)
@@ -295,8 +300,18 @@ static PyObject * mpi_testall(MPIObject *self, PyObject *requests)
       return NULL;
     }
 #endif
+  // Unlike MPI_Test, if flag outcome is non-zero, MPI_Testall will deallocate
+  // all requests which were allocated by nonblocking communication calls, so
+  // we must free these buffers. Otherwise, none of the requests are modified.
+  if (flag != 0)
+    {
+      // Release the buffers used by the MPI communication
+      for (int i = 0; i < n; i++)
+        Py_DECREF(bufs[i]);
+    }
   // Release internal data and return.
   free(rqs);
+  free(bufs);
   return Py_BuildValue("i", flag);
 }
 

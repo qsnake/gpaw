@@ -187,10 +187,10 @@ if debug:
             return self.comm.receive(a, src, tag, block)
 
         def test(self, request):
-            return self.comm.test(request)
+            return self.comm.test(request) # request is not modified
 
         def testall(self, requests):
-            return self.comm.testall(requests)
+            return self.comm.testall(requests) # may deallocate requests!
 
         def wait(self, request):
             self.comm.wait(request)
@@ -337,10 +337,9 @@ def ibarrier(timeout=None, root=0, comm=world):
         return requests
 
     t0 = time.time()
-    while not np.all(map(comm.test, requests)): #comm.testall(requests): 
+    while not comm.testall(requests): # automatic clean-up upon success
         if time.time()-t0 > timeout:
             raise RuntimeError('MPI barrier timeout.')
-    comm.waitall(requests) # nice cleanup
 
 def all_gather_array(comm, a): #???
     # Gather array into flat array
