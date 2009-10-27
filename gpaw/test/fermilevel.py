@@ -34,7 +34,7 @@ equal(GPAW('test.gpw', txt=None).get_fermi_level(), ef, 1e-8)
 energy_tolerance = 0.00005
 niter_tolerance = 0
 equal(e0, -0.0280845579468, energy_tolerance) # svnversion 5252
-#equal(niter0, 22, niter_tolerance) # svnversion 5252 # niter differs when run with -np 2 or 4
+#equal(niter0, 22, niter_tolerance) # svnversion 5252 # niter depends on the number of processes
 assert 17 <= niter0 <= 22, niter0
 equal(e1, -0.0973921063256, energy_tolerance) # svnversion 5252
 equal(niter1, 4, niter_tolerance) # svnversion 5252

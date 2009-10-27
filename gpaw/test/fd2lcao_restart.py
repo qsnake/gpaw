@@ -6,7 +6,7 @@ from ase import Atom, Atoms
 from gpaw import GPAW, Mixer, restart
 from gpaw.test import equal
 
-energy_tolerance = 0.00001
+energy_tolerance = 0.00003
 niter_tolerance = 0
 
 if not os.path.isfile('Na4_fd.gpw'):
