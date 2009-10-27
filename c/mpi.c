@@ -253,6 +253,53 @@ static PyObject * mpi_test(MPIObject *self, PyObject *args)
   return Py_BuildValue("i", flag);
 }
 
+static PyObject * mpi_testall(MPIObject *self, PyObject *requests)
+{
+  int n;   // Number of requests
+  int ret;
+  MPI_Request *rqs = NULL;
+  int flag;
+  if (!PySequence_Check(requests))
+    {
+      PyErr_SetString(PyExc_TypeError, "mpi.testall: argument must be a sequence");
+      return NULL;
+    }
+  // Extract the request objects 
+  n = PySequence_Size(requests);
+  assert(n >= 0);  // This cannot fail.
+  rqs = GPAW_MALLOC(MPI_Request, n);
+  for (int i = 0; i < n; i++)
+    {
+      PyObject *o = PySequence_GetItem(requests, i);
+      if (o == NULL)
+	return NULL;
+      if (!PyString_CheckExact(o) || (PyString_Size(o) != sizeof(mpi_request)))
+	{
+	  Py_DECREF(o);
+	  free(rqs);
+	  PyErr_SetString(PyExc_TypeError, "mpi.testall: argument must be a sequence of MPI requests");
+	  return NULL;
+	}
+      mpi_request *s = (mpi_request *) PyString_AS_STRING(o);
+      //memcpy(rqs[i], &(s->rq), sizeof(MPI_Request));
+      rqs[i] = s->rq;
+      Py_DECREF(o);
+    }
+  // Do the actual wait.
+  ret = MPI_Testall(n, rqs, &flag, MPI_STATUSES_IGNORE);
+#ifdef GPAW_MPI_DEBUG
+  if (ret != MPI_SUCCESS)
+    {
+      // We do not dare to release the buffers now!
+      PyErr_SetString(PyExc_RuntimeError, "MPI_Testall error occured.");
+      return NULL;
+    }
+#endif
+  // Release internal data and return.
+  free(rqs);
+  return Py_BuildValue("i", flag);
+}
+
 static PyObject * mpi_wait(MPIObject *self, PyObject *args)
 {
   mpi_request* s;
@@ -684,6 +731,8 @@ static PyMethodDef mpi_methods[] = {
      "barrier() synchronizes all MPI tasks"},
     {"test",             (PyCFunction)mpi_test,         METH_VARARGS,
      "test(request) tests if a nonblocking communication is complete."},
+    {"testall",          (PyCFunction)mpi_testall,      METH_O,
+     "testall(list_of_rqs) tests if multiple nonblocking communications are complete."},
     {"wait",             (PyCFunction)mpi_wait,         METH_VARARGS,
      "wait(request) waits for a nonblocking communication to complete."},
     {"waitall",          (PyCFunction)mpi_waitall,      METH_O,

@@ -53,8 +53,15 @@ class SerialCommunicator:
     def test(self, request):
         return 1
 
+    def testall(self, requests):
+        return 1
+
     def wait(self, request):
         raise NotImplementedError('Calls to mpi wait should not happen in '
+                                  'serial mode')
+
+    def waitall(self, request):
+        raise NotImplementedError('Calls to mpi waitall should not happen in '
                                   'serial mode')
 
 serial_comm = SerialCommunicator()
@@ -180,10 +187,16 @@ if debug:
             return self.comm.receive(a, src, tag, block)
 
         def test(self, request):
-            self.comm.test(request)
+            return self.comm.test(request)
+
+        def testall(self, requests):
+            return self.comm.testall(requests)
 
         def wait(self, request):
             self.comm.wait(request)
+
+        def waitall(self, requests):
+            self.comm.waitall(requests)
 
         def abort(self, errcode):
             self.comm.abort(errcode)
@@ -303,6 +316,31 @@ def receive_string(rank, comm=world):
     string = np.empty(n, np.int8)
     comm.receive(string, rank)
     return string.tostring()
+
+def ibarrier(timeout=None, root=0, comm=world):
+    """Non-blocking barrier returning a list of requests to wait for.
+    An optional time-out may be given, turning the call into a blocking
+    barrier with an upper time limit, beyond which an exception is raised."""
+    requests = []
+    byte = np.ones(1, dtype=np.int8)
+    if comm.rank == root:
+        for rank in range(0,root) + range(root+1,comm.size): #everybody else
+            rbuf, sbuf = np.empty_like(byte), byte.copy()
+            requests.append(comm.send(sbuf, rank, tag=420, block=False))
+            requests.append(comm.receive(rbuf, rank, tag=421, block=False))
+    else:
+        rbuf, sbuf = np.empty_like(byte), byte
+        requests.append(comm.receive(rbuf, root, tag=420, block=False))
+        requests.append(comm.send(sbuf, root, tag=421, block=False))
+
+    if timeout is None:
+        return requests
+
+    t0 = time.time()
+    while not all(map(comm.test, requests)): #comm.testall(requests): 
+        if time.time()-t0 > timeout:
+            raise RuntimeError('MPI barrier timeout.')
+    comm.waitall(requests) # nice cleanup
 
 def all_gather_array(comm, a): #???
     # Gather array into flat array

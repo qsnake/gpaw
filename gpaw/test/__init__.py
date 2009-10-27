@@ -286,6 +286,8 @@ class TestRunner:
         else:
             failed = False
 
+        mpi.ibarrier(timeout=60.0) # guard against parallel hangs
+
         me = np.array(failed)
         everybody = np.empty(mpi.size, bool)
         mpi.world.all_gather(me, everybody)
