@@ -33,8 +33,9 @@ parser.add_option('-l', '--logarithmic-derivatives', action='store_true',
 parser.add_option('-a', '--all-electron-only', action='store_true',
                   help='Skip generation of PAW setup.')
 parser.add_option('-e', '--extra-projectors', type='string', default=None,
-                  help='Extra projectors.',
-                  metavar='0.0;0.0,1.0;0.0')
+                  help='Extra projectors. Use ";" to separate s, p and d channels. '
+                  'Examples: "0.0,1.0" for two extra s-type. "0.0;1.0" for extra '
+                  's and p. ";1.0" for extra p.', metavar='0.0;0.0,1.0;0.0')
 parser.add_option('-c', '--core', type='string', default=None,
                   help='Frozen core.  Examples: "[Ne]", "[Ar]3d".',
                   metavar='<core>')
