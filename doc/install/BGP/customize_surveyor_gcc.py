@@ -58,7 +58,8 @@ library_dirs = [
            ]
 
 include_dirs += [
-    '/home/dulak/numpy-1.0.4-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages/numpy/core/include'
+    '/soft/apps/python/python-2.6-cnk-gcc/numpy-1.3.0/lib/python2.6/site-package
+s/numpy/core/include'
     ]
 
 compiler = "bgp_gcc.py"

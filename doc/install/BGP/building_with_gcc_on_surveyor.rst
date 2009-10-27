@@ -13,9 +13,14 @@ If you do not wish to build NumPy for yourself, you can use one of the following
   /soft/apps/python/python-2.5-cnk-gcc/numpy-1.0.4.essl-4.4/lib/python2.5/site-packages
   /soft/apps/python/python-2.5-cnk-gcc/numpy-1.0.4.goto/lib/python2.5/site-packages
   /soft/apps/python/python-2.5-cnk-gcc/numpy-1.2.1/lib/python2.5/site-packages
+  /soft/apps/python/python-2.6-cnk-gcc/numpy-1.2.1/lib/python2.5/site-packages
+  /soft/apps/python/python-2.6-cnk-gcc/numpy-1.3.0/lib/python2.5/site-packages
 
-Instructions for the ``V1R3M0_460_2008-081112P`` driver,
-compilation with gcc compiler.
+At the moment, the computers are transitioning from the ``V1R3M0_460_2008-081112P`` to the
+``V1R4M0_320_2009-090815P`` driver. The major difference are that the latter  (newer) driver
+uses Python 2.6 and GCC 4.1.2. Surveyor is at the newer driver, but Intrepid is still at the older one.
+Choose your version of NumPy accordingly. NumPy 1.3.0 officially supports Python 2.6, NumPy 1.2.1
+is available as a fall back for use with Python 2.6.
 
 The **0.3** version of gpaw uses Numeric `<https://svn.fysik.dtu.dk/projects/gpaw/tags/0.3/>`_.
 
@@ -82,7 +87,7 @@ get and numpy-1.0.4 and do this::
   $ c="\"mpicc\""
   $ LD_LIBRARY_PATH="$ldpath" CC="$c" $p setup.py install --root="$root"
 
-**Note**: instructions may work also for numpy version *1.3.0*.
+The instructions for standard numpy also work for NumPy 1.2.1 and NumPy 1.3.0.
 
 Build python-nose::
 
