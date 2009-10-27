@@ -337,7 +337,7 @@ def ibarrier(timeout=None, root=0, comm=world):
         return requests
 
     t0 = time.time()
-    while not all(map(comm.test, requests)): #comm.testall(requests): 
+    while not np.all(map(comm.test, requests)): #comm.testall(requests): 
         if time.time()-t0 > timeout:
             raise RuntimeError('MPI barrier timeout.')
     comm.waitall(requests) # nice cleanup
