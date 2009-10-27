@@ -57,7 +57,7 @@ if 0:
     p.show()
 
 print e, niter
-energy_tolerance = 0.00007
+energy_tolerance = 0.00009
 niter_tolerance = 0
 equal(e, -17.5425138956, energy_tolerance) # svnversion 5252
 #equal(niter, 19, niter_tolerance) # svnversion 5252 # niter differs when run with -np 2 or 4

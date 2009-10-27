@@ -33,7 +33,7 @@ equal(np.linalg.norm(wan.get_radii() - 1.2393), 0, 1e-4)
 eig = np.sort(np.linalg.eigvals(wan.get_hamiltonian().real))
 equal(np.linalg.norm(eig - calc.get_eigenvalues()[:2]), 0, 1e-4)
 
-energy_tolerance = 0.00001
+energy_tolerance = 0.00005
 niter_tolerance = 0
 equal(e, -6.65697866959, energy_tolerance) # svnversion 5252
 equal(niter, 16, niter_tolerance) # svnversion 5252
