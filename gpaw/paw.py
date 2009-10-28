@@ -165,7 +165,8 @@ class PAW(PAWTextOutput):
             # More drastic changes:
             self.scf = None
             self.wfs.set_orthonormalized(False)
-            if key in ['lmax', 'width', 'stencils', 'external', 'xc']:
+            if key in ['lmax', 'width', 'stencils', 'external', 'xc',
+                       'occupations']:
                 self.hamiltonian = None
                 self.occupations = None
             elif key in ['charge']:
@@ -311,21 +312,18 @@ class PAW(PAWTextOutput):
         width = par.width
         if width is None:
             if gamma:
-                width = 0
+                width = 0.0
             else:
-                width = 0.1 / Hartree
+                width = 0.1  # eV
         else:
-            width /= Hartree
+            assert par.occupations is None
             
         magnetic = magmom_a.any()
 
         spinpol = par.spinpol
-        fixmom = par.fixmom
         if par.hund:
             if natoms != 1:
                 raise ValueError('hund=True arg only valid for single atoms!')
-            if width == 0:
-                fixmom = True
             spinpol = True
 
         if spinpol is None:
@@ -373,7 +371,7 @@ class PAW(PAWTextOutput):
                                                          setups, par.usesymm)
 
         nao = setups.nao
-        self.nvalence = nvalence = setups.nvalence - par.charge
+        nvalence = setups.nvalence - par.charge
         
         nbands = par.nbands
         if nbands is None:
@@ -392,7 +390,7 @@ class PAW(PAWTextOutput):
         if par.hund:
             f_si = setups[0].calculate_initial_occupation_numbers(
                 magmom=0, hund=True, charge=par.charge)
-            Mh = -np.diff(f_si.sum(1))
+            Mh = f_si[0].sum() - f_si[1].sum()
             if magnetic and M != Mh:
                 raise RuntimeError('You specified a magmom that does not'
                                    'agree with hunds rule!')
@@ -406,18 +404,22 @@ class PAW(PAWTextOutput):
             raise ValueError('Too few bands!  Electrons: %d, bands: %d'
                              % (nvalence, nbands))
 
+        if par.width is not None:
+            self.text('**NOTE**: please start using ' +
+                      'occupations=FermiDirac(width).')
+        if par.fixmom:
+            self.text('**NOTE**: please start using '+
+                      'occupations=FermiDirac(width, fixmagmom=True).')
+
         if self.occupations is None:
-            # Create object for occupation numbers:
-            if width == 0 or 2 * nbands == nvalence:
-                self.occupations = occupations.ZeroKelvin(nvalence, nspins)
+            if par.occupations is None:
+                # Create object for occupation numbers:
+                self.occupations = occupations.FermiDirac(width, par.fixmom)
             else:
-                self.occupations = occupations.FermiDirac(nvalence, nspins,
-                                                          width)
+                self.occupations = par.occupations
 
         self.occupations.magmom = M
-        if fixmom:
-            self.occupations.fix_moment(M)
-
+        
         from gpaw import parsize
         if parsize is None:
             parsize = par.parsize
@@ -486,7 +488,7 @@ class PAW(PAWTextOutput):
             
             # do k-point analysis here? XXX
 
-            args = (self.gd, nspins, setups, self.bd,
+            args = (self.gd, nspins, nvalence, setups, self.bd,
                     dtype, world, kpt_comm,
                     gamma, bzk_kc, ibzk_kc, weight_k, symmetry, self.timer)
             if par.mode == 'lcao':
@@ -498,9 +500,6 @@ class PAW(PAWTextOutput):
         else:
             self.wfs.set_setups(setups)
 
-        self.occupations.set_communicator(self.wfs.kpt_comm,
-                                          self.wfs.band_comm)
-        
         if not self.wfs.eigensolver:
             eigensolver = get_eigensolver(par.eigensolver, par.mode,
                                           par.convergence)
@@ -522,7 +521,7 @@ class PAW(PAWTextOutput):
 
         self.density.initialize(setups, par.stencils[1], self.timer,
                                 magmom_a, par.hund)
-        self.density.set_mixer(par.mixer, fixmom, width)
+        self.density.set_mixer(par.mixer)
 
         if self.hamiltonian is None:
             self.hamiltonian = Hamiltonian(self.gd, self.finegd, nspins,
@@ -670,7 +669,7 @@ class PAW(PAWTextOutput):
             # is the density ok ?
             error = self.density.mixer.get_charge_sloshing()
             criterion = (self.input_parameters['convergence']['density']
-                         * self.nvalence)
+                         * self.wfs.nvalence)
             if error < criterion:
                 self.scf.fix_density()
 

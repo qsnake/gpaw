@@ -3,12 +3,9 @@ import os
 from ase import *
 from ase.parallel import size, rank
 
-from gpaw import GPAW
-from gpaw.cluster import Cluster
+from gpaw import *
 from gpaw.analyse.simple_stm import SimpleStm
 from gpaw.test import equal
-
-from gpaw.output import eigenvalue_string
 
 load=True
 load=False
@@ -63,8 +60,10 @@ fname='BH-spin_Sz2_wfs.gpw'
 BH.set_initial_magnetic_moments([1, 1])
 if not load:
     BH.set_pbc(False)
-    cf = GPAW(spinpol=True, fixmom=True,
-              nbands=5, h=.3, txt=txt, width=.1)
+    cf = GPAW(occupations=FermiDirac(0.1, fixmagmom=True),
+              nbands=5,
+              h=0.3,
+              txt=txt)
     BH.set_calculator(cf)
     e2 = BH.get_potential_energy()
     niter2 = cf.get_number_of_iterations()

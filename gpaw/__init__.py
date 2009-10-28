@@ -37,6 +37,7 @@ from os.path import join, isfile
 __all__ = ['GPAW', 'Calculator',
            'Mixer', 'MixerSum', 'MixerDif',
            'PoissonSolver',
+           'FermiDirac',
            'restart']
 
 
@@ -193,6 +194,7 @@ if paths != '':
 from gpaw.aseinterface import GPAW
 from gpaw.mixer import Mixer, MixerSum, MixerDif
 from gpaw.poisson import PoissonSolver
+from gpaw.occupations import FermiDirac
 
 class Calculator(GPAW):
     def __init__(self, *args, **kwargs):

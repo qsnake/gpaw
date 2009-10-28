@@ -342,8 +342,8 @@ class Hamiltonian:
         self.timer.stop('Hamiltonian')
 
     def get_energy(self, occupations):
-        self.Ekin = self.Ekin0 + occupations.Eband
-        self.S = occupations.S  # entropy
+        self.Ekin = self.Ekin0 + occupations.e_band
+        self.S = occupations.e_entropy
 
         # Total free energy:
         self.Etot = (self.Ekin + self.Epot + self.Eext + 

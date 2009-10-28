@@ -46,13 +46,12 @@ def dscf_calculation(paw, orbitals, atoms):
     if paw.occupations == None:
         paw.initialize(atoms)
     occ = paw.occupations
-    if occ.kT == 0:
-        occ.kT = 1e-6
+    if occ.width == 0:
+        occ.width = 1e-6
     if isinstance(occ, OccupationsDSCF):
         paw.occupations.orbitals = orbitals
     else:
-        new_occ = OccupationsDSCF(occ.ne, occ.nspins, occ.kT, orbitals)
-        new_occ.set_communicator(occ.kpt_comm)
+        new_occ = OccupationsDSCF(occ.width, orbitals)
         paw.occupations = new_occ
 
     # If the calculator has already converged (for the ground state),
@@ -69,36 +68,31 @@ class OccupationsDSCF(FermiDirac):
     in stead of placing all the electrons by a Fermi-Dirac distribution.
     """
 
-    def __init__(self, ne, nspins, kT, orbitals):
-        FermiDirac.__init__(self, ne, nspins, kT)
+    def __init__(self, width, orbitals):
+        FermiDirac.__init__(self, width)
         
         self.orbitals = orbitals
         self.norbitals = len(self.orbitals)
 
-        self.cnoe = 0.
+        self.cnoe = 0.0
         for orb in self.orbitals:
             self.cnoe += orb[0]
-        self.ne -= self.cnoe
-
-    def calculate_band_energy(self, kpt_u):
-        # Sum up all eigenvalues weighted with occupation numbers
-        Eband = 0.0
-        for kpt in kpt_u:
-            Eband += np.dot(kpt.f_n, kpt.eps_n)
-            if hasattr(kpt, 'c_on'):
-                for ne, c_n in zip(kpt.ne_o, kpt.c_on):
-                    Eband += ne * np.dot(np.abs(c_n)**2, kpt.eps_n)
-
-        self.Eband = self.kpt_comm.sum(Eband)
 
     def calculate(self, wfs):
+        if self.nvalence is None:
+            self.nvalence = wfs.nvalence - self.cnoe
         FermiDirac.calculate(self, wfs)
-
+        
         # Get the expansion coefficients c_un for each dscf-orbital
         # and incorporate their respective occupations into kpt.ne_o
         c_oun = []
         for orb in self.orbitals:
-            c_oun.append(orb[1].expand(self.epsF, wfs))
+            ef = self.fermilevel
+            if self.fixmagmom:
+                femilevels = [ef + 0.5 * self.split, ef - 0.5 * self.split]
+            else:
+                fermilevels = ef
+            c_oun.append(orb[1].expand(fermilevels, wfs))
 
         for u, kpt in enumerate(wfs.kpt_u):
             kpt.ne_o = np.zeros(self.norbitals, dtype=float)
@@ -111,7 +105,7 @@ class OccupationsDSCF(FermiDirac):
                 kpt.ne_o[o] = orb[0]
                 kpt.c_on[o,:] = c_oun[o][u]
 
-                if self.nspins == 2:
+                if wfs.nspins == 2:
                     assert orb[2] in range(2), 'Invalid spin index'
 
                     if orb[2] == kpt.s:
@@ -119,16 +113,25 @@ class OccupationsDSCF(FermiDirac):
                     else:
                         kpt.ne_o[o] = 0.0
                 else:
-                    kpt.ne_o[o] *= 0.5*kpt.weight
+                    kpt.ne_o[o] *= 0.5 * kpt.weight
 
-        self.calculate_band_energy(wfs.kpt_u)
-        
         # Correct the magnetic moment
         for orb in self.orbitals:
             if orb[2] == 0:
                 self.magmom += orb[0]
             elif orb[2] == 1:
                 self.magmom -= orb[0]
+
+    def calculate_band_energy(self, wfs):
+        FermiDirac.calculate_band_energy(self, wfs)
+        
+        de_band = 0.0
+        for kpt in wfs.kpt_u:
+            if hasattr(kpt, 'c_on'):
+                for ne, c_n in zip(kpt.ne_o, kpt.c_on):
+                    de_band += ne * np.dot(np.abs(c_n)**2, kpt.eps_n)
+        self.e_band += wfs.band_comm.sum(wfs.kpt_comm.sum(de_band))
+
 
 class MolecularOrbital:
     """Class defining the orbitals that should be filled in a dSCF calculation.

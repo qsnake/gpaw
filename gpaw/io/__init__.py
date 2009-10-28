@@ -168,10 +168,10 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
         w['PoissonStencil'] = paw.hamiltonian.poisson.nn
         w['XCFunctional'] = paw.hamiltonian.xcfunc.get_name()
         w['Charge'] = p['charge']
-        w['FixMagneticMoment'] = p.fixmom
+        w['FixMagneticMoment'] = paw.occupations.fixmagmom
         w['UseSymmetry'] = p['usesymm']
         w['Converged'] = scf.converged
-        w['FermiWidth'] = paw.occupations.kT
+        w['FermiWidth'] = paw.occupations.width
         w['MixClass'] = paw.density.mixer.__class__.__name__
         w['MixBeta'] = paw.density.mixer.beta
         w['MixOld'] = paw.density.mixer.nmaxold
@@ -191,7 +191,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
         w['S'] = hamiltonian.S
         try:
             w['FermiLevel'] = paw.occupations.get_fermi_level()
-        except NotImplementedError:
+        except ValueError:
             # Zero temperature calculation - don't write Fermi level:
             pass
 

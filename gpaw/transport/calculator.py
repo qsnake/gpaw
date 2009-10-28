@@ -1076,7 +1076,7 @@ class Transport(GPAW):
         return cvg
  
     def initialize_scf(self):
-        self.intctrl = IntCtrl(self.occupations.kT * Hartree,
+        self.intctrl = IntCtrl(self.occupations.width * Hartree,
                                 self.lead_fermi, self.bias,
                                 self.env_bias, self.min_energy,
                                 self.neintmethod, self.neintstep)            

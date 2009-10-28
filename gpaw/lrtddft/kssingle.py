@@ -59,7 +59,7 @@ class KSSingles(ExcitationList):
 
         error = calculator.wfs.eigensolver.error
         criterion = (calculator.input_parameters['convergence']['eigenstates']
-                     * calculator.nvalence)
+                     * calculator.wfs.nvalence)
         if error > criterion:
             raise RuntimeError('The wfs error is larger than ' +
                                'the convergence criterion (' +

@@ -34,7 +34,12 @@ energy_tolerance = 0.00002
 niter_tolerance = 0
 equal(e1, -2080.08367208, energy_tolerance) # svnversion 5252
 equal(niter1, 23, niter_tolerance) # svnversion 5252
-equal(e2, -1546.73507725, energy_tolerance) # svnversion 5252
-equal(niter2, 46, niter_tolerance) # svnversion 5252
-equal(e3, -1541.24003001, energy_tolerance) # svnversion 5252
-equal(niter3, 29, niter_tolerance) # svnversion 5252
+#equal(e2, -1546.73507725, energy_tolerance) # svnversion 5252
+equal(e2, -1546.73499539, energy_tolerance) # svnversion 5252
+
+#equal(niter2, 46, niter_tolerance) # svnversion 5252
+equal(niter2, 25, niter_tolerance) # svnversion 5252
+#equal(e3, -1541.24003001, energy_tolerance) # svnversion 5252
+equal(e3, -1541.23998147, energy_tolerance) # svnversion 5252
+#equal(niter3, 29, niter_tolerance) # svnversion 5252
+equal(niter3, 21, niter_tolerance) # svnversion 5252

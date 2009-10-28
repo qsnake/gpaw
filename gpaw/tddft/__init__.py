@@ -305,7 +305,7 @@ class TDDFT(GPAW):
                     self.eps_tmp *= self.gd.dv
                     kpt.eps_n[:] = self.eps_tmp.real
 
-                self.occupations.calculate_band_energy(kpt_u)
+                self.occupations.calculate_band_energy(self.wfs)
 
                 H = self.td_hamiltonian.hamiltonian
 
@@ -315,7 +315,7 @@ class TDDFT(GPAW):
                 self.Enlkin = xcfunc.get_non_local_kinetic_corrections()
 
                 # PAW
-                self.Ekin = H.Ekin0 + self.occupations.Eband + self.Enlkin
+                self.Ekin = H.Ekin0 + self.occupations.e_band + self.Enlkin
                 self.Epot = H.Epot
                 self.Eext = H.Eext
                 self.Ebar = H.Ebar

@@ -219,23 +219,23 @@ class AtomGridDescriptor(EquidistantRadialGridDescriptor):
 class AtomOccupations(OccupationNumbers):
     def __init__(self, f_sln):
         self.f_sln = f_sln
-        OccupationNumbers.__init__(self, None, len(f_sln))
+        OccupationNumbers.__init__(self, None)
+        self.width = 0
         
-    def calculate(self, wfs):
-        OccupationNumbers.calculate(self, wfs)
-        for s in range(self.nspins):
+    def calculate_occupation_numbers(self, wfs):
+        for s in range(wfs.nspins):
             n1 = 0
             for l, f_n in enumerate(self.f_sln[s]):
                 for f in f_n:
                     n2 = n1 + 2 * l + 1
                     wfs.kpt_u[s].f_n[n1:n2] = f / float(2 * l + 1)
                     n1 = n2
-        self.calculate_band_energy(wfs.kpt_u)
-        if self.nspins == 2:
+        if wfs.nspins == 2:
             self.magmom = wfs.kpt_u[0].f_n.sum() - wfs.kpt_u[1].f_n.sum()
+        self.e_entropy = 0.0
 
     def get_fermi_level(self):
-        raise NotImplementedError
+        raise ValueError
 
 class AtomPAW(GPAW):
     def __init__(self, symbol, f_sln, h=0.05, rcut=10.0, **kwargs):

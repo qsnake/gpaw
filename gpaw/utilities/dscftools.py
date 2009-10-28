@@ -438,8 +438,30 @@ def dscf_reconstruct_orbitals_k_point(paw, norbitals, mol, kpt):
     return (f_o, eps_o, wf_oG, P_aoi,)
 
 from gpaw.io.tar import TarFileReference
-from gpaw.occupations import FermiDiracFixed
+from gpaw.occupations import FermiDirac
 from gpaw.kpt_descriptor import KPointDescriptor
+
+class FermiDiracFixed(FermiDirac):
+    """Occupations with Fermi smearing and fixed Fermi level"""
+    raise NotImplementedError
+
+"""
+    def __init__(self, width):
+        FermiDirac.__init__(self, width, fermi):
+        self.set_fermi_level(epsF)
+        self.niter = 0
+    
+    def guess_fermi_level(self, kpts):
+        pass
+
+    def find_fermi_level(self, kpts):
+        magmom = 0.0
+        for kpt in kpts:
+            sign = 1.0 - 2 * kpt.s
+            magmom += sign * np.sum(kpt.f_n)
+        magmom = self.band_comm.sum(self.kpt_comm.sum(magmom))
+        self.magmom = magmom
+"""
 
 def dscf_collapse_orbitals(paw, nbands_max='occupied', f_tol=1e-4,
                            verify_density=True, nt_tol=1e-5, D_tol=1e-3):
@@ -531,7 +553,8 @@ def dscf_collapse_orbitals(paw, nbands_max='occupied', f_tol=1e-4,
 
     # Replace occupations class with a fixed variant (gets the magmom right)
     paw.occupations = FermiDiracFixed(paw.occupations.ne, kd.nspins,
-                                      paw.occupations.kT, paw.occupations.epsF)
+                                      paw.occupations.width,
+                                      paw.occupations.fermilevel)
     paw.occupations.set_communicator(kd.comm, bd.comm)
     paw.occupations.find_fermi_level(paw.wfs.kpt_u) # just regenerates magmoms
 

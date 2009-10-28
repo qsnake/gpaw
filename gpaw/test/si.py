@@ -17,7 +17,7 @@ bulk = Atoms(symbols='Si8',
 n = 20
 calc = GPAW(gpts=(n, n, n),
             nbands=8*3,
-            width=0.01,
+            width=0.01,verbose=1,
             kpts=(1, 1, 1))
 bulk.set_calculator(calc)
 e1 = bulk.get_potential_energy()

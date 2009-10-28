@@ -1,7 +1,7 @@
 import os
 import numpy as np
 from ase import *
-from gpaw import GPAW
+from gpaw import GPAW, FermiDirac
 from gpaw.utilities.dos import raw_orbital_LDOS, raw_wignerseitz_LDOS, RawLDOS
 from gpaw.test import equal
 import gpaw.mpi as mpi
@@ -29,7 +29,8 @@ niter_Hnospin = calc.get_number_of_iterations()
 energies, sweight = raw_orbital_LDOS(calc, a=0, spin=0, angular='s')
 energies, pdfweight = raw_orbital_LDOS(calc, a=0, spin=0, angular='pdf')
 
-calc = GPAW(fixmom=True, hund=True, communicator=comm)
+calc = GPAW(occupations=FermiDirac(width=0, fixmagmom=True),
+            hund=True, communicator=comm)
 Hspin.set_calculator(calc)
 e_Hspin = Hspin.get_potential_energy()
 niter_Hspin = calc.get_number_of_iterations()
@@ -79,11 +80,11 @@ fname = 'ldbe.dat'
 ldos.by_element_to_file(fname, shift=False)
 ldos.by_element_to_file(fname, 2.0, shift=False)
 
-energy_tolerance = 0.000001
+energy_tolerance = 0.00001
 niter_tolerance = 0
 equal(e_Hnospin, 0.146969814337, energy_tolerance) # svnversion 5252
 equal(niter_Hnospin, 17, niter_tolerance) # svnversion 5252
-equal(e_Hspin,  -0.789272555457, energy_tolerance) # svnversion 5252
-equal(niter_Hspin, 15, niter_tolerance) # svnversion 5252
+equal(e_Hspin,  -0.78931, energy_tolerance) # svnversion 5252
+equal(niter_Hspin, 14, niter_tolerance) # svnversion 5252
 equal(e_LiH, -3.74706225051, energy_tolerance) # svnversion 5252
 equal(niter_LiH, 26, niter_tolerance) # svnversion 5252

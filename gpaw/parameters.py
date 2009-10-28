@@ -1,9 +1,8 @@
 import numpy as np
 from ase.units import Hartree
 
-#from gpaw.notify import InputNotifier
 from gpaw.poisson import PoissonSolver, FFTPoissonSolver
-
+from gpaw.occupations import FermiDirac
 
 class InputParameters(dict):
     def __init__(self, **kwargs):
@@ -14,11 +13,12 @@ class InputParameters(dict):
             ('kpts',            [(0, 0, 0)]),
             ('lmax',            2),
             ('charge',          0),
-            ('fixmom',          False),
+            ('fixmom',          False),      # don't use this
             ('nbands',          None),
             ('setups',          'paw'),
             ('basis',           {}),
-            ('width',           None),  # eV
+            ('width',           None),  # eV, don't use this
+            ('occupations',     None),
             ('spinpol',         None),
             ('usesymm',         True),
             ('stencils',        (3, 3)),
@@ -143,7 +143,7 @@ class InputParameters(dict):
                   'dangerous and will be disabled some day in the future!')
             self.stencils = (2, 3)
             self.charge = 0.0
-            self.fixmom = False
+            fixmom = False
         else:
             self.stencils = (r['KohnShamStencil'],
                              r['InterpolationStencil'])
@@ -152,8 +152,9 @@ class InputParameters(dict):
             else:
                 self.poissonsolver = PoissonSolver(nn=r['PoissonStencil'])
             self.charge = r['Charge']
-            self.fixmom = r['FixMagneticMoment']
+            fixmom = r['FixMagneticMoment']
 
-        self.width = r['FermiWidth'] * Hartree
+        self.occupations = FermiDirac(r['FermiWidth'] * Hartree,
+                                      fixmagmom=fixmom)
 
         self.mode = r.parameters.get('Mode', 'fd')

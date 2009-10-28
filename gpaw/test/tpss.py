@@ -41,7 +41,7 @@ for formula in systems:
     calc = GPAW(h=0.3,
                 nbands=-2,
                 xc='PBE',
-                fixmom=True,
+                #fixmom=True,
                 txt=formula + '.txt')
     if len(loa) == 1:
         calc.set(hund=True)
@@ -56,7 +56,7 @@ for formula in systems:
         diff = calc.get_xc_difference('TPSS')
         energies[formula] = (energy, energy + diff)
     except:
-        print >> data, formula, 'Error'
+        raise#print >> data, formula, 'Error'
     else:
         print >> data, formula, energy, energy + diff
     data.flush()
@@ -74,7 +74,7 @@ for formula in tpss_de.keys():
             de_tpss += energies[atom_formula][1]
             de_pbe += energies[atom_formula][0]
     except:
-        print >>file, formula, 'Error'
+        raise#print >>file, formula, 'Error'
     else:
         de_tpss *= 627.5/27.211
         de_pbe *= 627.5/27.211

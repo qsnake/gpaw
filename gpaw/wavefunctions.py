@@ -49,10 +49,11 @@ class WaveFunctions(EmptyWaveFunctions):
     kpt_comm:
         MPI-communicator for parallelization over **k**-points.
     """
-    def __init__(self, gd, nspins, setups, bd, dtype, world, kpt_comm,
+    def __init__(self, gd, nspins, nvalence, setups, bd, dtype, world, kpt_comm,
                  gamma, bzk_kc, ibzk_kc, weight_k, symmetry, timer=nulltimer):
         self.gd = gd
         self.nspins = nspins
+        self.nvalence = nvalence
         self.bd = bd
         self.nbands = self.bd.nbands #XXX
         self.mynbands = self.bd.mynbands #XXX
@@ -935,7 +936,8 @@ class GridWaveFunctions(WaveFunctions):
         lcaobd = BandDescriptor(lcaonbands, self.band_comm, self.bd.strided)
         assert lcaobd.mynbands == lcaomynbands #XXX
 
-        lcaowfs = LCAOWaveFunctions(self.gd, self.nspins, self.setups, lcaobd,
+        lcaowfs = LCAOWaveFunctions(self.gd, self.nspins, self.nvalence,
+                                    self.setups, lcaobd,
                                     self.dtype, self.world, self.kpt_comm,
                                     self.gamma, self.bzk_kc, self.ibzk_kc,
                                     self.weight_k, self.symmetry)

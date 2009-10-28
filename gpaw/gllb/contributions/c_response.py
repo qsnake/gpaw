@@ -1,5 +1,4 @@
 from gpaw.gllb.contributions.contribution import Contribution
-from gpaw.gllb.contributions.contribution import Contribution
 from gpaw.xc_functional import XCRadialGrid, XCFunctional, XC3DGrid
 from gpaw.xc_correction import A_Liy, weights
 from gpaw.utilities import pack
@@ -167,11 +166,10 @@ class C_Response(Contribution):
 
     def calculate_delta_xc(self):
         # Calculate band gap
-        homo = self.occupations.get_zero_kelvin_homo_eigenvalue(self.kpt_u)
-        lumo = self.occupations.get_zero_kelvin_lumo_eigenvalue(self.kpt_u)
-        Ksgap = lumo-homo
+        homo, lumo = self.occupations.get_homo_lumo(self.wfs)
+        Ksgap = lumo - homo
 
-        for a in self.density.D_asp.keys():
+        for a in self.density.D_asp:
             ni = self.setups[a].ni
             self.Dxc_Dresp_asp[a] = np.zeros((self.nlfunc.nspins, ni * (ni + 1) // 2))
             self.Dxc_D_asp[a] = np.zeros((self.nlfunc.nspins, ni * (ni + 1) // 2))
@@ -207,9 +205,8 @@ class C_Response(Contribution):
 
     def calculate_delta_xc_perturbation(self):
         # Calculate band gap
-        homo = self.occupations.get_zero_kelvin_homo_eigenvalue(self.kpt_u)
-        lumo = self.occupations.get_zero_kelvin_lumo_eigenvalue(self.kpt_u)
-        Ksgap = lumo-homo
+        homo, lumo = self.occupations.get_homo_lumo(self.wfs)
+        Ksgap = lumo - homo
 
         # Calculate average of lumo reference response potential
         method1_dxc = np.average(self.Dxc_vt_sG[0])

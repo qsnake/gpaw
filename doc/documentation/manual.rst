@@ -93,7 +93,9 @@ keyword            type       default value        description
 ``usesymm``        ``bool``   ``True``             :ref:`manual_usesymm`
 ``random``         ``bool``   ``False``            Use random numbers for
                                                    :ref:`manual_random`
-``width``          ``float``  ``0`` or ``0.1`` eV  Width of :ref:`manual_width`
+``occupations``    occ. obj.                       :ref:`manual_occ`
+``width``          ``float``  ``0`` or ``0.1`` eV  :ref:`manual_occ`
+``fixmom``         ``bool``   ``False``            :ref:`manual_occ`
 ``lmax``           ``int``    ``2``                Maximum angular momentum
                                                    for expansion of
                                                    :ref:`manual_lmax`
@@ -111,7 +113,6 @@ keyword            type       default value        description
 ``mixer``          Object                          Pulay :ref:`manual_mixer`
                                                    scheme
 ``fixdensity``     ``bool``   ``False``            Use :ref:`manual_fixdensity`
-``fixmom``         ``bool``   ``False``            Use :ref:`manual_fixmom`
 ``setups``         ``str``    ``'paw'``            :ref:`manual_setups`
                    or
                    ``dict``
@@ -317,21 +318,33 @@ than there are precalculated atomic orbitals, random numbers will be
 used for the remaining bands.
 
 
-.. _manual_width:
+.. _manual_occ:
 
-Fermi-distribution
+Occupation numbers
 ------------------
 
-The width (`k_B T`) of the Fermi-distribution used for
-occupation numbers:
+The smearing of the occupation numbers is controled like this::
+
+  from gpaw import GPAW, FermiDirac
+  calc = GPAW(..., occupations=FermiDirac(width), ...)
+
+The distribution looks like this (width = `k_B T`):
 
 .. math::  f(E) = \frac{1}{1 + \exp[E / (k_B T)]}
 
-is given by the ``width`` keyword.  For calculations with
+For calculations with
 **k**-points, the default value is 0.1 eV and the total energies are
 extrapolated to *T* = 0 Kelvin.  For a `\Gamma`-point calculation (no
 **k**-points) the default value is ``width=0``, which gives integer
 occupation numbers.
+
+For a spin-polarized calculation, one can fix the magnetic moment at
+the initial value using ``FermiDirac(width, fixmagmom=True)``.
+
+.. note:: 
+
+   The ``occupations`` keyword was introduced in version 0.7.  For
+   older versions, one must use the ``width`` and ``fixmom`` keywords.
 
 
 .. _manual_lmax:
@@ -460,12 +473,6 @@ Fixed density
 XXX Missing doc
 
 
-.. _manual_fixmom:
-
-Fixed total magnetic moment
----------------------------
-
-XXX Missing doc
 
 
 .. _manual_setups:

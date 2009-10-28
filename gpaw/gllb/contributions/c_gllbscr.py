@@ -67,19 +67,19 @@ class C_GLLBScr(Contribution):
                      for e_n, f_n in zip(self.ae.e_ln, self.ae.f_ln) ]
         
 
-    def get_coefficients_by_kpt(self, kpt_u, lumo_perturbation = False):
-        if kpt_u[0].psit_nG is None or isinstance(kpt_u[0].psit_nG, TarFileReference): 
+    def get_coefficients_by_kpt(self, kpt_u, lumo_perturbation=False):
+        if kpt_u[0].psit_nG is None or isinstance(kpt_u[0].psit_nG,
+                                                  TarFileReference): 
             return None
 
-        e_ref = self.occupations.get_zero_kelvin_homo_eigenvalue(kpt_u)
+        e_ref, e_ref_lumo = self.occupations.get_homo_lumo(self.nlfunc.wfs)
 
         # The parameter ee might sometimes be set to small thereshold value to
         # achieve convergence on systems with degenerate HOMO.
         ee = 0.0
 
         if lumo_perturbation:
-            e_ref_lumo = self.occupations.get_zero_kelvin_lumo_eigenvalue(kpt_u)
-            return [ np.array([
+            return [np.array([
                 f * K_G * (self.f( np.where(e_ref_lumo - e>ee, e_ref_lumo-e,0))
                          -self.f( np.where(e_ref      - e>ee, e_ref-e,0)))
                      for e, f in zip(kpt.eps_n, kpt.f_n) ])

@@ -5,7 +5,7 @@ from gpaw.test import equal
 bulk = Atoms([Atom('Li')], pbc=True)
 k = 4
 g = 8
-calc = GPAW(gpts=(g, g, g), kpts=(k, k, k), nbands=2, txt=None)
+calc = GPAW(gpts=(g, g, g), kpts=(k, k, k), nbands=2)#, txt=None)
 bulk.set_calculator(calc)
 a = np.linspace(2.6, 2.8, 5)
 e = []

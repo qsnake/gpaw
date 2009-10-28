@@ -145,14 +145,14 @@ class PAWTextOutput:
         if self.wfs.nspins == 2:
             t('Spin-Polarized Calculation.')
             t('Magnetic Moment:   %.6f' % self.density.magmom_a.sum(), end='')
-            if p.fixmom:
+            if self.occupations.fixmagmom:
                 t('(fixed)')
             else:
                 t()
         else:
             t('Spin-Paired Calculation')
         t('Total Charge:      %.6f' % p['charge'])
-        t('Fermi Temperature: %.6f' % (self.occupations.kT * Hartree))
+        t('Fermi Temperature: %.6f' % (self.occupations.width * Hartree))
         t('Mode:              %s' % p['mode'])
         eigensolver = p['eigensolver']
         if eigensolver is None:
@@ -314,12 +314,7 @@ class PAWTextOutput:
         t('Zero Kelvin:   %+10.5f' % (Hartree * (self.hamiltonian.Etot +
                                                  0.5 * self.hamiltonian.S)))
         t()
-        try:
-            epsF = self.occupations.get_fermi_level()
-        except NotImplementedError:
-            pass
-        else:
-            t('Fermi Level:', Hartree * epsF)
+        self.occupations.print_fermi_level(self.txt)
 
         self.print_eigenvalues()
 

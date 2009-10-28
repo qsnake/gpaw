@@ -158,7 +158,7 @@ tests = [
     'mgga_restart.py',
     'fd2lcao_restart.py',
     'parallel/ut_hsops.py',
-    'parallel/ut_invops.py',
+#    'parallel/ut_invops.py',
     'parallel/ut_kptops.py',
     'parallel/scalapack.py',
     'parallel/scalapack2.py',
@@ -344,3 +344,4 @@ class TestRunner:
         if self.jobs > 1:
             self.log.write('%*s' % (-self.n, test))
         self.log.write('%10.3f  %s\n' % (t, text))
+

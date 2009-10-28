@@ -1,5 +1,5 @@
 from ase import *
-from gpaw import GPAW
+from gpaw import *
 from gpaw.test import equal
 
 a = 2.87
@@ -9,13 +9,13 @@ bulk = Atoms('Fe2',
              cell=(a, a, a),
              pbc=True)
 mom0 = sum(bulk.get_initial_magnetic_moments())
-h = 0.20
+h = 0.2
 conv = {'eigenstates': 0.1, 'density':0.1, 'energy':0.1}
 calc = GPAW(h=h,
             nbands=11,
             kpts=(3, 3, 3),
             convergence=conv,
-            fixmom=True)
+            occupations=FermiDirac(0.1, fixmagmom=True))
 bulk.set_calculator(calc)
 e = bulk.get_potential_energy()
 niter = calc.get_number_of_iterations()
