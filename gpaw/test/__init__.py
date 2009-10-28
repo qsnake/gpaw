@@ -29,8 +29,8 @@ def gen(symbol, name=None, **kwargs):
         g = Generator(symbol, **kwargs)
         g.run(name=name, use_restart_file=False, **parameters[symbol])
     mpi.world.barrier()
-    if '.' not in setup_paths:
-        setup_paths.append('.')
+    if setup_paths[0] != '.':
+        setup_paths.insert(0, '.')
 
 tests = [
     'ase3k_version.py',

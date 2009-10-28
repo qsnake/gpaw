@@ -11,7 +11,8 @@ if world.rank == 0:
     basis = BasisMaker('H', 'sz').generate(1, 0)
     basis.write_xml()
 world.barrier()
-setup_paths.insert(0, '.')
+if setup_paths[0] != '.':
+    setup_paths.insert(0, '.')
 
 # GPAW calculations
 a = 0.75 # Bond length

@@ -10,8 +10,8 @@ if world.rank == 0:
     basis = BasisMaker('Li', 'szp').generate(1, 1)
     basis.write_xml()
 world.barrier()
-if '.' not in setup_paths:
-    setup_paths.append('.')
+if setup_paths[0] != '.':
+    setup_paths.insert(0, '.')
 
 if 1:
     a = 2.7
