@@ -122,9 +122,10 @@ if debug:
 
             Distribute *s* array from *root* to *r*."""
 
-            assert s.dtype == r.dtype
-            assert s.size == self.size * r.size
-            assert s.flags.contiguous
+            if self.rank == root:
+                assert s.dtype == r.dtype
+                assert s.size == self.size * r.size
+                assert s.flags.contiguous
             assert r.flags.contiguous
             assert 0 <= root < self.size
             self.comm.scatter(s, r, root)

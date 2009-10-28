@@ -638,14 +638,18 @@ static PyObject * mpi_scatter(MPIObject *self, PyObject *args)
   int root;
   if (!PyArg_ParseTuple(args, "OOi:scatter", &sendobj, &recvobj, &root))
     return NULL;
-  CHK_ARRAY(sendobj);
   CHK_ARRAY(recvobj);
   CHK_PROC(root);
-  CHK_ARRAYS(recvobj, sendobj, self->size); // size(send) = size(recv)*Ncpu
+  char* source = 0;
+  if (self->rank == root) {
+    CHK_ARRAY(sendobj);
+    CHK_ARRAYS(recvobj, sendobj, self->size); // size(send) = size(recv)*Ncpu
+    source = PyArray_BYTES(sendobj);
+  }
   int n = PyArray_DESCR(recvobj)->elsize;
   for (int d = 0; d < PyArray_NDIM(recvobj); d++)
     n *= PyArray_DIM(recvobj,d);
-  MPI_Scatter(PyArray_BYTES(sendobj), n, MPI_BYTE, PyArray_BYTES(recvobj),
+  MPI_Scatter(source, n, MPI_BYTE, PyArray_BYTES(recvobj),
 	      n, MPI_BYTE, root, self->comm);
   Py_RETURN_NONE;
 }
