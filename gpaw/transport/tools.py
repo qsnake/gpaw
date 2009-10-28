@@ -725,8 +725,8 @@ class Tp_Sparse_Matrix:
                                             inv_mat[i][j][0].T.conj())
             
                 for k in range(1, nlj -1):
-                    self.diag_h[j][k].reset_plus(self.dotdot(inv_mat[i][j][k - 1], se_less[i],
-                                                 inv_mat[i][j][k - 1].T.conj()), full=True)
+                    self.diag_h[j][k].reset_plus(self.dotdot(inv_mat[i][j][k], se_less[i],
+                                                 inv_mat[i][j][k].T.conj()), full=True)
                     
                     self.dwnc_h[j][k] += self.dotdot(inv_mat[i][j][k], se_less[i],
                                                  inv_mat[i][j][k - 1].T.conj())
@@ -1213,7 +1213,7 @@ def get_pk_hsd(d, ntk, kpts, hl_skmm, sl_kmm, dl_skmm, txt=None,
     dl_spkcmm = substract_pk(d, npk, ntk, kpts, dl_skmm, 'h', position)
     sl_pkcmm = substract_pk(d, npk, ntk, kpts, sl_kmm, 's', position)
     
-    tol = 1e-10
+    tol = 1e-6
     position[d] = 2.0
     s_test = substract_pk(d, npk, ntk, kpts, sl_kmm, 's', position)
     
