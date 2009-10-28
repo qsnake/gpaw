@@ -1,6 +1,6 @@
 from ase.units import Bohr, Hartree
 from gpaw import GPAW
-from gpaw.fd_operators import Laplace
+from gpaw.operators import Laplace
 from gpaw.utilities.tools import tri2full
 from gpaw.lcao.projected_wannier import dots
 from gpaw.grid_descriptor import GridDescriptor
@@ -369,10 +369,10 @@ class STM:
 
             self.potential_shift = diff / Hartree
             h2 -= diff * s2      
-            h1 -= diff * s1        
-        
-            diff1 = (h10[-align_bf-1, -align_bf-1]
-                   - h1[-align_bf-1, -align_bf-1]) / s1[-align_bf-1, -align_bf-1]
+            h1 -= diff * s1 
+
+            diff1 = (h10[-1, -1]
+                   - h1[-1, -1]) / s1[-1, -1]
             h10 -= diff1 * s10
             self.hs_aligned = True
             
@@ -403,7 +403,7 @@ class STM:
             else:
                 start = l * world.rank + rest
                 stop = l * (world.rank + 1) + rest
-
+ 
             energies = energies[start:stop] # energy grid on this cpu 
             self.log.write('%d,%s,%d,%d' % (world.rank,\
                            str((energies.min(), energies.max())),\
@@ -464,13 +464,11 @@ class STM:
         # sum potentials
         size_c = self.tip_cell.gd.n_c
         current_Vt = self.srf_cell.vt_G.copy()
-
         current_Vt[cell_corner_c[0]:cell_corner_c[0] + size_c[0],
                    cell_corner_c[1]:cell_corner_c[1] + size_c[1],
                    cell_corner_c[2]:cell_corner_c[2] + size_c[2]]\
                 += self.tip_cell.vt_G # +1 since grid starts at (1,1,1), pbc = 0
         self.current_v = current_Vt 
-        #self.current_v[:] =1
 
     def get_V(self, position_c):
         """Returns the overlap hamiltonian at position_c"""
@@ -494,6 +492,7 @@ class STM:
                 i1 = t.index
                 i2 = i1 + len(t)
                 V = (s | vt_G | t)
+                #V=None #XXX
                 if V is None:
                     V = 0
                 kin = (s | t_kin)
@@ -502,23 +501,45 @@ class STM:
                 V_ij[j1:j2, i1:i2] += V + kin
             s.f_iG = None
         self.bfs_comm.sum(V_ij)
-        return V_ij * Hartree  
+        return V_ij * Hartree 
     
     def get_transmission(self, position_c):
+        energies = self.energies # global energy grid
+        l = len(energies) / world.size # minimum number of enpts per cpu
+        rest = len(energies) % world.size # first #rest cpus get +1 enpt
+
+        if world.rank < rest:
+            start = (l + 1) * world.rank
+            stop = (l + 1) * (world.rank + 1)
+        else:
+            start = l * world.rank + rest
+            stop = l * (world.rank + 1) + rest
+
+        T_glob = np.zeros_like(energies)
         V_ts = self.get_V(position_c)       
-        T_stm = self.stm_calc.get_transmission(V_ts)
-        return T_stm
+        T_glob[start:stop] = self.stm_calc.get_transmission(V_ts)
+        world.sum(T_glob)
+        return T_glob
 
     def get_current(self, position_c, bias=None):
         self.initialize()
+        energies=self.energies
         if bias == None:
             bias = self.stm_calc.bias
-        position_c = tuple(position_c)+(0,)
-        V_ts = self.get_V(position_c)
-        I = np.array([self.stm_calc.get_current(bias, V_ts)])
-        self.world.sum(I)
-        return I[0] * 77466.1509   #units: nA
-    
+        T_e = self.get_transmission(position_c)
+        bias = self.stm_calc.bias #XXX
+        w = self.stm_calc.w
+        bias_window = -np.array([bias * w, bias * (w - 1)])
+        bias_window.sort()
+        i1 = sum(energies < bias_window[0])
+        i2 = sum(energies < bias_window[1])
+        step = 1
+        if i2 < i1:
+            step = -1
+        I = np.sign(bias)*np.trapz(x=energies[i1:i2:step], 
+                                   y=T_e[i1:i2:step])
+        return I * 77466.1509   #units: nA
+
     def get_s(self, position_c):
         dtype = 'float'        
         if np.any(self.input_parameters['k_c']):
@@ -536,6 +557,7 @@ class STM:
                 overlap = (s | t) 
                 if overlap is not None:
                     S_ij[j1:j2, i1:i2] += overlap
+                    #print t.corner_c, s.corner_c, s.index, s.sdisp_c, overlap
   
         return S_ij
 
@@ -687,10 +709,6 @@ class STM:
         T_pe = T_pe[:, start:stop]
         ngpts = len(T_pe)
 
-        fd = open('1T.dat' + str(world.rank), 'w') #XXX
-        for e, T_p in zip(energies, T_pe[0]): #XXX
-            print >> fd, e, T_p #XXX
-        fd.close() #XXX
         bias = self.stm_calc.bias #XXX
 
         w = self.stm_calc.w
@@ -1402,14 +1420,7 @@ class SrfCell:
 
         # Add an appropriate number of periodic images.
         # Translation vectors:
-        Rs = np.array([[0,  1],
-                      [1,   1],
-                      [1,   0],
-                      [1,  -1],
-                      [0,  -1],
-                      [-1, -1],
-                      [-1,  0],
-                      [-1,  1]])
+        
 
         origo = np.array([0, 0])
         list = []
@@ -1418,15 +1429,14 @@ class SrfCell:
             f_iGs[f.index] = f.f_iG
             f.f_iG = None
             list.append(f)
-            for R in Rs:
-                n = 0
-                add_function = True
-                while add_function == True:
-                    n += 1
-                    newcorner_c = f.corner_c[:2] +  n * R * sgd.N_c[:2]
+            for n in range(-100, 100, 1):
+                for m in range(-100, 100, 1):
+                    R = np.array((n, m))
+                    newcorner_c = f.corner_c[:2] +  R * sgd.N_c[:2]
                     start_c = np.maximum(newcorner_c, origo)
                     stop_c = np.minimum(newcorner_c + f.size_c[:2],
                                         newgd.n_c[:2])
+                            
                     if (start_c < stop_c).all():
                         newcorner_c = np.resize(newcorner_c, 3)
                         newcorner_c[2] = f.corner_c[2]
@@ -1435,11 +1445,10 @@ class SrfCell:
                                                   index=f.index,
                                                   vt_G=f.vt_G)
                         newf.f_iG = None
-                        newf.sdisp_c = n * R
+                        newf.sdisp_c =  R
                         newf.set_phase_factor(k_c)
-                        list.append(newf)
-                    else:
-                        add_function = False
+                        if np.any(R):
+                            list.append(newf)
 
         self.functions = list
         self.f_iGs = f_iGs
