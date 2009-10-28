@@ -322,6 +322,8 @@ def ibarrier(timeout=None, root=0, comm=world):
     """Non-blocking barrier returning a list of requests to wait for.
     An optional time-out may be given, turning the call into a blocking
     barrier with an upper time limit, beyond which an exception is raised."""
+    if comm.size == 1:
+        return
     requests = []
     byte = np.ones(1, dtype=np.int8)
     if comm.rank == root:
