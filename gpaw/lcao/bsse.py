@@ -64,7 +64,7 @@ class GhostSetup(BaseSetup):
         self.K_p = np.zeros(1)
         self.MB = 0.0
         self.MB_p = np.zeros(1)
-        self.O_ii = np.zeros((1, 1))
+        self.dO_ii = np.zeros((1, 1))
         self.f_j = [0.0]
         self.n_j = [0]
         self.l_j = [0]
@@ -82,7 +82,7 @@ class GhostSetup(BaseSetup):
         self.tauct = None
         self.Delta_Lii = None
         self.B_ii = None
-        self.C_ii = None
+        self.dC_ii = None
         self.X_p = None
         self.ExxC = None
         self.dEH0 = 0.0

@@ -114,7 +114,7 @@ class StaticOverlapMonitor:
                     for i in range(len(P_ni[0])):
                         for j in range(len(P_ni[0])):
                             Porb_n[n] += (P_ni[n][i].conj() *
-                                       wfs.setups[a].O_ii[i][j] *
+                                       wfs.setups[a].dO_ii[i][j] *
                                        sP_i[j])
 
             Porb_un.append(Porb_n)
@@ -167,7 +167,7 @@ class DynamicOverlapMonitor:
 
             # Construct the overlap matrix:
             S = lambda x: x
-            dS_aii = dict([(a, self.setups[a].O_ii) for a in P_ani])
+            dS_aii = dict([(a, self.setups[a].dO_ii) for a in P_ani])
             S_nn = self.operator.calculate_matrix_elements(psit_nG, P_ani,
                                                            S, dS_aii)
             S_unn.append(S_nn)

@@ -381,7 +381,7 @@ class LeanSetup(BaseSetup):
         self.MB = s.MB
         self.MB_p = s.MB_p
 
-        self.O_ii = s.O_ii
+        self.dO_ii = s.dO_ii
 
         self.xc_correction = s.xc_correction
 
@@ -420,8 +420,8 @@ class LeanSetup(BaseSetup):
 
         self.Delta_Lii = s.Delta_Lii # required with external potential
 
-        self.B_ii = s.B_ii # surely something requires this?
-        self.C_ii = s.C_ii # required by time-prop tddft with apply_inverse
+        self.B_ii = s.B_ii # required for exact inverse overlap operator
+        self.dC_ii = s.dC_ii # required by time-prop tddft with apply_inverse
 
         # Required by exx
         self.X_p = s.X_p
@@ -464,9 +464,9 @@ class Setup(BaseSetup):
     ``Delta0``    Constant in compensation charge expansion coeff.
     ``Delta_Lii`` Linear term in compensation charge expansion coeff.
     ``Delta_pL``  Packed version of ``Delta_Lii``.
-    ``O_ii``      Overlap metric
+    ``dO_ii``     Overlap coefficients
     ``B_ii``      Projector function overlaps B_ii = <pt_i | pt_i>
-    ``C_ii``      Inverse overlap coefficients
+    ``dC_ii``     Inverse overlap coefficients
     ``E``         Reference total energy of atom
     ``M``         Constant correction to Coulomb energy
     ``M_p``       Linear correction to Coulomb energy
@@ -713,8 +713,8 @@ class Setup(BaseSetup):
         self.E = data.e_total
 
         Delta0_ii = unpack(self.Delta_pL[:, 0].copy())
-        self.O_ii = data.get_overlap_correction(Delta0_ii)
-        self.C_ii = self.get_inverse_overlap_coefficients(self.B_ii, self.O_ii)
+        self.dO_ii = data.get_overlap_correction(Delta0_ii)
+        self.dC_ii = self.get_inverse_overlap_coefficients(self.B_ii, self.dO_ii)
         
         self.Delta_Lii = np.zeros((ni, ni, self.Lmax)) # XXX index order
         for L in range(self.Lmax):
@@ -773,10 +773,10 @@ class Setup(BaseSetup):
             pt_j.append(Spline(l, rcut, pt_g, r_g, beta))
         return pt_j
 
-    def get_inverse_overlap_coefficients(self, B_ii, O_ii):
+    def get_inverse_overlap_coefficients(self, B_ii, dO_ii):
         ni = len(B_ii)
-        BO_ii = np.dot(B_ii, O_ii)
-        return -np.dot(O_ii, np.linalg.inv(np.identity(ni) + BO_ii))
+        xO_ii = np.dot(B_ii, dO_ii)
+        return -np.dot(dO_ii, np.linalg.inv(np.identity(ni) + xO_ii))
 
     def calculate_T_Lqp(self, lcut, nq, _np, nj, jlL_i):
         Lcut = (2 * lcut + 1)**2

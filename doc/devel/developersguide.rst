@@ -100,8 +100,8 @@ The overlap operator is defined in terms of the PAW overlap corrections:
     \Delta O_{i_1 i_2}^a \langle\tilde{p}_{i_2}^a|.
 
 The constants `\Delta O_{i_1 i_2}^a` are found in
-``paw.wfs.setups[a].O_ii`` (``ndarray``). XXX Someone should
-rename ``O_ii`` to ``dO_ii`` and :math:`\hat{S}` to :math:`\hat{O}`.
+``paw.wfs.setups[a].dO_ii`` (``ndarray``). XXX Someone should
+rename ``dO_ii`` to ``dS_ii`` or :math:`\hat{S}` to :math:`\hat{O}`.
 
 .. math::
 
@@ -117,14 +117,14 @@ An approximate inverse overlap operator is similarly defined by:
 
  \hat{O}^{\;-1}_\mathrm{approx.} = 1 +
     \sum_a \sum_{i_1 i_2} |\tilde{p}_{i_1}^a\rangle
-    C_{i_1 i_2}^a \langle\tilde{p}_{i_2}^a|.
+    \Delta C_{i_1 i_2}^a \langle\tilde{p}_{i_2}^a|.
 
-The inverse overlap coefficients :math:`C_{i_1 i_2}^a` are found in ``setup.C_ii``
+The inverse overlap coefficients :math:`\Delta C_{i_1 i_2}^a` are found in ``setup.dC_ii``
 (``ndarray``) and are solutions to the system of linear equations:
 
 .. math::
 
-    C_{i_1 i_2}^a  + \Delta O_{i_1 i_2}^a + \sum_{i_3 i_4} C_{i_1 i_3}^a
+    \Delta C_{i_1 i_2}^a  + \Delta O_{i_1 i_2}^a + \sum_{i_3 i_4} \Delta C_{i_1 i_3}^a
     B_{i_3 i_4}^a \Delta O_{i_4 i_2}^a = 0 \qquad ,\forall i_1,i_2
 
 , such that :math:`\hat{O}^{\;-1}_\mathrm{approx.}\hat{O} = \hat{I}` provided

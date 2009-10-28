@@ -93,7 +93,7 @@ class CG(Eigensolver):
                     overlap = np.vdot(kpt.psit_nG[nn], phi_G) * self.gd.dv
                     for a, P2_i in P2_ai.items():
                         P_i = kpt.P_ani[a][nn]
-                        dO_ii = wfs.setups[a].O_ii
+                        dO_ii = wfs.setups[a].dO_ii
                         overlap += np.vdot(P_i, np.inner(dO_ii, P2_i))
                     overlap = self.gd.comm.sum(overlap)
                     # phi_G -= overlap * kpt.psit_nG[nn]
@@ -104,7 +104,7 @@ class CG(Eigensolver):
 
                 norm = np.vdot(phi_G, phi_G) * self.gd.dv
                 for a, P2_i in P2_ai.items():
-                    dO_ii = wfs.setups[a].O_ii
+                    dO_ii = wfs.setups[a].dO_ii
                     norm += np.vdot(P2_i, np.inner(dO_ii, P2_i))
                 norm = self.gd.comm.sum(norm.real)
                 phi_G /= sqrt(norm)
@@ -156,7 +156,7 @@ class CG(Eigensolver):
                     coef_ai = wfs.pt.dict()
                     for a, coef_i in coef_ai.items():
                         P_i = kpt.P_ani[a][n]
-                        dO_ii = wfs.setups[a].O_ii
+                        dO_ii = wfs.setups[a].dO_ii
                         dH_ii = unpack(hamiltonian.dH_asp[a][kpt.s])
                         coef_i[:] = (dot(P_i, dH_ii) -
                                      dot(P_i * kpt.eps_n[n], dO_ii))

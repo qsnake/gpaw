@@ -1003,12 +1003,12 @@ class TwoCenterIntegrals:
                               r, R, rlY_lm, drlYdR_lmc, phase_q,
                               selfinteraction, offset, derivative=derivative)
 
-        # Add adjustment from O_ii, having already calculated <phi_m1|phi_m2>:
+        # Add adjustment from dO_ii, having already calculated <phi_m1|phi_m2>:
         #
         #                         -----
-        #                          \            ~a   a   ~a
-        # S    = <phi  | phi  > +   )   <phi  | p > O   <p | phi  >
-        #  m1m2      m1     m2     /        m1   i   ij   j     m2
+        #                          \            ~a    a   ~a
+        # S    = <phi  | phi  > +   )   <phi  | p > dO   <p | phi  >
+        #  m1m2      m1     m2     /        m1   i    ij   j     m2
         #                         -----
         #                          aij
         #
@@ -1016,7 +1016,7 @@ class TwoCenterIntegrals:
         if not derivative and not nopawcorrection:
             dOP_iM = None # Assign explicitly in case loop runs 0 times
             for a, P_qxMi in P_aqxMi.items():
-                dO_ii = np.asarray(self.setups[a].O_ii, P_qxMi.dtype)
+                dO_ii = np.asarray(self.setups[a].dO_ii, P_qxMi.dtype)
                 for S_MM, P_Mi in zip(S_qxMM, P_qxMi):
                     dOP_iM = np.zeros((dO_ii.shape[1], nao), P_Mi.dtype)
                     # (ATLAS can't handle uninitialized output array)
@@ -1214,12 +1214,12 @@ class BlacsTwoCenterIntegrals(TwoCenterIntegrals):
                               r, R, rlY_lm, drlYdR_lmc, phase_q,
                               selfinteraction, offset, derivative=derivative)
 
-        # Add adjustment from O_ii, having already calculated <phi_m1|phi_m2>:
+        # Add adjustment from dO_ii, having already calculated <phi_m1|phi_m2>:
         #
         #                         -----
-        #                          \            ~a   a   ~a
-        # S    = <phi  | phi  > +   )   <phi  | p > O   <p | phi  >
-        #  m1m2      m1     m2     /        m1   i   ij   j     m2
+        #                          \            ~a    a   ~a
+        # S    = <phi  | phi  > +   )   <phi  | p > dO   <p | phi  >
+        #  m1m2      m1     m2     /        m1   i    ij   j     m2
         #                         -----
         #                          aij
         #
@@ -1227,7 +1227,7 @@ class BlacsTwoCenterIntegrals(TwoCenterIntegrals):
         if not derivative and not nopawcorrection:
             dOP_iM = None # Assign explicitly in case loop runs 0 times
             for a, P_qxMi in P_aqxMi.items():
-                dO_ii = np.asarray(self.setups[a].O_ii, P_qxMi.dtype)
+                dO_ii = np.asarray(self.setups[a].dO_ii, P_qxMi.dtype)
                 for S_MM, P_Mi in zip(S_qxMM, P_qxMi):
                     dOP_iM = np.zeros((dO_ii.shape[1], nao), P_Mi.dtype)
                     # (ATLAS can't handle uninitialized output array)

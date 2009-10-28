@@ -165,7 +165,7 @@ def all_electron_LDOS(paw, mol, spin, lc=None, wf_k=None, P_aui=None):
                     for i in range(len(p_i)):
                         for j in range(len(p_i)):
                             P_kn[k][n] += (P_aui[b][spin*nk + k][i] *
-                                           atom.O_ii[i][j] * p_i[j])
+                                           atom.dO_ii[i][j] * p_i[j])
                 #print n, abs(P_un)[u][n]**2
 
             # XXX ??? why not print to paw.txt

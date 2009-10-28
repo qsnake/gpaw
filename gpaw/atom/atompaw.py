@@ -76,7 +76,7 @@ class AtomEigensolver:
         self.pt_j = np.array([[pt(x) * x**l for x in r]
                               for pt, l in zip(setup.pt_j, setup.l_j)])
 
-        dS_ii = setup.O_ii
+        dS_ii = setup.dO_ii
         i1 = 0
         for pt1, l1 in zip(self.pt_j, setup.l_j):
             i2 = 0

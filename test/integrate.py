@@ -40,7 +40,7 @@ for q, V_nM in enumerate(V_qnM):
     bfs.integrate2(kpt_q[q].psit_nG[:], V_nM, q)
     for a, P_ni in kpt_q[q].P_ani.items():
         P_Mi = P_aqMi[a][q]
-        V_nM += np.dot(np.dot(P_ni, setups[a].O_ii), P_Mi.T.conj())
+        V_nM += np.dot(np.dot(P_ni, setups[a].dO_ii), P_Mi.T.conj())
 
 bfs_qnM = V_qnM.copy()
 
@@ -59,7 +59,7 @@ for q, V_Ani in enumerate(V_qAni):
         M1 = M2
     for a, P_ni in calc.wfs.kpt_u[q].P_ani.items():
         P_Mi = P_aqMi[a][q]
-        V_qnM[q] += np.dot(P_ni, np.inner(setups[a].O_ii, P_Mi).conj())
+        V_qnM[q] += np.dot(P_ni, np.inner(setups[a].dO_ii, P_Mi).conj())
 
 lfc_qnM = V_qnM
 

@@ -78,7 +78,7 @@ class Overlap:
 
         # Construct the overlap matrix:
         S = lambda x: x
-        dS_aii = dict([(a, self.setups[a].O_ii) for a in P_ani])
+        dS_aii = dict([(a, self.setups[a].dO_ii) for a in P_ani])
         self.timer.start('Orthonormalize: calc_matrix')
         S_nn = self.operator.calculate_matrix_elements(psit_nG, P_ani,
                                                        S, dS_aii)
@@ -139,8 +139,8 @@ class Overlap:
                 P_axi[a][:] = P_ni
 
         for a, P_xi in P_axi.items():
-            P_axi[a] = np.dot(P_xi, self.setups[a].O_ii)
-            # gemm(1.0, self.setups[a].O_ii, P_xi, 0.0, P_xi, 'n')
+            P_axi[a] = np.dot(P_xi, self.setups[a].dO_ii)
+            # gemm(1.0, self.setups[a].dO_ii, P_xi, 0.0, P_xi, 'n')
         wfs.pt.add(b_xG, P_axi, kpt.q) # b_xG += sum_ai pt^a_i P_axi
         self.timer.stop('Apply overlap')
 
@@ -158,7 +158,7 @@ class Overlap:
                 P_axi[a][:] = P_ni
 
         for a, P_xi in P_axi.items():
-            P_axi[a] = np.dot(P_xi, self.setups[a].C_ii)
+            P_axi[a] = np.dot(P_xi, self.setups[a].dC_ii)
         wfs.pt.add(b_xG, P_axi, kpt.q)
 
     def estimate_memory(self, mem, dtype):

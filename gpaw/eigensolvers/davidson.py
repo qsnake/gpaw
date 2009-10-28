@@ -117,7 +117,7 @@ class Davidson(Eigensolver):
         
             for a, P_ni in kpt.P_ani.items():
                 P2_ni = P2_ani[a]
-                dO_ii = wfs.setups[a].O_ii
+                dO_ii = wfs.setups[a].dO_ii
                 self.S_nn += np.dot(P2_ni, np.inner(dO_ii, P_ni.conj()))
 
             self.gd.comm.sum(self.S_nn, 0)
@@ -126,7 +126,7 @@ class Davidson(Eigensolver):
             # <psi2 | S | psi2>
             rk(self.gd.dv, psit2_nG, 0.0, self.S_nn)
             for a, P2_ni in P2_ani.items():
-                dO_ii = wfs.setups[a].O_ii
+                dO_ii = wfs.setups[a].dO_ii
                 self.S_nn += np.dot(P2_ni, np.dot(dO_ii, P2_ni.T.conj()))
 
             self.gd.comm.sum(self.S_nn, 0)

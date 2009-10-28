@@ -290,10 +290,10 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
         #spos_ac = self.pt.spos_ac # NewLFC doesn't have this
         spos_ac = self.atoms.get_scaled_positions() % 1.0
         gpo = GridPairOverlap(self.gd, self.setups)
-        dB_aa = gpo.calculate_overlaps(spos_ac, self.pt)
+        B_aa = gpo.calculate_overlaps(spos_ac, self.pt)
 
         # Compare fingerprints across all processors
-        fingerprint = np.array([md5_array(dB_aa, numeric=True)])
+        fingerprint = np.array([md5_array(B_aa, numeric=True)])
         fingerprints = np.empty(world.size, np.int64)
         world.all_gather(fingerprint, fingerprints)
         if fingerprints.ptp(0).any():
@@ -308,9 +308,9 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
                 P_ni = np.zeros((self.bd.mynbands,self.setups[a1].ni,),
                                  dtype=self.dtype)
             for a2, Q_ni in Q_ani.items():
-                # dB_aa are the projector overlaps across atomic pairs
-                dB_ii = gpo.extract_atomic_pair_matrix(dB_aa, a1, a2)
-                P_ni += np.dot(Q_ni, dB_ii.T) #sum over a2 and last i in dB_ii
+                # B_aa are the projector overlaps across atomic pairs
+                B_ii = gpo.extract_atomic_pair_matrix(B_aa, a1, a2)
+                P_ni += np.dot(Q_ni, B_ii.T) #sum over a2 and last i in B_ii
             self.gd.comm.sum(P_ni)
 
         self.check_and_plot(P_ani, P0_ani, 9, 'projection,linearity')
@@ -320,7 +320,7 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
         ppo = ProjectorPairOverlap(self.wfs, self.atoms)
 
         # Compare fingerprints across all processors
-        fingerprint = np.array([md5_array(ppo.dB_aa, numeric=True)])
+        fingerprint = np.array([md5_array(ppo.B_aa, numeric=True)])
         fingerprints = np.empty(world.size, np.int64)
         world.all_gather(fingerprint, fingerprints)
         if fingerprints.ptp(0).any():
@@ -341,7 +341,7 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
         ppo = ProjectorPairOverlap(self.wfs, self.atoms)
 
         # Compare fingerprints across all processors
-        fingerprint = np.array([md5_array(ppo.dB_aa, numeric=True)])
+        fingerprint = np.array([md5_array(ppo.B_aa, numeric=True)])
         fingerprints = np.empty(world.size, np.int64)
         world.all_gather(fingerprint, fingerprints)
         if fingerprints.ptp(0).any():
@@ -363,7 +363,7 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
         ppo = ProjectorPairOverlap(self.wfs, self.atoms)
 
         # Compare fingerprints across all processors
-        fingerprint = np.array([md5_array(ppo.dB_aa, numeric=True)])
+        fingerprint = np.array([md5_array(ppo.B_aa, numeric=True)])
         fingerprints = np.empty(world.size, np.int64)
         world.all_gather(fingerprint, fingerprints)
         if fingerprints.ptp(0).any():
@@ -398,7 +398,7 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
         ppo = ProjectorPairOverlap(self.wfs, self.atoms)
 
         # Compare fingerprints across all processors
-        fingerprint = np.array([md5_array(ppo.dB_aa, numeric=True)])
+        fingerprint = np.array([md5_array(ppo.B_aa, numeric=True)])
         fingerprints = np.empty(world.size, np.int64)
         world.all_gather(fingerprint, fingerprints)
         if fingerprints.ptp(0).any():

@@ -82,7 +82,7 @@ class AllElectronSetup:
         self.M_pp = np.zeros((1, 1))
         self.Kc = 0
         self.E = 0
-        self.O_ii = np.zeros((1, 1))
+        self.dO_ii = np.zeros((1, 1))
         self.K_p = np.zeros(1)
         
         self.xc_correction = self

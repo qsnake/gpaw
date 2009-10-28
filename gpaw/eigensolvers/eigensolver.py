@@ -106,7 +106,7 @@ class Eigensolver:
         c_ani = {}
         for a, P_ni in P_ani.items():
             dH_ii = unpack(hamiltonian.dH_asp[a][kpt.s])
-            dO_ii = hamiltonian.setups[a].O_ii
+            dO_ii = hamiltonian.setups[a].dO_ii
             c_ni = (np.dot(P_ni, dH_ii) -
                     np.dot(P_ni * eps_n[:, np.newaxis], dO_ii))
 

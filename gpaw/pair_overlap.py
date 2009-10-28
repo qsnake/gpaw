@@ -264,15 +264,15 @@ def overlap_projectors(gd, pt, setups):
 
     ni_a = np.cumsum([0]+[setup.ni for setup in setups])
     nproj = ni_a[-1]
-    dB_aa = np.zeros((nproj,nproj), dtype=float)
+    B_aa = np.zeros((nproj,nproj), dtype=float)
     for a1, work1_iG in work_aiG.items():
         for a2, work2_iG in work_aiG.items():
             B_ii = np.zeros((setups[a1].ni,setups[a2].ni), dtype=float)
             for i1, work1_G in enumerate(work1_iG):
                 for i2, work2_G in enumerate(work2_iG):
                     B_ii[i1,i2] = np.dot(work1_G.flat, work2_G.flat)*gd.dv
-            dB_aa[ni_a[a1]:ni_a[a1+1], ni_a[a2]:ni_a[a2+1]] = B_ii
-    return dB_aa
+            B_aa[ni_a[a1]:ni_a[a1+1], ni_a[a2]:ni_a[a2+1]] = B_ii
+    return B_aa
 """
 
 class ProjectorPairOverlap(Overlap, GridPairOverlap):
@@ -285,8 +285,8 @@ class ProjectorPairOverlap(Overlap, GridPairOverlap):
         Attributes:
 
         ============  ======================================================
-        ``dB_aa``     < p_i^a | p_i'^a' >
-        ``xO_aa``     TODO
+        ``B_aa``      < p_i^a | p_i'^a' >
+        ``xO_aa``     TODO 
         ``dC_aa``     TODO
         ``xC_aa``     TODO
         ============  ======================================================
@@ -305,38 +305,38 @@ class ProjectorPairOverlap(Overlap, GridPairOverlap):
         nproj = len(self)
 
         """
-        self.dB_aa = np.zeros((nproj, nproj), dtype=float) #always float?
+        self.B_aa = np.zeros((nproj, nproj), dtype=float) #always float?
         for a1,setup1 in enumerate(self.setups):
             for a2 in wfs.pt.my_atom_indices:
                 setup2 = self.setups[a2]
                 R = (atoms[a1].get_position() - atoms[a2].get_position()) / Bohr
 
                 if a1 == a2:
-                    dB_ii = setup1.B_ii
+                    B_ii = setup1.B_ii
                 else:
-                    dB_ii = projector_overlap_matrix2(setup1, setup2, R)
+                    B_ii = projector_overlap_matrix2(setup1, setup2, R)
                 #if a1 < a2:
-                #    dB_ii = projector_overlap_matrix2(setup1, setup2, R)
+                #    B_ii = projector_overlap_matrix2(setup1, setup2, R)
                 #elif a1 == a2:
-                #    dB_ii = setup1.B_ii
+                #    B_ii = setup1.B_ii
                 #else:
-                #    dB_ii = self.dB_aa[ni_a[a2]:ni_a[a2+1], ni_a[a1]:ni_a[a1+1]].T
+                #    B_ii = self.B_aa[ni_a[a2]:ni_a[a2+1], ni_a[a1]:ni_a[a1+1]].T
 
-                #self.dB_aa[self.ni_a[a1]:self.ni_a[a1+1], \
-                #           self.ni_a[a2]:self.ni_a[a2+1]] = dB_ii
-                self.assign_atomic_pair_matrix(self.dB_aa, a1, a2, dB_ii)
-        self.domain_comm.sum(self.dB_aa) #TODO too heavy?
+                #self.B_aa[self.ni_a[a1]:self.ni_a[a1+1], \
+                #          self.ni_a[a2]:self.ni_a[a2+1]] = B_ii
+                self.assign_atomic_pair_matrix(self.B_aa, a1, a2, B_ii)
+        self.domain_comm.sum(self.B_aa) #TODO too heavy?
         """
-        #self.dB_aa = overlap_projectors(wfs.gd, wfs.pt, wfs.setups)
+        #self.B_aa = overlap_projectors(wfs.gd, wfs.pt, wfs.setups)
 
         #spos_ac = wfs.pt.spos_ac # not in NewLFC
         spos_ac = atoms.get_scaled_positions() % 1.0
-        self.dB_aa = self.calculate_overlaps(spos_ac, wfs.pt)
+        self.B_aa = self.calculate_overlaps(spos_ac, wfs.pt)
 
         # Create two-center (block-diagonal) coefficients for overlap operator
         dO_aa = np.zeros((nproj, nproj), dtype=float) #always float?
         for a,setup in enumerate(self.setups):
-            self.assign_atomic_pair_matrix(dO_aa, a, a, setup.O_ii)
+            self.assign_atomic_pair_matrix(dO_aa, a, a, setup.dO_ii)
 
         # Calculate two-center rotation matrix for overlap projections
         self.xO_aa = self.get_rotated_coefficients(dO_aa)
@@ -364,7 +364,7 @@ class ProjectorPairOverlap(Overlap, GridPairOverlap):
                     ---
                    a2,i2
         """
-        return np.dot(self.dB_aa, X_aa)
+        return np.dot(self.B_aa, X_aa)
 
     def apply_to_atomic_matrices(self, dI_asp, P_axi, wfs, kpt, shape=()):
 
@@ -432,7 +432,7 @@ class ProjectorPairOverlap(Overlap, GridPairOverlap):
 
         Q_axi = wfs.pt.dict(shape)
         for a, Q_xi in Q_axi.items():
-            Q_xi[:] = np.dot(P_axi[a], self.setups[a].O_ii)
+            Q_xi[:] = np.dot(P_axi[a], self.setups[a].dO_ii)
 
         wfs.pt.add(b_xG, Q_axi, kpt.q)
         self.timer.stop('Apply overlap')

@@ -499,9 +499,9 @@ class GPAW(PAW):
              nm       n             m
                             
                            __                __
-                   ~      \              a  \     a*  a    a   
-            Z    = Z    +  ) exp[-i G . R ]  )   P   O    P  
-             nmx    nmx   /__            x  /__   ni  ii'  mi'
+                   ~      \              a  \     a*   a    a   
+            Z    = Z    +  ) exp[-i G . R ]  )   P   dO    P  
+             nmx    nmx   /__            x  /__   ni   ii'  mi'
 
                            a                 ii'
 
@@ -520,9 +520,9 @@ class GPAW(PAW):
         for a, P_ni in P_ani.items():
             P_ni = P_ani[a][:nbands]
             P1_ni = P1_ani[a][:nbands]
-            O_ii = self.wfs.setups[a].O_ii
+            dO_ii = self.wfs.setups[a].dO_ii
             e = np.exp(-2.j * np.pi * G * spos_av[a, c])
-            Z_nn += e * np.dot(np.dot(P_ni.conj(), O_ii), P1_ni.T)
+            Z_nn += e * np.dot(np.dot(P_ni.conj(), dO_ii), P1_ni.T)
 
     def get_projections(self, locfun, spin=0):
         """Project wave functions onto localized functions

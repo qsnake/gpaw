@@ -160,13 +160,13 @@ def dscf_kpoint_overlaps(paw, phasemod=True, broadcast=True):
                 for n0, psit0_G in enumerate(psit0_nG):
                     X_nn[n,n0] = np.vdot(psit_G, psit0_G)*gd.dv
             for a in range(len(paw.get_atoms())):
-                P_ni, P0_ni, O_ii = kpt.P_ani[a], P0_ani[a], paw.wfs.setups[a].O_ii
+                P_ni, P0_ni, dO_ii = kpt.P_ani[a], P0_ani[a], paw.wfs.setups[a].dO_ii
                 for n, P_i in enumerate(P_ni):
                     for n0, P0_i in enumerate(P0_ni):
-                        X_nn[n,n0] += np.vdot(P_i, np.dot(O_ii, P0_i))
+                        X_nn[n,n0] += np.vdot(P_i, np.dot(dO_ii, P0_i))
         """
         X = lambda psit_nG, g=SliceGen(psit0_nG, operator): g.next()
-        dX = lambda a, P_ni: np.dot(P0_ani[a], paw.wfs.setups[a].O_ii)
+        dX = lambda a, P_ni: np.dot(P0_ani[a], paw.wfs.setups[a].dO_ii)
         X_nn[:] = operator.calculate_matrix_elements(kpt.psit_nG, kpt.P_ani, X, dX).T
 
     if broadcast:
@@ -354,7 +354,7 @@ def dscf_overlap_elements(paw, kpt):
     assert operator.nblocks == 1
 
     S = lambda x: x
-    dS_aii = dict([(a, paw.wfs.setups[a].O_ii) for a in kpt.P_ani.keys()])
+    dS_aii = dict([(a, paw.wfs.setups[a].dO_ii) for a in kpt.P_ani.keys()])
     return dscf_matrix_elements(paw, kpt, S, dS_aii)
 
 def dscf_hamiltonian_elements(paw, kpt):

@@ -79,7 +79,7 @@ class HGHSetup(BaseSetup):
         self.K_p = data.expand_hamiltonian_matrix()
         self.MB = 0.0
         self.MB_p = np.zeros(_np)
-        self.O_ii = np.zeros((self.ni, self.ni))
+        self.dO_ii = np.zeros((self.ni, self.ni))
 
         self.f_j = data.f_j
         self.n_j = data.n_j
@@ -99,7 +99,7 @@ class HGHSetup(BaseSetup):
         self.tauct = None
         self.Delta_Lii = None
         self.B_ii = None
-        self.C_ii = None
+        self.dC_ii = None
         self.X_p = None
         self.ExxC = None
         self.dEH0 = 0.0

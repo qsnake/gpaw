@@ -79,7 +79,7 @@ class NUIMin(Eigensolver):
             # contributions from unintary invariant
             # part of H and overlap matrix
             dH_ii = dH_aii[a]
-            dS_ii = hamiltonian.setups[a].O_ii
+            dS_ii = hamiltonian.setups[a].dO_ii
             c_ni = (  np.dot(P_ni, dH_ii)
                     - np.dot(np.dot(H_nn, P_ni), dS_ii))
             c_ani[a] = c_ni
@@ -122,7 +122,7 @@ class NUIMin(Eigensolver):
         c_ani = {}
         for a, P_ni in P_ani.items():
             dH_ii = dH_aii[a]
-            dS_ii = hamiltonian.setups[a].O_ii
+            dS_ii = hamiltonian.setups[a].dO_ii
             c_ni = (  np.dot(P_ni, dH_ii)
                     - np.dot(np.dot(H_nn, P_ni), dS_ii))
             c_ani[a] = c_ni
@@ -167,7 +167,7 @@ class NUIMin(Eigensolver):
             c_ai = {}
             for a, dP_i in dP_ai.items():
                 dH_ii = dH_aii[a]
-                dS_ii = hamiltonian.setups[a].O_ii
+                dS_ii = hamiltonian.setups[a].dO_ii
                 c_i = (np.dot(dP_i, dH_ii)
                        - kpt.eps_n[n] * np.dot(dP_i, dS_ii))
 

@@ -303,7 +303,7 @@ class AEOrbital:
                     for i in range(len(p_i)):
                         for j in range(len(p_i)):
                             Porb_n[n] += (kpt.P_ani[a][n][i].conj() *
-                                          wfs.setups[a].O_ii[i][j] *
+                                          wfs.setups[a].dO_ii[i][j] *
                                           p_i[j])
             wfs.gd.comm.sum(Porb_n)
 

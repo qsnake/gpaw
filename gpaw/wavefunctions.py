@@ -499,7 +499,7 @@ class LCAOWaveFunctions(WaveFunctions):
             self.tci.calculate(spos_ac, self.S_qMM, self.T_qMM, self.P_aqMi)
             nao = self.setups.nao
             for a, P_qMi in self.P_aqMi.items():
-                dO_ii = np.asarray(self.setups[a].O_ii, P_qMi.dtype)
+                dO_ii = np.asarray(self.setups[a].dO_ii, P_qMi.dtype)
                 for S_MM, P_Mi in zip(self.S_qMM, P_qMi):
                     dOP_iM = np.zeros((dO_ii.shape[1], nao), P_Mi.dtype)
                     # (ATLAS can't handle uninitialized output array)
@@ -755,9 +755,9 @@ class LCAOWaveFunctions(WaveFunctions):
         ZE_MM = None
         for b in my_atom_indices:
             setup = self.setups[b]
-            O_ii = np.asarray(setup.O_ii, dtype)
+            dO_ii = np.asarray(setup.dO_ii, dtype)
             dOP_iM = np.zeros((setup.ni, nao), dtype)
-            gemm(1.0, self.P_aqMi[b][q], O_ii, 0.0, dOP_iM, 'c')
+            gemm(1.0, self.P_aqMi[b][q], dO_ii, 0.0, dOP_iM, 'c')
             for v in range(3):
                 gemm(1.0, dOP_iM, dPdR_avMi[b][v], 0.0, work_MM, 'n')
                 ZE_MM = (work_MM * ET_MM).real
@@ -1129,7 +1129,7 @@ class GridWaveFunctions(WaveFunctions):
                 P_ni = kpt.P_ani[a]
                 F_vii = np.dot(np.dot(F_niv.transpose(), P_ni), dH_ii)
                 F_niv *= kpt.eps_n[:, np.newaxis, np.newaxis]
-                dO_ii = hamiltonian.setups[a].O_ii
+                dO_ii = hamiltonian.setups[a].dO_ii
                 F_vii -= np.dot(np.dot(F_niv.transpose(), P_ni), dO_ii)
                 F_av[a] += 2 * F_vii.real.trace(0, 1, 2)
 

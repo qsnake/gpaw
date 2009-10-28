@@ -336,30 +336,30 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
             ni = self.setups[a].ni
             # Fill P_ni: <p_i | psit_n > = beta_i * exp(i*phase*n) * sqrt(n)
             #
-            #  |  ____                  |
-            #  |  \        *   a        |      1
-            #  |   )   beta   O   beta  |  =  ----
-            #  |  /___     i   ij     j |      Z
-            #  |    ij                  |       a
+            #  |  ____                   |
+            #  |  \        *    a        |      1
+            #  |   )   beta   dO   beta  |  =  ----
+            #  |  /___     i    ij     j |      Z
+            #  |    ij                   |       a
             #
-            # Substitution by linear transformation: beta_i ->  O_ij alpha_j,
+            # Substitution by linear transformation: beta_i ->  dO_ij alpha_j,
             # where we start out with some initial non-constant vector:
             alpha_i = np.exp(-np.arange(ni).astype(self.dtype)/ni)
             try:
-                # Try Cholesky decomposition O_ii = L_ii * L_ii^dag
-                L_ii = np.linalg.cholesky(self.setups[a].O_ii)
+                # Try Cholesky decomposition dO_ii = L_ii * L_ii^dag
+                L_ii = np.linalg.cholesky(self.setups[a].dO_ii)
                 alpha_i /= np.vdot(alpha_i, alpha_i)**0.5
                 beta_i = np.linalg.solve(L_ii.T.conj(), alpha_i)
             except np.linalg.LinAlgError:
-                # Eigenvector decomposition O_ii = V_ii * W_ii * V_ii^dag
-                W_i, V_ii = np.linalg.eigh(self.setups[a].O_ii)
+                # Eigenvector decomposition dO_ii = V_ii * W_ii * V_ii^dag
+                W_i, V_ii = np.linalg.eigh(self.setups[a].dO_ii)
                 alpha_i /= np.abs(np.vdot(alpha_i, 
                                           np.dot(np.diag(W_i), alpha_i)))**0.5
                 beta_i = np.linalg.solve(V_ii.T.conj(), alpha_i)
 
             # Normalize according to plus/minus charge
             beta_i /= self.Z_a[a]**0.5
-            self.Qeff_a[a] = np.vdot(beta_i, np.dot(self.setups[a].O_ii, \
+            self.Qeff_a[a] = np.vdot(beta_i, np.dot(self.setups[a].dO_ii, \
                                                     beta_i)).real
             self.P_ani[a][:] = np.outer(self.gamma**my_band_indices \
                                         * my_band_indices**0.5, beta_i)
@@ -480,7 +480,7 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
     def test_overlaps_hermitian(self):
         # Set up Hermitian overlap operator:
         S = lambda x: x
-        dS = lambda a, P_ni: np.dot(P_ni, self.setups[a].O_ii)
+        dS = lambda a, P_ni: np.dot(P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
         overlap = Operator(self.bd, self.gd, nblocks, self.async, True)
         #S_nn = overlap.calculate_matrix_elements(self.psit_nG, \
@@ -507,7 +507,7 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
 
         # Set up non-Hermitian overlap operator:
         S = lambda x: alpha*x
-        dS = lambda a, P_ni: np.dot(alpha*P_ni, self.setups[a].O_ii)
+        dS = lambda a, P_ni: np.dot(alpha*P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
         overlap = Operator(self.bd, self.gd, nblocks, self.async, False)
         S_nn = overlap.calculate_matrix_elements(self.psit_nG, \
@@ -561,7 +561,7 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
 
         # Set up Hermitian overlap operator:
         S = lambda x: x
-        dS = lambda a, P_ni: np.dot(P_ni, self.setups[a].O_ii)
+        dS = lambda a, P_ni: np.dot(P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
         overlap = Operator(self.bd, self.gd, nblocks, self.async, True)
         self.psit_nG = overlap.matrix_multiply(C_nn.T.copy(), self.psit_nG, self.P_ani)
@@ -598,7 +598,7 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
 
         # Set up Hermitian overlap operator:
         S = lambda x: x
-        dS = lambda a, P_ni: np.dot(P_ni, self.setups[a].O_ii)
+        dS = lambda a, P_ni: np.dot(P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
         overlap = Operator(self.bd, self.gd, nblocks, self.async, True)
         self.psit_nG = overlap.matrix_multiply(C_nn.T.copy(), self.psit_nG, self.P_ani)
@@ -639,7 +639,7 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
 
         # Set up non-Hermitian overlap operator:
         S = lambda x: alpha*x
-        dS = lambda a, P_ni: np.dot(alpha*P_ni, self.setups[a].O_ii)
+        dS = lambda a, P_ni: np.dot(alpha*P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
         overlap = Operator(self.bd, self.gd, nblocks, self.async, False)
         self.psit_nG = overlap.matrix_multiply(C_nn.T.copy(), self.psit_nG, self.P_ani)
