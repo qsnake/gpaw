@@ -34,4 +34,4 @@ equal(e0, -6.97125875119, energy_tolerance) # svnversion 5252
 assert 19 <= niter0 <= 26, niter0
 equal(e1, -6.97126164349, energy_tolerance) # svnversion 5252
 #equal(niter1, 23, niter_tolerance) # svnversion 5252 # niter depends on the number of processes
-assert 23 <= niter1 <= 25, niter1
+assert 23 <= niter1 <= 26, niter1

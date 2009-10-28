@@ -36,4 +36,5 @@ equal(np.linalg.norm(eig - calc.get_eigenvalues()[:2]), 0, 1e-4)
 energy_tolerance = 0.00005
 niter_tolerance = 0
 equal(e, -6.65697866959, energy_tolerance) # svnversion 5252
-equal(niter, 16, niter_tolerance) # svnversion 5252
+#equal(niter, 16, niter_tolerance) # svnversion 5252 # niter depends on the number of processes
+assert 16 <= niter <= 17, niter

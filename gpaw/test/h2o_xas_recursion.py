@@ -48,7 +48,7 @@ if 0:
     show()
 
 print e, niter
-energy_tolerance = 0.0001
+energy_tolerance = 0.0002
 niter_tolerance = 0
 equal(e, -17.5425359291, energy_tolerance) # svnversion 5252
 #equal(niter, 19, niter_tolerance) # svnversion 5252 # niter depends on the number of processes
