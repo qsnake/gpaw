@@ -52,7 +52,7 @@ class Transport(GPAW):
                        'use_buffer', 'buffer_atoms', 'edge_atoms', 'bias',
                        'lead_restart',
                        
-                       'lead_atoms', 'nleadlayers', 'mol_atoms',
+                       'lead_atoms', 'nleadlayers', 'mol_atoms', 'la_index',
                        
                        'use_env', 'env_atoms', 'env_cells', 'env_kpts',
                        'env_use_buffer', 'env_buffer_atoms', 'env_edge_atoms',
@@ -92,6 +92,8 @@ class Transport(GPAW):
                 p['nleadlayers'] = kw['nleadlayers']
             if key in ['mol_atoms']:
                 p['mol_atoms'] = kw['mol_atoms']
+            if key in ['la_index']:
+                p['la_index'] = kw['la_index']
                 
             if key in ['bias']:
                 p['bias'] = kw['bias']                
@@ -190,6 +192,7 @@ class Transport(GPAW):
                 self.lead_atoms = self.pl_atoms
             self.nleadlayers = p['nleadlayers']
             self.mol_atoms = p['mol_atoms']
+            self.la_index = p['la_index']
             
         self.use_env = p['use_env']
         self.env_atoms = p['env_atoms']
@@ -300,6 +303,7 @@ class Transport(GPAW):
 
         p['lead_atoms'] = None
         p['nleadlayers'] = [1, 1]
+        p['la_index'] = None
 
         p['use_env'] = False
         p['env_atoms'] = []
@@ -633,13 +637,18 @@ class Transport(GPAW):
                                              self.env_buffer_atoms[i], setups)
         
         for i in range(self.lead_num):
-            n_layer_atoms = len(self.lead_atoms[i]) / self.nleadlayers[i]
-            self.lead_layer_index[i][0] = get_atom_indices(self.mol_atoms, setups)
-            begin = 0
-            for j in range(1, self.nleadlayers[i] + 1):
-                atoms_index = self.lead_atoms[i][begin: begin + n_layer_atoms]
-                self.lead_layer_index[i][j] = get_atom_indices(atoms_index, setups)
-                begin += n_layer_atoms
+            if self.la_index is None:
+                n_layer_atoms = len(self.lead_atoms[i]) / self.nleadlayers[i]
+                self.lead_layer_index[i][0] = get_atom_indices(self.mol_atoms, setups)
+                begin = 0
+                for j in range(1, self.nleadlayers[i] + 1):
+                    atoms_index = self.lead_atoms[i][begin: begin + n_layer_atoms]
+                    self.lead_layer_index[i][j] = get_atom_indices(atoms_index, setups)
+                    begin += n_layer_atoms
+            else:
+                self.lead_layer_index[i][0] = get_atom_indices(self.mol_atoms, setups)                
+                for j in range(1, self.nleadlayers[i] + 1):
+                    self.lead_layer_index[i][j] = get_atom_indices(self.la_index[i][j - 1], setups)
       
     def initialize_matrix(self):
         if self.use_lead:
