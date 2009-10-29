@@ -438,13 +438,6 @@ class Hamiltonian:
             if newxcfunc.mgga:
                 setup.xc_correction.initialize_kinetic(setup.data)
 
-        if newxcfunc.hybrid > 0.0 and not self.nuclei[0].ready: #bugged?
-            self.set_positions(np.array([n.spos_c * self.domain.cell_c
-                                          for n in self.nuclei]), self.rank_a)
-        if newxcfunc.hybrid > 0.0:
-            for nucleus in self.my_nuclei:
-                nucleus.allocate_non_local_things(self.nmyu,self.mynbands)
-        
         vt_g = self.finegd.empty()  # not used for anything!
         if density.nt_sg is None:
             density.interpolate()
