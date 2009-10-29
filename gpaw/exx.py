@@ -286,11 +286,11 @@ class EXX:
                 h_nn = symmetrize(np.inner(P_ni, vxx_ani[a]))
                 H_nn += h_nn
                 Ekin -= np.dot(f_n, np.diagonal(h_nn))
+                dH_p = dH_asp[a][s]
 
             # Get atomic density and Hamiltonian matrices
             D_p  = self.density.D_asp[a][s]
             D_ii = unpack2(D_p)
-            dH_p = dH_asp[a][s]
             ni = len(D_ii)
             
             # Add atomic corrections to the valence-valence exchange energy
