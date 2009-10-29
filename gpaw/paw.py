@@ -371,7 +371,7 @@ class PAW(PAWTextOutput):
                                                          setups, par.usesymm)
 
         nao = setups.nao
-        self.nvalence = nvalence = setups.nvalence - par.charge
+        nvalence = setups.nvalence - par.charge
         
         nbands = par.nbands
         if nbands is None:
