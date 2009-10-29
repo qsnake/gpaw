@@ -235,7 +235,7 @@ class C_Response(Contribution):
                 
                 E += self.gd.integrate(nt_G*self.Dxc_vt_sG[0])
                 E += kpt.eps_n[lumo_n]
-                print "Old eigenvalue",  kpt.eps_n[lumo_n]*27.21, " New eigenvalue ", E*27.21, " DXC", kpt.eps_n[lumo_n]*27.21-E*27.21
+                print "Old eigenvalue",  kpt.eps_n[lumo_n]*27.21, " New eigenvalue ", E*27.21, " DXC", E*27.21-kpt.eps_n[lumo_n]*27.21
                 eps_un[u][n] = E
 
         method2_lumo = min([ eps_n[lumo_n] for eps_n in eps_un])
@@ -336,7 +336,11 @@ class C_Response(Contribution):
             print "Hardness predicted: %10.3f eV" % (self.hardness * 27.2107)
             
     def write(self, w):
-
+        """Writes response specific data to disc.
+        
+        During the writing process, the DeltaXC is calculated (if not yet calculated)
+        """
+        
         if self.Dxc_vt_sG == None:
             self.calculate_delta_xc()
         
