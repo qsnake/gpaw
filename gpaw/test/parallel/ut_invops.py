@@ -106,7 +106,7 @@ class UTDomainParallelSetup_Mixed(UTDomainParallelSetup):
 class GDWFS(GridWaveFunctions):
     def __init__(self, gd, bd, kpt_comm, setups, dtype): # override constructor
         assert kpt_comm.size == 1
-        WaveFunctions.__init__(self, gd, 1, setups, bd, dtype, world, \
+        WaveFunctions.__init__(self, gd, 1, 1, setups, bd, dtype, world, \
             kpt_comm, True, [None], [None], [1.], None)
         self.kin = Laplace(gd, -0.5, dtype=dtype, allocate=False)
         self.overlap = None

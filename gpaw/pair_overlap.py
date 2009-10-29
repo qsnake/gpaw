@@ -4,7 +4,8 @@ import numpy as np
 from ase.units import Bohr
 from gpaw import debug
 from gpaw.mpi import world
-from gpaw.utilities.dscftools import mpi_debug
+#from gpaw.utilities.dscftools import mpi_debug
+mpi_debug = lambda x, ordered=True: None # silenced
 from gpaw.overlap import Overlap
 from gpaw.utilities import unpack
 from gpaw.lfc import NewLocalizedFunctionsCollection as NewLFC
@@ -61,7 +62,6 @@ class GridPairOverlap(PairOverlap):
             mpi_debug('lfc2.lfs_a.keys(): %s' % lfc2.lfs_a.keys())
             mpi_debug('N_c=%s, beg_c=%s, end_c=%s' % (self.gd.N_c,self.gd.beg_c,self.gd.end_c))
 
-        if debug:
             assert len(lfc1.spline_aj) == len(lfc1.spos_ac) # not distributed
             assert len(lfc2.spline_aj) == len(lfc2.spos_ac) # not distributed
             #assert lfc1.lfs_a.keys() == lfc2.lfs_a.keys() # XXX must they be equal?!?

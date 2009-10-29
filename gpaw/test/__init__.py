@@ -158,7 +158,7 @@ tests = [
     'mgga_restart.py',
     'fd2lcao_restart.py',
     'parallel/ut_hsops.py',
-#    'parallel/ut_invops.py',
+    'parallel/ut_invops.py',
     'parallel/ut_kptops.py',
     'parallel/scalapack.py',
     'parallel/scalapack2.py',
