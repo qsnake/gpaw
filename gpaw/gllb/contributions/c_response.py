@@ -39,6 +39,7 @@ class C_Response(Contribution):
         self.symmetry = self.wfs.symmetry
         self.nspins = self.nlfunc.nspins
         self.occupations = self.nlfunc.occupations
+        self.nvalence = self.nlfunc.nvalence
         self.kpt_comm = self.wfs.kpt_comm
         self.band_comm = self.wfs.band_comm
         self.grid_comm = self.gd.comm
@@ -46,7 +47,6 @@ class C_Response(Contribution):
         self.vt_sG = self.gd.empty(self.nlfunc.nspins)
         print "Writing over vt_sG as empty"
         self.nt_sG = self.gd.empty(self.nlfunc.nspins)
-
         self.Dresp_asp = None
         self.D_asp = None
 
@@ -168,6 +168,7 @@ class C_Response(Contribution):
         # Calculate band gap
         homo, lumo = self.occupations.get_homo_lumo(self.wfs)
         Ksgap = lumo - homo
+        print "KSgap ", Ksgap
 
         for a in self.density.D_asp:
             ni = self.setups[a].ni
@@ -176,6 +177,7 @@ class C_Response(Contribution):
 
         # Calculate new response potential with LUMO reference 
         w_kn = self.coefficients.get_coefficients_by_kpt(self.kpt_u, lumo_perturbation=True)
+        print "dxc w_kn", w_kn
        
         f_kn = [ kpt.f_n for kpt in self.kpt_u ]
 
@@ -210,10 +212,11 @@ class C_Response(Contribution):
 
         # Calculate average of lumo reference response potential
         method1_dxc = np.average(self.Dxc_vt_sG[0])
+        print self.Dxc_vt_sG[0][0][0]
 
         nt_G = self.gd.empty()
 
-        ne = self.occupations.ne # Number of electrons
+        ne = self.nvalence # Number of electrons
         assert self.nspins == 1
         lumo_n = ne // 2
         eps_u =[]
@@ -223,7 +226,7 @@ class C_Response(Contribution):
             for n in range(len(kpt.psit_nG)):
                 nt_G[:] = 0.0
                 self.wfs.add_orbital_density(nt_G, kpt, n)
-                E = 0
+                E = 0.0
                 for a in self.density.D_asp:
                     D_sp = self.Dxc_D_asp[a]
                     Dresp_sp = self.Dxc_Dresp_asp[a]
@@ -232,7 +235,6 @@ class C_Response(Contribution):
                     E += self.integrate_sphere(a, Dresp_sp, D_sp, Dwf_p)
                 print "Atom corrections", E*27.21
                 E = self.grid_comm.sum(E)
-                
                 E += self.gd.integrate(nt_G*self.Dxc_vt_sG[0])
                 E += kpt.eps_n[lumo_n]
                 print "Old eigenvalue",  kpt.eps_n[lumo_n]*27.21, " New eigenvalue ", E*27.21, " DXC", E*27.21-kpt.eps_n[lumo_n]*27.21

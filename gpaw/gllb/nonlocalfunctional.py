@@ -18,6 +18,7 @@ class NonLocalFunctional(ZeroFunctional):
         self.density = paw.density
         self.atoms = paw.atoms
         self.hamiltonian = paw.hamiltonian
+        self.nvalence = paw.nvalence
 
         #self.vt_sg = paw.vt_sg # smooth potential
         #self.kpt_u = kpt_u # kpoints object       
