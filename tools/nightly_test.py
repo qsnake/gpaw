@@ -95,10 +95,10 @@ if failed:
     # Send mail:
     n = len(failed)
     if n == 1:
-        subject = 'One failed test: ' + failed[0][:-1]
+        subject = 'One failed test: ' + failed[0]
     else:
         subject = ('%d failed tests: %s, %s' %
-                   (n, failed[0][:-1], failed[1][:-1]))
+                   (n, failed[0], failed[1]))
         if n > 2:
             subject += ', ...'
     fail(subject, 'test.out')
