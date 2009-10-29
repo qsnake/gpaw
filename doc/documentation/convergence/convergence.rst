@@ -13,7 +13,7 @@ encountering convergence problems:
 * Try to use default parameters for the calculator. Simple but
   sometimes useful!
 * Remember that for Gamma Point calculations the :ref:`Fermi
-  temperature <manual_width>` is set to zero by default, even if you
+  temperature <manual_occ>` is set to zero by default, even if you
   use periodic boundary conditions. In the case of metallic systems
   you might want to specify a finite Fermi temperature.
 * If you are specifying the :ref:`number of bands <manual_nbands>`
