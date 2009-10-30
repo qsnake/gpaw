@@ -65,6 +65,8 @@ class Transport(GPAW):
                        'scat_restart', 'save_file', 'restart_file',
                        'non_sc', 'fixed_boundary', 'guess_steps', 'foot_print',
                         'align_har', 'use_fd_poisson', 'data_file',
+                        'analysis_data_list', 'save_bias_data',
+                        'analysis_mode',                        
                         'neintmethod', 'neintstep']:
                 
                 del self.gpw_kwargs[key]
@@ -131,6 +133,12 @@ class Transport(GPAW):
                 p['use_fd_poisson'] = kw['use_fd_poisson']
             if key in ['data_file']:
                 p['data_file'] = kw['data_file']
+            if key in ['analysis_data_list']:
+                p['analysis_data_list'] = kw['analysis_data_list']
+            if key in ['save_bias_data']:
+                p['save_bias_data'] = kw['save_bias_data']
+            if key in ['analysis_mode']:
+                p['analysis_mode'] = kw['analysis_mode']
 
             #----descript the scattering region----     
             if key in ['LR_leads']:         
@@ -232,6 +240,9 @@ class Transport(GPAW):
         self.align_har = p['align_har']
         self.use_fd_poisson = p['use_fd_poisson']
         self.data_file = p['data_file']
+        self.analysis_data_list = p['analysis_data_list']
+        self.save_bias_data = p['save_bias_data']
+        self.analysis_mode = p['analysis_mode']
         self.spinpol = p['spinpol']
         self.verbose = p['verbose']
         self.d = p['d']
@@ -317,6 +328,9 @@ class Transport(GPAW):
         p['env_restart'] = False
         p['use_fd_poisson'] = False
         p['data_file'] = None
+        p['analysis_data_list'] = []
+        p['save_bias_data'] = False
+        p['analysis_mode'] = False
         p['neintmethod'] = 0
         p['neintstep'] = 0.02
         
@@ -476,7 +490,9 @@ class Transport(GPAW):
             self.get_inner_setups()
             self.set_extended_positions()
             self.timer.stop('surround set_position')
+        
         self.get_hamiltonian_initial_guess()
+        
         del self.wfs
         self.wfs = self.extended_calc.wfs
 
@@ -546,12 +562,17 @@ class Transport(GPAW):
                 density.rhot_g += self.surround.extra_rhot_g
                 hamiltonian.update(density)
                 calc.print_iteration(iter)
-      
+        
+        self.initialize_hamiltonian_matrix(calc)      
+        if not (self.non_sc and self.scat_restart):
+            del calc
         #atoms.get_potential_energy()
-        h_skmm, s_kmm =  self.get_hs(atoms.calc)
-        d_skmm = get_lcao_density_matrix(atoms.calc)
+        
+    def initialize_hamiltonian_matrix(self, calc):    
+        h_skmm, s_kmm =  self.get_hs(calc)
+        d_skmm = get_lcao_density_matrix(calc)
         ntk = 1
-        kpts = atoms.calc.wfs.ibzk_qc
+        kpts = calc.wfs.ibzk_qc
         h_spkmm = substract_pk(self.d, self.my_npk, ntk, kpts, h_skmm, 'h')
         s_pkmm = substract_pk(self.d, self.my_npk, ntk, kpts, s_kmm)
         d_spkmm = substract_pk(self.d, self.my_npk, ntk, kpts, d_skmm, 'h')
@@ -565,8 +586,7 @@ class Transport(GPAW):
             h_spkmm = np.real(h_spkmm).copy()
             s_pkmm = np.real(s_pkmm).copy()
             d_spkmm = np.real(d_spkmm).copy()
-        del atoms
-        
+       
         for q in range(self.my_npk):
             self.hsd.reset(0, q, s_pkmm[q], 'S', True)
             for s in range(self.my_nspins):
@@ -983,6 +1003,18 @@ class Transport(GPAW):
         #    kpt.eps_n = np.zeros((self.nbmol))
         #    kpt.f_n = np.zeros((self.nbmol))
         ##
+        if self.save_bias_data:
+            for kpt in self.wfs.kpt_u:
+                kpt.rho_MM = None
+                kpt.eps_n = None
+                kpt.f_n = None
+            vt_sG = self.gd1.collect(self.extended_calc.hamiltonian.vt_sG)
+            dH_asp = collect_D_asp3(self.hamiltonian, self.density.rank_a)
+            if self.master:
+                fd = file('bias_data' + str(self.analysor.n_bias_step), 'wb')
+                pickle.dump((self.bias, vt_sG, dH_asp), fd, 2)
+                fd.close()
+                
         self.ground = False
         self.linear_mm = None
         if not self.scf.converged:
@@ -2329,4 +2361,34 @@ class Transport(GPAW):
         self.scf.reset()
         self.forces.reset()
         self.print_positions()
-        
+
+    def analysis(self, n):
+        self.guess_steps = 1
+        self.negf_prepare()
+     
+        if not hasattr(self, 'analysor'):
+            self.analysor = Transport_Analysor(self, True)        
+        for i in range(n):
+            fd = file('bias_data' + str(i + 1), 'r')
+            self.bias, vt_sG, dH_asp = pickle.load(fd)
+            fd.close()
+            self.intctrl = IntCtrl(self.occupations.kT * Hartree,
+                                    self.lead_fermi, self.bias,
+                                    self.env_bias, self.min_energy,
+                                    self.neintmethod, self.neintstep)
+            for j in range(self.lead_num):
+                self.analysor.selfenergies[j].set_bias(self.bias[j])
+            self.surround.combine_dH_asp(dH_asp)
+            self.gd1.distribute(vt_sG, self.extended_calc.hamiltonian.vt_sG) 
+            h_spkmm, s_pkmm = self.get_hs(self.extended_calc)
+            for q in range(self.my_npk):
+                for s in range(self.my_nspins):
+                    self.hsd.reset(s, q, h_spkmm[s, q], 'H')
+ 
+            self.analysor.save_ele_step()            
+            self.analysor.save_bias_step()
+            self.analysor.save_data_to_file('bias', 'bias_plot_data')
+            
+            
+            
+             
