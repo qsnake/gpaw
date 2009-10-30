@@ -232,11 +232,13 @@ class PAW(PAWTextOutput):
         else:
             self.print_cell_and_parameters()
 
+        self.timer.start('SCF-cycle')
         for iter in self.scf.run(self.wfs, self.hamiltonian, self.density,
                                  self.occupations):
             self.call_observers(iter)
             self.print_iteration(iter)
             self.iter = iter
+        self.timer.stop('SCF-cycle')
             
         if self.scf.converged:
             self.call_observers(iter, final=True)

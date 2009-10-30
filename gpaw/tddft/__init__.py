@@ -270,6 +270,7 @@ class TDDFT(GPAW):
         niterpropagator = 0
         maxiter = self.niter + iterations
 
+        self.timer.start('Propagate')
         while self.niter < maxiter:
             norm = self.finegd.integrate(self.density.rhot_g)
 
@@ -277,51 +278,10 @@ class TDDFT(GPAW):
             if dipole_moment_file is not None:
                 self.update_dipole_moment_file(norm)
 
+            # print output (energy etc.) every 10th iteration 
             if self.niter % 10 == 0:
-                # print output (energy etc.) every 10th iteration 
-                #print '.',
-                #sys.stdout.flush()
-                # Calculate and print total energy here 
-                # self.Eband = sum_i <psi_i|H|psi_j>
-                # !!!!
-                self.td_overlap.update()
-                self.td_density.update()
-                self.td_hamiltonian.update(self.td_density.get_density(),
-                                           self.time)
-
-                kpt_u = self.wfs.kpt_u
-                if self.hpsit is None:
-                    self.hpsit = self.gd.zeros(len(kpt_u[0].psit_nG),
-                                               dtype=complex)
-                if self.eps_tmp is None:
-                    self.eps_tmp = np.zeros(len(kpt_u[0].eps_n),
-                                             dtype=complex)
-
-                for kpt in kpt_u:
-                    self.td_hamiltonian.apply(kpt, kpt.psit_nG, self.hpsit,
-                                              calculate_P_ani=False)
-                    self.mblas.multi_zdotc(self.eps_tmp, kpt.psit_nG,
-                                           self.hpsit, len(kpt_u[0].psit_nG))
-                    self.eps_tmp *= self.gd.dv
-                    kpt.eps_n[:] = self.eps_tmp.real
-
-                self.occupations.calculate_band_energy(self.wfs)
-
-                H = self.td_hamiltonian.hamiltonian
-
-                # Nonlocal
-                xcfunc = H.xc.xcfunc
-                self.Enlxc = xcfunc.get_non_local_energy()
-                self.Enlkin = xcfunc.get_non_local_kinetic_corrections()
-
-                # PAW
-                self.Ekin = H.Ekin0 + self.occupations.e_band + self.Enlkin
-                self.Epot = H.Epot
-                self.Eext = H.Eext
-                self.Ebar = H.Ebar
-                self.Exc = H.Exc + self.Enlxc
-                self.Etot = self.Ekin + self.Epot + self.Ebar + self.Exc
-
+                self.get_td_energy()
+                
                 T = time.localtime()
                 if self.rank == 0:
                     iter_text = 'iter: %3d  %02d:%02d:%02d %11.2f' \
@@ -351,6 +311,8 @@ class TDDFT(GPAW):
                     print 'Wrote restart file.'
                     print self.niter, ' iterations done. Current time is ', \
                         self.time * autime_to_attosec, ' as.' 
+
+        self.timer.stop('Propagate')
 
         # Write final results and close dipole moment file
         if dipole_moment_file is not None:
@@ -404,6 +366,50 @@ class TDDFT(GPAW):
         if self.rank == 0:
             self.dm_file.close()
             self.dm_file = None
+
+    def get_td_energy(self):
+        """Calculate the time-dependent total energy"""
+
+        self.td_overlap.update()
+        self.td_density.update()
+        self.td_hamiltonian.update(self.td_density.get_density(),
+                                   self.time)
+
+        kpt_u = self.wfs.kpt_u
+        if self.hpsit is None:
+            self.hpsit = self.gd.zeros(len(kpt_u[0].psit_nG),
+                                       dtype=complex)
+        if self.eps_tmp is None:
+            self.eps_tmp = np.zeros(len(kpt_u[0].eps_n),
+                                    dtype=complex)
+
+        # self.Eband = sum_i <psi_i|H|psi_j>
+        for kpt in kpt_u:
+            self.td_hamiltonian.apply(kpt, kpt.psit_nG, self.hpsit,
+                                      calculate_P_ani=False)
+            self.mblas.multi_zdotc(self.eps_tmp, kpt.psit_nG,
+                                   self.hpsit, len(kpt_u[0].psit_nG))
+            self.eps_tmp *= self.gd.dv
+            kpt.eps_n[:] = self.eps_tmp.real
+
+        self.occupations.calculate_band_energy(self.wfs)
+
+        H = self.td_hamiltonian.hamiltonian
+
+        # Nonlocal
+        xcfunc = H.xc.xcfunc
+        self.Enlxc = xcfunc.get_non_local_energy()
+        self.Enlkin = xcfunc.get_non_local_kinetic_corrections()
+
+        # PAW
+        self.Ekin = H.Ekin0 + self.occupations.e_band + self.Enlkin
+        self.Epot = H.Epot
+        self.Eext = H.Eext
+        self.Ebar = H.Ebar
+        self.Exc = H.Exc + self.Enlxc
+        self.Etot = self.Ekin + self.Epot + self.Ebar + self.Exc
+
+        return self.Etot
 
     # exp(ip.r) psi
     def absorption_kick(self, kick_strength):
