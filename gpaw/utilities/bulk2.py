@@ -22,6 +22,7 @@ from gpaw.aseinterface import GPAW
 from gpaw.poisson import PoissonSolver
 from gpaw.mpi import world
 from gpaw.utilities import devnull, h2gpts
+from gpaw.occupations import FermiDirac
 
 # Magnetic moments of isolated atoms:
 magmom = {'C': 2, 'N': 3, 'Pt': 2, 'F': 1, 'Mg': 0, 'Na': 1, 'Cl': 1, 'Al': 1,
@@ -242,7 +243,7 @@ class GPAWRunner(Runner):
             gpts = h2gpts(self.h, config.cell)
             pbc_kwargs = dict(kpts=self.kpts,
                               gpts=gpts,
-                              width=self.width,
+                              occupations=FermiDirac(width=self.width),
                               txt=filename[:-4] + 'txt')
             kwargs.update(pbc_kwargs)
         else:

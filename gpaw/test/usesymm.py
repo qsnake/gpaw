@@ -1,5 +1,5 @@
 from ase import Atoms
-from gpaw import GPAW
+from gpaw import GPAW, FermiDirac
 import numpy as np
 
 a = 2.0
@@ -10,7 +10,8 @@ a1.center()
 atoms = a1.repeat((4, 1, 1))
 
 def energy(usesymm):
-    atoms.set_calculator(GPAW(h=0.3, width=0.1,
+    atoms.set_calculator(GPAW(h=0.3,
+                              occupations=FermiDirac(width=0.1),
                               usesymm=usesymm,
                               kpts=(3,1,1),
                               mode='lcao'))

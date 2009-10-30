@@ -1,4 +1,4 @@
-from gpaw import GPAW, restart
+from gpaw import GPAW, restart, FermiDirac
 from ase import *
 from ase.calculators import numeric_force
 from gpaw.test import equal
@@ -17,7 +17,8 @@ bulk = Atoms(symbols='Si8',
 n = 20
 calc = GPAW(gpts=(n, n, n),
             nbands=8*3,
-            width=0.01,verbose=1,
+            occupations=FermiDirac(width=0.01),
+            verbose=1,
             kpts=(1, 1, 1))
 bulk.set_calculator(calc)
 e1 = bulk.get_potential_energy()

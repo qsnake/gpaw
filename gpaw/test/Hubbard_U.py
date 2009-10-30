@@ -51,10 +51,9 @@ atoms = Atoms(symbols='Ni2O2',
 ##############################################################################
 ## Setup the calculator
 calc = GPAW(
-    h=.25,
-    width=.05,
-    spinpol=True,
-    convergence={'eigenstates':1e-4,'density': 1.0e-2,'energy': 0.1, },
+    h=0.25,
+    occupations=FermiDirac(width=0.05),
+    convergence={'eigenstates':1e-4,'density': 1.0e-2,'energy': 0.1},
     #txt=name+'.txt',
     kpts=(k, k, k),
     xc='PBE')

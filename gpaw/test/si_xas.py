@@ -2,7 +2,7 @@ import os
 from math import pi, cos, sin
 from ase import *
 from ase.parallel import rank, barrier
-from gpaw import GPAW
+from gpaw import GPAW, FermiDirac
 from gpaw.test import equal, gen
 from gpaw.xas import XAS, RecursionMethod
 
@@ -26,7 +26,7 @@ si = Atoms([Atom('Si', (0, 0, 0)),
 import numpy as np
 calc = GPAW(nbands=None,
             h=0.25,
-            width=0.05,
+            occupations=FermiDirac(width=0.05),
             setups={0: 'hch1s'},
             usesymm=True)
 si.set_calculator(calc)

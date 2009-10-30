@@ -1,7 +1,7 @@
 import cPickle as pickle
 import numpy as np
 from ase import Atoms
-from gpaw import GPAW, setup_paths
+from gpaw import GPAW, setup_paths, FermiDirac
 from gpaw.transport.jstm import STM, dump_hs, dump_lead_hs
 from gpaw.atom.basis import BasisMaker
 from gpaw.mpi import world
@@ -22,7 +22,7 @@ atoms = Atoms('H12', pbc=(1, 1, 1), cell=cell)
 atoms.positions[:, 2] = [i * a for i in range(12)]
 
 calc = GPAW(h=0.2,
-            width=0.1,
+            occupations=FermiDirac(width=0.1),
             mode='lcao',
             basis='sz',
             usesymm=False)

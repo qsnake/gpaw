@@ -15,8 +15,13 @@ atoms.positions[5:7, 0] = [4 * a + c, 4 * a + c + b]
 atoms.positions[:, 1:] = L / 2.
 
 # Attach a GPAW calculator
-atoms.set_calculator(GPAW(h=0.3, xc='PBE', basis='szp', width=0.1, kpts=(1,1,1),
-                          mode='lcao', txt='pt_h2_lcao.txt',
+atoms.set_calculator(GPAW(h=0.3,
+                          xc='PBE',
+                          basis='szp',
+                          occupations=FermiDirac(width=0.1),
+                          kpts=(1, 1, 1),
+                          mode='lcao',
+                          txt='pt_h2_lcao.txt',
                           mixer=Mixer(0.1, 5, weight=100.0)))
 
 # Setup the GPAWTransport calculator

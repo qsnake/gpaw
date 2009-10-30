@@ -1,6 +1,6 @@
 from ase import *
 from ase.calculators import numeric_force
-from gpaw import GPAW
+from gpaw import GPAW, FermiDirac
 from gpaw.test import equal
 
 a = 5.404
@@ -18,7 +18,7 @@ bulk.set_cell((a, a, a), scale_atoms=True)
 n = 20
 calc = GPAW(gpts=(n, n, n),
             nbands=8*3,
-            width=0.01,
+            occupations=FermiDirac(width=0.01),
             kpts=(2, 2, 2),
             convergence={'energy': 1e-7}
             )

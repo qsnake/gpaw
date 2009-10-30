@@ -3,7 +3,7 @@
 import os
 
 from ase import Atom, Atoms
-from gpaw import GPAW, Mixer, restart
+from gpaw import GPAW, Mixer, restart, FermiDirac
 from gpaw.test import equal
 
 energy_tolerance = 0.00003
@@ -20,7 +20,7 @@ if not os.path.isfile('Na4_fd.gpw'):
     calc = GPAW(nbands=-3,
                 h=0.3,
                 xc='PBE',
-                width=0.1,
+                occupations=FermiDirac(width=0.1),
                 kpts=(3, 1, 1),
                 #basis='dzp',
                 txt='Na4_fd.txt')

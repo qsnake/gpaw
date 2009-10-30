@@ -20,7 +20,7 @@ print e1 - e2
 equal(e1, e2, 3e-7)
 
 kT = 0.001
-calc.set(width=kT)
+calc.set(occupations=FermiDirac(width=kT))
 e3 = hydrogen.get_potential_energy()
 niter3 = calc.get_number_of_iterations()
 equal(e1, e3 + log(2) * kT, 3.0e-7)

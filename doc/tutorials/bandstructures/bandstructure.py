@@ -1,4 +1,4 @@
-from gpaw import Calculator
+from gpaw import *
 from ase import *
 
 a = 4.23
@@ -9,8 +9,11 @@ atoms = Atoms('Na2',
 
 # Make self-consistent calculation and save results
 h = 0.25
-calc = Calculator(h=.25, kpts=(8, 8, 8), width=0.05,
-                   nbands=3, txt='out_Na_sc.txt')
+calc = GPAW(h=0.25,
+            kpts=(8, 8, 8),
+            occupations=FermiDirac(width=0.05),
+            nbands=3,
+            txt='out_Na_sc.txt')
 atoms.set_calculator(calc)
 atoms.get_potential_energy()
 calc.write('Na_sc.gpw')

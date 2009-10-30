@@ -14,7 +14,7 @@ atoms = Atoms(symbols='Si2', pbc=True,
                                 (.25, .25, .25)])
 
 if 1: # Make self-consistent calculation and save results
-    calc = GPAW(h=.25, kpts=(8, 8, 8), width=.05,
+    calc = GPAW(h=0.25, kpts=(8, 8, 8), FermiDirac(width=0.05),
                 nbands=6, txt='Si_sc.txt')
     atoms.set_calculator(calc)
     atoms.get_potential_energy()

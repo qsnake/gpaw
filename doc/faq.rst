@@ -93,10 +93,10 @@ setting the ``verbose`` parameter::
 
 If your (finite) system contains nearly degenerate occupied and
 unoccupied states, there can be convergence problems.  You can try to
-occupy the states with Fermi-distribution by specifying the ``width``
-parameter::
+occupy the states with a Fermi-Dirac distribution::
 
-  GPAW(..., width=0.05)
+  from gpaw import GPAW, FermiDirac
+  GPAW(..., FermiDirac(width=0.05))
 
 However, note that this might change also the symmetry of your system
 
@@ -118,8 +118,8 @@ Poisson solver did not converge!
 ================================
 
 If you are doing a spin-polarized calculation for an isolated molecule, 
-then you should set the Fermi temperature to a low value: 
-``width=0.001``.
+then you should set the Fermi temperature to a low value.
+
 
 How to switch between several GPAW versions
 ===========================================

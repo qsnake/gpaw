@@ -8,13 +8,13 @@ out, err = sys.stdout, sys.stderr
 sys.stdout = sys.stderr = Out()
 
 try:
-    from gpaw import GPAW
+    from gpaw import GPAW, FermiDirac
     from ase import *
 
     a = 5.0
     h = 0.2
     calc = GPAW(h=h, nbands=1, kpts=(1, 1, 1),
-                      width=1e-9,
+                      occupations=FermiDirac(width=1e-9),
                       xc='PBE',
                       txt=None)
     hydrogen = Atoms([Atom('H', (a / 2, a / 2, a / 2), magmom=0)],

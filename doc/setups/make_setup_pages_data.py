@@ -12,7 +12,7 @@ from ase.data import atomic_numbers, atomic_names, covalent_radii
 
 from gpaw.atom.generator import Generator, parameters
 from gpaw.atom.analyse_setup import analyse
-from gpaw import GPAW, ConvergenceError, Mixer
+from gpaw import GPAW, ConvergenceError, Mixer, FermiDirac
 import gpaw.mpi as mpi
 
 
@@ -24,7 +24,7 @@ class MakeSetupPageData:
         self.symbol = symbol
         self.Z = atomic_numbers[symbol]
         self.name = atomic_names[self.Z]
-        self.parameters = dict(width=0.1, xc='PBE')
+        self.parameters = dict(occupations=FermiDirac(width=0.1), xc='PBE')
         if mpi.rank == 0:
             self.log = sys.stdout
         else:

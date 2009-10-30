@@ -3,7 +3,10 @@ from gpaw import *
 from gpaw.test import equal
 
 a = 5.475
-calc = GPAW(h=0.24, kpts=(4, 4, 4), width=0.1, nbands=5)
+calc = GPAW(h=0.24,
+            kpts=(4, 4, 4),
+            occupations=FermiDirac(width=0.1),
+            nbands=5)
 atoms = Atoms(symbols='Si2', pbc=True,
               cell=0.5 * a * np.array([(1, 1, 0),
                                       (1, 0, 1),

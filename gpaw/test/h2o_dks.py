@@ -1,6 +1,6 @@
 from ase import *
 from ase.parallel import rank, barrier
-from gpaw import GPAW
+from gpaw import GPAW, FermiDirac
 from gpaw.test import equal, gen
 
 # Generate setup for oxygen with a core-hole:
@@ -15,12 +15,17 @@ e1 = atoms.get_potential_energy() + calc.get_reference_energy()
 niter1 = calc.get_number_of_iterations()
 
 atoms[0].magmom = 1
-calc.set(charge=-1, setups={'O': 'fch1s'},fixmom=True,spinpol=True)
+calc.set(charge=-1,
+         setups={'O': 'fch1s'},
+         occupations=FermiDirac(0.0, fixmagmom=True))
 e2 = atoms.get_potential_energy() + calc.get_reference_energy()
 niter2 = calc.get_number_of_iterations()
 
 atoms[0].magmom = 0
-calc.set(charge=0, setups={'O': 'fch1s'},fixmom=True,spinpol=True)
+calc.set(charge=0,
+         setups={'O': 'fch1s'},
+         occupations=FermiDirac(0.0, fixmagmom=True),
+         spinpol=True)
 e3 = atoms.get_potential_energy() + calc.get_reference_energy()
 niter3 = calc.get_number_of_iterations()
 

@@ -1,4 +1,4 @@
-from gpaw import GPAW, restart
+from gpaw import GPAW, restart, FermiDirac
 from ase import *
 from ase.calculators import numeric_force
 from gpaw.test import equal, gen
@@ -22,7 +22,7 @@ for xc in ['LDA','GLLBSC']:
               scaled_positions=[[0, 0, 0], [.5, .5, .5]])
     calc = GPAW(h=0.25,
                 nbands=8,
-                width=0.01,
+                occupations=FermiDirac(width=0.01),
                 kpts=(3, 3, 3), convergence={'eigenstates':1e-12, 'bands':8}, xc=xc, eigensolver='cg')
 
     bulk.set_calculator(calc)
