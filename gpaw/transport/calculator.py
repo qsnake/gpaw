@@ -1753,6 +1753,7 @@ class Transport(GPAW):
         if self.wfs.symmetry:
             self.F_av = self.wfs.symmetry.symmetrize_forces(self.F_av)
 
+        self.F_av *= Hartree / Bohr
         return self.F_av[:len(self.atoms)]
 
     def calculate_to_bias(self, v_limit, num_v):
@@ -2219,64 +2220,6 @@ class Transport(GPAW):
             global_linear_vHt[:, :, i] = vt[i]
         self.linear_vHt_g = self.finegd.zeros()
         self.finegd.distribute(global_linear_vHt, self.linear_vHt_g)
-
-
-    def find_pot_first_min_and_max(self, vHt_g):
-        vHt = aa1d(vHt_g)
-        nn = self.surround.nn[0] * 2 
-        g_vHt = np.gradient(vHt[:nn], self.finegd.h_c[2])
-        minf = False
-        maxf = False
-        for i, tmp in enumerate(g_vHt):
-            if tmp >= 0 and i > 3 and not minf:
-                lmin = i
-                minf = True
-            if minf and not maxf and tmp <= 0:
-                lmax = i
-                maxf = True
-        lmin = vHt[lmin]
-        lmax = vHt[lmax] 
-
-        g_vHt = np.gradient(vHt[-nn:], self.finegd.h_c[2])
-        minf = False
-        maxf = False
-        for i in range(nn):
-            tmp = g_vHt[-i - 1]
-            if tmp <= 0 and i > 3 and not minf:
-                rmin = i
-                minf = True
-            if minf and not maxf and tmp >= 0:
-                rmax = i
-                maxf = True
-        rmin = vHt[-rmin - 1]
-        rmax = vHt[-rmax - 1]
-        return lmin, lmax, rmin, rmax
-
-    def get_linear_hartree_potential2(self, vHt_g, vHt_g0):
-        global_linear_vHt = self.finegd.zeros(global_array=True)
-        dim = self.finegd.N_c[2]
-        
-        vHt = aa1d(vHt_g)
-        vHt0 = aa1d(vHt_g0)
-        
-        lshift = vHt[0] - vHt0[0]
-        rshift = vHt[-1] - vHt0[-1]
-        #lmin, lmax, rmin, rmax = self.find_pot_first_min_and_max(vHt_g)
-        #lmin0, lmax0, rmin0, rmax0 = self.find_pot_first_min_and_max(vHt_g0)
-        
-        #print lmin, lmax, rmin, rmax, 'vHt'
-        #print lmin0, lmax0, rmin0, rmax0, 'vHt0'
-
-        #lshift = (lmin - lmin0 + lmax - lmax0) / 2
-        #rshift = (rmin - rmin0 + rmax - rmax0) / 2
-        self.text('hartree potential shift', str(lshift), str(rshift))
-        vt = np.linspace(lshift, rshift, dim)
-        for i in range(dim):
-            global_linear_vHt[:, :, i] = vt[i]
-        linear_vHt_g = self.finegd.zeros()
-        self.finegd.distribute(global_linear_vHt, linear_vHt_g)
-        return linear_vHt_g
-
 
     def get_inner_setups(self):
         spos_ac0 = self.atoms.get_scaled_positions() % 1.0
