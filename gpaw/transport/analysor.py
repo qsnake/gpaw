@@ -298,7 +298,7 @@ class Transport_Analysor:
         
         #tc_array, dos_array = self.collect_transmission_and_dos()
         mem_cost = maxrss()
-        if not self.tp.non_sc:  
+        if (not self.tp.non_sc) and (not self.tp.analysis_mode) :  
             time_cost = self.ele_step_time_collect()
         else:
             time_cost = None
@@ -311,13 +311,18 @@ class Transport_Analysor:
         tp = self.tp
         step = Transmission_Info(self.n_ion_step, self.n_bias_step)
         time_cost = self.bias_step_time_collect()
-        tc_array, dos_array = self.collect_transmission_and_dos()
+        if 'tc' in tp.analysis_data_list:
+            tc_array, dos_array = self.collect_transmission_and_dos()
+        else:
+            tc_array = None
+            dos_array = None
         dv = self.abstract_d_and_v()
-        if not tp.non_sc:
+        
+        if not tp.non_sc and 'current' in tp.analysis_data_list:
             current = self.calculate_current2(0)
         else:
             current = 0
-        if tp.non_sc:
+        if tp.non_sc or self.tp.analysis_mode:
             f = None
         else:       
             f = tp.calculate_force()
@@ -334,7 +339,7 @@ class Transport_Analysor:
     def bias_step_time_collect(self):
         time = self.tp.timer.gettime
         cost = {}
-        if not self.tp.non_sc:
+        if not self.tp.non_sc and not self.tp.analysis_mode:
             cost['init scf'] = time('init scf')
         return cost
         
