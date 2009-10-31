@@ -13,7 +13,7 @@
 #endif
 
 /* If strict ANSI, then some useful macros are not defined */
-#if defined(__STRICT_ANSI__)
+#if defined(__STRICT_ANSI__) && !defined(__DARWIN_UNIX03)
 # define M_PI           3.14159265358979323846  /* pi */
 #endif
 
