@@ -92,7 +92,7 @@ if additional_info:
         pass
 
 print >> out, "# energy unit:", energyunit
-print >> out, '# Fermi temp.  =', paw.occupations.kT * Ha
+print >> out, '# Fermi temp.  =', paw.occupations.width * Ha
 print >> out, '# Free energy = ', paw.hamiltonian.Etot * Ha
 print >> out, '# Zero Kelvin = ', (paw.hamiltonian.Etot + 
                                    0.5 * paw.hamiltonian.S) * Ha
