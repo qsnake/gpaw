@@ -156,9 +156,8 @@ class WaveFunctions(EmptyWaveFunctions):
 
         if hasattr(kpt, 'c_on'):
             for ne, c_n in zip(kpt.ne_o, kpt.c_on):
-                ft_mn = ne * np.outer(c_n.conj(), c_n)
-                D_sii[kpt.s] += (np.dot(P_ni.T.conj(),
-                                        np.dot(ft_mn, P_ni))).real
+                d_nn = ne * np.outer(c_n.conj(), c_n)
+                D_sii[kpt.s] += np.dot(P_ni.T.conj(), np.dot(d_nn, P_ni)).real
     
     def calculate_atomic_density_matrices(self, D_asp):
         """Calculate atomic density matrices from projections."""
@@ -1042,12 +1041,14 @@ class GridWaveFunctions(WaveFunctions):
 
         # Hack used in delta-scf calculations:
         if hasattr(kpt, 'c_on'):
+            assert self.bd.comm.size == 1
+            d_nn = np.zeros((self.bd.mynbands, self.bd.mynbands), dtype=complex)
             for ne, c_n in zip(kpt.ne_o, kpt.c_on):
-                ft_mn = ne * np.outer(c_n.conj(), c_n)
-                for ft_n, psi_m in zip(ft_mn, kpt.psit_nG):
-                    for ft, psi_n in zip(ft_n, kpt.psit_nG):
-                        if abs(ft) > 1.e-12:
-                            nt_G += (psi_m.conj() * ft * psi_n).real
+                d_nn += ne * np.outer(c_n.conj(), c_n)
+            for d_n, psi0_G in zip(d_nn, kpt.psit_nG):
+                for d, psi_G in zip(d_n, kpt.psit_nG):
+                    if abs(d) > 1.e-12:
+                        nt_G += (psi0_G.conj() * d * psi_G).real
 
     def add_to_kinetic_density_from_k_point(self, taut_G, kpt):
         """Add contribution to pseudo kinetic energy density."""
@@ -1070,25 +1071,27 @@ class GridWaveFunctions(WaveFunctions):
 
         # Hack used in delta-scf calculations:
         if hasattr(kpt, 'c_on'):
+            assert self.bd.comm.size == 1
+            d_nn = np.zeros((self.bd.mynbands, self.bd.mynbands), dtype=complex)
+            for ne, c_n in zip(kpt.ne_o, kpt.c_on):
+                d_nn += ne * np.outer(c_n.conj(), c_n)
             dwork_G = self.gd.empty(dtype=self.dtype)
             if self.dtype == float:
-                for ne, c_n in zip(kpt.ne_o, kpt.c_on):
-                    ft_mn = ne * np.outer(c_n.conj(), c_n)
-                    for ft_n, psit_m in zip(ft_mn, kpt.psit_nG):
-                        d_c[c](psit_m, dpsit_G)
-                        for ft, psit_n in zip(ft_n, kpt.psit_nG):
-                            if abs(ft) > 1.e-12:
-                                d_c[c](psit_n, dwork_G)
-                                axpy(0.5*ft, dpsit_G * dwork_G, taut_G) #taut_G += 0.5*f*dpsit_G*dwork_G
+                for d_n, psit0_G in zip(d_nn, kpt.psit_nG):
+                    for c in range(3):
+                        d_c[c](psit0_G, dpsit_G)
+                        for d, psit_G in zip(d_n, kpt.psit_nG):
+                            if abs(d) > 1.e-12:
+                                d_c[c](psit_G, dwork_G)
+                                axpy(0.5*d, dpsit_G * dwork_G, taut_G) #taut_G += 0.5*f*dpsit_G*dwork_G
             else:
-                for ne, c_n in zip(kpt.ne_o, kpt.c_on):
-                    ft_mn = ne * np.outer(c_n.conj(), c_n)
-                    for ft_n, psit_m in zip(ft_mn, kpt.psit_nG):
-                        d_c[c](psit_m, dpsit_G, kpt.phase_cd)
-                        for ft, psit_n in zip(ft_n, kpt.psit_nG):
-                            if abs(ft) > 1.e-12:
-                                d_c[c](psit_n, dwork_G, kpt.phase_cd)
-                                taut_G += 0.5 * (dpsit_G.conj() * ft * dwork_G).real
+                for d_n, psit0_G in zip(d_nn, kpt.psit_nG):
+                    for c in range(3):
+                        d_c[c](psit0_G, dpsit_G, kpt.phase_cd)
+                        for d, psit_G in zip(d_n, kpt.psit_nG):
+                            if abs(d) > 1.e-12:
+                                d_c[c](psit_G, dwork_G, kpt.phase_cd)
+                                taut_G += 0.5 * (dpsit_G.conj() * d * dwork_G).real
 
     def orthonormalize(self):
         for kpt in self.kpt_u:
@@ -1135,13 +1138,14 @@ class GridWaveFunctions(WaveFunctions):
                 F_vii -= np.dot(np.dot(F_niv.transpose(), P_ni), dO_ii)
                 F_av[a] += 2 * F_vii.real.trace(0, 1, 2)
 
-            if hasattr(kpt, 'c_on'): # dSCF hack
-                assert self.bd.comm.size == 1, 'dSCF is experimental enough!'
+            # Hack used in delta-scf calculations:
+            if hasattr(kpt, 'c_on'):
+                assert self.bd.comm.size == 1
                 self.pt.derivative(kpt.psit_nG, F_aniv, kpt.q) #XXX again
                 d_nn = np.zeros((self.bd.mynbands, self.bd.mynbands),
                                 dtype=complex)
-                for o, c_n in enumerate(kpt.c_on):
-                    d_nn += kpt.ne_o[o] * np.outer(c_n.conj(), c_n)
+                for ne, c_n in zip(kpt.ne_o, kpt.c_on):
+                    d_nn += ne * np.outer(c_n.conj(), c_n)
                 for a, F_niv in F_aniv.items():
                     F_niv = F_niv.conj()
                     dH_ii = unpack(hamiltonian.dH_asp[a][kpt.s])
