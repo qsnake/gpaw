@@ -162,6 +162,33 @@ table.indextable tr.cap {
     background-color: #f2f2f2;
 }
 
+/* :::: COVERAGE STYLES :::: */
+
+div#test-suite-coverage div.line-block {
+    //white-space: pre;
+    //background-color: #ff0000;
+    padding: 5px;
+    color: #333;
+    background-color: #eee; //#efc;
+    border: 1px solid #ac9;
+    margin-bottom: 10px;
+    overflow: auto;
+}
+
+div#test-suite-coverage div.line {
+    white-space: pre;
+    overflow: nowrap;
+    font-family: monospace;
+}
+
+div#test-suite-coverage div.line strong {
+    color: #f33;
+}
+
+div#test-suite-coverage div.line em {
+    color: #338;
+}
+
 /* :::: GLOBAL STYLES :::: */
 
 .docwarning {
