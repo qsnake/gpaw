@@ -864,7 +864,7 @@ class Transport(GPAW):
             atoms = self.atoms
         else:
             self.atoms = atoms.copy()
-            self.initialize()
+            #self.initialize()
             self.atoms_l = []
             for i in range(self.lead_num):
                 self.atoms_l.append(self.get_lead_atoms(i))
@@ -1108,7 +1108,7 @@ class Transport(GPAW):
         return cvg
  
     def initialize_scf(self):
-        self.intctrl = IntCtrl(self.occupations.kT * Hartree,
+        self.intctrl = IntCtrl(self.occupations.width * Hartree,
                                 self.lead_fermi, self.bias,
                                 self.env_bias, self.min_energy,
                                 self.neintmethod, self.neintstep)            
@@ -1690,7 +1690,7 @@ class Transport(GPAW):
             pass
         else:
             self.negf_prepare(atoms)
-            if np.sum(abs(self.bias)) < 1e-3:
+            if np.sum(np.abs(self.bias)) < 1e-3:
                 self.ground = True
             self.get_selfconsistent_hamiltonian()
             self.analysor.save_ion_step()
@@ -2187,7 +2187,8 @@ class Transport(GPAW):
         for i in range(self.lead_num):
             atoms_l = self.atoms_l[i].copy()
             cell_l = diag_cell(atoms_l.cell)
-            ex_cell[di] += cell_l[di]
+            #ex_cell[di] += cell_l[di]
+            ex_cell[di] += self.gd.h_c[2] * Bohr * self.bnc[i]
             for atom in atoms_l:
                 if i == 0:
                     atom.position[di] -= cell_l[di]
@@ -2315,7 +2316,7 @@ class Transport(GPAW):
             fd = file('bias_data' + str(i + 1), 'r')
             self.bias, vt_sG, dH_asp = pickle.load(fd)
             fd.close()
-            self.intctrl = IntCtrl(self.occupations.kT * Hartree,
+            self.intctrl = IntCtrl(self.occupations.width * Hartree,
                                     self.lead_fermi, self.bias,
                                     self.env_bias, self.min_energy,
                                     self.neintmethod, self.neintstep)
