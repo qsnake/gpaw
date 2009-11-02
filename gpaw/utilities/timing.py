@@ -116,6 +116,30 @@ class Timer:
         n = max([len(name) for name in self.timers]) + 1
         names_and_times = self.timers.items()
         names_and_times.sort()
+
+        ## Reformat names
+        lastname = []
+        level = 0
+        n_and_t = []
+        n = 0
+        for name, t in names_and_times:
+            fullname = name
+            if len(lastname) > 0:
+                for lname in lastname[::-1]: 
+                    if name.startswith(lname):
+                        level += 1
+                        name = level * ' |' + '-' + name[len(lname) + 1:].strip()
+                        break
+                    else:
+                        del lastname[-1]
+                        if level > 0:
+                            level -= 1
+            lastname.append(fullname) 
+            n_and_t.append( (name, t) )
+            n = max([n, len(name) + 1])
+        names_and_times = n_and_t
+        #done
+
         for name, t in names_and_times:
             if t < 0.0:
                 t += t0
