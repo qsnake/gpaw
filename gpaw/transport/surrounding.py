@@ -1,6 +1,6 @@
 from ase import Hartree
 import numpy as np
-from gpaw.transport.tools import aa1d
+from gpaw.transport.tools import aa1d, interpolate_array
 
 def collect_D_asp(density):
     all_D_asp = []
@@ -51,13 +51,14 @@ def distribute_D_asp2(dH_asp, hamiltonian):
             hamiltonian.dH_asp[a] = dH_asp[a]
    
 class Side:
-    def __init__(self, type, atoms, direction):
+    def __init__(self, type, atoms, direction, h=None):
         self.type = type
         self.atoms = atoms
         self.direction = direction
         self.n_atoms = len(atoms)
         calc = atoms.calc
         self.N_c = calc.gd.N_c.copy()
+        self.h_cz = h
 
     def abstract_boundary(self):
         calc = self.atoms.calc
@@ -86,12 +87,26 @@ class Side:
         
         if gd.comm.rank == 0: 
             self.boundary_vHt_g = self.slice(nn, vHt_g)
-            self.boundary_vt_sg_line = self.slice(nn, vt_sg[:, d1 * 2, d2 * 2])
             self.boundary_nt_sg = self.slice(nn, nt_sg)        
+           
+            h = self.h_cz / 2.
+            
+            self.boundary_vHt_g = interpolate_array(self.boundary_vHt_g, finegd, h)
+            vt_sg = interpolate_array(vt_sg, finegd, h)
+            self.boundary_vt_sg_line =  aa1d(vt_sg)            
+            #self.boundary_vt_sg_line = interpolate_array(
+            #                                    self.boundary_vt_sg_line, finegd, h)            
+            self.boundary_nt_sg = interpolate_array(self.boundary_nt_sg, finegd, h)
+            rhot_g = interpolate_array(rhot_g, finegd, h)
             self.boundary_rhot_g_line = aa1d(rhot_g)
+            #self.boundary_rhot_g_line = interpolate_array(
+            #                                    self.boundary_rhot_g_line, finegd,  h)            
             nn /= 2
+            h *= 2
             self.boundary_vt_sG = self.slice(nn, vt_sG)
             self.boundary_nt_sG = self.slice(nn, nt_sG)
+            self.boundary_vt_sG = interpolate_array(self.boundary_vt_sG, gd, h)            
+            self.boundary_nt_sG = interpolate_array(self.boundary_nt_sG, gd, h)            
         
         self.D_asp = collect_D_asp(calc.density)
         self.dH_asp = collect_D_asp3(calc.hamiltonian)
@@ -126,7 +141,8 @@ class Surrounding:
             self.directions = ['-', '+']
             for i in range(self.lead_num):
                 direction = self.directions[i]
-                side = Side('LR', self.tp.atoms_l[i], direction)
+                side = Side('LR', self.tp.atoms_l[i], direction,
+                                                            self.tp.gd.h_c[2])
                 self.sides[direction] = side
                 self.bias_index[direction] = self.tp.bias[i]
                 self.side_basis_index[direction] = self.tp.lead_index[i]                
