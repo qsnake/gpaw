@@ -1,6 +1,6 @@
 from math import log
 from ase import *
-from gpaw import GPAW
+from gpaw import GPAW, FermiDirac
 from gpaw.test import equal
 
 a = 4.0
