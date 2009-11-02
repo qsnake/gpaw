@@ -78,9 +78,10 @@ class OccupationsDSCF(FermiDirac):
         for orb in self.orbitals:
             self.cnoe += orb[0]
 
+    def set_number_of_electrons(self, wfs):
+        self.nvalence = wfs.nvalence - self.cnoe
+
     def calculate(self, wfs):
-        if self.nvalence is None:
-            self.nvalence = wfs.nvalence - self.cnoe
         FermiDirac.calculate(self, wfs)
         
         # Get the expansion coefficients c_un for each dscf-orbital

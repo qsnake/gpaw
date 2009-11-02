@@ -39,8 +39,7 @@ class OccupationNumbers:
                 kpt.f_n = np.empty(wfs.mynbands)
 
         # Allow subclasses to adjust nvalence:
-        if self.nvalence is None:
-            self.nvalence = wfs.nvalence
+        self.set_number_of_electrons(wfs)
 
         # Let the master domaindo the work and broadcast results:
         data = np.empty(7)
@@ -56,6 +55,9 @@ class OccupationNumbers:
 
         for kpt in wfs.kpt_u:
             wfs.gd.comm.broadcast(kpt.f_n, 0)
+
+    def set_number_of_electrons(self, wfs):
+        self.nvalence = wfs.nvalence
 
     def calculate_occupation_numbers(self, wfs):
         raise NotImplementedError
