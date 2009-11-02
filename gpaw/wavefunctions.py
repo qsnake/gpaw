@@ -1135,6 +1135,23 @@ class GridWaveFunctions(WaveFunctions):
                 F_vii -= np.dot(np.dot(F_niv.transpose(), P_ni), dO_ii)
                 F_av[a] += 2 * F_vii.real.trace(0, 1, 2)
 
+            if hasattr(kpt, 'c_on'): # dSCF hack
+                assert self.bd.comm.size == 1, 'dSCF is experimental enough!'
+                self.pt.derivative(kpt.psit_nG, F_aniv, kpt.q) #XXX again
+                d_nn = np.zeros((self.bd.mynbands, self.bd.mynbands),
+                                dtype=complex)
+                for o, c_n in enumerate(kpt.c_on):
+                    d_nn += kpt.ne_o[o] * np.outer(c_n.conj(), c_n)
+                for a, F_niv in F_aniv.items():
+                    F_niv = F_niv.conj()
+                    dH_ii = unpack(hamiltonian.dH_asp[a][kpt.s])
+                    Q_ni = np.dot(d_nn, kpt.P_ani[a])
+                    F_vii = np.dot(np.dot(F_niv.transpose(), Q_ni), dH_ii)
+                    F_niv *= kpt.eps_n[:, np.newaxis, np.newaxis]
+                    dO_ii = hamiltonian.setups[a].dO_ii
+                    F_vii -= np.dot(np.dot(F_niv.transpose(), Q_ni), dO_ii)
+                    F_av[a] += 2 * F_vii.real.trace(0, 1, 2)
+
         self.bd.comm.sum(F_av, 0)
 
         if self.bd.comm.rank == 0:
