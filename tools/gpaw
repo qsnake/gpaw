@@ -197,7 +197,9 @@ def run():
 
         runner.set_parameters(vacuum=opt.vacuum,
                               stdout=opt.stdout,
-                              input_parameters=input_parameters)
+                              input_parameters=input_parameters,
+                              kpts=eval(opt.kpts),
+                              h=eval(opt.h))
 
     runner.run()
 

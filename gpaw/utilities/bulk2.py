@@ -222,6 +222,8 @@ class GPAWRunner(Runner):
         self.mode = mode
         self.basis = basis
         self.kpts = kpts
+        if h is None:
+            h = 0.2 # XXX
         self.h = h
         self.xc = xc
         self.stencils = stencils
