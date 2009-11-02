@@ -6,6 +6,7 @@ from gpaw.mpi import world, rank
 from gpaw.utilities.blas import gemm
 from gpaw.utilities.timing import Timer
 from gpaw.utilities.lapack import inverse_general
+from scipy import interpolate
 import copy
 import _gpaw
 
@@ -1393,5 +1394,51 @@ def interpolate_2d(mat):
     fine_bmat = finegd.zeros()
     interpolator.apply(bmat, fine_bmat)
     return fine_bmat[0]
+    
+def interpolate_array(array, gd, h, di=0):
+    dim = len(array.shape)
+    assert dim == 3 or dim == 4
+    spin_relate = dim == 4
+    if h <= gd.h_c[2]:
+        if di == 0:
+            x = np.arange(gd.N_c[2]) * gd.h_c[2]
+            xnew = np.arange(gd.N_c[2]) * h
+        else:
+            x = -np.arange(gd.N_c[2], 0) * gd.h_c[2]
+            xnew = -np.arange(gd.N_c[2], 0) * h            
+    else:
+        if di == 0:
+            x = np.arange(gd.N_c[2] * 2) * gd.h_c[2]
+            xnew = np.arange(gd.N_c[2]) * h
+        else:
+            x = -np.arange(gd.N_c[2] * 2, 0) * gd.h_c[2]
+            xnew = -np.arange(gd.N_c[2], 0) * h         
+        
+    if spin_relate:
+        ns, nx, ny, nz = array.shape
+        array.shape = (ns * nx * ny, nz)
+        new_array = gd.zeros(ns)
+        new_array.shape = (ns * nx * ny, nz)
+    else:
+        nx, ny, nz = array.shape
+        array.shape = (nx * ny, nz)
+        new_array = gd.zeros()
+        new_array.shape = (nx * ny, nz)
+      
+    if h > gd.h_c[2]:
+        array = np.append(array, array, 1)
+        
+    for i, line in enumerate(array):
+        tck = interpolate.splrep(x, line, s=0)
+        new_array[i] = interpolate.splev(xnew, tck, der=0)
+    
+    if spin_relate:
+        new_array.shape = (ns, nx, ny, nz)
+    else:
+        new_array.shape = (nx, ny, nz)
+    
+    return new_array
+        
+    
     
     
