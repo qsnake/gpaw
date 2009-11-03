@@ -13,6 +13,7 @@ perform some of the most common tasks:
 .. toctree::
    :maxdepth: 2
 
+   lattice_constants/lattice_constants
    atomization/atomization
    optimization/optimization
    plotting/plot_wave_functions
