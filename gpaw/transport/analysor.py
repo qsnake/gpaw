@@ -1146,6 +1146,7 @@ class Transport_Plotter:
             p.axis([xdata[0], xdata[-1], 0, height])
         if show:
             self.show(p)
+        return xdata, ydata            
 
     def compare_ele_step_info(self, info, steps_indices, s, k, height=None,
                                                                    unit=None):
