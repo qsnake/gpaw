@@ -165,11 +165,9 @@ table.indextable tr.cap {
 /* :::: COVERAGE STYLES :::: */
 
 div#test-suite-coverage div.line-block {
-    //white-space: pre;
-    //background-color: #ff0000;
     padding: 5px;
     color: #333;
-    background-color: #eee; //#efc;
+    background-color: #eee;
     border: 1px solid #ac9;
     margin-bottom: 10px;
     overflow: auto;
@@ -177,7 +175,7 @@ div#test-suite-coverage div.line-block {
 
 div#test-suite-coverage div.line {
     white-space: pre;
-    overflow: nowrap;
+    overflow: hidden;
     font-family: monospace;
 }
 
