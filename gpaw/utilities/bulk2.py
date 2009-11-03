@@ -173,6 +173,11 @@ class GPAWRunner(Runner):
         # Use fixed number of gpts:
         h = kwargs.get('h', 0.2 / units.Bohr)
         gpts = h2gpts(h, config.cell)
+        kwargs['h'] = None
+        kwargs['gpts'] = gpts
+        
+        if 'txt' not in kwargs:
+            kwargs['txt'] = self.name + '.txt'
         
         if not config.pbc.any():
             # Isolated atom or molecule:
@@ -180,6 +185,7 @@ class GPAWRunner(Runner):
             if (len(config) == 1 and
                 config.get_initial_magnetic_moments().any()):
                 kwargs['hund'] = True
+                
         calc = GPAW(**kwargs)
         config.set_calculator(calc)
 
