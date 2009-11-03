@@ -92,52 +92,26 @@ if mode == 'band':
     # in order of domain_x, domain_y, domain_z, blocks of bands.
     # Here we assume that GPAW ranks are assigned in the following order
     # Z, Y, X, bands, spins and k-points
-    stride0 = layout[stride2dim[0]]
-    stride1 = layout[stride2dim[1]]
-    stride2 = layout[stride2dim[2]]
-    stride3 = layout[stride2dim[3]]
-    swap01 = False
-    swap02 = False
-    swap03 = False
-    swap12 = False
-    swap13 = False
-    swap23 = False
-    if stride2dim[0] == 1:
-        swap01 = True
-    if stride2dim[0] == 2:
-        swap02 = True
-    if stride2dim[0] == 3:
-        swap03 = True
-    if stride2dim[1] == 2:
-        swap12 = True
-    if stride2dim[1] == 3:
-        swap13 = True
-    if stride2dim[2] == 3:
-        swap23 = True
-    for var3 in range(stride3): # bands
-        for var0 in range(stride0): # x
-            for var1 in range(stride1): # y
-                for var2 in range(stride2): #x
-                    tmp0 = var0
-                    tmp1 = var1
-                    tmp2 = var2
-                    tmp3 = var3
-                    if swap01:
-                        tmp0 = var1
-                        tmp1 = var0
-                    if swap02:
-                        tmp0 = var2
-                        tmp2 = var0
-                    if swap03:
-                        tmp0 = var3
-                        tmp3 = var0
-                    if swap12:
-                        tmp1 = var2
-                        tmp2 = var1
-                    if swap13:
-                        tmp1 = var3
-                        tmp3 = var1
-                    if swap23:
-                        tmp2 = var3
-                        tmp3 = var2
-                    print tmp0, tmp1, tmp2, tmp3
+    input_strU = argv[3].upper()
+    input_strL = argv[3].lower()
+    ordinary = 'XYZT'
+    input_strU2 = input_strU.replace(',','') # input_strU without commas
+    perm=[]
+    for d in range(4):
+        fx=ordinary[d]
+        p=input_strU2.index(fx)
+        perm.append(p)
+
+    X=layout[perm[0]]
+    Y=layout[perm[1]]
+    Z=layout[perm[2]]
+    T=layout[perm[3]]
+
+    for t in range(T):
+        for x in range(X):
+            for y in range(Y):
+                for z in range(Z):
+                    a, b, c, d = eval(input_strL)
+                    print a, b, c, d
+                    
+            
