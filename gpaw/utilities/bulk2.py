@@ -114,7 +114,7 @@ class Runner:
         self.log('Calculating', self.name, '...')
         config = self.atoms.copy()
         self.set_calculator(config, filename)
-        traj = PickleTrajectory(filename, 'w')
+        traj = PickleTrajectory(filename, 'w', backup=False)
         cell = config.get_cell()
         self.volumes = []
         self.energies = []
@@ -171,13 +171,14 @@ class GPAWRunner(Runner):
         kwargs.update(self.input_parameters)
 
         # Use fixed number of gpts:
-        h = kwargs.get('h', 0.2 / units.Bohr)
-        gpts = h2gpts(h, config.cell)
-        kwargs['h'] = None
-        kwargs['gpts'] = gpts
+        if 'gpts' not in kwargs:
+            h = kwargs.get('h', 0.2 / units.Bohr)
+            gpts = h2gpts(h, config.cell)
+            kwargs['h'] = None
+            kwargs['gpts'] = gpts
         
         if 'txt' not in kwargs:
-            kwargs['txt'] = self.name + '.txt'
+            kwargs['txt'] = filename[:-4] + 'txt'
         
         if not config.pbc.any():
             # Isolated atom or molecule:
@@ -202,7 +203,8 @@ class GPAWRunner(Runner):
 
 
 # XXX This should be moved to ASE!!!
-def bulk(name, crystalstructure, a=None, covera=None, orthorhombic=False):
+def bulk(name, crystalstructure, a=None, covera=None,
+         orthorhombic=False, cubic=False):
     """Helper function for creating bulk systems.
 
     name: str
@@ -217,6 +219,8 @@ def bulk(name, crystalstructure, a=None, covera=None, orthorhombic=False):
     orthorhombic: bool
         Construct orthorhombic unit cell instead of primitive cell
         which is the default.
+    cubic: bool
+        Construct cubic unit cell.
     """
 
     if covera is None:
@@ -229,6 +233,12 @@ def bulk(name, crystalstructure, a=None, covera=None, orthorhombic=False):
 
     if orthorhombic and x != 'sc':
         return orthorhombic_bulk(name, x, a, covera)
+
+    if cubic and x == 'bcc':
+        return orthorhombic_bulk(name, x, a, covera)
+
+    if cubic and x != 'sc':
+        return cubic_bulk(name, x, a)
     
     if x == 'sc':
         atoms = Atoms(name, cell=(a, a, a), pbc=True)
@@ -301,6 +311,30 @@ def orthorhombic_bulk(name, x, a, covera=None):
         atoms = Atoms(2 * name, cell=(b, b, a), pbc=True,
                       scaled_positions=[(0, 0, 0), (0.5, 0.5, 0),
                                         (0.5, 0.5, 0.5), (0, 0, 0.5)])
+    else:
+        raise RuntimeError
+    
+    return atoms
+
+def cubic_bulk(name, x, a, covera):
+    if x == 'fcc':
+        atoms = Atoms(4 * name, cell=(a, a, a), pbc=True,
+                      scaled_positions=[(0, 0, 0), (0, 0.5, 0.5),
+                                        (0.5, 0, 0.5), (0.5, 0.5, 0)])
+    elif x == 'diamond':
+        atoms = cubic_bulk(2 * name, 'zincblende', a)
+    elif x == 'zincblende':
+        atoms = Atoms(2 * name, cell=(a, a, a), pbc=True,
+                      scaled_positions=[(0, 0, 0), (0.25, 0.25, 0.25),
+                                        (0, 0.5, 0.5), (0.25, 0.75, 0.75),
+                                        (0.5, 0, 0.5), (0.75, 0.25, 0.75),
+                                        (0.5, 0.5, 0), (0.75, 0.75, 0.25)])
+    elif x == 'rocksalt':
+        atoms = Atoms(2 * name, cell=(a, a, a), pbc=True,
+                      scaled_positions=[(0, 0, 0), (0.5, 0.5, 0),
+                                        (0, 0.5, 0.5), (0.5, 0, 0.5),
+                                        (0.5, 0, 0.5), (0, 0.5, 0.5),
+                                        (0.5, 0.5, 0), (0, 0, 0)])
     else:
         raise RuntimeError
     

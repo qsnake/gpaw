@@ -41,8 +41,10 @@ struct.add_option('--c_over_a', type='float',
 struct.add_option('-v', '--vacuum', type='float', default=3.0,
                   help='Amount of vacuum to add around isolated systems '
                   '(in Angstrom).')
-struct.add_option('--orthorhombic', action='store_true',
+struct.add_option('-O', '--orthorhombic', action='store_true',
                   help='Use orthorhombic unit cell.')
+struct.add_option('-C', '--cubic', action='store_true',
+                  help='Use cubic unit cell.')
 struct.add_option('-r', '--repeat',
                   help='Repeat unit cell.  Use "-r 2" or "-r 2,3,1".')
 struct.add_option('-M', '--magnetic-moment',
@@ -60,9 +62,6 @@ behavior.add_option('-w', '--write-to-file', metavar='FILENAME',
                     help="Write configuration to file.")
 behavior.add_option('-F', '--fit', action='store_true',
                     help='Find optimal volume or bondlength.')
-behavior.add_option('-o', '--output', default='-',
-                    help="Write output to file.  Use '-' for stdout "
-                    '(the default).')
 behavior.add_option('--parameters',
                     help='read input parameters from this file')
 behavior.add_option('-E', '--effective-medium-theory',
@@ -113,10 +112,7 @@ def run():
     name = args[0]
 
     if world.rank == 0:
-        if opt.output == '-':
-            out = sys.stdout
-        else:
-            out = open(opt.output, 'w')
+        out = open('%s-%s.results' % (name, opt.identifier), 'w')
     else:
         out = devnull
 
@@ -136,7 +132,7 @@ def run():
                           a)
 
             atoms = bulk(name, opt.crystal_structure, a, opt.c_over_a,
-                         orthorhombic=opt.orthorhombic)
+                         orthorhombic=opt.orthorhombic, cubic=opt.cubic)
         else:
             try:
                 # Molecule?
