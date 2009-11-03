@@ -6,7 +6,6 @@ from gpaw.mpi import world, rank
 from gpaw.utilities.blas import gemm
 from gpaw.utilities.timing import Timer
 from gpaw.utilities.lapack import inverse_general
-from scipy import interpolate
 import copy
 import _gpaw
 
@@ -1396,6 +1395,7 @@ def interpolate_2d(mat):
     return fine_bmat[0]
     
 def interpolate_array(array, gd, h, di=0):
+    from scipy import interpolate    
     dim = len(array.shape)
     assert dim == 3 or dim == 4
     spin_relate = dim == 4
