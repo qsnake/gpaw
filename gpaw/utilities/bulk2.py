@@ -316,7 +316,7 @@ def orthorhombic_bulk(name, x, a, covera=None):
     
     return atoms
 
-def cubic_bulk(name, x, a, covera):
+def cubic_bulk(name, x, a):
     if x == 'fcc':
         atoms = Atoms(4 * name, cell=(a, a, a), pbc=True,
                       scaled_positions=[(0, 0, 0), (0, 0.5, 0.5),
@@ -324,13 +324,13 @@ def cubic_bulk(name, x, a, covera):
     elif x == 'diamond':
         atoms = cubic_bulk(2 * name, 'zincblende', a)
     elif x == 'zincblende':
-        atoms = Atoms(2 * name, cell=(a, a, a), pbc=True,
+        atoms = Atoms(4 * name, cell=(a, a, a), pbc=True,
                       scaled_positions=[(0, 0, 0), (0.25, 0.25, 0.25),
                                         (0, 0.5, 0.5), (0.25, 0.75, 0.75),
                                         (0.5, 0, 0.5), (0.75, 0.25, 0.75),
                                         (0.5, 0.5, 0), (0.75, 0.75, 0.25)])
     elif x == 'rocksalt':
-        atoms = Atoms(2 * name, cell=(a, a, a), pbc=True,
+        atoms = Atoms(4 * name, cell=(a, a, a), pbc=True,
                       scaled_positions=[(0, 0, 0), (0.5, 0.5, 0),
                                         (0, 0.5, 0.5), (0.5, 0, 0.5),
                                         (0.5, 0, 0.5), (0, 0.5, 0.5),
