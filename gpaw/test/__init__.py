@@ -164,7 +164,7 @@ tests = [
     'parallel/scalapack2.py',
     'parallel/lcao_projections.py',
     'parallel/n2.py',
-    'dscf_forces.py',
+    #'dscf_forces.py',
     ]
 
 exclude = []
