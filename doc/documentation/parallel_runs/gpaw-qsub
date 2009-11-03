@@ -5,7 +5,8 @@ from sys import argv
 import os
 
 i = 1
-while not os.path.isfile(argv[i]):
+while not (os.path.isfile(argv[i]) and (argv[i].endswith('.py') or
+                                        os.access(argv[i], os.X_OK))):
     i += 1
 
 options = ' '.join(argv[1:i])
