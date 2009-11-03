@@ -94,7 +94,6 @@ class Runner:
             world.barrier()
             if world.rank == 0:
                 open(filename, 'w')
-            self.log('Calculating', self.name, '...')
             self.calculate(filename)
         else:
             try:
@@ -102,6 +101,7 @@ class Runner:
                 configs = read(filename, ':')
             except IOError:
                 self.log('FAILED')
+                self.calculate(filename)
             else:
                 self.log()
                 if len(configs) == len(self.strains):
@@ -109,30 +109,9 @@ class Runner:
                     self.volumes = [a.get_volume() for a in configs]
                     self.energies = [a.get_potential_energy() for a in configs]
 
-    def atomize(self):
-        """Start calculations for atoms or read results from file."""
-        for symbol in self.atoms.get_chemical_symbols():
-            if symbol not in self.atomic_energies:
-                filename = '%s%s-atom.traj' % (symbol, self.tag)
-                if self.clean or not os.path.isfile(filename):
-                    world.barrier()
-                    if world.rank == 0:
-                        open(filename, 'w')
-                    self.log('Calculating', symbol, 'atom ...')
-                    self.calculate_isolated_atom(symbol, filename)
-                else:
-                    try:
-                        self.log('Reading', filename, end=' ')
-                        atom = read(filename)
-                    except IOError:
-                        self.log('FAILED')
-                    else:
-                        self.log()
-                        e = atom.get_potential_energy()
-                        self.atomic_energies[symbol] = e
-                
     def calculate(self, filename):
         """Run calculation and write results to file."""
+        self.log('Calculating', self.name, '...')
         config = self.atoms.copy()
         self.set_calculator(config, filename)
         traj = PickleTrajectory(filename, 'w')
@@ -146,16 +125,6 @@ class Runner:
             self.energies.append(e)
             traj.write(config)
         return config
-    
-    def calculate_isolated_atom(self, symbol, filename):
-        """Run atomic calculations and write results to files."""
-        atom = Atoms(symbol, magmoms=[magmom.get(symbol, 0)])
-        self.set_calculator(atom, filename)
-        traj = PickleTrajectory(filename, 'w')
-        e = atom.get_potential_energy()
-        self.atomic_energies[symbol] = e
-        traj.write(atom)
-        return atom
     
     def summary(self, plot=False, a0=None):
         natoms = len(self.atoms)
@@ -174,24 +143,8 @@ class Runner:
         if e is not None:
             self.log('Total energy: %.3f eV (%d atom%s)' %
                      (e, natoms, ' s'[1:natoms]))
-
-            
-        for symbol, ea in self.atomic_energies.items():
-            self.log('Energy of %s atom: %.3f eV' % (symbol, ea))
             
         if e is not None:
-            ec = -e
-            for symbol in self.atoms.get_chemical_symbols():
-                if symbol in self.atomic_energies:
-                    ec += self.atomic_energies[symbol]
-                else:
-                    ec = None
-                    break
-                
-            if ec is not None:
-                ec /= natoms
-                self.log('Cohesive energy: %.3f eV' % ec)
-
             if plot:
                 import pylab as plt
                 plt.plot(self.volumes, self.energies, 'o')
@@ -199,7 +152,7 @@ class Runner:
                 plt.plot(x, eos.fit0(x**-(1.0 / 3)), '-r')
                 plt.show()
 
-        return e, v, B, ec, a
+        return e, v, B, a
 
 class EMTRunner(Runner):
     """EMT implementation"""
@@ -209,71 +162,24 @@ class EMTRunner(Runner):
 
 class GPAWRunner(Runner):
     """GPAW implementation"""
-    def set_parameters(self, mode='fd', basis=None, kpts=None,
-                       h=None, xc='LDA', stencils=None, width=0.1,
-                       eigensolver='rmm-diis',
-                       nbands=None, vacuum=3.0, stdout=False,
-                       input_parameters=None):
-        if basis is None:
-            basis = {}
-        if stencils is None:
-            stencils = (3, 3)
-
-        self.mode = mode
-        self.basis = basis
-        self.kpts = kpts
-        if h is None:
-            h = 0.2 # XXX
-        self.h = h
-        self.xc = xc
-        self.stencils = stencils
-        self.width = width
-        self.eigensolver = eigensolver
-        self.nbands = nbands
+    def set_parameters(self, vacuum=3.0, **kwargs):
         self.vacuum = vacuum
-        self.stdout = stdout
-        self.input_parameters = input_parameters
+        self.input_parameters = kwargs
         
     def set_calculator(self, config, filename):
         kwargs = {}
+        kwargs.update(self.input_parameters)
 
-        if self.input_parameters is not None:
-            kwargs.update(self.input_parameters)
+        # Use fixed number of gpts:
+        h = kwargs.get('h', 0.2 / units.Bohr)
+        gpts = h2gpts(h, config.cell)
         
-        if config.pbc.any():
-            # Bulk calculation:
-            gpts = h2gpts(self.h, config.cell)
-            pbc_kwargs = dict(kpts=self.kpts,
-                              gpts=gpts,
-                              occupations=FermiDirac(width=self.width),
-                              txt=filename[:-4] + 'txt')
-            kwargs.update(pbc_kwargs)
-        else:
+        if not config.pbc.any():
             # Isolated atom or molecule:
+            config.center(vacuum=self.vacuum)
             if (len(config) == 1 and
                 config.get_initial_magnetic_moments().any()):
-                hund = True
-            else:
-                hund = False
-            isolated_kwargs = dict(hund=hund,
-                                   width=0.02,
-                                   txt=filename[:-4] + 'txt')
-            kwargs.update(isolated_kwargs)
-            config.center(vacuum=self.vacuum)
-
-        if self.stdout:
-            kwargs['txt'] = '-'
-            
-        if self.mode == 'fd':
-            kwargs['eigensolver'] = self.eigensolver
-
-        more_kwargs = dict(mode=self.mode,
-                           basis=self.basis,
-                           stencils=self.stencils,
-                           xc=self.xc,
-                           poissonsolver=PoissonSolver(nn=3, relax='GS'),
-                           nbands=self.nbands)
-        kwargs.update(more_kwargs)
+                kwargs['hund'] = True
         calc = GPAW(**kwargs)
         config.set_calculator(calc)
 

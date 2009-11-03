@@ -17,7 +17,6 @@ from ase.io import read, write
 from gpaw.utilities import devnull
 from gpaw.utilities.bulk2 import bulk, estimate_lattice_constant
 from gpaw.utilities.bulk2 import EMTRunner, GPAWRunner
-from gpaw.utilities.serialization import append_to_optiongroup
 from gpaw.parameters import InputParameters
 from gpaw.mpi import world
 
@@ -59,10 +58,8 @@ behavior.add_option('-G', '--gui', action='store_true',
                     help="Pop up ASE's GUI.")
 behavior.add_option('-w', '--write-to-file', metavar='FILENAME',
                     help="Write configuration to file.")
-behavior.add_option('-O', '--optimize', action='store_true',
+behavior.add_option('-F', '--fit', action='store_true',
                     help='Find optimal volume or bondlength.')
-behavior.add_option('-A', '--atomization-energy', action='store_true',
-                    help='Calculate atomization energy or cohesive energy.')
 behavior.add_option('-o', '--output', default='-',
                     help="Write output to file.  Use '-' for stdout "
                     '(the default).')
@@ -71,15 +68,14 @@ behavior.add_option('--parameters',
 behavior.add_option('-E', '--effective-medium-theory',
                     action='store_true',
                     help='Use EMT calculator.')
-behavior.add_option('--stdout',
-                    action='store_true',
-                    help="Write GPAW's output to standard output.")
 parser.add_option_group(behavior)
 
 # Calculator:
 calc_opts = OptionGroup(parser, 'Calculator')
 defaults = InputParameters()
-append_to_optiongroup(defaults, calc_opts)
+for key in defaults:
+    calc_opts.add_option('--%s' % key, type=str,
+                         help='default=%default')
 parser.add_option_group(calc_opts)
 
 if 0:
@@ -110,7 +106,6 @@ if 0:
     parser.add_option_group(calc_opts)
 
 opt, args = parser.parse_args(argv)
-
 
 def run():
     if len(args) != 1:
@@ -181,7 +176,7 @@ def run():
     else:
         Runner = GPAWRunner
 
-    if opt.optimize:
+    if opt.fit:
         strains = np.linspace(0.98, 1.02, 5)
     else:
         strains = None
@@ -190,21 +185,21 @@ def run():
                     out=out)
 
     if not opt.effective_medium_theory:
-        input_parameters = None
         if opt.parameters:
-            from gpaw.parameters import InputParameters
             input_parameters = eval(open(opt.parameters).read())
+        else:
+            input_parameters = {}
+        for key in defaults:
+            value = getattr(opt, key)
+            if value is not None:
+                try:
+                    input_parameters[key] = eval(value)
+                except NameError:
+                    input_parameters[key] = value
 
-        runner.set_parameters(vacuum=opt.vacuum,
-                              stdout=opt.stdout,
-                              input_parameters=input_parameters,
-                              kpts=eval(opt.kpts),
-                              h=eval(opt.h))
+        runner.set_parameters(vacuum=opt.vacuum, **input_parameters)
 
     runner.run()
-
-    if opt.atomization_energy:
-        runner.atomize()
 
     runner.summary(plot=opt.plot, a0=a)
 
