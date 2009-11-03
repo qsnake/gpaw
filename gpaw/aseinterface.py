@@ -343,8 +343,12 @@ class GPAW(PAW):
         Units: 1/Angstrom^(3/2)
         """
         if pad:
-            return self.gd.zero_pad(self.get_pseudo_wave_function(
-                band, kpt, spin, broadcast, False))
+            psit_G = self.get_pseudo_wave_function(band, kpt, spin, broadcast,
+                                                 pad=False)
+            if psit_G is None:
+                return
+            else:
+                return self.gd.zero_pad(psit_G)
         psit_G = self.wfs.get_wave_function_array(band, kpt, spin)
         if broadcast:
             if not self.wfs.world.rank == 0:
