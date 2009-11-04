@@ -87,7 +87,7 @@ stm.linescan()
 if 0:
     stm.plot(repeat=[3, 3])
 
-energy_tolerance = 0.000001
+energy_tolerance = 0.0003
 niter_tolerance = 0
 equal(e1, -5.30715477005, energy_tolerance) # svnversion 5252
 equal(niter1, 5, niter_tolerance) # svnversion 5252

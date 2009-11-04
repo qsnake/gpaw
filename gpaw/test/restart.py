@@ -48,7 +48,7 @@ print 'B',eig01, eig11
 for eig0, eig1 in zip(eig01, eig11):
     equal(eig0, eig1, 1e-10)
 
-energy_tolerance = 0.000001
+energy_tolerance = 0.0002
 niter_tolerance = 0
 equal(e0, 27.142964444, energy_tolerance) # svnversion 5252
 equal(niter0, 6, niter_tolerance) # svnversion 5252

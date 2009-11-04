@@ -24,7 +24,7 @@ ethylene.set_calculator(calc)
 e = ethylene.get_potential_energy()
 niter = calc.get_number_of_iterations()
 
-energy_tolerance = 0.000001
+energy_tolerance = 0.00003
 niter_tolerance = 0
 equal(e, -33.3201761979, energy_tolerance) # svnversion 5252
 equal(niter, 22, niter_tolerance) # svnversion 5252

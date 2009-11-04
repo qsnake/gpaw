@@ -22,7 +22,7 @@ print 'a,e =', a0, e0
 assert abs(a0 - 2.6418) < 0.0001
 assert abs(e0 - -1.98323) < 0.00002
 
-energy_tolerance = 0.00001
+energy_tolerance = 0.00002
 niter_tolerance = 0
 equal(e1, -1.96150207243, energy_tolerance) # svnversion 5252
 equal(niter1, 14, niter_tolerance) # svnversion 5252

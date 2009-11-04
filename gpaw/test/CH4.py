@@ -34,7 +34,8 @@ print 'd,e =', d0, e0
 equal(d0, 1.0931, 0.0001)
 equal(e0, -23.228, 0.001)
 
-energy_tolerance = 0.00001
+energy_tolerance = 0.0002
 niter_tolerance = 0
 equal(e0, -23.2277303435, energy_tolerance) # svnversion 5252
-equal(niter0, 30, niter_tolerance) # svnversion 5252
+#equal(niter0, 30, niter_tolerance) # svnversion 5252 # niter depends on the number of processes
+assert 28 <= niter0 <= 30, niter0

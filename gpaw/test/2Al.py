@@ -24,7 +24,7 @@ e4 = bulk.get_potential_energy()
 niter4 = calc.get_number_of_iterations()
 
 # checks
-energy_tolerance = 0.00001
+energy_tolerance = 0.00007
 niter_tolerance = 0
 
 print e2, e4

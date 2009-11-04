@@ -24,7 +24,8 @@ e = atoms.get_calculator().wfs.kpt_u[0].eps_n
 print e[1] - e[3]
 equal(e[1], e[3], 9.3e-8)
 
-energy_tolerance = 0.00001
+energy_tolerance = 0.0003
 niter_tolerance = 0
 equal(energy, -23.76976642, energy_tolerance) # svnversion 5252
-equal(niter, 42, niter_tolerance) # svnversion 5252
+#equal(niter, 42, niter_tolerance) # svnversion 5252 # niter depends on the number of processes
+assert 39 <= niter <= 42, niter

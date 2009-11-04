@@ -35,4 +35,4 @@ if mpi.rank == 0:
     niter_tolerance = 0
     equal(e, -0.268653164287, energy_tolerance) # svnversion 5252
     #equal(niter, 23, niter_tolerance) # svnversion 5252 # niter depends on the number of processes
-    assert 21 <= niter <= 23, niter
+    assert 21 <= niter <= 26, niter

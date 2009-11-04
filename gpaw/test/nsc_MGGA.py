@@ -50,9 +50,10 @@ equal(e1He+de12tHe, -0.448532905095, 0.005)
 equal(e1He+de12mHe, -0.51400253951, 0.005)
 
 
-energy_tolerance = 0.000001
+energy_tolerance = 0.0001
 niter_tolerance = 0
 equal(e1, -1.12624857673, energy_tolerance) # svnversion 5252
-equal(niter1, 25, niter_tolerance) # svnversion 5252
+#equal(niter1, 25, niter_tolerance) # svnversion 5252 # niter depends on the number of processes
+assert 25 <= niter1 <= 28, niter1
 equal(e1He, 0.0104600878985, energy_tolerance) # svnversion 5252
 equal(niter_1He, 10, niter_tolerance) # svnversion 5252

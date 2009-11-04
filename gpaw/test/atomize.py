@@ -56,7 +56,7 @@ equal(PBEM06Ldifference, -0.169, 0.003)
 equal(PBEEXXdifference, 0.91, 0.005)
 equal(PBEEXXbdifference, 0.91, 0.005)
 
-energy_tolerance = 0.00001
+energy_tolerance = 0.00003
 niter_tolerance = 0
 equal(e1, -1.08431919659, energy_tolerance) # svnversion 5252
 equal(niter1, 16, niter_tolerance) # svnversion 5252

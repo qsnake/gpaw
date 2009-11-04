@@ -31,7 +31,7 @@ if world.rank == 0:
     eigs2.sort()
     assert abs(sum(eigs - eigs2)) < 1e-8
 
-    energy_tolerance = 0.000001
+    energy_tolerance = 0.00003
     niter_tolerance = 0
     equal(e, -1.82829897814, energy_tolerance) # svnversion 5252
     equal(niter, 5, niter_tolerance) # svnversion 5252

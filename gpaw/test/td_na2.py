@@ -51,7 +51,7 @@ td_rest.propagate(time_step, iters, 'na2_dmz2.dat', 'na2_td2.gpw')
 #os.remove('na2_dmz2.dat')
 # os.remove('na2_spectrum_z2.dat')
 
-energy_tolerance = 0.000001
+energy_tolerance = 0.0001
 niter_tolerance = 0
 equal(e, -1.24941356939, energy_tolerance) # svnversion 5252
 equal(niter, 21, niter_tolerance) # svnversion 5252

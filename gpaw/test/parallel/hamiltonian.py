@@ -9,7 +9,7 @@ from gpaw.utilities import gcd
 from gpaw.utilities.lapack import inverse_cholesky
 from gpaw.hs_operators import Operator
 from gpaw.fd_operators import Laplace
-   
+
 G = 120  # number of grid points (G x G x G)
 N = 2000  # number of bands
 repeats = 20
@@ -116,4 +116,3 @@ tb = time()
 
 if world.rank == 0:
     print 'Total Time %f' % (tb -ta)
-    

@@ -23,7 +23,7 @@ print 'Err', err
 
 assert err < 1e-4
 
-energy_tolerance = 0.000001
+energy_tolerance = 0.00005
 niter_tolerance = 0
 equal(e, -10.3852568107, energy_tolerance) # svnversion 5252
 equal(niter, 8, niter_tolerance) # svnversion 5252

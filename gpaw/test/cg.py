@@ -26,7 +26,7 @@ e1 = bulk.get_potential_energy()
 niter1 = calc.get_number_of_iterations()
 equal(e0, e1, 3.6e-5)
 
-energy_tolerance = 0.00001
+energy_tolerance = 0.00004
 niter_tolerance = 0
 equal(e0, -6.97125875119, energy_tolerance) # svnversion 5252
 #equal(niter0, 24, niter_tolerance) # svnversion 5252 # niter depends on the number of processes

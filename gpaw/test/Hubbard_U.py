@@ -94,7 +94,7 @@ Eg_Hub=band_gab(calc)
 ## at least 0.2 eV
 assert( Eg_Hub- Eg_non_Hub>1.9)
 
-energy_tolerance = 0.00001
+energy_tolerance = 0.0004
 niter_tolerance = 0
 equal(e1, -28.4373310769, energy_tolerance) # svnversion 5252
 equal(niter1, 12, niter_tolerance) # svnversion 5252

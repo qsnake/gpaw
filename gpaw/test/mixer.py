@@ -14,7 +14,7 @@ niter = calc.get_number_of_iterations()
 calc.write('Li.gpw')
 calc2 = GPAW('Li.gpw')
 
-energy_tolerance = 0.000001
+energy_tolerance = 0.00005
 niter_tolerance = 0
 equal(e, -1.20245188797, energy_tolerance) # svnversion 5252
 equal(niter, 14, niter_tolerance) # svnversion 5252

@@ -29,14 +29,14 @@ for setup in ['PBE', 'PBE0', 'EXX', 'PBE']:#, 'oldPBE', 'LDA']:
     bands = calc.get_eigenvalues()[:2] # not 3 as unocc. eig are random!? XXX
     res = (E,) + tuple(bands)
     print setup, res
-    
+
     if setup in current:
         for first, second in zip(current[setup], res):
-            equal(first, second, 2e-3)
+            equal(first, second, 2.5e-3)
     else:
         current[setup] = res
-        
+
 for setup in current:
     for ref, cur in zip(ref_1871[setup], current[setup]):
         print ref, cur, ref-cur
-        equal(ref, cur, 2e-3)
+        equal(ref, cur, 2.5e-3)

@@ -43,7 +43,7 @@ pes.save_folded_pes(filename=txt, folding=None)
 pes=TDDFTPES(calc, lr)
 pes.save_folded_pes(filename=txt, folding='Gauss')
 
-energy_tolerance = 0.000001
+energy_tolerance = 0.000008
 niter_tolerance = 0
 equal(e_H2, -3.9459295865, energy_tolerance) # svnversion 5252
 equal(niter_H2, 15, niter_tolerance) # svnversion 5252
