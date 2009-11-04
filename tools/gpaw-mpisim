@@ -94,7 +94,7 @@ class CustomOption(Option):
 
 if __name__ in ['__main__', '__builtin__']:
 
-    from optparse import OptionParser
+    from optparse import OptionParser, OptionGroup
 
     usage = '%prog [options]'
     version = '%prog 0.1'
@@ -103,38 +103,46 @@ if __name__ in ['__main__', '__builtin__']:
     parser = OptionParser(usage=usage, version=version,
                           description=description, option_class=CustomOption)
 
-    # Output-specific options
-    parser.add_option('-v', '--verbose', action='store_true', \
+    output_options = OptionGroup(parser, 'Output-specific options')
+    output_options.add_option('-v', '--verbose', action='store_true', \
         default=None, dest='show_all', help='Simulate all communicators')
-    parser.add_option('-0', '--kpoint-communicators', action='store_true', \
+    output_options.add_option('-0', '--kpoint-communicators', 
+                               action='store_true', \
         default=False, dest='show_kpoint', help='Simulate kpoint communicators')
-    parser.add_option('-1', '--band-communicators', action='store_true', \
+    output_options.add_option('-1', '--band-communicators', action='store_true', \
         default=False, dest='show_band', help='Simulate band communicators')
-    parser.add_option('-2', '--domain-communicators', action='store_true', \
+    output_options.add_option('-2', '--domain-communicators', 
+                              action='store_true', \
         default=False, dest='show_domain', help='Simulate domain communicators')
+    parser.add_option_group(output_options)
 
-    # MPI-specific options
-    parser.add_option('-w', '--dry-run', default=0, type='int',
+    mpi_options = OptionGroup(parser, 'MPI-specific options')
+    mpi_options.add_option('-w', '--dry-run', default=0, type='int',
         dest='world_size', metavar='<N>', \
         help='Number of processes in parallelization [default: %default]')
-    parser.add_option('-c', '--domain-decomposition', default=None, \
+    mpi_options.add_option('-c', '--domain-decomposition', default=None, \
         type='int3', dest='parsize_c', metavar='<X,Y,Z>', \
         help='Domain decomposition along three axes [default: %default]')
-    parser.add_option('-b', '--state-parallelization', default=1, type='int', \
+    mpi_options.add_option('-b', '--state-parallelization', default=1, 
+                           type='int', \
         dest='parsize_bands', metavar='<B>', \
         help='Divide bands into this many blocks [default: %default]')
-    parser.add_option('-x', '--strided-bandgroups', action='store_true', \
+    mpi_options.add_option('-x', '--strided-bandgroups', action='store_true', \
         default=None, dest='parstride_bands',\
         help='Simulate strided band grouping (instead of blocked)')
+    parser.add_option_group(mpi_options)
 
-    # GPAW-specific options
-    parser.add_option('-s', '--spins', default=1, type='int', dest='nspins', \
+    gpaw_options = OptionGroup(parser, 'GPAW-specific options')
+    gpaw_options.add_option('-s', '--spins', default=1, type='int', 
+                            dest='nspins', \
         metavar='<nspins>', help='Number of spins [default: %default]')
-    parser.add_option('-k', '--kpoints', default=1, type='int', \
+    gpaw_options.add_option('-k', '--kpoints', default=1, type='int', \
         dest='nibzkpts', metavar='<nibzkpts>', \
         help='Number of irreducible k-points [default: %default]')
-    parser.add_option('-n', '--bands', default=1, type='int', dest='nbands', \
+    gpaw_options.add_option('-n', '--bands', default=1, type='int', 
+                            dest='nbands', \
         metavar='<nbands>', help='Number of bands [default: %default]')
+    parser.add_option_group(gpaw_options)
     #parser.add_option('-g', '--grid-size', default=None, type='int3', \
     #    dest='N_c', metavar='<X,Y,Z>', \
     #    help='Size of the grid along three axes [default: %default]')
