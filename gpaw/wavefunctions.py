@@ -685,8 +685,8 @@ class LCAOWaveFunctions(WaveFunctions):
         #           ----- d T
         #  a         \       mu nu
         # F += 2 Re   )   -------- rho
-        #            /      d R       nu mu
-        #           -----      a
+        #            /    d R         nu mu
+        #           -----    mu nu
         #        mu in a; nu
         #
         Fkin_av = np.zeros_like(F_av)
@@ -697,17 +697,18 @@ class LCAOWaveFunctions(WaveFunctions):
         
         # Potential contribution
         #
-        #          -----     /  d Phi  (r)
-        #  a        \       |        mu    ~
-        # F += 2 Re  )      |   ---------- v (r)  Phi  (r) dr rho
-        #           /       |       R                nu          nu mu
-        #          -----   /         a
-        #      mu in a; nu
+        #           -----      /  d Phi  (r)
+        #  a         \        |        mu    ~
+        # F += -2 Re  )       |   ---------- v (r)  Phi  (r) dr rho
+        #            /        |     d R                nu          nu mu
+        #           -----    /         a
+        #        mu in a; nu
         #
         self.timer.start('LCAO forces: potential')
         Fpot_av = np.zeros_like(F_av)
         vt_G = hamiltonian.vt_sG[kpt.s]
         DVt_vMM = np.zeros((3, nao, nao), dtype)
+        # Note that DVt_vMM contains dPhi(r) / dr = - dPhi(r) / dR^a
         basis_functions.calculate_potential_matrix_derivative(vt_G, DVt_vMM, q)
         for a, M1, M2 in slices():
             for v in range(3):
@@ -722,7 +723,7 @@ class LCAOWaveFunctions(WaveFunctions):
         #  a          \           mu nu
         # F  += -2 Re  )   ------------  E
         #             /        d R        nu mu
-        #            -----        a
+        #            -----        mu nu
         #         mu in a; nu
         #
         Frho_av = np.zeros_like(F_av)
@@ -744,9 +745,9 @@ class LCAOWaveFunctions(WaveFunctions):
         #                  b*
         #         -----  dP
         #   b      \       i mu    b   b
-        #  Z     =  )   -------  dS   P
-        #   mu nu  /      dR       ij  j nu
-        #         -----     a
+        #  Z     =  )   -------- dS   P
+        #   mu nu  /     dR        ij  j nu
+        #         -----    b mu
         #           ij
         #
         self.timer.start('LCAO forces: paw correction')
@@ -780,8 +781,8 @@ class LCAOWaveFunctions(WaveFunctions):
         #         ----- d P
         #  b       \       i mu   b   b
         # A     =   )   ------- dH   P
-        #  mu nu   /      d R     ij  j nu
-        #         -----      a
+        #  mu nu   /    d R       ij  j nu
+        #         -----    b mu
         #           ij
         #
         self.timer.start('LCAO forces: atomic density')

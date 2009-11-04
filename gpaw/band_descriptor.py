@@ -62,7 +62,7 @@ class BandDescriptor:
         Parameters:
 
         nbands: int
-            Number of bands.
+            Global number of bands.
         comm: MPI-communicator
             Communicator for band-groups.
         strided: bool

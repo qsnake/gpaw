@@ -193,10 +193,10 @@ class StepTimer(Timer):
     print from processess that are not the mpi master process.
     """
     
-    def __init__(self,out=sys.stdout,name=None,write_as_master_only=True):
+    def __init__(self, out=sys.stdout, name=None, write_as_master_only=True):
         Timer.__init__(self)
         if name is None:
-            name = '<'+sys._getframe(1).f_code.co_name+'>'
+            name = '<%s>' % sys._getframe(1).f_code.co_name
         self.name = name
         self.out = out
         self.alwaysprint = not write_as_master_only
