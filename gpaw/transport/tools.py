@@ -1395,7 +1395,14 @@ def interpolate_2d(mat):
     return fine_bmat[0]
     
 def interpolate_array(array, gd, h, di=0):
-    from scipy import interpolate    
+    try:
+        from scipy import interpolate
+        ip = True
+    except ImportError:
+        ip = False
+    if not ip:
+        return array
+
     dim = len(array.shape)
     assert dim == 3 or dim == 4
     spin_relate = dim == 4
