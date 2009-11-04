@@ -1424,12 +1424,12 @@ def interpolate_array(array, gd, h, di=0):
     if spin_relate:
         ns, nx, ny, nz = array.shape
         array.shape = (ns * nx * ny, nz)
-        new_array = gd.zeros(ns)
+        new_array = gd.zeros(ns, global_array=True)
         new_array.shape = (ns * nx * ny, nz)
     else:
         nx, ny, nz = array.shape
         array.shape = (nx * ny, nz)
-        new_array = gd.zeros()
+        new_array = gd.zeros(global_array=True)
         new_array.shape = (nx * ny, nz)
       
     if h > gd.h_c[2]:
