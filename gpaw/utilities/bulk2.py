@@ -101,7 +101,6 @@ class Runner:
                 configs = read(filename, ':')
             except IOError:
                 self.log('FAILED')
-                self.calculate(filename)
             else:
                 self.log()
                 if len(configs) == len(self.strains):
