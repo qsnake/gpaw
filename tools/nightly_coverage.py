@@ -231,7 +231,7 @@ List of files with missing coverage
 
 """)
 
-for covername in sorted(glob('coverage/gpaw.test.*.cover')):
+for covername in sorted(glob('coverage/gpaw.*.cover')):
     rstname = covername[:-len('.cover')]+'.rst'
     refname = rstname[len('coverage/'):-len('.rst')]
     print 'covername:', covername, 'rstname:', rstname, 'refname:', refname
