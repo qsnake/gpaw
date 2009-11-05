@@ -79,8 +79,10 @@ class Runner:
         self.out = out
         
         self.volumes = None
+        self.bondlengths = None
         self.energies = None
-        self.atomic_energies = {}  # for calculating atomization energy
+
+        self.dimer = (not atoms.pbc.any() and len(self.atoms) == 2)
 
     def log(self, *args, **kwargs):
         self.out.write(kwargs.get('sep', ' ').join([str(arg)
@@ -105,7 +107,11 @@ class Runner:
                 self.log()
                 if len(configs) == len(self.strains):
                     # Extract volumes and energies:
-                    self.volumes = [a.get_volume() for a in configs]
+                    if self.dimer:
+                        self.bondlengths = [a.get_distance(0, 1)
+                                            for a in configs]
+                    else:
+                        self.volumes = [a.get_volume() for a in configs]
                     self.energies = [a.get_potential_energy() for a in configs]
 
     def calculate(self, filename):
@@ -115,42 +121,93 @@ class Runner:
         self.set_calculator(config, filename)
         traj = PickleTrajectory(filename, 'w', backup=False)
         cell = config.get_cell()
-        self.volumes = []
         self.energies = []
-        for strain in self.strains:
-            config.set_cell(strain * cell, scale_atoms=True)
-            self.volumes.append(config.get_volume())
-            e = config.get_potential_energy()
-            self.energies.append(e)
-            traj.write(config)
+        if not config.pbc.any() and len(config) == 2:
+            # This is a dimer.
+            self.bondlengths = []
+            d0 = config.get_distance(0, 1)
+            for strain in self.strains:
+                d = d0 * strain
+                config.set_distance(0, 1, d)
+                self.bondlengths.append(d)
+                e = config.get_potential_energy()
+                self.energies.append(e)
+                traj.write(config)
+        else:
+            self.volumes = []
+            for strain in self.strains:
+                config.set_cell(strain * cell, scale_atoms=True)
+                self.volumes.append(config.get_volume())
+                e = config.get_potential_energy()
+                self.energies.append(e)
+                traj.write(config)
         return config
     
     def summary(self, plot=False, a0=None):
         natoms = len(self.atoms)
-        e = v = B = ec = a = None
-        if self.energies and len(self.energies) > 1:
-            eos = EquationOfState(self.volumes, self.energies)
-            v, e, B = eos.fit()
-            a = a0 * (v / self.atoms.get_volume())**(1.0 / 3)
-            self.log('Fit using %d points:' % len(self.energies))
-            self.log('Volume per atom: %.3f Ang^3' % (v / natoms))
-            self.log('Lattice constant: %.3f Ang' % a)
-            self.log('Bulk modulus: %.1f GPa' % (B * 1e24 / units.kJ))
-        elif self.energies and len(self.energies) == 1:
-            e = self.energies[0]
-
-        if e is not None:
+        if len(self.energies) == 1:
             self.log('Total energy: %.3f eV (%d atom%s)' %
-                     (e, natoms, ' s'[1:natoms]))
-            
-        if e is not None:
-            if plot:
-                import pylab as plt
-                plt.plot(self.volumes, self.energies, 'o')
-                x = np.linspace(self.volumes[0], self.volumes[-1], 50)
-                plt.plot(x, eos.fit0(x**-(1.0 / 3)), '-r')
-                plt.show()
+                     (self.energies[0], natoms, ' s'[1:natoms]))
+        elif self.dimer:
+            return self.dimer_summary(plot)
+        else:
+            return self.bulk_summary(plot, a0)
 
+    def dimer_summary(self, plot):
+        d = np.array(self.bondlengths)
+        fit0 = np.poly1d(np.polyfit(1 / d, self.energies, 3))
+        fit1 = np.polyder(fit0, 1)
+        fit2 = np.polyder(fit1, 1)
+
+        d0 = None
+        for t in np.roots(fit1):
+            if t > 0 and fit2(t) > 0:
+                d0 = 1 / t
+                break
+
+        if d0 is None:
+            raise ValueError('No minimum!')
+        
+        e = fit0(t)
+        k = fit2(t) * t**4
+        m1, m2 = self.atoms.get_masses()
+        m = m1 * m2 / (m1 + m2)
+        hnu = units._hbar * 1e10 * sqrt(k / units._e / units._amu / m)
+
+        self.log('Fit using %d points:' % len(self.energies))
+        self.log('Bond length: %.3f Ang^3' % d0)
+        self.log('Frequency: %.1f meV (%.1f cm^-1)' %
+                 (1000 * hnu,
+                  hnu * 0.01 * units._e / units._c / units._hplanck))
+        self.log('Total energy: %.3f eV' % e)
+
+        if plot:
+            import pylab as plt
+            plt.plot(d, self.energies, 'o')
+            x = np.linspace(d[0], d[-1], 50)
+            plt.plot(x, fit0(x**-1), '-r')
+            plt.show()
+            
+        return e, d, hnu
+
+    def bulk_summary(self, plot, a0):
+        eos = EquationOfState(self.volumes, self.energies)
+        v, e, B = eos.fit()
+        a = a0 * (v / self.atoms.get_volume())**(1.0 / 3)
+        self.log('Fit using %d points:' % len(self.energies))
+        self.log('Volume per atom: %.3f Ang^3' % (v / natoms))
+        self.log('Lattice constant: %.3f Ang' % a)
+        self.log('Bulk modulus: %.1f GPa' % (B * 1e24 / units.kJ))
+        self.log('Total energy: %.3f eV (%d atom%s)' %
+                 (e, natoms, ' s'[1:natoms]))
+
+        if plot:
+            import pylab as plt
+            plt.plot(self.volumes, self.energies, 'o')
+            x = np.linspace(self.volumes[0], self.volumes[-1], 50)
+            plt.plot(x, eos.fit0(x**-(1.0 / 3)), '-r')
+            plt.show()
+            
         return e, v, B, a
 
 class EMTRunner(Runner):
@@ -169,13 +226,6 @@ class GPAWRunner(Runner):
         kwargs = {}
         kwargs.update(self.input_parameters)
 
-        # Use fixed number of gpts:
-        if 'gpts' not in kwargs:
-            h = kwargs.get('h', 0.2 / units.Bohr)
-            gpts = h2gpts(h, config.cell)
-            kwargs['h'] = None
-            kwargs['gpts'] = gpts
-        
         if 'txt' not in kwargs:
             kwargs['txt'] = filename[:-4] + 'txt'
         
@@ -185,7 +235,14 @@ class GPAWRunner(Runner):
             if (len(config) == 1 and
                 config.get_initial_magnetic_moments().any()):
                 kwargs['hund'] = True
-                
+
+        # Use fixed number of gpts:
+        if 'gpts' not in kwargs:
+            h = kwargs.get('h', 0.2)
+            gpts = h2gpts(h, config.cell)
+            kwargs['h'] = None
+            kwargs['gpts'] = gpts
+        
         calc = GPAW(**kwargs)
         config.set_calculator(calc)
 

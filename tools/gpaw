@@ -112,7 +112,7 @@ def run():
     name = args[0]
 
     if world.rank == 0:
-        out = open('%s-%s.results' % (name, opt.identifier), 'w')
+        out = sys.stdout#open('%s-%s.results' % (name, opt.identifier), 'w')
     else:
         out = devnull
 
