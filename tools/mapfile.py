@@ -102,10 +102,7 @@ if mode == 'band':
         p=input_strU2.index(fx)
         perm.append(p)
 
-    X=layout[perm[0]]
-    Y=layout[perm[1]]
-    Z=layout[perm[2]]
-    T=layout[perm[3]]
+    X, Y, Z, T = [layout[perm[i]] for i in range(4)]
 
     for t in range(T):
         for x in range(X):
