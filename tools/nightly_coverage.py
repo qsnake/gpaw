@@ -18,7 +18,6 @@ from gpaw.version import version
 from gpaw.svnrevision import svnrevision
 from gpaw.utilities import devnull
 
-
 def CoverageFilter(url, coverage, filtering, output):
     """Filter a coverage file through 'grep -n >>>>>>' and an inlined
     stream editor script in order to convert to reStructuredText."""
@@ -188,9 +187,8 @@ class TableIO: # we can't subclass cStringIO.StringIO
 
 for ncores in [1,2,4,8]:
     # os.system('mpirun -np %d gpaw-python gpaw-test --debug --coverage counts.pickle' % ncores)
-
-	if not os.path.isfile('counts.pickle'):
-    	raise IOError('ERROR: No coverage file generated!')
+    if not os.path.isfile('counts.pickle'):
+        raise IOError('ERROR: No coverage file generated!')
 
 # python -m trace --report --file counts.pickle --coverdir coverage --missing
 
@@ -234,7 +232,7 @@ List of files with missing coverage
 for covername in sorted(glob('coverage/gpaw.*.cover')):
     rstname = covername[:-len('.cover')]+'.rst'
     refname = rstname[len('coverage/'):-len('.rst')]
-    print 'covername:', covername, 'rstname:', rstname, 'refname:', refname
+    print 'cover: ', covername, '->', rstname
 
     filename = covername[len('coverage/'):-len('.cover')].replace('.','/')+'.py'
     fileurl = '%s/%s?rev=%s' % (urlbase,filename,svnrevision)
@@ -302,7 +300,7 @@ Test suite coverage
     g.close()
 
 # Include the summary in toctree
-f.write('   summary')
+f.write('   summary\n')
 f.close()
 
 # Build summary with tables for the various categories
@@ -323,7 +321,8 @@ for c,category in tuple(enumerate(categories))[1:-1]:
     h.write('- %s coverage: %.0f %% - %.0f %% %s' \
          % (category,100*limits[c],100*limits[c+1],end))
 h.write('- %s coverage: %.0f %% %s' % (categories[-1],100*limits[-2],end))
-
 for pipe in pipes:
     pipe.write_to_stream(h)
 h.close()
+
+os.system('tar cvzf gpaw-coverage-%s.tar.gz coverage/*.rst' % version)
