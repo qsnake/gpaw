@@ -90,23 +90,28 @@ class AngularIntegral:
         self.R_g = R_g
         self.ball_g = ball_g
         self.V_R = V_R * gd.dv
-        self.R_R = R_R / V_R
+        self.nominalR_R = self.dR * (np.arange(len(self.V_R)) + .5)
+        self.R_R = np.where(V_R > 0, R_R / V_R, self.nominalR_R)
 
     def integrate(self, f_g):
-        """Integrate a function on the grid"""
-        
+        """Integrate a function on the grid over the angles."""
         int_R = []
         for i, dV in enumerate(self.V_R):
             # get the R shell
             R_g = np.where(self.R_g == i, 1, 0)
-            int_R.append(self.gd.integrate(f_g * R_g))
+            int_R.append(self.gd.integrate(f_g * R_g) / self.dR)
+        return np.array(int_R)
 
-        return np.array(int_R) / self.radii()**2
+    def average(self, f_g):
+        """Give the angular average of a function on the grid."""
+        import sys
+        sys.stdout.flush()
+        return self.integrate(f_g) / self.radii()**2 / (4 * pi)
 
     def radii(self, model='nominal'):
         """Return the radii of the radial shells"""
         if model == 'nominal':
-            return self.dR * (np.arange(len(self.V_R)) + .5)
+            return self.nominalR_R
         elif model == 'mean':
             return self.R_R
         else:
