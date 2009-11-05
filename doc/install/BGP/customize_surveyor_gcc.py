@@ -57,8 +57,7 @@ library_dirs = [
            ]
 
 include_dirs += [
-    '/soft/apps/python/python-2.6-cnk-gcc/numpy-1.3.0/lib/python2.6/site-package
-s/numpy/core/include'
+    '/soft/apps/python/python-2.6-cnk-gcc/numpy-1.3.0/lib/python2.6/site-packages/numpy/core/include'
     ]
 
 compiler = "bgp_gcc.py"
