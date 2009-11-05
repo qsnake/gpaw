@@ -65,8 +65,17 @@ jobs += [
 #    Job('COAu38/Au038to', 10),
 #    Job('O2Pt/o2pt', 40),
     Job('vdw/interaction', 60, deps=['dimers']),
-    Job('vdw/dimers', 60),
-    ]
+    Job('vdw/dimers', 60)]
+
+# Submit this one 4 times:
+deps = []
+for i in range(4):
+    j = Job('../../doc/tutorials/lattice_constants/Fe_conv_calc',
+            tmax=5*60, ncpu=8, arg='%d' % i)
+    jobs.append(j)
+    deps.append(j.id)
+jobs.append(Job('../../doc/tutorials/lattice_constants/Fe_conv_plots',
+                ncpu=1, deps=deps))
 
 class Jobs:
     def __init__(self, log=sys.stdout):
