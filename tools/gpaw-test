@@ -15,7 +15,7 @@ def main(outfile, tests=None, testscript='test.py'):
     assert 'gpaw' not in sys.modules, 'GPAW must be unloaded first!'
 
     home = os.environ['HOME']
-    ignore_dirs = [] #[home]
+    ignore_dirs = [home]
 
     #import ase
     #ignore_dirs.extend(ase.__path__)
