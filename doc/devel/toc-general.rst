@@ -5,6 +5,7 @@
    writing_documentation
    debugging
    profiling
+   coverage
 
    newrelease
    updating_libxc

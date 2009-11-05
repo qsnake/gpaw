@@ -65,7 +65,6 @@ the corresponding objects are defined in the code:
    setups
    density_and_hamiltonian
    others
-   coverage
 
 
 The GPAW logo
