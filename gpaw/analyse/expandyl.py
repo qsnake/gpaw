@@ -104,8 +104,6 @@ class AngularIntegral:
 
     def average(self, f_g):
         """Give the angular average of a function on the grid."""
-        import sys
-        sys.stdout.flush()
         return self.integrate(f_g) / self.radii()**2 / (4 * pi)
 
     def radii(self, model='nominal'):
