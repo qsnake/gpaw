@@ -101,11 +101,7 @@ if get('setups', ['setups-data.tar.gz'], '_static'):
     os.system('cd setups; %s make_setup_pages.py' % executable)
 get('tutorials/lattice_constants', ['Fe_conv_k.png', 'Fe_conv_h.png'])
 
-#if get('devel', ['gpaw-coverage-latest.tar.gz'], '_static'):
-if True: #XXX temporary
-    print 'Downloading latest coverage files ...'
-    os.system('wget --no-check-certificate --quiet ' \
-        'http://dcwww.camd.dtu.dk/~s032082/gpaw-coverage-0.7.5318.tar.gz ' \
-        '-O _static/gpaw-coverage-latest.tar.gz')
-    print 'Extracting coverage data ...'
+# Retrieve latest code coverage pages:
+if get('.', ['gpaw-coverage-latest.tar.gz'], '_static'):
+    print 'Extracting coverage pages ...'
     os.system('tar --directory=devel -xzf _static/gpaw-coverage-latest.tar.gz')
