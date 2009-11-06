@@ -7,9 +7,8 @@ import numpy as np
 
 from trace import Trace, pickle
 
-def _err_exit(msg):
-    sys.stderr.write("%s: %s\n" % (sys.argv[0], msg))
-    sys.exit(1)
+def err(msg):
+    sys.stderr.write("%s: %s\n" % (os.path.basename(sys.argv[0]), msg))
 
 def main(outfile, tests=None, testscript='test.py'):
     assert 'gpaw' not in sys.modules, 'GPAW must be unloaded first!'
@@ -40,41 +39,41 @@ def main(outfile, tests=None, testscript='test.py'):
         sys.argv.extend(tests)
     try:
         trace.run('execfile(%r, {})' % (testscript,))
-    except IOError, err:
-        _err_exit('Cannot run file %r because: %s' % (testscript, err))
+    except IOError, e:
+        err('Could not run test script %r because: %s' % (testscript, e))
+        sys.exit(1)
     except SystemExit:
         pass
 
     coverage = trace.results()
-    coverage.write_results(summary=False, coverdir=coverdir) #XXX not final
+    coverage.write_results(summary=False, coverdir=coverdir) # temporary file
 
-    from gpaw import mpi # do not import from gpaw before trace has been run!
 
-    """
-    def receive_strings(rank, comm=mpi.world, sep='\n'):
-        return mpi.receive_string(rank, comm).split(sep)
-
-    def send_strings(strings, rank, comm=mpi.world, sep='\n'):
-        assert all(map(lambda s: sep not in s, strings))
-        mpi.send_string(sep.join(strings), rank, comm)
-
-    def broadcast_strings(strings, root=0, comm=mpi.world, sep='\n'):
-        if comm.rank == root:
-            assert all(map(lambda s: sep not in s, strings))
-            return mpi.broadcast_string(sep.join(strings), root, comm).split(sep)
-        else:
-            return mpi.broadcast_string(None, root, comm).split(sep)
-    """
+    # NB: Do not import from gpaw before trace has been run!
+    from gpaw import mpi
+    from gpaw.version import version
 
     mycounts = pickle.load(open(coverfile, 'rb'))[0]
-
     if mpi.world.rank == 0:
+        _key = ('<string>',-1,) # entries with filename <string> are ignored
         if os.path.isfile(outfile):
-            print 'Continuing cover file...'
-            counts = pickle.load(open(outfile, 'rb'))[0]
+            print 'Resuming existing coverage file ...'
+            counts, calledfuncs, callers = pickle.load(open(outfile, 'rb'))
+            assert not calledfuncs and not callers # should both be empty
+            try:
+                assert counts[_key] == version, (counts[_key], version)
+            except KeyError:
+                err('Coverage file has no version. %s was assumed.' % version)
+                counts[_key] = version
+            except AssertionError, e:
+                if e[0] > e[1]: # trying to overwrite newer should fail
+                    err('Coverage file version %s (> %s). Aborting.' % e[:])
+                    sys.exit(1)
+                err('Coverage file version %s (< %s). Data discarded.' % e[:])
+                counts = {_key: version}
         else:
-            print 'Initializing cover file...'
-            counts = {}
+            print 'Initiating new coverage file ...'
+            counts = {_key: version}
 
     if mpi.world.size == 1:
         # Merge generated cover file with existing (if any)
@@ -118,12 +117,12 @@ def main(outfile, tests=None, testscript='test.py'):
                     counts[(filename,line)] = numexecs[line] \
                         + counts.get((filename,line), 0)
 
-    # Store as 3-tuple of dicts in a new pickle (i.e. same format)
+    # Store as 3-tuple of dicts in a new pickle (i.e. same format + versions)
     if mpi.world.rank == 0:
-        pickle.dump((counts,{},{},), open(outfile, 'wb'), 1)
+        pickle.dump((counts,{},{}), open(outfile, 'wb'), 1)
     mpi.world.barrier()
 
-    del mpi, sys.modules['gpaw'] # unload gpaw module before next trace
+    del version, mpi, sys.modules['gpaw'] # unload gpaw module references
 
     assert not mycounts, 'Not all entries were processed: %s' % mycounts.keys()
     os.system('rm -rf ' + coverfile + ' ' + coverdir)
@@ -139,10 +138,8 @@ if '--coverage' in sys.argv:
     poi = subproc.Popen('python -c "import gpaw; print gpaw.__path__[0]"', \
         shell=True, stdout=subproc.PIPE)
     testscript = poi.stdout.read().strip() + '/test/test.py'
-    assert poi.wait() == 0
-
-    print 'Coverage of script: %s' % testscript
-    assert os.path.isfile(testscript)
+    if poi.wait() != 0 or not os.path.isfile(testscript):
+        raise RuntimeError('Could not locate test script (%s).' % testscript)
 
     # Perform coverage test
     main(outfile, tests=[], testscript=testscript)
