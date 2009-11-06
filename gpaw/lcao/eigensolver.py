@@ -7,10 +7,29 @@ from gpaw import sl_diagonalize, extra_parameters
 import gpaw.mpi as mpi
 
 
+class SLDiagonalizer:
+    """ScaLAPACK diagonalizer using redundantly distributed arrays."""
+    def __init__(self, root=0):
+        self.root = root
+        # Keep buffers?
+
+    def diagonalize(self, H_MM, S_MM, eps_n, kpt):
+        return diagonalize(H_MM, eps_n, b=S_MM, root=self.root)
+
+
+class LapackDiagonalizer:
+    """Serial diagonalizer."""
+    def __init__(self):
+        pass # keep buffers?
+
+    def diagonalize(self, H_MM, S_MM, eps_n, kpt):
+        return diagonalize(H_MM, eps_n, S_MM)
+
+
 class LCAO:
     """Eigensolver for LCAO-basis calculation"""
 
-    def __init__(self):
+    def __init__(self, diagonalizer=None):
         self.error = 0.0
         self.linear_kpts = None
         self.eps_n = None
@@ -20,9 +39,11 @@ class LCAO:
         self.mynbands = None
         self.band_comm = None
         self.world = None
+        self.diagonalizer = None
         self.has_initialized = False # XXX
 
-    def initialize(self, kpt_comm, gd, band_comm, dtype, nao, mynbands, world):
+    def initialize(self, kpt_comm, gd, band_comm, dtype, nao, mynbands, world,
+                   diagonalizer=None):
         self.kpt_comm = kpt_comm
         self.gd = gd
         self.band_comm = band_comm
@@ -30,6 +51,9 @@ class LCAO:
         self.nao = nao
         self.mynbands = mynbands
         self.world = world
+        if diagonalizer is None:
+            diagonalizer = LapackDiagonalizer()
+        self.diagonalizer = diagonalizer
         self.has_initialized = True # XXX
         assert self.H_MM is None # Right now we're not sure whether
         # this will work when reusing
@@ -86,89 +110,32 @@ class LCAO:
         self.calculate_hamiltonian_matrix(hamiltonian, wfs, kpt)
         self.S_MM[:] = wfs.S_qMM[kpt.q]
 
-        b = self.band_comm.rank
-        B = self.band_comm.size
+        bandrank = self.band_comm.rank
+        bandsize = self.band_comm.size
         mynbands = self.mynbands
-        n1 = b * mynbands
+        n1 = bandrank * mynbands
         n2 = n1 + mynbands
 
         if kpt.eps_n is None:
             kpt.eps_n = np.empty(mynbands)
             
-        # Check and remove linear dependence for the current k-point
-        #if 0:#k in self.linear_kpts:
-        #    print '*Warning*: near linear dependence detected for k=%s' % k
-        #    P_MM, p_M = wfs.lcao_hamiltonian.linear_kpts[k]
-        #    eps_q, C2_nM = self.remove_linear_dependence(P_MM, p_M, H_MM)
-        #    kpt.C_nM[:] = C2_nM[n1:n2]
-        #    kpt.eps_n[:] = eps_q[n1:n2]
-        #else:
         if sl_diagonalize:
             assert mpi.parallel
             assert scalapack()
-            dsyev_zheev_string = 'LCAO: '+'pdsyevx/pzhegvx'
-        else:
-            dsyev_zheev_string = 'LCAO: '+'dsygv/zhegv'
 
         self.eps_n[0] = 42
+        
+        diagonalizationstring = self.diagonalizer.__class__.__name__
+        self.timer.start(diagonalizationstring)
 
-        self.timer.start(dsyev_zheev_string)
-        if extra_parameters.get('blacs'):
-            from gpaw.utilities.blacs import blacs_create, blacs_destroy
-            from gpaw.utilities.blacs import scalapack_redist
-            from gpaw.utilities.blacs import scalapack_diagonalize_ex
-            isreal = self.dtype == float
-            nao = self.H_MM.shape[1]
-            band_comm = self.band_comm
-            kpt_comm = self.kpt_comm
-            shiftks = kpt_comm.rank*B*self.gd.comm.size
-            c1_ranks = shiftks + np.arange(B)*self.gd.comm.size
-            c1 = self.world.new_communicator(c1_ranks)
-            d1 = blacs_create(c1, nao, nao, band_comm.size, 1,
-                              -((-nao) // band_comm.size), nao)
-            n, m, nb = sl_diagonalize[:3]
-            # n, m, nb = 2, 2, 64
-            c2_ranks = shiftks + np.arange(B*self.gd.comm.size)
-            c2 = self.world.new_communicator(c2_ranks)
-            d2 = blacs_create(c2, nao, nao, n, m, nb, nb)
-            self.S_MM = self.S_MM.copy("Fortran")
-            self.H_MM = self.H_MM.copy("Fortran")
-            S_MM = scalapack_redist(self.S_MM, d1, d2, isreal, c2, 0,0)
-            H_MM = scalapack_redist(self.H_MM, d1, d2, isreal, c2, 0,0)
-            
-            self.eps_n[:], H_MM = scalapack_diagonalize_ex(H_MM, d2,
-                                                           'L', S_MM)
-
-            d1b = blacs_create(c1, nao, nao, 1, band_comm.size, nao, mynbands)
-            
-            H_MM = scalapack_redist(H_MM, d2, d1b, isreal, c2, 0, 0)
-            blacs_destroy(d1b)
-            blacs_destroy(d2)
-            blacs_destroy(d1)
-            if H_MM is not None:
-                assert self.gd.comm.rank == 0
-                kpt.C_nM[:] = H_MM[:, :mynbands].T
-                wfs.bd.distribute(self.eps_n[:wfs.nbands], kpt.eps_n)
-            else:
-                assert self.gd.comm.rank != 0
-                
-            self.gd.comm.broadcast(kpt.C_nM, 0)
-            self.gd.comm.broadcast(kpt.eps_n, 0)
-
-        elif sl_diagonalize:
-            info = diagonalize(self.H_MM, self.eps_n, self.S_MM, root=0)
-            if info != 0:
-                raise RuntimeError('Failed to diagonalize: info=%d' % info)
-        else:
-            if self.gd.comm.rank == 0:
-                info = diagonalize(self.H_MM, self.eps_n, self.S_MM)
-                if info != 0:
-                    raise RuntimeError('Failed to diagonalize: info=%d' %
-                                       info)
-        self.timer.stop(dsyev_zheev_string)
+        info = self.diagonalizer.diagonalize(self.H_MM, self.S_MM, self.eps_n,
+                                             kpt)
+        if info != 0:
+            raise RuntimeError('Failed to diagonalize: info=%d' % info)
+        self.timer.stop(diagonalizationstring)
 
         if not extra_parameters.get('blacs'):
-            if b == 0:
+            if bandrank == 0:
                 self.gd.comm.broadcast(self.H_MM[:wfs.nbands], 0)
                 self.gd.comm.broadcast(self.eps_n[:wfs.nbands], 0)
             wfs.bd.distribute(self.H_MM[:wfs.nbands], kpt.C_nM)
@@ -181,109 +148,8 @@ class LCAO:
             P_ni.fill(117)
             gemm(1.0, kpt.P_aMi[a], kpt.C_nM, 0.0, P_ni, 'n')
 
-    def remove_linear_dependence(self, P_MM, p_M, H_MM):
-        """Diagonalize H_MM with a reduced overlap matrix from which the
-        linear dependent eigenvectors have been removed.
-
-        The eigenvectors P_MM of the overlap matrix S_mm which correspond
-        to eigenvalues p_M < thres are removed, thus producing a
-        q-dimensional subspace. The hamiltonian H_MM is also transformed into
-        H_qq and diagonalized. The transformation operator P_Mq looks like::
-
-                ------------m--------- ...
-                ---p---  ------q------ ...
-               +---------------------------
-               |
-           |   |
-           |   |
-           m   |
-           |   |
-           |   |
-             . |
-             .
-
-
-        """
-
-        s_q = np.extract(p_M > self.thres, p_M)
-        S_qq = np.diag(s_q)
-        S_qq = np.array(S_qq, self.dtype)
-        q = len(s_q)
-        p = self.nao - q
-        P_Mq = P_MM[p:, :].T.conj()
-
-        # Filling up the upper triangle
-        for M in range(self.nao - 1):
-            H_MM[M, m:] = H_MM[M:, M].conj()
-
-        H_qq = np.dot(P_Mq.T.conj(), np.dot(H_MM, P_Mq))
-
-        eps_q = np.zeros(q)
-
-        if sl_diagonalize:
-            assert mpi.parallel
-            dsyev_zheev_string = 'LCAO: '+'pdsyevx/pzhegvx remove'
-        else:
-            dsyev_zheev_string = 'LCAO: '+'dsygv/zhegv remove'
-
-        self.timer.start(dsyev_zheev_string)
-
-        if sl_diagonalize:
-            eps_q[0] = 42
-            info = diagonalize(H_qq, eps_q, S_qq, root=0)
-            assert eps_q[0] != 42
-            if info != 0:
-                raise RuntimeError('Failed to diagonalize: info=%d' % info)
-        else:
-            if self.gd.comm.rank == 0:
-                eps_q[0] = 42
-                info = diagonalize(H_qq, eps_q, S_qq)
-                assert eps_q[0] != 42
-                if info != 0:
-                    raise RuntimeError('Failed to diagonalize: info=%d' % info)
-
-        self.timer.stop(dsyev_zheev_string)
-
-        self.gd.comm.broadcast(eps_q, 0)
-        self.gd.comm.broadcast(H_qq, 0)
-
-        C_nq = H_qq
-        C_nM = np.dot(C_nq, P_Mq.T.conj())
-        return eps_q, C_nM
-
-    def linear_dependence_check(self, wfs):
-        # Near-linear dependence check. This is done by checking the
-        # eigenvalues of the overlap matrix S_kmm. Eigenvalues close
-        # to zero mean near-linear dependence in the basis-set.
-
-        assert not sl_diagonalize
-        self.linear_kpts = {}
-        for k, S_MM in enumerate(wfs.S_kMM):
-            P_MM = S_MM.copy()
-            #P_mm = wfs.S_kMM[k].copy()
-            p_M = np.empty(self.nao)
-
-            dsyev_zheev_string = 'LCAO: '+'diagonalize-test'
-
-            self.timer.start(dsyev_zheev_string)
-
-            if self.gd.comm.rank == 0:
-                p_M[0] = 42
-                info = diagonalize(P_MM, p_M)
-                assert p_M[0] != 42
-                if info != 0:
-                    raise RuntimeError('Failed to diagonalize: info=%d' % info)
-
-            self.timer.stop(dsyev_zheev_string)
-
-            self.gd.comm.broadcast(P_MM, 0)
-            self.gd.comm.broadcast(p_M, 0)
-
-            self.thres = 1e-6
-            if (p_M <= self.thres).any():
-                self.linear_kpts[k] = (P_MM, p_M)
-
     def estimate_memory(self, mem):
+        # XXX forward to diagonalizer
         itemsize = np.array(1, self.dtype).itemsize
         mem.subnode('H, work [2*MM]', self.nao * self.nao * itemsize)
 

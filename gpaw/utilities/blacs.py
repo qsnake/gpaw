@@ -22,14 +22,15 @@ import gpaw.mpi as mpi
 import _gpaw
 
 def blacs_create(comm_obj, m, n, nprow, npcol, mb, nb, order='R'):
+    sdf
     assert m > 0
     assert n > 0
-    assert nprow > 0 
+    assert nprow > 0
     assert npcol > 0
     assert len(order) == 1
-    assert order in ['C','c','R','r']
+    assert order in 'CcRr'
     if comm_obj is not None:
-        assert nprow*npcol <= comm_obj.size
+        assert nprow * npcol <= comm_obj.size
     assert 0 < mb <= m
     assert 0 < nb <= n
     return _gpaw.blacs_create(comm_obj, m, n, nprow, npcol, mb, nb, order)
@@ -38,7 +39,7 @@ def blacs_destroy(adesc):
     assert len(adesc) == 9
     _gpaw.blacs_destroy(adesc)
 
-def scalapack_redist(a_obj, adesc, bdesc, isreal, comm_obj=mpi.world, m=0, n=0):
+def scalapack_redist1(a_obj, adesc, bdesc, isreal, comm_obj=mpi.world, m=0, n=0):
     if a_obj is not None:
         assert a_obj.ndim == 2
         assert a_obj.dtype in [float, complex]
@@ -55,7 +56,7 @@ def scalapack_redist(a_obj, adesc, bdesc, isreal, comm_obj=mpi.world, m=0, n=0):
     assert (bdesc[2] == m) or (bdesc[2] == adesc[2])
     assert (bdesc[3] == n) or (bdesc[3] == adesc[3])
     # There is no simple may to check if adesc and bdesc are disjoint to comm_obj
-    return _gpaw.scalapack_redist(a_obj, adesc, bdesc, isreal, comm_obj, m, n)
+    return _gpaw.scalapack_redist1(a_obj, adesc, bdesc, isreal, comm_obj, m, n)
 
 def scalapack_diagonalize_dc(a_obj, adesc, uplo):
     if a_obj is not None:
@@ -90,10 +91,10 @@ def scalapack_inverse_cholesky(a_obj, adesc, uplo):
     assert uplo in ['U','L']
     _gpaw.scalapack_inverse_cholesky(a_obj, adesc, uplo)
     
-if not debug:
-    blacs_create = _gpaw.blacs_create
-    blacs_destroy = _gpaw.blacs_destroy
-    scalapack_redist = _gpaw.scalapack_redist
-    scalapack_diagonalize_dc = _gpaw.scalapack_diagonalize_dc
-    scalapack_diagonalize_ex = _gpaw.scalapack_diagonalize_ex
-    scalapack_inverse_cholesky = _gpaw.scalapack_inverse_cholesky
+#if not debug:
+#    blacs_create = _gpaw.blacs_create
+#    blacs_destroy = _gpaw.blacs_destroy
+#    scalapack_redist1 = _gpaw.scalapack_redist1
+#    scalapack_diagonalize_dc = _gpaw.scalapack_diagonalize_dc
+#    scalapack_diagonalize_ex = _gpaw.scalapack_diagonalize_ex
+#    scalapack_inverse_cholesky = _gpaw.scalapack_inverse_cholesky

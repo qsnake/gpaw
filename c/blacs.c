@@ -225,21 +225,294 @@ PyObject* blacs_create(PyObject *self, PyObject *args)
   return (PyObject*)desc_obj;
 }
 
+PyObject* new_blacs_context(PyObject *self, PyObject *args)
+{
+  PyObject* comm_obj;
+  int nprow, npcol;
+  //PyObject* buffer;
+
+  int iam, nprocs;
+  int ConTxt;
+  char order;
+  int myrow, mycol;
+
+  if (!PyArg_ParseTuple(args, "Oiic", &comm_obj, &nprow, &npcol, &order)){
+    return NULL;
+  }
+  //PyArrayObject* pyarray_buffer = (PyArrayObject*) buffer;
+  //int* data = buffer->data; // datatype?  32 bit?
+
+  // Create blacs grid on this communicator
+  MPI_Comm comm = ((MPIObject*)comm_obj)->comm;
+  
+  // Get my id and nprocs. This is for debugging purposes only
+  Cblacs_pinfo_(&iam, &nprocs);
+  MPI_Comm_size(comm, &nprocs);
+  // printf("iam=%d,nprocs=%d\n",iam,nprocs);
+  
+  // Create blacs grid on this communicator continued
+  ConTxt = Csys2blacs_handle(comm);
+  Cblacs_gridinit_(&ConTxt, &order, nprow, npcol);
+  // printf("ConTxt=%d,nprow=%d,npcol=%d\n",ConTxt,nprow,npcol);
+  //Cblacs_gridinfo_(ConTxt, &nprow, &npcol, &myrow, &mycol);
+  
+  //lld = numroc_(&m, &mb, &myrow, &rsrc, &nprow);
+  PyObject* returnvalue = Py_BuildValue("i", ConTxt);
+  return returnvalue;
+}
+
+PyObject* get_blacs_shape(PyObject *self, PyObject *args)
+{
+  int ConTxt;
+  int m, n, mb, nb, rsrc, csrc;
+  int nprow, npcol, myrow, mycol;
+  int locM, locN;
+
+  if (!PyArg_ParseTuple(args, "iiiiiii", &ConTxt, &m, &n, &mb, 
+			&nb, &rsrc, &csrc)){
+    return NULL;
+  }
+
+  Cblacs_gridinfo_(ConTxt, &nprow, &npcol, &myrow, &mycol);
+  locM = numroc_(&m, &mb, &myrow, &rsrc, &nprow);
+  locN = numroc_(&n, &nb, &mycol, &csrc, &npcol);
+  PyObject* returnvalue = Py_BuildValue("(ii)", locM, locN);
+  return returnvalue;
+}
+
+PyObject* blacs_create1(PyObject *self, PyObject *args)
+{
+  PyObject*  comm_obj;     // communicator
+  char order='R';
+  int m, n, nprow, npcol, mb, nb, lld;
+  int nprocs;
+  int ConTxt = -1;
+  int iam = 0;
+  int rsrc = 0;
+  int csrc = 0;
+  int myrow = -1;
+  int mycol = -1;
+  int desc[9];
+
+  npy_intp desc_dims[1] = {9};
+  PyArrayObject* desc_obj = (PyArrayObject*)PyArray_SimpleNew(1, desc_dims,
+                                                              NPY_INT);
+
+  if (!PyArg_ParseTuple(args, "Oiiiiii|c", &comm_obj, &m, &n, &nprow, &npcol,
+                        &mb, &nb, &order))
+    return NULL;
+
+  if (comm_obj == Py_None)
+    {
+      // SPECIAL CASE: Rank is not part of this communicator.
+      // ScaLAPACK documentation here is vague. It was empirically determined
+      // that the values of desc[1]-desc[5] are important for use with
+      // pdgemr2d routines. (otherwise, ScaLAPACK core dumps).
+      // PBLAS requires desc[0] == 1 | 2, even for an inactive context.
+      desc[0] = BLOCK_CYCLIC_2D;
+      desc[1] = -1; // Tells BLACS to ignore me.
+      desc[2] = m;
+      desc[3] = n;
+      desc[4] = mb;
+      desc[5] = nb;
+      desc[6] = 0;
+      desc[7] = 0;
+      desc[8] = 0;
+    }
+  else
+    {
+      // Create blacs grid on this communicator
+      MPI_Comm comm = ((MPIObject*)comm_obj)->comm;
+
+      // Get my id and nprocs. This is for debugging purposes only
+      Cblacs_pinfo_(&iam, &nprocs);
+      MPI_Comm_size(comm, &nprocs);
+      // printf("iam=%d,nprocs=%d\n",iam,nprocs);
+
+      // Create blacs grid on this communicator continued
+      ConTxt = Csys2blacs_handle(comm);
+      Cblacs_gridinit_(&ConTxt, &order, nprow, npcol);
+      // printf("ConTxt=%d,nprow=%d,npcol=%d\n",ConTxt,nprow,npcol);
+
+
+
+
+
+      Cblacs_gridinfo_(ConTxt, &nprow, &npcol, &myrow, &mycol);
+
+      lld = numroc_(&m, &mb, &myrow, &rsrc, &nprow);
+
+      desc[0] = BLOCK_CYCLIC_2D;
+      desc[1] = ConTxt;
+      desc[2] = m;
+      desc[3] = n;
+      desc[4] = mb;
+      desc[5] = nb;
+      desc[6] = 0;
+      desc[7] = 0;
+      desc[8] = MAX(0, lld);
+    }
+  memcpy(desc_obj->data, desc, 9*sizeof(int));
+
+  return (PyObject*)desc_obj;
+}
+
 PyObject* blacs_destroy(PyObject *self, PyObject *args)
 {
   PyArrayObject* adesc; //blacs descriptor
-
   if (!PyArg_ParseTuple(args, "O", &adesc))
     return NULL;
-
   int a_ConTxt = INTP(adesc)[1];
-
   if (a_ConTxt != -1) Cblacs_gridexit_(a_ConTxt);
+  Py_RETURN_NONE;
+}
 
+PyObject* blacs_destroy1(PyObject *self, PyObject *args)
+{
+  int ConTxt;
+
+  if (!PyArg_ParseTuple(args, "i", &ConTxt))
+    return NULL;
+
+  if (ConTxt != -1)
+    Cblacs_gridexit_(ConTxt);
   Py_RETURN_NONE;
 }
 
 PyObject* scalapack_redist(PyObject *self, PyObject *args)
+{
+  PyArrayObject* a_obj; //source matrix
+  PyArrayObject* b_obj; //destination matrix
+  PyArrayObject* adesc; //source descriptor
+  PyArrayObject* bdesc; //destination descriptor
+  PyObject* comm_obj = Py_None; //intermediate communicator, must
+                                // encompass adesc + bdesc
+  char order='R';
+  int nprocs;
+  int iam;
+  int c_ConTxt;
+  int isreal;
+  int m;
+  int n;
+  static int one = 1;
+
+  //if (!PyArg_ParseTuple(args, "OOOi|Oii", &a_obj, &adesc, &bdesc,
+  //                      &isreal, &comm_obj, &m, &n))
+  //  return NULL;
+
+  if (!PyArg_ParseTuple(args, "OOOOOiii", &adesc, &bdesc, &a_obj, &b_obj,
+                        &comm_obj, &m, &n, &isreal))
+    return NULL;
+
+  // adesc
+  /*
+  int a_mycol = -1;
+  int a_myrow = -1;
+  int a_nprow, a_npcol;
+  int a_ConTxt = INTP(adesc)[1];
+  int a_m = INTP(adesc)[2];
+  int a_n = INTP(adesc)[3];
+  int a_mb = INTP(adesc)[4];
+  int a_nb = INTP(adesc)[5];
+  int a_rsrc = INTP(adesc)[6];
+  int a_csrc = INTP(adesc)[7];
+  */
+  // If m and n not specified, redistribute all rows and columns of a.
+  //if ((m == 0) | (n == 0))
+  //  {
+  //    m = a_m;
+  //    n = a_n;
+  //  }
+
+  // bdesc
+  /*int b_mycol = -1;
+  int b_myrow = -1;
+  int b_nprow, b_npcol;
+  int b_ConTxt = INTP(bdesc)[1];
+  int b_m = INTP(bdesc)[2];
+  int b_n = INTP(bdesc)[3];
+  int b_mb = INTP(bdesc)[4];
+  int b_nb = INTP(bdesc)[5];
+  int b_rsrc = INTP(bdesc)[6];
+  int b_csrc = INTP(bdesc)[7];
+  */
+  // Get adesc and bdesc grid info
+  //Cblacs_gridinfo_(a_ConTxt, &a_nprow, &a_npcol,&a_myrow, &a_mycol);
+  //Cblacs_gridinfo_(b_ConTxt, &b_nprow, &b_npcol,&b_myrow, &b_mycol);
+
+  // It appears that the memory requirements for Cpdgemr2do are non-trivial.
+  // Consider A_loc, B_loc to be the local piece of the global array. Then
+  // to perform this operation you will need an extra A_loc, B_loc worth of
+  // memory.
+
+  //int b_locM = numroc_(&b_m, &b_mb, &b_myrow, &b_rsrc, &b_nprow);
+  //int b_locN = numroc_(&b_n, &b_nb, &b_mycol, &b_csrc, &b_npcol);
+
+  //if ((b_locM < 0) | (b_locN < 0))
+  //  {
+  //    b_locM = 0;
+  //    b_locN = 0;
+  //  }
+
+  // Make Fortran contiguous array, ScaLAPACK requires Fortran order arrays!
+  // Note there are some times when you can get away with C order arrays.
+  // Most notable example is a symmetric matrix stored on a square ConTxt.
+  //npy_intp b_dims[2] = {b_locM, b_locN};
+  //if(isreal)
+  //  b_obj = (PyArrayObject*)PyArray_EMPTY(2, b_dims,
+  //                                        NPY_DOUBLE,
+  //                                        NPY_F_CONTIGUOUS);
+  //else
+  //  b_obj = (PyArrayObject*)PyArray_EMPTY(2, b_dims,
+  //                                        NPY_CDOUBLE,
+  //                                        NPY_F_CONTIGUOUS);
+
+  // This should work for redistributing a_obj unto b_obj regardless of
+  // whether the ConTxt are overlapping. Cpdgemr2do is undocumented but can
+  // be understood by looking at the scalapack-1.8.0/REDIST/SRC/pdgemr.c.
+  // Cpdgemr2do creates another ConTxt which encompasses MPI_COMM_WORLD. It
+  // is used as an intermediary for copying between a_ConTxt and b_ConTxt.
+  // It then calls Cpdgemr2d which performs the actual redistribution.
+  //if (comm_obj == Py_None)
+  //  {
+  //    if(isreal)
+  //      Cpdgemr2do_(m, n, DOUBLEP(a_obj), one, one, INTP(adesc),
+  //                  DOUBLEP(b_obj), one, one, INTP(bdesc));
+  //    else
+  //      Cpzgemr2do_(m, n, (void*)COMPLEXP(a_obj), one, one, INTP(adesc),
+  //                  (void*)COMPLEXP(b_obj), one, one, INTP(bdesc));
+  //  }
+  //else
+  { //XXX remove braces
+      // Create intermediate blacs grid on this communicator
+      MPI_Comm comm = ((MPIObject*)comm_obj)->comm;
+      Cblacs_pinfo_(&iam, &nprocs);
+      MPI_Comm_size(comm, &nprocs);
+      c_ConTxt = Csys2blacs_handle(comm);
+      Cblacs_gridinit(&c_ConTxt, &order, 1, nprocs);
+      if(isreal)
+        Cpdgemr2d_(m, n, DOUBLEP(a_obj), one, one, INTP(adesc),
+                   DOUBLEP(b_obj), one, one, INTP(bdesc), c_ConTxt);
+      else
+        Cpzgemr2d_(m, n, (void*)COMPLEXP(a_obj), one, one, INTP(adesc),
+                   (void*)COMPLEXP(b_obj), one, one, INTP(bdesc), c_ConTxt);
+      Cblacs_gridexit(c_ConTxt);
+    }
+
+  // Note that we choose to return Py_None, instead of an empty array.
+  //if ((b_locM == 0) | (b_locN == 0))
+  //  {
+      //Py_DECREF(b_obj);
+  //    Py_RETURN_NONE;
+  //  }
+
+  //PyObject* value = Py_BuildValue("O",b_obj);
+  //Py_DECREF(b_obj);
+  //return value;
+  Py_RETURN_NONE;
+}
+
+PyObject* scalapack_redist1(PyObject *self, PyObject *args)
 {
   PyArrayObject* a_obj; //source matrix
   PyArrayObject* b_obj; //destination matrix
@@ -313,6 +586,7 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
   // Note there are some times when you can get away with C order arrays.
   // Most notable example is a symmetric matrix stored on a square ConTxt.
   npy_intp b_dims[2] = {b_locM, b_locN};
+  //int dtype = isreal ? NPY_DOUBLE : NP_CDOUBLE;
   if(isreal)
     b_obj = (PyArrayObject*)PyArray_EMPTY(2, b_dims,
                                           NPY_DOUBLE,
@@ -321,6 +595,9 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
     b_obj = (PyArrayObject*)PyArray_EMPTY(2, b_dims,
                                           NPY_CDOUBLE,
                                           NPY_F_CONTIGUOUS);
+
+  //b_obj = (PyArrayObject*)PyArray_EMPTY(2, b_dims, dtype, NPY_F_CONTIGUOUS);
+					
 
   // This should work for redistributing a_obj unto b_obj regardless of
   // whether the ConTxt are overlapping. Cpdgemr2do is undocumented but can
@@ -365,6 +642,7 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
   Py_DECREF(b_obj);
   return value;
 }
+
 
 PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args)
 {

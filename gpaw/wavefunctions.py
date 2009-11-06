@@ -936,6 +936,20 @@ class GridWaveFunctions(WaveFunctions):
         lcaobd = BandDescriptor(lcaonbands, self.band_comm, self.bd.strided)
         assert lcaobd.mynbands == lcaomynbands #XXX
 
+        from gpaw import sl_diagonalize
+        if extra_parameters.get('blacs'):
+            from gpaw.blacs import SLEXDiagonalizer
+            n, m, nb = sl_diagonalize[:3]
+
+            diagonalizer = SLEXDiagonalizer(self.world, self.kpt_comm, 
+                                            self.gd, lcaobd, n, m, nb)
+        elif sl_diagonalize:
+            from gpaw.lcao.eigensolver import SLDiagonalizer
+            diagonalizer = SLDiagonalizer()
+        else:
+            from gpaw.lcao.eigensolver import LapackDiagonalizer
+            diagonalizer = LapackDiagonalizer()
+
         lcaowfs = LCAOWaveFunctions(self.gd, self.nspins, self.nvalence,
                                     self.setups, lcaobd,
                                     self.dtype, self.world, self.kpt_comm,
@@ -945,8 +959,10 @@ class GridWaveFunctions(WaveFunctions):
         lcaowfs.timer = self.timer
         lcaowfs.set_positions(spos_ac)
         eigensolver = get_eigensolver('lcao', 'lcao')
-        eigensolver.initialize(self.kpt_comm, self.gd, self.band_comm, self.dtype,
-                               self.setups.nao, lcaomynbands, self.world)
+        eigensolver.initialize(self.kpt_comm, self.gd, self.band_comm, 
+                               self.dtype,
+                               self.setups.nao, lcaomynbands, self.world,
+                               diagonalizer)
         # XXX when density matrix is properly distributed, be sure to
         # update the density here also
         eigensolver.iterate(hamiltonian, lcaowfs)

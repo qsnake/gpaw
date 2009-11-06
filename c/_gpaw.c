@@ -67,8 +67,12 @@ PyObject* NewLFCObject(PyObject *self, PyObject *args);
 PyObject* compiled_WITH_SL(PyObject *self, PyObject *args);
 #if defined(GPAW_WITH_SL) && defined(PARALLEL)
 PyObject* blacs_create(PyObject *self, PyObject *args);
+PyObject* new_blacs_context(PyObject *self, PyObject *args);
+PyObject* get_blacs_shape(PyObject* self, PyObject *args);
 PyObject* blacs_destroy(PyObject *self, PyObject *args);
+PyObject* blacs_destroy1(PyObject *self, PyObject *args);
 PyObject* scalapack_redist(PyObject *self, PyObject *args);
+PyObject* scalapack_redist1(PyObject *self, PyObject *args);
 PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args);
 PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args);
 PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args);
@@ -132,8 +136,12 @@ static PyMethodDef functions[] = {
   */
 #if defined(GPAW_WITH_SL) && defined(PARALLEL)
   {"blacs_create",      blacs_create,      METH_VARARGS, NULL},
+  {"new_blacs_context", new_blacs_context, METH_VARARGS, NULL},
+  {"get_blacs_shape", get_blacs_shape, METH_VARARGS, NULL},
   {"blacs_destroy",     blacs_destroy,      METH_VARARGS, 0},
+  {"blacs_destroy1",     blacs_destroy1,      METH_VARARGS, 0},
   {"scalapack_redist",      scalapack_redist,     METH_VARARGS, 0},
+  {"scalapack_redist1",      scalapack_redist1,     METH_VARARGS, 0},
   {"scalapack_diagonalize_dc", scalapack_diagonalize_dc, METH_VARARGS, 0}, 
   {"scalapack_diagonalize_ex", scalapack_diagonalize_ex, METH_VARARGS, 0},
   {"scalapack_inverse_cholesky", scalapack_inverse_cholesky, METH_VARARGS, 0},
