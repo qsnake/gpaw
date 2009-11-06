@@ -311,7 +311,11 @@ class TestRunner:
 
     def fail(self, test, ranks, t0):
         if mpi.rank in ranks:
-            tb = traceback.format_exc()
+            if sys.version_info >= (2, 4, 0, 'final', 0):
+                tb = traceback.format_exc()
+            else:  # Python 2.3! XXX
+                tb = ''
+                traceback.print_exc()
         else:
             tb = ''
         if mpi.size == 1:
