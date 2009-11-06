@@ -10,7 +10,7 @@ import numpy as np
 from gpaw.atom.generator import Generator, parameters
 from gpaw.utilities import devnull
 from gpaw import setup_paths
-import gpaw.mpi as mpi
+from gpaw import mpi
 import gpaw
 
 
