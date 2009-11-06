@@ -42,8 +42,12 @@ can be obtained by running the following commands::
    $ mpirun -np 8 gpaw-python gpaw-test --debug --coverage counts.pickle
    $ python -m trace --report --missing --file counts.pickle --coverdir coverage
 
-The last command converts the pickled coverage information into individual
-``.cover`` files for each file in the GPAW code base. 
+To prevent excessive coverage generation, you can tell Trace_ to ignore all
+non-essential modules by including their respective paths in the ``IGNOREPATHS``
+environment variable. The last command converts the pickled coverage information
+``counts.pickle`` into individual ``.cover`` files for each file in the GPAW
+code base. You are now free to examine the obtained coverage information by
+inspecting ``coverage/gpaw.*.cover``.
 
 .. note::
 
