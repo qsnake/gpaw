@@ -14,12 +14,8 @@ def _err_exit(msg):
 def main(outfile, tests=None, testscript='test.py'):
     assert 'gpaw' not in sys.modules, 'GPAW must be unloaded first!'
 
-    home = os.environ['HOME']
-    ignore_dirs = [home]
-
-    #import ase
-    #ignore_dirs.extend(ase.__path__)
-    ignore_dirs.extend(np.__path__)
+    ignore_dirs = filter(len, os.getenv('IGNOREPATHS', default='').split(':'))
+    ignore_dirs.extend(np.__path__) # saves time
 
     try:
         # Trace module in Python 2.4 dislikes files without newline
@@ -138,7 +134,17 @@ if '--coverage' in sys.argv:
     sys.argv.pop(i)
     outfile = sys.argv.pop(i)
 
+    # Get full path of test script without importing GPAW ourself
+    import subprocess as subproc
+    poi = subproc.Popen('python -c "import gpaw; print gpaw.__path__[0]"', \
+        shell=True, stdout=subproc.PIPE)
+    testscript = poi.stdout.read().strip() + '/test/test.py'
+    assert poi.wait() == 0
+
+    print 'Coverage of script: %s' % testscript
+    assert os.path.isfile(testscript)
+
     # Perform coverage test
-    main(outfile, tests=[])
+    main(outfile, tests=[], testscript=testscript)
 else:
     import gpaw.test.test
