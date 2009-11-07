@@ -13,6 +13,7 @@ def err(msg):
 def main(outfile, tests=None, testscript='test.py'):
     assert 'gpaw' not in sys.modules, 'GPAW must be unloaded first!'
 
+    ignore_modules = []
     ignore_dirs = filter(len, os.getenv('IGNOREPATHS', default='').split(':'))
     ignore_dirs.extend(np.__path__) # saves time
 
@@ -23,8 +24,6 @@ def main(outfile, tests=None, testscript='test.py'):
         ignore_dirs.extend(scipy.__path__)
     except ImportError:
         pass
-
-    ignore_modules = []
 
     # Temporary file and directory for coverage results on this core
     coverfile = tempfile.mktemp(prefix='gpaw-coverfile-')
@@ -56,24 +55,26 @@ def main(outfile, tests=None, testscript='test.py'):
     mycounts = pickle.load(open(coverfile, 'rb'))[0]
     if mpi.world.rank == 0:
         _key = ('<string>',-1,) # entries with filename <string> are ignored
+        _value = np.fromstring(version, sep='.', dtype=int)
+        _v = lambda v, sep='.': sep.join(map(str,v))
         if os.path.isfile(outfile):
             print 'Resuming existing coverage file ...'
             counts, calledfuncs, callers = pickle.load(open(outfile, 'rb'))
             assert not calledfuncs and not callers # should both be empty
             try:
-                assert counts[_key] == version, (counts[_key], version)
+                assert np.all(counts[_key]==_value), (_v(counts[_key]),version)
             except KeyError:
                 err('Coverage file has no version. %s was assumed.' % version)
-                counts[_key] = version
+                counts[_key] = _value
             except AssertionError, e:
                 if e[0] > e[1]: # trying to overwrite newer should fail
                     err('Coverage file version %s (> %s). Aborting.' % e[:])
                     sys.exit(1)
                 err('Coverage file version %s (< %s). Data discarded.' % e[:])
-                counts = {_key: version}
+                counts = {_key: _value}
         else:
             print 'Initiating new coverage file ...'
-            counts = {_key: version}
+            counts = {_key: _value}
 
     if mpi.world.size == 1:
         # Merge generated cover file with existing (if any)
@@ -134,9 +135,9 @@ if '--coverage' in sys.argv:
     outfile = sys.argv.pop(i)
 
     # Get full path of test script without importing GPAW ourself
-    import subprocess as subproc
-    poi = subproc.Popen('python -c "import gpaw; print gpaw.__path__[0]"', \
-        shell=True, stdout=subproc.PIPE)
+    import subprocess
+    poi = subprocess.Popen('python -c "import gpaw; print gpaw.__path__[0]"', \
+        shell=True, stdout=subprocess.PIPE)
     testscript = poi.stdout.read().strip() + '/test/test.py'
     if poi.wait() != 0 or not os.path.isfile(testscript):
         raise RuntimeError('Could not locate test script (%s).' % testscript)

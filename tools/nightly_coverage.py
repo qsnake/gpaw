@@ -4,19 +4,16 @@ import os
 import sys
 import re
 import time
+import glob
 import tempfile
 import numpy as np
-import subprocess as subproc
 
-from glob import glob
+from subprocess import Popen, PIPE
+from trace import pickle
 try:
     from cStringIO import StringIO
 except ImportError:
     from StringIO import StringIO
-
-from gpaw.version import version
-from gpaw.svnrevision import svnrevision
-from gpaw.utilities import devnull
 
 def CoverageFilter(url, coverage, filtering, output):
     """Filter a coverage file through 'grep -n >>>>>>' and an inlined
@@ -33,7 +30,7 @@ def CoverageFilter(url, coverage, filtering, output):
     la = lb = filtering
     if not isinstance(output, str):
         output.flush() # preserve temporal ordering by flushing pipe
-        poi = subproc.Popen('grep -A%d -B%d -n ">>>>>>" "%s" | sed -rf "%s"' \
+        poi = Popen('grep -A%d -B%d -n ">>>>>>" "%s" | sed -rf "%s"' \
             % (la,lb,coverage,sedname), shell=True, stdout=output)
         assert poi.wait() == 0
     elif os.system('grep -A%d -B%d -n ">>>>>>" "%s" | sed -rf "%s" > "%s"' \
@@ -62,8 +59,8 @@ class CoverageParser:
             return lambda: 0, open(covername, 'r')
         else:
             la = lb = filtering
-            poi = subproc.Popen('grep -A%d -B%d -n ">>>>>>" "%s"' \
-                % (la,lb,covername), shell=True, stdout=subproc.PIPE)
+            poi = Popen('grep -A%d -B%d -n ">>>>>>" "%s"' \
+                % (la,lb,covername), shell=True, stdout=PIPE)
             return poi.wait, poi.stdout
 
     def digest(self, pattern, replace, add=False):
@@ -176,29 +173,78 @@ class TableIO: # we can't subclass cStringIO.StringIO
 
 # -------------------------------------------------------------------
 
-#XXX
-# gpaw-test --debug --coverage counts.pickle
-# mpirun -np 2 gpaw-python gpaw-test --debug --coverage counts.pickle
-# mpirun -np 4 gpaw-python gpaw-test --debug --coverage counts.pickle
-# mpirun -np 8 gpaw-python gpaw-test --debug --coverage counts.pickle
+#XXX beginning of near-verbatim copy/paste from nightly_test_parallel.py
 
-#if os.path.isfile('counts.pickle'):
-#    os.path.remove('counts.pickle')
+def fail(subject, filename='/dev/null'):
+    assert os.system('mail -s "%s" s032082@fysik.dtu.dk < %s' %
+                     (subject, filename)) == 0
+    raise SystemExit
 
-for ncores in [1,2,4,8]:
-    # os.system('mpirun -np %d gpaw-python gpaw-test --debug --coverage counts.pickle' % ncores)
-    if not os.path.isfile('counts.pickle'):
-        raise IOError('ERROR: No coverage file generated!')
+tmpdir = tempfile.mkdtemp(prefix='gpaw-coverage-')
+os.chdir(tmpdir)
 
-# python -m trace --report --file counts.pickle --coverdir coverage --missing
+# Get SVN revision number, checkout a fresh version and install:
+svnbase = 'https://svn.fysik.dtu.dk/projects/gpaw/trunk'
+poi = Popen('svn info "%s" | grep Revision' % svnbase, shell=True, stdout=PIPE)
+svnrevision = re.match('^Revision:[ \t]*([0-9]+)$', poi.stdout.read()).group(1)
+if poi.wait() != 0 or os.system('svn export "%s" gpaw' % svnbase) != 0:
+    fail('Checkout of GPAW failed!')
+if os.system('svn export https://svn.fysik.dtu.dk/projects/ase/trunk ase') != 0:
+    fail('Checkout of ASE failed!')
+
+os.chdir('gpaw')
+if os.system('source /home/camp/modulefiles.sh&& ' +
+             'module load NUMPY&& ' +
+             'python setup.py --remove-default-flags ' +
+             '--customize=doc/install/Linux/Niflheim/customize-thul-acml.py ' +
+             'install --home=%s 2>&1 | ' % tmpdir +
+             'grep -v "c/libxc/src"') != 0:
+    fail('Installation failed!')
+
+os.system('mv ../ase/ase ../lib64/python')
+
+os.system('wget --no-check-certificate --quiet ' +
+          'http://wiki.fysik.dtu.dk/stuff/gpaw-setups-latest.tar.gz')
+os.system('tar xvzf gpaw-setups-latest.tar.gz')
+setups = tmpdir + '/gpaw/' + glob.glob('gpaw-setups-[0-9]*')[0]
+
+# Repeatedly run test-suite in code coverage mode:
+args = '--debug --coverage counts.pickle'
+for cpus in [1,2,4,8]:
+    open('counts.out', 'a').write('\n\nRunning on %d cores ...\n' % cpus)
+    if os.system('source /home/camp/modulefiles.sh; ' +
+                 'module load NUMPY; ' +
+                 'module load openmpi/1.3.3-1.el5.fys.gfortran43.4.3.2; ' +
+                 'export PYTHONPATH=%s/lib64/python:$PYTHONPATH; ' % tmpdir +
+                 'export GPAW_SETUP_PATH=%s; ' % setups +
+                 'export IGNOREPATHS=%s; ' % os.getenv('HOME') +
+                 'mpiexec -np %d ' % cpus +
+                 tmpdir + '/bin/gpaw-python ' +
+                 'tools/gpaw-test %s >>counts.out 2>&1' % args) != 0 \
+        or not os.path.isfile('counts.pickle'):
+        fail('Test coverage failed!', 'counts.out')
+
+#XXX ending of near-verbatim copy/paste from nightly_test_parallel.py
 
 # -------------------------------------------------------------------
 
-svnbase = 'https://svn.fysik.dtu.dk/projects/gpaw/trunk'
-urlbase = 'https://trac.fysik.dtu.dk/projects/gpaw/browser/trunk'
-indexname = 'coverage/index.rst'
-tablename = 'coverage/summary.rst'
-tod = time.strftime('%d/%m-%Y')
+# Parse version of pickled coverage information to get SVN revision right
+_key = ('<string>',-1)
+_value = pickle.load(open('counts.pickle', 'rb'))[0].get(_key)
+_v = lambda v, sep='.': sep.join(map(str,v))
+version = _v(_value)
+if len(_value) == 2:
+    version += '.%s' % svnrevision
+elif len(_value) == 3:
+    assert version.split('.')[-1] == svnrevision, (version,svnrevision,)
+else:
+    fail('Coverage file incompatible!', 'counts.out')
+
+# Convert pickled coverage information to .cover files with clear text
+if os.system('PYTHONPATH=%s/lib64/python:$PYTHONPATH %s -m trace --report' \
+    ' --missing --file counts.pickle --coverdir coverage >>counts.out 2>&1' \
+    % (tmpdir,sys.executable)) != 0:
+    fail('Coverage conversion failed!', 'counts.out')
 
 # Initialize pipes as tables for various categories
 limits = np.array([0, 0.5, 0.9, 1.0, np.inf])
@@ -216,6 +262,12 @@ for category in categories:
                      'Executions', 'Average'))
     pipes.append(pipe)
 
+
+urlbase = 'https://trac.fysik.dtu.dk/projects/gpaw/browser/trunk'
+indexname = 'coverage/index.rst'
+tablename = 'coverage/summary.rst'
+devnull = open('/dev/null', 'w', buffering=0)
+
 # Generate a toctree with an alphabetical list of files
 f = open(indexname, 'w')
 f.write("""
@@ -229,20 +281,19 @@ List of files with missing coverage
 
 """)
 
-for covername in sorted(glob('coverage/gpaw.*.cover')):
-    rstname = covername[:-len('.cover')]+'.rst'
-    refname = rstname[len('coverage/'):-len('.rst')]
-    print 'cover: ', covername, '->', rstname
-
-    filename = covername[len('coverage/'):-len('.cover')].replace('.','/')+'.py'
+namefilt = re.compile('coverage/(gpaw\..*)\.cover')
+for covername in sorted(glob.glob('coverage/gpaw.*.cover')):
+    refname = namefilt.match(covername).group(1)
+    rstname = 'coverage/' + refname + '.rst'
+    print 'cover:', covername, '->', rstname, 'as :ref:`%s`' % refname
+    filename = refname.replace('.','/')+'.py' # unmangle paths
     fileurl = '%s/%s?rev=%s' % (urlbase,filename,svnrevision)
     filelink = (':ref:`%s <%s>`' % (filename,refname)).ljust(l_filelink)
 
     # Tally up how many developers have contributed to the file and by how much
     patn = '^[ \t*]*[0-9]+[ \t]+([^ \t]+)[ \t]+.*$'
-    poi = subproc.Popen('svn praise --revision %s "%s/%s" | sed -r ' \
-        '"/%s/!d; s/%s/\\1/g"' % (svnrevision,svnbase,filename,patn,patn), \
-        shell=True, stdout=subproc.PIPE)
+    poi = Popen('svn praise -r %s "%s/%s" | sed -r "/%s/!d; s/%s/\\1/g"' \
+        % (svnrevision,svnbase,filename,patn,patn), shell=True, stdout=PIPE)
     owners = np.array(poi.stdout.readlines())
     assert poi.wait() == 0
     devels = np.unique(owners)
@@ -252,7 +303,6 @@ for covername in sorted(glob('coverage/gpaw.*.cover')):
     p.write_to_stream(devnull)
 
     # Skip files which are fully covered, i.e. have no ">>>>>>"
-    #if os.system('grep -q ">>>>>>" "%s"' % covername):
     if p.nos == 0:
         continue
     elif p.nom == 0:
@@ -274,7 +324,7 @@ for covername in sorted(glob('coverage/gpaw.*.cover')):
     header.add_section('=', 'Coverage of %s' % filename)
     header.add_heading()
     header.add_row('GPAW version:', version)
-    header.add_row('Date of compilation:', tod)
+    header.add_row('Date of compilation:', time.strftime('%d/%m-%Y'))
     header.add_row('Coverage category:', categories[c])
     header.add_row('Number of lines (NOL):', p.nol)
     header.add_row('Number of statements (NOS):', p.nos)
@@ -325,4 +375,11 @@ for pipe in pipes:
     pipe.write_to_stream(h)
 h.close()
 
-os.system('tar cvzf gpaw-coverage-%s.tar.gz coverage/*.rst' % version)
+if os.system('tar cvzf gpaw-coverage-%s.tar.gz coverage/*.rst' % version) == 0:
+    home = os.getenv('HOME')
+    try:
+        os.mkdir(home + '/sphinx')
+    except OSError:
+        pass
+    assert os.system('cp gpaw-coverage-%s.tar.gz ' \
+        '"%s/sphinx/gpaw-coverage-latest.tar.gz"' % (version,home)) == 0
