@@ -38,9 +38,10 @@ atoms.set_calculator(
                            lead_restart=False,
                            scat_restart=False,
                            edge_atoms=[[0, 3], [0, 11]], 
+                           analysis_data_list=['tc'],
                            data_file='Pt_H2_nsc.dat',
                            non_sc=True))
 t = atoms.calc
-t.set_energies(np.linspace(-3, 3, 61))
+t.set_energies(np.linspace(-5, 3, 201))
 t.negf_prepare()
 t.non_sc_analysis()
