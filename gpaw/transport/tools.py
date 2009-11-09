@@ -1394,7 +1394,7 @@ def interpolate_2d(mat):
     interpolator.apply(bmat, fine_bmat)
     return fine_bmat[0]
     
-def interpolate_array(array, gd, h, di=0):
+def interpolate_array(array, gd, h, di='+'):
     try:
         from scipy import interpolate
         ip = True
@@ -1407,19 +1407,19 @@ def interpolate_array(array, gd, h, di=0):
     assert dim == 3 or dim == 4
     spin_relate = dim == 4
     if h <= gd.h_c[2]:
-        if di == 0:
+        if di == '+':
             x = np.arange(gd.N_c[2]) * gd.h_c[2]
             xnew = np.arange(gd.N_c[2]) * h
         else:
-            x = -np.arange(gd.N_c[2], 0) * gd.h_c[2]
-            xnew = -np.arange(gd.N_c[2], 0) * h            
+            x = np.arange(-gd.N_c[2], 0) * gd.h_c[2]
+            xnew = np.arange(-gd.N_c[2], 0) * h            
     else:
-        if di == 0:
+        if di == '+':
             x = np.arange(gd.N_c[2] * 2) * gd.h_c[2]
             xnew = np.arange(gd.N_c[2]) * h
         else:
-            x = -np.arange(gd.N_c[2] * 2, 0) * gd.h_c[2]
-            xnew = -np.arange(gd.N_c[2], 0) * h         
+            x = np.arange(-gd.N_c[2] * 2, 0) * gd.h_c[2]
+            xnew = -np.arange(-gd.N_c[2], 0) * h         
         
     if spin_relate:
         ns, nx, ny, nz = array.shape
