@@ -91,13 +91,13 @@ class Side:
            
             h = self.h_cz / 2.
             
-            self.boundary_vHt_g = interpolate_array(self.boundary_vHt_g, finegd, h)
-            vt_sg = interpolate_array(vt_sg, finegd, h)
+            self.boundary_vHt_g = interpolate_array(self.boundary_vHt_g, finegd, h, self.direction)
+            vt_sg = interpolate_array(vt_sg, finegd, h, self.direction)
             self.boundary_vt_sg_line =  aa1d(vt_sg)            
             #self.boundary_vt_sg_line = interpolate_array(
             #                                    self.boundary_vt_sg_line, finegd, h)            
-            self.boundary_nt_sg = interpolate_array(self.boundary_nt_sg, finegd, h)
-            rhot_g = interpolate_array(rhot_g, finegd, h)
+            self.boundary_nt_sg = interpolate_array(self.boundary_nt_sg, finegd, h, self.direction)
+            rhot_g = interpolate_array(rhot_g, finegd, h, self.direction)
             self.boundary_rhot_g_line = aa1d(rhot_g)
             #self.boundary_rhot_g_line = interpolate_array(
             #                                    self.boundary_rhot_g_line, finegd,  h)            
@@ -105,8 +105,8 @@ class Side:
             h *= 2
             self.boundary_vt_sG = self.slice(nn, vt_sG)
             self.boundary_nt_sG = self.slice(nn, nt_sG)
-            self.boundary_vt_sG = interpolate_array(self.boundary_vt_sG, gd, h)            
-            self.boundary_nt_sG = interpolate_array(self.boundary_nt_sG, gd, h)            
+            self.boundary_vt_sG = interpolate_array(self.boundary_vt_sG, gd, h, self.direction)            
+            self.boundary_nt_sG = interpolate_array(self.boundary_nt_sG, gd, h, self.direction)            
         
         self.D_asp = collect_D_asp(calc.density)
         self.dH_asp = collect_D_asp3(calc.hamiltonian)
