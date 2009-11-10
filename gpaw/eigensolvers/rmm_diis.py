@@ -34,13 +34,11 @@ class RMM_DIIS(Eigensolver):
 
         self.subspace_diagonalize(hamiltonian, wfs, kpt)
 
-        self.timer.start('Residuals')
+        self.timer.start('RMM-DIIS')
         if self.keep_htpsit:
             R_nG = self.Htpsit_nG
             self.calculate_residuals2(wfs, hamiltonian, kpt, R_nG)
-        self.timer.stop('Residuals')
 
-        self.timer.start('RMM-DIIS')
         vt_G = hamiltonian.vt_sG[kpt.s]
         dR_G = wfs.overlap.operator.work1_xG[0] # XXX presumptuous, but works
         error = 0.0
@@ -72,7 +70,9 @@ class RMM_DIIS(Eigensolver):
                 error += weight * np.vdot(R_G, R_G).real
 
             # Precondition the residual:
+            self.timer.start('precondition')
             pR_G = self.preconditioner(R_G, kpt.phase_cd, kpt.psit_nG[n1])
+            self.timer.stop('precondition')
 
             # Calculate the residual of pR_G, dR_G = (H - e S) pR_G:
             self.calculate_residuals(wfs, hamiltonian, kpt, kpt.eps_n[n1:n2],
@@ -91,8 +91,10 @@ class RMM_DIIS(Eigensolver):
             #                      = psi_G + p(2 lam R_G + lam**2 dR_G)
             R_G *= 2.0 * lam
             axpy(lam**2, dR_G, R_G)  # R_G += lam**2 * dR_G
+            self.timer.start('precondition')
             kpt.psit_nG[n1:n2] += self.preconditioner(R_G, kpt.phase_cd,
                                                       kpt.psit_nG[n1])
+            self.timer.stop('precondition')
             
         self.timer.stop('RMM-DIIS')
         error = self.gd.comm.sum(error)
