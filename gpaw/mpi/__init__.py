@@ -318,7 +318,7 @@ def receive_string(rank, comm=world):
     comm.receive(string, rank)
     return string.tostring()
 
-def ibarrier(timeout=None, root=0, comm=world):
+def ibarrier(timeout=None, root=0, tag=123, comm=world):
     """Non-blocking barrier returning a list of requests to wait for.
     An optional time-out may be given, turning the call into a blocking
     barrier with an upper time limit, beyond which an exception is raised."""
@@ -327,12 +327,12 @@ def ibarrier(timeout=None, root=0, comm=world):
     if comm.rank == root:
         for rank in range(0,root) + range(root+1,comm.size): #everybody else
             rbuf, sbuf = np.empty_like(byte), byte.copy()
-            requests.append(comm.send(sbuf, rank, tag=420, block=False))
-            requests.append(comm.receive(rbuf, rank, tag=421, block=False))
+            requests.append(comm.send(sbuf, rank, tag=2*tag+0, block=False))
+            requests.append(comm.receive(rbuf, rank, tag=2*tag+1, block=False))
     else:
         rbuf, sbuf = np.empty_like(byte), byte
-        requests.append(comm.receive(rbuf, root, tag=420, block=False))
-        requests.append(comm.send(sbuf, root, tag=421, block=False))
+        requests.append(comm.receive(rbuf, root, tag=2*tag+0, block=False))
+        requests.append(comm.send(sbuf, root, tag=2*tag+1, block=False))
 
     if comm.size == 1 or timeout is None:
         return requests
@@ -341,6 +341,7 @@ def ibarrier(timeout=None, root=0, comm=world):
     while not comm.testall(requests): # automatic clean-up upon success
         if time.time()-t0 > timeout:
             raise RuntimeError('MPI barrier timeout.')
+    return []
 
 def all_gather_array(comm, a): #???
     # Gather array into flat array
