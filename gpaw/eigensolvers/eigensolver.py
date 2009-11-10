@@ -160,21 +160,21 @@ class Eigensolver:
         dH_aii = dict([(a, unpack(dH_sp[kpt.s]))
                        for a, dH_sp in hamiltonian.dH_asp.items()])
 
-        self.timer.start('Subspace diag: calc_matrix')
+        self.timer.start('calc_matrix')
         if hamiltonian.xc.xcfunc.hybrid == 0.0:
             H_nn = self.operator.calculate_matrix_elements(psit_nG, P_ani,
                                                            H, dH_aii)
         else:
             H_nn = hamiltonian.xc.xcfunc.exx.grr(wfs, kpt, Htpsit_xG,
                                                  hamiltonian)
-        self.timer.stop('Subspace diag: calc_matrix')
+        self.timer.stop('calc_matrix')
 
         if sl_diagonalize:
             assert parallel
             assert scalapack()
-            dsyev_zheev_string = 'Subspace diag: ' + 'pdsyevd/pzheevd'
+            dsyev_zheev_string = 'pdsyevd/pzheevd'
         else:
-            dsyev_zheev_string = 'Subspace diag: ' + 'dsyev/zheev'
+            dsyev_zheev_string = 'dsyev/zheev'
 
         self.timer.start(dsyev_zheev_string)
         if sl_diagonalize:
@@ -202,11 +202,11 @@ class Eigensolver:
             self.timer.stop('Subspace diag')
             return
 
-        self.timer.start('Subspace diag: rotate_psi')
+        self.timer.start('rotate_psi')
         kpt.psit_nG = self.operator.matrix_multiply(U_nn, psit_nG, P_ani)
         if self.keep_htpsit:
             self.Htpsit_nG = self.operator.matrix_multiply(U_nn, Htpsit_xG)
-        self.timer.stop('Subspace diag: rotate_psi')
+        self.timer.stop('rotate_psi')
 
         # Rotate EXX related stuff
         if hamiltonian.xc.xcfunc.hybrid > 0.0:

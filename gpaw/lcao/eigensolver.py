@@ -71,12 +71,12 @@ class LCAO:
             self.timer = wfs.timer
             #self.linear_dependence_check(wfs)
 
-        self.timer.start('LCAO: potential matrix')
+        self.timer.start('potential matrix')
 
         wfs.basis_functions.calculate_potential_matrix(hamiltonian.vt_sG[s],
                                                        self.H_MM, q)
 
-        self.timer.stop('LCAO: potential matrix')
+        self.timer.stop('potential matrix')
 
         # Add atomic contribution
         #

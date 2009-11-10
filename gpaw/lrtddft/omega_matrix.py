@@ -255,7 +255,7 @@ class OmegaMatrix:
                 timer2.stop()
                     
             timer.stop()
-            t0 = timer.gettime('init')
+            t0 = timer.get_time('init')
             timer.start(ij)
             
             for kq in range(ij,nij):
@@ -351,7 +351,7 @@ class OmegaMatrix:
             timer.stop()
 ##            timer2.write()
             if ij < (nij-1):
-                t = timer.gettime(ij) # time for nij-ij calculations
+                t = timer.get_time(ij) # time for nij-ij calculations
                 t = .5*t*(nij-ij)  # estimated time for n*(n+1)/2, n=nij-(ij+1)
                 print >> self.txt,'XC estimated time left',\
                       self.timestring(t0*(nij-ij-1)+t)
@@ -392,7 +392,7 @@ class OmegaMatrix:
             timer2.stop()
 
             timer.stop()
-            t0 = timer.gettime('init')
+            t0 = timer.get_time('init')
             timer.start(ij)
 
             if finegrid == 1:
@@ -450,7 +450,7 @@ class OmegaMatrix:
             timer.stop()
 ##            timer2.write()
             if ij < (nij-1):
-                t = timer.gettime(ij) # time for nij-ij calculations
+                t = timer.get_time(ij) # time for nij-ij calculations
                 t = .5*t*(nij-ij)  # estimated time for n*(n+1)/2, n=nij-(ij+1)
                 print >> self.txt,'RPA estimated time left',\
                       self.timestring(t0*(nij-ij-1)+t)

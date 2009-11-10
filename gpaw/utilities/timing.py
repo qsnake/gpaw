@@ -81,97 +81,65 @@ class Timer:
         self.running = []
         
     def start(self, name):
-        self.timers[name] = self.timers.get(name, 0.0) - time.time()
+        names = tuple(self.running + [name])
+        self.timers[names] = self.timers.get(names, 0.0) - time.time()
         self.running.append(name)
         
     def stop(self, name=None):
         if name is None: name = self.running[-1]
+        names = tuple(self.running)
         if name != self.running.pop():
             raise RuntimeError
-        self.timers[name] += time.time()
+        self.timers[names] += time.time()
             
-    def gettime(self, name):
-        t = self.timers[name]
-        assert t > 0.0
-        return t
-
-    def reset(self):
-        """Reset all timers"""
-        for name in self.timers:
-            if self.timers[name] < 0.0:
-                self.timers[name] = -time.time()
-            else:
-                self.timers[name] = 0.0
+    def get_time(self, *names):
+        print self.timers, names
+        return self.timers[names]
                 
     def write(self, out=sys.stdout):
         while self.running:
             self.stop()
         if len(self.timers) == 0:
             return
-        print >> out
-        print >> out, 'Timing:'
-        print >> out, '-' * 60
+
         t0 = time.time()
         tot = t0 - self.t0
-        n = max([len(name) for name in self.timers]) + 1
-        names_and_times = self.timers.items()
-        names_and_times.sort()
 
-        ## Reformat names
-        lastname = []
-        level = 0
-        n_and_t = []
-        n = 0
-        for name, t in names_and_times:
-            fullname = name
-            if len(lastname) > 0:
-                for lname in lastname[::-1]: 
-                    if name.startswith(lname):
-                        level += 1
-                        name = level * ' |' + '-' + name[len(lname) + 1:].strip()
-                        break
-                    else:
-                        del lastname[-1]
-                        if level > 0:
-                            level -= 1
-            lastname.append(fullname) 
-            n_and_t.append( (name, t) )
-            n = max([n, len(name) + 1])
-        names_and_times = n_and_t
-        #done
-
-        for name, t in names_and_times:
-            if t < 0.0:
-                t += t0
+        out.write('\nTiming:\n%s\n' % ('=' * 60))
+        n = max([len(names[-1]) + len(names) for names in self.timers]) + 1
+        data = self.timers.items()
+        data.sort()
+        for names, t in data:
             r = t / tot
             p = 100 * r
             i = int(50 * r + 0.5)
             if i == 0:
                 bar = '|'
             else:
-                bar = '|%s|' % ('=' * (i - 1))
-            print >> out, '%-*s%9.3f %5.1f%% %s' % (n, name + ':', t, p, bar)
-        print >> out, '-' * 60
-        print >> out, '%-*s%9.3f' % (n, 'Total' + ':', tot)
-        print >> out
-        print >> out, 'date:', time.asctime()
+                bar = '|%s|' % ('-' * (i - 1))
+            w = len(names) - 1
+            name = w * ' ' + names[-1] + ':'
+            out.write('%-*s%9.3f %5.1f%% %s\n' % (n, name, t, p, bar))
+        out.write('%s\n' % ('=' * 60))
+        out.write('%-*s%9.3f\n' % (n, 'Total:', tot))
+        out.write('%s\n' % ('=' * 60))
+        out.write('date: %s\n' % time.asctime())
                 
     def add(self, timer):
         for name, t in timer.timers.items():
             self.timers[name] = self.timers.get(name, 0.0) + t
 
 
-class NullTimer(Timer):
+class NullTimer:
     """Compatible with Timer and StepTimer interfaces.  Does nothing."""
     def __init__(self): pass
     def start(self, name): pass
     def stop(self, name=None): pass
     def gettime(self, name):
         return 0.0
-    def reset(self): pass
     def write(self, out=sys.stdout): pass
-    def add(self, timer): pass
     def write_now(self, mark=''): pass
+    def add(self, timer): pass
 
 
 nulltimer = NullTimer()
@@ -262,7 +230,7 @@ class HPMTimer(Timer):
         self.stop('PAW_calc')
         Timer.write(self, out)
 
-class CrayPAT_timer(Timer):
+class CrayPAT_timer:
     """Interface to CrayPAT API. In addition to regular timers,
     the corresponding regions are profiled by CrayPAT. The gpaw-python has
     to be compiled under CrayPAT.

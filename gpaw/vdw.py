@@ -19,6 +19,7 @@ from math import sin, cos, exp, pi, log, sqrt, ceil
 import numpy as np
 from numpy.fft import fftn, fftfreq, fft, ifftn
 
+from gpaw.utilities.timing import nulltimer
 from gpaw.xc_functional import XCFunctional
 from gpaw.fd_operators import Gradient
 from gpaw import setup_paths
@@ -148,6 +149,7 @@ class VDWFunctional:
 
         self.gd = None
         self.energy_only = False
+        self.timer = nulltimer
         
     def set_grid_descriptor(self, gd):
         if not gd.orthogonal:
@@ -159,6 +161,7 @@ class VDWFunctional:
                              energy_only=False):
         self.set_grid_descriptor(density.finegd)
         self.energy_only = energy_only
+        self.timer = wfs.timer
         
     def is_gllb(self):
         return False
@@ -626,6 +629,7 @@ class FFTVDWFunctional(VDWFunctional):
     def calculate_6d_integral(self, n_g, q0_g,
                               a2_g=None, e_LDAc_g=None, v_LDAc_g=None,
                               v_g=None, deda2_g=None):
+        self.timer.start('VdW-DF integral')
         if self.C_aip is None:
             self.construct_cubic_splines()
             self.construct_fourier_transformed_kernels()
@@ -654,8 +658,10 @@ class FFTVDWFunctional(VDWFunctional):
                     (C_pg[1] + dq0_g *
                      (C_pg[2] + dq0_g * C_pg[3])))
             del C_pg
+            self.timer.start('FFT')
             theta_ak[a] = fftn(n_g * pa_g, self.shape).copy()
-
+            self.timer.stop()
+            
             if not self.energy_only:
                 p_ag[a] = pa_g
             del pa_g
@@ -678,17 +684,21 @@ class FFTVDWFunctional(VDWFunctional):
             ranka = a * world.size // N
             Fa_k = np.zeros(self.shape, complex)
             for b in self.alphas:
+                self.timer.start('Convolution')
                 _gpaw.vdw2(self.phi_aajp[a, b], self.j_k, dj_k,
                            theta_ak[b], Fa_k)
-
+                self.timer.stop()
+                
             self.world.sum(Fa_k, ranka)
             if world.rank == ranka:
                 energy += np.vdot(theta_ak[a], Fa_k).real
 
                 if not self.energy_only:
                     n1, n2, n3 = gd.get_size_of_global_array()
+                    self.timer.start('iFFT')
                     F_ag[a] = ifftn(Fa_k).real[:n1, :n2, :n3].copy()
-
+                    self.timer.stop()
+                    
             del Fa_k
             if self.verbose:
                 print a,
@@ -699,10 +709,13 @@ class FFTVDWFunctional(VDWFunctional):
             print
 
         if not self.energy_only:
+            self.timer.start('potential')
             self.calculate_potential(n_g, a2_g, i_g, dq0_g, p_ag, F_ag,
                                      e_LDAc_g, v_LDAc_g,
                                      v_g, deda2_g)
+            self.timer.stop()
 
+        self.timer.stop()
         return 0.5 * world.sum(energy) * gd.dv / self.shape.prod()
 
     def calculate_potential(self, n_g, a2_g, i_g, dq0_g, p_ag, F_ag,

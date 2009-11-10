@@ -1033,7 +1033,7 @@ class Transport(GPAW):
         self.den2fock()
         self.timer.stop('HamMM')
         if self.master:
-            self.text('HamMM', self.timer.gettime('HamMM'), 'second')        
+            self.text('HamMM', self.timer.get_time('HamMM'), 'second')        
   
     def get_density_matrix(self):
         self.timer.start('DenMM')
@@ -1057,7 +1057,7 @@ class Transport(GPAW):
         self.timer.stop('DenMM')
         self.print_boundary_charge()
         if self.master:
-            self.text('DenMM', self.timer.gettime('DenMM'), 'second')
+            self.text('DenMM', self.timer.get_time('DenMM'), 'second')
 
     def iterate(self):
         if self.master:
@@ -1671,7 +1671,7 @@ class Transport(GPAW):
             self.analysor.save_ele_step()
             self.analysor.save_data_to_file('ele', self.data_file)
         self.timer.stop('record')
-        self.record_time_cost = self.timer.gettime('record')
+        self.record_time_cost = self.timer.get_time('HamMM', 'record')
         
         self.timer.start('project hamiltonian')
         h_spkmm, s_pkmm = self.get_hs(self.extended_calc)

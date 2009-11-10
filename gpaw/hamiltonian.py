@@ -241,7 +241,7 @@ class Hamiltonian:
         if self.nspins == 2:
             self.vt_sg[1] = vt_g
 
-        self.timer.start('Hamiltonian: xc 3D grid')
+        self.timer.start('XC 3D grid')
         if self.nspins == 2:
             Exc = self.xc.get_energy_and_potential(
                 density.nt_sg[0], self.vt_sg[0],
@@ -249,13 +249,13 @@ class Hamiltonian:
         else:
             Exc = self.xc.get_energy_and_potential(
                 density.nt_sg[0], self.vt_sg[0])
-        self.timer.stop('Hamiltonian: xc 3D grid')
+        self.timer.stop('XC 3D grid')
 
-        self.timer.start('Hamiltonian: Poisson')
+        self.timer.start('Poisson')
         # npoisson is the number of iterations:
         self.npoisson = self.poisson.solve(self.vHt_g, density.rhot_g,
                                            charge=-density.charge)
-        self.timer.stop('Hamiltonian: Poisson')
+        self.timer.stop('Poisson')
 
         Epot = 0.5 * self.finegd.integrate(self.vHt_g, density.rhot_g,
                                            global_integral=False)
@@ -267,7 +267,7 @@ class Hamiltonian:
                                       global_integral=False)
             
         # Calculate atomic hamiltonians:
-        self.timer.start('Hamiltonian: atomic')
+        self.timer.start('Atomic')
         W_aL = {}
         for a in density.D_asp:
             W_aL[a] = np.empty((self.setups[a].lmax + 1)**2)
@@ -301,10 +301,10 @@ class Hamiltonian:
                     dH_p += sqrt(4 * pi / 3) * np.dot(vext[1], Delta_p1)
 
             self.dH_asp[a] = dH_sp = np.zeros_like(D_sp)
-            self.timer.start('Hamiltonian: atomic: xc_correction')
+            self.timer.start('xc_correction')
             Exc += setup.xc_correction.calculate_energy_and_derivatives(
                 D_sp, dH_sp, a)
-            self.timer.stop('Hamiltonian: atomic: xc_correction')
+            self.timer.stop('xc_correction')
 
             if setup.HubU is not None:
                 nspins = len(D_sp)
@@ -325,7 +325,7 @@ class Hamiltonian:
 
             Ekin -= (D_sp * dH_sp).sum()
 
-        self.timer.stop('Hamiltonian: atomic')
+        self.timer.stop('Atomic')
 
         # Make corrections due to non-local xc:
         xcfunc = self.xc.xcfunc
