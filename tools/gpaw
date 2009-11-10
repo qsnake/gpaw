@@ -190,7 +190,7 @@ def run():
             if value is not None:
                 try:
                     input_parameters[key] = eval(value)
-                except NameError:
+                except (NameError, SyntaxError):
                     input_parameters[key] = value
 
         runner.set_parameters(vacuum=opt.vacuum, **input_parameters)
