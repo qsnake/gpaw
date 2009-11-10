@@ -24,7 +24,7 @@ use the command-line tool simply called :program:`gpaw`:
 
   $ gpaw Fe -x bcc --cubic -a 2.84 -M 2.3 --xc=PBE --kpts=8,8,8 --h=0.18 --fit
 
-The will start a GPAW calculation with:
+This will start a GPAW calculation with:
 
 * 2 Fe atoms
 * in the BCC crystal structure
