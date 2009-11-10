@@ -193,6 +193,7 @@ class PAW(PAWTextOutput):
                   force_call_to_set_positions=False):
         """Update PAW calculaton if needed."""
 
+        self.timer.start('Initialization')
         if atoms is None:
             atoms = self.atoms
 
@@ -227,6 +228,8 @@ class PAW(PAWTextOutput):
         elif force_call_to_set_positions:
             self.set_positions(atoms)
             
+        self.timer.stop('Initialization')
+
         if self.scf.converged:
             return
         else:
