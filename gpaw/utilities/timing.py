@@ -75,10 +75,11 @@ def update():
 
 
 class Timer:
-    def __init__(self):
+    def __init__(self, print_levels=4):
         self.timers = {}
         self.t0 = time.time()
         self.running = []
+        self.print_levels = print_levels
         
     def start(self, name):
         names = tuple(self.running + [name])
@@ -117,8 +118,10 @@ class Timer:
                 bar = '|'
             else:
                 bar = '|%s|' % ('-' * (i - 1))
-            w = len(names) - 1
-            name = w * ' ' + names[-1] + ':'
+            level = len(names) - 1
+            if level > self.print_levels:
+                continue
+            name = level * ' ' + names[-1] + ':'
             out.write('%-*s%9.3f %5.1f%% %s\n' % (n, name, t, p, bar))
         out.write('%s\n' % ('=' * 60))
         out.write('%-*s%9.3f\n' % (n, 'Total:', tot))
@@ -236,30 +239,23 @@ class CrayPAT_timer:
     to be compiled under CrayPAT.
     """
 
-    def __init__(self):
+    def __init__(self, print_levels=4):
+        Timer.__init__(self, print_levels)
         self.regions = {}
         self.region_id = 5 # leave room for regions in C
-        self.timers = {}
-        self.t0 = time.time()
-        self.running = []
 
     def start(self, name):
-        self.timers[name] = self.timers.get(name, 0.0) - time.time()
+        Timer.start(self, name)
         if self.regions.has_key(name):
             id = self.regions[name]
         else:
             id = self.region_id
             self.regions[name] = id
             self.region_id += 1
-
         craypat_region_begin(id, name)
-        self.running.append(name)
 
     def stop(self, name=None):
-        if name is None: name = self.running[-1]
-        if name != self.running.pop():
-            raise RuntimeError
-        self.timers[name] += time.time()
+        Timer.stop(self, name)
         id = self.regions[name]
         craypat_region_end(id)
 
