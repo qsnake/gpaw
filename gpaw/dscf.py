@@ -11,10 +11,15 @@ Kohn-Sham orbitals.
 
 """
 
+import sys
 import copy
 import numpy as np
+
+from ase.parallel import paropen
+
+from gpaw import mpi
+from gpaw.utilities import devnull
 from gpaw.occupations import OccupationNumbers, FermiDirac
-import gpaw.mpi as mpi
 
 def dscf_calculation(paw, orbitals, atoms):
     """Helper function to prepare a calculator for a dSCF calculation
@@ -266,7 +271,8 @@ class AEOrbital:
         band. See examples in the dscf documentation on the gpaw webpage.
     """
 
-    def __init__(self, paw, wf_u, p_uai, Estart=0.0, Eend=1.e6, nos=None):
+    def __init__(self, paw, wf_u, p_uai, Estart=0.0, Eend=1.e6, nos=None,
+                 txt='-'):
     
         self.fixmom = paw.input_parameters.fixmom
         self.wf_u = wf_u
@@ -274,6 +280,15 @@ class AEOrbital:
         self.Estart = Estart
         self.Eend = Eend
         self.nos = nos
+
+        if txt is None:
+            self.txt = devnull
+        elif txt == '-':
+            self.txt = sys.stdout
+        elif isinstance(txt, str):
+            self.txt = paropen(txt, 'w')
+        else:
+            self.txt = txt
 
     def expand(self, epsF, wfs):
         
@@ -293,6 +308,7 @@ class AEOrbital:
             raise RuntimeError('List of wavefunctions has wrong size')
 
         c_un = []
+        p_u = []
         for u, kpt in enumerate(wfs.kpt_u):
 
             # Inner product of pseudowavefunctions
@@ -311,8 +327,9 @@ class AEOrbital:
                                           p_i[j])
             wfs.gd.comm.sum(Porb_n)
 
-            print 'Kpt:', kpt.k, ' Spin:', kpt.s, \
-                  ' Sum_n|<orb|nks>|^2:', sum(abs(Porb_n)**2)
+            #print 'Kpt:', kpt.k, ' Spin:', kpt.s, \
+            #      ' Sum_n|<orb|nks>|^2:', sum(abs(Porb_n)**2)
+            p_u.append(np.array([sum(abs(Porb_n)**2)], dtype=float))
 
             # Starting from KS orbitals with largest overlap,
             # fill in the expansion coeffients
@@ -330,6 +347,14 @@ class AEOrbital:
 
             # Normalize expansion coefficients
             c_n /= np.sqrt(sum(abs(c_n)**2))
-            c_un.append(c_n)    
+            c_un.append(c_n)
+
+        for s in range(wfs.nspins):
+            for k in range(wfs.nibzkpts):
+                p = wfs.collect_auxiliary(p_u, k, s)
+                if wfs.world.rank == 0:
+                    self.txt.write('Kpt: %d, Spin: %d, ' \
+                        'Sum_n|<orb|nks>|^2: %f\n' % (k, s, p))
         
         return c_un
+

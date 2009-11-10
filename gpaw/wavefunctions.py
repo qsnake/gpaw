@@ -302,7 +302,7 @@ class WaveFunctions(EmptyWaveFunctions):
             self.kpt_comm.receive(b_n, kpt_rank, 1301)
             return b_n
 
-    def collect_auxiliary(self, name, k, s, shape=1, dtype=float):
+    def collect_auxiliary(self, value, k, s, shape=1, dtype=float):
         """Helper method for collecting band-independent scalars/arrays.
 
         For the parallel case find the rank in kpt_comm that contains
@@ -314,7 +314,10 @@ class WaveFunctions(EmptyWaveFunctions):
         kpt_rank, u = divmod(k + self.nibzkpts * s, len(kpt_u))
 
         if self.kpt_comm.rank == kpt_rank:
-            a_o = getattr(kpt_u[u], name)
+            if isinstance(value, str):
+                a_o = getattr(kpt_u[u], value)
+            else:
+                a_o = value[u] # assumed list
 
             # Make sure data is a mutable object
             a_o = np.asarray(a_o)
