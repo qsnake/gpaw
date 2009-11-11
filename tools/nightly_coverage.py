@@ -187,64 +187,101 @@ def svnexport(url, path):
     lastline = poi.stdout.readlines()[-1]
     return re.match('^Exported revision ([0-9]+).$', lastline).group(1)
 
-tmpdir = tempfile.mkdtemp(prefix='gpaw-coverage-')
-os.chdir(tmpdir)
-
-# Get SVN revision numbers, checkout a fresh version and install:
 svnbase = 'https://svn.fysik.dtu.dk/projects/gpaw/trunk'
-rev_gpaw = svnexport(svnbase, 'gpaw')
-rev_ase = svnexport('https://svn.fysik.dtu.dk/projects/ase/trunk', 'ase')
-os.chdir('gpaw')
-
-# Temporary installations of GPAW/ASE revisions and latest setups
+tmpdir = tempfile.mkdtemp(prefix='gpaw-coverage-')
 hostname = os.getenv('HOSTNAME')
-if hostname == 'thul.fysik.dtu.dk':
-    customload = 'source /home/camp/modulefiles.sh; ' \
-                 'module load NUMPY; ' \
-                 'module load openmpi/1.3.3-1.el5.fys.gfortran43.4.3.2; '
-    flags = '--remove-default-flags ' \
-            '--customize=doc/install/Linux/Niflheim/customize-thul-acml.py'
-    pydir = 'lib64/python'
-elif hostname.endswith('.fysik.dtu.dk'):
-    customload = ''
-    flags = ''
-    pydir = 'lib/python'
+
+if '--rebuild' in sys.argv[1:]:
+    # Build .rst files from .cover files without installing or running tests.
+    assert os.path.isfile('counts.out')
+    rvs = dict([entry.strip('$ \n').split('=',1) for entry in 
+                open('counts.out','r').readline().split(';')])
+    os.system('cp counts.out "%s"' % tmpdir)
+    assert os.path.isdir('coverage')
+    os.system('cp -r coverage "%s/coverage"' % tmpdir)
+    os.chdir(tmpdir)
 else:
-    raise EnvironmentError('Unknown hostname. Automatic installation failed.')
+    # Get SVN revision numbers, checkout a fresh version and install:
+    rvs = {}
+    os.chdir(tmpdir)
+    rvs['gpaw'] = svnexport(svnbase, 'gpaw')
+    rvs['ase'] = svnexport('https://svn.fysik.dtu.dk/projects/ase/trunk', 'ase')
+    os.chdir('gpaw')
+    open('counts.out','w').write('$ '+';'.join(map('='.join, rvs.items()))+'\n')
 
-if os.system(customload.replace(';', '&&') +
-             'python setup.py %s install --home=%s 2>&1 | ' % (flags,tmpdir) +
-             'grep -v "c/libxc/src"') != 0 \
-    or os.system('mv ../ase/ase ../%s' % pydir) != 0:
-    fail('Installation failed!')
+    # Temporary installations of GPAW/ASE revisions and latest setups
+    if hostname == 'thul.fysik.dtu.dk':
+        customload = 'source /home/camp/modulefiles.sh; ' \
+                     'module load NUMPY; ' \
+                     'module load openmpi/1.3.3-1.el5.fys.gfortran43.4.3.2; '
+        flags = '--remove-default-flags ' \
+                '--customize=doc/install/Linux/Niflheim/customize-thul-acml.py'
+        pydir = 'lib64/python'
+    elif hostname.endswith('.fysik.dtu.dk'):
+        customload = ''
+        flags = ''
+        pydir = 'lib/python'
+    else:
+        raise EnvironmentError('Unknown host. Automatic installation failed.')
 
-os.system('wget --no-check-certificate --quiet ' +
-          'http://wiki.fysik.dtu.dk/stuff/gpaw-setups-latest.tar.gz')
-os.system('tar xvzf gpaw-setups-latest.tar.gz')
-setups = tmpdir + '/gpaw/' + glob.glob('gpaw-setups-[0-9]*')[0]
+    if os.system(customload.replace(';', '&&') +
+                 'python setup.py %s install --home=%s ' % (flags,tmpdir) +
+                 '2>&1 | grep -v "c/libxc/src"') != 0 \
+        or os.system('mv ../ase/ase ../%s' % pydir) != 0:
+        fail('Installation failed!')
 
-# Repeatedly run test-suite in code coverage mode:
-args = '--debug --coverage counts.pickle'
-for cpus in [1,2,4,8]:
-    tod = time.strftime('%d/%m-%Y %H:%M:%S')
-    open('counts.out', 'a').write('\n\n%s - %d thread(s) ...\n' % (tod,cpus))
-    if os.system(customload +
-                 'export PYTHONPATH=%s/%s:$PYTHONPATH; ' % (tmpdir,pydir) +
-                 'export GPAW_SETUP_PATH=%s; ' % setups +
-                 'export IGNOREPATHS=%s; ' % os.getenv('HOME') +
-                 'mpiexec -np %d ' % cpus +
-                 tmpdir + '/bin/gpaw-python ' +
-                 'tools/gpaw-test %s >>counts.out 2>&1' % args) != 0 \
-        or not os.path.isfile('counts.pickle'):
-        fail('Test coverage failed!', 'counts.out')
+    os.system('wget --no-check-certificate --quiet ' +
+              'http://wiki.fysik.dtu.dk/stuff/gpaw-setups-latest.tar.gz')
+    os.system('tar xvzf gpaw-setups-latest.tar.gz')
+    setups = tmpdir + '/gpaw/' + glob.glob('gpaw-setups-[0-9]*')[0]
+
+    # Repeatedly run test-suite in code coverage mode:
+    args = '--debug --coverage counts.pickle'
+    for cpus in [1,2,4,8]:
+        tod = time.strftime('%d/%m-%Y %H:%M:%S')
+        open('counts.out', 'a').write('\n\n%s - %d thread(s).\n' % (tod,cpus))
+        if os.system(customload +
+                     'export PYTHONPATH=%s/%s:$PYTHONPATH; ' % (tmpdir,pydir) +
+                     'export GPAW_SETUP_PATH=%s; ' % setups +
+                     'export IGNOREPATHS=%s; ' % os.getenv('HOME') +
+                     'mpiexec -np %d ' % cpus +
+                     tmpdir + '/bin/gpaw-python ' +
+                     'tools/gpaw-test %s >>counts.out 2>&1' % args) != 0 \
+            or not os.path.isfile('counts.pickle'):
+            fail('Test coverage failed!', 'counts.out')
+
+    # Convert pickled coverage information to .cover files with clear text
+    if os.system('export PYTHONPATH=%s/%s:$PYTHONPATH; %s -m trace --report ' \
+        '--missing --file counts.pickle --coverdir coverage >>counts.out 2>&1' \
+        % (tmpdir,pydir,sys.executable)) != 0:
+        fail('Coverage conversion failed!', 'counts.out')
+
+    if os.system('tar cvzf gpaw-counts-%s.tar.gz counts.* ' \
+                 'coverage/gpaw.*.cover' % rvs['gpaw']) == 0:
+        home = os.getenv('HOME')
+        try:
+            os.mkdir(home + '/sphinx')
+        except OSError:
+            pass
+        os.system('cp --backup=existing gpaw-counts-%s.tar.gz ' \
+        '"%s/sphinx/gpaw-counts-latest.tar.gz"' % (rvs['gpaw'],home))
 
 # -------------------------------------------------------------------
 
-# Convert pickled coverage information to .cover files with clear text
-if os.system('export PYTHONPATH=%s/%s:$PYTHONPATH; %s -m trace --report' \
-    ' --missing --file counts.pickle --coverdir coverage >>counts.out 2>&1' \
-    % (tmpdir,pydir,sys.executable)) != 0:
-    fail('Coverage conversion failed!', 'counts.out')
+# Parse output to test suite logfile and generate reStructuredText
+f = open('testsuite.rst', 'w')
+f.write('.. _testsuite:\n')
+loginfo = TableIO((15, max(10,len(hostname))), simple=True, pipe=f)
+loginfo.add_section('=', 'Test suite')
+loginfo.add_heading()
+for k,v in rvs.items():
+    loginfo.add_row('%s revision:' % k.upper(), v)
+loginfo.add_row('Build date:', time.strftime('%d/%m-%Y'))
+loginfo.add_row('Ran on host:', hostname)
+loginfo.write_to_stream()
+assert os.system('tail -n+2 counts.out >testsuite.log') == 0
+f.write('\n\n.. literalinclude:: testsuite.log\n\n')
+f.close()
 
 # Initialize pipes as tables for various categories
 limits = np.array([0, 0.5, 0.9, 1.0, np.inf])
@@ -287,13 +324,13 @@ for covername in sorted(glob.glob('coverage/gpaw.*.cover')):
     rstname = 'coverage/' + refname + '.rst'
     print 'cover:', covername, '->', rstname, 'as :ref:`%s`' % refname
     filename = refname.replace('.','/')+'.py' # unmangle paths
-    fileurl = '%s/%s?rev=%s' % (urlbase,filename,rev_gpaw)
+    fileurl = '%s/%s?rev=%s' % (urlbase,filename,rvs['gpaw'])
     filelink = (':ref:`%s <%s>`' % (filename,refname)).ljust(l_filelink)
 
     # Tally up how many developers have contributed to the file and by how much
     patn = r'^[ \t*]*[0-9]+[ \t]+([^ \t]+)[ \t]+.*$'
     poi = Popen('svn praise -r %s "%s/%s" | sed -r "/%s/!d; s/%s/\\1/g"' \
-        % (rev_gpaw,svnbase,filename,patn,patn), shell=True, stdout=PIPE)
+        % (rvs['gpaw'],svnbase,filename,patn,patn), shell=True, stdout=PIPE)
     owners = np.array(poi.stdout.readlines())
     assert poi.wait() == 0
     devels = np.unique(owners)
@@ -323,8 +360,8 @@ for covername in sorted(glob.glob('coverage/gpaw.*.cover')):
     header = TableIO((27, 10), simple=True, pipe=g)
     header.add_section('=', 'Coverage of %s' % filename)
     header.add_heading()
-    header.add_row('ASE revision:', rev_ase)
-    header.add_row('GPAW revision:', rev_gpaw)
+    for k,v in rvs.items():
+        header.add_row('%s revision:' % k.upper(), v)
     header.add_row('Date of compilation:', time.strftime('%d/%m-%Y'))
     header.add_row('Coverage category:', categories[c])
     header.add_row('Number of lines (NOL):', p.nol)
@@ -376,13 +413,14 @@ for pipe in pipes:
     pipe.write_to_stream(h)
 h.close()
 
-if os.system('tar cvzf gpaw-coverage-%s.tar.gz coverage/*.rst' % rev_gpaw) == 0:
+if os.system('tar cvzf gpaw-coverage-%s.tar.gz testsuite.* ' \
+             'coverage/*.rst' % rvs['gpaw']) == 0:
     home = os.getenv('HOME')
     try:
         os.mkdir(home + '/sphinx')
     except OSError:
         pass
     assert os.system('cp --backup=existing gpaw-coverage-%s.tar.gz ' \
-        '"%s/sphinx/gpaw-coverage-latest.tar.gz"' % (rev_gpaw,home)) == 0
+        '"%s/sphinx/gpaw-coverage-latest.tar.gz"' % (rvs['gpaw'],home)) == 0
 
 os.system('cd; rm -r ' + tmpdir)
