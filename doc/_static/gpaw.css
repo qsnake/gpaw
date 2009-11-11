@@ -51,6 +51,13 @@ div.sphinxsidebar input {
     border: 1px solid #98dbcc;
 }
 
+div.sidebarfooter {
+    float: left;
+    width: 230px;
+    top: -3px;
+    position: relative;
+}
+
 /* :::: MODULE CLOUD :::: */
 div.modulecloud {
     border: 1px solid #cbe7e5;
