@@ -4,6 +4,8 @@ from gpaw.coulomb import CoulombNEW
 from gpaw.utilities import pack
 from gpaw.xc_functional import XCFunctional
 from gpaw.lcao.pwf2 import LCAOwrap
+from gpaw.xc_correction import XCCorrection
+from gpaw.utilities import unpack, unpack2 
 
 class CHI:
     def __init__(self):
@@ -11,8 +13,7 @@ class CHI:
         self.nspin = 1
 
     def get_dipole_strength(self, calc, q, wcut, wmin, wmax, dw, eta=0.2, sigma=2*1e-5):
-
-        ''' Obtain the dipole strength spectra for a finite system
+        """ Obtain the dipole strength spectra for a finite system
 
         bzkpt_kG : the coordinate of kpoints in the whole BZ, nkpt*3D
         nband : number of bands, 1D
@@ -41,7 +42,7 @@ class CHI:
              so its float64, but can be complex for periodic sys.
         SNonInter/RPA/LDA_w : dipole strength function, (Nw)
 
-        '''
+        """
  
         bzkpt_kG = calc.get_bz_k_points()
         self.nband = calc.get_number_of_bands()
@@ -73,7 +74,8 @@ class CHI:
         self.nS = self.nLCAO **2
 
         # Get pair-orbitals in real space
-        Phi_S = self.pair_orbital_Rspace(orb_MG, calc.gd.h_c)
+        n_S = self.pair_orbital_Rspace(orb_MG, calc.gd.h_c, calc.wfs.setups, 
+                                         calc.wfs.kpt_u[0])
 
         # Get spectral function
         specfunc_SSw = self.calculate_spectral_function(bzkpt_kG, e_kn,
@@ -83,39 +85,38 @@ class CHI:
         chi0_SSw = self.hilbert_transform(specfunc_SSw, wmin, wmax, dw, eta=eta)
 
         # Get kernel
-        kernelRPA_SS, kernelLDA_SS = self.kernel_finite_sys(nt_G, orb_MG, 
+        kernelRPA_SS, kernelLDA_SS = self.kernel_finite_sys(nt_G, calc.density.D_asp, orb_MG, 
                         calc.wfs.kpt_u[0], calc.gd, calc.wfs.setups, spos_ac)
 
         # Solve Dyson's equation and Get dipole strength function
-        SNonInter_w = np.zeros(self.Nw)
-        SRPA_w = np.zeros(self.Nw)
-        SLDA_w = np.zeros(self.Nw)
+        SNonInter_w = np.zeros((self.Nw,3))
+        SRPA_w = np.zeros((self.Nw,3))
+        SLDA_w = np.zeros((self.Nw,3))
         for iw in range(self.Nw):
-            SNonInter_w[iw] = self.calculate_dipole_strength(chi0_SSw[:,:,iw], Phi_S, iw*dw)
+            SNonInter_w[iw,:] = self.calculate_dipole_strength(chi0_SSw[:,:,iw], n_S, iw*dw)
             chi_SS = self.solve_Dyson(chi0_SSw[:,:,iw], kernelRPA_SS)
-            SRPA_w[iw] = self.calculate_dipole_strength(chi_SS, Phi_S, iw*dw)
+            SRPA_w[iw,:] = self.calculate_dipole_strength(chi_SS, n_S, iw*dw)
             chi_SS = self.solve_Dyson(chi0_SSw[:,:,iw], kernelLDA_SS)
-            SLDA_w[iw] = self.calculate_dipole_strength(chi_SS, Phi_S, iw*dw)
+            SLDA_w[iw,:] = self.calculate_dipole_strength(chi_SS, n_S, iw*dw)
 
         return SNonInter_w, SRPA_w, SLDA_w
 
     def calculate_chi0(self, bzkpt_kG, e_kn, f_kn, C_knM, q, omega, eta=0.2):
-        '''
-          Calculate chi0_SS' for a certain q and omega
+        """ Calculate chi0_SS' for a certain q and omega::
 
-                             ---- ----
-              0          2   \    \          f_nk - f_n'k+q
-           chi (q, w) = ---   )    )    ------------------------
-              SS'       N_k  /    /     w + e_nk -e_n'k+q + i*eta
-                             ---- ----
-                              kbz  nn'
-                           *                   *
-                      *  C     C       C     C
-                          nkM   n'k+qN  nkM'  n'k+qN'
-           e_kn(nkpt,nband)
-           f_kn(nkpt,nband)
-           C_knM(nkpt,nband,nLCAO) nLCAO=nband
-        '''
+                                 ---- ----
+                  0          2   \    \          f_nk - f_n'k+q
+               chi (q, w) = ---   )    )    ------------------------
+                  SS'       N_k  /    /     w + e_nk -e_n'k+q + i*eta
+                                 ---- ----
+                                  kbz  nn'
+                               *                   *
+                          *  C     C       C     C
+                              nkM   n'k+qN  nkM'  n'k+qN'
+        e_kn(nkpt,nband)
+        f_kn(nkpt,nband)
+        C_knM(nkpt,nband,nLCAO) nLCAO=nband
+        """
 
         chi0_SS = np.zeros((self.nS, self.nS), dtype=complex)
 
@@ -137,20 +138,20 @@ class CHI:
         return chi0_SS / self.nkpt
 
     def calculate_spectral_function(self, bzkpt, e_kn, f_kn, C_knM, q, wcut, dw, sigma=1e-5):
-        '''
-            Calculate spectral function A_SS' for a certain q and a series of omega
-                             ---- ----
-              0          2   \    \         
-             A (q, w) = ---   )    )   (f_nk - f_n'k+q) * delta(w + e_nk -e_n'k+q)
-              SS'       N_k  /    /    
-                             ---- ----
-                              kbz  nn'
-                           *                   *
-                      *  C     C       C     C
-                          nkM   n'k+qN  nkM'  n'k+qN'
+        """ Calculate spectral function A_SS' for a certain q and a series of omega::
+
+                                 ---- ----
+                  0          2   \    \         
+                 A (q, w) = ---   )    )   (f_nk - f_n'k+q) * delta(w + e_nk -e_n'k+q)
+                  SS'       N_k  /    /    
+                                 ---- ----
+                                  kbz  nn'
+                               *                   *
+                          *  C     C       C     C
+                              nkM   n'k+qN  nkM'  n'k+qN'
              
              Use Gaussian wave for delta function
-        '''
+        """
 
         specfunc_SSw = np.zeros((self.nS, self.nS, self.NwS), dtype=C_knM.dtype)
 
@@ -177,15 +178,16 @@ class CHI:
         return specfunc_SSw *dw / self.nkpt
 
     def hilbert_transform(self, specfunc_SSw, wmin, wmax, dw, eta=0.01 ):
-        '''
-                        inf
-           0            /   0                1             1
-        chi (q, w) =   |  A (q, w') * (___________ - ___________)  dw'
-           SS'         /   SS'          w-w'+ieta      w+w'+ieta
-                       0
+        """ Obtain chi0_SS' by hilbert transform with the spectral function A_SS'::
 
-        # The dw' is deduced above in the delta function
-        '''
+                           inf
+              0            /   0                1             1
+           chi (q, w) =   |  A (q, w') * (___________ - ___________)  dw'
+              SS'         /   SS'          w-w'+ieta      w+w'+ieta
+                          0
+
+        Note, The dw' is reduced above in the delta function
+        """
 
         chi0_SSw = np.zeros((self.nS, self.nS, self.Nw), dtype=complex)
 
@@ -197,73 +199,120 @@ class CHI:
                                - 1. / (w + ww + 1j*eta)) * specfunc_SSw[:,:,jw]
         return chi0_SSw
 
-    def kernel_finite_sys(self, nt_G, orb_MG, kpt, gd, setups, spos_ac):
+    def kernel_finite_sys(self, nt_G, D_asp, orb_MG, kpt, gd, setups, spos_ac):
+        """  Calculate the Kernel for a finite system
+    
+        Refer to report 4/11/2009, Eq. (18) - (22)::
 
-        '''        //                             /    1                   \
-          K      = || dr  dr   phi (r ) phi (r ) (  -------- + f  (r  , r)  ) 
-           S1,S2   //   1   2    mu  1    nu  1   \ |r - r |    xc  1    2 /
-                                   1        1         1   2
+                     //                   /    1                   \
+            K      = || dr  dr   n (r )  (  -------- + f  (r  , r)  ) n (r )
+             S1,S2   //   1   2   S  1    \ |r - r |    xc  1    2 /   S  2 
+                                   1          1   2                     2 
+      
+            while 
+                     ~        ----  a       ~ a
+            n (r)  = n (r)  + \    n (r)  - n (r)
+             S        S       /___  S        S
+                                a
+            ~
+            n (r)  = phi (r) phi (r)
+             S          mu      nu
+    
+             a       ----          ~ a    ~ a
+            n (r)  = \    < phi  | p  > < p  | phi  >  phi (r) phi (r)
+             S       /___      mu   i      j      nu      i       j
+                      ij
+            ~a       ----          ~ a    ~ a           ~       ~  
+            n (r)  = \    < phi  | p  > < p  | phi  >  phi (r) phi (r)
+             S       /___      mu   i      j      nu      i       j
+                      ij
 
-                    *  phi (r )  phi (r )
-                         mu  2     nu  2
-                           2         2
-          Especially note that , 
-          coulomb.calculate returns the coulomb interaction in eV
+        Note, phi_mu is LCAO orbital, while phi_i or phi_j are partial waves
 
-        '''
+        Coulomb Kernel: use coulomb.calculate (note it returns the E_coul in eV)
+
+        XC kernel :: 
+             xc
+            K       = < n   | f [n] | n   >  (note, n is the total density)
+             S1,S2       S1    xc      S2
+                        ~        ~    ~
+                    = < n   | f [n] | n   > 
+                         S1    xc      S2
+                         ----     a        a     a         ~a       ~a    ~a
+                      +  \     < n   | f [n ] | n   >  - < n   | f [n ] | n   >
+                         /___     S1    xc       S2         S1    xc       S2
+                           a
+        """
 
         Kcoul_SS = np.zeros((self.nS, self.nS))
         Kxc_SS = np.zeros_like(Kcoul_SS)
         P1_ap = {}
         P2_ap = {}
+        J_II = {}
 
-        fxc_G = self.fxc(nt_G, self.xc, self.nspin)
+        fxc_G = self.fxc(nt_G)  # nt_G contains core density
+        for a, D_sp in D_asp.items():
+            J_pp = setups[a].xc_correction.four_phi_integrals(D_sp, self.fxc)
+            ni = setups[a].ni
+            J_II[a] = np.zeros((ni*ni, ni*ni))   
+            nii = J_pp.shape[0]
+            J_pI = np.zeros((nii, ni*ni))
+            for ip, J_p in enumerate(J_pp):
+                J_pI[ip] = unpack2(J_p).ravel() # D_sp uses pack
+            for ii in range(ni*ni):
+                J_II[a][:, ii] = unpack2(J_pI[:, ii].copy()).ravel()
 
         coulomb = CoulombNEW(gd, setups, spos_ac)
         for n in range(self.nLCAO):
             for m in range(self.nLCAO):
                 nt1_G = orb_MG[n] * orb_MG[m] 
-                for a, P_ni in kpt.P_ani.items():
-                    D_ii = np.outer(P_ni[n].conj(), P_ni[m])
+                for a, P_Mi in kpt.P_aMi.items():
+                    D_ii = np.outer(P_Mi[n].conj(), P_Mi[m])
                     P1_ap[a] = pack(D_ii, tolerance=1e30)
                 for p in range(self.nLCAO):
                     for q in range(self.nLCAO):
                         nt2_G = orb_MG[p] * orb_MG[q]
                         # Coulomb Kernel
-                        for a, P_ni in kpt.P_ani.items():
-                            D_ii = np.outer(P_ni[p].conj(), P_ni[q])
+                        for a, P_Mi in kpt.P_aMi.items():
+                            D_ii = np.outer(P_Mi[p].conj(), P_Mi[q])
                             P2_ap[a] = pack(D_ii, tolerance=1e30)
-                        # print n, m, p, q
                         Kcoul_SS[self.nLCAO*n+m, self.nLCAO*p+q] = coulomb.calculate(
                                     nt1_G, nt2_G, P1_ap, P2_ap)
                         # XC Kernel
                         Kxc_SS[self.nLCAO*n+m, self.nLCAO*p+q] = gd.integrate(nt1_G*fxc_G*nt2_G)
-            print 'finished', n, ' (max: nLCAO)'
+
+                        for a, P_Mi in kpt.P_aMi.items():
+                            P1_I = np.outer(P_Mi[n], P_Mi[m]).ravel()                            
+                            P2_I = np.outer(P_Mi[p], P_Mi[q]).ravel() 
+                            P_II = np.outer(P1_I, P2_I)
+                            Kxc_SS[self.nLCAO*n+m, self.nLCAO*p+q] += (np.dot(P_II, J_II[a])).sum()
+ 
+            print 'finished', n, 'cycle', ' (max: nLCAO = ', self.nLCAO, ')'
         tmp = Kcoul_SS / Hartree
         return tmp, tmp + Kxc_SS
 
     def solve_Dyson(self, chi0_SS, kernel_SS):
+        """ Solve Dyson's equation for a certain q and w::
 
-        ''' Solve Dyson's equation for a certain q and w
-                        0         ----   0
-        chi (q, w) = chi (q, w) + \    chi (q, w) K     chi (q, w)
-          SS'          SS'        /___   SS        S S    S S'
-                                   S S     1        1 2    2
-                                    1 2
-                  0
-        Input: chi (q, w) at a given q and omega, 
+                            0         ----   0
+            chi (q, w) = chi (q, w) + \    chi (q, w) K     chi (q, w)
+              SS'          SS'        /___   SS        S S    S S'
+                                       S S     1        1 2    2
+                                        1 2
+                      
+        Input: chi_0 (q, w) at a given q and omega, 
                           for finite system, q = 0
         Output: chi(q, w)
+        It corresponds to solve::
 
-        ---- (           ----   0             )                   0 
-        \    |delta   - \    chi (q, w) K     |  chi (q, w)  = chi (q, w)
-        /___ |    SS    /___   SS        S S  |    S S'          SS'
-          S  (      2     S      1        1 2 )     2
-           2               1 
+            ---- (           ----   0             )                   0 
+            \    |delta   - \    chi (q, w) K     |  chi (q, w)  = chi (q, w)
+            /___ |    SS    /___   SS        S S  |    S S'          SS'
+              S  (      2     S      1        1 2 )     2
+               2               1 
 
         which is the form: Ax = B with known matrix A and B
-
-        '''
+        """
 
         A_SS = np.eye(self.nS, self.nS, dtype=complex) - np.dot(chi0_SS, kernel_SS)
         chi_SS = np.dot(np.linalg.inv(A_SS), chi0_SS)
@@ -273,102 +322,108 @@ class CHI:
         return chi_SS
 
 
-    def calculate_dipole_strength(self, chi_SS, Phi_S, omega):
+    def calculate_dipole_strength(self, chi_SS, n_S, omega):
+        """ Calculate dipole strength for a particular omega
+        Atomic unit ::
 
-        '''
-         Calculate S(w) for a particular omega, atomic unit inside
-                 2w
-         S(w) = ---- Im alpha(w) , alpha is the dynamical polarizability 
-                 pi
-                      //
-         alpha(w) = - || dr dr' r chi(r,r',w) r'
-                     //
-                      //          ----               
-                  = - || dr dr' r \    pair_phi(r) chi (w) pair_phi(r') r'
-                     //           /___               SS'
-                                  SS'
-         where pair_phi(r) = phi * phi
-                               mu    nu
-                      ----   /                         /
-                  = - \     | dr r pair_phi(r) chi (w) | dr' r' pair_phi(r')
-                      /___ /                     SS'  /
-                       SS'
-                      ----
-                  = - \    Phi  chi (w) Phi  
-                      /___    S    SS'     S'
-                       SS'
-         where Phi_S is defined in pair_orbital_Rspace
-        ''' 
+                     2w
+             S(w) = ---- Im alpha(w) , alpha is the dynamical polarizability 
+                     pi
+                          //
+             alpha(w) = - || dr dr' r chi(r,r',w) r'
+                         //
+                          //          ----               
+                      = - || dr dr' r \    pair_phi(r) chi (w) pair_phi(r') r'
+                         //           /___               SS'
+                                      SS'
+             where pair_phi(r) = phi * phi
+                                   mu    nu
+                          ----   /                         /
+                      = - \     | dr r pair_phi(r) chi (w) | dr' r' pair_phi(r')
+                          /___ /                     SS'  /
+                           SS'
+                          ----
+                      = - \    Phi  chi (w) Phi  
+                          /___    S    SS'     S'
+                           SS'
+             where Phi_S is defined in pair_orbital_Rspace
+        """
 
-        alpha = - np.sum( np.dot( np.dot(Phi_S, chi_SS), np.reshape(Phi_S,(Phi_S.shape[1],1)) ))
+        alpha = np.zeros(3, dtype=complex)
+        for i in range(3):
+            alpha[i] = - np.dot( np.dot(n_S[:,i], chi_SS), n_S[:,i]) 
 
         S = 2. * omega / np.pi * np.imag(alpha)
 
         return S
 
     def chi_to_Gspace(self, chi_SS, pairphiG0_S):
-        '''    
-            Input either chi0 or chi at a certain  q and omega, and pair_phi       
+        """ Transform from chi_SS' to chi_GG'    
+
+        Input either chi0 or chi at a certain  q and omega, and pair_phi::
+
                             ----                                    *
             chi    (q,w)  = \    pair_phi(G=0) * chi (q,w) *pair_phi (G=0)
                GG'=0        /___         S         SS'              S'
                              SS'
 
-            Note,
-            chi0(nLCAO**2,nLCAO**2) dtype=complex 
-            pair_phi(1, nLCAO**2)   dtype=float64
+        Note,
+        chi0(nLCAO**2,nLCAO**2) dtype=complex 
+        pair_phi(1, nLCAO**2)   dtype=float64
 
-        '''
+        """
+
         chiGspace = np.sum( np.dot( np.dot(pairphiG0_S, chi_SS),
                                      np.reshape(pairphiG0_S,(self.nS,1)) ))
         return chiGspace
 
 
     def find_kq(self, bzkpt_kG, q):
-        ''' Find the index of k+q for all kpoints in BZ '''
+        """ Find the index of k+q for all kpoints in BZ """
 
         found = False
         kq = np.zeros(self.nkpt)
-
+ 
         for k in range(self.nkpt):
             # bzkpt(k,:) + q = bzkpt(kq,:)
             for kk in range(self.nkpt):
                 tmp = sum(bzkpt_kG[k] - bzkpt_kG[kk] - q)
                 if (np.abs(tmp) < 1e-8 or np.abs(tmp - 0.5) < 1e-8 or 
                     np.abs(tmp + 0.5) < 1e-8):
-                   kq[k] = kk
-                   found = True
-                   break
+                    kq[k] = k
+                    found = True
+                    break
             if not found: 
                 raise ValueError('k+q not found')
         return kq
 
 
     def pair_C(self, C1, C2):     
-        '''             *               
-           Calculate   C     C       for a certain k, q, n, n'(m here)
-                        nkM   n'k+qN 
-           C1 = C_knM(k, n, :), C2 = C_knM(k+q, m, :)
-           C1.shape = (nLCAO,)
+        """ Calculate pair C_nkM C_n',k+q,N for a certain k, q, n, n'
 
-        '''
+        C1 = C_knM(k, n, :), C2 = C_knM(k+q, m, :)
+        C1.shape = (nLCAO,)
+
+        """
 
         return np.ravel(np.outer(C1.conj(),C2)) # (nS,)
 
 
     def pair_orbital_G0(self, orb_MG):
+        """ Calculate pair atomic orbital at G=0 :: 
 
-        '''                          /        *                -iGr 
-         Calculate pair_phi (G=0) = | dr ( phi (r)  phi (r) ) e
-                           S       /         mu       nu
-                 ----
-         phi   = \    Phi   ( r - R ), with Phi_mu the LCAO orbital
-            mu   /---    mu        I
-                   I
+                              /        *                -iGr 
+            pair_phi (G=0) = | dr ( phi (r)  phi (r) ) e
+                    S       /         mu       nu
+            where
+                    ----
+            phi   = \    Phi   ( r - R ), with Phi_mu the LCAO orbital
+               mu   /---    mu        I
+                      I
         But note that, all the LCAO orbitals are real, 
         which means Phi_mu and phi_mu are all real 
 
-        '''
+        """
 
         pairphiG0_MM = np.zeros((self.nLCAO, self.nLCAO))
 
@@ -379,39 +434,62 @@ class CHI:
 
         return pairphiG0_S
 
-    def pair_orbital_Rspace(self, orb_MG, h_c):
-
-        ''' h_c = calc.gd.h_c 
-                      /
-             Phi   =  | dr  r  phi (r) phi (r)
-                S    /           mu      nu
-           
-             orb(nband, Nx, Ny, Nz)
-        '''
+    def pair_orbital_Rspace(self, orb_MG, h_c, setups, kpt):
+        """ Calculate pair LCAO orbital in real space::
+             
+                   /
+            n   =  | dr  r  phi (r) phi (r) 
+             S    /           mu      nu
+                      ----          ~ a    ~ a          (                    ~       ~      )
+                    + \    < phi  | p  > < p  | phi  >  | phi (r) phi (r) - phi (r) phi (r) |
+                      /___      mu   i      j      nu   (    i       j         i       j    )
+                       ij       
+        orb(nband, Nx, Ny, Nz)
+        Delta_pL : L = 1, 2, 3 corresponds to y, z, x, refer to c/bmgs/sharmonic.c
+        """
 
         N_gd = orb_MG.shape[1:4] # number of grid points
         r = np.zeros((N_gd))        
-        Phi_MM = np.zeros((self.nLCAO, self.nLCAO))
+        n_MM = np.zeros((self.nLCAO, self.nLCAO))
+        n_S = np.zeros((self.nS, 3))
+        tmp =  np.sqrt(4. * np.pi / 3.)    
+        Li = np.array([3, 1, 2])
 
-        for i in range(N_gd[0]):
-            for j in range(N_gd[1]):
-                for k in range(N_gd[2]):
-                    r[i,j,k] = i*h_c[0] + j*h_c[1] + k*h_c[2]
+        for ix in range(3): # loop over x, y, z axis
+            phi_I={}
+            for a in range(len(setups)):
+                phi_p = setups[a].Delta_pL[:,Li[ix]].copy()
+                phi_I[a] = unpack(phi_p).ravel()
+       
+            for i in range(N_gd[0]):
+                for j in range(N_gd[1]):
+                    for k in range(N_gd[2]):
+                        if ix == 0:
+                            r[i,j,k] = i*h_c[0]
+                        elif ix == 1:
+                            r[i,j,k] = j*h_c[1] 
+                        else:
+                            r[i,j,k] = k*h_c[2]
+    
+            for mu in range(self.nLCAO):
+                for nu in range(self.nLCAO):  
+                    n_MM[mu,nu] = np.sum(orb_MG[mu] * orb_MG[nu] * r)
+                    for a, P_Mi in kpt.P_aMi.items():
+                        P_I = np.outer(P_Mi[mu], P_Mi[nu]).ravel()
+                        n_MM[mu,nu] += np.sum(P_I * phi_I[a]) * tmp
+            n_S[:,ix] = np.reshape(n_MM, self.nS)
 
-        for mu in range(self.nLCAO):
-            for nu in range(self.nLCAO):  
-                Phi_MM[mu,nu] = np.sum(orb_MG[mu] * orb_MG[nu] * r)
-        Phi_S = np.reshape(Phi_MM, (1,self.nS))
-        return Phi_S
+        return n_S
 
 
     def delta_function(self, x0, dx, Nx, sigma):
-        
-        '''                                 (x-x0)**2
-                              1           - ___________
-        delta(x-x0) =  ---------------   e    4*sigma
-                      2 sqrt(pi*sigma)
-        '''        
+        """ Approximate delta funcion using Gaussian wave::
+
+                                                 (x-x0)**2
+                                   1          - ___________
+            delta(x-x0) =  ---------------   e    4*sigma
+                          2 sqrt(pi*sigma)
+        """        
 
         deltax = np.zeros(Nx)
         for i in range(Nx):
@@ -419,13 +497,19 @@ class CHI:
         return deltax / (2.*np.sqrt(np.pi*sigma))
 
 
-    def fxc(self, n_G, name, nspins):
+    def fxc(self, n):
+        """ Return fxc[n(r)] for a given density array 
+
+        """
+        
+        name = self.xc
+        nspins = self.nspin
 
         libxc = XCFunctional(name, nspins)
        
-        N = n_G.shape
-        fxc = np.zeros((N[0]*N[1]*N[2]))
+        N = n.shape
+        n = np.ravel(n)
+        fxc = np.zeros_like(n)
 
-        libxc.calculate_fxc_spinpaired(np.reshape(n_G,N[0]*N[1]*N[2]), fxc)
+        libxc.calculate_fxc_spinpaired(n, fxc)
         return np.reshape(fxc, N)
-        
