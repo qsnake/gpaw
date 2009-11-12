@@ -34,18 +34,23 @@ b) diagonalization. This can only be accomplished with a 4-dimensional
 The domain decomposition can be specified on the 
 ``gpaw-python`` command line with ``--domain-decomposition=Nx,Ny,Nz``
 and band parallelization with ``--state-parallelization=B``. Here *N* bands
-are divided into *B* groups. It is necessary to have::
+are divided into *B* groups. It was empirically determined that you need to
+have *N/B > 256*. It will be necessary to have the combined band-domain
+decomposition match the partition dimension exactly, i.e. ::
 
-  {Nx, Ny, Nz, B} = {Px, Py, Pz, T} 
-  {Nx, Ny, Nz, B} = {T, Px, Py, Pz} 
-  {Nx, Ny, Nz, B} = {Px, T, Py, Pz}
-  ...
+  {Nx, Ny, Nz, B} = {Px, Py, Pz, T},
+  {Nx, Ny, Nz, B} = {T, Px, Py, Pz},
+  {Nx, Ny, Nz, B} = {Px, T, Py, Pz}, 
+  or another permutation.
 
-plus other permutations. This can be accomplised with the help of ``tools/mapfile.py.``
-You will want to use ``band`` mode to generate a BG/P
-mapfile for a  DFT calculation. Since there is no diagonalization in the
-rTDDFT method, one can use ``domain`` mode as a 3-dimensional network 
-is sufficient to satisfy the communiation pattern of the H*Psi products.
+This can be accomplised with the help of ``tools/mapfile.py.`` You will
+want to use ``band`` mode to generate a BG/Pvmapfile for a  DFT calculation.
+Since there is no diagonalization in the rTDDFT method, one can use 
+``domain`` mode as a 3-dimensional network  is sufficient to satisfy the
+communiation pattern of the H*Psi products. You will then need to specify the
+mapfile via Cobalt::
+
+  --env=BG_MAPPING=<mapfile>
 
 Simultaneous parallelization on k-points, spins, bands and domains
 =====================================================================
