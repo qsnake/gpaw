@@ -1,4 +1,5 @@
 import numpy as np
+from math import pi, sqrt
 from ase.units import Hartree
 from gpaw.coulomb import CoulombNEW
 from gpaw.utilities import pack
@@ -6,6 +7,7 @@ from gpaw.xc_functional import XCFunctional
 from gpaw.lcao.pwf2 import LCAOwrap
 from gpaw.xc_correction import XCCorrection
 from gpaw.utilities import unpack, unpack2 
+from gpaw.utilities.lapack import diagonalize
 
 class CHI:
     def __init__(self):
@@ -99,7 +101,10 @@ class CHI:
             chi_SS = self.solve_Dyson(chi0_SSw[:,:,iw], kernelLDA_SS)
             SLDA_w[iw,:] = self.calculate_dipole_strength(chi_SS, n_S, iw*dw)
 
-        return SNonInter_w, SRPA_w, SLDA_w
+        # Solve Casida's equation to get the excitation energies in eV
+        eCasida_s = self.solve_casida(e_kn[0], f_kn[0], C_knM[0], kernelLDA_SS)
+
+        return SNonInter_w, SRPA_w, SLDA_w, eCasida_s
 
     def calculate_chi0(self, bzkpt_kG, e_kn, f_kn, C_knM, q, omega, eta=0.2):
         """ Calculate chi0_SS' for a certain q and omega::
@@ -353,7 +358,7 @@ class CHI:
         for i in range(3):
             alpha[i] = - np.dot( np.dot(n_S[:,i], chi_SS), n_S[:,i]) 
 
-        S = 2. * omega / np.pi * np.imag(alpha)
+        S = 2. * omega / pi * np.imag(alpha)
 
         return S
 
@@ -452,7 +457,7 @@ class CHI:
         r = np.zeros((N_gd))        
         n_MM = np.zeros((self.nLCAO, self.nLCAO))
         n_S = np.zeros((self.nS, 3))
-        tmp =  np.sqrt(4. * np.pi / 3.)    
+        tmp =  sqrt(4. * pi / 3.)    
         Li = np.array([3, 1, 2])
 
         for ix in range(3): # loop over x, y, z axis
@@ -493,8 +498,8 @@ class CHI:
 
         deltax = np.zeros(Nx)
         for i in range(Nx):
-            deltax[i] = np.exp(-(i*dx-x0)**2/(4.*sigma))
-        return deltax / (2.*np.sqrt(np.pi*sigma))
+            deltax[i] = np.exp(-(i * dx - x0)**2/(4. * sigma))
+        return deltax / (2. * sqrt(pi * sigma))
 
 
     def fxc(self, n):
@@ -513,3 +518,87 @@ class CHI:
 
         libxc.calculate_fxc_spinpaired(n, fxc)
         return np.reshape(fxc, N)
+
+    def solve_casida(self, e_n, f_n, C_nM, kernel_SS):
+        """ Solve Casida's equation with input from LCAO calculations (nspin = 1) ::
+
+                            2 
+            Omega F  = omega  F
+                   I        I  I
+                                      2          ---------------  
+            Omega   = delta  delta   e    + 2   / f   e  f   e   K  
+                ss'        ik     jq  s       \/   s   s  s'  s'  ss'
+
+        Note, s is a combined index for ij, 
+              s'                        kq
+
+        The kernel is obtained from ::
+                    ----
+            K    =  \    C      C      C      C      K
+             ss'    /___  i,mu   j,nu   k,mu   q,nu   S S
+                     S S      1      1      2      2   1 2
+                      1 2
+        while capital S is a combined index for mu, nu
+        and C is the LCAO coefficients
+
+        """
+
+        # Count number of occupied and unoccupied states pairs
+        Nocc = 0
+        Nunocc = 0
+        for n in range(self.nband):
+            if f_n[n] > 0:
+                Nocc += 1
+            else: 
+                Nunocc +=1
+        if Nocc + Nunocc != self.nband:
+            raise ValueError('Nocc + Nunocc != nband')
+        npair = Nocc * Nunocc
+
+        # calculate the factor before the K_ij,kq matrix
+        e_s = np.zeros(npair)
+        f_s = np.zeros_like(e_s)
+
+        ipair = 0
+        for i in range(Nocc):
+            for j in range(Nocc, self.nband):
+                e_s[ipair] = e_n[j] - e_n[i] # s: ij pair
+                f_s[ipair] = f_n[i] - f_n[j]
+                ipair += 1
+
+        fe_ss = np.outer(e_s * f_s, e_s * f_s).ravel()
+        fe_ss = (np.array([2. * sqrt(fe_ss[i]) for i in range(npair**2)])).reshape(npair, npair)
+ 
+        # calculate kernel K_ij,kq
+        npair1 = 0
+        npair2 = 0
+        kernel_ss = np.zeros((npair, npair))
+
+        for i in range(Nocc):
+            for j in range(Nocc, self.nband):
+                C1_S = np.outer(C_nM[i], C_nM[j]).ravel() # S: mu nu pair
+                for k in range(Nocc):
+                    for q in range(Nocc, self.nband):
+                        C2_S = np.outer(C_nM[k], C_nM[q]).ravel() # S: mu nu pair
+                        kernel_ss[npair1, npair2] = np.inner(np.inner(C1_S, kernel_SS), C2_S)
+                        npair2 += 1
+                npair1 += 1
+                npair2 = 0
+
+        kernel_ss *= fe_ss
+
+        # add the delta matrix to obtain the Omega matrix
+        delta_ss = np.eye(npair,npair)
+        for i in range(npair):
+            delta_ss[i,i] *= e_s[i]**2
+
+        kernel_ss += delta_ss
+
+        # diagonalize the Omega matrix to get the square of exciation energies in Hartree
+        eExcitation_s = np.zeros(npair)
+        diagonalize(kernel_ss, eExcitation_s)
+        eExcitation_s = np.array([sqrt(eExcitation_s[i]) for i in range(npair)])
+        
+        return eExcitation_s * Hartree
+
+
