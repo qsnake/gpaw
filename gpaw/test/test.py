@@ -70,8 +70,8 @@ os.chdir(tmpdir)
 if mpi.rank == 0:
     print 'Running tests in', tmpdir
 failed = TestRunner(tests, jobs=opt.jobs).run()
+os.chdir(cwd)
 if mpi.rank == 0:
-    os.chdir(cwd)
     if len(failed) > 0:
         open('failed-tests.txt', 'w').write('\n'.join(failed) + '\n')
     elif not opt.keep_tmpdir:
