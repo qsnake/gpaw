@@ -7,132 +7,115 @@ louhi.csc.fi
 Here you find information about the the system
 `<http://www.csc.fi/english/research/Computing_services/computing/servers/louhi>`_.
 
-The current operating system in Cray XT4 compute nodes, Compute Linux
-Environment (CLE) has some limitations, most notably it does not
-support shared libraries. The following instructions are tested with 
-python 2.5.1 and the PGI compiler suite.
+GPAW
+====
 
-In order to use python in CLE some
-modifications to the standard python are needed. Before installing a
-special python, there are two packages which are needed by GPAW, but
-which are not included in the python distribution, expat_ and zlib_. 
+The latest operating system release for Cray XT4/5 (CLE 2.2 UP01) supports 
+dynamic libraries which simplifies GPAW installation significantly.
 
-Before starting any of the installations, set the correct compiler::
+These instructions for GPAW installation use Python 2.6.4 compiled
+with PGI compiler suite, see the end of this page for instructions for
+compiling Python.
 
- setenv CC cc
+First, load the Python module and set ``XTPE_LINK_TYPE`` environment
+variable for dynamic linking::
 
-Install ``expat`` as::
+  module load python/2.6.4
+  setenv XTPE_LINK_TYPE dynamic
 
- > ./configure --prefix=PREFIX  --disable-shared
- > make
- > make install
-
-where ``PREFIX`` is your installation directory. Install ``zlib`` similarly::
-
- > ./configure --prefix=PREFIX
- > make
- > make install
-
- 
-.. _expat: http://expat.sourceforge.net/
-.. _zlib: http://www.zlib.net/  
-
-Next, one can proceed with the actual python installation. The
-following instructions are tested with python 2.5.1, and it is assumed
-that one is working in the top level of python source
-directory. First, one should create a special dynamic loader for
-correct resolution of namespaces. Save the file
-:svn:`~doc/install/Cray/dynload_redstorm.c`
-in the :file:`Python/` directory::
-
-  /* This module provides the simulation of dynamic loading in Red Storm */
-
-  #include "Python.h"
-  #include "importdl.h"
-
-  const struct filedescr _PyImport_DynLoadFiletab[] = {
-    {".a", "rb", C_EXTENSION},
-    {0, 0}
-  };
-
-  extern struct _inittab _PyImport_Inittab[];
-
-  dl_funcptr _PyImport_GetDynLoadFunc(const char *fqname, const char *shortname,
-                                      const char *pathname, FILE *fp)
-  {
-    struct _inittab *tab = _PyImport_Inittab;
-    while (tab->name && strcmp(shortname, tab->name)) tab++;
-
-    return tab->initfunc;
-  }
-
-Then, one should remove ``sharemods`` from ``all:`` target in
-:file:`Makefile.pre.in` and set the correct C compiler and flags,
-e.g.::
-
- setenv CC cc
- setenv OPT '-fastsse'
-
-You should be now ready to run :file:`configure`::
-
-  ./configure --prefix=<install_path> SO=.a DYNLOADFILE=dynload_redstorm.o MACHDEP=redstorm --host=x86_64-unknown-linux-gnu --disable-sockets --disable-ssl --enable-static --disable-shared --without-threads
-
-Now, one should specify which modules will be statically linked in to
-the python interpreter by editing :file:`Modules/Setup`. An example can be
-loaded here :svn:`~doc/install/Cray/Setup_louhi`.
-Note that at this point all numpy related stuff
-in the example should be commented out. Finally, in order to use
-``distutils`` for building extensions the following function should be
-added to the end of :file:`Lib/distutils/unixccompiler.py` so that instead
-of shared libraries static ones are created
-
-.. literalinclude:: linkforshared.py
-
-If copy-pasting the above code block, be sure to have the correct indentation (four whitespaces before ``def link_for_shared...``), or download the whole  
-file: :svn:`~doc/install/Cray/unixccompiler.py`
-
-You should be now ready to run ``make`` and ``make install`` and have
-a working python interpreter.
-
-Next, one can use the newly created interpreter for installing
-``numpy``. Switch to the ``numpy`` source directory and install it
-normally::
-
-  <your_new_python> setup.py install >& install.log
-
-The C-extensions of numpy have to be still added to the python
-interpreter. Grep :file:`install.log`::
-
-  grep 'Append to Setup' install.log
-
-and add the correct lines to the :file:`Modules/Setup` in the python
-source tree. Switch to the python source directory and run ``make``
-and ``make install`` again to get interpreter with builtin numpy.
-
-Final step is naturaly to compile GPAW. Only thing is to specify
-``numpy``, ``expat`` and ``zlib`` libraries in :file:`customize.py`
-then :ref:`compile GPAW <installationguide>` as usual. Here is an example
-of :file:`customize.py`, modify according your own directory
-structures:
+GPAW can now be build with a minimal ``customize.py``
 
 .. literalinclude:: customize_louhi.py
 
-Now you should be ready for massively parallel calculations, a sample
-job file would be::
+Currently, there is a small bug in the Cray libraries which results in
+failure when trying to build the ``_gpaw.so`` library. As the library
+is not really needed in parallel calculations, the problem can be
+circumvented by creating the file after running the setup.py script::
 
-  #!/bin/csh
-  #
-  #PBS -N jobname
-  #PBS -l walltime=24:00
-  #PBS -l mppwidth=512
+  python setup.py build_ext
+  ...
+  touch build/lib.linux-x86_64-2.6/_gpaw.so
+  python setup.py install --home=...
 
-  cd /wrk/my_workdir
-  # set the environment variables
-  SETENV PYTHONPATH ...
+Python and Numpy
+================
 
-  aprun -n 512 /path_to_gpaw_bin/gpaw-python input.py
+Python can be compiled with PGI compiler as follows::
 
-In order to use a preinstalled version of gpaw one can give the
-command ``module load gpaw`` which sets all the correct environment
-variables (:envvar:`PYTHONPATH`, :envvar:`GPAW_SETUP_PATH`, ...)
+  setenv XTPE_LINK_TYPE dynamic
+  ./configure --prefix=path_to_install CC=cc CXX=cc OPT=-fastsse LINKFORSHARED=-Wl,--export-dynamic
+  make install
+
+In order to use optimized BLAS with Numpy one has to first build a
+CBLAS which is linked with Cray's optimized BLAS routines. First,
+download the CBLAS source from netlib::
+
+    wget http://www.netlib.org/blas/blast-forum/cblas.tgz
+    tar -xzf cblas.tgz
+
+Change to the CBLAS directory and copy ``Makefile.LINUX`` to
+``Makefile.in``. Add correct compiler commands and paths to
+``Makefile.in``::
+
+  ...
+  PLAT = louhi
+
+  #-----------------------------------------------------------------------------
+  # Libraries and includs
+  #-----------------------------------------------------------------------------
+
+  BLLIB =
+  CBDIR = $(HOME)/CBLAS
+  CBLIBDIR = $(CBDIR)/lib/$(PLAT)
+  CBLIB = $(CBLIBDIR)/libcblas.a
+
+  #-----------------------------------------------------------------------------
+  # Compilers
+  #-----------------------------------------------------------------------------
+
+  CC = cc
+  FC = ftn
+
+  LOADER = $(FC)
+
+  #-----------------------------------------------------------------------------
+  # Flags for Compilers
+  #-----------------------------------------------------------------------------
+
+  CFLAGS = -O3 -DADD_ -fPIC
+  FFLAGS = -O3 -fPIC
+
+  ...
+
+Finally, build CBLAS::
+
+  make alllib
+
+You are now ready to build Numpy with the newly created CBLAS
+library. The standard Numpy tries to use only the ATLAS BLAS, and in
+order to use different BLAS one has to manually edit the file
+``numpy/core/setup.py``. Comment out an if statement as follows::
+
+      def get_dotblas_sources(ext, build_dir):
+        if blas_info:
+            # if ('NO_ATLAS_INFO',1) in blas_info.get('define_macros',[]):
+            #     return None # dotblas needs ATLAS, Fortran compiled blas will not be sufficient.
+            return ext.depends[:1]
+
+Then, add the correct libraries and paths to the file ``site.cfg``::
+
+  [blas]
+  blas_libs = cblas
+  library_dirs = /home/csc/jenkovaa/CBLAS/lib/louhi
+
+  [lapack]
+  lapack_libs = sci
+  library_dirs = /opt/xt-libsci/10.3.8/pgi/lib
+
+Now, one should be able to build Numpy as usual::
+
+  python setup.py install
+
+
+
 
