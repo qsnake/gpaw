@@ -47,6 +47,7 @@ tests = [
     'blas.py',
     'gp2.py',
     'non_periodic.py',
+    'erf.py',
     'lf.py',
     'lxc_xc.py',
     'lxc_fxc.py',

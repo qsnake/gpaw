@@ -47,6 +47,7 @@ PyObject* utilities_gaussian_wave(PyObject *self, PyObject *args);
 PyObject* utilities_vdot(PyObject *self, PyObject *args);
 PyObject* utilities_vdot_self(PyObject *self, PyObject *args);
 PyObject* errorfunction(PyObject *self, PyObject *args);
+PyObject* cerf(PyObject *self, PyObject *args);
 PyObject* unpack(PyObject *self, PyObject *args);
 PyObject* unpack_complex(PyObject *self, PyObject *args);
 PyObject* hartree(PyObject *self, PyObject *args);
@@ -111,6 +112,7 @@ static PyMethodDef functions[] = {
   {"eed_region", exterior_electron_density_region, METH_VARARGS, 0},
   {"plane_wave_grid", plane_wave_grid, METH_VARARGS, 0},
   {"erf",        errorfunction,        METH_VARARGS, 0},
+  {"cerf",       cerf,        METH_VARARGS, 0},
   {"unpack",       unpack,           METH_VARARGS, 0},
   {"unpack_complex",       unpack_complex,           METH_VARARGS, 0},
   {"hartree",        hartree,        METH_VARARGS, 0},
