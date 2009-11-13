@@ -208,6 +208,10 @@ main(int argc, char **argv)
   char procname[MPI_MAX_PROCESSOR_NAME];
 #endif
 
+#ifdef GPAW_CRAYPAT
+  PAT_region_begin(1, "C-Initializations");
+#endif
+
 #ifndef GPAW_OMP
   MPI_Init(&argc, &argv);
 #else
@@ -265,6 +269,9 @@ main(int argc, char **argv)
   PyModule_AddObject(m, "Communicator", (PyObject *)&MPIType);
   import_array1(-1);
   MPI_Barrier(MPI_COMM_WORLD);
+#ifdef GPAW_CRAYPAT
+  PAT_region_end(1);
+#endif
   status = Py_Main(argc, argv);
 #ifdef GPAW_HPM
   HPM_Stop("GPAW");
