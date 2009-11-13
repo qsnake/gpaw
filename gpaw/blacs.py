@@ -81,7 +81,6 @@ class SLEXDiagonalizer:
         if H_MM.shape != (0, 0):
             assert self.gd.comm.rank == 0
             X = H_MM[:, :mynbands].T
-            print X.flags
             kpt.C_nM[:] = H_MM[:, :mynbands].T
             self.bd.distribute(eps_n[:nbands], kpt.eps_n)
         else:
@@ -92,6 +91,7 @@ class SLEXDiagonalizer:
         return 0
 
 class BlacsGrid:
+    """Class representing a 2D grid of processors sharing a Blacs context."""
     def __init__(self, comm, nprow, npcol, order='R'):
         if isinstance(comm, SerialCommunicator):
             raise ValueError('you forgot mpi AGAIN')
@@ -112,6 +112,7 @@ class BlacsGrid:
         self.comm = comm
         self.nprow = nprow
         self.npcol = npcol
+        self.ncpus = nprow * npcol
         self.order = order
 
     def is_active(self):
@@ -129,11 +130,37 @@ class BlacsGrid:
         return string
     
     def __del__(self):
-        if self.is_active():
-            _gpaw.blacs_destroy1(self.context)
+        _gpaw.blacs_destroy(self.context)
 
 
 class BlacsDescriptor:
+    """Class representing a 2D matrix distributed on a blacs grid.
+
+    The global shape is M by N, being distributed on the specified BlacsGrid
+    such that mb and nb are rows and columns on each processor.
+    
+    XXX rsrc, csrc?
+
+    The following chart describes how different ranks (there are 4
+    ranks in this example, 0 through 3) divide the matrix into blocks.
+    This is called 2D block cyclic distribution::
+
+        +--+--+--+--+..+--+
+        | 0| 1| 0| 1|..| 1|
+        +--+--+--+--+..+--+
+        | 2| 3| 2| 3|..| 3|
+        +--+--+--+--+..+--+
+        | 0| 1| 0| 1|..| 1|
+        +--+--+--+--+..+--+
+        | 2| 3| 2| 3|..| 3|
+        +--+--+--+--+..+--+
+        ...................
+        ...................
+        +--+--+--+--+..+--+
+        | 2| 3| 2| 3|..| 3|
+        +--+--+--+--+..+--+
+        
+    """
     def __init__(self, blacsgrid, M, N, mb, nb, rsrc, csrc):
         assert M > 0
         assert N > 0
@@ -177,7 +204,6 @@ class BlacsDescriptor:
         string = template % (classname, self.blacsgrid.context, self.M, self.N, 
                              self.mb, self.nb, self.lld, self.locM, self.locN)
         return string
-
 
 
 class BlacsMatrix:
@@ -247,20 +273,24 @@ def parallelprint(comm, obj):
             sys.stdout.flush()
         comm.barrier()
 
-def simpletest():
+
+
+
+def simpletest(M=16, N=16):
     from gpaw.mpi import world
+    ncpus = world.size
 
     grid0 = BlacsGrid(world, 1, 1)
-    grid1 = BlacsGrid(world, 1, 4)
-    grid2 = BlacsGrid(world, 2, 2)
+    grid1 = BlacsGrid(world, 1, ncpus)
+    #grid2 = BlacsGrid(world, 2, 2)
 
-    desc1 = grid1.new_descriptor(16, 16, 16, 4, 0, 0)
+    desc1 = grid1.new_descriptor(M, N, M, ncpus, 0, 0)
     parallelprint(world, desc1)
     mat1 = desc1.new_matrix(float)
     A_mn = mat1.A_mn
     A_mn[:] = world.rank
 
-    desc0 = grid0.new_descriptor(16, 16, 16, 16, 0, 0)
+    desc0 = grid0.new_descriptor(M, N, M, N, 0, 0)
     mat0 = desc0.new_matrix(float)
     mat0.A_mn[:] = world.size + 1
 
