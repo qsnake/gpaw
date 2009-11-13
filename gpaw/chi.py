@@ -15,7 +15,9 @@ class CHI:
         self.nspin = 1
 
     def get_dipole_strength(self, calc, q, wcut, wmin, wmax, dw, eta=0.2, sigma=2*1e-5):
-        """ Obtain the dipole strength spectra for a finite system
+        """Obtain the dipole strength spectra for a finite system.
+
+        Parameters: 
 
         bzkpt_kG : the coordinate of kpoints in the whole BZ, nkpt*3D
         nband : number of bands, 1D
@@ -43,7 +45,6 @@ class CHI:
         kernelRPA/LDA_SS: kernel_SS' in finite sys, (nS, nS), 
              so its float64, but can be complex for periodic sys.
         SNonInter/RPA/LDA_w : dipole strength function, (Nw)
-
         """
  
         bzkpt_kG = calc.get_bz_k_points()
@@ -102,25 +103,31 @@ class CHI:
             SLDA_w[iw,:] = self.calculate_dipole_strength(chi_SS, n_S, iw*dw)
 
         # Solve Casida's equation to get the excitation energies in eV
-        eCasida_s = self.solve_casida(e_kn[0], f_kn[0], C_knM[0], kernelLDA_SS)
+        eCasidaRPA_s, sCasidaRPA_s = self.solve_casida(e_kn[0], f_kn[0], C_knM[0], kernelRPA_SS, n_S)
+        eCasidaLDA_s, sCasidaLDA_s = self.solve_casida(e_kn[0], f_kn[0], C_knM[0], kernelLDA_SS, n_S)
 
-        return SNonInter_w, SRPA_w, SLDA_w, eCasida_s
+        return SNonInter_w, SRPA_w, SLDA_w, eCasidaRPA_s, eCasidaLDA_s, sCasidaRPA_s, sCasidaLDA_s
 
     def calculate_chi0(self, bzkpt_kG, e_kn, f_kn, C_knM, q, omega, eta=0.2):
-        """ Calculate chi0_SS' for a certain q and omega::
+        """Calculate non-interacting response function (LCAO basis) for a certain q and omega. 
 
-                                 ---- ----
-                  0          2   \    \          f_nk - f_n'k+q
-               chi (q, w) = ---   )    )    ------------------------
-                  SS'       N_k  /    /     w + e_nk -e_n'k+q + i*eta
-                                 ---- ----
-                                  kbz  nn'
-                               *                   *
-                          *  C     C       C     C
-                              nkM   n'k+qN  nkM'  n'k+qN'
-        e_kn(nkpt,nband)
-        f_kn(nkpt,nband)
-        C_knM(nkpt,nband,nLCAO) nLCAO=nband
+        The chi0_SS' matrix is calculated by::
+
+                              ---- ----
+               0          2   \    \          f_nk - f_n'k+q
+            chi (q, w) = ---   )    )    ------------------------
+               SS'       N_k  /    /     w + e_nk -e_n'k+q + i*eta
+                              ---- ----
+                               kbz  nn'
+                            *                   *
+                       *  C     C       C     C
+                           nkM   n'k+qN  nkM'  n'k+qN'
+
+        Parameters:
+
+        e_kn(nkpt,nband) : eigen energy
+        f_kn(nkpt,nband) : occupation
+        C_knM(nkpt,nband,nLCAO) : LCAO coefficients
         """
 
         chi0_SS = np.zeros((self.nS, self.nS), dtype=complex)
@@ -143,19 +150,21 @@ class CHI:
         return chi0_SS / self.nkpt
 
     def calculate_spectral_function(self, bzkpt, e_kn, f_kn, C_knM, q, wcut, dw, sigma=1e-5):
-        """ Calculate spectral function A_SS' for a certain q and a series of omega::
+        """Calculate spectral function for a certain q and a series of omega.
 
-                                 ---- ----
-                  0          2   \    \         
-                 A (q, w) = ---   )    )   (f_nk - f_n'k+q) * delta(w + e_nk -e_n'k+q)
-                  SS'       N_k  /    /    
-                                 ---- ----
-                                  kbz  nn'
-                               *                   *
-                          *  C     C       C     C
-                              nkM   n'k+qN  nkM'  n'k+qN'
+           The spectral function A_SS' is defined as::
+
+                            ---- ----
+             0          2   \    \         
+            A (q, w) = ---   )    )   (f_nk - f_n'k+q) * delta(w + e_nk -e_n'k+q)
+             SS'       N_k  /    /    
+                            ---- ----
+                             kbz  nn'
+                          *                   *
+                     *  C     C       C     C
+                         nkM   n'k+qN  nkM'  n'k+qN'
              
-             Use Gaussian wave for delta function
+        Use Gaussian wave for delta function
         """
 
         specfunc_SSw = np.zeros((self.nS, self.nS, self.NwS), dtype=C_knM.dtype)
@@ -183,13 +192,15 @@ class CHI:
         return specfunc_SSw *dw / self.nkpt
 
     def hilbert_transform(self, specfunc_SSw, wmin, wmax, dw, eta=0.01 ):
-        """ Obtain chi0_SS' by hilbert transform with the spectral function A_SS'::
+        """Obtain chi0_SS' by hilbert transform with the spectral function A_SS'.
 
-                           inf
-              0            /   0                1             1
-           chi (q, w) =   |  A (q, w') * (___________ - ___________)  dw'
-              SS'         /   SS'          w-w'+ieta      w+w'+ieta
-                          0
+        The hilbert tranform is performed as::
+
+                            inf
+               0            /   0                1             1
+            chi (q, w) =   |  A (q, w') * (___________ - ___________)  dw'
+               SS'         /   SS'          w-w'+ieta      w+w'+ieta
+                           0
 
         Note, The dw' is reduced above in the delta function
         """
@@ -205,16 +216,17 @@ class CHI:
         return chi0_SSw
 
     def kernel_finite_sys(self, nt_G, D_asp, orb_MG, kpt, gd, setups, spos_ac):
-        """  Calculate the Kernel for a finite system
+        """Calculate the Kernel for a finite system. 
     
-        Refer to report 4/11/2009, Eq. (18) - (22)::
-
+        The kernel is expressed as, refer to report 4/11/2009, Eq. (18) - (22)::
+                                                                            
                      //                   /    1                   \
             K      = || dr  dr   n (r )  (  -------- + f  (r  , r)  ) n (r )
              S1,S2   //   1   2   S  1    \ |r - r |    xc  1    2 /   S  2 
                                    1          1   2                     2 
-      
-            while 
+                   
+        while::
+
                      ~        ----  a       ~ a
             n (r)  = n (r)  + \    n (r)  - n (r)
              S        S       /___  S        S
@@ -236,7 +248,8 @@ class CHI:
 
         Coulomb Kernel: use coulomb.calculate (note it returns the E_coul in eV)
 
-        XC kernel :: 
+        XC kernel is obtained by::
+ 
              xc
             K       = < n   | f [n] | n   >  (note, n is the total density)
              S1,S2       S1    xc      S2
@@ -247,6 +260,24 @@ class CHI:
                       +  \     < n   | f [n ] | n   >  - < n   | f [n ] | n   >
                          /___     S1    xc       S2         S1    xc       S2
                            a
+
+        The second term of the XC kernel can be further evaluated by::
+
+            ---- ----           ~ a     ~ a                     ~ a     ~ a
+            \    \     < phi  | p   > < p   | phi  >   < phi  | p   > < p   | phi  >
+            /___ /___       mu   i1      i2      nu         mu   i3      i4      nu
+              a  i1,i2        1                    1          2                    2
+                 i3,i4
+
+                    (  /      a       a         a     a       a 
+                  * | | dr phi (r) phi (r)  f [n ] phi (r) phi (r) 
+                    ( /       i1      i2     xc       i3      i4
+
+                       /    ~ a     ~ a        ~a   ~ a     ~ a     )
+                    - | dr phi (r) phi (r)  f [n ] phi (r) phi (r)  |
+                      /       i1      i2     xc       i3      i4    )
+
+        The method four_phi_integrals calculate the () term in the above equation
         """
 
         Kcoul_SS = np.zeros((self.nS, self.nS))
@@ -287,27 +318,30 @@ class CHI:
                         Kxc_SS[self.nLCAO*n+m, self.nLCAO*p+q] = gd.integrate(nt1_G*fxc_G*nt2_G)
 
                         for a, P_Mi in kpt.P_aMi.items():
-                            P1_I = np.outer(P_Mi[n], P_Mi[m]).ravel()                            
-                            P2_I = np.outer(P_Mi[p], P_Mi[q]).ravel() 
-                            P_II = np.outer(P1_I, P2_I)
-                            Kxc_SS[self.nLCAO*n+m, self.nLCAO*p+q] += (np.dot(P_II, J_II[a])).sum()
- 
+                            P1_I = np.outer(P_Mi[n].conj(), P_Mi[m]).ravel()                            
+                            P2_I = np.outer(P_Mi[p].conj(), P_Mi[q]).ravel() 
+                            Kxc_SS[self.nLCAO*n+m, self.nLCAO*p+q] += (
+                                    np.inner(np.inner(P1_I, J_II[a]), P2_I) )
+
             print 'finished', n, 'cycle', ' (max: nLCAO = ', self.nLCAO, ')'
         tmp = Kcoul_SS / Hartree
+
         return tmp, tmp + Kxc_SS
 
     def solve_Dyson(self, chi0_SS, kernel_SS):
-        """ Solve Dyson's equation for a certain q and w::
+        """Solve Dyson's equation for a certain q and w. 
 
+        The Dyson's equation is written as::
+                                                                 
                             0         ----   0
             chi (q, w) = chi (q, w) + \    chi (q, w) K     chi (q, w)
               SS'          SS'        /___   SS        S S    S S'
                                        S S     1        1 2    2
                                         1 2
                       
-        Input: chi_0 (q, w) at a given q and omega, 
-                          for finite system, q = 0
+        Input: chi_0 (q, w) at a given q and omega (for finite system, q = 0)
         Output: chi(q, w)
+
         It corresponds to solve::
 
             ---- (           ----   0             )                   0 
@@ -328,30 +362,46 @@ class CHI:
 
 
     def calculate_dipole_strength(self, chi_SS, n_S, omega):
-        """ Calculate dipole strength for a particular omega
-        Atomic unit ::
+        """Calculate dipole strength for a particular omega.
 
-                     2w
-             S(w) = ---- Im alpha(w) , alpha is the dynamical polarizability 
-                     pi
-                          //
-             alpha(w) = - || dr dr' r chi(r,r',w) r'
+        The dipole strength is obtained by (atomic unit)::
+
+                    2w
+            S(w) = ---- Im alpha(w) , 
+                    pi
+
+        while alpha is the dynamical polarizability defined as::
+
                          //
-                          //          ----               
-                      = - || dr dr' r \    pair_phi(r) chi (w) pair_phi(r') r'
-                         //           /___               SS'
+            alpha(w) = - || dr dr' r chi(r,r',w) r'
+                        //
+                         //          ----               
+                     = - || dr dr' r \    n (r) chi (w) n (r') r'
+                        //           /___  S       SS'   S'
                                       SS'
-             where pair_phi(r) = phi * phi
-                                   mu    nu
-                          ----   /                         /
-                      = - \     | dr r pair_phi(r) chi (w) | dr' r' pair_phi(r')
-                          /___ /                     SS'  /
-                           SS'
-                          ----
-                      = - \    Phi  chi (w) Phi  
-                          /___    S    SS'     S'
-                           SS'
-             where Phi_S is defined in pair_orbital_Rspace
+
+        The pair density is defined as::
+
+            n (r) = phi (r) * phi (r) 
+             S         mu        nu
+     
+                      ----          ~ a    ~ a          (                    ~       ~      )
+                    + \    < phi  | p  > < p  | phi  >  | phi (r) phi (r) - phi (r) phi (r) |
+                      /___      mu   i      j      nu   (    i       j         i       j    )
+                       ij       
+
+        As a result::
+
+                         ----   /                    /
+            alpha(w) = - \     | dr r n (r) chi (w) | dr' r' n (r')
+                         /___ /        S       SS'  /         S'
+                          SS'
+                         ----
+                     = - \    n  chi (w) n  
+                         /___  S    SS'   S'
+                          SS'
+ 
+        where n_S is defined in pair_orbital_Rspace
         """
 
         alpha = np.zeros(3, dtype=complex)
@@ -363,19 +413,19 @@ class CHI:
         return S
 
     def chi_to_Gspace(self, chi_SS, pairphiG0_S):
-        """ Transform from chi_SS' to chi_GG'    
+        """Transformation from chi_SS' to chi_GG'(G=G'=0) at a certain q and omega
 
-        Input either chi0 or chi at a certain  q and omega, and pair_phi::
+        The transformation is defined as::
 
-                            ----                                    *
-            chi    (q,w)  = \    pair_phi(G=0) * chi (q,w) *pair_phi (G=0)
-               GG'=0        /___         S         SS'              S'
+                            ----                        *
+            chi    (q,w)  = \    n (G=0) * chi (q,w) * n (G=0)
+               GG'=0        /___  S         SS'         S'
                              SS'
 
-        Note,
-        chi0(nLCAO**2,nLCAO**2) dtype=complex 
-        pair_phi(1, nLCAO**2)   dtype=float64
+        Parameters: 
 
+        chi0(nLCAO**2,nLCAO**2) dtype=complex 
+        n_S(nLCAO**2)   dtype=float64
         """
 
         chiGspace = np.sum( np.dot( np.dot(pairphiG0_S, chi_SS),
@@ -384,7 +434,7 @@ class CHI:
 
 
     def find_kq(self, bzkpt_kG, q):
-        """ Find the index of k+q for all kpoints in BZ """
+        """Find the index of k+q for all kpoints in BZ."""
 
         found = False
         kq = np.zeros(self.nkpt)
@@ -404,30 +454,33 @@ class CHI:
 
 
     def pair_C(self, C1, C2):     
-        """ Calculate pair C_nkM C_n',k+q,N for a certain k, q, n, n'
+        """Calculate pair C_nkM C_n',k+q,N for a certain k, q, n, n'.
 
         C1 = C_knM(k, n, :), C2 = C_knM(k+q, m, :)
         C1.shape = (nLCAO,)
-
         """
 
         return np.ravel(np.outer(C1.conj(),C2)) # (nS,)
 
 
     def pair_orbital_G0(self, orb_MG):
-        """ Calculate pair atomic orbital at G=0 :: 
+        """Calculate pair atomic orbital at G=0. 
 
-                              /        *                -iGr 
-            pair_phi (G=0) = | dr ( phi (r)  phi (r) ) e
-                    S       /         mu       nu
-            where
+        The pair orbital is defined as::
+
+                       /        *                -iGr 
+            n (G=0) = | dr ( phi (r)  phi (r) ) e
+             S       /         mu       nu
+
+        where::
+
                     ----
             phi   = \    Phi   ( r - R ), with Phi_mu the LCAO orbital
                mu   /---    mu        I
                       I
+
         But note that, all the LCAO orbitals are real, 
         which means Phi_mu and phi_mu are all real 
-
         """
 
         pairphiG0_MM = np.zeros((self.nLCAO, self.nLCAO))
@@ -440,7 +493,9 @@ class CHI:
         return pairphiG0_S
 
     def pair_orbital_Rspace(self, orb_MG, h_c, setups, kpt):
-        """ Calculate pair LCAO orbital in real space::
+        """Calculate pair LCAO orbital in real space. 
+
+        The pair density is defined as::
              
                    /
             n   =  | dr  r  phi (r) phi (r) 
@@ -449,7 +504,10 @@ class CHI:
                     + \    < phi  | p  > < p  | phi  >  | phi (r) phi (r) - phi (r) phi (r) |
                       /___      mu   i      j      nu   (    i       j         i       j    )
                        ij       
-        orb(nband, Nx, Ny, Nz)
+
+        Parameters:
+
+        orb(nband, Nx, Ny, Nz): LCAO orbital on the grid
         Delta_pL : L = 1, 2, 3 corresponds to y, z, x, refer to c/bmgs/sharmonic.c
         """
 
@@ -488,12 +546,19 @@ class CHI:
 
 
     def delta_function(self, x0, dx, Nx, sigma):
-        """ Approximate delta funcion using Gaussian wave::
+        """Approximate delta funcion using Gaussian wave.
+
+        The Gaussian wave expression for delta function is written as::
 
                                                  (x-x0)**2
                                    1          - ___________
             delta(x-x0) =  ---------------   e    4*sigma
                           2 sqrt(pi*sigma)
+
+        Parameters:
+
+        sigma : Broadening factor
+        x0    : The center of the delta function
         """        
 
         deltax = np.zeros(Nx)
@@ -503,9 +568,7 @@ class CHI:
 
 
     def fxc(self, n):
-        """ Return fxc[n(r)] for a given density array 
-
-        """
+        """Return fxc[n(r)] for a given density array."""
         
         name = self.xc
         nspins = self.nspin
@@ -519,28 +582,39 @@ class CHI:
         libxc.calculate_fxc_spinpaired(n, fxc)
         return np.reshape(fxc, N)
 
-    def solve_casida(self, e_n, f_n, C_nM, kernel_SS):
-        """ Solve Casida's equation with input from LCAO calculations (nspin = 1) ::
+    def solve_casida(self, e_n, f_n, C_nM, kernel_SS, n_S):
+        """Solve Casida's equation with input from LCAO calculations (nspin = 1).
+
+        The Casida matrix equation is written as::
 
                             2 
             Omega F  = omega  F
                    I        I  I
+
+        while the Omega matrix is defined as::
+
                                       2          ---------------  
             Omega   = delta  delta   e    + 2   / f   e  f   e   K  
                 ss'        ik     jq  s       \/   s   s  s'  s'  ss'
 
-        Note, s is a combined index for ij, 
-              s'                        kq
+        Note, s(s') is a combined index for ij (kq)
 
         The kernel is obtained from ::
+
                     ----
             K    =  \    C      C      C      C      K
              ss'    /___  i,mu   j,nu   k,mu   q,nu   S S
                      S S      1      1      2      2   1 2
                       1 2
-        while capital S is a combined index for mu, nu
-        and C is the LCAO coefficients
 
+        Parameters:
+
+        i/k : index for occupied states
+        j/q : index for unoccupied states
+        s/s': combined index for ij/kq
+        S/S': combined index for mu,nu / mu',nu'
+        C_nM: the LCAO coefficients at kpt=0
+        omega_I : excitation energies
         """
 
         # Count number of occupied and unoccupied states pairs
@@ -592,13 +666,31 @@ class CHI:
         for i in range(npair):
             delta_ss[i,i] *= e_s[i]**2
 
-        kernel_ss += delta_ss
+        Omega_ss = kernel_ss + delta_ss
 
-        # diagonalize the Omega matrix to get the square of exciation energies in Hartree
+        # diagonalize the Omega matrix
         eExcitation_s = np.zeros(npair)
-        diagonalize(kernel_ss, eExcitation_s)
+        diagonalize(Omega_ss, eExcitation_s)
+
+        # get the excitation energies in Hartree
         eExcitation_s = np.array([sqrt(eExcitation_s[i]) for i in range(npair)])
         
-        return eExcitation_s * Hartree
+        # get the dipole strength 
+        ipair = 0
+        mu_s = np.zeros((npair, 3))
+        for i in range(Nocc):
+            for j in range(Nocc, self.nband):
+                for ix in range(3): # x,y,z three directions
+                    mu_s[ipair, ix] = np.inner(np.outer(C_nM[i], C_nM[j]).ravel(), n_S[:, ix])
+                ipair += 1
+
+        fe_s = np.array([ sqrt(f_s[i] * e_s[i]) for i in range(npair)])
+
+        DipoleStrength = np.zeros((npair, 3))
+        for s1 in range(npair):
+            FI_s = Omega_ss[s1]            
+            DipoleStrength[s1] = np.array([ 2. * ((mu_s[:, ix] * fe_s * FI_s).sum())**2 for ix in range(3) ])
+
+        return eExcitation_s * Hartree, DipoleStrength
 
 
