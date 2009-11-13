@@ -56,3 +56,5 @@ inspecting ``coverage/gpaw.*.cover``.
    Lines marked by ``>>>>>>`` we not run.
 
 .. include:: coverage/summary.rst
+
+.. include:: coverage/ranking.rst

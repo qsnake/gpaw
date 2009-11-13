@@ -15,17 +15,20 @@ try:
 except ImportError:
     from StringIO import StringIO
 
-def CoverageFilter(url, coverage, filtering, output):
+def CoverageFilter(url, coverage, filtering, output, digits=4):
     """Filter a coverage file through 'grep -n >>>>>>' and an inlined
     stream editor script in order to convert to reStructuredText."""
     sedname = tempfile.mktemp(prefix='gpaw-sed4rst-')
     htmlfilt = [r's%([\*<._|]{1})%\\\1%g']
     #htmlfilt = ['s%\&%\&amp;%g', 's%>%\&gt;%g', 's%<%\&lt;%g']
+    for i in range(1,digits):
+        htmlfilt.append('s%^([0-9]){'+str(i)+'}[:-]{1}%'+' '*(digits-i)+'&%g')
+    common = r's%^([ \t]*)([0-9]+)[:-]{1}'
     linefilt = ['s%^--$%| --%g',
-        r's%^([0-9]+)[:-]{1}[ \t]*$%| `\1 <' + url + r'#L\1>`__:  %g',
-        r's%^([0-9]+)[:-]{1}([ \t]*)([0-9]+):%| `\1 <' + url + r'#L\1>`__:  \2*\3* %g',
-        r's%^([0-9]+)[:-]{1}([ \t]*)([>]{6})%| `\1 <' + url + r'#L\1>`__:  \2**\3**%g',
-        r's%^([0-9]+)[:-]{1}%| `\1 <' + url + r'#L\1>`__:  %g']
+        common + r'[ \t]*$%| `\2 <' + url + r'#L\2>`__:\1 %g',
+        common + r'([ \t]*)([0-9]+):%| `\2 <' + url + r'#L\2>`__:\1 \3*\4* %g',
+        common + r'([ \t]*)([>]{6})%| `\2 <' + url + r'#L\2>`__:\1 \3**\4**%g',
+        common + r'%| `\2 <' + url + r'#L\2>`__:\1 %g']
     open(sedname, 'w').write('; '.join(htmlfilt + linefilt))
     la = lb = filtering
     if not isinstance(output, str):
@@ -39,10 +42,43 @@ def CoverageFilter(url, coverage, filtering, output):
     os.system('rm -f "%s"' % sedname)
 
 
-class CoverageParser:
+class CoverageData:
+    """Contains coverage information in terms of line-by-line counters."""
+    def __init__(self):
+        self.nol, self.nos, self.nom, self.noc = {}, {}, {}, {}
+
+    def get(self, devel='*'):
+        _nol, _nos, _nom, _noc = [nox.get(devel,0) for nox in \
+                                  [self.nol, self.nos, self.nom, self.noc]]
+        if _nos == 0:
+            ratio, avg = np.nan, np.nan
+        else:
+            ratio, avg = 1-_nom/float(_nos), _noc/float(_nos)
+        return (_nol, _nos, _nom, 100*ratio, _noc, avg)
+
+    def __iadd__(self, other):
+        if not isinstance(other, CoverageData):
+            raise ValueError('Only instances of CoverageData can be added.')
+        for nox, other_nox in zip([self.nol, self.nos, self.nom, self.noc],
+                                  [other.nol, other.nos, other.nom, other.noc]):
+            for devel, count in other_nox.items():
+                nox[devel] = nox.get(devel, 0) + count
+        return self
+
+    def ranking(self, reverse=False):
+        devels = np.array([devel for devel in self.nol.keys() if devel != '*'])
+        totals = np.array([self.nol[devel] for devel in devels])
+        return sorted(zip(devels,totals), key=lambda x:x[1], reverse=reverse)
+
+    def width(self):
+        return max([len(devel) for devel in self.nol.keys() if devel != '*'])
+
+
+class CoverageParser(CoverageData):
     """Parses any coverage file, optionally filtered through 'grep -n >>>>>>',
     and convert to reStructuredText while maintaining line-by-line counters."""
-    def __init__(self, url, coverage, filtering=None):
+    def __init__(self, url, coverage, owners, filtering=None, digits=4):
+        CoverageData.__init__(self)
         self.url = url
         if isinstance(coverage, str):
             self.wait, self.pin = self.create_pipe(coverage, filtering)
@@ -50,9 +86,18 @@ class CoverageParser:
         else:
             self.pin = coverage
             self.direct = False #assumed to be numbered
-
-        self.nol = self.nos = self.nom = self.noc = 0
+        self.owners = owners
+        self.digits = digits
         self.buf = None
+        self.ln = 0
+
+    def ranking(self, reverse=False): # overwrites, numpy is faster
+        devels = np.unique(self.owners)
+        totals = np.array([np.sum(self.owners==devel) for devel in devels])
+        return sorted(zip(devels,totals), key=lambda x:x[1], reverse=reverse)
+
+    def width(self):
+        return self.owners.dtype.itemsize
 
     def create_pipe(self, covername, filtering=None):
         if filtering is None:
@@ -63,48 +108,61 @@ class CoverageParser:
                 % (la,lb,covername), shell=True, stdout=PIPE)
             return poi.wait, poi.stdout
 
+    def increment(self, nox, amount=1):
+        devel = self.owners[self.ln]
+        nox[devel] = nox.get(devel, 0) + amount
+        nox['*'] = nox.get('*', 0) + amount
+
     def digest(self, pattern, replace, add=False):
         assert pattern.startswith('^')
         m = re.match(pattern, self.buf)
         if m is None:
             return False
-        args = (m.group(1),self.url,) + m.groups()
+        args = (m.group(2),self.url,m.group(2),m.group(1)) + m.groups()[2:]
         self.buf = replace % args + self.buf[m.end():]
         if add:
-            self.noc += int(m.group(3))
+            self.increment(self.noc, int(m.group(4)))
         return True
 
-    def parse(self, line):
+    def preprocess(self, line):
         for c in '\*<._|':
             line = line.replace(c, '\\'+c)
-        self.buf = line
-        if self.digest(r'^([0-9]+)[:-]{1}[ \t]*$', \
-                       r'| `%s <%s#L%s>`__:  '):
+        m = re.match('^([0-9]+)([:-]{1}.*)$', line)
+        self.ln = int(m.group(1))-1
+        if self.digits is None:
+            return line
+        else:
+            return '%*s%s\n' % ((self.digits,)+m.groups())
+
+    def parse(self, line):
+        self.buf = self.preprocess(line)
+        if self.digest(r'^([ \t]*)([0-9]+)[:-]{1}[ \t]*$', \
+                       r'| `%s <%s#L%s>`__:%s '):
             pass # empty line
-        elif self.digest(r'^([0-9]+)[:-]{1}([ \t]*)([>]{6})', \
-                         r'| `%s <%s#L%s>`__:  %s**%s**'):
+        elif self.digest(r'^([ \t]*)([0-9]+)[:-]{1}([ \t]*)([>]{6})', \
+                         r'| `%s <%s#L%s>`__:%s %s**%s**'):
             # statement with zero count
-            self.nos += 1
-            self.nom += 1
-        elif self.digest(r'^([0-9]+)[:-]{1}([ \t]*)([0-9]+):', \
-                         r'| `%s <%s#L%s>`__:  %s*%s* ', add=True):
+            self.increment(self.nos)
+            self.increment(self.nom)
+        elif self.digest(r'^([ \t]*)([0-9]+)[:-]{1}([ \t]*)([0-9]+):', \
+                         r'| `%s <%s#L%s>`__:%s %s*%s* ', add=True):
             # statement with non-zero count
-            self.nos += 1
-        elif self.digest(r'^([0-9]+)[:-]{1}', r'| `%s <%s#L%s>`__:  '):
+            self.increment(self.nos)
+        elif self.digest(r'^([ \t]*)([0-9]+)[:-]{1}', r'| `%s <%s#L%s>`__:%s '):
             pass # no countable statement
         else:
             raise IOError('Could not parse "'+self.buf.strip('\n')+'"')
-        self.nol += 1
+        self.increment(self.nol)
         return self.buf
 
     def __iter__(self):
         if self.direct:
             # Reading directly from coverage file so prefix line numbers
             # return ('%d:%s' % (l+1,s) for l,s in enumerate(self.pin))
-            for line in self.pin:
-                yield self.parse('%d:%s' % (self.nol+1, line))
+            for ln,line in enumerate(self.pin):
+                yield self.parse('%d:%s' % (ln+1, line))
         else:
-            # Ignore grep contingency marks if encountered
+            # Ignore grep contingency marks if encountered, else right-ajust
             for line in self.pin:
                 if line.strip('\n') == '--':
                     yield '| --\n'
@@ -171,12 +229,40 @@ class TableIO: # we can't subclass cStringIO.StringIO
             pout.write(self.pipe.getvalue())
             self.pipe.close()
 
+
+class CoverageIO(TableIO):
+    """Formats coverage into fixed-width text tables for reStructuredText."""
+
+    _static_labels = ('NOL', 'NOS', 'NOM', 'Coverage', 'Executions', 'Average')
+    _static_formats = ('%*d', '%*d', '%*d', '%*.2f %%', '%*d', '%*.2f')
+
+    def __init__(self, widths, nol=4, nos=4, nom=4, rel=8, noc=11, avg=11, **kwargs):
+        TableIO.__init__(self, widths + (nol, nos, nom, rel, noc, avg), **kwargs)
+        self.set_formats( \
+            formats=('%-*s',)*len(widths) + self._static_formats,
+            sizes=widths + (nol, nos, nom, rel-2, noc, avg))
+
+    def add_heading(self, labels=None):
+        if labels is not None:
+            TableIO.add_heading(self, labels + self._static_labels)
+        else:
+            TableIO.add_heading(self)
+
 # -------------------------------------------------------------------
 
 def fail(subject, filename='/dev/null'):
     assert os.system('mail -s "%s" s032082@fysik.dtu.dk < %s' %
                      (subject, filename)) == 0
     raise SystemExit
+
+def svninfo(url, target, rev='HEAD'):
+    """Look up names of the developers who last altered lines of a target."""
+    patn = r'^[ \t*]*[0-9]+[ \t]+([^ \t]+)[ \t]+.*$'
+    poi = Popen('svn praise -r %s "%s" | sed -r "/%s/!d; s/%s/\\1/g"' \
+        % (rev,os.path.join(url,target),patn,patn), shell=True, stdout=PIPE)
+    if poi.wait() != 0:
+        fail('Lookup of %s failed!' % target)
+    return np.array(map(str.strip, poi.stdout.readlines()))
 
 def svnexport(url, path):
     """Exports a clean directory tree from the repository specified by `url`
@@ -190,12 +276,16 @@ def svnexport(url, path):
 svnbase = 'https://svn.fysik.dtu.dk/projects/gpaw/trunk'
 tmpdir = tempfile.mkdtemp(prefix='gpaw-coverage-')
 hostname = os.getenv('HOSTNAME')
+cpuruns = [1,2,4,8]
+ignoredirs = ['gpaw/db', 'gpaw/sunday', 'gpaw/testing']
 
 if '--rebuild' in sys.argv[1:]:
     # Build .rst files from .cover files without installing or running tests.
     assert os.path.isfile('counts.out')
+    f = open('counts.out','r')
     rvs = dict([entry.strip('$ \n').split('=',1) for entry in 
-                open('counts.out','r').readline().split(';')])
+                f.readline().split(';')])
+    allfiles = f.readline().strip('$ \n').split(';')
     os.system('cp counts.out "%s"' % tmpdir)
     assert os.path.isdir('coverage')
     os.system('cp -r coverage "%s/coverage"' % tmpdir)
@@ -207,7 +297,16 @@ else:
     rvs['gpaw'] = svnexport(svnbase, 'gpaw')
     rvs['ase'] = svnexport('https://svn.fysik.dtu.dk/projects/ase/trunk', 'ase')
     os.chdir('gpaw')
-    open('counts.out','w').write('$ '+';'.join(map('='.join, rvs.items()))+'\n')
+    f = open('counts.out','w')
+    f.write('$ '+';'.join(map('='.join, rvs.items()))+'\n')
+    allfiles = []
+    for dirpath, dirnames, filenames in os.walk('gpaw'):
+        if np.any([dirpath.startswith(d) for d in ignoredirs]):
+            continue
+        allfiles.extend([os.path.join(dirpath,filename) for filename in \
+                         filenames if filename.endswith('.py')])
+    f.write('$ '+';'.join(sorted(allfiles))+'\n')
+    f.close()
 
     # Temporary installations of GPAW/ASE revisions and latest setups
     if hostname == 'thul.fysik.dtu.dk':
@@ -237,7 +336,7 @@ else:
 
     # Repeatedly run test-suite in code coverage mode:
     args = '--debug --coverage counts.pickle'
-    for cpus in [1,2,4,8]:
+    for cpus in cpuruns:
         tod = time.strftime('%d/%m-%Y %H:%M:%S')
         open('counts.out', 'a').write('\n\n%s - %d thread(s).\n' % (tod,cpus))
         if os.system(customload +
@@ -256,6 +355,7 @@ else:
         % (tmpdir,pydir,sys.executable)) != 0:
         fail('Coverage conversion failed!', 'counts.out')
 
+    # Create tarball of the data and .cover files and copy it to shared folder
     if os.system('tar cvzf gpaw-counts-%s.tar.gz counts.* ' \
                  'coverage/gpaw.*.cover' % rvs['gpaw']) == 0:
         home = os.getenv('HOME')
@@ -263,7 +363,7 @@ else:
             os.mkdir(home + '/sphinx')
         except OSError:
             pass
-        os.system('cp --backup=existing gpaw-counts-%s.tar.gz ' \
+        os.system('cp -v --backup=existing gpaw-counts-%s.tar.gz ' \
         '"%s/sphinx/gpaw-counts-latest.tar.gz"' % (rvs['gpaw'],home))
 
 # -------------------------------------------------------------------
@@ -271,7 +371,7 @@ else:
 # Parse output to test suite logfile and generate reStructuredText
 f = open('testsuite.rst', 'w')
 f.write('.. _testsuite:\n')
-loginfo = TableIO((15, max(10,len(hostname))), simple=True, pipe=f)
+loginfo = TableIO((18, max(10,len(hostname))), simple=True, pipe=f)
 loginfo.add_section('=', 'Test suite')
 loginfo.add_heading()
 for k,v in rvs.items():
@@ -279,30 +379,26 @@ for k,v in rvs.items():
 loginfo.add_row('Build date:', time.strftime('%d/%m-%Y'))
 loginfo.add_row('Ran on host:', hostname)
 loginfo.write_to_stream()
-assert os.system('tail -n+2 counts.out >testsuite.log') == 0
+assert os.system('tail -n+3 counts.out >testsuite.log') == 0
 f.write('\n\n.. literalinclude:: testsuite.log\n\n')
 f.close()
 
 # Initialize pipes as tables for various categories
-limits = np.array([0, 0.5, 0.9, 1.0, np.inf])
+rlimits = np.array([0, 50, 90, 100, np.inf])
 categories = ['Poor','Mediocre','Good', 'Complete']
 pipes = []
-l_filename, l_nol, l_nos, l_nom, l_cov, l_noc, l_avg = 42, 4, 4, 4, 8, 10, 10
+l_filename = 42
 l_filelink = len(':ref:` <>`') + 2*l_filename-4
 for category in categories:
-    pipe = TableIO((l_filelink, l_nol, l_nos, l_nom, l_cov, l_noc, l_avg))
-    pipe.set_formats( \
-        formats=('%-*s', '%*d', '%*d', '%*d', '%*.2f %%', '%*d', '%*.2f'),
-        sizes=(l_filelink, l_nol, l_nos, l_nom, l_cov-2, l_noc, l_avg))
+    pipe = CoverageIO((l_filelink,))
     pipe.add_subtitle('-', 'Files with %s coverage' % category.lower())
-    pipe.add_heading(('Filename', 'NOL', 'NOS', 'NOM', 'Coverage', \
-                     'Executions', 'Average'))
+    pipe.add_heading(('Filename',))
     pipes.append(pipe)
-
 
 urlbase = 'https://trac.fysik.dtu.dk/projects/gpaw/browser/trunk'
 indexname = 'coverage/index.rst'
 tablename = 'coverage/summary.rst'
+rankingname = 'coverage/ranking.rst'
 devnull = open('/dev/null', 'w', buffering=0)
 
 # Generate a toctree with an alphabetical list of files
@@ -319,81 +415,114 @@ List of files with missing coverage
 """)
 
 namefilt = re.compile('coverage/(gpaw\..*)\.cover')
+cumcd = CoverageData()
+
 for covername in sorted(glob.glob('coverage/gpaw.*.cover')):
+    # Find out which .py file in GPAW this .cover file corresponds to
     refname = namefilt.match(covername).group(1)
     rstname = 'coverage/' + refname + '.rst'
     print 'cover:', covername, '->', rstname, 'as :ref:`%s`' % refname
     filename = refname.replace('.','/')+'.py' # unmangle paths
-    fileurl = '%s/%s?rev=%s' % (urlbase,filename,rvs['gpaw'])
+    fileurl = os.path.join(urlbase, '%s?rev=%s' % (filename,rvs['gpaw']))
     filelink = (':ref:`%s <%s>`' % (filename,refname)).ljust(l_filelink)
+    if np.any([filename.startswith(d) for d in ignoredirs]):
+         print 'Ignored...'
+         continue
+    elif filename not in allfiles:
+        raise RuntimeError('%s not in inventory of files.' % filename)
+    allfiles.remove(filename)
 
     # Tally up how many developers have contributed to the file and by how much
-    patn = r'^[ \t*]*[0-9]+[ \t]+([^ \t]+)[ \t]+.*$'
-    poi = Popen('svn praise -r %s "%s/%s" | sed -r "/%s/!d; s/%s/\\1/g"' \
-        % (rvs['gpaw'],svnbase,filename,patn,patn), shell=True, stdout=PIPE)
-    owners = np.array(poi.stdout.readlines())
-    assert poi.wait() == 0
-    devels = np.unique(owners)
-    totals = np.array([np.sum(owners==devel) for devel in devels])
-
-    p = CoverageParser(fileurl, covername)
-    p.write_to_stream(devnull)
+    owners = svninfo(svnbase, filename, rvs['gpaw'])
+    cp = CoverageParser(fileurl, covername, owners)
+    cp.write_to_stream(devnull)
+    t_nol, t_nos, t_nom, t_rel, t_noc, t_avg = cp.get()
+    cumcd += cp
 
     # Skip files which are fully covered, i.e. have no ">>>>>>"
-    if p.nos == 0:
+    if t_nos == 0:
         continue
-    elif p.nom == 0:
-        args = (filename, p.nol, p.nos, p.nom, 100.0, p.noc, p.noc/float(p.nos))
-        pipes[-1].add_row(*args)
+    elif t_nom == 0:
+        pipes[-1].add_row(filename, *cp.get())
         continue
+    else:
+        c = np.argwhere((rlimits[:-1]<=t_rel) & (t_rel<rlimits[1:])).item()
+        pipes[c].add_row(filelink, *cp.get())
 
     f.write('   %s\n' % refname) # add to toctree in index file
 
-    ratio = 1-p.nom/float(p.nos)
-    c = np.argwhere((limits[:-1]<=ratio) & (ratio<limits[1:])).item()
-    args = (filelink, p.nol, p.nos, p.nom, ratio*100, p.noc, p.noc/float(p.nos))
-    pipes[c].add_row(*args)
-
+    # Write reStructuredText file corresponding to coverage file
     g = open(rstname, 'w')
     g.write('\n\n.. _%s:\n' % refname)
 
-    header = TableIO((27, 10), simple=True, pipe=g)
+    # Add header with a simple table of date and versions
+    header = TableIO((22, 10), simple=True, pipe=g)
     header.add_section('=', 'Coverage of %s' % filename)
     header.add_heading()
     for k,v in rvs.items():
         header.add_row('%s revision:' % k.upper(), v)
     header.add_row('Date of compilation:', time.strftime('%d/%m-%Y'))
     header.add_row('Coverage category:', categories[c])
-    header.add_row('Number of lines (NOL):', p.nol)
-    header.add_row('Number of statements (NOS):', p.nos)
-    header.add_row('Number of misses (NOM):', p.nom)
     header.write_to_stream()
 
-    l_devel = devels.dtype.itemsize-1 #trailing newline stripped
-    svninfo = TableIO((l_devel, l_cov), simple=True, pipe=g)
-    svninfo.set_formats(formats=('%-*s', '%*.2f %%'), sizes=(l_devel,l_cov-2))
-    svninfo.add_subtitle('-', 'List of developers by contribution')
-    svninfo.add_heading()
-    for i in np.argsort(totals)[::-1]:
-        svninfo.add_row(devels[i].strip(), totals[i]*100/float(len(owners)))
-    svninfo.write_to_stream()
-
+    # Add summary table with current coverage information listed by developer
     g.write("""
+-------------------------------------
+Distribution of coverage by developer
+-------------------------------------
+The following table summarizes the coverage of the file ``%s`` by the test suite.
+For each developer who has made a contribution to the Python file, the coverage
+summary specifies the number of lines (NOL), number of executable statements (NOS)
+and number of coverage misses (NOM) for the subset of lines he/she has committed.
+
+"""  % filename)
+    l_devel = max(len('Developer'), cp.width())
+    td = CoverageIO((l_devel,), simple=False, pipe=g)
+    td.add_heading(('Developer',))
+    for devel,total in cp.ranking(reverse=True):
+        td.add_row(devel, *cp.get(devel))
+    td.put('-', td.widths)
+    td.add_row('*Total:*', *cp.get())
+    td.write_to_stream()
+
+    # Add relevant excerpt of the .cover file in nice reStructuredText format
+    g.write("""
+Line ownership is determined from the second column of::
+
+   svn praise -r %s "%s/%s"
+
 -------------------
 Test suite coverage
 -------------------
-""")
-    #CoverageParser(fileurl, covername, 2).write_to_stream(g)
-    CoverageFilter(fileurl, covername, 2, g)
+Below is an excerpt of the coverage file ``%s``, which was generated by running
+the test suite as detailed in the :ref:`code coverage <coverage>` section. Only
+lines marked by `>>>>>>` were not covered, thereby giving rise to concern, but
+a few adjacent lines are also listed in order to show the context of the code.
+Blue numbers specify the number of times an executable statement has been run.
+
+""" % (rvs['gpaw'],svnbase,filename,covername))
+    #CoverageParser(fileurl, covername, owners, 3).write_to_stream(g)
+    CoverageFilter(fileurl, covername, 3, g)
     g.close()
 
-# Include the summary in toctree
-f.write('   summary\n')
+# Include the summary and ranking tables in toctree
+f.write("""
+
+Other coverage documents:
+
+.. toctree::
+   :maxdepth: 1
+
+""")
+for rstname in [tablename,rankingname]:
+    f.write('   %s\n' % rstname[len('coverage/'):-len('.rst')])
 f.close()
 
+
+
 # Build summary with tables for the various categories
-h = open(tablename, 'w')
-h.write("""
+f = open(tablename, 'w')
+f.write("""
 -------
 Summary
 -------
@@ -404,15 +533,67 @@ based on the amount of test suite coverage:
 
 """ % len(categories))
 end = 'of the executable statements were covered.\n'
-h.write('- %s coverage: Less than %.0f %% %s' % (categories[0],100*limits[1],end))
+f.write('- :ref:`%s`: Less than %.0f %% %s' % (categories[0].lower(),rlimits[1],end))
 for c,category in tuple(enumerate(categories))[1:-1]:
-    h.write('- %s coverage: %.0f %% - %.0f %% %s' \
-         % (category,100*limits[c],100*limits[c+1],end))
-h.write('- %s coverage: %.0f %% %s' % (categories[-1],100*limits[-2],end))
-for pipe in pipes:
-    pipe.write_to_stream(h)
-h.close()
+    f.write('- :ref:`%s`: %.0f %% - %.0f %% %s' \
+         % (category.lower(),rlimits[c],rlimits[c+1],end))
+f.write('- :ref:`%s`: %.0f %% %s' % (categories[-1].lower(),rlimits[-2],end))
+f.write("""
 
+For each file, the coverage summary specifies the number of lines (NOL), number
+of executable statements (NOS) and number of coverage misses (NOM). Additionaly,
+the total number of statement executions is presented, as well as the average
+number of executions for each statement. Note that the test suite has been run
+multiple times as invidual Python threads, thus causing a total of %d Python
+imports for each file. Naturally, Python files which are not imported by the
+test suite will generate no coverage information, so these are listed under
+:ref:`files ignored <ignored>`.
+
+""" % np.sum(cpuruns))
+for category,pipe in zip(categories,pipes):
+    f.write('\n\n.. _%s:\n' % category.lower())
+    pipe.write_to_stream(f)
+
+f.write("""
+
+.. _ignored:
+
+Files without coverage
+----------------------
+The following files were ignored because they were not imported:
+
+""")
+for filename in allfiles:
+    f.write('- %s\n' % filename)
+f.close()
+
+
+
+# Add another table with cumulated coverage information listed by developer
+f = open(rankingname, 'w')
+f.write("""
+-------------------------------------
+Distribution of coverage by developer
+-------------------------------------
+The following table summarizes the cumulative coverage of the GPAW code base by
+the test suite. For each developer who has made a contribution to any of these
+Python files, the coverage summary specifies the total number of lines (NOL),
+total number of executable statements (NOS) and total number of coverage misses
+(NOM) for the subset of lines he/she has committed.
+
+""")
+l_devel = max(len('Developer'), cumcd.width())
+td = CoverageIO((l_devel,), nol=5, nos=5, nom=5, noc=12, simple=False, pipe=f)
+td.add_heading(('Developer',))
+for devel,total in cumcd.ranking(reverse=True):
+    td.add_row(devel, *cumcd.get(devel))
+td.put('-', td.widths)
+td.add_row('*Total:*', *cumcd.get())
+td.write_to_stream()
+f.close()
+
+
+# Create tarball of the generated .rst files and copy it to shared folder
 if os.system('tar cvzf gpaw-coverage-%s.tar.gz testsuite.* ' \
              'coverage/*.rst' % rvs['gpaw']) == 0:
     home = os.getenv('HOME')
@@ -420,7 +601,7 @@ if os.system('tar cvzf gpaw-coverage-%s.tar.gz testsuite.* ' \
         os.mkdir(home + '/sphinx')
     except OSError:
         pass
-    assert os.system('cp --backup=existing gpaw-coverage-%s.tar.gz ' \
+    assert os.system('cp -v --backup=existing gpaw-coverage-%s.tar.gz ' \
         '"%s/sphinx/gpaw-coverage-latest.tar.gz"' % (rvs['gpaw'],home)) == 0
 
 os.system('cd; rm -r ' + tmpdir)
