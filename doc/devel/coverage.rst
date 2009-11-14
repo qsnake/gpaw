@@ -53,8 +53,8 @@ inspecting ``coverage/gpaw.*.cover``.
 
    These files are clear text copies of the original code with a numerical
    prefix, which indicates how many times each executable statement was run.
-   Lines marked by ``>>>>>>`` we not run.
+   Lines marked by ``>>>>>>`` were not run.
 
-.. include:: coverage/summary.rst
+.. include:: coverage/summary.txt
 
-.. include:: coverage/ranking.rst
+.. include:: coverage/ranking.txt

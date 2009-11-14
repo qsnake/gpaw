@@ -396,13 +396,13 @@ for category in categories:
     pipes.append(pipe)
 
 urlbase = 'https://trac.fysik.dtu.dk/projects/gpaw/browser/trunk'
-indexname = 'coverage/index.rst'
-tablename = 'coverage/summary.rst'
-rankingname = 'coverage/ranking.rst'
+rstindex = 'coverage/index.rst'
+tablename = 'coverage/summary.txt'
+rankingname = 'coverage/ranking.txt'
 devnull = open('/dev/null', 'w', buffering=0)
 
 # Generate a toctree with an alphabetical list of files
-f = open(indexname, 'w')
+f = open(rstindex, 'w')
 f.write("""
 
 -----------------------------------
@@ -508,14 +508,9 @@ Blue numbers specify the number of times an executable statement has been run.
 # Include the summary and ranking tables in toctree
 f.write("""
 
-Other coverage documents:
-
-.. toctree::
-   :maxdepth: 1
+Back to :ref:`code coverage <coverage>`.
 
 """)
-for rstname in [tablename,rankingname]:
-    f.write('   %s\n' % rstname[len('coverage/'):-len('.rst')])
 f.close()
 
 
@@ -595,7 +590,7 @@ f.close()
 
 # Create tarball of the generated .rst files and copy it to shared folder
 if os.system('tar cvzf gpaw-coverage-%s.tar.gz testsuite.* ' \
-             'coverage/*.rst' % rvs['gpaw']) == 0:
+             'coverage/*.rst coverage/*.txt' % rvs['gpaw']) == 0:
     home = os.getenv('HOME')
     try:
         os.mkdir(home + '/sphinx')
