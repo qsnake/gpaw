@@ -385,8 +385,17 @@ class MixerRho2(BaseMixer):
 
 class BaseMixer_Broydn:
     def __init__(self, beta=0.1, nmaxold=6):
-        self.step = 0
         self.verbose = False
+        self.beta = beta
+        self.nmaxold = nmaxold
+        self.weight = 1
+        self.mix_rho = False
+        
+    def initialize(self, density):
+        self.gd = density.gd
+
+    def reset(self):
+        self.step = 0
         self.d_nt_G = []
         self.d_D_ap = []
         self.nt_iG = []
@@ -394,18 +403,8 @@ class BaseMixer_Broydn:
         self.c_G =  []
         self.v_G = []
         self.u_G = []
-        self.u_D = []
-        self.beta = beta
-        self.nmaxold = nmaxold
-        self.weight = 1
+        self.u_D = []        
         self.dNt = None
-        self.mix_rho = False
-        
-    def initialize(self, density):
-        self.gd = density.gd
-
-    def reset(self):
-        pass
         
     def get_charge_sloshing(self):
         return self.dNt 
@@ -452,7 +451,7 @@ class BaseMixer_Broydn:
                 self.u_G.append(self.beta  * temp_nt_G + self.nt_iG[1] - self.nt_iG[0])
                 for d_Dp, u_D, D_ip in zip(self.d_D_ap, self.u_D, self.D_iap):
                     temp_D_ap = d_Dp[1] - d_Dp[0]
-                    u_D.append(self.beta  * temp_D_ap + D_ip[1] - D_ip[0])
+                    u_D.append(self.beta * temp_D_ap + D_ip[1] - D_ip[0])
                 usize = len(self.u_G)
                 for i in range(usize - 1):
                     a_G = self.gd.integrate(self.v_G[i] * temp_nt_G)
