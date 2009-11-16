@@ -4,15 +4,16 @@
 Ubuntu
 ======
 
-Here you find information about the the system
-`<http://www.ubuntu.com/>`_.
+Here you find information about the `Ubuntu distribution
+<http://www.ubuntu.com/>`_.
 
-Install the required packages, listed below, then :ref:`download
-<download>` GPAW trunk or stable and modify :file:`.bashrc` as detailed
-in the :ref:`installationguide`.
+Install ASE and the required packages, listed below, then
+:ref:`download <download>` GPAW trunk or stable and modify
+:file:`.bashrc` as detailed in the :ref:`installationguide`.  The
+following instructions are for Ubuntu 8.10 or newer.  Instructions for
+older versions can be found :ref:`further down the
+page <ubuntu_oldversions>`.
 
-Version 8.10 or newer
----------------------
 
 Required packages:
 
@@ -25,12 +26,45 @@ Recommended:
 * python-scientific
 * python-matplotlib
 
-Parallelization with OpenMPI:
+Building documentation (XXX check whether this is precisely enough):
+
+* python-sphinx
+* texlive-latex-base
+* texlive-latex-extra
+* dvipng
+* povray
+
+To run parallel calculations, choose one of the three sections below.
+
+Parallelization with OpenMPI
+----------------------------
+
+Install the packages
 
 * openmpi-bin
 * libopenmpi-dev
 
-Parallelization with MPI-LAM and BLACS/ScaLAPACK:
+This will provide all parallel functionality except that of
+BLACS/ScaLAPACK, which is normally not needed.
+
+Parallelization with OpenMPI and BLACS/ScaLAPACK
+------------------------------------------------
+
+This is recommended for Ubuntu 9.10.  Install the package
+
+* libscalapack-mpi-dev
+
+Then build GPAW with the customize-file
+:svn:`~doc/install/Linux/customize-ubuntu-sl-blacs-openmpi.py`:
+
+.. literalinclude:: customize-ubuntu-sl-blacs-openmpi.py
+
+Parallelization with MPI-LAM and BLACS/ScaLAPACK
+------------------------------------------------
+
+For Ubuntu 9.04 and possibly some older versions, there are no
+BLACS/ScaLAPACK packages for use with OpenMPI.  In this case it is
+recommended to use MPI-LAM.  Install the packages
 
 * lam-runtime
 * scalapack1-lam
@@ -38,23 +72,15 @@ Parallelization with MPI-LAM and BLACS/ScaLAPACK:
 * blacs1gf-lam
 * blacsgf-lam-dev
 
-This also requires building GPAW with the customize-file
+Then build GPAW with the customize-file
 :svn:`~doc/install/Linux/customize-ubuntu-sl-blacs-lam.py`:
 
 .. literalinclude:: customize-ubuntu-sl-blacs-lam.py
 
-Building documentation:
+.. _ubuntu_oldversions:
 
-* python-sphinx
-* povray
-
-Sphinx and povray are necessary only to build the documentation.
-
-For your pasting convenience::
-  
-  sudo apt-get install python-dev python-numpy liblapack-dev python-scientific python-matplotlib python-sphinx povray
-
-Version 8.04 or earlier
+-----------------------
+Ubuntu 8.04 or earlier
 -----------------------
 
 Install these packages:
@@ -68,13 +94,14 @@ Install these packages:
 * python-numpy
 * python-numpy-ext
 
-Optional:
+Recommended:
 
 * atlas3-base
 * atlas3-base-dev
 * atlas3-headers
 * python-scientific
 
-GPAW will use atlas3 if available, which should increase performance. 
-Python-scientific is not strictly necessary, but some tests require it. 
-Some packages in build-essential are likewise not necessary.
+GPAW will use atlas3 if available, which should increase performance.
+Python-scientific is not strictly necessary, but some tests require
+it.  Some packages in build-essential are likewise not necessary.
+Note that this will only be a serial GPAW installation.
