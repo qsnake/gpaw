@@ -337,14 +337,14 @@ class Transport_Analysor:
         self.n_bias_step += 1
 
     def bias_step_time_collect(self):
-        time = self.tp.timer.gettime
+        time = self.tp.timer.get_time
         cost = {}
         if not self.tp.non_sc and not self.tp.analysis_mode:
             cost['init scf'] = time('init scf')
         return cost
         
     def ele_step_time_collect(self):    
-        time = self.tp.timer.gettime
+        time = self.tp.timer.get_time
         cost = {}
         cost['eq fock2den'] = time('eq fock2den')
         cost['ne fock2den'] = time('ne fock2den')
@@ -907,7 +907,8 @@ class Transport_Plotter:
     
     def __init__(self, flag='bias', data_file=None):
         if data_file is None:
-            data_file = 'analysis_data_' + flag
+            data_file = 'analysis_data'
+        data_file += '_' + flag
         fd = file(data_file, 'r')
         data = pickle.load(fd)
         if flag == 'ion':
