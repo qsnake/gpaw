@@ -542,14 +542,18 @@ class PAW(PAWTextOutput):
         if xcfunc.gllb:
             xcfunc.initialize_gllb(self)
 
+        self.text()
+        self.print_memory_estimate(self.txt, maxdepth=2)
+        self.txt.flush()
+
         if dry_run:
             self.dry_run()
             
         self.initialized = True
 
     def dry_run(self):
+        # Can be overridden like in gpaw.atom.atompaw
         self.print_cell_and_parameters()
-        self.print_memory_estimate(self.txt, maxdepth=2)
         self.txt.flush()
         raise SystemExit
 
