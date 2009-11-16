@@ -630,9 +630,11 @@ class FFTVDWFunctional(VDWFunctional):
                               a2_g=None, e_LDAc_g=None, v_LDAc_g=None,
                               v_g=None, deda2_g=None):
         self.timer.start('VdW-DF integral')
+        self.timer.start('splines')
         if self.C_aip is None:
             self.construct_cubic_splines()
             self.construct_fourier_transformed_kernels()
+        self.timer.stop('splines')
 
         gd = self.gd
         N = self.Nalpha
@@ -640,9 +642,11 @@ class FFTVDWFunctional(VDWFunctional):
         world = self.world
 
         if self.alphas:
+            self.timer.start('hmm1')
             i_g = (np.log(q0_g / self.q_a[1] * (self.lambd - 1) + 1) /
                    log(self.lambd)).astype(int)
             dq0_g = q0_g - self.q_a[i_g]
+            self.timer.stop('hmm1')
         else:
             i_g = None
             dq0_g = None
@@ -653,10 +657,12 @@ class FFTVDWFunctional(VDWFunctional):
         theta_ak = {}
         p_ag = {}
         for a in self.alphas:
+            self.timer.start('hmm2')
             C_pg = self.C_aip[a, i_g].transpose((3, 0, 1, 2))
             pa_g = (C_pg[0] + dq0_g *
                     (C_pg[1] + dq0_g *
                      (C_pg[2] + dq0_g * C_pg[3])))
+            self.timer.stop('hmm2')
             del C_pg
             self.timer.start('FFT')
             theta_ak[a] = fftn(n_g * pa_g, self.shape).copy()
@@ -677,38 +683,43 @@ class FFTVDWFunctional(VDWFunctional):
             print
             print 'VDW: convolution:',
 
-        F_ag = {}
+        F_ak = {}
         dj_k = self.dj_k
         energy = 0.0
         for a in range(N):
             ranka = a * world.size // N
-            Fa_k = np.zeros(self.shape, complex)
+            F_k = np.zeros(self.shape, complex)
             for b in self.alphas:
                 self.timer.start('Convolution')
                 _gpaw.vdw2(self.phi_aajp[a, b], self.j_k, dj_k,
-                           theta_ak[b], Fa_k)
+                           theta_ak[b], F_k)
                 self.timer.stop()
-                
-            self.world.sum(Fa_k, ranka)
-            if world.rank == ranka:
-                energy += np.vdot(theta_ak[a], Fa_k).real
 
-                if not self.energy_only:
-                    n1, n2, n3 = gd.get_size_of_global_array()
-                    self.timer.start('iFFT')
-                    F_ag[a] = ifftn(Fa_k).real[:n1, :n2, :n3].copy()
-                    self.timer.stop()
-                    
-            del Fa_k
+            self.timer.start('gather')
+            self.world.sum(F_k, ranka)
+            self.timer.stop('gather')
+
+            if world.rank == ranka:
+                F_ak[a] = F_k
+                energy += np.vdot(theta_ak[a], F_k).real
+
             if self.verbose:
                 print a,
                 sys.stdout.flush()
 
         del theta_ak
+
         if self.verbose:
             print
 
         if not self.energy_only:
+            F_ag = {}
+            for a in self.alphas:
+                n1, n2, n3 = gd.get_size_of_global_array()
+                self.timer.start('iFFT')
+                F_ag[a] = ifftn(F_ak[a]).real[:n1, :n2, :n3].copy()
+                self.timer.stop()
+
             self.timer.start('potential')
             self.calculate_potential(n_g, a2_g, i_g, dq0_g, p_ag, F_ag,
                                      e_LDAc_g, v_LDAc_g,
@@ -723,9 +734,11 @@ class FFTVDWFunctional(VDWFunctional):
         N = self.Nalpha
         world = self.world
 
+        self.timer.start('collect')
         a2_g = self.gd.collect(a2_g, broadcast=True)
         e_LDAc_g = self.gd.collect(e_LDAc_g, broadcast=True)
         v_LDAc_g = self.gd.collect(v_LDAc_g, broadcast=True)
+        self.timer.stop('collect')
         if self.alphas:
             dq0dn_g = ((pi / 3 / n_g)**(2.0 / 3.0) +
                        4 * pi / 3 * (e_LDAc_g / n_g - v_LDAc_g) / n_g +
@@ -747,8 +760,10 @@ class FFTVDWFunctional(VDWFunctional):
             deda20_g += dthetaada2_g * F_ag[a]
             del dthetaada2_g
 
+        self.timer.start('sum')
         world.sum(v0_g)
         world.sum(deda20_g)
+        self.timer.stop('sum')
         slice = self.gd.get_slice()
         v_g += v0_g[slice]
         deda2_g += deda20_g[slice]
