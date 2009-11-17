@@ -1446,6 +1446,27 @@ def interpolate_array(array, gd, h, di='+'):
     
     return new_array
         
-    
+def eig_states_norm(orbital, s_mm):
+    #normalize orbital to satisfy orbital.T.conj()*SM*orbital=unit
+    norm_error = 1e-10
+    ortho_error = 1e-8
+    nstates = orbital.shape[1]
+    d_mm = np.dot(orbital.T.conj(), s_mm)
+    d_mm = np.dot(d_mm, orbital)
+    for i in range(1, nstates):
+        for j in range(i):
+            if abs(d_mm[j ,i]) > ortho_error:
+                orbital[:, i] -= orbital[:, j] * d_mm[j, i] / d_mm[j ,j]
+                d_mm = np.dot(orbital.T.conj(), s_mm)
+                d_mm = np.dot(d_mm, orbital)
+    for i in range(nstates):
+        orbital[:, i] /= np.sqrt(d_mm[i, i])
+        
+    error = np.max(np.dot(np.dot(orbital.T.conj(), s_mm), orbital) -
+              np.eye(nstates)) / nstates   
+    if  error < norm_error:
+        print 'Warning! Normalization error %f' % error
+    return orbital
+        
     
     
