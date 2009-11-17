@@ -337,27 +337,28 @@ class Transport_Analysor:
         self.n_bias_step += 1
 
     def bias_step_time_collect(self):
-        time = self.tp.timer.get_time
+        timers = self.tp.timer.timers
         cost = {}
         if not self.tp.non_sc and not self.tp.analysis_mode:
-            cost['init scf'] = time('init scf')
+            cost['init scf'] = timers['init scf']
         return cost
         
     def ele_step_time_collect(self):    
-        time = self.tp.timer.get_time
+        timers = self.tp.timer.timers
         cost = {}
-        cost['eq fock2den'] = time('eq fock2den')
-        cost['ne fock2den'] = time('ne fock2den')
-        cost['Poisson'] = time('Poisson')
-        cost['construct density'] = time('construct density')
-        cost['atomic density'] = time('atomic density')
-        cost['atomic hamiltonian'] = time('atomic hamiltonian')
+        cost['eq fock2den'] = timers['DenMM', 'eq fock2den']
+        cost['ne fock2den'] = timers['DenMM', 'ne fock2den']
+        cost['Poisson'] = timers['HamMM', 'Hamiltonian', 'Poisson']
+        cost['construct density'] = timers['HamMM', 'construct density']
+        cost['atomic density'] = timers['HamMM', 'atomic density']
+        cost['atomic hamiltonian'] = timers['HamMM', 'Hamiltonian',
+                                                    'atomic hamiltonian']
 
         if self.tp.step == 0:
             cost['project hamiltonian'] = 0
             cost['record'] = 0
         else:
-            cost['project hamiltonian'] = time('project hamiltonian')
+            cost['project hamiltonian'] = timers['HamMM', 'project hamiltonian']
             cost['record'] = self.tp.record_time_cost
         return cost
 
