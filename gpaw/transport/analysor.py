@@ -340,7 +340,7 @@ class Transport_Analysor:
         timers = self.tp.timer.timers
         cost = {}
         if not self.tp.non_sc and not self.tp.analysis_mode:
-            cost['init scf'] = timers['init scf']
+            cost['init scf'] = timers['init scf', ]
         return cost
         
     def ele_step_time_collect(self):    
