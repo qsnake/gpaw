@@ -78,7 +78,7 @@ double_complex itpp_erf(double_complex z)
       // XXX neither rybicki nor continued_fraction seem to work here
       //     return itpp_cerf_rybicki(z);
       //return itpp_cerf_continued_fraction(z);
-      itpp_cerf_series(z);
+      return itpp_cerf_series(z);
     else
       return itpp_cerf_continued_fraction(z);
   }

@@ -16,7 +16,7 @@ values = [
     [ 0.3 + 3j, 1467.69028322-166.560924526j ],
     [ 3 + 0.3j, 0.99997602085736015+2.1863701577230078e-06j]]
 
-maxerror = 1.e-9
+maxerror = 1.e-10
 
 for test in values:
     z, res = test
