@@ -11,55 +11,50 @@ BLOCK_CYCLIC_2D = 1
 
 class SLEXDiagonalizer:
     """ScaLAPACK Expert Driver diagonalizer."""
-    def __init__(self, supercomm, kpt_comm, gd, bd, n, m, nb):
+    def __init__(self, supercomm, kpt_comm, gd, bd, ncpu, mcpu, blocksize,
+                 nao):
         self.supercomm = supercomm
         self.bd = bd
         self.kpt_comm = kpt_comm
         self.gd = gd
         
-        self.n = n
-        self.m = m
-        self.nb = nb
-
-    def diagonalize(self, H_MM, S_MM, eps_n, kpt):
-        band_comm = self.bd.comm
-        B = band_comm.size
-
-        n, m, nb = self.n, self.m, self.nb
-
-        isreal = H_MM.dtype == float
-        nao = H_MM.shape[1]
-        kpt_comm = self.kpt_comm
-        shiftks = kpt_comm.rank * B * self.gd.comm.size
-
+        bcommsize = bd.comm.size
+        gcommsize = gd.comm.size
+        
+        shiftks = kpt_comm.rank * bcommsize * gcommsize
+        
         mynbands = self.bd.mynbands
         nbands = self.bd.nbands
-
-        c1_ranks = shiftks + np.arange(B) * self.gd.comm.size
-        c2_ranks = shiftks + np.arange(B * self.gd.comm.size)
-        c1 = self.supercomm.new_communicator(c1_ranks)
-        c2 = self.supercomm.new_communicator(c2_ranks)
-
-        bgrid1 = BlacsGrid(c1, 1, band_comm.size)
-        bgrid2 = BlacsGrid(c2, n, m)
-        bgrid1b = BlacsGrid(c1, 1, band_comm.size)
-
-        nb1 = -((-nao) // band_comm.size)
-        descriptor1 = bgrid1.new_descriptor(nao, nao, nao, nb1)
-        descriptor2 = bgrid2.new_descriptor(nao, nao, nb, nb)
-        descriptor1b = bgrid1b.new_descriptor(nao, nao, nao, mynbands)
-                                                
-        d1 = descriptor1.asarray()
-        d2 = descriptor2.asarray()
-        d1b = descriptor1b.asarray()
-
-        redistributor = Redistributor(c2)
         
-        dtype = S_MM.dtype
+        stripe_ranks = shiftks + np.arange(bcommsize) * gcommsize
+        block_ranks = shiftks + np.arange(bcommsize * gcommsize)
+        stripecomm = supercomm.new_communicator(stripe_ranks)
+        blockcomm = supercomm.new_communicator(block_ranks)
+        
+        columngrid = BlacsGrid(stripecomm, 1, bcommsize)
+        blockgrid = BlacsGrid(blockcomm, ncpu, mcpu)
+        
+        myncolumns = -((-nao) // bcommsize)
+        self.indescriptor = columngrid.new_descriptor(nao, nao, nao,
+                                                      myncolumns)
+        self.blockdescriptor = blockgrid.new_descriptor(nao, nao, blocksize,
+                                                        blocksize)
+        self.outdescriptor = columngrid.new_descriptor(nao, nao, nao, mynbands)
+        self.redistributor = Redistributor(blockcomm)
+
+    def diagonalize(self, H_MM, S_MM, eps_n, kpt):
+        descriptor1 = self.indescriptor
+        descriptor1b = self.outdescriptor
+        descriptor2 = self.blockdescriptor
+
+        redistributor = self.redistributor
+
+        dtype = H_MM.dtype
+        
         colS = descriptor1.new_matrix(dtype)
         colH = descriptor1.new_matrix(dtype)
         if colS.A_mn.shape != (0, 0):
-            assert colS.A_mn.T.flags.contiguous # Fortran ordered
+            assert colS.A_mn.T.flags.contiguous # A_mn is Fortran ordered
             # This is not a 'true' transpose, it should be a regular copy
             # due to the Fortran/C ordering
             colS.A_mn.T[:] = S_MM
@@ -73,8 +68,8 @@ class SLEXDiagonalizer:
         redistributor.redistribute(colS, sqrS)
         redistributor.redistribute(colH, sqrH)
 
-        eps_n[:], H1_MM = scalapack_diagonalize_ex(sqrH.A_mn, d2, 'U', 
-                                                   sqrS.A_mn)
+        eps_n[:], H1_MM = scalapack_diagonalize_ex(sqrH.A_mn, descriptor2,
+                                                   'U', sqrS.A_mn)
         if H1_MM is not None:
             sqrH.A_mn[:] = H1_MM
 
@@ -83,9 +78,9 @@ class SLEXDiagonalizer:
 
         if H_MM.shape != (0, 0):
             assert self.gd.comm.rank == 0
-            X = H_MM[:, :mynbands].T
-            kpt.C_nM[:] = H_MM[:, :mynbands].T
-            self.bd.distribute(eps_n[:nbands], kpt.eps_n)
+            bd = self.bd
+            kpt.C_nM[:] = H_MM[:, :bd.mynbands].T
+            bd.distribute(eps_n[:bd.nbands], kpt.eps_n)
         else:
             assert self.gd.comm.rank != 0
 

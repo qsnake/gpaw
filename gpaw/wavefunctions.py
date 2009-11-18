@@ -926,14 +926,15 @@ class GridWaveFunctions(WaveFunctions):
             self.random_wave_functions(0)
             self.timer.stop('Random wavefunction initialization')
             return
-        
+
+        nao = self.setups.nao
         self.timer.start('LCAO initialization')
-        if self.nbands <= self.setups.nao:
+        if self.nbands <= nao:
             lcaonbands = self.nbands
             lcaomynbands = self.mynbands
         else:
-            lcaonbands = self.setups.nao
-            lcaomynbands = self.setups.nao
+            lcaonbands = nao
+            lcaomynbands = nao
             assert self.band_comm.size == 1
 
         lcaobd = BandDescriptor(lcaonbands, self.band_comm, self.bd.strided)
@@ -945,7 +946,8 @@ class GridWaveFunctions(WaveFunctions):
             n, m, nb = sl_diagonalize[:3]
 
             diagonalizer = SLEXDiagonalizer(self.world, self.kpt_comm, 
-                                            self.gd, lcaobd, n, m, nb)
+                                            self.gd, lcaobd, n, m, nb,
+                                            nao)
         elif sl_diagonalize:
             from gpaw.lcao.eigensolver import SLDiagonalizer
             diagonalizer = SLDiagonalizer()
