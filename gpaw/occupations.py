@@ -158,7 +158,8 @@ class ZeroKelvin(OccupationNumbers):
         self.homo, self.lumo = occupy(f_n, eps_n, self.nvalence, 2)
         wfs.bd.distribute(f_n, kpt.f_n)
         self.fermilevel = 0.5 * (self.homo + self.lumo)
-
+        self.magmom = 0.0
+        
     def spin_polarized(self, wfs):
         eps_un = [wfs.bd.collect(kpt.eps_n) for kpt in wfs.kpt_u]
         self.fermilevel = np.nan
@@ -179,6 +180,7 @@ class ZeroKelvin(OccupationNumbers):
                 self.homo, self.lumo = occupy(f_n, eps_n[nsorted],
                                               self.nvalence)
                 f_sn = f_n[nsorted.argsort()].reshape((2, wfs.nbands))
+                self.magmom = f_sn[0].sum() - f_sn[1].sum()
                 self.fermilevel = 0.5 * (self.homo + self.lumo)
 
             if wfs.kpt_comm.size == 2:
