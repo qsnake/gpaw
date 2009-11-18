@@ -340,3 +340,94 @@ PyObject* dotu(PyObject *self, PyObject *args)
 #endif
     }
 }
+
+PyObject* multi_dotu(PyObject *self, PyObject *args)
+{
+  PyArrayObject* a;
+  PyArrayObject* b;
+  PyArrayObject* c;
+  if (!PyArg_ParseTuple(args, "OOO", &a, &b, &c)) 
+    return NULL;
+  int n0 = a->dimensions[0];
+  int n = a->dimensions[1];
+  for (int i = 2; i < a->nd; i++)
+    n *= a->dimensions[i];
+  int incx = 1;
+  int incy = 1;
+  if (a->descr->type_num == PyArray_DOUBLE)
+    {
+      double *ap = DOUBLEP(a);
+      double *bp = DOUBLEP(b);
+      double *cp = DOUBLEP(c);
+
+      for (int i = 0; i < n0; i++)
+	{
+	  cp[i] = ddot_(&n, (void*)ap, 
+	     &incx, (void*)bp, &incy);
+	  ap += n;
+	  bp += n;
+	}
+    }
+  else
+    {
+      double_complex* ap = COMPLEXP(a);
+      double_complex* bp = COMPLEXP(b);
+      double_complex* cp = COMPLEXP(c);
+      for (int i = 0; i < n0; i++)
+	{
+	  cp[i] = 0.0;
+	  for (int j = 0; j < n; j++)
+	      cp[i] += ap[j] * bp[j];
+	  ap += n;
+	  bp += n;
+	}
+    }
+  Py_RETURN_NONE;
+}
+
+PyObject* multi_axpy(PyObject *self, PyObject *args)
+{
+  PyArrayObject* alpha;
+  PyArrayObject* x;
+  PyArrayObject* y;
+  if (!PyArg_ParseTuple(args, "OOO", &alpha, &x, &y)) 
+    return NULL;
+  int n0 = x->dimensions[0];
+  int n = x->dimensions[1];
+  for (int d = 2; d < x->nd; d++)
+    n *= x->dimensions[d];
+  int incx = 1;
+  int incy = 1;
+
+   if (alpha->descr->type_num == PyArray_DOUBLE)
+    {
+      if (x->descr->type_num == PyArray_CDOUBLE)
+	n *= 2;
+      double *ap = DOUBLEP(alpha);
+      double *xp = DOUBLEP(x);
+      double *yp = DOUBLEP(y);
+      for (int i = 0; i < n0; i++)
+	{
+	  daxpy_(&n, &ap[i], 
+		 (void*)xp, &incx,
+		 (void*)yp, &incy);
+	  xp += n;
+	  yp += n;
+	}
+    }
+  else
+    {
+      double_complex *ap = COMPLEXP(alpha);
+      double_complex *xp = COMPLEXP(x);
+      double_complex *yp = COMPLEXP(y);
+      for (int i = 0; i < n0; i++)
+	{
+	  zaxpy_(&n, (void*)(&ap[i]), 
+		 (void*)xp, &incx,
+		 (void*)yp, &incy);
+	  xp += n;
+	  yp += n;
+	}
+    }
+  Py_RETURN_NONE;
+}

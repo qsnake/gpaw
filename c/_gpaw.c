@@ -29,6 +29,8 @@ PyObject* rk(PyObject *self, PyObject *args);
 PyObject* r2k(PyObject *self, PyObject *args);
 PyObject* dotc(PyObject *self, PyObject *args);
 PyObject* dotu(PyObject *self, PyObject *args);
+PyObject* multi_dotu(PyObject *self, PyObject *args);
+PyObject* multi_axpy(PyObject *self, PyObject *args);
 PyObject* diagonalize(PyObject *self, PyObject *args);
 PyObject* inverse_cholesky(PyObject *self, PyObject *args);
 PyObject* inverse_symmetric(PyObject *self, PyObject *args);
@@ -92,6 +94,8 @@ static PyMethodDef functions[] = {
   {"r2k", r2k, METH_VARARGS, 0},
   {"dotc", dotc, METH_VARARGS, 0},
   {"dotu", dotu, METH_VARARGS, 0},
+  {"multi_dotu", multi_dotu, METH_VARARGS, 0},
+  {"multi_axpy", multi_axpy, METH_VARARGS, 0},
   {"diagonalize", diagonalize, METH_VARARGS, 0},
   {"inverse_cholesky", inverse_cholesky, METH_VARARGS, 0},
   {"inverse_symmetric", inverse_symmetric, METH_VARARGS, 0},
