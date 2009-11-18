@@ -40,12 +40,12 @@ class SLEXDiagonalizer:
         c1 = self.supercomm.new_communicator(c1_ranks)
         c2 = self.supercomm.new_communicator(c2_ranks)
 
-        bgrid1 = BlacsGrid(c1, band_comm.size, 1)
+        bgrid1 = BlacsGrid(c1, 1, band_comm.size)
         bgrid2 = BlacsGrid(c2, n, m)
         bgrid1b = BlacsGrid(c1, 1, band_comm.size)
 
         nb1 = -((-nao) // band_comm.size)
-        descriptor1 = bgrid1.new_descriptor(nao, nao, nb1, nao)
+        descriptor1 = bgrid1.new_descriptor(nao, nao, nao, nb1)
         descriptor2 = bgrid2.new_descriptor(nao, nao, nb, nb)
         descriptor1b = bgrid1b.new_descriptor(nao, nao, nao, mynbands)
                                                 
@@ -59,8 +59,11 @@ class SLEXDiagonalizer:
         colS = descriptor1.new_matrix(dtype)
         colH = descriptor1.new_matrix(dtype)
         if colS.A_mn.shape != (0, 0):
-            colS.A_mn[:] = S_MM
-            colH.A_mn[:] = H_MM
+            assert colS.A_mn.T.flags.contiguous # Fortran ordered
+            # This is not a 'true' transpose, it should be a regular copy
+            # due to the Fortran/C ordering
+            colS.A_mn.T[:] = S_MM
+            colH.A_mn.T[:] = H_MM
 
         sqrS = descriptor2.new_matrix(dtype)
         sqrH = descriptor2.new_matrix(dtype)
@@ -70,7 +73,7 @@ class SLEXDiagonalizer:
         redistributor.redistribute(colS, sqrS)
         redistributor.redistribute(colH, sqrH)
 
-        eps_n[:], H1_MM = scalapack_diagonalize_ex(sqrH.A_mn, d2, 'L', 
+        eps_n[:], H1_MM = scalapack_diagonalize_ex(sqrH.A_mn, d2, 'U', 
                                                    sqrS.A_mn)
         if H1_MM is not None:
             sqrH.A_mn[:] = H1_MM
