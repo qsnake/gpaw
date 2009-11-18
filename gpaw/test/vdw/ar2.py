@@ -24,8 +24,8 @@ def test():
     calc.write('Ar2.gpw')
     e2vdw = calc.get_xc_difference(vdw)
     e2vdwb = GPAW('Ar2.gpw').get_xc_difference(vdw)
-    print e2vdw - e2vdw
-    assert abs(e2vdw - e2vdw) < 1e-9
+    print e2vdwb - e2vdw
+    assert abs(e2vdwb - e2vdw) < 1e-9
     del dimer[1]
     e = dimer.get_potential_energy()
     niter = calc.get_number_of_iterations()
