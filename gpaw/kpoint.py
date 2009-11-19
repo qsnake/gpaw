@@ -55,9 +55,6 @@ class KPoint:
             k-point index.
         q: int
             local k-point index.
-        k_c: float-ndarray of shape (3,)
-            scaled **k**-point vector (coordinates scaled to
-            [-0.5:0.5] interval).
         dtype: type object
             Data type of wave functions (float or complex).
         timer: Timer object
