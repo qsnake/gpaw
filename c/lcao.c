@@ -1,3 +1,7 @@
+/*  Copyright (C) 2003-2007  CAMP
+ *  Copyright (C) 2007-2009  CAMd
+ *  Please see the accompanying LICENSE file for further information. */
+
 #include <complex.h>
 #include "localized_functions.h"
 #include "extensions.h"

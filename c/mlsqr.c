@@ -1,3 +1,7 @@
+/*  Copyright (C) 2003-2007  CAMP
+ *  Copyright (C) 2007-2009  CAMd
+ *  Please see the accompanying LICENSE file for further information. */
+
 #include <Python.h>
 #define PY_ARRAY_UNIQUE_SYMBOL GPAW_ARRAY_API
 #define NO_IMPORT_ARRAY

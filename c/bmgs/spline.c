@@ -1,3 +1,7 @@
+/*  Copyright (C) 2003-2007  CAMP
+ *  Copyright (C) 2007-2008  CAMd
+ *  Please see the accompanying LICENSE file for further information. */
+
 #ifdef __FreeBSD__
 #include <stdlib.h>
 #else

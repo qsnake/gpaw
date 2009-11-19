@@ -1,3 +1,8 @@
+/*  Copyright (C) 2003-2007  CAMP
+ *  Copyright (C) 2007-2008  CAMd
+ *  Copyright (C) 2005       CSC - IT Center for Science Ltd.
+ *  Please see the accompanying LICENSE file for further information. */
+
 #ifndef DOUBLECOMPLEXDEFINED
 #  define DOUBLECOMPLEXDEFINED 1
 #  ifdef NO_C99_COMPLEX

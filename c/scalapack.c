@@ -1,3 +1,7 @@
+/*  Copyright (C) 2003-2007  CAMP
+ *  Copyright (C) 2007-2009  CAMd
+ *  Please see the accompanying LICENSE file for further information. */
+
 // BLACS
 #ifdef GPAW_NO_UNDERSCORE_CBLACS
 #define   Cblacs_barrier_  Cblacs_barrier

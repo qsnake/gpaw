@@ -1,6 +1,6 @@
-/* Copyright (C) 2005 CSC Scientific Computing Ltd., Espoo, Finland
-   Please see the accompanying LICENSE file for further information. */
-
+/*  Copyright (C) 2003-2007  CAMP
+ *  Copyright (C) 2005       CSC - IT Center for Science Ltd.
+ *  Please see the accompanying LICENSE file for further information. */
 
 #include "bmgs.h"
 

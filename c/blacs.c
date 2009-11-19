@@ -1,3 +1,7 @@
+/*  Copyright (C) 2003-2007  CAMP
+ *  Copyright (C) 2007-2009  CAMd
+ *  Please see the accompanying LICENSE file for further information. */
+
 #ifdef PARALLEL
 #include <Python.h>
 #ifdef GPAW_WITH_SL
