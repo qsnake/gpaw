@@ -17,7 +17,7 @@ double bee1_exchange(const xc_parameters* par,
   double kappa = 0.804;
   double x1 = MU / kappa;
   double x2 = x1 * s2;
-  double Fx = 1.0 + kappa;
+  double Fx = 0.0;
   double dFxds2 = 0.0;
   for (int i = 0; i < par->i; i++)
     {
@@ -27,7 +27,7 @@ double bee1_exchange(const xc_parameters* par,
           double x4 = exp(x3);
           double x5 = 1.0 / (1.0 + x2 * x4);
           double coef = par->pade[i + par->i];
-          Fx -= coef * kappa * x5;
+          Fx -= coef * (kappa * x5 - 1.0 - kappa);
           dFxds2 += coef * x5 * x5 * (1.0 + x3) * x1 * x4;
         }
     }

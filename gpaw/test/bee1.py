@@ -15,3 +15,7 @@ e1 = calc.get_xc_difference(XCFunctional('BEE1', parameters=[0.0]))
 e2 = calc.get_xc_difference('PBE')
 print e1, e2
 assert abs(e1 - e2) < 3e-6
+e1 = calc.get_xc_difference(XCFunctional('BEE1', parameters=[[42], [0.0]]))
+e2 = calc.get_xc_difference('None-C_PBE')
+print e1, e2
+assert abs(e1 - e2) < 3e-6
