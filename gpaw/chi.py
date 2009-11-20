@@ -1,12 +1,13 @@
-import numpy as np
 from math import pi, sqrt
-from ase.units import Hartree
+
+import numpy as np
+from ase.units import Hartree, Bohr
+
 from gpaw.coulomb import CoulombNEW
-from gpaw.utilities import pack
 from gpaw.xc_functional import XCFunctional
 from gpaw.lcao.pwf2 import LCAOwrap
 from gpaw.xc_correction import XCCorrection
-from gpaw.utilities import unpack, unpack2 
+from gpaw.utilities import pack, unpack, unpack2 
 from gpaw.utilities.lapack import diagonalize
 
 class CHI:
@@ -14,78 +15,134 @@ class CHI:
         self.xc = 'LDA'
         self.nspin = 1
 
-    def get_dipole_strength(self, calc, q, wcut, wmin, wmax, dw, eta=0.2, sigma=2*1e-5):
-        """Obtain the dipole strength spectra for a finite system.
+
+    def initialize(self, calc, q, wcut, wmin, wmax, dw, eta):
+        """Common stuff for all calculations (finite and extended systems) 
 
         Parameters: 
 
-        bzkpt_kG : the coordinate of kpoints in the whole BZ, nkpt*3D
-        nband : number of bands, 1D
-        nkpt  : number of kpoints, 1D
-        e_kn : eigenvalues, (nkpt, nband)
-        f_kn   : occupations, (nkpt,nband)
-        C_knM  : LCAO coefficient (nkpt,nband,nLCAO)
-        orb_MG : LCAO orbitals (nLCAO, ngrid, ngrid, ngrid)
-          
-        q     : chi(q, w), 1D
-        wcut : cut-off energy for spectral function, 1D
-        wmin, wmax : energy for the dipole strength spectra, 1D
-        dw    : energy intervals for both the spectral function and the spectra, 1D
-        eta   : the imaginary part in the non-interacting response function, 1D
-        Nw    : number of frequency points on the spectra, 1D
-        NwS   : number of frequency points for the spectral function, 1D
+        bzkpt_kG: ndarray
+            The coordinate of kpoints in the whole BZ, (nkpt,3)
+        nband: integer
+            The number of bands
+        nkpt: integer
+            The number of kpoints
+        e_kn: ndarray
+            Eigenvalues, (nkpt, nband)
+        f_kn: ndarray
+            Occupations, (nkpt,nband)
+        C_knM: ndarray
+            LCAO coefficient, (nkpt,nband,nLCAO)
+        orb_MG: ndarray
+            LCAO orbitals (nLCAO, ngrid, ngrid, ngrid)          
+        q: float
+            The wavevection in chi(q, w)
+        wcut: float
+            Cut-off energy for spectral function, 1D
+        wmin (or wmax): float
+            Energy cutoff for the dipole strength spectra
+        dw: float
+            Energy intervals for both the spectral function and the spectra
+        eta: float
+            The imaginary part in the non-interacting response function
+        Nw: integer
+            The number of frequency points on the spectra
+        NwS: integer
+            The number of frequency points for the spectral function
+        nLCAO: integer
+            The nubmer of LCAO orbitals used
+        nS: integer
+            The combined mu, nu index for the matrix chi_SS', nS = nLCAO**2
 
-        nLCAO : nubmer of LCAO orbitals used, 1D
-        nS    : S index for the matrix chi_SS', nS = nLCAO**2, 1D
-
-        Phi_S : pair-orbitals in real space, Phi_S, (1, nS)
-        specfunc_SSw : spectral function, (nS, nS, NwS, dtype = C_knM.type), 
-                       can be complex128 or float64
-        chi0_SSw  : chi0_SS', (nS, nS, Nw, dtype=complex)
-        kernelRPA/LDA_SS: kernel_SS' in finite sys, (nS, nS), 
-             so its float64, but can be complex for periodic sys.
-        SNonInter/RPA/LDA_w : dipole strength function, (Nw)
         """
- 
         bzkpt_kG = calc.get_bz_k_points()
         self.nband = calc.get_number_of_bands()
         self.nkpt = bzkpt_kG.shape[0]
-       
+        self.acell = calc.atoms.cell / Bohr
+        if calc.atoms.pbc.all() == True:
+            self.get_primitive_cell()
+        else:
+            self.vol = 1.
+
         # obtain eigenvalues, occupations, LCAO coefficients and wavefunctions
         e_kn = np.array([calc.get_eigenvalues(kpt=k) for k in range(self.nkpt)])
-        f_kn = np.array([calc.get_occupation_numbers(kpt=k) 
+        f_kn = np.array([calc.get_occupation_numbers(kpt=k)
                           for k in range(self.nkpt)])
         C_knM = np.array([kpt.C_nM.copy() for kpt in calc.wfs.kpt_u])
 
         wrapper = LCAOwrap(calc)
-        orb_MG = wrapper.get_orbitals()  
+        orb_MG = wrapper.get_orbitals()
         spos_ac = calc.atoms.get_scaled_positions()
-        nt_G = calc.density.nt_sG[0] 
+        nt_G = calc.density.nt_sG[0]
 
         # Unit conversion
         e_kn = e_kn / Hartree
         wcut = wcut / Hartree
         wmin = wmin / Hartree
         wmax = wmax / Hartree
-        dw = dw / Hartree
+        self.dw = dw / Hartree
         eta = eta / Hartree
 
-        self.Nw = int((wmax - wmin) / dw) + 1 
-        self.NwS = int(wcut/dw) + 1         
-
+        self.Nw = int((wmax - wmin) / self.dw) + 1
+        self.NwS = int(wcut/self.dw) + 1
         self.nLCAO = C_knM.shape[2]
         self.nS = self.nLCAO **2
+        self.nG = calc.get_number_of_grid_points()
+        self.nG0 = self.nG[0] * self.nG[1] * self.nG[2]
+
+        print 
+        print 'Parameters used:'
+        print
+        print 'Number of bands:', self.nband
+        print 'Number of kpints:', self.nkpt
+        print 'Unit cell:'
+        print self.acell
+        if calc.atoms.pbc.all() == True: 
+            print 'Primitive cell:'
+            print self.bcell
+        print 
+        print 'Number of frequency points:', self.Nw
+        print 'Number of frequency points for spectral function:', self.NwS
+        print 'Number of LCAO orbitals:', self.nLCAO
+        print 'Number of pair orbitals:', self.nS
+        print 'Number of Grid points / G-vectors, and in total:', self.nG, self.nG0
+        print 
+
+        # Get spectral function
+        print 'Calculating spectral function'
+        specfunc_SSw = self.calculate_spectral_function(bzkpt_kG, e_kn,
+                              f_kn, C_knM, q, wcut, self.dw, sigma=2*1e-5)
+
+        # Get chi0_SS' by hilbert transform
+        print 'Performing hilbert transform'
+        chi0_SSw = self.hilbert_transform(specfunc_SSw, wmin, wmax, self.dw, eta)
+
+        return e_kn, f_kn, C_knM, orb_MG, spos_ac, nt_G, chi0_SSw
+
+
+    def get_dipole_strength(self, calc, q, wcut, wmin, wmax, dw, eta=0.2, sigma=2*1e-5):
+        """Obtain the dipole strength spectra for a finite system.
+
+        Parameters: 
+
+        n_S: ndarray 
+            Pair-orbitals in real space, (1, nS)
+        specfunc_SSw: ndarray
+            Spectral function, (nS, nS, NwS, dtype = C_knM.type), can be complex128 or float64
+        chi0_SSw: ndarray
+            The non-interacting density response function, (nS, nS, Nw, dtype=complex)
+        kernelRPA_SS (or kernelLDA_SS): ndarray
+            Kernel for the finite sys, (nS, nS), it is float64, but can be complex for periodic sys.
+        SNonInter_w (or SRPA_w, SLDA_w): ndarray
+            Dipole strength function, (Nw)
+        """
+ 
+        e_kn, f_kn, C_knM, orb_MG, spos_ac, nt_G, chi0_SSw = (
+           self.initialize(calc, q, wcut, wmin, wmax, dw, eta))
 
         # Get pair-orbitals in real space
         n_S = self.pair_orbital_Rspace(orb_MG, calc.gd.h_c, calc.wfs.setups, 
                                          calc.wfs.kpt_u[0])
-
-        # Get spectral function
-        specfunc_SSw = self.calculate_spectral_function(bzkpt_kG, e_kn,
-                              f_kn, C_knM, q, wcut, dw, sigma=2*1e-5)
-
-        # Get chi0_SS' by hilbert transform
-        chi0_SSw = self.hilbert_transform(specfunc_SSw, wmin, wmax, dw, eta=eta)
 
         # Get kernel
         kernelRPA_SS, kernelLDA_SS = self.kernel_finite_sys(nt_G, calc.density.D_asp, orb_MG, 
@@ -96,17 +153,72 @@ class CHI:
         SRPA_w = np.zeros((self.Nw,3))
         SLDA_w = np.zeros((self.Nw,3))
         for iw in range(self.Nw):
-            SNonInter_w[iw,:] = self.calculate_dipole_strength(chi0_SSw[:,:,iw], n_S, iw*dw)
+            SNonInter_w[iw,:] = self.calculate_dipole_strength(chi0_SSw[:,:,iw], n_S, iw*self.dw)
             chi_SS = self.solve_Dyson(chi0_SSw[:,:,iw], kernelRPA_SS)
-            SRPA_w[iw,:] = self.calculate_dipole_strength(chi_SS, n_S, iw*dw)
+            SRPA_w[iw,:] = self.calculate_dipole_strength(chi_SS, n_S, iw*self.dw)
             chi_SS = self.solve_Dyson(chi0_SSw[:,:,iw], kernelLDA_SS)
-            SLDA_w[iw,:] = self.calculate_dipole_strength(chi_SS, n_S, iw*dw)
+            SLDA_w[iw,:] = self.calculate_dipole_strength(chi_SS, n_S, iw*self.dw)
 
         # Solve Casida's equation to get the excitation energies in eV
         eCasidaRPA_s, sCasidaRPA_s = self.solve_casida(e_kn[0], f_kn[0], C_knM[0], kernelRPA_SS, n_S)
         eCasidaLDA_s, sCasidaLDA_s = self.solve_casida(e_kn[0], f_kn[0], C_knM[0], kernelLDA_SS, n_S)
 
         return SNonInter_w, SRPA_w, SLDA_w, eCasidaRPA_s, eCasidaLDA_s, sCasidaRPA_s, sCasidaLDA_s
+
+
+    def get_EELS_spectrum(self, calc, q, wcut, wmin, wmax, dw, eta=0.2, sigma=2*1e-5):
+        """Calculate Electron Energy Loss Spectrum of a periodic system for a particular q. 
+            
+        The Loss function is related to: 
+
+                         -1            4 pi
+            - Im \epsilon (q, w) = - -------  Im  chi (q, w)
+                        G=0,G'=0      |q|**2        G=0,G'=0
+        """
+
+        # Calculate chi_G=0,G'=0 (q, w)
+        chi0G0_w, chiG0_w = self.calculate_chiGG(calc, q, wcut, wmin, wmax, dw, eta, sigma)
+
+        # Transform q from reduced coordinate to cartesian coordinate
+        qq = np.array([np.inner(q, self.bcell[:,i]) for i in range(3)]) 
+        
+        LossFunc0_w = - 4. * pi / (qq[0]*qq[0]+qq[1]*qq[1]+qq[2]*qq[2]) * np.imag(chi0G0_w)
+        LossFunc_w = - 4. * pi / (qq[0]*qq[0]+qq[1]*qq[1]+qq[2]*qq[2]) * np.imag(chiG0_w)
+        print 'EELS spectrum obtained! '
+
+        return LossFunc0_w, LossFunc_w
+
+
+    def calculate_chiGG(self, calc, q, wcut, wmin, wmax, dw, eta, sigma):
+        """Calculate chi_GG for a certain q and a series of omega at G=G'=0"""
+
+        # Initialize, common stuff
+        print 'Initializing:'
+        e_kn, f_kn, C_knM, orb_MG, spos_ac, nt_G, chi0_SSw = (
+           self.initialize(calc, q, wcut, wmin, wmax, dw, eta))
+
+        # Get pair-orbitals in Gspace
+        print 'Calculating pair-orbital in G-space'
+        n_SG = self.pair_orbital_Gspace(orb_MG, calc.gd)
+
+        # Get kernel
+        print 'Calculating kernel'
+        Gvec = self.get_Gvectors()
+        # q are expressed in terms of the primitive lattice vectors
+        KRPA_SS = self.kernel_extended_sys(n_SG, q, Gvec)
+
+        # Solve Dyson's equation
+        print 'Solving Dyson equation and transfrom chi_SS to G-space'
+        chi0G0_w = np.zeros(self.Nw, dtype=complex)
+        chiG0_w = np.zeros(self.Nw, dtype=complex)
+        for iw in range(self.Nw):
+            chi_SS = self.solve_Dyson(chi0_SSw[:,:,iw], KRPA_SS)
+            
+            chi0G0_w[iw] = self.chi_to_Gspace(chi0_SSw[:,:,iw], n_SG[:,0])
+            chiG0_w[iw] = self.chi_to_Gspace(chi_SS, n_SG[:,0])
+
+        return chi0G0_w, chiG0_w
+
 
     def calculate_chi0(self, bzkpt_kG, e_kn, f_kn, C_knM, q, omega, eta=0.2):
         """Calculate non-interacting response function (LCAO basis) for a certain q and omega. 
@@ -125,9 +237,12 @@ class CHI:
 
         Parameters:
 
-        e_kn(nkpt,nband) : eigen energy
-        f_kn(nkpt,nband) : occupation
-        C_knM(nkpt,nband,nLCAO) : LCAO coefficients
+        e_kn: ndarray
+            Eigen energies, (nkpt, nband)
+        f_kn: ndarray
+            Occupations, (nkpt, nband)
+        C_knM: ndarray
+            LCAO coefficients, (nkpt,nband,nLCAO)
         """
 
         chi0_SS = np.zeros((self.nS, self.nS), dtype=complex)
@@ -142,17 +257,20 @@ class CHI:
                 for m in range(self.nband):
                     focc = f_kn[k,n] - f_kn[kq[k],m]
                     if focc > 1e-5:
-                        tmp = self.pair_C(C_knM[k,n,:], C_knM[kq[k],m,:])
+                        # pair C
+                        tmp = (np.outer(C_knM[k,n,:].conj(), C_knM[kq[k],m,:])).ravel()
+                       # tmp = self.pair_C(C_knM[k,n,:], C_knM[kq[k],m,:])
                         # transpose and conjugate, C*C*C*C
                         tmp = np.outer(tmp, tmp.conj()) 
                         chi0_SS += tmp * focc / (omega + e_kn[k,n] - e_kn[kq[k],m] + 1j*eta)
 
-        return chi0_SS / self.nkpt
+        return chi0_SS / self.vol
 
-    def calculate_spectral_function(self, bzkpt, e_kn, f_kn, C_knM, q, wcut, dw, sigma=1e-5):
+
+    def calculate_spectral_function(self, bzkpt_kG, e_kn, f_kn, C_knM, q, wcut, dw, sigma=1e-5):
         """Calculate spectral function for a certain q and a series of omega.
 
-           The spectral function A_SS' is defined as::
+        The spectral function A_SS' is defined as::
 
                             ---- ----
              0          2   \    \         
@@ -181,7 +299,8 @@ class CHI:
                     if focc > 1e-5:
                         w0 = e_kn[kq[k],m] - e_kn[k,n]
                         # pair C
-                        tmp = self.pair_C(C_knM[k,n,:], C_knM[kq[k],m,:]) # tmp[nS,1]
+                        tmp = (np.outer(C_knM[k,n,:].conj(), C_knM[kq[k],m,:])).ravel()
+                        # tmp = self.pair_C(C_knM[k,n,:], C_knM[kq[k],m,:]) # tmp[nS,1]
                         # C C C C
                         tmp = focc * np.outer(tmp, tmp.conj()) # tmp[nS,nS]
                         # calculate delta function
@@ -189,9 +308,10 @@ class CHI:
                         for wi in range(self.NwS):
                             if deltaw[wi] > 1e-5:
                                 specfunc_SSw[:,:,wi] += tmp * deltaw[wi]
-        return specfunc_SSw *dw / self.nkpt
+        return specfunc_SSw *dw / (self.vol) 
 
-    def hilbert_transform(self, specfunc_SSw, wmin, wmax, dw, eta=0.01 ):
+
+    def hilbert_transform(self, specfunc_SSw, wmin, wmax, dw, eta):
         """Obtain chi0_SS' by hilbert transform with the spectral function A_SS'.
 
         The hilbert tranform is performed as::
@@ -215,16 +335,16 @@ class CHI:
                                - 1. / (w + ww + 1j*eta)) * specfunc_SSw[:,:,jw]
         return chi0_SSw
 
+
     def kernel_finite_sys(self, nt_G, D_asp, orb_MG, kpt, gd, setups, spos_ac):
         """Calculate the Kernel for a finite system. 
     
         The kernel is expressed as, refer to report 4/11/2009, Eq. (18) - (22)::
                                                                             
-                     //                   /    1                   \
-            K      = || dr  dr   n (r )  (  -------- + f  (r  , r)  ) n (r )
-             S1,S2   //   1   2   S  1    \ |r - r |    xc  1    2 /   S  2 
-                                   1          1   2                     2 
-                   
+                     //                 (      1                )
+            K      = || dr1 dr2 n (r1 ) | --------  + f  (r1,r2)|  n (r2)
+             S1,S2   //          S1     ( |r1 - r2|    xc       )   S2  
+                                                                   
         while::
 
                      ~        ----  a       ~ a
@@ -328,6 +448,58 @@ class CHI:
 
         return tmp, tmp + Kxc_SS
 
+
+    def kernel_extended_sys(self, n_SG, q, Gvec):
+        """Calculate the Kernel of a specific q for an extended system.
+
+        The kernel is expressed as::
+
+                          ----   *
+            K      (q) =  \     n (G1) K  (q)  n (G2), 
+             S1,S2        /___   S1     G1,G2   S2
+                          G1,G2
+
+        while the Coulomb part is::
+
+             Coul        1     /  3  3  -i(q+G1).r   1    i(q+G2).r'
+            K  (q)  =  -----  | dr dr' e          ------ e
+             G1,G2      vol  /                    |r-r'|
+
+                         4 pi
+                    =  --------- delta(G1,G2), 
+                       |q+G1|**2
+
+        and the exchange-correlation part is::
+
+             xc         1     /  3  3  -i(q+G1).r                   i(q+G2).r'
+            K  (q)  = -----  | dr dr'  e         f (r) delta(r-r') e
+             G1,G2     vol  /                     xc
+
+                        1     /  3  -i(G1-G2).r
+                    = -----  | dr  e            f (r)
+                       vol  /                    xc
+        """
+
+#        Kcoul_GG = np.eye(self.nG0)
+        Kcoul_G = np.zeros(self.nG0)
+        Kcoul_SS = np.zeros((self.nS, self.nS), dtype= complex)
+
+        for i in range(self.nG0):
+            # get q+G vector 
+            xx = np.array([np.inner((Gvec[i] + q), self.bcell[:,j]) for j in range(3)])
+            #Kcoul_GG[i, i] = 1. / ( xx[0]*xx[0] +xx[1]*xx[1] + xx[2]*xx[2] )
+            Kcoul_G[i] = 1. / ( xx[0]*xx[0] +xx[1]*xx[1] + xx[2]*xx[2] )
+        #Kcoul_GG *= 4. * pi 
+        Kcoul_G *= 4. * pi 
+
+        for i in range(self.nS):
+            for j in range(self.nS):
+                #Kcoul_SS[i, j] = np.inner(np.inner(n_SG[i].conj(), Kcoul_GG), n_SG[j])
+                Kcoul_SS[i, j] = (n_SG[i].conj() * Kcoul_G * n_SG[j]).sum()
+        
+        return Kcoul_SS
+
+
     def solve_Dyson(self, chi0_SS, kernel_SS):
         """Solve Dyson's equation for a certain q and w. 
 
@@ -412,7 +584,8 @@ class CHI:
 
         return S
 
-    def chi_to_Gspace(self, chi_SS, pairphiG0_S):
+
+    def chi_to_Gspace(self, chi_SS, nG0_S):
         """Transformation from chi_SS' to chi_GG'(G=G'=0) at a certain q and omega
 
         The transformation is defined as::
@@ -421,16 +594,11 @@ class CHI:
             chi    (q,w)  = \    n (G=0) * chi (q,w) * n (G=0)
                GG'=0        /___  S         SS'         S'
                              SS'
-
-        Parameters: 
-
-        chi0(nLCAO**2,nLCAO**2) dtype=complex 
-        n_S(nLCAO**2)   dtype=float64
         """
 
-        chiGspace = np.sum( np.dot( np.dot(pairphiG0_S, chi_SS),
-                                     np.reshape(pairphiG0_S,(self.nS,1)) ))
-        return chiGspace
+        chiG0 = np.inner(np.inner(nG0_S, chi_SS), nG0_S.conj())
+
+        return chiG0 
 
 
     def find_kq(self, bzkpt_kG, q):
@@ -451,16 +619,6 @@ class CHI:
             if not found: 
                 raise ValueError('k+q not found')
         return kq
-
-
-    def pair_C(self, C1, C2):     
-        """Calculate pair C_nkM C_n',k+q,N for a certain k, q, n, n'.
-
-        C1 = C_knM(k, n, :), C2 = C_knM(k+q, m, :)
-        C1.shape = (nLCAO,)
-        """
-
-        return np.ravel(np.outer(C1.conj(),C2)) # (nS,)
 
 
     def pair_orbital_G0(self, orb_MG):
@@ -492,6 +650,7 @@ class CHI:
 
         return pairphiG0_S
 
+
     def pair_orbital_Rspace(self, orb_MG, h_c, setups, kpt):
         """Calculate pair LCAO orbital in real space. 
 
@@ -500,15 +659,17 @@ class CHI:
                    /
             n   =  | dr  r  phi (r) phi (r) 
              S    /           mu      nu
-                      ----          ~ a    ~ a          (                    ~       ~      )
-                    + \    < phi  | p  > < p  | phi  >  | phi (r) phi (r) - phi (r) phi (r) |
-                      /___      mu   i      j      nu   (    i       j         i       j    )
+                      ----          ~ a    ~ a          /      (                    ~       ~      )
+                    + \    < phi  | p  > < p  | phi  >  | dr r | phi (r) phi (r) - phi (r) phi (r) |
+                      /___      mu   i      j      nu  /       (    i       j         i       j    )
                        ij       
 
         Parameters:
 
-        orb(nband, Nx, Ny, Nz): LCAO orbital on the grid
-        Delta_pL : L = 1, 2, 3 corresponds to y, z, x, refer to c/bmgs/sharmonic.c
+        orb: ndarray
+            LCAO orbital on the grid, (nband, Nx, Ny, Nz)
+        Delta_pL: ndarray
+            L = 1, 2, 3 corresponds to y, z, x, refer to c/bmgs/sharmonic.c
         """
 
         N_gd = orb_MG.shape[1:4] # number of grid points
@@ -545,6 +706,129 @@ class CHI:
         return n_S
 
 
+    def pair_orbital_Gspace(self, orb_MG, gd):
+        """Calculate pair LCAO orbital in reciprocal space.
+
+        The pair density is defined as::
+
+                               -iG.r             ----           ~a     ~a
+            n (G) = < phi   | e     | phi  >  +  \    < phi   | p  > < p     | phi  >
+             S           mu              nu      /___      mu    ik     jk+q      nu
+                                                 a,ij
+
+                     iq.R_a (      a    -i(q+G).r     a        ~a    -i(q+G).r    ~a    )
+                    e       | < phi  | e         | phi  > - < phi  | e         | phi  > |
+                            (      i                  j          i                  j   )
+            
+        where the k-dependent projector is defined as::
+
+              ~a      -ik.(r-R_a)   ~a
+            | p  > = e            | p  >
+               ik                    i
+        """       
+        
+        n_SG = np.zeros((self.nS, self.nG0), dtype=complex)
+
+        for mu in range(self.nLCAO):
+            for nu in range(self.nLCAO):
+                # The last dimension runs fastest when using ravel()
+                # soft part
+                n_SG[self.nLCAO*mu + nu] = np.fft.fftn((orb_MG[mu].conj() * orb_MG[nu]).ravel())
+
+        # To check whether n_SG is correct, just look at the G=0 component
+        # tmp = orb_MG[mu].conj() * orb_MG[nu]
+        # calc.gd.integrate(tmp) should == n_SG[nLCAO*mu+nu, 0]
+        return n_SG * self.vol / self.nG0 
+
+
+    def get_primitive_cell(self):
+        """Calculate the reciprocal lattice vectors and the volume of primitive and BZ cell.
+
+        The volume of the primitive cell is calculated by::
+
+            vol = | a1 . (a2 x a3) |
+
+        The primitive lattice vectors are calculated by::
+
+                       a2 x a3
+            b1 = 2 pi ---------, and so on
+                         vol
+
+        Parameters:
+
+        a: ndarray
+            Primitive cell lattice vectors, calc.get_atoms().cell(), (3, 3)
+        b: ndarray
+            Reciprocal lattice vectors, (3, 3)
+        vol: float
+            Volume of the primitive cell
+        BZvol: float
+            Volume of the BZ, BZvol = (2pi)**3/vol for 3-dimensional crystal
+        """
+
+        a = self.acell
+
+        self.vol = np.dot(a[0],np.cross(a[1],a[2]))
+        self.BZvol = (2. * pi)**3 / self.vol
+
+        b = np.zeros_like(a)        
+        b[0] = np.cross(a[1], a[2])
+        b[1] = np.cross(a[2], a[0])
+        b[2] = np.cross(a[0], a[1])
+        self.bcell = 2. * pi * b / self.vol
+
+        return
+
+
+    def get_Gvectors(self):
+        """Calculate G-vectors.
+
+        The G-vectors are defined as::
+
+            G = m b  + m b  + m b  ,
+                 1 1    2 2    3 3
+
+        while b are lattice vectors, and m are integers
+
+        By Fourier Tranform, the G-vectors are ordered as::
+    
+            0, 1, 2, ...., Gmax, Gmin, ... , -2, -1 
+
+        The number of G-vectors == the number of grid points in the same direction (x,y,z)
+
+        when the number of grid points is odd::
+            
+            Gmax = - Gmin = int (number of grid points / 2), Eg: 0,1,2,3,-3,-2,-1
+
+        when the number of grid points is even::
+
+            Gmax = - Gmin + 1 = number of grid points / 2, Eg: 0,1,2,3,-2,-1
+
+        Note, only m vectors (the integer coefficients) are returned ! 
+        """
+        
+        m = {}
+        for dim in range(3):
+            m[dim] = np.zeros(self.nG[dim])
+            for i in range(self.nG[dim]):
+                m[dim][i] = i
+                if m[dim][i] > np.int(self.nG[dim]/2):
+                    m[dim][i] = i- self.nG[dim]       
+
+        G = np.zeros((self.nG0, 3))
+
+        n = 0
+        for i in range(self.nG[0]):
+            for j in range(self.nG[1]):
+                for k in range(self.nG[2]):
+                    G[n, 0] = m[0][i]
+                    G[n, 1] = m[1][j]
+                    G[n, 2] = m[2][k]
+                    n += 1
+        
+        return G
+
+
     def delta_function(self, x0, dx, Nx, sigma):
         """Approximate delta funcion using Gaussian wave.
 
@@ -557,8 +841,10 @@ class CHI:
 
         Parameters:
 
-        sigma : Broadening factor
-        x0    : The center of the delta function
+        sigma: float
+            Broadening factor
+        x0: float
+            The center of the delta function
         """        
 
         deltax = np.zeros(Nx)
@@ -581,6 +867,7 @@ class CHI:
 
         libxc.calculate_fxc_spinpaired(n, fxc)
         return np.reshape(fxc, N)
+
 
     def solve_casida(self, e_n, f_n, C_nM, kernel_SS, n_S):
         """Solve Casida's equation with input from LCAO calculations (nspin = 1).
@@ -609,12 +896,18 @@ class CHI:
 
         Parameters:
 
-        i/k : index for occupied states
-        j/q : index for unoccupied states
-        s/s': combined index for ij/kq
-        S/S': combined index for mu,nu / mu',nu'
-        C_nM: the LCAO coefficients at kpt=0
-        omega_I : excitation energies
+        i (or k): integer
+            Index for occupied states
+        j (or q): integer
+            Index for unoccupied states
+        s (or s'): integer
+            Combined index for ij (or kq)
+        S (or S'): integer
+            Combined index for mu,nu (or mu',nu')
+        C_nM: ndarray
+            The LCAO coefficients at kpt=0, (nband, nLCAO)
+        omega_I: ndarray
+            Excitation energies
         """
 
         # Count number of occupied and unoccupied states pairs
