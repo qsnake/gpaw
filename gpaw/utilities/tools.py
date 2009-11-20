@@ -100,19 +100,8 @@ def coordinates(gd, origin=None):
     r0 = np.ones(I.shape) * r0
     xyz = r0 + I * dr
     r2 = np.sum(xyz**2, axis=0)
-
-    if 0:
-        # Remove singularity at origin and replace with small number
-        middle = gd.N_c / 2.
-        # Check that middle is a gridpoint and that it is on this CPU
-        if (np.alltrue(middle == np.floor(middle)) and
-            np.alltrue(gd.beg_c <= middle) and
-            np.alltrue(middle < gd.end_c)):
-            m = (middle - gd.beg_c).astype(int)
-            r2[m[0], m[1], m[2]] = 1e-12
-    else:
-        # XXXX is that meant here ???
-        r2 = np.where(r2 < 1e-12, 1e-12, r2)
+    # Remove singularity at origin and replace with small number
+    r2 = np.where(r2 < 1e-12, 1e-12, r2)
 
     # Return r^2 matrix
     return xyz, r2

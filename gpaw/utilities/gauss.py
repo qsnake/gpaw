@@ -58,9 +58,9 @@ class Gaussian:
     spherical harmonic.
     The gaussians are centered in the middle of input grid-descriptor."""
     
-    def __init__(self, gd, a=19.):
+    def __init__(self, gd, a=19., center=None):
         self.gd = gd
-        self.xyz, self.r2 = coordinates(gd)
+        self.xyz, self.r2 = coordinates(gd, center)
         self.set_width(a)
 
     def set_width(self, a):
