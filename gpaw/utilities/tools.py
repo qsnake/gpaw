@@ -84,28 +84,35 @@ def construct_reciprocal(gd):
     return k2_Q, N3
 
 
-def coordinates(gd):
+def coordinates(gd, origin=None):
     """Constructs and returns matrices containing cartesian coordinates,
        and the square of the distance from the origin.
 
        The origin is placed in the center of the box described by the given
        grid-descriptor 'gd'.
     """
+    if origin is None:
+        origin = .5 * gd.cell_c
+
     I  = np.indices(gd.n_c)
     dr = np.reshape(gd.h_c, (3, 1, 1, 1))
-    r0 = np.reshape(gd.h_c * gd.beg_c - .5 * gd.cell_c, (3, 1, 1, 1))
+    r0 = np.reshape(gd.h_c * gd.beg_c - origin, (3, 1, 1, 1))
     r0 = np.ones(I.shape) * r0
     xyz = r0 + I * dr
     r2 = np.sum(xyz**2, axis=0)
 
-    # Remove singularity at origin and replace with small number
-    middle = gd.N_c / 2.
-    # Check that middle is a gridpoint and that it is on this CPU
-    if (np.alltrue(middle == np.floor(middle)) and
-        np.alltrue(gd.beg_c <= middle) and
-        np.alltrue(middle < gd.end_c)):
-        m = (middle - gd.beg_c).astype(int)
-        r2[m[0], m[1], m[2]] = 1e-12
+    if 0:
+        # Remove singularity at origin and replace with small number
+        middle = gd.N_c / 2.
+        # Check that middle is a gridpoint and that it is on this CPU
+        if (np.alltrue(middle == np.floor(middle)) and
+            np.alltrue(gd.beg_c <= middle) and
+            np.alltrue(middle < gd.end_c)):
+            m = (middle - gd.beg_c).astype(int)
+            r2[m[0], m[1], m[2]] = 1e-12
+    else:
+        # XXXX is that meant here ???
+        r2 = np.where(r2 < 1e-12, 1e-12, r2)
 
     # Return r^2 matrix
     return xyz, r2
