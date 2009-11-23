@@ -147,13 +147,15 @@ class AtomLocalizedFunctionsCollection:
         pass
     
     def add(self, a_xG, c_axi=1.0, q=-1):
+        assert q == -1
         if isinstance(c_axi, float):
             a_xG += c_axi * self.b_g
         else:
             a_xG += c_axi[0][0] * self.b_g
 
-    def integrate(self, a_g, c_ai):
+    def integrate(self, a_g, c_ai, q=-1):
         assert a_g.ndim == 1
+        assert q == -1
         c_ai[0][0] = self.gd.integrate(a_g, self.b_g)
         c_ai[0][1:] = 0.0
 
