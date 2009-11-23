@@ -14,7 +14,7 @@ from gpaw.utilities.memory import maxrss
 
 from gpaw.transport.tools import tri2full, dot, Se_Sparse_Matrix, PathInfo,\
           get_atom_indices, substract_pk, get_lcao_density_matrix, \
-          get_pk_hsd, diag_cell, get_matrix_index, aa1d, aa2d, eig_states_norm
+          get_pk_hsd, diag_cell, get_matrix_index, aa1d, aa2d
 
 from gpaw.transport.tools import Tp_Sparse_HSD, Banded_Sparse_HSD, \
                                                                  CP_Sparse_HSD
@@ -266,6 +266,7 @@ class Transport(GPAW):
             self.normalize_density = True
         else:
             self.normalize_density = False
+        self.analysis_parameters = []            
         self.atoms_l = [None] * self.lead_num
         self.atoms_e = [None] * self.env_num
         
@@ -280,6 +281,16 @@ class Transport(GPAW):
         GPAW.construct_grid_descriptor(self, N_c, cell_cv,
                                   pbc_c, domain_comm, parsize)
         self.gd.use_fixed_bc = True
+
+    def set_analysis_parameters(self, **analysis_kwargs):
+        self.analysis_parameters = analysis_kwargs
+        for key in self.analysis_parameters:
+            if key not in ['energies', 'lead_pairs', 'dos_project_atoms',
+                       'project_molecular_levels', 'isolate_atoms', 'project_equal_atoms',
+                        'dos_project_orbital',
+                        'trans_project_orbital', 'eig_trans_channel_energies',
+                        'eig_trans_channel_num', 'dos_realspace_energies']:
+                raise ValueError('no keyword %s for analysis' % key)    
 
     def adjust_spacing(self):
         p = self.gpw_kwargs
@@ -507,10 +518,10 @@ class Transport(GPAW):
         self.F_av = None
         self.optimize = False
 
-    def set_energies(self, energies, lead_pairs=[[0,1]]):
-        self.plot_option = {}
-        self.plot_option['energies'] = energies
-        self.plot_option['lead_pairs'] = lead_pairs
+    def set_energies(self, energies):
+        p = {}
+        p['energies'] = energies
+        self.set_analysis_parameters(**p)
                  
     def get_hamiltonian_initial_guess(self):
         atoms = self.atoms.copy()
@@ -2337,302 +2348,7 @@ class Transport(GPAW):
             self.analysor.save_bias_step()
             self.analysor.save_data_to_file('bias', 'bias_plot_data')
             
-    def lead_k_matrix(self, l, s, pk, k_vec, hors='S'):
-        if hors == 'S':
-            h00 = self.lead_hsd[l].S[pk].recover()
-            h01 = self.lead_couple_hsd[l].S[pk].recover()
-        else:
-            h00 = self.lead_hsd[l].H[s][pk].recover()
-            h01 = self.lead_couple_hsd[l].H[s][pk].recover()
-        h01 *=  np.exp(2 * np.pi * 1.j * k_vec)
-        return h00 + h01 + h01.T.conj()
-      
-    def lead_scattering_states(self, energy, l, s, q):
-        #Calculating the scattering states in electrodes
-        #l ---- index of electrode
-        #s ---- index of spin
-        #q ---- index of local k point
-        
-        #if it is multi-terminal system, should add a part that can rotate
-        # the lead hamiltonian
-        MaxLambda = 1e2
-        MinErr = 1e-8
-        
-        for i in range(self.lead_num):
-            hes00 = self.lead_hsd[l].H[s][q].recover() - \
-                                    self.lead_hsd[l].S[q].recover() * energy
-            hes01 = self.lead_couple_hsd[l].H[s][q].recover() - \
-                             self.lead_couple_hsd[l].S[q].recover() * energy
-            nb = hes00.shape[-1]
-            dtype = hes00.dtype
-            A = np.zeros([2*nb, 2*nb], dtype)
-            B = np.zeros([2*nb, 2*nb], dtype)
-            
-            A[:nb, nb:2*nb] = 1
-            A[nb:2*nb, :nb] = hes01.T.conj()
-            A[nb:2*nb, nb:2*nb] = hes00
-            
-            B[:nb, :nb] = 1
-            B[nb:2*nb, nb:2*nb] = -hes01
-            
-            from scipy.linalg import eig
-            D, V = eig(A, B)
-            index = np.argsort(D)
-            D = D[index]
-            V = V[:, index]
-            
-            #delete some unreasonable solutions
-            index = np.nonzero(abd(D) > MaxLambda)
-            cutlen = length(D) - index[0]
-            index = np.arange(cutlen, length(D) - cutlen)
-            D = D[index]
-            V = V[index]
-            
-            k = np.log(D) * (-1.j) / 2 / np.pi
-            Vk = V[:nb]
-            
-            #sort scattering states 
-            proindex = np.nonzero(np.abs(k.imag) < MinErr)
-            
-            if len(proindex) > 0:
-                k_sort = np.sort(k[proindex].real)
-                index = np.argsort(k[proindex].real)
-                k[proindex] = k[proindex[index]].real
-                Vk[:, proindex] = Vk[:, proindex[index]]
-                
-                #normalization the scattering states
-                j = proindex[0]
-                while j <= proindex[-1]:
-                    same_k_index = np.nonzero(abs((k - k[j]).real) < MinErr)
-                    sk = self.lead_k_matrix(l, s, q, k[j])
-                    Vk[:, same_k_index] = eig_states_norm(Vk[:, same_k_index],
-                                                                          sk)
-                    j += len(same_k_index)
-        return k ,Vk                    
-                   
-    def central_scattering_states(self, energy, s, q):
-    
-        MaxLambda = 1e2
-        MinErr = 1e-8
-        
-        bc = self.nbmol_inner # maybe wrong
-        nc = len(bc)
-        
-        molhes = self.hsd.H[s, q].recover(all=True) - \
-                              self.hsd.S[q].recover(all=True) * energy
-        blead = []
-        lead_hes = []
-        lead_couple_hes = []
-        for i in range(self.lead_num):
-            blead.append(self.lead_layer_index[i][-1])
-            lead_hse.append(self.lead_hsd.H[s, q].recover() -
-                                        self.lead_hsd.S[q].recover() * energy)
-            lead_couple_hse.append(self.lead_couple_hsd.H[s, q].recover() -
-                                 self.lead_couple_hsd.S[q].recover() * energy)
-
-        ex_ll_index = self.hsd.S[0].ex_ll_index    
-        
-        total_k = []
-        total_vk = []
-        total_lam = []
-        total_v = []
-        total_pro_right_index = []
-        total_pto_left_index = []
-        total_left_index = []
-        total_right_index = []
-        total_kr = []
-        total_kt = []
-        total_lambdar = []
-        total_lamddat = []
-        total_vkr = []
-        total_vkt = []
-        total_vr = []
-        total_vt = []
-        total_len_k = []
-        total_nblead = []
-        total_bA1 = []
-        total_bA2 = []
-        total_bproin = []
-        total_nbB2 = []
-        total_bB2 = []
-                
-        for i in range(self.lead_num):
-            k, vk = self.lead_scattering_states(energy, i, s, q)
-            total_k.append(k)
-            total_vk.append(vk)
-            
-            lam = np.exp(2 * np.pi * k * 1.j)
-            total_lam.append(lam)
-            
-            #calculating v = dE/dk
-            de2 = 1e-8
-            k2 = self.lead_scattering_states(energy + de2, i, s, q)
-            v = de2 / (k2 - k) / 2 / np.pi 
-            total_v.append(v)
-            
-            #seperating left scaterring states and right scattering states
-            #left scattering: lead->mol, right scattering: mol->lead
-            proindex = np.nonzero(abs(k.imag < MinErr))
-            pro_left_index = proindex(np.nonzero(v[proindex] < 0))
-            pro_left_index = pro_left_index[np.arange(len(proindex), 0) - 1]
-            
-            pro_right_index = proindex(np.nonzero(v[proindex] > 0))
                
-            left_index = np.nonzero(k.imag > MinErr)
-            left_index = np.append(left_index, pro_left_index)
-            
-            right_index = pro_right_index.copy()
-            right_index = np.append(right_index, np.nonzero(k.imag < -MinErr))
-            
-            total_pro_left_index.append(pro_left_index)
-            total_pro_right_index.append(pro_right_index)
-            total_left_index.append(left_index)
-            total_right_index.append(right_index)
-           
-            kr = k[left_index]
-            kt = k[right_index]
-            total_kr.append(kr)
-            total_kt.append(kt)
-            
-            lambdar = np.diag(np.exp(2 * np.pi * kr * 1.j))
-            lambdat = np.diag(np.exp(2 * np.pi * kt * 1.j))
-            total_lambdar.append(lambdar)
-            total_lambdat.append(lambdat)
-            
-            vkr = vk[:, left_index]
-            vkt = vk[:, right_index]
-            vr = v[pro_left_index]
-            vt = v[pro_right_index]
-            total_vkr.append(vkr)
-            total_vkt.append(vkt)
-            total_vr.append(vr)
-            total_vt.append(vt)
-            
-            #abstract basis information
-            len_k = len(right_index)
-            total_len_k.append(len_k)
-            
-            #lead i basis seqeunce in whole matrix
-            nblead = len(ex_ll_index[i][-1])
-            total_nblead.append(nblead)
-            bA1 = nc + np.sum(total_nblead[:i]) + np.arange(nblead)
-            #sequence of the incident wave   
-            bA2 = nc + np.sum(total_len_k[:i]) + np.arange(len_k)
-            # the first n in vkt are scattering waves, the rest are the decaying ones
-            # the first n in vkr are decaying waves, the rest are the scattering ones
-            
-            bproin = np.arange(len(pro_right_index[i])) + \
-                                          len(kr[i]) - len(pro_right_index[i])
-            ### this line need to check it...
-            total_bproin.append(bproin)
-            nbB2 = len(bproin)
-            total_nbB2.append(nbB2)
-            bB2 = np.sum(total_nbB2[:i]) + np.arange(nbB2)
-            total_bB2.append(bB2)
-            
-            Acc = molhes[bc, bc]
-            
-            total_Alc = []
-            total_hcl = []
-            total_All = []
-            total_Acl = []
-            total_Bc = []    
-            
-            for i in range(self.lead_num):
-                Alc = hes[blead[i], bc]
-                hcl = hes[bc, blead[i]]
-                vkt = total_vkt[i]
-                All = self.lead_hsd.H[i][s][q].recover() * vkt + \
-                                   self.lead_couple_hsd[i][s][q].recover() * \
-                                                          vkt* total_lambdat[i]
-                Acl = hcl * vkt
-                bpi = total_bproin[i]
-                vkr = total_vkr[i]
-                Bc = -hcl * total_vkr[i][:, bpi]
-                Bl = -(self.lead_hsd.H[i][s][q].recover() * vkr[:, bpi]) + \
-                       self.lead_couple_hsd.H[i][s][q] * vkr[:, bpi] \
-                       * total_lambdar[i][bpi, bpi]
-                total_Alc.append(Alc)
-                total_hcl.append(hcl)
-                total_All.append(All)
-                total_Bc.append(Bc)
-                total_Bl.append(Bl)
-            total_bc = molhes.shape[-1]
-            dtype = molhes.dtype
-            MatA = np.zeros(total_bc, nc + np.sum(total_len_k), dtype)    
-            MatB = np.zeros(total_bc, np.sum(total_nbB2))
-            MatA[:nc, :nc] = Acc
-            for i in range(self.lead_num):
-                MatA[total_bA1[i], total_bA2[i]] = total_All[i]
-                MatA[:nc, total_bA2[i]] = total_Acl[i]
-                MatA[total_bA1[i], :nc] = total_Alc[i]
-                MatB[:nc, total_bB2[i]] = total_Bc[i]
-                MatB[total_bA1[i], total_bB2[i]] = total_Bl[i]
-            Vx = np.linalg.linsolve(MatA, MatB)
-            
-            total_vl = []
-            for i in range(self.lead_num):
-                total_k[i] = total_k[i][total_pro_right_index[i]]
-                total_vl.append(total_vk[i][:, total_pro_right_index[i]])
-            
-            total_vc = []
-            t = []
-            for i in range(self.lead_num):
-                t.append([])
-            for i in range(self.lead_num):
-                total_vc.append(Vx[:nc, total_bB2[i]])
-                for j in range(self.lead_num):
-                    bx = total_bA2[j]
-                    bx = bx[:len(total_pro_right_index[j])]
-                    t[j].append(Vx[bx, total_bB2[i]])
-                    for m in range(len(total_pro_left_index[i])):
-                        for n in range(len(total_pro_right_index[i])):
-                            t[j][i][n, m] *= np.sqrt(abs(total_vt[i][n]/
-                                                         total_vr[j][m]))
-        return t, total_vc. total_k, total_vl
-            
-    def cal_sstates(self, energies, s, q):
-        MinErr = 1e-8
-        MaxLambda = 1 + MinErr
-        
-        energies = energies.real
-        ne = len(energies)
-        t_all = np.zeros([ne, self.lead_num, self.lead_num])
-        t_lead_all = []
-        for i in range(self.lead_num):
-            t_lead_all.append([])
-            for j in range(self.lead_num):
-                t_lead_all.append(np.zeros[self.nblead[i], self.nblead[j], ne])
-        total_t = []
-        total_vc = []
-        total_k = []
-        total_vl = []
-        sk1 = []
-        sk2 = []
-        for n in range(ne):
-            t, vc, k, vl = self.esstates(energies[n], s, q)
-            total_t.append(t)
-            total_vc.append(vc)
-            total_k.append(k)
-            total_vl.append(vl)
-            for i in range(self.lead_num):
-                for j in range(self.lead_num):
-                    t0 = t[i][j]
-                    t_all[n, i, j] = np.dot(t0.T.conj(), t0)
-                    for m1 in range(t0.shape[0]):
-                        sk1.append(self.lead_k_matrix(i, s, q, k[i][m1], 'S'))
-                    for m2 in range(t0.shape[1]):
-                        sk2.append(self.lead_k_matrix(i, s, q, k[j][m2], 'S'))
-                    for m1 in range(t0.shape[0]):
-                        w1 = (vl[j][:, m2].conj() * sk2[m2] * vl[j][:, m2]).real
-                        w1[np.nonzero(w1 < 0)] = 0
-                        w1 /= np,sum(w1)
-                        w2 = (vl[i][:, m1].conj() * sk1[m1] * vl[i][:, m1]).real
-                        w2[np.nonzero(w2 < 0)] = 0                        
-                        w2 /= np.sum(w2)
-                        t_lead_all[i][j][:, :, n] += abs(t0[m1, m2]) ** 2 * \
-                                                      np.dot(w1, w2.T.conj())
-                        
                         
                             
                 
