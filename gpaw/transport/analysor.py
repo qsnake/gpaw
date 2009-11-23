@@ -150,6 +150,7 @@ class Transport_Analysor:
         p['lead_pairs'] = [[0,1]]
         p['dos_project_atoms'] = None
         p['project_molecular_levels'] = None
+        p['project_equal_atoms'] = [[], []]
         p['isolate_atoms'] = None
         p['dos_project_orbital'] = None
         p['trans_project_orbital'] = None
