@@ -625,7 +625,7 @@ class XC3DGrid(XCGrid):
 
             # For periodic boundary conditions
             if wfs.symmetry is not None:
-                symmetry.symmetrize(taut_sG[0], wfs.gd)
+                wfs.symmetry.symmetrize(self.taut_sG[0], wfs.gd)
                     
             # Interpolate pseudo electron kinetic density to the fine grid:
             self.xcfunc.interpolator.apply(self.taut_sG[0], self.taut_sg[0])
@@ -686,7 +686,7 @@ class XC3DGrid(XCGrid):
             # For periodic boundary conditions
             if wfs.symmetry is not None:
                 for taut_G in self.taut_sG:
-                    symmetry.symmetrize(taut_G, wfs.gd)
+                    wfs.symmetry.symmetrize(taut_G, wfs.gd)
                     
             # Interpolate pseudo electron kinetic density to the fine grid:
             for s in range(self.nspins):

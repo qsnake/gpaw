@@ -169,10 +169,10 @@ x_tpss_para(XC(mgga_type) *pt, FLOAT *rho, FLOAT sigma, FLOAT tau_,
 
   /* von Weisaecker kinetic energy density */
   tauw = max(gdms/(8.0*rho[0]), 1.0e-12);
-  /* GMadsen: tau lower bound by tauw */
   tau = max(tau_, tauw);
   z  = tauw/tau;
-  if(tauw >= tau_){
+
+  if(tauw >= tau_ || ABS(tauw-tau_)< 1.0e-10){
 	  dzdtau = 0.0;
 	  dzdd = 0.0;
 	  dzdsigma = 0.0;

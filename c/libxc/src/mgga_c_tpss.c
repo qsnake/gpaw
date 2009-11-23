@@ -277,25 +277,37 @@ void
 XC(mgga_c_tpss)(XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma, FLOAT *tau,
 	    FLOAT *energy, FLOAT *dedd, FLOAT *vsigma, FLOAT *dedtau)
 {
-  FLOAT dens, zeta;
-  FLOAT taut, tauw, z;
+  FLOAT dens, zeta, grad;
+  FLOAT tautr, taut, tauw, z;
   FLOAT e_PKZB, de_PKZBdd[2], de_PKZBdsigma[3], de_PKZBdz;
   int i, is;
 
   zeta = (rho[0]-rho[1])/(rho[0]+rho[1]);
 
   dens = rho[0];
-  if(p->nspin == XC_POLARIZED) dens += rho[1];
+  tautr = tau[0];
+  grad  = sigma[0];
+
+  if(p->nspin == XC_POLARIZED) {
+	  dens  += rho[1];
+	  tautr += tau[1];
+	  grad  += (2*sigma[1] + sigma[2]);
+  }
+
+  grad = max(MIN_GRAD*MIN_GRAD, grad);
+  tauw = max(grad/(8.0*dens), 1.0e-12);
+
+  taut = max(tautr, tauw);
+
+  z = tauw/taut;
 
   sigma[0] = max(MIN_GRAD*MIN_GRAD, sigma[0]);
-  if(p->nspin == XC_POLARIZED) sigma[2] = max(MIN_GRAD*MIN_GRAD, sigma[2]);
+  if(p->nspin == XC_POLARIZED) 
+  {
+	  //sigma[1] = max(MIN_GRAD*MIN_GRAD, sigma[1]);
+	  sigma[2] = max(MIN_GRAD*MIN_GRAD, sigma[2]);
+  }
 
-  tauw = max(sigma[0]/(8.0*rho[0]), 1.0e-12);
-  if(p->nspin == XC_POLARIZED) tauw += max(sigma[2]/(8.0*rho[1]),1.0e-12);
-
-  /* GMadsen: tau lower bound by tauw*/ 
-  taut = max(tau[0]+tau[1], tauw);
-  z = tauw/taut;
   /* Equation (12) */
   c_tpss_12(p, rho, sigma, dens, zeta, z,
 	    &e_PKZB, de_PKZBdd, de_PKZBdsigma, &de_PKZBdz);
@@ -306,20 +318,25 @@ XC(mgga_c_tpss)(XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma, FLOAT *tau,
     FLOAT dedz;
     FLOAT dzdd[2], dzdsigma[3], dzdtau;
 
-	if(tauw >= tau[0]+tau[1]){
-		dzdtau = 0.0;        /*OK*/
-	    dzdd[0] = 0.0;          /*OK*/
-	    dzdd[1] = 0.0;          /*OK*/
+	if(tauw >= tautr || ABS(tauw- tautr)< 1.0e-10){ 
+		dzdtau = 0.0;              
+	    dzdd[0] = 0.0;                
+	    dzdd[1] = 0.0;                
 		dzdsigma[0] = 0.0;
 		dzdsigma[1] = 0.0;
 		dzdsigma[2] = 0.0;
 	}else{
-		dzdtau = -z/taut;        /*OK*/
-		dzdd[0] = - sigma[0]/(8*rho[0]*rho[0]*taut);          /*OK*/
-		dzdd[1] = - sigma[2]/(8*rho[1]*rho[1]*taut);          /*OK*/
-		dzdsigma[0] = 1.0/(8*rho[0]*taut);    /*OK*/
-		dzdsigma[1] = 0.0;  /*OK*/
-		dzdsigma[2] = 1.0/(8*rho[1]*taut);    /*OK*/
+		dzdtau = -z/taut;              
+		dzdd[0] = - z/dens;
+		dzdd[1] = 0.0;
+		if (p->nspin == XC_POLARIZED) dzdd[1] = - z/dens;
+		dzdsigma[0] = 1.0/(8*dens*taut);    
+		dzdsigma[1] = 0.0;  
+		dzdsigma[2] = 0.0;
+		if (p->nspin == XC_POLARIZED) {
+			dzdsigma[1] = 2.0/(8*dens*taut);    
+			dzdsigma[2] = 1.0/(8*dens*taut);    
+		}
 	}
     
     *energy = e_PKZB * (1.0 + d*e_PKZB*z3);

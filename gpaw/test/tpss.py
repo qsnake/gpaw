@@ -4,25 +4,25 @@ from gpaw import *
 from gpaw.utilities.tools import split_formula
 from gpaw.test import equal
 
-cell = [8., 8., 8.]
+cell = [10.,10.,10.]
 data = paropen('data.txt', 'w')
 
 ##Reference from J. Chem. Phys. Vol 120 No. 15, 15 April 2004, page 6898
 tpss_de = {
-'LiH': 59.1,
+'Li2': 22.5,
 }
 tpss_old = {
-'LiH': 57.0628,
+'Li2': 22.7,
 }
 
 exp_bonds_dE = {
-'LiH': (1.595,57.8),
+'Li2': (2.673,24.4),
 }
 
-niters_ref = {'LiH': 22, 'Li': 19, 'H': 14}
+niters_ref = {'Li2': 21, 'Li': 14}
 niter_tolerance = 0
 
-systems = ['LiH']
+systems = ['Li2']
 
 # Add atoms
 for formula in systems:
@@ -49,6 +49,7 @@ for formula in systems:
         pos = loa.get_positions()
         pos[1,:] = pos[0,:] + [0.0, 0.0, exp_bonds_dE[formula][0]]
         loa.set_positions(pos)
+        loa.center()
     loa.set_calculator(calc)
     try:
         energy = loa.get_potential_energy()
@@ -88,6 +89,6 @@ for formula in tpss_de.keys():
         file.flush()
 
 
-#comparison to gpaw 0.6.3798 version value in kcal/mol (note the grid:0.3 Ang)
+#comparison to gpaw revision 5450 version value in kcal/mol (note the grid:0.3 Ang)
     equal(de_tpss, tpss_old[formula], 0.1)
     equal(niters[formula], niters_ref[formula], niter_tolerance)
