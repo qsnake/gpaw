@@ -29,7 +29,7 @@ class IntCtrl:
             self.envfermi.append(efermi + env_bias[i])
         self.minfermi = min(self.leadfermi + self.envfermi)
         self.maxfermi = max(self.leadfermi + self.envfermi)
-        self.eqinttol = 1e-5
+        self.eqinttol = 1e-4
         self.kttol = 1e-5
         self.biastol = 1e-10
         
@@ -51,7 +51,7 @@ class IntCtrl:
             #                  dkt * 1.j + nkt]
             self.eqintpath = [ min_energy, 
                                min_energy + (10 + dkt)*1.j, 
-                              -nkt + (10 + dkt)* 1.j, 
+                              #-nkt + (10 + dkt) * 1.j, 
                               -nkt + dkt * 1.j, 
                                dkt *1.j +nkt]
             self.eqdelta = dkt
