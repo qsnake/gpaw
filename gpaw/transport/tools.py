@@ -1419,7 +1419,7 @@ def interpolate_array(array, gd, h, di='+'):
             xnew = np.arange(gd.N_c[2]) * h
         else:
             x = np.arange(-gd.N_c[2] * 2, 0) * gd.h_c[2]
-            xnew = -np.arange(-gd.N_c[2], 0) * h         
+            xnew = np.arange(-gd.N_c[2], 0) * h         
         
     if spin_relate:
         ns, nx, ny, nz = array.shape
@@ -1464,9 +1464,11 @@ def eig_states_norm(orbital, s_mm):
         
     error = np.max(np.dot(np.dot(orbital.T.conj(), s_mm), orbital) -
               np.eye(nstates)) / nstates   
-    if  error < norm_error:
+    if  abs(error) > norm_error:
         print 'Warning! Normalization error %f' % error
     return orbital
-        
+
+def find(condition):
+    return np.nonzero(condition)[0]
     
     
