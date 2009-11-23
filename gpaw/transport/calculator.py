@@ -488,7 +488,8 @@ class Transport(GPAW):
         # save memory
         del self.atoms_l
         del self.atoms_e
-        
+
+        self.get_inner_setups()        
         if not self.non_sc:
             self.timer.start('surround set_position')
             if not self.use_fd_poisson:
@@ -501,7 +502,6 @@ class Transport(GPAW):
                                             allocate=False)
             self.interpolator.allocate()
             self.surround.combine()
-            self.get_inner_setups()
             self.set_extended_positions()
             self.timer.stop('surround set_position')
         
@@ -558,13 +558,15 @@ class Transport(GPAW):
                 self.extended_calc.hamiltonian = self.hamiltonian
                 self.extended_calc.gd = self.gd
                 self.extended_calc.finegd = self.finegd
+                self.extended_calc.wfs.basis_functions = self.wfs.basis_functions
    
             else:
                 atoms.calc = self
                 self.recover_kpts(atoms.calc)                
                 self.extended_calc.hamiltonian = self.hamiltonian
                 self.extended_calc.gd = self.gd
-                self.extended_calc.finegd = self.finegd   
+                self.extended_calc.finegd = self.finegd
+                self.extended_calc.wfs.basis_functions = self.wfs.basis_functions                
         else:        
             for iter in range(self.guess_steps):
                 wfs.eigensolver.iterate(hamiltonian, wfs)
