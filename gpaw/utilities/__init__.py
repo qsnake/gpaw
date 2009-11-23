@@ -19,7 +19,7 @@ utilities_vdot_self = _gpaw.utilities_vdot_self
 
 erf = np.vectorize(_gpaw.erf, (float,), 'Error function')
 # XXX should we unify double and complex erf ???
-cerf = _gpaw.cerf
+cerf = np.vectorize(_gpaw.cerf, (complex,), 'Complex error function')
 
 # Factorials:
 fac = [1, 1, 2, 6, 24, 120, 720, 5040, 40320,
