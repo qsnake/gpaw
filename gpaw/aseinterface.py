@@ -627,9 +627,10 @@ class GPAW(PAW):
     def get_magnetic_moments(self, atoms=None):
         """Return the local magnetic moments within augmentation spheres"""
         magmom_a = self.density.estimate_magnetic_moments()
+        momsum = magmom_a.sum()
         M = self.occupations.magmom
-        if abs(M) > 1e-7:
-            magmom_a *= M / magmom_a.sum()
+        if abs(M) > 1e-7 and momsum > 1e-7:
+            magmom_a *= M / momsum
         return magmom_a
         
     def get_number_of_grid_points(self):
