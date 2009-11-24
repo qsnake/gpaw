@@ -1,3 +1,11 @@
+"""Module for high-level BLACS interface.
+
+Array index symbol conventions::
+ * M, N: indices in global array
+ * m, n: indices in local array
+
+"""
+
 import numpy as np
 
 from gpaw.mpi import SerialCommunicator
@@ -17,6 +25,7 @@ class SLEXDiagonalizer:
         self.bd = bd
         self.kpt_comm = kpt_comm
         self.gd = gd
+        self.nao = nao
         
         bcommsize = bd.comm.size
         gcommsize = gd.comm.size
@@ -40,53 +49,50 @@ class SLEXDiagonalizer:
         self.blockdescriptor = blockgrid.new_descriptor(nao, nao, blocksize,
                                                         blocksize)
         self.outdescriptor = columngrid.new_descriptor(nao, nao, nao, mynbands)
-        self.redistributor = Redistributor(blockcomm)
-
-    def diagonalize(self, H_MM, S_MM, eps_n, kpt):
-        descriptor1 = self.indescriptor
-        descriptor1b = self.outdescriptor
-        descriptor2 = self.blockdescriptor
-
-        redistributor = self.redistributor
-
-        dtype = H_MM.dtype
         
-        colS = descriptor1.new_matrix(dtype)
-        colH = descriptor1.new_matrix(dtype)
-        if colS.A_mn.shape != (0, 0):
-            assert colS.A_mn.T.flags.contiguous # A_mn is Fortran ordered
-            # This is not a 'true' transpose, it should be a regular copy
-            # due to the Fortran/C ordering
-            colS.A_mn.T[:] = S_MM
-            colH.A_mn.T[:] = H_MM
+        self.cols2blocks = Redistributor(blockcomm, self.indescriptor,
+                                         self.blockdescriptor)
+        self.blocks2cols = Redistributor(blockcomm, self.blockdescriptor,
+                                         self.outdescriptor)
+    
+    def diagonalize(self, H_mM, S_mM, eps_M, kpt):
+        indescriptor = self.indescriptor
+        outdescriptor = self.outdescriptor
+        blockdescriptor = self.blockdescriptor
 
-        sqrS = descriptor2.new_matrix(dtype)
-        sqrH = descriptor2.new_matrix(dtype)
+        dtype = H_mM.dtype
 
-        dst_colH = descriptor1b.new_matrix(dtype)
+        S_Mm = indescriptor.zeros(dtype=dtype)
+        H_Mm = indescriptor.zeros(dtype=dtype)
 
-        redistributor.redistribute(colS, sqrS)
-        redistributor.redistribute(colH, sqrH)
+        if indescriptor:
+            S_Mm.T[:] = S_mM
+            H_Mm.T[:] = H_mM
+        
+        S_mm = blockdescriptor.zeros(dtype)
+        H_mm = blockdescriptor.zeros(dtype)
+        C_mm = blockdescriptor.zeros(dtype)
+        C_Mn = outdescriptor.zeros(dtype)
+        
+        self.cols2blocks.redistribute(S_Mm, S_mm)
+        self.cols2blocks.redistribute(H_Mm, H_mm)
 
-        eps_n[:], H1_MM = scalapack_diagonalize_ex(sqrH.A_mn, descriptor2,
-                                                   'U', sqrS.A_mn)
-        if H1_MM is not None:
-            sqrH.A_mn[:] = H1_MM
+        blockdescriptor.diagonalize_ex(H_mm, S_mm, C_mm, eps_M, 'U')
 
-        redistributor.redistribute(sqrH, dst_colH)
-        H_MM = dst_colH.A_mn
+        self.blocks2cols.redistribute(C_mm, C_Mn)
 
-        if H_MM.shape != (0, 0):
+        if outdescriptor:
             assert self.gd.comm.rank == 0
             bd = self.bd
-            kpt.C_nM[:] = H_MM[:, :bd.mynbands].T
-            bd.distribute(eps_n[:bd.nbands], kpt.eps_n)
+            kpt.C_nM[:] = C_Mn[:, :bd.mynbands].T
+            bd.distribute(eps_M[:bd.nbands], kpt.eps_n)
         else:
             assert self.gd.comm.rank != 0
 
         self.gd.comm.broadcast(kpt.C_nM, 0)
         self.gd.comm.broadcast(kpt.eps_n, 0)
         return 0
+
 
 class BlacsGrid:
     """Class representing a 2D grid of processors sharing a Blacs context."""
@@ -113,12 +119,15 @@ class BlacsGrid:
         self.ncpus = nprow * npcol
         self.order = order
 
+    def new_descriptor(self, M, N, mb, nb, rsrc=0, csrc=0):
+        return BlacsDescriptor(self, M, N, mb, nb, rsrc, csrc)
+
     def is_active(self):
         """Whether context is active on this rank."""
         return self.context != INACTIVE
 
-    def new_descriptor(self, M, N, mb, nb, rsrc=0, csrc=0):
-        return BlacsDescriptor(self, M, N, mb, nb, rsrc, csrc)
+    def __nonzero__(self):
+        return self.is_active()
 
     def __str__(self):
         classname = self.__class__.__name__
@@ -175,20 +184,33 @@ class BlacsDescriptor:
         # http://www.netlib.org/scalapack/slug/node75.html
         self.rsrc = rsrc
         self.csrc = csrc
-        context = blacsgrid.context
         
         if blacsgrid.is_active():
-            locM, locN = _gpaw.get_blacs_shape(context, self.M, self.N,
+            locM, locN = _gpaw.get_blacs_shape(self.blacsgrid.context,
+                                               self.M, self.N,
                                                self.mb, self.nb, 
                                                self.rsrc, self.csrc)
         else:
             locM, locN = 0, 0
-        self.locM = locM
-        self.locN = locN
+        
+        self.active = locM > 0 and locN > 0
+        
+        self.shape = (locM, locN) # Shape of local array (including all blocks)
+        self.bshape = (self.mb, self.nb) # Shape of one block
+        self.gshape = (M, N) # Global shape of array
         self.lld  = locM # lld = 'local leading dimension'
 
-    def new_matrix(self, dtype):
-        return BlacsMatrix(self, dtype)
+    def __nonzero__(self):
+        return self.active
+
+    def zeros(self, dtype=float):
+        return np.zeros(self.shape, dtype, order='F')
+
+    def empty(self, dtype=float):
+        return np.empty(self.shape, dtype, order='F')
+
+    def check(self, a_mn):
+        return a_mn.shape == self.shape and a_mn.flags.f_contiguous
 
     def asarray(self):
         arr = np.array([BLOCK_CYCLIC_2D, self.blacsgrid.context, 
@@ -199,66 +221,61 @@ class BlacsDescriptor:
     def __str__(self):
         classname = self.__class__.__name__
         template = '%s[context=%d, glob %dx%d, mb %dx%d, lld %d, locM/N %dx%d]'
-        string = template % (classname, self.blacsgrid.context, self.M, self.N, 
+        string = template % (classname, self.blacsgrid.context,
+                             self.M, self.N, 
                              self.mb, self.nb, self.lld, self.locM, self.locN)
         return string
 
+    def diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M, UL='U'):
+        assert self.check(H_mm)
+        assert self.check(S_mm)
+        assert self.check(C_mm)
+        scalapack_diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M, UL)
 
-class BlacsMatrix:
-    def __init__(self, blacs_descriptor, dtype):
-        self.descriptor = blacs_descriptor
-        self.dtype = dtype
-        locM = blacs_descriptor.locM
-        locN = blacs_descriptor.locN
-        # Could be empty, but we don't want to challenge the ability of certain
-        # libraries to handle random NaNs.
-        self.A_mn = np.zeros((locM, locN), dtype=dtype, order='Fortran') # XXX
-
-    # Parallel operations to be implemented as methods
 
 class Redistributor:
     """Class for redistributing BLACS matrices on different contexts."""
-    def __init__(self, supercomm):
+    def __init__(self, supercomm, srcdescriptor, dstdescriptor):
         self.supercomm = supercomm
+        self.srcdescriptor = srcdescriptor
+        self.dstdescriptor = dstdescriptor
     
-    def redistribute_submatrix(self, srcmatrix, dstmatrix, subM, subN):
+    def redistribute_submatrix(self, src_mn, dst_mn, subM, subN):
         # self.supercomm must be a supercommunicator of the communicators
         # corresponding to the context of srcmatrix as well as dstmatrix.
         # We should verify this somehow.
-        src_mn = srcmatrix.A_mn
-        dst_mn = dstmatrix.A_mn
+        #src_mn = srcmatrix.A_mn
+        #dst_mn = dstmatrix.A_mn
         dtype = src_mn.dtype
         assert dtype == dst_mn.dtype
-        srcdesc = srcmatrix.descriptor
         
         isreal = (dtype == float)
         assert dtype == float or dtype == complex
+
+        assert self.srcdescriptor.check(src_mn)
+        assert self.dstdescriptor.check(dst_mn)
         
-        _gpaw.scalapack_redist(srcmatrix.descriptor.asarray(), 
-                               dstmatrix.descriptor.asarray(),
-                               srcmatrix.A_mn, dstmatrix.A_mn,
+        _gpaw.scalapack_redist(self.srcdescriptor.asarray(), 
+                               self.dstdescriptor.asarray(),
+                               src_mn, dst_mn,
                                self.supercomm, subM, subN, isreal)
+    
+    def redistribute(self, src_mn, dst_mn):
+        subM, subN = self.srcdescriptor.gshape
+        self.redistribute_submatrix(src_mn, dst_mn, subM, subN)
 
-    def redistribute(self, srcmatrix, dstmatrix):
-        subM = srcmatrix.descriptor.M
-        subN = srcmatrix.descriptor.N
-        self.redistribute_submatrix(srcmatrix, dstmatrix, subM, subN)
-
-
-
-class BlacsParallelization:
-    def __init__(self, master_comm, kpt_comm, gd, bd):
-        self.master_comm = master_comm
-        self.kpt_comm = kpt_comm
-        self.gd = gd
-        self.bd = bd
+#class BlacsParallelization:
+#    def __init__(self, master_comm, kpt_comm, gd, bd):
+#        self.master_comm = master_comm
+#        self.kpt_comm = kpt_comm
+#        self.gd = gd
+#        self.bd = bd
         
-        self.stripegrid = BlacsGrid(band_comm, 1, band_comm.size)
-        self.squaregrid = BlacsGrid()
+#        self.stripegrid = BlacsGrid(band_comm, 1, band_comm.size)
+#        self.squaregrid = BlacsGrid() # implement....
 
-    def get_diagonalizer(self):
-        return SLEXDiagonalizer()
-
+#    def get_diagonalizer(self):
+#        return SLEXDiagonalizer()
 
 
 def parallelprint(comm, obj):

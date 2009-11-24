@@ -67,8 +67,9 @@ def scalapack_diagonalize_dc(a_obj, adesc, uplo):
     assert uplo in ['U','L']
     return _gpaw.scalapack_diagonalize_dc(a_obj, adesc, uplo)
 
-def scalapack_diagonalize_ex(a_obj, adescriptor, uplo, b_obj=None):
+def scalapack_diagonalize_ex(adescriptor, a_obj, b_obj, c_obj, eps_obj, uplo):
     adesc = adescriptor.asarray()
+    
     if a_obj is not None:
         assert a_obj.ndim == 2
         assert (a_obj.dtype == float) or (a_obj.dtype == complex)
@@ -81,7 +82,10 @@ def scalapack_diagonalize_ex(a_obj, adescriptor, uplo, b_obj=None):
         assert b_obj is None
     assert len(adesc) == 9
     assert uplo in ['U','L']
-    return _gpaw.scalapack_diagonalize_ex(a_obj, adesc, uplo, b_obj)
+    if adescriptor.blacsgrid.is_active():
+        _gpaw.scalapack_diagonalize_ex(a_obj, adesc, uplo, b_obj, c_obj,
+                                       eps_obj)
+
 
 def scalapack_inverse_cholesky(a_obj, adesc, uplo):
     if a_obj is not None:
