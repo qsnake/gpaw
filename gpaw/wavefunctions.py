@@ -422,9 +422,10 @@ class WaveFunctions(EmptyWaveFunctions):
         raise NotImplementedError
 
 
-from gpaw.lcao.overlap import TwoCenterIntegrals
+#from gpaw.lcao.overlap import TwoCenterIntegrals
 from gpaw.lcao.overlap import NewTwoCenterIntegrals as NewTCI
 from gpaw.utilities.blas import gemm, gemmdot
+
 
 class LCAOWaveFunctions(WaveFunctions):
     def __init__(self, *args):
@@ -432,23 +433,29 @@ class LCAOWaveFunctions(WaveFunctions):
         self.S_qMM = None
         self.T_qMM = None
         self.P_aqMi = None
-
-        if extra_parameters.get('usenewtci'):
-            self.tci = NewTCI(self.gd.cell_cv, self.gd.pbc_c, self.setups,
-                              self.ibzk_qc, self.gamma)
-        elif extra_parameters.get('blacs'):
-            from gpaw.lcao.overlap import BlacsTwoCenterIntegrals
-            self.tci = BlacsTwoCenterIntegrals(self.gd, self.setups,
-                                               self.gamma, self.ibzk_qc)
+        
+        self.tci = NewTCI(self.gd.cell_cv, self.gd.pbc_c, self.setups,
+                          self.ibzk_qc, self.gamma)
+        if extra_parameters.get('blacs'):
+            from gpaw.blacs import BlacsOrbitalDescriptor
+            od = BlacsOrbitalDescriptor(self.world, self.gd, self.bd,
+                                        self.kpt_comm, self.setups.nao)
         else:
-            self.tci = TwoCenterIntegrals(self.gd, self.setups,
-                                          self.gamma, self.ibzk_qc)
+            od = None
+        self.od = od
+        
+        #elif extra_parameters.get('blacs'):
+        #    from gpaw.lcao.overlap import BlacsTwoCenterIntegrals
+        #    self.tci = BlacsTwoCenterIntegrals(self.gd, self.setups,
+        #                                       self.gamma, self.ibzk_qc)
+        #else:
+        #    self.tci = TwoCenterIntegrals(self.gd, self.setups,
+        #                                  self.gamma, self.ibzk_qc)
         self.basis_functions = BasisFunctions(self.gd,
                                               [setup.phit_j
                                                for setup in self.setups],
                                               self.kpt_comm,
-                                              cut=True,
-                                              orbital_comm=self.band_comm)
+                                              cut=True)
         if not self.gamma:
             self.basis_functions.set_k_points(self.ibzk_qc)
 
@@ -461,6 +468,9 @@ class LCAOWaveFunctions(WaveFunctions):
     def set_positions(self, spos_ac):
         WaveFunctions.set_positions(self, spos_ac)        
         self.basis_functions.set_positions(spos_ac)
+        if self.od is not None:
+            self.basis_functions.set_matrix_distribution(self.od.Mstart,
+                                                         self.od.Mstop)
 
         nq = len(self.ibzk_qc)
         nao = self.setups.nao
@@ -470,17 +480,22 @@ class LCAOWaveFunctions(WaveFunctions):
         Mstart = self.basis_functions.Mstart
         mynao = Mstop - Mstart
         
-        if self.S_qMM is None: # XXX
+        S_qMM = self.S_qMM
+        T_qMM = self.T_qMM
+        
+        if S_qMM is None: # XXX
             # First time:
+            assert T_qMM is None
             if extra_parameters.get('blacs'):
+                Mstart = self.od.Mstart
                 self.tci.set_matrix_distribution(Mstart, mynao)
                 
-            self.S_qMM = np.empty((nq, mynao, nao), self.dtype)
-            self.T_qMM = np.empty((nq, mynao, nao), self.dtype)
+            S_qMM = np.empty((nq, mynao, nao), self.dtype)
+            T_qMM = np.empty((nq, mynao, nao), self.dtype)
             for kpt in self.kpt_u:
                 q = kpt.q
-                kpt.S_MM = self.S_qMM[q]
-                kpt.T_MM = self.T_qMM[q]
+                kpt.S_MM = S_qMM[q]
+                kpt.T_MM = T_qMM[q]
                 kpt.C_nM = np.empty((mynbands, nao), self.dtype)
 
         self.allocate_arrays_for_projections(
@@ -496,31 +511,29 @@ class LCAOWaveFunctions(WaveFunctions):
             kpt.P_aMi = dict([(a, P_qMi[q])
                               for a, P_qMi in self.P_aqMi.items()])
 
-        try:
-            self.tci.set_positions(spos_ac)
-            self.tci.calculate(spos_ac, self.S_qMM, self.T_qMM, self.P_aqMi)
-        except AttributeError:
-            self.tci.calculate(spos_ac, self.S_qMM, self.T_qMM, self.P_aqMi)
-            nao = self.setups.nao
-            for a, P_qMi in self.P_aqMi.items():
-                dO_ii = np.asarray(self.setups[a].dO_ii, P_qMi.dtype)
-                for S_MM, P_Mi in zip(self.S_qMM, P_qMi):
-                    dOP_iM = np.zeros((dO_ii.shape[1], nao), P_Mi.dtype)
-                    # (ATLAS can't handle uninitialized output array)
-                    gemm(1.0, P_Mi, dO_ii, 0.0, dOP_iM, 'c')
-                    gemm(1.0, dOP_iM, P_Mi[Mstart:Mstop], 1.0, S_MM, 'n')
-                    
-            comm = self.gd.comm
-            comm.sum(self.S_qMM)
-            comm.sum(self.T_qMM)
+        self.tci.calculate(spos_ac, S_qMM, T_qMM, self.P_aqMi)
+        nao = self.setups.nao
+        for a, P_qMi in self.P_aqMi.items():
+            dO_ii = np.asarray(self.setups[a].dO_ii, P_qMi.dtype)
+            for S_MM, P_Mi in zip(S_qMM, P_qMi):
+                dOP_iM = np.zeros((dO_ii.shape[1], nao), P_Mi.dtype)
+                # (ATLAS can't handle uninitialized output array)
+                gemm(1.0, P_Mi, dO_ii, 0.0, dOP_iM, 'c')
+                gemm(1.0, dOP_iM, P_Mi[Mstart:Mstop], 1.0, S_MM, 'n')
 
+        comm = self.gd.comm
+        comm.sum(S_qMM)
+        comm.sum(T_qMM)
+        
         if debug and self.band_comm.size == 1:
             from numpy.linalg import eigvalsh
-            for S_MM in self.S_qMM:
+            for S_MM in S_qMM:
                 smin = eigvalsh(S_MM).real.min()
                 if smin < 0:
                     raise RuntimeError('Overlap matrix has negative '
                                        'eigenvalue: %e' % smin)
+        self.S_qMM = S_qMM
+        self.T_qMM = T_qMM
         self.positions_set = True
 
     def initialize(self, density, hamiltonian, spos_ac):
@@ -593,10 +606,10 @@ class LCAOWaveFunctions(WaveFunctions):
         self.timer.start('LCAO forces: tci derivative')
         self.tci.calculate_derivative(spos_ac, dThetadR_qvMM, dTdR_qvMM,
                                       dPdR_aqvMi)
-        if not hasattr(self.tci, 'set_positions'): # XXX newtci
-            comm = self.gd.comm
-            comm.sum(dThetadR_qvMM)
-            comm.sum(dTdR_qvMM)
+        #if not hasattr(self.tci, 'set_positions'): # XXX newtci
+        comm = self.gd.comm
+        comm.sum(dThetadR_qvMM)
+        comm.sum(dTdR_qvMM)
         self.timer.stop('LCAO forces: tci derivative')
         
         # TODO: Most contributions will be the same for each spin.
@@ -890,8 +903,7 @@ class GridWaveFunctions(WaveFunctions):
             basis_functions = BasisFunctions(self.gd,
                                              [setup.phit_j
                                               for setup in self.setups],
-                                             cut=True,
-                                             orbital_comm=self.band_comm)
+                                             cut=True)
             if not self.gamma:
                 basis_functions.set_k_points(self.ibzk_qc)
             basis_functions.set_positions(spos_ac)
@@ -941,29 +953,6 @@ class GridWaveFunctions(WaveFunctions):
         lcaobd = BandDescriptor(lcaonbands, self.band_comm, self.bd.strided)
         assert lcaobd.mynbands == lcaomynbands #XXX
 
-        from gpaw import sl_diagonalize
-        if extra_parameters.get('blacs'):
-            from gpaw.blacs import SLEXDiagonalizer
-            n, m, nb = sl_diagonalize[:3]
-
-            bcommsize = lcaobd.comm.size
-            gcommsize = self.gd.comm.size
-
-            shiftks = self.kpt_comm.rank * bcommsize * gcommsize
-            stripe_ranks = shiftks + np.arange(bcommsize) * gcommsize
-            block_ranks = shiftks + np.arange(bcommsize * gcommsize)
-            stripecomm = self.world.new_communicator(stripe_ranks)
-            blockcomm = self.world.new_communicator(block_ranks)
-
-            diagonalizer = SLEXDiagonalizer(self.world, stripecomm, blockcomm,
-                                            self.gd, lcaobd, n, m, nb, nao)
-        elif sl_diagonalize:
-            from gpaw.lcao.eigensolver import SLDiagonalizer
-            diagonalizer = SLDiagonalizer()
-        else:
-            from gpaw.lcao.eigensolver import LapackDiagonalizer
-            diagonalizer = LapackDiagonalizer()
-
         lcaowfs = LCAOWaveFunctions(self.gd, self.nspins, self.nvalence,
                                     self.setups, lcaobd,
                                     self.dtype, self.world, self.kpt_comm,
@@ -973,6 +962,18 @@ class GridWaveFunctions(WaveFunctions):
         lcaowfs.timer = self.timer
         lcaowfs.set_positions(spos_ac)
         eigensolver = get_eigensolver('lcao', 'lcao')
+
+        from gpaw import sl_diagonalize
+        if extra_parameters.get('blacs'):
+            diagonalizer = lcaowfs.od.get_diagonalizer()
+        elif sl_diagonalize:
+            from gpaw.lcao.eigensolver import SLDiagonalizer
+            diagonalizer = SLDiagonalizer()
+        else:
+            from gpaw.lcao.eigensolver import LapackDiagonalizer
+            diagonalizer = LapackDiagonalizer()
+
+
         eigensolver.initialize(self.kpt_comm, self.gd, self.band_comm, 
                                self.dtype,
                                self.setups.nao, lcaomynbands, self.world,

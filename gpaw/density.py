@@ -228,6 +228,12 @@ class Density:
         be constructed with the specified magnetic moments and
         obeying Hund's rules if ``hund`` is true."""
 
+        # XXX does this work with blacs?  What should be distributed?
+        # Apparently this doesn't use blacs at all, so it's serial
+        # with respect to the blacs distribution.  That means it works
+        # but is not particularly efficient (not that this is a time
+        # consuming step)
+
         f_sM = np.empty((self.nspins, basis_functions.Mmax))
         self.D_asp = {}
         f_asi = {}

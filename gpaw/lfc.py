@@ -236,6 +236,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         self.ibzk_qc = None
         self.gamma = True
         self.dtype = dtype
+        self.Mmax = None
 
         # Global or local M-indices?
         self.use_global_indices = False
@@ -738,31 +739,25 @@ class NewLocalizedFunctionsCollection(BaseLFC):
 
 class BasisFunctions(NewLocalizedFunctionsCollection):
     def __init__(self, gd, spline_aj, kpt_comm=None, cut=False, dtype=float,
-                 integral=None, forces=None, orbital_comm=serial_comm):
+                 integral=None, forces=None):
         NewLocalizedFunctionsCollection.__init__(self, gd, spline_aj,
                                                  kpt_comm, cut,
                                                  dtype, integral,
                                                  forces)
         self.use_global_indices = True
 
-        self.orbital_comm = orbital_comm
         self.Mstart = None
         self.Mstop = None
 
     def set_positions(self, spos_ac):
         NewLocalizedFunctionsCollection.set_positions(self, spos_ac)
+        self.Mstart = 0
+        self.Mstop = self.Mmax
 
-        if not extra_parameters.get('blacs'):
-            self.Mstart = 0
-            self.Mstop = self.Mmax
-        else:
-            # Distribute matrices using BLACS.
-            B = self.orbital_comm.size
-            b = self.orbital_comm.rank
-            blocksize = -((-self.Mmax) // B)
-            # Range of basis functions for BLACS distribution of matrices:
-            self.Mstart = b * blocksize
-            self.Mstop = min(self.Mstart + blocksize, self.Mmax)
+    def set_matrix_distribution(self, Mstart, Mstop):
+        assert self.Mmax is not None
+        self.Mstart = Mstart
+        self.Mstop = Mstop
         
     def add_to_density(self, nt_sG, f_asi):
         """Add linear combination of squared localized functions to density.

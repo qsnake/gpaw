@@ -19,34 +19,15 @@ BLOCK_CYCLIC_2D = 1
 
 class SLEXDiagonalizer:
     """ScaLAPACK Expert Driver diagonalizer."""
-    def __init__(self, supercomm, stripecomm, blockcomm, gd, bd, ncpu,
-                 mcpu, blocksize, nao):
-        self.supercomm = supercomm
-        self.bd = bd
+    def __init__(self, gd, bd, cols2blocks, blocks2cols):
         self.gd = gd
-        self.nao = nao
-        
-        bcommsize = bd.comm.size
-        gcommsize = gd.comm.size
-        
-        
-        mynbands = self.bd.mynbands
-        nbands = self.bd.nbands
-                
-        columngrid = BlacsGrid(stripecomm, 1, bcommsize)
-        blockgrid = BlacsGrid(blockcomm, ncpu, mcpu)
-        
-        myncolumns = -((-nao) // bcommsize)
-        self.indescriptor = columngrid.new_descriptor(nao, nao, nao,
-                                                      myncolumns)
-        self.blockdescriptor = blockgrid.new_descriptor(nao, nao, blocksize,
-                                                        blocksize)
-        self.outdescriptor = columngrid.new_descriptor(nao, nao, nao, mynbands)
-        
-        self.cols2blocks = Redistributor(blockcomm, self.indescriptor,
-                                         self.blockdescriptor)
-        self.blocks2cols = Redistributor(blockcomm, self.blockdescriptor,
-                                         self.outdescriptor)
+        self.bd = bd
+        assert cols2blocks.dstdescriptor == blocks2cols.srcdescriptor
+        self.indescriptor = cols2blocks.srcdescriptor
+        self.blockdescriptor = cols2blocks.dstdescriptor
+        self.outdescriptor = blocks2cols.dstdescriptor
+        self.cols2blocks = cols2blocks
+        self.blocks2cols = blocks2cols
     
     def diagonalize(self, H_mM, S_mM, eps_M, kpt):
         indescriptor = self.indescriptor
@@ -66,7 +47,7 @@ class SLEXDiagonalizer:
         H_mm = blockdescriptor.zeros(dtype)
         C_mm = blockdescriptor.zeros(dtype)
         C_Mn = outdescriptor.zeros(dtype)
-        
+
         self.cols2blocks.redistribute(S_Mm, S_mm)
         self.cols2blocks.redistribute(H_Mm, H_mm)
 
@@ -90,6 +71,11 @@ class SLEXDiagonalizer:
 class BlacsGrid:
     """Class representing a 2D grid of processors sharing a Blacs context."""
     def __init__(self, comm, nprow, npcol, order='R'):
+        assert nprow > 0
+        assert npcol > 0
+        assert len(order) == 1
+        assert order in 'CcRr'
+
         if isinstance(comm, SerialCommunicator):
             raise ValueError('you forgot mpi AGAIN')
         if comm is None: # if and only if rank is not part of the communicator
@@ -97,13 +83,11 @@ class BlacsGrid:
             # a different communicator.  Which one?)
             context = INACTIVE
         else:
+            if nprow * npcol > comm.size:
+                raise ValueError('Impossible: %dx%d Blacs grid with %d CPUs'
+                                 % (nprow, npcol, comm.size))
             # This call may also return INACTIVE
             context = _gpaw.new_blacs_context(comm, nprow, npcol, order)
-            assert nprow * npcol <= comm.size
-        assert nprow > 0
-        assert npcol > 0
-        assert len(order) == 1
-        assert order in 'CcRr'
         
         self.context = context
         self.comm = comm
@@ -154,12 +138,21 @@ class MatrixDescriptor:
     def zeros(self, dtype=float):
         return np.zeros(self.shape, dtype, order='F') #XXX
 
-    def empty(self, dtype=float):
-        return np.empty(self.shape, dtype, order='F') #XXX
+    #def empty(self, dtype=float):
+    #    return np.empty(self.shape, dtype, order='F') #XXX
 
     def check(self, a_mn):
         return a_mn.shape == self.shape and a_mn.flags.f_contiguous #XXX
-        
+
+    def checkassert(self, a_mn):
+        ok = self.check(a_mn)
+        if not ok:
+            if not a_mn.flags.f_contiguous:
+                msg = 'Matrix is not contiguous'
+            else:
+                msg = ('%s-descriptor incompatible with %s-matrix' %
+                       (self.shape, a_mn.shape))
+            raise AssertionError(msg)
 
 class BlacsDescriptor(MatrixDescriptor):
     """Class representing a 2D matrix distributed on a blacs grid.
@@ -230,16 +223,16 @@ class BlacsDescriptor(MatrixDescriptor):
 
     def __str__(self):
         classname = self.__class__.__name__
-        template = '%s[context=%d, glob %dx%d, mb %dx%d, lld %d, locM/N %dx%d]'
+        template = '%s[context=%d, glob %s, block %s, lld %d, loc %s]'
         string = template % (classname, self.blacsgrid.context,
-                             self.M, self.N, 
-                             self.mb, self.nb, self.lld, self.locM, self.locN)
+                             self.gshape,
+                             self.bshape, self.lld, self.shape)
         return string
 
     def diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M, UL='U'):
-        assert self.check(H_mm)
-        assert self.check(S_mm)
-        assert self.check(C_mm)
+        self.checkassert(H_mm)
+        self.checkassert(S_mm)
+        self.checkassert(C_mm)
         scalapack_diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M, UL)
 
 
@@ -260,8 +253,8 @@ class Redistributor:
         isreal = (dtype == float)
         assert dtype == float or dtype == complex
 
-        assert self.srcdescriptor.check(src_mn)
-        assert self.dstdescriptor.check(dst_mn)
+        self.srcdescriptor.checkassert(src_mn)
+        self.dstdescriptor.checkassert(dst_mn)
         
         _gpaw.scalapack_redist(self.srcdescriptor.asarray(), 
                                self.dstdescriptor.asarray(),
@@ -283,3 +276,49 @@ def parallelprint(comm, obj):
             sys.stdout.flush()
         comm.barrier()
 
+
+class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
+    # This class 'describes' all the LCAO/Blacs-related stuff
+    def __init__(self, supercomm, gd, bd, kpt_comm, nao):
+        from gpaw import sl_diagonalize
+        ncpus, mcpus, blocksize = sl_diagonalize[:3]
+
+        bcommsize = bd.comm.size
+        gcommsize = gd.comm.size
+        bcommrank = bd.comm.rank
+        
+        shiftks = kpt_comm.rank * bcommsize * gcommsize
+        stripe_ranks = shiftks + np.arange(bcommsize) * gcommsize
+        block_ranks = shiftks + np.arange(bcommsize * gcommsize)
+        stripecomm = supercomm.new_communicator(stripe_ranks)
+        blockcomm = supercomm.new_communicator(block_ranks)
+
+        mynao = -((-nao) // bcommsize)
+        # Range of basis functions for BLACS distribution of matrices:
+        self.Mmax = nao
+        self.Mstart = bcommrank * mynao
+        self.Mstop = min(self.Mstart + mynao, self.Mmax)
+        
+        stripegrid = BlacsGrid(stripecomm, 1, bcommsize)
+        blockgrid = BlacsGrid(blockcomm, mcpus, ncpus)
+
+        # Striped layout
+        mMdescriptor = stripegrid.new_descriptor(nao, nao, nao, mynao)
+
+        # Blocked layout
+        mmdescriptor = blockgrid.new_descriptor(nao, nao, blocksize, blocksize)
+
+        # Striped layout but only nbands by nao (nbands <= nao)
+        nMdescriptor = stripegrid.new_descriptor(nao, nao, nao, bd.mynbands)
+
+        self.mMdescriptor = mMdescriptor
+        self.mmdescriptro = mmdescriptor
+        self.nMdescriptor = nMdescriptor
+        self.mM2mm = Redistributor(supercomm, mMdescriptor, mmdescriptor)
+        self.mm2nM = Redistributor(supercomm, mmdescriptor, nMdescriptor)
+        
+        self.gd = gd
+        self.bd = bd
+
+    def get_diagonalizer(self):
+        return SLEXDiagonalizer(self.gd, self.bd, self.mM2mm, self.mm2nM)
