@@ -17,7 +17,7 @@ class CHI:
 
 
     def initialize(self, calc, q, wcut, wmin, wmax, dw, eta):
-        """Common stuff for all calculations (finite and extended systems) 
+        """Common stuff for all calculations (finite and extended systems).
 
         Parameters: 
 
@@ -167,9 +167,10 @@ class CHI:
 
 
     def get_EELS_spectrum(self, calc, q, wcut, wmin, wmax, dw, eta=0.2, sigma=2*1e-5):
-        """Calculate Electron Energy Loss Spectrum of a periodic system for a particular q. 
-            
-        The Loss function is related to: 
+        """Calculate Electron Energy Loss Spectrum.
+
+        Calculate EELS of a periodic system for a particular q.  The
+        loss function is related to::
 
                          -1            4 pi
             - Im \epsilon (q, w) = - -------  Im  chi (q, w)
