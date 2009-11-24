@@ -36,29 +36,25 @@ class SLEXDiagonalizer:
 
         dtype = H_mM.dtype
 
-        S_Mm = indescriptor.zeros(dtype=dtype)
-        H_Mm = indescriptor.zeros(dtype=dtype)
-
-        if indescriptor:
-            S_Mm.T[:] = S_mM
-            H_Mm.T[:] = H_mM
+        # XXX where should inactive ranks be sorted out?
+        if not indescriptor:
+            H_mM = np.zeros((0, 0))
+            S_mM = np.zeros((0, 0))
         
         S_mm = blockdescriptor.zeros(dtype)
         H_mm = blockdescriptor.zeros(dtype)
         C_mm = blockdescriptor.zeros(dtype)
-        C_Mn = outdescriptor.zeros(dtype)
+        C_nM = outdescriptor.zeros(dtype)
 
-        self.cols2blocks.redistribute(S_Mm, S_mm)
-        self.cols2blocks.redistribute(H_Mm, H_mm)
-
+        self.cols2blocks.redistribute(S_mM, S_mm)
+        self.cols2blocks.redistribute(H_mM, H_mm)
         blockdescriptor.diagonalize_ex(H_mm, S_mm, C_mm, eps_M, 'U')
-
-        self.blocks2cols.redistribute(C_mm, C_Mn)
+        self.blocks2cols.redistribute(C_mm, C_nM)
 
         if outdescriptor:
             assert self.gd.comm.rank == 0
             bd = self.bd
-            kpt.C_nM[:] = C_Mn[:, :bd.mynbands].T
+            kpt.C_nM[:] = C_nM[:bd.mynbands, :]
             bd.distribute(eps_M[:bd.nbands], kpt.eps_n)
         else:
             assert self.gd.comm.rank != 0
@@ -87,7 +83,7 @@ class BlacsGrid:
                 raise ValueError('Impossible: %dx%d Blacs grid with %d CPUs'
                                  % (nprow, npcol, comm.size))
             # This call may also return INACTIVE
-            context = _gpaw.new_blacs_context(comm, nprow, npcol, order)
+            context = _gpaw.new_blacs_context(comm, npcol, nprow, order)
         
         self.context = context
         self.comm = comm
@@ -136,19 +132,19 @@ class MatrixDescriptor:
         return self.shape[0] != 0 and self.shape[1] != 0
 
     def zeros(self, dtype=float):
-        return np.zeros(self.shape, dtype, order='F') #XXX
+        return np.zeros(self.shape, dtype)
 
-    #def empty(self, dtype=float):
-    #    return np.empty(self.shape, dtype, order='F') #XXX
+    def empty(self, dtype=float):
+        return np.empty(self.shape, dtype)
 
     def check(self, a_mn):
-        return a_mn.shape == self.shape and a_mn.flags.f_contiguous #XXX
+        return a_mn.shape == self.shape and a_mn.flags.contiguous
 
     def checkassert(self, a_mn):
         ok = self.check(a_mn)
         if not ok:
-            if not a_mn.flags.f_contiguous:
-                msg = 'Matrix is not contiguous'
+            if not a_mn.flags.contiguous:
+                msg = 'Matrix with shape %s is not contiguous' % (a_mn.shape,)
             else:
                 msg = ('%s-descriptor incompatible with %s-matrix' %
                        (self.shape, a_mn.shape))
@@ -200,12 +196,12 @@ class BlacsDescriptor(MatrixDescriptor):
         self.csrc = csrc
         
         if blacsgrid.is_active():
-            locM, locN = _gpaw.get_blacs_shape(self.blacsgrid.context,
-                                               self.M, self.N,
-                                               self.mb, self.nb, 
+            locN, locM = _gpaw.get_blacs_shape(self.blacsgrid.context,
+                                               self.N, self.M,
+                                               self.nb, self.mb, 
                                                self.rsrc, self.csrc)
         else:
-            locM, locN = 0, 0
+            locN, locM = 0, 0
         
         MatrixDescriptor.__init__(self, locM, locN)
         
@@ -213,11 +209,11 @@ class BlacsDescriptor(MatrixDescriptor):
         
         self.bshape = (self.mb, self.nb) # Shape of one block
         self.gshape = (M, N) # Global shape of array
-        self.lld  = locM # lld = 'local leading dimension'
+        self.lld  = locN # lld = 'local leading dimension'
 
     def asarray(self):
         arr = np.array([BLOCK_CYCLIC_2D, self.blacsgrid.context, 
-                        self.M, self.N, self.mb, self.nb, self.rsrc, self.csrc,
+                        self.N, self.M, self.nb, self.mb, self.rsrc, self.csrc,
                         max(0, self.lld)], np.int32)
         return arr
 
@@ -233,7 +229,7 @@ class BlacsDescriptor(MatrixDescriptor):
         self.checkassert(H_mm)
         self.checkassert(S_mm)
         self.checkassert(C_mm)
-        scalapack_diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M, UL)
+        scalapack_diagonalize_ex(self, H_mm.T, S_mm.T, C_mm.T, eps_M, UL)
 
 
 class Redistributor:
@@ -258,8 +254,8 @@ class Redistributor:
         
         _gpaw.scalapack_redist(self.srcdescriptor.asarray(), 
                                self.dstdescriptor.asarray(),
-                               src_mn, dst_mn,
-                               self.supercomm, subM, subN, isreal)
+                               src_mn.T, dst_mn.T,
+                               self.supercomm, subN, subM, isreal)
     
     def redistribute(self, src_mn, dst_mn):
         subM, subN = self.srcdescriptor.gshape
@@ -299,17 +295,17 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
         self.Mstart = bcommrank * mynao
         self.Mstop = min(self.Mstart + mynao, self.Mmax)
         
-        stripegrid = BlacsGrid(stripecomm, 1, bcommsize)
+        stripegrid = BlacsGrid(stripecomm, bcommsize, 1)
         blockgrid = BlacsGrid(blockcomm, mcpus, ncpus)
 
         # Striped layout
-        mMdescriptor = stripegrid.new_descriptor(nao, nao, nao, mynao)
+        mMdescriptor = stripegrid.new_descriptor(nao, nao, mynao, nao)
 
         # Blocked layout
         mmdescriptor = blockgrid.new_descriptor(nao, nao, blocksize, blocksize)
 
         # Striped layout but only nbands by nao (nbands <= nao)
-        nMdescriptor = stripegrid.new_descriptor(nao, nao, nao, bd.mynbands)
+        nMdescriptor = stripegrid.new_descriptor(nao, nao, bd.mynbands, nao)
 
         self.mMdescriptor = mMdescriptor
         self.mmdescriptro = mmdescriptor
