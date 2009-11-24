@@ -26,20 +26,19 @@ def build_parser():
 def test(comm, M, N, mcpus, ncpus, mb, nb):
     grid0 = BlacsGrid(comm, 1, 1)
     desc0 = grid0.new_descriptor(M, N, M, N, 0, 0)
-    mat0 = desc0.new_matrix(float)
-    mat0.A_mn[:] = comm.size + 1
+    A_mn = desc0.zeros(float)
+    A_mn[:] = comm.size + 1
 
     grid1 = BlacsGrid(comm, mcpus, ncpus)
     desc1 = grid1.new_descriptor(M, N, mb, nb, 0, 0) # ???
-    mat1 = desc1.new_matrix(float)
-    A_mn = mat1.A_mn
-    A_mn[:] = comm.rank
+    B_mn = desc1.zeros(float)
+    B_mn[:] = comm.rank
     
-    redistributor = Redistributor(comm)
-    redistributor.redistribute(mat1, mat0)
+    redistributor = Redistributor(comm, desc1, desc0)
+    redistributor.redistribute(B_mn, A_mn)
 
     if comm.rank == 0:
-        print mat0.A_mn
+        print A_mn
 
 def main():
     parser = build_parser()

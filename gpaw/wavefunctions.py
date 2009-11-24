@@ -49,7 +49,8 @@ class WaveFunctions(EmptyWaveFunctions):
     kpt_comm:
         MPI-communicator for parallelization over **k**-points.
     """
-    def __init__(self, gd, nspins, nvalence, setups, bd, dtype, world, kpt_comm,
+    def __init__(self, gd, nspins, nvalence, setups, bd, dtype, world,
+                 kpt_comm,
                  gamma, bzk_kc, ibzk_kc, weight_k, symmetry, timer=nulltimer):
         self.gd = gd
         self.nspins = nspins
@@ -945,9 +946,17 @@ class GridWaveFunctions(WaveFunctions):
             from gpaw.blacs import SLEXDiagonalizer
             n, m, nb = sl_diagonalize[:3]
 
-            diagonalizer = SLEXDiagonalizer(self.world, self.kpt_comm, 
-                                            self.gd, lcaobd, n, m, nb,
-                                            nao)
+            bcommsize = lcaobd.comm.size
+            gcommsize = self.gd.comm.size
+
+            shiftks = self.kpt_comm.rank * bcommsize * gcommsize
+            stripe_ranks = shiftks + np.arange(bcommsize) * gcommsize
+            block_ranks = shiftks + np.arange(bcommsize * gcommsize)
+            stripecomm = self.world.new_communicator(stripe_ranks)
+            blockcomm = self.world.new_communicator(block_ranks)
+
+            diagonalizer = SLEXDiagonalizer(self.world, stripecomm, blockcomm,
+                                            self.gd, lcaobd, n, m, nb, nao)
         elif sl_diagonalize:
             from gpaw.lcao.eigensolver import SLDiagonalizer
             diagonalizer = SLDiagonalizer()

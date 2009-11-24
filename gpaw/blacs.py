@@ -19,27 +19,20 @@ BLOCK_CYCLIC_2D = 1
 
 class SLEXDiagonalizer:
     """ScaLAPACK Expert Driver diagonalizer."""
-    def __init__(self, supercomm, kpt_comm, gd, bd, ncpu, mcpu, blocksize,
-                 nao):
+    def __init__(self, supercomm, stripecomm, blockcomm, gd, bd, ncpu,
+                 mcpu, blocksize, nao):
         self.supercomm = supercomm
         self.bd = bd
-        self.kpt_comm = kpt_comm
         self.gd = gd
         self.nao = nao
         
         bcommsize = bd.comm.size
         gcommsize = gd.comm.size
         
-        shiftks = kpt_comm.rank * bcommsize * gcommsize
         
         mynbands = self.bd.mynbands
         nbands = self.bd.nbands
-        
-        stripe_ranks = shiftks + np.arange(bcommsize) * gcommsize
-        block_ranks = shiftks + np.arange(bcommsize * gcommsize)
-        stripecomm = supercomm.new_communicator(stripe_ranks)
-        blockcomm = supercomm.new_communicator(block_ranks)
-        
+                
         columngrid = BlacsGrid(stripecomm, 1, bcommsize)
         blockgrid = BlacsGrid(blockcomm, ncpu, mcpu)
         
@@ -140,7 +133,35 @@ class BlacsGrid:
         _gpaw.blacs_destroy(self.context)
 
 
-class BlacsDescriptor:
+class NonBlacsGrid:
+    def __init__(self):
+        pass
+
+    def new_descriptor(self, M, N, mb, nb, rsrc=0, csrc=0):
+        desc = MatrixDescriptor(M, N)
+        return desc
+
+class MatrixDescriptor:
+    """Class representing a 2D matrix shape.  Base class for parallel
+    matrix descriptor with BLACS.  This class is by itself serial."""
+    
+    def __init__(self, M, N):
+        self.shape = (M, N)
+    
+    def __nonzero__(self):
+        return self.shape[0] != 0 and self.shape[1] != 0
+
+    def zeros(self, dtype=float):
+        return np.zeros(self.shape, dtype, order='F') #XXX
+
+    def empty(self, dtype=float):
+        return np.empty(self.shape, dtype, order='F') #XXX
+
+    def check(self, a_mn):
+        return a_mn.shape == self.shape and a_mn.flags.f_contiguous #XXX
+        
+
+class BlacsDescriptor(MatrixDescriptor):
     """Class representing a 2D matrix distributed on a blacs grid.
 
     The global shape is M by N, being distributed on the specified BlacsGrid
@@ -193,24 +214,13 @@ class BlacsDescriptor:
         else:
             locM, locN = 0, 0
         
+        MatrixDescriptor.__init__(self, locM, locN)
+        
         self.active = locM > 0 and locN > 0
         
-        self.shape = (locM, locN) # Shape of local array (including all blocks)
         self.bshape = (self.mb, self.nb) # Shape of one block
         self.gshape = (M, N) # Global shape of array
         self.lld  = locM # lld = 'local leading dimension'
-
-    def __nonzero__(self):
-        return self.active
-
-    def zeros(self, dtype=float):
-        return np.zeros(self.shape, dtype, order='F')
-
-    def empty(self, dtype=float):
-        return np.empty(self.shape, dtype, order='F')
-
-    def check(self, a_mn):
-        return a_mn.shape == self.shape and a_mn.flags.f_contiguous
 
     def asarray(self):
         arr = np.array([BLOCK_CYCLIC_2D, self.blacsgrid.context, 
@@ -244,8 +254,6 @@ class Redistributor:
         # self.supercomm must be a supercommunicator of the communicators
         # corresponding to the context of srcmatrix as well as dstmatrix.
         # We should verify this somehow.
-        #src_mn = srcmatrix.A_mn
-        #dst_mn = dstmatrix.A_mn
         dtype = src_mn.dtype
         assert dtype == dst_mn.dtype
         
@@ -264,19 +272,6 @@ class Redistributor:
         subM, subN = self.srcdescriptor.gshape
         self.redistribute_submatrix(src_mn, dst_mn, subM, subN)
 
-#class BlacsParallelization:
-#    def __init__(self, master_comm, kpt_comm, gd, bd):
-#        self.master_comm = master_comm
-#        self.kpt_comm = kpt_comm
-#        self.gd = gd
-#        self.bd = bd
-        
-#        self.stripegrid = BlacsGrid(band_comm, 1, band_comm.size)
-#        self.squaregrid = BlacsGrid() # implement....
-
-#    def get_diagonalizer(self):
-#        return SLEXDiagonalizer()
-
 
 def parallelprint(comm, obj):
     import sys
@@ -288,51 +283,3 @@ def parallelprint(comm, obj):
             sys.stdout.flush()
         comm.barrier()
 
-
-
-
-def simpletest(M=16, N=16):
-    from gpaw.mpi import world
-    ncpus = world.size
-
-    grid0 = BlacsGrid(world, 1, 1)
-    grid1 = BlacsGrid(world, 1, ncpus)
-    #grid2 = BlacsGrid(world, 2, 2)
-
-    desc1 = grid1.new_descriptor(M, N, M, ncpus, 0, 0)
-    parallelprint(world, desc1)
-    mat1 = desc1.new_matrix(float)
-    A_mn = mat1.A_mn
-    A_mn[:] = world.rank
-
-    desc0 = grid0.new_descriptor(M, N, M, N, 0, 0)
-    mat0 = desc0.new_matrix(float)
-    mat0.A_mn[:] = world.size + 1
-
-    redistributor = Redistributor(world)
-    redistributor.redistribute(mat1, mat0)
-    parallelprint(world, mat1.A_mn)
-    print
-    print
-    parallelprint(world, mat0.A_mn)
-
-def main():
-    simpletest()
-    #othertest()
-
-def othertest():
-    from gpaw.mpi import world
-    bg = BlacsGrid(world, 2, 2)
-    print bg.context
-    descriptor = bg.new_descriptor(16, 16, 8, 8)
-    print descriptor.lld
-    import sys
-    m = descriptor.new_matrix(float)
-    m.A_mn[:] = world.rank
-    sys.stdout.flush()
-    world.barrier()
-
-    parallelprint(world, m.A_mn)
-
-if __name__ == '__main__':
-    main()
