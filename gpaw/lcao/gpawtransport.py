@@ -82,7 +82,6 @@ class GPAWTransport:
         R_c = [0,0,0] 
         h1_skii, s1_kii = get_realspace_hs(self.h1_skmm,
                                          self.s1_kmm,
-                                         calc1.wfs.ibzk_kc,
                                          calc1.wfs.bzk_kc,
                                          calc1.wfs.weight_k,
                                          R_c=R_c, usesymm=False)[-2:]
@@ -94,7 +93,6 @@ class GPAWTransport:
         R_c[self.d] = 1.0
         h1_skij, s1_kij = get_realspace_hs(self.h1_skmm,
                                          self.s1_kmm,
-                                         calc1.wfs.ibzk_kc,
                                          calc1.wfs.bzk_kc,
                                          calc1.wfs.weight_k,
                                          R_c=R_c, usesymm=False)[-2:]
@@ -130,7 +128,6 @@ class GPAWTransport:
         
         h2_skii, s2_kii = get_realspace_hs(self.h2_skmm,
                                          self.s2_kmm,
-                                         calc2.wfs.ibzk_kc,
                                          calc2.wfs.bzk_kc,
                                          calc2.wfs.weight_k,
                                          R_c=(0,0,0), usesymm=False)[-2:]
@@ -144,7 +141,6 @@ class GPAWTransport:
 
         h2_skij, s2_kij = get_realspace_hs(self.h2_skmm,
                                          self.s2_kmm,
-                                         calc2.wfs.ibzk_kc,
                                          calc2.wfs.bzk_kc,
                                          calc2.wfs.weight_k,
                                          R_c=R_c, usesymm=False)[-2:]
@@ -305,6 +301,7 @@ class GPAWTransport:
     def get_lead_calc(self, l, nkpts=13):
         p = self.atoms.calc.input_parameters.copy()
         p['nbands'] = None
+        p['kpts'] = [1,1,1]
         kpts = list(p['kpts'])
         if nkpts == 0:
             kpts[self.d] = 2 * int(17.0 / self.pl_cells[l][self.d]) + 1
