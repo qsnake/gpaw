@@ -1,5 +1,10 @@
 from gpaw.xc_functional import XCFunctional
+from gpaw import setup_paths
 from math import pi
+import numpy as np
+
+if setup_paths[0] != '.':
+    setup_paths.insert(0, '.')
 
 nspins = 2
 for name in ['LDA', 'PBE', 'revPBE', 'RPBE',
@@ -7,6 +12,7 @@ for name in ['LDA', 'PBE', 'revPBE', 'RPBE',
              'None-C_PW','TPSS','M06L']:
     libxc = XCFunctional(name, nspins)
     lxc_xc = libxc.calculate_xcenergy
+    calc_sp = libxc.calculate_spinpolarized
     na = 2.0
     nb = 1.0
     print na, nb
@@ -19,6 +25,31 @@ for name in ['LDA', 'PBE', 'revPBE', 'RPBE',
     if ((sigma1 > 0.0) or (sigma2 > 0.0)): assert (nspins == 2)
 
     d = 0.000001
+
+    na_g = np.array([na])
+    nb_g = np.array([nb])
+    sigma0_g = np.array([sigma0])
+    sigma1_g = np.array([sigma1])
+    sigma2_g = np.array([sigma2])
+    a2_g = np.array([2*sigma1+sigma0+sigma2])
+
+    dExcdsigma0_g = np.zeros((1))
+    dExcdsigma1_g = np.zeros((1))
+    dExcdsigma2_g = np.zeros((1))
+
+    exc_g = np.zeros_like(na_g)
+    dExcdna_g = np.zeros_like(na_g)
+    dExcdnb_g = np.zeros_like(na_g)
+
+    taua_g = np.array([taua])
+    taub_g = np.array([taub])
+    dExcdtaua_g = np.zeros_like(taua_g)
+    dExcdtaub_g = np.zeros_like(taua_g)
+
+    calc_sp(exc_g, na_g, dExcdna_g, nb_g, dExcdnb_g,
+            a2_g, sigma0_g, sigma2_g,
+            dExcdsigma1_g, dExcdsigma0_g, dExcdsigma2_g,
+            taua_g, taub_g, dExcdtaua_g, dExcdtaub_g)
 
     (exc, ex, ec, d_exc, d_ex, d_ec) = lxc_xc(na, nb, sigma0, sigma1, sigma2, taua, taub)
     # for definitions see c/libxc.c
@@ -71,34 +102,40 @@ for name in ['LDA', 'PBE', 'revPBE', 'RPBE',
     dEcdtaua_N=((lxc_xc(na, nb, sigma0, sigma1, sigma2, taua +d ,taub)[2] - lxc_xc(na, nb, sigma0, sigma1, sigma2,taua -d ,taub)[2]) / d / 2)
     dEcdtaub_N=((lxc_xc(na, nb, sigma0, sigma1, sigma2, taua ,taub + d)[2] - lxc_xc(na, nb, sigma0, sigma1, sigma2,taua ,taub -d )[2]) / d / 2)
 
-    error = [0.0, 'exact']
+    error1 = [0.0, 'exact']
+    error2 = [0.0, 'exact']
     for E in [
-        ('dExcdna', dExcdna, dExcdna_N),
-        ('dExcdnb', dExcdnb, dExcdnb_N),
-        ('dExcdsigma0', dExcdsigma0, dExcdsigma0_N),
-        ('dExcdsigma1', dExcdsigma1, dExcdsigma1_N),
-        ('dExcdsigma2', dExcdsigma2, dExcdsigma2_N),
-        ('dExcdtaua', dExcdtaua, dExcdtaua_N),
-        ('dExcdtaub', dExcdtaub, dExcdtaub_N),
-        ('dExdna', dExdna, dExdna_N),
-        ('dExdnb', dExdnb, dExdnb_N),
-        ('dExdsigma0', dExdsigma0, dExdsigma0_N),
-        ('dExdsigma1', dExdsigma1, dExdsigma1_N),
-        ('dExdsigma2', dExdsigma2, dExdsigma2_N),
-        ('dExdtaua', dExdtaua, dExdtaua_N),
-        ('dExdtaub', dExdtaub, dExdtaub_N),
-        ('dEcdna', dEcdna, dEcdna_N),
-        ('dEcdnb', dEcdnb, dEcdnb_N),
-        ('dEcdsigma0', dEcdsigma0, dEcdsigma0_N),
-        ('dEcdsigma1', dEcdsigma1, dEcdsigma1_N),
-        ('dEcdsigma2', dEcdsigma2, dEcdsigma2_N),
-        ('dEcdtaua', dEcdtaua, dEcdtaua_N),
-        ('dEcdtaub', dEcdtaub, dEcdtaub_N),
+        ('dExcdna', dExcdna, dExcdna_g[0], dExcdna_N),
+        ('dExcdnb', dExcdnb, dExcdnb_g[0], dExcdnb_N),
+        ('dExcdsigma0', dExcdsigma0, dExcdsigma0_g[0], dExcdsigma0_N),
+        ('dExcdsigma1', dExcdsigma1, dExcdsigma1_g[0], dExcdsigma1_N),
+        ('dExcdsigma2', dExcdsigma2, dExcdsigma2_g[0], dExcdsigma2_N),
+        ('dExcdtaua', dExcdtaua, dExcdtaua_g[0], dExcdtaua_N),
+        ('dExcdtaub', dExcdtaub, dExcdtaub_g[0], dExcdtaub_N),
+        ('dExdna', dExdna, dExdna, dExdna_N), # N/A in calculate_spinpolarized
+        ('dExdnb', dExdnb, dExdnb, dExdnb_N), # N/A in calculate_spinpolarized
+        ('dExdsigma0', dExdsigma0, dExdsigma0, dExdsigma0_N), # N/A in calculate_spinpolarized
+        ('dExdsigma1', dExdsigma1, dExdsigma1, dExdsigma1_N), # N/A in calculate_spinpolarized
+        ('dExdsigma2', dExdsigma2, dExdsigma2, dExdsigma2_N), # N/A in calculate_spinpolarized
+        ('dExdtaua', dExdtaua, dExdtaua, dExdtaua_N), # N/A in calculate_spinpolarized
+        ('dExdtaub', dExdtaub, dExdtaub, dExdtaub_N), # N/A in calculate_spinpolarized
+        ('dEcdna', dEcdna, dEcdna, dEcdna_N), # N/A in calculate_spinpolarized
+        ('dEcdnb', dEcdnb, dEcdnb, dEcdnb_N), # N/A in calculate_spinpolarized
+        ('dEcdsigma0', dEcdsigma0, dEcdsigma0, dEcdsigma0_N), # N/A in calculate_spinpolarized
+        ('dEcdsigma1', dEcdsigma1, dEcdsigma1, dEcdsigma1_N), # N/A in calculate_spinpolarized
+        ('dEcdsigma2', dEcdsigma2, dEcdsigma2, dEcdsigma2_N), # N/A in calculate_spinpolarized
+        ('dEcdtaua', dEcdtaua, dEcdtaua, dEcdtaua_N), # N/A in calculate_spinpolarized
+        ('dEcdtaub', dEcdtaub, dEcdtaub, dEcdtaub_N), # N/A in calculate_spinpolarized
         ]:
-        for e in E[2:]:
-            de = abs(e - E[1])
-            if de > error[0]:
-                error[0] = de
-                error[1] = E[0]
-    print name, error[0], error[1]
-    assert error[0] < 1.0e-9
+        for e in E[3:]:
+            de1 = abs(e - E[1])
+            de2 = abs(e - E[2])
+            if de1 > error1[0]:
+                error1[0] = de1
+                error1[1] = E[0]
+            if de2 > error2[0]:
+                error2[0] = de2
+                error2[1] = E[0]
+    print name, error1[0], error1[1], error2[0], error2[1]
+    assert error1[0] < 1.0e-9
+    assert error2[0] < 1.0e-9
