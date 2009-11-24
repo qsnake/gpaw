@@ -579,7 +579,7 @@ class LCAOWaveFunctions(WaveFunctions):
 
     def calculate_forces(self, hamiltonian, F_av):
         self.timer.start('LCAO forces')
-        spos_ac = self.tci.atoms.get_scaled_positions()
+        spos_ac = self.tci.atoms.get_scaled_positions() % 1.0
         nao = self.setups.nao
         nq = len(self.ibzk_qc)
         dtype = self.dtype
@@ -828,7 +828,7 @@ class LCAOWaveFunctions(WaveFunctions):
                 self.spos_ac = spos_ac
             
             def load(self, wfs):
-                wfs.set_positions(spos_ac)
+                wfs.set_positions(self.spos_ac)
                 wfs.eigensolver.iterate(hamiltonian, wfs)
                 del wfs.lazyloader
         

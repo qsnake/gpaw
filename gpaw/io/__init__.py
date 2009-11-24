@@ -616,7 +616,7 @@ def read(paw, reader):
         oldmode = 'fd' # This is an old gpw file from before lcao existed
         
     if newmode == 'lcao':
-        spos_ac = paw.atoms.get_scaled_positions()
+        spos_ac = paw.atoms.get_scaled_positions() % 1.0
         paw.wfs.load_lazily(hamiltonian, spos_ac)
 
     if newmode != oldmode:

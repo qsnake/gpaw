@@ -355,7 +355,7 @@ class NeighborPairs:
         self.neighbors.update(self.atoms)
 
     def iter(self):
-        spos_ac = self.atoms.get_scaled_positions()
+        spos_ac = self.atoms.get_scaled_positions() % 1.0
         cell_cv = self.atoms.cell
         for a1, spos1_c in enumerate(spos_ac):
             a2_a, offsets = self.neighbors.get_neighbors(a1)

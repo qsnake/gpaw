@@ -359,7 +359,7 @@ def load_balance(paw, atoms):
         paw.initialize(atoms)
     except SystemExit:
         pass
-    spos_ac = paw.atoms.get_scaled_positions()
+    spos_ac = paw.atoms.get_scaled_positions() % 1.0
     atoms_r = np.zeros(paw.wfs.world.size)
     rnk_a = paw.gd.get_ranks_from_positions(spos_ac)
     for rnk in rnk_a:
