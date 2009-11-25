@@ -33,11 +33,7 @@ PyObject *plane_wave_grid(PyObject *self, PyObject *args)
       ij = (i*n[1] + j)*n[2];
       for (int k = 0; k < n[2]; k++) {
 	kr[2] = kr[1] + vk[2] * h[2] * (beg[2] + k) - kr0[2];
-#ifndef NO_C99_COMPLEX
 	pw[ij + k] = cos(kr[2]) + I * sin(kr[2]);
-#else
-	pw[ij + k] = {cos(kr[2]), sin(kr[2])};
-#endif
       }
     }
   }

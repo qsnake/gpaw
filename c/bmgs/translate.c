@@ -37,14 +37,7 @@ void bmgs_translatemz(double_complex* a, const int sizea[3], const int size[3],
       for (int i1 = 0; i1 < size[1]; i1++)
         {
 	  for (int i2 = 0; i2 < size[2]; i2++)
-#if defined(NO_C99_COMPLEX)
-	    {
-	      d[i2].r = phase.r * s[i2].r - phase.i * s[i2].i;
-	      d[i2].i = phase.r * s[i2].i + phase.i * s[i2].r;
-	    }
-#else
 	    d[i2] = phase * s[i2];
-#endif
           s += sizea[2];
           d += sizea[2];
         }

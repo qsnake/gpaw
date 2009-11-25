@@ -155,11 +155,7 @@ PyObject* utilities_gaussian_wave(PyObject *self, PyObject *args)
   else
     {
       double_complex* gs_G = COMPLEXP(gs_G_obj);
-#ifndef NO_C99_COMPLEX
       double_complex A = A_obj.real+I*A_obj.imag;
-#else
-      double_complex A = {A_obj.real, A_obj.imag};
-#endif
 
       if(gammapoint)
         for(int g=0; g<G; g++)
@@ -167,12 +163,7 @@ PyObject* utilities_gaussian_wave(PyObject *self, PyObject *args)
             dr2 = pow(r_cG[g]-r0_c[0], 2);
             for(int c=1; c<C; c++)
               dr2 += pow(r_cG[c*G+g]-r0_c[c], 2);
-#ifndef NO_C99_COMPLEX
             gs_G[g] = A*exp(alpha*dr2);
-#else
-            gs_G[g].r = A.r*cos(alpha.i*dr2);
-            gs_G[g].i = A.i*sin(alpha.i*dr2);
-#endif    
           }
       else if(sigma_obj.real>0)
         for(int g=0; g<G; g++)
@@ -184,14 +175,8 @@ PyObject* utilities_gaussian_wave(PyObject *self, PyObject *args)
                 kr += k_c[c]*r_cG[c*G+g];
                 dr2 += pow(r_cG[c*G+g]-r0_c[c], 2);
               }
-#ifndef NO_C99_COMPLEX
             double_complex f = A*cexp(I*kr);
             gs_G[g] = f*exp(alpha*dr2);
-#else
-            double_complex f = {A.r*cos(kr)-A.i*sin(kr),A.r*sin(kr)+A.i*cos(kr)};
-            gs_G[g].r = f.r*exp(alpha*dr2);
-            gs_G[g].i = f.i*exp(alpha*dr2);
-#endif
           }
       else
         {
@@ -292,15 +277,8 @@ PyObject* unpack_complex(PyObject *self, PyObject *args)
     for (int c = r; c < n; c++)
       {
         double_complex d = *datap++;
-#if defined(NO_C99_COMPLEX)	
-	data[c + r * n].r = d.r;
-	data[c + r * n].i = d.i;
-        data[r + c * n].r = d.r;
-        data[r + c * n].i = -d.i;
-#else
         data[c + r * n] = d;
         data[r + c * n] = conj(d);
-#endif
       }
   Py_RETURN_NONE;
 }
@@ -346,10 +324,6 @@ PyObject* localize(PyObject *self, PyObject *args)
   PyArrayObject* U_nn;
   if (!PyArg_ParseTuple(args, "OO", &Z_nnc, &U_nn)) 
     return NULL;
-
-#if defined(NO_C99_COMPLEX)	
-  Py_RETURN_NONE;
-#else
 
   int n = U_nn->dimensions[0];
   double complex (*Z)[n][3] = (double complex (*)[n][3])COMPLEXP(Z_nnc);
@@ -418,7 +392,6 @@ PyObject* localize(PyObject *self, PyObject *args)
 	value += creal(Zaa[c] * conj(Zaa[c]));
     }
   return Py_BuildValue("d", value);
-#endif
 }
 
 PyObject* swap_arrays(PyObject *self, PyObject *args)

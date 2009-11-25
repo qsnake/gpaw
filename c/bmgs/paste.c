@@ -28,15 +28,7 @@ void Z(bmgs_pastep)(const T* a, const int sizea[3],
       for (int i1 = 0; i1 < sizea[1]; i1++)
 	{
 	  for (int i2 = 0; i2 < sizea[2]; i2++)
-#if defined(BMGSCOMPLEX) && defined(NO_C99_COMPLEX)
-	    {
-	      b[i2].r += (*a).r;
-	      b[i2].i += (*a).i;
-	      a++;
-	    }
-#else
 	    b[i2] += *a++;
-#endif
 	  b += sizeb[2];
 	}
       b += sizeb[2] * (sizeb[1] - sizea[1]);

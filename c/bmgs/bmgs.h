@@ -5,13 +5,8 @@
 
 #ifndef DOUBLECOMPLEXDEFINED
 #  define DOUBLECOMPLEXDEFINED 1
-#  ifdef NO_C99_COMPLEX
-//   Stupid compiler does not have a "double complex"
-     typedef struct { double r, i; } double_complex;
-#  else
-#    include <complex.h>
-     typedef double complex double_complex;
-#  endif
+#  include <complex.h>
+   typedef double complex double_complex;
 #endif
 
 #undef T

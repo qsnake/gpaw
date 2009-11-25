@@ -34,52 +34,6 @@ void *IP1DW(void *threadarg)
       T* bb = args->b + j;
       for (int i = 0; i < args->n; i++)
         {
-      #if defined(BMGSCOMPLEX) && defined(NO_C99_COMPLEX)
-          if (i == 0 && args->skip[0])
-            bb -= m;
-          else
-            {
-              bb[0].r = aa[0].r;
-              bb[0].i = aa[0].i;
-            }
-          if (i == args->n - 1 && args->skip[1])
-            bb -= m;
-          else
-            {
-              if (K == 2)
-                {
-                  bb[m].r = 0.5 * (aa[0].r + aa[1].r);
-                  bb[m].i = 0.5 * (aa[0].i + aa[1].i);
-                }
-              else if (K == 4)
-                {
-                  bb[m].r = ( 0.5625 * (aa[0].r + aa[1].r) +
-                             -0.0625 * (aa[-1].r + aa[2].r));
-                  bb[m].i = ( 0.5625 * (aa[0].i + aa[1].i) +
-                             -0.0625 * (aa[-1].i + aa[2].i));
-                }
-              else if (K == 6)
-                {
-                  bb[m].r = ( 0.58593750 * (aa[ 0].r + aa[1].r) +
-                             -0.09765625 * (aa[-1].r + aa[2].r) +
-                              0.01171875 * (aa[-2].r + aa[3].r));
-                  bb[m].i = ( 0.58593750 * (aa[ 0].i + aa[1].i) +
-                             -0.09765625 * (aa[-1].i + aa[2].i) +
-                              0.01171875 * (aa[-2].i + aa[3].i));
-                }
-              else
-                {
-                  bb[m].r = ( 0.59814453125 * (aa[ 0].r + aa[1].r) +
-                           -0.11962890625 * (aa[-1].r + aa[2].r) +
-                            0.02392578125 * (aa[-2].r + aa[3].r) +
-                           -0.00244140625 * (aa[-3].r + aa[4].r));
-                  bb[m].i = ( 0.59814453125 * (aa[ 0].i + aa[1].i) +
-                           -0.11962890625 * (aa[-1].i + aa[2].i) +
-                            0.02392578125 * (aa[-2].i + aa[3].i) +
-                           -0.00244140625 * (aa[-3].i + aa[4].i));
-                }
-            }
-      #else
           if (i == 0 && args->skip[0])
             bb -= m;
           else
@@ -104,7 +58,6 @@ void *IP1DW(void *threadarg)
                           0.02392578125 * (aa[-2] + aa[3]) +
                          -0.00244140625 * (aa[-3] + aa[4]));
             }
-      #endif
           aa++;
           bb += 2 * m;
         }

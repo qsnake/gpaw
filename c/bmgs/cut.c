@@ -31,14 +31,7 @@ void bmgs_cutmz(const double_complex* a, const int sizea[3],
       for (int i1 = 0; i1 < sizeb[1]; i1++)
 	{
 	  for (int i2 = 0; i2 < sizeb[2]; i2++)
-#if defined(NO_C99_COMPLEX)
-	    {
-	      b[i2].r = p.r * a[i2].r - p.i * a[i2].i;
-	      b[i2].i = p.r * a[i2].i + p.i * a[i2].r;
-	    }
-#else
 	    b[i2] = p * a[i2];
-#endif
 	  a += sizea[2];
 	  b += sizeb[2];
 	}

@@ -38,23 +38,10 @@ void *Z(bmgs_fd_worker)(void *threadarg)
       {
         for (int i2 = 0; i2 < s->n[2]; i2++)
           {
-          #if defined(BMGSCOMPLEX) && defined(NO_C99_COMPLEX)
-            double x = 0.0;
-            double y = 0.0;
-            for (int c = 0; c < s->ncoefs; c++)
-              {
-                x += a[s->offsets[c]].r * s->coefs[c];
-                y += a[s->offsets[c]].i * s->coefs[c];
-              }
-            (*b).r = x;
-            (*b).i = y;
-            bb++;
-          #else
             T x = 0.0;
             for (int c = 0; c < s->ncoefs; c++)
               x += aa[s->offsets[c]] * s->coefs[c];
             *bb++ = x;
-          #endif
             aa++;
           }
         aa += s->j[2];
