@@ -75,7 +75,7 @@ class GPAW(PAW):
 
     def calculation_required(self, atoms, quantities):
         if 'stress' in quantities:
-            quantities.remove('stress')
+            return True
 
         if len(quantities) == 0:
             return False
