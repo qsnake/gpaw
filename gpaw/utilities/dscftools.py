@@ -437,20 +437,118 @@ def dscf_reconstruct_orbitals_k_point(paw, norbitals, mol, kpt):
 
     return (f_o, eps_o, wf_oG, P_aoi,)
 
-from gpaw.io.tar import TarFileReference
+from gpaw.io.tar import Writer, Reader, TarFileReference
 from gpaw.occupations import FermiDirac
 from gpaw.kpt_descriptor import KPointDescriptor
 
+def dscf_save_band(filename, paw, n):
+    """Extract and save all information for band `n` to a tar file."""
+    world, bd, gd, kd = paw.wfs.world, paw.wfs.bd, paw.wfs.gd, \
+        KPointDescriptor(paw.wfs.nspins, paw.wfs.nibzkpts, paw.wfs.kpt_comm, \
+                         paw.wfs.gamma, paw.wfs.dtype)
+    if world.rank == 0:
+        # Minimal amount of information needed:
+        w = Writer(filename)
+        w.dimension('nspins', kd.nspins)
+        w.dimension('nibzkpts', kd.nibzkpts)
+        w.dimension('nproj', sum([setup.ni for setup in paw.wfs.setups]))
+        ng = gd.get_size_of_global_array()
+        w.dimension('ngptsx', ng[0])
+        w.dimension('ngptsy', ng[1])
+        w.dimension('ngptsz', ng[2])
+
+    # Write projections:
+    if world.rank == 0:
+        w.add('Projection', ('nspins', 'nibzkpts', 'nproj'), dtype=kd.dtype)
+    for s in range(kd.nspins):
+        for k in range(kd.nibzkpts):
+            all_P_ni = paw.wfs.collect_projections(k, s) # gets all bands
+            if world.rank == 0:
+                w.fill(all_P_ni[n])
+
+    # Write wave functions:
+    if world.rank == 0:
+        w.add('PseudoWaveFunction', ('nspins', 'nibzkpts',
+                                     'ngptsx', 'ngptsy', 'ngptsz'),
+              dtype=kd.dtype)
+    for s in range(kd.nspins):
+        for k in range(kd.nibzkpts):
+            psit_G = paw.wfs.get_wave_function_array(n, k, s)
+            if world.rank == 0:
+                w.fill(psit_G)
+
+    if world.rank == 0:
+        # Close the file here to ensure that the last wave function is
+        # written to disk:
+        w.close()
+
+    # We don't want the slaves to start reading before the master has
+    # finished writing:
+    world.barrier()
+
+
+def dscf_load_band(filename, paw, molecule=None):
+    """Load and distribute all information for a band from a tar file."""
+    if not paw.wfs:
+        paw.initialize()
+    world, bd, gd, kd = paw.wfs.world, paw.wfs.bd, paw.wfs.gd, \
+        KPointDescriptor(paw.wfs.nspins, paw.wfs.nibzkpts, paw.wfs.kpt_comm, \
+                         paw.wfs.gamma, paw.wfs.dtype)
+    if bd.comm.size != 1:
+        raise NotImplementedError('Undefined action for band parallelization.')
+
+    r = Reader(filename)
+    assert (r.dimension('nspins') == kd.nspins and \
+        r.dimension('nibzkpts') == kd.nibzkpts), 'Incompatible spin/kpoints.'
+
+    # Read wave function for every spin/kpoint owned by this rank
+    psit_uG = gd.empty(kd.mynks, kd.dtype)
+    for myu, psit_G in enumerate(psit_uG):
+        u = kd.global_index(myu)
+        s, k = kd.what_is(u)
+        if gd.comm.rank == 0:
+            big_psit_G = np.array(r.get('PseudoWaveFunction', s, k), kd.dtype)
+        else:
+            big_psit_G = None
+        gd.distribute(big_psit_G, psit_G)
+
+    # Find domain ranks for each atom
+    atoms = paw.get_atoms()
+    spos_ac = atoms.get_scaled_positions() % 1.0
+    rank_a = gd.get_ranks_from_positions(spos_ac)
+    #my_atom_indices = np.argwhere(rank_a == gd.comm.rank).ravel()
+    #assert np.all(my_atom_indices == paw.wfs.pt.my_atom_indices)
+    assert r.dimension('nproj') == sum([setup.ni for setup in paw.wfs.setups])
+
+    if molecule is None:
+        molecule = range(len(atoms))
+
+    # Read projections for every spin/kpoint and atom owned by this rank
+    P_uai = [{}] * kd.mynks #[paw.wfs.pt.dict() for myu in range(kd.mynks)]
+    for myu, P_ai in enumerate(P_uai):
+        u = kd.global_index(myu)
+        s, k = kd.what_is(u)
+        P_i = r.get('Projection', s, k)
+        i1 = 0
+        for a in molecule:
+            setup = paw.wfs.setups[a]
+            i2 = i1 + setup.ni
+            if gd.comm.rank == rank_a[a]:
+                P_ai[a] = np.array(P_i[i1:i2], kd.dtype)
+            i1 = i2
+
+    return psit_uG, P_uai
+
+
 class FermiDiracFixed(FermiDirac):
     """Occupations with Fermi smearing and fixed Fermi level"""
-    raise NotImplementedError
 
-"""
-    def __init__(self, width):
-        FermiDirac.__init__(self, width, fermi):
+    def __init__(self, width, *args, **kwargs):
+        raise NotImplementedError
+        FermiDirac.__init__(self, width, fermi)
         self.set_fermi_level(epsF)
         self.niter = 0
-    
+
     def guess_fermi_level(self, kpts):
         pass
 
@@ -461,7 +559,6 @@ class FermiDiracFixed(FermiDirac):
             magmom += sign * np.sum(kpt.f_n)
         magmom = self.band_comm.sum(self.kpt_comm.sum(magmom))
         self.magmom = magmom
-"""
 
 def dscf_collapse_orbitals(paw, nbands_max='occupied', f_tol=1e-4,
                            verify_density=True, nt_tol=1e-5, D_tol=1e-3):
