@@ -441,7 +441,8 @@ class LCAOWaveFunctions(WaveFunctions):
             od = BlacsOrbitalDescriptor(self.world, self.gd, self.bd,
                                         self.kpt_comm, self.setups.nao)
         else:
-            od = None
+            from gpaw.blacs import OrbitalDescriptor
+            od = OrbitalDescriptor(self.setups.nao, self.bd.mynbands)
         self.od = od
         
         #elif extra_parameters.get('blacs'):
@@ -463,7 +464,8 @@ class LCAOWaveFunctions(WaveFunctions):
         WaveFunctions.set_eigensolver(self, eigensolver)
         eigensolver.initialize(self.kpt_comm, self.gd, self.band_comm,
                                self.dtype, 
-                               self.setups.nao, self.mynbands, self.world)
+                               self.setups.nao, self.mynbands, self.world,
+                               self.od.get_diagonalizer())
 
     def set_positions(self, spos_ac):
         WaveFunctions.set_positions(self, spos_ac)        
@@ -963,18 +965,8 @@ class GridWaveFunctions(WaveFunctions):
         lcaowfs.set_positions(spos_ac)
         eigensolver = get_eigensolver('lcao', 'lcao')
 
-        from gpaw import sl_diagonalize
-        if extra_parameters.get('blacs'):
-            diagonalizer = lcaowfs.od.get_diagonalizer()
-        elif sl_diagonalize:
-            from gpaw.lcao.eigensolver import SLDiagonalizer
-            diagonalizer = SLDiagonalizer()
-        else:
-            from gpaw.lcao.eigensolver import LapackDiagonalizer
-            diagonalizer = LapackDiagonalizer()
-
-
-        eigensolver.initialize(self.kpt_comm, self.gd, self.band_comm, 
+        diagonalizer = lcaowfs.od.get_diagonalizer()
+        eigensolver.initialize(self.kpt_comm, self.gd, self.band_comm,
                                self.dtype,
                                self.setups.nao, lcaomynbands, self.world,
                                diagonalizer)

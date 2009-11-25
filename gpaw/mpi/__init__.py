@@ -64,6 +64,9 @@ class SerialCommunicator:
         raise NotImplementedError('Calls to mpi waitall should not happen in '
                                   'serial mode')
 
+    def get_c_object(self):
+        raise NotImplementedError('Should not get c object for serial comm')
+
 serial_comm = SerialCommunicator()
 
 try:
@@ -81,9 +84,6 @@ class DryRunCommunicator(SerialCommunicator):
 if dry_run_size > 1:
     world = DryRunCommunicator(dry_run_size)
 
-size = world.size
-rank = world.rank
-parallel = (size > 1)
 
 if debug:
     class _Communicator:
@@ -100,6 +100,8 @@ if debug:
             # No duplicates:
             for i in range(len(sranks) - 1):
                 assert sranks[i] != sranks[i + 1]
+            assert len(ranks) > 0
+            
             comm = self.comm.new_communicator(ranks)
             if comm is None:
                 # This cpu is not in the new communicator:
@@ -220,7 +222,26 @@ if debug:
                              nprow=1, npcol=1, mb=32, root=0):
             return self.comm.inverse_cholesky(a, nprow, npcol, mb, root)
 
+        def get_c_object(self):
+            """Return the C-object wrapped by this debug interface.
+
+            Whenever a communicator object is passed to C code, that object
+            must be a proper C-object - *not* e.g. this debug wrapper.  For
+            this reason.  The C-communicator object has a get_c_object()
+            implementation which returns itself; thus, always call
+            comm.get_c_object() and pass the resulting object to the C code.
+
+            XXX Must make a central check somewhere that the C type is
+            correct."""
+            return self.comm.get_c_object()
+
     serial_comm = _Communicator(serial_comm)
+    world = _Communicator(world)
+
+
+size = world.size
+rank = world.rank
+parallel = (size > 1)
 
 
 def distribute_cpus(parsize, parsize_bands, nspins, nibzkpts, comm=world):

@@ -8,6 +8,7 @@ Array index symbol conventions::
 
 import numpy as np
 
+from gpaw import sl_diagonalize
 from gpaw.mpi import SerialCommunicator
 from gpaw.utilities.blacs import scalapack_diagonalize_ex
 import _gpaw
@@ -41,10 +42,10 @@ class SLEXDiagonalizer:
             H_mM = np.zeros((0, 0))
             S_mM = np.zeros((0, 0))
         
-        S_mm = blockdescriptor.zeros(dtype)
-        H_mm = blockdescriptor.zeros(dtype)
-        C_mm = blockdescriptor.zeros(dtype)
-        C_nM = outdescriptor.zeros(dtype)
+        S_mm = blockdescriptor.zeros(dtype=dtype)
+        H_mm = blockdescriptor.zeros(dtype=dtype)
+        C_mm = blockdescriptor.zeros(dtype=dtype)
+        C_nM = outdescriptor.zeros(dtype=dtype)
 
         self.cols2blocks.redistribute(S_mM, S_mm)
         self.cols2blocks.redistribute(H_mM, H_mm)
@@ -83,7 +84,8 @@ class BlacsGrid:
                 raise ValueError('Impossible: %dx%d Blacs grid with %d CPUs'
                                  % (nprow, npcol, comm.size))
             # This call may also return INACTIVE
-            context = _gpaw.new_blacs_context(comm, npcol, nprow, order)
+            context = _gpaw.new_blacs_context(comm.get_c_object(),
+                                              npcol, nprow, order)
         
         self.context = context
         self.comm = comm
@@ -131,11 +133,17 @@ class MatrixDescriptor:
     def __nonzero__(self):
         return self.shape[0] != 0 and self.shape[1] != 0
 
-    def zeros(self, dtype=float):
-        return np.zeros(self.shape, dtype)
+    def zeros(self, n=(), dtype=float):
+        return self._new_array(np.zeros, n, dtype)
 
-    def empty(self, dtype=float):
-        return np.empty(self.shape, dtype)
+    def empty(self, n=(), dtype=float):
+        return self._new_array(np.empty, n, dtype)
+
+    def _new_array(self, func, n, dtype):
+        if isinstance(n, int):
+            n = n,
+        shape = n + self.shape
+        return func(shape, dtype)
 
     def check(self, a_mn):
         return a_mn.shape == self.shape and a_mn.flags.contiguous
@@ -255,7 +263,8 @@ class Redistributor:
         _gpaw.scalapack_redist(self.srcdescriptor.asarray(), 
                                self.dstdescriptor.asarray(),
                                src_mn.T, dst_mn.T,
-                               self.supercomm, subN, subM, isreal)
+                               self.supercomm.get_c_object(),
+                               subN, subM, isreal)
     
     def redistribute(self, src_mn, dst_mn):
         subM, subN = self.srcdescriptor.gshape
@@ -276,7 +285,6 @@ def parallelprint(comm, obj):
 class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
     # This class 'describes' all the LCAO/Blacs-related stuff
     def __init__(self, supercomm, gd, bd, kpt_comm, nao):
-        from gpaw import sl_diagonalize
         ncpus, mcpus, blocksize = sl_diagonalize[:3]
 
         bcommsize = bd.comm.size
@@ -290,6 +298,7 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
         blockcomm = supercomm.new_communicator(block_ranks)
 
         mynao = -((-nao) // bcommsize)
+
         # Range of basis functions for BLACS distribution of matrices:
         self.Mmax = nao
         self.Mstart = bcommrank * mynao
@@ -308,7 +317,7 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
         nMdescriptor = stripegrid.new_descriptor(nao, nao, bd.mynbands, nao)
 
         self.mMdescriptor = mMdescriptor
-        self.mmdescriptro = mmdescriptor
+        self.mmdescriptor = mmdescriptor
         self.nMdescriptor = nMdescriptor
         self.mM2mm = Redistributor(supercomm, mMdescriptor, mmdescriptor)
         self.mm2nM = Redistributor(supercomm, mmdescriptor, nMdescriptor)
@@ -318,3 +327,40 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
 
     def get_diagonalizer(self):
         return SLEXDiagonalizer(self.gd, self.bd, self.mM2mm, self.mm2nM)
+
+    def get_overlap_descriptor(self):
+        return self.mMdescriptor
+
+    def get_diagonalization_descriptor(self):
+        return self.mmdescriptor
+
+    def get_coefficient_descriptor(self):
+        return self.nMdescriptor
+
+
+class OrbitalDescriptor:
+    def __init__(self, nao, nmybands):
+        self.mMdescriptor = MatrixDescriptor(nao, nao)
+        self.nMdescriptor = MatrixDescriptor(nmybands, nao)
+        
+        self.Mstart = 0
+        self.Mstop = nao
+        self.Mmax = nao
+
+    def get_diagonalizer(self):
+        if sl_diagonalize:
+            from gpaw.lcao.eigensolver import SLDiagonalizer
+            diagonalizer = SLDiagonalizer()
+        else:
+            from gpaw.lcao.eigensolver import LapackDiagonalizer
+            diagonalizer = LapackDiagonalizer()
+        return diagonalizer
+
+    def get_overlap_descriptor(self):
+        return self.mMdescriptor
+
+    def get_diagonalization_descriptor(self):
+        return self.mMdescriptor
+
+    def get_coefficent_descriptor(self):
+        return self.nMdescriptor

@@ -33,7 +33,8 @@ def blacs_create(comm_obj, m, n, nprow, npcol, mb, nb, order='R'):
         assert nprow * npcol <= comm_obj.size
     assert 0 < mb <= m
     assert 0 < nb <= n
-    return _gpaw.blacs_create(comm_obj, m, n, nprow, npcol, mb, nb, order)
+    return _gpaw.blacs_create(comm_obj.get_c_object(),
+                              m, n, nprow, npcol, mb, nb, order)
 
 def blacs_destroy(adesc):
     assert len(adesc) == 9
@@ -56,7 +57,8 @@ def scalapack_redist1(a_obj, adesc, bdesc, isreal, comm_obj=mpi.world, m=0, n=0)
     assert (bdesc[2] == m) or (bdesc[2] == adesc[2])
     assert (bdesc[3] == n) or (bdesc[3] == adesc[3])
     # There is no simple may to check if adesc and bdesc are disjoint to comm_obj
-    return _gpaw.scalapack_redist1(a_obj, adesc, bdesc, isreal, comm_obj, m, n)
+    return _gpaw.scalapack_redist1(a_obj, adesc, bdesc, isreal,
+                                   comm_obj.get_c_object(), m, n)
 
 def scalapack_diagonalize_dc(a_obj, adesc, uplo):
     if a_obj is not None:

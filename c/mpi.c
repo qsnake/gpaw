@@ -729,6 +729,13 @@ static PyObject * mpi_broadcast(MPIObject *self, PyObject *args)
 #include "scalapack.c"
 #endif
 
+// See the documentation for corresponding function in debug wrapper
+// for the purpose of this function (gpaw/mpi/__init__.py)
+static PyObject * get_c_object(MPIObject *self, PyObject *args)
+{
+  return Py_BuildValue("O", self);
+}
+
 // Forward declaration of MPI_Communicator because it needs MPIType
 // that needs MPI_getattr that needs MPI_Methods that need
 // MPI_Communicator that need ...
@@ -785,6 +792,7 @@ static PyMethodDef mpi_methods[] = {
     {"diagonalize",      (PyCFunction)diagonalize,      METH_VARARGS, 0},
     {"inverse_cholesky", (PyCFunction)inverse_cholesky, METH_VARARGS, 0},
 #endif
+    {"get_c_object",     (PyCFunction)get_c_object,     METH_VARARGS, 0},
     {"new_communicator", (PyCFunction)MPICommunicator,  METH_VARARGS,
      "new_communicator(ranks) creates a new communicator."},
     {0, 0, 0, 0}

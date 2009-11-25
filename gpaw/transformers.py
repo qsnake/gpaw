@@ -64,7 +64,7 @@ class _Transformer:
         assert not self.allocated
         gdin = self.gdin
         if gdin.comm.size > 1:
-            comm = gdin.comm
+            comm = gdin.comm.get_c_object()
         else:
             comm = None
         

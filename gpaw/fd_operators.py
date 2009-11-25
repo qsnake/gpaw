@@ -47,7 +47,7 @@ class _Operator:
         self.shape = tuple(n_c)
         
         if gd.comm.size > 1:
-            comm = gd.comm
+            comm = gd.comm.get_c_object()
         else:
             comm = None
 
