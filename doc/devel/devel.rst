@@ -36,9 +36,6 @@ to become the next release.
    toc-general
 
 * Supported :ref:`platforms_and_architectures`.
-* A report_ from PyLint.
-
-.. _report: http://wiki.fysik.dtu.dk/stuff/pylint_global.html
 
 .. _code_overview:
 
@@ -108,4 +105,7 @@ These pages may contain inaccurate or outdated information
    :maxdepth: 1
 
    bugs
-   testsuite
+
+* A report_ from PyLint.
+
+.. _report: http://wiki.fysik.dtu.dk/stuff/pylint_global.html

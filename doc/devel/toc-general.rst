@@ -6,6 +6,7 @@
    debugging
    profiling
    coverage
+   testsuite
 
    newrelease
    updating_libxc
