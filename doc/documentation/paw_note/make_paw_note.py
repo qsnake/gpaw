@@ -19,7 +19,14 @@ rcut = 2.5
 lim = [0, 3.5, -2, 3]
 plt.plot([rcut, rcut], lim[2:], 'k--', label='_nolegend_')
 plt.axis(lim)
-plt.legend(loc=(1.02, 0.03), borderpad=0.05, markerscale=1, labelspacing=0.01)
+
+# The pad keyword to legend was deprecated in MPL v. 0.98.4
+if matplotlib.__version__ < '0.98.4':
+    kwpad = {'pad': 0.05}
+else:
+    kwpad = {'borderpad': 0.05, 'labelspacing': 0.01}
+
+plt.legend(loc=(1.02, 0.03), markerscale=1, **kwpad)
 plt.xlabel(r'$r$ [Bohr]')
 plt.text(rcut + 0.05, lim[2] + 0.05, '$r_c$', ha='left', va='bottom')
 plt.text(0.6, 2, '[Pt] = [Xe]4f$^{14}$5d$^9$6s$^1$')

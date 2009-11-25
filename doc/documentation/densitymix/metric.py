@@ -43,7 +43,14 @@ for q in lines:
 plt.xticks(lines, textpath)
 plt.yticks([0, 1], [r'$1$', r'$w+1$'])
 plt.axis(lim)
-plt.legend(loc='upper right', borderpad=0.2, borderaxespad=0.06)
+
+# The pad keyword to legend was deprecated in MPL v. 0.98.4
+if matplotlib.__version__ < '0.98.4':
+    kwpad = {'pad': 0.1, 'axespad': 0.06}
+else:
+    kwpad = {'borderpad': 0.2, 'borderaxespad': 0.06}
+
+plt.legend(loc='upper right', **kwpad)
 plt.title('Special metric for density changes')
 plt.savefig('metric.png', dpi=90)
 #plt.show()
