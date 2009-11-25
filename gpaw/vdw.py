@@ -21,6 +21,8 @@ from numpy.fft import fftn, fftfreq, fft, ifftn
 
 from gpaw.utilities.timing import nulltimer
 from gpaw.xc_functional import XCFunctional
+from gpaw.grid_descriptor import GridDescriptor
+from gpaw.utilities.tools import construct_reciprocal
 from gpaw.fd_operators import Gradient
 from gpaw import setup_paths
 import gpaw.mpi as mpi
@@ -152,9 +154,6 @@ class VDWFunctional:
         self.timer = nulltimer
         
     def set_grid_descriptor(self, gd):
-        if not gd.orthogonal:
-            raise NotImplementedError('vdW calculations require an ' +
-                                      'orthogonal cell.')
         self.gd = gd
 
     def set_non_local_things(self, density, hamiltonian, wfs, atoms,
@@ -427,6 +426,9 @@ class RealSpaceVDWFunctional(VDWFunctional):
                               v_g=None, deda2_g=None):
         """Real-space double-sum."""
         gd = self.gd
+        if not gd.orthogonal:
+            raise NotImplementedError('Real-space vdW calculations require ' +
+                                      'an orthogonal cell.')
         n_c = n_g.shape
         R_gc = np.empty(n_c + (3,))
         R_gc[..., 0] = (np.arange(0, n_c[0]) * gd.h_c[0]).reshape((-1, 1, 1))
@@ -610,11 +612,11 @@ class FFTVDWFunctional(VDWFunctional):
         else:
             self.shape = np.array(self.size)
             
-        d_c = gd.cell_c / (2 * pi * gd.N_c)
-        kx2 = fftfreq(self.shape[0], d_c[0]).reshape((-1,  1,  1))**2
-        ky2 = fftfreq(self.shape[1], d_c[1]).reshape(( 1, -1,  1))**2
-        kz2 = fftfreq(self.shape[2], d_c[2]).reshape(( 1,  1, -1))**2
-        k_k = (kx2 + ky2 + kz2)**0.5
+        scale_c1 = (self.shape / (1.0 * gd.N_c))[:, np.newaxis]
+        gdfft = GridDescriptor(self.shape, gd.cell_cv * scale_c1, True)
+        k_k = construct_reciprocal(gdfft)[0]**0.5
+        k_k[0, 0, 0] = 0.0
+
         self.dj_k = k_k / (2 * pi / self.rcut)
         self.j_k = self.dj_k.astype(int)
         self.dj_k -= self.j_k
@@ -700,7 +702,8 @@ class FFTVDWFunctional(VDWFunctional):
             self.timer.stop('gather')
 
             if world.rank == ranka:
-                F_ak[a] = F_k
+                if not self.energy_only:
+                    F_ak[a] = F_k
                 energy += np.vdot(theta_ak[a], F_k).real
 
             if self.verbose:
