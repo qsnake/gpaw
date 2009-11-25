@@ -75,7 +75,7 @@ def update():
 
 
 class Timer:
-    def __init__(self, print_levels=4):
+    def __init__(self, print_levels=1000):
         self.timers = {}
         self.t0 = time.time()
         self.running = []

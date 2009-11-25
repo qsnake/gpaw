@@ -743,16 +743,19 @@ class FFTVDWFunctional(VDWFunctional):
         v_LDAc_g = self.gd.collect(v_LDAc_g, broadcast=True)
         self.timer.stop('collect')
         if self.alphas:
+            self.timer.start('p1')
             dq0dn_g = ((pi / 3 / n_g)**(2.0 / 3.0) +
                        4 * pi / 3 * (e_LDAc_g / n_g - v_LDAc_g) / n_g +
                        7 * Zab / 108 / (3 * pi**2)**(1.0 / 3.0) * a2_g *
                        n_g**(-10.0 / 3.0))
             dq0da2_g = -Zab / 36 / (3 * pi**2)**(1.0 / 3.0) / n_g**(7.0 / 3.0)
+            self.timer.stop('p1')
         
         v0_g = np.zeros_like(n_g)
         deda20_g = np.zeros_like(n_g)
 
         for a in self.alphas:
+            self.timer.start('p2')
             C_pg = self.C_aip[a, i_g].transpose((3, 0, 1, 2))
             dpadq0_g = C_pg[1] + dq0_g * (2 * C_pg[2] + 3 * dq0_g * C_pg[3])
             del C_pg
@@ -762,6 +765,7 @@ class FFTVDWFunctional(VDWFunctional):
             dthetaada2_g = n_g * dpadq0_g * dq0da2_g * self.dhdx_g
             deda20_g += dthetaada2_g * F_ag[a]
             del dthetaada2_g
+            self.timer.stop('p2')
 
         self.timer.start('sum')
         world.sum(v0_g)
