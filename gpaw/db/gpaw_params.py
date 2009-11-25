@@ -39,6 +39,7 @@ class gpaw_info(params.params):
             'script_name':{"xml_name":'script_name'},
             'keywords':{"xml_name":'keywords'},
             'desc':{"xml_name":'desc'},
+            
             'AluminiumFingerprint':{"xml_name":'aluminium_fingerprint'},
 
             'KohnShamStencil':{"xml_name":'kohn_sham_stencil'},

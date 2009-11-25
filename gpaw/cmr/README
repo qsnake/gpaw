@@ -1,0 +1,12 @@
+gpaw.cmr is part of the Computational Materials Repository (CMR)
+and allows you to put the results of your calculation in
+a database from where you can retreive (sort/fiter) the results again.
+
+In order to use the Computational Materials Repository (CMR) code
+do the following:
+  1. mkdir -p $HOME/lib/python/cmr
+  2. svn co https://svn.fysik.dtu.dk/projects/cmr/trunk $HOME/cmr
+  3a. add $HOME/lib/python/cmr to your .bashrc:
+        export PYTHONPATH="$HOME/lib/python/cmr:$PYTHONPATH"
+  3b. add $HOME/lib/python/cmr to your .tcshrc:
+        setenv PYTHONPATH $HOME/lib/python/cmr:$PYTHONPATH

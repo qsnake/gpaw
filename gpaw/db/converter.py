@@ -14,7 +14,6 @@ This file is intended to be moved into a different repository!
 
 
 import os,sys
-import gpaw.db.dacapo_ReadWriter  as dacapo_ReadWriter
 
 
 class GPW2DB:
@@ -70,6 +69,8 @@ class NC2DB:
                                  any_name="any other arguments"
         """
         from ase.io.pupynere import NetCDFFile
+        import gpaw.db.dacapo_ReadWriter  as dacapo_ReadWriter
+        
         nc = NetCDFFile(nc_filename)
         calc_name = nc.history;
         if calc_name.lower().index("dacapo")!=-1:

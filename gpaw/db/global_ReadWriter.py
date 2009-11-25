@@ -338,7 +338,7 @@ class Reader(xml.sax.handler.ContentHandler):
             self.byteswap = ((attrs['endianness'] == 'little')
                              != np.little_endian)
         elif tag == 'array':
-            self.name = get_inv(attrs['name'])["local_name"]
+            self.name =  (attrs['name'])["local_name"]
             self.tmp_curtype = self.dtypes[self.name] = attrs['pythontype']
             self.shapes[self.name] = []
             self.temp_array_stack = []
