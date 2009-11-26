@@ -1,9 +1,8 @@
 from ase import *
 from gpaw import GPAW
-from gpaw.chi import CHI
 from gpaw.atom.basis import BasisMaker
+from gpaw.response.finite_sys import FiniteSys
 
-d = 3.07  # from GPAW website setup
 a = 6.
 c = a / 2.
 mol = Atoms([Atom('Na', [c, c, c])], pbc=False, cell=(a, a, a))
@@ -20,7 +19,7 @@ w_cut = 24.
 wmin = 0.
 wmax = 20.
 
-a = CHI()
+a = FiniteSys()
 
 SNonInter, SRPA, SLDA, eCasidaRPA, eCasidaLDA, sCasidaRPA, sCasidaLDA = (
               a.get_dipole_strength(calc, q, w_cut, wmin, wmax, dw))
