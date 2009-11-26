@@ -14,7 +14,8 @@ similar functionality.
 Physical Topology <-> Compute Topology
 ========================================
 The BG/P partition dimensions (Px, Py, Pz, T) for surveyor and intrepid at the
-Argonne Leadership Computing Facility are `<https://wiki.alcf.anl.gov/index.php/Running#What_are_the_sizes_and_dimensions_of_the_partitions_on_the_system.3F>`_.
+Argonne Leadership Computing Facility are `available here 
+<https://wiki.alcf.anl.gov/index.php/Running#What_are_the_sizes_and_dimensions_of_the_partitions_on_the_system.3F>`_,
 where T represents the number of cores utilized on each node (not whether 
 you have a torus network). These are number of cores per node which run MPI
 tasks and is specified by Cobalt flag::
@@ -60,14 +61,14 @@ needed is a 5-dimensional network.
 
 Overlapping communication and computation
 ===============================================
-The computation of the hamiltonian and overlap matrix elements as well as
-the computation of the new wavefunctions is accomplished by a hand-coded 
-parallel matrix-multiply hs_operators.py employing a 1D ring algorithm.
-`<https://wiki.fysik.dtu.dk/gpaw/documentation/parallel_runs/band_parallelization/band_parallelization.html>`_
+The computation of the hamiltonian and overlap matrix elements, as well as
+the computation of the new wavefunctions, is accomplished by a hand-coded 
+parallel matrix-multiply ``hs_operators.py`` employing a 1D ring algorithm.
+Please refer to the details of :ref:`band parallelization <band_parallelization>`.
 
 Communication and computation is overlapped to the extent allowed by the
-hardware by using non-block sends (Isend)and receives (Irecv). It will
-be necessary to select appropriate values for::
+hardware by using non-block sends (Isend)and receives (Irecv). It will be
+necessary to select appropriate values for the number of blocks ``nblocks``::
 
   from gpaw.hs_operators import Operator
   Operator.nblocks = K
@@ -87,4 +88,4 @@ For larger blocks of wavefunctions, it will be necessary to increase
 DCMF_RECFIFO as well. This will depend on whether you are using smp, dual
 or vn mode. To understand these variables in greater detail, please read the
 appropriate sections of the  IBM System Blue Gene Solution:  
-Blue Gene/P Application Development `<http://www.redbooks.ibm.com/abstracts/sg247287.html?Open>`_ 
+`Blue Gene/P Application Development <http://www.redbooks.ibm.com/abstracts/sg247287.html?Open>`_ 
