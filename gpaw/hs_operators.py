@@ -230,7 +230,7 @@ class Operator:
             map(band_comm.wait, self.req)
         else:
             assert len(self.req) == 0, 'Got unexpected asynchronous requests.'
-            band_comm.sendreceive(sbuf_mG, rankm, 11, rbuf_mG, rankp, 11)
+            band_comm.sendreceive(sbuf_mG, rankm, rbuf_mG, rankp, 11, 11)
         sbuf_mG, rbuf_mG = rbuf_mG, sbuf_mG
 
         # Auxiliary asyncronous cycle, also wait for P_ani's.

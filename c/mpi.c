@@ -72,8 +72,8 @@ static PyObject * mpi_sendreceive(MPIObject *self, PyObject *args, PyObject *kwa
   int recvtag = 123;
   int ret; 
   static char *kwlist[] = {"a", "dest", "sendtag", "b", "src", "recvtag", NULL};
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OiiOii:sendreceive", kwlist,
-				   &a, &dest, &sendtag, &b, &src, &recvtag))
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OiOi|ii:sendreceive", kwlist,
+				   &a, &dest, &b, &src, &sendtag, &recvtag))
     return NULL;
   CHK_ARRAY(a);
   CHK_OTHER_PROC(dest);

@@ -85,7 +85,7 @@ def overlap(psit_mG, send_mG, recv_mG):
     # Shift wave functions:
     for i in range(Q - 1):
         gemm(gd.dv, psit_mG, send_mG, 0.0, S_imm[i], 'c')
-        band_comm.sendreceive(send_mG, (rank - 1) % B, 42, recv_mG, (rank + 1) % B, 42)
+        band_comm.sendreceive(send_mG, (rank - 1) % B, recv_mG, (rank + 1) % B, 42, 42)
         send_mG, recv_mG = recv_mG, send_mG
     gemm(gd.dv, psit_mG, send_mG, 0.0, S_imm[Q - 1], 'c')
 
@@ -123,7 +123,7 @@ def matrix_multiply(C_nn, psit_mG, send_mG, recv_mG):
     for i in range(B - 1):
         gemm(1.0, send_mG, C_imim[rank, :, (rank + i) % B], beta, psit_mG)
         beta = 1.0
-        band_comm.sendreceive(send_mG, (rank - 1) % B, 117, recv_mG, (rank + 1) % B, 117)
+        band_comm.sendreceive(send_mG, (rank - 1) % B, recv_mG, (rank + 1) % B, 117, 117)
         send_mG, recv_mG = recv_mG, send_mG
     gemm(1.0, send_mG, C_imim[rank, :, rank - 1], beta, psit_mG)
 

@@ -169,6 +169,15 @@ if debug:
             assert is_contiguous(buf)
             self.comm.broadcast(buf, root)
 
+        def sendreceive(self, a, dest, b, src, sendtag=123, recvtag=123):
+            assert 0 <= dest < self.size
+            assert dest != self.rank
+            assert is_contiguous(a)
+            assert 0 <= src < self.size
+            assert src != self.rank
+            assert is_contiguous(b)
+            return self.comm.sendreceive(a, dest, b, src, sendtag, recvtag)
+
         def send(self, a, dest, tag=123, block=True):
             assert 0 <= dest < self.size
             assert dest != self.rank
