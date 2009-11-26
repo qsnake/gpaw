@@ -8,6 +8,9 @@ helper functins for parallel domain decomposition.  """
 
 import numpy as np
 
+UNIFORM = True # distribute grid points uniformly
+               # XXX import this from gpaw.extra_parameters dict ?
+
 
 class Domain:
     """Domain class.
@@ -42,7 +45,8 @@ class Domain:
                                     for x in range(3)])
 
         self.icell_cv = np.linalg.inv(self.cell_cv).T
-        self.ucell_cv = np.array([self.cell_cv[x] / self.cell_c[x] for x in range(3)])
+        self.ucell_cv = np.array([self.cell_cv[x] / self.cell_c[x]
+                                  for x in range(3)])
         self.iucell_cv = np.linalg.inv(self.ucell_cv.T) # Jacobian        
 
         self.pbc_c = np.asarray(pbc, bool)
@@ -106,6 +110,7 @@ class Domain:
 
     def get_rank_from_position(self, spos_c):
         """Calculate rank of domain containing scaled position."""
+        # XXX just return self.get_ranks_from_positions(spos_c)
         rnk_c = np.floor(spos_c * self.parsize_c).astype(int)
         assert (rnk_c >= 0).all() and (rnk_c < self.parsize_c).all()
         return np.dot(rnk_c, self.stride_c)
@@ -142,6 +147,14 @@ class Domain:
 
 
 def decompose_domain(ng, p):
+    """Determine parsize based on grid size and number of processors.
+
+    If global variable UNIFORM is True, the returned parsize will
+    result in a uniform distribution of gridpoints amongst processors.
+    
+    If UNIFORM is False, the returned parsize may result in a variable
+    number of points on each cpu.
+    """
     if p == 1:
         return (1, 1, 1)
     n1, n2, n3 = ng
@@ -155,11 +168,16 @@ def decompose_domain(ng, p):
     mincost = 10000000000.0
     best = None
     for p1, p2, p3 in candidates:
-        if n1 % p1 != 0 or n2 % p2 != 0 or n3 % p3 != 0:
+        if UNIFORM and (n1 % p1 != 0 or n2 % p2 != 0 or n3 % p3 != 0):
             continue
-        m1 = n1 / p1
-        m2 = n2 / p2
-        m3 = n3 / p3
+        elif UNIFORM:
+            m1 = n1 // p1
+            m2 = n2 // p2
+            m3 = n3 // p3
+        else:
+            m1 = float(n1) / p1
+            m2 = float(n2) / p2
+            m3 = float(n3) / p3           
         cost = abs(m1 - m2) + abs(m2 - m3) + abs(m3 - m1)
         # A long z-axis (unit stride) is best:
         if m1 <= m2 <= m3:
