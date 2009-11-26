@@ -9,6 +9,8 @@ from gpaw.polynomial import Polynomial
 from gpaw.external_potential import ExternalPotential
 from gpaw.utilities import pack2, unpack
 from gpaw.mpi import run
+from gpaw.fd_operators import Laplace, Gradient
+from gpaw.tddft.abc import *
 
 # Hamiltonian
 class TimeDependentHamiltonian:
@@ -52,6 +54,9 @@ class TimeDependentHamiltonian:
 
         #self.ti_vext_g = hamiltonian.vext_g
         #self.td_vext_g = hamiltonian.finegd.zeros(n=hamiltonian.nspins)
+
+        self.absorbing_boundary = None
+        
 
     def update(self, density, time):
         """Updates the time-dependent Hamiltonian.
@@ -188,6 +193,35 @@ class TimeDependentHamiltonian:
 
         self.hamiltonian.apply(psit, hpsit, self.wfs, kpt, calculate_P_ani)
 
+
+        # Absorbing boundary conditions
+
+        # Imaginary potential
+        if self.absorbing_boundary is not None \
+               and self.absorbing_boundary.type == 'IPOT':
+	    hpsit[:] += self.absorbing_boundary.get_potential_matrix() * psit
+
+        # Perfectly matched layers
+	if self.absorbing_boundary is not None \
+               and self.absorbing_boundary.type == 'PML':
+            # Perfectly matched layer is applied as potential Vpml = Tpml-T
+            # Where  T = -0.5*\nabla^{2}\psi  (Use latex for these equations)
+            # See abc.py for details
+            # This is probably not the most optimal approach and slows
+            # the propagation.
+            if self.lpsit is None:
+                self.lpsit = self.hamiltonian.gd.empty( n=len(psit),
+                                                        dtype=complex )
+            self.laplace.apply(psit, self.lpsit, kpt.phase_cd)
+            hpsit[:] -= (.5 * (self.absorbing_boundary.get_G()**2 - 1.0)
+                         * self.lpsit)
+            for i in range(3):
+                self.gradient[i].apply(psit, self.lpsit, kpt.phase_cd)
+                hpsit[:] -= (.5 * self.absorbing_boundary.get_G()
+                             * self.absorbing_boundary.get_dG()[i]
+                             * self.lpsit)
+
+        # Time-dependent dipole field
         if self.td_potential is not None:
             #TODO on shaky ground here...
             strength = self.td_potential.strength
@@ -195,6 +229,23 @@ class TimeDependentHamiltonian:
                                                  0.5 * strength(self.time) +
                                                  0.5 * strength(self.old_time),
                                                  kpt)
+
+            
+    def set_absorbing_boundary(self, absorbing_boundary):
+        """ Sets up the absorbing boundary.            
+            Parameters:
+            absorbing_boundary: absorbing boundary object of any kind.  
+        """
+        
+        self.absorbing_boundary = absorbing_boundary
+        self.absorbing_boundary.set_up(self.hamiltonian.gd)
+        if self.absorbing_boundary.type == 'PML':
+            gd = self.hamiltonian.gd
+            self.laplace= Laplace(gd,n=2, dtype=complex)
+            self.gradient = np.array((Gradient(gd,0, n=2, dtype=complex),
+                                       Gradient(gd,1, n=2, dtype=complex),
+                                       Gradient(gd,2, n=2, dtype=complex)))
+            self.lpsit=None
 
 
 # AbsorptionKickHamiltonian

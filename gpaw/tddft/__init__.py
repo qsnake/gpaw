@@ -1,5 +1,3 @@
-# Written by Lauri Lehtovaara, 2007
-
 """This module implements a class for (true) time-dependent density
 functional theory calculations.
 
@@ -34,6 +32,11 @@ from gpaw.tddft.tdopers import \
     TimeDependentOverlap, \
     TimeDependentDensity, \
     AbsorptionKickHamiltonian
+from gpaw.tddft.abc import \
+    LinearAbsorbingBoundary, \
+    PML, \
+    P4AbsorbingBoundary
+
 
 # T^-1
 # Bad preconditioner
@@ -410,6 +413,11 @@ class TDDFT(GPAW):
         self.Etot = self.Ekin + self.Epot + self.Ebar + self.Exc
 
         return self.Etot
+
+
+    def set_absorbing_boundary(self, absorbing_boundary):
+        self.td_hamiltonian.set_absorbing_boundary(absorbing_boundary)
+
 
     # exp(ip.r) psi
     def absorption_kick(self, kick_strength):

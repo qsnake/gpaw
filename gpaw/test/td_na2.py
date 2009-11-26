@@ -41,6 +41,24 @@ photoabsorption_spectrum('na2_dmz.dat', 'na2_spectrum_z.dat', width=0.3)
 
 td_rest = TDDFT('na2_td.gpw')
 td_rest.propagate(time_step, iters, 'na2_dmz2.dat', 'na2_td2.gpw')
+
+
+td_ipabs = TDDFT('na2_td2.gpw')
+ip_abc = LinearAbsorbingBoundary(5.0, 0.01, atoms.positions)
+td_ipabs.set_absorbing_boundary(ip_abc)
+td_ipabs.propagate(time_step, iters, 'na2_dmz3.dat', 'na2_td3.gpw')
+
+td_ip4abs = TDDFT('na2_td3.gpw')
+ip4_abc = P4AbsorbingBoundary(5.0, 0.05, atoms.positions, 2.0)
+td_ip4abs.set_absorbing_boundary(ip4_abc)
+td_ip4abs.propagate(time_step, iters, 'na2_dmz4.dat', 'na2_td4.gpw')
+
+td_pmlabs = TDDFT('na2_td4.gpw', solver='BiCGStab')
+pml_abc = PML(5.0, 0.01)
+td_pmlabs.set_absorbing_boundary(pml_abc)
+td_pmlabs.propagate(time_step, iters, 'na2_dmz5.dat', 'na2_td5.gpw')
+
+
 # photoabsorption_spectrum('na2_dmz2.dat', 'na2_spectrum_z2.dat', width=0.3)
 
 #os.remove('na2_gs.gpw')

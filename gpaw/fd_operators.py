@@ -150,22 +150,44 @@ else:
     Operator = _Operator
 
 
-def Gradient(gd, v, scale=1.0, dtype=float, allocate=True):
+def Gradient(gd, v, scale=1.0, n=1, dtype=float, allocate=True):
     h = gd.h_c
     a = 0.5 / h * scale
     d = gd.iucell_cv[:,v]
 
-    coef_p = []
-    offset_pc = []  
-    for i in range(3):
-        if abs(d[i])>1e-11:
-            coef_p.extend([-a[i] * d[i], a[i] * d[i]])
+    # FIXME: M$ way => actually calculate the coeffs
+    if n == 1: 
+        coef_p = []
+        offset_pc = []  
+        for i in range(3):
+            if abs(d[i])>1e-11:
+                coef_p.extend([-a[i] * d[i], a[i] * d[i]])
+                
+                offset = np.zeros((2, 3), int)
+                offset[0, i] = -1
+                offset[1, i] =  1                    
+                offset_pc.extend(offset)
 
-            offset = np.zeros((2, 3), int)
-            offset[0, i] = -1
-            offset[1, i] =  1                    
-            offset_pc.extend(offset)
+    elif n == 2:
+        a = 2./3. / h * scale
+        b = 1./12. / h * scale
+        d = gd.iucell_cv[:,v] 
 
+        coef_p = []
+        offset_pc = []  
+        for i in range(3):
+            if abs(d[i])>1e-11:
+                coef_p.extend([b[i] * d[i], -a[i] * d[i], a[i] * d[i], -b[i] * d[i]])
+
+                offset = np.zeros((4, 3), int)
+                offset[0, i] = -2
+                offset[1, i] = -1
+                offset[2, i] =  1
+                offset[3, i] =  2
+                offset_pc.extend(offset)
+    else:
+        raise RuntimeError('Gradient supports only n = 1 or 2')
+        
     return Operator(coef_p, offset_pc, gd, dtype, allocate)
 
 
