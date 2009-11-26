@@ -20,7 +20,7 @@ class TimeDependentHamiltonian:
     Hamiltonian to a wavefunction.
     """
     
-    def __init__(self, wfs, hamiltonian, td_potential):
+    def __init__(self, wfs, atoms, hamiltonian, td_potential):
         """Create the TimeDependentHamiltonian-object.
         
         The time-dependent potential object must (be None or) have a member
@@ -55,6 +55,7 @@ class TimeDependentHamiltonian:
         #self.ti_vext_g = hamiltonian.vext_g
         #self.td_vext_g = hamiltonian.finegd.zeros(n=hamiltonian.nspins)
 
+        self.spos_ac = atoms.get_scaled_positions() % 1.0
         self.absorbing_boundary = None
         
 
@@ -169,7 +170,11 @@ class TimeDependentHamiltonian:
         self.wfs.pt.add(hpsit, P_axi, kpt.q)
 
         if self.td_potential is not None:
-            raise NotImplementedError
+            # FIXME: add half difference here... but maybe it's not important
+            # as this will be used only for getting initial guess. So, should
+            # not affect to the results, only to the speed of convergence.
+            #raise NotImplementedError
+            pass
 
     def apply(self, kpt, psit, hpsit, calculate_P_ani=True):
         """Applies the time-dependent Hamiltonian to the wavefunction psit of
@@ -225,7 +230,8 @@ class TimeDependentHamiltonian:
         if self.td_potential is not None:
             #TODO on shaky ground here...
             strength = self.td_potential.strength
-            ExternalPotential().add_linear_field(psit, hpsit,
+            ExternalPotential().add_linear_field(self.wfs, self.spos_ac,
+                                                 psit, hpsit,
                                                  0.5 * strength(self.time) +
                                                  0.5 * strength(self.old_time),
                                                  kpt)
@@ -241,7 +247,7 @@ class TimeDependentHamiltonian:
         self.absorbing_boundary.set_up(self.hamiltonian.gd)
         if self.absorbing_boundary.type == 'PML':
             gd = self.hamiltonian.gd
-            self.laplace= Laplace(gd,n=2, dtype=complex)
+            self.laplace = Laplace(gd, n=2, dtype=complex)
             self.gradient = np.array((Gradient(gd,0, n=2, dtype=complex),
                                        Gradient(gd,1, n=2, dtype=complex),
                                        Gradient(gd,2, n=2, dtype=complex)))

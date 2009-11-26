@@ -160,7 +160,7 @@ class TDDFT(GPAW):
 
         # Time-dependent variables and operators
         self.td_potential = td_potential
-        self.td_hamiltonian = TimeDependentHamiltonian(self.wfs,
+        self.td_hamiltonian = TimeDependentHamiltonian(self.wfs, self.atoms,
                                   self.hamiltonian, td_potential)
         self.td_overlap = TimeDependentOverlap(self.wfs)
         self.td_density = TimeDependentDensity(self)

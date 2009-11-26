@@ -129,6 +129,7 @@ tests = [
     'muffintinpot.py',
     'fixmom.py',
     'td_na2.py',
+    'be_nltd_ip.py',
     'ldos.py',
     'exx_coarse.py',
     '2Al.py',
