@@ -52,7 +52,7 @@ def get_bfi2(symbols, basis, a_list):
     
 
 def get_mulliken(calc, a_list):
-    """mulliken charges from a list atom indices (a_list). """
+    """Mulliken charges from a list of atom indices (a_list)."""
     Q_a = {}
     for kpt in calc.wfs.kpt_u:
         S_MM = calc.wfs.S_qMM[kpt.q]

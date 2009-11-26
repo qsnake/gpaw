@@ -593,5 +593,7 @@ def H_coulomb_val_core(paw, u=0):
     H_nn = np.zeros((paw.wfs.nbands, paw.wfs.nbands), dtype=paw.wfs.dtype)
     for a, P_ni in paw.wfs.kpt_u[u].P_ani.items():
         X_ii = unpack(paw.wfs.setups[a].X_p)
-        H_nn += 2 * np.dot(P_ni.conj(), np.dot(X_ii, P_ni.T))
-    return paw.gd.comm.sum(H_nn) * paw.Ha
+        H_nn += np.dot(P_ni.conj(), np.dot(X_ii, P_ni.T))
+    paw.gd.comm.sum(H_nn)
+    from ase.units import Hartree
+    return H_nn * Hartree
