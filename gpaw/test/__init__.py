@@ -71,6 +71,7 @@ tests = [
     'gauss_func.py',
     'ylexpand.py',
     'wfs_io.py',
+    'chi_molNa.py',
     'xcatom.py',
     'parallel/overlap.py',
     'symmetry.py',
@@ -176,7 +177,8 @@ if mpi.size > 1:
                 'coreeig.py',
                 'asewannier.py',
                 'wannier_ethylene.py',
-                'muffintinpot.py']
+                'muffintinpot.py',
+                'chi_molNa.py']
 
 if mpi.size > 2:
     exclude += ['neb.py']
