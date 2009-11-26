@@ -72,7 +72,8 @@ class TDDFT(GPAW):
     
     def __init__(self, ground_state_file=None, txt='-', td_potential=None,
                  propagator='SICN', solver='CSCG', tolerance=1e-8,
-                 parsize=None, parsize_bands=1, parstride_bands=True):
+                 parsize=None, parsize_bands=1, parstride_bands=True,
+                 communicator=None):
         """Create TDDFT-object.
         
         Parameters:
@@ -110,7 +111,8 @@ class TDDFT(GPAW):
         #     will override the initial settings for time/kick/niter.
         GPAW.__init__(self, ground_state_file, txt=txt, mixer=DummyMixer(), \
                       parsize=parsize, parsize_bands=parsize_bands, \
-                      parstride_bands=parstride_bands)
+                      parstride_bands=parstride_bands,
+                      communicator=communicator)
 
         # Prepare for dipole moment file handle
         self.dm_file = None
