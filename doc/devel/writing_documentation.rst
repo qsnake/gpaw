@@ -37,3 +37,4 @@ To build a pdf-file, you do this::
   $ make GPAW.pdf
 
 More tricks to be found at ASE `Writing documentation <https://wiki.fysik.dtu.dk/ase/development/writing_documentation_ase.html>`_ page.
+Note that GPAW has `PSTricks <http://tug.org/PSTricks>`_ as an additional requirement, which is usually provided by ``texlive-pstricks``.

@@ -8,6 +8,7 @@
    coverage
    testsuite
 
+   bugs
    newrelease
    updating_libxc
    svn

@@ -99,12 +99,7 @@ documentation is included in the other line counts.
 Old pages
 =========
 
-These pages may contain inaccurate or outdated information
-
-.. toctree::
-   :maxdepth: 1
-
-   bugs
+These pages may contain inaccurate or outdated information:
 
 * A report_ from PyLint.
 
