@@ -1027,20 +1027,20 @@ class GridWaveFunctions(WaveFunctions):
 
         scale = np.sqrt(12 / abs(np.linalg.det(gd2.cell_cv)))
 
-        from numpy.random import random, seed
-
-        seed(4 + mpi.rank)
+        old_state = np.random.get_state()
+        np.random.seed(4 + mpi.rank)
 
         for kpt in self.kpt_u:
             for psit_G in kpt.psit_nG[nao:]:
                 if self.dtype == float:
-                    psit_G2[:] = (random(shape) - 0.5) * scale
+                    psit_G2[:] = (np.random.random(shape) - 0.5) * scale
                 else:
-                    psit_G2.real = (random(shape) - 0.5) * scale
-                    psit_G2.imag = (random(shape) - 0.5) * scale
+                    psit_G2.real = (np.random.random(shape) - 0.5) * scale
+                    psit_G2.imag = (np.random.random(shape) - 0.5) * scale
                     
                 interpolate2(psit_G2, psit_G1, kpt.phase_cd)
                 interpolate1(psit_G1, psit_G, kpt.phase_cd)
+        np.random.set_state(old_state)
 
     #def add_to_density_from_k_point(self, nt_sG, kpt):
     #    self.add_to_density_from_k_point_with_occupation(nt_sG, kpt, kpt.f_n)
