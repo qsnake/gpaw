@@ -110,11 +110,11 @@ if debug:
                 return _Communicator(comm)
 
         def sum(self, array, root=-1):
-            if isinstance(array, (float, complex)):
+            if isinstance(array, (int, float, complex)):
                 return self.comm.sum(array, root)
             else:
                 tc = array.dtype
-                assert tc == float or tc == complex
+                assert tc == int or tc == float or tc == complex
                 assert is_contiguous(array, tc)
                 assert root == -1 or 0 <= root < self.size
                 self.comm.sum(array, root)
@@ -133,12 +133,12 @@ if debug:
             self.comm.scatter(s, r, root)
 
         def max(self, array, root=-1):
-            if isinstance(array, (float, complex)):
+            if isinstance(array, (int, float, complex)):
                 assert isinstance(array, float)
                 return self.comm.max(array, root)
             else:
                 tc = array.dtype
-                assert tc == float or tc == complex
+                assert tc == int or tc == float or tc == complex
                 assert is_contiguous(array, tc)
                 assert root == -1 or 0 <= root < self.size
                 self.comm.max(array, root)
