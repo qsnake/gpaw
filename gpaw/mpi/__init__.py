@@ -232,7 +232,7 @@ class _Communicator:
           # All ranks have parts of interesting data. Gather on all ranks.
           mydata = np.random.normal(size=N)
           data = np.empty(N*comm.size, dtype=float)
-          comm.allgather(mydata, data)
+          comm.all_gather(mydata, data)
 
           # .. which is equivalent to ..
 
