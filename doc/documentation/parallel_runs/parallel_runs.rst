@@ -120,9 +120,9 @@ Running different calculations in parallel
 A GPAW calculator object will per default distribute its work on all
 available processes. If you want to use several different calculators
 at the same time, however, you can specify a set of processes to be
-used by each calculator. The processes are supplied to the
-constructor, either by specifying an MPI Communicator object. Thus,
-you may write::
+used by each calculator. The processes are supplied to the constructor,
+either by specifying an :ref:`MPI Communicator object <communicators>`,
+or simply a list of ranks. Thus, you may write::
 
   from gpaw import GPAW
   import gpaw.mpi as mpi

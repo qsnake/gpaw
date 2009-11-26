@@ -267,8 +267,8 @@ paw.hamiltonian.setups.
 Parallelization over spins, k-points domains and states
 =======================================================
 
-When using parallelization over spins, **k**-points, bands and
-domains, four different MPI communicators are used:
+When using parallelization over spins, **k**-points, bands and domains,
+four different :ref:`MPI communicators <communicators>` are used:
 
 * *mpi.world*
    Communicator containing all processors. 
