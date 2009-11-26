@@ -108,9 +108,16 @@ class Timer:
 
         out.write('\nTiming:\n%s\n' % ('=' * 60))
         n = max([len(names[-1]) + len(names) for names in self.timers]) + 1
+        tother = tot
+        for names, t in self.timers.items():
+            if len(names) > 1:
+                self.timers[names[:-1]] -= t
+            else: tother -= t
         data = self.timers.items()
         data.sort()
+        data.append((('Other',), tother))
         for names, t in data:
+            
             r = t / tot
             p = 100 * r
             i = int(50 * r + 0.5)
@@ -124,10 +131,10 @@ class Timer:
             name = level * ' ' + names[-1] + ':'
             out.write('%-*s%9.3f %5.1f%% %s\n' % (n, name, t, p, bar))
         out.write('%s\n' % ('=' * 60))
-        out.write('%-*s%9.3f\n' % (n, 'Total:', tot))
+        out.write('%-*s%9.3f %5.1f%%\n' % (n, 'Total:', tot, 100.0))
         out.write('%s\n' % ('=' * 60))
         out.write('date: %s\n' % time.asctime())
-                
+
     def add(self, timer):
         for name, t in timer.timers.items():
             self.timers[name] = self.timers.get(name, 0.0) + t
