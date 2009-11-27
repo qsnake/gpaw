@@ -5,7 +5,6 @@ from __future__ import division
 
 import numpy as np
 from gpaw.utilities.blas import rk, r2k, gemm
-from gpaw.mpi import world
 
 class Operator:
     """Base class for overlap and hamiltonian operators.
@@ -351,7 +350,8 @@ class Operator:
 
         # Because of the amount of communication involved, we need to
         # be syncronized up to this point.
-        world.barrier()
+        band_comm.barrier()
+        domain_comm.barrier()
         for j in range(J):
             n1 = j * M
             n2 = n1 + M
@@ -408,7 +408,8 @@ class Operator:
             self.bd.matrix_assembly(A_qnn, A_NN, self.hermitian)
         # Because of the amount of communication involved, we need to
         # be syncronized up to this point.           
-        world.barrier()
+        band_comm.barrier()
+        domain_comm.barrier()
         return A_NN
         
     def matrix_multiply(self, C_NN, psit_nG, P_ani=None):
@@ -438,6 +439,7 @@ class Operator:
         """
 
         band_comm = self.bd.comm
+        domain_comm = self.gd.comm
         B = band_comm.size
         J = self.nblocks
         N = self.bd.mynbands
@@ -476,7 +478,8 @@ class Operator:
 
         # Because of the amount of communication involved, we need to
         # be syncronized up to this point
-        world.barrier()
+        band_comm.barrier()
+        domain_comm.barrier()
         for j in range(J):
             G1 = j * g
             G2 = G1 + g
@@ -491,7 +494,7 @@ class Operator:
             for q in range(Q):
                 # Start sending currently buffered kets to rank below
                 # and receiving next set of kets from rank above us.
-                # If we're at the first slice, start cycling P_ani too.
+                # If we're at the last slice, start cycling P_ani too.
                 if q < Q - 1:
                     self._initialize_cycle(sbuf_ng, rbuf_ng, \
                         sbuf_In, rbuf_In, cycle_P_ani)
@@ -501,7 +504,7 @@ class Operator:
                 C_nn = self.bd.extract_block(C_NN, rank, (rank + q) % B)
                 gemm(1.0, sbuf_ng, C_nn, beta, psit_nG[:, G1:G2])
 
-                # If we're at the first slice, add contributions to P_ani's.
+                # If we're at the last slice, add contributions to P_ani's.
                 if cycle_P_ani:
                     I1 = 0
                     for P_ni in P_ani.values():
@@ -511,7 +514,7 @@ class Operator:
 
                 # Wait for all send/receives to finish before next iteration.
                 # Swap send and receive buffer such that next becomes current.
-                # If we're at the first slice, also finishes the P_ani cycle.
+                # If we're at the last slice, also finishes the P_ani cycle.
                 if q < Q - 1:
                     sbuf_ng, rbuf_ng, sbuf_In, rbuf_In = self._finish_cycle( \
                         sbuf_ng, rbuf_ng, sbuf_In, rbuf_In, cycle_P_ani)
