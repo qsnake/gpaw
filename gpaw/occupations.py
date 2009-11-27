@@ -82,7 +82,7 @@ def occupy(f_n, eps_n, ne, weight=1):
     """Fill in occupation numbers.
 
     return HOMO and LUMO energies."""
-    
+
     N = len(f_n)
     if ne == N * weight:
         f_n[:] = weight
@@ -137,7 +137,7 @@ class ZeroKelvin(OccupationNumbers):
             raise ValueError("Can't find HOMO and/or LUMO!")
 
     def fixed_moment(self, wfs):
-        assert wfs.nspins == 2
+        assert wfs.nspins == 2 and wfs.bd.comm.size == 1
         fermilevels = np.zeros(2)
         for kpt in wfs.kpt_u:
             eps_n = wfs.bd.collect(kpt.eps_n)
@@ -154,10 +154,14 @@ class ZeroKelvin(OccupationNumbers):
     def spin_paired(self, wfs):
         kpt = wfs.kpt_u[0]
         eps_n = wfs.bd.collect(kpt.eps_n)
-        f_n = np.empty(wfs.nbands)
-        self.homo, self.lumo = occupy(f_n, eps_n, self.nvalence, 2)
+        if wfs.bd.comm.rank == 0:
+            f_n = np.empty(wfs.nbands)
+            self.homo, self.lumo = occupy(f_n, eps_n, self.nvalence, 2)
+            self.fermilevel = 0.5 * (self.homo + self.lumo)
+        else:
+            f_n = None
+            self.fermilevel = np.nan
         wfs.bd.distribute(f_n, kpt.f_n)
-        self.fermilevel = 0.5 * (self.homo + self.lumo)
         self.magmom = 0.0
         
     def spin_polarized(self, wfs):
