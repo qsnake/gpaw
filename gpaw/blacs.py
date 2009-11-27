@@ -1,8 +1,9 @@
 """Module for high-level BLACS interface.
 
-Array index symbol conventions::
- * M, N: indices in global array
- * m, n: indices in local array
+Array index symbol conventions:
+
+* M, N: indices in global array
+* m, n: indices in local array
 
 """
 

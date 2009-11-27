@@ -214,7 +214,8 @@ class PML:
         
         	
     def set_up(self,gd):
-        """
+        r"""Set up matrices for PML.
+
         Creates the matrixes needed when the PML is applied in tdopers.py
         when applying time-dependent hamiltonian. 
         
