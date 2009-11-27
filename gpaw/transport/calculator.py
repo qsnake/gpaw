@@ -505,7 +505,8 @@ class Transport(GPAW):
             self.set_extended_positions()
             self.timer.stop('surround set_position')
         
-        self.get_hamiltonian_initial_guess()
+        if not self.analysis_mode:
+            self.get_hamiltonian_initial_guess()
         
         del self.wfs
         self.wfs = self.extended_calc.wfs
@@ -671,6 +672,22 @@ class Transport(GPAW):
             for i in range(self.env_num):
                 self.env_buffer_index[i] = get_atoms_indices(
                                              self.env_buffer_atoms[i], setups)
+        self.orbital_indices = []
+        for n, setup in enumerate(setups):
+            for phit in setup.phit_j:
+                l = phit.get_angular_momentum_number()
+                for i in range(2 * l  + 1):
+                    self.orbital_indices.append([n, l])
+        self.orbital_indices = np.array(self.orbital_indices)
+        self.lead_orbital_indices = []
+        for i in range(self.lead_num):
+            self.lead_orbital_indices.append([])
+            for n, setup in enumerate(self.atoms_l[i].calc.wfs.setups):
+                for phit in setup.phit_j:
+                    l = phit.get_angular_momentum_number()
+                    for j in range(2 * l  + 1):
+                        self.lead_orbital_indices[i].append([n, l])                    
+        self.lead_orbital_indices = np.array(self.lead_orbital_indices)
         
         for i in range(self.lead_num):
             if self.la_index is None:
@@ -967,7 +984,8 @@ class Transport(GPAW):
     def negf_prepare(self, atoms=None):
         if not self.initialized_transport:
             self.initialize_transport()
-        self.update_scat_hamiltonian(atoms)
+        if not self.analysis_mode:    
+            self.update_scat_hamiltonian(atoms)
         self.boundary_check()
     
     def initialize_env(self, l):
@@ -2326,10 +2344,12 @@ class Transport(GPAW):
     def analysis(self, n):
         self.guess_steps = 1
         self.negf_prepare()
-     
+        flag = True
         if not hasattr(self, 'analysor'):
             self.analysor = Transport_Analysor(self, True)        
         for i in range(n):
+            if i > 0:
+                flag = False
             fd = file('bias_data' + str(i + 1), 'r')
             self.bias, vt_sG, dH_asp = pickle.load(fd)
             fd.close()
@@ -2342,9 +2362,15 @@ class Transport(GPAW):
             self.surround.combine_dH_asp(dH_asp)
             self.gd1.distribute(vt_sG, self.extended_calc.hamiltonian.vt_sG) 
             h_spkmm, s_pkmm = self.get_hs(self.extended_calc)
+            nb = s_pkmm.shape[-1]
+            dtype = s_pkmm.dtype
             for q in range(self.my_npk):
+                self.hsd.reset(0, q, s_pkmm[q], 'S', flag)                
                 for s in range(self.my_nspins):
-                    self.hsd.reset(s, q, h_spkmm[s, q], 'H')
+                    self.hsd.reset(s, q, h_spkmm[s, q], 'H', flag)
+                    self.hsd.reset(s, q, np.zeros([nb, nb], dtype), 'D', flag)
+            if flag:
+                self.append_buffer_hsd()                    
  
             self.analysor.save_ele_step()            
             self.analysor.save_bias_step()
