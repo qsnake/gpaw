@@ -6,6 +6,7 @@ from ase.units import Hartree, Bohr
 
 from gpaw.xc_functional import XCFunctional
 from gpaw.lcao.pwf2 import LCAOwrap
+from gpaw.utilities.blas import gemmdot
 
 class CHI:
     def __init__(self):
@@ -117,24 +118,30 @@ class CHI:
             print f_kn[k]
         print
 
-        # Calculate chi0
-#        print 'Calculating chi0_SS:'
-#        for iw in range(self.Nw):
-#            chi0_SS = self.calculate_chi0(bzkpt_kG, e_kn, f_kn, C_knM, q, iw*self.dw, eta=0.2/Hartree)
+        # whether to use hilbert tranform
+        self.HilbertTrans = False
+        try:
+            chi0_wSS = np.zeros((self.Nw, self.nS, self.nS), dtype=complex) 
+        except:
+            self.HilbertTrans = False
+            print 'Not using spectral function and hilbert transform'
 
-        # Get spectral function
-        print 'Calculating spectral function'
-        specfunc_SSw = self.calculate_spectral_function(bzkpt_kG, e_kn,
+        if self.HilbertTrans:
+            # Get spectral function
+            print 'Calculating spectral function'
+            specfunc_wSS = self.calculate_spectral_function(bzkpt_kG, e_kn,
                               f_kn, C_knM, q, wcut, self.dw, sigma=2*1e-5)
 
-        # Get chi0_SS' by hilbert transform
-        print 'Performing hilbert transform'
-        chi0_SSw = self.hilbert_transform(specfunc_SSw, wmin, wmax, self.dw, eta)
+            # Get chi0_SS' by hilbert transform
+            print 'Performing hilbert transform'
+            chi0_wSS = self.hilbert_transform(specfunc_wSS, wmin, wmax, self.dw, eta)
 
-        return e_kn, f_kn, C_knM, orb_MG, spos_ac, nt_G, chi0_SSw
+            return e_kn, f_kn, C_knM, orb_MG, spos_ac, nt_G, chi0_wSS 
+        else:
+            return e_kn, f_kn, C_knM, orb_MG, spos_ac, nt_G, bzkpt_kG
 
 
-    def calculate_chi0(self, bzkpt_kG, e_kn, f_kn, C_knM, q, omega, eta=0.2):
+    def calculate_chi0(self, bzkpt_kG, e_kn, f_kn, C_knM, q, omega, eta):
         """Calculate non-interacting response function (LCAO basis) for a certain q and omega. 
 
         The chi0_SS' matrix is calculated by::
@@ -199,8 +206,7 @@ class CHI:
         Use Gaussian wave for delta function
         """
 
-        specfunc_SSw = np.zeros((self.nS, self.nS, self.NwS), dtype=C_knM.dtype)
-
+        specfunc_wSS = np.zeros((self.NwS, self.nS, self.nS), dtype=C_knM.dtype)
         if self.nkpt > 1:
             kq = self.find_kq(bzkpt_kG, q)
         else:
@@ -220,11 +226,11 @@ class CHI:
                         deltaw = self.delta_function(w0, dw,self.NwS, sigma)
                         for wi in range(self.NwS):
                             if deltaw[wi] > 1e-5:
-                                specfunc_SSw[:,:,wi] += tmp * deltaw[wi]
-        return specfunc_SSw *dw 
+                                specfunc_wSS[wi] += tmp * deltaw[wi]
+        return specfunc_wSS *dw 
 
 
-    def hilbert_transform(self, specfunc_SSw, wmin, wmax, dw, eta):
+    def hilbert_transform(self, specfunc_wSS, wmin, wmax, dw, eta):
         """Obtain chi0_SS' by hilbert transform with the spectral function A_SS'.
 
         The hilbert tranform is performed as::
@@ -238,15 +244,17 @@ class CHI:
         Note, The dw' is reduced above in the delta function
         """
 
-        chi0_SSw = np.zeros((self.nS, self.nS, self.Nw), dtype=complex)
+        tmp_ww = np.zeros((self.Nw, self.NwS), dtype=complex)
 
         for iw in range(self.Nw):
             w = wmin + iw * dw
             for jw in range(self.NwS):
                 ww = jw * dw # = w' above 
-                chi0_SSw[:,:,iw] += (1. / (w - ww + 1j*eta) 
-                               - 1. / (w + ww + 1j*eta)) * specfunc_SSw[:,:,jw]
-        return chi0_SSw
+                tmp_ww[iw, jw] = 1. / (w - ww + 1j*eta) - 1. / (w + ww + 1j*eta)
+
+        chi0_wSS = gemmdot(tmp_ww, np.complex128(specfunc_wSS), beta = 0.)
+
+        return chi0_wSS
 
 
     def solve_Dyson(self, chi0_SS, kernel_SS):

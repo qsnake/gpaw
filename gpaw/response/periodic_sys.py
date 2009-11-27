@@ -1,6 +1,8 @@
 from math import pi
 
 import numpy as np
+from ase.units import Hartree
+
 from gpaw.response import CHI
 
 class PeriodicSys(CHI):
@@ -37,8 +39,15 @@ class PeriodicSys(CHI):
 
         # Initialize, common stuff
         print 'Initializing:'
-        e_kn, f_kn, C_knM, orb_MG, spos_ac, nt_G, chi0_SSw = (
+        e_kn, f_kn, C_knM, orb_MG, spos_ac, nt_G, tmp = (
            self.initialize(calc, q, wcut, wmin, wmax, dw, eta))
+
+        if self.HilbertTrans:
+            assert tmp.shape == (self.Nw, self.nS, self.nS) and tmp.dtype == complex
+            chi0_wSS = tmp
+        else:
+            assert tmp.shape == (self.nkpt, 3)
+            bzkpt_kG = tmp
 
         assert calc.atoms.pbc.all()
         self.get_primitive_cell()
@@ -46,8 +55,6 @@ class PeriodicSys(CHI):
         print 'Periodic system calculations.'
         print 'Primitive cell (1 / a.u.)'
         print self.bcell
-
-        chi0_SSw = chi0_SSw / self.vol
 
         # Get pair-orbitals in Gspace
         print 'Calculating pair-orbital in G-space'
@@ -64,14 +71,17 @@ class PeriodicSys(CHI):
         chi0G0_w = np.zeros(self.Nw, dtype=complex)
         chiG0_w = np.zeros(self.Nw, dtype=complex)
 
-#        f = open('nkpt-' +  '%d' %(self.nkpt), 'w')
         for iw in range(self.Nw):
-            chi_SS = self.solve_Dyson(chi0_SSw[:,:,iw], KRPA_SS)
-            
-            chi0G0_w[iw] = self.chi_to_Gspace(chi0_SSw[:,:,iw], n_SG[:,0])
-            chiG0_w[iw] = self.chi_to_Gspace(chi_SS, n_SG[:,0])
-#            print >> f, iw * self.dw * Hartree, np.imag(chi0G0_w[iw]), np.imag(chi0_SSw[:,:,iw].sum())
+            if not self.HilbertTrans:
+                chi0_SS = self.calculate_chi0(bzkpt_kG, e_kn, f_kn, C_knM, q, iw*self.dw, eta=eta/Hartree)
+            else:
+                chi0_SS = chi0_wSS[iw]
+            chi0_SS /= self.vol
 
+            chi_SS = self.solve_Dyson(chi0_SS, KRPA_SS)
+            
+            chi0G0_w[iw] = self.chi_to_Gspace(chi0_SS, n_SG[:,0])
+            chiG0_w[iw] = self.chi_to_Gspace(chi_SS, n_SG[:,0])
 
         return chi0G0_w, chiG0_w
 
@@ -107,22 +117,16 @@ class PeriodicSys(CHI):
                        vol  /                    xc
         """
 
-#        Kcoul_GG = np.eye(self.nG0)
+        # Coulomb Kernel is diagonal 
         Kcoul_G = np.zeros(self.nG0)
-        Kcoul_SS = np.zeros((self.nS, self.nS), dtype= complex)
 
         for i in range(self.nG0):
             # get q+G vector 
             xx = np.array([np.inner((Gvec[i] + q), self.bcell[:,j]) for j in range(3)])
-            #Kcoul_GG[i, i] = 1. / ( xx[0]*xx[0] +xx[1]*xx[1] + xx[2]*xx[2] )
             Kcoul_G[i] = 1. / ( xx[0]*xx[0] +xx[1]*xx[1] + xx[2]*xx[2] )
-        #Kcoul_GG *= 4. * pi 
         Kcoul_G *= 4. * pi 
 
-        for i in range(self.nS):
-            for j in range(self.nS):
-                #Kcoul_SS[i, j] = np.inner(np.inner(n_SG[i].conj(), Kcoul_GG), n_SG[j])
-                Kcoul_SS[i, j] = (n_SG[i].conj() * Kcoul_G * n_SG[j]).sum()
+        Kcoul_SS = np.dot((n_SG.conj() * Kcoul_G), n_SG.T)
         
         return Kcoul_SS
 
@@ -170,7 +174,7 @@ class PeriodicSys(CHI):
             for nu in range(self.nLCAO):
                 # The last dimension runs fastest when using ravel()
                 # soft part
-                n_SG[self.nLCAO*mu + nu] = np.fft.fftn((orb_MG[mu].conj() * orb_MG[nu]).ravel())
+                n_SG[self.nLCAO*mu + nu] = (np.fft.fftn(orb_MG[mu].conj() * orb_MG[nu])).ravel()
 
         # To check whether n_SG is correct, just look at the G=0 component
         # tmp = orb_MG[mu].conj() * orb_MG[nu]
@@ -262,7 +266,7 @@ class PeriodicSys(CHI):
                     G[n, 1] = m[1][j]
                     G[n, 2] = m[2][k]
                     n += 1
-        
+
         return G
 
 

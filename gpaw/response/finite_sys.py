@@ -1,4 +1,5 @@
 from math import pi, sqrt
+from os.path import isfile
 
 import numpy as np
 from ase.units import Hartree
@@ -20,36 +21,53 @@ class FiniteSys(CHI):
 
         n_S: ndarray 
             Pair-orbitals in real space, (1, nS)
-        specfunc_SSw: ndarray
-            Spectral function, (nS, nS, NwS, dtype = C_knM.type), can be complex128 or float64
-        chi0_SSw: ndarray
-            The non-interacting density response function, (nS, nS, Nw, dtype=complex)
+        specfunc_wSS: ndarray
+            Spectral function, (NwS, nS, nS, dtype = C_knM.type), can be complex128 or float64
+        chi0_wSS: ndarray
+            The non-interacting density response function, (Nw, nS, nS, dtype=complex)
         kernelRPA_SS (or kernelLDA_SS): ndarray
             Kernel for the finite sys, (nS, nS), it is float64, but can be complex for periodic sys.
         SNonInter_w (or SRPA_w, SLDA_w): ndarray
             Dipole strength function, (Nw)
         """
- 
-        e_kn, f_kn, C_knM, orb_MG, spos_ac, nt_G, chi0_SSw = (
-           self.initialize(calc, q, wcut, wmin, wmax, dw, eta))
+        e_kn, f_kn, C_knM, orb_MG, spos_ac, nt_G, tmp = (
+                self.initialize(calc, q, wcut, wmin, wmax, dw, eta)) 
+        if self.HilbertTrans:
+            assert tmp.shape == (self.NW, self.nS, self.nS) and tmp.dtype == complex
+            chi0_wSS = tmp
+        else:
+            assert tmp.shape == (self.nkpt, 3)
+            bzkpt_kG = tmp
 
         # Get pair-orbitals in real space
         n_S = self.pair_orbital_Rspace(orb_MG, calc.gd.h_c, calc.wfs.setups, 
                                          calc.wfs.kpt_u[0])
 
         # Get kernel
-        kernelRPA_SS, kernelLDA_SS = self.kernel_finite_sys(nt_G, calc.density.D_asp, orb_MG, 
+        if isfile('kernel.npz'):
+            foo = np.load('kernel.npz')
+            kernelRPA_SS = foo['KRPA']
+            kernelLDA_SS = foo['KLDA']
+
+        else:
+            kernelRPA_SS, kernelLDA_SS = self.kernel_finite_sys(nt_G, calc.density.D_asp, orb_MG, 
                         calc.wfs.kpt_u[0], calc.gd, calc.wfs.setups, spos_ac)
+            np.savez('kernel.npz',KRPA=kernelRPA_SS,KLDA=kernelLDA_SS)
 
         # Solve Dyson's equation and Get dipole strength function
         SNonInter_w = np.zeros((self.Nw,3))
         SRPA_w = np.zeros((self.Nw,3))
         SLDA_w = np.zeros((self.Nw,3))
         for iw in range(self.Nw):
-            SNonInter_w[iw,:] = self.calculate_dipole_strength(chi0_SSw[:,:,iw], n_S, iw*self.dw)
-            chi_SS = self.solve_Dyson(chi0_SSw[:,:,iw], kernelRPA_SS)
+            if not self.HilbertTrans:
+                chi0_SS = self.calculate_chi0(bzkpt_kG, e_kn, f_kn, C_knM, q, iw*self.dw, eta=eta/Hartree)
+            else:
+                chi0_SS = chi0_wSS[iw]
+
+            SNonInter_w[iw,:] = self.calculate_dipole_strength(chi0_SS, n_S, iw*self.dw)
+            chi_SS = self.solve_Dyson(chi0_SS, kernelRPA_SS)
             SRPA_w[iw,:] = self.calculate_dipole_strength(chi_SS, n_S, iw*self.dw)
-            chi_SS = self.solve_Dyson(chi0_SSw[:,:,iw], kernelLDA_SS)
+            chi_SS = self.solve_Dyson(chi0_SS, kernelLDA_SS)
             SLDA_w[iw,:] = self.calculate_dipole_strength(chi_SS, n_S, iw*self.dw)
 
         # Solve Casida's equation to get the excitation energies in eV
