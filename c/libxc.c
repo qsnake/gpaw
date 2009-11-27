@@ -63,6 +63,7 @@ typedef struct {
   xc_gga_type gga_func;
   xc_mgga_type mgga_func;
   xc_lca_type lca_func;
+  xc_hyb_gga_type hyb_gga_func;
 } functionals_type;
 
 typedef struct
@@ -98,8 +99,17 @@ void get_vxc_lda(functionals_type *func, double point[7], double *e, double der[
 /* a general call for a GGA functional */
 void get_vxc_gga(functionals_type *func, double point[7], double *e, double der[7])
 {
-  XC(gga_vxc)(&(func->gga_func), &(point[0]), &(point[2]),
-              e, &(der[0]), &(der[2]));
+  switch(func->family)
+    {
+    case XC_FAMILY_GGA:
+      XC(gga_vxc)(&(func->gga_func), &(point[0]), &(point[2]),
+                  e, &(der[0]), &(der[2]));
+      break;
+    case XC_FAMILY_HYB_GGA:
+      XC(hyb_gga)(&(func->hyb_gga_func), &(point[0]), &(point[2]),
+                  e, &(der[0]), &(der[2]));
+      break;
+    }
 }
 
 /* a general call for a MGGA functional */
@@ -207,6 +217,10 @@ double get_point(functionals_type *func, double point[7], double *e, double der[
       break;
     case XC_FAMILY_GGA:
       xc_gga_vxc(&(func->gga_func), &(point[0]), &(point[2]),
+                 e, &(der[0]), &(der[2]));
+      break;
+    case XC_FAMILY_HYB_GGA:
+      xc_hyb_gga(&(func->hyb_gga_func), &(point[0]), &(point[2]),
                  e, &(der[0]), &(der[2]));
       break;
     }
@@ -336,6 +350,9 @@ static void lxcXCFunctional_dealloc(lxcXCFunctionalObject *self)
     case XC_FAMILY_GGA:
       XC(gga_end)(&(self->xc_functional.gga_func));
       break;
+    case XC_FAMILY_HYB_GGA:
+      XC(hyb_gga_end)(&(self->xc_functional.hyb_gga_func));
+      break;
     case XC_FAMILY_MGGA:
       XC(mgga_end)(&(self->xc_functional.mgga_func));
       break;
@@ -355,6 +372,9 @@ static void lxcXCFunctional_dealloc(lxcXCFunctionalObject *self)
     case XC_FAMILY_GGA:
       XC(gga_end)(&(self->x_functional.gga_func));
       break;
+    case XC_FAMILY_HYB_GGA:
+      XC(hyb_gga_end)(&(self->x_functional.hyb_gga_func));
+      break;
     case XC_FAMILY_MGGA:
       XC(mgga_end)(&(self->x_functional.mgga_func));
       break;
@@ -369,6 +389,9 @@ static void lxcXCFunctional_dealloc(lxcXCFunctionalObject *self)
       break;
     case XC_FAMILY_GGA:
       XC(gga_end)(&(self->c_functional.gga_func));
+      break;
+    case XC_FAMILY_HYB_GGA:
+      XC(hyb_gga_end)(&(self->c_functional.hyb_gga_func));
       break;
     case XC_FAMILY_MGGA:
       XC(mgga_end)(&(self->c_functional.mgga_func));
@@ -388,6 +411,19 @@ lxcXCFunctional_is_gga(lxcXCFunctionalObject *self, PyObject *args)
   if (self->xc_functional.family == XC_FAMILY_GGA) success = XC_FAMILY_GGA;
   if (self->x_functional.family == XC_FAMILY_GGA) success = XC_FAMILY_GGA;
   if (self->c_functional.family == XC_FAMILY_GGA) success = XC_FAMILY_GGA;
+
+  return Py_BuildValue("i", success);
+}
+
+static PyObject*
+lxcXCFunctional_is_hyb_gga(lxcXCFunctionalObject *self, PyObject *args)
+{
+  int success = 0; /* assume functional is not HYB_GGA */
+
+  /* any of xc x c can be hyb gga */
+  if (self->xc_functional.family == XC_FAMILY_HYB_GGA) success = XC_FAMILY_HYB_GGA;
+  if (self->x_functional.family == XC_FAMILY_HYB_GGA) success = XC_FAMILY_HYB_GGA;
+  if (self->c_functional.family == XC_FAMILY_HYB_GGA) success = XC_FAMILY_HYB_GGA;
 
   return Py_BuildValue("i", success);
 }
@@ -426,6 +462,13 @@ lxcXCFunctional_CalculateSpinPaired(lxcXCFunctionalObject *self, PyObject *args)
 
   /* assert (self->hybrid == 0.0); */ /* MDTMP - not implemented yet */
 
+  double h1 = 1.0 - self->hybrid;
+  if ((self->x_functional.family == XC_FAMILY_HYB_GGA) ||
+      (self->c_functional.family == XC_FAMILY_HYB_GGA))
+  {
+       h1 = 0.0; // MDTMP - a hack: HYB_GGA handle h1 internally in c_functional
+  }
+
   int ng = e_array->dimensions[0]; /* number of grid points */
 
   double* e_g = DOUBLEP(e_array); /* e on the grid */
@@ -437,8 +480,11 @@ lxcXCFunctional_CalculateSpinPaired(lxcXCFunctionalObject *self, PyObject *args)
   double* dEda2_g = 0;    /* dEda2 on the grid */
   double* dEdtau_g= 0;    /* dEdt on the grid */
 
-  if ((self->x_functional.family == XC_FAMILY_GGA) ||
-      (self->c_functional.family == XC_FAMILY_GGA))
+  if (((self->x_functional.family == XC_FAMILY_GGA) ||
+       (self->c_functional.family == XC_FAMILY_GGA))
+      ||
+      ((self->x_functional.family == XC_FAMILY_HYB_GGA) ||
+       (self->c_functional.family == XC_FAMILY_HYB_GGA)))
     {
       a2_g = DOUBLEP(a2_array);
       dEda2_g = DOUBLEP(dEda2_array);
@@ -464,6 +510,9 @@ lxcXCFunctional_CalculateSpinPaired(lxcXCFunctionalObject *self, PyObject *args)
     case XC_FAMILY_GGA:
       self->get_vxc_x = get_vxc_gga;
       break;
+    case XC_FAMILY_HYB_GGA:
+      self->get_vxc_x = get_vxc_gga;
+      break;
     case XC_FAMILY_MGGA:
       self->get_vxc_x = get_vxc_mgga;
       break;
@@ -480,6 +529,9 @@ lxcXCFunctional_CalculateSpinPaired(lxcXCFunctionalObject *self, PyObject *args)
     case XC_FAMILY_GGA:
       self->get_vxc_c = get_vxc_gga;
       break;
+    case XC_FAMILY_HYB_GGA:
+      self->get_vxc_c = get_vxc_gga;
+      break;
     case XC_FAMILY_MGGA:
       self->get_vxc_c = get_vxc_mgga;
       break;
@@ -494,8 +546,11 @@ lxcXCFunctional_CalculateSpinPaired(lxcXCFunctionalObject *self, PyObject *args)
       if (n < NMIN)
         n = NMIN;
       double a2 = 0.0; /* initialize for lda */
-      if ((self->x_functional.family == XC_FAMILY_GGA) ||
-	  (self->c_functional.family == XC_FAMILY_GGA))
+      if (((self->x_functional.family == XC_FAMILY_GGA) ||
+           (self->c_functional.family == XC_FAMILY_GGA))
+          ||
+          ((self->x_functional.family == XC_FAMILY_HYB_GGA) ||
+           (self->c_functional.family == XC_FAMILY_HYB_GGA)))
 	{
 	  a2 = a2_g[g];
         }
@@ -544,6 +599,13 @@ lxcXCFunctional_CalculateSpinPaired(lxcXCFunctionalObject *self, PyObject *args)
         dExdn = derivative_x[0];
         dExda2 = derivative_x[2];
         dExdtau = derivative_x[5];
+        if (self->c_functional.family == XC_FAMILY_HYB_GGA)
+        {
+          // MDTMP - a hack: HYB_GGA handle h1 internally in c_functional
+          dExdn = 0.0;
+          dExda2 = 0.0;
+          dExdtau = 0.0;
+        }
       }
       /* calculate correlation */
       if (self->c_functional.family != XC_FAMILY_UNKNOWN) {
@@ -552,8 +614,11 @@ lxcXCFunctional_CalculateSpinPaired(lxcXCFunctionalObject *self, PyObject *args)
         dEcda2 = derivative_c[2];
         dEcdtau = derivative_c[5];
       }
-      if ((self->x_functional.family == XC_FAMILY_GGA) ||
-	  (self->c_functional.family == XC_FAMILY_GGA))
+      if (((self->x_functional.family == XC_FAMILY_GGA) ||
+           (self->c_functional.family == XC_FAMILY_GGA))
+          ||
+          ((self->x_functional.family == XC_FAMILY_HYB_GGA) ||
+           (self->c_functional.family == XC_FAMILY_HYB_GGA)))
         {
           dEda2_g[g] = dExda2 + dEcda2;
         }
@@ -563,7 +628,6 @@ lxcXCFunctional_CalculateSpinPaired(lxcXCFunctionalObject *self, PyObject *args)
 	  dEda2_g[g] = dExda2 + dEcda2;
 	  dEdtau_g[g] = dExdtau + dEcdtau;
 	}
-      double h1 = 1.0 - self->hybrid;
       e_g[g] = n* (h1 * ex + ec);
       v_g[g] += h1 * dExdn + dEcdn;
     }
@@ -600,6 +664,13 @@ lxcXCFunctional_CalculateSpinPolarized(lxcXCFunctionalObject *self, PyObject *ar
 
   /* assert (self->hybrid == 0.0); */ /* MDTMP - not implemented yet */
 
+  double h1 = 1.0 - self->hybrid;
+  if ((self->x_functional.family == XC_FAMILY_HYB_GGA) ||
+      (self->c_functional.family == XC_FAMILY_HYB_GGA))
+  {
+       h1 = 0.0; // MDTMP - a hack: HYB_GGA handle h1 internally in c_functional
+  }
+
   int ng = e->dimensions[0];  /* number of grid points */
 
   double* e_g = DOUBLEP(e); /* e on the grid */
@@ -619,8 +690,11 @@ lxcXCFunctional_CalculateSpinPolarized(lxcXCFunctionalObject *self, PyObject *ar
   double* dEdtaua_g = 0; /* dEdta on the grid */
   double* dEdtaub_g = 0; /* dEdtb on the grid */
 
-  if ((self->x_functional.family == XC_FAMILY_GGA) ||
-      (self->c_functional.family == XC_FAMILY_GGA))
+  if (((self->x_functional.family == XC_FAMILY_GGA) ||
+       (self->c_functional.family == XC_FAMILY_GGA))
+      ||
+      ((self->x_functional.family == XC_FAMILY_HYB_GGA) ||
+       (self->c_functional.family == XC_FAMILY_HYB_GGA)))
     {
       a2_g = DOUBLEP(a2);
       aa2_g = DOUBLEP(aa2);
@@ -655,6 +729,9 @@ lxcXCFunctional_CalculateSpinPolarized(lxcXCFunctionalObject *self, PyObject *ar
     case XC_FAMILY_GGA:
       self->get_vxc_x = get_vxc_gga;
       break;
+    case XC_FAMILY_HYB_GGA:
+      self->get_vxc_x = get_vxc_gga;
+      break;
     case XC_FAMILY_MGGA:
       self->get_vxc_x = get_vxc_mgga;
       break;
@@ -669,6 +746,9 @@ lxcXCFunctional_CalculateSpinPolarized(lxcXCFunctionalObject *self, PyObject *ar
       self->get_vxc_c = get_vxc_lda;
       break;
     case XC_FAMILY_GGA:
+      self->get_vxc_c = get_vxc_gga;
+      break;
+    case XC_FAMILY_HYB_GGA:
       self->get_vxc_c = get_vxc_gga;
       break;
     case XC_FAMILY_MGGA:
@@ -693,8 +773,11 @@ lxcXCFunctional_CalculateSpinPolarized(lxcXCFunctionalObject *self, PyObject *ar
     double dEcdtaua = 0.0;
     double dEcdtaub = 0.0;
 
-    if ((self->x_functional.family == XC_FAMILY_GGA) ||
-        (self->c_functional.family == XC_FAMILY_GGA))
+    if (((self->x_functional.family == XC_FAMILY_GGA) ||
+         (self->c_functional.family == XC_FAMILY_GGA))
+        ||
+        ((self->x_functional.family == XC_FAMILY_HYB_GGA) ||
+         (self->c_functional.family == XC_FAMILY_HYB_GGA)))
       {
         sigma0 = aa2_g[g];
         sigma2 = ab2_g[g];
@@ -767,6 +850,17 @@ lxcXCFunctional_CalculateSpinPolarized(lxcXCFunctionalObject *self, PyObject *ar
       dExdsigma2 = derivative_x[4];
       dExdtaua = derivative_x[5];
       dExdtaub = derivative_x[6];
+      if (self->c_functional.family == XC_FAMILY_HYB_GGA)
+        {
+          // MDTMP - a hack: HYB_GGA handle h1 internally in c_functional
+          dExdna = 0.0;
+          dExdnb = 0.0;
+          dExdsigma0 = 0.0;
+          dExdsigma1 = 0.0;
+          dExdsigma2 = 0.0;
+          dExdtaua = 0.0;
+          dExdtaub = 0.0;
+        }
     }
     /* calculate correlation */
     if (self->c_functional.family != XC_FAMILY_UNKNOWN) {
@@ -780,8 +874,11 @@ lxcXCFunctional_CalculateSpinPolarized(lxcXCFunctionalObject *self, PyObject *ar
       dEcdtaub = derivative_c[6];
     }
 
-    if ((self->x_functional.family == XC_FAMILY_GGA) ||
-        (self->c_functional.family == XC_FAMILY_GGA))
+    if (((self->x_functional.family == XC_FAMILY_GGA) ||
+         (self->c_functional.family == XC_FAMILY_GGA))
+        ||
+        ((self->x_functional.family == XC_FAMILY_HYB_GGA) ||
+         (self->c_functional.family == XC_FAMILY_HYB_GGA)))
       {
         dEdaa2_g[g] = dExdsigma0 + dEcdsigma0;
         dEdab2_g[g] = dExdsigma2 + dEcdsigma2;
@@ -796,7 +893,6 @@ lxcXCFunctional_CalculateSpinPolarized(lxcXCFunctionalObject *self, PyObject *ar
         dEdtaua_g[g] = dExdtaua + dEcdtaua;
         dEdtaub_g[g] = dExdtaub + dEcdtaub;
       }
-    double h1 = 1.0 - self->hybrid;
     e_g[g] = n* (h1 * ex + ec);
     va_g[g] += (h1 * dExdna + dEcdna);
     vb_g[g] += (h1 * dExdnb + dEcdnb);
@@ -832,8 +928,11 @@ lxcXCFunctional_CalculateFXCSpinPaired(lxcXCFunctionalObject *self, PyObject *ar
   double* v2rhosigma_g = 0;    /* d2Ednda2 on the grid */
   double* v2sigma2_g = 0;    /* d2Eda2da2 on the grid */
 
-  if ((self->x_functional.family == XC_FAMILY_GGA) ||
-      (self->c_functional.family == XC_FAMILY_GGA))
+  if (((self->x_functional.family == XC_FAMILY_GGA) ||
+       (self->c_functional.family == XC_FAMILY_GGA))
+      ||
+      ((self->x_functional.family == XC_FAMILY_HYB_GGA) ||
+       (self->c_functional.family == XC_FAMILY_HYB_GGA)))
     {
       a2_g = DOUBLEP(a2_array);
       v2rhosigma_g = DOUBLEP(v2rhosigma_array);
@@ -879,8 +978,11 @@ lxcXCFunctional_CalculateFXCSpinPaired(lxcXCFunctionalObject *self, PyObject *ar
       if (n < NMIN)
         n = NMIN;
       double a2 = 0.0; /* initialize for lda */
-      if ((self->x_functional.family == XC_FAMILY_GGA) ||
-          (self->c_functional.family == XC_FAMILY_GGA))
+      if (((self->x_functional.family == XC_FAMILY_GGA) ||
+           (self->c_functional.family == XC_FAMILY_GGA))
+          ||
+          ((self->x_functional.family == XC_FAMILY_HYB_GGA) ||
+           (self->c_functional.family == XC_FAMILY_HYB_GGA)))
         {
           a2 = a2_g[g];
         }
@@ -969,8 +1071,11 @@ lxcXCFunctional_CalculateFXCSpinPaired(lxcXCFunctionalObject *self, PyObject *ar
         v2sigma2_c[4] = derivative_c[3][4]; // XC_POLARIZED /* ab_bb */
         v2sigma2_c[5] = derivative_c[4][4]; // XC_POLARIZED /* bb_bb */
       }
-      if ((self->x_functional.family == XC_FAMILY_GGA) ||
-          (self->c_functional.family == XC_FAMILY_GGA))
+      if (((self->x_functional.family == XC_FAMILY_GGA) ||
+           (self->c_functional.family == XC_FAMILY_GGA))
+          ||
+          ((self->x_functional.family == XC_FAMILY_HYB_GGA) ||
+           (self->c_functional.family == XC_FAMILY_HYB_GGA)))
         {
           v2rhosigma_g[g] = v2rhosigma_x[0] + v2rhosigma_c[0];
           v2sigma2_g[g] = v2sigma2_x[0] + v2sigma2_c[0];
@@ -1008,8 +1113,11 @@ lxcXCFunctional_CalculateFXC_FD_SpinPaired(lxcXCFunctionalObject *self, PyObject
   double* v2rhosigma_g = 0;    /* d2Ednda2 on the grid */
   double* v2sigma2_g = 0;    /* d2Eda2da2 on the grid */
 
-  if ((self->x_functional.family == XC_FAMILY_GGA) ||
-      (self->c_functional.family == XC_FAMILY_GGA))
+  if (((self->x_functional.family == XC_FAMILY_GGA) ||
+       (self->c_functional.family == XC_FAMILY_GGA))
+      ||
+      ((self->x_functional.family == XC_FAMILY_HYB_GGA) ||
+       (self->c_functional.family == XC_FAMILY_HYB_GGA)))
     {
       a2_g = DOUBLEP(a2_array);
       v2rhosigma_g = DOUBLEP(v2rhosigma_array);
@@ -1037,8 +1145,11 @@ lxcXCFunctional_CalculateFXC_FD_SpinPaired(lxcXCFunctionalObject *self, PyObject
       if (n < NMIN)
         n = NMIN;
       double a2 = 0.0; /* initialize for lda */
-      if ((self->x_functional.family == XC_FAMILY_GGA) ||
-          (self->c_functional.family == XC_FAMILY_GGA))
+      if (((self->x_functional.family == XC_FAMILY_GGA) ||
+           (self->c_functional.family == XC_FAMILY_GGA))
+          ||
+          ((self->x_functional.family == XC_FAMILY_HYB_GGA) ||
+           (self->c_functional.family == XC_FAMILY_HYB_GGA)))
         {
           a2 = a2_g[g];
         }
@@ -1127,8 +1238,11 @@ lxcXCFunctional_CalculateFXC_FD_SpinPaired(lxcXCFunctionalObject *self, PyObject
         v2sigma2_c[4] = derivative_c[3][4]; // XC_POLARIZED /* ab_bb */
         v2sigma2_c[5] = derivative_c[4][4]; // XC_POLARIZED /* bb_bb */
       }
-      if ((self->x_functional.family == XC_FAMILY_GGA) ||
-          (self->c_functional.family == XC_FAMILY_GGA))
+      if (((self->x_functional.family == XC_FAMILY_GGA) ||
+           (self->c_functional.family == XC_FAMILY_GGA))
+          ||
+          ((self->x_functional.family == XC_FAMILY_HYB_GGA) ||
+           (self->c_functional.family == XC_FAMILY_HYB_GGA)))
         {
           v2rhosigma_g[g] = v2rhosigma_x[0] + v2rhosigma_c[0];
           v2sigma2_g[g] = v2sigma2_x[0] + v2sigma2_c[0];
@@ -1172,6 +1286,9 @@ lxcXCFunctional_XCEnergy(lxcXCFunctionalObject *self, PyObject *args)
     case XC_FAMILY_GGA:
       self->get_vxc_x = get_vxc_gga;
       break;
+    case XC_FAMILY_HYB_GGA:
+      self->get_vxc_x = get_vxc_gga;
+      break;
     case XC_FAMILY_MGGA:
       self->get_vxc_x = get_vxc_mgga;
       break;
@@ -1186,6 +1303,9 @@ lxcXCFunctional_XCEnergy(lxcXCFunctionalObject *self, PyObject *args)
       self->get_vxc_c = get_vxc_lda;
       break;
     case XC_FAMILY_GGA:
+      self->get_vxc_c = get_vxc_gga;
+      break;
+    case XC_FAMILY_HYB_GGA:
       self->get_vxc_c = get_vxc_gga;
       break;
     case XC_FAMILY_MGGA:
@@ -1256,6 +1376,17 @@ lxcXCFunctional_XCEnergy(lxcXCFunctionalObject *self, PyObject *args)
     dExdsigma2 = derivative_x[4];
     dExdtaua   = derivative_x[5];
     dExdtaub   = derivative_x[6];
+    if (self->c_functional.family == XC_FAMILY_HYB_GGA)
+      {
+        // MDTMP - a hack: HYB_GGA handle h1 internally in c_functional
+        derivative_x[0] = 0.0;
+        derivative_x[1] = 0.0;
+        derivative_x[2] = 0.0;
+        derivative_x[3] = 0.0;
+        derivative_x[4] = 0.0;
+        derivative_x[5] = 0.0;
+        derivative_x[6] = 0.0;
+      }
   }
   /* calculate correlation */
   if (self->c_functional.family != XC_FAMILY_UNKNOWN) {
@@ -1290,6 +1421,8 @@ lxcXCFunctional_XCEnergy(lxcXCFunctionalObject *self, PyObject *args)
 static PyMethodDef lxcXCFunctional_Methods[] = {
   {"is_gga",
    (PyCFunction)lxcXCFunctional_is_gga, METH_VARARGS, 0},
+  {"is_hyb_gga",
+   (PyCFunction)lxcXCFunctional_is_hyb_gga, METH_VARARGS, 0},
   {"is_mgga",
    (PyCFunction)lxcXCFunctional_is_mgga, METH_VARARGS, 0},
   {"calculate_spinpaired",
@@ -1364,6 +1497,9 @@ PyObject * NewlxcXCFunctionalObject(PyObject *obj, PyObject *args)
     case XC_FAMILY_GGA:
       XC(gga_init)(&(self->x_functional.gga_func), x, nspin);
       break;
+    case XC_FAMILY_HYB_GGA:
+      XC(hyb_gga_init)(&(self->x_functional.hyb_gga_func), x, nspin);
+      break;
     case XC_FAMILY_MGGA:
       XC(mgga_init)(&(self->x_functional.mgga_func), x, nspin);
       break;
@@ -1380,6 +1516,9 @@ PyObject * NewlxcXCFunctionalObject(PyObject *obj, PyObject *args)
       break;
     case XC_FAMILY_GGA:
       XC(gga_init)(&(self->c_functional.gga_func), c, nspin);
+      break;
+    case XC_FAMILY_HYB_GGA:
+      XC(hyb_gga_init)(&(self->c_functional.hyb_gga_func), c, nspin);
       break;
     case XC_FAMILY_MGGA:
       XC(mgga_init)(&(self->c_functional.mgga_func), c, nspin);

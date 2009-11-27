@@ -51,6 +51,7 @@ class XCFunctional:
         self.parameters = parameters
         self.mgga = False
         self.gga = False
+        self.hyb_gga = False
         self.gllb = False
         self.orbital_dependent = False
         self.uses_libxc = False
@@ -142,6 +143,21 @@ class XCFunctional:
             code = 'lxc' # libxc
             self.uses_libxc = True
             xcname = 'X_PW91-C_PW91'
+        elif xcname == 'BP86':
+            assert (nspins is not None)
+            code = 'lxc' # libxc
+            self.uses_libxc = True
+            xcname = 'X_B88-C_P86'
+        elif xcname == 'BPW91':
+            assert (nspins is not None)
+            code = 'lxc' # libxc
+            self.uses_libxc = True
+            xcname = 'X_B88-C_PW91'
+        elif xcname == 'HCTH407':
+            assert (nspins is not None)
+            code = 'lxc' # libxc
+            self.uses_libxc = True
+            xcname = 'None-XC_HCTH_407'# MDTMP a hack: should be 'XC_HCTH_407'
         elif xcname == 'PBE0':
             assert (nspins is not None)
             code = 'lxc' # libxc
@@ -151,6 +167,33 @@ class XCFunctional:
             self.hybrid = 0.25
             if self.setupname is None:
                 self.setupname = 'PBE'
+        elif xcname == 'PBEH':
+            assert (nspins is not None)
+            code = 'lxc' # libxc
+            self.uses_libxc = True
+            xcname = 'None-XC_PBEH' # MDTMP a hack: should be 'XC_PBEH'
+            self.orbital_dependent = True
+            self.hybrid = 0.25
+            if self.setupname is None:
+                self.setupname = 'PBE'
+        elif xcname == 'B3LYP':
+            assert (nspins is not None)
+            code = 'lxc' # libxc
+            self.uses_libxc = True
+            xcname = 'None-XC_B3LYP'# MDTMP a hack: should be 'XC_B3LYP'
+            self.orbital_dependent = True
+            self.hybrid = 0.20
+            if self.setupname is None:
+                self.setupname = 'BLYP'
+        elif xcname == 'B3PW91':
+            assert (nspins is not None)
+            code = 'lxc' # libxc
+            self.uses_libxc = True
+            xcname = 'None-XC_B3PW91'# MDTMP a hack: should be 'XC_B3PW91'
+            self.orbital_dependent = True
+            self.hybrid = 0.20
+            if self.setupname is None:
+                self.setupname = 'PW91'
         # End of: Abbreviations for common functionals from libxc
         elif xcname in ['vdW-DF', 'vdWDF']:
             code = 'vdW-DF'
@@ -281,8 +324,12 @@ class XCFunctional:
                 )
             self.mgga = bool(self.xc.is_mgga())
             self.gga = bool(self.xc.is_gga())
+            self.hyb_gga = bool(self.xc.is_hyb_gga())
             if self.gga:
                 self.maxDerivativeLevel=1
+            if self.hyb_gga:
+                self.maxDerivativeLevel=1
+                self.gga = True
         else:
 ###            self.xcname = xcname # MDTMP: to get the xcname name for setup
             self.xc = _gpaw.XCFunctional(code, self.gga)
@@ -308,7 +355,7 @@ class XCFunctional:
     # Initialize the GLLB functional
     def initialize_gllb(self, paw):
         self.xc.pass_stuff(paw)
-        
+
     def set_non_local_things(self, density, hamiltonian, wfs, atoms,
                              energy_only=False):
 
@@ -317,7 +364,7 @@ class XCFunctional:
             self.xc.set_non_local_things(density, hamiltonian, wfs, atoms,
                                          energy_only)
             return
-            
+
         if not self.orbital_dependent:
             return
 
@@ -419,7 +466,7 @@ class XCFunctional:
         if self.timer is not None:
             self.timer.start('Local xc')
         if self.mgga:
-            #dedtau on the grid not used, only in xc_correction 
+            #dedtau on the grid not used, only in xc_correction
             self.xc.calculate_spinpolarized(
                 e_g.ravel(), na_g, va_g, nb_g, vb_g, a2_g, aa2_g, ab2_g,
                 deda2_g, dedaa2_g, dedab2_g, taua_g, taub_g, dedtaua_g,
@@ -478,10 +525,10 @@ class XCFunctional:
         (exc, ex, ec,
          d_exc[0], d_exc[1],
          d_exc[2], d_exc[3], d_exc[4],
-         d_exc[5], d_exc[6], 
+         d_exc[5], d_exc[6],
          d_ex[0], d_ex[1],
          d_ex[2], d_ex[3], d_ex[4],
-         d_ex[5], d_ex[6], 
+         d_ex[5], d_ex[6],
          d_ec[0], d_ec[1],
          d_ec[2], d_ec[3], d_ec[4],
          d_ec[5], d_ec[6]) = self.xc.calculate_xcenergy(na, nb, sigma0,
@@ -543,7 +590,7 @@ class XC3DGrid(XCGrid):
         # happens, such that XC3DGrid objects are not reusable wrt. change
         # of xc functional.
         if xcfunc.gga or xcfunc.mgga:
-            self.ddr_operator_objects = [Gradient(gd, c, allocate=False) 
+            self.ddr_operator_objects = [Gradient(gd, c, allocate=False)
                                          for c in range(3)]
             self.ddr = [obj.apply for obj in self.ddr_operator_objects]
             self.dndr_cg = None
@@ -556,7 +603,7 @@ class XC3DGrid(XCGrid):
                 self.ab2_g = None
                 self.dedaa2_g = None
                 self.dedab2_g = None
-            
+
         self.e_g = None
         if self.allocated:
             # If arrays were already allocated, make sure this is still true
@@ -590,10 +637,10 @@ class XC3DGrid(XCGrid):
                              [[setup.tauct] for setup in wfs.setups],
                              forces=True, cut=True)
             self.ddrG_operator_objects = [Gradient(wfs.gd, c, dtype=wfs.dtype,
-                                                   allocate=True) 
+                                                   allocate=True)
                                           for c in range(3)]
             self.ddrG = [obj.apply for obj in self.ddrG_operator_objects]
-                
+
         self.e_g = gd.empty()
         self.allocated = True
 
@@ -626,7 +673,7 @@ class XC3DGrid(XCGrid):
             # For periodic boundary conditions
             if wfs.symmetry is not None:
                 wfs.symmetry.symmetrize(self.taut_sG[0], wfs.gd)
-                    
+
             # Interpolate pseudo electron kinetic density to the fine grid:
             self.xcfunc.interpolator.apply(self.taut_sG[0], self.taut_sg[0])
 
@@ -687,12 +734,12 @@ class XC3DGrid(XCGrid):
             if wfs.symmetry is not None:
                 for taut_G in self.taut_sG:
                     wfs.symmetry.symmetrize(taut_G, wfs.gd)
-                    
+
             # Interpolate pseudo electron kinetic density to the fine grid:
             for s in range(self.nspins):
                 self.xcfunc.interpolator.apply(self.taut_sG[s],
                                                self.taut_sg[s])
-                
+
             self.aa2_g.fill(0.0)
             self.ab2_g.fill(0.0)
             self.a2_g.fill(0.0)
@@ -790,7 +837,7 @@ class XC3DGrid(XCGrid):
             self.xcfunc.restrictor.apply(self.dedtau_sg[s], self.dedtau_G)
             for psit_G, Htpsit_G in zip(psit_nG, Htpsit_nG):
                 for c in range(3):
-                    if psit_G.dtype == float:                        
+                    if psit_G.dtype == float:
                         self.ddrG[c](psit_G, self.dpsidr_G)
                     else:
                         self.ddrG[c](a_G,dpsidr_G, kpt.phase_cd)
@@ -798,7 +845,7 @@ class XC3DGrid(XCGrid):
                     axpy(-1.0, self.tmp_G, Htpsit_G)
         if self.xcfunc.xcname.endswith('-SIC'):
             self.xcfunc.add_non_local_terms(psit_nG, Htpsit_nG, s)
-        
+
     def estimate_memory(self, mem):
         bytecount = self.gd.bytecount()
         mem.subnode('Local density arrays', bytecount) # from e_g

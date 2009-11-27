@@ -22,12 +22,12 @@ def equal(x, y, tolerance=0, fail=True, msg=''):
         else:
             sys.stderr.write('WARNING: %s\n' % msg)
 
-def gen(symbol, name=None, **kwargs):
+def gen(symbol, exx=False, name=None, **kwargs):
     if mpi.rank == 0:
         if 'scalarrel' not in kwargs:
             kwargs['scalarrel'] = True
         g = Generator(symbol, **kwargs)
-        g.run(name=name, use_restart_file=False, **parameters[symbol])
+        g.run(exx=exx, name=name, use_restart_file=False, **parameters[symbol])
     mpi.world.barrier()
     if setup_paths[0] != '.':
         setup_paths.insert(0, '.')
@@ -169,6 +169,7 @@ tests = [
     'parallel/n2.py',
     #'dscf_forces.py',
     'lrtddft3.py'
+    'AA_exx_enthalpy.py',
     ]
 
 exclude = []
@@ -185,13 +186,19 @@ if mpi.size > 2:
     exclude += ['neb.py']
 
 if mpi.size != 4:
-    exclude += ['parallel/scalapack.py', 'parallel/scalapack2.py']
+    exclude += ['parallel/scalapack.py',
+                'parallel/scalapack2.py',
+                ]
 
 if mpi.size != 4 or not gpaw.debug:
     exclude += ['parallel/n2.py']
 
 if mpi.size == 8:
     exclude += ['transport.py']
+
+if mpi.size < 4:
+    exclude += ['AA_exx_enthalpy.py',
+                ]
 
 for test in exclude:
     if test in tests:

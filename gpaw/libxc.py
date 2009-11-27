@@ -54,10 +54,12 @@ class Libxc:
         from gpaw.libxc_functionals import libxc_functionals # MDTMP hard fix!
         value = -1 # assume no corresponding define found
         for key in libxc_functionals.keys():
-            # compare with the identifier after second underline
+            # skip LDA, and GGA identifiers
             define = key
-            define = define[define.find('_')+1:]
-            define = define[define.find('_')+1:]
+            if define.find('LDA') != -1:
+                define = define[define.find('LDA')+len('LDA')+1:]
+            if define.find('GGA') != -1:
+                define = define[define.find('GGA')+len('GGA')+1:]
             if identifier == define:
                 # extract the value
                 value = int(libxc_functionals[key])
@@ -90,8 +92,9 @@ class Libxc:
     def lxc_define_filter(self, s):
         return (
             s.startswith('#define  XC_LDA') or
-            s.startswith('#define  XC_GGA') or 
-            s.startswith('#define  XC_MGGA') 
+            s.startswith('#define  XC_GGA') or
+            s.startswith('#define  XC_MGGA') or
+            s.startswith('#define  XC_HYB_GGA')
             ##            s.startswith('#define  XC_MGGA') or  # MDTMP
             ##            s.startswith('#define  XC_LCA')  # MDTMP
             ## End of: XC_MGGA and XC_LCA not implemented yet  # MDTMP

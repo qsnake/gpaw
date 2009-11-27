@@ -3,13 +3,12 @@ from gpaw import setup_paths
 from math import pi
 import numpy as np
 
-if setup_paths[0] != '.':
-    setup_paths.insert(0, '.')
-
 nspins = 2
 for name in ['LDA', 'PBE', 'revPBE', 'RPBE',
              'LDAx', 'revPBEx', 'RPBEx',
-             'None-C_PW','TPSS','M06L']:
+             'None-C_PW', 'TPSS', 'M06L',
+             'HCTH407',
+             ]:
     libxc = XCFunctional(name, nspins)
     lxc_xc = libxc.calculate_xcenergy
     calc_sp = libxc.calculate_spinpolarized
