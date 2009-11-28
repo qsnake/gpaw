@@ -168,7 +168,7 @@ tests = [
     'parallel/lcao_projections.py',
     'parallel/n2.py',
     #'dscf_forces.py',
-    'lrtddft3.py'
+    'lrtddft3.py',
     'AA_exx_enthalpy.py',
     ]
 
