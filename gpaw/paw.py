@@ -666,10 +666,7 @@ class PAW(PAWTextOutput):
     def converge_wave_functions(self):
         """Converge the wave-functions if not present."""
 
-        if isinstance(self.wfs, EmptyWaveFunctions):
-            self.initialize()
-        else:
-            self.wfs.initialize_wave_functions_from_restart_file()
+        self.wfs.initialize_wave_functions_from_restart_file()
 
         no_wave_functions = (self.wfs.kpt_u[0].psit_nG is None)
         converged = self.scf.check_convergence(self.density,
