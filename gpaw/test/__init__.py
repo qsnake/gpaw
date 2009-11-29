@@ -142,7 +142,6 @@ tests = [
     'xctest.py',
     'si_xas.py',
     'tpss.py',
-    'atomize.py',
     'nsc_MGGA.py',
     'si_primitive.py',
     '8Si.py',
