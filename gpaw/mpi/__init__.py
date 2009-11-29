@@ -444,7 +444,7 @@ class SerialCommunicator:
     size = 1
     rank = 0
     def sum(self, array, root=-1):
-        if isinstance(array, (float, complex)):
+        if isinstance(array, (int, float, complex)):
             return array
 
     def scatter(self, s, r, root):
