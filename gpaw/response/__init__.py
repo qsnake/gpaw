@@ -92,6 +92,7 @@ class CHI:
         self.nS = self.nLCAO **2
         self.nG = calc.get_number_of_grid_points()
         self.nG0 = self.nG[0] * self.nG[1] * self.nG[2]
+        self.h_c = calc.gd.h_c
 
         print 
         print 'Parameters used:'
@@ -106,6 +107,7 @@ class CHI:
         print 'Number of LCAO orbitals:', self.nLCAO
         print 'Number of pair orbitals:', self.nS
         print 'Number of Grid points / G-vectors, and in total:', self.nG, self.nG0
+        print 'Grid spacing (a.u.):', self.h_c
         print 
 
         print 'Eigenvalues (eV):'
@@ -119,7 +121,7 @@ class CHI:
         print
 
         # whether to use hilbert tranform
-        self.HilbertTrans = False
+        self.HilbertTrans = True
         try:
             chi0_wSS = np.zeros((self.Nw, self.nS, self.nS), dtype=complex) 
         except:
@@ -166,6 +168,7 @@ class CHI:
             LCAO coefficients, (nkpt,nband,nLCAO)
         """
 
+        print 'Calculating chi0 directly'
         chi0_SS = np.zeros((self.nS, self.nS), dtype=complex)
 
         if self.nkpt > 1:
