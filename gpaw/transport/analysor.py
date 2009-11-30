@@ -237,10 +237,10 @@ class Transport_Analysor:
 
     def get_central_scattering_states(self, s, q, e):
         nbloch = self.nk_on_energy[s, q, e]
-        return self.total_scattering_t[s, q, e, :nbloch, :nbloch], \
-               self.total_scattering_vc[s, q, e, :nbloch], \
-               self.total_scattering_k[s, q, e, :nbloch],  \
-               self.total_scattering_vl[s, q, e, :, :nbloch]
+        return self.total_scattering_t[s, q, e, :, :, :nbloch, :nbloch], \
+               self.total_scattering_vc[s, q, e, :, :, :nbloch], \
+               self.total_scattering_k[s, q, e, :, :nbloch],  \
+               self.total_scattering_vl[s, q, e, :, :, :nbloch]
            
     def set_default_analysis_parameters(self):
         p = {}
@@ -869,7 +869,7 @@ class Transport_Analysor:
         
         #tc_array, dos_array = self.collect_transmission_and_dos()
         mem_cost = maxrss()
-        if (not self.tp.non_sc) and (not self.tp.analysis_mode) :  
+        if (not self.tp.non_sc) and (self.tp.analysis_mode >= 0) :  
             time_cost = self.ele_step_time_collect()
         else:
             time_cost = None
@@ -896,7 +896,7 @@ class Transport_Analysor:
             current = self.calculate_current2(0)
         else:
             current = 0
-        if tp.non_sc or self.tp.analysis_mode:
+        if tp.non_sc or self.tp.analysis_mode < 0:
             f = None
         else:       
             f = tp.calculate_force()
@@ -907,7 +907,7 @@ class Transport_Analysor:
         step.initialize_data(tp.bias, tp.gate, self.energies, self.lead_pairs,
                              tc_array, dos_array, dv, current, tp.lead_fermi, time_cost, f, charge)
  
-        if tp.analysis_mode == 2:  
+        if abs(tp.analysis_mode) >= 2:  
             self.reset_central_scattering_states()
             eig_tc_lead, eig_vc_lead = self.collect_lead_scattering_channels()
             tp_tc, tp_vc, lead_k, lead_vk = self.collect_scat_scattering_channels()
@@ -1111,7 +1111,7 @@ class Transport_Analysor:
     def bias_step_time_collect(self):
         timers = self.tp.timer.timers
         cost = {}
-        if not self.tp.non_sc and not self.tp.analysis_mode:
+        if not self.tp.non_sc and self.tp.analysis_mode >= 0:
             cost['init scf'] = timers['init scf', ]
         return cost
         
