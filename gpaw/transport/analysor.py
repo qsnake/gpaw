@@ -44,7 +44,7 @@ class Transmission_Info:
         
     def initialize_data2(self, eig_tc_lead, eig_vc_lead, tp_tc, tp_vc,
                          dos_g, project_tc, left_tc, left_vc, lead_k, lead_vk,
-                         tp_eig_w, tp_eig_v, tp_eig_vc):
+                         tp_eig_w, tp_eig_v, tp_eig_vc, nk_on_energy):
         self.eig_tc_lead = eig_tc_lead
         self.eig_vc_lead = eig_vc_lead
         self.tp_tc = tp_tc
@@ -58,6 +58,16 @@ class Transmission_Info:
         self.tp_eig_w = tp_eig_w
         self.tp_eig_v = tp_eig_v
         self.tp_eig_vc = tp_eig_vc
+        self.nk_on_energy = nk_on_energy
+
+    def initialize_data3(self, lead_s00, lead_s01, lead_h00, lead_h01, s00, h00, lead_fermi):
+        self.lead_s00 = lead_s00
+        self.lead_s01 = lead_s01
+        self.lead_h00 = lead_h00
+        self.lead_h01 = lead_h01
+        self.s00 = s00
+        self.h00 = h00
+        self.lead_fermi = lead_fermi
 
 class Electron_Step_Info:
     # member variables:
@@ -165,7 +175,8 @@ class Transport_Analysor:
                                   self.project_atoms_in_device, setups)
         if self.isolate_atoms is not None:
             self.calculate_isolate_molecular_levels()
-        self.overhead_data_saved = False              
+        self.overhead_data_saved = False
+        self.nk_on_energy = None
  
     def save_overhead_data(self):
         contour_parameters = {}
@@ -780,11 +791,11 @@ class Transport_Analysor:
                         sk2.append(self.lead_k_matrix(i, s, q, k[j][m2], 'S'))
                     for m1 in range(t0.shape[0]):
                         for m2 in range(t0.shape[1]):
-                            w1 = (vl[j][:, m1].conj() * np.dot(sk1[m1] * vl[j][:, m1])).real
+                            w1 = (vl[j][:, m1].conj() * np.dot(sk1[m1], vl[j][:, m1])).real
                             w1[find(w1 < 0)] = 0
                             w1 /= np.sum(w1)
                             
-                            w2 = (vl[i][:, m2].conj() * np.dot(sk2[m2] * vl[i][:, m2])).real
+                            w2 = (vl[i][:, m2].conj() * np.dot(sk2[m2], vl[i][:, m2])).real
                             w2[find(w2 < 0)] = 0                        
                             w2 /= np.sum(w2)
                             
@@ -910,7 +921,7 @@ class Transport_Analysor:
         step.initialize_data(tp.bias, tp.gate, self.energies, self.lead_pairs,
                              tc_array, dos_array, dv, current, tp.lead_fermi, time_cost, f, charge)
  
-        if abs(tp.analysis_mode) >= 2:  
+        if tp.analysis_mode == 2:  
             self.reset_central_scattering_states()
             eig_tc_lead, eig_vc_lead = self.collect_lead_scattering_channels()
             tp_tc, tp_vc, lead_k, lead_vk = self.collect_scat_scattering_channels()
@@ -923,7 +934,12 @@ class Transport_Analysor:
             step.initialize_data2(eig_tc_lead, eig_vc_lead, tp_tc, tp_vc,
                                            dos_g, project_tc, left_tc, left_vc, lead_k, lead_vk,
                                            tp_eig_w, tp_eig_v, tp_eig_vc)
-       
+        elif tp.analysis_mode == -2:
+            lead_s00, lead_s01, lead_h00, lead_h01 = self.collect_lead_hs()
+            s00, h00 = self.collect_scat_hs()
+            step.initialize_data3(lead_s00, lead_s01, lead_h00,
+                                                         lead_h01, s00, h00, tp.lead_fermi)
+            
         step.ele_steps = self.ele_steps
         del self.ele_steps
         self.ele_steps = []
@@ -1110,7 +1126,61 @@ class Transport_Analysor:
         kpt_comm.all_gather(local_v_array, v_array)        
         kpt_comm.all_gather(local_vc_array, vc_array) 
         return w_array, v_array, vc_array        
+
+    def collect_lead_hs(self):
+        tp = self.tp
+        ns, npk = tp.nspins, tp.npk
+        dtype = tp.wfs.dtype
+        nl = tp.lead_num
+        nb = tp.nblead[0]
+        
+        s00 = np.zeros([npk, nl, nb, nb], dtype)
+        s01 = np.zeros([npk, nl, nb, nb], dtype)        
+        h00 = np.zeros([ns, npk, nl, nb, nb], dtype)
+        h01 = np.zeros([ns, npk, nl, nb, nb], dtype)
+
+        ns, npk = tp.my_nspins, tp.my_npk
+        local_s00 = np.zeros([npk, nl, nb, nb], dtype)
+        local_s01 = np.zeros([npk, nl, nb, nb], dtype)        
+        local_h00 = np.zeros([ns, npk, nl, nb, nb], dtype)
+        local_h01 = np.zeros([ns, npk, nl, nb, nb], dtype)        
+        for q in range(npk):
+            for l in range(nl):
+                local_s00[q, l] = tp.lead_hsd[l].S[q].recover()
+                local_s01[q, l] = tp.lead_couple_hsd[l].S[q].recover()                
+                for s in range(ns):
+                    local_h00[s, q, l] = tp.lead_hsd[l].H[s][q].recover()
+                    local_h01[s, q, l] = tp.lead_couple_hsd[l].H[s][q].recover()
+        
+        kpt_comm = tp.wfs.kpt_comm
+        kpt_comm.all_gather(local_s00, s00)
+        kpt_comm.all_gather(local_s01, s01)        
+        kpt_comm.all_gather(local_h00, h00)                     
+        kpt_comm.all_gather(local_h01, h01)                
+        return s00, s01, h00, h01
     
+    def collect_scat_hs(self):
+        tp = self.tp
+        ns, npk = tp.nspins, tp.npk
+        dtype = tp.wfs.dtype
+        nb = tp.nbmol
+        
+        s00 = np.zeros([npk, nb, nb], dtype)
+        h00 = np.zeros([ns, npk, nb, nb], dtype)
+
+        ns, npk = tp.my_nspins, tp.my_npk
+        local_s00 = np.zeros([npk, nb, nb], dtype)
+        local_h00 = np.zeros([ns, npk, nb, nb], dtype)
+     
+        for q in range(npk):
+            local_s00[q] = tp.hsd.S[q].recover()
+            for s in range(ns):
+                local_h00[s, q] = tp.hsd.H[s][q].recover()
+        kpt_comm = tp.wfs.kpt_comm
+        kpt_comm.all_gather(local_s00, s00)
+        kpt_comm.all_gather(local_h00, h00)                     
+        return s00, h00       
+        
     def bias_step_time_collect(self):
         timers = self.tp.timer.timers
         cost = {}
