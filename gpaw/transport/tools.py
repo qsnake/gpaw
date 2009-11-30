@@ -1461,9 +1461,13 @@ def eig_states_norm(orbital, s_mm):
                 d_mm = np.dot(d_mm, orbital)
     for i in range(nstates):
         orbital[:, i] /= np.sqrt(d_mm[i, i])
-        
-    error = np.max(np.dot(np.dot(orbital.T.conj(), s_mm), orbital) -
-              np.eye(nstates)) / nstates   
+
+    if orbital.shape[-1] == 0:
+        error = 0
+    else:
+        error = np.max(np.dot(np.dot(orbital.T.conj(), s_mm), orbital) -
+                   np.eye(nstates)) / nstates
+  
     if  abs(error) > norm_error:
         print 'Warning! Normalization error %f' % error
     return orbital
