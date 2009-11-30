@@ -94,7 +94,7 @@ class Timer:
         self.timers[names] += time.time()
             
     def get_time(self, *names):
-        print self.timers, names
+#        print self.timers, names
         return self.timers[names]
                 
     def write(self, out=sys.stdout):
