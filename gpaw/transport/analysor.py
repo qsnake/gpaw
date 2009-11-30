@@ -99,7 +99,7 @@ class Transport_Analysor:
         self.n_ele_step = 0
         self.n_bias_step = 0
         self.n_ion_step = 0
-        self.max_k_on_energy = 10
+        self.max_k_on_energy = 15
         self.matrix_foot_print = False
         self.reset = False
         self.scattering_states_initialized = False
@@ -165,13 +165,43 @@ class Transport_Analysor:
                                   self.project_atoms_in_device, setups)
         if self.isolate_atoms is not None:
             self.calculate_isolate_molecular_levels()
-
+        self.overhead_data_saved = False              
+ 
+    def save_overhead_data(self):
+        contour_parameters = {}
+        cp = contour_parameters
+        cp['neintmethod'] = self.tp.neintmethod
+        cp['neintstep'] = self.tp.neintstep
+        cp['lead_fermi'] = self.tp.lead_fermi
+        cp['eqinttol'] = self.tp.intctrl.eqinttol
+        cp['neinttol'] = self.tp.intctrl.neinttol
+        
+        basis_information = {}
+        bi = basis_information
+        bi['orbital_indices'] = self.tp.orbital_indices
+        bi['lead_orbital_indices'] = self.tp.lead_orbital_indices
+        bi['ll_index'] = self.tp.hsd.S[0].ll_index
+        bi['ex_ll_index'] = self.tp.hsd.S[0].ex_ll_index
+        
+        atoms = self.tp.atoms.copy()
+        fd = file('analysis_overhead', 'wb')
+        pickle.dump((atoms, basis_information, contour_parameters), fd, 2)
+        fd.close()
+      
     def reset_central_scattering_states(self):
         total_t = []
         total_vc = []
         total_k = []
         total_vl = []
         ns, npk = self.tp.my_nspins, self.tp.my_npk
+        
+        nl = self.tp.lead_num
+        nb = np.max(self.tp.nblead)
+        nbmol = self.tp.nbmol
+        mkoe = self.max_k_on_energy
+        dtype = complex
+        self.nk_on_energy = np.zeros([ns, npk, len(self.energies)], dtype=int)
+       
         for s in range(ns):
             total_t.append([])
             total_vc.append([])
@@ -182,24 +212,36 @@ class Transport_Analysor:
                 total_vc[s].append([])
                 total_k[s].append([])
                 total_vl[s].append([])
-                for energy in self.energies:
+                for e, energy in enumerate(self.energies):
                     t, vc, k, vl = self.central_scattering_states(
                                                             energy.real, s, pk)
-                    total_t[s][pk].append(t)
-                    total_vc[s][pk].append(vc)                    
-                    total_k[s][pk].append(k)
-                    total_vl[s][pk].append(vl)
+                    t_array = np.zeros([nl, nl, mkoe, mkoe], dtype)
+                    vc_array = np.zeros([nl, nbmol, mkoe], dtype)
+                    k_array = np.zeros([nl, mkoe], dtype)
+                    vl_array = np.zeros([nl, nb, mkoe], dtype)
+                    nbl, nbloch = vl.shape[-2:]  
+                    self.nk_on_energy[s, pk, e] = nbloch
+                    t_array[:, :, :nbloch, :nbloch] = t
+                    vc_array[:, :, :nbloch] = vc
+                    k_array[:, :nbloch] = k
+                    vl_array[:, :nbl, :nbloch] = vl                 
+
+                    total_t[s][pk].append(t_array)
+                    total_vc[s][pk].append(vc_array)                    
+                    total_k[s][pk].append(k_array)
+                    total_vl[s][pk].append(vl_array)
         self.total_scattering_t = np.array(total_t)            
         self.total_scattering_vc = np.array(total_vc)
         self.total_scattering_k = np.array(total_k)
         self.total_scattering_vl = np.array(total_vl)           
 
     def get_central_scattering_states(self, s, q, e):
-        return self.total_scattering_t[s, q, e], \
-               self.total_scattering_vc[s, q, e], \
-               self.total_scattering_k[s, q, e],  \
-               self.total_scattering_vl[s, q, e]
-            
+        nbloch = self.nk_on_energy[s, q, e]
+        return self.total_scattering_t[s, q, e, :nbloch, :nbloch], \
+               self.total_scattering_vc[s, q, e, :nbloch], \
+               self.total_scattering_k[s, q, e, :nbloch],  \
+               self.total_scattering_vl[s, q, e, :, :nbloch]
+           
     def set_default_analysis_parameters(self):
         p = {}
         p['energies'] = np.linspace(-3, 3, 61) 
@@ -837,6 +879,9 @@ class Transport_Analysor:
         self.n_ele_step += 1
       
     def save_bias_step(self):
+        if not self.overhead_data_saved:
+            self.save_overhead_data()
+            self.overhead_data_saved = True
         tp = self.tp
         step = Transmission_Info(self.n_ion_step, self.n_bias_step)
         time_cost = self.bias_step_time_collect()
@@ -862,16 +907,17 @@ class Transport_Analysor:
         step.initialize_data(tp.bias, tp.gate, self.energies, self.lead_pairs,
                              tc_array, dos_array, dv, current, tp.lead_fermi, time_cost, f, charge)
  
-        self.reset_central_scattering_states()
-        eig_tc_lead, eig_vc_lead = self.collect_lead_scattering_channels()
-        tp_tc, tp_vc, lead_k, lead_vk = self.collect_scat_scattering_channels()
-        tp_eig_w, tp_eig_v, tp_eig_vc = self.collect_eigen_transport_channels() 
+        if tp.analysis_mode == 2:  
+            self.reset_central_scattering_states()
+            eig_tc_lead, eig_vc_lead = self.collect_lead_scattering_channels()
+            tp_tc, tp_vc, lead_k, lead_vk = self.collect_scat_scattering_channels()
+            tp_eig_w, tp_eig_v, tp_eig_vc = self.collect_eigen_transport_channels() 
         
-        project_tc = self.collect_project_transmission()
-        dos_g = self.collect_realspace_dos()
-        left_tc, left_vc = self.collect_left_channels()
+            project_tc = self.collect_project_transmission()
+            dos_g = self.collect_realspace_dos()
+            left_tc, left_vc = self.collect_left_channels()
  
-        step.initialize_data2(eig_tc_lead, eig_vc_lead, tp_tc, tp_vc,
+            step.initialize_data2(eig_tc_lead, eig_vc_lead, tp_tc, tp_vc,
                                            dos_g, project_tc, left_tc, left_vc, lead_k, lead_vk,
                                            tp_eig_w, tp_eig_v, tp_eig_vc)
        
@@ -953,7 +999,7 @@ class Transport_Analysor:
             kpt_comm.all_gather(local_vk_array, vk_array)            
             return tc_array, vc_array, k_array, vk_array 
         else:
-            return None, None        
+            return None, None, None, None        
 
     def collect_charge(self):
         tp = self.tp
@@ -1264,6 +1310,14 @@ class Transport_Plotter:
         self.my_options = False
         self.show_window = False
 
+    def read_overhead(self):
+        fd = file('analysis_overhead', 'r')
+        atoms, basis_information, contour_information = pickle.load(fd)
+        fd.close()
+        self.atoms = atoms
+        self.basis = basis_information
+        self.contour = contour_information
+        
     def plot_setup(self):
         from matplotlib import rcParams
         rcParams['xtick.labelsize'] = 18
@@ -1652,7 +1706,7 @@ class Transport_Plotter:
         
         for step in self.bias_steps:
             bias.append(step.bias[0] - step.bias[1])
-            current.append(np.real(step.current))
+            current.append(-np.real(step.current))
         import pylab as p
         unit = 6.624 * 1e3 
         current = np.array(current) / (Hartree * 2 * np.pi)
@@ -1844,7 +1898,37 @@ class Transport_Plotter:
             p.plot(bias, forces)
         self.set_options('Bias(V)', 'Force(au.)', legends)
         self.show(p)
-        
+ 
+    def plot_charge_on_bias(self, atom_indices=None, orbital_type=None,
+                                                bias_indices=None):
+        if bias_indices == None:
+            bias_indices = range(len(self.bias_steps))           
+        if atom_indices == None:
+            atom_indices = range(len(self.atoms))
+        if orbital_type == None:
+            orbital_type = 'all'
+        import pylab as p
+        charge = []
+        bias = []
+        orbital_indices = self.basis['orbital_indices']
+        orbital_map = {'s': 0, 'p': 1, 'd': 2, 'f': 3}
+        for i in bias_indices:
+            bias.append(self.bias_steps[i].bias[0] -
+                                              self.bias_steps[i].bias[1])
+            cc = 0
+            for j in atom_indices:
+                atom_index = orbital_indices[:, 0] - j == 0
+                if orbital_type == 'all':
+                    orbital_index = np.arange(orbital_indices.shape[0])
+                else:
+                    orbital_index = orbital_indices[:, 1] - orbital_map[
+                                                     orbital_type] ==  0 
+                cc += np.sum(self.bias_steps[i].charge * atom_index * orbital_index)
+            charge.append(cc)
+        p.plot(bias, cc)
+        self.set_options('Bias(V)', 'Charge(au.)')
+        self.show(p)
+    
         
 
 
