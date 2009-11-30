@@ -344,7 +344,7 @@ class Transport(GPAW):
         p['data_file'] = None
         p['analysis_data_list'] = []
         p['save_bias_data'] = False
-        p['analysis_mode'] = False
+        p['analysis_mode'] = 0
         p['neintmethod'] = 0
         p['neintstep'] = 0.02
         
@@ -505,7 +505,7 @@ class Transport(GPAW):
             self.set_extended_positions()
             self.timer.stop('surround set_position')
         
-        if not self.analysis_mode:
+        if self.analysis_mode >= 0:
             self.get_hamiltonian_initial_guess()
         
         del self.wfs
@@ -984,7 +984,7 @@ class Transport(GPAW):
     def negf_prepare(self, atoms=None):
         if not self.initialized_transport:
             self.initialize_transport()
-        if not self.analysis_mode:    
+        if self.analysis_mode >= 0:    
             self.update_scat_hamiltonian(atoms)
         self.boundary_check()
     
