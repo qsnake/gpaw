@@ -22,7 +22,7 @@ from gpaw.transport.intctrl import IntCtrl
 from gpaw.transport.surrounding import Surrounding, collect_D_asp2, \
                                               collect_D_asp3, distribute_D_asp
 from gpaw.transport.selfenergy import LeadSelfEnergy
-from gpaw.transport.analysor import Transport_Analysor
+from gpaw.transport.analysor import Transport_Analysor, Transport_Plotter
 
 import gpaw
 import numpy as np
@@ -392,7 +392,7 @@ class Transport(GPAW):
             atoms = self.atoms_l[i]
             if not calc.initialized:
                 calc.initialize(atoms)
-                if not dry_run:
+                if not dry_run and self.analysis_mode != -3:
                     calc.set_positions(atoms)
             self.nblead.append(calc.wfs.setups.nao)
             self.bnc.append(calc.gd.N_c[2])
@@ -468,11 +468,14 @@ class Transport(GPAW):
         self.current = 0
         self.linear_mm = None
 
-        for i in range(self.lead_num):
-            if self.identical_leads and i > 0:
-                self.update_lead_hamiltonian(i, 'lead0')    
-            else:
-                self.update_lead_hamiltonian(i)
+        if self.analysis_mode == -3:
+            pass
+        else:
+            for i in range(self.lead_num):
+                if self.identical_leads and i > 0:
+                    self.update_lead_hamiltonian(i, 'lead0')    
+                else:
+                    self.update_lead_hamiltonian(i)
 
         for i in range(self.env_num):
             self.update_env_hamiltonian(i)
@@ -481,16 +484,17 @@ class Transport(GPAW):
         self.fermi = self.lead_fermi[0]
         world.barrier()
         
-        self.timer.start('init surround')
-        self.surround = Surrounding(self)  
-        self.timer.stop('init surround')
+        if self.analysis_mode != -3:
+            self.timer.start('init surround')            
+            self.surround = Surrounding(self)  
+            self.timer.stop('init surround')
         
         # save memory
         del self.atoms_l
         del self.atoms_e
 
         self.get_inner_setups()        
-        if not self.non_sc:
+        if not self.non_sc and self.analysis_mode > -3:
             self.timer.start('surround set_position')
             if not self.use_fd_poisson:
                 self.inner_poisson = PoissonSolver(nn=self.hamiltonian.poisson.nn)
@@ -869,6 +873,23 @@ class Transport(GPAW):
                                                                'D', init=True)                    
         self.timer.stop('init lead' + str(l))
 
+    def recover_lead_info(self, s00, s01, h00, h01, fermi):
+        for pk in range(self.npk):
+            for l in range(self.lead_num):
+                self.lead_hsd[l].reset(0, pk, s00[pk, l], 'S', init=True)
+                self.lead_couple_hsd[l].reset(0, pk, s01[pk, l], 'S',
+                                                              init=True)
+                for s in range(self.nspins):
+                    self.lead_hsd[l].reset(s, pk, h00[s, pk, l], 'H', init=True)     
+                    self.lead_hsd[l].reset(s, pk, np.zeros_like(h00[s, pk, l]), 'D', init=True)
+                
+                    self.lead_couple_hsd[l].reset(s, pk, h01[s, pk, l],
+                                                               'H', init=True)     
+                    self.lead_couple_hsd[l].reset(s, pk, np.zeros_like(h01[s, pk, l]),
+                                                               'D', init=True)                    
+        for l in range(self.lead_num):
+            self.lead_fermi[l] = fermi[l]
+      
     def update_env_hamiltonian(self, l):
         if not self.env_restart:
             atoms = self.atoms_e[l]
@@ -2376,16 +2397,33 @@ class Transport(GPAW):
             self.analysor.save_bias_step()
             self.analysor.save_data_to_file('bias', 'bias_plot_data')
             
-               
-                        
-                            
-                
-            
-            
-              
-            
-            
-            
+    def analysis_prepare(self, bias_step):
+        plotter = Transport_Plotter('bias', 'bias_plot_data')
+        lead_s00 = plotter.bias_steps[bias_step].lead_s00
+        lead_s01 = plotter.bias_steps[bias_step].lead_s01        
+        lead_h00 = plotter.bias_steps[bias_step].lead_h00                        
+        lead_h01 = plotter.bias_steps[bias_step].lead_h01                           
+        s00 = plotter.bias_steps[bias_step].s00
+        h00 = plotter.bias_steps[bias_step].h00
+        lead_fermi = plotter.bias_steps[bias_step].lead_fermi    
         
+        self.initialize_transport()
+        flag = True
+        if not hasattr(self, 'analysor'):
+            self.analysor = Transport_Analysor(self, True)
+        self.intctrl = IntCtrl(self.occupations.width * Hartree,
+                                    self.lead_fermi, self.bias,
+                                    self.env_bias, self.min_energy,
+                                    self.neintmethod, self.neintstep)
+        for j in range(self.lead_num):
+                self.analysor.selfenergies[j].set_bias(self.bias[j])
+        dtype = s00.dtype
+        for q in range(self.npk):
+            self.hsd.reset(0, q, s00[q], 'S', True)                
+            for s in range(self.nspins):
+                self.hsd.reset(s, q, h00[s, q], 'H', True)
+                self.hsd.reset(s, q, np.zeros_like(h00[s, q]), 'D', True)            
+        self.recover_lead_info(lead_s00, lead_s01, lead_h00, lead_h01, lead_fermi)      
+        self.append_buffer_hsd()             
             
              
