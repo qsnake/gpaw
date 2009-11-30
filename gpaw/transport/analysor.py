@@ -1056,7 +1056,7 @@ class Transport_Analysor:
 
     def collect_left_channels(self):
         if self.eig_trans_channel_energies is None:
-            return None
+            return None, None
         tp = self.tp
         ns, npk = tp.nspins, tp.npk
         nbmol = tp.nbmol
