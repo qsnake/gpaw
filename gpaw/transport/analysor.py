@@ -728,6 +728,8 @@ class Transport_Analysor:
         t = []
         for i in range(tp.lead_num):
             t.append([])
+            for j in range(tp.lead_num):
+                t[i].append([])
         for i in range(tp.lead_num):
             ind1, ind2 = get_matrix_index(np.arange(nc), total_bB2[i])
             total_vc.append(Vx[ind1, ind2])
@@ -735,9 +737,10 @@ class Transport_Analysor:
                 bx = total_bA2[j]
                 bx = bx[:len(total_pro_right_index[j])]
                 ind1, ind2 = get_matrix_index(bx, total_bB2[i])
-                t[j].append(Vx[ind1, ind2])
+                #t[j].append(Vx[ind1, ind2])
+                t[j][i] = Vx[ind1, ind2]
                 for m in range(len(total_pro_left_index[i])):
-                    for n in range(len(total_pro_right_index[i])):
+                    for n in range(len(total_pro_right_index[j])):
                         t[j][i][n, m] *= np.sqrt(abs(total_vt[i][n]/
                                                           total_vr[j][m]))
         return np.array(t), np.array(total_vc), np.array(total_k), np.array(total_vl)
@@ -1928,7 +1931,60 @@ class Transport_Plotter:
         p.plot(bias, cc)
         self.set_options('Bias(V)', 'Charge(au.)')
         self.show(p)
-    
-        
 
+    def show_force(self, bias_step, file=None):      
+        import vtk
+        from ase.visualize.vtk.atoms import vtkAtoms
+        usewx = False
+        try:
+            import wx
+            usewx = True
+        except ImportError:
+            pass
+        if usewx:
+            from vtk.wx.wxVTKRenderWindow import wxVTKRenderWindow
+            app = wx.PySimpleApp()
+            frame = wx.Frame(None, -1, 'wxVTKRenderWindow', size=(800,600))
+            widget = wxVTKRenderWindow(frame, -1)
+            win = widget.GetRenderWindow()
+            ren = vtk.vtkRenderer()
+            win.AddRenderer(ren)
+        else:
+            ren = vtk.vtkRenderer()
+            win = vtk.vtkRenderWindow()
+            win.AddRenderer(ren)
+            win.SetSize(800,600)
+            iren = vtk.vtkRenderWindowInteractor()
+            iren.SetRenderWindow(win)
+            style = vtk.vtkInteractorStyleTrackballCamera()
+            iren.SetInteractorStyle(style)
+        atoms = self.atoms.copy()
+        calc = GPAW()
+        atoms.set_calculator(calc)
+        calc.initialize(atoms)
+        calc.scf.converged = True
+        calc.forces.F_av = self.bias_steps[bias_step].force
+
+        va = vtkAtoms(atoms)
+        va.add_cell()
+        va.add_axes()
+        va.add_forces()
+        va.add_actors_to_renderer(ren)
+        if usewx:
+            frame.Show()
+            app.MainLoop()
+        else:
+            iren.Initialize()
+            win.OffScreenRenderingOff()
+            win.Render()
+            iren.Start()
+        w2i=vtk.vtkWindowToImageFilter()
+        w2i.SetInput(win)
+        if file is not None:
+            pw = vtk.vtkPNGWriter()
+            pw.SetFileName(file)
+            pw.SetInputConnection(w2i.GetOutputPort())
+            pw.Write()
+
+           
 
