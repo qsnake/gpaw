@@ -26,12 +26,12 @@ def build_parser():
 def test(comm, M, N, mcpus, ncpus, mb, nb):
     grid0 = BlacsGrid(comm, 1, 1)
     desc0 = grid0.new_descriptor(M, N, M, N, 0, 0)
-    A_mn = desc0.zeros(float)
+    A_mn = desc0.zeros(dtype=float)
     A_mn[:] = comm.size + 1
 
     grid1 = BlacsGrid(comm, mcpus, ncpus)
     desc1 = grid1.new_descriptor(M, N, mb, nb, 0, 0) # ???
-    B_mn = desc1.zeros(float)
+    B_mn = desc1.zeros(dtype=float)
     B_mn[:] = comm.rank
     
     redistributor = Redistributor(comm, desc1, desc0)
