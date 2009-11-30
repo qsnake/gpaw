@@ -71,6 +71,7 @@ tests = [
     'gauss_func.py',
     'ylexpand.py',
     'wfs_io.py',
+    'wfs_auto.py',
     'chi_molNa.py',
     'xcatom.py',
     'parallel/overlap.py',
