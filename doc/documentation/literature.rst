@@ -402,3 +402,12 @@ Publications using the gpaw code
 
    .. 10 December 2009
 
+#) Thomas Olsen and Jakob Schiøtz
+
+   `Origin of Power Laws for Reactions at Metal Surfaces Mediated by Hot Electrons`__  
+
+   Physical Review Letters, Vol. **103**, 238301 (2009)
+
+   __ http://dx.doi.org/10.1103/PhysRevLett.103.238301
+
+   .. 4 December 2009
