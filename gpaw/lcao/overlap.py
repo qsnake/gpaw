@@ -720,6 +720,9 @@ class NewTwoCenterIntegrals:
 
     calculate_derivative = derivative # XXX compatibility
 
+    def estimate_memory(self, mem):
+        mem.subnode('TCI not impl.', 0)
+
 
 class OldOverlapExpansion: # Old version, remove this and use OverlapExpansion
     """A list of real-space splines representing an overlap integral."""
