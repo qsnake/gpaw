@@ -688,6 +688,9 @@ class LCAOWaveFunctions(WaveFunctions):
         #          x z                       n
         #
         # We use the transpose of that matrix
+        S_MM = S_MM.copy()
+        tri2full(S_MM) # XXX lower triangle not filled out with BLACS
+        # TODO: implement proper parallel call
         ET_MM = np.linalg.solve(S_MM, gemmdot(H_MM, rho_MM)).T.copy()
         
         # Useful check - whether C^dagger eps f C == S^(-1) H rho
