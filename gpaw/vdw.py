@@ -24,7 +24,7 @@ from gpaw.xc_functional import XCFunctional
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.utilities.tools import construct_reciprocal
 from gpaw.fd_operators import Gradient
-from gpaw import setup_paths
+from gpaw import setup_paths, extra_parameters
 import gpaw.mpi as mpi
 import _gpaw
  
@@ -617,6 +617,7 @@ class FFTVDWFunctional(VDWFunctional):
         k_k = construct_reciprocal(gdfft)[0]**0.5
         k_k[0, 0, 0] = 0.0
 
+
         self.dj_k = k_k / (2 * pi / self.rcut)
         self.j_k = self.dj_k.astype(int)
         self.dj_k -= self.j_k
@@ -668,6 +669,8 @@ class FFTVDWFunctional(VDWFunctional):
             del C_pg
             self.timer.start('FFT')
             theta_ak[a] = fftn(n_g * pa_g, self.shape).copy()
+            if extra_parameters.get('vdw0'):
+                theta_ak[a][0, 0, 0] = 0.0
             self.timer.stop()
             
             if not self.energy_only:
@@ -774,7 +777,8 @@ class FFTVDWFunctional(VDWFunctional):
         slice = self.gd.get_slice()
         v_g += v0_g[slice]
         deda2_g += deda20_g[slice]
-        
+
+
 def spline(x, y):
     n = len(y)
     result = np.zeros((n, 4))
