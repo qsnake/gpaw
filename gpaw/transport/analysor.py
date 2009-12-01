@@ -529,7 +529,12 @@ class Transport_Analysor:
         index = np.argsort(abs(D))
         D = D[index]
         V = V[:, index]
-            
+        
+        #delete NaN
+        index = find(np.abs(D) >= 0)
+        D = D[index]
+        V = V[:, index]
+        
         #delete some unreasonable solutions
         index = find(abs(D) > MaxLambda)
         cutlen = len(D) - index[0]
@@ -1973,7 +1978,7 @@ class Transport_Plotter:
         self.show(p)
  
     def plot_charge_on_bias(self, atom_indices=None, orbital_type=None,
-                                                bias_indices=None):
+                                            bias_indices=None, spin_type=None):
         if bias_indices == None:
             bias_indices = range(len(self.bias_steps))           
         if atom_indices == None:
@@ -1992,13 +1997,22 @@ class Transport_Plotter:
             for j in atom_indices:
                 atom_index = orbital_indices[:, 0] - j == 0
                 if orbital_type == 'all':
-                    orbital_index = np.arange(orbital_indices.shape[0])
+                    orbital_index = np.zeros([orbital_indices.shape[0]]) + 1
                 else:
                     orbital_index = orbital_indices[:, 1] - orbital_map[
                                                      orbital_type] ==  0 
-                cc += np.sum(self.bias_steps[i].charge * atom_index * orbital_index)
+                tmp = np.sum(self.bias_steps[i].charge, axis =1) 
+                ind = orbital_indices.shape[0]
+                tmp = tmp[:, :ind]
+                if spin_type == None:
+                    tmp = np.sum(tmp, axis=0)
+                elif spin_type == 'up':
+                    tmp = tmp[0]
+                else:
+                    tmp = tmp[1]
+                cc += np.sum(tmp * atom_index * orbital_index)
             charge.append(cc)
-        p.plot(bias, cc)
+        p.plot(bias, charge)
         self.set_options('Bias(V)', 'Charge(au.)')
         self.show(p)
 
