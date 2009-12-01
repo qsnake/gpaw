@@ -33,7 +33,7 @@ class FiniteSys(CHI):
         e_kn, f_kn, C_knM, orb_MG, spos_ac, nt_G, tmp = (
                 self.initialize(calc, q, wcut, wmin, wmax, dw, eta)) 
         if self.HilbertTrans:
-            assert tmp.shape == (self.NW, self.nS, self.nS) and tmp.dtype == complex
+            assert tmp.shape == (self.Nw, self.nS, self.nS) and tmp.dtype == complex
             chi0_wSS = tmp
         else:
             assert tmp.shape == (self.nkpt, 3)
