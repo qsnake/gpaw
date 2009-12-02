@@ -361,3 +361,7 @@ class TestRunner:
         if self.jobs > 1:
             self.log.write('%*s' % (-self.n, test))
         self.log.write('%10.3f  %s\n' % (t, text))
+
+
+if __name__ == '__main__':
+    TestRunner(tests).run()
