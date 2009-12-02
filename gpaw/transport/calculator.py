@@ -292,26 +292,6 @@ class Transport(GPAW):
                         'eig_trans_channel_num', 'dos_realspace_energies']:
                 raise ValueError('no keyword %s for analysis' % key)    
 
-    def adjust_spacing(self):
-        p = self.gpw_kwargs
-        tp = self.transport_parameters
-        if p['h'] == None:
-            h = 0.2 / Bohr
-        else:
-            h = p['h'] / Bohr
-            
-        lead_cell1 = np.diag(tp['pl_cells'][0]) / Bohr
-        lead_cell2 = np.diag(tp['pl_cells'][1]) / Bohr
-        Nc_lead1 = h2gpts(h, lead_cell1)
-        Nc_lead2 = h2gpts(h, lead_cell2)
-        #p['h'] = lead_cell1[2, 2] / Nc_lead1[2] * Bohr
-        h1 = lead_cell1[2, 2] / Nc_lead1[2] * Bohr
-        h2 = lead_cell2[2, 2] / Nc_lead2[2] * Bohr
-        scat_cell = self.atoms.cell / Bohr
-        Nc_scat = h2gpts(h, scat_cell)
-        h3 = scat_cell[2, 2] / Nc_scat[2] * Bohr
-        print 'h_lead1, h_lead2, h_scat', h1, h2, h3
-       
     def set_default_transport_parameters(self):
         p = {}
         p['use_lead'] = True
@@ -409,7 +389,6 @@ class Transport(GPAW):
                     calc.set_positions(atoms)
             self.nbenv.append(calc.wfs.setups.nao)
         
-        self.adjust_spacing()             
         self.initialize()
         self.get_extended_atoms()
         calc = self.extended_atoms.calc
@@ -512,8 +491,9 @@ class Transport(GPAW):
         if self.analysis_mode >= 0:
             self.get_hamiltonian_initial_guess()
         
-        del self.wfs
-        self.wfs = self.extended_calc.wfs
+        if self.analysis_mode > -3:
+            del self.wfs
+            self.wfs = self.extended_calc.wfs
 
         self.initialized_transport = True
         self.matrix_mode = 'sparse'
@@ -2425,5 +2405,11 @@ class Transport(GPAW):
                 self.hsd.reset(s, q, np.zeros_like(h00[s, q]), 'D', True)            
         self.recover_lead_info(lead_s00, lead_s01, lead_h00, lead_h01, lead_fermi)      
         self.append_buffer_hsd()             
-            
+
+    def analysis_project_prepare(self):
+        spos_ac0 = self.atoms.get_scaled_positions() % 1.0
+        spos_ac = self.extended_atoms.get_scaled_positions() % 1.0
+        self.extended_calc.wfs.set_positions(spos_ac)        
+        self.wfs.set_positions(spos_ac0)
+        
              
