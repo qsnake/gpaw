@@ -43,14 +43,20 @@ else:
 for obj in [KSSingles, LrTDDFT]:
     # selection using state numbers
     el = obj(calc, istart=3, jend=6, txt=txt)
+    if obj.__name__ == 'LrTDDFT':
+        el.diagonalize()
 #    print "*************** obj, len(obj)", obj.__name__, len(el)
     assert len(el) == 8
     # selection using an energy range
     el = obj(calc, energyrange=8, txt=txt)
+    if obj.__name__ == 'LrTDDFT':
+        el.diagonalize()
 #    print "*************** obj, len(obj)", obj.__name__, len(el)
     assert len(el) == 4
     el = obj(calc, energyrange=11.5, txt=txt)
 #    print "*************** obj, len(obj)", obj.__name__, len(el)
+    if obj.__name__ == 'LrTDDFT':
+        el.diagonalize()
     assert len(el) == 18
 
 lr = LrTDDFT(calc, nspins=2)

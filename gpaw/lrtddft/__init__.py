@@ -285,9 +285,6 @@ class LrTDDFT(ExcitationList):
         string += self.kss.__str__()
         return string
 
-    def __len__(self):
-       return len(self.kss) 
-
     def write(self, filename=None, fh=None):
         """Write current state to a file.
 
