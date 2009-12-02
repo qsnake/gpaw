@@ -293,13 +293,16 @@ class Tp_Sparse_HSD:
                                                   lead_couple_hsd, s, pk, 'D')                 
                 self.D[s][pk].append_ex_mat(diag_h, upc_h, dwnc_h, ex_index)                 
   
-    def calculate_eq_green_function(self, zp, sigma, ex=True):
+    def calculate_eq_green_function(self, zp, sigma, ex=True, full=False):
         s, pk = self.s, self.pk
         self.G.reset_from_others(self.S[pk], self.H[s][pk], zp, -1, init=True)
         self.G.substract_sigma(sigma)
-        #self.G.test_inv_eq()
-        self.G.inv_eq()
-        return self.G.recover(ex)
+        if full:
+            return np.linalg.inv(self.G.recover())
+        else:
+            #self.G.test_inv_eq()
+            self.G.inv_eq()
+            return self.G.recover(ex)
 
     def calculate_ne_green_function(self, zp, sigma, fermi_factors, ex=True):
         s, pk = self.s, self.pk        
