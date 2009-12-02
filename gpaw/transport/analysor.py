@@ -286,16 +286,17 @@ class Transport_Analysor:
         tp.hsd.s = s
         tp.hsd.pk = k
       
-    def calculate_green_function_of_k_point(self, s, k, energy, re_flag=0):
+    def calculate_green_function_of_k_point(self, s, k, energy, re_flag=0,
+                                                                    full=True):
         tp = self.tp 
         sigma = []
         for i in range(tp.lead_num):
             sigma.append(self.selfenergies[i](energy))
+        gr = tp.hsd.calculate_eq_green_function(energy, sigma, False, full)
         if re_flag==0:
-            return tp.hsd.calculate_eq_green_function(energy, sigma, False)
+            return gr
         else:
-            return tp.hsd.calculate_eq_green_function(energy, sigma,
-                                                          False), sigma 
+            return gr, sigma 
     
     def calculate_transmission_and_dos(self, s, k, energies):
         self.reset_selfenergy_and_green_function(s, k)
@@ -424,19 +425,22 @@ class Transport_Analysor:
         #nl number of molecular levels
         wfs = self.tp.wfs
         nao = wfs.setups.nao
-        nl, nb = C_nm.shape
-        extended_C_nm = np.zeros([nl, nao], wfs.dtype)
+        nb, nl = C_nm.shape
+        if wfs.dtype == float:
+            C_nm = C_nm.real.copy()
+        #extended_C_nm = np.zeros([nl, nao], wfs.dtype)
         total_psi_g = []
         for i in range(nl):
-            psi_g = self.tp.gd1.zeros(nl, dtype=wfs.dtype)
+            psi_g = self.tp.gd.zeros(nl, dtype=wfs.dtype)
             c_nm = C_nm.reshape(1, -1)
             psi_g = psi_g.reshape(1, -1)
             wfs.basis_functions.lcao_to_grid(c_nm, psi_g, q)
-            total_psi_g.append([psi_g / Bohr**1.5])
+            psi_g.shape = self.tp.gd.n_c
+            total_psi_g.append(psi_g / Bohr**1.5)
         return np.array(total_psi_g)
 
     def get_left_channels(self, energy, s, k):
-        g_s_ii, sigma = self.calculate_green_function_of_k_point(s, k, energy, 1)
+        g_s_ii, sigma = self.calculate_green_function_of_k_point(s, k, energy, 1, True)
         nb = g_s_ii.shape[-1]
         dtype = g_s_ii.dtype
         lambda_l_ii = np.zeros([nb, nb], dtype)
@@ -562,7 +566,7 @@ class Transport_Analysor:
                 Vk[:, same_k_index] = eig_states_norm(Vk[:, same_k_index],
                                                                          sk)
                 j += len(same_k_index)
-        return np.array(k), np.array(Vk)
+        return np.array(k[proindex]), np.array(Vk[:, proindex])
                    
     def central_scattering_states(self, energy, s, q):
         MaxLambda = 1e2
