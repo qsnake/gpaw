@@ -335,7 +335,7 @@ else:
     setups = tmpdir + '/gpaw/' + glob.glob('gpaw-setups-[0-9]*')[0]
 
     # Repeatedly run test-suite in code coverage mode:
-    args = '--debug --coverage counts.pickle'
+    args = '--coverage counts.pickle' + ' '.join(sys.argv[1:])
     for cpus in cpuruns:
         tod = time.strftime('%d/%m-%Y %H:%M:%S')
         open('counts.out', 'a').write('\n\n%s - %d thread(s).\n' % (tod,cpus))
