@@ -15,7 +15,7 @@ def open(filename, mode='r'):
     if filename.endswith('.nc'):
         import gpaw.io.netcdf as io
     elif filename.endswith('.db'):
-        import gpaw.cmr.gpaw_ReadWriter as io
+        import gpaw.cmr.readwriter as io
     else:
         if not filename.endswith('.gpw'):
             filename += '.gpw'
