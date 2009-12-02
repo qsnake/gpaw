@@ -553,7 +553,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
                 nm = 2 * spline.get_angular_momentum_number() + 1
                 cspline_M.extend([spline.spline] * nm)
         gd = self.gd
-        h_cv = gd.cell_cv / gd.N_c
+        h_cv = gd.cell_cv / gd.N_c[:, np.newaxis]
         self.lfc.derivative(a_xG, c_xMv, h_cv, gd.n_c, cspline_M,
                             gd.beg_c, self.pos_Wv, q)
 
@@ -656,7 +656,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
                 nm = 2 * spline.get_angular_momentum_number() + 1
                 cspline_M.extend([spline.spline] * nm)
         gd = self.gd
-        h_cv = gd.cell_cv / gd.N_c
+        h_cv = gd.cell_cv / gd.N_c[:, np.newaxis]
         self.lfc.normalized_derivative(a_G, c_Mv, h_cv, gd.n_c, cspline_M,
                                        gd.beg_c, self.pos_Wv)
 
