@@ -8,7 +8,7 @@ helper functins for parallel domain decomposition.  """
 
 import numpy as np
 
-UNIFORM = True # distribute grid points uniformly
+UNIFORM = False# distribute grid points uniformly
                # XXX import this from gpaw.extra_parameters dict ?
 
 
@@ -70,6 +70,8 @@ class Domain:
         self.comm = comm
 
         if parsize_c is None:
+            # XXX This should rather be:
+            #parsize_c = decompose_domain(N_c - not self.pbc_c, comm.size)
             parsize_c = decompose_domain(N_c, comm.size)
         self.parsize_c = np.array(parsize_c)
 

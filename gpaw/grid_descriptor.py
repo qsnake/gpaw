@@ -711,6 +711,7 @@ class EquidistantRadialGridDescriptor(RadialGridDescriptor):
         f_g = divrl(f_g, l, self.r_g[:len(f_g)])
         return self.spline(l, f_g)
 
+
 class AERadialGridDescriptor(RadialGridDescriptor):
     """Descriptor-class for non-uniform grid used by setups, all-electron.
 
