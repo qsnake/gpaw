@@ -6,6 +6,8 @@ from gpaw.utilities import pack, wignerseitz
 from gpaw.setup_data import SetupData
 from gpaw.gauss import Gauss
 from gpaw.io.fmf import FMF
+from gpaw.utilities.blas import gemmdot
+from itertools import izip
 
 import gpaw.mpi as mpi
 
@@ -181,6 +183,50 @@ def all_electron_LDOS(paw, mol, spin, lc=None, wf_k=None, P_aui=None):
     #print weights
     return energies, weights
 
+def get_all_electron_IPR(paw):
+    density = paw.density
+    wfs = paw.wfs
+    n_G = wfs.gd.empty()
+    n_g = density.finegd.empty()
+    print
+    print "inverse participation function"
+    print "-"*35
+    print "%5s %5s %10s %10s" % ("k","band","eps","ipr")
+    print "-"*35
+    for k, kpt in enumerate(paw.wfs.kpt_u):
+        for n, (eps, psit_G)  in enumerate(zip(kpt.eps_n, kpt.psit_nG)):
+            n_G[:] = 0.0
+            wfs.add_orbital_density(n_G, kpt, n)
+            density.interpolator.apply(n_G, n_g)
+            norm = density.finegd.integrate(n_g)
+            n_g = n_g ** 2
+            ipr = density.finegd.integrate(n_g)
+            for a in kpt.P_ani:
+                # Get xccorr for atom a
+                setup = paw.density.setups[a]
+                xccorr = setup.xc_correction
+
+                # Get D_sp for atom a
+                D_sp = np.array(wfs.get_orbital_density_matrix(a, kpt, n))
+
+                # density a function of L and partial wave radial pair density coefficient
+                D_sLq = gemmdot(D_sp, xccorr.B_Lqp, trans='t')
+                
+                # Create pseudo/ae density iterators for integration
+                n_iter = xccorr.expand_density(D_sLq, xccorr.n_qg, None)
+                nt_iter = xccorr.expand_density(D_sLq, xccorr.nt_qg, None)
+
+                # Take the spherical average of smooth and ae radial xc potentials
+                for n_sg, nt_sg, integrator in izip(n_iter,
+                                                    nt_iter,
+                                                    xccorr.get_integrator(None)):
+                    ipr += integrator.weight * np.sum((n_sg[0]**2-nt_sg[0]**2) * xccorr.rgd.dv_g)
+                    norm += integrator.weight * np.sum((n_sg[0]-nt_sg[0]) * xccorr.rgd.dv_g)
+
+            print "%5i %5i %10.5f %10.5f" % (k, n, eps, ipr/norm**2)
+    print "-"*35
+            
+            
                     
 def raw_wignerseitz_LDOS(paw, a, spin):
     """Return a list of eigenvalues, and their weight on the specified atom"""
