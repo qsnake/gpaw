@@ -58,6 +58,7 @@ class LrTDDFT(ExcitationList):
                  eps=0.001,
                  istart=0,
                  jend=None,
+                 energyrange=None,
                  xc=None,
                  derivativeLevel=1,
                  numscale=0.00001,
@@ -94,7 +95,8 @@ class LrTDDFT(ExcitationList):
             if calculator.density.nct_G is None:
                 calculator.set_positions()
                 
-            self.update(calculator, nspins, eps, istart, jend,
+            self.update(calculator, nspins, eps, 
+                        istart, jend, energyrange,
                         xc, derivativeLevel, numscale)
 
     def analyse(self, what=None, out=None, min=0.1):
@@ -122,6 +124,7 @@ class LrTDDFT(ExcitationList):
                eps=0.001,
                istart=0,
                jend=None,
+               energyrange=None,
                xc=None,
                derivativeLevel=None,
                numscale=0.001):
@@ -149,6 +152,7 @@ class LrTDDFT(ExcitationList):
                              eps=eps,
                              istart=istart,
                              jend=jend,
+                             energyrange=energyrange,
                              txt=self.txt)
         if not self.force_ApmB:
             Om = OmegaMatrix
@@ -280,6 +284,9 @@ class LrTDDFT(ExcitationList):
         string += '# derived from:\n'
         string += self.kss.__str__()
         return string
+
+    def __len__(self):
+       return len(self.kss) 
 
     def write(self, filename=None, fh=None):
         """Write current state to a file.

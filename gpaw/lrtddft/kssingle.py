@@ -36,6 +36,8 @@ class KSSingles(ExcitationList):
       First occupied state to consider
     jend:
       Last unoccupied state to consider
+    energyrange:
+      The energy range [emin, emax] or emax for KS transitions to use as basis
     """
 
     def __init__(self,
@@ -101,7 +103,13 @@ class KSSingles(ExcitationList):
                 fijscale = 0.5
 
         if energyrange is not None:
-            emin, emax = energyrange
+            try:
+                emin, emax = energyrange
+            except:
+                emax = energyrange
+                emin = 0.
+            emin /= Hartree
+            emax /= Hartree
             # select transitions according to transition energy
             for kpt in self.kpt_u:
                 f_n = kpt.f_n
@@ -109,7 +117,7 @@ class KSSingles(ExcitationList):
                 for i in range(len(f_n)):
                     for j in range(i+1, len(f_n)):
                         fij = f_n[i] - f_n[j]
-                        epsij = eps_n[j] - eps_n[j]
+                        epsij = eps_n[j] - eps_n[i]
                         if fij > eps and epsij >= emin and epsij < emax:
                             # this is an accepted transition
                             ks = KSSingle(i, j, kpt.s, kpt, paw,

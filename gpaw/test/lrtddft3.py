@@ -12,24 +12,46 @@ from gpaw.mpi import rank, world
 from gpaw.test import equal
 from gpaw.gauss import Gauss
 from gpaw.lrtddft import LrTDDFT, photoabsorption_spectrum
+from gpaw.lrtddft.kssingle import KSSingles
 from cStringIO import StringIO
 
 L = 10.0
+txt=None
+#xt='-'
 
 N2 = molecule('N2')
 N2.set_cell([L,L,L])
 #N2.set_pbc(True)
 N2.center()
 
-calc = GPAW(h = 0.25,
-            nbands = -5,
-            spinpol = True,
-            xc = 'PBE',
-            txt = None,
-            eigensolver = 'cg',
-            parsize='domain only')
-N2.set_calculator(calc)
-E0 = N2.get_potential_energy()
+if 1:
+    calc = GPAW(h = 0.25,
+                nbands = -5,
+                spinpol = True,
+                xc = 'PBE',
+                txt = txt,
+                eigensolver = 'cg',
+                parsize='domain only')
+    N2.set_calculator(calc)
+    E0 = N2.get_potential_energy()
+    calc.write('N2_wfs.gpaw', 'all')
+else:
+    calc = GPAW('N2_wfs.gpaw', txt=txt)
+    calc.converge_wave_functions()
+
+# selections
+for obj in [KSSingles, LrTDDFT]:
+    # selection using state numbers
+    el = obj(calc, istart=3, jend=6, txt=txt)
+#    print "*************** obj, len(obj)", obj.__name__, len(el)
+    assert len(el) == 8
+    # selection using an energy range
+    el = obj(calc, energyrange=8, txt=txt)
+#    print "*************** obj, len(obj)", obj.__name__, len(el)
+    assert len(el) == 4
+    el = obj(calc, energyrange=11.5, txt=txt)
+#    print "*************** obj, len(obj)", obj.__name__, len(el)
+    assert len(el) == 18
 
 lr = LrTDDFT(calc, nspins=2)
 lr.write('lrtddft3.dat.gz')
