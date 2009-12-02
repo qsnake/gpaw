@@ -35,7 +35,15 @@ to become the next release.
 
    toc-general
 
-* Supported :ref:`platforms_and_architectures`.
+* The latest report_ from PyLint_ about the GPAW coding standard.
+
+.. spacer
+
+* Details about supported :ref:`platforms_and_architectures`.
+
+.. _report: http://dcwww.camd.dtu.dk/~s052580/pylint/gpaw/
+.. _PyLint: http://www.logilab.org/857
+
 
 .. _code_overview:
 
@@ -97,11 +105,3 @@ documentation is included in the other line counts.
    list.
 
 
-Old pages
-=========
-
-These pages may contain inaccurate or outdated information:
-
-* A report_ from PyLint.
-
-.. _report: http://wiki.fysik.dtu.dk/stuff/pylint_global.html
