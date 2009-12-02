@@ -12,9 +12,6 @@ class ForceCalculator:
     def calculate(self, wfs, density, hamiltonian):
         """Return the atomic forces."""
 
-        if not wfs.gd.orthogonal:
-            raise NotImplementedError
-        
         if self.F_av is not None:
             return self.F_av
 
