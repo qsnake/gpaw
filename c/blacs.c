@@ -55,6 +55,7 @@ int Csys2blacs_handle_(MPI_Comm SysCtxt);
 
 #define   pdsygvx_ pdsygvx
 #define   pzhegvx_ pzhegvx
+#define   pdgemm_ pdgemm
 #endif
 
 #ifdef GPAW_NO_UNDERSCORE_CSCALAPACK
@@ -156,6 +157,38 @@ void pzhegvx_(int* ibtype, char* jobz, char* range,
               void* work, int* lwork, double* rwork, int* lrwork,
               int* iwork, int* liwork,
               int* ifail, int* iclustr, double* gap, int* info);
+
+// char* -> F_CHAR_T ??
+void pdgemm_(char* transa, char* transb, int* m, int* n, int* k,
+             double* alpha,
+             double* a, int* ia, int *ja, int *desca,
+             double* b, int* ib, int *jb, int *descb,
+             double* beta,
+             double* c, int* ic, int *jc, int *descc);
+
+PyObject* pblas_pdgemm(PyObject *self, PyObject *args)
+{
+  char transa = 'N';
+  char transb = 'N';
+  int m, n, k;
+  double alpha;
+  double beta;
+  PyArrayObject *a_obj, *b_obj, *c_obj;
+  PyArrayObject *desca_obj, *descb_obj, *descc_obj;
+  int ia = 1, ib = 1, ic = 1, ja = 1, jb = 1, jc = 1;
+  
+  if (!PyArg_ParseTuple(args, "iiidOOdOOOO", &m, &n, &k, &alpha,
+                        &a_obj, &b_obj, &beta, &c_obj,
+                        &desca_obj, &descb_obj, &descc_obj)) {
+    return NULL;
+  }
+  pdgemm_(&transa, &transb, &m, &n, &k, &alpha, 
+          DOUBLEP(a_obj), &ia, &ja, INTP(desca_obj), 
+          DOUBLEP(b_obj), &ib, &jb, INTP(descb_obj),
+          &beta,
+          DOUBLEP(c_obj), &ic, &jc, INTP(descc_obj));  
+  Py_RETURN_NONE;
+}
 
 PyObject* blacs_create(PyObject *self, PyObject *args)
 {

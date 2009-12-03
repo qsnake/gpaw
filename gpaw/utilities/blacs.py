@@ -40,6 +40,7 @@ def blacs_destroy(adesc):
     assert len(adesc) == 9
     _gpaw.blacs_destroy(adesc)
 
+
 def scalapack_redist1(a_obj, adesc, bdesc, isreal, comm_obj=mpi.world, m=0, n=0):
     if a_obj is not None:
         assert a_obj.ndim == 2
@@ -60,6 +61,7 @@ def scalapack_redist1(a_obj, adesc, bdesc, isreal, comm_obj=mpi.world, m=0, n=0)
     return _gpaw.scalapack_redist1(a_obj, adesc, bdesc, isreal,
                                    comm_obj.get_c_object(), m, n)
 
+
 def scalapack_diagonalize_dc(a_obj, adesc, uplo):
     if a_obj is not None:
         assert a_obj.ndim == 2
@@ -68,6 +70,7 @@ def scalapack_diagonalize_dc(a_obj, adesc, uplo):
     assert len(adesc) == 9
     assert uplo in ['U','L']
     return _gpaw.scalapack_diagonalize_dc(a_obj, adesc, uplo)
+
 
 def scalapack_diagonalize_ex(adescriptor, a_obj, b_obj, c_obj, eps_obj, uplo):
     adesc = adescriptor.asarray()
@@ -97,6 +100,29 @@ def scalapack_inverse_cholesky(a_obj, adesc, uplo):
     assert len(adesc) == 9
     assert uplo in ['U','L']
     _gpaw.scalapack_inverse_cholesky(a_obj, adesc, uplo)
+
+
+def pblas_pdgemm(M, N, K, alpha, a_MK, b_KN, beta, c_MN, desca, descb, descc):
+    _gpaw.pblas_pdgemm(N, M, K, alpha, b_KN.T, a_MK.T, beta, c_MN.T,
+                       descb.asarray(), desca.asarray(), descc.asarray())
+
+
+def pblas_simple_gemm(desca, descb, descc, a_MK, b_KN, c_MN):
+    assert desca.check(a_MK)
+    assert descb.check(b_KN)
+    assert descc.check(c_MN)
+    assert desca.gshape[1] == descb.gshape[0]
+    assert desca.gshape[0] == descc.gshape[0]
+    assert descb.gshape[1] == descc.gshape[1]
+    
+    alpha = 1.0
+    beta = 0.0
+    
+    M, K = desca.gshape
+    K, N = descb.gshape
+    
+    pblas_pdgemm(M, N, K, alpha, a_MK, b_KN, beta, c_MN, desca, descb, descc)
+
     
 #if not debug:
 #    blacs_create = _gpaw.blacs_create
