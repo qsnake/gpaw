@@ -16,9 +16,18 @@ class Symmetry:
         set also."""
 
         self.id_a = id_a
-        self.cell_cv = cell_cv
+        self.cell_cv = np.array(cell_cv, float)
         self.pbc_c = pbc_c
         self.tol = tolerance
+
+        # Construct the Jacobian of the 123<->XYZ basis transformation
+        if self.cell_cv.ndim == 1:
+            cell_c = self.cell_cv
+            self.cell_cv = np.diag(cell_c)
+        else:
+            cell_c = (self.cell_cv**2).sum(0)**0.5
+        ucell_cv = self.cell_cv / cell_c[:, np.newaxis]
+        self.iucell_cv = np.linalg.inv(ucell_cv.T) # Jacobian
 
         # Use full set of symmetries if set to True.
         # False detects only orthogonal
@@ -28,6 +37,7 @@ class Symmetry:
 
         self.symmetries = [((0, 1, 2), np.array((1, 1, 1)))]
         self.operations = [np.identity(3)]
+        self.operations_xyz = [np.identity(3)]      
         self.op2sym = [0]
 
     def analyze(self, spos_ac):
@@ -38,10 +48,11 @@ class Symmetry:
         are not satisfied by the atoms.
         """
 
-        self.symmetries = []# Symmetry operations as pairs of swaps and mirrors
-        self.operations = []# Orthogonal symmetry operations as matrices
-        self.op2sym = []    # Orthogonal operation to (swap, mirror) symmetry
-                            # pointer
+        self.symmetries = [] # Symmetry operations as pairs of swaps and mirrors
+        self.operations = [] # Symmetry operations as matrices in 123 basis
+        self.operations_xyz = [] # Symmetry operations as matrices in XYZ basis
+        self.op2sym = [] # Orthogonal operation to (swap, mirror) symmetry
+                         # pointer
         
         # Only swap axes that are both periodic, and of equal length
         cellsyms_cc = np.array(
@@ -206,8 +217,8 @@ class Symmetry:
                 ibzk_kc[-1] = k_c
 
         del self.operations[nsym:]
-        self.symmetries, self.maps, self.op2sym = self.convert_operations(
-            self.operations)
+        (self.symmetries, self.maps, self.op2sym,
+         self.operations_xyz) = self.convert_operations(self.operations)
 
         return ibzk_kc[::-1].copy(), weight_k[:nibzkpts][::-1] / nbzkpts
 
@@ -216,6 +227,7 @@ class Symmetry:
         symmetries = []
         maps = []
         op2sym = []
+        operations_xyz = []
         for ioperation, operation in enumerate(self.operations):
             # Create pair if operation is orthogonal
             if not np.sometrue(np.dot(operation, operation.T) -
@@ -226,7 +238,12 @@ class Symmetry:
                 maps.append(self.opmaps[ioperation]) 
             else:
                 op2sym.append(-1)
-        return symmetries, maps, op2sym
+            # Conversion of basis of operation matrix to XYZ
+            operation_xyz = np.dot(np.linalg.inv(self.iucell_cv), operation)
+            operation_xyz = np.dot(operation_xyz, self.iucell_cv)
+            operations_xyz.append(operation_xyz)
+
+        return (symmetries, maps, op2sym, operations_xyz)
 
     def break_operation(self, operation):
         # Auxiliary method.
@@ -259,7 +276,7 @@ class Symmetry:
 
     def symmetrize_forces(self, F0_av):
         F_ac = np.zeros_like(F0_av)
-        for map_a, operation in zip(self.opmaps, self.operations):
+        for map_a, operation in zip(self.opmaps, self.operations_xyz):
             for a1, a2 in enumerate(map_a):
                 F_ac[a2] += np.dot(operation, F0_av[a1])
         return F_ac / len(self.operations)

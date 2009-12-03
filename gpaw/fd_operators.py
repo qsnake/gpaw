@@ -201,8 +201,15 @@ laplace = [[0],
            [-5269/1800, 5/3, -5/21, 5/126, -5/1008, 1/3150],
            [-5369/1800, 12/7, -15/56, 10/189, -1/112, 2/1925, -1/16632]]
 
-# Cross terms
+# Cross term coefficients
 # given in (1,1),(1,2),...,(1,n),(2,2),(2,3),...,(2,n),...,(n,n) order
+# Calculated with Mathematica as:
+# FD[n_, m_, o_] :=
+# Simplify[NDSolve`FiniteDifferenceDerivative[
+#         Derivative[n, m], {ha Range[-2*o, 2*o], hb Range[-2*o, 2*o]},
+#             Table[f[x, y], {x, -2*o, 2*o}, {y, -2*o, 2*o}],
+#             DifferenceOrder -> 2*o]][[2*o + 1, 2*o + 1]]
+# e.g Nth order coeffiecients are given by FD[1, 1, N]
 cross = [[0],
          [1/4],
          [4/9, -1/18, 1/144],
@@ -229,7 +236,7 @@ def Laplace(gd, scale=1.0, n=1, dtype=float, allocate=True):
     h2 = h**2
     iucell_cv = gd.iucell_cv
 
-    d2 = (iucell_cv**2).sum(1) # gradient magnitudes squared [(Delta_xyzLattice_vector_i)**2]
+    d2 = (iucell_cv**2).sum(1)
 
     offsets = [(0, 0, 0)]
     coefs = [scale * np.sum(d2 * np.divide(laplace[n][0],h2))]
