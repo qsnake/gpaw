@@ -66,7 +66,7 @@ class Transport(GPAW):
                        'non_sc', 'fixed_boundary', 'guess_steps', 'foot_print',
                         'align_har', 'use_fd_poisson', 'data_file',
                         'analysis_data_list', 'save_bias_data',
-                        'analysis_mode',                        
+                        'analysis_mode', 'normalize_density',                      
                         'neintmethod', 'neintstep']:
                 
                 del self.gpw_kwargs[key]
@@ -139,6 +139,8 @@ class Transport(GPAW):
                 p['save_bias_data'] = kw['save_bias_data']
             if key in ['analysis_mode']:
                 p['analysis_mode'] = kw['analysis_mode']
+            if key in ['normalize_density']:
+                p['normalize_density'] = kw['normalize_density']
 
             #----descript the scattering region----     
             if key in ['LR_leads']:         
@@ -243,6 +245,7 @@ class Transport(GPAW):
         self.analysis_data_list = p['analysis_data_list']
         self.save_bias_data = p['save_bias_data']
         self.analysis_mode = p['analysis_mode']
+        self.normalize_density = p['normalize_density']
         self.spinpol = p['spinpol']
         self.verbose = p['verbose']
         self.d = p['d']
@@ -262,9 +265,7 @@ class Transport(GPAW):
             raise RuntimeError('wrong way to use keyword LR_leads')
        
         self.initialized_transport = False
-        if abs(self.gate)  < 1e-4:
-            self.normalize_density = True
-        else:
+        if abs(self.gate)  > 1e-4:
             self.normalize_density = False
         self.analysis_parameters = []            
         self.atoms_l = [None] * self.lead_num
@@ -320,11 +321,12 @@ class Transport(GPAW):
         p['env_pbc'] = True
         p['env_bias'] = []
         p['env_restart'] = False
-        p['use_fd_poisson'] = False
+        p['use_fd_poisson'] = True
         p['data_file'] = None
         p['analysis_data_list'] = []
         p['save_bias_data'] = False
         p['analysis_mode'] = 0
+        p['normalize_density'] = True
         p['neintmethod'] = 0
         p['neintstep'] = 0.02
         
@@ -333,7 +335,7 @@ class Transport(GPAW):
         p['cal_loc'] = True
         p['recal_path'] = False
         p['min_energy'] = -100
-        p['guess_steps'] = 20
+        p['guess_steps'] = 30
         p['foot_print'] = True
         p['use_qzk_boundary'] = False
         p['align_har'] = 0
