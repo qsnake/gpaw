@@ -218,7 +218,7 @@ class Banded_Sparse_Matrix:
         times = []
         methods = ['full_numpy', 'full_lapack', 'sparse_lapack']
         for name in methods:
-            time = timer.gettime(name)
+            time = timer.timers[name,]
             print name, time
             times.append(time)
         
@@ -759,7 +759,7 @@ class Tp_Sparse_Matrix:
         times = []
         methods = ['full_numpy', 'full_lapack', 'sparse_lapack']
         for name in methods:
-            time = timer.gettime(name)
+            time = timer.timers[name,]
             print name, time
             times.append(time)
         
@@ -767,7 +767,7 @@ class Tp_Sparse_Matrix:
         self.inv_method = methods[np.argmin(times)]
         print 'mintime', mintime
         
-        print  'sparse_lapack_ne', timer.gettime('sparse_lapack_ne')
+        print  'sparse_lapack_ne', timer.timers['sparse_lapack_ne',]
 
 class CP_Sparse_HSD:
     def __init__(self, dtype, ns, npk, index=None):
