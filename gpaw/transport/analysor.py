@@ -170,9 +170,13 @@ class Transport_Analysor:
         self.isolate_atoms = p['isolate_atoms']
         self.dos_project_orbital = p['dos_project_orbital']
         self.trans_project_orbital = p['trans_project_orbital']
-        self.eig_trans_channel_energies = p['eig_trans_channel_energies'] + ef
+        self.eig_trans_channel_energies = p['eig_trans_channel_energies']
+        if self.eig_trans_channel_energies is not None:
+            self.eig_trans_channel_energies = np.array(self.eig_trans_channel_energies) + ef
         self.eig_trans_channel_num = p['eig_trans_channel_num']
-        self.dos_realspace_energies = p['dos_realspace_energies'] + ef
+        self.dos_realspace_energies = p['dos_realspace_energies']
+        if self.dos_realspace_energies is not None:
+            self.dos_realspace_energies = np.array(self.dos_realspace_energies) + ef
         setups = self.tp.inner_setups
         self.project_atoms_in_device = p['project_equal_atoms'][0]
         self.project_atoms_in_molecule = p['project_equal_atoms'][1]
