@@ -25,7 +25,7 @@ class Symmetry:
             cell_c = self.cell_cv
             self.cell_cv = np.diag(cell_c)
         else:
-            cell_c = (self.cell_cv**2).sum(0)**0.5
+            cell_c = (self.cell_cv**2).sum(1)**0.5
         ucell_cv = self.cell_cv / cell_c[:, np.newaxis]
         self.iucell_cv = np.linalg.inv(ucell_cv.T) # Jacobian
 
