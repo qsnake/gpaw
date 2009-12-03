@@ -170,9 +170,9 @@ class Transport_Analysor:
         self.isolate_atoms = p['isolate_atoms']
         self.dos_project_orbital = p['dos_project_orbital']
         self.trans_project_orbital = p['trans_project_orbital']
-        self.eig_trans_channel_energies = p['eig_trans_channel_energies']
+        self.eig_trans_channel_energies = p['eig_trans_channel_energies'] + ef
         self.eig_trans_channel_num = p['eig_trans_channel_num']
-        self.dos_realspace_energies = p['dos_realspace_energies']
+        self.dos_realspace_energies = p['dos_realspace_energies'] + ef
         setups = self.tp.inner_setups
         self.project_atoms_in_device = p['project_equal_atoms'][0]
         self.project_atoms_in_molecule = p['project_equal_atoms'][1]
@@ -496,7 +496,29 @@ class Transport_Analysor:
             #realspace_dos.append(total_dos_g)
             realspace_dos.append(dos_mm)
         return realspace_dos
-    
+
+    def calculate_partial_dos(self, s, q, atom_indices=None,
+                                                          orbital_type='all'):
+        energies = self.energies
+        dos = []
+        orbital_map = {'s': 0, 'p': 1, 'd': 2, 'f': 3}
+        orbital_indices = self.tp.orbital_indices     
+        for energy in energies:
+            gr = self.calculate_green_function_of_k_point(s, q, energy)
+            dos_mm = -np.imag(np.dot(gr, self.tp.hsd.S[q].recover())) / np.pi
+            dos_line = np.diag(dos_mm)
+            tmp = 0
+            if orbital_type == 'all':
+                orbital_index = np.zeros([orbital_indices.shape[0]]) + 1
+            else:
+                orbital_index = orbital_indices[:, 1] - orbital_map[
+                                                      orbital_type] ==  0 
+            for j in atom_indices:
+                atom_index = orbital_indices[:, 0] - j == 0
+                tmp += np.sum(dos_line * atom_index * orbital_index)
+            dos.append(tmp)
+        return dos
+       
     def lead_k_matrix(self, l, s, pk, k_vec, hors='S'):
         tp = self.tp
         if hors == 'S':
