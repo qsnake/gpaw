@@ -67,7 +67,7 @@ class Transport(GPAW):
                         'align_har', 'use_fd_poisson', 'data_file',
                         'analysis_data_list', 'save_bias_data',
                         'analysis_mode', 'normalize_density',                      
-                        'neintmethod', 'neintstep']:
+                        'neintmethod', 'neintstep', 'eqinttol']:
                 
                 del self.gpw_kwargs[key]
             #----descript the lead-----    
@@ -105,6 +105,8 @@ class Transport(GPAW):
                 p['neintmethod'] = kw['neintmethod']
             if key in ['neintstep']:
                 p['neintstep'] = kw['neintstep']
+            if key in ['eqinttol']:
+                p['eqinttol'] = kw['eqinttol']
 
             #----descript the environment----   
             if key in ['use_env']:
@@ -246,6 +248,7 @@ class Transport(GPAW):
         self.save_bias_data = p['save_bias_data']
         self.analysis_mode = p['analysis_mode']
         self.normalize_density = p['normalize_density']
+        self.eqinttol = p['eqinttol']
         self.spinpol = p['spinpol']
         self.verbose = p['verbose']
         self.d = p['d']
@@ -329,6 +332,7 @@ class Transport(GPAW):
         p['normalize_density'] = True
         p['neintmethod'] = 0
         p['neintstep'] = 0.02
+        p['eqinttol'] = 1e-4
         
         p['LR_leads'] = True
         p['gate'] = 0
@@ -1148,7 +1152,7 @@ class Transport(GPAW):
         self.intctrl = IntCtrl(self.occupations.width * Hartree,
                                 self.lead_fermi, self.bias,
                                 self.env_bias, self.min_energy,
-                                self.neintmethod, self.neintstep)            
+                            self.neintmethod, self.neintstep, self.eqinttol)            
         self.surround.reset_bias(self.bias) 
         self.initialize_green_function()
         self.calculate_integral_path()
