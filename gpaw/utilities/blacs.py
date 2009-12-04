@@ -41,7 +41,8 @@ def blacs_destroy(adesc):
     _gpaw.blacs_destroy(adesc)
 
 
-def scalapack_redist1(a_obj, adesc, bdesc, isreal, comm_obj=mpi.world, m=0, n=0):
+def scalapack_redist1(a_obj, adesc, bdesc, isreal, comm_obj=mpi.world, m=0,
+                      n=0):
     if a_obj is not None:
         assert a_obj.ndim == 2
         assert a_obj.dtype in [float, complex]
@@ -50,14 +51,16 @@ def scalapack_redist1(a_obj, adesc, bdesc, isreal, comm_obj=mpi.world, m=0, n=0)
         else:
             assert isreal == False
         if a_obj.flags.c_contiguous:
-            print >> stderr, warning ('scalapack_redist: local matrices are not Fortran contiguous\n')
+            print >> stderr, warning ('scalapack_redist: local matrices are '
+                                      'not Fortran contiguous\n')
     assert len(adesc) == 9
     assert len(bdesc) == 9
     assert 0 <= m <= adesc[2]
     assert 0 <= n <= adesc[3]
     assert (bdesc[2] == m) or (bdesc[2] == adesc[2])
     assert (bdesc[3] == n) or (bdesc[3] == adesc[3])
-    # There is no simple may to check if adesc and bdesc are disjoint to comm_obj
+    # There is no simple may to check if adesc and bdesc are disjoint to
+    #comm_obj
     return _gpaw.scalapack_redist1(a_obj, adesc, bdesc, isreal,
                                    comm_obj.get_c_object(), m, n)
 
@@ -102,26 +105,59 @@ def scalapack_inverse_cholesky(a_obj, adesc, uplo):
     _gpaw.scalapack_inverse_cholesky(a_obj, adesc, uplo)
 
 
-def pblas_pdgemm(M, N, K, alpha, a_MK, b_KN, beta, c_MN, desca, descb, descc):
+def pblas_pdgemm(alpha, a_MK, b_KN, beta, c_MN, desca, descb, descc,
+                 transa='N', transb='N'):
+
+    
+    assert transa in ['N', 'T'] and transb in ['N', 'T']
+    M, K = desca.gshape
+    K, N = descb.gshape
+    if transb == 'T':
+        N, K = K, N
+    assert transa == 'N' # XXX remember to implement 'T'
+
     _gpaw.pblas_pdgemm(N, M, K, alpha, b_KN.T, a_MK.T, beta, c_MN.T,
-                       descb.asarray(), desca.asarray(), descc.asarray())
+                       descb.asarray(), desca.asarray(), descc.asarray(),
+                       transb, transa)
 
 
-def pblas_simple_gemm(desca, descb, descc, a_MK, b_KN, c_MN):
-    assert desca.check(a_MK)
-    assert descb.check(b_KN)
-    assert descc.check(c_MN)
-    assert desca.gshape[1] == descb.gshape[0]
-    assert desca.gshape[0] == descc.gshape[0]
-    assert descb.gshape[1] == descc.gshape[1]
+def pblas_simple_gemm(desca, descb, descc, a_MK, b_KN, c_MN, transa='N',
+                      transb='N'):
+    if transb == 'N':
+        assert desca.check(a_MK)
+        assert descb.check(b_KN)
+        assert descc.check(c_MN)
+        assert desca.gshape[1] == descb.gshape[0]
+        assert desca.gshape[0] == descc.gshape[0]
+        assert descb.gshape[1] == descc.gshape[1]
+    # XXX also check for 'T'
     
     alpha = 1.0
     beta = 0.0
-    
-    M, K = desca.gshape
-    K, N = descb.gshape
-    
-    pblas_pdgemm(M, N, K, alpha, a_MK, b_KN, beta, c_MN, desca, descb, descc)
+        
+    pblas_pdgemm(alpha, a_MK, b_KN, beta, c_MN, desca, descb, descc,
+                 transa, transb)
+
+
+def pblas_pdgemv(alpha, a, adesc, x, xdesc, beta, y, ydesc):
+    M, N = adesc.gshape
+    assert M == ydesc.gshape[0]
+    assert N == xdesc.gshape[0]
+    assert adesc.check(a)
+    assert xdesc.check(x)
+    assert ydesc.check(y)
+    assert xdesc.gshape[1] == ydesc.gshape[1]
+    _gpaw.pblas_pdgemv(N, M, alpha,
+                       a, adesc.asarray(),
+                       x, xdesc.asarray(),
+                       beta,
+                       y, ydesc.asarray())
+
+
+def pblas_simple_gemv(adesc, xdesc, ydesc, a, x, y):
+    alpha = 1.0
+    beta = 0.0
+    pblas_pdgemv(alpha, a, adesc, x, xdesc, beta, y, ydesc)
 
     
 #if not debug:
