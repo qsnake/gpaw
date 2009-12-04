@@ -362,6 +362,7 @@ class FixedBoundaryPoissonSolver(PoissonSolver):
     #and with central differential method in the third direction.
     def __init__(self, nn=1):
         self.nn = nn
+        self.charged_periodic_correction = None
         assert self.nn == 1
         
     def set_grid_descriptor(self, gd):
@@ -390,10 +391,13 @@ class FixedBoundaryPoissonSolver(PoissonSolver):
    
     def solve(self, phi_g, rho_g):
         actual_charge = self.gd.integrate(rho_g)
+        if self.charged_periodic_correction is None:
+            self.charged_periodic_correction = madelung(self.gd.cell_cv)
         background = (actual_charge / self.gd.dv /
-                      self.gd.get_size_of_global_array().prod())
-        return self.solve_neutral(phi_g, rho_g - background)
-        
+                                    self.gd.get_size_of_global_array().prod())
+        self.solve_neutral(phi_g, rho_g - background)
+        phi_g += actual_charge * self.charged_periodic_correction
+    
     def solve_neutral(self, phi_g, rho_g):
         # b_phi1 and b_phi2 are the boundary Hartree potential values
         # of left and right sides
