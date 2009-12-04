@@ -173,6 +173,7 @@ class GPAW(PAW):
     
     def get_effective_potential(self, spin=0, pad=True):
         """Return pseudo effective-potential."""
+        # XXX should we do a self.gd.collect here?
         vt_G = self.hamiltonian.vt_sG[spin]
         if pad:
             vt_G = self.gd.zero_pad(vt_G)

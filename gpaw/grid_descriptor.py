@@ -513,7 +513,10 @@ class GridDescriptor(Domain):
         
     def zero_pad(self, a_xg):
         """Pad array with zeros as first element along non-periodic directions.
+
+        Should only be invoked on global arrays.
         """
+        assert np.all(a_xg.shape[-3:] == (self.N_c + self.pbc_c - 1))
         if self.pbc_c.all():
             return a_xg
 
@@ -596,13 +599,15 @@ class GridDescriptor(Domain):
            r_G[:] = self.h_c[c]*np.arange(self.beg_c[c], self.end_c[c])[c2G]
 
         if not self.orthogonal:
-            basis_vc = self.cell_cv.T / (self.h_c * self.N_c)[np.newaxis,:]
-            r_vG[:] = np.dot(basis_vc, r_vG.reshape((3,-1))).reshape(r_vG.shape)
+            basis_vc = self.cell_cv.T / (self.h_c * self.N_c)[np.newaxis, :]
+            r_vG[:] = np.dot(basis_vc,
+                             r_vG.reshape((3, -1))).reshape(r_vG.shape)
 
         if global_array:
             return self.collect(r_vG, broadcast=True)
 
         return r_vG
+
 
 class RadialGridDescriptor:
     """Descriptor-class for radial grid."""
