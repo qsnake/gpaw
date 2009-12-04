@@ -31,4 +31,10 @@ Internet Relay Chat
 ===================
 
 We have an IRC channel (``#gpaw``) on FreeNode.  Please join us if you
-have any questions.
+have any questions.  
+
+Logs from the IRC channel:
+
+* irc-logs_
+
+.. _irc-logs: http://dcwww.fys.dtu.dk/~s052580/irclogs/gpaw
