@@ -54,6 +54,8 @@ def get_bfi2(symbols, basis, a_list):
 def get_mulliken(calc, a_list):
     """Mulliken charges from a list of atom indices (a_list)."""
     Q_a = {}
+    for a in a_list:
+        Q_a[a] = 0.0
     for kpt in calc.wfs.kpt_u:
         S_MM = calc.wfs.S_qMM[kpt.q]
         nao = S_MM.shape[0]
@@ -63,7 +65,7 @@ def get_mulliken(calc, a_list):
         for a in a_list:
             M1 = calc.wfs.basis_functions.M_a[a]
             M2 = M1 + calc.wfs.setups[a].niAO
-            Q_a[a] = np.sum(Q_M[M1:M2])
+            Q_a[a] += np.sum(Q_M[M1:M2])
     return Q_a        
 
 
