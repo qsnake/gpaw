@@ -22,7 +22,7 @@ t = Transport(h=0.3,
               xc='LDA',
               basis={'Na': basis},
               kpts=(1,1,1),
-              width=0.1,
+              occupations=FermiDirac(0.1),
               mode='lcao',
               poissonsolver=PoissonSolver(nn=2, relax='GS'),
               txt='Na_lcao.txt',
@@ -33,6 +33,8 @@ t = Transport(h=0.3,
               edge_atoms=[[0, 3], [0, 8]],
               mol_atoms=[4],
               guess_steps=1,
-              foot_print=False)
+              foot_print=False,
+              use_fd_poisson=False)
 atoms.set_calculator(t)
 t.calculate_iv(0.5, 2)
+
