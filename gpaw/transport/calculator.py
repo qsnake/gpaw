@@ -324,7 +324,7 @@ class Transport(GPAW):
         p['use_fd_poisson'] = True
         p['data_file'] = None
         p['analysis_data_list'] = []
-        p['save_bias_data'] = False
+        p['save_bias_data'] = True
         p['analysis_mode'] = 0
         p['normalize_density'] = True
         p['neintmethod'] = 0
