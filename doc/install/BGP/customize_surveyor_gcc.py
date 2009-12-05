@@ -25,9 +25,7 @@ scalapack = True
 # alpha != beta != 0
 #
 # Goto is hand-tuned assembly, it will most
-# likely always be faster than ESSL-4.x,
-# but ESSL is more likely to be bug free.
-# Bug found in Goto BLAS on 10/12/2009.
+# likely always be faster than ESSL-4.x.
 
 libraries = [
            'scalapack',
