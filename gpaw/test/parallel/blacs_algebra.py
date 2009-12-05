@@ -16,6 +16,7 @@ import sys
 import numpy as np
 
 from gpaw.blacs import BlacsGrid, Redistributor, parallelprint
+from gpaw.utilities.blas import gemm, gemv
 from gpaw.utilities.blacs import pblas_simple_gemm, pblas_simple_gemv
 from gpaw.mpi import world, rank
 import _gpaw
@@ -43,8 +44,10 @@ def main(M=160, N=120, K=140, seed=42, mprocs=2, nprocs=2):
 
     # Local reference matrix product:
     if rank == 0:
-        C0[:] = np.dot(A0, B0)
-        Y0[:] = np.dot(A0, X0)
+        # C0[:] = np.dot(A0, B0)
+        gemm(1.0, B0, A0, 0.0, C0)
+        # Y0[:] = np.dot(A0, X0)
+        gemv(1.0, A0, X0, 0.0, Y0)
 
     assert globA.check(A0) and globB.check(B0) and globC.check(C0)
     assert globX.check(X0) and globY.check(Y0)
