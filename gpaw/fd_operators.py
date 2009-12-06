@@ -12,7 +12,7 @@ from math import pi
 import numpy as np
 
 from gpaw import debug
-from gpaw.utilities import contiguous, is_contiguous
+from gpaw.utilities import contiguous, is_contiguous, fac
 import _gpaw
 
 class _Operator:
@@ -152,44 +152,29 @@ else:
 
 def Gradient(gd, v, scale=1.0, n=1, dtype=float, allocate=True):
     h = gd.h_c
-    a = 0.5 / h * scale
     d = gd.iucell_cv[:,v]
-
-    # FIXME: M$ way => actually calculate the coeffs
-    if n == 1: 
-        coef_p = []
-        offset_pc = []  
-        for i in range(3):
-            if abs(d[i])>1e-11:
-                coef_p.extend([-a[i] * d[i], a[i] * d[i]])
+    A=np.zeros((2*n+1,2*n+1))
+    for i,io in enumerate(range(-n,n+1)):
+        for j in range(2*n+1):
+            A[i,j]=io**j/float(fac[j])
+    A[n,0]=1.
+    coefs=np.linalg.inv(A)[1]
+    coefs=np.delete(coefs,len(coefs)//2)
+    offs=np.delete(np.arange(-n,n+1),n)
+    coef_p = []
+    offset_pc = []
+    for i in range(3):
+        if abs(d[i])>1e-11:
+            coef_p.extend(list(coefs / h[i] * scale))
                 
-                offset = np.zeros((2, 3), int)
-                offset[0, i] = -1
-                offset[1, i] =  1                    
-                offset_pc.extend(offset)
+            offset = np.zeros((2*n, 3), int)
+            offset[:,i]=offs
+            offset_pc.extend(offset)
 
-    elif n == 2:
-        a = 2./3. / h * scale
-        b = 1./12. / h * scale
-        d = gd.iucell_cv[:,v] 
-
-        coef_p = []
-        offset_pc = []  
-        for i in range(3):
-            if abs(d[i])>1e-11:
-                coef_p.extend([b[i] * d[i], -a[i] * d[i], a[i] * d[i], -b[i] * d[i]])
-
-                offset = np.zeros((4, 3), int)
-                offset[0, i] = -2
-                offset[1, i] = -1
-                offset[2, i] =  1
-                offset[3, i] =  2
-                offset_pc.extend(offset)
-    else:
-        raise RuntimeError('Gradient supports only n = 1 or 2')
+    if(n > len(fac)):
+        raise RuntimeError('extend fac')
         
     return Operator(coef_p, offset_pc, gd, dtype, allocate)
-
 
 # Expansion coefficients for finite difference Laplacian.  The numbers are
 # from J. R. Chelikowsky et al., Phys. Rev. B 50, 11355 (1994):
