@@ -5,6 +5,7 @@
 from numpy import pi
 from ase.units import Bohr, Hartree
 from gpaw.fd_operators import Gradient
+from gpaw.lfc import LocalizedFunctionsCollection as LFC
 
 def _elf(nt, nt_grad2, taut, ncut, spinpol, elf):
     """Pseudo electron localisation function (ELF) as defined in
@@ -55,7 +56,7 @@ class ELF:
 
         self.gd = paw.gd
         self.finegd = paw.finegd
-        self.nspins = paw.occupations.nspins
+        self.nspins = paw.density.nspins
         self.density = paw.density
 
         self.ncut = ncut
@@ -68,28 +69,47 @@ class ELF:
         if not paw.initialized:
             raise RuntimeError('PAW instance is not initialized')
 
-        if not hasattr(self.density,'taut_sG'):
-            self.density.initialize_kinetic(paw.atoms)
+        self.tauct = LFC(self.gd, 
+                         [[setup.tauct] for setup in self.density.setups],
+ 	                 forces=True, cut=True)
+        spos_ac = paw.atoms.get_scaled_positions() % 1.0
+        self.tauct.set_positions(spos_ac)
 
+        self.taut_sG = self.gd.empty(self.nspins)
+        self.taut_sg = None
         self.nt_grad2_sG = self.gd.empty(self.nspins)
         self.nt_grad2_sg = None
 
     def interpolate(self):
 
         self.density.interpolate()
-        self.density.interpolate_kinetic()
 
-        if self.nt_grad2_sg is None:
+        if self.taut_sg is None:
+            self.taut_sg = self.finegd.empty(self.nspins)
             self.nt_grad2_sg = self.finegd.empty(self.nspins)
 
-        # Transfer the density from the coarse to the fine grid
+        # Transfer the densities from the coarse to the fine grid
         for s in range(self.nspins):
+            self.density.interpolator.apply(self.taut_sG[s],
+                                            self.taut_sg[s])
             self.density.interpolator.apply(self.nt_grad2_sG[s],
                                             self.nt_grad2_sg[s])
 
     def update(self, wfs):
 
-        self.density.update_kinetic(wfs)
+        self.taut_sG[:] = 0.
+        # Add contribution from all k-points
+        for kpt in wfs.kpt_u:
+            wfs.add_to_kinetic_density_from_k_point(self.taut_sG[0], kpt)
+        wfs.band_comm.sum(self.taut_sG)
+        wfs.kpt_comm.sum(self.taut_sG)
+
+        # Add the pseudo core kinetic array
+        self.tauct.add(self.taut_sG[0])
+
+        # For periodic boundary conditions
+        if wfs.symmetry is not None:
+            wfs.symmetry.symmetrize(self.taut_sG[0], wfs.gd)
 
         self.nt_grad2_sG[:] = 0.0
 
@@ -109,7 +129,7 @@ class ELF:
         if gridrefinement == 1:
             elf_G = self.gd.empty()
             _elf(self.density.nt_sG[spin], self.nt_grad2_sG[spin],
-                 self.density.taut_sG[spin], self.ncut, self.spinpol, elf_G)
+                 self.taut_sG[spin], self.ncut, self.spinpol, elf_G)
             return elf_G
         elif gridrefinement == 2:
             if self.nt_grad2_sg is None:
@@ -117,7 +137,7 @@ class ELF:
 
             elf_g = self.finegd.empty()
             _elf(self.density.nt_sg[spin], self.nt_grad2_sg[spin],
-                 self.density.taut_sg[spin], self.ncut, self.spinpol, elf_g)
+                 self.taut_sg[spin], self.ncut, self.spinpol, elf_g)
             return elf_g
         else:
             raise NotImplementedError('Arbitrary refinement not implemented')
@@ -126,12 +146,12 @@ class ELF:
 
         # Returns kinetic energy density in eV / Ang^3
         if gridrefinement == 1:
-            return self.density.taut_sG[spin] / (Hartree / Bohr**3.0)
+            return self.taut_sG[spin] / (Hartree / Bohr**3.0)
         elif gridrefinement == 2:
-            if self.density.taut_sg is None:
+            if self.taut_sg is None:
                 self.density.interpolate_kinetic()
 
-            return self.density.taut_sg[spin] / (Hartree / Bohr**3.0)
+            return self.taut_sg[spin] / (Hartree / Bohr**3.0)
         else:
             raise NotImplementedError('Arbitrary refinement not implemented')
 

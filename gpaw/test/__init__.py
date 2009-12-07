@@ -77,6 +77,7 @@ tests = [
     'parallel/overlap.py',
     'symmetry.py',
     'pes.py',
+    'elf.py',
     'usesymm.py',
     'eed.py',
     'mixer.py',
