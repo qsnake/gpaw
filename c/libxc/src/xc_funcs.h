@@ -44,6 +44,7 @@
 #define  XC_GGA_C_PW91        134  /* Perdew & Wang 91                                           */
 #define  XC_GGA_C_AM05        135  /* Armiento & Mattsson 05 correlation                         */
 #define  XC_GGA_C_XPBE        136  /* xPBE reparametrization by Xu & Goddard                     */
+#define  XC_GGA_C_PBE_REVTPSS 137  /* PBE correlation for revTPSS                                */
 #define  XC_GGA_XC_LB         160  /* van Leeuwen & Baerends                                     */
 #define  XC_GGA_XC_HCTH_93    161  /* HCTH functional fitted to  93 molecules                    */
 #define  XC_GGA_XC_HCTH_120   162  /* HCTH functional fitted to 120 molecules                    */
@@ -62,5 +63,7 @@
 #define  XC_MGGA_C_TPSS       202  /* Perdew, Tao, Staroverov & Scuseria correlation             */
 #define  XC_MGGA_X_M06L       203  /* Zhao, Truhlar exchange                                     */
 #define  XC_MGGA_C_M06L       204  /* Zhao, Truhlar correlation                                  */
+#define  XC_MGGA_X_REVTPSS    205  /* Perdew, Ruzsinszky, Csonka, Constantin and Sun Exchange    */
+#define  XC_MGGA_C_REVTPSS    206  /* Perdew, Ruzsinszky, Csonka, Constantin and Sun correlation */
 #define  XC_LCA_OMC           301  /* Orestes, Marcasso & Capelle                                */
 #define  XC_LCA_LCH           302  /* Lee, Colwell & Handy                                       */

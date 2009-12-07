@@ -100,6 +100,17 @@ void XC(mgga_x_tpss)(XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma, FLOAT *tau,
 void XC(mgga_c_tpss)(XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma, FLOAT *tau,
 		 FLOAT *e, FLOAT *dedd, FLOAT *vsigma, FLOAT *dedtau);
 
+void XC(mgga_x_revtpss_init)(XC(mgga_type) *p);
+void XC(mgga_c_revtpss_init)(XC(mgga_type) *p);
+
+void XC(mgga_x_revtpss_end)(XC(mgga_type) *p);
+void XC(mgga_c_revtpss_end)(XC(mgga_type) *p);
+
+void XC(mgga_x_revtpss)(XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma, FLOAT *tau,
+		 FLOAT *e, FLOAT *dedd, FLOAT *vsigma, FLOAT *dedtau);
+void XC(mgga_c_revtpss)(XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma, FLOAT *tau,
+		 FLOAT *e, FLOAT *dedd, FLOAT *vsigma, FLOAT *dedtau);
+
 void XC(mgga_x_m06l_init)(XC(mgga_type) *p);
 void XC(mgga_c_m06l_init)(XC(mgga_type) *p);
 

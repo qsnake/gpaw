@@ -49,6 +49,7 @@ module libxc_funcs_m
   integer, parameter :: XC_GGA_C_PW91        = 134  !  Perdew & Wang 91 
   integer, parameter :: XC_GGA_C_AM05        = 135  !  Armiento & Mattsson 05 correlation             
   integer, parameter :: XC_GGA_C_XPBE        = 136  !  xPBE reparametrization by Xu & Goddard         
+  integer, parameter :: XC_GGA_C_PBE_REVTPSS = 137  !  PBE correlation for TPSS
   integer, parameter :: XC_GGA_XC_LB         = 160  !  van Leeuwen & Baerends 
   integer, parameter :: XC_GGA_XC_HCTH_93    = 161  !  HCTH functional fitted to  93 molecules  
   integer, parameter :: XC_GGA_XC_HCTH_120   = 162  !  HCTH functional fitted to 120 molecules  
@@ -67,6 +68,8 @@ module libxc_funcs_m
   integer, parameter :: XC_MGGA_C_TPSS       = 202  !  Perdew, Tao, Staroverov & Scuseria correlation 
   integer, parameter :: XC_MGGA_X_M06L       = 203  !  Zhao, Truhlar exchange 
   integer, parameter :: XC_MGGA_C_M06L       = 204  !  Zhao, Truhlar correlation 
+  integer, parameter :: XC_MGGA_X_REVTPSS    = 205  !  Perdew, Ruzsinszky, Csonka, Constantin and Sun Exchange    
+  integer, parameter :: XC_MGGA_C_REVTPSS    = 206  !  Perdew, Ruzsinszky, Csonka, Constantin and Sun Correlation
   integer, parameter :: XC_LCA_OMC           = 301  !  Orestes, Marcasso & Capelle  
   integer, parameter :: XC_LCA_LCH           = 302  !  Lee, Colwell & Handy         
 

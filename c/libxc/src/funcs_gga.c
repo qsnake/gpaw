@@ -27,6 +27,7 @@ extern XC(func_info_type) XC(func_info_gga_c_pbe);
 extern XC(func_info_type) XC(func_info_gga_c_lyp);
 extern XC(func_info_type) XC(func_info_gga_c_p86);
 extern XC(func_info_type) XC(func_info_gga_c_pbe_sol);
+extern XC(func_info_type) XC(func_info_gga_c_pbe_revtpss);
 extern XC(func_info_type) XC(func_info_gga_c_pw91);
 extern XC(func_info_type) XC(func_info_gga_c_am05);
 extern XC(func_info_type) XC(func_info_gga_c_xpbe);
@@ -67,6 +68,7 @@ const XC(func_info_type) *XC(gga_known_funct)[] = {
   &XC(func_info_gga_c_lyp),
   &XC(func_info_gga_c_p86),
   &XC(func_info_gga_c_pbe_sol),
+  &XC(func_info_gga_c_pbe_revtpss),
   &XC(func_info_gga_c_pw91),
   &XC(func_info_gga_c_am05),
   &XC(func_info_gga_c_xpbe),
