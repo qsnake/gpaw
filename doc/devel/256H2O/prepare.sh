@@ -20,7 +20,7 @@ if test -z $PATTERN;
     exit
 fi
 
-for p in 32 64 128 256 512
+for p in 16 32 64 128
   do
   proc=`setFORMAT $p`
   dir="${PATTERN}_${proc}_"

@@ -29,7 +29,7 @@ n = [240 * ri for ri in r]
 # nbands (>=1683) is the number of bands per cluster
 nbands = 3*6*6*16 # 1728
 for ri in r: nbands = nbands*ri
-mixer = Mixer(0.1, 5, 'new', 100.0)
+mixer = Mixer(beta=0.1, nmaxold=5, weight=100.0)
 # the next three lines decrease memory usage
 es = RMM_DIIS(keep_htpsit=False)
 from gpaw.hs_operators import Operator

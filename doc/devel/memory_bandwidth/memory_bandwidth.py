@@ -145,8 +145,11 @@ def analyse_benchmark(ncores=8, startcores=1, machine='TEST', runs=7):
     ref_value_3721 = -44.85666
     ref_SCF_3721 = 35
 
-    ref_value = ref_value_3721
-    ref_SCF = ref_SCF_3721
+    ref_value_5147 = -44.83504
+    ref_SCF_5147 = 30
+
+    ref_value = ref_value_5147
+    ref_SCF = ref_SCF_5147
 
     tolerance = 0.0001
 
@@ -174,6 +177,9 @@ def analyse_benchmark(ncores=8, startcores=1, machine='TEST', runs=7):
             gpaw_version = gpaw_version[:gpaw_version.rfind(':')]
         gpaw_version = int(gpaw_version)
         if len(str(gpaw_version)) > 1:
+            if gpaw_version <= 5147:
+                ref_value = ref_value_5147
+                ref_SCF = ref_SCF_5147
             if gpaw_version <= 3720:
                 ref_value = ref_value_3301
                 ref_SCF = ref_SCF_3301

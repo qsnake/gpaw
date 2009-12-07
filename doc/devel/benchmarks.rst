@@ -4,6 +4,8 @@
 Benchmarks
 ==========
 
+.. _memory_bandwidth:
+
 Memory benchmark
 ================
 
@@ -133,8 +135,8 @@ Please perform the following steps:
 Benchmarked systems
 -------------------
 
-Dual-socket dual Core AMD Opteron(tm) Processor 285/2.6 GHz/2 GB RAM per core
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Dual-socket dual Core AMD Opteron(tm) Processor 285/2.6 GHz/2 GB RAM per core EL5
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - memory bandwidth:
 
@@ -252,8 +254,7 @@ just one variable in :svn:`~doc/devel/256H2O/b256H2O.py`::
 Prerequisites
 +++++++++++++
 
-This benchmark requires approximately 2 GB of RAM memory per core
-and at least 32 cores, up to 512.
+This benchmark requires approximately 2 GB of RAM memory per core and at least 16 cores.
 The amount of disk space required is minimal.
 
 The following packages are required (names given for Fedora Core 10 system):
@@ -274,8 +275,8 @@ installing gpaw on different platforms.
 Results
 +++++++
 
-gpaw code is executed in parallel in order to benchmark a number of processes that ranges from
-32, through integer powers of 2 and up to the total number of CPU 512 cores.
+gpaw code is executed in parallel in order to benchmark a number of processes that ranges from 16,
+through integer powers of 2 up to 128.
 
 The number of bands (1056) and cores are chosen to make comparisons
 of different band parallelizations (:ref:`band_parallelization`) possible.
@@ -319,11 +320,10 @@ Please perform the following steps:
 
     - on akka::
 
+       cd ${PATTERN}_00016_; qsub -l nodes=2:8 ../akka.sh; cd ..
        cd ${PATTERN}_00032_; qsub -l nodes=4:8 ../akka.sh; cd ..
        cd ${PATTERN}_00064_; qsub -l nodes=8:8 ../akka.sh; cd ..
        cd ${PATTERN}_00128_; qsub -l nodes=16:8 ../akka.sh; cd ..
-       cd ${PATTERN}_00256_; qsub -l nodes=32:8 ../akka.sh; cd ..
-       cd ${PATTERN}_00512_; qsub -l nodes=64:8 ../akka.sh; cd ..
 
    **Warning**: on Linux clusters it s desirable to repeat these runs 2-3 times
    to make sure that they give reproducible time.
@@ -332,21 +332,49 @@ Please perform the following steps:
 
     python scaling.py -v --dir=. --pattern="b256H2O_112_04x04m64.grid_*_" b256H2O
 
-   A typical output may look like
-   (example given for Intel Xeon dual-socket, quad-core L5k CPUs, 2.5 GHz,
-   gpaw linked with Intel mkl, infiniband)::
+   Niflheim results:
 
-    # p - processes, p0 - reference processes, t - time [sec], s - speedup, e - efficiency
-    # GPAW version 3340: stages: 1 - initialization, 2 - fixdensity, 3 - SCF, 4 - forces, 5 - total
-    # p     p/p0   t1      s1      e1    t2      s2      e2    t3      s3      e3    t4      s4      e4    t5      s5      e5
-         32   1.00   100.0    32.0  1.00   339.0    32.0  1.00   235.0    32.0  1.00     0.0     0.0  0.00   674.0    32.0  1.00
-         64   2.00    81.5    39.3  0.61   166.5    65.2  1.02   114.0    66.0  1.03     0.0     0.0  0.00   362.0    59.6  0.93
-        128   4.00    62.0    51.6  0.40    87.0   124.7  0.97    59.0   127.5  1.00     0.0     0.0  0.00   208.0   103.7  0.81
-        256   8.00    44.0    72.7  0.28    48.0   226.0  0.88    32.0   235.0  0.92     0.0     0.0  0.00   124.0   173.9  0.68
-        512  16.00    43.0    74.4  0.15    36.0   301.3  0.59    24.0   313.3  0.61     0.0     0.0  0.00   103.0   209.4  0.41
- 
-   Clearly SCF part scales better than the initialization stage. Superscaling comes probably
-   from inacurracies in printed time, and should disappear if more SCF steps were timed (verify!).
+   - opteron (IBM eServer x3455: Opteron 2218 dual-core 2.60 GHz CPUs) nodes (infiniband):
+     performed on EL4 with gcc/acml-4.0.1/acml-4.0.1, gpaw **0.6.5092**,
+     numpy *1.0.3* compiled with gcc/blas-3.0-25/lapack-3.0-25 (with dotblas); no ScaLAPACK used::
+
+       # p - processes, p0 - reference processes, t - time [sec], s - speedup, e - efficiency
+       # GPAW version 6.5092: stages: 1 - initialization, 2 - fixdensity, 3 - SCF, 4 - forces, 5 - total
+       # p     p/p0   t1      s1      e1    t2      s2      e2    t3      s3      e3    t4      s4      e4    t5      s5      e5
+            16   1.00   201.5    16.0  1.00   778.5    16.0  1.00   533.0    16.0  1.00     0.0     0.0  0.00  1513.0    16.0  1.00
+            32   2.00   113.5    28.4  0.89   391.5    31.8  0.99   267.0    31.9  1.00     0.0     0.0  0.00   772.0    31.4  0.98
+            64   4.00    69.0    46.7  0.73   204.0    61.1  0.95   139.0    61.4  0.96     0.0     0.0  0.00   412.0    58.8  0.92
+
+   - opteron (IBM eServer x3455: Opteron 2218 dual-core 2.60 GHz CPUs) nodes (ethernet):
+     performed on EL5 with gcc43/goto-1.26/acml-4.3.0, gpaw **0.6.5092**,
+     numpy *1.3.0* compiled with gcc/acml-4.0.1 (no dotblas); no ScaLAPACK used::
+
+       # p - processes, p0 - reference processes, t - time [sec], s - speedup, e - efficiency
+       # GPAW version 6.5092: stages: 1 - initialization, 2 - fixdensity, 3 - SCF, 4 - forces, 5 - total
+       # p     p/p0   t1      s1      e1    t2      s2      e2    t3      s3      e3    t4      s4      e4    t5      s5      e5
+            16   1.00   190.5    16.0  1.00   823.5    16.0  1.00   563.0    16.0  1.00     0.0     0.0  0.00  1577.0    16.0  1.00
+            32   2.00   112.5    27.1  0.85   454.5    29.0  0.91   310.0    29.1  0.91     0.0     0.0  0.00   877.0    28.8  0.90
+            64   4.00    71.0    42.9  0.67   255.0    51.7  0.81   172.0    52.4  0.82     0.0     0.0  0.00   498.0    50.7  0.79
+
+   - xeon (HP DL160 G6: 64-bit Intel Nehalem Xeon X5570 quad-core 2.93 GHz CPUs) nodes (ethernet):
+     performed on EL5 with gcc43/acml-4.3.0/acml-4.3.0, gpaw **0.6.5092**,
+     numpy *1.3.0* compiled with gcc/acml-4.0.1 (no dotblas); no ScaLAPACK used::
+
+       # p - processes, p0 - reference processes, t - time [sec], s - speedup, e - efficiency
+       # GPAW version 6.5092: stages: 1 - initialization, 2 - fixdensity, 3 - SCF, 4 - forces, 5 - total
+       # p     p/p0   t1      s1      e1    t2      s2      e2    t3      s3      e3    t4      s4      e4    t5      s5      e5
+            16   1.00   116.0    16.0  1.00   444.0    16.0  1.00   302.0    16.0  1.00     0.0     0.0  0.00   862.0    16.0  1.00
+            32   2.00    66.0    28.1  0.88   270.0    26.3  0.82   184.0    26.3  0.82     0.0     0.0  0.00   520.0    26.5  0.83
+            64   4.00    48.0    38.7  0.60   159.0    44.7  0.70   109.0    44.3  0.69     0.0     0.0  0.00   316.0    43.6  0.68
+
+   Clearly SCF part scales better than the initialization stage.
+   Using of ScaLAPACK does not result in any noticeable improvement:
+   even for the fastest 64 cores run on xeon the diagonalization part
+   takes only 4% of the total runtime. This is to be expected from
+   a rather small hamiltonian matrix size (1056 bands).
+   **Note** that runtimes on opteron ethernet (EL5) and infiniband (EL4) nodes
+   are not directly comparable due to different operating system,
+   gcc, and numpy versions.
 
  - for a comparison of what to expect on different machines, the following absolute times where obtained with r=[1,1,1] (without ScaLAPACK)
 
@@ -402,8 +430,9 @@ installing gpaw on different platforms.
 Results
 +++++++
 
-gpaw code is executed in parallel in order to benchmark a number of processes that ranges from
-512, through integer powers of 2 and up to the total number of CPU 4096 cores.
+gpaw code is executed in parallel in order to benchmark a number of processes
+that ranges from 256,
+through integer powers of 2 and up to the total number of CPU 4096 cores.
 
 The number of bands (1728) and cores are chosen to make comparisons
 of different band parallelizations (:ref:`band_parallelization`) possible.
@@ -449,6 +478,7 @@ Please perform the following steps:
 
     - on akka::
 
+       cd ${PATTERN}_00256_; qsub -l nodes=32:8 ../akka.sh; cd ..
        cd ${PATTERN}_00512_; qsub -l nodes=64:8 ../akka.sh; cd ..
        cd ${PATTERN}_01024_; qsub -l nodes=128:8 ../akka.sh; cd ..
        cd ${PATTERN}_02048_; qsub -l nodes=256:8 ../akka.sh; cd ..
