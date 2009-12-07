@@ -123,13 +123,17 @@ class ELF:
 
         #TODO are nct from setups usable for nt_grad2_sG ?
 
-    def get_electronic_localization_function(self, spin=0, gridrefinement=1):
+    def get_electronic_localization_function(self, spin=0, gridrefinement=1,
+                                             pad=True, broadcast=True):
 
         # Returns dimensionless electronic localization function
         if gridrefinement == 1:
             elf_G = self.gd.empty()
             _elf(self.density.nt_sG[spin], self.nt_grad2_sG[spin],
                  self.taut_sG[spin], self.ncut, self.spinpol, elf_G)
+            elf_G = self.gd.collect(elf_G, broadcast)
+            if pad:
+                elf_G = self.gd.zero_pad(elf_G)
             return elf_G
         elif gridrefinement == 2:
             if self.nt_grad2_sg is None:
@@ -138,6 +142,9 @@ class ELF:
             elf_g = self.finegd.empty()
             _elf(self.density.nt_sg[spin], self.nt_grad2_sg[spin],
                  self.taut_sg[spin], self.ncut, self.spinpol, elf_g)
+            elf_g = self.finegd.collect(elf_g, broadcast)
+            if pad:
+                elf_g = self.finegd.zero_pad(elf_g)
             return elf_g
         else:
             raise NotImplementedError('Arbitrary refinement not implemented')
@@ -149,7 +156,8 @@ class ELF:
             return self.taut_sG[spin] / (Hartree / Bohr**3.0)
         elif gridrefinement == 2:
             if self.taut_sg is None:
-                self.density.interpolate_kinetic()
+                self.density.interpolator.apply(self.taut_sG[spin],
+                                                    self.taut_sg[spin])
 
             return self.taut_sg[spin] / (Hartree / Bohr**3.0)
         else:

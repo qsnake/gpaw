@@ -15,9 +15,6 @@ elf.initialize(calc)
 elf.update(calc.wfs)
 elf_G = elf.get_electronic_localization_function(spin=0,gridrefinement=1)
 elf_g = elf.get_electronic_localization_function(spin=0,gridrefinement=2)
-# for parallel calculations, collect arrays
-elf_G = calc.gd.collect(elf_G)
-elf_g = calc.finegd.collect(elf_g)
 # integrate the CO bond
 if rank == 0:
     # bond area
@@ -35,5 +32,6 @@ if rank == 0:
     gz0, gz1 = calc.finegd.N_c[2]*z0, calc.finegd.N_c[2] * z1
     int1 = elf_G[Gx0:Gx1,Gy0:Gy1,Gz0:Gz1].sum() * calc.gd.dv
     int2 = elf_g[gx0:gx1,gy0:gy1,gz0:gz1].sum() * calc.finegd.dv
-    equal(int1, 14.5144296205, 0.0001)
-    equal(int2, 13.190140251, 0.0001)
+    print "Ints", int1, int2
+    equal(int1, 14.8083762412, 0.0001)
+    equal(int2, 13.0333520934, 0.0001)
