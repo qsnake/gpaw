@@ -326,7 +326,8 @@ Please perform the following steps:
        cd ${PATTERN}_00128_; qsub -l nodes=16:8 ../akka.sh; cd ..
 
    **Warning**: on Linux clusters it s desirable to repeat these runs 2-3 times
-   to make sure that they give reproducible time.
+   to make sure that they give reproducible time. Even with this procedure obtained
+   runtimes may show up to 5% precision.
 
  - analyse the results::
 
