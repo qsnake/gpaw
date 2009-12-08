@@ -113,7 +113,8 @@ class BlacsGrid:
         return string
     
     def __del__(self):
-        _gpaw.blacs_destroy(self.context)
+        if self.is_active():
+            _gpaw.blacs_destroy(self.context)
 
 
 class NonBlacsGrid:
