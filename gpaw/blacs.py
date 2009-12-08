@@ -5,6 +5,7 @@ Array index symbol conventions:
 * M, N: indices in global array
 * m, n: indices in local array
 
+Note that we take into account C vs. F ordering automagically here!
 """
 
 import numpy as np
@@ -209,7 +210,7 @@ class BlacsDescriptor(MatrixDescriptor):
             locN, locM = _gpaw.get_blacs_shape(self.blacsgrid.context,
                                                self.N, self.M,
                                                self.nb, self.mb, 
-                                               self.rsrc, self.csrc)
+                                               self.csrc, self.rsrc)
         else:
             locN, locM = 0, 0
         
