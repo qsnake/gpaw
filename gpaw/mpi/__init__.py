@@ -183,6 +183,8 @@ class _Communicator:
         root: int
             Rank of the root process, from which the source data originates.
 
+        The reverse operation is ``gather``.
+
         Example::
 
           # The master has all the interesting data. Distribute it.
@@ -272,6 +274,8 @@ class _Communicator:
             Destination of the distributed data, i.e. root's receive buffer.
             The size of this array must match the size of the distributed
             source arrays multiplied by the number of process in the group.
+
+        The reverse operation is ``scatter``.
 
         Example::
 
