@@ -65,7 +65,8 @@ class LrTDDFT(ExcitationList):
                  txt=None,
                  filename=None,
                  finegrid=2,
-                 force_ApmB=False # for tests
+                 force_ApmB=False, # for tests
+                 eh_comm=None # parallelization over eh-pairs
                  ):
 
         self.nspins = None
@@ -89,6 +90,18 @@ class LrTDDFT(ExcitationList):
         self.numscale=numscale
         self.finegrid=finegrid
         self.force_ApmB=force_ApmB
+
+        if eh_comm is None:
+            eh_comm = mpi.SerialCommunicator()
+        elif isinstance(eh_comm, (mpi.world.__class__,
+                                mpi.serial_comm.__class__)):
+            # Correct type already.
+            pass
+        else:
+            # world should be a list of ranks:
+            eh_comm = mpi.world.new_communicator(np.asarray(eh_comm))
+
+        self.eh_comm = eh_comm
  
         if calculator is not None:
             calculator.converge_wave_functions()
@@ -167,7 +180,8 @@ class LrTDDFT(ExcitationList):
             name = 'LrTDDFThyb'
         self.Om = Om(self.calculator, self.kss,
                      self.xc, self.derivativeLevel, self.numscale,
-                     finegrid=self.finegrid, txt=self.txt)
+                     finegrid=self.finegrid, eh_comm=self.eh_comm,
+                     txt=self.txt)
         self.name = name
 ##        self.diagonalize()
 

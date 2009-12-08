@@ -46,12 +46,18 @@ class OmegaMatrix:
                  numscale=0.001,
                  filehandle=None,
                  txt=None,
-                 finegrid=2
+                 finegrid=2,
+                 eh_comm=None,
                  ):
         
         if not txt and calculator:
             txt = calculator.txt
         self.txt, firsttime = initialize_text_stream(txt, mpi.rank)
+
+        if eh_comm == None:
+            eh_comm = mpi.SerialCommunicator()
+
+        self.eh_comm = eh_comm
 
         if filehandle is not None:
             self.kss = kss
@@ -130,6 +136,7 @@ class OmegaMatrix:
             xcf=self.xc.get_functional()
             self.full = self.get_xc(self.full)
             self.paw.timer.stop()
+        self.paw.wfs.band_comm.sum(self.full)
 
     def get_xc(self, Om):
         """Add xc part of the coupling matrix"""
@@ -139,11 +146,13 @@ class OmegaMatrix:
         wfs = paw.wfs
         fgd = paw.density.finegd
         comm = fgd.comm
-
+        eh_comm = self.eh_comm
+        
         fg = self.finegrid is 2
         kss = self.fullkss
         nij = len(kss)
-        
+
+        Om_xc = np.zeros((nij,nij))
         # initialize densities
         # nt_sg is the smooth density on the fine grid with spin index
 
@@ -199,7 +208,7 @@ class OmegaMatrix:
         ns=self.numscale
         xc=self.xc
         print >> self.txt, 'XC',nij,'transitions'
-        for ij in range(nij):
+        for ij in range(eh_comm.rank, nij, eh_comm.size):
             print >> self.txt,'XC kss['+'%d'%ij+']' 
 
             timer = Timer()
@@ -307,14 +316,14 @@ class OmegaMatrix:
                               - ns*kss[kq].get(fg)
                         Excmm = xc.get_energy_and_potential(nv_g,v_g)
 
-                    Om[ij,kq] += weight *\
+                    Om_xc[ij,kq] += weight *\
                                 0.25*(Excpp-Excmp-Excpm+Excmm)/(ns*ns)
                               
                 elif self.derivativeLevel == 1:
                     # vxc is available
 
                     timer2.start('integrate')
-                    Om[ij,kq] += weight*\
+                    Om_xc[ij,kq] += weight*\
                                  self.gd.integrate(kss[kq].get(fg)*
                                                    vvt_s[kss[kq].pspin])
                     timer2.stop()
@@ -330,24 +339,24 @@ class OmegaMatrix:
                         # use pack as I_sp used pack2
                         P_p = pack(P_ii, tolerance=1e30)
                         Exc += np.dot(I_asp[a][kss[kq].pspin], P_p)
-                    Om[ij, kq] += weight * self.gd.comm.sum(Exc)
+                    Om_xc[ij, kq] += weight * self.gd.comm.sum(Exc)
                     timer2.stop()
 
                 elif self.derivativeLevel == 2:
                     # fxc is available
                     if kss.npspins==2: # spin polarised
-                        Om[ij,kq] += weight *\
+                        Om_xc[ij,kq] += weight *\
                             gd.integrate(kss[ij].get(fg)*
                                          kss[kq].get(fg)*
                                          fxc[kss[ij].pspin,kss[kq].pspin])
                     else: # spin unpolarised
-                        Om[ij,kq] += weight *\
+                        Om_xc[ij,kq] += weight *\
                             gd.integrate(kss[ij].get(fg)*
                                          kss[kq].get(fg)*
                                          fxc)
                 if ij != kq:
-                    Om[kq,ij] = Om[ij,kq]
-
+                    Om_xc[kq,ij] = Om_xc[ij,kq]
+                
             timer.stop()
 ##            timer2.write()
             if ij < (nij-1):
@@ -356,6 +365,9 @@ class OmegaMatrix:
                 print >> self.txt,'XC estimated time left',\
                       self.timestring(t0*(nij-ij-1)+t)
 
+
+        eh_comm.sum(Om_xc)
+        Om += Om_xc
         return Om
 
     def get_rpa(self):
@@ -365,6 +377,7 @@ class OmegaMatrix:
         kss=self.fullkss
         finegrid=self.finegrid
         wfs = self.paw.wfs
+        eh_comm = self.eh_comm
         
         # calculate omega matrix
         nij = len(kss)
@@ -372,7 +385,7 @@ class OmegaMatrix:
         
         Om = np.zeros((nij,nij))
         
-        for ij in range(nij):
+        for ij in range(eh_comm.rank, nij, eh_comm.size):
             print >> self.txt,'RPA kss['+'%d'%ij+']=', kss[ij]
 
             timer = Timer()
@@ -455,6 +468,7 @@ class OmegaMatrix:
                 print >> self.txt,'RPA estimated time left',\
                       self.timestring(t0*(nij-ij-1)+t)
 
+        eh_comm.sum(Om)
         return Om
 
     def singlets_triplets(self):
