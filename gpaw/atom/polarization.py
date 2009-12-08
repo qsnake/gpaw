@@ -818,7 +818,7 @@ class Reference:
             # this is an ugly way to do it, by the way, but it probably works
         # Right now we only use one nuclear position, but maybe this
         # is to be changed in the future
-        return c.gd, c.kpt_u, self.spos_ac[self.index:self.index+1]
+        return c.wfs.gd, c.kpt_u, self.spos_ac[self.index:self.index+1]
 
 if __name__ == '__main__':
     pass
