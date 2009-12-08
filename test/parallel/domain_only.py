@@ -15,5 +15,5 @@ calc = GPAW(nbands=6,
 O.set_calculator(calc)
 O.get_potential_energy()
 
-print "calc.gd.comm.size, world.size=", calc.gd.comm.size, world.size
-assert(calc.gd.comm.size == world.size)
+print "calc.wfs.gd.comm.size, world.size=", calc.wfs.gd.comm.size, world.size
+assert(calc.wfs.gd.comm.size == world.size)

@@ -98,7 +98,7 @@ class AllElectronPotential:
 
       # Generate cartesian fine grid xc-potential
       print "Generate cartesian fine grid xc-potential"
-      gd = self.paw.finegd
+      gd = self.paw.density.finegd
       vxct_g = gd.zeros()
       self.paw.hamiltonian.xc.get_energy_and_potential(self.paw.density.nt_sg[0], vxct_g)
 

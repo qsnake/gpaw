@@ -31,11 +31,11 @@ class STM:
 
         self.get_basis_functions()
         
-        self.tgd = self.tcalc.gd
-        self.sgd = self.scalc.gd
+        self.tgd = self.tcalc.wfs.gd
+        self.sgd = self.scalc.wfs.gd
 
     def get_basis_functions(self):
-        gd = self.calc.gd
+        gd = self.calc.wfs.gd
         self.functions = []
         for nucleus in self.calc.nuclei:
             spos0_c = np.round(nucleus.spos_c * gd.N_c) / gd.N_c
@@ -48,7 +48,7 @@ class STM:
     def set_position(self, dG):
         positions = self.combined.get_positions()
         tippositions = self.tip.get_positions()
-        tippositions += dG * self.calc.gd.h_c / Bohr
+        tippositions += dG * self.calc.wfs.gd.h_c / Bohr
         positions[-len(self.tip):] = tippositions
         self.combined.set_positions(positions)
 

@@ -15,11 +15,11 @@ calc = Calculator(h=0.2, width=0.01, nbands=2)
 H2.SetCalculator(calc)
 H2.GetPotentialEnergy()
 
-yl = ExpandYl(H2.center_of_mass(), calc.gd, Rmax=2.5)
+yl = ExpandYl(H2.center_of_mass(), calc.wfs.gd, Rmax=2.5)
 gl = []
 for n in range(calc.nbands):
     psit_G = calc.kpt_u[0].psit_nG[n]
-    norm = calc.gd.integrate(psit_G**2)
+    norm = calc.wfs.gd.integrate(psit_G**2)
     g = yl.expand(psit_G)
     gsum = np.sum(g)
 

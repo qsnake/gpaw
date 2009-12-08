@@ -40,8 +40,8 @@ class FiniteSys(CHI):
             bzkpt_kG = tmp
 
         # Get pair-orbitals in real space
-        n_S = self.pair_orbital_Rspace(orb_MG, calc.gd.h_c, calc.wfs.setups, 
-                                         calc.wfs.kpt_u[0])
+        n_S = self.pair_orbital_Rspace(orb_MG, calc.wfs.gd.h_c,
+                                       calc.wfs.setups, calc.wfs.kpt_u[0])
 
         # Get kernel
         if isfile('kernel.npz'):
@@ -51,7 +51,7 @@ class FiniteSys(CHI):
 
         else:
             kernelRPA_SS, kernelLDA_SS = self.kernel_finite_sys(nt_G, calc.density.D_asp, orb_MG, 
-                        calc.wfs.kpt_u[0], calc.gd, calc.wfs.setups, spos_ac)
+                        calc.wfs.kpt_u[0], calc.wfs.gd, calc.wfs.setups, spos_ac)
             np.savez('kernel.npz',KRPA=kernelRPA_SS,KLDA=kernelLDA_SS)
 
         # Solve Dyson's equation and Get dipole strength function

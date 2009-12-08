@@ -115,9 +115,9 @@ class PAWTextOutput:
                   '---------------------')
         for c in range(3):
             self.text('  %d. axis:    %s  %10.6f  %10.6f  %10.6f   %3d   %8.4f'
-                      % ((c + 1, ['no ', 'yes'][int(self.gd.pbc_c[c])]) +
-                         tuple(Bohr * self.gd.cell_cv[c]) +
-                         (self.gd.N_c[c], Bohr * self.gd.h_c[c])))
+                      % ((c + 1, ['no ', 'yes'][int(self.wfs.gd.pbc_c[c])]) +
+                         tuple(Bohr * self.wfs.gd.cell_cv[c]) +
+                         (self.wfs.gd.N_c[c], Bohr * self.wfs.gd.h_c[c])))
         self.text()
 
     def print_positions(self):
@@ -241,9 +241,9 @@ class PAWTextOutput:
             else:
                 t('Parallelization Over k-points on %d Processors' %
                   self.wfs.kpt_comm.size)
-        if self.gd.comm.size > 1: # domain parallelization
+        if self.wfs.gd.comm.size > 1: # domain parallelization
             t('Using Domain Decomposition: %d x %d x %d' %
-              tuple(self.gd.parsize_c))
+              tuple(self.wfs.gd.parsize_c))
 
         if self.wfs.symmetry is not None:
             self.wfs.symmetry.print_symmetries(t)
@@ -322,7 +322,7 @@ class PAWTextOutput:
             return
         
         t()
-        charge = self.finegd.integrate(self.density.rhot_g)
+        charge = self.density.finegd.integrate(self.density.rhot_g)
         t('Total Charge:  %f electrons' % charge)
 
         dipole = self.get_dipole_moment()

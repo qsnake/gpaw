@@ -47,11 +47,11 @@ class NSCFSIC:
                 ESIC += -f*(EHa+Exc)
                 
         # SIC correction always spin-polarized!
-        nt_sG = self.paw.gd.zeros(2)
-        nt_sg = self.paw.finegd.zeros(2)
-        vt_sg = self.paw.finegd.zeros(2)
-        e_g = self.paw.finegd.zeros()
-        vHt_g = self.paw.finegd.zeros()
+        nt_sG = self.paw.wfs.gd.zeros(2)
+        nt_sg = self.paw.density.finegd.zeros(2)
+        vt_sg = self.paw.density.finegd.zeros(2)
+        e_g = self.paw.density.finegd.zeros()
+        vHt_g = self.paw.density.finegd.zeros()
         
         # For each state
         print "Valence electron sic "
@@ -73,7 +73,7 @@ class NSCFSIC:
                 # Calculate the spin-polarized LDA potential with other channel filled with zeros
                 vt_sg[:] = 0.0
                 xc.calculate_spinpolarized(e_g, nt_sg[0], vt_sg[0], nt_sg[1], vt_sg[1])
-                Exc = e_g.ravel().sum() * self.paw.finegd.dv
+                Exc = e_g.ravel().sum() * self.paw.density.finegd.dv
 
                 # Determine and add the compensation charge coefficients
                 Q_aL={}
@@ -88,7 +88,7 @@ class NSCFSIC:
                 self.paw.hamiltonian.poisson.solve(vHt_g, nt_sg[kpt.s], charge=1)
 
                 # Calculate the pseudo Hartree-energy
-                EH = 0.5 * self.paw.finegd.integrate(vHt_g * nt_sg[kpt.s])
+                EH = 0.5 * self.paw.density.finegd.integrate(vHt_g * nt_sg[kpt.s])
 
                 # Go though each atom
                 for a in self.paw.density.D_asp:

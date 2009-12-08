@@ -82,6 +82,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
 
     wfs = paw.wfs
     scf = paw.scf
+    density = paw.density
     hamiltonian = paw.hamiltonian
 
     world = paw.wfs.world
@@ -140,11 +141,11 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
         w.add('IBZKPointWeights', ('nibzkpts',), wfs.weight_k)
 
         # Create dimensions for varioius netCDF variables:
-        ng = paw.gd.get_size_of_global_array()
+        ng = wfs.gd.get_size_of_global_array()
         w.dimension('ngptsx', ng[0])
         w.dimension('ngptsy', ng[1])
         w.dimension('ngptsz', ng[2])
-        ng = paw.finegd.get_size_of_global_array()
+        ng = density.finegd.get_size_of_global_array()
         w.dimension('nfinegptsx', ng[0])
         w.dimension('nfinegptsy', ng[1])
         w.dimension('nfinegptsz', ng[2])
@@ -171,10 +172,10 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
         w['UseSymmetry'] = p['usesymm']
         w['Converged'] = scf.converged
         w['FermiWidth'] = paw.occupations.width
-        w['MixClass'] = paw.density.mixer.__class__.__name__
-        w['MixBeta'] = paw.density.mixer.beta
-        w['MixOld'] = paw.density.mixer.nmaxold
-        w['MixWeight'] = paw.density.mixer.weight
+        w['MixClass'] = density.mixer.__class__.__name__
+        w['MixBeta'] = density.mixer.beta
+        w['MixOld'] = density.mixer.nmaxold
+        w['MixWeight'] = density.mixer.weight
         w['MaximumAngularMomentum'] = p.lmax
         w['SoftGauss'] = False
         w['FixDensity'] = p.fixdensity
@@ -263,9 +264,9 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
         for a in range(natoms):
             ni = wfs.setups[a].ni
             nii = ni * (ni + 1) // 2
-            if a in paw.density.D_asp:
-                D_sp = paw.density.D_asp[a]
-                dH_sp = paw.hamiltonian.dH_asp[a]
+            if a in density.D_asp:
+                D_sp = density.D_asp[a]
+                dH_sp = hamiltonian.dH_asp[a]
             else:
                 D_sp = np.empty((wfs.nspins, nii))
                 domain_comm.receive(D_sp, wfs.rank_a[a], 207)
@@ -281,9 +282,9 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
 
     elif kpt_comm.rank == 0 and band_comm.rank == 0:
         for a in range(natoms):
-            if a in paw.density.D_asp:
-                domain_comm.send(paw.density.D_asp[a], 0, 207)
-                domain_comm.send(paw.hamiltonian.dH_asp[a], 0, 2071)
+            if a in density.D_asp:
+                domain_comm.send(density.D_asp[a], 0, 207)
+                domain_comm.send(hamiltonian.dH_asp[a], 0, 2071)
 
     # Write the eigenvalues and occupation numbers:
     for name, var in [('Eigenvalues', 'eps_n'), ('OccupationNumbers', 'f_n')]:
@@ -329,7 +330,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
               ('nspins', 'ngptsx', 'ngptsy', 'ngptsz'), dtype=float)
     if kpt_comm.rank == 0:
         for s in range(wfs.nspins):
-            nt_sG = wfs.gd.collect(paw.density.nt_sG[s])
+            nt_sG = wfs.gd.collect(density.nt_sG[s])
             if master:
                 w.fill(nt_sG)
 
@@ -339,17 +340,17 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
               ('nspins', 'ngptsx', 'ngptsy', 'ngptsz'), dtype=float)
     if kpt_comm.rank == 0:
         for s in range(wfs.nspins):
-            vt_sG = wfs.gd.collect(paw.hamiltonian.vt_sG[s])
+            vt_sG = wfs.gd.collect(hamiltonian.vt_sG[s])
 
             if master:
                 w.fill(vt_sG)
 
     # Write GLLB-releated stuff
-    if paw.hamiltonian.xcfunc.gllb:
+    if hamiltonian.xcfunc.gllb:
         if master:
-            paw.hamiltonian.xcfunc.xc.write(w)
+            hamiltonian.xcfunc.xc.write(w)
         else:
-            paw.hamiltonian.xcfunc.xc.write(None)
+            hamiltonian.xcfunc.xc.write(None)
 
     if mode == 'all':
         # Write the wave functions:
@@ -383,7 +384,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
         print >> paw.txt, 'Writing wave functions to', dirname,\
               'using mode=', mode
 
-        ngd = paw.gd.get_size_of_global_array()
+        ngd = wfs.gd.get_size_of_global_array()
         for s in range(wfs.nspins):
             for k in range(wfs.nibzkpts):
                 for n in range(wfs.nbands):
@@ -467,9 +468,9 @@ def read(paw, reader):
             
     # Read pseudoelectron density on the coarse grid
     # and distribute out to nodes:
-    nt_sG = paw.gd.empty(density.nspins)
+    nt_sG = wfs.gd.empty(density.nspins)
     for s in range(density.nspins):
-        paw.gd.distribute(r.get('PseudoElectronDensity', s),
+        wfs.gd.distribute(r.get('PseudoElectronDensity', s),
                           nt_sG[s])
 
     # Read atomic density matrices
@@ -485,9 +486,9 @@ def read(paw, reader):
     # Read pseudo potential on the coarse grid
     # and distribute out to nodes:    
     if version > 0.3:
-        hamiltonian.vt_sG = paw.gd.empty(hamiltonian.nspins)
+        hamiltonian.vt_sG = wfs.gd.empty(hamiltonian.nspins)
         for s in range(hamiltonian.nspins): 
-            paw.gd.distribute(r.get('PseudoPotential', s),
+            wfs.gd.distribute(r.get('PseudoPotential', s),
                               hamiltonian.vt_sG[s])
 
     # Read non-local part of hamiltonian
@@ -616,7 +617,7 @@ def read(paw, reader):
         
     if newmode == 'lcao':
         spos_ac = paw.atoms.get_scaled_positions() % 1.0
-        paw.wfs.load_lazily(hamiltonian, spos_ac)
+        wfs.load_lazily(hamiltonian, spos_ac)
 
     if newmode != oldmode:
         paw.scf.reset()

@@ -13,10 +13,10 @@ class Wannier:
         self.spin = spin
         self.Z_nnc = None
         if calc is not None:
-            if not calc.gd.orthogonal:
+            if not calc.wfs.gd.orthogonal:
                 raise NotImplementedError('Wannier function analysis ' +
                                           'requires an orthogonal cell.')
-            self.cell_c = calc.gd.cell_c * Bohr
+            self.cell_c = calc.wfs.gd.cell_c * Bohr
             if nbands is None:
                 nbands = calc.get_number_of_bands()
             self.Z_nnc = np.empty((nbands, nbands, 3), complex)
@@ -52,11 +52,11 @@ class Wannier:
 
     def get_function(self, calc, n, pad=True):
         if pad:
-            return calc.gd.zero_pad(self.get_function(calc, n, False))
+            return calc.wfs.gd.zero_pad(self.get_function(calc, n, False))
         psit_nG = calc.wfs.kpt_u[self.spin].psit_nG[:]
         psit_nG = psit_nG.reshape((calc.wfs.nbands, -1))
         return np.dot(self.U_nn[:, n],
-                       psit_nG).reshape(calc.gd.n_c) / Bohr**1.5
+                       psit_nG).reshape(calc.wfs.gd.n_c) / Bohr**1.5
 
     def get_hamiltonian(self, calc):
         # U^T diag(eps_n) U

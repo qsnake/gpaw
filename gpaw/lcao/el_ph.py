@@ -66,11 +66,11 @@ class ElectronPhononCouplingMatrix:
             
             self.calc.calculate(self.atoms)
             Vt_G = self.calc.get_effective_potential(pad=False)
-            Vt_G = self.calc.gd.collect(Vt_G, broadcast=True) / Hartree
+            Vt_G = self.calc.wfs.gd.collect(Vt_G, broadcast=True) / Hartree
             dH_asp = self.calc.hamiltonian.dH_asp
             setups = self.calc.wfs.setups
             nspins = self.calc.wfs.nspins
-            gd_comm = self.calc.gd.comm
+            gd_comm = self.calc.wfs.gd.comm
 
 
             alldH_asp = {}
@@ -107,7 +107,7 @@ class ElectronPhononCouplingMatrix:
                         self.atoms.positions[a, j] = p[a, j] + sign * ndis * self.delta
                         self.calc.calculate(self.atoms)
                         Vt_G = self.calc.get_effective_potential(pad=False)
-                        Vt_G =self.calc.gd.collect(Vt_G, broadcast=True) / Hartree
+                        Vt_G =self.calc.wfs.gd.collect(Vt_G, broadcast=True) / Hartree
                         dH_asp = self.calc.hamiltonian.dH_asp
 
                         alldH_asp = {}

@@ -20,21 +20,22 @@ def get_vxc(paw, spin=0, U=None):
     
     if U is not None: # Rotate xc matrix
         return np.dot(U.T.conj(), np.dot(get_vxc(paw, spin), U))
-    
+
+    gd = paw.hamiltonian.gd    
     psit_nG = paw.wfs.kpt_u[spin].psit_nG[:]
     if paw.density.nt_sg is None:
         paw.density.interpolate()
     nt_g = paw.density.nt_sg[spin]
-    vxct_g = paw.finegd.zeros()
+    vxct_g = paw.density.finegd.zeros()
     paw.hamiltonian.xc.get_energy_and_potential(nt_g, vxct_g)
-    vxct_G = paw.gd.empty()
+    vxct_G = gd.empty()
     paw.hamiltonian.restrict(vxct_g, vxct_G)
     Vxc_nn = np.zeros((paw.wfs.nbands, paw.wfs.nbands))
 
     # Apply pseudo part
-    r2k(.5 * paw.gd.dv, psit_nG, vxct_G * psit_nG, .0, Vxc_nn) # lower triangle
+    r2k(.5 * gd.dv, psit_nG, vxct_G * psit_nG, .0, Vxc_nn) # lower triangle
     tri2full(Vxc_nn, 'L') # Fill in upper triangle from lower
-    paw.gd.comm.sum(Vxc_nn)
+    gd.comm.sum(Vxc_nn)
 
     # Add atomic PAW corrections
     for a, P_ni in paw.wfs.kpt_u[spin].P_ani.items():
@@ -214,15 +215,15 @@ class HF:
         self.nbands       = paw.wfs.nbands
         self.restrict     = paw.hamiltonian.restrict
         self.pair_density = PairDensity(paw.density, paw.atoms, finegrid=True)
-        self.dv           = paw.gd.dv
+        self.dv           = paw.wfs.gd.dv
         self.dtype        = paw.wfs.dtype
         self.setups       = paw.wfs.setups
 
         # Allocate space for matrices
-        self.nt_G   = paw.gd.empty()
-        self.rhot_g = paw.finegd.empty()
-        self.vt_G   = paw.gd.empty()
-        self.vt_g   = paw.finegd.empty()
+        self.nt_G   = paw.wfs.gd.empty()
+        self.rhot_g = paw.density.finegd.empty()
+        self.vt_G   = paw.wfs.gd.empty()
+        self.vt_g   = paw.density.finegd.empty()
         self.poisson_solve = paw.hamiltonian.poisson.solve
 
     def apply(self, paw, u=0):

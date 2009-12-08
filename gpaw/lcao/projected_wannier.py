@@ -60,10 +60,11 @@ def eigvals(H, S):
 
 
 def get_bfs(calc):
-    bfs = BasisFunctions(calc.gd, [setup.phit_j for setup in calc.wfs.setups],
-                         calc.wfs.kpt_comm, cut=True)
-    if not calc.wfs.gamma:
-        bfs.set_k_points(calc.wfs.ibzk_qc)
+    wfs = calc.wfs
+    bfs = BasisFunctions(wfs.gd, [setup.phit_j for setup in wfs.setups],
+                         wfs.kpt_comm, cut=True)
+    if not wfs.gamma:
+        bfs.set_k_points(wfs.ibzk_qc)
     bfs.set_positions(calc.atoms.get_scaled_positions() % 1.)
     return bfs
 
@@ -92,7 +93,7 @@ def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
     dtype = calc.wfs.dtype
     if bfs is None:
         bfs = get_bfs(calc)
-    tci = TwoCenterIntegrals(calc.gd, calc.wfs.setups,
+    tci = TwoCenterIntegrals(calc.wfs.gd, calc.wfs.setups,
                              calc.wfs.gamma, calc.wfs.ibzk_qc)
     tci.set_positions(spos_ac)
 

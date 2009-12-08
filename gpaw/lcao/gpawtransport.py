@@ -1686,7 +1686,7 @@ class GPAWTransport:
         self.initialize_lfc(calc, atoms_extend)
         #calc.set_positions(atoms_extend)
         
-        linear_potential = calc.gd.empty(self.nspins)
+        linear_potential = calc.wfs.gd.empty(self.nspins)
         
         dimt = linear_potential.shape[-1]
         dimp = linear_potential.shape[1:3]

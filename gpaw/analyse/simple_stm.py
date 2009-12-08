@@ -37,7 +37,7 @@ class SimpleStm:
                 self.calc = atoms
             self.calc.converge_wave_functions()
             
-            self.gd = self.calc.gd
+            self.gd = self.calc.wfs.gd
             self.offset_c = [int(not a) for a in self.gd.pbc_c]
 
     def calculate_ldos(self, bias):

@@ -37,9 +37,9 @@ def get_lcao_xc(calc, P_aqMi, bfs=None, spin=0):
     if calc.density.nt_sg is None:
         calc.density.interpolate()
     nt_g = calc.density.nt_sg[spin]
-    vxct_g = calc.finegd.zeros()
+    vxct_g = calc.density.finegd.zeros()
     calc.hamiltonian.xc.get_energy_and_potential(nt_g, vxct_g)
-    vxct_G = calc.gd.zeros()
+    vxct_G = calc.wfs.gd.zeros()
     calc.hamiltonian.restrict(vxct_g, vxct_G)
     Vxc_qMM = np.zeros((nq, nao, nao), dtype)
     for q, Vxc_MM in enumerate(Vxc_qMM):
@@ -62,15 +62,15 @@ def get_xc2(calc, w_wG, P_awi, spin=0):
     if calc.density.nt_sg is None:
         calc.density.interpolate()
     nt_g = calc.density.nt_sg[spin]
-    vxct_g = calc.finegd.zeros()
+    vxct_g = calc.density.finegd.zeros()
     calc.hamiltonian.xc.get_energy_and_potential(nt_g, vxct_g)
-    vxct_G = calc.gd.empty()
+    vxct_G = calc.wfs.gd.empty()
     calc.hamiltonian.restrict(vxct_g, vxct_G)
 
     # Integrate pseudo part
     Nw = len(w_wG)
     xc_ww = np.empty((Nw, Nw))
-    r2k(.5 * calc.gd.dv, w_wG, vxct_G * w_wG, .0, xc_ww)
+    r2k(.5 * calc.wfs.gd.dv, w_wG, vxct_G * w_wG, .0, xc_ww)
     tri2full(xc_ww, 'L')
     
     # Add atomic PAW corrections
@@ -422,7 +422,7 @@ class LCAOwrap:
         C_wM = np.zeros((Ni, self.Nw), self.dtype)
         for i, C_M in zip(indices, C_wM):
             C_M[i] = 1.0
-        w_wG = self.calc.gd.zeros(Ni, dtype=self.dtype)
+        w_wG = self.calc.wfs.gd.zeros(Ni, dtype=self.dtype)
         self.calc.wfs.basis_functions.lcao_to_grid(C_wM, w_wG, q=-1)
         return w_wG
 

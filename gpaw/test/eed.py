@@ -22,5 +22,5 @@ except:
     c.calculate(s)
     c.write(fwfname, 'all')
 
-eed = ExteriorElectronDensity(c.gd, s)
+eed = ExteriorElectronDensity(c.wfs.gd, s)
 eed.write_mies_weights(c.wfs)

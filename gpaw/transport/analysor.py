@@ -881,8 +881,8 @@ class Transport_Analysor:
         assert tp.d == 2
         
         calc = tp.extended_calc
-        gd = calc.gd
-        finegd = calc.finegd
+        gd = calc.wfs.gd
+        finegd = calc.hamiltonian.finegd
   
         nt_sG = tp.gd.collect(tp.density.nt_sG, True)
         vt_sG = gd.collect(calc.hamiltonian.vt_sG, True)
@@ -1329,7 +1329,7 @@ class Transport_Analysor:
         else:
             calc = self.tp
             
-        gd = calc.gd
+        gd = calc.wfs.gd
         for s in range(self.tp.nspins):
             nt = self.tp.gd.collect(self.tp.density.nt_sG[s], True)
             vt = gd.collect(calc.hamiltonian.vt_sG[s], True)

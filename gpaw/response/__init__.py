@@ -92,7 +92,7 @@ class CHI:
         self.nS = self.nLCAO **2
         self.nG = calc.get_number_of_grid_points()
         self.nG0 = self.nG[0] * self.nG[1] * self.nG[2]
-        self.h_c = calc.gd.h_c
+        self.h_c = calc.wfs.gd.h_c
 
         print 
         print 'Parameters used:'

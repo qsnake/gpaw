@@ -451,10 +451,10 @@ class STM:
 
     def align_v(self,calc1,index1,calc2,index2):
         pos1 = calc1.atoms.positions[index1]
-        pos1_c = np.round(pos1/Bohr/calc1.gd.h_c).astype(int)
+        pos1_c = np.round(pos1/Bohr/calc1.wfs.gd.h_c).astype(int)
         pos1_v = calc1.get_effective_potential()[pos1_c[0],pos1_c[1],pos1_c[2]]
         pos2 = calc2.atoms.positions[index2]
-        pos2_c = np.round(pos2/Bohr/calc2.gd.h_c).astype(int)
+        pos2_c = np.round(pos2/Bohr/calc2.wfs.gd.h_c).astype(int)
         pos2_v = calc2.get_effective_potential()[pos2_c[0],pos2_c[1],pos2_c[2]]
         return pos2_v - pos1_v
 
@@ -462,7 +462,7 @@ class STM:
 class Lead_HS:
     def __init__(self, calc, atom_list, extension = None, shift = 0.0):
         self.calc = calc
-        self.gd = calc.gd
+        self.gd = calc.wfs.gd
         self.atom_list = atom_list
         self.shift = shift
         self.extension = extension

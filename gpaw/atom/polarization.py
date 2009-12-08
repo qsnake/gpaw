@@ -121,7 +121,7 @@ def rotation_test():
         print 'angle=%.03f' % (angle_increment * i)
         energy = system.get_potential_energy()
         center = (system.positions / system.get_cell().diagonal())[0]
-        orbital = pog.generate(l, calc.gd, calc.kpt_u[0].psit_nG, center)
+        orbital = pog.generate(l, calc.wfs.gd, calc.kpt_u[0].psit_nG, center)
         y = orbital(r)
         pylab.plot(r, y, label='%.02f' % (i * angle_increment))
         maxvalues.append(max(y))
@@ -807,7 +807,7 @@ class Reference:
         #self.center = atoms.positions[index]
         self.spos_ac = atoms.positions / self.cell
 
-        self.gpts = calc.gd.N_c
+        self.gpts = calc.wfs.gd.N_c
         if calc.kpt_u[0].psit_nG is None:
             raise RuntimeError('No wave functions found in .gpw file')
 

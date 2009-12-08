@@ -137,7 +137,7 @@ class OmegaMatrix:
         # shorthands
         paw = self.paw
         wfs = paw.wfs
-        fgd = paw.finegd
+        fgd = paw.density.finegd
         comm = fgd.comm
 
         fg = self.finegrid is 2

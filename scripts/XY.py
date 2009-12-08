@@ -120,7 +120,8 @@ def calculate(element, ref_data, p):
             calc = Calculator(**p)
             compound.set_calculator(calc)
             e_compound = compound.get_potential_energy()
-            dip = calc.finegd.calculate_dipole_moment(calc.density.rhot_g)*calc.a0
+            finegd = calc.density.finegd
+            dip = finegd.calculate_dipole_moment(calc.density.rhot_g)*calc.a0
             vib = Vibrations(compound)
             vib.run()
             vib_compound = vib.get_frequencies(method='frederiksen').real[-1]
@@ -135,7 +136,7 @@ def calculate(element, ref_data, p):
             qn.run(fmax=0.05)
             e_compound_r = compound.get_potential_energy()
             dist_compound_r = compound.get_distance(0,1)
-            dip_r = calc.finegd.calculate_dipole_moment(calc.density.rhot_g)*calc.a0
+            dip_r = finegd.calculate_dipole_moment(calc.density.rhot_g)*calc.a0
             vib = Vibrations(compound)
             vib.run()
             vib_compound_r = vib.get_frequencies(method='frederiksen').real[-1]

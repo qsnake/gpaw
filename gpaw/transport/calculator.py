@@ -28,11 +28,21 @@ import gpaw
 import numpy as np
 import pickle
 
+class FixedBC_GridDescriptor(GridDescriptor):
+    use_fixed_bc = True
+
 class Lead_Calc(GPAW):
     def dry_run(self):
         pass
+
+    def initialize(self, *args, **kwargs):
+        GPAW.initialize(self, *args, **kwargs)
+        self.gd = self.wfs.gd
+        self.finegd = self.density.finegd
         
 class Transport(GPAW):
+
+    grid_descriptor_class = FixedBC_GridDescriptor
     
     def __init__(self, **transport_kwargs):
         self.set_transport_kwargs(**transport_kwargs)
@@ -40,7 +50,12 @@ class Transport(GPAW):
             GPAW.__init__(self, self.restart_file + '.gpw', **self.gpw_kwargs)
             self.set_positions()
         else:
-            GPAW.__init__(self, **self.gpw_kwargs)            
+            GPAW.__init__(self, **self.gpw_kwargs)
+            
+    def initialize(self, *args, **kwargs):
+        GPAW.initialize(self, *args, **kwargs)
+        self.gd = self.wfs.gd
+        self.finegd = self.density.finegd
             
     def set_transport_kwargs(self, **transport_kwargs):
         kw = transport_kwargs  
@@ -280,11 +295,11 @@ class Transport(GPAW):
         else:
             self.gpw_kwargs['usesymm'] = False
    
-    def construct_grid_descriptor(self, N_c, cell_cv,
-                                  pbc_c, domain_comm, parsize):
-        GPAW.construct_grid_descriptor(self, N_c, cell_cv,
-                                  pbc_c, domain_comm, parsize)
-        self.gd.use_fixed_bc = True
+    #def construct_grid_descriptor(self, N_c, cell_cv,
+    #                              pbc_c, domain_comm, parsize):
+    #    GPAW.construct_grid_descriptor(self, N_c, cell_cv,
+    #                              pbc_c, domain_comm, parsize)
+    #    self.gd.use_fixed_bc = True
 
     def set_analysis_parameters(self, **analysis_kwargs):
         self.analysis_parameters = analysis_kwargs

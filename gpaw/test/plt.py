@@ -40,7 +40,7 @@ fname = 'aed.plt'
 cell = calc.get_atoms().get_cell()
 #aed = calc.get_all_electron_density(1, pad=False)
 aed = calc.get_pseudo_density(1, pad=False)
-#aed = calc.gd.collect(aed)
+#aed = calc.wfs.gd.collect(aed)
 
 if mpi.size == 1:
     data_org = [cell, aed, np.array([0., 0., 0.])]

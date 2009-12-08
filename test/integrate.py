@@ -20,7 +20,7 @@ kpt_q = calc.wfs.kpt_u
 setups = calc.wfs.setups
 spos_ac = bulk.get_scaled_positions()
 
-tci = TwoCenterIntegrals(calc.gd, setups, calc.wfs.gamma, calc.wfs.ibzk_qc)
+tci = TwoCenterIntegrals(calc.wfs.gd, setups, calc.wfs.gamma, calc.wfs.ibzk_qc)
 tci.set_positions(spos_ac)
 
 # Calculate projector overlaps, and (lower triangle of-) S and T matrices

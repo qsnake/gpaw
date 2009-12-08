@@ -168,10 +168,10 @@ class TDDFT(GPAW):
         # Solver for linear equations
         self.text('Solver: ', solver)
         if solver is 'BiCGStab':
-            self.solver = BiCGStab(gd=self.gd, timer=self.timer,
+            self.solver = BiCGStab(gd=wfs.gd, timer=self.timer,
                                    tolerance=tolerance)
         elif solver is 'CSCG':
-            self.solver = CSCG(gd=self.gd, timer=self.timer,
+            self.solver = CSCG(gd=wfs.gd, timer=self.timer,
                                tolerance=tolerance)
         else:
             raise RuntimeError('Solver %s not supported.' % solver)
@@ -181,34 +181,34 @@ class TDDFT(GPAW):
         self.text('Preconditioner: ', 'None')
         self.preconditioner = None #TODO! check out SSOR preconditioning
         #self.preconditioner = InverseOverlapPreconditioner(self.overlap)
-        #self.preconditioner = KineticEnergyPreconditioner(self.gd, self.td_hamiltonian.hamiltonian.kin, np.complex)
+        #self.preconditioner = KineticEnergyPreconditioner(wfs.gd, self.td_hamiltonian.hamiltonian.kin, np.complex)
 
         # Time propagator
         self.text('Propagator: ', propagator)
         if propagator is 'ECN':
             self.propagator = ExplicitCrankNicolson(self.td_density,
                 self.td_hamiltonian, self.td_overlap, self.solver,
-                self.preconditioner, self.gd, self.timer)
+                self.preconditioner, wfs.gd, self.timer)
         elif propagator is 'SICN':
             self.propagator = SemiImplicitCrankNicolson(self.td_density,
                 self.td_hamiltonian, self.td_overlap, self.solver,
-                self.preconditioner, self.gd, self.timer)
+                self.preconditioner, wfs.gd, self.timer)
         elif propagator in ['SITE4', 'SITE']:
             self.propagator = SemiImplicitTaylorExponential(self.td_density,
                 self.td_hamiltonian, self.td_overlap, self.solver,
-                self.preconditioner, self.gd, self.timer, degree = 4)
+                self.preconditioner, wfs.gd, self.timer, degree = 4)
         elif propagator in ['SIKE4', 'SIKE']:
             self.propagator = SemiImplicitKrylovExponential(self.td_density,
                 self.td_hamiltonian, self.td_overlap, self.solver,
-                self.preconditioner, self.gd, self.timer, degree = 4)
+                self.preconditioner, wfs.gd, self.timer, degree = 4)
         elif propagator is 'SIKE5':
             self.propagator = SemiImplicitKrylovExponential(self.td_density,
                 self.td_hamiltonian, self.td_overlap, self.solver,
-                self.preconditioner, self.gd, self.timer, degree = 5)
+                self.preconditioner, wfs.gd, self.timer, degree = 5)
         elif propagator is 'SIKE6':
             self.propagator = SemiImplicitKrylovExponential(self.td_density,
                 self.td_hamiltonian, self.td_overlap, self.solver, 
-                self.preconditioner, self.gd, self.timer, degree = 6)
+                self.preconditioner, wfs.gd, self.timer, degree = 6)
         else:
             raise RuntimeError('Time propagator %s not supported.' % propagator)
 
@@ -217,9 +217,9 @@ class TDDFT(GPAW):
                 if wfs.nspins == 2:
                     self.text('Parallelization Over Spin')
 
-                if self.gd.comm.size > 1:
+                if wfs.gd.comm.size > 1:
                     self.text('Using Domain Decomposition: %d x %d x %d' %
-                              tuple(self.gd.parsize_c))
+                              tuple(wfs.gd.parsize_c))
 
                 if wfs.band_comm.size > 1:
                     self.text('Parallelization Over bands on %d Processors' %
@@ -228,7 +228,7 @@ class TDDFT(GPAW):
 
         self.hpsit = None
         self.eps_tmp = None
-        self.mblas = MultiBlas(self.gd)
+        self.mblas = MultiBlas(wfs.gd)
 
     def read(self, reader):
         assert reader.has_array('PseudoWaveFunctions')
@@ -277,7 +277,7 @@ class TDDFT(GPAW):
 
         self.timer.start('Propagate')
         while self.niter < maxiter:
-            norm = self.finegd.integrate(self.density.rhot_g)
+            norm = self.density.finegd.integrate(self.density.rhot_g)
 
             # Write dipole moment at every iteration
             if dipole_moment_file is not None:
@@ -322,7 +322,7 @@ class TDDFT(GPAW):
         # Write final results and close dipole moment file
         if dipole_moment_file is not None:
             #TODO final iteration is propagated, but nothing is updated
-            #norm = self.finegd.integrate(self.density.rhot_g)
+            #norm = self.density.finegd.integrate(self.density.rhot_g)
             #self.finalize_dipole_moment_file(norm)
             self.finalize_dipole_moment_file()
 
@@ -356,7 +356,7 @@ class TDDFT(GPAW):
                 self.dm_file.flush()
 
     def update_dipole_moment_file(self, norm):
-        dm = self.finegd.calculate_dipole_moment(self.density.rhot_g)
+        dm = self.density.finegd.calculate_dipole_moment(self.density.rhot_g)
 
         if self.rank == 0:
             line = '%20.8lf %20.8le %22.12le %22.12le %22.12le\n' \
@@ -382,8 +382,8 @@ class TDDFT(GPAW):
 
         kpt_u = self.wfs.kpt_u
         if self.hpsit is None:
-            self.hpsit = self.gd.zeros(len(kpt_u[0].psit_nG),
-                                       dtype=complex)
+            self.hpsit = self.wfs.gd.zeros(len(kpt_u[0].psit_nG),
+                                           dtype=complex)
         if self.eps_tmp is None:
             self.eps_tmp = np.zeros(len(kpt_u[0].eps_n),
                                     dtype=complex)
@@ -394,7 +394,7 @@ class TDDFT(GPAW):
                                       calculate_P_ani=False)
             self.mblas.multi_zdotc(self.eps_tmp, kpt.psit_nG,
                                    self.hpsit, len(kpt_u[0].psit_nG))
-            self.eps_tmp *= self.gd.dv
+            self.eps_tmp *= self.wfs.gd.dv
             kpt.eps_n[:] = self.eps_tmp.real
 
         self.occupations.calculate_band_energy(self.wfs)
@@ -440,7 +440,7 @@ class TDDFT(GPAW):
                                    np.array(kick_strength, float))
         abs_kick = AbsorptionKick(self.wfs, abs_kick_hamiltonian,
                                   self.td_overlap, self.solver,
-                                  self.preconditioner, self.gd, self.timer)
+                                  self.preconditioner, self.wfs.gd, self.timer)
         abs_kick.kick(self.wfs.kpt_u)
 
     def __del__(self):

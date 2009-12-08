@@ -62,7 +62,7 @@ class PeriodicSys(CHI):
 
         # Get pair-orbitals in Gspace
         print 'Calculating pair-orbital in G-space'
-        n_SG = self.pair_orbital_Gspace(orb_MG, calc.gd)
+        n_SG = self.pair_orbital_Gspace(orb_MG, calc.wfs.gd)
 
         # Get kernel
         print 'Calculating kernel'
@@ -74,8 +74,9 @@ class PeriodicSys(CHI):
         else:
             Gvec = self.get_Gvectors()
             # q are expressed in terms of the primitive lattice vectors
-            KRPA_SS, KLDA_SS = self.kernel_extended_sys(n_SG, q, Gvec, nt_G, orb_MG, calc.gd)
-            np.savez('kernel.npz',KRPA=KRPA_SS,KLDA=KLDA_SS)
+            KRPA_SS, KLDA_SS = self.kernel_extended_sys(n_SG, q, Gvec, nt_G,
+                                                        orb_MG, calc.wfs.gd)
+            np.savez('kernel.npz', KRPA=KRPA_SS, KLDA=KLDA_SS)
 
         # Solve Dyson's equation
         print 'Solving Dyson equation and transfrom chi_SS to G-space'
@@ -226,7 +227,7 @@ class PeriodicSys(CHI):
 #            else:
 #                G = np.array([np.inner(dGvec, chi.bcell[:,dim]) 
 #                            for dim in range(3)])
-#                Kxc_Gdig[j] = calc.gd.integrate(
+#                Kxc_Gdig[j] = calc.wfs.gd.integrate(
 #                   np.exp(-1j * gemmdot(G, r,beta=0.)) * fxc_G ) / chi.vol
 #            
 #            count += 1
@@ -295,7 +296,7 @@ class PeriodicSys(CHI):
 
         # To check whether n_SG is correct, just look at the G=0 component
         # tmp = orb_MG[mu].conj() * orb_MG[nu]
-        # calc.gd.integrate(tmp) should == n_SG[nLCAO*mu+nu, 0]
+        # calc.wfs.gd.integrate(tmp) should == n_SG[nLCAO*mu+nu, 0]
 
         return n_SG * self.vol / self.nG0 
 

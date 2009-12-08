@@ -173,10 +173,10 @@ class GPAW(PAW):
     
     def get_effective_potential(self, spin=0, pad=True):
         """Return pseudo effective-potential."""
-        # XXX should we do a self.gd.collect here?
+        # XXX should we do a gd.collect here?
         vt_G = self.hamiltonian.vt_sG[spin]
         if pad:
-            vt_G = self.gd.zero_pad(vt_G)
+            vt_G = self.hamiltonian.gd.zero_pad(vt_G)
         return vt_G * Hartree
     
     def get_pseudo_density_corrections(self):
@@ -236,15 +236,15 @@ class GPAW(PAW):
         i.e. the density sums to zero.
         """
         from gpaw.utilities import wignerseitz
-        atom_index = self.gd.empty(dtype=int)
-        atom_ac = self.atoms.get_scaled_positions() * self.gd.N_c
-        wignerseitz(atom_index, atom_ac, self.gd)
+        atom_index = self.wfs.gd.empty(dtype=int)
+        atom_ac = self.atoms.get_scaled_positions() * self.wfs.gd.N_c
+        wignerseitz(atom_index, atom_ac, self.wfs.gd)
 
         nt_G = self.density.nt_sG[spin]
         weight_a = np.empty(len(self.atoms))
         for a in range(len(self.atoms)):
             # XXX Optimize! No need to integrate in zero-region
-            smooth = self.gd.integrate(np.where(atom_index == a, nt_G, 0.0))
+            smooth = self.wfs.gd.integrate(np.where(atom_index==a, nt_G, 0.0))
             correction = self.density.get_correction(a, spin)
             weight_a[a] = smooth + correction
             
@@ -349,11 +349,12 @@ class GPAW(PAW):
             if psit_G is None:
                 return
             else:
-                return self.gd.zero_pad(psit_G)
+                return self.wfs.gd.zero_pad(psit_G)
         psit_G = self.wfs.get_wave_function_array(band, kpt, spin)
         if broadcast:
             if not self.wfs.world.rank == 0:
-                psit_G = self.gd.empty(dtype=self.wfs.dtype, global_array=True)
+                psit_G = self.wfs.gd.empty(dtype=self.wfs.dtype,
+                                           global_array=True)
             self.wfs.world.broadcast(psit_G, 0)
             return psit_G / Bohr**1.5
         elif self.wfs.world.rank == 0:
@@ -484,13 +485,13 @@ class GPAW(PAW):
         self.wfs.initialize_wave_functions_from_restart_file()
         
         # Get pseudo part
-        Z_nn = self.gd.wannier_matrix(kpt_u[u].psit_nG,
-                                      kpt_u[u1].psit_nG, c, G, nbands)
+        Z_nn = self.wfs.gd.wannier_matrix(kpt_u[u].psit_nG,
+                                          kpt_u[u1].psit_nG, c, G, nbands)
 
         # Add corrections
         self.add_wannier_correction(Z_nn, G, c, u, u1, nbands)
 
-        self.gd.comm.sum(Z_nn, 0)
+        self.wfs.gd.comm.sum(Z_nn, 0)
             
         return Z_nn
 
@@ -635,7 +636,7 @@ class GPAW(PAW):
         return magmom_a
         
     def get_number_of_grid_points(self):
-        return self.gd.N_c
+        return self.wfs.gd.N_c
 
     def get_number_of_iterations(self):
         return self.iter
@@ -680,10 +681,10 @@ class GPAW(PAW):
         from gpaw.io import read_wave_function
         for u, kpt in enumerate(self.wfs.kpt_u):
             #kpt = self.kpt_u[u]
-            kpt.psit_nG = self.gd.empty(self.wfs.nbands, self.wfs.dtype)
+            kpt.psit_nG = self.wfs.gd.empty(self.wfs.nbands, self.wfs.dtype)
             # Read band by band to save memory
             s = kpt.s
             k = kpt.k
             for n, psit_G in enumerate(kpt.psit_nG):
-                psit_G[:] = read_wave_function(self.gd, s, k, n, mode)
+                psit_G[:] = read_wave_function(self.wfs.gd, s, k, n, mode)
                 

@@ -17,9 +17,9 @@ H2.set_calculator(calc)
 H2.get_potential_energy()
 
 # Check that a / h = 10 is rounded up to 12 as always:
-assert (calc.gd.N_c == (12, 12, 16)).all()
+assert (calc.wfs.gd.N_c == (12, 12, 16)).all()
 
-yl = ExpandYl(H2.positions.mean(0), calc.gd, Rmax=1.5)
+yl = ExpandYl(H2.positions.mean(0), calc.wfs.gd, Rmax=1.5)
 
 def max_index(l):
     mi = 0

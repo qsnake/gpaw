@@ -39,6 +39,7 @@ class PAW(PAWTextOutput):
 
     timer_class = Timer
     scf_loop_class = SCFLoop
+    grid_descriptor_class = GridDescriptor
 
     def __init__(self, filename=None, **kwargs):
         """ASE-calculator interface.
@@ -75,8 +76,6 @@ class PAW(PAWTextOutput):
         self.hamiltonian = None
         self.atoms = None
         self.bd = None
-        self.gd = None
-        self.finegd = None
 
         self.initialized = False
 
@@ -462,13 +461,11 @@ class PAW(PAWTextOutput):
                                (nbands, parsize_bands))
 
         if not self.wfs:
-            if parsize == 'domain only':
-                nspins_parallel = 1
-                parsize = None
-            else:
-                nspins_parallel = nspins
+            if parsize == 'domain only': #XXX this was silly!
+                parsize = world.size
+
             domain_comm, kpt_comm, band_comm = mpi.distribute_cpus(parsize,
-                parsize_bands, nspins_parallel, len(ibzk_kc), world)
+                parsize_bands, nspins, len(ibzk_kc), world)
 
             if self.bd is not None and self.bd.comm.size != band_comm.size:
                 # Band grouping has changed, so we need to
@@ -478,6 +475,8 @@ class PAW(PAWTextOutput):
             # Construct grid descriptor for coarse grids for wave functions:
             self.bd = BandDescriptor(nbands, band_comm, par.parstride_bands)
 
+            """
+            #XXX XXX XXX XXX CAN THIS EVEN HAPPEN ANYMORE!?! XXX XXX XXX
             if self.gd is not None and self.gd.comm.size != domain_comm.size:
                 # Domain decomposition has changed, so we need to
                 # reinitialize density and hamiltonian:
@@ -486,14 +485,14 @@ class PAW(PAWTextOutput):
                                        )
                 self.density = None
                 self.hamiltonian = None
+            """
 
             # Construct grid descriptor for coarse grids for wave functions:
-            self.construct_grid_descriptor(N_c, cell_cv, pbc_c,
-                                           domain_comm, parsize)
+            gd = self.grid_descriptor_class(N_c, cell_cv, pbc_c,
+                                            domain_comm, parsize)
             
             # do k-point analysis here? XXX
-
-            args = (self.gd, nspins, nvalence, setups, self.bd,
+            args = (gd, nspins, nvalence, setups, self.bd,
                     dtype, world, kpt_comm,
                     gamma, bzk_kc, ibzk_kc, weight_k, symmetry, self.timer)
             if par.mode == 'lcao':
@@ -513,15 +512,15 @@ class PAW(PAWTextOutput):
             self.wfs.set_eigensolver(eigensolver)
 
         if self.density is None:
+            gd = self.wfs.gd
             if par.stencils[1] != 9:
                 # Construct grid descriptor for fine grids for densities
                 # and potentials:
-                self.finegd = self.gd.refine()
+                finegd = gd.refine()
             else:
                 # Special case (use only coarse grid):
-                self.finegd = self.gd
-                
-            self.density = Density(self.gd, self.finegd, nspins,
+                finegd = gd
+            self.density = Density(gd, finegd, nspins,
                                    par.charge + setups.core_charge)
 
         self.density.initialize(setups, par.stencils[1], self.timer,
@@ -529,7 +528,8 @@ class PAW(PAWTextOutput):
         self.density.set_mixer(par.mixer)
 
         if self.hamiltonian is None:
-            self.hamiltonian = Hamiltonian(self.gd, self.finegd, nspins,
+            gd, finegd = self.density.gd, self.density.finegd
+            self.hamiltonian = Hamiltonian(gd, finegd, nspins,
                                            setups, par.stencils[1], self.timer,
                                            xcfunc, par.poissonsolver,
                                            par.external)
@@ -566,7 +566,7 @@ class PAW(PAWTextOutput):
         spos_ac = self.atoms.get_scaled_positions() % 1.0
         self.density.nct.set_positions(spos_ac)
         self.density.ghat.set_positions(spos_ac)
-        self.density.nct_G = self.gd.zeros()
+        self.density.nct_G = self.density.gd.zeros()
         self.density.nct.add(self.density.nct_G, 1.0 / self.density.nspins)
         self.density.interpolate()
         self.density.calculate_pseudo_charge(0)
@@ -692,10 +692,6 @@ class PAW(PAWTextOutput):
         if not mpi.compare_atoms(self.atoms, comm=self.wfs.world):
             raise RuntimeError('Atoms objects on different processors ' +
                                'are not identical!')
-
-    def construct_grid_descriptor(self, N_c, cell_cv,
-                                  pbc_c, domain_comm, parsize):
-        self.gd = GridDescriptor(N_c, cell_cv, pbc_c, domain_comm, parsize)
 
 
 def kpts2ndarray(kpts):

@@ -54,8 +54,8 @@ class ELF:
     def __init__(self, paw=None, ncut=1e-6):
         """Create the ELF object."""
 
-        self.gd = paw.gd
-        self.finegd = paw.finegd
+        self.gd = paw.wfs.gd
+        self.finegd = paw.density.finegd
         self.nspins = paw.density.nspins
         self.density = paw.density
 

@@ -17,7 +17,7 @@ class MakeWaveFunctions:
         self.gd = gd
 
     def __call__(self, paw, gd, *args):
-        paw.gd = self.gd
+        #paw.gd = self.gd XXX!
         return AtomWaveFunctions(self.gd, *args)
     
 
@@ -284,8 +284,8 @@ class AtomPAW(GPAW):
         assert self.wfs.nspins == 1
 
         basis = Basis(self.symbol, basis_name, readxml=False)
-        basis.d = self.gd.h
-        basis.ng = self.gd.ng + 1
+        basis.d = self.wfs.gd.h
+        basis.ng = self.wfs.gd.ng + 1
         basis.generatorattrs = {} # attrs of the setup maybe
         basis.generatordata = 'AtomPAW' # version info too?
 
@@ -300,7 +300,7 @@ class AtomPAW(GPAW):
             # We'll make an ugly hack
             if abs(phit_g[1]) > 3.0 * abs(phit_g[2] - phit_g[1]):
                 phit_g[0] = phit_g[1]
-            bf = BasisFunction(l, self.gd.rcut, phit_g,
+            bf = BasisFunction(l, self.wfs.gd.rcut, phit_g,
                                '%s%d e=%.3f f=%.3f' % ('spdfgh'[l], n, eps, f))
             bf_j.append(bf)
         return basis

@@ -290,7 +290,7 @@ class STM:
             setup = self.srf.wfs.setups[a]
             spos_c = self.srf.atoms.get_scaled_positions()[a]
             for phit in setup.phit_j:
-                f = AtomCenteredFunctions(self.srf.gd, [phit], spos_c, j)
+                f = AtomCenteredFunctions(self.srf.wfs.gd, [phit], spos_c, j)
                 bfs_indices.append(j)
                 j += len(f.f_iG)
         
@@ -576,7 +576,7 @@ class STM:
         
         #distribute grid points over cpu's
         dcomm = self.domain_comm
-        N_c = self.srf.gd.N_c[:2]
+        N_c = self.srf.wfs.gd.N_c[:2]
         gpts_i = np.arange(N_c[0] * N_c[1])
         l = len(gpts_i) / dcomm.size
         rest = len(gpts_i) % dcomm.size
@@ -737,7 +737,7 @@ class STM:
             scan[x, y] = I_g[i]
 
         self.domain_comm.sum(scan) # gather image
-        sgd = self.srf.gd
+        sgd = self.srf.wfs.gd
         data = (bias, sgd.N_c, sgd.h_c, sgd.cell_cv, sgd.cell_c)
         dmin = self.get_dmin()
         fullscan = (data, scan)
@@ -754,7 +754,7 @@ class STM:
                        'Fullscan done\n')
 
     def scan3d(self, zmin, zmax):
-        sgd = self.srf.gd
+        sgd = self.srf.wfs.gd
         bias = self.stm_calc.bias
         data = (bias, sgd.N_c, sgd.h_c, sgd.cell_cv, sgd.cell_c)
         self.scans['scan3d'] = (data, {})
@@ -825,7 +825,7 @@ class STM:
             h_c = data[2] #XXX
             N_c = data[1] #XXX
         else:
-            sgd = self.srf.gd
+            sgd = self.srf.wfs.gd
             cell_cv = sgd.cell_cv
             cell_c = sgd.cell_c
             h_c = sgd.h_c
@@ -1094,8 +1094,8 @@ class TipCell:
         self.tip_indices = tip_indices
         self.tip_atom_index =  tip_atom_index
         assert tip_atom_index in tip_indices
-        tgd = self.tip.gd
-        sgd = self.srf.gd
+        tgd = self.tip.wfs.gd
+        sgd = self.srf.wfs.gd
         tip_atoms = self.tip.atoms.copy()[tip_indices]      
         tip_atoms.pbc = 0
         tip_pos_av = tip_atoms.get_positions().copy() / Bohr
@@ -1166,14 +1166,14 @@ class TipCell:
             dointerpolate = False
             newsize2_c = tgd.N_c.copy()
             vt_sG = self.tip.hamiltonian.vt_sG.copy()
-            vt_sG = self.tip.gd.collect(vt_sG, broadcast=True)
+            vt_sG = self.tip.wfs.gd.collect(vt_sG, broadcast=True)
             vt_G = vt_sG[0]
             vt_G = vt_G[:, :, cell_zmin_grpt:cell_zmax_grpt]
             theta_min = 0.0
             origo_c = np.array([0,0,0])
             self.vt_G = vt_G
         
-        N_c_bak = self.tip.gd.N_c.copy()
+        N_c_bak = self.tip.wfs.gd.N_c.copy()
         tip_pos_av[:,2] -= cell_zmin_grpt * tgd.h_c[2]
         
         newsize2_c[2] = new_sizez.copy()
@@ -1265,11 +1265,11 @@ class TipCell:
            the effective potential is set to zero"""
 
         vt_sG0 = self.tip.hamiltonian.vt_sG.copy()
-        vt_sG0 = self.tip.gd.collect(vt_sG0, broadcast = True)        
+        vt_sG0 = self.tip.wfs.gd.collect(vt_sG0, broadcast = True)        
         vt_G0 = vt_sG0[0]
         vt_G0 = vt_G0[:, :, self.cell_zmin_grpt:self.cell_zmax_grpt]
-        tgd = self.tip.gd
-        newgd = self.gd
+        tgd = self.tip.wfs.gd
+        newgd = self.wfs.gd
         shape0 = vt_G0.shape
         tip_basis = tgd.cell_cv.T / tgd.cell_c
         new_basis = newgd.cell_cv.T / newgd.cell_c
@@ -1333,7 +1333,7 @@ class SrfCell:
         self.srf_indices = srf_indices
         # determine the extended unitcell
         srf_vt_sG = self.srf.hamiltonian.vt_sG.copy()
-        srf_vt_sG = self.srf.gd.collect(srf_vt_sG, broadcast = True)
+        srf_vt_sG = self.srf.wfs.gd.collect(srf_vt_sG, broadcast = True)
         srf_vt_G = srf_vt_sG[0]        
 
         tip = tip_cell
@@ -1341,7 +1341,7 @@ class SrfCell:
         spos_ac = tip.atoms.get_scaled_positions()
         tip_atom_spos = spos_ac[tip_atom_index][:2]
         tgd = tip.gd
-        sgd = self.srf.gd
+        sgd = self.srf.wfs.gd
         tip_cell_cv = tgd.cell_cv[:2, :2]
         tip_cell_c = tgd.cell_c[:2]
         tip_basis = tip_cell_cv.T / tip_cell_c
@@ -1406,7 +1406,7 @@ class SrfCell:
             setup = self.srf.wfs.setups[a]
             spos_c = self.srf.atoms.get_scaled_positions()[a]
             for phit in setup.phit_j:
-                f = AtomCenteredFunctions(self.srf.gd, [phit], spos_c, j)
+                f = AtomCenteredFunctions(self.srf.wfs.gd, [phit], spos_c, j)
                 if j in bfs_indices:
                     self.functions.append(f)
                 j += len(f.f_iG)
