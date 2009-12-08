@@ -106,25 +106,33 @@ class Timer:
         t0 = time.time()
         tot = t0 - self.t0
 
-        out.write('\nTiming:\n%s\n' % ('=' * 60))
+        out.write('\n%s\n' % ('=' * 60))
+        out.write('Timing:                   incl.     excl.\n')
+        out.write('%s\n' % ('=' * 60))
         n = max([len(names[-1]) + len(names) for names in self.timers]) + 1
         tother = tot
-        keys = self.timers.keys()
+        
+        inclusive = self.timers.copy()
+
+        exclusive = self.timers
+        keys = exclusive.keys()
         keys.sort()
         for names in keys:
-            t = self.timers[names]
+            t = exclusive[names]
             if len(names) > 1:
                 if len(names) < self.print_levels + 1:
-                    self.timers[names[:-1]] -= t
+                    exclusive[names[:-1]] -= t
             else:
                 tother -= t
-        self.timers[('Other',)] = tother
+        exclusive[('Other',)] = tother
+        inclusive[('Other',)] = tother
         keys.append(('Other',))
         for names in keys:
-            t = self.timers[names]
+            t = exclusive[names]
+            tinclusive = inclusive[names]
             r = t / tot
             p = 100 * r
-            i = int(50 * r + 0.5)
+            i = int(40 * r + 0.5)
             if i == 0:
                 bar = '|'
             else:
@@ -133,9 +141,10 @@ class Timer:
             if level > self.print_levels:
                 continue
             name = (level - 1) * ' ' + names[-1] + ':'
-            out.write('%-*s%9.3f %5.1f%% %s\n' % (n, name, t, p, bar))
+            out.write('%-*s%9.3f %9.3f %5.1f%% %s\n' %
+                      (n, name, tinclusive, t, p, bar))
         out.write('%s\n' % ('=' * 60))
-        out.write('%-*s%9.3f %5.1f%%\n' % (n, 'Total:', tot, 100.0))
+        out.write('%-*s%9.3f %5.1f%%\n' % (n + 10, 'Total:', tot, 100.0))
         out.write('%s\n' % ('=' * 60))
         out.write('date: %s\n' % time.asctime())
 
