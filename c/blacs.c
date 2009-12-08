@@ -56,7 +56,9 @@ int Csys2blacs_handle_(MPI_Comm SysCtxt);
 #define   pdsygvx_ pdsygvx
 #define   pzhegvx_ pzhegvx
 #define   pdgemm_ pdgemm
+#define   pzgemm_ pzgemm
 #define   pdgemv_ pdgemv
+#define   pzemmv_ pzgemv
 #endif
 
 #ifdef GPAW_NO_UNDERSCORE_CSCALAPACK
@@ -159,6 +161,7 @@ void pzhegvx_(int* ibtype, char* jobz, char* range,
               int* iwork, int* liwork,
               int* ifail, int* iclustr, double* gap, int* info);
 
+// pblas
 void pdgemm_(char* transa, char* transb, int* m, int* n, int* k,
              double* alpha,
              double* a, int* ia, int *ja, int *desca,
@@ -166,19 +169,32 @@ void pdgemm_(char* transa, char* transb, int* m, int* n, int* k,
              double* beta,
              double* c, int* ic, int *jc, int *descc);
 
+void pzgemm_(char* transa, char* transb, int* m, int* n, int* k,
+             void* alpha,
+             void* a, int* ia, int *ja, int *desca,
+             void* b, int* ib, int *jb, int *descb,
+             void* beta,
+             void* c, int* ic, int *jc, int *descc);
+
 void pdgemv_(char* transa, int* m, int* n, double* alpha, 
              double* a, int* ia, int* ja, int* desca,
              double* x, int* ix, int* jx, int* descx, int* incx,
              double* beta,
              double* y, int* iy, int* jy, int* descy, int* incy);
 
+void pzgemv_(char* transa, int* m, int* n, void* alpha, 
+             void* a, int* ia, int* ja, int* desca,
+             void* x, int* ix, int* jx, int* descx, int* incx,
+             void* beta,
+             void* y, int* iy, int* jy, int* descy, int* incy);
+
 PyObject* pblas_pdgemm(PyObject *self, PyObject *args)
 {
   char transa;
   char transb;
   int m, n, k;
-  double alpha;
-  double beta;
+  Py_complex alpha;
+  Py_complex beta;
   PyArrayObject *a_obj, *b_obj, *c_obj;
   PyArrayObject *desca_obj, *descb_obj, *descc_obj;
   static int one = 1;
@@ -189,11 +205,26 @@ PyObject* pblas_pdgemm(PyObject *self, PyObject *args)
                         &transa, &transb)) {
     return NULL;
   }
-  pdgemm_(&transa, &transb, &m, &n, &k, &alpha, 
-          DOUBLEP(a_obj), &one, &one, INTP(desca_obj), 
-          DOUBLEP(b_obj), &one, &one, INTP(descb_obj),
-          &beta,
-          DOUBLEP(c_obj), &one, &one, INTP(descc_obj));  
+
+  // cdesc
+  // int c_ConTxt = INTP(descc_obj)[1];
+
+  // If process not on BLACS grid, then return.
+  // if (c_ConTxt == -1) Py_RETURN_NONE;
+
+  if (c_obj->descr->type_num == PyArray_DOUBLE)
+    pdgemm_(&transa, &transb, &m, &n, &k, &(alpha.real), 
+	    DOUBLEP(a_obj), &one, &one, INTP(desca_obj), 
+	    DOUBLEP(b_obj), &one, &one, INTP(descb_obj),
+	    &(beta.real),
+	    DOUBLEP(c_obj), &one, &one, INTP(descc_obj));
+  else
+    pzgemm_(&transa, &transb, &m, &n, &k, &alpha, 
+	    COMPLEXP(a_obj), &one, &one, INTP(desca_obj), 
+	    COMPLEXP(b_obj), &one, &one, INTP(descb_obj),
+	    &beta,
+	    COMPLEXP(c_obj), &one, &one, INTP(descc_obj));
+
   Py_RETURN_NONE;
 }
 
@@ -201,7 +232,8 @@ PyObject* pblas_pdgemv(PyObject *self, PyObject *args)
 {
   char transa = 'T';
   int m, n;
-  double alpha, beta;
+  Py_complex alpha;
+  Py_complex beta;
   PyArrayObject *a, *x, *y;
   int incx = 1, incy = 1; // what should these be?
   PyArrayObject *desca, *descx, *descy;
@@ -215,11 +247,24 @@ PyObject* pblas_pdgemv(PyObject *self, PyObject *args)
     return NULL;
   }
   
-  pdgemv_(&transa, &m, &n, &alpha,
-          DOUBLEP(a), &one, &one, INTP(desca),
-          DOUBLEP(x), &one, &one, INTP(descx), &incx,
-          &beta,
-          DOUBLEP(y), &one, &one, INTP(descy), &incy);
+  // ydesc
+  // int y_ConTxt = INTP(descy)[1];
+
+  // If process not on BLACS grid, then return.
+  // if (y_ConTxt == -1) Py_RETURN_NONE;
+
+  if (y->descr->type_num == PyArray_DOUBLE)
+    pdgemv_(&transa, &m, &n, &(alpha.real),
+	    DOUBLEP(a), &one, &one, INTP(desca),
+	    DOUBLEP(x), &one, &one, INTP(descx), &incx,
+	    &(beta.real),
+	    DOUBLEP(y), &one, &one, INTP(descy), &incy);
+  else
+    pzgemv_(&transa, &m, &n, &alpha,
+	    (void*)COMPLEXP(a), &one, &one, INTP(desca),
+	    (void*)COMPLEXP(x), &one, &one, INTP(descx), &incx,
+	    &beta,
+	    (void*)COMPLEXP(y), &one, &one, INTP(descy), &incy);
 
   Py_RETURN_NONE;
 }
@@ -290,7 +335,7 @@ PyObject* blacs_create(PyObject *self, PyObject *args)
       desc[5] = nb;
       desc[6] = 0;
       desc[7] = 0;
-      desc[8] = MAX(0, lld);
+      desc[8] = MAX(0, lld); // might need to be MAX(1, lld)
     }
   memcpy(desc_obj->data, desc, 9*sizeof(int));
 
@@ -305,7 +350,6 @@ PyObject* new_blacs_context(PyObject *self, PyObject *args)
   int iam, nprocs;
   int ConTxt;
   char order;
-  int myrow, mycol;
 
   if (!PyArg_ParseTuple(args, "Oiic", &comm_obj, &nprow, &npcol, &order)){
     return NULL;
@@ -348,8 +392,9 @@ PyObject* blacs_destroy(PyObject *self, PyObject *args)
   int ConTxt;
   if (!PyArg_ParseTuple(args, "i", &ConTxt))
     return NULL;
-  if (ConTxt != -1)
-    Cblacs_gridexit_(ConTxt);
+
+  Cblacs_gridexit_(ConTxt);
+
   Py_RETURN_NONE;
 }
 
@@ -531,159 +576,101 @@ PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args)
   PyArrayObject* adesc; // symmetric matrix description vector
   PyArrayObject* z_obj; // eigenvector matrix
   PyArrayObject* w_obj; // eigenvalue array
-  int z_mycol = -1;
-  int z_myrow = -1;
-  int z_nprow, z_npcol;
-  int z_type, z_ConTxt, z_m, z_n, z_mb, z_nb, z_rsrc, z_csrc, z_lld;
-  int zdesc[9];
   static int one = 1;
 
   char jobz = 'V'; // eigenvectors also
   char uplo;
 
-  if (!PyArg_ParseTuple(args, "OOc", &a_obj, &adesc, &uplo))
+  if (!PyArg_ParseTuple(args, "OOcOO", &a_obj, &adesc, &uplo, &z_obj, &w_obj))
     return NULL;
 
   // adesc
-  int a_type   = INTP(adesc)[0];
-  int a_ConTxt = INTP(adesc)[1];
+  // int a_ConTxt = INTP(adesc)[1];
   int a_m      = INTP(adesc)[2];
   int a_n      = INTP(adesc)[3];
-  int a_mb     = INTP(adesc)[4];
-  int a_nb     = INTP(adesc)[5];
-  int a_rsrc   = INTP(adesc)[6];
-  int a_csrc   = INTP(adesc)[7];
-  int a_lld    = INTP(adesc)[8];
 
-  // Note that A is symmetric, so n = a_m = a_n;
-  // We do not test for that here.
+  // zdesc = adesc; this can be relaxed a bit according to pdsyevd.f
+
+  // Only square matrices
+  assert (a_m == a_n);
   int n = a_n;
 
-  // zdesc = adesc
-  // This is generally not required, as long as the  alignment properties
-  // are satisfied, see pdsyevd.f. In the context of GPAW, don't see why
-  // zdesc would not be equal to adesc so I am just hard-coding it in.
-  z_type   = a_type;
-  z_ConTxt = a_ConTxt;
-  z_m      = a_m;
-  z_n      = a_n;
-  z_mb     = a_mb;
-  z_nb     = a_nb;
-  z_rsrc   = a_rsrc;
-  z_csrc   = a_csrc;
-  z_lld    = a_lld;
-  zdesc[0] = z_type;
-  zdesc[1] = z_ConTxt;
-  zdesc[2] = z_m;
-  zdesc[3] = z_n;
-  zdesc[4] = z_mb;
-  zdesc[5] = z_nb;
-  zdesc[6] = z_rsrc;
-  zdesc[7] = z_csrc;
-  zdesc[8] = z_lld;
+  // If process not on BLACS grid, then return.
+  // if (a_ConTxt == -1) Py_RETURN_NONE;
 
-  Cblacs_gridinfo_(z_ConTxt, &z_nprow, &z_npcol,&z_myrow, &z_mycol);
-
-  if (z_ConTxt != -1)
+  // Query part, need to find the optimal size of a number of work arrays
+  int info;
+  int querywork = -1;
+  int* iwork;
+  int liwork;
+  int lwork;
+  int lrwork;
+  int i_work;
+  double d_work;
+  double_complex c_work;
+  if (a_obj->descr->type_num == PyArray_DOUBLE)
     {
-      // z_locM, z_locN should not be negative or zero
-      int z_locM = numroc_(&z_m, &z_mb, &z_myrow, &z_rsrc, &z_nprow);
-      int z_locN = numroc_(&z_n, &z_nb, &z_mycol, &z_csrc, &z_npcol);
-
-      // Eigenvectors
-      npy_intp z_dims[2] = {z_locM, z_locN};
-      if (a_obj->descr->type_num == PyArray_DOUBLE)
-        z_obj = (PyArrayObject*)PyArray_EMPTY(2, z_dims, NPY_DOUBLE,
-                                              NPY_F_CONTIGUOUS);
-      else
-        z_obj = (PyArrayObject*)PyArray_EMPTY(2, z_dims, NPY_CDOUBLE,
-                                              NPY_F_CONTIGUOUS);
-
-      // Eigenvalues, since w_obj is 1D-array, NPY_F_CONTIGUOUS is not really
-      // needed here and is equivalent to NPY_C_CONTIGUOUS (NumPy default).
-      npy_intp w_dims[1] = {n};
-      w_obj = (PyArrayObject*)PyArray_SimpleNew(1, w_dims, NPY_DOUBLE);
-
-      // Query part, need to find the optimal size of a number of work arrays
-      int info;
-      int querywork = -1;
-      int* iwork;
-      int liwork;
-      int lwork;
-      int lrwork;
-      int i_work;
-      double d_work;
-      double_complex c_work;
-      if (a_obj->descr->type_num == PyArray_DOUBLE)
-        {
-          pdsyevd_(&jobz, &uplo, &n,
-                   DOUBLEP(a_obj), &one, &one, INTP(adesc),
-                   DOUBLEP(w_obj),
-                   DOUBLEP(z_obj), &one,  &one, zdesc,
-                   &d_work, &querywork, &i_work, &querywork, &info);
-          lwork = (int)(d_work);
-        }
-      else
-        {
-          pzheevd_(&jobz, &uplo, &n,
-                   (void*)COMPLEXP(a_obj), &one, &one, INTP(adesc),
-                   DOUBLEP(w_obj),
-                   (void*)COMPLEXP(z_obj), &one,  &one, zdesc,
-                   &c_work, &querywork, &d_work, &querywork,
-                   &i_work, &querywork, &info);
-          lwork = (int)(c_work);
-          lrwork = (int)(d_work);
-        }
-      if (info != 0)
-        {
-          PyErr_SetString(PyExc_RuntimeError,
-                          "scalapack_diagonalize_dc error in query.");
-          return NULL;
-        }
-
-      // Computation part
-      liwork = i_work;
-      iwork = GPAW_MALLOC(int, liwork);
-      if (a_obj->descr->type_num == PyArray_DOUBLE)
-        {
-          double* work = GPAW_MALLOC(double, lwork);
-          pdsyevd_(&jobz, &uplo, &n,
-                   DOUBLEP(a_obj), &one, &one, INTP(adesc),
-                   DOUBLEP(w_obj),
-                   DOUBLEP(z_obj), &one, &one, zdesc,
-                   work, &lwork, iwork, &liwork, &info);
-          free(work);
-        }
-      else
-        {
-          double_complex *work = GPAW_MALLOC(double_complex, lwork);
-          double* rwork = GPAW_MALLOC(double, lrwork);
-          pzheevd_(&jobz, &uplo, &n,
-                   (void*)COMPLEXP(a_obj), &one, &one, INTP(adesc),
-                   DOUBLEP(w_obj),
-                   (void*)COMPLEXP(z_obj), &one, &one, zdesc,
-                   work, &lwork, rwork, &lrwork,
-                   iwork, &liwork, &info);
-          free(rwork);
-          free(work);
-        }
-      if (info != 0)
-        {
-          PyErr_SetString(PyExc_RuntimeError,
-                          "scalapack_diagonalize_dc error in compute.");
-          return NULL;
-        }
-
-      free(iwork);
-      PyObject* values = Py_BuildValue("(OO)", w_obj, z_obj);
-      Py_DECREF(w_obj);
-      Py_DECREF(z_obj);
-      return values;
+      pdsyevd_(&jobz, &uplo, &n,
+	       DOUBLEP(a_obj), &one, &one, INTP(adesc),
+	       DOUBLEP(w_obj),
+	       DOUBLEP(z_obj), &one,  &one, INTP(adesc),
+	       &d_work, &querywork, &i_work, &querywork, &info);
+      lwork = (int)(d_work);
     }
   else
     {
-      return Py_BuildValue("(OO)", Py_None, Py_None);
+      pzheevd_(&jobz, &uplo, &n,
+	       (void*)COMPLEXP(a_obj), &one, &one, INTP(adesc),
+	       DOUBLEP(w_obj),
+	       (void*)COMPLEXP(z_obj), &one,  &one, INTP(adesc),
+	       &c_work, &querywork, &d_work, &querywork,
+	       &i_work, &querywork, &info);
+      lwork = (int)(c_work);
+      lrwork = (int)(d_work);
     }
+  if (info != 0)
+    {
+      PyErr_SetString(PyExc_RuntimeError,
+		      "scalapack_diagonalize_dc error in query.");
+      return NULL;
+    }
+
+  // Computation part
+  liwork = i_work;
+  iwork = GPAW_MALLOC(int, liwork);
+  if (a_obj->descr->type_num == PyArray_DOUBLE)
+    {
+      double* work = GPAW_MALLOC(double, lwork);
+      pdsyevd_(&jobz, &uplo, &n,
+	       DOUBLEP(a_obj), &one, &one, INTP(adesc),
+	       DOUBLEP(w_obj),
+	       DOUBLEP(z_obj), &one, &one, INTP(adesc),
+	       work, &lwork, iwork, &liwork, &info);
+      free(work);
+    }
+  else
+    {
+      double_complex *work = GPAW_MALLOC(double_complex, lwork);
+      double* rwork = GPAW_MALLOC(double, lrwork);
+      pzheevd_(&jobz, &uplo, &n,
+	       (void*)COMPLEXP(a_obj), &one, &one, INTP(adesc),
+	       DOUBLEP(w_obj),
+	       (void*)COMPLEXP(z_obj), &one, &one, INTP(adesc),
+	       work, &lwork, rwork, &lrwork,
+	       iwork, &liwork, &info);
+      free(rwork);
+      free(work);
+    }
+  if (info != 0)
+    {
+      PyErr_SetString(PyExc_RuntimeError,
+		      "scalapack_diagonalize_dc error in compute.");
+      return NULL;
+    }
+
+  free(iwork);
+
+  Py_RETURN_NONE;
 }
 
 PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
@@ -697,11 +684,9 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   PyArrayObject* z_obj; // eigenvector matrix
   PyArrayObject* w_obj; // eigenvalue array
   int ibtype  =  1; // Solve H*psi = lambda*S*psi
-  int z_mycol = -1;
-  int z_myrow = -1;
-  int z_nprow, z_npcol;
-  int z_type, z_ConTxt, z_m, z_n, z_mb, z_nb, z_rsrc, z_csrc, z_lld;
-  int zdesc[9];
+  int a_mycol = -1;
+  int a_myrow = -1;
+  int a_nprow, a_npcol;
   int il, iu;  // not used when range = 'A' or 'V'
   int eigvalm, nz;
   static int one = 1;
@@ -719,49 +704,21 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
                         &z_obj, &w_obj))
     return NULL;
 
-  // This is generally not required, as long as the alignment properties
-  // are satisfied, see pdsygvx.f. In the context of GPAW, don't see why
-  // bdesc would not be equal to adesc so I am just hard-coding it in.
-  int a_type   = INTP(adesc)[0];
+  // a desc
   int a_ConTxt = INTP(adesc)[1];
   int a_m      = INTP(adesc)[2];
   int a_n      = INTP(adesc)[3];
-  int a_mb     = INTP(adesc)[4];
-  int a_nb     = INTP(adesc)[5];
-  int a_rsrc   = INTP(adesc)[6];
-  int a_csrc   = INTP(adesc)[7];
-  int a_lld    = INTP(adesc)[8];
 
-  // Note that A is symmetric, so n = a_m = a_n;
-  // We do not test for that here.
+  // Only square matrices
+  assert (a_m == a_n);
   int n = a_n;
 
-  // zdesc = adesc
-  // This is generally not required, as long as the alignment properties
-  // are satisfied, see pdsygvx.f. In the context of GPAW, don't see why
-  // zdesc would not be equal to adesc so I am just hard-coding it in.
-  z_type   = a_type;
-  z_ConTxt = a_ConTxt;
-  z_m      = a_m;
-  z_n      = a_n;
-  z_mb     = a_mb;
-  z_nb     = a_nb;
-  z_rsrc   = a_rsrc;
-  z_csrc   = a_csrc;
-  z_lld    = a_lld;
-  zdesc[0] = z_type;
-  zdesc[1] = z_ConTxt;
-  zdesc[2] = z_m;
-  zdesc[3] = z_n;
-  zdesc[4] = z_mb;
-  zdesc[5] = z_nb;
-  zdesc[6] = z_rsrc;
-  zdesc[7] = z_csrc;
-  zdesc[8] = z_lld;
+  // zdesc = adesc = bdesc; required by pdsyevx.f and pdsygvx.f
 
-  Cblacs_gridinfo_(z_ConTxt, &z_nprow, &z_npcol, &z_myrow, &z_mycol);
+  // If process not on BLACS grid, then return.
+  // if (a_ConTxt == -1) Py_RETURN_NONE;
 
-  assert(z_ConTxt != -1);
+  Cblacs_gridinfo_(a_ConTxt, &a_nprow, &a_npcol, &a_myrow, &a_mycol);
 
   if (PyArray_Check(b_obj))
     isgeneral = 1;
@@ -770,25 +727,21 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
 
   // Convergence tolerance
   // most orthogonal eigenvectors
-  double abstol = pdlamch_(&z_ConTxt, &cmach);
+  double abstol = pdlamch_(&a_ConTxt, &cmach);
   
   // most accurate eigenvalues
-  // double abstol = 2.0*pdlamch_(&z_ConTxt, &cmach);
+  // double abstol = 2.0*pdlamch_(&a_ConTxt, &cmach);
   
   double orfac = -1.0;
 
-  // z_locM, z_locN should not be negative or zero
-  int z_locM = numroc_(&z_m, &z_mb, &z_myrow, &z_rsrc, &z_nprow);
-  int z_locN = numroc_(&z_n, &z_nb, &z_mycol, &z_csrc, &z_npcol);
-  
   // Query part, need to find the optimal size of a number of work arrays
   int info;
   int *ifail;
   ifail = GPAW_MALLOC(int, n);
   int *iclustr;
-  iclustr = GPAW_MALLOC(int, 2*z_nprow*z_npcol);
+  iclustr = GPAW_MALLOC(int, 2*a_nprow*a_npcol);
   double  *gap;
-  gap = GPAW_MALLOC(double, z_nprow*z_npcol);
+  gap = GPAW_MALLOC(double, a_nprow*a_npcol);
   int querywork = -1;
   int* iwork;
   int liwork;
@@ -803,7 +756,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
                DOUBLEP(a_obj), &one, &one, INTP(adesc),
                &vl, &vu, &il, &iu, &abstol, &eigvalm,
                &nz, DOUBLEP(w_obj), &orfac,
-               DOUBLEP(z_obj), &one, &one, zdesc,
+               DOUBLEP(z_obj), &one, &one, INTP(adesc),
                d_work, &querywork,  &i_work, &querywork,
                ifail, iclustr, gap, &info);
     } else {
@@ -812,7 +765,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
                DOUBLEP(b_obj), &one, &one, INTP(adesc),
                &vl, &vu, &il, &iu, &abstol, &eigvalm,
                &nz, DOUBLEP(w_obj), &orfac,
-               DOUBLEP(z_obj),  &one, &one, zdesc,
+               DOUBLEP(z_obj),  &one, &one, INTP(adesc),
                d_work, &querywork, &i_work, &querywork,
                ifail, iclustr, gap, &info);
     }
@@ -823,7 +776,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
                (void*)COMPLEXP(a_obj),&one, &one, INTP(adesc),
                &vl, &vu, &il, &iu, &abstol, &eigvalm,
                &nz, DOUBLEP(w_obj), &orfac,
-               (void*)COMPLEXP(z_obj), &one, &one, zdesc,
+               (void*)COMPLEXP(z_obj), &one, &one, INTP(adesc),
                &c_work, &querywork, d_work, &querywork,
                &i_work, &querywork,
                ifail, iclustr, gap, &info);
@@ -833,7 +786,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
                (void*)COMPLEXP(b_obj), &one, &one, INTP(adesc),
                &vl, &vu, &il, &iu, &abstol, &eigvalm,
                &nz, DOUBLEP(w_obj), &orfac,
-               (void*)COMPLEXP(z_obj), &one, &one, zdesc,
+               (void*)COMPLEXP(z_obj), &one, &one, INTP(adesc),
                &c_work, &querywork, d_work, &querywork,
                &i_work, &querywork,
                ifail, iclustr, gap, &info);
@@ -858,7 +811,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
                DOUBLEP(a_obj), &one, &one, INTP(adesc),
                &vl, &vu, &il, &iu, &abstol, &eigvalm,
                &nz, DOUBLEP(w_obj), &orfac,
-               DOUBLEP(z_obj), &one, &one, zdesc,
+               DOUBLEP(z_obj), &one, &one, INTP(adesc),
                work, &lwork, iwork, &liwork,
                ifail, iclustr, gap, &info);
     } else {
@@ -867,7 +820,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
                DOUBLEP(b_obj), &one, &one, INTP(adesc),
                &vl, &vu, &il, &iu, &abstol, &eigvalm,
                &nz, DOUBLEP(w_obj), &orfac,
-               DOUBLEP(z_obj), &one, &one,  zdesc,
+               DOUBLEP(z_obj), &one, &one,  INTP(adesc),
                work, &lwork,  iwork, &liwork,
                ifail, iclustr, gap, &info);
     }
@@ -880,7 +833,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
                (void*)COMPLEXP(a_obj), &one, &one, INTP(adesc),
                &vl, &vu, &il, &iu, &abstol, &eigvalm,
                &nz, DOUBLEP(w_obj), &orfac,
-               (void*)COMPLEXP(z_obj), &one, &one, zdesc, work,
+               (void*)COMPLEXP(z_obj), &one, &one, INTP(adesc), work,
                &lwork, rwork, &lrwork,
                iwork, &liwork,
                ifail, iclustr, gap, &info);
@@ -890,7 +843,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
                (void*)COMPLEXP(b_obj), &one, &one, INTP(adesc),
                &vl, &vu, &il, &iu, &abstol, &eigvalm,
                &nz, DOUBLEP(w_obj), &orfac,
-               (void*)COMPLEXP(z_obj), &one, &one, zdesc,
+               (void*)COMPLEXP(z_obj), &one, &one, INTP(adesc),
                work, &lwork, rwork, &lrwork,
                iwork, &liwork,
                ifail, iclustr, gap, &info);
@@ -919,9 +872,6 @@ PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args)
 
   PyArrayObject* a_obj; // overlap matrix
   PyArrayObject* adesc; // symmetric matrix description vector
-  int a_mycol = -1;
-  int a_myrow = -1;
-  int a_nprow, a_npcol;
   int info1;
   int info2;
   static int one = 1;
@@ -933,45 +883,46 @@ PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args)
     return NULL;
 
   // adesc
-  int a_ConTxt = INTP(adesc)[1];
+  // int a_ConTxt = INTP(adesc)[1];
   int a_m      = INTP(adesc)[2];
   int a_n      = INTP(adesc)[3];
 
-  // Note that A is symmetric, so n = a_m = a_n;
-  // We do not test for that here.
+  // Only square matrices
+  assert (a_m == a_n);
   int n = a_n;
 
-  Cblacs_gridinfo_(a_ConTxt, &a_nprow, &a_npcol,&a_myrow, &a_mycol);
+  // If process not on BLACS grid, then return.
+  // if (a_ConTxt == -1) Py_RETURN_NONE;
 
-  if (a_ConTxt != -1)
+  if (a_obj->descr->type_num == PyArray_DOUBLE)
     {
-      if (a_obj->descr->type_num == PyArray_DOUBLE)
-        {
-          pdpotrf_(&uplo, &n, DOUBLEP(a_obj), &one, &one,
-                   INTP(adesc), &info1);
-          pdtrtri_(&uplo, &diag, &n, DOUBLEP(a_obj), &one, &one,
-                   INTP(adesc), &info2);
-        }
-      else
-        {
-          pzpotrf_(&uplo, &n, (void*)COMPLEXP(a_obj), &one, &one,
-                   INTP(adesc), &info1);
-          pztrtri_(&uplo, &diag, &n, (void*)COMPLEXP(a_obj), &one, &one,
-                   INTP(adesc), &info2);
-        }
-      if (info1 != 0)
-        {
-          PyErr_SetString(PyExc_RuntimeError,
-                          "scalapack_inverse_cholesky error in potrf.");
-          return NULL;
-        }
-      if (info2 != 0)
-        {
-          PyErr_SetString(PyExc_RuntimeError,
-                          "scalapack_inverse_cholesky error in trtri.");
-          return NULL;
-        }
+      pdpotrf_(&uplo, &n, DOUBLEP(a_obj), &one, &one,
+	       INTP(adesc), &info1);
+      pdtrtri_(&uplo, &diag, &n, DOUBLEP(a_obj), &one, &one,
+	       INTP(adesc), &info2);
     }
+  else
+    {
+      pzpotrf_(&uplo, &n, (void*)COMPLEXP(a_obj), &one, &one,
+	       INTP(adesc), &info1);
+      pztrtri_(&uplo, &diag, &n, (void*)COMPLEXP(a_obj), &one, &one,
+	       INTP(adesc), &info2);
+    }
+
+  if (info1 != 0)
+    {
+      PyErr_SetString(PyExc_RuntimeError,
+		      "scalapack_inverse_cholesky error in potrf.");
+      return NULL;
+    }
+
+  if (info2 != 0)
+    {
+      PyErr_SetString(PyExc_RuntimeError,
+		      "scalapack_inverse_cholesky error in trtri.");
+      return NULL;
+    }
+
   Py_RETURN_NONE;
 }
 

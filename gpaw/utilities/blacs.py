@@ -37,8 +37,9 @@ def blacs_create(comm_obj, m, n, nprow, npcol, mb, nb, order='R'):
                               m, n, nprow, npcol, mb, nb, order)
 
 def blacs_destroy(adesc):
-    assert len(adesc) == 9
-    _gpaw.blacs_destroy(adesc)
+    assert len(adesc.assarray()) == 9
+    if adesc.blacsgrid.is_active():
+        _gpaw.blacs_destroy(adesc)
 
 
 def scalapack_redist1(a_obj, adesc, bdesc, isreal, comm_obj=mpi.world, m=0,
@@ -65,20 +66,20 @@ def scalapack_redist1(a_obj, adesc, bdesc, isreal, comm_obj=mpi.world, m=0,
                                    comm_obj.get_c_object(), m, n)
 
 
-def scalapack_diagonalize_dc(a_obj, adesc, uplo):
-    if a_obj is not None:
+def scalapack_diagonalize_dc(adsec, a_obj, c_obj, eps_obj, uplo):
+    if adesc:
         assert a_obj.ndim == 2
         assert (a_obj.dtype == float) or (a_obj.dtype == complex)
         assert a_obj.flags.f_contiguous
-    assert len(adesc) == 9
+    assert len(adesc.asarray()) == 9
     assert uplo in ['U','L']
-    return _gpaw.scalapack_diagonalize_dc(a_obj, adesc, uplo)
+    if adesc.blacsgrid.is_active():
+        _gpaw.scalapack_diagonalize_dc(a_obj, adesc.asarray(), uplo, c_obj,
+                                       eps_obj)
 
 
-def scalapack_diagonalize_ex(adescriptor, a_obj, b_obj, c_obj, eps_obj, uplo):
-    adesc = adescriptor.asarray()
-    
-    if adescriptor:
+def scalapack_diagonalize_ex(adesc, a_obj, b_obj, c_obj, eps_obj, uplo):
+    if adesc:
         assert a_obj.ndim == 2
         assert (a_obj.dtype == float) or (a_obj.dtype == complex)
         assert a_obj.flags.f_contiguous
@@ -88,54 +89,56 @@ def scalapack_diagonalize_ex(adescriptor, a_obj, b_obj, c_obj, eps_obj, uplo):
         assert b_obj.flags.f_contiguous
     #if a_obj is None:
         #assert b_obj is None
-    assert len(adesc) == 9
+    assert len(adesc.assarray()) == 9
     assert uplo in ['U','L']
-    if adescriptor.blacsgrid.is_active():
-        _gpaw.scalapack_diagonalize_ex(a_obj, adesc, uplo, b_obj, c_obj,
+    if adesc.blacsgrid.is_active():
+        _gpaw.scalapack_diagonalize_ex(a_obj, adesc.asarray(), uplo, b_obj, c_obj,
                                        eps_obj)
 
 
-def scalapack_inverse_cholesky(a_obj, adesc, uplo):
-    if a_obj is not None:
+def scalapack_inverse_cholesky(adesc, a_obj, uplo):
+    if adesc:
         assert a_obj.ndim == 2
         assert (a_obj.dtype == float) or (a_obj.dtype == complex)
         assert a_obj.flags.f_contiguous
-    assert len(adesc) == 9
+    assert len(adesc.asarray()) == 9
     assert uplo in ['U','L']
-    _gpaw.scalapack_inverse_cholesky(a_obj, adesc, uplo)
+    if adesc.blacsgrid.is_active():
+        _gpaw.scalapack_inverse_cholesky(a_obj, adesc.asarray(), uplo)
 
 
-def pblas_pdgemm(alpha, a_MK, b_KN, beta, c_MN, desca, descb, descc,
+def pblas_pdgemm(alpha, a_MK, b_KN, beta, c_MN, adesc, bdesc, cdesc,
                  transa='N', transb='N'):
 
     
     assert transa in ['N', 'T'] and transb in ['N', 'T']
-    M, K = desca.gshape
-    K, N = descb.gshape
+    M, K = adesc.gshape
+    K, N = bdesc.gshape
     if transb == 'T':
         N, K = K, N
     assert transa == 'N' # XXX remember to implement 'T'
 
-    _gpaw.pblas_pdgemm(N, M, K, alpha, b_KN.T, a_MK.T, beta, c_MN.T,
-                       descb.asarray(), desca.asarray(), descc.asarray(),
-                       transb, transa)
+    if adesc.blacsgrid.is_active():
+        _gpaw.pblas_pdgemm(N, M, K, alpha, b_KN.T, a_MK.T, beta, c_MN.T,
+                           bdesc.asarray(), adesc.asarray(), cdesc.asarray(),
+                           transb, transa)
 
 
-def pblas_simple_gemm(desca, descb, descc, a_MK, b_KN, c_MN, transa='N',
+def pblas_simple_gemm(adesc, bdesc, cdesc, a_MK, b_KN, c_MN, transa='N',
                       transb='N'):
     if transb == 'N':
-        assert desca.check(a_MK)
-        assert descb.check(b_KN)
-        assert descc.check(c_MN)
-        assert desca.gshape[1] == descb.gshape[0]
-        assert desca.gshape[0] == descc.gshape[0]
-        assert descb.gshape[1] == descc.gshape[1]
+        assert adesc.check(a_MK)
+        assert bdesc.check(b_KN)
+        assert cdesc.check(c_MN)
+        assert adesc.gshape[1] == bdesc.gshape[0]
+        assert adesc.gshape[0] == cdesc.gshape[0]
+        assert bdesc.gshape[1] == cdesc.gshape[1]
     # XXX also check for 'T'
     
     alpha = 1.0
     beta = 0.0
         
-    pblas_pdgemm(alpha, a_MK, b_KN, beta, c_MN, desca, descb, descc,
+    pblas_pdgemm(alpha, a_MK, b_KN, beta, c_MN, adesc, bdesc, cdesc,
                  transa, transb)
 
 
@@ -147,11 +150,12 @@ def pblas_pdgemv(alpha, a, adesc, x, xdesc, beta, y, ydesc):
     assert xdesc.check(x)
     assert ydesc.check(y)
     assert xdesc.gshape[1] == ydesc.gshape[1]
-    _gpaw.pblas_pdgemv(N, M, alpha,
-                       a, adesc.asarray(),
-                       x, xdesc.asarray(),
-                       beta,
-                       y, ydesc.asarray())
+    if adesc.blacsgrid.is_active():
+        _gpaw.pblas_pdgemv(N, M, alpha,
+                           a, adesc.asarray(),
+                           x, xdesc.asarray(),
+                           beta,
+                           y, ydesc.asarray())
 
 
 def pblas_simple_gemv(adesc, xdesc, ydesc, a, x, y):
