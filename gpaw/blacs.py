@@ -5,7 +5,9 @@ Array index symbol conventions:
 * M, N: indices in global array
 * m, n: indices in local array
 
-Note that we take into account C vs. F ordering automagically here!
+Note that we take into account C vs. F ordering at the blacs grid
+and descriptor level here. It will still be necessary to switch
+uplo='U' to 'L', trans='N' to 'T', etc.
 """
 
 import numpy as np
@@ -192,9 +194,10 @@ class BlacsDescriptor(MatrixDescriptor):
     def __init__(self, blacsgrid, M, N, mb, nb, rsrc, csrc):
         assert M > 0
         assert N > 0
-        assert 0 < mb <= M
-        assert 0 < nb <= N
-        # asserts on rsrc, csrc?
+        assert 1 <= mb <= M
+        assert 1 <= nb <= N
+        assert 0 <= rsrc < blacsgrid.nprow - 1 
+        assert 0 <= csrc < blacsgrid.npcol - 1
         
         self.blacsgrid = blacsgrid
         self.M = M # global size 1
@@ -214,13 +217,17 @@ class BlacsDescriptor(MatrixDescriptor):
         else:
             locN, locM = 0, 0
         
-        MatrixDescriptor.__init__(self, locM, locN)
+        MatrixDescriptor.__init__(self, max(0, locM), max(0, locN))
         
-        self.active = locM > 0 and locN > 0
+        self.active = locM > 0 and locN > 0 # inactive descriptor can
+                                            # exist on an active OR
+                                            # inactive blacs grid
         
         self.bshape = (self.mb, self.nb) # Shape of one block
         self.gshape = (M, N) # Global shape of array
-        self.lld  = locN # lld = 'local leading dimension'
+        self.lld  = max(1, locN) # lld = 'local leading dimension'
+                                 # having max 1 makes no sense, but it
+                                 # appears to be a PBLAS requirement
 
     def asarray(self):
         arr = np.array([BLOCK_CYCLIC_2D, self.blacsgrid.context, 
