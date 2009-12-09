@@ -1459,7 +1459,8 @@ class Transport_Plotter:
         rcParams['legend.fontsize'] = 18
         rcParams['axes.titlesize'] = 18
         rcParams['axes.labelsize'] = 18
-   
+        rcParams['font.size'] = 18
+        
     def set_default_options(self):
         self.xlabel = []
         self.ylabel = []
@@ -2078,6 +2079,47 @@ class Transport_Plotter:
         self.set_options('Bias(V)', 'Charge(au.)')
         self.show(p)
 
+    def plot_charge_on_atoms(self, bias_step, atom_indices=None, orbital_type=None,
+                                                            spin_type=None):
+        if atom_indices == None:
+            atom_indices = range(len(self.atoms))        
+        if orbital_type == None:
+            orbital_type = 'all'
+        import pylab as p
+        charge = []
+        orbital_indices = self.basis['orbital_indices']
+        orbital_map = {'s': 0, 'p': 1, 'd': 2, 'f': 3}
+        atom_symbols = []
+        from ase.data import chemical_symbols
+        for i, atom in zip(atom_indices, self.atoms[atom_indices]):
+            atom_index = orbital_indices[:, 0] - i == 0
+            if orbital_type == 'all':
+                orbital_index = np.zeros([orbital_indices.shape[0]]) + 1
+            else:
+                orbital_index = orbital_indices[:, 1] - orbital_map[
+                                                       orbital_type] ==  0             
+            tmp = np.sum(self.bias_steps[bias_step].charge, axis =1) 
+            ind = orbital_indices.shape[0]
+            tmp = tmp[:, :ind]
+            if spin_type == None:
+                tmp = np.sum(tmp, axis=0)
+            elif spin_type == 'up':
+                tmp = tmp[0]
+            else:
+                tmp = tmp[1]
+            charge.append(np.sum(tmp * atom_index * orbital_index))
+            atom_symbols.append(chemical_symbols[atom.number])
+        from matplotlib.ticker import MultipleLocator, FixedFormatter
+        ax = p.subplot(111)
+        p.plot(charge, 'b--o')
+        p.xlabel('Project Atom')
+        p.ylabel('Charge(au.)')
+        majorLocator = MultipleLocator(1)
+        majorFormatter = FixedFormatter(atom_symbols)
+        ax.xaxis.set_major_locator(majorLocator)
+        ax.xaxis.set_major_formatter(majorFormatter)
+        p.show()
+        
     def show_force(self, bias_step, file=None):      
         import vtk
         from ase.visualize.vtk.atoms import vtkAtoms
