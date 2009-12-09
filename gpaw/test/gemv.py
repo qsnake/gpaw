@@ -23,7 +23,7 @@ G = 5013
 
 dtype = float
 beta = 0.0 # note that beta=0.0 and beta=1.0 have different gemv subroutines
-refperf = 1024**3. # each test should last roughly 1 s with this performance
+refperf = 1e8 # each test should last roughly 1 s with this performance
 test_gemmdot = False # gemmdot is unbelievable slow for matrix-vector products
 
 mem = 0
