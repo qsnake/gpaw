@@ -21,8 +21,12 @@ assert len(symm.symmetries) == 6
 assert len(w_k) == 10
 a = 3 / 32.; b = 1 / 32.; c = 6 / 32.
 assert np.all(w_k == [a, b, a, c, c, a, a, a, a, b])
-jacobian = 0.5*2**0.5*np.array([(1, 1, -1), (1, -1, 1), (-1, 1, 1)])
+jacobian = 0.5 * 2**0.5 * np.array([(1, 1, -1), (1, -1, 1), (-1, 1, 1)])
 assert np.all(abs(symm.iucell_cv - jacobian) < 1E-11)
+v = [1., 2., 3.] 
+for operation in symm.operations_xyz: 
+    v += np.dot(operation, v)
+assert np.all(abs(v - [0., 0., -96.]) <1E-11)
 
 # Linear chain of four atoms, with H lattice parameter
 cell_cv = np.diag((8., 5., 5.))
