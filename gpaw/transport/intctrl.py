@@ -48,7 +48,7 @@ class IntCtrl:
                 print '--eqIntCtrl:  Tol =', self.eqinttol
         else:        #T>0K
             nkt = 10 * self.kt
-            dkt = 4 * np.pi * self.kt
+            dkt = 8 * np.pi * self.kt
             #self.eqintpath = [-20.0, -20.0 + dkt * 1.j, -nkt + dkt * 1.j,
             #                  dkt * 1.j + nkt]
             self.eqintpath = [ min_energy, 
@@ -57,7 +57,7 @@ class IntCtrl:
                               -nkt + dkt * 1.j, 
                                dkt *1.j +nkt]
             self.eqdelta = dkt
-            nRes = 4
+            nRes = 8
             if abs( nRes - (np.round((nRes - 1) / 2) * 2 + 1)) < 1e-3 :
                 print 'Warning: Residue Point too close to IntPath!'
             self.eqresz = range(1, nRes, 2)
