@@ -80,14 +80,12 @@ class BlacsGrid:
         if isinstance(comm, SerialCommunicator):
             raise ValueError('you forgot mpi AGAIN')
         if comm is None: # if and only if rank is not part of the communicator
-            # (which is not entirely sensible.  That rank must then belong in
-            # a different communicator.  Which one?)
             context = INACTIVE
         else:
             if nprow * npcol > comm.size:
                 raise ValueError('Impossible: %dx%d Blacs grid with %d CPUs'
                                  % (nprow, npcol, comm.size))
-            # This call may also return INACTIVE
+            # This call may not return INACTIVE
             context = _gpaw.new_blacs_context(comm.get_c_object(),
                                               npcol, nprow, order)
         
@@ -169,8 +167,6 @@ class BlacsDescriptor(MatrixDescriptor):
     The global shape is M by N, being distributed on the specified BlacsGrid
     such that mb and nb are rows and columns on each processor.
     
-    XXX rsrc, csrc?
-
     The following chart describes how different ranks (there are 4
     ranks in this example, 0 through 3) divide the matrix into blocks.
     This is called 2D block cyclic distribution::
@@ -189,6 +185,9 @@ class BlacsDescriptor(MatrixDescriptor):
         +--+--+--+--+..+--+
         | 2| 3| 2| 3|..| 3|
         +--+--+--+--+..+--+
+
+    Also refer to:
+    http://acts.nersc.gov/scalapack/hands-on/datadist.html
         
     """
     def __init__(self, blacsgrid, M, N, mb, nb, rsrc, csrc):
@@ -214,8 +213,11 @@ class BlacsDescriptor(MatrixDescriptor):
                                                self.N, self.M,
                                                self.nb, self.mb, 
                                                self.csrc, self.rsrc)
+            self.lld  = max(1, locN) # max 1 is nonsensical, but appears
+                                     # to be required by PBLAS
         else:
             locN, locM = 0, 0
+            self.lld = 0
         
         MatrixDescriptor.__init__(self, max(0, locM), max(0, locN))
         
@@ -225,9 +227,7 @@ class BlacsDescriptor(MatrixDescriptor):
         
         self.bshape = (self.mb, self.nb) # Shape of one block
         self.gshape = (M, N) # Global shape of array
-        self.lld  = max(1, locN) # lld = 'local leading dimension'
-                                 # having max 1 makes no sense, but it
-                                 # appears to be a PBLAS requirement
+
 
     def asarray(self):
         arr = np.array([BLOCK_CYCLIC_2D, self.blacsgrid.context, 
