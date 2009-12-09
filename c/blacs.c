@@ -49,16 +49,19 @@ int Csys2blacs_handle_(MPI_Comm SysCtxt);
 
 #define   pdsyevd_ pdsyevd
 #define   pzheevd_ pzheevd
-
 #define   pdsyevx_ pdsyevx
 #define   pzheevx_ pzheevx
-
 #define   pdsygvx_ pdsygvx
 #define   pzhegvx_ pzhegvx
-#define   pdgemm_ pdgemm
-#define   pzgemm_ pzgemm
-#define   pdgemv_ pdgemv
-#define   pzemmv_ pzgemv
+
+#define   pdgemm_  pdgemm
+#define   pzgemm_  pzgemm
+#define   pdgemv_  pdgemv
+#define   pzemmv_  pzgemv
+#define   pdsyr2k_ pdsyr2k
+#define   pzsyr2k_ pzsyr2k
+#define   pdsyrk_  pdsyrk
+#define   pzsyrk_  pzsyrk
 #endif
 
 #ifdef GPAW_NO_UNDERSCORE_CSCALAPACK
@@ -188,47 +191,74 @@ void pzgemv_(char* transa, int* m, int* n, void* alpha,
              void* beta,
              void* y, int* iy, int* jy, int* descy, int* incy);
 
-PyObject* pblas_pdgemm(PyObject *self, PyObject *args)
+void pdsyr2k_(char* uplo, char* trans, int* n, int* k,
+	      double* alpha,
+	      double* a, int* ia, int *ja, int *desca,
+	      double* b, int* ib, int *jb, int *descb,
+	      double* beta,
+	      double* c, int* ic, int *jc, int *descc);
+
+void pzsyr2k_(char* uplo, char* trans, int* n, int* k,
+	      void* alpha,
+	      void* a, int* ia, int *ja, int *desca,
+	      void* b, int* ib, int *jb, int *descb,
+	      void* beta,
+	      void* c, int* ic, int *jc, int *descc);
+
+void pdsyrk_(char* uplo, char* trans, int* n, int* k,
+	     double* alpha,
+	     double* a, int* ia, int *ja, int *desca,
+	     double* beta,
+	     double* c, int* ic, int *jc, int *descc);
+void pzsyrk_(char* uplo, char* trans, int* n, int* k,
+	     void* alpha,
+	     void* a, int* ia, int *ja, int *desca,
+	     void* beta,
+	     void* c, int* ic, int *jc, int *descc);
+
+PyObject* pblas_gemm(PyObject *self, PyObject *args)
 {
   char transa;
   char transb;
   int m, n, k;
   Py_complex alpha;
   Py_complex beta;
-  PyArrayObject *a_obj, *b_obj, *c_obj;
-  PyArrayObject *desca_obj, *descb_obj, *descc_obj;
+  PyArrayObject *a, *b, *c;
+  PyArrayObject *desca, *descb, *descc;
   static int one = 1;
   
   if (!PyArg_ParseTuple(args, "iiidOOdOOOOcc", &m, &n, &k, &alpha,
-                        &a_obj, &b_obj, &beta, &c_obj,
-                        &desca_obj, &descb_obj, &descc_obj,
+                        &a, &b, &beta, &c,
+                        &desca, &descb, &descc,
                         &transa, &transb)) {
     return NULL;
   }
 
   // cdesc
-  // int c_ConTxt = INTP(descc_obj)[1];
+  // int c_ConTxt = INTP(descc)[1];
 
   // If process not on BLACS grid, then return.
   // if (c_ConTxt == -1) Py_RETURN_NONE;
 
-  if (c_obj->descr->type_num == PyArray_DOUBLE)
-    pdgemm_(&transa, &transb, &m, &n, &k, &(alpha.real), 
-	    DOUBLEP(a_obj), &one, &one, INTP(desca_obj), 
-	    DOUBLEP(b_obj), &one, &one, INTP(descb_obj),
+  if (c->descr->type_num == PyArray_DOUBLE)
+    pdgemm_(&transa, &transb, &m, &n, &k,
+	    &(alpha.real), 
+	    DOUBLEP(a), &one, &one, INTP(desca), 
+	    DOUBLEP(b), &one, &one, INTP(descb),
 	    &(beta.real),
-	    DOUBLEP(c_obj), &one, &one, INTP(descc_obj));
+	    DOUBLEP(c), &one, &one, INTP(descc));
   else
-    pzgemm_(&transa, &transb, &m, &n, &k, &alpha, 
-	    COMPLEXP(a_obj), &one, &one, INTP(desca_obj), 
-	    COMPLEXP(b_obj), &one, &one, INTP(descb_obj),
+    pzgemm_(&transa, &transb, &m, &n, &k,
+	    &alpha, 
+	    (void*)COMPLEXP(a), &one, &one, INTP(desca), 
+	    (void*)COMPLEXP(b), &one, &one, INTP(descb),
 	    &beta,
-	    COMPLEXP(c_obj), &one, &one, INTP(descc_obj));
+	    (void*)COMPLEXP(c), &one, &one, INTP(descc));
 
   Py_RETURN_NONE;
 }
 
-PyObject* pblas_pdgemv(PyObject *self, PyObject *args)
+PyObject* pblas_gemv(PyObject *self, PyObject *args)
 {
   char transa = 'T';
   int m, n;
@@ -254,13 +284,15 @@ PyObject* pblas_pdgemv(PyObject *self, PyObject *args)
   // if (y_ConTxt == -1) Py_RETURN_NONE;
 
   if (y->descr->type_num == PyArray_DOUBLE)
-    pdgemv_(&transa, &m, &n, &(alpha.real),
+    pdgemv_(&transa, &m, &n,
+	    &(alpha.real),
 	    DOUBLEP(a), &one, &one, INTP(desca),
 	    DOUBLEP(x), &one, &one, INTP(descx), &incx,
 	    &(beta.real),
 	    DOUBLEP(y), &one, &one, INTP(descy), &incy);
   else
-    pzgemv_(&transa, &m, &n, &alpha,
+    pzgemv_(&transa, &m, &n,
+	    &alpha,
 	    (void*)COMPLEXP(a), &one, &one, INTP(desca),
 	    (void*)COMPLEXP(x), &one, &one, INTP(descx), &incx,
 	    &beta,
@@ -269,6 +301,87 @@ PyObject* pblas_pdgemv(PyObject *self, PyObject *args)
   Py_RETURN_NONE;
 }
 
+PyObject* pblas_syr2k(PyObject *self, PyObject *args)
+{
+  char uplo;
+  char trans;
+  int n, k;
+  Py_complex alpha;
+  Py_complex beta;
+  PyArrayObject *a, *b, *c;
+  PyArrayObject *desca, *descb, *descc;
+  static int one = 1;
+  
+  if (!PyArg_ParseTuple(args, "iidOOdOOOOcc", &n, &k, &alpha,
+                        &a, &b, &beta, &c,
+                        &desca, &descb, &descc,
+                        &uplo, &trans)) {
+    return NULL;
+  }
+
+  // cdesc
+  // int c_ConTxt = INTP(descc)[1];
+
+  // If process not on BLACS grid, then return.
+  // if (c_ConTxt == -1) Py_RETURN_NONE;
+
+  if (c->descr->type_num == PyArray_DOUBLE)
+    pdsyr2k_(&uplo, &trans, &n, &k,
+	     &(alpha.real), 
+	     DOUBLEP(a), &one, &one, INTP(desca), 
+	     DOUBLEP(b), &one, &one, INTP(descb),
+	     &(beta.real),
+	     DOUBLEP(c), &one, &one, INTP(descc));
+  else
+    pzsyr2k_(&uplo, &trans, &n, &k,
+	     &alpha, 
+	     (void*)COMPLEXP(a), &one, &one, INTP(desca), 
+	     (void*)COMPLEXP(b), &one, &one, INTP(descb),
+	     &beta,
+	     (void*)COMPLEXP(c), &one, &one, INTP(descc));
+
+  Py_RETURN_NONE;
+}
+
+PyObject* pblas_syrk(PyObject *self, PyObject *args)
+{
+  char uplo;
+  char trans;
+  int n, k;
+  Py_complex alpha;
+  Py_complex beta;
+  PyArrayObject *a, *c;
+  PyArrayObject *desca, *descc;
+  static int one = 1;
+  
+  if (!PyArg_ParseTuple(args, "iidOdOOOcc", &n, &k, &alpha,
+                        &a, &beta, &c,
+                        &desca, &descc,
+                        &uplo, &trans)) {
+    return NULL;
+  }
+
+  // cdesc
+  // int c_ConTxt = INTP(descc)[1];
+
+  // If process not on BLACS grid, then return.
+  // if (c_ConTxt == -1) Py_RETURN_NONE;
+
+  if (c->descr->type_num == PyArray_DOUBLE)
+    pdsyrk_(&uplo, &trans, &n, &k,
+	    &(alpha.real), 
+	    DOUBLEP(a), &one, &one, INTP(desca), 
+	    &(beta.real),
+	    DOUBLEP(c), &one, &one, INTP(descc));
+  else
+    pzsyrk_(&uplo, &trans, &n, &k,
+	    &alpha, 
+	    (void*)COMPLEXP(a), &one, &one, INTP(desca), 
+	    &beta,
+	    (void*)COMPLEXP(c), &one, &one, INTP(descc));
+
+  Py_RETURN_NONE;
+}
 
 PyObject* blacs_create(PyObject *self, PyObject *args)
 {
@@ -400,10 +513,10 @@ PyObject* blacs_destroy(PyObject *self, PyObject *args)
 
 PyObject* scalapack_redist(PyObject *self, PyObject *args)
 {
-  PyArrayObject* a_obj; //source matrix
-  PyArrayObject* b_obj; //destination matrix
-  PyArrayObject* adesc; //source descriptor
-  PyArrayObject* bdesc; //destination descriptor
+  PyArrayObject* a; //source matrix
+  PyArrayObject* b; //destination matrix
+  PyArrayObject* desca; //source descriptor
+  PyArrayObject* descb; //destination descriptor
   PyObject* comm_obj = Py_None; //intermediate communicator, must
                                 // encompass adesc + bdesc
   char order='R';
@@ -415,7 +528,7 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
   int n;
   static int one = 1;
 
-  if (!PyArg_ParseTuple(args, "OOOOOiii", &adesc, &bdesc, &a_obj, &b_obj,
+  if (!PyArg_ParseTuple(args, "OOOOOiii", &desca, &descb, &a, &b,
                         &comm_obj, &m, &n, &isreal))
     return NULL;
 
@@ -426,11 +539,11 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
   c_ConTxt = Csys2blacs_handle(comm);
   Cblacs_gridinit(&c_ConTxt, &order, 1, nprocs);
   if(isreal)
-    Cpdgemr2d_(m, n, DOUBLEP(a_obj), one, one, INTP(adesc),
-	       DOUBLEP(b_obj), one, one, INTP(bdesc), c_ConTxt);
+    Cpdgemr2d_(m, n, DOUBLEP(a), one, one, INTP(desca),
+	       DOUBLEP(b), one, one, INTP(descb), c_ConTxt);
   else
-    Cpzgemr2d_(m, n, (void*)COMPLEXP(a_obj), one, one, INTP(adesc),
-	       (void*)COMPLEXP(b_obj), one, one, INTP(bdesc), c_ConTxt);
+    Cpzgemr2d_(m, n, (void*)COMPLEXP(a), one, one, INTP(desca),
+	       (void*)COMPLEXP(b), one, one, INTP(descb), c_ConTxt);
   Cblacs_gridexit(c_ConTxt);
   Py_RETURN_NONE;
 }
@@ -572,22 +685,22 @@ PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args)
   // Standard Driver for Divide and Conquer algorithm
   // Computes all eigenvalues and eigenvectors
 
-  PyArrayObject* a_obj; // symmetric matrix
-  PyArrayObject* adesc; // symmetric matrix description vector
-  PyArrayObject* z_obj; // eigenvector matrix
-  PyArrayObject* w_obj; // eigenvalue array
+  PyArrayObject* a; // symmetric matrix
+  PyArrayObject* desca; // symmetric matrix description vector
+  PyArrayObject* z; // eigenvector matrix
+  PyArrayObject* w; // eigenvalue array
   static int one = 1;
 
   char jobz = 'V'; // eigenvectors also
   char uplo;
 
-  if (!PyArg_ParseTuple(args, "OOcOO", &a_obj, &adesc, &uplo, &z_obj, &w_obj))
+  if (!PyArg_ParseTuple(args, "OOcOO", &a, &desca, &uplo, &z, &w))
     return NULL;
 
   // adesc
-  // int a_ConTxt = INTP(adesc)[1];
-  int a_m      = INTP(adesc)[2];
-  int a_n      = INTP(adesc)[3];
+  // int a_ConTxt = INTP(desca)[1];
+  int a_m      = INTP(desca)[2];
+  int a_n      = INTP(desca)[3];
 
   // zdesc = adesc; this can be relaxed a bit according to pdsyevd.f
 
@@ -608,21 +721,21 @@ PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args)
   int i_work;
   double d_work;
   double_complex c_work;
-  if (a_obj->descr->type_num == PyArray_DOUBLE)
+  if (a->descr->type_num == PyArray_DOUBLE)
     {
       pdsyevd_(&jobz, &uplo, &n,
-	       DOUBLEP(a_obj), &one, &one, INTP(adesc),
-	       DOUBLEP(w_obj),
-	       DOUBLEP(z_obj), &one,  &one, INTP(adesc),
+	       DOUBLEP(a), &one, &one, INTP(desca),
+	       DOUBLEP(w),
+	       DOUBLEP(z), &one,  &one, INTP(desca),
 	       &d_work, &querywork, &i_work, &querywork, &info);
       lwork = (int)(d_work);
     }
   else
     {
       pzheevd_(&jobz, &uplo, &n,
-	       (void*)COMPLEXP(a_obj), &one, &one, INTP(adesc),
-	       DOUBLEP(w_obj),
-	       (void*)COMPLEXP(z_obj), &one,  &one, INTP(adesc),
+	       (void*)COMPLEXP(a), &one, &one, INTP(desca),
+	       DOUBLEP(w),
+	       (void*)COMPLEXP(z), &one,  &one, INTP(desca),
 	       &c_work, &querywork, &d_work, &querywork,
 	       &i_work, &querywork, &info);
       lwork = (int)(c_work);
@@ -638,13 +751,13 @@ PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args)
   // Computation part
   liwork = i_work;
   iwork = GPAW_MALLOC(int, liwork);
-  if (a_obj->descr->type_num == PyArray_DOUBLE)
+  if (a->descr->type_num == PyArray_DOUBLE)
     {
       double* work = GPAW_MALLOC(double, lwork);
       pdsyevd_(&jobz, &uplo, &n,
-	       DOUBLEP(a_obj), &one, &one, INTP(adesc),
-	       DOUBLEP(w_obj),
-	       DOUBLEP(z_obj), &one, &one, INTP(adesc),
+	       DOUBLEP(a), &one, &one, INTP(desca),
+	       DOUBLEP(w),
+	       DOUBLEP(z), &one, &one, INTP(desca),
 	       work, &lwork, iwork, &liwork, &info);
       free(work);
     }
@@ -653,9 +766,9 @@ PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args)
       double_complex *work = GPAW_MALLOC(double_complex, lwork);
       double* rwork = GPAW_MALLOC(double, lrwork);
       pzheevd_(&jobz, &uplo, &n,
-	       (void*)COMPLEXP(a_obj), &one, &one, INTP(adesc),
-	       DOUBLEP(w_obj),
-	       (void*)COMPLEXP(z_obj), &one, &one, INTP(adesc),
+	       (void*)COMPLEXP(a), &one, &one, INTP(desca),
+	       DOUBLEP(w),
+	       (void*)COMPLEXP(z), &one, &one, INTP(desca),
 	       work, &lwork, rwork, &lrwork,
 	       iwork, &liwork, &info);
       free(rwork);
@@ -678,11 +791,11 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   // Expert Driver for QR algorithm
   // Computes *all* eigenvalues and eigenvectors
 
-  PyArrayObject* a_obj; // Hamiltonian matrix
-  PyArrayObject* b_obj; // overlap matrix
-  PyArrayObject* adesc; // Hamintonian matrix descriptor
-  PyArrayObject* z_obj; // eigenvector matrix
-  PyArrayObject* w_obj; // eigenvalue array
+  PyArrayObject* a; // Hamiltonian matrix
+  PyArrayObject* b; // overlap matrix
+  PyArrayObject* desca; // Hamintonian matrix descriptor
+  PyArrayObject* z; // eigenvector matrix
+  PyArrayObject* w; // eigenvalue array
   int ibtype  =  1; // Solve H*psi = lambda*S*psi
   int a_mycol = -1;
   int a_myrow = -1;
@@ -700,14 +813,14 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   // char cmach = 'S'; // most acccurate eigenvalues
 
   int isgeneral; // flag for general diagonalize
-  if (!PyArg_ParseTuple(args, "OOcOOO", &a_obj, &adesc, &uplo, &b_obj,
-                        &z_obj, &w_obj))
+  if (!PyArg_ParseTuple(args, "OOcOOO", &a, &desca, &uplo, &b,
+                        &z, &w))
     return NULL;
 
   // a desc
-  int a_ConTxt = INTP(adesc)[1];
-  int a_m      = INTP(adesc)[2];
-  int a_n      = INTP(adesc)[3];
+  int a_ConTxt = INTP(desca)[1];
+  int a_m      = INTP(desca)[2];
+  int a_n      = INTP(desca)[3];
 
   // Only square matrices
   assert (a_m == a_n);
@@ -720,7 +833,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
 
   Cblacs_gridinfo_(a_ConTxt, &a_nprow, &a_npcol, &a_myrow, &a_mycol);
 
-  if (PyArray_Check(b_obj))
+  if (PyArray_Check(b))
     isgeneral = 1;
   else
     isgeneral = 0;
@@ -750,22 +863,22 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   int i_work;
   double d_work[3];
   double_complex c_work;
-  if (a_obj->descr->type_num == PyArray_DOUBLE) {
+  if (a->descr->type_num == PyArray_DOUBLE) {
     if(!isgeneral) {
       pdsyevx_(&jobz, &range, &uplo, &n,
-               DOUBLEP(a_obj), &one, &one, INTP(adesc),
+               DOUBLEP(a), &one, &one, INTP(desca),
                &vl, &vu, &il, &iu, &abstol, &eigvalm,
-               &nz, DOUBLEP(w_obj), &orfac,
-               DOUBLEP(z_obj), &one, &one, INTP(adesc),
+               &nz, DOUBLEP(w), &orfac,
+               DOUBLEP(z), &one, &one, INTP(desca),
                d_work, &querywork,  &i_work, &querywork,
                ifail, iclustr, gap, &info);
     } else {
       pdsygvx_(&ibtype, &jobz, &range, &uplo, &n,
-               DOUBLEP(a_obj), &one, &one, INTP(adesc),
-               DOUBLEP(b_obj), &one, &one, INTP(adesc),
+               DOUBLEP(a), &one, &one, INTP(desca),
+               DOUBLEP(b), &one, &one, INTP(desca),
                &vl, &vu, &il, &iu, &abstol, &eigvalm,
-               &nz, DOUBLEP(w_obj), &orfac,
-               DOUBLEP(z_obj),  &one, &one, INTP(adesc),
+               &nz, DOUBLEP(w), &orfac,
+               DOUBLEP(z),  &one, &one, INTP(desca),
                d_work, &querywork, &i_work, &querywork,
                ifail, iclustr, gap, &info);
     }
@@ -773,20 +886,20 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   } else {
     if(!isgeneral) {
       pzheevx_(&jobz, &range, &uplo, &n,
-               (void*)COMPLEXP(a_obj),&one, &one, INTP(adesc),
+               (void*)COMPLEXP(a),&one, &one, INTP(desca),
                &vl, &vu, &il, &iu, &abstol, &eigvalm,
-               &nz, DOUBLEP(w_obj), &orfac,
-               (void*)COMPLEXP(z_obj), &one, &one, INTP(adesc),
+               &nz, DOUBLEP(w), &orfac,
+               (void*)COMPLEXP(z), &one, &one, INTP(desca),
                &c_work, &querywork, d_work, &querywork,
                &i_work, &querywork,
                ifail, iclustr, gap, &info);
     } else {
       pzhegvx_(&ibtype, &jobz, &range, &uplo, &n,
-               (void*)COMPLEXP(a_obj), &one, &one, INTP(adesc),
-               (void*)COMPLEXP(b_obj), &one, &one, INTP(adesc),
+               (void*)COMPLEXP(a), &one, &one, INTP(desca),
+               (void*)COMPLEXP(b), &one, &one, INTP(desca),
                &vl, &vu, &il, &iu, &abstol, &eigvalm,
-               &nz, DOUBLEP(w_obj), &orfac,
-               (void*)COMPLEXP(z_obj), &one, &one, INTP(adesc),
+               &nz, DOUBLEP(w), &orfac,
+               (void*)COMPLEXP(z), &one, &one, INTP(desca),
                &c_work, &querywork, d_work, &querywork,
                &i_work, &querywork,
                ifail, iclustr, gap, &info);
@@ -804,23 +917,23 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   lwork = lwork + (n-1)*n;
   liwork = i_work;
   iwork = GPAW_MALLOC(int, liwork);
-  if (a_obj->descr->type_num == PyArray_DOUBLE) {
+  if (a->descr->type_num == PyArray_DOUBLE) {
     double* work = GPAW_MALLOC(double, lwork);
     if (!isgeneral) {
       pdsyevx_(&jobz, &range, &uplo, &n,
-               DOUBLEP(a_obj), &one, &one, INTP(adesc),
+               DOUBLEP(a), &one, &one, INTP(desca),
                &vl, &vu, &il, &iu, &abstol, &eigvalm,
-               &nz, DOUBLEP(w_obj), &orfac,
-               DOUBLEP(z_obj), &one, &one, INTP(adesc),
+               &nz, DOUBLEP(w), &orfac,
+               DOUBLEP(z), &one, &one, INTP(desca),
                work, &lwork, iwork, &liwork,
                ifail, iclustr, gap, &info);
     } else {
       pdsygvx_(&ibtype, &jobz, &range, &uplo, &n,
-               DOUBLEP(a_obj), &one, &one, INTP(adesc),
-               DOUBLEP(b_obj), &one, &one, INTP(adesc),
+               DOUBLEP(a), &one, &one, INTP(desca),
+               DOUBLEP(b), &one, &one, INTP(desca),
                &vl, &vu, &il, &iu, &abstol, &eigvalm,
-               &nz, DOUBLEP(w_obj), &orfac,
-               DOUBLEP(z_obj), &one, &one,  INTP(adesc),
+               &nz, DOUBLEP(w), &orfac,
+               DOUBLEP(z), &one, &one,  INTP(desca),
                work, &lwork,  iwork, &liwork,
                ifail, iclustr, gap, &info);
     }
@@ -830,20 +943,20 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
     double* rwork = GPAW_MALLOC(double, lrwork);
     if (!isgeneral) {
       pzheevx_(&jobz, &range, &uplo, &n,
-               (void*)COMPLEXP(a_obj), &one, &one, INTP(adesc),
+               (void*)COMPLEXP(a), &one, &one, INTP(desca),
                &vl, &vu, &il, &iu, &abstol, &eigvalm,
-               &nz, DOUBLEP(w_obj), &orfac,
-               (void*)COMPLEXP(z_obj), &one, &one, INTP(adesc), work,
+               &nz, DOUBLEP(w), &orfac,
+               (void*)COMPLEXP(z), &one, &one, INTP(desca), work,
                &lwork, rwork, &lrwork,
                iwork, &liwork,
                ifail, iclustr, gap, &info);
     } else {
       pzhegvx_(&ibtype, &jobz, &range, &uplo, &n,
-               (void*)COMPLEXP(a_obj), &one, &one, INTP(adesc),
-               (void*)COMPLEXP(b_obj), &one, &one, INTP(adesc),
+               (void*)COMPLEXP(a), &one, &one, INTP(desca),
+               (void*)COMPLEXP(b), &one, &one, INTP(desca),
                &vl, &vu, &il, &iu, &abstol, &eigvalm,
-               &nz, DOUBLEP(w_obj), &orfac,
-               (void*)COMPLEXP(z_obj), &one, &one, INTP(adesc),
+               &nz, DOUBLEP(w), &orfac,
+               (void*)COMPLEXP(z), &one, &one, INTP(desca),
                work, &lwork, rwork, &lrwork,
                iwork, &liwork,
                ifail, iclustr, gap, &info);
@@ -870,8 +983,8 @@ PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args)
 {
   // Cholesky plus inverse of triangular matrix
 
-  PyArrayObject* a_obj; // overlap matrix
-  PyArrayObject* adesc; // symmetric matrix description vector
+  PyArrayObject* a; // overlap matrix
+  PyArrayObject* desca; // symmetric matrix description vector
   int info1;
   int info2;
   static int one = 1;
@@ -879,13 +992,13 @@ PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args)
   char diag = 'N'; // non-unit triangular
   char uplo;
 
-  if (!PyArg_ParseTuple(args, "OOc", &a_obj, &adesc, &uplo))
+  if (!PyArg_ParseTuple(args, "OOc", &a, &desca, &uplo))
     return NULL;
 
   // adesc
-  // int a_ConTxt = INTP(adesc)[1];
-  int a_m      = INTP(adesc)[2];
-  int a_n      = INTP(adesc)[3];
+  // int a_ConTxt = INTP(desca)[1];
+  int a_m      = INTP(desca)[2];
+  int a_n      = INTP(desca)[3];
 
   // Only square matrices
   assert (a_m == a_n);
@@ -894,19 +1007,19 @@ PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args)
   // If process not on BLACS grid, then return.
   // if (a_ConTxt == -1) Py_RETURN_NONE;
 
-  if (a_obj->descr->type_num == PyArray_DOUBLE)
+  if (a->descr->type_num == PyArray_DOUBLE)
     {
-      pdpotrf_(&uplo, &n, DOUBLEP(a_obj), &one, &one,
-	       INTP(adesc), &info1);
-      pdtrtri_(&uplo, &diag, &n, DOUBLEP(a_obj), &one, &one,
-	       INTP(adesc), &info2);
+      pdpotrf_(&uplo, &n, DOUBLEP(a), &one, &one,
+	       INTP(desca), &info1);
+      pdtrtri_(&uplo, &diag, &n, DOUBLEP(a), &one, &one,
+	       INTP(desca), &info2);
     }
   else
     {
-      pzpotrf_(&uplo, &n, (void*)COMPLEXP(a_obj), &one, &one,
-	       INTP(adesc), &info1);
-      pztrtri_(&uplo, &diag, &n, (void*)COMPLEXP(a_obj), &one, &one,
-	       INTP(adesc), &info2);
+      pzpotrf_(&uplo, &n, (void*)COMPLEXP(a), &one, &one,
+	       INTP(desca), &info1);
+      pztrtri_(&uplo, &diag, &n, (void*)COMPLEXP(a), &one, &one,
+	       INTP(desca), &info2);
     }
 
   if (info1 != 0)
