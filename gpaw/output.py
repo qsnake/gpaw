@@ -244,6 +244,10 @@ class PAWTextOutput:
         if self.wfs.gd.comm.size > 1: # domain parallelization
             t('Using Domain Decomposition: %d x %d x %d' %
               tuple(self.wfs.gd.parsize_c))
+        if self.wfs.bd.comm.size > 1: # band parallelization
+            t('Parallelization Over bands on %d Processors'
+              % self.wfs.bd.comm.size)
+              
 
         if self.wfs.symmetry is not None:
             self.wfs.symmetry.print_symmetries(t)
