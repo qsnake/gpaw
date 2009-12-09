@@ -389,12 +389,18 @@ class FixedBoundaryPoissonSolver(PoissonSolver):
             self.b_phi1 = b_phi1[:, :, -1].reshape(-1)
             self.b_phi2 = b_phi2[:, :, 0].reshape(-1)
    
-    def solve(self, phi_g, rho_g):
-        actual_charge = self.gd.integrate(rho_g)
+    def solve(self, phi_g, rho_g, charge=None):
+        if charge is None:
+            actual_charge = self.gd.integrate(rho_g)
+        else:
+            actual_charge = charge
+        
         if self.charged_periodic_correction is None:
             self.charged_periodic_correction = madelung(self.gd.cell_cv)
+        
         background = (actual_charge / self.gd.dv /
                                     self.gd.get_size_of_global_array().prod())
+        
         self.solve_neutral(phi_g, rho_g - background)
         phi_g += actual_charge * self.charged_periodic_correction
     
