@@ -26,7 +26,7 @@ class _Communicator:
 
     def new_communicator(self, ranks):
         """Create a new MPI communicator for a subset of ranks in a group.
-        Must be called with idencial arguments by all relevant processes.
+        Must be called with identical arguments by all relevant processes.
 
         Note that a valid communicator is only returned to the processes
         which are included in the new group; other ranks get None returned.
@@ -262,7 +262,7 @@ class _Communicator:
         self.comm.all_gather(a, b)
 
     def gather(self, a, root, b=None):
-        """Gather data from all ranks onto a single processes in a group.
+        """Gather data from all ranks onto a single process in a group.
 
         Parameters:
 
@@ -314,7 +314,7 @@ class _Communicator:
             self.comm.gather(a, root)
 
     def broadcast(self, a, root):
-        """Share data from  a single processes to all ranks in a group.
+        """Share data from a single process to all ranks in a group.
 
         Parameters:
 
