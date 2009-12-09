@@ -19,10 +19,26 @@ MASTER = 0
 
 
 class _Communicator:
-    def __init__(self, comm):
+    def __init__(self, comm, parent=None):
+        """Construct a wrapper of the C-object for any MPI-communicator.
+
+        Parameters:
+
+        comm: MPI-communicator
+            Communicator.
+
+        Attributes:
+
+        ============  ======================================================
+        ``size``      Number of ranks in the MPI group.
+        ``rank``      Number of this CPU in the MPI group.
+        ``parent``    Parent MPI-communicator.
+        ============  ======================================================
+        """
         self.comm = comm
         self.size = comm.size
         self.rank = comm.rank
+        self.parent = parent #XXX check C-object against comm.parent?
 
     def new_communicator(self, ranks):
         """Create a new MPI communicator for a subset of ranks in a group.
@@ -54,7 +70,7 @@ class _Communicator:
             # This cpu is not in the new communicator:
             return None
         else:
-            return _Communicator(comm)
+            return _Communicator(comm, parent=self)
 
     def sum(self, a, root=-1):
         """Perform summation by MPI reduce operations of numerical data.
@@ -447,6 +463,10 @@ class _Communicator:
 class SerialCommunicator:
     size = 1
     rank = 0
+
+    def __init__(self, parent=None):
+        self.parent = parent
+
     def sum(self, array, root=-1):
         if isinstance(array, (int, float, complex)):
             return array
@@ -473,7 +493,9 @@ class SerialCommunicator:
         b[:] = a
 
     def new_communicator(self, ranks):
-        return self
+        if self.rank not in ranks:
+            return None
+        return SerialCommunicator(parent=self)
 
     def test(self, request):
         return 1
@@ -490,7 +512,7 @@ class SerialCommunicator:
                                   'serial mode')
 
     def get_c_object(self):
-        raise NotImplementedError('Should not get c object for serial comm')
+        raise NotImplementedError('Should not get C-object for serial comm')
 
 
 serial_comm = SerialCommunicator()
@@ -501,11 +523,12 @@ except AttributeError:
     world = serial_comm
 
 class DryRunCommunicator(SerialCommunicator):
-    def __init__(self, size=1):
+    def __init__(self, size=1, parent=None):
         self.size = size
+        self.parent = parent
     
     def new_communicator(self, ranks):
-        return DryRunCommunicator(len(ranks))
+        return DryRunCommunicator(len(ranks), parent=self)
 
     def get_c_object(self):
         return None # won't actually be passed to C

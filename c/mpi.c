@@ -801,6 +801,7 @@ static PyMethodDef mpi_methods[] = {
 static PyMemberDef mpi_members[] = {
   {"size", T_INT, offsetof(MPIObject, size), 0, "Number of processors"},
   {"rank", T_INT, offsetof(MPIObject, rank), 0, "Number of this processor"},
+  {"parent", T_OBJECT_EX, offsetof(MPIObject, parent), 0, "Parent communicator"},
   {0, 0, 0, 0, 0}  /* Sentinel */
 };
 
@@ -820,7 +821,8 @@ static PyObject *NewMPIObject(PyTypeObject* type, PyObject *args, PyObject *kwds
   MPI_Comm_size(MPI_COMM_WORLD, &(self->size));
   MPI_Comm_rank(MPI_COMM_WORLD, &(self->rank));
   self->comm = MPI_COMM_WORLD;
-  self->parent = NULL;
+  Py_INCREF(Py_None);
+  self->parent = Py_None;
 
   return (PyObject *) self;
 }
@@ -942,6 +944,8 @@ static PyObject * MPICommunicator(MPIObject *self, PyObject *args)
       MPI_Comm_size(comm, &(obj->size));
       MPI_Comm_rank(comm, &(obj->rank));
       obj->comm = comm;
+      if (obj->parent == Py_None)
+        Py_DECREF(obj->parent);
       // Make sure that MPI_COMM_WORLD is kept alive til the end (we
       // don't want MPI_Finalize to be called before MPI_Comm_free):
       Py_INCREF(self);

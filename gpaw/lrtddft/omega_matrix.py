@@ -55,7 +55,7 @@ class OmegaMatrix:
         self.txt, firsttime = initialize_text_stream(txt, mpi.rank)
 
         if eh_comm == None:
-            eh_comm = mpi.SerialCommunicator()
+            eh_comm = mpi.serial_comm
 
         self.eh_comm = eh_comm
 

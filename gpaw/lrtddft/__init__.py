@@ -92,7 +92,7 @@ class LrTDDFT(ExcitationList):
         self.force_ApmB=force_ApmB
 
         if eh_comm is None:
-            eh_comm = mpi.SerialCommunicator()
+            eh_comm = mpi.serial_comm
         elif isinstance(eh_comm, (mpi.world.__class__,
                                 mpi.serial_comm.__class__)):
             # Correct type already.
