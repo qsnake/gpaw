@@ -344,7 +344,7 @@ class Transport(GPAW):
         p['analysis_data_list'] = []
         p['save_bias_data'] = True
         p['analysis_mode'] = 0
-        p['normalize_density'] = True
+        p['normalize_density'] = False
         p['neintmethod'] = 0
         p['neintstep'] = 0.02
         p['eqinttol'] = 1e-4
