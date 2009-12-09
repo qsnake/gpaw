@@ -1942,13 +1942,8 @@ class Transport(GPAW):
 
         actual_charge = self.finegd.integrate(density.rhot_g)
         self.text('actual_charge' + str(actual_charge))
-        if self.fixed and self.use_fd_poisson:
-            ham.npoisson = self.inner_poisson.solve(self.hamiltonian.vHt_g,
-                                                       density.rhot_g)
-        
-        else:
-            ham.npoisson = self.inner_poisson.solve(self.hamiltonian.vHt_g,
-                                                  density.rhot_g,
+        ham.npoisson = self.inner_poisson.solve(self.hamiltonian.vHt_g,
+                                                        density.rhot_g,
                                                   charge=-density.charge)
 
         if not self.fixed and hasattr(self, 'step'):
