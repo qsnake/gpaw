@@ -78,7 +78,7 @@ C debugging
 ===========
 
 First of all, the c-extension should be compiled with the *-g* flag in order to get the debug information into the library. 
-Also, the optimizations should be switched of which could be done in `customize.py` as::
+Also, the optimizations should be switched off which could be done in `customize.py` as::
 
    extra_link_args += ['-g']
    extra_compile_args += ['-O0 -g']
