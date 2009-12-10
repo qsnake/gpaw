@@ -60,6 +60,7 @@ static void mpi_dealloc(MPIObject *obj)
       MPI_Comm_free(&(obj->comm));
       Py_XDECREF(obj->parent);
     }
+  free(obj->members);
   PyObject_DEL(obj);
 }
 
@@ -729,6 +730,19 @@ static PyObject * mpi_broadcast(MPIObject *self, PyObject *args)
 #include "scalapack.c"
 #endif
 
+static PyObject * get_members(MPIObject *self, PyObject *args)
+{
+  PyArrayObject *ranks;
+  npy_intp ranks_dims[1] = {self->size};
+  ranks = (PyArrayObject *) PyArray_SimpleNew(1, ranks_dims, NPY_INT);
+  if (ranks == NULL)
+    return NULL;
+  memcpy(INTP(ranks), self->members, self->size*sizeof(int));
+  PyObject* values = Py_BuildValue("O", ranks);
+  Py_DECREF(ranks);
+  return values;
+}
+
 // See the documentation for corresponding function in debug wrapper
 // for the purpose of this function (gpaw/mpi/__init__.py)
 static PyObject * get_c_object(MPIObject *self, PyObject *args)
@@ -792,6 +806,7 @@ static PyMethodDef mpi_methods[] = {
     {"diagonalize",      (PyCFunction)diagonalize,      METH_VARARGS, 0},
     {"inverse_cholesky", (PyCFunction)inverse_cholesky, METH_VARARGS, 0},
 #endif
+    {"get_members",      (PyCFunction)get_members,      METH_VARARGS, 0},
     {"get_c_object",     (PyCFunction)get_c_object,     METH_VARARGS, 0},
     {"new_communicator", (PyCFunction)MPICommunicator,  METH_VARARGS,
      "new_communicator(ranks) creates a new communicator."},
@@ -823,6 +838,11 @@ static PyObject *NewMPIObject(PyTypeObject* type, PyObject *args, PyObject *kwds
   self->comm = MPI_COMM_WORLD;
   Py_INCREF(Py_None);
   self->parent = Py_None;
+  self->members = (int*) malloc(self->size*sizeof(int));
+  if (self->members == NULL)
+    return NULL;
+  for (int i=0; i<self->size; i++)
+    self->members[i] = i;
 
   return (PyObject *) self;
 }
@@ -923,7 +943,6 @@ static PyObject * MPICommunicator(MPIObject *self, PyObject *args)
   MPI_Comm_group(self->comm, &group);
   MPI_Group newgroup;
   MPI_Group_incl(group, n, (int *) PyArray_BYTES(iranks), &newgroup);
-  Py_DECREF(iranks);
   MPI_Comm comm;
   MPI_Comm_create(self->comm, newgroup, &comm);
 #ifdef GPAW_MPI_DEBUG
@@ -934,6 +953,7 @@ static PyObject * MPICommunicator(MPIObject *self, PyObject *args)
   MPI_Group_free(&group);
   if (comm == MPI_COMM_NULL)
     {
+      Py_DECREF(iranks);
       Py_RETURN_NONE;
     }
   else
@@ -946,6 +966,12 @@ static PyObject * MPICommunicator(MPIObject *self, PyObject *args)
       obj->comm = comm;
       if (obj->parent == Py_None)
         Py_DECREF(obj->parent);
+      obj->members = (int*) malloc(obj->size*sizeof(int));
+      if (obj->members == NULL)
+        return NULL;
+      memcpy(obj->members, (int *) PyArray_BYTES(iranks), obj->size*sizeof(int));
+      Py_DECREF(iranks);
+
       // Make sure that MPI_COMM_WORLD is kept alive til the end (we
       // don't want MPI_Finalize to be called before MPI_Comm_free):
       Py_INCREF(self);

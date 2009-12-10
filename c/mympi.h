@@ -8,5 +8,6 @@ typedef struct
   int rank;
   MPI_Comm comm;
   PyObject* parent;
+  int* members;
 } MPIObject;
 

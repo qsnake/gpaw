@@ -445,6 +445,28 @@ class _Communicator:
                          nprow=1, npcol=1, mb=32, root=0):
         return self.comm.inverse_cholesky(a, nprow, npcol, mb, root)
 
+    def get_members(self):
+        """Return the subset of processes which are members of this MPI group
+        in terms of the ranks they are assigned on the parent communicator.
+        For the world communicator, this is all integers up to ``size``.
+
+        Example::
+
+          >>> world.rank, world.size
+          (3, 4)
+          >>> world.get_members()
+          array([0, 1, 2, 3])
+          >>> comm = world.new_communicator(array([2, 3]))
+          >>> comm.rank, comm.size
+          (1, 2)
+          >>> comm.get_members()
+          array([2, 3])
+          >>> comm.get_members()[comm.rank] == world.rank
+          True
+
+        """
+        return self.comm.get_members()
+
     def get_c_object(self):
         """Return the C-object wrapped by this debug interface.
 
@@ -510,6 +532,9 @@ class SerialCommunicator:
     def waitall(self, request):
         raise NotImplementedError('Calls to mpi waitall should not happen in '
                                   'serial mode')
+
+    def get_members(self):
+        return np.array([0])
 
     def get_c_object(self):
         raise NotImplementedError('Should not get C-object for serial comm')
