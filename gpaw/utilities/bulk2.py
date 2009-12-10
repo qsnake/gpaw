@@ -191,6 +191,7 @@ class Runner:
         return e, d, hnu
 
     def bulk_summary(self, plot, a0):
+        natoms = len(self.atoms)
         eos = EquationOfState(self.volumes, self.energies)
         v, e, B = eos.fit()
         a = a0 * (v / self.atoms.get_volume())**(1.0 / 3)
