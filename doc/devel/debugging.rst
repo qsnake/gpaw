@@ -81,7 +81,7 @@ First of all, the c-extension should be compiled with the *-g* flag in order to 
 Also, the optimizations should be switched off which could be done in `customize.py` as::
 
    extra_link_args += ['-g']
-   extra_compile_args += ['-O0 -g']
+   extra_compile_args += ['-O0', '-g']
 
 There are several debuggers available, the following example session applies to *gdb*::
 
