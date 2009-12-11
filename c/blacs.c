@@ -227,7 +227,7 @@ PyObject* pblas_gemm(PyObject *self, PyObject *args)
   PyArrayObject *desca, *descb, *descc;
   static int one = 1;
   
-  if (!PyArg_ParseTuple(args, "iiidOOdOOOOcc", &m, &n, &k, &alpha,
+  if (!PyArg_ParseTuple(args, "iiiDOODOOOOcc", &m, &n, &k, &alpha,
                         &a, &b, &beta, &c,
                         &desca, &descb, &descc,
                         &transa, &transb)) {
@@ -268,12 +268,11 @@ PyObject* pblas_gemv(PyObject *self, PyObject *args)
   int incx = 1, incy = 1; // what should these be?
   PyArrayObject *desca, *descx, *descy;
   static int one = 1;
-  if (!PyArg_ParseTuple(args, "iidOOOOdOO", 
+  if (!PyArg_ParseTuple(args, "iiDOODOOOO", 
                         &m, &n, &alpha, 
-                        &a, &desca,
-                        &x, &descx,
-                        &beta,
-                        &y, &descy)) {
+                        &a, &x, &beta, &y,
+			&desca, &descx,
+                        &descy)) {
     return NULL;
   }
   
@@ -312,7 +311,7 @@ PyObject* pblas_syr2k(PyObject *self, PyObject *args)
   PyArrayObject *desca, *descb, *descc;
   static int one = 1;
   
-  if (!PyArg_ParseTuple(args, "iidOOdOOOOcc", &n, &k, &alpha,
+  if (!PyArg_ParseTuple(args, "iiDOODOOOOcc", &n, &k, &alpha,
                         &a, &b, &beta, &c,
                         &desca, &descb, &descc,
                         &uplo, &trans)) {
@@ -354,7 +353,7 @@ PyObject* pblas_syrk(PyObject *self, PyObject *args)
   PyArrayObject *desca, *descc;
   static int one = 1;
   
-  if (!PyArg_ParseTuple(args, "iidOdOOOcc", &n, &k, &alpha,
+  if (!PyArg_ParseTuple(args, "iiDODOOOcc", &n, &k, &alpha,
                         &a, &beta, &c,
                         &desca, &descc,
                         &uplo, &trans)) {

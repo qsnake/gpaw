@@ -142,7 +142,7 @@ def pblas_simple_gemm(desca, descb, descc, a_MK, b_KN, c_MN, transa='N',
                transa, transb)
 
 
-def pblas_gemv(alpha, a, desca, x, descx, beta, y, descy):
+def pblas_gemv(alpha, a, x, beta, y, desca, descx, descy):
     M, N = desca.gshape
     assert M == descy.gshape[0]
     assert N == descx.gshape[0]
@@ -152,18 +152,18 @@ def pblas_gemv(alpha, a, desca, x, descx, beta, y, descy):
     assert descx.gshape[1] == descy.gshape[1]
     if desca.blacsgrid.is_active():
         _gpaw.pblas_gemv(N, M, alpha,
-                         a, desca.asarray(),
-                         x, descx.asarray(),
-                         beta,
-                         y, descy.asarray())
+                         a, x, beta, y,
+                         desca.asarray(),
+                         descx.asarray(),
+                         descy.asarray())
 
 
 def pblas_simple_gemv(desca, descx, descy, a, x, y):
     alpha = 1.0
     beta = 0.0
-    pblas_gemv(alpha, a, desca, x, descx, beta, y, descy)
+    pblas_gemv(alpha, a, x, beta, y, desca, descx, descy)
 
-    
+
 #if not debug:
 #    blacs_create = _gpaw.blacs_create
 #    blacs_destroy = _gpaw.blacs_destroy
