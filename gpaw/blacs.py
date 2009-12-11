@@ -14,7 +14,7 @@ import numpy as np
 
 from gpaw import sl_diagonalize
 from gpaw.mpi import SerialCommunicator
-from gpaw.utilities.blacs import scalapack_diagonalize_ex
+from gpaw.utilities.blacs import scalapack_general_diagonalize_ex
 import _gpaw
 
 
@@ -247,7 +247,7 @@ class BlacsDescriptor(MatrixDescriptor):
         self.checkassert(H_mm)
         self.checkassert(S_mm)
         self.checkassert(C_mm)
-        scalapack_diagonalize_ex(self, H_mm.T, S_mm.T, C_mm.T, eps_M, UL)
+        scalapack_general_diagonalize_ex(self, H_mm.T, S_mm.T, C_mm.T, eps_M, UL)
 
 
 class Redistributor:

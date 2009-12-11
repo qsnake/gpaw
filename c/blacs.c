@@ -792,11 +792,9 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   // Computes *all* eigenvalues and eigenvectors
 
   PyArrayObject* a; // Hamiltonian matrix
-  PyArrayObject* b; // overlap matrix
   PyArrayObject* desca; // Hamintonian matrix descriptor
   PyArrayObject* z; // eigenvector matrix
   PyArrayObject* w; // eigenvalue array
-  int ibtype  =  1; // Solve H*psi = lambda*S*psi
   int a_mycol = -1;
   int a_myrow = -1;
   int a_nprow, a_npcol;
@@ -812,8 +810,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   char cmach = 'U'; // most orthogonal eigenvectors
   // char cmach = 'S'; // most acccurate eigenvalues
 
-  int isgeneral; // flag for general diagonalize
-  if (!PyArg_ParseTuple(args, "OOcOOO", &a, &desca, &uplo, &b,
+  if (!PyArg_ParseTuple(args, "OOcOOO", &a, &desca, &uplo,
                         &z, &w))
     return NULL;
 
@@ -832,11 +829,6 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   // if (a_ConTxt == -1) Py_RETURN_NONE;
 
   Cblacs_gridinfo_(a_ConTxt, &a_nprow, &a_npcol, &a_myrow, &a_mycol);
-
-  if (PyArray_Check(b))
-    isgeneral = 1;
-  else
-    isgeneral = 0;
 
   // Convergence tolerance
   // most orthogonal eigenvectors
@@ -863,50 +855,31 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   int i_work;
   double d_work[3];
   double_complex c_work;
-  if (a->descr->type_num == PyArray_DOUBLE) {
-    if(!isgeneral) {
+  if (a->descr->type_num == PyArray_DOUBLE)
+    {
       pdsyevx_(&jobz, &range, &uplo, &n,
-               DOUBLEP(a), &one, &one, INTP(desca),
-               &vl, &vu, &il, &iu, &abstol, &eigvalm,
-               &nz, DOUBLEP(w), &orfac,
-               DOUBLEP(z), &one, &one, INTP(desca),
-               d_work, &querywork,  &i_work, &querywork,
-               ifail, iclustr, gap, &info);
-    } else {
-      pdsygvx_(&ibtype, &jobz, &range, &uplo, &n,
-               DOUBLEP(a), &one, &one, INTP(desca),
-               DOUBLEP(b), &one, &one, INTP(desca),
-               &vl, &vu, &il, &iu, &abstol, &eigvalm,
-               &nz, DOUBLEP(w), &orfac,
-               DOUBLEP(z),  &one, &one, INTP(desca),
-               d_work, &querywork, &i_work, &querywork,
-               ifail, iclustr, gap, &info);
+	       DOUBLEP(a), &one, &one, INTP(desca),
+	       &vl, &vu, &il, &iu, &abstol, &eigvalm,
+	       &nz, DOUBLEP(w), &orfac,
+	       DOUBLEP(z), &one, &one, INTP(desca),
+	       d_work, &querywork,  &i_work, &querywork,
+	       ifail, iclustr, gap, &info);
+      lwork = (int)(d_work[0]);
     }
-    lwork = (int)(d_work[0]);
-  } else {
-    if(!isgeneral) {
+  else
+    {
       pzheevx_(&jobz, &range, &uplo, &n,
-               (void*)COMPLEXP(a),&one, &one, INTP(desca),
-               &vl, &vu, &il, &iu, &abstol, &eigvalm,
-               &nz, DOUBLEP(w), &orfac,
-               (void*)COMPLEXP(z), &one, &one, INTP(desca),
-               &c_work, &querywork, d_work, &querywork,
-               &i_work, &querywork,
-               ifail, iclustr, gap, &info);
-    } else {
-      pzhegvx_(&ibtype, &jobz, &range, &uplo, &n,
-               (void*)COMPLEXP(a), &one, &one, INTP(desca),
-               (void*)COMPLEXP(b), &one, &one, INTP(desca),
-               &vl, &vu, &il, &iu, &abstol, &eigvalm,
+	       (void*)COMPLEXP(a),&one, &one, INTP(desca),
+	       &vl, &vu, &il, &iu, &abstol, &eigvalm,
                &nz, DOUBLEP(w), &orfac,
                (void*)COMPLEXP(z), &one, &one, INTP(desca),
                &c_work, &querywork, d_work, &querywork,
                &i_work, &querywork,
                ifail, iclustr, gap, &info);
     }
-    lwork = (int)(c_work);
-    lrwork = (int)(d_work[0]);
-  }
+  lwork = (int)(c_work);
+  lrwork = (int)(d_work[0]);
+  
   if (info != 0) {
     PyErr_SetString(PyExc_RuntimeError,
                     "scalapack_diagonalize_ex error in query.");
@@ -917,9 +890,9 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   lwork = lwork + (n-1)*n;
   liwork = i_work;
   iwork = GPAW_MALLOC(int, liwork);
-  if (a->descr->type_num == PyArray_DOUBLE) {
-    double* work = GPAW_MALLOC(double, lwork);
-    if (!isgeneral) {
+  if (a->descr->type_num == PyArray_DOUBLE)
+    {
+      double* work = GPAW_MALLOC(double, lwork);
       pdsyevx_(&jobz, &range, &uplo, &n,
                DOUBLEP(a), &one, &one, INTP(desca),
                &vl, &vu, &il, &iu, &abstol, &eigvalm,
@@ -927,21 +900,12 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
                DOUBLEP(z), &one, &one, INTP(desca),
                work, &lwork, iwork, &liwork,
                ifail, iclustr, gap, &info);
-    } else {
-      pdsygvx_(&ibtype, &jobz, &range, &uplo, &n,
-               DOUBLEP(a), &one, &one, INTP(desca),
-               DOUBLEP(b), &one, &one, INTP(desca),
-               &vl, &vu, &il, &iu, &abstol, &eigvalm,
-               &nz, DOUBLEP(w), &orfac,
-               DOUBLEP(z), &one, &one,  INTP(desca),
-               work, &lwork,  iwork, &liwork,
-               ifail, iclustr, gap, &info);
-    }
-    free(work);
-  } else {
-    double_complex* work = GPAW_MALLOC(double_complex, lwork);
-    double* rwork = GPAW_MALLOC(double, lrwork);
-    if (!isgeneral) {
+      free(work);
+    } 
+  else 
+    {
+      double_complex* work = GPAW_MALLOC(double_complex, lwork);
+      double* rwork = GPAW_MALLOC(double, lrwork);
       pzheevx_(&jobz, &range, &uplo, &n,
                (void*)COMPLEXP(a), &one, &one, INTP(desca),
                &vl, &vu, &il, &iu, &abstol, &eigvalm,
@@ -950,7 +914,148 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
                &lwork, rwork, &lrwork,
                iwork, &liwork,
                ifail, iclustr, gap, &info);
-    } else {
+      free(rwork);
+      free(work);
+    }
+
+  if (info != 0) {
+    PyErr_SetString(PyExc_RuntimeError,
+		    "scalapack_diagonalize_ex error in compute.");
+    return NULL;
+  }
+
+  free(iwork);
+  free(gap);
+  free(iclustr);
+  free(ifail);
+  
+  Py_RETURN_NONE;
+}
+
+PyObject* scalapack_general_diagonalize_ex(PyObject *self, PyObject *args)
+{
+  // Expert Driver for QR algorithm
+  // Computes *all* eigenvalues and eigenvectors
+
+  PyArrayObject* a; // Hamiltonian matrix
+  PyArrayObject* b; // overlap matrix
+  PyArrayObject* desca; // Hamintonian matrix descriptor
+  PyArrayObject* z; // eigenvector matrix
+  PyArrayObject* w; // eigenvalue array
+  int ibtype  =  1; // Solve H*psi = lambda*S*psi
+  int a_mycol = -1;
+  int a_myrow = -1;
+  int a_nprow, a_npcol;
+  int il, iu;  // not used when range = 'A' or 'V'
+  int eigvalm, nz;
+  static int one = 1;
+
+  double vl, vu; // not used when range = 'A' or 'I'
+
+  char jobz = 'V'; // eigenvectors also
+  char range = 'A'; // all eigenvalues
+  char uplo;
+  char cmach = 'U'; // most orthogonal eigenvectors
+  // char cmach = 'S'; // most acccurate eigenvalues
+
+  if (!PyArg_ParseTuple(args, "OOcOOO", &a, &desca, &uplo, &b,
+                        &z, &w))
+    return NULL;
+
+  // a desc
+  int a_ConTxt = INTP(desca)[1];
+  int a_m      = INTP(desca)[2];
+  int a_n      = INTP(desca)[3];
+
+  // Only square matrices
+  assert (a_m == a_n);
+  int n = a_n;
+
+  // zdesc = adesc = bdesc; required by pdsyevx.f and pdsygvx.f
+
+  // If process not on BLACS grid, then return.
+  // if (a_ConTxt == -1) Py_RETURN_NONE;
+
+  Cblacs_gridinfo_(a_ConTxt, &a_nprow, &a_npcol, &a_myrow, &a_mycol);
+
+  // Convergence tolerance
+  // most orthogonal eigenvectors
+  double abstol = pdlamch_(&a_ConTxt, &cmach);
+  
+  // most accurate eigenvalues
+  // double abstol = 2.0*pdlamch_(&a_ConTxt, &cmach);
+  
+  double orfac = -1.0;
+
+  // Query part, need to find the optimal size of a number of work arrays
+  int info;
+  int *ifail;
+  ifail = GPAW_MALLOC(int, n);
+  int *iclustr;
+  iclustr = GPAW_MALLOC(int, 2*a_nprow*a_npcol);
+  double  *gap;
+  gap = GPAW_MALLOC(double, a_nprow*a_npcol);
+  int querywork = -1;
+  int* iwork;
+  int liwork;
+  int lwork;
+  int lrwork;
+  int i_work;
+  double d_work[3];
+  double_complex c_work;
+  if (a->descr->type_num == PyArray_DOUBLE)
+    {
+      pdsygvx_(&ibtype, &jobz, &range, &uplo, &n,
+	       DOUBLEP(a), &one, &one, INTP(desca),
+	       DOUBLEP(b), &one, &one, INTP(desca),
+	       &vl, &vu, &il, &iu, &abstol, &eigvalm,
+	       &nz, DOUBLEP(w), &orfac,
+	       DOUBLEP(z),  &one, &one, INTP(desca),
+	       d_work, &querywork, &i_work, &querywork,
+	       ifail, iclustr, gap, &info);
+      lwork = (int)(d_work[0]);
+    } 
+  else
+    {
+      pzhegvx_(&ibtype, &jobz, &range, &uplo, &n,
+               (void*)COMPLEXP(a), &one, &one, INTP(desca),
+               (void*)COMPLEXP(b), &one, &one, INTP(desca),
+               &vl, &vu, &il, &iu, &abstol, &eigvalm,
+               &nz, DOUBLEP(w), &orfac,
+               (void*)COMPLEXP(z), &one, &one, INTP(desca),
+               &c_work, &querywork, d_work, &querywork,
+               &i_work, &querywork,
+               ifail, iclustr, gap, &info);
+      lwork = (int)(c_work);
+      lrwork = (int)(d_work[0]);
+    }
+  if (info != 0) {
+    PyErr_SetString(PyExc_RuntimeError,
+                    "scalapack_diagonalize_ex error in query.");
+    return NULL;
+  }
+  
+  // Computation part
+  lwork = lwork + (n-1)*n;
+  liwork = i_work;
+  iwork = GPAW_MALLOC(int, liwork);
+  if (a->descr->type_num == PyArray_DOUBLE)
+    {
+      double* work = GPAW_MALLOC(double, lwork);
+      pdsygvx_(&ibtype, &jobz, &range, &uplo, &n,
+               DOUBLEP(a), &one, &one, INTP(desca),
+               DOUBLEP(b), &one, &one, INTP(desca),
+               &vl, &vu, &il, &iu, &abstol, &eigvalm,
+               &nz, DOUBLEP(w), &orfac,
+               DOUBLEP(z), &one, &one,  INTP(desca),
+               work, &lwork,  iwork, &liwork,
+               ifail, iclustr, gap, &info);
+    free(work);
+    }  
+  else 
+    {
+      double_complex* work = GPAW_MALLOC(double_complex, lwork);
+      double* rwork = GPAW_MALLOC(double, lrwork);
       pzhegvx_(&ibtype, &jobz, &range, &uplo, &n,
                (void*)COMPLEXP(a), &one, &one, INTP(desca),
                (void*)COMPLEXP(b), &one, &one, INTP(desca),
@@ -960,9 +1065,8 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
                work, &lwork, rwork, &lrwork,
                iwork, &liwork,
                ifail, iclustr, gap, &info);
-    }
-    free(rwork);
-    free(work);
+      free(rwork);
+      free(work);
   }
   if (info != 0) {
     PyErr_SetString(PyExc_RuntimeError,
@@ -976,8 +1080,9 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   free(ifail);
   
   Py_RETURN_NONE;
-
 }
+
+
 
 PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args)
 {
