@@ -349,9 +349,9 @@ class Operator:
                 rbuf_In = np.empty_like(sbuf_In)
 
         # Because of the amount of communication involved, we need to
-        # be syncronized up to this point.
+        # be syncronized up to this point but only on the 1D band_comm
+        # communication ring
         band_comm.barrier()
-        domain_comm.barrier()
         for j in range(J):
             n1 = j * M
             n2 = n1 + M
@@ -477,9 +477,9 @@ class Operator:
                 rbuf_In = np.empty_like(sbuf_In)
 
         # Because of the amount of communication involved, we need to
-        # be syncronized up to this point
+        # be syncronized up to this point but only on the 1D band_comm
+        # communication ring
         band_comm.barrier()
-        domain_comm.barrier()
         for j in range(J):
             G1 = j * g
             G2 = G1 + g
