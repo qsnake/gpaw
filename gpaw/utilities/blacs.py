@@ -80,6 +80,8 @@ def scalapack_diagonalize_dc(desca, a, z, w, uplo):
 
 
 def scalapack_general_diagonalize_ex(desca, a, b, z, w, uplo):
+    if not desca.blacsgrid.is_active():
+        return
     # we need to make b optional in this interface here and in the C
     assert a.ndim == 2
     assert (a.dtype == float) or (a.dtype == complex)
@@ -92,9 +94,8 @@ def scalapack_general_diagonalize_ex(desca, a, b, z, w, uplo):
         #assert b_obj is None
     assert len(desca.asarray()) == 9
     assert uplo in ['U','L']
-    if desca.blacsgrid.is_active():
-        _gpaw.scalapack_general_diagonalize_ex(a, desca.asarray(), 
-                                               uplo, b, z, w)
+    _gpaw.scalapack_general_diagonalize_ex(a, desca.asarray(), 
+                                           uplo, b, z, w)
 
 
 def scalapack_inverse_cholesky(desca, a, uplo):
