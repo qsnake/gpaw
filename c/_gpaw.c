@@ -85,6 +85,8 @@ PyObject* scalapack_general_diagonalize_ex(PyObject *self, PyObject *args);
 PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args);
 PyObject* pblas_gemm(PyObject *self, PyObject *args);
 PyObject* pblas_gemv(PyObject *self, PyObject *args);
+PyObject* pblas_r2k(PyObject *self, PyObject *args);
+PyObject* pblas_rk(PyObject *self, PyObject *args);
 #endif
 
 // Moving least squares interpolation
@@ -158,6 +160,8 @@ static PyMethodDef functions[] = {
   {"scalapack_inverse_cholesky", scalapack_inverse_cholesky, METH_VARARGS, 0},
   {"pblas_gemm", pblas_gemm, METH_VARARGS, 0},
   {"pblas_gemv", pblas_gemv, METH_VARARGS, 0},
+  {"pblas_r2k", pblas_r2k, METH_VARARGS, 0},
+  {"pblas_rk", pblas_rk, METH_VARARGS, 0},
 #endif
 #ifdef GPAW_HPM
   {"hpm_start", ibm_hpm_start, METH_VARARGS, 0},

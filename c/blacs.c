@@ -300,7 +300,7 @@ PyObject* pblas_gemv(PyObject *self, PyObject *args)
   Py_RETURN_NONE;
 }
 
-PyObject* pblas_syr2k(PyObject *self, PyObject *args)
+PyObject* pblas_r2k(PyObject *self, PyObject *args)
 {
   char uplo;
   char trans;
@@ -342,7 +342,7 @@ PyObject* pblas_syr2k(PyObject *self, PyObject *args)
   Py_RETURN_NONE;
 }
 
-PyObject* pblas_syrk(PyObject *self, PyObject *args)
+PyObject* pblas_rk(PyObject *self, PyObject *args)
 {
   char uplo;
   char trans;
