@@ -81,7 +81,11 @@ https://wiki.fysik.dtu.dk/it/SshWithoutPassword.
        endif
        if ( "`echo $FYS_PLATFORM`" == "AMD-Opteron-el5" ) then # fjorm
            module load GPAW
-           setenv GPAW_PLATFORM "linux-x86_64-opteron-2.4"
+           if ( ! ( `hostname -s | grep "^p"` ==  "")) then # p-node = infiniband
+               setenv GPAW_PLATFORM "linux-x86_64-opteron-infiniband-2.4"
+           else
+               setenv GPAW_PLATFORM "linux-x86_64-opteron-2.4"
+           endif
        endif
        if ( "`echo $FYS_PLATFORM`" == "Intel-Nehalem-el5" ) then # thul
            module load GPAW
@@ -104,7 +108,11 @@ https://wiki.fysik.dtu.dk/it/SshWithoutPassword.
        fi
        if [ "`echo $FYS_PLATFORM`" == "AMD-Opteron-el5" ]; then # fjorm
            module load GPAW
-           export GPAW_PLATFORM="linux-x86_64-opteron-2.4"
+           if [ ! `hostname -s | grep "^p"` ==  "" ]; then # p-node = infiniband
+               export GPAW_PLATFORM="linux-x86_64-opteron-infiniband-2.4"
+           else
+               export GPAW_PLATFORM="linux-x86_64-opteron-2.4"
+           fi
        fi
        if [ "`echo $FYS_PLATFORM`" == "Intel-Nehalem-el5" ]; then # thul
            module load GPAW
