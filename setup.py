@@ -246,6 +246,6 @@ else:
     msg += ['* Only a serial version of gpaw was built!']
 
 # Messages make sense only when building
-if "build" in sys.argv or "build_ext" in sys.argv:
+if "build" in sys.argv or "build_ext" in sys.argv or "install" in sys.argv:
     for line in msg:
         print line
