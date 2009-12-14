@@ -40,7 +40,7 @@ class FiniteSys(CHI):
             bzkpt_kG = tmp
 
         # Get pair-orbitals in real space
-        n_S = self.pair_orbital_Rspace(orb_MG, calc.wfs.gd.h_c,
+        n_S = self.pair_orbital_Rspace(orb_MG, calc.wfs.gd,
                                        calc.wfs.setups, calc.wfs.kpt_u[0])
 
         # Get kernel
@@ -242,7 +242,7 @@ class FiniteSys(CHI):
         return S
 
 
-    def pair_orbital_Rspace(self, orb_MG, h_c, setups, kpt):
+    def pair_orbital_Rspace(self, orb_MG, gd, setups, kpt):
         """Calculate pair LCAO orbital in real space. 
 
         The pair density is defined as::
@@ -280,15 +280,15 @@ class FiniteSys(CHI):
                 for j in range(N_gd[1]):
                     for k in range(N_gd[2]):
                         if ix == 0:
-                            r[i,j,k] = i*h_c[0]
+                            r[i,j,k] = i*self.h_c[0]
                         elif ix == 1:
-                            r[i,j,k] = j*h_c[1] 
+                            r[i,j,k] = j*self.h_c[1] 
                         else:
-                            r[i,j,k] = k*h_c[2]
+                            r[i,j,k] = k*self.h_c[2]
     
             for mu in range(self.nLCAO):
                 for nu in range(self.nLCAO):  
-                    n_MM[mu,nu] = np.sum(orb_MG[mu] * orb_MG[nu] * r)
+                    n_MM[mu,nu] = gd.integrate(orb_MG[mu] * orb_MG[nu] * r)
                     for a, P_Mi in kpt.P_aMi.items():
                         P_I = np.outer(P_Mi[mu], P_Mi[nu]).ravel()
                         n_MM[mu,nu] += np.sum(P_I * phi_I[a]) * tmp

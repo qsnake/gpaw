@@ -85,6 +85,7 @@ class CHI:
         wmax = wmax / Hartree
         self.dw = dw / Hartree
         eta = eta / Hartree
+        self.q = q
 
         self.Nw = int((wmax - wmin) / self.dw) + 1
         self.NwS = int(wcut/self.dw) + 1

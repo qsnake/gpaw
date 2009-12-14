@@ -11,29 +11,73 @@ class PeriodicSys(CHI):
     def __init__(self):
         CHI.__init__(self)
 
+    def get_optical_spectrum(self, calc, q, wcut, wmin, wmax, dw, eta=0.2, sigma=2*1e-5, OpticalLimit=True):
+        """Calculate Optical absorption spectrum.
 
-    def get_EELS_spectrum(self, calc, q, wcut, wmin, wmax, dw, eta=0.2, sigma=2*1e-5):
+        The optical absorption spectra is defined as::
+
+            ABS = Im \epsilon_M (q=0, w)
+        """       
+        
+        epsilon0, epsilonRPA, epsilonLDA = self.get_dielectric_function(calc, q, wcut, wmin,
+                                           wmax, dw, eta, sigma, OpticalLimit)
+
+        return np.imag(epsilon0), np.imag(epsilonRPA), np.imag(epsilonLDA)
+
+
+    def get_EELS_spectrum(self, calc, q, wcut, wmin, wmax, dw, eta=0.2, sigma=2*1e-5, OpticalLimit=False):
         """Calculate Electron Energy Loss Spectrum.
 
         Calculate EELS of a periodic system for a particular q. The 
         Loss function is related to::
 
-                         -1            4 pi
-            - Im \epsilon (q, w) = - -------  Im  chi (q, w)
-                        G=0,G'=0      |q|**2        G=0,G'=0
+                         -1            4 pi                              1        
+            - Im \epsilon (q, w) = - -------  Im  chi (q, w)  = - Im ----------
+                        G=0,G'=0      |q|**2        G=0,G'=0         \epsilon_M
         """
 
-        # Calculate chi_G=0,G'=0 (q, w)
+        epsilon0, epsilonRPA, epsilonLDA = self.get_dielectric_function(calc, q, wcut, wmin, 
+                                           wmax, dw, eta, sigma, OpticalLimit)    
+
+        return -np.imag(1./epsilon0),  -np.imag(1./epsilonRPA),  -np.imag(1./epsilonLDA)
+
+
+
+    def get_dielectric_function(self, calc, q, wcut, wmin, wmax, dw, eta, sigma, OpticalLimit):
+        """Calculate Macroscopic dielectric function.
+
+        The macroscopic dielectric function is defined as::
+
+                                        1
+            \epsilon_M (q, w) = ----------------
+                                        -1
+                                \epsilon  (q, w)
+                                        00
+        
+        while::
+
+                    -1                  4pi
+            \epsilon  (q, w)  =  1  + ------- chi (q, w)
+                    00                 |q|**2    00
+        """
+
+        self.OpticalLimit = OpticalLimit
+
         chi0G0_w, chiG0RPA_w, chiG0LDA_w = self.calculate_chiGG(
                                          calc, q, wcut, wmin, wmax, dw, eta, sigma)
 
         # Transform q from reduced coordinate to cartesian coordinate
         qq = np.array([np.inner(q, self.bcell[:,i]) for i in range(3)]) 
         
-        tmp = - 4. * pi / (qq[0]*qq[0]+qq[1]*qq[1]+qq[2]*qq[2]) 
+        tmp =  4. * pi / (qq[0]*qq[0]+qq[1]*qq[1]+qq[2]*qq[2]) 
         print 'EELS spectrum obtained! '
 
-        return tmp * np.imag(chi0G0_w), tmp * np.imag(chiG0RPA_w), tmp * np.imag(chiG0LDA_w)
+        epsilon0 = 1./(1. + tmp * chi0G0_w)
+        epsilonRPA = 1./(1. + tmp * chiG0RPA_w)
+        epsilonLDA = 1./(1. + tmp * chiG0LDA_w)
+
+        return epsilon0, epsilonRPA, epsilonLDA
+
 
 
     def calculate_chiGG(self, calc, q, wcut, wmin, wmax, dw, eta, sigma):
@@ -175,79 +219,6 @@ class PeriodicSys(CHI):
 
         return Kcoul_SS, Kcoul_SS + Kxc_SS
  
-# !! ---------- Stupid way of calculating the Coulomb and XC kernel -----------      
-# !! ---------- Kept temporarily for historical reason -----------------------
-
-#        Kcoul_SS = np.zeros((self.nS, self.nS), dtype=complex)
-#        div = 4
-#        for i in range(div):
-#            istart = i * self.nG0 / div
-#            iend = (i+1) * self.nG0 / div 
-#            if i == div - 1:
-#                iend = self.nG0
-#            print istart, iend
-#            Kcoul_SS += np.dot( (n_SG[:,istart:iend].conj() * Kcoul_G[istart:iend]), 
-#                                n_SG[:,istart:iend].T)
-#        Kcoul_SS = np.dot((n_SG.conj() * Kcoul_G), n_SG.T)
-        
-
-        # XC kernel soft part
-#        fxc_R = self.fxc(nt_G) # R means R-space
-#        fxc_G = (np.fft.fftn(fxc_R)).ravel() / self.nG0
-#
-#        r = np.zeros((3, self.nG[0], self.nG[1], self.nG[2]))
-#        for i in range(self.nG[0]):
-#            for j in range(self.nG[1]):
-#                for k in range(self.nG[2]):
-#                    r[0,i,j,k] = i * self.h_c[0]
-#                    r[1,i,j,k] = j * self.h_c[1]
-#                    r[2,i,j,k] = k * self.h_c[2]
-#
-#        Kxc_G = np.zeros(self.nG0, dtype=complex)
-#        Kxc_GS = np.zeros((self.nG0, self.nS), dtype=complex)
-#        
-#        g = np.zeros(3, dtype=int)
-#        nGdig = chi.nG0 * 2 - 1
-#        Kxc_Gdig = np.zeros(nGdig, dtype=complex)
-#
-#        count = 0
-#        for j in range(nGdig):
-#            if j < self.nG0:
-#                dGvec = Gvec[j] - Gvec[0]
-#            else:
-#                dGvec = Gvec[0] - Gvec[nGdig-1]
-#            for dim in range(3):
-#                if dGvec[dim] >= 0:
-#                    g[dim] = dGvec[dim]
-#                else:
-#                    g[dim] = self.nG[dim] - abs(dGvec[dim])
-#            dG = g[0] * chi.nG[1] * chi.nG[2] + g[1] * chi.nG[2] + g[2]
-#            if dG < self.nG0:
-#                Kxc_Gdig[j] = fxc_G[dG]
-#            else:
-#                G = np.array([np.inner(dGvec, chi.bcell[:,dim]) 
-#                            for dim in range(3)])
-#                Kxc_Gdig[j] = calc.wfs.gd.integrate(
-#                   np.exp(-1j * gemmdot(G, r,beta=0.)) * fxc_G ) / chi.vol
-#            
-#            count += 1
-#            if count > 1000:
-#                print 'finished', j/1000, 'loop', 'in total', nGdig / 1000, 'loop'
-#                count = 0
-#        'Calculating diagonal elements finished'
-#
-#        for i in range(self.nG0):
-#            for j in range(self.nG0):
-#                if j - i < 0:
-#                    iG = nGdig - (i-j)
-#                else:
-#                    iG = j-i
-#                Kxc_G[j] = Kxc_Gdig[iG]
-#            Kxc_GS[i] = gemmdot(n_SG, Kxc_G, beta=0.)
-#        Kxc_SS = gemmdot(n_SG.conj(), Kxc_GS, beta=0.)
-
-# !! -----------------------------------------------------------------------
-
 
     def chi_to_Gspace(self, chi_SS, nG0_S):
         """Transformation from chi_SS' to chi_GG'(G=G'=0) at a certain q and omega
@@ -298,7 +269,26 @@ class PeriodicSys(CHI):
         # tmp = orb_MG[mu].conj() * orb_MG[nu]
         # calc.wfs.gd.integrate(tmp) should == n_SG[nLCAO*mu+nu, 0]
 
-        return n_SG * self.vol / self.nG0 
+        n_SG = n_SG * self.vol / self.nG0
+
+        if self.OpticalLimit:
+            print 'Optical limit calculation'
+            N_gd = orb_MG.shape[1:4]
+            r = np.zeros(N_gd, dtype=complex)
+    
+            qq = np.array([np.inner(self.q, self.bcell[:,i]) for i in range(3)])
+    
+            for i in range(N_gd[0]):
+                for j in range(N_gd[1]):
+                    for k in range(N_gd[2]):
+                        tmp = np.array([i*self.h_c[0], j*self.h_c[1], k*self.h_c[2]])
+                        r[i,j,k] = np.dot(qq, tmp)
+      
+            for mu in range(self.nLCAO):
+                for nu in range(self.nLCAO):
+                    n_SG[self.nLCAO*mu + nu, 0] = np.complex128(gd.integrate(orb_MG[mu] * orb_MG[nu] * r))
+
+        return n_SG
 
 
     def get_primitive_cell(self):
