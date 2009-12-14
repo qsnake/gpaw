@@ -1031,7 +1031,7 @@ class GridWaveFunctions(WaveFunctions):
         scale = np.sqrt(12 / abs(np.linalg.det(gd2.cell_cv)))
 
         old_state = np.random.get_state()
-        np.random.seed(4 + mpi.rank)
+        np.random.seed(4 + self.world.rank)
 
         for kpt in self.kpt_u:
             for psit_G in kpt.psit_nG[nao:]:
