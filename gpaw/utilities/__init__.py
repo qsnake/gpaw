@@ -26,8 +26,8 @@ fac = [1, 1, 2, 6, 24, 120, 720, 5040, 40320,
        362880, 3628800, 39916800, 479001600]
 
 
-def h2gpts(h, cell_cv):
-    """Convert grid spacing to number of grid points divisible by 4.
+def h2gpts(h, cell_cv,idiv=4):
+    """Convert grid spacing to number of grid points divisible by idiv.
 
     Note that units of h and cell_cv must match!
     
@@ -39,7 +39,7 @@ def h2gpts(h, cell_cv):
 
     L_c = (cell_cv**2).sum(1)**0.5
     d = h * (L_c.prod() / abs(np.linalg.det(cell_cv)))**(1.0 / 3.0)
-    return np.maximum(4, (L_c / d / 4 + 0.5).astype(int) * 4)
+    return np.maximum(idiv, (L_c / d / idiv + 0.5).astype(int) * idiv)
 
 def gcd(a, b):
     """Return greatest common divisor of a and b, using the
