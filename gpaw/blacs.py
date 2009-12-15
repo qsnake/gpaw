@@ -43,8 +43,9 @@ class SLEXDiagonalizer:
 
         # XXX where should inactive ranks be sorted out?
         if not indescriptor:
-            H_mM = np.zeros((0, 0))
-            S_mM = np.zeros((0, 0))
+            shape = indescriptor.shape
+            H_mM = np.zeros(shape, dtype=dtype)
+            S_mM = np.zeros(shape, dtype=dtype)
         
         S_mm = blockdescriptor.zeros(dtype=dtype)
         H_mm = blockdescriptor.zeros(dtype=dtype)
@@ -195,8 +196,8 @@ class BlacsDescriptor(MatrixDescriptor):
         assert N > 0
         assert 1 <= mb <= M
         assert 1 <= nb <= N
-        assert 0 <= rsrc < blacsgrid.nprow - 1 
-        assert 0 <= csrc < blacsgrid.npcol - 1
+        assert 0 <= rsrc < blacsgrid.nprow
+        assert 0 <= csrc < blacsgrid.npcol
         
         self.blacsgrid = blacsgrid
         self.M = M # global size 1
@@ -208,7 +209,7 @@ class BlacsDescriptor(MatrixDescriptor):
         self.rsrc = rsrc
         self.csrc = csrc
         
-        if blacsgrid.is_active():
+        if 1:#blacsgrid.is_active():
             locN, locM = _gpaw.get_blacs_shape(self.blacsgrid.context,
                                                self.N, self.M,
                                                self.nb, self.mb, 

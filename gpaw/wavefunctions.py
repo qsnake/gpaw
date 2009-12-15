@@ -557,13 +557,14 @@ class LCAOWaveFunctions(WaveFunctions):
     def calculate_density_matrix(self, f_n, C_nM, rho_MM):
         # ATLAS can't handle uninitialized output array:
         rho_MM.fill(42)
-
+        
         if 1:
             # XXX Should not conjugate, but call gemm(..., 'c')
             # Although that requires knowing C_Mn and not C_nM.
             # that also conforms better to the usual conventions in literature
             Cf_Mn = C_nM.T.conj() * f_n
             gemm(1.0, C_nM, Cf_Mn, 0.0, rho_MM, 'n')
+            self.bd.comm.sum(rho_MM)
         else:
             # Alternative suggestion. Might be faster. Someone should test this
             C_Mn = C_nM.T.copy()
@@ -573,17 +574,21 @@ class LCAOWaveFunctions(WaveFunctions):
     def add_to_density_from_k_point_with_occupation(self, nt_sG, kpt, f_n):
         """Add contribution to pseudo electron-density. Do not use the standard
         occupation numbers, but ones given with argument f_n."""
-        # Used in calculation of response potential in GLLB-potential
-        if kpt.rho_MM is not None:
-            rho_MM = kpt.rho_MM
-        else:
-            # XXX do we really want to allocate this array each time?
+        # Custom occupations are used in calculation of response potential
+        # with GLLB-potential
+        if kpt.rho_MM is None:
             nao = self.setups.nao
             rho_MM = np.empty((nao, nao), self.dtype)
             self.calculate_density_matrix(f_n, kpt.C_nM, rho_MM)
+        else:
+            rho_MM = kpt.rho_MM
         self.timer.start('Construct density')
-        self.basis_functions.construct_density(rho_MM, nt_sG[kpt.s], kpt.q)
+        Mstart = self.basis_functions.Mstart
+        Mstop = self.basis_functions.Mstop
+        self.basis_functions.construct_density(rho_MM[Mstart:Mstop],
+                                               nt_sG[kpt.s], kpt.q)
         self.timer.stop('Construct density')
+        #self.bd.comm.sum(nt_sG[kpt.s])
 
     def add_to_density_from_k_point(self, nt_sG, kpt):
         """Add contribution to pseudo electron-density. """

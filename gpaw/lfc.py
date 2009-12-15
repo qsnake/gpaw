@@ -795,7 +795,7 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
                    --     M1       M1M2   M2
                   M1,M2 
         """
-        self.lfc.construct_density(rho_MM, nt_G, q)
+        self.lfc.construct_density(rho_MM, nt_G, q, self.Mstart, self.Mstop)
 
     def integrate2(self, a_xG, c_xM, q=-1):
         """Calculate integrals of arrays times localized functions.

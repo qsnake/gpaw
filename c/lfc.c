@@ -343,13 +343,15 @@ PyObject* construct_density(LFCObject *lfc, PyObject *args)
   const PyArrayObject* rho_MM_obj;
   PyArrayObject* nt_G_obj;
   int k;
+  int Mstart, Mstop;
 
-  if (!PyArg_ParseTuple(args, "OOi", &rho_MM_obj, &nt_G_obj, &k))
+  if (!PyArg_ParseTuple(args, "OOiii", &rho_MM_obj, &nt_G_obj, &k,
+                        &Mstart, &Mstop))
     return NULL; 
   
   double* nt_G = (double*)nt_G_obj->data;
   
-  int nM = rho_MM_obj->dimensions[0];
+  int nM = rho_MM_obj->dimensions[1];
   
   double* work_gm = lfc->work_gm;
 
@@ -360,29 +362,43 @@ PyObject* construct_density(LFCObject *lfc, PyObject *args)
         LFVolume* v1 = volume_i + i1;
         int M1 = v1->M;
         int nm1 = v1->nm;
+
+	int M1p = MAX(M1, Mstart);
+	int nm1p = MIN(M1 + nm1, Mstop) - M1p;
+	if (nm1p <= 0)
+	  continue;
+
         memset(work_gm, 0, nG * nm1 * sizeof(double));
         double factor = 1.0;
+
+        int m1end = MIN(nm1, Mstop - M1);
+        int m1start = MAX(0, Mstart - M1);
+
         for (int i2 = i1; i2 < ni; i2++) {
           LFVolume* v2 = volume_i + i2;
           int M2 = v2->M;
           int nm2 = v2->nm;
-          const double* rho_mm = rho_MM + M1 * nM + M2;
-          for (int g = 0; g < nG; g++)
-            for (int m2 = 0; m2 < nm2; m2++)
-              for (int m1 = 0; m1 < nm1; m1++)
-                work_gm[m1 + g * nm1] += (v2->A_gm[g * nm2 + m2] * 
-                                          rho_mm[m2 + m1 * nM] *
+          const double* rho_mm = rho_MM + (M1p - Mstart) * nM + M2;
+          //assert(M1 - Mstart + m1start >= 0);
+          for (int g = 0; g < nG; g++) {
+            for (int m1 = m1start, m1p = 0; m1 < m1end; m1++, m1p++) {
+              for (int m2 = 0; m2 < nm2; m2++) {
+                work_gm[g * nm1 + m1] += (v2->A_gm[g * nm2 + m2] * 
+                                          rho_mm[m1p * nM + m2] *
                                           factor);
+              }
+            }
+          }
           factor = 2.0;
         }
         int gm1 = 0;
-        for (int G = Ga; G < Gb; G++)
-          {
-            double nt = 0.0;
-            for (int m1 = 0; m1 < nm1; m1++, gm1++)
-              nt += v1->A_gm[gm1] * work_gm[gm1];
-            nt_G[G] += nt;
+        for (int G = Ga; G < Gb; G++) {
+          double nt = 0.0;
+          for (int m1 = 0; m1 < nm1; m1++, gm1++) {
+            nt += v1->A_gm[gm1] * work_gm[gm1];
           }
+          nt_G[G] += nt;
+        }
       }
     }
     GRID_LOOP_STOP(lfc, -1);
