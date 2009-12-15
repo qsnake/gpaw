@@ -7,6 +7,8 @@ from ase.units import Hartree, Bohr
 from gpaw.xc_functional import XCFunctional
 from gpaw.lcao.pwf2 import LCAOwrap
 from gpaw.utilities.blas import gemmdot
+from gpaw.utilities import unpack2
+
 
 class CHI:
     def __init__(self):
@@ -172,10 +174,16 @@ class CHI:
         print 'Calculating chi0 directly'
         chi0_SS = np.zeros((self.nS, self.nS), dtype=complex)
 
-        if self.nkpt > 1:
-            kq = self.find_kq(bzkpt_kG, q)
-        else:
-            kq = np.zeros((1))
+        if self.nkpt > 1:  # periodic system
+            assert self.OpticalLimit is not None
+            if not self.OpticalLimit :
+                kq = self.find_kq(bzkpt_kG, q)
+            else:
+                kq = np.zeros(self.nkpt)
+                for k in range(self.nkpt):
+                    kq[k] = k
+        else: # finite system or Gamma-point calculation
+            kq[k] = np.zeros(1)
 
         for k in range(self.nkpt):
             for n in range(self.nband):
@@ -211,10 +219,16 @@ class CHI:
         """
 
         specfunc_wSS = np.zeros((self.NwS, self.nS, self.nS), dtype=C_knM.dtype)
-        if self.nkpt > 1:
-            kq = self.find_kq(bzkpt_kG, q)
-        else:
-            kq = np.zeros((1))
+        if self.nkpt > 1:  # periodic system
+            assert self.OpticalLimit is not None
+            if not self.OpticalLimit : 
+                kq = self.find_kq(bzkpt_kG, q)
+            else:
+                kq = np.zeros(self.nkpt)
+                for k in range(self.nkpt):
+                    kq[k] = k
+        else: # finite system or Gamma-point calculation
+            kq[k] = np.zeros(1)
 
         for k in range(self.nkpt):
             for n in range(self.nband):
@@ -333,6 +347,73 @@ class CHI:
         libxc.calculate_fxc_spinpaired(n, fxc)
         return np.reshape(fxc, N)
 
+    def get_Kxc(self, nt_G, D_asp, orb_MG, kpt, gd, setups):
+        """Calculate xc kernel in real space. Apply to isolate/periodic sys.
+
+        XC kernel is obtained by::
+ 
+             xc 
+            K       = < n   | f [n] | n   >  (note, n is the total density)
+             S1,S2       S1    xc      S2
+                        ~        ~    ~
+                    = < n   | f [n] | n   > 
+                         S1    xc      S2
+                         ----     a        a     a         ~a       ~a    ~a
+                      +  \     < n   | f [n ] | n   >  - < n   | f [n ] | n   >
+                         /___     S1    xc       S2         S1    xc       S2
+                           a
+
+        Refer to kernel_finite_sys for the definition of n_S.
+        The second term of the XC kernel can be further evaluated by::
+
+            ---- ----           ~ a     ~ a                     ~ a     ~ a
+            \    \     < phi  | p   > < p   | phi  >   < phi  | p   > < p   | phi  >
+            /___ /___       mu   i1      i2      nu         mu   i3      i4      nu
+              a  i1,i2        1                    1          2                    2
+                 i3,i4
+
+                    (  /      a       a         a     a       a  
+                  * | | dr phi (r) phi (r)  f [n ] phi (r) phi (r) 
+                    ( /       i1      i2     xc       i3      i4
+
+                       /    ~ a     ~ a        ~a   ~ a     ~ a     )
+                    - | dr phi (r) phi (r)  f [n ] phi (r) phi (r)  |
+                      /       i1      i2     xc       i3      i4    )
+
+        The method four_phi_integrals calculate the () term in the above equation
+        """
+
+        # XC Kernel is evaluated in real space
+        Kxc_SS = np.zeros((self.nS, self.nS))
+        J_II = {}
+
+        fxc_G = self.fxc(nt_G)  # nt_G contains core density
+        for a, D_sp in D_asp.items():
+            J_pp = setups[a].xc_correction.four_phi_integrals(D_sp, self.fxc)
+            ni = setups[a].ni
+            J_II[a] = np.zeros((ni*ni, ni*ni))
+            nii = J_pp.shape[0]
+            J_pI = np.zeros((nii, ni*ni))
+            for ip, J_p in enumerate(J_pp):
+                J_pI[ip] = unpack2(J_p).ravel() # D_sp uses pack
+            for ii in range(ni*ni):
+                J_II[a][:, ii] = unpack2(J_pI[:, ii].copy()).ravel()
+
+        for n in range(self.nLCAO):
+            for m in range(self.nLCAO):
+                nt1_G = orb_MG[n].conj() * orb_MG[m]
+                for p in range(self.nLCAO):
+                    for q in range(self.nLCAO):
+                        nt2_G = orb_MG[p].conj() * orb_MG[q]
+                        Kxc_SS[self.nLCAO*n+m, self.nLCAO*p+q] = gd.integrate(
+                           nt1_G.conj()*fxc_G*nt2_G)
+                        for a, P_Mi in kpt.P_aMi.items():
+                            P1_I = np.outer(P_Mi[n].conj(), P_Mi[m]).ravel()
+                            P2_I = np.outer(P_Mi[p].conj(), P_Mi[q]).ravel()
+                            Kxc_SS[self.nLCAO*n+m, self.nLCAO*p+q] += (
+                                    np.inner(np.inner(P1_I, J_II[a]), P2_I) )
+
+        return Kxc_SS
 
     def find_kq(self, bzkpt_kG, q):
         """Find the index of k+q for all kpoints in BZ."""

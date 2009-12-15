@@ -5,7 +5,7 @@ import numpy as np
 from ase.units import Hartree
 
 from gpaw.coulomb import CoulombNEW
-from gpaw.utilities import pack, unpack, unpack2 
+from gpaw.utilities import pack, unpack
 from gpaw.utilities.lapack import diagonalize
 from gpaw.response import CHI
 
@@ -108,57 +108,13 @@ class FiniteSys(CHI):
         Note, phi_mu is LCAO orbital, while phi_i or phi_j are partial waves
 
         Coulomb Kernel: use coulomb.calculate (note it returns the E_coul in eV)
-
-        XC kernel is obtained by::
- 
-             xc
-            K       = < n   | f [n] | n   >  (note, n is the total density)
-             S1,S2       S1    xc      S2
-                        ~        ~    ~
-                    = < n   | f [n] | n   > 
-                         S1    xc      S2
-                         ----     a        a     a         ~a       ~a    ~a
-                      +  \     < n   | f [n ] | n   >  - < n   | f [n ] | n   >
-                         /___     S1    xc       S2         S1    xc       S2
-                           a
-
-        The second term of the XC kernel can be further evaluated by::
-
-            ---- ----           ~ a     ~ a                     ~ a     ~ a
-            \    \     < phi  | p   > < p   | phi  >   < phi  | p   > < p   | phi  >
-            /___ /___       mu   i1      i2      nu         mu   i3      i4      nu
-              a  i1,i2        1                    1          2                    2
-                 i3,i4
-
-                    (  /      a       a         a     a       a 
-                  * | | dr phi (r) phi (r)  f [n ] phi (r) phi (r) 
-                    ( /       i1      i2     xc       i3      i4
-
-                       /    ~ a     ~ a        ~a   ~ a     ~ a     )
-                    - | dr phi (r) phi (r)  f [n ] phi (r) phi (r)  |
-                      /       i1      i2     xc       i3      i4    )
-
-        The method four_phi_integrals calculate the () term in the above equation
         """
 
         Kcoul_SS = np.zeros((self.nS, self.nS))
-        Kxc_SS = np.zeros_like(Kcoul_SS)
         P1_ap = {}
         P2_ap = {}
-        J_II = {}
 
-        fxc_G = self.fxc(nt_G)  # nt_G contains core density
-        for a, D_sp in D_asp.items():
-            J_pp = setups[a].xc_correction.four_phi_integrals(D_sp, self.fxc)
-            ni = setups[a].ni
-            J_II[a] = np.zeros((ni*ni, ni*ni))   
-            nii = J_pp.shape[0]
-            J_pI = np.zeros((nii, ni*ni))
-            for ip, J_p in enumerate(J_pp):
-                J_pI[ip] = unpack2(J_p).ravel() # D_sp uses pack
-            for ii in range(ni*ni):
-                J_II[a][:, ii] = unpack2(J_pI[:, ii].copy()).ravel()
-
+        print 'Calculating Coulomb Kernel:'
         coulomb = CoulombNEW(gd, setups, spos_ac)
         for n in range(self.nLCAO):
             for m in range(self.nLCAO):
@@ -175,19 +131,12 @@ class FiniteSys(CHI):
                             P2_ap[a] = pack(D_ii, tolerance=1e30)
                         Kcoul_SS[self.nLCAO*n+m, self.nLCAO*p+q] = coulomb.calculate(
                                     nt1_G, nt2_G, P1_ap, P2_ap)
-                        # XC Kernel
-                        Kxc_SS[self.nLCAO*n+m, self.nLCAO*p+q] = gd.integrate(nt1_G*fxc_G*nt2_G)
 
-                        for a, P_Mi in kpt.P_aMi.items():
-                            P1_I = np.outer(P_Mi[n].conj(), P_Mi[m]).ravel()                            
-                            P2_I = np.outer(P_Mi[p].conj(), P_Mi[q]).ravel() 
-                            Kxc_SS[self.nLCAO*n+m, self.nLCAO*p+q] += (
-                                    np.inner(np.inner(P1_I, J_II[a]), P2_I) )
+            print '    finished', n, 'cycle', ' (max: nLCAO = ', self.nLCAO, ')'
+        Kcoul_SS /=  Hartree
+        Kxc_SS = self.get_Kxc(nt_G, D_asp, orb_MG, kpt, gd, setups)
 
-            print 'finished', n, 'cycle', ' (max: nLCAO = ', self.nLCAO, ')'
-        tmp = Kcoul_SS / Hartree
-
-        return tmp, tmp + Kxc_SS
+        return Kcoul_SS, Kcoul_SS + Kxc_SS
 
 
     def calculate_dipole_strength(self, chi_SS, n_S, omega):

@@ -67,10 +67,13 @@ class PeriodicSys(CHI):
                                          calc, q, wcut, wmin, wmax, dw, eta, sigma)
 
         # Transform q from reduced coordinate to cartesian coordinate
-        qq = np.array([np.inner(q, self.bcell[:,i]) for i in range(3)]) 
         
+        qq = np.array([np.inner(self.q, self.bcell[:,i]) for i in range(3)]) 
+        
+        assert qq.any() != 0
         tmp =  4. * pi / (qq[0]*qq[0]+qq[1]*qq[1]+qq[2]*qq[2]) 
-        print 'EELS spectrum obtained! '
+
+        print 'Macroscopic dielectric function obtained! '
 
         epsilon0 = 1./(1. + tmp * chi0G0_w)
         epsilonRPA = 1./(1. + tmp * chiG0RPA_w)
@@ -117,9 +120,9 @@ class PeriodicSys(CHI):
 
         else:
             Gvec = self.get_Gvectors()
-            # q are expressed in terms of the primitive lattice vectors
-            KRPA_SS, KLDA_SS = self.kernel_extended_sys(n_SG, q, Gvec, nt_G,
-                                                        orb_MG, calc.wfs.gd)
+            KRPA_SS, KLDA_SS = self.kernel_extended_sys(n_SG, Gvec, nt_G,
+                                orb_MG, calc.wfs.gd, calc.density.D_asp, 
+                                calc.wfs.kpt_u[0], calc.wfs.setups)
             np.savez('kernel.npz', KRPA=KRPA_SS, KLDA=KLDA_SS)
 
         # Solve Dyson's equation
@@ -149,7 +152,7 @@ class PeriodicSys(CHI):
         return chi0G0_w, chiG0RPA_w, chiG0LDA_w
 
 
-    def kernel_extended_sys(self, n_SG, q, Gvec, nt_G, orb_MG, gd):
+    def kernel_extended_sys(self, n_SG, Gvec, nt_G, orb_MG, gd, D_asp, kpt, setups):
         """Calculate the Kernel of a specific q for an extended system.
 
         The kernel is expressed as::
@@ -196,26 +199,20 @@ class PeriodicSys(CHI):
         # Coulomb Kernel is diagonal 
         Kcoul_G = np.zeros(self.nG0)
 
-        for i in range(self.nG0):
+        assert (self.q).any() != 0
+        Kcoul_G[0] = 4. * pi / (self.q[0]**2 + self.q[1]**2 + self.q[2]**2)
+        
+        # Calculate G = 0 term separately
+        for i in range(1,self.nG0):
             # get q+G vector 
-            xx = np.array([np.inner(np.float64((Gvec[i]) + q), self.bcell[:,j]) for j in range(3)])
+            xx = np.array([np.inner(np.float64((Gvec[i]) + self.q), self.bcell[:,j]) for j in range(3)])
             Kcoul_G[i] = 1. / ( xx[0]*xx[0] + xx[1]*xx[1] + xx[2]*xx[2] )
         Kcoul_G *= 4. * pi 
+        
 
         Kcoul_SS = gemmdot( (n_SG.conj() * Kcoul_G), (n_SG.T).copy(), beta = 0. )
- 
-        # XC Kernel is evaluated in real space
-        Kxc_SS = np.zeros_like(Kcoul_SS)
-        fxc_G = self.fxc(nt_G)  
 
-        for n in range(self.nLCAO):
-            for m in range(self.nLCAO):
-                nt1_G = orb_MG[n].conj() * orb_MG[m]
-                for p in range(self.nLCAO):
-                    for q in range(self.nLCAO):
-                        nt2_G = orb_MG[p].conj() * orb_MG[q]
-                        Kxc_SS[self.nLCAO*n+m, self.nLCAO*p+q] = gd.integrate(
-                           nt1_G.conj()*fxc_G*nt2_G) * self.vol
+        Kxc_SS = self.get_Kxc(nt_G, D_asp, orb_MG, kpt, gd, setups) * self.vol
 
         return Kcoul_SS, Kcoul_SS + Kxc_SS
  
