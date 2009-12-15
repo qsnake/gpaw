@@ -64,18 +64,17 @@ class LCAO:
         q = kpt.q
         if self.H_MM is None:
             nao = self.nao
-            mynao = wfs.S_qMM.shape[1]
+            mynao = wfs.od.mynao
+            #mynao = wfs.S_qMM.shape[1]
             self.eps_n = np.empty(nao)
-            self.S_MM = np.empty((mynao, nao), self.dtype)
+            #self.S_MM = np.empty((mynao, nao), self.dtype)
             self.H_MM = np.empty((mynao, nao), self.dtype)
             self.timer = wfs.timer
             #self.linear_dependence_check(wfs)
 
         self.timer.start('potential matrix')
-
         wfs.basis_functions.calculate_potential_matrix(hamiltonian.vt_sG[s],
                                                        self.H_MM, q)
-
         self.timer.stop('potential matrix')
 
         # Add atomic contribution
@@ -108,7 +107,9 @@ class LCAO:
             raise NotImplementedError
 
         self.calculate_hamiltonian_matrix(hamiltonian, wfs, kpt)
-        self.S_MM[:] = wfs.S_qMM[kpt.q]
+
+        # XXXX
+        S_MM = wfs.S_qMM[kpt.q].copy()
 
         bandrank = self.band_comm.rank
         bandsize = self.band_comm.size
@@ -128,7 +129,7 @@ class LCAO:
         diagonalizationstring = self.diagonalizer.__class__.__name__
         self.timer.start(diagonalizationstring)
 
-        info = self.diagonalizer.diagonalize(self.H_MM, self.S_MM, self.eps_n,
+        info = self.diagonalizer.diagonalize(self.H_MM, S_MM, self.eps_n,
                                              kpt)
         if info != 0:
             raise RuntimeError('Failed to diagonalize: info=%d' % info)
