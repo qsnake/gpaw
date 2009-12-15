@@ -230,7 +230,7 @@ PyObject* rk(PyObject *self, PyObject *args)
     k *= a->dimensions[d];
   int ldc = c->strides[0] / c->strides[1];
   if (a->descr->type_num == PyArray_DOUBLE)
-    dsyrk_("u", "c", &n, &k,
+    dsyrk_("u", "t", &n, &k,
            &alpha, DOUBLEP(a), &k, &beta,
            DOUBLEP(c), &ldc);
   else
@@ -255,7 +255,7 @@ PyObject* r2k(PyObject *self, PyObject *args)
     k *= a->dimensions[d];
   int ldc = c->strides[0] / c->strides[1];
   if (a->descr->type_num == PyArray_DOUBLE)
-    dsyr2k_("u", "c", &n, &k,
+    dsyr2k_("u", "t", &n, &k,
             (double*)(&alpha), DOUBLEP(a), &k,
             DOUBLEP(b), &k, &beta,
             DOUBLEP(c), &ldc);
