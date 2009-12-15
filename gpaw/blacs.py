@@ -248,7 +248,8 @@ class BlacsDescriptor(MatrixDescriptor):
         self.checkassert(H_mm)
         self.checkassert(S_mm)
         self.checkassert(C_mm)
-        scalapack_general_diagonalize_ex(self, H_mm.T, S_mm.T, C_mm.T, eps_M, UL)
+        scalapack_general_diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M,
+                                         UL)
 
 
 class Redistributor:
