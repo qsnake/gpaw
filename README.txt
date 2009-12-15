@@ -36,9 +36,9 @@ MANIFIST.in      distutils MANIFEST.in file
 ---------  ---------------
 Directory  Description
 ---------  ---------------
-demo       Demo scripts
+examples   Example scripts
 gpaw       The Python code
+gpaw/test  Test suite
 tools      Useful tools
-test       Test suite
 c          C-extensions
 ---------  ---------------
