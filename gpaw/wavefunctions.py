@@ -534,7 +534,7 @@ class LCAOWaveFunctions(WaveFunctions):
                 if smin < 0:
                     raise RuntimeError('Overlap matrix has negative '
                                        'eigenvalue: %e' % smin)
-        self.S_qMM = S_qMM
+        self.S_qMM = self.od.distribute_overlap_matrix(S_qMM)
         self.T_qMM = T_qMM
         self.positions_set = True
 

@@ -34,7 +34,7 @@ class SLEXDiagonalizer:
         self.cols2blocks = cols2blocks
         self.blocks2cols = blocks2cols
     
-    def diagonalize(self, H_mM, S_mM, eps_M, kpt):
+    def diagonalize(self, H_mM, S_mm, eps_M, kpt):
         indescriptor = self.indescriptor
         outdescriptor = self.outdescriptor
         blockdescriptor = self.blockdescriptor
@@ -45,16 +45,13 @@ class SLEXDiagonalizer:
         if not indescriptor:
             shape = indescriptor.shape
             H_mM = np.zeros(shape, dtype=dtype)
-            S_mM = np.zeros(shape, dtype=dtype)
         
-        S_mm = blockdescriptor.zeros(dtype=dtype)
         H_mm = blockdescriptor.zeros(dtype=dtype)
         C_mm = blockdescriptor.zeros(dtype=dtype)
         C_nM = outdescriptor.zeros(dtype=dtype)
 
-        self.cols2blocks.redistribute(S_mM, S_mm)
         self.cols2blocks.redistribute(H_mM, H_mm)
-        blockdescriptor.diagonalize_ex(H_mm, S_mm, C_mm, eps_M, 'U')
+        blockdescriptor.diagonalize_ex(H_mm, S_mm.copy(), C_mm, eps_M, 'U')
         self.blocks2cols.redistribute(C_mm, C_nM)
 
         if outdescriptor:
@@ -310,6 +307,7 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
         blockcomm = supercomm.new_communicator(block_ranks)
 
         mynao = -((-nao) // bcommsize)
+        self.mynao = mynao
 
         # Range of basis functions for BLACS distribution of matrices:
         self.Mmax = nao
@@ -349,6 +347,19 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
     def get_coefficient_descriptor(self):
         return self.nMdescriptor
 
+    def distribute_overlap_matrix(self, S1_qmM):
+        blockdesc = self.mmdescriptor
+        coldesc = self.mMdescriptor
+        S_qmm = blockdesc.zeros(len(S1_qmM), S1_qmM.dtype)
+        
+        # XXX ugly hack
+        S_qmM = coldesc.zeros(len(S1_qmM), S1_qmM.dtype)
+        for S_mM, S_mm, S1_mM in zip(S_qmM, S_qmm, S1_qmM):
+            if self.gd.comm.rank == 0:
+                S_mM[:] = S1_mM
+            self.mM2mm.redistribute(S_mM, S_mm)
+        return S_qmm
+
 
 class OrbitalDescriptor:
     def __init__(self, nao, nmybands):
@@ -358,6 +369,7 @@ class OrbitalDescriptor:
         self.Mstart = 0
         self.Mstop = nao
         self.Mmax = nao
+        self.mynao = nao
 
     def get_diagonalizer(self):
         if sl_diagonalize:
@@ -376,3 +388,6 @@ class OrbitalDescriptor:
 
     def get_coefficent_descriptor(self):
         return self.nMdescriptor
+
+    def distribute_overlap_matrix(self, S_qMM):
+        return S_qMM
