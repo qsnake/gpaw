@@ -198,7 +198,7 @@ void pdsyr2k_(char* uplo, char* trans, int* n, int* k,
 	      double* beta,
 	      double* c, int* ic, int *jc, int *descc);
 
-void pzsyr2k_(char* uplo, char* trans, int* n, int* k,
+void pzher2k_(char* uplo, char* trans, int* n, int* k,
 	      void* alpha,
 	      void* a, int* ia, int *ja, int *desca,
 	      void* b, int* ib, int *jb, int *descb,
@@ -210,7 +210,7 @@ void pdsyrk_(char* uplo, char* trans, int* n, int* k,
 	     double* a, int* ia, int *ja, int *desca,
 	     double* beta,
 	     double* c, int* ic, int *jc, int *descc);
-void pzsyrk_(char* uplo, char* trans, int* n, int* k,
+void pzherk_(char* uplo, char* trans, int* n, int* k,
 	     void* alpha,
 	     void* a, int* ia, int *ja, int *desca,
 	     void* beta,
@@ -260,7 +260,7 @@ PyObject* pblas_gemm(PyObject *self, PyObject *args)
 
 PyObject* pblas_gemv(PyObject *self, PyObject *args)
 {
-  char transa = 'T';
+  char transa;
   int m, n;
   Py_complex alpha;
   Py_complex beta;
@@ -268,11 +268,11 @@ PyObject* pblas_gemv(PyObject *self, PyObject *args)
   int incx = 1, incy = 1; // what should these be?
   PyArrayObject *desca, *descx, *descy;
   static int one = 1;
-  if (!PyArg_ParseTuple(args, "iiDOODOOOO", 
+  if (!PyArg_ParseTuple(args, "iiDOODOOOOc", 
                         &m, &n, &alpha, 
                         &a, &x, &beta, &y,
 			&desca, &descx,
-                        &descy)) {
+                        &descy, &transa)) {
     return NULL;
   }
   
@@ -303,7 +303,6 @@ PyObject* pblas_gemv(PyObject *self, PyObject *args)
 PyObject* pblas_r2k(PyObject *self, PyObject *args)
 {
   char uplo;
-  char trans;
   int n, k;
   Py_complex alpha;
   Py_complex beta;
@@ -311,10 +310,10 @@ PyObject* pblas_r2k(PyObject *self, PyObject *args)
   PyArrayObject *desca, *descb, *descc;
   static int one = 1;
   
-  if (!PyArg_ParseTuple(args, "iiDOODOOOOcc", &n, &k, &alpha,
+  if (!PyArg_ParseTuple(args, "iiDOODOOOOc", &n, &k, &alpha,
                         &a, &b, &beta, &c,
                         &desca, &descb, &descc,
-                        &uplo, &trans)) {
+                        &uplo)) {
     return NULL;
   }
 
@@ -325,14 +324,14 @@ PyObject* pblas_r2k(PyObject *self, PyObject *args)
   // if (c_ConTxt == -1) Py_RETURN_NONE;
 
   if (c->descr->type_num == PyArray_DOUBLE)
-    pdsyr2k_(&uplo, &trans, &n, &k,
+    pdsyr2k_(&uplo, "T", &n, &k,
 	     &(alpha.real), 
 	     DOUBLEP(a), &one, &one, INTP(desca), 
 	     DOUBLEP(b), &one, &one, INTP(descb),
 	     &(beta.real),
 	     DOUBLEP(c), &one, &one, INTP(descc));
   else
-    pzsyr2k_(&uplo, &trans, &n, &k,
+    pzher2k_(&uplo, "C", &n, &k,
 	     &alpha, 
 	     (void*)COMPLEXP(a), &one, &one, INTP(desca), 
 	     (void*)COMPLEXP(b), &one, &one, INTP(descb),
@@ -345,7 +344,6 @@ PyObject* pblas_r2k(PyObject *self, PyObject *args)
 PyObject* pblas_rk(PyObject *self, PyObject *args)
 {
   char uplo;
-  char trans;
   int n, k;
   Py_complex alpha;
   Py_complex beta;
@@ -353,10 +351,10 @@ PyObject* pblas_rk(PyObject *self, PyObject *args)
   PyArrayObject *desca, *descc;
   static int one = 1;
   
-  if (!PyArg_ParseTuple(args, "iiDODOOOcc", &n, &k, &alpha,
+  if (!PyArg_ParseTuple(args, "iiDODOOOc", &n, &k, &alpha,
                         &a, &beta, &c,
                         &desca, &descc,
-                        &uplo, &trans)) {
+                        &uplo)) {
     return NULL;
   }
 
@@ -367,13 +365,13 @@ PyObject* pblas_rk(PyObject *self, PyObject *args)
   // if (c_ConTxt == -1) Py_RETURN_NONE;
 
   if (c->descr->type_num == PyArray_DOUBLE)
-    pdsyrk_(&uplo, &trans, &n, &k,
+    pdsyrk_(&uplo, "T", &n, &k,
 	    &(alpha.real), 
 	    DOUBLEP(a), &one, &one, INTP(desca), 
 	    &(beta.real),
 	    DOUBLEP(c), &one, &one, INTP(descc));
   else
-    pzsyrk_(&uplo, &trans, &n, &k,
+    pzherk_(&uplo, "C", &n, &k,
 	    &alpha, 
 	    (void*)COMPLEXP(a), &one, &one, INTP(desca), 
 	    &beta,

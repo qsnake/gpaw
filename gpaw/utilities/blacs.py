@@ -73,7 +73,7 @@ def pblas_gemm(alpha, a_MK, b_KN, beta, c_MN, desca, descb, descc,
     assert desca.check(a_MK)
     assert descb.check(b_KN)
     assert descc.check(c_MN)
-    assert transa in ['N', 'T'] and transb in ['N', 'T']
+    assert transa in ['N', 'T', 'C'] and transb in ['N', 'T', 'C']
     M, K = desca.gshape
     K, N = descb.gshape
     if transb == 'N':
@@ -99,14 +99,16 @@ def pblas_simple_gemm(desca, descb, descc, a_MK, b_KN, c_MN,
                transa, transb)
 
 
-def pblas_gemv(alpha, a, x, beta, y, desca, descx, descy):
+def pblas_gemv(alpha, a, x, beta, y, desca, descx, descy,
+               transa='T'):
     if not desca.blacsgrid.is_active():
         return
     assert desca.check(a)
     assert descx.check(x)
     assert descy.check(y)
     M, N = desca.gshape
-    # XXX only transa = 'T' implemented
+    # XXX transa = 'N' not implemented
+    assert transa in ['T', 'C']
     assert desca.gshape[0] == descy.gshape[0]
     assert desca.gshape[1] == descx.gshape[0]
     assert descx.gshape[1] == descy.gshape[1]
@@ -114,7 +116,8 @@ def pblas_gemv(alpha, a, x, beta, y, desca, descx, descy):
                      a, x, beta, y,
                      desca.asarray(),
                      descx.asarray(),
-                     descy.asarray())
+                     descy.asarray(), 
+                     transa)
 
 
 def pblas_simple_gemv(desca, descx, descy, a, x, y):
@@ -123,7 +126,7 @@ def pblas_simple_gemv(desca, descx, descy, a, x, y):
     pblas_gemv(alpha, a, x, beta, y, desca, descx, descy)
 
 def pblas_r2k(alpha, a_NK, b_NK, beta, c_NN, desca, descb, descc,
-                uplo='U', trans='T'):
+                uplo='U'):
     if not desca.blacsgrid.is_active():
         return
     assert desca.check(a_NK)
@@ -131,18 +134,15 @@ def pblas_r2k(alpha, a_NK, b_NK, beta, c_NN, desca, descb, descc,
     assert descc.check(c_NN)
     assert descc.gshape[0] == descc.gshape[1] # symmetric matrix
     assert desca.gshape == descb.gshape # same shape
-    assert trans in ['N', 'T']
     assert uplo in ['L', 'U']
     N = descc.gshape[0] # order of C
     # K must take into account implicit tranpose due to C ordering
-    K = desca.gshape[0] # number of rows of A and B
-    if trans == 'T':
-        K = desca.gshape[1] # number of columns of A and B
+    K = desca.gshape[1] # number of columns of A and B
     _gpaw.pblas_r2k(N, K, alpha, a_NK, b_NK, beta, c_NN,
                     desca.asarray(), 
                     descb.asarray(), 
                     descc.asarray(),
-                    uplo, trans)
+                    uplo)
 
 
 def pblas_simple_r2k(desca, descb, descc, a, b, c):
@@ -152,28 +152,25 @@ def pblas_simple_r2k(desca, descb, descc, a, b, c):
                 desca, descb, descc)
 
 def pblas_rk(alpha, a_NK, beta, c_NN, desca, descc,
-             uplo='U', trans='T'):
+             uplo='U'):
     if not desca.blacsgrid.is_active():
         return
     assert desca.check(a_NK)
     assert descc.check(c_NN)
     assert descc.gshape[0] == descc.gshape[1] # symmetrix matrix
-    assert trans in ['N', 'T']
     assert uplo in ['L', 'U']
     N = descc.gshape[0] # order of C
     # K must take into account implicit tranpose due to C ordering
-    K = desca.gshape[0] # number of rows of A
-    if trans == 'T':
-        K = desca.gshape[1] # number of columns of A
+    K = desca.gshape[1] # number of columns of A
     _gpaw.pblas_rk(N, K, alpha, a_NK, beta, c_NN,
                     desca.asarray(), 
                     descc.asarray(),
-                    uplo, trans)
+                    uplo)
 
 
 def pblas_simple_rk(desca, descc, a, c):
-    alpha = 1.0
-    beta = 0.0
+    alpha = 1.0 
+    beta = 0.0 
     pblas_rk(alpha, a, beta, c, 
              desca, descc)
 
