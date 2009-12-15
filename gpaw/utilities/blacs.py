@@ -48,7 +48,6 @@ def scalapack_general_diagonalize_ex(desca, a, b, z, w, uplo):
         return
     assert desca.check(a)
     assert desca.check(b)
-    assert desca.check(w)
     # only symmetric matrices
     assert desca.gshape[0] == desca.gshape[1]
     # still need assert for eigenvalues
