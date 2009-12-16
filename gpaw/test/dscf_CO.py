@@ -57,10 +57,10 @@ equal(E_es1, E_gs+5.8, 0.1)
 equal(E_es1, E_es2, 0.001)
 
 energy_tolerance = 0.001
-niter_tolerance = 0
+niter_tolerance = 1
 equal(E_gs, -14.9137533373, energy_tolerance) # svnversion 5252
 equal(niter_gs, 20, niter_tolerance) # svnversion 5252
 equal(E_es1, -9.08941107863, energy_tolerance) # svnversion 5252
 equal(niter_es1, 22, niter_tolerance) # svnversion 5252
 equal(E_es2, -9.08941938584, energy_tolerance) # svnversion 5252
-equal(niter_es2, 22, niter_tolerance) # svnversion 5252
+equal(niter_es2, 23, niter_tolerance) # svnversion 5633 (NB: ticket 169)
