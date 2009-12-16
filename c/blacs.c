@@ -795,19 +795,20 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   int a_mycol = -1;
   int a_myrow = -1;
   int a_nprow, a_npcol;
-  int il, iu;  // not used when range = 'A' or 'V'
+  int il = 1;  // not used when range = 'A' or 'V'
+  int iu;
   int eigvalm, nz;
   static int one = 1;
 
   double vl, vu; // not used when range = 'A' or 'I'
 
   char jobz = 'V'; // eigenvectors also
-  char range = 'A'; // all eigenvalues
+  char range = 'I'; // eigenvalues il-th thru iu-th
   char uplo;
   char cmach = 'U'; // most orthogonal eigenvectors
   // char cmach = 'S'; // most acccurate eigenvalues
 
-  if (!PyArg_ParseTuple(args, "OOcOOO", &a, &desca, &uplo,
+  if (!PyArg_ParseTuple(args, "OOciOOO", &a, &desca, &uplo, &iu,
                         &z, &w))
     return NULL;
 
@@ -926,6 +927,8 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   free(iclustr);
   free(ifail);
   
+  // If this fails, fewer eigenvalues than requested were computed.
+  assert (eigvalm == (iu-il)); 
   Py_RETURN_NONE;
 }
 

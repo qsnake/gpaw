@@ -32,16 +32,19 @@ def scalapack_diagonalize_dc(desca, a, z, w, uplo):
     assert uplo in ['L', 'U']
     _gpaw.scalapack_diagonalize_dc(a, desca.asarray(), uplo, z, w)
 
-def scalapack_diagonalize_ex(desca, a, z, w, uplo):
+def scalapack_diagonalize_ex(desca, a, z, w, uplo, iu='None'):
     if not desca.blacsgrid.is_active():
         return
     assert desca.check(a)
     assert desca.check(w)
     # only symmetric matrices
     assert desca.gshape[0] == desca.gshape[1]
+    if iu is None: # calculate all eigenvectors and eigenvalues
+        iu = desca.gshape[0]
+    assert 1 < iu <= desca.gshape[0]
     # stil need assert for eigenvalues
     assert uplo in ['L', 'U']
-    _gpaw.scalapack_diagonalize_ex(a, desca.asarray(), uplo, z, w)
+    _gpaw.scalapack_diagonalize_ex(a, desca.asarray(), uplo, iu, z, w)
 
 def scalapack_general_diagonalize_ex(desca, a, b, z, w, uplo, iu='None'):
     if not desca.blacsgrid.is_active():
