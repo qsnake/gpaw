@@ -477,15 +477,15 @@ class PAW(PAWTextOutput):
             # Construct grid descriptor for coarse grids for wave functions:
             self.bd = BandDescriptor(nbands, band_comm, par.parstride_bands)
 
-            #XXX XXX XXX XXX CAN THIS EVEN HAPPEN ANYMORE!?! XXX XXX XXX
-            #if self.gd is not None and self.gd.comm.size != domain_comm.size:
-            #    # Domain decomposition has changed, so we need to
-            #    # reinitialize density and hamiltonian:
-            #    if par.fixdensity:
-            #        raise RuntimeError("I'm confused - please specify parsize."
-            #                           )
-            #    self.density = None
-            #    self.hamiltonian = None
+            if (self.density is not None and
+                self.density.gd.comm.size != domain_comm.size):
+                # Domain decomposition has changed, so we need to
+                # reinitialize density and hamiltonian:
+                if par.fixdensity:
+                    raise RuntimeError("I'm confused - please specify parsize."
+                                       )
+                self.density = None
+                self.hamiltonian = None
 
             # Construct grid descriptor for coarse grids for wave functions:
             gd = self.grid_descriptor_class(N_c, cell_cv, pbc_c,
