@@ -37,6 +37,8 @@ class Overlap:
         self.timer = wfs.timer
         self.domain_comm = wfs.gd.comm
         self.band_comm = wfs.bd.comm
+        self.mynbands = wfs.bd.mynbands
+        self.nbands = wfs.bd.nbands
         self.setups = wfs.setups
         
     def orthonormalize(self, wfs, kpt):
@@ -73,8 +75,8 @@ class Overlap:
         psit_nG = kpt.psit_nG
         P_ani = kpt.P_ani
         wfs.pt.integrate(psit_nG, P_ani, kpt.q)
-        mynbands = len(psit_nG)
-        nbands = mynbands * self.band_comm.size
+        mynbands = self.mynbands
+        nbands = self.nbands
 
         # Construct the overlap matrix:
         S = lambda x: x
