@@ -132,6 +132,10 @@ following instructions are tested with python 2.5.4:
    # ignore errors like:
    # *** WARNING: renaming "_ctypes" since importing it failed: dynamic module does not define init function (init_ctypes)
    make install | tee make_install.log
+   # at this point it is safe to ignore an error:
+   # Compiling .../python2.5/zipfile.py ...
+   # make: *** [libinstall] Error 1
+   # However, the error should disappear after the second make install later on
 
 - build numpy::
 

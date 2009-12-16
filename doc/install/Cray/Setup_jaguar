@@ -453,7 +453,7 @@ cPickle cPickle.c
 # Andrew Kuchling's zlib module.
 # This require zlib 1.1.3 (or later).
 # See http://www.gzip.org/zlib/
-zlib zlibmodule.c -I${ZLIB_DIR}/include -L${ZLIB_DIR}/lib -lz
+zlib zlibmodule.c -I$(ZLIB_DIR)/include -L$(ZLIB_DIR)/lib -lz
 
 # Interface to the Expat XML parser
 #
@@ -467,7 +467,7 @@ zlib zlibmodule.c -I${ZLIB_DIR}/include -L${ZLIB_DIR}/lib -lz
 # More information on Expat can be found at www.libexpat.org.
 #
 #EXPAT_DIR=/usr/local/src/expat-1.95.2
-pyexpat pyexpat.c -DHAVE_EXPAT_H -I${EXPAT_DIR}/lib -L${EXPAT_DIR} -lexpat
+pyexpat pyexpat.c -DHAVE_EXPAT_H -I$(EXPAT_DIR)/lib -L$(EXPAT_DIR) -lexpat
 
 
 # Hye-Shik Chang's CJKCodecs
