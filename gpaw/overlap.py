@@ -37,6 +37,7 @@ class Overlap:
         self.timer = wfs.timer
         self.domain_comm = wfs.gd.comm
         self.band_comm = wfs.bd.comm
+        self.kpt_comm = wfs.kpt_comm
         self.mynbands = wfs.bd.mynbands
         self.nbands = wfs.bd.nbands
         self.setups = wfs.setups

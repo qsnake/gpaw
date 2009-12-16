@@ -23,8 +23,10 @@ class Operator:
     nblocks = 1
     async = True
     hermitian = True
+    blacs = False
 
-    def __init__(self, bd, gd, nblocks=None, async=None, hermitian=None):
+    def __init__(self, bd, gd, nblocks=None, async=None, hermitian=None,
+                 blacs=None): # XXX blacs
         self.bd = bd
         self.gd = gd
         self.work1_xG = None
@@ -37,6 +39,7 @@ class Operator:
             self.async = async
         if hermitian is not None:
             self.hermitian = hermitian
+        self.blacs = blacs
 
     def allocate_work_arrays(self, dtype):
         """This is a little complicated, but let's look at the facts.
@@ -69,6 +72,7 @@ class Operator:
 
         """
         ngroups = self.bd.comm.size
+        nbands = self.bd.nbands
         mynbands = self.bd.mynbands
         if ngroups == 1 and self.nblocks == 1:
             self.work1_xG = self.gd.zeros(mynbands, dtype)
@@ -77,6 +81,8 @@ class Operator:
             X = mynbands // self.nblocks
             if self.gd.n_c.prod() % self.nblocks != 0:
                 X += int(np.ceil(mynbands/self.gd.n_c.prod()))
+            if not self.hermitian: ### more space need for non-Hermitian case?
+                X *= 2
             self.work1_xG = self.gd.zeros(X, dtype)
             self.work2_xG = self.gd.zeros(X, dtype)
             if ngroups > 1:
@@ -85,13 +91,17 @@ class Operator:
                 else:
                     Q = ngroups
                 self.A_qnn = np.zeros((Q, mynbands, mynbands), dtype)
-        nbands = ngroups * mynbands
-        self.A_nn = np.zeros((nbands, nbands), dtype)
+        
+        if not self.blacs:
+            self.A_nn = np.zeros((nbands, nbands), dtype)
+        else:
+            from gpaw.blacs import BlacsBandDescriptor
+
 
     def estimate_memory(self, mem, dtype):
         ngroups = self.bd.comm.size
         mynbands = self.bd.mynbands
-        nbands = ngroups * mynbands
+        nbands = self.bd.nbands
         gdbytes = self.gd.bytecount(dtype)
         # Code semipasted from allocate_work_arrays
         if ngroups == 1 and self.nblocks == 1:

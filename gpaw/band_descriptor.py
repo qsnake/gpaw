@@ -484,3 +484,53 @@ class BandDescriptor:
             A_bnbn = A_NN.reshape((B, N, B, N))
             return A_bnbn[q1, :, q2]
 
+
+    def full_columnwise_assign(self, A_qnn, A_Nn, band_rank):
+
+        """Assign the sub-blocks pertaining from a given rank to the columns of
+        non-Hermitian matrix A_Nn. This subroutine is used for column assembly.
+
+        Parameters:
+        
+        A_qnn: ndarray
+            Sub-blocks belonging to the specified rank.
+        A_Nn: ndarray
+            Full column vector, in which to write contributions from sub-blocks.
+        band_rank: int
+            Communicator rank to which the sub-blocks belongs.
+
+        Note that a non-Hermitian matrix requires Q=B blocks of M x M
+        elements where B is the communicator size and M=N//B for N bands.
+        """
+        N = self.mynbands
+        B = self.comm.size
+        assert band_rank in xrange(B)
+
+        if B == 1:
+            A_Nn[:] = A_qnn.reshape((N,N))
+            return
+
+        # A_qnn[q2,myn1,myn2] on rank q1 is the q2'th overlap calculated
+        # between <psi_n1| and A|psit_n2> where n1 <-> (q1,myn1) and
+        # n2 <-> ((q1+q2)%B,myn2) since we've sent/recieved q2 times.
+        q1 = band_rank
+        Q = B
+        if debug:
+            assert A_qnn.shape == (Q,N,N)
+
+        if self.strided:
+            A_nbn = A_NN.reshape((N, B, N))
+            for q2 in range(Q):
+                A_nbn[:, (q1+q2)%B] = A_qnn[q2]
+        else:
+            A_bnn = A_Nn.reshape((B, N, N))
+
+            # Optimization for the first block
+            if q1 == 0:
+                A_bnn[:Q] = A_qnn
+                return
+
+            for q2 in range(Q):
+                A_bnn[(q1+q2)%B] = A_qnn[q2]
+
+            A_Nn.reshape(self.nbands, N)
