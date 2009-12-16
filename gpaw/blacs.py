@@ -291,6 +291,39 @@ def parallelprint(comm, obj):
         comm.barrier()
 
 
+class BlacsBandDescriptor:
+    # this class 'describes' all the Realspace/Blacs-related stuff
+    def __init__(self, supercomm, gd, bd, kpt_comm):
+        ncpus, mcpus, blocksize = sl_diagonalize[:3]
+        
+        bcommsize = bd.comm.size
+        gcommsize = gd.comm.size
+        bcommrank = bd.comm.rank
+        
+        shiftks = kpt_comm.rank * bcommsize * gcommsize
+        column_ranks = shiftks + np.arange(bcommsize) * gcommsize
+        block_ranks = shiftks + np.arange(bcommsize * gcommsize)
+        columncomm = supercomm.new_communicator(column_ranks)
+        blockcomm = supercomm.new_communicator(block_ranks)
+
+        nbands = self.bd.nbands
+        mynbands = self.bd.mynbands
+
+        # Create 1D and 2D BLACS grid
+        columngrid = BlacsGrid(bd.comm, 1, bcommsize)
+        blockgrid  = BlacsGrid(blockcomm, ncpus, mcpus)
+
+        # 1D layout
+        Nndescriptor = columngrid.new_descriptor(nbands, nbands, nbands, mynbands)
+        
+        # 2D layout
+        nndescriptor = blocgrid.new_descriptor(nbands, nbands, blocksize, blocksize)
+
+        self.Nndescriptor = Nndescriptor
+        self.nndescriptor = nndescriptor
+        self.Nn2nn = Redistributor(blockcomm, Nndescriptor, nndescriptor)
+        self.nn2Nn = Redistributor(blockcomm, nndescriptor, Nndescriptor)
+
 class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
     # This class 'describes' all the LCAO/Blacs-related stuff
     def __init__(self, supercomm, gd, bd, kpt_comm, nao):
@@ -329,8 +362,8 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
         self.mMdescriptor = mMdescriptor
         self.mmdescriptor = mmdescriptor
         self.nMdescriptor = nMdescriptor
-        self.mM2mm = Redistributor(supercomm, mMdescriptor, mmdescriptor)
-        self.mm2nM = Redistributor(supercomm, mmdescriptor, nMdescriptor)
+        self.mM2mm = Redistributor(blockcomm, mMdescriptor, mmdescriptor)
+        self.mm2nM = Redistributor(blockcomm, mmdescriptor, nMdescriptor)
         
         self.gd = gd
         self.bd = bd
