@@ -293,7 +293,7 @@ def parallelprint(comm, obj):
 
 class BlacsBandDescriptor:
     # this class 'describes' all the Realspace/Blacs-related stuff
-    def __init__(self, supercomm, gd, bd, kpt_comm):
+    def __init__(self, world, gd, bd, kpt_comm):
         ncpus, mcpus, blocksize = sl_diagonalize[:3]
         
         bcommsize = bd.comm.size
@@ -303,8 +303,8 @@ class BlacsBandDescriptor:
         shiftks = kpt_comm.rank * bcommsize * gcommsize
         column_ranks = shiftks + np.arange(bcommsize) * gcommsize
         block_ranks = shiftks + np.arange(bcommsize * gcommsize)
-        columncomm = supercomm.new_communicator(column_ranks)
-        blockcomm = supercomm.new_communicator(block_ranks)
+        columncomm = world.new_communicator(column_ranks)
+        blockcomm = world.new_communicator(block_ranks)
 
         nbands = self.bd.nbands
         mynbands = self.bd.mynbands
@@ -326,7 +326,7 @@ class BlacsBandDescriptor:
 
 class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
     # This class 'describes' all the LCAO/Blacs-related stuff
-    def __init__(self, supercomm, gd, bd, kpt_comm, nao):
+    def __init__(self, world, gd, bd, kpt_comm, nao):
         ncpus, mcpus, blocksize = sl_diagonalize[:3]
 
         bcommsize = bd.comm.size
@@ -336,8 +336,8 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
         shiftks = kpt_comm.rank * bcommsize * gcommsize
         stripe_ranks = shiftks + np.arange(bcommsize) * gcommsize
         block_ranks = shiftks + np.arange(bcommsize * gcommsize)
-        stripecomm = supercomm.new_communicator(stripe_ranks)
-        blockcomm = supercomm.new_communicator(block_ranks)
+        stripecomm = world.new_communicator(stripe_ranks)
+        blockcomm = world.new_communicator(block_ranks)
 
         mynao = -((-nao) // bcommsize)
         self.mynao = mynao

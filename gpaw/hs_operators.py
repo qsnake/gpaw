@@ -25,10 +25,12 @@ class Operator:
     hermitian = True
     blacs = False
 
-    def __init__(self, bd, gd, nblocks=None, async=None, hermitian=None,
+    def __init__(self, bd, gd, world, kpt_comm, nblocks=None, async=None, hermitian=None,
                  blacs=None): # XXX blacs
         self.bd = bd
         self.gd = gd
+        self.world = world
+        self.kpt_comm = kpt_comm
         self.work1_xG = None
         self.work2_xG = None
         self.A_qnn = None
@@ -96,7 +98,7 @@ class Operator:
             self.A_nn = np.zeros((nbands, nbands), dtype)
         else:
             from gpaw.blacs import BlacsBandDescriptor
-
+            bd = BlacsBandDescriptor(self.world, self.gd, self.bd, self.kpt_comm) 
 
     def estimate_memory(self, mem, dtype):
         ngroups = self.bd.comm.size

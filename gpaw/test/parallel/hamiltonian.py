@@ -68,7 +68,7 @@ vt_G = gd.empty()
 vt_G.fill(0.567)
 
 def run(psit_mG):
-    overlap = Operator(bd, gd, J)
+    overlap = Operator(bd, gd, world, kpt_comm, J)
     def H(psit_xG):
         kin(psit_xG, overlap.work1_xG[:M // J])
         for psit_G, y_G in zip(psit_xG, overlap.work1_xG):

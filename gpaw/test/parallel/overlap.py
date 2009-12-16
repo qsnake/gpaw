@@ -71,7 +71,7 @@ if 0:
     work2_xG = gd.empty(X)
 
 def run(psit_mG):
-    overlap = Operator(bd, gd, K)
+    overlap = Operator(bd, gd, world, kpt_comm, K)
     if 0:
         overlap.work1_xG = work1_xG
         overlap.work2_xG = work2_xG
