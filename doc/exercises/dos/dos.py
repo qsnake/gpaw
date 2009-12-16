@@ -11,7 +11,7 @@ else:
 calc = GPAW(filename, txt=None)
 try:
     ef = calc.get_fermi_level()
-except NotImplementedError:
+except ValueError:
     ef = 0
 energy, dos = calc.get_dos(spin=0, width=width)
 pylab.plot(energy - ef, dos)
