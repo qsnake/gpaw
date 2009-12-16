@@ -8,6 +8,8 @@ from gpaw.xc_functional import XCFunctional
 from gpaw.lcao.pwf2 import LCAOwrap
 from gpaw.utilities.blas import gemmdot
 from gpaw.utilities import unpack2
+from gpaw.lfc import BasisFunctions
+
 
 class CHI:
     def __init__(self):
@@ -74,10 +76,9 @@ class CHI:
             assert C_knM.shape[0] == self.nkpt and (
                    C_knM.shape[1] == self.nband)
         else:
-            raise ValueError('C_knM not exist!')            
+            raise ValueError('C_knM not exist!')
 
-        wrapper = LCAOwrap(calc)
-        orb_MG = wrapper.get_orbitals()
+
         spos_ac = calc.atoms.get_scaled_positions()
         nt_G = calc.density.nt_sG[0]
 
@@ -97,6 +98,10 @@ class CHI:
         self.nG = calc.get_number_of_grid_points()
         self.nG0 = self.nG[0] * self.nG[1] * self.nG[2]
         self.h_c = calc.wfs.gd.h_c
+
+        # get LCAO orbitals 
+        # sum_I Phi(r-R_I) 
+        orb_MG = self.get_orbitals(calc, spos_ac)
 
         print 
         print 'Parameters used:'
@@ -167,7 +172,6 @@ class CHI:
             # Get chi0_SS' by hilbert transform
             print 'Performing hilbert transform'
             chi0_wSS = self.hilbert_transform(specfunc_wSS, wmin, wmax, self.dw, eta)
-#            np.savez('chi0_wSS',chi0=chi0_wSS)
             return e_kn, f_kn, C_knM, orb_MG, spos_ac, nt_G, chi0_wSS 
         else:
             return e_kn, f_kn, C_knM, orb_MG, spos_ac, nt_G, bzkpt_kG
@@ -219,7 +223,6 @@ class CHI:
                     if focc > 1e-5:
                         # pair C
                         tmp = (np.outer(C_knM[k,n,:].conj(), C_knM[kq[k],m,:])).ravel()
-                       # tmp = self.pair_C(C_knM[k,n,:], C_knM[kq[k],m,:])
                         # transpose and conjugate, C*C*C*C
                         tmp = np.outer(tmp, tmp.conj()) 
                         chi0_SS += tmp * focc / (omega + e_kn[k,n] - e_kn[kq[k],m] + 1j*eta)
@@ -507,3 +510,26 @@ class CHI:
 
         return
 
+    def get_orbitals(self, calc, spos_ac):
+        """ Obtain LCAO orbital in 3d grid.
+
+        The LCAO orbital is calculated by::
+            
+                     ----
+            phi   =  \     Phi (r-R)
+               mu    /___     mu   I
+                      I
+
+        Written by Ask.
+        """
+
+        bfs_a = [setup.phit_j for setup in calc.wfs.setups]
+        gd = calc.wfs.gd
+        bfs = BasisFunctions(gd, bfs_a, calc.wfs.kpt_comm, cut=True)
+        bfs.set_positions(spos_ac)
+
+        orb_MG = gd.zeros(self.nLCAO)
+        C_M = np.identity(self.nLCAO)
+        bfs.lcao_to_grid(C_M, orb_MG, q=-1)
+
+        return orb_MG

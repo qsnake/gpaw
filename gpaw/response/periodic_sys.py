@@ -122,9 +122,9 @@ class PeriodicSys(CHI):
         chiG0LDA_w = np.zeros_like(chi0G0_w)
 
 # test 
-        f1 = open('chi0_w','w')
-        f2 = open('n_SG','w')
-        print >> f2, n_SG[:,0]
+#        f1 = open('chi0_w','w')
+#        f2 = open('n_SG','w')
+#        print >> f2, n_SG[:,0]
 
         for iw in range(self.Nw):
             if not self.HilbertTrans:
@@ -135,8 +135,8 @@ class PeriodicSys(CHI):
 
             # Non-interacting
             chi0G0_w[iw] = self.chi_to_Gspace(chi0_SS, n_SG[:,0])
-            print >> f1, iw*self.dw*Hartree, np.real(chi0_SS.sum()), np.imag(chi0_SS.sum()), np.real(
-                      chi0G0_w[iw]), np.imag(chi0G0_w[iw])
+#            print >> f1, iw*self.dw*Hartree, np.real(chi0_SS.sum()), np.imag(chi0_SS.sum()), np.real(
+#                      chi0G0_w[iw]), np.imag(chi0G0_w[iw])
     
             # RPA
             chi_SS = self.solve_Dyson(chi0_SS, KRPA_SS)
@@ -265,22 +265,14 @@ class PeriodicSys(CHI):
 
         n_SG = n_SG * self.vol / self.nG0
 
-        if not self.OpticalLimit:
+        if self.OpticalLimit:
             print 'Optical limit calculation'
-            N_gd = orb_MG.shape[1:4]
-            r = np.zeros(N_gd, dtype=complex)
-    
             qq = np.array([np.inner(self.q, self.bcell[:,i]) for i in range(3)])
-    
-            for i in range(N_gd[0]):
-                for j in range(N_gd[1]):
-                    for k in range(N_gd[2]):
-                        tmp = np.array([i*self.h_c[0], j*self.h_c[1], k*self.h_c[2]])
-                        r[i,j,k] = np.dot(qq, tmp)
       
             for mu in range(self.nLCAO):
                 for nu in range(self.nLCAO):
-                    n_SG[self.nLCAO*mu + nu, 0] = np.complex128(gd.integrate(orb_MG[mu].conj() * orb_MG[nu] * r))
+                    n_SG[self.nLCAO*mu + nu, 0] = np.dot(qq, 
+                         gd.calculate_dipole_moment( orb_MG[mu].conj() * orb_MG[nu]))
 
         return n_SG
 
