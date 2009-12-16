@@ -2,7 +2,7 @@ from math import pi
 from os.path import isfile
 
 import numpy as np
-from ase.units import Hartree
+from ase.units import Hartree, Bohr
 
 from gpaw.utilities.blas import gemmdot
 from gpaw.response import CHI
@@ -98,15 +98,6 @@ class PeriodicSys(CHI):
             assert tmp.shape == (self.nkpt, 3)
             bzkpt_kG = tmp
 
-        assert calc.atoms.pbc.all()
-        self.get_primitive_cell()
-
-        print 'Periodic system calculations.'
-        print 'Reciprocal primitive cell (1 / a.u.)'
-        print self.bcell
-        print 'Cell volume (a.u.**3):', self.vol
-        print 'BZ volume (1/a.u.**3):', self.BZvol
-
         # Get pair-orbitals in Gspace
         print 'Calculating pair-orbital in G-space'
         n_SG = self.pair_orbital_Gspace(orb_MG, calc.wfs.gd)
@@ -117,7 +108,6 @@ class PeriodicSys(CHI):
             foo = np.load('kernel.npz')
             KRPA_SS = foo['KRPA']
             KLDA_SS = foo['KLDA']
-
         else:
             Gvec = self.get_Gvectors()
             KRPA_SS, KLDA_SS = self.kernel_extended_sys(n_SG, Gvec, nt_G,
@@ -131,6 +121,11 @@ class PeriodicSys(CHI):
         chiG0RPA_w = np.zeros_like(chi0G0_w)
         chiG0LDA_w = np.zeros_like(chi0G0_w)
 
+# test 
+        f1 = open('chi0_w','w')
+        f2 = open('n_SG','w')
+        print >> f2, n_SG[:,0]
+
         for iw in range(self.Nw):
             if not self.HilbertTrans:
                 chi0_SS = self.calculate_chi0(bzkpt_kG, e_kn, f_kn, C_knM, q, iw*self.dw, eta=eta/Hartree)
@@ -140,7 +135,9 @@ class PeriodicSys(CHI):
 
             # Non-interacting
             chi0G0_w[iw] = self.chi_to_Gspace(chi0_SS, n_SG[:,0])
-
+            print >> f1, iw*self.dw*Hartree, np.real(chi0_SS.sum()), np.imag(chi0_SS.sum()), np.real(
+                      chi0G0_w[iw]), np.imag(chi0G0_w[iw])
+    
             # RPA
             chi_SS = self.solve_Dyson(chi0_SS, KRPA_SS)
             chiG0RPA_w[iw] = self.chi_to_Gspace(chi_SS, n_SG[:,0])
@@ -268,7 +265,7 @@ class PeriodicSys(CHI):
 
         n_SG = n_SG * self.vol / self.nG0
 
-        if self.OpticalLimit:
+        if not self.OpticalLimit:
             print 'Optical limit calculation'
             N_gd = orb_MG.shape[1:4]
             r = np.zeros(N_gd, dtype=complex)
@@ -283,48 +280,9 @@ class PeriodicSys(CHI):
       
             for mu in range(self.nLCAO):
                 for nu in range(self.nLCAO):
-                    n_SG[self.nLCAO*mu + nu, 0] = np.complex128(gd.integrate(orb_MG[mu] * orb_MG[nu] * r))
+                    n_SG[self.nLCAO*mu + nu, 0] = np.complex128(gd.integrate(orb_MG[mu].conj() * orb_MG[nu] * r))
 
         return n_SG
-
-
-    def get_primitive_cell(self):
-        """Calculate the reciprocal lattice vectors and the volume of primitive and BZ cell.
-
-        The volume of the primitive cell is calculated by::
-
-            vol = | a1 . (a2 x a3) |
-
-        The primitive lattice vectors are calculated by::
-
-                       a2 x a3
-            b1 = 2 pi ---------, and so on
-                         vol
-
-        Parameters:
-
-        a: ndarray
-            Primitive cell lattice vectors, calc.get_atoms().cell(), (3, 3)
-        b: ndarray
-            Reciprocal lattice vectors, (3, 3)
-        vol: float
-            Volume of the primitive cell
-        BZvol: float
-            Volume of the BZ, BZvol = (2pi)**3/vol for 3-dimensional crystal
-        """
-
-        a = self.acell
-
-        self.vol = np.dot(a[0],np.cross(a[1],a[2]))
-        self.BZvol = (2. * pi)**3 / self.vol
-
-        b = np.zeros_like(a)        
-        b[0] = np.cross(a[1], a[2])
-        b[1] = np.cross(a[2], a[0])
-        b[2] = np.cross(a[0], a[1])
-        self.bcell = 2. * pi * b / self.vol
-
-        return
 
 
     def get_Gvectors(self):

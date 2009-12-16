@@ -9,7 +9,6 @@ from gpaw.lcao.pwf2 import LCAOwrap
 from gpaw.utilities.blas import gemmdot
 from gpaw.utilities import unpack2
 
-
 class CHI:
     def __init__(self):
         self.xc = 'LDA'
@@ -67,6 +66,8 @@ class CHI:
         
         if calc.wfs.kpt_u[0].C_nM is not None:
             C_knM = np.array([kpt.C_nM.copy() for kpt in calc.wfs.kpt_u])
+            if self.nkpt == 1: # only store for the finite sys # for periodic sys stored elsewhere
+                np.savez('C_knM.npz',C=C_knM)
         elif isfile('C_knM.npz'): 
             foo = np.load('C_knM.npz')
             C_knM = foo['C']
@@ -123,6 +124,32 @@ class CHI:
             print f_kn[k]
         print
 
+        
+        if calc.atoms.pbc.any():
+            self.get_primitive_cell()
+
+            print 'Periodic system calculations.'
+            print 'Reciprocal primitive cell (1 / a.u.)'
+            print self.bcell
+            print 'Cell volume (a.u.**3):', self.vol
+            print 'BZ volume (1/a.u.**3):', self.BZvol
+
+            # if C_knM is not read from file, then we should chnage C_knM
+            # C_knM *= e{i k. R_a}
+            if not isfile('C_knM.npz'):
+                print 'calculating renormalized C_knM'
+                bzkpt_kG = calc.get_bz_k_points()
+                pos_a = calc.get_atoms().positions / Bohr
+                m_a = calc.wfs.basis_functions.M_a
+                for a in calc.wfs.basis_functions.my_atom_indices:
+                    m1 = m_a[a]
+                    m2 = m1+ calc.wfs.setups[a].niAO
+                    for ik in range(self.nkpt):
+                        kk =  np.array([np.inner(bzkpt_kG[ik], self.bcell[:,i]) for i in range(3)])
+                        C_knM[ik,:,m1:m2] *= np.exp(-1j * np.dot(kk, pos_a[a]))
+                np.savez('C_knM.npz',C=C_knM)
+
+
         # whether to use hilbert tranform
         self.HilbertTrans = True
         try:
@@ -140,7 +167,7 @@ class CHI:
             # Get chi0_SS' by hilbert transform
             print 'Performing hilbert transform'
             chi0_wSS = self.hilbert_transform(specfunc_wSS, wmin, wmax, self.dw, eta)
-
+#            np.savez('chi0_wSS',chi0=chi0_wSS)
             return e_kn, f_kn, C_knM, orb_MG, spos_ac, nt_G, chi0_wSS 
         else:
             return e_kn, f_kn, C_knM, orb_MG, spos_ac, nt_G, bzkpt_kG
@@ -174,16 +201,16 @@ class CHI:
         print 'Calculating chi0 directly'
         chi0_SS = np.zeros((self.nS, self.nS), dtype=complex)
 
+        kq = np.zeros(self.nkpt)
         if self.nkpt > 1:  # periodic system
             assert self.OpticalLimit is not None
             if not self.OpticalLimit :
                 kq = self.find_kq(bzkpt_kG, q)
             else:
-                kq = np.zeros(self.nkpt)
                 for k in range(self.nkpt):
                     kq[k] = k
         else: # finite system or Gamma-point calculation
-            kq[k] = np.zeros(1)
+            kq[0] = np.zeros(1)
 
         for k in range(self.nkpt):
             for n in range(self.nband):
@@ -219,16 +246,17 @@ class CHI:
         """
 
         specfunc_wSS = np.zeros((self.NwS, self.nS, self.nS), dtype=C_knM.dtype)
+        kq = np.zeros(self.nkpt)
+
         if self.nkpt > 1:  # periodic system
             assert self.OpticalLimit is not None
             if not self.OpticalLimit : 
                 kq = self.find_kq(bzkpt_kG, q)
             else:
-                kq = np.zeros(self.nkpt)
                 for k in range(self.nkpt):
                     kq[k] = k
         else: # finite system or Gamma-point calculation
-            kq[k] = np.zeros(1)
+            kq[0] = np.zeros(1)
 
         for k in range(self.nkpt):
             for n in range(self.nband):
@@ -366,17 +394,17 @@ class CHI:
         Refer to kernel_finite_sys for the definition of n_S.
         The second term of the XC kernel can be further evaluated by::
 
-            ---- ----           ~ a     ~ a                     ~ a     ~ a
+            ---- ----           ~ a  *  ~ a         *           ~ a     ~ a
             \    \     < phi  | p   > < p   | phi  >   < phi  | p   > < p   | phi  >
             /___ /___       mu   i1      i2      nu         mu   i3      i4      nu
               a  i1,i2        1                    1          2                    2
                  i3,i4
 
-                    (  /      a       a         a     a       a  
+                    (  /       a     *a        a     *a      a  
                   * | | dr phi (r) phi (r)  f [n ] phi (r) phi (r) 
                     ( /       i1      i2     xc       i3      i4
 
-                       /    ~ a     ~ a        ~a   ~ a     ~ a     )
+                       /    ~ a     ~ *a       ~a   ~ *a    ~ a     )
                     - | dr phi (r) phi (r)  f [n ] phi (r) phi (r)  |
                       /       i1      i2     xc       i3      i4    )
 
@@ -384,7 +412,8 @@ class CHI:
         """
 
         # XC Kernel is evaluated in real space
-        Kxc_SS = np.zeros((self.nS, self.nS))
+
+        Kxc_SS = np.zeros((self.nS, self.nS), dtype=orb_MG.dtype)
         J_II = {}
 
         fxc_G = self.fxc(nt_G)  # nt_G contains core density
@@ -411,7 +440,7 @@ class CHI:
                             P1_I = np.outer(P_Mi[n].conj(), P_Mi[m]).ravel()
                             P2_I = np.outer(P_Mi[p].conj(), P_Mi[q]).ravel()
                             Kxc_SS[self.nLCAO*n+m, self.nLCAO*p+q] += (
-                                    np.inner(np.inner(P1_I, J_II[a]), P2_I) )
+                                    np.inner(np.inner(P1_I.conj(), J_II[a]), P2_I) )
 
         return Kxc_SS
 
@@ -439,4 +468,42 @@ class CHI:
             if not found:
                 raise ValueError('k+q not found')
         return kq
+
+    def get_primitive_cell(self):
+        """Calculate the reciprocal lattice vectors and the volume of primitive and BZ cell.
+
+        The volume of the primitive cell is calculated by::
+
+            vol = | a1 . (a2 x a3) |
+
+        The primitive lattice vectors are calculated by::
+
+                       a2 x a3
+            b1 = 2 pi ---------, and so on
+                         vol
+
+        Parameters:
+
+        a: ndarray
+            Primitive cell lattice vectors, calc.get_atoms().cell(), (3, 3)
+        b: ndarray
+            Reciprocal lattice vectors, (3, 3)
+        vol: float
+            Volume of the primitive cell
+        BZvol: float
+            Volume of the BZ, BZvol = (2pi)**3/vol for 3-dimensional crystal
+        """
+
+        a = self.acell
+
+        self.vol = np.dot(a[0],np.cross(a[1],a[2]))
+        self.BZvol = (2. * pi)**3 / self.vol
+
+        b = np.zeros_like(a)
+        b[0] = np.cross(a[1], a[2])
+        b[1] = np.cross(a[2], a[0])
+        b[2] = np.cross(a[0], a[1])
+        self.bcell = 2. * pi * b / self.vol
+
+        return
 
