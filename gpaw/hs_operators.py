@@ -84,7 +84,7 @@ class Operator:
             X = mynbands // self.nblocks
             if self.gd.n_c.prod() % self.nblocks != 0:
                 X += int(np.ceil(mynbands/self.gd.n_c.prod()))
-            if not self.hermitian and blacs: ### more space need for non-Hermitian case?
+            if not self.hermitian and self.blacs: ### more space need for non-Hermitian case?
                 X *= 2
             self.work1_xG = self.gd.zeros(X, dtype)
             self.work2_xG = self.gd.zeros(X, dtype)
