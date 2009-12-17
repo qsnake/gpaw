@@ -32,7 +32,7 @@ def scalapack_diagonalize_dc(desca, a, z, w, uplo):
     assert uplo in ['L', 'U']
     _gpaw.scalapack_diagonalize_dc(a, desca.asarray(), uplo, z, w)
 
-def scalapack_diagonalize_ex(desca, a, z, w, uplo, iu='None'):
+def scalapack_diagonalize_ex(desca, a, z, w, uplo, iu=None):
     if not desca.blacsgrid.is_active():
         return
     assert desca.check(a)
@@ -46,7 +46,7 @@ def scalapack_diagonalize_ex(desca, a, z, w, uplo, iu='None'):
     assert uplo in ['L', 'U']
     _gpaw.scalapack_diagonalize_ex(a, desca.asarray(), uplo, iu, z, w)
 
-def scalapack_general_diagonalize_ex(desca, a, b, z, w, uplo, iu='None'):
+def scalapack_general_diagonalize_ex(desca, a, b, z, w, uplo, iu=None):
     if not desca.blacsgrid.is_active():
         return
     assert desca.check(a)

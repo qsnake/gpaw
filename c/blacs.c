@@ -928,7 +928,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   free(ifail);
   
   // If this fails, fewer eigenvalues than requested were computed.
-  assert (eigvalm == (iu-il)); 
+  assert (eigvalm == iu); 
   Py_RETURN_NONE;
 }
 
@@ -1081,7 +1081,7 @@ PyObject* scalapack_general_diagonalize_ex(PyObject *self, PyObject *args)
   free(ifail);
   
   // If this fails, fewer eigenvalues than requested were computed.
-  assert (eigvalm == (iu-il)); 
+  assert (eigvalm == iu); 
   Py_RETURN_NONE;
 }
 
