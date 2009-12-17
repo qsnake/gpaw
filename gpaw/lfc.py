@@ -116,10 +116,9 @@ class Sphere:
 
     def spline_to_grid(spline, gd, start_c, end_c, spos_c):
         dom = gd
-        h_cv = dom.cell_cv / gd.N_c[:, np.newaxis]
         pos_v = np.dot(spos_c, dom.cell_cv)
-        return _gpaw.spline_to_grid(spline.spline, start_c, end_c, pos_v, h_cv,
-                                    gd.n_c, gd.beg_c)
+        return _gpaw.spline_to_grid(spline.spline, start_c, end_c, pos_v,
+                                    gd.h_cv, gd.n_c, gd.beg_c)
 
     spline_to_grid = staticmethod(spline_to_grid) # TODO This belongs in Spline!
 
@@ -553,8 +552,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
                 nm = 2 * spline.get_angular_momentum_number() + 1
                 cspline_M.extend([spline.spline] * nm)
         gd = self.gd
-        h_cv = gd.cell_cv / gd.N_c[:, np.newaxis]
-        self.lfc.derivative(a_xG, c_xMv, h_cv, gd.n_c, cspline_M,
+        self.lfc.derivative(a_xG, c_xMv, gd.h_cv, gd.n_c, cspline_M,
                             gd.beg_c, self.pos_Wv, q)
 
         comm = self.gd.comm
@@ -656,8 +654,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
                 nm = 2 * spline.get_angular_momentum_number() + 1
                 cspline_M.extend([spline.spline] * nm)
         gd = self.gd
-        h_cv = gd.cell_cv / gd.N_c[:, np.newaxis]
-        self.lfc.normalized_derivative(a_G, c_Mv, h_cv, gd.n_c, cspline_M,
+        self.lfc.normalized_derivative(a_G, c_Mv, gd.h_cv, gd.n_c, cspline_M,
                                        gd.beg_c, self.pos_Wv)
 
         comm = self.gd.comm
@@ -864,10 +861,9 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
                 nm = 2 * spline.get_angular_momentum_number() + 1
                 cspline_M.extend([spline.spline] * nm)
         gd = self.gd
-        h_cv = gd.cell_cv / gd.N_c
         for c in range(3): # XXX
             self.lfc.calculate_potential_matrix_derivative(vt_G, DVt_vMM[c],
-                                                           h_cv,
+                                                           gd.h_cv,
                                                            gd.n_c, q, c,
                                                            np.array(cspline_M),
                                                            gd.beg_c,

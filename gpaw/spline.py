@@ -65,7 +65,7 @@ class Spline:
         return np.array(map(self, r_g))
 
     def get_functions(self, gd, start_c, end_c, spos_c):
-        h_cv = gd.cell_cv / gd.N_c[:, np.newaxis]
+        h_cv = gd.h_cv
         # start_c is the new origin so we translate gd.beg_c to start_c
         origin_c = np.array([0,0,0]) 
         pos_v = np.dot(spos_c, gd.cell_cv) - np.dot(start_c, h_cv)

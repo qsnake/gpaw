@@ -129,6 +129,7 @@ class GridDescriptor(Domain):
         self.n_c = self.end_c - self.beg_c
 
         self.h_c = (self.cell_cv**2).sum(1)**0.5 / N_c
+        self.h_cv = self.cell_cv / self.N_c[:, np.newaxis]
         self.dv = abs(np.linalg.det(self.cell_cv)) / self.N_c.prod()
 
         # Sanity check for grid spacings:
@@ -140,7 +141,6 @@ class GridDescriptor(Domain):
         self.orthogonal = not (self.cell_cv -
                                np.diag(self.cell_cv.diagonal())).any()
 
-        
     def get_size_of_global_array(self, pad=False):
         if pad:
             return self.N_c
