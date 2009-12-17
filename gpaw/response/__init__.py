@@ -510,8 +510,9 @@ class CHI:
 
         return
 
+
     def get_orbitals(self, calc, spos_ac):
-        """ Obtain LCAO orbital in 3d grid.
+        """Obtain LCAO orbital in 3d grid.
 
         The LCAO orbital is calculated by::
             
@@ -533,3 +534,20 @@ class CHI:
         bfs.lcao_to_grid(C_M, orb_MG, q=-1)
 
         return orb_MG
+
+
+    def calculate_orbital_overlap(self, orb_MG, gd):
+        """Calculate the overlap between LCAO orbitals.
+
+        The overlap matrix is calculated by::
+
+            O  = < phi   phi  |  phi   phi  >
+             SS       mu   nu       mu    nu
+        """
+        
+        o_MM = np.zeros((self.nLCAO, self.nLCAO))
+        for mu in range(self.nLCAO):
+            for nu in range(self.nLCAO):
+                o_MM[mu, nu] = gd.integrate(orb_MG[mu] * orb_MG[mu].conj() * orb_MG[nu] * orb_MG[nu].conj())
+        
+        return o_MM        
