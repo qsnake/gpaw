@@ -5,6 +5,7 @@ import os
 import sys
 import time
 import glob
+import datetime
 
 class Job:
     def __init__(self, path, tmax=20, ncpu=8, deps=None, arg=''):
@@ -67,15 +68,11 @@ jobs += [
     Job('vdw/interaction', 60, deps=['dimers']),
     Job('vdw/dimers', 60)]
 
-# Submit this one 4 times:
-deps = []
-for i in range(4):
-    j = Job('../../doc/tutorials/lattice_constants/Fe_conv_calc',
-            tmax=5*60, ncpu=8, arg='%d' % i)
-    jobs.append(j)
-    deps.append(j.id)
-jobs.append(Job('../../doc/tutorials/lattice_constants/Fe_conv_plots',
-                ncpu=1, deps=deps))
+jobs += [
+    Job('../../doc/tutorials/lattice_constants/Fe_conv_calc',
+        tmax=5*60, ncpu=8),
+    Job('../../doc/tutorials/lattice_constants/Fe_conv_plots',
+        ncpu=1, deps=['Fe_conv_calc']))
 
 class Jobs:
     def __init__(self, log=sys.stdout):
@@ -125,17 +122,17 @@ class Jobs:
                     code = int(open(filename).readlines()[-1])
                     if code == 0:
                         job.status = 'done'
-                        self.log(id, 'done.')
+                        self.log('#', id, 'done.')
                     else:
                         job.status = 'failed'
-                        self.log('%s exited with errorcode: %d' % (id, code))
+                        self.log('# %s exited with errorcode: %d' % (id, code))
                         self.fail(id)
                 filename = job.prefix + '.start'
                 if job.status == 'running' and os.path.isfile(filename):
                     t0 = float(open(filename).readline())
                     if time.time() - t0 > job.tmax * 60:
                         job.status = 'failed'
-                        self.log('%s timed out!' % id)
+                        self.log('# %s timed out!' % id)
                         self.fail(id)
 
     def fail(self, failed_id):
@@ -143,11 +140,12 @@ class Jobs:
         for id, job in self.jobs.items():
             if failed_id in job.deps:
                 job.status = 'disabled'
-                self.log('Disabling %s' % id)
+                self.log('# Disabling %s' % id)
                 self.fail(id)
 
     def print_results(self):
-        self.log('Results:')
+        self.log('date = %r' % datetime.datetime.today())
+        self.log('results = {')
         for id in self.ids:
             job = self.jobs[id]
             status = job.status
@@ -155,10 +153,10 @@ class Jobs:
             if status != 'disabled' and os.path.isfile(filename):
                 t = (float(open(filename).readline()) -
                      float(open(filename[:-4] + 'start').readline()))
-                t = '%8.1f' % t
             else:
-                t = '        '
-            self.log('%20s %s %s' % (id, t, status))
+                t = 0
+            self.log('  %-30r: (%10.2f, %r),' % (id, t, status))
+        self.log('}')
 
     def start(self, job):
         try:
