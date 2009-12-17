@@ -229,8 +229,8 @@ class BlacsDescriptor(MatrixDescriptor):
 
     def asarray(self):
         arr = np.array([BLOCK_CYCLIC_2D, self.blacsgrid.context, 
-                        self.N, self.M, self.nb, self.mb, self.rsrc, self.csrc,
-                        max(0, self.lld)], np.int32)
+                        self.N, self.M, self.nb, self.mb, self.csrc, self.rsrc,
+                        self.lld], np.int32)
         return arr
 
     def __str__(self):
