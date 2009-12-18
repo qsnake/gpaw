@@ -442,7 +442,7 @@ class LCAOWaveFunctions(WaveFunctions):
                                         self.kpt_comm, self.setups.nao)
         else:
             from gpaw.blacs import OrbitalDescriptor
-            od = OrbitalDescriptor(self.setups.nao, self.bd.mynbands)
+            od = OrbitalDescriptor(self.gd, self.bd, self.setups.nao)
         self.od = od
         
         #elif extra_parameters.get('blacs'):

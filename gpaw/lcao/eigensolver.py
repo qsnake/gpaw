@@ -7,23 +7,43 @@ from gpaw import sl_diagonalize, extra_parameters
 import gpaw.mpi as mpi
 
 
-class SLDiagonalizer:
+class BaseDiagonalizer:
+    def __init__(self, gd, bd):
+        self.gd = gd
+        self.bd = bd
+
+    def diagonalize(self, H_MM, S_MM, eps_n, kpt):
+        info = self._diagonalize(H_MM, S_MM, eps_n, kpt)
+        if info != 0:
+            raise RuntimeError('Failed to diagonalize: %d' % info)
+        
+        if self.bd.rank == 0:
+            nbands = self.bd.nbands
+            self.gd.comm.broadcast(H_MM[:nbands], 0)
+            self.gd.comm.broadcast(eps_n[:nbands], 0)
+            self.bd.distribute(H_MM[:nbands], kpt.C_nM)
+            self.bd.distribute(eps_n[:nbands], kpt.eps_n)
+    
+    def _diagonalize(self, H_MM, S_MM, eps_n, kpt):
+        raise NotImplementedError
+
+
+class SLDiagonalizer(BaseDiagonalizer):
     """ScaLAPACK diagonalizer using redundantly distributed arrays."""
-    def __init__(self, root=0):
+    def __init__(self, gd, bd, root=0):
+        BaseDiagonalizer.__init__(self, gd, bd)
         self.root = root
         # Keep buffers?
 
-    def diagonalize(self, H_MM, S_MM, eps_n, kpt):
+    def _diagonalize(self, H_MM, S_MM, eps_n, kpt):
         return diagonalize(H_MM, eps_n, b=S_MM, root=self.root)
 
 
-class LapackDiagonalizer:
+class LapackDiagonalizer(BaseDiagonalizer):
     """Serial diagonalizer."""
-    def __init__(self):
-        pass # keep buffers?
-
-    def diagonalize(self, H_MM, S_MM, eps_n, kpt):
+    def _diagonalize(self, H_MM, S_MM, eps_n, kpt):
         return diagonalize(H_MM, eps_n, S_MM)
+        
 
 
 class LCAO:
@@ -33,7 +53,6 @@ class LCAO:
         self.error = 0.0
         self.linear_kpts = None
         self.eps_n = None
-        self.S_MM = None
         self.H_MM = None
         self.timer = None
         self.mynbands = None
@@ -64,17 +83,16 @@ class LCAO:
         q = kpt.q
         if self.H_MM is None:
             nao = self.nao
-            mynao = wfs.od.mynao
-            #mynao = wfs.S_qMM.shape[1]
+            mynao = wfs.T_qMM.shape[1]
             self.eps_n = np.empty(nao)
-            #self.S_MM = np.empty((mynao, nao), self.dtype)
             self.H_MM = np.empty((mynao, nao), self.dtype)
             self.timer = wfs.timer
-            #self.linear_dependence_check(wfs)
 
         self.timer.start('potential matrix')
+
         wfs.basis_functions.calculate_potential_matrix(hamiltonian.vt_sG[s],
                                                        self.H_MM, q)
+
         self.timer.stop('potential matrix')
 
         # Add atomic contribution
@@ -102,23 +120,14 @@ class LCAO:
             self.iterate_one_k_point(hamiltonian, wfs, kpt)
 
     def iterate_one_k_point(self, hamiltonian, wfs, kpt):
-
         if self.band_comm.size > 1 and wfs.bd.strided:
             raise NotImplementedError
 
         self.calculate_hamiltonian_matrix(hamiltonian, wfs, kpt)
-
-        # XXXX
         S_MM = wfs.S_qMM[kpt.q].copy()
 
-        bandrank = self.band_comm.rank
-        bandsize = self.band_comm.size
-        mynbands = self.mynbands
-        n1 = bandrank * mynbands
-        n2 = n1 + mynbands
-
         if kpt.eps_n is None:
-            kpt.eps_n = np.empty(mynbands)
+            kpt.eps_n = np.empty(wfs.bd.mynbands)
             
         if sl_diagonalize:
             assert mpi.parallel
@@ -128,19 +137,10 @@ class LCAO:
         
         diagonalizationstring = self.diagonalizer.__class__.__name__
         self.timer.start(diagonalizationstring)
-
-        info = self.diagonalizer.diagonalize(self.H_MM, S_MM, self.eps_n,
-                                             kpt)
-        if info != 0:
-            raise RuntimeError('Failed to diagonalize: info=%d' % info)
-        self.timer.stop(diagonalizationstring)
-
-        if not extra_parameters.get('blacs'):
-            if bandrank == 0:
-                self.gd.comm.broadcast(self.H_MM[:wfs.nbands], 0)
-                self.gd.comm.broadcast(self.eps_n[:wfs.nbands], 0)
-            wfs.bd.distribute(self.H_MM[:wfs.nbands], kpt.C_nM)
-            wfs.bd.distribute(self.eps_n[:wfs.nbands], kpt.eps_n)
+        try:
+            self.diagonalizer.diagonalize(self.H_MM, S_MM, self.eps_n, kpt)
+        finally:
+            self.timer.stop(diagonalizationstring)
 
         assert kpt.eps_n[0] != 42
 
@@ -152,5 +152,5 @@ class LCAO:
     def estimate_memory(self, mem):
         # XXX forward to diagonalizer
         itemsize = np.array(1, self.dtype).itemsize
-        mem.subnode('H, work [2*MM]', self.nao * self.nao * itemsize)
+        mem.subnode('H [MM]', self.nao * self.nao * itemsize)
 

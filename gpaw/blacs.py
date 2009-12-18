@@ -396,9 +396,11 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
 
 
 class OrbitalDescriptor:
-    def __init__(self, nao, nmybands):
+    def __init__(self, gd, bd, nao):
+        self.gd = gd # XXX shouldn't be necessary
+        self.bd = bd
         self.mMdescriptor = MatrixDescriptor(nao, nao)
-        self.nMdescriptor = MatrixDescriptor(nmybands, nao)
+        self.nMdescriptor = MatrixDescriptor(bd.mynbands, nao)
         
         self.Mstart = 0
         self.Mstop = nao
@@ -411,7 +413,7 @@ class OrbitalDescriptor:
             diagonalizer = SLDiagonalizer()
         else:
             from gpaw.lcao.eigensolver import LapackDiagonalizer
-            diagonalizer = LapackDiagonalizer()
+            diagonalizer = LapackDiagonalizer(self.gd, self.bd)
         return diagonalizer
 
     def get_overlap_descriptor(self):
