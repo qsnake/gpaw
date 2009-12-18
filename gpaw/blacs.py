@@ -306,6 +306,7 @@ class BlacsBandDescriptor:
         columncomm = world.new_communicator(column_ranks)
         blockcomm = world.new_communicator(block_ranks)
 
+        self.bd = bd
         nbands = self.bd.nbands
         mynbands = self.bd.mynbands
 
@@ -317,7 +318,7 @@ class BlacsBandDescriptor:
         Nndescriptor = columngrid.new_descriptor(nbands, nbands, nbands, mynbands)
         
         # 2D layout
-        nndescriptor = blocgrid.new_descriptor(nbands, nbands, blocksize, blocksize)
+        nndescriptor = blockgrid.new_descriptor(nbands, nbands, blocksize, blocksize)
 
         self.Nndescriptor = Nndescriptor
         self.nndescriptor = nndescriptor

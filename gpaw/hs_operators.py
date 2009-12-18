@@ -26,7 +26,7 @@ class Operator:
     blacs = False
 
     def __init__(self, bd, gd, world, kpt_comm, nblocks=None, async=None, hermitian=None,
-                 blacs=None): # XXX blacs
+                 blacs=None):
         self.bd = bd
         self.gd = gd
         self.world = world
@@ -43,7 +43,10 @@ class Operator:
             self.hermitian = hermitian
         if blacs is not None:
             self.blacs = blacs
-
+        if self.blacs: ### Works for Hermitian case only
+            from gpaw.blacs import BlacsBandDescriptor
+            self.bbd = BlacsBandDescriptor(self.world, self.gd, self.bd, self.kpt_comm)
+ 
     def allocate_work_arrays(self, dtype):
         """This is a little complicated, but let's look at the facts.
 
@@ -98,8 +101,8 @@ class Operator:
         if not self.blacs:
             self.A_nn = np.zeros((nbands, nbands), dtype)
         else:
-            from gpaw.blacs import BlacsBandDescriptor
-            bd = BlacsBandDescriptor(self.world, self.gd, self.bd, self.kpt_comm) 
+            self.A_Nn = self.bbd.Nndescriptor.zeros(dtype=dtype)
+            self.A_nn = self.bbd.nndescriptor.zeros(dtype=dtype) 
 
     def estimate_memory(self, mem, dtype):
         ngroups = self.bd.comm.size
@@ -417,13 +420,14 @@ class Operator:
         if B == 1:
             return A_NN
 
-        if domain_comm.rank == 0:
-            self.bd.matrix_assembly(A_qnn, A_NN, self.hermitian)
-        # Because of the amount of communication involved, we need to
-        # be syncronized up to this point.           
-        band_comm.barrier()
-        domain_comm.barrier()
-        return A_NN
+        if not self.blacs:
+            if domain_comm.rank == 0:
+                self.bd.matrix_assembly(A_qnn, A_NN, self.hermitian)
+            return A_NN
+        else:
+            A_Nn = self.A_Nn
+            self.bd.full_columnwise_assign(A_qnn, A_Nn, band_comm.rank)
+            return A_Nn
         
     def matrix_multiply(self, C_NN, psit_nG, P_ani=None):
         """Calculate new linear combinations of wave functions.
