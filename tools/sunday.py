@@ -70,9 +70,9 @@ jobs += [
 
 jobs += [
     Job('../../doc/tutorials/lattice_constants/Fe_conv_calc',
-        tmax=5*60, ncpu=8),
+        tmax=10*60, ncpu=8),
     Job('../../doc/tutorials/lattice_constants/Fe_conv_plots',
-        ncpu=1, deps=['Fe_conv_calc']))
+        ncpu=1, deps=['Fe_conv_calc'])]
 
 class Jobs:
     def __init__(self, log=sys.stdout):
