@@ -51,7 +51,8 @@ class SLEXDiagonalizer:
         C_nM = outdescriptor.zeros(dtype=dtype)
 
         self.cols2blocks.redistribute(H_mM, H_mm)
-        blockdescriptor.diagonalize_ex(H_mm, S_mm.copy(), C_mm, eps_M, 'U')
+        blockdescriptor.diagonalize_ex(H_mm, S_mm.copy(), C_mm, eps_M, UL='U',
+                                       iu=self.bd.nbands)
         self.blocks2cols.redistribute(C_mm, C_nM)
 
         if outdescriptor:
@@ -241,12 +242,12 @@ class BlacsDescriptor(MatrixDescriptor):
                              self.bshape, self.lld, self.shape)
         return string
 
-    def diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M, UL='U'):
+    def diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M, UL='U', iu=None):
         self.checkassert(H_mm)
         self.checkassert(S_mm)
         self.checkassert(C_mm)
         scalapack_general_diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M,
-                                         UL)
+                                         UL, iu=iu)
 
 
 class Redistributor:
@@ -315,10 +316,12 @@ class BlacsBandDescriptor:
         blockgrid  = BlacsGrid(blockcomm, ncpus, mcpus)
 
         # 1D layout
-        Nndescriptor = columngrid.new_descriptor(nbands, nbands, nbands, mynbands)
+        Nndescriptor = columngrid.new_descriptor(nbands, nbands, nbands,
+                                                 mynbands)
         
         # 2D layout
-        nndescriptor = blockgrid.new_descriptor(nbands, nbands, blocksize, blocksize)
+        nndescriptor = blockgrid.new_descriptor(nbands, nbands, blocksize,
+                                                blocksize)
 
         self.Nndescriptor = Nndescriptor
         self.nndescriptor = nndescriptor
