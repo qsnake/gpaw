@@ -56,10 +56,8 @@ typedef struct {
 static void mpi_dealloc(MPIObject *obj)
 {
   if (obj->comm != MPI_COMM_WORLD)
-    {
-      MPI_Comm_free(&(obj->comm));
-      Py_XDECREF(obj->parent);
-    }
+    MPI_Comm_free(&(obj->comm));
+  Py_XDECREF(obj->parent);
   free(obj->members);
   PyObject_DEL(obj);
 }
@@ -907,8 +905,9 @@ static PyObject * MPICommunicator(MPIObject *self, PyObject *args)
   PyObject* orig_ranks;
   if (!PyArg_ParseTuple(args, "O", &orig_ranks))
     return NULL;
-  // First convert to NumPy array of NPY_LONG, then cast to NPY_INT,
-  // to allow both 32 and 64 bit integers in the argument.
+  // NB: int32 is NPY_LONG on 32-bit Linux and NPY_INT on 64-bit Linux!
+  // First convert to NumPy array of NPY_LONG, then cast to NPY_INT, to 
+  // allow both 32 and 64 bit integers in the argument (except 64 on 32).
   PyObject *ranks = PyArray_ContiguousFromAny(orig_ranks, NPY_LONG, 1, 1);
   if (ranks == NULL)
     return NULL;
@@ -944,7 +943,7 @@ static PyObject * MPICommunicator(MPIObject *self, PyObject *args)
   MPI_Group newgroup;
   MPI_Group_incl(group, n, (int *) PyArray_BYTES(iranks), &newgroup);
   MPI_Comm comm;
-  MPI_Comm_create(self->comm, newgroup, &comm);
+  MPI_Comm_create(self->comm, newgroup, &comm); // has a memory leak!
 #ifdef GPAW_MPI_DEBUG
   // Default Errhandler is MPI_ERRORS_ARE_FATAL
   MPI_Errhandler_set(comm, MPI_ERRORS_RETURN); 

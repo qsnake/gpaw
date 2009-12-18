@@ -41,7 +41,9 @@ p expression
   Evaluate the expression in the current context and print its value. Note: "print" can also be used, but is not a   
   debugger command -- this executes the Python print statement
 
-Most commands can be invoked with only the first letter. All the commands and their full documentation can be found from http://docs.python.org/lib/module-pdb.html
+Most commands can be invoked with only the first letter. A full list of 
+all the commands and their explanation can be found in the `Python debugger (PDB)
+documentation <http://docs.python.org/lib/module-pdb.html>`_.
 
 
 An example session might look like::
@@ -77,8 +79,8 @@ Emacs has a special mode for python debugging which can be invoked as *M-x pdb*.
 C debugging
 ===========
 
-First of all, the c-extension should be compiled with the *-g* flag in order to get the debug information into the library. 
-Also, the optimizations should be switched off which could be done in `customize.py` as::
+First of all, the C-extension should be compiled with the *-g* flag in order to get the debug information into the library. 
+Also, the optimizations should be switched off which could be done in :ref:`customize.py <install_custom_installation>` as::
 
    extra_link_args += ['-g']
    extra_compile_args += ['-O0', '-g']
@@ -119,6 +121,78 @@ One can also do combined C and python debugging by starting the input script as 
   (Pdb)
 
 
-The basic gdb commands are the same as in pdb (or vice versa). Gdb-documentation can be found for example from http://www.gnu.org/software/gdb/documentation/
+The basic gdb commands are the same as in pdb (or vice versa). Full documentation
+can be found in the `GDB user manual <http://www.gnu.org/software/gdb/documentation/>`_.
+Apart from the commands mentioned earlier, a few are worthy of mention here:
 
-Emacs can be used also with gdb. Start with *M-x gdb* and then continue as when starting from the command line.
+backtrace [n | full]
+
+   Print a backtrace of the entire stack: one line per frame for all frames in the stack
+   ``full`` prints the values of the local variables also. ``n`` specifies the number
+   of frames to print
+
+jump linespec
+
+   Resume execution at line ``linespec`` i.e. at the given location in the
+   corresponding source code. Any location of the type ``filename:linenum``
+   will do, but the results may be bizarre if ``linespec`` is in a different
+   function from the one currently executing.
+
+tbreak [[filename:]lineno|function[, condition]]
+
+   Set a breakpoint similar to how ``break`` operates, but this type of breakpoint
+   is automatically deleted after the first time your program stops there.
+
+p(rint) expr
+
+   Inquire about the symbols (names of variables, functions and types) defined
+   in a compiled program. ``expr`` may include calls to functions in the program
+   being debugged. Can also be used to evaluate more complicated expressions
+   or referring to static variables in other source files as ``'foo.c'::x``.   
+
+
+.. hint::
+
+   Emacs can be used also with gdb. Start with *M-x gdb* and then continue
+   as when starting from the command line.
+
+
+Tracking memory leaks
+---------------------
+
+Although a C-extensions runs fine, or so it seems, reference counting of Python
+objects and matching calls to ``malloc`` and ``free`` may not always be up to par.
+Frequently, the symptom of such disproportions is all too clear, resulting in
+segmentation faults (i.e. ``SIGSEGV``) e.g. when a memory address is accessed
+before it has been allocated or after is has been deallocated. Such situations
+can be debugged using *gdb* as described above.
+
+.. note::
+
+   Please refer to the Python/C API Reference Manual or the unofficial (but helpful)
+   introduction to `reference counting in Python <http://edcjones.tripod.com/refcount.html>`_.
+
+On the other hand, neglecting the deallocation or forgetting to decrease the
+reference count of a Python object will lead to a build-up of unreachable
+memory blocks - a process known as memory leakage. Despite being non-critical
+bugs, severe memory leaks in C-code will eventually bring all computations to
+a halt when the program runs out of available memory.
+
+Suppose you have written a Python script called ``test.py`` which appears to
+suffer from memory leaks. Having build GPAW with the *-g* flag as described,
+tracking down the source of the memory leak (in this case line 123 of ``myfile.c``)
+can be done using Valgrind_ as follows::
+
+   sepeli ~/gpaw/trunk/test> valgrind --tool=memcheck --leak-check=yes \
+   --show-reachable=yes --num-callers=20 --track-fds=yes gpaw-python test.py
+
+   ==16442== 6,587,460 bytes in 29,943 blocks are definitely lost in loss record 85 of 85
+   ==16442==    at 0x40053C0: malloc (vg_replace_malloc.c:149)
+   ==16442==    by 0x5322831: ???
+   ==16442==    by 0x8087BD5: my_leaky_function (myfile.c:123)
+
+Note that Valgrind_ is more than just a memory profiler for C; it provides an
+entire instrumentation framework for building dynamic analysis tools and thus
+includes other debugging tools, e.g. a heap/stack/global array overrun detector.
+
+.. _Valgrind: http://valgrind.org
