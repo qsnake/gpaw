@@ -106,7 +106,7 @@ Common sources of bugs
   - Try building GPAW from scratch.
   - Typos like ``if (x = 0)`` which should have been ``if (x == 0)``.
   - Remember ``break`` in switch-case statements.
-  - Check ``malloc-free`` pairs. Test for memory leaks by repeating the call many times.
+  - Check ``malloc-free`` pairs. Test for :ref:`memory leaks <memory_leaks>` by repeating the call many times.
   - Remember to update reference counts of Python objects.
   - *Never* put function calls inside ``assert``'s.  Compiling with
     ``-DNDEBUG`` will remove the call.

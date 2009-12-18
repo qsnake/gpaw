@@ -156,6 +156,7 @@ p(rint) expr
    Emacs can be used also with gdb. Start with *M-x gdb* and then continue
    as when starting from the command line.
 
+.. _memory_leaks:
 
 Tracking memory leaks
 ---------------------
