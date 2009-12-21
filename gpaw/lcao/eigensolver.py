@@ -77,7 +77,8 @@ class LCAO:
         assert self.H_MM is None # Right now we're not sure whether
         # this will work when reusing
 
-    def calculate_hamiltonian_matrix(self, hamiltonian, wfs, kpt):
+    def calculate_hamiltonian_matrix(self, hamiltonian, wfs, kpt, root=-1):
+        # XXX document parallel stuff, particularly root parameter
         assert self.has_initialized
         s = kpt.s
         q = kpt.q
@@ -112,7 +113,7 @@ class LCAO:
             if Mstart != -1:
                 P_Mi = P_Mi[Mstart:Mstop]
             gemm(1.0, dHP_iM, P_Mi, 1.0, self.H_MM)
-        self.gd.comm.sum(self.H_MM)
+        self.gd.comm.sum(self.H_MM, root)
         self.H_MM += wfs.T_qMM[q]
 
     def iterate(self, hamiltonian, wfs):
@@ -123,7 +124,7 @@ class LCAO:
         if self.band_comm.size > 1 and wfs.bd.strided:
             raise NotImplementedError
 
-        self.calculate_hamiltonian_matrix(hamiltonian, wfs, kpt)
+        self.calculate_hamiltonian_matrix(hamiltonian, wfs, kpt, root=0)
         S_MM = wfs.S_qMM[kpt.q].copy()
 
         if kpt.eps_n is None:
