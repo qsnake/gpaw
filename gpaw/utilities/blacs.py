@@ -22,19 +22,17 @@ import gpaw.mpi as mpi
 import _gpaw
 
 def scalapack_diagonalize_dc(desca, a, z, w, uplo):
-    if not desca.blacsgrid.is_active():
-        return    
     assert desca.check(a)
     assert desca.check(w)
     # only symmetric matrices
     assert desca.gshape[0] == desca.gshape[1]
     # stil need assert for eigenvalues
     assert uplo in ['L', 'U']
+    if not desca.blacsgrid.is_active():
+        return
     _gpaw.scalapack_diagonalize_dc(a, desca.asarray(), uplo, z, w)
 
 def scalapack_diagonalize_ex(desca, a, z, w, uplo, iu=None):
-    if not desca.blacsgrid.is_active():
-        return
     assert desca.check(a)
     assert desca.check(w)
     # only symmetric matrices
@@ -44,11 +42,11 @@ def scalapack_diagonalize_ex(desca, a, z, w, uplo, iu=None):
     assert 1 < iu <= desca.gshape[0]
     # stil need assert for eigenvalues
     assert uplo in ['L', 'U']
+    if not desca.blacsgrid.is_active():
+        return    
     _gpaw.scalapack_diagonalize_ex(a, desca.asarray(), uplo, iu, z, w)
 
 def scalapack_general_diagonalize_ex(desca, a, b, z, w, uplo, iu=None):
-    if not desca.blacsgrid.is_active():
-        return
     assert desca.check(a)
     assert desca.check(b)
     # only symmetric matrices
@@ -58,24 +56,24 @@ def scalapack_general_diagonalize_ex(desca, a, b, z, w, uplo, iu=None):
     assert 1 < iu <= desca.gshape[0]
     # still need assert for eigenvalues
     assert uplo in ['L', 'U']
+    if not desca.blacsgrid.is_active():
+        return
     _gpaw.scalapack_general_diagonalize_ex(a, desca.asarray(), 
                                            uplo, iu, b, z, w)
 
 
 def scalapack_inverse_cholesky(desca, a, uplo):
-    if not desca.blacsgrid.is_active():
-        return
     assert desca.check(a)
     # only symmetric matrices
     assert desca.gshape[0] == desca.gshape[1]
     assert uplo in ['L', 'U']
+    if not desca.blacsgrid.is_active():
+        return
     _gpaw.scalapack_inverse_cholesky(a, desca.asarray(), uplo)
 
 
 def pblas_gemm(alpha, a_MK, b_KN, beta, c_MN, desca, descb, descc,
                  transa='N', transb='N'):
-    if not desca.blacsgrid.is_active():
-        return
     assert desca.check(a_MK)
     assert descb.check(b_KN)
     assert descc.check(c_MN)
@@ -92,6 +90,8 @@ def pblas_gemm(alpha, a_MK, b_KN, beta, c_MN, desca, descb, descc,
         assert desca.gshape[0] == descc.gshape[0]
         assert descb.gshape[0] == descc.gshape[1]
     assert transa == 'N' # XXX remember to implement 'T'
+    if not desca.blacsgrid.is_active():
+        return
     _gpaw.pblas_gemm(N, M, K, alpha, b_KN.T, a_MK.T, beta, c_MN.T,
                      descb.asarray(), desca.asarray(), descc.asarray(),
                      transb, transa)
@@ -107,8 +107,6 @@ def pblas_simple_gemm(desca, descb, descc, a_MK, b_KN, c_MN,
 
 def pblas_gemv(alpha, a, x, beta, y, desca, descx, descy,
                transa='T'):
-    if not desca.blacsgrid.is_active():
-        return
     assert desca.check(a)
     assert descx.check(x)
     assert descy.check(y)
@@ -118,6 +116,8 @@ def pblas_gemv(alpha, a, x, beta, y, desca, descx, descy,
     assert desca.gshape[0] == descy.gshape[0]
     assert desca.gshape[1] == descx.gshape[0]
     assert descx.gshape[1] == descy.gshape[1]
+    if not desca.blacsgrid.is_active():
+        return
     _gpaw.pblas_gemv(N, M, alpha,
                      a, x, beta, y,
                      desca.asarray(),
