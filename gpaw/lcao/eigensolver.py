@@ -12,19 +12,20 @@ class BaseDiagonalizer:
         self.gd = gd
         self.bd = bd
 
-    def diagonalize(self, H_MM, S_MM, eps_n, kpt):
-        info = self._diagonalize(H_MM, S_MM, eps_n, kpt)
+    def diagonalize(self, H_MM, S_MM, C_nM, eps_n):
+        eps_M = np.empty(C_nM.shape[-1])
+        info = self._diagonalize(H_MM, S_MM.copy(), eps_M)
         if info != 0:
             raise RuntimeError('Failed to diagonalize: %d' % info)
         
         if self.bd.rank == 0:
             nbands = self.bd.nbands
             self.gd.comm.broadcast(H_MM[:nbands], 0)
-            self.gd.comm.broadcast(eps_n[:nbands], 0)
-            self.bd.distribute(H_MM[:nbands], kpt.C_nM)
-            self.bd.distribute(eps_n[:nbands], kpt.eps_n)
+            self.gd.comm.broadcast(eps_M[:nbands], 0)
+            self.bd.distribute(H_MM[:nbands], C_nM)
+            self.bd.distribute(eps_M[:nbands], eps_n)
     
-    def _diagonalize(self, H_MM, S_MM, eps_n, kpt):
+    def _diagonalize(self, H_MM, S_MM, eps_M):
         raise NotImplementedError
 
 
@@ -35,13 +36,13 @@ class SLDiagonalizer(BaseDiagonalizer):
         self.root = root
         # Keep buffers?
 
-    def _diagonalize(self, H_MM, S_MM, eps_n, kpt):
+    def _diagonalize(self, H_MM, S_MM, eps_n):
         return diagonalize(H_MM, eps_n, b=S_MM, root=self.root)
 
 
 class LapackDiagonalizer(BaseDiagonalizer):
     """Serial diagonalizer."""
-    def _diagonalize(self, H_MM, S_MM, eps_n, kpt):
+    def _diagonalize(self, H_MM, S_MM, eps_n):
         return diagonalize(H_MM, eps_n, S_MM)
         
 
@@ -52,7 +53,6 @@ class LCAO:
     def __init__(self, diagonalizer=None):
         self.error = 0.0
         self.linear_kpts = None
-        self.eps_n = None
         self.H_MM = None
         self.timer = None
         self.mynbands = None
@@ -85,7 +85,6 @@ class LCAO:
         if self.H_MM is None:
             nao = self.nao
             mynao = wfs.T_qMM.shape[1]
-            self.eps_n = np.empty(nao)
             self.H_MM = np.empty((mynao, nao), self.dtype)
             self.timer = wfs.timer
 
@@ -125,7 +124,7 @@ class LCAO:
             raise NotImplementedError
 
         self.calculate_hamiltonian_matrix(hamiltonian, wfs, kpt, root=0)
-        S_MM = wfs.S_qMM[kpt.q].copy()
+        S_MM = wfs.S_qMM[kpt.q]
 
         if kpt.eps_n is None:
             kpt.eps_n = np.empty(wfs.bd.mynbands)
@@ -134,12 +133,12 @@ class LCAO:
             assert mpi.parallel
             assert scalapack()
 
-        self.eps_n[0] = 42
+        kpt.eps_n[0] = 42
         
         diagonalizationstring = self.diagonalizer.__class__.__name__
         self.timer.start(diagonalizationstring)
         try:
-            self.diagonalizer.diagonalize(self.H_MM, S_MM, self.eps_n, kpt)
+            self.diagonalizer.diagonalize(self.H_MM, S_MM, kpt.C_nM, kpt.eps_n)
         finally:
             self.timer.stop(diagonalizationstring)
 

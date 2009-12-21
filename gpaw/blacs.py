@@ -34,12 +34,13 @@ class SLEXDiagonalizer:
         self.cols2blocks = cols2blocks
         self.blocks2cols = blocks2cols
     
-    def diagonalize(self, H_mM, S_mm, eps_M, kpt):
+    def diagonalize(self, H_mM, S_mm, C_nM, eps_n):
         indescriptor = self.indescriptor
         outdescriptor = self.outdescriptor
         blockdescriptor = self.blockdescriptor
 
         dtype = H_mM.dtype
+        eps_M = np.empty(C_nM.shape[-1])
 
         # XXX where should inactive ranks be sorted out?
         if not indescriptor:
@@ -48,23 +49,23 @@ class SLEXDiagonalizer:
         
         H_mm = blockdescriptor.zeros(dtype=dtype)
         C_mm = blockdescriptor.zeros(dtype=dtype)
-        C_nM = outdescriptor.zeros(dtype=dtype)
+        C_mM = outdescriptor.zeros(dtype=dtype)
 
         self.cols2blocks.redistribute(H_mM, H_mm)
         blockdescriptor.diagonalize_ex(H_mm, S_mm.copy(), C_mm, eps_M, UL='U',
                                        iu=self.bd.nbands)
-        self.blocks2cols.redistribute(C_mm, C_nM)
+        self.blocks2cols.redistribute(C_mm, C_mM) # XXX redist only nM somehow
 
         if outdescriptor:
             assert self.gd.comm.rank == 0
             bd = self.bd
-            kpt.C_nM[:] = C_nM[:bd.mynbands, :]
-            bd.distribute(eps_M[:bd.nbands], kpt.eps_n)
+            C_nM[:] = C_mM[:bd.mynbands, :]
+            bd.distribute(eps_M[:bd.nbands], eps_n)
         else:
             assert self.gd.comm.rank != 0
 
-        self.gd.comm.broadcast(kpt.C_nM, 0)
-        self.gd.comm.broadcast(kpt.eps_n, 0)
+        self.gd.comm.broadcast(C_nM, 0)
+        self.gd.comm.broadcast(eps_n, 0)
         return 0
 
 
