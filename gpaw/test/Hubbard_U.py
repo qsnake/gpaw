@@ -53,7 +53,7 @@ atoms = Atoms(symbols='Ni2O2',
 calc = GPAW(
     h=0.25,
     occupations=FermiDirac(width=0.05),
-    convergence={'eigenstates':1e-4,'density': 1.0e-2,'energy': 0.1},
+    convergence={'eigenstates':1e-5,'density': 1.0e-2,'energy': 0.1},
     #txt=name+'.txt',
     kpts=(k, k, k),
     xc='PBE')
@@ -96,7 +96,7 @@ assert( Eg_Hub- Eg_non_Hub>1.9)
 
 energy_tolerance = 0.0004
 niter_tolerance = 0
-equal(e1, -28.4373310769, energy_tolerance) # svnversion 5252
-equal(niter1, 12, niter_tolerance) # svnversion 5252
-equal(e2, -25.117913239, energy_tolerance) # svnversion 5252
-equal(niter2, 8, niter_tolerance) # svnversion 5252
+equal(e1, -28.43826, energy_tolerance) # svnversion 5252
+equal(niter1, 13, niter_tolerance) # svnversion 5252
+equal(e2, -27.50795, energy_tolerance) # svnversion 5252
+equal(niter2, 9, niter_tolerance) # svnversion 5252

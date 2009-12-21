@@ -175,6 +175,7 @@ class Hamiltonian:
         n_j = S.n_j
         lq  = S.lq
         nl  = np.where(np.equal(l_j, l))[0]
+        V = np.zeros(np.shape(DM))
         if len(nl) == 2:
             
             # cup and cdown gives us the index of Delta_lq we need
@@ -207,10 +208,18 @@ class Hamiltonian:
             B = DM[nn:nn+2*l+1,mm:mm+2*l+1]*(lq_ab)
             C = DM[mm:mm+2*l+1,nn:nn+2*l+1]*(lq_ab)
             D = DM[mm:mm+2*l+1,mm:mm+2*l+1]*(lq_b)
-            return  A+B+C+D
+            
+            V[nn:nn+2*l+1,nn:nn+2*l+1]=+(lq_a)
+            V[nn:nn+2*l+1,mm:mm+2*l+1]=+(lq_ab)
+            V[mm:mm+2*l+1,nn:nn+2*l+1]=+(lq_ab)
+            V[mm:mm+2*l+1,mm:mm+2*l+1]=+(lq_b)
+ 
+            return  A+B+C+D, V
         else:
             nn =(2*np.array(l_j)+1)[0:nl[0]].sum()
-            return DM[nn:nn+2*l+1,nn:nn+2*l+1]*lq[-1]
+            A=DM[nn:nn+2*l+1,nn:nn+2*l+1]*lq[-1]
+            V[nn:nn+2*l+1,nn:nn+2*l+1]=+lq[-1]
+            return A,V
 
     def update(self, density):
         """Calculate effective potential.
@@ -308,17 +317,32 @@ class Hamiltonian:
 
             if setup.HubU is not None:
                 nspins = len(D_sp)
-                i0 = setup.Hubi
-                i1 = i0 + 2 * setup.Hubl + 1
+                
+                l_j = setup.l_j
+                l   = setup.Hubl
+                nl  = np.where(np.equal(l_j,l))[0]
+                nn  = (2*np.array(l_j)+1)[0:nl[0]].sum()
+                
                 for D_p, H_p in zip(D_sp, self.dH_asp[a]):
-                    N_mm =self.aoom(unpack2(D_p),a,setup.Hubl) / 2 *nspins
-
+                    [N_mm,V] =self.aoom(unpack2(D_p),a,l)
+                    N_mm=N_mm/2*nspins
+                    
                     Eorb = setup.HubU/2. * (N_mm - np.dot(N_mm,N_mm)).trace()
-                    Vorb = setup.HubU * (0.5 * np.eye(i1-i0) - N_mm)
-                    #print "###### ",np.diag(N_mm)," ##########"
+                    Vorb = setup.HubU * (0.5 * np.eye(2*l+1) - N_mm)
                     Exc += Eorb                    
+                    
+                    if len(nl)==2:
+                        mm  = (2*np.array(l_j)+1)[0:nl[1]].sum()
+                        
+                        V[nn:nn+2*l+1,nn:nn+2*l+1] *= Vorb
+                        V[mm:mm+2*l+1,nn:nn+2*l+1] *= Vorb
+                        V[nn:nn+2*l+1,mm:mm+2*l+1] *= Vorb
+                        V[mm:mm+2*l+1,mm:mm+2*l+1] *= Vorb
+                    else:
+                        V[nn:nn+2*l+1,nn:nn+2*l+1] *= Vorb
+                    
                     Htemp = unpack(H_p)
-                    Htemp[i0:i1,i0:i1] += Vorb
+                    Htemp += V
                     H_p[:] = pack2(Htemp)
 
             dH_sp += dH_p
