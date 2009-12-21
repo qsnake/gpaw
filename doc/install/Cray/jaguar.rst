@@ -13,6 +13,14 @@ support shared libraries. In order to use python in CLE some
 modifications to the standard python are needed. Instructions below
 assume **tcsh**.
 
+The installations process of python and numpy can be performed with the
+script :svn:`~doc/install/Cray/make_python_numpy`::
+
+  ./make_python_numpy |& tee all.log
+
+whose details are given below. **Note**: One may want to change the
+installation paths in the beginning of `make_python_numpy`.
+
 Set the correct C compiler and flags, e.g.::
 
   module swap PrgEnv-pgi PrgEnv-gnu
@@ -117,6 +125,7 @@ following instructions are tested with python 2.5.4:
 
    mv Modules/Setup Modules/Setup.orig
    wget --no-check-certificate http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/install/Cray/Setup_jaguar -O Modules/Setup
+   touch Modules/Setup
 
   **Note**: sha modules are required by numpy, so the following lines should be present in Modules/Setup::
 
@@ -131,11 +140,7 @@ following instructions are tested with python 2.5.4:
    make | tee make.log
    # ignore errors like:
    # *** WARNING: renaming "_ctypes" since importing it failed: dynamic module does not define init function (init_ctypes)
-   make install | tee make_install.log
-   # at this point it is safe to ignore an error:
-   # Compiling .../python2.5/zipfile.py ...
-   # make: *** [libinstall] Error 1
-   # However, the error should disappear after the second make install later on
+   make install | tee make_install.log   
 
 - build numpy::
 
