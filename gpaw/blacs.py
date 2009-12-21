@@ -244,9 +244,6 @@ class BlacsDescriptor(MatrixDescriptor):
         return string
 
     def diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M, UL='U', iu=None):
-        self.checkassert(H_mm)
-        self.checkassert(S_mm)
-        self.checkassert(C_mm)
         scalapack_general_diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M,
                                          UL, iu=iu)
 
