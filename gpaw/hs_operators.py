@@ -102,7 +102,6 @@ class Operator:
             self.A_nn = np.zeros((nbands, nbands), dtype)
         else:
             self.A_Nn = self.bbd.Nndescriptor.zeros(dtype=dtype)
-            self.A_nn = self.bbd.nndescriptor.zeros(dtype=dtype) 
 
     def estimate_memory(self, mem, dtype):
         ngroups = self.bd.comm.size

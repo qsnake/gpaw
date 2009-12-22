@@ -16,6 +16,44 @@ from gpaw import sl_diagonalize
 from gpaw import debug
 
 
+class BaseDiagonalizer:
+    def __init__(self, gd, bd):
+        self.gd = gd
+        self.bd = bd
+
+    def diagonalize(self, H_NN, C_nN, eps_n):
+        eps_N = np.empty(C_nN.shape[-1])
+        info = self._diagonalize(H_NN, eps_N)
+        if info != 0:
+            raise RuntimeError('Failed to diagonalize: %d' % info)
+        
+        if self.bd.rank == 0:
+            nbands = self.bd.nbands
+            self.gd.comm.broadcast(H_NN[:nbands], 0)
+            self.gd.comm.broadcast(eps_N[:nbands], 0)
+            self.bd.distribute(H_NN[:nbands], C_nM)
+            self.bd.distribute(eps_N[:nbands], eps_n)
+    
+    def _diagonalize(self, H_NN, eps_N):
+        raise NotImplementedError
+
+
+class SLDiagonalizer(BaseDiagonalizer):
+    """ScaLAPACK diagonalizer using redundantly distributed arrays."""
+    def __init__(self, gd, bd, root=0):
+        BaseDiagonalizer.__init__(self, gd, bd)
+        self.root = root
+        # Keep buffers?
+
+    def _diagonalize(self, H_NN, eps_n):
+        return diagonalize(H_NN, eps_n, root=self.root)
+
+
+class LapackDiagonalizer(BaseDiagonalizer):
+    """Serial diagonalizer."""
+    def _diagonalize(self, H_NN, eps_n):
+        return diagonalize(H_NN, eps_n)
+
 class Eigensolver:
     def __init__(self, keep_htpsit=True):
         self.keep_htpsit = keep_htpsit

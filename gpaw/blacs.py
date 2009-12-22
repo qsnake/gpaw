@@ -14,7 +14,8 @@ import numpy as np
 
 from gpaw import sl_diagonalize
 from gpaw.mpi import SerialCommunicator
-from gpaw.utilities.blacs import scalapack_general_diagonalize_ex
+from gpaw.utilities.blacs import scalapack_general_diagonalize_ex, \
+    scalapack_diagonalize_ex
 import _gpaw
 
 
@@ -22,8 +23,8 @@ INACTIVE = -1
 BLOCK_CYCLIC_2D = 1
 
 
-class SLEXDiagonalizer:
-    """ScaLAPACK Expert Driver diagonalizer."""
+class SLDenseLinearAlgebra:
+    """ScaLAPACK Dense Linear Algebra."""
     def __init__(self, gd, bd, cols2blocks, blocks2cols):
         self.gd = gd
         self.bd = bd
@@ -34,7 +35,47 @@ class SLEXDiagonalizer:
         self.cols2blocks = cols2blocks
         self.blocks2cols = blocks2cols
     
-    def diagonalize(self, H_mM, S_mm, C_nM, eps_n):
+
+    def diagonalize(self, H_mM, C_nM, eps_n, S_mm=None):
+        if S_mm is None:
+            self._standard_diagonalize(H_mM, C_nM, eps_n)
+        else:
+            self._general_diagonalize(H_mM, S_mm, C_nM, eps_n)
+
+    def _standard_diagonalize(self, H_Nn, C_Nn, eps_n):
+        indescriptor = self.indescriptor
+        outdescriptor = self.outdescriptor
+        blockdescriptor = self.blockdescriptor
+
+        dtype = H_Nn.dtype
+        eps_n = np.empty(C_nN.shape[-1])
+
+        # XXX where should inactive ranks be sorted out?
+        if not indescriptor:
+           shape = indescriptor.shape
+           H_Nn = np.zeros(shape, dtype=dtype)
+        
+        H_nn = blockdescriptor.zeros(dtype=dtype)
+        C_nn = blockdescriptor.zeros(dtype=dtype)
+        C_nN = outdescriptor.zeros(dtype=dtype)
+
+        self.cols2blocks.redistribute(H_Nn, H_Nn)
+        blockdescriptor.general_diagonalize_ex(H_nn, C_nn, eps_M, UL='U',
+                                               iu=self.bd.nbands)
+        self.blocks2cols.redistribute(C_nn, C_nN) # XXX redist only nM somehow
+
+        if outdescriptor:
+            assert self.gd.comm.rank == 0
+            bd = self.bd
+            bd.distribute(eps_n[:bd.nbands], eps_n)
+        else:
+            assert self.gd.comm.rank != 0
+
+        self.gd.comm.broadcast(C_nN, 0)
+        self.gd.comm.broadcast(eps_n, 0)
+        return 0
+
+    def _general_diagonalize(self, H_mM, S_mm, C_nM, eps_n):
         indescriptor = self.indescriptor
         outdescriptor = self.outdescriptor
         blockdescriptor = self.blockdescriptor
@@ -52,8 +93,8 @@ class SLEXDiagonalizer:
         C_mM = outdescriptor.zeros(dtype=dtype)
 
         self.cols2blocks.redistribute(H_mM, H_mm)
-        blockdescriptor.diagonalize_ex(H_mm, S_mm.copy(), C_mm, eps_M, UL='U',
-                                       iu=self.bd.nbands)
+        blockdescriptor.general_diagonalize_ex(H_mm, S_mm.copy(), C_mm, eps_M, UL='U',
+                                               iu=self.bd.nbands)
         self.blocks2cols.redistribute(C_mm, C_mM) # XXX redist only nM somehow
 
         if outdescriptor:
@@ -243,7 +284,10 @@ class BlacsDescriptor(MatrixDescriptor):
                              self.bshape, self.lld, self.shape)
         return string
 
-    def diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M, UL='U', iu=None):
+    def diagonalize_ex(self, H_nn, C_nn, eps_n, UL='U', iu=None):
+        scalapack_diagonalize_ex(self, H_nn, C_nn, eps_n, UL, iu=iu)
+
+    def general_diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M, UL='U', iu=None):
         scalapack_general_diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M,
                                          UL, iu=iu)
 
@@ -371,7 +415,7 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
         self.bd = bd
 
     def get_diagonalizer(self):
-        return SLEXDiagonalizer(self.gd, self.bd, self.mM2mm, self.mm2nM)
+        return SLDenseLinearAlgebra(self.gd, self.bd, self.mM2mm, self.mm2nM)
 
     def get_overlap_descriptor(self):
         return self.mMdescriptor

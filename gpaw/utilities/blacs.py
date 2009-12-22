@@ -71,7 +71,6 @@ def scalapack_inverse_cholesky(desca, a, uplo):
         return
     _gpaw.scalapack_inverse_cholesky(a, desca.asarray(), uplo)
 
-
 def pblas_gemm(alpha, a_MK, b_KN, beta, c_MN, desca, descb, descc,
                  transa='N', transb='N'):
     assert desca.check(a_MK)

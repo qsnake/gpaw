@@ -12,7 +12,7 @@ class BaseDiagonalizer:
         self.gd = gd
         self.bd = bd
 
-    def diagonalize(self, H_MM, S_MM, C_nM, eps_n):
+    def diagonalize(self, H_MM, C_nM, eps_n, S_MM):
         eps_M = np.empty(C_nM.shape[-1])
         info = self._diagonalize(H_MM, S_MM.copy(), eps_M)
         if info != 0:
@@ -138,7 +138,7 @@ class LCAO:
         diagonalizationstring = self.diagonalizer.__class__.__name__
         self.timer.start(diagonalizationstring)
         try:
-            self.diagonalizer.diagonalize(self.H_MM, S_MM, kpt.C_nM, kpt.eps_n)
+            self.diagonalizer.diagonalize(self.H_MM, kpt.C_nM, kpt.eps_n, S_MM)
         finally:
             self.timer.stop(diagonalizationstring)
 
