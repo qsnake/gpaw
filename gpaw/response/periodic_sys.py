@@ -1,10 +1,18 @@
-from math import pi
+from math import pi, sqrt
 from os.path import isfile
 
 import numpy as np
+from scipy.special import sph_jn
 from ase.units import Hartree, Bohr
+from ase.data import chemical_symbols
 
+from gpaw.gaunt import gaunt as G_LLL
+from gpaw.spherical_harmonics import Y
+from gpaw.setup_data import SetupData
+from gpaw.setup import Setup
+from gpaw.xc_functional import XCFunctional
 from gpaw.utilities.blas import gemmdot
+from gpaw.utilities import pack
 from gpaw.response import CHI
 
 class PeriodicSys(CHI):
@@ -100,7 +108,9 @@ class PeriodicSys(CHI):
 
         # Get pair-orbitals in Gspace
         print 'Calculating pair-orbital in G-space'
-        n_SG = self.pair_orbital_Gspace(orb_MG, calc.wfs.gd)
+        Gvec = self.get_Gvectors()
+        n_SG = self.pair_orbital_Gspace(orb_MG, calc.wfs.gd, calc.wfs.setups, 
+                                        calc.wfs.kpt_u[0].P_aMi, Gvec)
 
         # Get kernel
         print 'Calculating kernel'
@@ -109,7 +119,6 @@ class PeriodicSys(CHI):
             KRPA_SS = foo['KRPA']
             KLDA_SS = foo['KLDA']
         else:
-            Gvec = self.get_Gvectors()
             KRPA_SS, KLDA_SS = self.kernel_extended_sys(n_SG, Gvec, nt_G,
                                 orb_MG, calc.wfs.gd, calc.density.D_asp, 
                                 calc.wfs.kpt_u[0], calc.wfs.setups)
@@ -121,10 +130,6 @@ class PeriodicSys(CHI):
         chiG0RPA_w = np.zeros_like(chi0G0_w)
         chiG0LDA_w = np.zeros_like(chi0G0_w)
 
-# test 
-#        f1 = open('chi0_w','w')
-#        f2 = open('n_SG','w')
-#        print >> f2, n_SG[:,0]
 
         for iw in range(self.Nw):
             if not self.HilbertTrans:
@@ -135,8 +140,6 @@ class PeriodicSys(CHI):
 
             # Non-interacting
             chi0G0_w[iw] = self.chi_to_Gspace(chi0_SS, n_SG[:,0])
-#            print >> f1, iw*self.dw*Hartree, np.real(chi0_SS.sum()), np.imag(chi0_SS.sum()), np.real(
-#                      chi0G0_w[iw]), np.imag(chi0G0_w[iw])
     
             # RPA
             chi_SS = self.solve_Dyson(chi0_SS, KRPA_SS)
@@ -203,7 +206,7 @@ class PeriodicSys(CHI):
         for i in range(1,self.nG0):
             # get q+G vector 
             xx = np.array([np.inner(np.float64((Gvec[i]) + self.q), self.bcell[:,j]) for j in range(3)])
-            Kcoul_G[i] = 1. / ( xx[0]*xx[0] + xx[1]*xx[1] + xx[2]*xx[2] )
+            Kcoul_G[i] = 1. / ( np.sqrt(np.inner(xx, xx)) )
         Kcoul_G *= 4. * pi 
         
 
@@ -230,7 +233,7 @@ class PeriodicSys(CHI):
         return chiG0 
 
 
-    def pair_orbital_Gspace(self, orb_MG, gd):
+    def pair_orbital_Gspace(self, orb_MG, gd, setups, P_aMi, Gvec):
         """Calculate pair LCAO orbital in reciprocal space.
 
         The pair density is defined as::
@@ -253,10 +256,10 @@ class PeriodicSys(CHI):
         
         n_SG = np.zeros((self.nS, self.nG0), dtype=complex)
 
+        # The soft part
         for mu in range(self.nLCAO):
             for nu in range(self.nLCAO):
                 # The last dimension runs fastest when using ravel()
-                # soft part
                 n_SG[self.nLCAO*mu + nu] = (np.fft.fftn(orb_MG[mu].conj() * orb_MG[nu])).ravel()
 
         # To check whether n_SG is correct, just look at the G=0 component
@@ -265,6 +268,20 @@ class PeriodicSys(CHI):
 
         n_SG = n_SG * self.vol / self.nG0
 
+        # The augmentation part
+        phi_apG = {}
+        for mu in range(self.nLCAO):
+            for nu in range(self.nLCAO):
+                for a, id in enumerate(setups.id_a):
+                    Z, type, basis = id
+                    if not phi_apG.has_key(Z):
+                        phi_apG[Z] = self.two_phi_planewave_integrals(Z, Gvec)
+                    assert phi_apG[Z] is not None
+                    tmp_ii = np.outer(P_aMi[a][mu].conj(), P_aMi[a][nu])
+                    # the off-diagonal element multiplied by two by packing 
+                    tmp_p = pack(tmp_ii, tolerance=1e-30) 
+                    n_SG[self.nLCAO*mu + nu] += np.inner(tmp_p, phi_apG[Z])
+                
         if self.OpticalLimit:
             print 'Optical limit calculation'
             qq = np.array([np.inner(self.q, self.bcell[:,i]) for i in range(3)])
@@ -326,3 +343,124 @@ class PeriodicSys(CHI):
         return G
 
 
+    def two_phi_planewave_integrals(self, Z, Gvec):
+        """Calculate integral of two partial waves with a planewave for a certain specie.
+    
+        The expression is::
+    
+               a          a     -ik.(r-R_a)      a
+            phi    = < phi  | e             | phi  > 
+               ij         i                      j
+        
+                         ~ a     -ik.(r-R_a)    ~ a
+                   -  < phi  | e             | phi  >
+                           i                      j
+
+        The planewave is expanded using real spherical harmonics by::
+    
+                          inf  l
+             ik.r        ---- ----  l           ^     ^
+            e     = 4 pi \    \    i  j (kr) Y (k) Y (r)
+                         /___ /___     l      lm    lm
+                          l=0 m=-l
+
+        where \hat{v} is the polar angles of vector v and 
+        j_l(kr) is the spherical bessel function. 
+
+        The partial waves are also written as radial part times a spherical harmonics, 
+        and the final expression for the integration is::
+                            
+                           ----     l    ^
+            phi (G) = 4 pi \    (-i)  Y (k) 
+               ij          /___        lm
+                            lm
+
+                       /  2                             /    ^            ^
+                    *  | r  j (kr) phi (r) phi (r) dr * | Y (r) Y    Y   dr
+                      /      l        j1      j2       /   lm    L1   L2
+
+        where j is the combined index for (nl), L is the index for (l**2 + m).
+        """
+    
+        # Create setup for a certain specie
+        xcfunc = XCFunctional('LDA',nspins=1)
+        symbol = chemical_symbols[Z]
+        data = SetupData(symbol,'LDA')
+        s = Setup(data,xcfunc,lmax=2)
+
+        # radial grid stuff
+        ng = s.ng
+        g = np.arange(ng, dtype=float)
+        r_g = s.beta * g / (ng - g) 
+        dr_g = s.beta * ng / (ng - g)**2
+        r2dr_g = r_g **2 * dr_g
+        gcut2 = s.gcut2
+            
+        # Obtain the phi_j and phit_j
+        phi_jg = []
+        phit_jg = []
+        
+        for (phi_g, phit_g) in zip(s.data.phi_jg, s.data.phit_jg):
+            phi_g = phi_g.copy()
+            phit_g = phit_g.copy()
+            phi_g[gcut2:] = phit_g[gcut2:] = 0.
+            phi_jg.append(phi_g)
+            phit_jg.append(phit_g)
+
+        # Construct L (l**2 + m) and j (nl) index
+        L_i = []
+        j_i = []
+        lmax = 0 
+        for j, l in enumerate(s.l_j):
+            for m in range(2 * l + 1):
+                L_i.append(l**2 + m)
+                j_i.append(j)
+                if l > lmax:
+                    lmax = l
+        ni = len(L_i)
+        nii =  ni * (ni + 1) // 2 # pack (ni, ni)
+        lmax = 2 * lmax + 1
+
+        # Initialize        
+        R_jj = np.zeros((s.nj, s.nj))
+        R_p = np.zeros((nii))
+        phi_pG = np.zeros((nii, self.nG0), dtype=complex)
+        j_lg = np.zeros((lmax, ng))
+   
+        # Store (phi_j1 * phi_j2 - phit_j1 * phit_j2 ) for further use
+        tmp_jjg = np.zeros((s.nj, s.nj, ng))
+        for j1 in range(s.nj):
+            for j2 in range(s.nj): 
+                tmp_jjg[j1, j2] = phi_jg[j1] * phi_jg[j2] - phit_jg[j1] * phit_jg[j2]
+
+        # Loop over G vectors 
+        for iG in range(self.nG0):
+            kk = np.array([np.inner(self.q + Gvec[iG], self.bcell[:,i]) for i in range(3)])
+            k = np.sqrt(np.inner(kk, kk)) # calculate length of q+G
+            
+            # Calculating spherical bessel function
+            for ri in range(ng):
+                j_lg[:,ri] = sph_jn(lmax - 1, k*r_g[ri])[0]
+
+            for li in range(lmax):
+                # Radial part 
+                for j1 in range(s.nj):
+                    for j2 in range(j1, s.nj): 
+                        R_jj[j1, j2] = np.dot(r2dr_g, tmp_jjg[j1, j2] * j_lg[li])
+
+                for mi in range(2 * li + 1):
+                    # Angular part
+                    p = 0
+                    for i1 in range(ni):
+                        L1 = L_i[i1]
+                        j1 = j_i[i1]
+                        for i2 in range(i1, ni):
+                            L2 = L_i[i2]
+                            j2 = j_i[i2]
+                            R_p[p] =  G_LLL[L1, L2, li**2+mi]  * R_jj[j1, j2]
+                            p += 1
+                    phi_pG[:, iG] += R_p * Y(li**2 + mi, kk[0], kk[1], kk[2]) * (-1j)**li
+            if iG % 10000 == 0:
+                print '    Finished G vectors: ', iG, '(total: ', self.nG0, ')'
+        phi_pG *= 4 * pi
+        return phi_pG
