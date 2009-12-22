@@ -274,9 +274,8 @@ class PeriodicSys(CHI):
             for nu in range(self.nLCAO):
                 for a, id in enumerate(setups.id_a):
                     Z, type, basis = id
-                    #if not phi_apG.has_key(Z):
-                    phi_aiiG[Z] = self.two_phi_planewave_integrals(Z, Gvec)
-                    #phi_aiiG[Z] = np.zeros((5, 5, self.nG0))
+                    if not phi_aiiG.has_key(Z):
+                        phi_aiiG[Z] = self.two_phi_planewave_integrals(Z, Gvec)
                     assert phi_aiiG[Z] is not None
                     tmp_ii = np.outer(P_aMi[a][mu].conj(), P_aMi[a][nu])
                     # the off-diagonal element multiplied by two by packing 
@@ -423,6 +422,7 @@ class PeriodicSys(CHI):
 
         # Initialize        
         R_jj = np.zeros((s.nj, s.nj))
+        R_ii = np.zeros((ni, ni))
         phi_iiG = np.zeros((ni, ni, self.nG0), dtype=complex)
         j_lg = np.zeros((lmax, ng))
    
