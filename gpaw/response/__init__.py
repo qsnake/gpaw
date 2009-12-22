@@ -9,6 +9,7 @@ from gpaw.lcao.pwf2 import LCAOwrap
 from gpaw.utilities.blas import gemmdot
 from gpaw.utilities import unpack2
 from gpaw.lfc import BasisFunctions
+from gpaw import GPAW
 
 
 class CHI:
@@ -102,6 +103,7 @@ class CHI:
         # get LCAO orbitals 
         # sum_I Phi(r-R_I) 
         orb_MG = self.get_orbitals(calc, spos_ac)
+        P_aMi  = self.get_P_aMi(calc)
 
         print 
         print 'Parameters used:'
@@ -172,9 +174,9 @@ class CHI:
             # Get chi0_SS' by hilbert transform
             print 'Performing hilbert transform'
             chi0_wSS = self.hilbert_transform(specfunc_wSS, wmin, wmax, self.dw, eta)
-            return e_kn, f_kn, C_knM, orb_MG, spos_ac, nt_G, chi0_wSS 
+            return e_kn, f_kn, C_knM, orb_MG, P_aMi, spos_ac, nt_G, chi0_wSS 
         else:
-            return e_kn, f_kn, C_knM, orb_MG, spos_ac, nt_G, bzkpt_kG
+            return e_kn, f_kn, C_knM, orb_MG, P_aMi, spos_ac, nt_G, bzkpt_kG
 
 
     def calculate_chi0(self, bzkpt_kG, e_kn, f_kn, C_knM, q, omega, eta):
@@ -378,7 +380,7 @@ class CHI:
         libxc.calculate_fxc_spinpaired(n, fxc)
         return np.reshape(fxc, N)
 
-    def get_Kxc(self, nt_G, D_asp, orb_MG, kpt, gd, setups):
+    def get_Kxc(self, nt_G, D_asp, orb_MG, P_aMi, gd, setups):
         """Calculate xc kernel in real space. Apply to isolate/periodic sys.
 
         XC kernel is obtained by::
@@ -439,7 +441,7 @@ class CHI:
                         nt2_G = orb_MG[p].conj() * orb_MG[q]
                         Kxc_SS[self.nLCAO*n+m, self.nLCAO*p+q] = gd.integrate(
                            nt1_G.conj()*fxc_G*nt2_G)
-                        for a, P_Mi in kpt.P_aMi.items():
+                        for a, P_Mi in enumerate(P_aMi):
                             P1_I = np.outer(P_Mi[n].conj(), P_Mi[m]).ravel()
                             P2_I = np.outer(P_Mi[p].conj(), P_Mi[q]).ravel()
                             Kxc_SS[self.nLCAO*n+m, self.nLCAO*p+q] += (
@@ -524,17 +526,39 @@ class CHI:
         Written by Ask.
         """
 
-        bfs_a = [setup.phit_j for setup in calc.wfs.setups]
-        gd = calc.wfs.gd
-        bfs = BasisFunctions(gd, bfs_a, calc.wfs.kpt_comm, cut=True)
-        bfs.set_positions(spos_ac)
-
-        orb_MG = gd.zeros(self.nLCAO)
-        C_M = np.identity(self.nLCAO)
-        bfs.lcao_to_grid(C_M, orb_MG, q=-1)
+        if self.nkpt > 1:
+            bfs_a = [setup.phit_j for setup in calc.wfs.setups]
+            gd = calc.wfs.gd
+            bfs = BasisFunctions(gd, bfs_a, calc.wfs.kpt_comm, cut=True)
+            bfs.set_positions(spos_ac)
+    
+            orb_MG = gd.zeros(self.nLCAO)
+            C_M = np.identity(self.nLCAO)
+            bfs.lcao_to_grid(C_M, orb_MG, q=-1)
+        else:  # for Gamma point calculation, wrapper is correct
+            from gpaw.lcao.pwf2 import LCAOwrap
+            wrapper = LCAOwrap(calc)
+            orb_MG = wrapper.get_orbitals()
 
         return orb_MG
 
+    
+    def get_P_aMi(self, calc):
+        """Calculate P_aMi without k-dependence. """
+
+        if self.nkpt > 1 or calc.wfs.P_aqMi is None:
+            a = calc.get_atoms()
+            calc = GPAW(mode='lcao', basis='dzp')
+            a.set_calculator(calc)
+            calc.initialize(a)
+            calc.set_positions(a)
+
+        assert calc.wfs.P_aqMi is not None
+        P_aMi = []
+        for a, P_qMi in calc.wfs.P_aqMi.items():
+            P_aMi.append(P_qMi[0])
+        
+        return P_aMi
 
     def calculate_orbital_overlap(self, orb_MG, gd):
         """Calculate the overlap between LCAO orbitals.

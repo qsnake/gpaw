@@ -30,7 +30,7 @@ class FiniteSys(CHI):
         SNonInter_w (or SRPA_w, SLDA_w): ndarray
             Dipole strength function, (Nw)
         """
-        e_kn, f_kn, C_knM, orb_MG, spos_ac, nt_G, tmp = (
+        e_kn, f_kn, C_knM, orb_MG, P_aMi, spos_ac, nt_G, tmp = (
                 self.initialize(calc, q, wcut, wmin, wmax, dw, eta)) 
         if self.HilbertTrans:
             assert tmp.shape == (self.Nw, self.nS, self.nS) and tmp.dtype == complex
@@ -41,7 +41,7 @@ class FiniteSys(CHI):
 
         # Get pair-orbitals in real space
         n_S = self.pair_orbital_Rspace(orb_MG, calc.wfs.gd,
-                                       calc.wfs.setups, calc.wfs.kpt_u[0])
+                                       calc.wfs.setups, P_aMi)
 
         # Get kernel
         if isfile('kernel.npz'):
@@ -51,7 +51,7 @@ class FiniteSys(CHI):
 
         else:
             kernelRPA_SS, kernelLDA_SS = self.kernel_finite_sys(nt_G, calc.density.D_asp, orb_MG, 
-                        calc.wfs.kpt_u[0], calc.wfs.gd, calc.wfs.setups, spos_ac)
+                        P_aMi, calc.wfs.gd, calc.wfs.setups, spos_ac)
             np.savez('kernel.npz',KRPA=kernelRPA_SS,KLDA=kernelLDA_SS)
 
         # Solve Dyson's equation and Get dipole strength function
@@ -77,7 +77,7 @@ class FiniteSys(CHI):
         return SNonInter_w, SRPA_w, SLDA_w, eCasidaRPA_s, eCasidaLDA_s, sCasidaRPA_s, sCasidaLDA_s
 
 
-    def kernel_finite_sys(self, nt_G, D_asp, orb_MG, kpt, gd, setups, spos_ac):
+    def kernel_finite_sys(self, nt_G, D_asp, orb_MG, P_aMi, gd, setups, spos_ac):
         """Calculate the Kernel for a finite system. 
     
         The kernel is expressed as, refer to report 4/11/2009, Eq. (18) - (22)::
@@ -119,14 +119,14 @@ class FiniteSys(CHI):
         for n in range(self.nLCAO):
             for m in range(self.nLCAO):
                 nt1_G = orb_MG[n] * orb_MG[m] 
-                for a, P_Mi in kpt.P_aMi.items():
+                for a, P_Mi in enumerate(P_aMi):
                     D_ii = np.outer(P_Mi[n].conj(), P_Mi[m])
                     P1_ap[a] = pack(D_ii, tolerance=1e30)
                 for p in range(self.nLCAO):
                     for q in range(self.nLCAO):
                         nt2_G = orb_MG[p] * orb_MG[q]
                         # Coulomb Kernel
-                        for a, P_Mi in kpt.P_aMi.items():
+                        for a, P_Mi in enumerate(P_aMi):
                             D_ii = np.outer(P_Mi[p].conj(), P_Mi[q])
                             P2_ap[a] = pack(D_ii, tolerance=1e30)
                         Kcoul_SS[self.nLCAO*n+m, self.nLCAO*p+q] = coulomb.calculate(
@@ -134,7 +134,7 @@ class FiniteSys(CHI):
 
             print '    finished', n, 'cycle', ' (max: nLCAO = ', self.nLCAO, ')'
         Kcoul_SS /=  Hartree
-        Kxc_SS = self.get_Kxc(nt_G, D_asp, orb_MG, kpt, gd, setups)
+        Kxc_SS = self.get_Kxc(nt_G, D_asp, orb_MG, P_aMi, gd, setups)
 
         return Kcoul_SS, Kcoul_SS + Kxc_SS
 
@@ -191,7 +191,7 @@ class FiniteSys(CHI):
         return S
 
 
-    def pair_orbital_Rspace(self, orb_MG, gd, setups, kpt):
+    def pair_orbital_Rspace(self, orb_MG, gd, setups, P_aMi):
         """Calculate pair LCAO orbital in real space. 
 
         The pair density is defined as::
@@ -238,7 +238,7 @@ class FiniteSys(CHI):
             for mu in range(self.nLCAO):
                 for nu in range(self.nLCAO):  
                     n_MM[mu,nu] = gd.integrate(orb_MG[mu] * orb_MG[nu] * r)
-                    for a, P_Mi in kpt.P_aMi.items():
+                    for a, P_Mi in enumerate(P_aMi):
                         P_I = np.outer(P_Mi[mu], P_Mi[nu]).ravel()
                         n_MM[mu,nu] += np.sum(P_I * phi_I[a]) * tmp
             n_S[:,ix] = np.reshape(n_MM, self.nS)

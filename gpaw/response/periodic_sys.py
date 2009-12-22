@@ -96,7 +96,7 @@ class PeriodicSys(CHI):
 
         # Initialize, common stuff
         print 'Initializing:'
-        e_kn, f_kn, C_knM, orb_MG, spos_ac, nt_G, tmp = (
+        e_kn, f_kn, C_knM, orb_MG, P_aMi, spos_ac, nt_G, tmp = (
            self.initialize(calc, q, wcut, wmin, wmax, dw, eta))
 
         if self.HilbertTrans:
@@ -110,7 +110,7 @@ class PeriodicSys(CHI):
         print 'Calculating pair-orbital in G-space'
         Gvec = self.get_Gvectors()
         n_SG = self.pair_orbital_Gspace(orb_MG, calc.wfs.gd, calc.wfs.setups, 
-                                        calc.wfs.kpt_u[0].P_aMi, Gvec)
+                                        P_aMi, Gvec)
 
         # Get kernel
         print 'Calculating kernel'
@@ -121,7 +121,7 @@ class PeriodicSys(CHI):
         else:
             KRPA_SS, KLDA_SS = self.kernel_extended_sys(n_SG, Gvec, nt_G,
                                 orb_MG, calc.wfs.gd, calc.density.D_asp, 
-                                calc.wfs.kpt_u[0], calc.wfs.setups)
+                                P_aMi, calc.wfs.setups)
             np.savez('kernel.npz', KRPA=KRPA_SS, KLDA=KLDA_SS)
 
         # Solve Dyson's equation
@@ -152,7 +152,7 @@ class PeriodicSys(CHI):
         return chi0G0_w, chiG0RPA_w, chiG0LDA_w
 
 
-    def kernel_extended_sys(self, n_SG, Gvec, nt_G, orb_MG, gd, D_asp, kpt, setups):
+    def kernel_extended_sys(self, n_SG, Gvec, nt_G, orb_MG, gd, D_asp, P_aMi, setups):
         """Calculate the Kernel of a specific q for an extended system.
 
         The kernel is expressed as::
@@ -212,7 +212,7 @@ class PeriodicSys(CHI):
 
         Kcoul_SS = gemmdot( (n_SG.conj() * Kcoul_G), (n_SG.T).copy(), beta = 0. )
 
-        Kxc_SS = self.get_Kxc(nt_G, D_asp, orb_MG, kpt, gd, setups) * self.vol
+        Kxc_SS = self.get_Kxc(nt_G, D_asp, orb_MG, P_aMi, gd, setups) * self.vol
 
         return Kcoul_SS, Kcoul_SS + Kxc_SS
  
@@ -269,18 +269,19 @@ class PeriodicSys(CHI):
         n_SG = n_SG * self.vol / self.nG0
 
         # The augmentation part
-        phi_apG = {}
+        phi_aiiG = {}
         for mu in range(self.nLCAO):
             for nu in range(self.nLCAO):
                 for a, id in enumerate(setups.id_a):
                     Z, type, basis = id
-                    if not phi_apG.has_key(Z):
-                        phi_apG[Z] = self.two_phi_planewave_integrals(Z, Gvec)
-                    assert phi_apG[Z] is not None
+                    #if not phi_apG.has_key(Z):
+                    phi_aiiG[Z] = self.two_phi_planewave_integrals(Z, Gvec)
+                    #phi_aiiG[Z] = np.zeros((5, 5, self.nG0))
+                    assert phi_aiiG[Z] is not None
                     tmp_ii = np.outer(P_aMi[a][mu].conj(), P_aMi[a][nu])
                     # the off-diagonal element multiplied by two by packing 
-                    tmp_p = pack(tmp_ii, tolerance=1e-30) 
-                    n_SG[self.nLCAO*mu + nu] += np.inner(tmp_p, phi_apG[Z])
+                    n_SG[self.nLCAO*mu + nu] += np.array(
+                     [np.dot(tmp_ii.ravel(), phi_aiiG[Z][:,:,iG].ravel()) for iG in range(self.nG0)])
                 
         if self.OpticalLimit:
             print 'Optical limit calculation'
@@ -418,13 +419,11 @@ class PeriodicSys(CHI):
                 if l > lmax:
                     lmax = l
         ni = len(L_i)
-        nii =  ni * (ni + 1) // 2 # pack (ni, ni)
         lmax = 2 * lmax + 1
 
         # Initialize        
         R_jj = np.zeros((s.nj, s.nj))
-        R_p = np.zeros((nii))
-        phi_pG = np.zeros((nii, self.nG0), dtype=complex)
+        phi_iiG = np.zeros((ni, ni, self.nG0), dtype=complex)
         j_lg = np.zeros((lmax, ng))
    
         # Store (phi_j1 * phi_j2 - phit_j1 * phit_j2 ) for further use
@@ -450,17 +449,15 @@ class PeriodicSys(CHI):
 
                 for mi in range(2 * li + 1):
                     # Angular part
-                    p = 0
                     for i1 in range(ni):
                         L1 = L_i[i1]
                         j1 = j_i[i1]
-                        for i2 in range(i1, ni):
+                        for i2 in range(ni):
                             L2 = L_i[i2]
                             j2 = j_i[i2]
-                            R_p[p] =  G_LLL[L1, L2, li**2+mi]  * R_jj[j1, j2]
-                            p += 1
-                    phi_pG[:, iG] += R_p * Y(li**2 + mi, kk[0], kk[1], kk[2]) * (-1j)**li
+                            R_ii[i1, i2] =  G_LLL[L1, L2, li**2+mi]  * R_jj[j1, j2]
+                    phi_iiG[:, :, iG] += R_ii * Y(li**2 + mi, kk[0], kk[1], kk[2]) * (-1j)**li
             if iG % 10000 == 0:
                 print '    Finished G vectors: ', iG, '(total: ', self.nG0, ')'
-        phi_pG *= 4 * pi
-        return phi_pG
+        phi_iiG *= 4 * pi
+        return phi_iiG
