@@ -18,12 +18,12 @@ class BaseDiagonalizer:
         if info != 0:
             raise RuntimeError('Failed to diagonalize: %d' % info)
         
+        nbands = self.bd.nbands
         if self.bd.rank == 0:
-            nbands = self.bd.nbands
             self.gd.comm.broadcast(H_MM[:nbands], 0)
             self.gd.comm.broadcast(eps_M[:nbands], 0)
-            self.bd.distribute(H_MM[:nbands], C_nM)
-            self.bd.distribute(eps_M[:nbands], eps_n)
+        self.bd.distribute(H_MM[:nbands], C_nM)
+        self.bd.distribute(eps_M[:nbands], eps_n)
     
     def _diagonalize(self, H_MM, S_MM, eps_M):
         raise NotImplementedError
