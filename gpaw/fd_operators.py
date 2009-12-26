@@ -165,15 +165,14 @@ def Gradient(gd, v, scale=1.0, n=1, dtype=float, allocate=True):
     offset_pc = []
     for i in range(3):
         if abs(d[i])>1e-11:
-            coef_p.extend(list(coefs / h[i] * scale))
-                
+            coef_p.extend(list(coefs * d[i] / h[i] * scale))
             offset = np.zeros((2*n, 3), int)
             offset[:,i]=offs
             offset_pc.extend(offset)
 
     if(n > len(fac)):
         raise RuntimeError('extend fac')
-        
+
     return Operator(coef_p, offset_pc, gd, dtype, allocate)
 
 # Expansion coefficients for finite difference Laplacian.  The numbers are

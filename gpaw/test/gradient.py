@@ -44,3 +44,18 @@ grady.apply(a, dady)
 dady = gd.collect(dady, broadcast=True)
 assert dady[0, 0, 0] == 0.5 and np.sum(dady[0, :, 0]) == 3.0
 
+# a GUC cell
+gd = GridDescriptor((1, 7, 1), ((1.0, 0.0, 0.0), (5.0, 5.0, 0.0), (0.0, 0.0, 1.0)), comm=domain_comm)
+dady = gd.zeros()
+grady = Gradient(gd, v=1)
+a = gd.zeros()
+a[0, :, 0] = np.arange(gd.beg_c[1], gd.end_c[1]) - 1
+grady.apply(a, dady)
+
+#   da
+#   -- = [-3.5  1.4   1.4   1.4   1.4   1.4  -3.5]
+#   dy
+
+dady = gd.collect(dady, broadcast=True)
+assert dady[0, 0, 0] == -3.5 and np.sum(dady[0, :, 0]) == 0.0
+
