@@ -115,24 +115,23 @@ class FiniteSys(CHI):
         P2_ap = {}
 
         print 'Calculating Coulomb Kernel:'
+        print 'Memory usage for Kcoul_SS:', Kcoul_SS.nbytes / 1024.**2, ' Mb'
         coulomb = CoulombNEW(gd, setups, spos_ac)
-        for n in range(self.nLCAO):
-            for m in range(self.nLCAO):
-                nt1_G = orb_MG[n] * orb_MG[m] 
-                for a, P_Mi in enumerate(P_aMi):
+
+        for i, (n, m) in enumerate(self.Sindex):
+            nt1_G = orb_MG[n].conj() * orb_MG[m]
+            for a, P_Mi in enumerate(P_aMi):
                     D_ii = np.outer(P_Mi[n].conj(), P_Mi[m])
                     P1_ap[a] = pack(D_ii, tolerance=1e30)
-                for p in range(self.nLCAO):
-                    for q in range(self.nLCAO):
-                        nt2_G = orb_MG[p] * orb_MG[q]
-                        # Coulomb Kernel
-                        for a, P_Mi in enumerate(P_aMi):
+            for j, (p, q) in enumerate(self.Sindex):
+                nt2_G = orb_MG[p].conj() * orb_MG[q]
+                for a, P_Mi in enumerate(P_aMi):
                             D_ii = np.outer(P_Mi[p].conj(), P_Mi[q])
                             P2_ap[a] = pack(D_ii, tolerance=1e30)
-                        Kcoul_SS[self.nLCAO*n+m, self.nLCAO*p+q] = coulomb.calculate(
-                                    nt1_G, nt2_G, P1_ap, P2_ap)
+                Kcoul_SS[i, j] = coulomb.calculate(nt1_G, nt2_G, P1_ap, P2_ap)
+            if i % 10 == 0:
+                print '    finished', i, 'cycle', ' (max: nS = ', self.nS, ')'
 
-            print '    finished', n, 'cycle', ' (max: nLCAO = ', self.nLCAO, ')'
         Kcoul_SS /=  Hartree
         Kxc_SS = self.get_Kxc(nt_G, D_asp, orb_MG, P_aMi, gd, setups)
 
@@ -214,7 +213,6 @@ class FiniteSys(CHI):
 
         N_gd = orb_MG.shape[1:4] # number of grid points
         r = np.zeros((N_gd))        
-        n_MM = np.zeros((self.nLCAO, self.nLCAO))
         n_S = np.zeros((self.nS, 3))
         tmp =  sqrt(4. * pi / 3.)    
         Li = np.array([3, 1, 2])
@@ -235,13 +233,11 @@ class FiniteSys(CHI):
                         else:
                             r[i,j,k] = k*self.h_c[2]
     
-            for mu in range(self.nLCAO):
-                for nu in range(self.nLCAO):  
-                    n_MM[mu,nu] = gd.integrate(orb_MG[mu] * orb_MG[nu] * r)
-                    for a, P_Mi in enumerate(P_aMi):
-                        P_I = np.outer(P_Mi[mu], P_Mi[nu]).ravel()
-                        n_MM[mu,nu] += np.sum(P_I * phi_I[a]) * tmp
-            n_S[:,ix] = np.reshape(n_MM, self.nS)
+            for i, (mu, nu) in enumerate(self.Sindex):
+                n_S[i, ix] = gd.integrate(orb_MG[mu] * orb_MG[nu] * r)
+                for a, P_Mi in enumerate(P_aMi):
+                    P_I = np.outer(P_Mi[mu], P_Mi[nu]).ravel()
+                    n_S[i, ix] += np.sum(P_I * phi_I[a]) * tmp
 
         return n_S
 
@@ -318,12 +314,16 @@ class FiniteSys(CHI):
         npair2 = 0
         kernel_ss = np.zeros((npair, npair))
 
+        C1_S = np.zeros((self.nS))
+        C2_S = np.zeros((self.nS))
         for i in range(Nocc):
             for j in range(Nocc, self.nband):
-                C1_S = np.outer(C_nM[i], C_nM[j]).ravel() # S: mu nu pair
+                for iS, (mu, nu) in enumerate(self.Sindex):
+                    C1_S[iS] = C_nM[i,mu] * C_nM[j,nu]
                 for k in range(Nocc):
                     for q in range(Nocc, self.nband):
-                        C2_S = np.outer(C_nM[k], C_nM[q]).ravel() # S: mu nu pair
+                        for iS, (mu, nu) in enumerate(self.Sindex):
+                            C2_S[iS] = C_nM[k,mu] * C_nM[q,nu]
                         kernel_ss[npair1, npair2] = np.inner(np.inner(C1_S, kernel_SS), C2_S)
                         npair2 += 1
                 npair1 += 1
@@ -350,8 +350,10 @@ class FiniteSys(CHI):
         mu_s = np.zeros((npair, 3))
         for i in range(Nocc):
             for j in range(Nocc, self.nband):
+                for iS, (mu, nu) in enumerate(self.Sindex):
+                    C1_S[iS] = C_nM[i,mu] * C_nM[j,nu]
                 for ix in range(3): # x,y,z three directions
-                    mu_s[ipair, ix] = np.inner(np.outer(C_nM[i], C_nM[j]).ravel(), n_S[:, ix])
+                    mu_s[ipair, ix] = np.inner(C1_S, n_S[:, ix])
                 ipair += 1
 
         fe_s = np.array([ sqrt(f_s[i] * e_s[i]) for i in range(npair)])

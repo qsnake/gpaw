@@ -57,6 +57,11 @@ class CHI:
             The combined mu, nu index for the matrix chi_SS', nS = nLCAO**2
 
         """
+
+        print
+        print 'Start response function calculation! '
+        print
+
         bzkpt_kG = calc.get_bz_k_points()
         self.nband = calc.get_number_of_bands()
         self.nkpt = bzkpt_kG.shape[0]
@@ -82,7 +87,7 @@ class CHI:
 
         spos_ac = calc.atoms.get_scaled_positions()
         nt_G = calc.density.nt_sG[0]
-
+        print 'Memory usage of nt_G:', nt_G.nbytes / 1024**2, ' Mb'
         # Unit conversion
         e_kn = e_kn / Hartree
         wcut = wcut / Hartree
@@ -95,15 +100,18 @@ class CHI:
         self.Nw = int((wmax - wmin) / self.dw) + 1
         self.NwS = int(wcut/self.dw) + 1
         self.nLCAO = C_knM.shape[2]
-        self.nS = self.nLCAO **2
         self.nG = calc.get_number_of_grid_points()
         self.nG0 = self.nG[0] * self.nG[1] * self.nG[2]
         self.h_c = calc.wfs.gd.h_c
 
         # get LCAO orbitals 
         # sum_I Phi(r-R_I) 
+        print 'Get LCAO orbitals'
         orb_MG = self.get_orbitals(calc, spos_ac)
+        print 'Memory usage of orb_MG:', orb_MG.nbytes / (1024.**2), ' Mb'
         P_aMi  = self.get_P_aMi(calc)
+        self.Sindex = self.get_reduced_pair_orbital_index(orb_MG, calc.wfs.gd)
+        self.nS = len(self.Sindex)
 
         print 
         print 'Parameters used:'
@@ -116,7 +124,8 @@ class CHI:
         print 'Number of frequency points:', self.Nw
         print 'Number of frequency points for spectral function:', self.NwS
         print 'Number of LCAO orbitals:', self.nLCAO
-        print 'Number of pair orbitals:', self.nS
+        print 'Number of pair orbitals:', self.nLCAO**2
+        print 'Number of reduced pair orbitals:', self.nS
         print 'Number of Grid points / G-vectors, and in total:', self.nG, self.nG0
         print 'Grid spacing (a.u.):', self.h_c
         print 
@@ -174,6 +183,7 @@ class CHI:
             # Get chi0_SS' by hilbert transform
             print 'Performing hilbert transform'
             chi0_wSS = self.hilbert_transform(specfunc_wSS, wmin, wmax, self.dw, eta)
+            print 'Memory usage of chi0_wSS:', chi0_wSS.nbytes / 1024.**2, ' Mb'
             return e_kn, f_kn, C_knM, orb_MG, P_aMi, spos_ac, nt_G, chi0_wSS 
         else:
             return e_kn, f_kn, C_knM, orb_MG, P_aMi, spos_ac, nt_G, bzkpt_kG
@@ -218,16 +228,18 @@ class CHI:
         else: # finite system or Gamma-point calculation
             kq[0] = np.zeros(1)
 
+        tmp_S = np.zeros(self.nS, dtype=C_knM.dtype)
         for k in range(self.nkpt):
             for n in range(self.nband):
                 for m in range(self.nband):
                     focc = f_kn[k,n] - f_kn[kq[k],m]
                     if focc > 1e-5:
                         # pair C
-                        tmp = (np.outer(C_knM[k,n,:].conj(), C_knM[kq[k],m,:])).ravel()
+                        for iS, (mu, nu) in enumerate(self.Sindex):
+                            tmp_S[iS] = C_knM[k,n,mu].conj() * C_knM[kq[k],m,nu]
                         # transpose and conjugate, C*C*C*C
-                        tmp = np.outer(tmp, tmp.conj()) 
-                        chi0_SS += tmp * focc / (omega + e_kn[k,n] - e_kn[kq[k],m] + 1j*eta)
+                        tmp_SS = np.outer(tmp_S, tmp_S.conj()) 
+                        chi0_SS += tmp_SS * focc / (omega + e_kn[k,n] - e_kn[kq[k],m] + 1j*eta)
 
         return chi0_SS 
 
@@ -263,6 +275,7 @@ class CHI:
         else: # finite system or Gamma-point calculation
             kq[0] = np.zeros(1)
 
+        tmp_S = np.zeros(self.nS, dtype=C_knM.dtype)
         for k in range(self.nkpt):
             for n in range(self.nband):
                 for m in range(self.nband):
@@ -270,14 +283,15 @@ class CHI:
                     if focc > 1e-5:
                         w0 = e_kn[kq[k],m] - e_kn[k,n]
                         # pair C
-                        tmp = (np.outer(C_knM[k,n,:].conj(), C_knM[kq[k],m,:])).ravel()
+                        for iS, (mu, nu) in enumerate(self.Sindex):
+                            tmp_S[iS] = C_knM[k,n,mu].conj() * C_knM[kq[k],m,nu]
                         # C C C C
-                        tmp = focc * np.outer(tmp, tmp.conj()) # tmp[nS,nS]
+                        tmp_SS = focc * np.outer(tmp_S, tmp_S.conj()) # tmp[nS,nS]
                         # calculate delta function
                         deltaw = self.delta_function(w0, dw,self.NwS, sigma)
                         for wi in range(self.NwS):
                             if deltaw[wi] > 1e-5:
-                                specfunc_wSS[wi] += tmp * deltaw[wi]
+                                specfunc_wSS[wi] += tmp_SS * deltaw[wi]
         return specfunc_wSS *dw 
 
 
@@ -433,19 +447,15 @@ class CHI:
             for ii in range(ni*ni):
                 J_II[a][:, ii] = unpack2(J_pI[:, ii].copy()).ravel()
 
-        for n in range(self.nLCAO):
-            for m in range(self.nLCAO):
-                nt1_G = orb_MG[n].conj() * orb_MG[m]
-                for p in range(self.nLCAO):
-                    for q in range(self.nLCAO):
-                        nt2_G = orb_MG[p].conj() * orb_MG[q]
-                        Kxc_SS[self.nLCAO*n+m, self.nLCAO*p+q] = gd.integrate(
-                           nt1_G.conj()*fxc_G*nt2_G)
-                        for a, P_Mi in enumerate(P_aMi):
-                            P1_I = np.outer(P_Mi[n].conj(), P_Mi[m]).ravel()
-                            P2_I = np.outer(P_Mi[p].conj(), P_Mi[q]).ravel()
-                            Kxc_SS[self.nLCAO*n+m, self.nLCAO*p+q] += (
-                                    np.inner(np.inner(P1_I.conj(), J_II[a]), P2_I) )
+        for i, (n, m) in enumerate(self.Sindex):
+            nt1_G = orb_MG[n].conj() * orb_MG[m]
+            for j, (p, q) in enumerate(self.Sindex):
+                nt2_G = orb_MG[p].conj() * orb_MG[q]
+                Kxc_SS[i, j] = gd.integrate(nt1_G.conj() * fxc_G * nt2_G)
+                for a, P_Mi in enumerate(P_aMi):
+                    P1_I = np.outer(P_Mi[n].conj(), P_Mi[m]).ravel()
+                    P2_I = np.outer(P_Mi[p].conj(), P_Mi[q]).ravel()
+                    Kxc_SS[i, j] += np.inner(np.inner(P1_I.conj(), J_II[a]), P2_I)
 
         return Kxc_SS
 
@@ -560,18 +570,30 @@ class CHI:
         
         return P_aMi
 
-    def calculate_orbital_overlap(self, orb_MG, gd):
-        """Calculate the overlap between LCAO orbitals.
+    def get_reduced_pair_orbital_index(self, orb_MG, gd, threshold=1e-5):
+        """Reduce the dimension of pair orbitals and get the index for new pair orbitals.
 
         The overlap matrix is calculated by::
 
             O  = < phi   phi  |  phi   phi  >
              SS       mu   nu       mu    nu
+
+        while phi_mu and phi_nu are normalized before calculating the overlap matrix.
         """
         
-        o_MM = np.zeros((self.nLCAO, self.nLCAO))
+        print 'Calculate reduced pair-orbital index'
+        Sindex = [] # list of pair-orbital index
         for mu in range(self.nLCAO):
+            orb1_g = orb_MG[mu] * orb_MG[mu].conj()
+#            A1 = gd.integrate(orb1_g)
+#            orb1_g /= A1
             for nu in range(self.nLCAO):
-                o_MM[mu, nu] = gd.integrate(orb_MG[mu] * orb_MG[mu].conj() * orb_MG[nu] * orb_MG[nu].conj())
-        
-        return o_MM        
+                orb2_g = orb_MG[nu] * orb_MG[nu].conj()
+#                A2 = gd.integrate(orb2_g)
+#                orb2_g /= A2
+                overlap = gd.integrate(orb1_g * orb2_g)
+                if overlap > threshold:
+                    Sindex.append((mu, nu))
+            print '   finished', mu, 'cycle, total: ', self.nLCAO
+
+        return Sindex      

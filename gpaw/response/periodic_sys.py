@@ -2,7 +2,7 @@ from math import pi, sqrt
 from os.path import isfile
 
 import numpy as np
-from scipy.special import sph_jn
+#from scipy.special import sph_jn
 from ase.units import Hartree, Bohr
 from ase.data import chemical_symbols
 
@@ -209,9 +209,7 @@ class PeriodicSys(CHI):
             Kcoul_G[i] = 1. / ( np.sqrt(np.inner(xx, xx)) )
         Kcoul_G *= 4. * pi 
         
-
         Kcoul_SS = gemmdot( (n_SG.conj() * Kcoul_G), (n_SG.T).copy(), beta = 0. )
-
         Kxc_SS = self.get_Kxc(nt_G, D_asp, orb_MG, P_aMi, gd, setups) * self.vol
 
         return Kcoul_SS, Kcoul_SS + Kxc_SS
@@ -267,6 +265,15 @@ class PeriodicSys(CHI):
         # calc.wfs.gd.integrate(tmp) should == n_SG[nLCAO*mu+nu, 0]
 
         n_SG = n_SG * self.vol / self.nG0
+                               
+        if self.OpticalLimit:
+            print 'Optical limit calculation'
+            qq = np.array([np.inner(self.q, self.bcell[:,i]) for i in range(3)])
+      
+            for mu in range(self.nLCAO):
+                for nu in range(self.nLCAO):
+                    n_SG[self.nLCAO*mu + nu, 0] = (-1j) * np.dot(qq, 
+                         gd.calculate_dipole_moment( orb_MG[mu].conj() * orb_MG[nu]))
 
         # The augmentation part
         phi_aiiG = {}
@@ -278,19 +285,9 @@ class PeriodicSys(CHI):
                         phi_aiiG[Z] = self.two_phi_planewave_integrals(Z, Gvec)
                     assert phi_aiiG[Z] is not None
                     tmp_ii = np.outer(P_aMi[a][mu].conj(), P_aMi[a][nu])
-                    # the off-diagonal element multiplied by two by packing 
-                    n_SG[self.nLCAO*mu + nu] += np.array(
-                     [np.dot(tmp_ii.ravel(), phi_aiiG[Z][:,:,iG].ravel()) for iG in range(self.nG0)])
-                
-        if self.OpticalLimit:
-            print 'Optical limit calculation'
-            qq = np.array([np.inner(self.q, self.bcell[:,i]) for i in range(3)])
-      
-            for mu in range(self.nLCAO):
-                for nu in range(self.nLCAO):
-                    n_SG[self.nLCAO*mu + nu, 0] = np.dot(qq, 
-                         gd.calculate_dipole_moment( orb_MG[mu].conj() * orb_MG[nu]))
-
+                    for iG in range(self.nG0):
+                        n_SG[self.nLCAO*mu + nu, iG] += (tmp_ii * phi_aiiG[Z][:,:,iG]).sum()
+ 
         return n_SG
 
 
@@ -419,7 +416,7 @@ class PeriodicSys(CHI):
                     lmax = l
         ni = len(L_i)
         lmax = 2 * lmax + 1
-
+        print 'L_i, j_i', L_i, j_i
         # Initialize        
         R_jj = np.zeros((s.nj, s.nj))
         R_ii = np.zeros((ni, ni))
@@ -439,12 +436,12 @@ class PeriodicSys(CHI):
             
             # Calculating spherical bessel function
             for ri in range(ng):
-                j_lg[:,ri] = sph_jn(lmax - 1, k*r_g[ri])[0]
+                j_lg[:,ri] = self.sph_jn(lmax - 1,  k*r_g[ri])
 
             for li in range(lmax):
                 # Radial part 
                 for j1 in range(s.nj):
-                    for j2 in range(j1, s.nj): 
+                    for j2 in range(s.nj): 
                         R_jj[j1, j2] = np.dot(r2dr_g, tmp_jjg[j1, j2] * j_lg[li])
 
                 for mi in range(2 * li + 1):
@@ -456,8 +453,57 @@ class PeriodicSys(CHI):
                             L2 = L_i[i2]
                             j2 = j_i[i2]
                             R_ii[i1, i2] =  G_LLL[L1, L2, li**2+mi]  * R_jj[j1, j2]
+
                     phi_iiG[:, :, iG] += R_ii * Y(li**2 + mi, kk[0], kk[1], kk[2]) * (-1j)**li
             if iG % 10000 == 0:
                 print '    Finished G vectors: ', iG, '(total: ', self.nG0, ')'
         phi_iiG *= 4 * pi
+
+        if self.OpticalLimit:
+            # Change the G = 0 component (not correct yet)
+            # Can call Delta_pL 
+            li = 1
+            index = np.array([1,2,0]) # y, z, x
+            qq = np.array([np.inner(self.q, self.bcell[:,i]) for i in range(3)])
+            R_ii3 = np.zeros((ni, ni, 3))
+            for j1 in range(s.nj):
+                for j2 in range(s.nj):
+                    R_jj[j1, j2] = np.dot(r2dr_g, tmp_jjg[j1, j2])
+            for mi in range(2 * li + 1):
+                for i1 in range(ni):
+                    for i2 in range(ni):
+                        R_ii3[i1, i2, index[mi-1]] = G_LLL[L_i[i1], L_i[i2], li**2+mi] * R_jj[j_i[i1],j_i[i2]]
+            phi_iiG[:, :, 0] = np.dot(R_ii3, qq) * (-1j) 
+        
         return phi_iiG
+
+    def sph_jn(self, n, z):
+        """Calcuate spherical Bessel function.
+   
+        The spehrical Bessel function for the first three orders are::
+
+                    sinz               3       sinz   3cosz
+            j (z) = ---- ,   j (z) = (--- -1 ) ---- - -----
+             0       z        2       z^2       z      z^2  
+                            
+                    sinz   cosz           15     6  sinz    15      cosz
+            j (z) = ---- - ----, j (z) = (--- - ---)----  -(--- - 1)----
+             1       z^2    z     3       z^3    z   z      z^2      z  
+        """
+
+        if n > 3:
+            raise ValueError(
+         'Spherical bessel function with n > 3 not implemented yet!')
+        sph_n = np.zeros(4)
+        if z == 0.:
+            sph_n[0] = 1.
+            sph_n[1:] = 0.
+        else:
+            tmp1 = np.sin(z) / z
+            tmp2 = np.cos(z) / z
+            sph_n[0] = tmp1
+            sph_n[1] = tmp1 / z - tmp2
+            sph_n[2] = (3./z**2 -1.) * tmp1 - 3./z * tmp2
+            sph_n[3] = (15./z**3 - 6./z) * tmp1 - (15./z**2 -1.) * tmp2
+
+        return sph_n[0:n+1]
