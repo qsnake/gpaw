@@ -57,5 +57,5 @@ grady.apply(a, dady)
 #   dy
 
 dady = gd.collect(dady, broadcast=True)
-assert dady[0, 0, 0] == -3.5 and np.sum(dady[0, :, 0]) == 0.0
+assert dady[0, 0, 0] == -3.5 and abs(np.sum(dady[0, :, 0])) < 1E-12
 
