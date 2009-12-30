@@ -20,6 +20,14 @@ def tr(filename):
     fd.close()
     return mat
 
+def write(filename, name, data, dimension, dtype=float):
+    import gpaw.io.netcdf as io
+    if world.rank == 0:
+        w = io.Writer(filename)
+        w.add(name, dimension, dtype=dtype)
+        w.fill(data)
+        w.close()
+        
 class PathInfo:
     def __init__(self, type, nlead):
         self.type = type
