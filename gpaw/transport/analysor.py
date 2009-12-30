@@ -1,7 +1,7 @@
 from gpaw.transport.selfenergy import LeadSelfEnergy, CellSelfEnergy
 from gpaw.transport.tools import get_matrix_index, aa1d, aa2d, sum_by_unit, \
                                 dot, fermidistribution, eig_states_norm, \
-                                find, get_atom_indices, dagger
+                                find, get_atom_indices, dagger, write
 from gpaw.mpi import world
 from gpaw import GPAW, Mixer, MixerDif, PoissonSolver
 from ase.units import Hartree, Bohr
@@ -29,14 +29,11 @@ class Transmission_Info:
         self.ion_step, self.bias_step = ion_step, bias_step
     
     def initialize_data(self, bias, gate, ep, lead_pairs,
-                     tc, dos, dv, current, lead_fermis, time_cost, f, charge):
+                                 current, lead_fermis, time_cost, f, charge):
         self.bias = bias
         self.gate = gate
         self.ep = ep
         self.lead_pairs = lead_pairs
-        self.tc = tc
-        self.dos = dos
-        self.dv = dv
         self.current = current
         self.lead_fermis = lead_fermis
         self.time_cost = time_cost
@@ -61,12 +58,11 @@ class Transmission_Info:
         self.tp_eig_vc = tp_eig_vc
         self.nk_on_energy = nk_on_energy
 
-    def initialize_data3(self, lead_s00, lead_s01, lead_h00, lead_h01,
-                                                      s00, h00, lead_fermi):
-        self.lead_s00 = lead_s00
-        self.lead_s01 = lead_s01
-        self.lead_h00 = lead_h00
-        self.lead_h01 = lead_h01
+    def initialize_data3(self, s00, h00, lead_fermi):
+        #self.lead_s00 = lead_s00
+        #self.lead_s01 = lead_s01
+        #self.lead_h00 = lead_h00
+        #self.lead_h01 = lead_h01
         self.s00 = s00
         self.h00 = h00
         self.lead_fermi = lead_fermi
@@ -87,18 +83,7 @@ class Electron_Step_Info:
         self.ion_step, self.bias_step, self.ele_step = ion_step, \
                                                          bias_step, ele_step
         
-    def initialize_data(self, bias, gate, dd, df, nt, vt, rho, vHt,
-                                                        time_cost, mem_cost):
-        self.bias = bias
-        self.gate = gate
-        self.dd = dd
-        self.df = df
-        self.nt = nt
-        self.vt = vt
-        self.rho = rho
-        self.vHt = vHt
-        #self.tc = tc
-        #self.dos = dos
+    def initialize_data(self, time_cost, mem_cost):
         self.time_cost = time_cost
         self.mem_cost = mem_cost
     
@@ -118,7 +103,19 @@ class Transport_Analysor:
         self.reset = False
         self.scattering_states_initialized = False
         self.initialize()
-
+        # --------------------------------------------------------------------
+        #  analysis array name     &    size     &      units     & dtype
+        # --------------------------------------------------------------------
+        #  aX_X_X_nt  (X: int)          ns, nz                         float
+        #         vt                    ns, nz                         float
+        #         df                ns, npk, exnb               float || complex
+        #         dd                ns, npk, exnb               float || complex
+        #         vHt                  nz * 2                       float
+        #         rho                  nz * 2                       float       
+        #         dos               ns, npk, ne                     float
+        #         tc                ns, npk, ne                     float
+        #     
+  
     def set_plot_option(self):
         tp = self.tp
         if tp.plot_option == None:
@@ -203,9 +200,17 @@ class Transport_Analysor:
         bi['ll_index'] = self.tp.hsd.S[0].ll_index
         bi['ex_ll_index'] = self.tp.hsd.S[0].ex_ll_index
         
+        if self.tp.analysis_mode == -2:
+            lead_hs = self.collect_lead_hs()
+        else:
+            lead_hs = None
+            
         atoms = self.tp.atoms.copy()
         fd = file('analysis_overhead', 'wb')
         pickle.dump((atoms, basis_information, contour_parameters), fd, 2)
+        fd.close()
+        fd = file('lead_hs', 'wb')
+        pickle.dump(lead_hs, fd, 2)
         fd.close()
       
     def reset_central_scattering_states(self):
@@ -851,17 +856,49 @@ class Transport_Analysor:
                                           m2]) ** 2 * np.dot(w2, w1.T.conj())
         return np.array(t_lead_all), np.array(t_all)
     
+    def set_analysis_data_form(self):
+        tp = self.tp
+        ns, npk = tp.nspins, tp.npk
+        nx, ny, nz = tp.gd.N_c
+        exnb = tp.wfs.setups.nao
+        nb = tp.nbmol
+        ne = len(self.energies)
+        na = len(tp.atoms)
+        dtype = tp.wfs.dtype
+        self.analysis_data_form = {}
+        adf = self.analysis_data_form
+        adf['nt'] = ((ns, nz), float)
+        adf['vt'] = ((ns, nz), float)
+        adf['df'] = ((ns, npk, exnb), dtype)
+        adf['dd'] = ((ns, npk, exnb), dtype)
+        adf['vHt'] = ((nz * 2,), float)
+        adf['rho'] = ((nz * 2,), float)
+        adf['dos'] = ((ns, npk, ne), float)
+        adf['tc'] = ((ns, npk, ne), float)
+        adf['force'] = ((na, 3), float)
+        adf['charge'] = ((ns, nb), float)
+        adf['nt_x'] = ((ns, nx, nz), float)
+        adf['nt_y'] = ((ns, ny, nz), float)
+        adf['vt_x'] = ((ns, nx, nz), float)
+        adf['vt_y'] = ((ns, ny, nz), float)
+        adf['current'] = ((1,), float)
+ 
+
     def save_ele_step(self):
         tp = self.tp
         step = Electron_Step_Info(self.n_ion_step, self.n_bias_step,
-                                                            self.n_ele_step)
+                                                           self.n_ele_step)
         dtype = tp.wfs.dtype
         nbmol = tp.wfs.setups.nao
         dd = np.empty([tp.my_nspins, tp.my_npk, nbmol], dtype)
         df = np.empty([tp.my_nspins, tp.my_npk, nbmol], dtype)
         
-        total_dd = np.empty([tp.nspins, tp.npk, nbmol], dtype)
-        total_df = np.empty([tp.nspins, tp.npk, nbmol], dtype)
+        if world.rank == 0:
+            total_dd = np.empty([tp.nspins, tp.npk, nbmol], dtype)
+            total_df = np.empty([tp.nspins, tp.npk, nbmol], dtype)
+        else:
+            total_dd = None
+            total_df = None
         
         if not self.matrix_foot_print:
             fd = file('matrix_sample', 'wb')
@@ -873,9 +910,10 @@ class Transport_Analysor:
             for k in range(tp.my_npk):
                 dd[s, k] = np.diag(tp.hsd.D[s][k].recover(True))
                 df[s, k] = np.diag(tp.hsd.H[s][k].recover(True))
+       
         
-        tp.wfs.kpt_comm.all_gather(dd, total_dd)
-        tp.wfs.kpt_comm.all_gather(df, total_df)
+        tp.wfs.kpt_comm.gather(dd, 0, total_dd)
+        tp.wfs.kpt_comm.gather(df, 0, total_df)
 
         dim = tp.gd.N_c
         assert tp.d == 2
@@ -883,62 +921,62 @@ class Transport_Analysor:
         calc = tp.extended_calc
         gd = calc.wfs.gd
         finegd = calc.hamiltonian.finegd
-  
-        nt_sG = tp.gd.collect(tp.density.nt_sG, True)
-        vt_sG = gd.collect(calc.hamiltonian.vt_sG, True)
 
-        dim1, dim2 = nt_sG.shape[1:3]
-        nt = aa1d(nt_sG[0]) 
-        vt = aa1d(vt_sG[0]) * Hartree
-        #nt = nt_sG[0, dim1 / 2, dim2 / 2]
-        #vt = vt_sG[0, dim1 / 2, dim2 / 2] * Hartree
-        if gd.comm.rank == 0:
-            nt1 = aa1d(tp.surround.sides['-'].boundary_nt_sG[0])
-            nt2 = aa1d(tp.surround.sides['+'].boundary_nt_sG[0])
-        else:
-            nt1 = np.zeros(tp.surround.sides['-'].N_c[2])
-            nt2 = np.zeros(tp.surround.sides['+'].N_c[2])
-        gd.comm.broadcast(nt1, 0)
-        gd.comm.broadcast(nt2, 0)        
+        nt_sG = tp.gd.collect(tp.density.nt_sG)
+        vt_sG = gd.collect(calc.hamiltonian.vt_sG)
         
-        nt = np.append(nt1, nt)
-        nt = np.append(nt, nt2)
-
+        if world.rank == 0:
+            nt = []
+            vt = []
+            for s in range(tp.nspins): 
+                nts = aa1d(nt_sG[s]) 
+                vts = aa1d(vt_sG[s]) * Hartree
+                nt1 = aa1d(tp.surround.sides['-'].boundary_nt_sG[s])
+                nt2 = aa1d(tp.surround.sides['+'].boundary_nt_sG[s])
+                nts = np.append(nt1, nts)
+                nts = np.append(nts, nt2)
+                nt.append(nts)
+                vt.append(vts)
+        else:
+            nt = None
+            vt = None
+        nt = np.array(nt)
+        vt = np.array(vt)
+         
         gd = tp.finegd
-        rhot_g = gd.empty(tp.nspins, global_array=True)
-        rhot_g = gd.collect(tp.density.rhot_g, True)
-        #dim1, dim2 = rhot_g.shape[:2]
-        #rho = rhot_g[dim1 / 2, dim2 / 2]
-        if gd.comm.rank == 0:
+        rhot_g = gd.collect(tp.density.rhot_g)
+
+        if world.rank == 0:
             rho1 = tp.surround.sides['-'].boundary_rhot_g_line
             rho2 = tp.surround.sides['+'].boundary_rhot_g_line
+            rho = aa1d(rhot_g)
+            rho = np.append(rho1, rho)
+            rho = np.append(rho, rho2)
         else:
-            rho1 = np.zeros(tp.surround.sides['-'].N_c[2] * 2)
-            rho2 = np.zeros(tp.surround.sides['+'].N_c[2] * 2)
-        gd.comm.broadcast(rho1, 0)
-        gd.comm.broadcast(rho2, 0)            
+            rho = None
             
-        rho = aa1d(rhot_g)
-        rho = np.append(rho1, rho)
-        rho = np.append(rho, rho2)
-        
         gd = finegd
-        vHt_g = gd.collect(calc.hamiltonian.vHt_g, True)
-        vHt = aa1d(vHt_g) * Hartree
-        #vHt = vHt_g[dim1 / 2, dim2 / 2] * Hartree
-        
-        #D_asp = copy.deepcopy(tp.density.D_asp)
-        #dH_asp = copy.deepcopy(calc.hamiltonian.dH_asp)
-        
-        #tc_array, dos_array = self.collect_transmission_and_dos()
+        vHt_g = gd.collect(calc.hamiltonian.vHt_g)
+        if world.rank == 0:
+            vHt = aa1d(vHt_g) * Hartree
+        else:
+            vHt = None
+          
         mem_cost = maxrss()
         if (not self.tp.non_sc) and (self.tp.analysis_mode >= 0) :  
             time_cost = self.ele_step_time_collect()
         else:
             time_cost = None
-        step.initialize_data(tp.bias, tp.gate, total_dd, total_df, nt, vt,
-                             rho, vHt, time_cost, mem_cost)
+
+        prefix =  'Ae' + '_' + str(self.n_ion_step) + '_' \
+                            + str(self.n_bias_step) + '_' \
+                            + str(self.n_ele_step) + '_'
+        for name in ['nt', 'vt', 'df', 'dd', 'vHt', 'rho', 'dos', 'tc']:
+            dimension, dtype = self.analysis_data_form[name]
+            data_name = prefix + name
+            write('analysis_data.nc', data_name, eval(name), dimension, dtype)
         
+        step.initialize_data(time_cost, mem_cost)
         self.ele_steps.append(step)
         self.n_ele_step += 1
       
@@ -954,24 +992,34 @@ class Transport_Analysor:
         else:
             tc_array = None
             dos_array = None
-        dv = self.abstract_d_and_v()
-        
+        nt, vt, ntx, vtx, nty, vty = self.abstract_d_and_v()
+                    
         if not tp.non_sc and 'current' in tp.analysis_data_list:
             current = self.calculate_current2(0)
         else:
-            current = 0
+            current = None
         if tp.non_sc or self.tp.analysis_mode < 0:
-            f = None
+            force = None
         else:       
-            f = tp.calculate_force()
-        tp.F_av = None
+            force = tp.calculate_force()
+            tp.F_av = None
         
         charge = self.collect_charge()
         
+        
         step.initialize_data(tp.bias, tp.gate, self.energies, self.lead_pairs,
-                             tc_array, dos_array, dv, current, tp.lead_fermi,
-                             time_cost, f, charge)
- 
+                              current, tp.lead_fermi, time_cost, force, charge)
+
+        prefix =  'Ab' + '_' + str(self.n_ion_step) + '_' \
+                            + str(self.n_bias_step) + '_' \
+                            
+        for name in ['nt', 'vt', 'ntx', 'vtx', 'nty', 'vty',
+                            'dos', 'tc', 'current']:
+            dimension, dtype = self.analysis_data_form[name]
+            data_name = prefix + name
+            write('analysis_data.nc', data_name, eval(name), dimension, dtype)
+            
+            
         if tp.analysis_mode == 2:  
             self.reset_central_scattering_states()
             eig_tc_lead, eig_vc_lead = \
@@ -989,10 +1037,9 @@ class Transport_Analysor:
                                  dos_g, project_tc, left_tc, left_vc, lead_k,
                                  lead_vk, tp_eig_w, tp_eig_v, tp_eig_vc)
         elif tp.analysis_mode == -2:
-            lead_s00, lead_s01, lead_h00, lead_h01 = self.collect_lead_hs()
+            #lead_s00, lead_s01, lead_h00, lead_h01 = self.collect_lead_hs()
             s00, h00 = self.collect_scat_hs()
-            step.initialize_data3(lead_s00, lead_s01, lead_h00,
-                                            lead_h01, s00, h00, tp.lead_fermi)
+            step.initialize_data3(s00, h00, tp.lead_fermi)
             
         step.ele_steps = self.ele_steps
         del self.ele_steps
@@ -1080,7 +1127,10 @@ class Transport_Analysor:
         tp = self.tp
         ns, npk = tp.nspins, tp.npk
         nbmol = tp.nbmol + np.sum(tp.nblead)
-        charge_array = np.zeros([ns, npk, nbmol])
+        if world.rank == 0:
+            charge_array = np.zeros([ns, npk, nbmol])
+        else:
+            charge_array = None
         ns, npk = tp.my_nspins, tp.my_npk
         local_charge_array = np.zeros([ns, npk, nbmol])
         for s in range(ns):
@@ -1088,7 +1138,9 @@ class Transport_Analysor:
                     local_charge_array[s, q] = \
                                      self.calculate_charge_distribution(s, q)
         kpt_comm = tp.wfs.kpt_comm
-        kpt_comm.all_gather(local_charge_array, charge_array)
+        kpt_comm.gather(local_charge_array, 0, charge_array)
+        if world.rank == 0:
+            charge_array = np.sum(charge_array, axis=1)
         return charge_array
 
     def collect_realspace_dos(self):
@@ -1276,9 +1328,13 @@ class Transport_Analysor:
         nlp = len(self.lead_pairs)
         ne = len(energies)
         ns, npk = tp.nspins, tp.npk
-
-        tc_array = np.empty([ns, npk, nlp, ne], float)
-        dos_array = np.empty([ns, npk, ne], float)
+        
+        if world.rank == 0:
+            tc_array = np.empty([ns, npk, nlp, ne], float)
+            dos_array = np.empty([ns, npk, ne], float)
+        else:
+            tc_array = None
+            dos_array = None
 
         ns, npk = tp.my_nspins, tp.my_npk
         local_tc_array = np.empty([ns, npk, nlp, ne], float)
@@ -1290,9 +1346,8 @@ class Transport_Analysor:
                           self.calculate_transmission_and_dos(s, q, energies)
 
         kpt_comm = tp.wfs.kpt_comm
-        kpt_comm.all_gather(local_tc_array, tc_array)
-        kpt_comm.all_gather(local_dos_array, dos_array)            
-
+        kpt_comm.gather(local_tc_array, 0, tc_array)
+        kpt_comm.gather(local_dos_array, 0, dos_array)            
         return tc_array, dos_array
 
     def save_ion_step(self):
@@ -1322,24 +1377,44 @@ class Transport_Analysor:
         fd.close()
    
     def abstract_d_and_v(self):
-        data = {}
-        
-        if not self.tp.non_sc:
-            calc = self.tp.extended_calc
+        tp = self.tp
+        if not tp.non_sc:
+            calc = tp.extended_calc
         else:
-            calc = self.tp
-            
-        gd = calc.wfs.gd
-        for s in range(self.tp.nspins):
-            nt = self.tp.gd.collect(self.tp.density.nt_sG[s], True)
-            vt = gd.collect(calc.hamiltonian.vt_sG[s], True)
-            for name, d in [('x', 0), ('y', 1), ('z', 2)]:
-                data['s' + str(s) + 'nt_1d_' + name] = aa1d(nt, d)
-                data['s' + str(s) + 'nt_2d_' + name] = aa2d(nt, d)            
-                data['s' + str(s) + 'vt_1d_' + name] = aa1d(vt, d)
-                data['s' + str(s) + 'vt_2d_' + name] = aa2d(vt, d)
-        return  data
-   
+            calc = tp
+        gd = calc.wfs.gd        
+
+        nt_sG = tp.gd.collect(tp.density.nt_sG[s])
+        vt_sG = gd.collect(calc.hamiltonian.vt_sG[s])
+
+        nt = []
+        vt = []
+        ntx = []
+        nty = []
+        vtx = []
+        vty = []
+        if world.rank == 0:        
+            for s in range(tp.nspins):
+                nts = aa1d(nt_sG[s])
+                vts = aa1d(vt_sG[s])
+                ntsx = aa2d(nt_sG[s], 0)            
+                vtsx = aa2d(vt_sG[s], 0)
+                ntsy = aa2d(nt_sG[s], 1)            
+                vtsy = aa2d(vt_sG[s], 1)                
+                nt.append(nts)
+                vt.append(vts)
+                ntx.append(ntsx)
+                vtx.append(vtsx)
+                nty.append(ntsy)
+                vty.append(vtsy)
+            nt = np.array(nt)
+            vt = np.array(vt)
+            ntx = np.array(ntx)
+            vtx = np.array(vtx)
+            nty = np.array(nty)
+            vty = np.array(vty)
+        return nt, vt, ntx, vtx, nty, vty
+    
     def calculate_current(self):
         # temperary, because different pk point may have different ep,
         # and also for multi-terminal, energies is wrong
@@ -1379,15 +1454,18 @@ class Transport_Analysor:
         # temperary, because different lead_pairs have different energy points
         tp = self.tp
         tc_array, dos_array = self.collect_transmission_and_dos(epts)
-        tc_all = np.sum(tc_array, axis=1) / tp.npk
-        #attention here, pk weight should be changed
-        fd = fermidistribution
-        intctrl = tp.intctrl
-        kt = intctrl.kt
-        lead_ef1 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][0]]
-        lead_ef2 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][1]]
-        fermi_factor = fd(epts - lead_ef1, kt) - fd(epts - lead_ef2, kt)
-        current = tc_all[s, lead_pair_index] * fermi_factor
+        if world.rank == 0:
+            tc_all = np.sum(tc_array, axis=1) / tp.npk
+            #attention here, pk weight should be changed
+            fd = fermidistribution
+            intctrl = tp.intctrl
+            kt = intctrl.kt
+            lead_ef1 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][0]]
+            lead_ef2 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][1]]
+            fermi_factor = fd(epts - lead_ef1, kt) - fd(epts - lead_ef2, kt)
+            current = tc_all[s, lead_pair_index] * fermi_factor
+        else:
+            current = None
         return current
     
     def calculate_current2(self, lead_pair_index=0, s=0):
@@ -1407,10 +1485,13 @@ class Transport_Analysor:
         #epts = self.energies
         #interval = self.energies[1] - self.energies[0]
         cures = self.calculate_current_of_energy(epts, lead_pair_index, s)
-        if ne != 0:
-            current =  simps(cures, None, interval)
+        if world.rank == 0:
+            if ne != 0:
+                current =  simps(cures, None, interval)
+            else:
+                current = 0
         else:
-            current = 0
+            current = None
         return current
     
 
