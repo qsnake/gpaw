@@ -11,13 +11,15 @@ from gpaw.spherical_harmonics import Y
 from gpaw.setup_data import SetupData
 from gpaw.setup import Setup
 from gpaw.xc_functional import XCFunctional
+from gpaw.utilities import pack, unpack
 from gpaw.utilities.blas import gemmdot
-from gpaw.utilities import pack
 from gpaw.response import CHI
+
 
 class PeriodicSys(CHI):
     def __init__(self):
         CHI.__init__(self)
+
 
     def get_optical_spectrum(self, calc, q, wcut, wmin, wmax, dw, eta=0.2, sigma=2*1e-5, OpticalLimit=True):
         """Calculate Optical absorption spectrum.
@@ -255,11 +257,8 @@ class PeriodicSys(CHI):
         n_SG = np.zeros((self.nS, self.nG0), dtype=complex)
 
         # The soft part
-        for mu in range(self.nLCAO):
-            for nu in range(self.nLCAO):
-                # The last dimension runs fastest when using ravel()
-                n_SG[self.nLCAO*mu + nu] = (np.fft.fftn(orb_MG[mu].conj() * orb_MG[nu])).ravel()
-
+        for iS, (mu, nu) in enumerate(self.Sindex):
+            n_SG[iS] = (np.fft.fftn(orb_MG[mu].conj() * orb_MG[nu])).ravel()
         # To check whether n_SG is correct, just look at the G=0 component
         # tmp = orb_MG[mu].conj() * orb_MG[nu]
         # calc.wfs.gd.integrate(tmp) should == n_SG[nLCAO*mu+nu, 0]
@@ -269,25 +268,22 @@ class PeriodicSys(CHI):
         if self.OpticalLimit:
             print 'Optical limit calculation'
             qq = np.array([np.inner(self.q, self.bcell[:,i]) for i in range(3)])
-      
-            for mu in range(self.nLCAO):
-                for nu in range(self.nLCAO):
-                    n_SG[self.nLCAO*mu + nu, 0] = (-1j) * np.dot(qq, 
+            for iS, (mu, nu) in enumerate(self.Sindex):
+                    n_SG[iS, 0] = (-1j) * np.dot(qq, 
                          gd.calculate_dipole_moment( orb_MG[mu].conj() * orb_MG[nu]))
 
         # The augmentation part
         phi_aiiG = {}
-        for mu in range(self.nLCAO):
-            for nu in range(self.nLCAO):
-                for a, id in enumerate(setups.id_a):
-                    Z, type, basis = id
-                    if not phi_aiiG.has_key(Z):
-                        phi_aiiG[Z] = self.two_phi_planewave_integrals(Z, Gvec)
-                    assert phi_aiiG[Z] is not None
-                    tmp_ii = np.outer(P_aMi[a][mu].conj(), P_aMi[a][nu])
-                    for iG in range(self.nG0):
-                        n_SG[self.nLCAO*mu + nu, iG] += (tmp_ii * phi_aiiG[Z][:,:,iG]).sum()
- 
+        for iS, (mu, nu) in enumerate(self.Sindex):
+            for a, id in enumerate(setups.id_a):
+                Z, type, basis = id
+                if not phi_aiiG.has_key(Z):
+                    phi_aiiG[Z] = self.two_phi_planewave_integrals(Z, Gvec)
+                assert phi_aiiG[Z] is not None
+                tmp_ii = np.outer(P_aMi[a][mu].conj(), P_aMi[a][nu])
+                for iG in range(self.nG0):
+                    n_SG[iS, iG] += (tmp_ii * phi_aiiG[Z][:,:,iG]).sum()
+                        
         return n_SG
 
 
@@ -416,7 +412,7 @@ class PeriodicSys(CHI):
                     lmax = l
         ni = len(L_i)
         lmax = 2 * lmax + 1
-        print 'L_i, j_i', L_i, j_i
+
         # Initialize        
         R_jj = np.zeros((s.nj, s.nj))
         R_ii = np.zeros((ni, ni))
@@ -461,21 +457,29 @@ class PeriodicSys(CHI):
 
         if self.OpticalLimit:
             # Change the G = 0 component (not correct yet)
-            # Can call Delta_pL 
-            li = 1
-            index = np.array([1,2,0]) # y, z, x
+            # Can call Delta_pL
             qq = np.array([np.inner(self.q, self.bcell[:,i]) for i in range(3)])
-            R_ii3 = np.zeros((ni, ni, 3))
-            for j1 in range(s.nj):
-                for j2 in range(s.nj):
-                    R_jj[j1, j2] = np.dot(r2dr_g, tmp_jjg[j1, j2])
-            for mi in range(2 * li + 1):
-                for i1 in range(ni):
-                    for i2 in range(ni):
-                        R_ii3[i1, i2, index[mi-1]] = G_LLL[L_i[i1], L_i[i2], li**2+mi] * R_jj[j_i[i1],j_i[i2]]
-            phi_iiG[:, :, 0] = np.dot(R_ii3, qq) * (-1j) 
+            Li = np.array([3, 1, 2])
+            phi_p3 = np.array([s.Delta_pL[:,Li[ix]].copy() for ix in range(3)])
+            phi_iiG[:, :, 0] = unpack(np.dot(qq, phi_p3)) * (-1j) * sqrt(4. * pi / 3.)
+                          
+
+#            li = 1
+#            index = np.array([1,2,0]) # y, z, x
+#            qq = np.array([np.inner(self.q, self.bcell[:,i]) for i in range(3)])
+#            R_ii3 = np.zeros((ni, ni, 3))
+#            for j1 in range(s.nj):
+#                for j2 in range(s.nj):
+#                    R_jj[j1, j2] = np.dot(r2dr_g, tmp_jjg[j1, j2])
+#            for mi in range(2 * li + 1):
+#                for i1 in range(ni):
+#                    for i2 in range(ni):
+#                        R_ii3[i1, i2, index[mi-1]] = G_LLL[L_i[i1], L_i[i2], li**2+mi] * R_jj[j_i[i1],j_i[i2]]
+#            phi_iiG[:, :, 0] = np.dot(R_ii3, qq) * (-1j) 
+#
         
         return phi_iiG
+
 
     def sph_jn(self, n, z):
         """Calcuate spherical Bessel function.
@@ -504,6 +508,7 @@ class PeriodicSys(CHI):
             sph_n[0] = tmp1
             sph_n[1] = tmp1 / z - tmp2
             sph_n[2] = (3./z**2 -1.) * tmp1 - 3./z * tmp2
-            sph_n[3] = (15./z**3 - 6./z) * tmp1 - (15./z**2 -1.) * tmp2
-
+            if n == 3:
+                sph_n[3] = (15./z**3 - 6./z) * tmp1 - (15./z**2 -1.) * tmp2
+                
         return sph_n[0:n+1]

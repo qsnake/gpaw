@@ -394,6 +394,7 @@ class CHI:
         libxc.calculate_fxc_spinpaired(n, fxc)
         return np.reshape(fxc, N)
 
+
     def get_Kxc(self, nt_G, D_asp, orb_MG, P_aMi, gd, setups):
         """Calculate xc kernel in real space. Apply to isolate/periodic sys.
 
@@ -459,6 +460,7 @@ class CHI:
 
         return Kxc_SS
 
+
     def find_kq(self, bzkpt_kG, q):
         """Find the index of k+q for all kpoints in BZ."""
 
@@ -483,6 +485,7 @@ class CHI:
             if not found:
                 raise ValueError('k+q not found')
         return kq
+
 
     def get_primitive_cell(self):
         """Calculate the reciprocal lattice vectors and the volume of primitive and BZ cell.
@@ -570,6 +573,7 @@ class CHI:
         
         return P_aMi
 
+
     def get_reduced_pair_orbital_index(self, orb_MG, gd, threshold=1e-5):
         """Reduce the dimension of pair orbitals and get the index for new pair orbitals.
 
@@ -580,20 +584,31 @@ class CHI:
 
         while phi_mu and phi_nu are normalized before calculating the overlap matrix.
         """
-        
-        print 'Calculate reduced pair-orbital index'
-        Sindex = [] # list of pair-orbital index
-        for mu in range(self.nLCAO):
-            orb1_g = orb_MG[mu] * orb_MG[mu].conj()
-#            A1 = gd.integrate(orb1_g)
-#            orb1_g /= A1
-            for nu in range(self.nLCAO):
-                orb2_g = orb_MG[nu] * orb_MG[nu].conj()
-#                A2 = gd.integrate(orb2_g)
-#                orb2_g /= A2
-                overlap = gd.integrate(orb1_g * orb2_g)
-                if overlap > threshold:
-                    Sindex.append((mu, nu))
-            print '   finished', mu, 'cycle, total: ', self.nLCAO
 
+        try:
+             self.threshold
+        except AttributeError:
+            self.threshold = threshold
+
+        Sindex = [] # list of pair-orbital index
+        if self.threshold > 0:
+            print 'Calculate reduced pair-orbital index with threshold', self.threshold
+            for mu in range(self.nLCAO):
+                orb1_g = orb_MG[mu] * orb_MG[mu].conj()
+    #            A1 = gd.integrate(orb1_g)
+    #            orb1_g /= A1
+                for nu in range(self.nLCAO):
+                    orb2_g = orb_MG[nu] * orb_MG[nu].conj()
+    #                A2 = gd.integrate(orb2_g)
+    #                orb2_g /= A2
+                    overlap = gd.integrate(orb1_g * orb2_g)
+                    if overlap > self.threshold:
+                        Sindex.append((mu, nu))
+                print '   finished', mu, 'cycle, total: ', self.nLCAO
+        else:
+            print 'Calculate with all pair-orbitals.'
+            for mu in range(self.nLCAO):
+                for nu in range(self.nLCAO):
+                    Sindex.append((mu, nu))
+                
         return Sindex      
