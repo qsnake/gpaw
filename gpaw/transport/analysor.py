@@ -206,12 +206,13 @@ class Transport_Analysor:
             lead_hs = None
             
         atoms = self.tp.atoms.copy()
-        fd = file('analysis_overhead', 'wb')
-        pickle.dump((atoms, basis_information, contour_parameters), fd, 2)
-        fd.close()
-        fd = file('lead_hs', 'wb')
-        pickle.dump(lead_hs, fd, 2)
-        fd.close()
+        if world.rank == 0:
+            fd = file('analysis_overhead', 'wb')
+            pickle.dump((atoms, basis_information, contour_parameters), fd, 2)
+            fd.close()
+            fd = file('lead_hs', 'wb')
+            pickle.dump(lead_hs, fd, 2)
+            fd.close()
       
     def reset_central_scattering_states(self):
         total_t = []
@@ -1245,10 +1246,16 @@ class Transport_Analysor:
         nl = tp.lead_num
         nb = tp.nblead[0]
         
-        s00 = np.zeros([npk, nl, nb, nb], dtype)
-        s01 = np.zeros([npk, nl, nb, nb], dtype)        
-        h00 = np.zeros([ns, npk, nl, nb, nb], dtype)
-        h01 = np.zeros([ns, npk, nl, nb, nb], dtype)
+        if world.rank == 0:
+            s00 = np.zeros([npk, nl, nb, nb], dtype)
+            s01 = np.zeros([npk, nl, nb, nb], dtype)        
+            h00 = np.zeros([ns, npk, nl, nb, nb], dtype)
+            h01 = np.zeros([ns, npk, nl, nb, nb], dtype)
+        else:
+            s00 = None
+            s01 = None
+            h00 = None
+            h01 = None
 
         ns, npk = tp.my_nspins, tp.my_npk
         local_s00 = np.zeros([npk, nl, nb, nb], dtype)
@@ -1265,10 +1272,10 @@ class Transport_Analysor:
                                        tp.lead_couple_hsd[l].H[s][q].recover()
         
         kpt_comm = tp.wfs.kpt_comm
-        kpt_comm.all_gather(local_s00, s00)
-        kpt_comm.all_gather(local_s01, s01)        
-        kpt_comm.all_gather(local_h00, h00)                     
-        kpt_comm.all_gather(local_h01, h01)                
+        kpt_comm.gather(local_s00, 0, s00)
+        kpt_comm.gather(local_s01, 0, s01)        
+        kpt_comm.gather(local_h00, 0, h00)                     
+        kpt_comm.gather(local_h01, 0, h01)                
         return s00, s01, h00, h01
     
     def collect_scat_hs(self):
@@ -1277,9 +1284,13 @@ class Transport_Analysor:
         dtype = tp.wfs.dtype
         nb = tp.nbmol
         
-        s00 = np.zeros([npk, nb, nb], dtype)
-        h00 = np.zeros([ns, npk, nb, nb], dtype)
-
+        if world.rank == 0:
+            s00 = np.zeros([npk, nb, nb], dtype)
+            h00 = np.zeros([ns, npk, nb, nb], dtype)
+        else:
+            s00 = None
+            h00 = None
+            
         ns, npk = tp.my_nspins, tp.my_npk
         local_s00 = np.zeros([npk, nb, nb], dtype)
         local_h00 = np.zeros([ns, npk, nb, nb], dtype)
@@ -1289,8 +1300,8 @@ class Transport_Analysor:
             for s in range(ns):
                 local_h00[s, q] = tp.hsd.H[s][q].recover()
         kpt_comm = tp.wfs.kpt_comm
-        kpt_comm.all_gather(local_s00, s00)
-        kpt_comm.all_gather(local_h00, h00)                     
+        kpt_comm.gather(local_s00, 0, s00)
+        kpt_comm.gather(local_h00, 0, h00)                     
         return s00, h00       
         
     def bias_step_time_collect(self):
@@ -1372,9 +1383,10 @@ class Transport_Analysor:
             data_file = 'analysis_data_' + flag
         else:
             data_file += '_' + flag
-        fd = file(data_file, 'wb')
-        pickle.dump((steps, self.energies), fd, 2)
-        fd.close()
+        if world.rank == 0:
+            fd = file(data_file, 'wb')
+            pickle.dump((steps, self.energies), fd, 2)
+            fd.close()
    
     def abstract_d_and_v(self):
         tp = self.tp
