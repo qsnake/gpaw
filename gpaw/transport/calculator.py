@@ -69,13 +69,13 @@ class Transport(GPAW):
                        
                        'lead_atoms', 'nleadlayers', 'mol_atoms', 'la_index',
                        
-                       'LR_leads', 'gate',  'cal_loc', 'align',                       
+                       'LR_leads', 'gate',  'cal_loc',                       
                        'recal_path', 'min_energy',
                        'use_qzk_boundary', 'use_linear_vt_mm',
                        'use_linear_vt_array',
                        'scat_restart', 'save_file', 'restart_file',
                        'non_sc', 'fixed_boundary', 'guess_steps', 'foot_print',
-                        'align_har', 'use_fd_poisson', 'data_file',
+                       'data_file',
                         'analysis_data_list', 'save_bias_data',
                         'analysis_mode', 'normalize_density',                      
                         'neintmethod', 'neintstep', 'eqinttol']:
@@ -123,8 +123,6 @@ class Transport(GPAW):
                 p['non_sc'] = kw['non_sc']
             if key in ['foot_print']:
                 p['foot_print'] = kw['foot_print']
-            if key in ['use_fd_poisson']:
-                p['use_fd_poisson'] = kw['use_fd_poisson']
             if key in ['data_file']:
                 p['data_file'] = kw['data_file']
             if key in ['analysis_data_list']:
@@ -147,8 +145,6 @@ class Transport(GPAW):
                 p['recal_path'] = kw['recal_path']
             if key in ['min_energy']:
                 p['min_energy'] = kw['min_energy']
-            if key in ['align']:
-                p['align'] = kw['align']
             if key in ['use_qzk_boundary']:
                 p['use_qzk_boundary'] = kw['use_qzk_boundary']
             if key in ['use_linear_vt_mm']:
@@ -165,8 +161,6 @@ class Transport(GPAW):
                 p['guess_steps'] = kw['guess_steps']
             if key in ['fixed_boundary']:
                 p['fixed_boundary'] = kw['fixed_boundary']
-            if key in ['align_har']:
-                p['align_har'] = kw['align_har']
             if key in ['spinpol']:
                 p['spinpol'] = kw['spinpol']
             if key in ['verbose']:
@@ -204,7 +198,6 @@ class Transport(GPAW):
         self.recal_path = p['recal_path']
         self.min_energy = p['min_energy']
         self.use_qzk_boundary = p['use_qzk_boundary']
-        self.align =  p['align']
         self.use_linear_vt_mm = p['use_linear_vt_mm']
         self.use_linear_vt_array = p['use_linear_vt_array']        
         self.scat_restart = p['scat_restart']
@@ -216,8 +209,6 @@ class Transport(GPAW):
         self.neintstep = p['neintstep']
         self.fixed = p['fixed_boundary']
         self.non_sc = p['non_sc']
-        self.align_har = p['align_har']
-        self.use_fd_poisson = p['use_fd_poisson']
         self.data_file = p['data_file']
         self.analysis_data_list = p['analysis_data_list']
         self.save_bias_data = p['save_bias_data']
@@ -288,7 +279,6 @@ class Transport(GPAW):
         p['nleadlayers'] = [1, 1]
         p['la_index'] = None
 
-        p['use_fd_poisson'] = True
         p['data_file'] = None
         p['analysis_data_list'] = []
         p['save_bias_data'] = True
@@ -306,8 +296,6 @@ class Transport(GPAW):
         p['guess_steps'] = 30
         p['foot_print'] = True
         p['use_qzk_boundary'] = False
-        p['align_har'] = 0
-        p['align'] = False
         p['use_linear_vt_mm'] = False
         p['use_linear_vt_array'] = False        
         p['scat_restart'] = False
@@ -352,13 +340,7 @@ class Transport(GPAW):
         del calc.density
         self.extended_calc = calc
         self.gd1, self.finegd1 = calc.gd, calc.finegd
-        
-        h1 = self.atoms_l[0].calc.gd.h_c[2]
-        h2 = self.gd.h_c[2]
-        h3 = self.gd1.h_c[2] 
-        if abs(h1 -h2) > 0.001 or abs(h1 - h3) > 0.001:
-            print 'Warning, the spacing need to be more close', h1, h2, h3
-        
+       
         self.nspins = self.wfs.nspins
         self.npk = len(self.wfs.ibzk_kc)
         self.my_npk = len(self.wfs.ibzk_qc)
@@ -420,7 +402,7 @@ class Transport(GPAW):
         self.get_inner_setups()        
         if not self.non_sc and self.analysis_mode > -3:
             self.timer.start('surround set_position')
-            if not self.use_fd_poisson:
+            if not self.fixed:
                 self.inner_poisson = PoissonSolver(nn=self.hamiltonian.poisson.nn)
             else:
                 self.inner_poisson = FixedBoundaryPoissonSolver(nn=1)
@@ -1630,9 +1612,7 @@ class Transport(GPAW):
                  nt_sg[0], ham.vt_sg[0])
 
         self.timer.start('Poisson')
-        # npoisson is the number of iterations:
-        if self.fixed and not self.use_fd_poisson:
-            density.rhot_g -= self.surround.extra_rhot_g
+
         if self.hamiltonian.vHt_g is None:
             self.hamiltonian.vHt_g = self.finegd.zeros()
 
@@ -1650,14 +1630,9 @@ class Transport(GPAW):
         vHt_g0 = self.finegd.collect(self.hamiltonian.vHt_g)
         if self.finegd.comm.rank == 0:
             if hasattr(self, 'step') and self.ground:
-                if self.align_har == -1:
-                    ham_diff = np.sum(vHt_g[:,:,0]) - np.sum(vHt_g0[:,:,0])
-                elif self.align_har == 1:
-                    ham_diff = np.sum(vHt_g[:,:,1]) - np.sum(vHt_g0[:,:,1])
-                else:
-                    ham_diff = np.sum(vHt_g[:,:,0]) - np.sum(vHt_g0[:,:,0])            
-                    ham_diff += np.sum(vHt_g[:,:,1]) - np.sum(vHt_g0[:,:,1])
-                    ham_diff /= 2
+                ham_diff = np.sum(vHt_g[:,:,0]) - np.sum(vHt_g0[:,:,0])            
+                ham_diff += np.sum(vHt_g[:,:,1]) - np.sum(vHt_g0[:,:,1])
+                ham_diff /= 2
                 ham_diff /= np.product(vHt_g.shape[:2])            
                 self.ham_diff = np.array(ham_diff)
         else:
@@ -1668,7 +1643,7 @@ class Transport(GPAW):
             self.finegd.comm.broadcast(self.ham_diff, 0)
             self.text('Hartree_diff', str(self.ham_diff))
         
-        if hasattr(self, 'step') and self.atoms.pbc.all() and not self.use_fd_poisson:    
+        if hasattr(self, 'step') and self.atoms.pbc.all() and not self.fixed:    
             self.hamiltonian.vHt_g += self.ham_diff
 
         self.surround.combine_vHt_g(self.hamiltonian.vHt_g)
@@ -1842,12 +1817,12 @@ class Transport(GPAW):
             if self.LR_leads:
                 sum += ( 2 * ns + 1) * npk * nb ** 2 * unit
             sum += ns * npk * nb**2 * unit
-            print 'lead matrix memery  MB',  sum *1e-6
+            #print 'lead matrix memery  MB',  sum *1e-6
            
             ntgt = 200
             tmp = self.lead_num * ns * npk * ntgt * nb**2 * unit_complex
             sum += tmp
-            print 'selfenergy memery  MB',  tmp *1e-6
+            #print 'selfenergy memery  MB',  tmp *1e-6
 
         if gamma:
             unit = unit_real
