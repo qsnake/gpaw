@@ -16,7 +16,7 @@ class IntCtrl:
         neintpath    // [ minfermi leadfermi maxfermi ] + eta ( 1e-8 )}
     """
     
-    def __init__(self, kt, efermi, bias, env_bias=[], min_energy=-100,
+    def __init__(self, kt, efermi, bias, min_energy=-100,
                                                                neintmethod=0,
                                                                neintstep=0.02,
                                                                eqinttol=1e-4,
@@ -24,15 +24,11 @@ class IntCtrl:
         #if u_l>u_r,bias>0
         self.kt = kt
         self.leadfermi = []
-        self.envfermi = []
         for i in range(len(bias)):
             self.leadfermi.append(efermi[i] + bias[i])
-        for i in range(len(env_bias)):
-            self.envfermi.append(efermi + env_bias[i])
-        self.minfermi = min(self.leadfermi + self.envfermi)
-        self.maxfermi = max(self.leadfermi + self.envfermi)
+        self.minfermi = min(self.leadfermi)
+        self.maxfermi = max(self.leadfermi)
         self.eqinttol = eqinttol
-        self.kttol = 1e-5
         self.biastol = 1e-10
         
         #eq-Integral Path : 
@@ -40,31 +36,24 @@ class IntCtrl:
         #        = [-100  -100+20i  10i-20kt  5i*2*pi*kt-20kt
         #           5i*2*pi*kt+20kt] + minfermi
         
-        if self.kt < self.kttol: #T=0K
-            self.eqintpath = [-50, -50 + 20.j, 10.j, 1e-8j]
-            self.eqdelta = 0
-            self.eqresz = []
-            if verbose:
-                print '--eqIntCtrl:  Tol =', self.eqinttol
-        else:        #T>0K
-            nkt = 10 * self.kt
-            dkt = 8 * np.pi * self.kt
-            #self.eqintpath = [-20.0, -20.0 + dkt * 1.j, -nkt + dkt * 1.j,
-            #                  dkt * 1.j + nkt]
-            self.eqintpath = [ min_energy, 
+        nkt = 4 * self.kt
+        dkt = 8 * np.pi * self.kt
+        #self.eqintpath = [-20.0, -20.0 + dkt * 1.j, -nkt + dkt * 1.j,
+        #                  dkt * 1.j + nkt]
+        self.eqintpath = [ min_energy, 
                                min_energy + (10 + dkt)*1.j, 
                               #-nkt + (10 + dkt) * 1.j, 
                               -nkt + dkt * 1.j, 
                                dkt *1.j +nkt]
-            self.eqdelta = dkt
-            nRes = 8
-            if abs( nRes - (np.round((nRes - 1) / 2) * 2 + 1)) < 1e-3 :
-                print 'Warning: Residue Point too close to IntPath!'
-            self.eqresz = range(1, nRes, 2)
-            for i in range(len(self.eqresz)):
-                self.eqresz[i] *=  1.j * np.pi * self.kt
-            if verbose:
-                print '--eqIntCtrl: Tol = ', self.eqinttol, 'Delta =', \
+        self.eqdelta = dkt
+        nRes = 8
+        if abs( nRes - (np.round((nRes - 1) / 2) * 2 + 1)) < 1e-3 :
+            print 'Warning: Residue Point too close to IntPath!'
+        self.eqresz = range(1, nRes, 2)
+        for i in range(len(self.eqresz)):
+            self.eqresz[i] *=  1.j * np.pi * self.kt
+        if verbose:
+            print '--eqIntCtrl: Tol = ', self.eqinttol, 'Delta =', \
                                           self.eqdelta, ' nRes =', self.eqresz
 
         for i in range(len(self.eqintpath)):
@@ -87,16 +76,9 @@ class IntCtrl:
             self.locresz = 0
             if verbose:
                 print '--locInt: None'
-        elif self.kt < self.kttol: #T=0K
-            self.locintpath = [self.minfermi + 1e-8j, self.minfermi + 1.j,
-                            self.maxfermi + 1.j, self.maxfermi + 1e-8j]
-            self.locdelta = 0
-            self.locresz = 0
-            if verbose:
-                print '--locInt: Tol', self.lcointtol    
         else:
-            nkt = 10 * self.kt
-            dkt = 4 * np.pi * self.kt
+            nkt = 4 * self.kt
+            dkt = 8 * np.pi * self.kt
 
             if self.maxfermi-self.minfermi < 0.2 + 2 * nkt or dkt > 0.5:
                 self.locintpath = [self.minfermi - nkt + dkt * 1.j,
@@ -108,7 +90,7 @@ class IntCtrl:
                                    self.maxfermi - nkt + dkt * 1.j,
                                    self.maxfermi + nkt + dkt * 1.j]
             self.locdelta = dkt
-            nRes = 4
+            nRes = 8
             self.locresz = np.array(range(1, nRes, 2)
                                                    ) * 1.j * np.pi * self.kt
             tmp = len(range(1, nRes, 2))
@@ -136,10 +118,8 @@ class IntCtrl:
 
         if self.maxfermi -self.minfermi < self.biastol:
             self.neintpath = []
-        elif self.kt < self.kttol : #T=0K
-            self.neintpath = [self.minfermi, self.maxfermi]
         else :
-            nkt = 2 * kt
+            nkt = 4 * kt
             self.neintpath = [self.minfermi - nkt, self.maxfermi + nkt]
 
         # -- Integral eta --
