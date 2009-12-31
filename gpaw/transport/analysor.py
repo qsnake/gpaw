@@ -1,4 +1,4 @@
-from gpaw.transport.selfenergy import LeadSelfEnergy, CellSelfEnergy
+from gpaw.transport.selfenergy import LeadSelfEnergy
 from gpaw.transport.tools import get_matrix_index, aa1d, aa2d, sum_by_unit, \
                                 dot, fermidistribution, eig_states_norm, \
                                 find, get_atom_indices, dagger, write
@@ -183,6 +183,7 @@ class Transport_Analysor:
             self.calculate_isolate_molecular_levels()
         self.overhead_data_saved = False
         self.nk_on_energy = None
+        self.set_analysis_data_form()
  
     def save_overhead_data(self):
         contour_parameters = {}
@@ -972,10 +973,10 @@ class Transport_Analysor:
         prefix =  'Ae' + '_' + str(self.n_ion_step) + '_' \
                             + str(self.n_bias_step) + '_' \
                             + str(self.n_ele_step) + '_'
-        for name in ['nt', 'vt', 'df', 'dd', 'vHt', 'rho', 'dos', 'tc']:
+        for name in ['nt', 'vt', 'df', 'dd', 'vHt', 'rho']:
             dimension, dtype = self.analysis_data_form[name]
             data_name = prefix + name
-            write('analysis_data.nc', data_name, eval(name), dimension, dtype)
+            write('analysis_data.gpw', data_name, eval(name), dimension, dtype)
         
         step.initialize_data(time_cost, mem_cost)
         self.ele_steps.append(step)
@@ -1396,8 +1397,8 @@ class Transport_Analysor:
             calc = tp
         gd = calc.wfs.gd        
 
-        nt_sG = tp.gd.collect(tp.density.nt_sG[s])
-        vt_sG = gd.collect(calc.hamiltonian.vt_sG[s])
+        nt_sG = tp.gd.collect(tp.density.nt_sG)
+        vt_sG = gd.collect(calc.hamiltonian.vt_sG)
 
         nt = []
         vt = []
