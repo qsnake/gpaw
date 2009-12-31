@@ -21,10 +21,14 @@ def tr(filename):
     return mat
 
 def write(filename, name, data, dimension, dtype=float):
-    import gpaw.io.netcdf as io
+    import gpaw.io.tar as io
     if world.rank == 0:
         w = io.Writer(filename)
-        w.add(name, dimension, dtype=dtype)
+        dim = ()
+        for i in range(len(dimension)):
+            w.dimension(str(i), dimension[i])
+            dim += (str(i),)
+        w.add(name, dim, dtype=dtype)
         w.fill(data)
         w.close()
         
