@@ -226,13 +226,13 @@ class Surrounding:
                 ham.vHt_g = ham.finegd.zeros()
                 ham.vt_sG = ham.gd.zeros(ham.nspins)
                 ham.poisson.initialize()
-                if not self.tp.use_fd_poisson:
+                if not self.tp.fixed:
                     self.tp.inner_poisson.initialize()
 
             bias_shift0 = self.bias_index['-'] / Hartree
             bias_shift1 = self.bias_index['+'] / Hartree
 
-            if self.tp.use_fd_poisson and self.tp.gd.comm.rank == 0:
+            if self.tp.fixed and self.tp.gd.comm.rank == 0:
                 self.tp.inner_poisson.initialize(
                         self.sides['-'].boundary_vHt_g + bias_shift0,
                         self.sides['+'].boundary_vHt_g + bias_shift1)
