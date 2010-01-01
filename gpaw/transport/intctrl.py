@@ -1,5 +1,43 @@
 import numpy as np
 
+class PathInfo:
+    def __init__(self, type, nlead):
+        self.type = type
+        self.num = 0
+        self.lead_num = nlead
+        self.energy = []
+        self.weight = []
+        self.nres = 0
+        self.sigma = []
+        for i in range(nlead):
+            self.sigma.append([])
+        if type == 'eq':
+            self.fermi_factor = []
+        elif type == 'ne':
+            self.fermi_factor = []
+            for i in range(nlead):
+                self.fermi_factor.append([[], []])
+        else:
+            raise TypeError('unkown PathInfo type')
+
+    def add(self, elist, wlist, flist, siglist):
+        self.num += len(elist)
+        self.energy += elist
+        self.weight += wlist
+        if self.type == 'eq':
+            self.fermi_factor += flist
+        elif self.type == 'ne':
+            for i in range(self.lead_num):
+                for j in [0, 1]:
+                    self.fermi_factor[i][j] += flist[i][j]
+        else:
+            raise TypeError('unkown PathInfo type')
+        for i in range(self.lead_num):
+            self.sigma[i] += siglist[i]
+
+    def set_nres(self, nres):
+        self.nres = nres
+        
 class IntCtrl:
     """
     Parameters:
