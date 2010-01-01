@@ -1,5 +1,5 @@
 from gpaw.transport.tools import dagger, dot
-from gpaw.transport.tools import Banded_Sparse_Matrix
+from gpaw.transport.sparse_matrix import Banded_Sparse_Matrix
 import copy
 import numpy as np
 
