@@ -1490,4 +1490,28 @@ def eig_states_norm(orbital, s_mm):
 def find(condition):
     return np.nonzero(condition)[0]
     
+def gather_to_list(comm, data):
+    #data is a numpy array, maybe has different shape in different cpus
+    #this function gather them to the all_data in master, all_data is
+    # a list with the lenth world.size, all_data[i] = data {on i}
+    all_data = []
+    dim = len(data.shape)
+    shape_array = np.zeros([comm.size, dim], int)
+    shape_array[comm.rank] = data.shape
+    comm.sum(shape_array)
+    
+    if comm.rank == 0:
+        all_data.append(data)
+        for i in range(1, comm.size):
+            tmp = np.zeros(shape_array[i], dtype=data.dtype)
+            comm.receive(tmp, i, 546)
+            all_data.append(tmp[:])
+    else:
+        comm.ssend(data, 0, 546)
+    
+    return all_data            
+            
+        
+    
+    
     
