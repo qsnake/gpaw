@@ -12,13 +12,14 @@ from gpaw.utilities import h2gpts
 from gpaw.utilities.lapack import diagonalize
 from gpaw.utilities.memory import maxrss
 
-from gpaw.transport.tools import tri2full, dot, Se_Sparse_Matrix, PathInfo,\
+from gpaw.transport.tools import tri2full, dot, \
           get_atom_indices, substract_pk, get_lcao_density_matrix, \
           get_pk_hsd, diag_cell, get_matrix_index, aa1d, aa2d
 
-from gpaw.transport.tools import Tp_Sparse_HSD, Banded_Sparse_HSD, \
-                                                                 CP_Sparse_HSD
-from gpaw.transport.intctrl import IntCtrl
+from gpaw.transport.sparse_matrix import Tp_Sparse_HSD, Banded_Sparse_HSD, \
+                                  CP_Sparse_HSD, Se_Sparse_Matrix
+
+from gpaw.transport.intctrl import IntCtrl, PathInfo
 from gpaw.transport.surrounding import Surrounding, collect_D_asp2, \
                                               collect_D_asp3, distribute_D_asp
 from gpaw.transport.selfenergy import LeadSelfEnergy
@@ -244,12 +245,6 @@ class Transport(GPAW):
             self.gpw_kwargs['usesymm'] = None
         else:
             self.gpw_kwargs['usesymm'] = False
-   
-    #def construct_grid_descriptor(self, N_c, cell_cv,
-    #                              pbc_c, domain_comm, parsize):
-    #    GPAW.construct_grid_descriptor(self, N_c, cell_cv,
-    #                              pbc_c, domain_comm, parsize)
-    #    self.gd.use_fixed_bc = True
 
     def set_analysis_parameters(self, **analysis_kwargs):
         self.analysis_parameters = analysis_kwargs
@@ -509,7 +504,7 @@ class Transport(GPAW):
         s00 = self.lead_hsd[0].S[0].recover()[0,0]
         e_shift = (h00 - h01) / s00
         h_spkmm += e_shift * s_pkmm
-        print 'e_shift', e_shift       
+   
         if self.wfs.dtype == float:
             h_spkmm = np.real(h_spkmm).copy()
             s_pkmm = np.real(s_pkmm).copy()
