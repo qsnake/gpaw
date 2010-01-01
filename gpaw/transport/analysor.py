@@ -191,8 +191,9 @@ class Transport_Analysor:
         cp['neintmethod'] = self.tp.neintmethod
         cp['neintstep'] = self.tp.neintstep
         cp['lead_fermi'] = self.tp.lead_fermi
-        cp['eqinttol'] = self.tp.intctrl.eqinttol
-        cp['neinttol'] = self.tp.intctrl.neinttol
+        if not self.tp.non_sc:
+            cp['eqinttol'] = self.tp.intctrl.eqinttol
+            cp['neinttol'] = self.tp.intctrl.neinttol
         
         basis_information = {}
         bi = basis_information
@@ -879,10 +880,10 @@ class Transport_Analysor:
         adf['tc'] = ((ns, npk, ne), float)
         adf['force'] = ((na, 3), float)
         adf['charge'] = ((ns, nb), float)
-        adf['nt_x'] = ((ns, nx, nz), float)
-        adf['nt_y'] = ((ns, ny, nz), float)
-        adf['vt_x'] = ((ns, nx, nz), float)
-        adf['vt_y'] = ((ns, ny, nz), float)
+        adf['ntx'] = ((ns, nx, nz), float)
+        adf['nty'] = ((ns, ny, nz), float)
+        adf['vtx'] = ((ns, nx, nz), float)
+        adf['vty'] = ((ns, ny, nz), float)
         adf['current'] = ((1,), float)
  
 
@@ -990,10 +991,10 @@ class Transport_Analysor:
         step = Transmission_Info(self.n_ion_step, self.n_bias_step)
         time_cost = self.bias_step_time_collect()
         if 'tc' in tp.analysis_data_list:
-            tc_array, dos_array = self.collect_transmission_and_dos()
+            tc, dos = self.collect_transmission_and_dos()
         else:
-            tc_array = None
-            dos_array = None
+            tc = None
+            dos = None
         nt, vt, ntx, vtx, nty, vty = self.abstract_d_and_v()
                     
         if not tp.non_sc and 'current' in tp.analysis_data_list:
