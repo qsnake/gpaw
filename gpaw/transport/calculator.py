@@ -623,50 +623,39 @@ class Transport(GPAW):
 
     def distribute_energy_points(self):
         self.energy_comm = self.gd.comm
-        rank = self.energy_comm.rank
-        ns = self.my_nspins
-        self.par_energy_index = np.empty([ns, self.my_npk, 2, 2], int)
-        if self.cal_loc and not self.ground:
-            self.loc_par_energy_index = np.empty([ns, self.my_npk, 2], int)
+        size, rank = self.energy_comm.size, self.energy_comm.rank
+        ns, npk = self.my_nspins, self.my_npk
+        self.eq_par_energy_index = []
+        self.ne_par_energy_index = []  
+ 
         for s in range(ns):
-            for k in range(self.my_npk):
+            self.eq_par_energy_index.append([])
+            self.ne_par_energy_index.append([])
+            for k in range(npk):
+                self.eq_par_energy_index[s].append([])
+                self.ne_par_energy_index[s].append([])
+                     
+        if self.cal_loc and not self.ground:
+            self.loc_par_energy_index = []
+            for s in range(ns):
+                self.loc_par_energy_index.append([])
+                for k in range(npk):
+                    self.loc_par_energy_index[s].append([])            
+        
+        for s in range(ns):
+            for k in range(npk):
                 neeq = self.eqpathinfo[s][k].num
-                neeq_each = neeq // self.energy_comm.size
-                
-                if neeq % self.energy_comm.size != 0:
-                    neeq_each += 1
-                begin = rank % self.energy_comm.size * neeq_each
-                if (rank + 1) % self.energy_comm.size == 0:
-                    end = neeq 
-                else:
-                    end = begin + neeq_each
-                    
-                self.par_energy_index[s, k, 0] = [begin, end]
+                eq_ind = np.array_split(np.arange(neeq), size)
+                self.eq_par_energy_index[s][k] = eq_ind[rank]
 
                 if self.cal_loc and not self.ground:
-                    neeq = self.locpathinfo[s][k].num
-                    neeq_each = neeq // self.energy_comm.size
-                
-                    if neeq % self.energy_comm.size != 0:
-                        neeq_each += 1
-                    begin = rank % self.energy_comm.size * neeq_each
-                    if (rank + 1) % self.energy_comm.size == 0:
-                        end = neeq 
-                    else:
-                        end = begin + neeq_each
-                    self.loc_par_energy_index[s, k] = [begin, end]
+                    neloc = self.locpathinfo[s][k].num
+                    loc_ind = np.array_split(np.arange(neloc), size)
+                    self.loc_par_energy_index[s][k] = loc_ind[rank]
 
                 nene = self.nepathinfo[s][k].num
-                nene_each = nene // self.energy_comm.size
-                if nene % self.energy_comm.size != 0:
-                    nene_each += 1
-                begin = rank % self.energy_comm.size * nene_each
-                if (rank + 1) % self.energy_comm.size == 0:
-                    end = nene
-                else:
-                    end = begin + nene_each
-      
-                self.par_energy_index[s, k, 1] = [begin, end] 
+                ne_ind = np.array_split(np.arange(nene), size)
+                self.ne_par_energy_index[s][k] = ne_ind[rank]
 
     def update_lead_hamiltonian(self, l, restart_file=None):
         self.timer.start('update lead hamiltonian' + str(l))
@@ -1338,12 +1327,11 @@ class Transport(GPAW):
         pathinfo = self.nepathinfo[s][k]
         nbmol = self.nbmol_inner
         den = np.zeros([nbmol, nbmol], complex)
-        begin = self.par_energy_index[s, k, 1, 0]
-        end = self.par_energy_index[s, k, 1, 1]        
+        ind = self.ne_par_energy_index[s][k]
         zp = pathinfo.energy
 
         self.timer.start('ne fock2den')
-        for i in range(begin, end):
+        for i in ind:
             sigma = []
             for n in range(self.lead_num):
                 sigma.append(pathinfo.sigma[n][i])
@@ -1367,18 +1355,16 @@ class Transport(GPAW):
     def eq_fock2den(self, s, k, el='eq'):
         if el =='loc':
             pathinfo = self.locpathinfo[s][k]
-            begin = self.loc_par_energy_index[s, k, 0]
-            end = self.loc_par_energy_index[s, k, 1]
+            ind = self.loc_par_energy_index[s][k]
         else:
             pathinfo = self.eqpathinfo[s][k]
-            begin = self.par_energy_index[s, k, 0, 0]
-            end = self.par_energy_index[s, k, 0, 1]        
+            ind = self.eq_par_energy_index[s][k]       
 
         nbmol = self.nbmol_inner
         den = np.zeros([nbmol, nbmol], complex)
         zp = pathinfo.energy
         self.timer.start('eq fock2den')
-        for i in range(begin, end):
+        for i in ind:
             sigma = []
             for n in range(self.lead_num):
                 sigma.append(pathinfo.sigma[n][i])
