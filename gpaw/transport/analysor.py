@@ -896,7 +896,7 @@ class Transport_Analysor:
         dd = np.empty([tp.my_nspins, tp.my_npk, nbmol], dtype)
         df = np.empty([tp.my_nspins, tp.my_npk, nbmol], dtype)
         
-        if world.rank == 0:
+        if tp.wfs.kpt_comm.rank == 0:
             total_dd = np.empty([tp.nspins, tp.npk, nbmol], dtype)
             total_df = np.empty([tp.nspins, tp.npk, nbmol], dtype)
         else:
@@ -1130,7 +1130,8 @@ class Transport_Analysor:
         tp = self.tp
         ns, npk = tp.nspins, tp.npk
         nbmol = tp.nbmol + np.sum(tp.nblead)
-        if world.rank == 0:
+        kpt_comm = tp.wfs.kpt_comm
+        if kpt_comm.rank == 0:
             charge_array = np.zeros([ns, npk, nbmol])
         else:
             charge_array = None
@@ -1140,7 +1141,6 @@ class Transport_Analysor:
             for q in range(npk):
                     local_charge_array[s, q] = \
                                      self.calculate_charge_distribution(s, q)
-        kpt_comm = tp.wfs.kpt_comm
         kpt_comm.gather(local_charge_array, 0, charge_array)
         if world.rank == 0:
             charge_array = np.sum(charge_array, axis=1)
@@ -1247,8 +1247,9 @@ class Transport_Analysor:
         dtype = tp.wfs.dtype
         nl = tp.lead_num
         nb = tp.nblead[0]
-        
-        if world.rank == 0:
+
+        kpt_comm = tp.wfs.kpt_comm        
+        if kpt_comm.rank == 0:
             s00 = np.zeros([npk, nl, nb, nb], dtype)
             s01 = np.zeros([npk, nl, nb, nb], dtype)        
             h00 = np.zeros([ns, npk, nl, nb, nb], dtype)
@@ -1273,7 +1274,6 @@ class Transport_Analysor:
                     local_h01[s, q, l] = \
                                        tp.lead_couple_hsd[l].H[s][q].recover()
         
-        kpt_comm = tp.wfs.kpt_comm
         kpt_comm.gather(local_s00, 0, s00)
         kpt_comm.gather(local_s01, 0, s01)        
         kpt_comm.gather(local_h00, 0, h00)                     
@@ -1285,8 +1285,9 @@ class Transport_Analysor:
         ns, npk = tp.nspins, tp.npk
         dtype = tp.wfs.dtype
         nb = tp.nbmol
+        kpt_comm = tp.wfs.kpt_comm
         
-        if world.rank == 0:
+        if kpt_comm.rank == 0:
             s00 = np.zeros([npk, nb, nb], dtype)
             h00 = np.zeros([ns, npk, nb, nb], dtype)
         else:
@@ -1301,7 +1302,6 @@ class Transport_Analysor:
             local_s00[q] = tp.hsd.S[q].recover()
             for s in range(ns):
                 local_h00[s, q] = tp.hsd.H[s][q].recover()
-        kpt_comm = tp.wfs.kpt_comm
         kpt_comm.gather(local_s00, 0, s00)
         kpt_comm.gather(local_h00, 0, h00)                     
         return s00, h00       
@@ -1341,8 +1341,9 @@ class Transport_Analysor:
         nlp = len(self.lead_pairs)
         ne = len(energies)
         ns, npk = tp.nspins, tp.npk
+        kpt_comm = tp.wfs.kpt_comm
         
-        if world.rank == 0:
+        if kpt_comm.rank == 0:
             tc_array = np.empty([ns, npk, nlp, ne], float)
             dos_array = np.empty([ns, npk, ne], float)
         else:
@@ -1358,7 +1359,6 @@ class Transport_Analysor:
                 local_tc_array[s, q], local_dos_array[s, q] = \
                           self.calculate_transmission_and_dos(s, q, energies)
 
-        kpt_comm = tp.wfs.kpt_comm
         kpt_comm.gather(local_tc_array, 0, tc_array)
         kpt_comm.gather(local_dos_array, 0, dos_array)            
         return tc_array, dos_array
@@ -1536,6 +1536,8 @@ class Transport_Plotter:
             else:
                 self.ele_steps = data
         fd.close()
+        import gpaw.io.tar as io
+        self.r = io.Reader('analysis_data.gpw')
         self.my_options = False
         self.show_window = False
 
@@ -1546,7 +1548,7 @@ class Transport_Plotter:
         self.atoms = atoms
         self.basis = basis_information
         self.contour = contour_information
-        
+ 
     def plot_setup(self):
         from matplotlib import rcParams
         rcParams['xtick.labelsize'] = 18
