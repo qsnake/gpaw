@@ -50,13 +50,17 @@ class LCAO:
     """Eigensolver for LCAO-basis calculation"""
 
     def __init__(self, diagonalizer=None):
-        self.diagonalizer = None
+        self.diagonalizer = diagonalizer
+        # ??? why should we be able to set
+        # this diagonalizer in both constructor and initialize?
         self.has_initialized = False # XXX
 
-    def initialize(self, gd, dtype, nao, diagonalizer):
+    def initialize(self, gd, dtype, nao, diagonalizer=None):
         self.gd = gd
         self.nao = nao
-        self.diagonalizer = diagonalizer
+        if diagonalizer is not None:
+            self.diagonalizer = diagonalizer
+        assert self.diagonalizer is not None
         self.has_initialized = True # XXX
 
     def error(self):
@@ -69,9 +73,9 @@ class LCAO:
         vt_G = hamiltonian.vt_sG[kpt.s]
         H_MM = np.empty((wfs.od.mynao, wfs.od.nao), wfs.dtype)
 
-        wfs.timer.start('potential matrix')
+        wfs.timer.start('Calculate potential matrix')
         wfs.basis_functions.calculate_potential_matrix(vt_G, H_MM, kpt.q)
-        wfs.timer.stop('potential matrix')
+        wfs.timer.stop('Calculate potential matrix')
 
         # Add atomic contribution
         #
@@ -94,8 +98,10 @@ class LCAO:
         return H_MM
 
     def iterate(self, hamiltonian, wfs):
+        wfs.timer.start('LCAO eigensolver')
         for kpt in wfs.kpt_u:
             self.iterate_one_k_point(hamiltonian, wfs, kpt)
+        wfs.timer.stop('LCAO eigensolver')
 
     def iterate_one_k_point(self, hamiltonian, wfs, kpt):
         if wfs.bd.comm.size > 1 and wfs.bd.strided:

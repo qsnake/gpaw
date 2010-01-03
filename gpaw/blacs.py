@@ -17,6 +17,7 @@ from gpaw.mpi import SerialCommunicator
 from gpaw.utilities.blas import gemm, r2k
 from gpaw.utilities.blacs import scalapack_general_diagonalize_ex, \
     scalapack_diagonalize_ex, pblas_simple_gemm
+from gpaw.utilities.timing import nulltimer
 import _gpaw
 
 
@@ -26,7 +27,7 @@ BLOCK_CYCLIC_2D = 1
 
 class SLDenseLinearAlgebra:
     """ScaLAPACK Dense Linear Algebra."""
-    def __init__(self, gd, bd, cols2blocks, blocks2cols):
+    def __init__(self, gd, bd, cols2blocks, blocks2cols, timer=nulltimer):
         self.gd = gd
         self.bd = bd
         assert cols2blocks.dstdescriptor == blocks2cols.srcdescriptor
@@ -35,6 +36,7 @@ class SLDenseLinearAlgebra:
         self.outdescriptor = blocks2cols.dstdescriptor
         self.cols2blocks = cols2blocks
         self.blocks2cols = blocks2cols
+        self.timer = timer
     
     def diagonalize(self, H_mm, C_nM, eps_n, S_mm=None):
         if S_mm is None:
@@ -82,11 +84,15 @@ class SLDenseLinearAlgebra:
         dtype = S_mm.dtype
         eps_M = np.empty(C_nM.shape[-1])
         C_mm = blockdescriptor.zeros(dtype=dtype)
+        self.timer.start('General diagonalize ex')
         blockdescriptor.general_diagonalize_ex(H_mm, S_mm.copy(), C_mm, eps_M,
                                                UL='U', iu=self.bd.nbands)
+        self.timer.stop('General diagonalize ex')
         C_mM = outdescriptor.zeros(dtype=dtype)
-        self.blocks2cols.redistribute(C_mm, C_mM) # XXX redist only nM somehow
-
+        self.timer.start('Redistribute coefs')
+        self.blocks2cols.redistribute(C_mm, C_mM)
+        self.timer.stop('Redistribute coefs')
+        self.timer.start('Send coefs to domains')
         if outdescriptor:
             assert self.gd.comm.rank == 0
             bd = self.bd
@@ -97,6 +103,7 @@ class SLDenseLinearAlgebra:
 
         self.gd.comm.broadcast(C_nM, 0)
         self.gd.comm.broadcast(eps_n, 0)
+        self.timer.stop('Send coefs to domains')
 
 
 class BlacsGrid:
@@ -352,9 +359,10 @@ class BlacsBandDescriptor:
         self.Nn2nn = Redistributor(blockcomm, Nndescriptor, nndescriptor)
         self.nn2Nn = Redistributor(blockcomm, nndescriptor, Nndescriptor)
 
+
 class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
     # This class 'describes' all the LCAO/Blacs-related stuff
-    def __init__(self, world, gd, bd, kpt_comm, nao):
+    def __init__(self, world, gd, bd, kpt_comm, nao, timer=nulltimer):
         ncpus, mcpus, blocksize = sl_diagonalize[:3]
 
         bcommsize = bd.comm.size
@@ -414,9 +422,11 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
         self.world = world
         self.gd = gd
         self.bd = bd
+        self.timer = timer
 
     def get_diagonalizer(self):
-        return SLDenseLinearAlgebra(self.gd, self.bd, self.mM2mm, self.mm2nM)
+        return SLDenseLinearAlgebra(self.gd, self.bd, self.mM2mm, self.mm2nM,
+                                    self.timer)
 
     def get_overlap_descriptor(self):
         return self.mMdescriptor
@@ -439,11 +449,13 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
         # XXX ugly hack
         # TODO distribute T_qMM in the same way.  Hack eigensolver
         # as appropriate
+        self.timer.start('Distribute overlap matrix')
         S_qmM = coldesc.zeros(len(S1_qmM), S1_qmM.dtype)
         for S_mM, S_mm, S1_mM in zip(S_qmM, S_qmm, S1_qmM):
             if self.gd.comm.rank == 0:
                 S_mM[:] = S1_mM
             self.mM2mm.redistribute(S_mM, S_mm)
+        self.timer.stop('Distribute overlap matrix')
         return S_qmm.reshape(xshape + blockdesc.shape)
 
     def calculate_density_matrix(self, f_n, C_nM, rho_mM=None):

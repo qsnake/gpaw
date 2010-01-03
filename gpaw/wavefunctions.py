@@ -439,7 +439,8 @@ class LCAOWaveFunctions(WaveFunctions):
         if extra_parameters.get('blacs'):
             from gpaw.blacs import BlacsOrbitalDescriptor
             od = BlacsOrbitalDescriptor(self.world, self.gd, self.bd,
-                                        self.kpt_comm, self.setups.nao)
+                                        self.kpt_comm, self.setups.nao,
+                                        self.timer)
         else:
             from gpaw.blacs import OrbitalDescriptor
             od = OrbitalDescriptor(self.gd, self.bd, self.setups.nao)
@@ -511,6 +512,7 @@ class LCAOWaveFunctions(WaveFunctions):
             kpt.P_aMi = dict([(a, P_qMi[q])
                               for a, P_qMi in self.P_aqMi.items()])
 
+        self.timer.start('TCI: Calculate S, T, P')
         self.tci.calculate(spos_ac, S_qMM, T_qMM, self.P_aqMi)
         nao = self.setups.nao
         for a, P_qMi in self.P_aqMi.items():
@@ -524,7 +526,11 @@ class LCAOWaveFunctions(WaveFunctions):
         comm = self.gd.comm
         comm.sum(S_qMM)
         comm.sum(T_qMM)
+        self.timer.stop('TCI: Calculate S, T, P')
         
+        self.S_qMM = self.od.distribute_overlap_matrix(S_qMM)
+        self.T_qMM = self.od.distribute_overlap_matrix(T_qMM)
+
         if debug and self.band_comm.size == 1:
             from numpy.linalg import eigvalsh
             for S_MM in S_qMM:
@@ -532,8 +538,6 @@ class LCAOWaveFunctions(WaveFunctions):
                 if smin < 0:
                     raise RuntimeError('Overlap matrix has negative '
                                        'eigenvalue: %e' % smin)
-        self.S_qMM = self.od.distribute_overlap_matrix(S_qMM)
-        self.T_qMM = self.od.distribute_overlap_matrix(T_qMM)
         self.positions_set = True
 
     def initialize(self, density, hamiltonian, spos_ac):
@@ -558,7 +562,10 @@ class LCAOWaveFunctions(WaveFunctions):
 
         #from gpaw.blacs import BlacsOrbitalDescriptor
         #if isinstance(self.od, BlacsOrbitalDescriptor):
-        return self.od.calculate_density_matrix(f_n, C_nM, rho_MM)
+        self.timer.start('Calculate density matrix')
+        rho_MM = self.od.calculate_density_matrix(f_n, C_nM, rho_MM)
+        self.timer.stop('Calculate density matrix')
+        return rho_MM
 
         # ----------------------------
         if 1:
