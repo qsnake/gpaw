@@ -36,12 +36,11 @@ class SLDenseLinearAlgebra:
         self.cols2blocks = cols2blocks
         self.blocks2cols = blocks2cols
     
-
-    def diagonalize(self, H_mM, C_nM, eps_n, S_mm=None):
+    def diagonalize(self, H_mm, C_nM, eps_n, S_mm=None):
         if S_mm is None:
-            self._standard_diagonalize(H_mM, C_nM, eps_n)
+            self._standard_diagonalize(H_mm, C_nM, eps_n) #XXX H_mm or H_Nn?
         else:
-            self._general_diagonalize(H_mM, S_mm, C_nM, eps_n)
+            self._general_diagonalize(H_mm, S_mm, C_nM, eps_n)
 
     def _standard_diagonalize(self, H_Nn, C_Nn, eps_n):
         indescriptor = self.indescriptor
@@ -75,27 +74,16 @@ class SLDenseLinearAlgebra:
         self.gd.comm.broadcast(C_nN, 0)
         self.gd.comm.broadcast(eps_n, 0)
 
-    def _general_diagonalize(self, H_mM, S_mm, C_nM, eps_n):
+    def _general_diagonalize(self, H_mm, S_mm, C_nM, eps_n):
         indescriptor = self.indescriptor
         outdescriptor = self.outdescriptor
         blockdescriptor = self.blockdescriptor
 
-        dtype = H_mM.dtype
+        dtype = S_mm.dtype
         eps_M = np.empty(C_nM.shape[-1])
-
-        # XXX where should inactive ranks be sorted out?
-        if not indescriptor:
-            shape = indescriptor.shape
-            H_mM = np.zeros(shape, dtype=dtype)
-        
-        H_mm = blockdescriptor.zeros(dtype=dtype)
         C_mm = blockdescriptor.zeros(dtype=dtype)
-
-        self.cols2blocks.redistribute(H_mM, H_mm)
-        del H_mM # avoid high peak memory use
         blockdescriptor.general_diagonalize_ex(H_mm, S_mm.copy(), C_mm, eps_M,
                                                UL='U', iu=self.bd.nbands)
-        del H_mm
         C_mM = outdescriptor.zeros(dtype=dtype)
         self.blocks2cols.redistribute(C_mm, C_mM) # XXX redist only nM somehow
 
@@ -440,6 +428,10 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
         return self.nMdescriptor
 
     def distribute_overlap_matrix(self, S1_qmM):
+        xshape = S1_qmM.shape[:-2]
+        nm, nM = S1_qmM.shape[-2:]
+        S1_qmM = S1_qmM.reshape(-1, nm, nM)
+        
         blockdesc = self.mmdescriptor
         coldesc = self.mM_unique_descriptor
         S_qmm = blockdesc.zeros(len(S1_qmM), S1_qmM.dtype)
@@ -452,7 +444,7 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
             if self.gd.comm.rank == 0:
                 S_mM[:] = S1_mM
             self.mM2mm.redistribute(S_mM, S_mm)
-        return S_qmm
+        return S_qmm.reshape(xshape + blockdesc.shape)
 
     def calculate_density_matrix(self, f_n, C_nM, rho_mM=None):
         nbands = self.bd.nbands

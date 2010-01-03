@@ -89,6 +89,7 @@ class LCAO:
             gemm(1.0, P_Mi, dH_ii, 0.0, dHP_iM, 'c')
             gemm(1.0, dHP_iM, P_Mi[Mstart:Mstop], 1.0, H_MM)
         self.gd.comm.sum(H_MM, root)
+        H_MM = wfs.od.distribute_overlap_matrix(H_MM)
         H_MM += wfs.T_qMM[kpt.q]
         return H_MM
 
