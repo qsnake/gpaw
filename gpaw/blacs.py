@@ -437,23 +437,20 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
     def get_coefficient_descriptor(self):
         return self.nMdescriptor
 
-    def distribute_overlap_matrix(self, S1_qmM):
-        xshape = S1_qmM.shape[:-2]
-        nm, nM = S1_qmM.shape[-2:]
-        S1_qmM = S1_qmM.reshape(-1, nm, nM)
+    def distribute_overlap_matrix(self, S_qmM):
+        xshape = S_qmM.shape[:-2]
+        nm, nM = S_qmM.shape[-2:]
+        S_qmM = S_qmM.reshape(-1, nm, nM)
         
         blockdesc = self.mmdescriptor
         coldesc = self.mM_unique_descriptor
-        S_qmm = blockdesc.zeros(len(S1_qmM), S1_qmM.dtype)
+        S_qmm = blockdesc.zeros(len(S_qmM), S_qmM.dtype)
+
+        if not coldesc: # XXX ugly way to sort out inactive ranks
+            S_qmM = coldesc.zeros(len(S_qmM), S_qmM.dtype)
         
-        # XXX ugly hack
-        # TODO distribute T_qMM in the same way.  Hack eigensolver
-        # as appropriate
         self.timer.start('Distribute overlap matrix')
-        S_qmM = coldesc.zeros(len(S1_qmM), S1_qmM.dtype)
-        for S_mM, S_mm, S1_mM in zip(S_qmM, S_qmm, S1_qmM):
-            if self.gd.comm.rank == 0:
-                S_mM[:] = S1_mM
+        for S_mM, S_mm in zip(S_qmM, S_qmm):
             self.mM2mm.redistribute(S_mM, S_mm)
         self.timer.stop('Distribute overlap matrix')
         return S_qmm.reshape(xshape + blockdesc.shape)
