@@ -462,9 +462,7 @@ class LCAOWaveFunctions(WaveFunctions):
 
     def set_eigensolver(self, eigensolver):
         WaveFunctions.set_eigensolver(self, eigensolver)
-        eigensolver.initialize(self.kpt_comm, self.gd, self.band_comm,
-                               self.dtype, 
-                               self.setups.nao, self.mynbands, self.world,
+        eigensolver.initialize(self.gd, self.dtype, self.setups.nao,
                                self.od.get_diagonalizer())
 
     def set_positions(self, spos_ac):
@@ -554,10 +552,15 @@ class LCAOWaveFunctions(WaveFunctions):
             density.calculate_normalized_charges_and_mix()
         hamiltonian.update(density)
            
-    def calculate_density_matrix(self, f_n, C_nM, rho_MM):
+    def calculate_density_matrix(self, f_n, C_nM, rho_MM=None):
         # ATLAS can't handle uninitialized output array:
-        rho_MM.fill(42)
-        
+        #rho_MM.fill(42)
+
+        #from gpaw.blacs import BlacsOrbitalDescriptor
+        #if isinstance(self.od, BlacsOrbitalDescriptor):
+        return self.od.calculate_density_matrix(f_n, C_nM, rho_MM)
+
+        # ----------------------------
         if 1:
             # XXX Should not conjugate, but call gemm(..., 'c')
             # Although that requires knowing C_Mn and not C_nM.
@@ -576,16 +579,20 @@ class LCAOWaveFunctions(WaveFunctions):
         occupation numbers, but ones given with argument f_n."""
         # Custom occupations are used in calculation of response potential
         # with GLLB-potential
+        Mstart = self.basis_functions.Mstart
+        Mstop = self.basis_functions.Mstop
         if kpt.rho_MM is None:
-            nao = self.setups.nao
-            rho_MM = np.empty((nao, nao), self.dtype)
-            self.calculate_density_matrix(f_n, kpt.C_nM, rho_MM)
+            #nao = self.setups.nao
+            #rho_MM = np.empty((nao, nao), self.dtype)
+            rho_MM = self.calculate_density_matrix(f_n, kpt.C_nM, rho_MM=None)
+            #if rho_ is not None:
+            #    rho_MM = x # XXXXXXXXXXXXXXX
+            #else:
+            #    rho_MM = rho_MM[Mstart:Mstop],
         else:
             rho_MM = kpt.rho_MM
         self.timer.start('Construct density')
-        Mstart = self.basis_functions.Mstart
-        Mstop = self.basis_functions.Mstop
-        self.basis_functions.construct_density(rho_MM[Mstart:Mstop],
+        self.basis_functions.construct_density(rho_MM,
                                                nt_sG[kpt.s], kpt.q)
         self.timer.stop('Construct density')
         #self.bd.comm.sum(nt_sG[kpt.s])
@@ -655,8 +662,7 @@ class LCAOWaveFunctions(WaveFunctions):
         nao = self.setups.nao
         dtype = self.dtype
         if kpt.rho_MM is None:
-            rho_MM = np.empty((nao, nao), dtype)
-            self.calculate_density_matrix(kpt.f_n, kpt.C_nM, rho_MM)
+            rho_MM = self.calculate_density_matrix(kpt.f_n, kpt.C_nM)
         else:
             rho_MM = kpt.rho_MM
         
@@ -680,8 +686,8 @@ class LCAOWaveFunctions(WaveFunctions):
         # But not for both spins, if spinpolarized
         # Hmmm....
         self.timer.start('LCAO forces: initial')
-        self.eigensolver.calculate_hamiltonian_matrix(hamiltonian, self, kpt)
-        H_MM = self.eigensolver.H_MM
+        H_MM = self.eigensolver.calculate_hamiltonian_matrix(hamiltonian, self,
+                                                             kpt)
         tri2full(H_MM)
         
         #
@@ -974,9 +980,9 @@ class GridWaveFunctions(WaveFunctions):
         eigensolver = get_eigensolver('lcao', 'lcao')
 
         diagonalizer = lcaowfs.od.get_diagonalizer()
-        eigensolver.initialize(self.kpt_comm, self.gd, self.band_comm,
+        eigensolver.initialize(self.gd,
                                self.dtype,
-                               self.setups.nao, lcaomynbands, self.world,
+                               self.setups.nao,
                                diagonalizer)
         # XXX when density matrix is properly distributed, be sure to
         # update the density here also

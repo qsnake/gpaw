@@ -44,56 +44,34 @@ class LapackDiagonalizer(BaseDiagonalizer):
     """Serial diagonalizer."""
     def _diagonalize(self, H_MM, S_MM, eps_n):
         return diagonalize(H_MM, eps_n, S_MM)
-        
 
 
 class LCAO:
     """Eigensolver for LCAO-basis calculation"""
 
     def __init__(self, diagonalizer=None):
-        self.error = 0.0
-        self.linear_kpts = None
-        self.H_MM = None
-        self.timer = None
-        self.mynbands = None
-        self.band_comm = None
-        self.world = None
         self.diagonalizer = None
         self.has_initialized = False # XXX
 
-    def initialize(self, kpt_comm, gd, band_comm, dtype, nao, mynbands, world,
-                   diagonalizer=None):
-        self.kpt_comm = kpt_comm
+    def initialize(self, gd, dtype, nao, diagonalizer):
         self.gd = gd
-        self.band_comm = band_comm
-        self.dtype = dtype
         self.nao = nao
-        self.mynbands = mynbands
-        self.world = world
-        if diagonalizer is None:
-            diagonalizer = LapackDiagonalizer()
         self.diagonalizer = diagonalizer
         self.has_initialized = True # XXX
-        assert self.H_MM is None # Right now we're not sure whether
-        # this will work when reusing
+
+    def error(self):
+        return 0.0
+    error = property(error)
 
     def calculate_hamiltonian_matrix(self, hamiltonian, wfs, kpt, root=-1):
         # XXX document parallel stuff, particularly root parameter
         assert self.has_initialized
-        s = kpt.s
-        q = kpt.q
-        if self.H_MM is None:
-            nao = self.nao
-            mynao = wfs.T_qMM.shape[1]
-            self.H_MM = np.empty((mynao, nao), self.dtype)
-            self.timer = wfs.timer
+        vt_G = hamiltonian.vt_sG[kpt.s]
+        H_MM = np.empty((wfs.od.mynao, wfs.od.nao), wfs.dtype)
 
-        self.timer.start('potential matrix')
-
-        wfs.basis_functions.calculate_potential_matrix(hamiltonian.vt_sG[s],
-                                                       self.H_MM, q)
-
-        self.timer.stop('potential matrix')
+        wfs.timer.start('potential matrix')
+        wfs.basis_functions.calculate_potential_matrix(vt_G, H_MM, kpt.q)
+        wfs.timer.stop('potential matrix')
 
         # Add atomic contribution
         #
@@ -105,25 +83,24 @@ class LCAO:
         Mstart = wfs.basis_functions.Mstart
         Mstop = wfs.basis_functions.Mstop
         for a, P_Mi in kpt.P_aMi.items():
-            dH_ii = np.asarray(unpack(hamiltonian.dH_asp[a][s]), P_Mi.dtype)
-            dHP_iM = np.zeros((dH_ii.shape[1], P_Mi.shape[0]), P_Mi.dtype)
+            dH_ii = np.asarray(unpack(hamiltonian.dH_asp[a][kpt.s]), wfs.dtype)
+            dHP_iM = np.zeros((dH_ii.shape[1], P_Mi.shape[0]), wfs.dtype)
             # (ATLAS can't handle uninitialized output array)
             gemm(1.0, P_Mi, dH_ii, 0.0, dHP_iM, 'c')
-            if Mstart != -1:
-                P_Mi = P_Mi[Mstart:Mstop]
-            gemm(1.0, dHP_iM, P_Mi, 1.0, self.H_MM)
-        self.gd.comm.sum(self.H_MM, root)
-        self.H_MM += wfs.T_qMM[q]
+            gemm(1.0, dHP_iM, P_Mi[Mstart:Mstop], 1.0, H_MM)
+        self.gd.comm.sum(H_MM, root)
+        H_MM += wfs.T_qMM[kpt.q]
+        return H_MM
 
     def iterate(self, hamiltonian, wfs):
         for kpt in wfs.kpt_u:
             self.iterate_one_k_point(hamiltonian, wfs, kpt)
 
     def iterate_one_k_point(self, hamiltonian, wfs, kpt):
-        if self.band_comm.size > 1 and wfs.bd.strided:
+        if wfs.bd.comm.size > 1 and wfs.bd.strided:
             raise NotImplementedError
 
-        self.calculate_hamiltonian_matrix(hamiltonian, wfs, kpt, root=0)
+        H_MM = self.calculate_hamiltonian_matrix(hamiltonian, wfs, kpt, root=0)
         S_MM = wfs.S_qMM[kpt.q]
 
         if kpt.eps_n is None:
@@ -136,11 +113,11 @@ class LCAO:
         kpt.eps_n[0] = 42
         
         diagonalizationstring = self.diagonalizer.__class__.__name__
-        self.timer.start(diagonalizationstring)
+        wfs.timer.start(diagonalizationstring)
         try:
-            self.diagonalizer.diagonalize(self.H_MM, kpt.C_nM, kpt.eps_n, S_MM)
+            self.diagonalizer.diagonalize(H_MM, kpt.C_nM, kpt.eps_n, S_MM)
         finally:
-            self.timer.stop(diagonalizationstring)
+            wfs.timer.stop(diagonalizationstring)
 
         assert kpt.eps_n[0] != 42
 
@@ -150,7 +127,8 @@ class LCAO:
             gemm(1.0, kpt.P_aMi[a], kpt.C_nM, 0.0, P_ni, 'n')
 
     def estimate_memory(self, mem):
+        pass
         # XXX forward to diagonalizer
-        itemsize = np.array(1, self.dtype).itemsize
-        mem.subnode('H [MM]', self.nao * self.nao * itemsize)
+        #itemsize = np.array(1, self.dtype).itemsize
+        #mem.subnode('H [MM]', self.nao * self.nao * itemsize)
 

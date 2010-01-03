@@ -240,11 +240,11 @@ def dump_hamiltonian_parallel(filename, atoms, direction=None):
 ##                '(rk, rd, q, k) = (%i, %i, %i, %i)') % (
 ##             wfs.world.rank, wfs.kpt_comm.rank,
 ##             wfs.gd.domain.comm.rank, kpt.q, kpt.k)
-        wfs.eigensolver.calculate_hamiltonian_matrix(calc.hamiltonian,
-                                                     wfs, 
-                                                     kpt)
+        H_MM = wfs.eigensolver.calculate_hamiltonian_matrix(calc.hamiltonian,
+                                                            wfs, 
+                                                            kpt)
 
-        H_qMM[kpt.s, kpt.q] = wfs.eigensolver.H_MM
+        H_qMM[kpt.s, kpt.q] = H_MM
 
         tri2full(H_qMM[kpt.s, kpt.q])
         if kpt.s==0:
@@ -278,12 +278,12 @@ def get_lcao_hamiltonian(calc):
     S_kMM = np.zeros((Nk, NM, NM), dtype)
     H_skMM = np.zeros((Ns, Nk, NM, NM), dtype)
     for kpt in calc.wfs.kpt_u:
-        calc.wfs.eigensolver.calculate_hamiltonian_matrix(
+        H_MM = calc.wfs.eigensolver.calculate_hamiltonian_matrix(
             calc.hamiltonian, calc.wfs, kpt)
         if kpt.s == 0:
             S_kMM[kpt.k] = calc.wfs.S_qMM[kpt.q]
             tri2full(S_kMM[kpt.k])
-        H_skMM[kpt.s, kpt.k] = calc.wfs.eigensolver.H_MM * Hartree
+        H_skMM[kpt.s, kpt.k] = H_MM * Hartree
         tri2full(H_skMM[kpt.s, kpt.k])
     calc.wfs.kpt_comm.sum(S_kMM, MASTER)
     calc.wfs.kpt_comm.sum(H_skMM, MASTER)

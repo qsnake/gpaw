@@ -14,8 +14,9 @@ import numpy as np
 
 from gpaw import sl_diagonalize
 from gpaw.mpi import SerialCommunicator
+from gpaw.utilities.blas import gemm, r2k
 from gpaw.utilities.blacs import scalapack_general_diagonalize_ex, \
-    scalapack_diagonalize_ex
+    scalapack_diagonalize_ex, pblas_simple_gemm
 import _gpaw
 
 
@@ -73,7 +74,6 @@ class SLDenseLinearAlgebra:
 
         self.gd.comm.broadcast(C_nN, 0)
         self.gd.comm.broadcast(eps_n, 0)
-        return 0
 
     def _general_diagonalize(self, H_mM, S_mm, C_nM, eps_n):
         indescriptor = self.indescriptor
@@ -90,11 +90,13 @@ class SLDenseLinearAlgebra:
         
         H_mm = blockdescriptor.zeros(dtype=dtype)
         C_mm = blockdescriptor.zeros(dtype=dtype)
-        C_mM = outdescriptor.zeros(dtype=dtype)
 
         self.cols2blocks.redistribute(H_mM, H_mm)
-        blockdescriptor.general_diagonalize_ex(H_mm, S_mm.copy(), C_mm, eps_M, UL='U',
-                                               iu=self.bd.nbands)
+        del H_mM # avoid high peak memory use
+        blockdescriptor.general_diagonalize_ex(H_mm, S_mm.copy(), C_mm, eps_M,
+                                               UL='U', iu=self.bd.nbands)
+        del H_mm
+        C_mM = outdescriptor.zeros(dtype=dtype)
         self.blocks2cols.redistribute(C_mm, C_mM) # XXX redist only nM somehow
 
         if outdescriptor:
@@ -107,7 +109,6 @@ class SLDenseLinearAlgebra:
 
         self.gd.comm.broadcast(C_nM, 0)
         self.gd.comm.broadcast(eps_n, 0)
-        return 0
 
 
 class BlacsGrid:
@@ -159,14 +160,6 @@ class BlacsGrid:
             _gpaw.blacs_destroy(self.context)
 
 
-class NonBlacsGrid:
-    def __init__(self):
-        pass
-
-    def new_descriptor(self, M, N, mb, nb, rsrc=0, csrc=0):
-        desc = MatrixDescriptor(M, N)
-        return desc
-
 class MatrixDescriptor:
     """Class representing a 2D matrix shape.  Base class for parallel
     matrix descriptor with BLACS.  This class is by itself serial."""
@@ -201,6 +194,7 @@ class MatrixDescriptor:
                 msg = ('%s-descriptor incompatible with %s-matrix' %
                        (self.shape, a_mn.shape))
             raise AssertionError(msg)
+
 
 class BlacsDescriptor(MatrixDescriptor):
     """Class representing a 2D matrix distributed on a blacs grid.
@@ -276,7 +270,7 @@ class BlacsDescriptor(MatrixDescriptor):
                         self.lld], np.int32)
         return arr
 
-    def __str__(self):
+    def __repr__(self):
         classname = self.__class__.__name__
         template = '%s[context=%d, glob %s, block %s, lld %d, loc %s]'
         string = template % (classname, self.blacsgrid.context,
@@ -378,39 +372,58 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
         bcommsize = bd.comm.size
         gcommsize = gd.comm.size
         bcommrank = bd.comm.rank
-        
+
+        # XXX these things can probably be obtained in a more programmatically
+        # convenient way
         shiftks = kpt_comm.rank * bcommsize * gcommsize
-        stripe_ranks = shiftks + np.arange(bcommsize) * gcommsize
+        column_ranks = shiftks + np.arange(bcommsize) * gcommsize
         block_ranks = shiftks + np.arange(bcommsize * gcommsize)
-        stripecomm = world.new_communicator(stripe_ranks)
+        columncomm = world.new_communicator(column_ranks)
         blockcomm = world.new_communicator(block_ranks)
 
+        nbands = bd.nbands
+        mynbands = bd.mynbands
         mynao = -((-nao) // bcommsize)
+        self.nao = nao
         self.mynao = mynao
 
         # Range of basis functions for BLACS distribution of matrices:
         self.Mmax = nao
         self.Mstart = bcommrank * mynao
         self.Mstop = min(self.Mstart + mynao, self.Mmax)
-        
-        stripegrid = BlacsGrid(stripecomm, bcommsize, 1)
+
+        # Column layout for one matrix per band rank:
+        columngrid = BlacsGrid(bd.comm, bcommsize, 1)
+        self.mMdescriptor = columngrid.new_descriptor(nao, nao, mynao, nao)
+        self.nMdescriptor = columngrid.new_descriptor(nbands, nao, mynbands,
+                                                      nao)
+
+        # Column layout for one matrix in total (only on grid masters):
+        single_column_grid = BlacsGrid(columncomm, bcommsize, 1)
+        mM_unique_descriptor = single_column_grid.new_descriptor(nao, nao,
+                                                                 mynao, nao)
+        # nM_unique_descriptor is meant to hold the coefficients after
+        # diagonalization.  BLACS requires it to be nao-by-nao, but
+        # we only fill meaningful data into the first nbands columns.
+        #
+        # The array will then be trimmed and broadcast across
+        # the grid descriptor's communicator.
+        nM_unique_descriptor = single_column_grid.new_descriptor(nao, nao,
+                                                                 mynbands, nao)
+
+        # Fully blocked grid for diagonalization with many CPUs:
         blockgrid = BlacsGrid(blockcomm, mcpus, ncpus)
-
-        # Striped layout
-        mMdescriptor = stripegrid.new_descriptor(nao, nao, mynao, nao)
-
-        # Blocked layout
         mmdescriptor = blockgrid.new_descriptor(nao, nao, blocksize, blocksize)
 
-        # Striped layout but only nbands by nao (nbands <= nao)
-        nMdescriptor = stripegrid.new_descriptor(nao, nao, bd.mynbands, nao)
-
-        self.mMdescriptor = mMdescriptor
+        self.mM_unique_descriptor = mM_unique_descriptor
         self.mmdescriptor = mmdescriptor
-        self.nMdescriptor = nMdescriptor
-        self.mM2mm = Redistributor(blockcomm, mMdescriptor, mmdescriptor)
-        self.mm2nM = Redistributor(blockcomm, mmdescriptor, nMdescriptor)
-        
+        #self.nMdescriptor = nMdescriptor
+        self.mM2mm = Redistributor(blockcomm, mM_unique_descriptor,
+                                   mmdescriptor)
+        self.mm2nM = Redistributor(blockcomm, mmdescriptor,
+                                   nM_unique_descriptor)
+
+        self.world = world
         self.gd = gd
         self.bd = bd
 
@@ -428,16 +441,31 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
 
     def distribute_overlap_matrix(self, S1_qmM):
         blockdesc = self.mmdescriptor
-        coldesc = self.mMdescriptor
+        coldesc = self.mM_unique_descriptor
         S_qmm = blockdesc.zeros(len(S1_qmM), S1_qmM.dtype)
         
         # XXX ugly hack
+        # TODO distribute T_qMM in the same way.  Hack eigensolver
+        # as appropriate
         S_qmM = coldesc.zeros(len(S1_qmM), S1_qmM.dtype)
         for S_mM, S_mm, S1_mM in zip(S_qmM, S_qmm, S1_qmM):
             if self.gd.comm.rank == 0:
                 S_mM[:] = S1_mM
             self.mM2mm.redistribute(S_mM, S_mm)
         return S_qmm
+
+    def calculate_density_matrix(self, f_n, C_nM, rho_mM=None):
+        nbands = self.bd.nbands
+        mynbands = self.bd.mynbands
+        nao = self.nao
+        
+        if rho_mM is None:
+            rho_mM = self.mMdescriptor.zeros()
+        
+        Cf_nM = C_nM * f_n[:, None]
+        pblas_simple_gemm(self.nMdescriptor, self.nMdescriptor,
+                          self.mMdescriptor, Cf_nM, C_nM, rho_mM, transa='T')
+        return rho_mM
 
 
 class OrbitalDescriptor:
@@ -451,11 +479,12 @@ class OrbitalDescriptor:
         self.Mstop = nao
         self.Mmax = nao
         self.mynao = nao
+        self.nao = nao
 
     def get_diagonalizer(self):
         if sl_diagonalize:
             from gpaw.lcao.eigensolver import SLDiagonalizer
-            diagonalizer = SLDiagonalizer()
+            diagonalizer = SLDiagonalizer(self.gd, self.bd)
         else:
             from gpaw.lcao.eigensolver import LapackDiagonalizer
             diagonalizer = LapackDiagonalizer(self.gd, self.bd)
@@ -472,3 +501,23 @@ class OrbitalDescriptor:
 
     def distribute_overlap_matrix(self, S_qMM):
         return S_qMM
+
+    def calculate_density_matrix(self, f_n, C_nM, rho_MM=None):
+        if rho_MM is None:
+            rho_MM = np.zeros((self.mynao, self.nao), dtype=C_nM.dtype)
+        # XXX Should not conjugate, but call gemm(..., 'c')
+        # Although that requires knowing C_Mn and not C_nM.
+        # that also conforms better to the usual conventions in literature
+        Cf_Mn = C_nM.T.conj() * f_n
+        gemm(1.0, C_nM, Cf_Mn, 0.0, rho_MM, 'n')
+        self.bd.comm.sum(rho_MM)
+        return rho_MM
+
+    def alternative_calculate_density_matrix(self, f_n, C_nM, rho_MM=None):
+        if rho_MM is None:
+            rho_MM = np.zeros((self.mynao, self.nao), dtype=C_nM.dtype)
+        # Alternative suggestion. Might be faster. Someone should test this
+        C_Mn = C_nM.T.copy()
+        r2k(0.5, C_Mn, f_n * C_Mn, 0.0, rho_MM)
+        tri2full(rho_MM)
+        return rho_MM

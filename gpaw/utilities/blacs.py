@@ -72,26 +72,57 @@ def scalapack_inverse_cholesky(desca, a, uplo):
     _gpaw.scalapack_inverse_cholesky(a, desca.asarray(), uplo)
 
 def pblas_gemm(alpha, a_MK, b_KN, beta, c_MN, desca, descb, descc,
-                 transa='N', transb='N'):
+               transa='N', transb='N'):
     assert desca.check(a_MK)
     assert descb.check(b_KN)
     assert descc.check(c_MN)
     assert transa in ['N', 'T', 'C'] and transb in ['N', 'T', 'C']
-    M, K = desca.gshape
-    K, N = descb.gshape
+    M, Ka = desca.gshape
+    Kb, N = descb.gshape
+
+    if transa =='T':
+        M, Ka = Ka, M
+    if transb == 'T':
+        Kb, N = N, Kb
+    Mc, Nc = descc.gshape
+    K = Ka
+
+    assert Ka == Kb
+    assert M == Mc
+    assert N == Nc
+
+    #trans = transa + transb
+
+    """
     if transb == 'N':
         assert desca.gshape[1] == descb.gshape[0]
         assert desca.gshape[0] == descc.gshape[0]
         assert descb.gshape[1] == descc.gshape[1]
     if transb == 'T':
-        N, K = K, N
-        assert desca.gshape[1] == descb.gshape[1]
+        N, Kb = Kb, N
+        #assert desca.gshape[1] == descb.gshape[1]
         assert desca.gshape[0] == descc.gshape[0]
         assert descb.gshape[0] == descc.gshape[1]
-    assert transa == 'N' # XXX remember to implement 'T'
+
+    if trans == 'NN':
+        assert desca.gshape[1] == descb.gshape[0]
+        assert desca.gshape[0] == descc.gshape[0]
+        assert descb.gshape[1] == descc.gshape[1]
+    elif transa == 'T':
+        M, Ka = Ka, M
+        assert desca.gshape[1] == descc.gshape[0]
+    if transb == 'N':
+        assert descb.gshape[1] == descc.gshape[1]
+    elif transb == 'T':
+        assert descb.gshape[1] == descc.gshape[1]
+    assert Ka == Kb
+    #assert transa == 'N' # XXX remember to implement 'T'
+    _gpaw.pblas_gemm(N, M, Ka, alpha, b_KN.T, a_MK.T, beta, c_MN.T,
+    """
+    #assert transa == 'N' # XXX remember to implement 'T'
     if not desca.blacsgrid.is_active():
         return
-    _gpaw.pblas_gemm(N, M, K, alpha, b_KN.T, a_MK.T, beta, c_MN.T,
+    _gpaw.pblas_gemm(N, M, Ka, alpha, b_KN.T, a_MK.T, beta, c_MN.T,
                      descb.asarray(), desca.asarray(), descc.asarray(),
                      transb, transa)
 

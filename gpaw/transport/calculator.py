@@ -765,8 +765,7 @@ class Transport(GPAW):
             tri2full(S_MM)
         H_sqMM = np.empty((self.my_nspins,) + S_qMM.shape, wfs.dtype)
         for kpt in wfs.kpt_u:
-            eigensolver.calculate_hamiltonian_matrix(ham, wfs, kpt)
-            H_MM = eigensolver.H_MM
+            H_MM = eigensolver.calculate_hamiltonian_matrix(ham, wfs, kpt)
             tri2full(H_MM)
             H_MM *= Hartree
             if self.my_nspins == 2:

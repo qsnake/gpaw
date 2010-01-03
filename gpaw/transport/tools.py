@@ -163,8 +163,7 @@ def get_hs(atoms):
         tri2full(S_MM)
     H_sqMM = np.empty((wfs.nspins,) + S_qMM.shape, complex)
     for kpt in wfs.kpt_u:
-        eigensolver.calculate_hamiltonian_matrix(ham, wfs, kpt)
-        H_MM = eigensolver.H_MM
+        H_MM = eigensolver.calculate_hamiltonian_matrix(ham, wfs, kpt)
         tri2full(H_MM)
         H_MM *= Hartree
         H_MM -= Ef * S_qMM[kpt.q]

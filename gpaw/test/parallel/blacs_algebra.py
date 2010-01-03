@@ -36,6 +36,7 @@ def main(M=160, N=120, K=140, seed=42, mprocs=2, nprocs=2, dtype=float):
     globA = grid.new_descriptor(M, K, M, K)
     globB = grid.new_descriptor(K, N, K, N)
     globC = grid.new_descriptor(M, N, M, N)
+    globZ = grid.new_descriptor(K, K, K, K)
     globX = grid.new_descriptor(K, 1, K, 1)
     globY = grid.new_descriptor(M, 1, M, 1)
     globD = grid.new_descriptor(M, K, M, K)
@@ -44,14 +45,15 @@ def main(M=160, N=120, K=140, seed=42, mprocs=2, nprocs=2, dtype=float):
 
     # print globA.asarray()
     # Populate matrices local to master:
-    A0 = gen.rand(*globA.shape) + epsilon*gen.rand(*globA.shape)
-    B0 = gen.rand(*globB.shape) + epsilon*gen.rand(*globB.shape)
-    D0 = gen.rand(*globD.shape) + epsilon*gen.rand(*globD.shape)
-    X0 = gen.rand(*globX.shape) + epsilon*gen.rand(*globX.shape)
+    A0 = gen.rand(*globA.shape) + epsilon * gen.rand(*globA.shape)
+    B0 = gen.rand(*globB.shape) + epsilon * gen.rand(*globB.shape)
+    D0 = gen.rand(*globD.shape) + epsilon * gen.rand(*globD.shape)
+    X0 = gen.rand(*globX.shape) + epsilon * gen.rand(*globX.shape)
     
     # Local result matrices
     Y0 = globY.empty(dtype=dtype)
-    C0 = globC.empty(dtype=dtype)
+    C0 = globC.zeros(dtype=dtype)
+    Z0 = globZ.zeros(dtype=dtype)
     S0 = globS.zeros(dtype=dtype) # zeros needed for rank-updates
     U0 = globU.zeros(dtype=dtype) # zeros needed for rank-updates
 
@@ -59,8 +61,11 @@ def main(M=160, N=120, K=140, seed=42, mprocs=2, nprocs=2, dtype=float):
     if rank == 0:
         # C0[:] = np.dot(A0, B0)
         gemm(1.0, B0, A0, 0.0, C0)
+        #gemm(1.0, A0, A0, 0.0, Z0, transa='t')
+        print A0.shape, Z0.shape
+        Z0[:] = np.dot(A0.T, A0)
         # Y0[:] = np.dot(A0, X0)
-        gemv(1.0, A0, X0, 0.0, Y0)
+        gemv(1.0, A0, X0.ravel(), 0.0, Y0.ravel())
         r2k(1.0, A0, D0, 0.0, S0)
         rk(1.0, A0, 0.0, U0)
 
@@ -72,6 +77,7 @@ def main(M=160, N=120, K=140, seed=42, mprocs=2, nprocs=2, dtype=float):
     distA = grid.new_descriptor(M, K, 2, 2)
     distB = grid.new_descriptor(K, N, 2, 4)
     distC = grid.new_descriptor(M, N, 3, 2)
+    distZ = grid.new_descriptor(K, K, 5, 7)
     distX = grid.new_descriptor(K, 1, 4, 1)
     distY = grid.new_descriptor(M, 1, 3, 1)
     distD = grid.new_descriptor(M, K, 2, 3)
@@ -82,6 +88,7 @@ def main(M=160, N=120, K=140, seed=42, mprocs=2, nprocs=2, dtype=float):
     A = distA.empty(dtype=dtype)
     B = distB.empty(dtype=dtype)
     C = distC.empty(dtype=dtype)
+    Z = distZ.empty(dtype=dtype)
     X = distX.empty(dtype=dtype)
     Y = distY.empty(dtype=dtype)
     D = distD.empty(dtype=dtype)
@@ -94,6 +101,7 @@ def main(M=160, N=120, K=140, seed=42, mprocs=2, nprocs=2, dtype=float):
     Redistributor(world, globD, distD).redistribute(D0, D)
 
     pblas_simple_gemm(distA, distB, distC, A, B, C)
+    pblas_simple_gemm(distA, distA, distZ, A, A, Z, transa='T')
     pblas_simple_gemv(distA, distX, distY, A, X, Y)
     pblas_simple_r2k(distA, distD, distS, A, D, S)
     pblas_simple_rk(distA, distU, A, U)
