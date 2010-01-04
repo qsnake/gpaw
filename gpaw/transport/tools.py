@@ -353,7 +353,9 @@ def get_lcao_density_matrix(calc):
     nq = len(kpts)
     my_ns = len(wfs.kpt_u) / nq
     nao = wfs.setups.nao
-    d_skmm = np.empty([my_ns, nq, nao, nao], wfs.dtype)
+    
+    # calculate_density_matrix involves gemm and doesn't work well with empty()
+    d_skmm = np.zeros([my_ns, nq, nao, nao], wfs.dtype)
     for kpt in wfs.kpt_u:
         if my_ns == 1:
             wfs.calculate_density_matrix(kpt.f_n, kpt.C_nM, d_skmm[0, kpt.q])
