@@ -379,25 +379,30 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
 
         nbands = bd.nbands
         mynbands = bd.mynbands
-        mynao = -((-nao) // bcommsize)
+        naoblocksize = -((-nao) // bcommsize)
         self.nao = nao
-        self.mynao = mynao
 
         # Range of basis functions for BLACS distribution of matrices:
         self.Mmax = nao
-        self.Mstart = bcommrank * mynao
-        self.Mstop = min(self.Mstart + mynao, self.Mmax)
+        self.Mstart = bcommrank * naoblocksize
+        self.Mstop = min(self.Mstart + naoblocksize, self.Mmax)
+        self.mynao = self.Mstop - self.Mstart
 
         # Column layout for one matrix per band rank:
         columngrid = BlacsGrid(bd.comm, bcommsize, 1)
-        self.mMdescriptor = columngrid.new_descriptor(nao, nao, mynao, nao)
+        self.mMdescriptor = columngrid.new_descriptor(nao, nao, naoblocksize,
+                                                      nao)
         self.nMdescriptor = columngrid.new_descriptor(nbands, nao, mynbands,
                                                       nao)
+        assert self.mMdescriptor.shape == (self.mynao, nao)
+
+        #parallelprint(world, (mynao, self.mMdescriptor.shape))
 
         # Column layout for one matrix in total (only on grid masters):
         single_column_grid = BlacsGrid(columncomm, bcommsize, 1)
         mM_unique_descriptor = single_column_grid.new_descriptor(nao, nao,
-                                                                 mynao, nao)
+                                                                 naoblocksize,
+                                                                 nao)
         # nM_unique_descriptor is meant to hold the coefficients after
         # diagonalization.  BLACS requires it to be nao-by-nao, but
         # we only fill meaningful data into the first nbands columns.
