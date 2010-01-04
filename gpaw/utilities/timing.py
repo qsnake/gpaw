@@ -89,8 +89,11 @@ class Timer:
     def stop(self, name=None):
         if name is None: name = self.running[-1]
         names = tuple(self.running)
-        if name != self.running.pop():
-            raise RuntimeError
+        running = self.running.pop()
+        if name != running:
+            raise RuntimeError('Must stop timers by stack order.  '
+                               'Requested stopping of %s but topmost is %s'
+                               % (name, running))
         self.timers[names] += time.time()
             
     def get_time(self, *names):
