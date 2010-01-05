@@ -66,6 +66,8 @@ class CHI:
         self.nband = calc.get_number_of_bands()
         self.nkpt = bzkpt_kG.shape[0]
         self.acell = calc.atoms.cell / Bohr
+        self.nvalence = calc.wfs.setups.nvalence
+        print self.nvalence
 
         # obtain eigenvalues, occupations, LCAO coefficients and wavefunctions
         e_kn = np.array([calc.get_eigenvalues(kpt=k) for k in range(self.nkpt)])
@@ -95,7 +97,11 @@ class CHI:
         wmax = wmax / Hartree
         self.dw = dw / Hartree
         eta = eta / Hartree
-        self.q = q
+        if calc.atoms.pbc.any():
+            if self.OpticalLimit:
+                self.q = np.array([0.001, 0, 0])
+            else:
+                self.q = q
 
         self.Nw = int((wmax - wmin) / self.dw) + 1
         self.NwS = int(wcut/self.dw) + 1
@@ -153,16 +159,16 @@ class CHI:
             # if C_knM is not read from file, then we should chnage C_knM
             # C_knM *= e{i k. R_a}
             if not isfile('C_knM.npz'):
-                print 'calculating renormalized C_knM'
-                bzkpt_kG = calc.get_bz_k_points()
-                pos_a = calc.get_atoms().positions / Bohr
-                m_a = calc.wfs.basis_functions.M_a
-                for a in calc.wfs.basis_functions.my_atom_indices:
-                    m1 = m_a[a]
-                    m2 = m1+ calc.wfs.setups[a].niAO
-                    for ik in range(self.nkpt):
-                        kk =  np.array([np.inner(bzkpt_kG[ik], self.bcell[:,i]) for i in range(3)])
-                        C_knM[ik,:,m1:m2] *= np.exp(-1j * np.dot(kk, pos_a[a]))
+                #print 'calculating renormalized C_knM'
+                #bzkpt_kG = calc.get_bz_k_points()
+                #pos_a = calc.get_atoms().positions / Bohr
+                #m_a = calc.wfs.basis_functions.M_a
+                #for a in calc.wfs.basis_functions.my_atom_indices:
+                #    m1 = m_a[a]
+                #    m2 = m1+ calc.wfs.setups[a].niAO
+                #    for ik in range(self.nkpt):
+                #        kk =  np.array([np.inner(bzkpt_kG[ik], self.bcell[:,i]) for i in range(3)])
+                #        C_knM[ik,:,m1:m2] *= np.exp(-1j * np.dot(kk, pos_a[a]))
                 np.savez('C_knM.npz',C=C_knM)
 
 
@@ -553,6 +559,9 @@ class CHI:
             wrapper = LCAOwrap(calc)
             orb_MG = wrapper.get_orbitals()
 
+#        for mu in range(self.nLCAO):
+#            for nu in range(self.nLCAO):
+#                print calc.wfs.gd.integrate(orb_MG[mu].conj() * orb_MG[nu])
         return orb_MG
 
     

@@ -45,12 +45,25 @@ class PeriodicSys(CHI):
             - Im \epsilon (q, w) = - -------  Im  chi (q, w)  = - Im ----------
                         G=0,G'=0      |q|**2        G=0,G'=0         \epsilon_M
         """
+        
+        self.OpticalLimit = OpticalLimit
 
-        epsilon0, epsilonRPA, epsilonLDA = self.get_dielectric_function(calc, q, wcut, wmin, 
-                                           wmax, dw, eta, sigma, OpticalLimit)    
+        chi0G0_w, chiG0RPA_w, chiG0LDA_w = self.calculate_chiGG(
+                                         calc, q, wcut, wmin, wmax, dw, eta, sigma)
 
-        return -np.imag(1./epsilon0),  -np.imag(1./epsilonRPA),  -np.imag(1./epsilonLDA)
+        # Transform q from reduced coordinate to cartesian coordinate
+        
+        qq = np.array([np.inner(self.q, self.bcell[:,i]) for i in range(3)]) 
+        
+        assert qq.any() != 0
+        tmp =  4. * pi / (qq[0]*qq[0]+qq[1]*qq[1]+qq[2]*qq[2])
+        
 
+#        epsilon0, epsilonRPA, epsilonLDA = self.get_dielectric_function(calc, q, wcut, wmin, 
+#                                           wmax, dw, eta, sigma, OpticalLimit)    
+
+#        return -np.imag(1./epsilon0),  -np.imag(1./epsilonRPA),  -np.imag(1./epsilonLDA)
+        return -tmp * np.imag(chi0G0_w), -tmp * np.imag(chiG0RPA_w), -tmp * np.imag(chiG0LDA_w)
 
 
     def get_dielectric_function(self, calc, q, wcut, wmin, wmax, dw, eta, sigma, OpticalLimit):
@@ -81,7 +94,7 @@ class PeriodicSys(CHI):
         qq = np.array([np.inner(self.q, self.bcell[:,i]) for i in range(3)]) 
         
         assert qq.any() != 0
-        tmp =  4. * pi / (qq[0]*qq[0]+qq[1]*qq[1]+qq[2]*qq[2]) 
+        tmp =  4. * pi / (qq[0]*qq[0]+qq[1]*qq[1]+qq[2]*qq[2])
 
         print 'Macroscopic dielectric function obtained! '
 
@@ -108,6 +121,7 @@ class PeriodicSys(CHI):
             assert tmp.shape == (self.nkpt, 3)
             bzkpt_kG = tmp
 
+        
         # Get pair-orbitals in Gspace
         print 'Calculating pair-orbital in G-space'
         Gvec = self.get_Gvectors()
@@ -133,6 +147,9 @@ class PeriodicSys(CHI):
         chiG0LDA_w = np.zeros_like(chi0G0_w)
 
 
+        np.savez('chi0_wSS',chi0 = chi0_wSS)
+        np.savez('n_SG0', n = n_SG[:,0])
+        
         for iw in range(self.Nw):
             if not self.HilbertTrans:
                 chi0_SS = self.calculate_chi0(bzkpt_kG, e_kn, f_kn, C_knM, q, iw*self.dw, eta=eta/Hartree)
@@ -202,16 +219,16 @@ class PeriodicSys(CHI):
         Kcoul_G = np.zeros(self.nG0)
 
         assert (self.q).any() != 0
-        Kcoul_G[0] = 4. * pi / (self.q[0]**2 + self.q[1]**2 + self.q[2]**2)
+#        Kcoul_G[0] = 4. * pi / (self.q[0]**2 + self.q[1]**2 + self.q[2]**2)
         
         # Calculate G = 0 term separately
-        for i in range(1,self.nG0):
+        for i in range(self.nG0):
             # get q+G vector 
             xx = np.array([np.inner(np.float64((Gvec[i]) + self.q), self.bcell[:,j]) for j in range(3)])
-            Kcoul_G[i] = 1. / ( np.sqrt(np.inner(xx, xx)) )
+            Kcoul_G[i] = 1. /  np.inner(xx, xx)
         Kcoul_G *= 4. * pi 
         
-        Kcoul_SS = gemmdot( (n_SG.conj() * Kcoul_G), (n_SG.T).copy(), beta = 0. )
+        Kcoul_SS = gemmdot( (n_SG.conj() * Kcoul_G), (n_SG.T).copy(), beta = 0. ) #/ self.vol
         Kxc_SS = self.get_Kxc(nt_G, D_asp, orb_MG, P_aMi, gd, setups) * self.vol
 
         return Kcoul_SS, Kcoul_SS + Kxc_SS
@@ -264,7 +281,7 @@ class PeriodicSys(CHI):
         # calc.wfs.gd.integrate(tmp) should == n_SG[nLCAO*mu+nu, 0]
 
         n_SG = n_SG * self.vol / self.nG0
-                               
+               
         if self.OpticalLimit:
             print 'Optical limit calculation'
             qq = np.array([np.inner(self.q, self.bcell[:,i]) for i in range(3)])
@@ -273,16 +290,16 @@ class PeriodicSys(CHI):
                          gd.calculate_dipole_moment( orb_MG[mu].conj() * orb_MG[nu]))
 
         # The augmentation part
-        phi_aiiG = {}
-        for iS, (mu, nu) in enumerate(self.Sindex):
-            for a, id in enumerate(setups.id_a):
-                Z, type, basis = id
-                if not phi_aiiG.has_key(Z):
-                    phi_aiiG[Z] = self.two_phi_planewave_integrals(Z, Gvec)
-                assert phi_aiiG[Z] is not None
-                tmp_ii = np.outer(P_aMi[a][mu].conj(), P_aMi[a][nu])
-                for iG in range(self.nG0):
-                    n_SG[iS, iG] += (tmp_ii * phi_aiiG[Z][:,:,iG]).sum()
+#        phi_aiiG = {}
+#        for iS, (mu, nu) in enumerate(self.Sindex):
+#            for a, id in enumerate(setups.id_a):
+#                Z, type, basis = id
+#                if not phi_aiiG.has_key(Z):
+#                    phi_aiiG[Z] = self.two_phi_planewave_integrals(Z, Gvec)
+#                assert phi_aiiG[Z] is not None
+#                tmp_ii = np.outer(P_aMi[a][mu].conj(), P_aMi[a][nu])
+#                for iG in range(self.nG0):
+#                    n_SG[iS, iG] += (tmp_ii * phi_aiiG[Z][:,:,iG]).sum()
                         
         return n_SG
 

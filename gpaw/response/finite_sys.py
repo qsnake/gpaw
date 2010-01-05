@@ -38,7 +38,8 @@ class FiniteSys(CHI):
         else:
             assert tmp.shape == (self.nkpt, 3)
             bzkpt_kG = tmp
-
+#        np.savez('chi0_wSS_finite', chi0_finite=chi0_wSS)
+        
         # Get pair-orbitals in real space
         n_S = self.pair_orbital_Rspace(orb_MG, calc.wfs.gd,
                                        calc.wfs.setups, P_aMi)
@@ -73,6 +74,12 @@ class FiniteSys(CHI):
         # Solve Casida's equation to get the excitation energies in eV
         eCasidaRPA_s, sCasidaRPA_s = self.solve_casida(e_kn[0], f_kn[0], C_knM[0], kernelRPA_SS, n_S)
         eCasidaLDA_s, sCasidaLDA_s = self.solve_casida(e_kn[0], f_kn[0], C_knM[0], kernelLDA_SS, n_S)
+
+        # Check sum-rule
+        print 'Checking f-sum rule:'
+        print '    For non-interacting chi: N = ', self.check_sum_rule(SNonInter_w), '% error'
+        print '    For       RPA       chi: N = ', self.check_sum_rule(SRPA_w), '% error'
+        print '    For       LDA       chi: N = ', self.check_sum_rule(SLDA_w), '% error'
 
         return SNonInter_w, SRPA_w, SLDA_w, eCasidaRPA_s, eCasidaLDA_s, sCasidaRPA_s, sCasidaLDA_s
 
@@ -110,18 +117,18 @@ class FiniteSys(CHI):
         Coulomb Kernel: use coulomb.calculate (note it returns the E_coul in eV)
         """
 
-        Kcoul_SS = np.zeros((self.nS, self.nS))
+        Kcoul_SS = np.zeros((self.nS, self.nS), dtype = orb_MG.dtype)
         P1_ap = {}
         P2_ap = {}
 
-        print 'Calculating Coulomb Kernel:'
+        print 'Calculating Coulomb Kernel in real space:'
         print 'Memory usage for Kcoul_SS:', Kcoul_SS.nbytes / 1024.**2, ' Mb'
         coulomb = CoulombNEW(gd, setups, spos_ac)
 
         for i, (n, m) in enumerate(self.Sindex):
-            nt1_G = orb_MG[n].conj() * orb_MG[m]
+            nt1_G = orb_MG[n] * orb_MG[m].conj()
             for a, P_Mi in enumerate(P_aMi):
-                    D_ii = np.outer(P_Mi[n].conj(), P_Mi[m])
+                    D_ii = np.outer(P_Mi[n], P_Mi[m].conj())
                     P1_ap[a] = pack(D_ii, tolerance=1e30)
             for j, (p, q) in enumerate(self.Sindex):
                 nt2_G = orb_MG[p].conj() * orb_MG[q]
@@ -366,3 +373,19 @@ class FiniteSys(CHI):
         return eExcitation_s * Hartree, DipoleStrength
 
 
+    def check_sum_rule(self, S_w):
+        """Check whether the f-sum rule is satisfied.
+
+        The sum rule is written as::
+
+                 /
+            N = | S(w) dw,
+                /
+
+        while N is the total number of electrons, and S(w) is the dipole strength is all three dirs.
+        """
+
+        N = S_w.sum() * self.dw / 3  # average over x,y,z dir
+        percentage = (N - self.nvalence) / self.nvalence * 100
+        
+        return N, percentage 
