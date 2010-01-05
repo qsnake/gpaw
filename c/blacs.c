@@ -57,11 +57,11 @@ int Csys2blacs_handle_(MPI_Comm SysCtxt);
 #define   pdgemm_  pdgemm
 #define   pzgemm_  pzgemm
 #define   pdgemv_  pdgemv
-#define   pzemmv_  pzgemv
+#define   pzgemv_  pzgemv
 #define   pdsyr2k_ pdsyr2k
-#define   pzsyr2k_ pzsyr2k
+#define   pzher2k_ pzher2k
 #define   pdsyrk_  pdsyrk
-#define   pzsyrk_  pzsyrk
+#define   pzherk_  pzherk
 #endif
 
 #ifdef GPAW_NO_UNDERSCORE_CSCALAPACK
