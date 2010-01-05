@@ -94,7 +94,7 @@ class Symmetry:
             # the operation
             opcell_cv = np.dot(self.cell_cv, operation_vv)
             opcellmetric_vv = np.dot(opcell_cv.T, opcell_cv)
-            if np.any(metric_vv - opcellmetric_vv):
+            if abs(metric_vv - opcellmetric_vv).sum() > self.tol:
                 continue
 
             # Operation must not swap axes that are not both periodic
