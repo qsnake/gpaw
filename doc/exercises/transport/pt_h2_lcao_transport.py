@@ -4,11 +4,13 @@ import pickle
 import pylab
 
 # Principal layer size
-pl = 4 * 9
+# Uncomment this line if going back to gpawtransport again
+#pl = 4 * 9 # 9 is the number of bf per Pt atom (basis=szp), see below
 
 # Read in the hamiltonians
 h, s = pickle.load(file('scat_hs.pickle'))
-h, s = h[pl:-pl, pl:-pl], s[pl:-pl, pl:-pl] 
+# Uncomment this line if going back to gpawtransport again
+#h, s = h[pl:-pl, pl:-pl], s[pl:-pl, pl:-pl] 
 h1, s1 = pickle.load(file('lead1_hs.pickle'))
 h2, s2 = pickle.load(file('lead2_hs.pickle'))
 
