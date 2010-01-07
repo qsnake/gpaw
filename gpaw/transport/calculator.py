@@ -72,8 +72,7 @@ class Transport(GPAW):
                        
                        'LR_leads', 'gate',  'cal_loc',                       
                        'recal_path', 'min_energy',
-                       'use_qzk_boundary', 'use_linear_vt_mm',
-                       'use_linear_vt_array',
+                       'use_qzk_boundary',
                        'scat_restart', 'save_file', 'restart_file',
                        'non_sc', 'fixed_boundary', 'guess_steps', 'foot_print',
                        'data_file',
@@ -148,10 +147,6 @@ class Transport(GPAW):
                 p['min_energy'] = kw['min_energy']
             if key in ['use_qzk_boundary']:
                 p['use_qzk_boundary'] = kw['use_qzk_boundary']
-            if key in ['use_linear_vt_mm']:
-                p['use_linear_vt_mm'] = kw['use_linear_vt_mm']
-            if key in ['use_linear_vt_array']:
-                p['use_linear_vt_array'] = kw['use_linear_vt_array']                
             if key in ['scat_restart']:
                 p['scat_restart'] = kw['scat_restart']
             if key in ['save_file']:
@@ -199,8 +194,6 @@ class Transport(GPAW):
         self.recal_path = p['recal_path']
         self.min_energy = p['min_energy']
         self.use_qzk_boundary = p['use_qzk_boundary']
-        self.use_linear_vt_mm = p['use_linear_vt_mm']
-        self.use_linear_vt_array = p['use_linear_vt_array']        
         self.scat_restart = p['scat_restart']
         self.guess_steps = p['guess_steps']
         self.foot_print = p['foot_print']
@@ -228,9 +221,7 @@ class Transport(GPAW):
         bias = self.bias
         #self.cal_loc = self.cal_loc and np.max(np.abs(bias)) != 0
  
-        if self.use_linear_vt_mm:
-            self.use_buffer = False
-        
+      
         if self.LR_leads and self.lead_num != 2:
             raise RuntimeError('wrong way to use keyword LR_leads')
        
@@ -287,12 +278,10 @@ class Transport(GPAW):
         p['gate'] = 0
         p['cal_loc'] = True
         p['recal_path'] = False
-        p['min_energy'] = -100
+        p['min_energy'] = -700
         p['guess_steps'] = 30
         p['foot_print'] = True
         p['use_qzk_boundary'] = False
-        p['use_linear_vt_mm'] = False
-        p['use_linear_vt_array'] = False        
         p['scat_restart'] = False
         p['save_file'] = False
         p['restart_file'] = None
