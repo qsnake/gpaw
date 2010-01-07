@@ -1,11 +1,13 @@
 #!/usr/bin/env python
-# This file should do the same as pt_h2_lcao.py, but extracts the Hamiltonians
-# manually instead of using gpawtransport, which currently does not work
+"""Transport exersice
+
+This file should do the same as pt_h2_lcao.py, but extracts the Hamiltonians
+manually instead of using gpawtransport, which currently does not work
+"""
+
 from ase import Atoms
-from ase.units import Hartree
 from gpaw import GPAW, Mixer, FermiDirac
-from gpaw.lcao.tools import remove_pbc, get_lead_lcao_hamiltonian
-from gpaw.utilities.tools import tri2full
+from gpaw.lcao.tools import remove_pbc, get_lcao_hamiltonian, get_lead_lcao_hamiltonian
 import cPickle as pickle
 
 a = 2.41 # Pt binding lenght
@@ -39,23 +41,11 @@ atoms.set_calculator(calc)
 atoms.get_potential_energy() # Converge everything!
 Ef = atoms.calc.get_fermi_level()
 
-# We only have one kpt, spin, so kpt_u[0] is all there is
-# Similarly with S_qMM[0]
-H_MM = calc.wfs.eigensolver.calculate_hamiltonian_matrix(
-    calc.hamiltonian,
-    calc.wfs,
-    calc.wfs.kpt_u[0]
-)
-
-S = calc.wfs.S_qMM[0].copy()
-#H = calc.wfs.eigensolver.H_MM * Hartree
-H = H_MM * Hartree
-tri2full(S)
-tri2full(H)
+H_skMM, S_kMM = get_lcao_hamiltonian(calc)
+# Only use first kpt, spin, as there are no more
+H, S = H_skMM[0, 0], S_kMM[0]
 H -= Ef * S
 remove_pbc(atoms, H, S, 0)
-print H.shape
-print S.shape
 
 # Dump the Hamiltonian and Scattering matrix to a pickle file
 pickle.dump((H, S), open('scat_hs.pickle', 'wb'), 2)
@@ -83,16 +73,11 @@ atoms.set_calculator(calc)
 atoms.get_potential_energy() # Converge everything!
 Ef = atoms.calc.get_fermi_level()
 
-ibz2d_k, weight2d_k, H, S = get_lead_lcao_hamiltonian(calc)
-# H[0,0]    is first spin, first kpt, but we don't have any more than taht
-H = H[0,0]
-# Similaryl with S, which only loops over kpts, however.
-S = S[0]
-
+ibz2d_k, weight2d_k, H_skMM, S_kMM = get_lead_lcao_hamiltonian(calc)
+# Only use first kpt, spin, as there are no more
+H, S = H_skMM[0, 0], S_kMM[0]
 H -= Ef * S
 
-print H.shape
-print S.shape
 # Dump the Hamiltonian and Scattering matrix to a pickle file
 pickle.dump((H, S), open('lead1_hs.pickle', 'wb'), 2)
 
