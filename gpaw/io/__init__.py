@@ -10,12 +10,13 @@ import numpy as np
 import gpaw.mpi as mpi
 import os,time,tempfile
 
-
 def open(filename, mode='r'):
     if filename.endswith('.nc'):
         import gpaw.io.netcdf as io
     elif filename.endswith('.db'):
         import gpaw.cmr.readwriter as io
+    elif filename.endswith('.hdf5'):
+        import gpaw.io.hdf5 as io
     else:
         if not filename.endswith('.gpw'):
             filename += '.gpw'
@@ -254,7 +255,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
         for k in range(wfs.nibzkpts):
             all_P_ni = wfs.collect_projections(k, s)
             if master:
-                w.fill(all_P_ni)
+                w.fill(all_P_ni, s, k)
 
     # Write atomic density matrices and non-local part of hamiltonian:
     if master:
@@ -294,7 +295,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
             for k in range(wfs.nibzkpts):
                 a_n = wfs.collect_array(var, k, s)
                 if master:
-                    w.fill(a_n)
+                    w.fill(a_n, s, k)
 
     # Attempt to read the number of delta-scf orbitals:
     if hasattr(paw.occupations,'norbitals'):
@@ -312,7 +313,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
             for k in range(wfs.nibzkpts):
                 ne_o = wfs.collect_auxiliary('ne_o', k, s, shape=norbitals)
                 if master:
-                    w.fill(ne_o)
+                    w.fill(ne_o, s, k)
 
         if master:
             w.add('LinearExpansionCoefficients', ('nspins',
@@ -322,7 +323,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
                 for o in range(norbitals):
                     c_n = wfs.collect_array('c_on', k, s, subset=o, dtype=complex)
                     if master:
-                        w.fill(c_n)
+                        w.fill(c_n, s, k, o)
 
     # Write the pseudodensity on the coarse grid:
     if master:
@@ -332,7 +333,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
         for s in range(wfs.nspins):
             nt_sG = wfs.gd.collect(density.nt_sG[s])
             if master:
-                w.fill(nt_sG)
+                w.fill(nt_sG, s)
 
     # Write the pseudopotential on the coarse grid:
     if master:
@@ -343,7 +344,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
             vt_sG = wfs.gd.collect(hamiltonian.vt_sG[s])
 
             if master:
-                w.fill(vt_sG)
+                w.fill(vt_sG, s)
 
     # Write GLLB-releated stuff
     if hamiltonian.xcfunc.gllb:
@@ -364,7 +365,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
                 for n in range(wfs.nbands):
                     psit_G = wfs.get_wave_function_array(n, k, s)
                     if master: 
-                        w.fill(psit_G)
+                        w.fill(psit_G, s, k, n)
     elif mode != '':
         # Write the wave functions as seperate files
 
@@ -574,7 +575,7 @@ def read(paw, reader):
 
         if version > 0.3:
             wfs.eigensolver.error = r['EigenstateError']
-            
+
         if r.has_array('PseudoWaveFunctions'):
             
             if band_comm.size == 1:

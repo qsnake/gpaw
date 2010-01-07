@@ -90,8 +90,10 @@ class InputParameters(dict):
         self.spinpol = (r.dimension('nspins') == 2)
         self.kpts = r.get('BZKPoints')
         self.usesymm = r['UseSymmetry']
-        if 'BasisSet' in r.parameters:
+        try:
             self.basis = r['BasisSet']
+        except KeyError:
+            pass
         self.gpts = ((r.dimension('ngptsx') + 1) // 2 * 2,
                      (r.dimension('ngptsy') + 1) // 2 * 2,
                      (r.dimension('ngptsz') + 1) // 2 * 2)
@@ -157,4 +159,7 @@ class InputParameters(dict):
         self.occupations = FermiDirac(r['FermiWidth'] * Hartree,
                                       fixmagmom=fixmom)
 
-        self.mode = r.parameters.get('Mode', 'fd')
+        try:
+            self.mode = r['Mode']
+        except KeyError:
+            self.mode = 'fd'

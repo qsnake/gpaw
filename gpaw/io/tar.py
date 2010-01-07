@@ -64,7 +64,7 @@ class Writer:
 
         return dtype, type, dtype.itemsize
 
-    def fill(self, array):
+    def fill(self, array, *indices):
         self.write(np.asarray(array, self.dtype).tostring())
 
     def write_header(self, name, size):
