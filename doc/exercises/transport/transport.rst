@@ -138,15 +138,16 @@ DFT description
 We now continue to explore the Pt-H2-Pt system using a more realistic
 desciption derived from ab-initio calculations.
 
-The class :class:`GPAWTransport` (in gpaw.lcao.gpawtransport) allows
-you to construct such a Hamiltonian within DFT in terms of pseudo
-atomic orbitals.  Since real potential decay much slower than in our
-TB model, we increase the principal layers to 4 Pt atoms, and the
-scattering region to 5 Pt atoms on either side.  To obtain the
-matrices for the scattering region and the leads using DFT and pseudo
-atomic orbitals using a szp basis set run this :svn:`~doc/exercises/transport/pt_h2_lcao.py`:
+The functions :class:`get_lcao_hamiltonian` and
+:class:`get_lead_lcao_hamiltonian` (in gpaw.lcao.tools) allows you to
+construct such a Hamiltonian within DFT in terms of pseudo atomic orbitals.
+Since real potential decay much slower than in our TB model, we increase the
+principal layers to 4 Pt atoms, and the scattering region to 5 Pt atoms on
+either side.  To obtain the matrices for the scattering region and the leads
+using DFT and pseudo atomic orbitals using a szp basis set run this
+:svn:`~doc/exercises/transport/pt_h2_lcao_manual.py`:
 
-.. literalinclude:: pt_h2_lcao.py
+.. literalinclude:: pt_h2_lcao_manual.py
 
 You should now have the files scat_hs.pickle, lead1_hs.pickle and
 lead2_hs.pickle in your directory.  These can be loaded and used in
@@ -159,14 +160,10 @@ the ``TransportCalculator``::
     h, s = pickle.load(file('scat_hs.pickle'))
     h1, s1 = pickle.load(file('lead1_hs.pickle'))
     h2, s2 = pickle.load(file('lead2_hs.pickle'))
-    pl1 = len(h1) / 2 # left principal layer size
-    pl2 = len(h2) / 2 # right principal layer size
 
     tcalc = TransportCalculator(h=h, h1=h1, h2=h2, # hamiltonian matrices
                                 s=s, s1=s1, s2=s2, # overlap matrices
-                                pl1=pl1, pl2=pl2,  # principal layer sizes
-                                align_bf=1,        # align the the Fermi levels
-                                verbose=False)     # print extra information?
+                                align_bf=1)        # align the Fermi levels
 
 In SZP there are 4 basis functions per H atom, and 9 per Pt atom. Does
 the size of the different matrices match your expectations?  What is
