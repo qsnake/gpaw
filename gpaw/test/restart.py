@@ -3,6 +3,13 @@ from gpaw import *
 from ase import *
 from gpaw.test import equal
 
+modes = ['gpw']
+try:
+    import h5py
+    modes.append('hdf5')
+except ImportError:
+    pass
+
 d = 3.0
 atoms = Atoms('Na3', positions=[( 0, 0, 0),
                               ( 0, 0, d),
@@ -21,35 +28,40 @@ f0 = atoms.get_forces()
 m0 = atoms.get_magnetic_moments()
 eig00 = calc.get_eigenvalues(spin=0)
 eig01 = calc.get_eigenvalues(spin=1)
-calc.write('tmp.gpw')
-del atoms, calc
-atoms, calc = restart('tmp.gpw')
-e1 = atoms.get_potential_energy()
-try: # number of iterations needed in restart
-    niter1 = calc.get_number_of_iterations()
-except: pass
-f1 = atoms.get_forces()
-m1 = atoms.get_magnetic_moments()
-eig10 = calc.get_eigenvalues(spin=0)
-eig11 = calc.get_eigenvalues(spin=1)
-print e0, e1
-equal(e0, e1, 1e-10)
-print f0, f1
-for ff0, ff1 in zip(f0, f1):
-    err = np.linalg.norm(ff0-ff1)
-    assert err <= 1e-10
-print m0, m1
-for mm0, mm1 in zip(m0, m1):
-    equal(mm0, mm1, 1e-10)
-print 'A',eig00, eig10
-for eig0, eig1 in zip(eig00, eig10):
-    equal(eig0, eig1, 1e-10)
-print 'B',eig01, eig11
-for eig0, eig1 in zip(eig01, eig11):
-    equal(eig0, eig1, 1e-10)
+# Write the restart file(s)
+for mode in modes:
+    calc.write('tmp.%s' % mode)
 
-energy_tolerance = 0.0002
-niter_tolerance = 0
-equal(e0, 27.142964444, energy_tolerance) # svnversion 5252
-equal(niter0, 6, niter_tolerance) # svnversion 5252
-equal(e1, 27.142964444, energy_tolerance) # svnversion 5252
+del atoms, calc
+# Try restarting from all the files
+for mode in modes:
+    atoms, calc = restart('tmp.%s' % mode)
+    e1 = atoms.get_potential_energy()
+    try: # number of iterations needed in restart
+        niter1 = calc.get_number_of_iterations()
+    except: pass
+    f1 = atoms.get_forces()
+    m1 = atoms.get_magnetic_moments()
+    eig10 = calc.get_eigenvalues(spin=0)
+    eig11 = calc.get_eigenvalues(spin=1)
+    print e0, e1
+    equal(e0, e1, 1e-10)
+    print f0, f1
+    for ff0, ff1 in zip(f0, f1):
+        err = np.linalg.norm(ff0-ff1)
+        assert err <= 1e-10
+    print m0, m1
+    for mm0, mm1 in zip(m0, m1):
+        equal(mm0, mm1, 1e-10)
+    print 'A',eig00, eig10
+    for eig0, eig1 in zip(eig00, eig10):
+        equal(eig0, eig1, 1e-10)
+    print 'B',eig01, eig11
+    for eig0, eig1 in zip(eig01, eig11):
+        equal(eig0, eig1, 1e-10)
+
+    energy_tolerance = 0.0002
+    niter_tolerance = 0
+    equal(e0, 27.142964444, energy_tolerance) # svnversion 5252
+    equal(niter0, 6, niter_tolerance) # svnversion 5252
+    equal(e1, 27.142964444, energy_tolerance) # svnversion 5252
