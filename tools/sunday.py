@@ -144,7 +144,7 @@ class Jobs:
                 self.fail(id)
 
     def print_results(self):
-        self.log('date = %r' % datetime.datetime.today())
+        self.log('date = %r' % datetime.date.today())
         self.log('results = {')
         for id in self.ids:
             job = self.jobs[id]
@@ -155,7 +155,7 @@ class Jobs:
                      float(open(filename[:-4] + 'start').readline()))
             else:
                 t = 0
-            self.log('  %-30r: (%10.2f, %r),' % (id, t, status))
+            self.log('  %-30r (%10.2f, %r),' % (id + ':', t, status))
         self.log('}')
 
     def start(self, job):
@@ -217,7 +217,7 @@ class Jobs:
                      (options, job.id), 'r').readline().split('.')[0]
         #x = os.system('/usr/local/bin/qsub %s %s-job.py' % (options, job.id))
 
-        self.log('Started: %s, %s' % (job.id, x))
+        self.log('# Started: %s, %s' % (job.id, x))
         job.status = 'running'
 
     def install(self):
