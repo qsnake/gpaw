@@ -1,6 +1,5 @@
 import pylab as pl
-from gpaw.io.array import load_array
-k, e = load_array('Na_bands.txt', transpose=True)
+k, e = pl.loadtxt('Na_bands.txt', unpack=True)
 fig = pl.figure(1, dpi=80, figsize=(4.2, 6))
 fig.subplots_adjust(left=.15, right=.97, top=.97, bottom=.05)
 pl.plot(k, e, 'ro')
