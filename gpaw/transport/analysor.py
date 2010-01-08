@@ -35,7 +35,7 @@ class Transmission_Info:
         for name in ['bias', 'gate', 'ep', 'lead_pairs', 'tc', 'dos', 'vt',
                      'nt', 'vtx', 'ntx', 'vty', 'nty', 'current',
                      'lead_fermis', 'time_cost', 'force', 'charge']:
-            vars()['self.' + name] = eval(name)
+            vars(self)[name] = eval(name)
         
     def initialize_data2(self, eig_tc_lead, eig_vc_lead, tp_tc, tp_vc,
                          dos_g, project_tc, left_tc, left_vc, lead_k, lead_vk,
@@ -43,7 +43,7 @@ class Transmission_Info:
         for name in ['eig_tc_lead', 'eig_vc_lead', 'tp_tc', 'tp_vc', 'dos_g'
                      'project_tc', 'left_tc', 'left_vc', 'lead_k', 'lead_vk',
                      'tp_eig_w', 'tp_eig_v', 'tp_eig_vc', 'nk_on_energy']:
-            vars()['self.' + name] = eval(name)
+            vars(self)[name] = eval(name)
             
     def initialize_data3(self, s00, h00, lead_fermi):
         self.s00 = s00
@@ -69,7 +69,7 @@ class Electron_Step_Info:
     def initialize_data(self, vt, nt, df, dd, vHt, rho, time_cost, mem_cost):
         for name in ['vt', 'nt', 'df', 'dd',
                      'vHt', 'rho', 'time_cost', 'mem_cost']:
-            vars()['self.' + name] = eval(name)
+            vars(self)[name] = eval(name)
     
 class Transport_Analysor:
     def __init__(self, transport, restart=False):
@@ -119,48 +119,25 @@ class Transport_Analysor:
             self.selfenergies = self.tp.selfenergies
         p = self.set_default_analysis_parameters()
         for key in kw:
-            if key in ['energies']:
-                p['energies'] = kw['energies']
-            if key in ['lead_pairs']:
-                p['lead_pairs'] = kw['lead_pairs']
-            if key in ['dos_project_atoms']:
-                p['dos_project_atoms'] = kw['dos_project_atoms']
-            if key in ['project_equal_atoms']:
-                p['project_equal_atoms'] = kw['project_equal_atoms']
-            if key in ['project_molecular_levels']:
-                p['project_molecular_levels'] = kw['project_molecular_levels']
-            if key in ['isolate_atoms']:
-                p['isolate_atoms'] = kw['isolate_atoms']
-            if key in ['dos_project_orbital']:
-                p['dos_project_orbital'] = kw['dos_project_orbital']
-            if key in ['trans_project_orbital']:
-                p['trans_project_orbital'] = kw['trans_project_orbital']
-            if key in ['eig_trans_channel_energies']:
-                p['eig_trans_channel_energies'] = \
-                                              kw['eig_trans_channel_energies']
-            if key in ['eig_trans_channel_num']:
-                p['eig_trans_channel_num'] = kw['eig_trans_channel_num']
-            if key in ['dos_realspace_energies']:
-                p['dos_realspace_energies'] = kw['dos_realspace_energies']
+            if key in ['energies', 'lead_pairs', 'dos_project_atoms',
+                       'project_equal_atoms', 'project_molecular_levels',
+                       'isolate_atoms', 'dos_project_orbital',
+                       'trans_project_orbital', 'eig_trans_channel_energies',
+                        'eig_trans_channel_num', 'dos_realspace_energies']:
+                p[key] = kw[key]
+        for key in p:
+            vars(self)[key] = p[key]       
+
         ef = self.tp.lead_fermi[0]
-        self.energies = p['energies'] + ef + 1e-4 * 1.j
-        self.lead_pairs = p['lead_pairs']
-        self.dos_project_atoms = p['dos_project_atoms']
-        self.project_equal_atoms = p['project_equal_atoms']
-        self.project_molecular_levels = p['project_molecular_levels']
-        self.isolate_atoms = p['isolate_atoms']
-        self.dos_project_orbital = p['dos_project_orbital']
-        self.trans_project_orbital = p['trans_project_orbital']
-        self.eig_trans_channel_energies = p['eig_trans_channel_energies']
-        if self.eig_trans_channel_energies is not None:
-            self.eig_trans_channel_energies = np.array(self.eig_trans_channel_energies) + ef
-        self.eig_trans_channel_num = p['eig_trans_channel_num']
-        self.dos_realspace_energies = p['dos_realspace_energies']
-        if self.dos_realspace_energies is not None:
-            self.dos_realspace_energies = np.array(self.dos_realspace_energies) + ef
+        self.energies +=  ef + 1e-4 * 1.j
+        for variable in [self.eig_trans_channel_energies,
+                         self.dos_realspace_energies]:
+            if variable is not None:
+                variable = np.array(variable) + ef
+
         setups = self.tp.inner_setups
-        self.project_atoms_in_device = p['project_equal_atoms'][0]
-        self.project_atoms_in_molecule = p['project_equal_atoms'][1]
+        self.project_atoms_in_device = self.project_equal_atoms[0]
+        self.project_atoms_in_molecule = self.project_equal_atoms[1]
         self.project_basis_in_device = get_atom_indices(
                                   self.project_atoms_in_device, setups)
         if self.isolate_atoms is not None:
@@ -1512,8 +1489,6 @@ class Transport_Plotter:
             else:
                 self.ele_steps = data
         fd.close()
-        import gpaw.io.tar as io
-        self.r = io.Reader('analysis_data.gpw')
         self.my_options = False
         self.show_window = False
 
@@ -1627,10 +1602,10 @@ class Transport_Plotter:
             data = 'df[s, k]'
             title = 'hamiltonian matrix diagonal elements'
         elif info == 'den':
-            data = 'nt'
+            data = 'nt[s]'
             title = 'density'
         elif info == 'ham':
-            data = 'vt'
+            data = 'vt[s]'
             title = 'hamiltonian'
         elif info == 'rho':
             data = 'rho'
@@ -1688,13 +1663,13 @@ class Transport_Plotter:
             dim = 2
             energy_axis = True
         elif info == 'den':
-            data = "nt"
+            data = "nt[s]"
             title = 'density'
             xlabel = 'Transport axis'
             ylabel = 'Electron'
             energy_axis = False
         elif info == 'ham':
-            data = "vt"
+            data = "vt[s]"
             title = 'hamiltonian'
             xlabel = 'Transport axis'
             ylabel = 'Energy(eV)'
@@ -1761,10 +1736,10 @@ class Transport_Plotter:
             data = 'df[s, k]'
             title = 'hamiltonian matrix diagonal elements'
         elif info == 'den':
-            data = 'nt'
+            data = 'nt[s]'
             title = 'density'
         elif info == 'ham':
-            data = 'vt'
+            data = 'vt[s]'
             title = 'hamiltonian'
         elif info == 'rho':
             data = 'rho'
@@ -1824,13 +1799,13 @@ class Transport_Plotter:
             ylabel = 'Number'
             energy_axis = False           
         elif info == 'den':
-            data = 'nt'
+            data = 'nt[s]'
             title = 'density'
             xlabel = 'Transport Axis'
             ylabel = 'Electron'
             energy_axis = False            
         elif info == 'ham':
-            data = 'vt'
+            data = 'vt[s]'
             title = 'hamiltonian'
             xlabel = 'Transport Axis'
             ylabel = 'Energy(eV)'
