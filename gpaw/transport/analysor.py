@@ -29,40 +29,23 @@ class Transmission_Info:
         self.ion_step, self.bias_step = ion_step, bias_step
     
     def initialize_data(self, bias, gate, ep, lead_pairs,
-                                 current, lead_fermis, time_cost, f, charge):
-        self.bias = bias
-        self.gate = gate
-        self.ep = ep
-        self.lead_pairs = lead_pairs
-        self.current = current
-        self.lead_fermis = lead_fermis
-        self.time_cost = time_cost
-        self.force = f
-        self.charge = charge
+                        tc, dos, vt, nt, vtx, ntx, vty, nty,
+                                 current, lead_fermis,
+                                 time_cost, force, charge):
+        for name in ['bias', 'gate', 'ep', 'lead_pairs', 'tc', 'dos', 'vt',
+                     'nt', 'vtx', 'ntx', 'vty', 'nty', 'current',
+                     'lead_fermis', 'time_cost', 'force', 'charge']:
+            vars()['self.' + name] = eval(name)
         
     def initialize_data2(self, eig_tc_lead, eig_vc_lead, tp_tc, tp_vc,
                          dos_g, project_tc, left_tc, left_vc, lead_k, lead_vk,
                          tp_eig_w, tp_eig_v, tp_eig_vc, nk_on_energy):
-        self.eig_tc_lead = eig_tc_lead
-        self.eig_vc_lead = eig_vc_lead
-        self.tp_tc = tp_tc
-        self.tp_vc = tp_vc
-        self.dos_g = dos_g
-        self.project_tc = project_tc
-        self.left_tc = left_tc
-        self.left_vc = left_vc
-        self.lead_k = lead_k
-        self.lead_vk = lead_vk
-        self.tp_eig_w = tp_eig_w
-        self.tp_eig_v = tp_eig_v
-        self.tp_eig_vc = tp_eig_vc
-        self.nk_on_energy = nk_on_energy
-
+        for name in ['eig_tc_lead', 'eig_vc_lead', 'tp_tc', 'tp_vc', 'dos_g'
+                     'project_tc', 'left_tc', 'left_vc', 'lead_k', 'lead_vk',
+                     'tp_eig_w', 'tp_eig_v', 'tp_eig_vc', 'nk_on_energy']:
+            vars()['self.' + name] = eval(name)
+            
     def initialize_data3(self, s00, h00, lead_fermi):
-        #self.lead_s00 = lead_s00
-        #self.lead_s01 = lead_s01
-        #self.lead_h00 = lead_h00
-        #self.lead_h01 = lead_h01
         self.s00 = s00
         self.h00 = h00
         self.lead_fermi = lead_fermi
@@ -83,9 +66,10 @@ class Electron_Step_Info:
         self.ion_step, self.bias_step, self.ele_step = ion_step, \
                                                          bias_step, ele_step
         
-    def initialize_data(self, time_cost, mem_cost):
-        self.time_cost = time_cost
-        self.mem_cost = mem_cost
+    def initialize_data(self, vt, nt, df, dd, vHt, rho, time_cost, mem_cost):
+        for name in ['vt', 'nt', 'df', 'dd',
+                     'vHt', 'rho', 'time_cost', 'mem_cost']:
+            vars()['self.' + name] = eval(name)
     
 class Transport_Analysor:
     def __init__(self, transport, restart=False):
@@ -970,16 +954,8 @@ class Transport_Analysor:
             time_cost = self.ele_step_time_collect()
         else:
             time_cost = None
-
-        prefix =  'Ae' + '_' + str(self.n_ion_step) + '_' \
-                            + str(self.n_bias_step) + '_' \
-                            + str(self.n_ele_step) + '_'
-        for name in ['nt', 'vt', 'df', 'dd', 'vHt', 'rho']:
-            dimension, dtype = self.analysis_data_form[name]
-            data_name = prefix + name
-            write('analysis_data.gpw', data_name, eval(name), dimension, dtype)
-        
-        step.initialize_data(time_cost, mem_cost)
+      
+        step.initialize_data(vt, nt, df, dd, vHt, rho, time_cost, mem_cost)
         self.ele_steps.append(step)
         self.n_ele_step += 1
       
@@ -1011,7 +987,9 @@ class Transport_Analysor:
         
         
         step.initialize_data(tp.bias, tp.gate, self.energies, self.lead_pairs,
+                              tc, dos, vt, nt, vtx, ntx, vty, nty,
                               current, tp.lead_fermi, time_cost, force, charge)
+
 
         prefix =  'Ab' + '_' + str(self.n_ion_step) + '_' \
                             + str(self.n_bias_step) + '_' \
@@ -1044,8 +1022,8 @@ class Transport_Analysor:
             s00, h00 = self.collect_scat_hs()
             step.initialize_data3(s00, h00, tp.lead_fermi)
             
-        step.ele_steps = self.ele_steps
-        del self.ele_steps
+        #step.ele_steps = self.ele_steps
+        #del self.ele_steps
         self.ele_steps = []
         self.n_ele_step = 0
         self.bias_steps.append(step)
@@ -1507,9 +1485,7 @@ class Transport_Analysor:
         else:
             current = None
         return current
-    
-
-          
+         
 class Transport_Plotter:
     flags = ['b-o', 'r--']
     #xlabel, ylabel, title, legend, xtick, ytick,
@@ -1712,13 +1688,13 @@ class Transport_Plotter:
             dim = 2
             energy_axis = True
         elif info == 'den':
-            data = "dv['s0nt_1d_z']"
+            data = "nt"
             title = 'density'
             xlabel = 'Transport axis'
             ylabel = 'Electron'
             energy_axis = False
         elif info == 'ham':
-            data = "dv['s0vt_1d_z']"
+            data = "vt"
             title = 'hamiltonian'
             xlabel = 'Transport axis'
             ylabel = 'Energy(eV)'
@@ -1917,7 +1893,7 @@ class Transport_Plotter:
         data = 's' + str(s) + info
         for i, step in enumerate(self.bias_steps):
             if i in steps_indices:
-                zdata = eval("step.dv['" + data + "']")
+                zdata = eval('step.' + info)[s]
                 nx, ny = zdata.shape[:2]
                 xdata, ydata = np.mgrid[0:nx:nx*1j,0:ny:ny*1j]
                 if dense_level != 0:
@@ -2030,8 +2006,7 @@ class Transport_Plotter:
         step1 = self.ele_steps[steps_indices[1]]
         data0 = 's' + str(s[0]) + info
         data1 = 's' + str(s[1]) + info        
-        ydata = eval("step0.dv['" + data0 + "']") - eval(
-                                                "step1.dv['" + data1 + "']")
+        ydata = eval('step0.' + info)[s[0]] - eval('step1.' + info)[s[1]]
         p.matshow(ydata)
         self.set_options(None, None, None, title)
         self.show(p)
@@ -2052,8 +2027,7 @@ class Transport_Plotter:
         step1 = self.bias_steps[steps_indices[1]]
         data0 = 's' + str(s[0]) + info
         data1 = 's' + str(s[1]) + info        
-        ydata = eval("step0.dv['" + data0 + "']") - eval(
-                                                  "step1.dv['" + data1 + "']")
+        ydata = eval('step0.' + info)[s[0]] - eval('step1.' + info)[s[1]]
         if dense_level != 0:
             dl = dense_level + 1
             from gpaw.transport.tools import interpolate_2d
