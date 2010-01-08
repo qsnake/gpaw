@@ -867,7 +867,9 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
                                                            gd.n_c, q, c,
                                                            np.array(cspline_M),
                                                            gd.beg_c,
-                                                           self.pos_Wv)
+                                                           self.pos_Wv,
+                                                           self.Mstart,
+                                                           self.Mstop)
 
     # Python implementations:
     if 0:

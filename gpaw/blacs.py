@@ -13,11 +13,12 @@ uplo='U' to 'L', trans='N' to 'T', etc.
 import numpy as np
 
 from gpaw import sl_diagonalize
-from gpaw.mpi import SerialCommunicator
-from gpaw.utilities.blas import gemm, r2k
+from gpaw.mpi import SerialCommunicator, serial_comm
+from gpaw.utilities.blas import gemm, r2k, gemmdot
 from gpaw.utilities.blacs import scalapack_general_diagonalize_ex, \
     scalapack_diagonalize_ex, pblas_simple_gemm
 from gpaw.utilities.timing import nulltimer
+from gpaw.utilities.tools import tri2full
 import _gpaw
 
 
@@ -115,7 +116,7 @@ class BlacsGrid:
         assert order in 'CcRr'
 
         if isinstance(comm, SerialCommunicator):
-            raise ValueError('you forgot mpi AGAIN')
+            raise ValueError('Instance of SerialCommunicator not supported')
         if comm is None: # if and only if rank is not part of the communicator
             context = INACTIVE
         else:
@@ -424,6 +425,7 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
         self.mm2nM = Redistributor(blockcomm, mmdescriptor,
                                    nM_unique_descriptor)
 
+        self.orbital_comm = bd.comm
         self.world = world
         self.gd = gd
         self.bd = bd
@@ -473,6 +475,11 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
                           self.mMdescriptor, Cf_nM, C_nM, rho_mM, transa='T')
         return rho_mM
 
+    def get_transposed_density_matrix(self, f_n, C_nM, rho_mM=None):
+        # XXX for the complex case, find out whether this or the other
+        # method should be changed
+        return self.calculate_density_matrix(f_n, C_nM, rho_mM)
+        
 
 class OrbitalDescriptor:
     def __init__(self, gd, bd, nao):
@@ -486,6 +493,7 @@ class OrbitalDescriptor:
         self.Mmax = nao
         self.mynao = nao
         self.nao = nao
+        self.orbital_comm = serial_comm
 
     def get_diagonalizer(self):
         if sl_diagonalize:
@@ -509,6 +517,8 @@ class OrbitalDescriptor:
         return S_qMM
 
     def calculate_density_matrix(self, f_n, C_nM, rho_MM=None):
+        # Only a madman would use a non-transposed density matrix.
+        # Maybe we should use the get_transposed_density_matrix instead
         if rho_MM is None:
             rho_MM = np.zeros((self.mynao, self.nao), dtype=C_nM.dtype)
         # XXX Should not conjugate, but call gemm(..., 'c')
@@ -518,6 +528,16 @@ class OrbitalDescriptor:
         gemm(1.0, C_nM, Cf_Mn, 0.0, rho_MM, 'n')
         self.bd.comm.sum(rho_MM)
         return rho_MM
+
+    def get_transposed_density_matrix(self, f_n, C_nM, rho_MM=None):
+        return self.calculate_density_matrix(f_n, C_nM, rho_MM).T.copy()
+
+        #if rho_MM is None:
+        #    rho_MM = np.zeros((self.mynao, self.nao), dtype=C_nM.dtype)
+        #C_Mn = C_nM.T.copy()
+        #gemm(1.0, C_Mn, f_n[np.newaxis, :] * C_Mn, 0.0, rho_MM, 'c')
+        #self.bd.comm.sum(rho_MM)
+        #return rho_MM
 
     def alternative_calculate_density_matrix(self, f_n, C_nM, rho_MM=None):
         if rho_MM is None:

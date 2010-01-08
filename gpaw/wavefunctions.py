@@ -589,20 +589,13 @@ class LCAOWaveFunctions(WaveFunctions):
         Mstart = self.basis_functions.Mstart
         Mstop = self.basis_functions.Mstop
         if kpt.rho_MM is None:
-            #nao = self.setups.nao
-            #rho_MM = np.empty((nao, nao), self.dtype)
-            rho_MM = self.calculate_density_matrix(f_n, kpt.C_nM, rho_MM=None)
-            #if rho_ is not None:
-            #    rho_MM = x # XXXXXXXXXXXXXXX
-            #else:
-            #    rho_MM = rho_MM[Mstart:Mstop],
+            rho_MM = self.calculate_density_matrix(f_n, kpt.C_nM)
         else:
             rho_MM = kpt.rho_MM
         self.timer.start('Construct density')
         self.basis_functions.construct_density(rho_MM,
                                                nt_sG[kpt.s], kpt.q)
         self.timer.stop('Construct density')
-        #self.bd.comm.sum(nt_sG[kpt.s])
 
     def add_to_density_from_k_point(self, nt_sG, kpt):
         """Add contribution to pseudo electron-density. """
@@ -615,11 +608,12 @@ class LCAOWaveFunctions(WaveFunctions):
     def calculate_forces(self, hamiltonian, F_av):
         self.timer.start('LCAO forces')
         spos_ac = self.tci.atoms.get_scaled_positions() % 1.0
-        nao = self.setups.nao
+        nao = self.od.nao
+        mynao = self.od.mynao
         nq = len(self.ibzk_qc)
         dtype = self.dtype
-        dThetadR_qvMM = np.empty((nq, 3, nao, nao), dtype)
-        dTdR_qvMM = np.empty((nq, 3, nao, nao), dtype)
+        dThetadR_qvMM = np.empty((nq, 3, mynao, nao), dtype)
+        dTdR_qvMM = np.empty((nq, 3, mynao, nao), dtype)
         dPdR_aqvMi = {}
         for a in self.basis_functions.my_atom_indices:
             ni = self.setups[a].ni
@@ -638,17 +632,13 @@ class LCAOWaveFunctions(WaveFunctions):
         for kpt in self.kpt_u:
             self.calculate_forces_by_kpoint(kpt, hamiltonian,
                                             F_av, self.tci,
-                                            self.S_qMM[kpt.q],
-                                            self.T_qMM[kpt.q],
                                             self.P_aqMi,
                                             dThetadR_qvMM[kpt.q],
                                             dTdR_qvMM[kpt.q],
                                             dPdR_aqvMi)
-        self.bd.comm.sum(F_av, 0) # XXX copy/paste - does this make sense?
-
+        self.od.orbital_comm.sum(F_av)
         if self.bd.comm.rank == 0:
             self.kpt_comm.sum(F_av, 0)
-
         self.timer.stop('LCAO forces')
 
     def print_arrays_with_ranks(self, names, arrays_nax):
@@ -662,16 +652,20 @@ class LCAOWaveFunctions(WaveFunctions):
             print rank, name, my_atom_indices, sums
 
     def calculate_forces_by_kpoint(self, kpt, hamiltonian,
-                                   F_av, tci, S_MM, T_MM, P_aqMi,
+                                   F_av, tci, P_aqMi,
                                    dThetadR_vMM, dTdR_vMM, dPdR_aqvMi):
         k = kpt.k
         q = kpt.q
-        nao = self.setups.nao
+        mynao = self.od.mynao
+        nao = self.od.nao
         dtype = self.dtype
         if kpt.rho_MM is None:
-            rho_MM = self.calculate_density_matrix(kpt.f_n, kpt.C_nM)
+            rhoT_MM = self.od.get_transposed_density_matrix(kpt.f_n, kpt.C_nM)
         else:
-            rho_MM = kpt.rho_MM
+            rhoT_MM = kpt.rho_MM.T.copy()
+
+        Mstart = self.od.Mstart
+        Mstop = self.od.Mstop
         
         basis_functions = self.basis_functions
         my_atom_indices = basis_functions.my_atom_indices
@@ -679,7 +673,7 @@ class LCAOWaveFunctions(WaveFunctions):
         
         def _slices(indices):
             for a in indices:
-                M1 = basis_functions.M_a[a]
+                M1 = basis_functions.M_a[a] - Mstart
                 M2 = M1 + self.setups[a].niAO
                 yield a, M1, M2
         
@@ -693,10 +687,6 @@ class LCAOWaveFunctions(WaveFunctions):
         # But not for both spins, if spinpolarized
         # Hmmm....
         self.timer.start('LCAO forces: initial')
-        H_MM = self.eigensolver.calculate_hamiltonian_matrix(hamiltonian, self,
-                                                             kpt)
-        tri2full(H_MM)
-        
         #
         #         -----                    -----
         #          \    -1                  \    *
@@ -705,19 +695,9 @@ class LCAOWaveFunctions(WaveFunctions):
         #         -----                    -----
         #          x z                       n
         #
-        # We use the transpose of that matrix
-        S_MM = S_MM.copy()
-        tri2full(S_MM) # XXX lower triangle not filled out with BLACS
-        # TODO: implement proper parallel call
-        ET_MM = np.linalg.solve(S_MM, gemmdot(H_MM, rho_MM)).T.copy()
-        
-        # Useful check - whether C^dagger eps f C == S^(-1) H rho
-        # Although this won't work if people are supplying a customized rho
-        #assert abs(ET_MM - np.dot(kpt.C_nM.T.conj() * kpt.f_n * kpt.eps_n,
-        #                          kpt.C_nM)).max() < 1e-8
-        
-        rhoT_MM = rho_MM.T.copy()
-        del rho_MM
+        # We use the transpose of that matrix, noting that it is just like rho:
+        ET_MM = self.od.get_transposed_density_matrix(kpt.f_n * kpt.eps_n,
+                                                      kpt.C_nM)
         self.timer.stop('LCAO forces: initial')
         
         # Kinetic energy contribution
@@ -747,9 +727,10 @@ class LCAOWaveFunctions(WaveFunctions):
         self.timer.start('LCAO forces: potential')
         Fpot_av = np.zeros_like(F_av)
         vt_G = hamiltonian.vt_sG[kpt.s]
-        DVt_vMM = np.zeros((3, nao, nao), dtype)
+        DVt_vMM = np.zeros((3, mynao, nao), dtype)
         # Note that DVt_vMM contains dPhi(r) / dr = - dPhi(r) / dR^a
         basis_functions.calculate_potential_matrix_derivative(vt_G, DVt_vMM, q)
+        
         for a, M1, M2 in slices():
             for v in range(3):
                 Fpot_av[a, v] = 2 * (DVt_vMM[v, M1:M2, :]
@@ -792,7 +773,7 @@ class LCAOWaveFunctions(WaveFunctions):
         #
         self.timer.start('LCAO forces: paw correction')
         dPdR_avMi = dict([(a, dPdR_aqvMi[a][q]) for a in my_atom_indices])
-        work_MM = np.zeros((nao, nao), dtype)
+        work_MM = np.zeros((mynao, nao), dtype)
         ZE_MM = None
         for b in my_atom_indices:
             setup = self.setups[b]
@@ -800,7 +781,8 @@ class LCAOWaveFunctions(WaveFunctions):
             dOP_iM = np.zeros((setup.ni, nao), dtype)
             gemm(1.0, self.P_aqMi[b][q], dO_ii, 0.0, dOP_iM, 'c')
             for v in range(3):
-                gemm(1.0, dOP_iM, dPdR_avMi[b][v], 0.0, work_MM, 'n')
+                gemm(1.0, dOP_iM, dPdR_avMi[b][v][Mstart:Mstop], 0.0,
+                     work_MM, 'n')
                 ZE_MM = (work_MM * ET_MM).real
                 for a, M1, M2 in slices():
                     dE = 2 * ZE_MM[M1:M2].sum()
@@ -831,7 +813,7 @@ class LCAOWaveFunctions(WaveFunctions):
             H_ii = np.asarray(unpack(hamiltonian.dH_asp[b][kpt.s]), dtype)
             HP_iM = gemmdot(H_ii, np.conj(self.P_aqMi[b][q].T))
             for v in range(3):
-                dPdR_Mi = dPdR_avMi[b][v]
+                dPdR_Mi = dPdR_avMi[b][v][Mstart:Mstop]
                 ArhoT_MM = (gemmdot(dPdR_Mi, HP_iM) * rhoT_MM).real
                 for a, M1, M2 in slices():
                     dE = 2 * ArhoT_MM[M1:M2].sum()

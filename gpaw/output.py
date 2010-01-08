@@ -161,7 +161,6 @@ class PAWTextOutput:
         if p['mode'] != 'lcao':
             t('                   (%s)' % fd(p['stencils'][0]))
         diag_string = 'Lapack'
-        if sl_diagonalize: assert parallel
         if sl_diagonalize: assert scalapack()
         if scalapack() and sl_diagonalize:
             assert len(sl_diagonalize) == 4

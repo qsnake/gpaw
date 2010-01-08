@@ -114,17 +114,14 @@ class LCAO:
             kpt.eps_n = np.empty(wfs.bd.mynbands)
             
         if sl_diagonalize:
-            assert mpi.parallel
             assert scalapack()
 
         kpt.eps_n[0] = 42
         
         diagonalizationstring = self.diagonalizer.__class__.__name__
         wfs.timer.start(diagonalizationstring)
-        try:
-            self.diagonalizer.diagonalize(H_MM, kpt.C_nM, kpt.eps_n, S_MM)
-        finally:
-            wfs.timer.stop(diagonalizationstring)
+        self.diagonalizer.diagonalize(H_MM, kpt.C_nM, kpt.eps_n, S_MM)
+        wfs.timer.stop(diagonalizationstring)
 
         assert kpt.eps_n[0] != 42
 

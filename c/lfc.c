@@ -701,16 +701,16 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
   PyArrayObject* DVt_MM_obj;
   PyArrayObject* h_cv_obj;
   PyArrayObject* n_c_obj;
-  int k;
-  int c;
+  int k, c;
   PyArrayObject* spline_obj_M_obj;
   PyArrayObject* beg_c_obj;
   PyArrayObject* pos_Wc_obj;
+  int Mstart, Mstop;
 
-  if (!PyArg_ParseTuple(args, "OOOOiiOOO", &vt_G_obj, &DVt_MM_obj, 
+  if (!PyArg_ParseTuple(args, "OOOOiiOOOii", &vt_G_obj, &DVt_MM_obj, 
                         &h_cv_obj, &n_c_obj, &k, &c,
                         &spline_obj_M_obj, &beg_c_obj,
-                        &pos_Wc_obj))
+                        &pos_Wc_obj, &Mstart, &Mstop))
     return NULL;
 
   const double* vt_G = (const double*)vt_G_obj->data;
@@ -721,7 +721,7 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
   const double (*pos_Wc)[3] = (const double (*)[3])pos_Wc_obj->data;
 
   long* beg_c = LONGP(beg_c_obj);
-  int nM = DVt_MM_obj->dimensions[0];
+  int nM = DVt_MM_obj->dimensions[1];
   double* work_gm = lfc->work_gm;
   double dv = lfc->dv;
 
@@ -747,6 +747,12 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
             (const bmgsspline*)(&(spline_obj->spline));
           
           int nm1 = v1->nm;
+
+          int M1p = MAX(M1, Mstart);
+          int nm1p = MIN(M1 + nm1, Mstop) - M1p;
+          if (nm1p <= 0)
+            continue;
+
           double fdYdc_m[nm1];
           double rlYdfdr_m[nm1];
           double f, dfdr;
@@ -754,7 +760,6 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
           const double* pos_c = pos_Wc[v1->W];
           //assert(2 * l + 1 == nm1);
           //assert(spline_obj->spline.l == l);
-
           int gm1 = 0;
           for (int G = Ga; G < Gb; G++, iz++) {
             double x = h_cv[0] * ix + h_cv[3] * iy + h_cv[6] * iz - pos_c[0];
@@ -786,8 +791,10 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
             }
             spherical_harmonics(l, dfdr * Rcinvr, x, y, z, r2, rlYdfdr_m);
 
-            for (int m1 = 0; m1 < nm1; m1++, gm1++) {
-              work_gm[gm1] = vtdv * (fdYdc_m[m1] + rlYdfdr_m[m1]);
+            int m1start = M1 < Mstart ? nm1 - nm1p : 0;
+            for (int m1 = 0; m1 < nm1p; m1++, gm1++) {
+              work_gm[gm1] = vtdv * (fdYdc_m[m1 + m1start] 
+                                     + rlYdfdr_m[m1 + m1start]);
             }            
           } // end loop over G
           for (int i2 = 0; i2 < ni; i2++) {
@@ -796,13 +803,13 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
             const double* A2_start_gm = v2->A_gm;
             const double* A2_gm;
             int nm2 = v2->nm;
-            double* DVt_start_mm = DVt_MM + M1 * nM + M2;
+            double* DVt_start_mm = DVt_MM + (M1p - Mstart) * nM + M2;
             double* DVt_mm;
             double work;
             for (int g = 0; g < nG; g++) {
               A2_gm = A2_start_gm + g * nm2;
-              for (int m1 = 0; m1 < nm1; m1++) {
-                work = work_gm[g * nm1 + m1];
+              for (int m1 = 0; m1 < nm1p; m1++) {
+                work = work_gm[g * nm1p + m1];
                 DVt_mm = DVt_start_mm + m1 * nM;
                 for (int m2 = 0; m2 < nm2; m2++) {
                   DVt_mm[m2] += A2_gm[m2] * work;
