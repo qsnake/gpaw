@@ -771,16 +771,10 @@ PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args)
       free(rwork);
       free(work);
     }
-  if (info != 0)
-    {
-      PyErr_SetString(PyExc_RuntimeError,
-		      "scalapack_diagonalize_dc error in compute.");
-      return NULL;
-    }
-
   free(iwork);
 
-  Py_RETURN_NONE;
+  PyObject* returnvalue = Py_BuildValue("i", info);
+  return returnvalue;
 }
 
 PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
@@ -808,7 +802,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   char cmach = 'U'; // most orthogonal eigenvectors
   // char cmach = 'S'; // most acccurate eigenvalues
 
-  if (!PyArg_ParseTuple(args, "OOciOOO", &a, &desca, &uplo, &iu,
+  if (!PyArg_ParseTuple(args, "OOciOO", &a, &desca, &uplo, &iu,
                         &z, &w))
     return NULL;
 
@@ -867,18 +861,19 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   else
     {
       pzheevx_(&jobz, &range, &uplo, &n,
-	       (void*)COMPLEXP(a),&one, &one, INTP(desca),
+	       (void*)COMPLEXP(a), &one, &one, INTP(desca),
 	       &vl, &vu, &il, &iu, &abstol, &eigvalm,
                &nz, DOUBLEP(w), &orfac,
                (void*)COMPLEXP(z), &one, &one, INTP(desca),
                &c_work, &querywork, d_work, &querywork,
                &i_work, &querywork,
                ifail, iclustr, gap, &info);
+      lwork = (int)(c_work);
+      lrwork = (int)(d_work[0]);
     }
-  lwork = (int)(c_work);
-  lrwork = (int)(d_work[0]);
   
   if (info != 0) {
+    printf ("info = %d", info);
     PyErr_SetString(PyExc_RuntimeError,
                     "scalapack_diagonalize_ex error in query.");
     return NULL;
@@ -903,6 +898,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   else 
     {
       double_complex* work = GPAW_MALLOC(double_complex, lwork);
+      lrwork = 3*lrwork; // larger workspace needed to pass regression test
       double* rwork = GPAW_MALLOC(double, lrwork);
       pzheevx_(&jobz, &range, &uplo, &n,
                (void*)COMPLEXP(a), &one, &one, INTP(desca),
@@ -915,13 +911,6 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
       free(rwork);
       free(work);
     }
-
-  if (info != 0) {
-    PyErr_SetString(PyExc_RuntimeError,
-		    "scalapack_diagonalize_ex error in compute.");
-    return NULL;
-  }
-
   free(iwork);
   free(gap);
   free(iclustr);
@@ -929,7 +918,8 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   
   // If this fails, fewer eigenvalues than requested were computed.
   assert (eigvalm == iu); 
-  Py_RETURN_NONE;
+  PyObject* returnvalue = Py_BuildValue("i", info);
+  return returnvalue;
 }
 
 PyObject* scalapack_general_diagonalize_ex(PyObject *self, PyObject *args)
@@ -1032,7 +1022,7 @@ PyObject* scalapack_general_diagonalize_ex(PyObject *self, PyObject *args)
     }
   if (info != 0) {
     PyErr_SetString(PyExc_RuntimeError,
-                    "scalapack_diagonalize_ex error in query.");
+                    "scalapack_general_diagonalize_ex error in query.");
     return NULL;
   }
   
@@ -1056,6 +1046,7 @@ PyObject* scalapack_general_diagonalize_ex(PyObject *self, PyObject *args)
   else 
     {
       double_complex* work = GPAW_MALLOC(double_complex, lwork);
+      lrwork = 3*lrwork; // larger workspace needed to pass regression test
       double* rwork = GPAW_MALLOC(double, lrwork);
       pzhegvx_(&ibtype, &jobz, &range, &uplo, &n,
                (void*)COMPLEXP(a), &one, &one, INTP(desca),
@@ -1069,12 +1060,6 @@ PyObject* scalapack_general_diagonalize_ex(PyObject *self, PyObject *args)
       free(rwork);
       free(work);
   }
-  if (info != 0) {
-    PyErr_SetString(PyExc_RuntimeError,
-                    "scalapack_diagonalize_ex error in compute.");
-    return NULL;
-  }
-
   free(iwork);
   free(gap);
   free(iclustr);
@@ -1082,7 +1067,8 @@ PyObject* scalapack_general_diagonalize_ex(PyObject *self, PyObject *args)
   
   // If this fails, fewer eigenvalues than requested were computed.
   assert (eigvalm == iu); 
-  Py_RETURN_NONE;
+  PyObject* returnvalue = Py_BuildValue("i", info);
+  return returnvalue;
 }
 
 
