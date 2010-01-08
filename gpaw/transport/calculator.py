@@ -1519,30 +1519,7 @@ class Transport(GPAW):
         if self.normalize_density:
             density.normalize(comp_charge)
         density.mix(comp_charge)
-        
-        #if not density.mixer.mix_rho:
-        #    density.mixer.mix(density)
-            
-        #if density.nt_sg is None:
-        #    density.nt_sg = density.finegd.empty(density.nspins)
-
-        #nt_sG = self.surround.combine_nt_sG(density.nt_sG)
-        #nt_sg = self.finegd1.zeros(self.nspins)
-        #for s in range(density.nspins):
-        #    self.interpolator.apply(nt_sG[s], nt_sg[s])
-        
-        #nn = self.surround.nn[0] * 2
-        #density.nt_sg = self.surround.uncapsule(nn, nt_sg, self.finegd1,
-        #                                            self.finegd)
-        #pseudo_charge = -(density.charge + comp_charge)
-        #if abs(pseudo_charge) > 1.0e-14:
-        #    x = pseudo_charge / self.finegd.integrate(density.nt_sg).sum()
-        #    density.nt_sg *= x
-        #density.calculate_pseudo_charge(comp_charge)
-
-        #if density.mixer.mix_rho:
-        #    density.mixer.mix(density)        
-            
+           
     def update_hamiltonian(self):
         # only used by fixed bc
         
@@ -1853,7 +1830,6 @@ class Transport(GPAW):
         for i in range(self.lead_num):
             atoms_l = self.atoms_l[i].copy()
             cell_l = diag_cell(atoms_l.cell)
-            #ex_cell[di] += cell_l[di]
             ex_cell[di] += self.gd.h_c[2] * Bohr * self.bnc[i]
             for atom in atoms_l:
                 if i == 0:
