@@ -13,7 +13,10 @@ import numpy as np
 from ase.atoms import Atoms, string2symbols
 from ase.utils.eos import EquationOfState
 from ase.calculators.emt import EMT
+from ase.calculators import SinglePointCalculator
 from ase.io.trajectory import PickleTrajectory
+from ase.optimize.lbfgs import LBFGS
+from ase.constraints import FixAtoms
 from ase.io import read
 import ase.units as units
 from ase.data import covalent_radii
@@ -33,8 +36,8 @@ class Runner:
 
     Subclasses must implement a set_calculator() method."""
     
-    def __init__(self, name, atoms, strains=None, tag='', clean=False,
-                 out='-'):
+    def __init__(self, name, atoms, strains=None, tag='', clean=True,
+                 fmax=None, out='-'):
         """Construct runner object.
 
         Results will be written to trajectory files or read from those
@@ -51,6 +54,8 @@ class Runner:
             Tag used for filenames like <name>-<tag>.traj.
         clean: bool
             Do *not* read results from files.
+        fmax: float
+            Optimize geometry until all forces are below fmax.
         """
         
         if strains is None:
@@ -77,6 +82,7 @@ class Runner:
         self.strains = np.array(strains)
         self.clean = clean
         self.out = out
+        self.fmax = fmax
         
         self.volumes = None
         self.bondlengths = None
@@ -105,14 +111,14 @@ class Runner:
                 self.log('FAILED')
             else:
                 self.log()
-                if len(configs) == len(self.strains):
-                    # Extract volumes and energies:
-                    if self.dimer:
-                        self.bondlengths = [a.get_distance(0, 1)
-                                            for a in configs]
-                    else:
-                        self.volumes = [a.get_volume() for a in configs]
-                    self.energies = [a.get_potential_energy() for a in configs]
+                if self.fmax is not None:
+                    configs = configs[-1:]
+                # Extract bondlengths/volumes and energies:
+                if self.dimer:
+                    self.bondlengths = [a.get_distance(0, 1) for a in configs]
+                else:
+                    self.volumes = [a.get_volume() for a in configs]
+                self.energies = [a.get_potential_energy() for a in configs]
 
     def calculate(self, filename):
         """Run calculation and write results to file."""
@@ -122,7 +128,17 @@ class Runner:
         traj = PickleTrajectory(filename, 'w', backup=False)
         cell = config.get_cell()
         self.energies = []
-        if not config.pbc.any() and len(config) == 2:
+        if self.fmax is not None:
+            if not config.positions.any(axis=1).all():
+                # one atom is at (0,0,0) - fix it:
+                mask = np.logical_not(config.positions.any(axis=1))
+                config.constraints = FixAtoms(mask=mask)
+            dyn = LBFGS(config)
+            dyn.attach(traj, 1, config)
+            dyn.run(fmax=self.fmax)
+            e = config.get_potential_energy()
+            self.energies.append(e)
+        elif not config.pbc.any() and len(config) == 2:
             # This is a dimer.
             self.bondlengths = []
             d0 = config.get_distance(0, 1)
@@ -144,6 +160,8 @@ class Runner:
         return config
     
     def summary(self, plot=False, a0=None):
+        if self.energies is None:
+            return
         natoms = len(self.atoms)
         if len(self.energies) == 1:
             self.log('Total energy: %.3f eV (%d atom%s)' %
@@ -168,7 +186,7 @@ class Runner:
         if d0 is None:
             raise ValueError('No minimum!')
         
-        e = fit0(t)
+        e0 = fit0(t)
         k = fit2(t) * t**4
         m1, m2 = self.atoms.get_masses()
         m = m1 * m2 / (m1 + m2)
@@ -179,7 +197,7 @@ class Runner:
         self.log('Frequency: %.1f meV (%.1f cm^-1)' %
                  (1000 * hnu,
                   hnu * 0.01 * units._e / units._c / units._hplanck))
-        self.log('Total energy: %.3f eV' % e)
+        self.log('Total energy: %.3f eV' % e0)
 
         if plot:
             import pylab as plt
@@ -187,8 +205,12 @@ class Runner:
             x = np.linspace(d[0], d[-1], 50)
             plt.plot(x, fit0(x**-1), '-r')
             plt.show()
+
+        dimer = self.atoms.copy()
+        dimer.set_distance(0, 1, d0)
+        self.write_optimized(dimer, e0)
             
-        return e, d, hnu
+        return e0, d0, hnu
 
     def bulk_summary(self, plot, a0):
         natoms = len(self.atoms)
@@ -209,7 +231,23 @@ class Runner:
             plt.plot(x, eos.fit0(x**-(1.0 / 3)), '-r')
             plt.show()
             
+        bulk = self.atoms.copy()
+        bulk.set_cell(a / a0 * bulk.cell, scale_atoms=True)
+        self.write_optimized(bulk, e)
+
         return e, v, B, a
+
+    def write_optimized(self, atoms, energy):
+        magmoms = None  # XXX we could do better ...
+        forces = np.zeros((len(atoms), 3))
+        calc = SinglePointCalculator(energy, forces, np.zeros((3, 3)),
+                                     magmoms, atoms)
+        atoms.set_calculator(calc)
+        filename = '%s%s-optimized.traj' % (self.name, self.tag)
+        traj = PickleTrajectory(filename, 'w', backup=False)
+        traj.write(atoms)
+        traj.close()
+
 
 class EMTRunner(Runner):
     """EMT implementation"""
