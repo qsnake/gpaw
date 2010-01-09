@@ -30,6 +30,10 @@ parser.add_option('--after', metavar='TESTFILE', dest='after_test',
 parser.add_option('-j', '--jobs', type='int', default=1,
                   help='Run JOBS threads.')
 
+parser.add_option('--reverse', action='store_true',
+                  help=('Run tests in reverse order (less overhead with '
+                        'multiple jobs)'))
+
 parser.add_option('-k', '--keep-temp-dir', action='store_true',
                   dest='keep_tmpdir', help='Do not delete temporary files.')
 
@@ -38,6 +42,9 @@ opt, tests = parser.parse_args()
 
 if len(tests) == 0:
     from gpaw.test import tests
+
+if opt.reverse:
+    tests.reverse()
 
 if opt.run_failed_tests_only:
     tests = [line.strip() for line in open('failed-tests.txt')]
