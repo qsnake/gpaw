@@ -659,10 +659,6 @@ class LCAOWaveFunctions(WaveFunctions):
         mynao = self.od.mynao
         nao = self.od.nao
         dtype = self.dtype
-        if kpt.rho_MM is None:
-            rhoT_MM = self.od.get_transposed_density_matrix(kpt.f_n, kpt.C_nM)
-        else:
-            rhoT_MM = kpt.rho_MM.T.copy()
 
         Mstart = self.od.Mstart
         Mstop = self.od.Mstop
@@ -683,10 +679,6 @@ class LCAOWaveFunctions(WaveFunctions):
         def my_slices():
             return _slices(my_atom_indices)
         
-        # TODO: in gamma point calculations, Hamiltonian has the matrix already
-        # But not for both spins, if spinpolarized
-        # Hmmm....
-        self.timer.start('LCAO forces: initial')
         #
         #         -----                    -----
         #          \    -1                  \    *
@@ -695,10 +687,25 @@ class LCAOWaveFunctions(WaveFunctions):
         #         -----                    -----
         #          x z                       n
         #
-        # We use the transpose of that matrix, noting that it is just like rho:
-        ET_MM = self.od.get_transposed_density_matrix(kpt.f_n * kpt.eps_n,
-                                                      kpt.C_nM)
+        # We use the transpose of that matrix.  The first form is used
+        # if rho is given, otherwise the coefficients are used.
+        self.timer.start('LCAO forces: initial')
+        if kpt.rho_MM is None:
+            rhoT_MM = self.od.get_transposed_density_matrix(kpt.f_n, kpt.C_nM)
+            ET_MM = self.od.get_transposed_density_matrix(kpt.f_n * kpt.eps_n,
+                                                          kpt.C_nM)
+        else:
+            H_MM = self.eigensolver.calculate_hamiltonian_matrix(hamiltonian,
+                                                                 self,
+                                                                 kpt)
+            tri2full(H_MM)
+            S_MM = self.S_qMM[q].copy()
+            tri2full(S_MM)
+            ET_MM = np.linalg.solve(S_MM, gemmdot(H_MM, kpt.rho_MM)).T.copy()
+            del S_MM, H_MM
+            rhoT_MM = kpt.rho_MM.T.copy()
         self.timer.stop('LCAO forces: initial')
+
         
         # Kinetic energy contribution
         #
