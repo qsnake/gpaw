@@ -79,6 +79,15 @@ class PAW(PAWTextOutput):
 
         self.initialized = False
 
+        # Possibly read GPAW keyword arguments from file:
+        if filename is not None and filename.endswith('.gkw'):
+            from gpaw.utilities.serialization import load
+            parameters = deserialize(filename)
+            parameters.update(kwargs)
+            kwargs = parameters
+            filename = None # XXX
+
+
         if filename is not None:
             reader = gpaw.io.open(filename, 'r')
             self.atoms = gpaw.io.read_atoms(reader)
@@ -411,10 +420,10 @@ class PAW(PAWTextOutput):
                              % (nvalence, nbands))
 
         if par.width is not None:
-            self.text('**NOTE**: please start using ' +
+            self.text('**NOTE**: please start using '
                       'occupations=FermiDirac(width).')
         if par.fixmom:
-            self.text('**NOTE**: please start using '+
+            self.text('**NOTE**: please start using '
                       'occupations=FermiDirac(width, fixmagmom=True).')
 
         if self.occupations is None:

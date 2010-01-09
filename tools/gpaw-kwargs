@@ -7,6 +7,6 @@ import sys
 # back up the argv before anything else happens
 argv = sys.argv[1:]
 
-from gpaw.utilities.serialization import main
+from gpaw.utilities.kwargs import main
 
 main(argv)
