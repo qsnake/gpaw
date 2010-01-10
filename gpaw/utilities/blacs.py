@@ -47,7 +47,7 @@ def scalapack_diagonalize_ex(desca, a, z, w, uplo, iu=None):
     if not desca.blacsgrid.is_active():
         return
     info = _gpaw.scalapack_diagonalize_ex(a, desca.asarray(), uplo, iu, z, w)
-    if info != 0:
+    if info not in [0, 2]:
         raise RuntimeError('scalapack_diagonalize_ex error: %d' % info)
 
 def scalapack_general_diagonalize_ex(desca, a, b, z, w, uplo, iu=None):
@@ -65,7 +65,7 @@ def scalapack_general_diagonalize_ex(desca, a, b, z, w, uplo, iu=None):
         return
     info = _gpaw.scalapack_general_diagonalize_ex(a, desca.asarray(), 
                                                   uplo, iu, b, z, w)
-    if info != 0:
+    if info not in [0, 2]:
         raise RuntimeError('scalapack_general_diagonalize_ex error: %d' % info)
 
 

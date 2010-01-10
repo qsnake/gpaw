@@ -46,11 +46,13 @@ def main(N=1000, seed=42, mprocs=2, nprocs=2, dtype=float):
         # We make a simple complex Hermitian matrix below.
         H0 = H0 + epsilon * (0.1*np.tri(N, N, k= -N // nprocs) + 0.3*np.tri(N, N, k=-1))
         S0 = S0 + epsilon * (0.2*np.tri(N, N, k= -N // nprocs) + 0.4*np.tri(N, N, k=-1))
-        # Overlap matrix must be semi-positive definite
-        S0 = S0 + 10.0*np.eye(N, N, 0)
         # Make matrices symmetric
         rk(1.0, H0.copy(), 0.0, H0)
         rk(1.0, S0.copy(), 0.0, S0)
+        # Overlap matrix must be semi-positive definite
+        S0 = S0 + 50.0*np.eye(N, N, 0)
+        # Hamiltonian is usually diagonally dominant
+        H0 = H0 + 75.0*np.eye(N, N, 0)
 
     # Local result matrices
     W0 = np.zeros((N),dtype=float)
