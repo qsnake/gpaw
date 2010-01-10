@@ -799,8 +799,6 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   char jobz = 'V'; // eigenvectors also
   char range = 'I'; // eigenvalues il-th thru iu-th
   char uplo;
-  char cmach = 'U'; // most orthogonal eigenvectors
-  // char cmach = 'S'; // most acccurate eigenvalues
 
   if (!PyArg_ParseTuple(args, "OOciOO", &a, &desca, &uplo, &iu,
                         &z, &w))
@@ -823,11 +821,11 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   Cblacs_gridinfo_(a_ConTxt, &a_nprow, &a_npcol, &a_myrow, &a_mycol);
 
   // Convergence tolerance
-  // most orthogonal eigenvectors
-  double abstol = pdlamch_(&a_ConTxt, &cmach);
-  
-  // most accurate eigenvalues
-  // double abstol = 2.0*pdlamch_(&a_ConTxt, &cmach);
+  double abstol = 1.0e-8;
+  // char cmach = 'U'; // most orthogonal eigenvectors
+  // char cmach = 'S'; // most acccurate eigenvalues
+  // double abstol = pdlamch_(&a_ConTxt, &cmach);     // most orthogonal eigenvectors
+  // double abstol = 2.0*pdlamch_(&a_ConTxt, &cmach); // most accurate eigenvalues
   
   double orfac = -1.0;
 
@@ -880,7 +878,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   }
   
   // Computation part
-  lwork = lwork + (n-1)*n;
+  // lwork = lwork + (n-1)*n; // this is a ridiculous amount of workspace
   liwork = i_work;
   iwork = GPAW_MALLOC(int, liwork);
   if (a->descr->type_num == PyArray_DOUBLE)
@@ -898,7 +896,6 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   else 
     {
       double_complex* work = GPAW_MALLOC(double_complex, lwork);
-      lrwork = 3*lrwork; // larger workspace needed to pass regression test
       double* rwork = GPAW_MALLOC(double, lrwork);
       pzheevx_(&jobz, &range, &uplo, &n,
                (void*)COMPLEXP(a), &one, &one, INTP(desca),
@@ -946,8 +943,6 @@ PyObject* scalapack_general_diagonalize_ex(PyObject *self, PyObject *args)
   char jobz = 'V'; // eigenvectors also
   char range = 'I'; // eigenvalues il-th thru iu-th
   char uplo;
-  char cmach = 'U'; // most orthogonal eigenvectors
-  // char cmach = 'S'; // most acccurate eigenvalues
 
   if (!PyArg_ParseTuple(args, "OOciOOO", &a, &desca, &uplo, &iu,
 			&b, &z, &w))
@@ -970,11 +965,11 @@ PyObject* scalapack_general_diagonalize_ex(PyObject *self, PyObject *args)
   Cblacs_gridinfo_(a_ConTxt, &a_nprow, &a_npcol, &a_myrow, &a_mycol);
 
   // Convergence tolerance
-  // most orthogonal eigenvectors
-  double abstol = pdlamch_(&a_ConTxt, &cmach);
-  
-  // most accurate eigenvalues
-  // double abstol = 2.0*pdlamch_(&a_ConTxt, &cmach);
+  double abstol = 1.0e-8;
+  // char cmach = 'U'; // most orthogonal eigenvectors
+  // char cmach = 'S'; // most acccurate eigenvalues
+  // double abstol = pdlamch_(&a_ConTxt, &cmach);     // most orthogonal eigenvectors
+  // double abstol = 2.0*pdlamch_(&a_ConTxt, &cmach); // most accurate eigenvalues
   
   double orfac = -1.0;
 
@@ -1027,7 +1022,7 @@ PyObject* scalapack_general_diagonalize_ex(PyObject *self, PyObject *args)
   }
   
   // Computation part
-  lwork = lwork + (n-1)*n;
+  // lwork = lwork + (n-1)*n; // this is a ridiculous amount of workspace
   liwork = i_work;
   iwork = GPAW_MALLOC(int, liwork);
   if (a->descr->type_num == PyArray_DOUBLE)
@@ -1046,7 +1041,6 @@ PyObject* scalapack_general_diagonalize_ex(PyObject *self, PyObject *args)
   else 
     {
       double_complex* work = GPAW_MALLOC(double_complex, lwork);
-      lrwork = 3*lrwork; // larger workspace needed to pass regression test
       double* rwork = GPAW_MALLOC(double, lrwork);
       pzhegvx_(&ibtype, &jobz, &range, &uplo, &n,
                (void*)COMPLEXP(a), &one, &one, INTP(desca),
