@@ -88,6 +88,9 @@ def main(argv):
         outfilename = None
     
     parameters = {}
+    if opts.complete:
+        parameters.update(defaults)
+    
     for arg in args:
         loaded_parameters = load(arg)
         parameters.update(loaded_parameters)
@@ -113,7 +116,8 @@ def main(argv):
 
     # Remove keys which are not changed from defaults
     if not opts.complete:
-        for key in parameters:
+        # must call keys() since dict cannot change size during iteration
+        for key in parameters.keys(): 
             if defaults[key] == parameters[key]:
                 del parameters[key]
 
