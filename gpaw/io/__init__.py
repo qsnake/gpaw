@@ -99,6 +99,10 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
     magmom_a = paw.get_magnetic_moments()
 
     if master:
+        if filename == ".db":
+            from gpaw.cmr import create_db_filename
+            filename = create_db_filename()
+
         w = open(filename, 'w')
 
         w['history'] = 'GPAW restart file'

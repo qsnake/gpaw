@@ -10,11 +10,15 @@ import numpy as np
 import ase
 from ase.version import version as ase_version
 import gpaw
-from gpaw.version import version as gversion
 
 import cmr
 from cmr.io import XMLData
-from cmr.static import *
+from cmr.io import READ_DATA
+from cmr.io import EVALUATE
+from cmr.io import WRITE_CONVERT
+from cmr.io import CONVERTION_ORIGINAL
+from cmr.static import CALCULATOR_GPAW
+
 
 class Writer:
     """ This class is a wrapper to the db output writer
@@ -24,6 +28,7 @@ class Writer:
         self.verbose = False
         self.data = XMLData()
         self.data.set_calculator_name(CALCULATOR_GPAW)
+        self.data.set_write_mode(WRITE_CONVERT)
         self.split_array = None #used when array is not filled at once
         self.dimensions = {}
         self.filename = filename
@@ -44,6 +49,7 @@ class Writer:
         
     def dimension(self, name, value):
         self.dimensions[name]=value
+        self.data[name]=value
         if self.verbose:
             print "dimension: ", name, value
 
@@ -75,32 +81,15 @@ class Writer:
         adding a new variable if the end was reached."""
         if self.split_array is None:
             return
-
+        
         measured_dimensions = self._get_dimension(self.split_array[2])
         if self.verbose:
             print "Dimensions:         ", self.split_array[1]
             print "Mesured Dimensions: ", measured_dimensions
-
-        if measured_dimensions!=self.split_array[1]:
-            #make the array fit (only fixes the 1st dimension)
             
-            if measured_dimensions[0]==((self.split_array[1])[0]*\
-                                         (self.split_array[1])[1]):
-                tmp = []
-                count = 0
-                for a in range(0, (self.split_array[1][0])):
-                    tmp.append([])
-                    for b in range(0, (self.split_array[1][1])):
-                        tmp[a].append(self.split_array[2][count])
-                        count += 1
-                nd = self._get_dimension(tmp)
-                if self.verbose:
-                    print "Fixed array dimensions:", nd
-            else:
-                print "Cannot fix dimensions."
-                sys.exit(0)
-            
-        self.data[self.split_array[0]]=self.split_array[2]
+        #make the array fit (only fixes the 1st dimension)
+        res = np.array(self.split_array[2]).reshape(self.split_array[1])
+        self.data[self.split_array[0]] = res
 
     def add(self, name, shape, array=None, dtype=None, units=None):
         self._close_array()
@@ -114,7 +103,7 @@ class Writer:
         else:
             self.data[name]=array
 
-    def fill(self, array):
+    def fill(self, array, *indices):
         if self.verbose:
             print "fill (", len(array),"):", array
         self.split_array[2].append(array)
@@ -140,37 +129,61 @@ class Writer:
         self._close_array()
         self.data.write(self.filename, self.db_copy, self.private)
 
-class Reader(xml.sax.handler.ContentHandler):
-    """ This class is a wrapper to the db input reader
-        and intended to be used with gpaw
+class Reader:
+    """ This class allows gpaw to access
+    to read a db-file
     """
     def __init__(self, name):
-        self.reader = db.Reader(name)
-
-    def startElement(self, tag, attrs):
-        self.reader.startElement(tag, attrs)
+        self.reader = cmr.read(name,
+                               read_mode=READ_DATA,
+                               evaluation_mode=EVALUATE,
+                               convertion_mode=CONVERTION_ORIGINAL)
+        self.parameters = self.reader
 
     def dimension(self, name):
-        return self.reader.dimension(name)
+        return self.reader[name]
     
     def __getitem__(self, name):
-        return self.reader.__getitem__(name)
+        return self.reader[name]
 
     def has_array(self, name):
-        return self.reader.has_array(name)
+        return self.reader.has_key(name)
     
     def get(self, name, *indices):
-        return self.reader.get(name, *indices)
+        print "incides", indices
+        result = self.reader[name]
+        if indices!=():
+            for a in indices:
+                result = result[a]
+            return result
+        
+        #gpaw wants expressions evaluated
+        if type(result)==str or type(result)==unicode:
+            try:
+                print "Converting ", result
+                result = eval(result, {})
+            except (SyntaxError, NameError):
+                pass
+        return result
     
     def get_reference(self, name, *indices):
-        return self.reader.get_reference(name, *indices)
+        result = self.reader[name]
+        if indices!=():
+            for a in indices:
+                result = result[a]
+            return result
     
     def get_file_object(self, name, indices):
-        return self.reader.get_file_object(name, indices)
+        result = self.reader.retrieve_file(name)
+        if indices!=():
+            for a in indices:
+                result = result[a]
+        return result
+        
 
     def get_parameters(self):
-        return self.reader.get_parameters()        
+        return self.reader.keys()
 
     def close(self):
-        self.reader.close()
+        pass
 

@@ -6,3 +6,6 @@ The gpaw.cmr-package provides tools to create the db-files.
 To read more about this, read <TODO: provide link>
 """
 
+def create_db_filename():
+    import cmr
+    return cmr.create_db_filename()
