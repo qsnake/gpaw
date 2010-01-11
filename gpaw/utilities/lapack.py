@@ -11,7 +11,7 @@ import numpy as np
 from gpaw import debug
 from gpaw.utilities import scalapack
 from gpaw import sl_diagonalize, sl_inverse_cholesky
-from gpaw.mpi import parallel, rank, size, world
+from gpaw.mpi import size, world
 import _gpaw
 from gpaw.utilities.tools import tri2full
 from gpaw.utilities.blas import gemm
@@ -38,38 +38,28 @@ def diagonalize(a, w, b=None, root=0):
     assert w.shape == (n,)
 
     if sl_diagonalize:
-        assert parallel and scalapack()
+        assert scalapack()
 
     if b is not None:
         assert b.flags.contiguous
         assert b.dtype == a.dtype
         assert b.shape == a.shape
         if sl_diagonalize:
-            #if rank == root:
-                #print 'python ScaLapack diagonalize general'
             assert len(sl_diagonalize) == 4
             assert sl_diagonalize[0]*sl_diagonalize[1] <= size
             # symmetrize the matrix
             tri2full(a)
             tri2full(b)
-            #if rank == root:
-            #    print 'python ScaLapack diagonalize general not implemented yet'
+            
             #assert (not sl_diagonalize)
             info = world.diagonalize(a, w,
                                      sl_diagonalize[0],
                                      sl_diagonalize[1],
                                      sl_diagonalize[2], root, b)
         else:
-            #if rank == root:
-                #print 'python Lapack diagonalize general'
             info = _gpaw.diagonalize(a, w, b)
-        #if rank == root:
-        #    print 'python Lapack diagonalize general'
-        #info = _gpaw.diagonalize(a, w, b)
     else:
         if sl_diagonalize:
-            #if rank == root:
-                #print 'python ScaLapack diagonalize'
             assert len(sl_diagonalize) == 4
             assert sl_diagonalize[0]*sl_diagonalize[1] <= size
             # symmetrize the matrix
@@ -79,8 +69,6 @@ def diagonalize(a, w, b=None, root=0):
                                      sl_diagonalize[1],
                                      sl_diagonalize[2], root)
         else:
-            #if rank == root:
-                #print 'python Lapack diagonalize'
             info = _gpaw.diagonalize(a, w)
     return info
 
@@ -97,11 +85,9 @@ def inverse_cholesky(a, root=0):
     assert a.shape == (n, n)
 
     if sl_inverse_cholesky:
-        assert parallel and scalapack()
+        assert scalapack()
 
     if sl_inverse_cholesky:
-        #if rank == root:
-            #print 'python ScaLapack inverse_cholesky'
         assert len(sl_inverse_cholesky) == 4
         assert sl_inverse_cholesky[0]*sl_inverse_cholesky[1] <= size
         # symmetrize the matrix
@@ -111,8 +97,6 @@ def inverse_cholesky(a, root=0):
                                       sl_inverse_cholesky[1],
                                       sl_inverse_cholesky[2], root)
     else:
-        #if rank == root:
-            #print 'python Lapack inverse_cholesky'
         info = _gpaw.inverse_cholesky(a)
     return info
 

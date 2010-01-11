@@ -10,7 +10,6 @@ from gpaw.utilities.lapack import diagonalize
 from gpaw.utilities.blas import axpy, r2k, gemm
 from gpaw.utilities.tools import apply_subspace_mask
 from gpaw.utilities import unpack
-from gpaw.mpi import run, parallel
 from gpaw.utilities import scalapack
 from gpaw import sl_diagonalize
 from gpaw import debug
@@ -208,7 +207,6 @@ class Eigensolver:
         self.timer.stop('calc_matrix')
 
         if sl_diagonalize:
-            assert parallel
             assert scalapack()
             dsyev_zheev_string = 'pdsyevd/pzheevd'
         else:
