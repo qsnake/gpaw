@@ -1,3 +1,7 @@
+"""Plot bandstructure
+
+Plot the bandstructure calculated with bandstructure.py
+"""
 import pylab as pl
 k, e = pl.loadtxt('Na_bands.txt', unpack=True)
 fig = pl.figure(1, dpi=80, figsize=(4.2, 6))
