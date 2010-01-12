@@ -18,7 +18,7 @@ if not io_only:
     H2 = Atoms([Atom('H', (a / 2, a / 2, (c - R) / 2)),
                 Atom('H', (a / 2, a / 2, (c + R) / 2))],
                cell=(a, a, c))
-    calc = GPAW(xc='PBE', nbands=2, spinpol=False, txt=txt)
+    calc = GPAW(xc='PBE', nbands=3, spinpol=False, txt=txt)
     H2.set_calculator(calc)
     H2.get_potential_energy()
 
@@ -65,13 +65,14 @@ if not io_only:
         equal(lr_vspin[i].get_energy(), lr_spin[i].get_energy(), 5.e-6)
 
     # singlet/triplet separation
+    precision = 1.e-5
     singlet.diagonalize()
-    equal(singlet[0].get_energy(), lr_spin[1].get_energy(), 2.e-9)
+    equal(singlet[0].get_energy(), lr_spin[1].get_energy(), precision)
     equal(singlet[0].get_oscillator_strength()[0],
-          lr_spin[1].get_oscillator_strength()[0], 2.e-9)
+          lr_spin[1].get_oscillator_strength()[0], precision)
     triplet.diagonalize()
     equal(triplet[0].get_oscillator_strength()[0], 0)
-    equal(triplet[0].get_energy(), lr_spin[0].get_energy(), 2.e-9)
+    equal(triplet[0].get_energy(), lr_spin[0].get_energy(), precision)
     equal(triplet[0].get_oscillator_strength()[0], 0)
 
 # io
