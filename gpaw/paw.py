@@ -231,8 +231,10 @@ class PAW(PAWTextOutput):
         elif (atoms.get_positions() != self.atoms.get_positions()).any():
             self.density.reset()
             self.set_positions(atoms)
-        elif not self.scf.check_convergence(self.density,
-                                            self.wfs.eigensolver):
+        elif not self.scf.converged:
+            # Do not call scf.check_convergence() here as it overwrites
+            # scf.converged, and setting scf.converged is the only
+            # 'practical' way for a user to force the calculation to proceed
             self.set_positions(atoms)
         elif force_call_to_set_positions:
             self.set_positions(atoms)
