@@ -46,7 +46,7 @@ class PAW(PAWTextOutput):
 
         The following parameters can be used: `nbands`, `xc`, `kpts`,
         `spinpol`, `gpts`, `h`, `charge`, `usesymm`, `width`, `mixer`,
-        `hund`, `lmax`, `fixdensity`, `convergence`, `txt`,
+        `hund`, `lmax`, `fixdensity`, `convergence`, `txt`, `parallel`,
         `parsize`, `parsize_bands`, `softgauss` and `stencils`.
 
         If you don't specify any parameters, you will get:
@@ -81,8 +81,8 @@ class PAW(PAWTextOutput):
 
         # Possibly read GPAW keyword arguments from file:
         if filename is not None and filename.endswith('.gkw'):
-            from gpaw.utilities.serialization import load
-            parameters = deserialize(filename)
+            from gpaw.utilities.kwargs import load
+            parameters = load(filename)
             parameters.update(kwargs)
             kwargs = parameters
             filename = None # XXX
@@ -149,11 +149,12 @@ class PAW(PAWTextOutput):
         if 'gpts' in kwargs:
             p['h'] = None
 
-        # Special treatment for convergence criteria dictionary:
-        if kwargs.get('convergence') is not None:
-            cc = p['convergence']
-            cc.update(kwargs['convergence'])
-            kwargs['convergence'] = cc
+        # Special treatment for dictionary parameters:
+        for name in ['convergence', 'parallel']:
+            if kwargs.get(name) is not None:
+                tmp = p[name]
+                tmp.update(kwargs[name])
+                kwargs[name] = tmp
 
         self.initialized = False
 
@@ -184,8 +185,8 @@ class PAW(PAWTextOutput):
                 self.wfs = EmptyWaveFunctions()
                 self.occupations = None
             elif key in ['h', 'gpts', 'setups', 'spinpol', 'usesymm',
-                         'parsize', 'parsize_bands', 'parstride_bands',
-                         'communicator']:
+                         'parallel', 'parsize', 'parsize_bands',
+                         'parstride_bands', 'communicator']:
                 self.density = None
                 self.occupations = None
                 self.hamiltonian = None
@@ -437,11 +438,17 @@ class PAW(PAWTextOutput):
         
         from gpaw import parsize
         if parsize is None:
+            parsize = par.parallel['domain']
+        if parsize is None:
             parsize = par.parsize
 
         from gpaw import parsize_bands
         if parsize_bands is None:
+            parsize_bands = par.parallel['band']
+        if parsize_bands is None:
             parsize_bands = par.parsize_bands
+        if parsize_bands is None:
+            parsize_bands = 1
 
         cc = par.convergence
 
@@ -483,8 +490,10 @@ class PAW(PAWTextOutput):
                 # reinitialize - err what exactly? WaveFunctions? XXX
                 raise NotImplementedError('Band communicator size changed.')
 
-            # Construct grid descriptor for coarse grids for wave functions:
-            self.bd = BandDescriptor(nbands, band_comm, par.parstride_bands)
+            stridebands = par.parallel.get('stridebands',
+                                           par.get('parstride_bands',
+                                                   False))
+            self.bd = BandDescriptor(nbands, band_comm, stridebands)
 
             if (self.density is not None and
                 self.density.gd.comm.size != domain_comm.size):
@@ -500,8 +509,30 @@ class PAW(PAWTextOutput):
             gd = self.grid_descriptor_class(N_c, cell_cv, pbc_c,
                                             domain_comm, parsize)
             
+
+            # Construct orbital descriptor for LCAO mode or initialization:
+            from gpaw import extra_parameters
+            use_blacs = (par.parallel['scalapack']
+                         or extra_parameters.get('blacs'))
+            if use_blacs:
+                sl_diagonalize = par.parallel['scalapack']
+                if sl_diagonalize is None:
+                    from gpaw import sl_diagonalize
+                from gpaw.blacs import BlacsOrbitalDescriptor
+                ncpus, mcpus, blocksize = sl_diagonalize[:3]
+                od = BlacsOrbitalDescriptor(world, gd, self.bd,
+                                            kpt_comm, nao,
+                                            ncpus, mcpus, blocksize,
+                                            self.timer)
+            else:
+                # XXX This is actually a non-BLACS object.  The class should be
+                # defined somewhere else
+                from gpaw.blacs import OrbitalDescriptor
+                od = OrbitalDescriptor(gd, self.bd, setups.nao)
+
+            
             # do k-point analysis here? XXX
-            args = (gd, nspins, nvalence, setups, self.bd,
+            args = (gd, od, nspins, nvalence, setups, self.bd,
                     dtype, world, kpt_comm,
                     gamma, bzk_kc, ibzk_kc, weight_k, symmetry, self.timer)
             if par.mode == 'lcao':

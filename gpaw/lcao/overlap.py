@@ -320,7 +320,7 @@ class BlacsOverlapExpansions(BaseOverlapExpansionSet):
             Mend1b = min(self.mynao, Mend1)
             Mstart2 = msoe.M2_a[a2]
             Mend2 = Mstart2 + tsoe.shape[1]
-            x_xqNM[..., Mstart1b:Mend1b, Mstart2:Mend2] = \
+            x_xqNM[..., Mstart1b:Mend1b, Mstart2:Mend2] += \
                         x_qxmm[..., Mstart1b - Mstart1:Mend1b - Mstart1, :]
         if a2 < a1:
             # XXX this is necessary to fill out both upper/lower

@@ -363,9 +363,9 @@ class BlacsBandDescriptor:
 
 class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
     # This class 'describes' all the LCAO/Blacs-related stuff
-    def __init__(self, world, gd, bd, kpt_comm, nao, timer=nulltimer):
-        ncpus, mcpus, blocksize = sl_diagonalize[:3]
-
+    def __init__(self, world, gd, bd, kpt_comm, nao, ncpus, mcpus, blocksize,
+                 timer=nulltimer):
+        
         bcommsize = bd.comm.size
         gcommsize = gd.comm.size
         bcommrank = bd.comm.rank

@@ -28,8 +28,12 @@ class InputParameters(dict):
             ('hund',            False),
             ('random',          False),
             ('maxiter',         120),
+            ('parallel',        dict(domain=None,
+                                     band=None,
+                                     stridebands=False,
+                                     scalapack=None)),
             ('parsize',         None),
-            ('parsize_bands',   1),
+            ('parsize_bands',   None),
             ('parstride_bands', False),
             ('external',        None),  # eV
             ('verbose',         0),

@@ -49,10 +49,11 @@ class WaveFunctions(EmptyWaveFunctions):
     kpt_comm:
         MPI-communicator for parallelization over **k**-points.
     """
-    def __init__(self, gd, nspins, nvalence, setups, bd, dtype, world,
+    def __init__(self, gd, od, nspins, nvalence, setups, bd, dtype, world,
                  kpt_comm,
                  gamma, bzk_kc, ibzk_kc, weight_k, symmetry, timer=nulltimer):
         self.gd = gd
+        self.od = od
         self.nspins = nspins
         self.nvalence = nvalence
         self.bd = bd
@@ -436,23 +437,7 @@ class LCAOWaveFunctions(WaveFunctions):
         
         self.tci = NewTCI(self.gd.cell_cv, self.gd.pbc_c, self.setups,
                           self.ibzk_qc, self.gamma)
-        if extra_parameters.get('blacs'):
-            from gpaw.blacs import BlacsOrbitalDescriptor
-            od = BlacsOrbitalDescriptor(self.world, self.gd, self.bd,
-                                        self.kpt_comm, self.setups.nao,
-                                        self.timer)
-        else:
-            from gpaw.blacs import OrbitalDescriptor
-            od = OrbitalDescriptor(self.gd, self.bd, self.setups.nao)
-        self.od = od
         
-        #elif extra_parameters.get('blacs'):
-        #    from gpaw.lcao.overlap import BlacsTwoCenterIntegrals
-        #    self.tci = BlacsTwoCenterIntegrals(self.gd, self.setups,
-        #                                       self.gamma, self.ibzk_qc)
-        #else:
-        #    self.tci = TwoCenterIntegrals(self.gd, self.setups,
-        #                                  self.gamma, self.ibzk_qc)
         self.basis_functions = BasisFunctions(self.gd,
                                               [setup.phit_j
                                                for setup in self.setups],
@@ -477,8 +462,8 @@ class LCAOWaveFunctions(WaveFunctions):
         nao = self.setups.nao
         mynbands = self.mynbands
         
-        Mstop = self.basis_functions.Mstop
-        Mstart = self.basis_functions.Mstart
+        Mstop = self.od.Mstop
+        Mstart = self.od.Mstart
         mynao = Mstop - Mstart
         
         S_qMM = self.S_qMM
@@ -487,8 +472,8 @@ class LCAOWaveFunctions(WaveFunctions):
         if S_qMM is None: # XXX
             # First time:
             assert T_qMM is None
-            if extra_parameters.get('blacs'):
-                Mstart = self.od.Mstart
+            from gpaw.blacs import BlacsOrbitalDescriptor
+            if isinstance(self.od, BlacsOrbitalDescriptor): # XXX
                 self.tci.set_matrix_distribution(Mstart, mynao)
                 
             S_qMM = np.empty((nq, mynao, nao), self.dtype)
@@ -965,8 +950,8 @@ class GridWaveFunctions(WaveFunctions):
         lcaobd = BandDescriptor(lcaonbands, self.band_comm, self.bd.strided)
         assert lcaobd.mynbands == lcaomynbands #XXX
 
-        lcaowfs = LCAOWaveFunctions(self.gd, self.nspins, self.nvalence,
-                                    self.setups, lcaobd,
+        lcaowfs = LCAOWaveFunctions(self.gd, self.od, self.nspins,
+                                    self.nvalence, self.setups, lcaobd,
                                     self.dtype, self.world, self.kpt_comm,
                                     self.gamma, self.bzk_kc, self.ibzk_kc,
                                     self.weight_k, self.symmetry)
