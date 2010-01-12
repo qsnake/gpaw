@@ -106,8 +106,9 @@ class UTDomainParallelSetup_Mixed(UTDomainParallelSetup):
 class GDWFS(GridWaveFunctions):
     def __init__(self, gd, bd, kpt_comm, setups, dtype): # override constructor
         assert kpt_comm.size == 1
-        WaveFunctions.__init__(self, gd, 1, 1, setups, bd, dtype, world, \
-            kpt_comm, True, [None], [None], [1.], None)
+        # hack: orbital descriptor set to None (no LCAO initialization used)
+        WaveFunctions.__init__(self, gd, None, 1, 1, setups, bd, dtype, \
+            world, kpt_comm, True, [None], [None], [1.], None)
         self.kin = Laplace(gd, -0.5, dtype=dtype, allocate=False)
         self.overlap = None
         self.rank_a = None
@@ -173,7 +174,8 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
                              par.lmax, xcfunc)
 
         # Create gamma-point dummy wavefunctions
-        self.wfs = GDWFS(self.gd, self.bd, self.kpt_comm, self.setups, self.dtype)
+        self.wfs = GDWFS(self.gd, self.bd, self.kpt_comm, self.setups,
+                         self.dtype)
         spos_ac = self.atoms.get_scaled_positions() % 1.0
         self.wfs.set_positions(spos_ac)
         self.pt = self.wfs.pt # XXX shortcut
