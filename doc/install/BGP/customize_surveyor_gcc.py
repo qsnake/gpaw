@@ -26,6 +26,8 @@ scalapack = True
 #
 # Goto is hand-tuned assembly, it will most
 # likely always be faster than ESSL-4.x.
+# NAR: Goto appears to cause core dumps for
+# some problems, use at your own risk.
 
 libraries = [
            'scalapack',
