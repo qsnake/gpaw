@@ -429,8 +429,8 @@ from gpaw.utilities.blas import gemm, gemmdot
 
 
 class LCAOWaveFunctions(WaveFunctions):
-    def __init__(self, *args):
-        WaveFunctions.__init__(self, *args)
+    def __init__(self, *args, **kwargs):
+        WaveFunctions.__init__(self, *args, **kwargs)
         self.S_qMM = None
         self.T_qMM = None
         self.P_aqMi = None
@@ -866,8 +866,8 @@ from gpaw.utilities import unpack
 from gpaw.io.tar import TarFileReference
 
 class GridWaveFunctions(WaveFunctions):
-    def __init__(self, stencil, *args):
-        WaveFunctions.__init__(self, *args)
+    def __init__(self, stencil, *args, **kwargs):
+        WaveFunctions.__init__(self, *args, **kwargs)
         # Kinetic energy operator:
         self.kin = Laplace(self.gd, -0.5, stencil, self.dtype, allocate=False)
         self.set_orthonormalized(False)
