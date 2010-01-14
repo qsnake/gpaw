@@ -1,7 +1,8 @@
+import numpy as np
 from ase import *
 from gpaw import *
 
-unitcell = array([6.5, 6.6, 9.])
+unitcell = np.array([6.5, 6.6, 9.])
 gridrefinement = 2
 calc = GPAW(xc='PBE')
 
@@ -17,7 +18,7 @@ for formula in ('Na', 'Cl', 'NaCl',):
     n = calc.get_all_electron_density(gridrefinement=gridrefinement)
 
     # Get integrated values
-    dv = product(calc.get_grid_spacings())
+    dv = np.product(calc.get_grid_spacings())
     It = nt.sum() * dv
     I = n.sum() * dv / gridrefinement**3
 
