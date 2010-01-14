@@ -37,7 +37,7 @@ def wave_function_name_template(mode):
         template = 'wfs/psit_Gs%dk%dn%d'
     return ftype, template
 
-def write(paw, filename, mode, db=True, private="660", **kwargs):
+def write(paw, filename, mode, cmr_params=None, **kwargs):
     """Write state to file.
     
     The `mode` argument should be one of:
@@ -53,32 +53,11 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
     ``'nc:mywfs/psit_Gs%dk%dn%d'``:
       Defines the filenames to be ``'mywfs/psit_Gs%dk%dn%d' % (s, k, n)``.
       The directory ``mywfs`` is created if not present. XXX
-    
-    Please note: mode argument is ignored by ``*.db`` files
 
-    The `db` argument:
-        if True a copy of the results is automatically written to the location
-        specified in gpaw.db.db_path, IF that path exists!
+    cmr_params specifies the parameters that should be used for CMR.
+    (see gpaw.cmr.README for more)
 
-    The `private` argument:
-       unix file access rights (i.e. 700 or ug+rwx) for the db file
-
-       private is only applicable to ``*.db`` files.
-
-    The `kwargs` can be any keyword-parameter (only supported with
-    ``*.db`` files).
-    
-    The following are commonly used arguments:
-
-    desc:
-        A short description of the calculation.
-    db_path:
-        The path to the user-database which will be a directory where
-        the output is stored. (The filename is automatically created.)
-    keywords:
-        A list of keywords to identify the calculation.
-        A good practise is to identify calculations that belong
-        together with the same keyword.
+    Please note: mode argument is ignored by for CMR.
     """
 
     wfs = paw.wfs
@@ -110,8 +89,12 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
         w['lengthunit'] = 'Bohr'
         w['energyunit'] = 'Hartree'
 
+        db = False
         if filename.endswith(".db"):
-           w.write_additional_db_params(**kwargs)
+            w.write_additional_db_params(cmr_params=cmr_params)
+        elif not cmr_params is None and cmr_params.has_key("db"):
+            db = cmr_params["db"]
+
 
         try:
             tag_a = atoms.get_tags()
@@ -407,10 +390,6 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
                         wpsi.fill(psit_G)
                         wpsi.close()
 
-    if master and filename.endswith(".db"):
-       # Set the private flag for the db copy
-       w.set_db_copy_settings(db, private)
-
     if master:
         # Close the file here to ensure that the last wave function is
         # written to disk:
@@ -420,23 +399,10 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
     # finished writing:
     world.barrier()
 
-   # Creates a db file
+   # Creates a db file for CMR, if requested
     if db and not filename.endswith(".db"):
         #Write a db copy to the database
-        tmp = tempfile.gettempdir()+"/"
-        fname  = tmp+"gpaw.db"
-
-        if 0:#master:
-            while os.path.exists(fname):
-                fname = tmp+str(time.time())+".db"
-
-        write(paw, fname, mode='', db=True, private=private, **kwargs)
-
-        if master:
-            try:
-                os.remove(fname)
-            except:
-                pass
+        write(paw, ".db", mode='', cmr_params=cmr_params, **kwargs)
 
 
 def read(paw, reader):

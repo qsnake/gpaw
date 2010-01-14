@@ -109,25 +109,36 @@ class Writer:
         self.split_array[2].append(array)
 
     def set_db_copy_settings(self, make_db_copy, private):
-        if self.verbose:
-            print "set_db_copy_settings", make_db_copy, private
-        self.db_copy=make_db_copy
-        self.private=private
-        self.data.set_db_copy_settings(make_db_copy, private)
+        """deprecated: This method is going to be removed"""
+        print "Warning: gpaw.cmr.readwriter.set_db_copy_settings is deprecated."
+        print "Please update gpaw and CMR"
+        pass
+        #if self.verbose:
+        #    print "set_db_copy_settings", make_db_copy, private
+        #self.db_copy=make_db_copy
+        #self.private=private
+        #self.data.set_db_copy_settings(make_db_copy, private)
 
     def write(self, string, db, private, **kwargs):
-        if self.verbose:
-            print "write():", string
-        self.data.write(string, db, private, **kwargs)
+        print "Warning: gpaw.cmr.readwriter.write is deprecated."
+        print "Please update gpaw and CMR"
+        pass
+        #if self.verbose:
+        #    print "write():", string
+        #self.data.write(string, db, private, **kwargs)
 
-    def write_additional_db_params(self, **kwargs):
-        cmr.set_params_to_xml_data(self.data, kwargs)
+    def write_additional_db_params(self, cmr_params):
+        """writes the user variables and also sets the write attributes for
+        the output file"""
+        self.cmr_params = cmr_params.copy()
+        cmr.set_params_to_xml_data(self.data, cmr_params)
         
     def close(self):
         if self.verbose:
             print "close()"
         self._close_array()
-        self.data.write(self.filename, self.db_copy, self.private)
+        self.cmr_params["output"]=self.filename
+        self.data.write(self.cmr_params)
 
 class Reader:
     """ This class allows gpaw to access

@@ -645,17 +645,16 @@ class PAW(PAWTextOutput):
     def get_reference_energy(self):
         return self.wfs.setups.Eref * Hartree
     
-    def write(self, filename, mode='', db=False, private="660", **kwargs):
+    def write(self, filename, mode='', cmr_params=None, **kwargs):
         """Write state to file.
 
-        use mode='all' to write the wave functions.  db=True means an
-        extra db output file is created and stored in a public
-        location If more keyword-parameters are provided, they are
-        added to the db-output (``*.db``).
+        use mode='all' to write the wave functions.  cmr_params is a
+        dictionary that allows you to specify parameters for CMR
+        (see gpaw.cmr.README).
         """
         
         self.timer.start('IO')
-        gpaw.io.write(self, filename, mode, db=db, private=private, **kwargs)
+        gpaw.io.write(self, filename, mode, cmr_params=cmr_params, **kwargs)
         self.timer.stop('IO')
         
     def get_myu(self, k, s):

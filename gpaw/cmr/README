@@ -1,12 +1,54 @@
 gpaw.cmr is part of the Computational Materials Repository (CMR)
-and allows you to put the results of your calculation in
-a database from where you can retreive (sort/filter) the results again.
+and simplifies your daily life keeping your output in order by
+creating a database.
 
-In order to use the Computational Materials Repository (CMR) code
-do the following:
-  1. mkdir -p $HOME/lib/python/cmr
-  2. svn co https://svn.fysik.dtu.dk/projects/cmr/trunk $HOME/lib/python/cmr
-  3a. add $HOME/lib/python/cmr to your .bashrc:
-        export PYTHONPATH="$HOME/lib/python/cmr:$PYTHONPATH"
-  3b. add $HOME/lib/python/cmr to your .tcshrc:
-        setenv PYTHONPATH $HOME/lib/python/cmr:$PYTHONPATH
+At the moment a python user interface allows to query the data.
+We are also working on adding and retrieving the data to an sql database.
+
+Instruction
+i)  In order to install the Computational Materials Repository (CMR) code,
+    do the following:
+    
+     1. mkdir -p $HOME/lib/python/cmr
+     2. svn co https://svn.fysik.dtu.dk/projects/cmr/trunk $HOME/lib/python/cmr
+     3a. add $HOME/lib/python/cmr to your .bashrc:
+         export PYTHONPATH="$HOME/lib/python/cmr:$PYTHONPATH"
+     3b. add $HOME/lib/python/cmr to your .tcshrc:
+         setenv PYTHONPATH $HOME/lib/python/cmr:$PYTHONPATH
+
+ii)  1. Create a folder for the database files:
+        $> mkdir $HOME/cmr_repository
+     2. add the path to your .bashrc (or .tcshrc)
+        export CMR_REPOSITORY="$HOME/cmr_repository"
+     3. 
+
+iii) There are two ways to add data to the database:
+     By convertion:
+        import cmr
+        from cmr.static import *
+        params = cmr.get_dict();
+
+        params["input"] = "file.gpw"
+        params["add_to_db"] = True
+        params["keywords"] = ["gpaw", "exercise", "1", "Al"]
+        params["description"] = "Energy calculation of Al bulk @ lattice 4.05 Angstrom"
+        params["scripts"] = [__file__]
+        params["files"] = [name + '.txt']
+        params["my_potential_energy"] = {"value":energy, "unit":UNIT_EV}
+
+        cmr.convert(params)
+    or directly when writing your gpaw file:
+        params={
+                "keywords":["gpaw", "exercise", "1", "Al", "direct cmr write"],
+                "description":"Energy calculation of Al bulk @ lattice 4.05 Angstrom",
+                "scripts":[__file__],
+                "files":["Al-fcc.txt"],
+                "my_string":{"value":"CAMD/DTU/Physics"},
+                "add_to_db":True
+               }
+
+        # Direct write to db-file
+        calc.write("myoutput.gpaw", cmr_params=params)
+        
+iv.) To see how to search the data see the examples in cmr.examples.userinterface
+
