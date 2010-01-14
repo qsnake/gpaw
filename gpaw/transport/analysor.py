@@ -968,14 +968,14 @@ class Transport_Analysor:
                               current, tp.lead_fermi, time_cost, force, charge)
 
 
-        prefix =  'Ab' + '_' + str(self.n_ion_step) + '_' \
-                            + str(self.n_bias_step) + '_' \
+        #prefix =  'Ab' + '_' + str(self.n_ion_step) + '_' \
+        #                    + str(self.n_bias_step) + '_' \
                             
-        for name in ['nt', 'vt', 'ntx', 'vtx', 'nty', 'vty',
-                            'dos', 'tc', 'current']:
-            dimension, dtype = self.analysis_data_form[name]
-            data_name = prefix + name
-            write('analysis_data.nc', data_name, eval(name), dimension, dtype)
+        #for name in ['nt', 'vt', 'ntx', 'vtx', 'nty', 'vty',
+        #                    'dos', 'tc', 'current']:
+        #    dimension, dtype = self.analysis_data_form[name]
+        #    data_name = prefix + name
+        #    write('analysis_data.nc', data_name, eval(name), dimension, dtype)
             
             
         if tp.analysis_mode == 2:  
@@ -1886,7 +1886,7 @@ class Transport_Plotter:
                 p.colorbar(shrink=shrink)
                 self.show(p)
 
-    def plot_current(self, au=True, spinpol=False, dense_level=0):
+    def plot_current(self, au=True, spinpol=False, dense_level=0, symm=False):
         bias = []
         current = []
         
@@ -1903,7 +1903,10 @@ class Transport_Plotter:
         if not au:
             current *= unit
             ylabel = 'Current($\mu$A)'
+        bias = np.array(bias)    
         p.plot(bias, current, self.flags[0])
+        if symm:
+            p.plot(-bias, -current, self.flags[0])            
         
         if dense_level != 0:
             from scipy import interpolate
@@ -2124,6 +2127,7 @@ class Transport_Plotter:
         p.plot(bias, charge)
         self.set_options('Bias(V)', 'Charge(au.)')
         self.show(p)
+        return bias, charge
 
     def plot_charge_on_atoms(self, bias_step, atom_indices=None, orbital_type=None,
                                                             spin_type=None):
