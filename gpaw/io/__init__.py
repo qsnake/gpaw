@@ -77,6 +77,8 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
 
     magmom_a = paw.get_magnetic_moments()
 
+    db = False
+
     if master:
         if filename == ".db":
             from gpaw.cmr import create_db_filename
@@ -89,7 +91,6 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
         w['lengthunit'] = 'Bohr'
         w['energyunit'] = 'Hartree'
 
-        db = False
         if filename.endswith(".db"):
             w.write_additional_db_params(cmr_params=cmr_params)
         elif not cmr_params is None and cmr_params.has_key("db"):
