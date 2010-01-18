@@ -77,8 +77,6 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
 
     magmom_a = paw.get_magnetic_moments()
 
-    db = False
-
     if master:
         if filename == ".db":
             from gpaw.cmr import create_db_filename
@@ -90,12 +88,6 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
         w['version'] = '0.8'
         w['lengthunit'] = 'Bohr'
         w['energyunit'] = 'Hartree'
-
-        if filename.endswith(".db"):
-            w.write_additional_db_params(cmr_params=cmr_params)
-        elif not cmr_params is None and cmr_params.has_key("db"):
-            db = cmr_params["db"]
-
 
         try:
             tag_a = atoms.get_tags()
@@ -390,6 +382,13 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
                                  dtype=dtype)
                         wpsi.fill(psit_G)
                         wpsi.close()
+
+    db = False
+    if filename.endswith(".db"):
+        if master:
+            w.write_additional_db_params(cmr_params=cmr_params)
+    elif cmr_params is not None and cmr_params.has_key("db"):
+        db = cmr_params["db"]
 
     if master:
         # Close the file here to ensure that the last wave function is
