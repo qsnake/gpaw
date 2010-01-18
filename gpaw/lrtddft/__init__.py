@@ -281,17 +281,15 @@ class LrTDDFT(ExcitationList):
             lr.kss = lr.Om.fullkss
         return slr, tlr
 
-    def SPA(self):
-        """Return the excitation list according to the
+    def SPA(self, i, j):
+        """Return the excitation according to the
         single pole approximation. See e.g.:
         Grabo et al, Theochem 501 (2000) 353-367
         """
-        spa = self.kss
-        for i in range(len(spa)):
-            E = sqrt(self.Om.full[i][i])
-            print "<SPA> E was", spa[i].get_energy() * Hartree, " and is ", E * Hartree
-            spa[i].set_energy(E)
-        return spa
+        for ij, kss in enumerate(self.kss):
+            if kss.i == i and kss.j == j:
+                return sqrt(self.Om.full[ij][ij]) * Hartree
+        return None
 
     def __str__(self):
         string = ExcitationList.__str__(self)
