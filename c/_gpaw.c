@@ -74,7 +74,6 @@ PyObject* spline_to_grid(PyObject *self, PyObject *args);
 PyObject* NewLFCObject(PyObject *self, PyObject *args);
 PyObject* compiled_WITH_SL(PyObject *self, PyObject *args);
 #if defined(GPAW_WITH_SL) && defined(PARALLEL)
-PyObject* blacs_create(PyObject *self, PyObject *args);
 PyObject* new_blacs_context(PyObject *self, PyObject *args);
 PyObject* get_blacs_shape(PyObject* self, PyObject *args);
 PyObject* blacs_destroy(PyObject *self, PyObject *args);
@@ -149,7 +148,6 @@ static PyMethodDef functions[] = {
   {"construct_density1", construct_density1, METH_VARARGS, 0},
   */
 #if defined(GPAW_WITH_SL) && defined(PARALLEL)
-  {"blacs_create",      blacs_create,      METH_VARARGS, NULL},
   {"new_blacs_context", new_blacs_context, METH_VARARGS, NULL},
   {"get_blacs_shape", get_blacs_shape, METH_VARARGS, NULL},
   {"blacs_destroy",     blacs_destroy,      METH_VARARGS, 0},
