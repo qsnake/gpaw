@@ -45,7 +45,7 @@ decomposition match the partition dimension exactly, i.e. ::
   or another permutation.
 
 This can be accomplised with the help of ``tools/mapfile.py.`` You will
-want to use ``band`` mode to generate a BG/Pvmapfile for a  DFT calculation.
+want to use ``band`` mode to generate a BG/P mapfile for a  DFT calculation.
 Since there is no diagonalization in the rTDDFT method, one can use 
 ``domain`` mode as a 3-dimensional network  is sufficient to satisfy the
 communiation pattern of the H*Psi products. You will then need to specify the
@@ -59,8 +59,18 @@ This is currently in the works. However, even when this is finished we will
 need to figure out how to map this correctly to the torus. What is really
 needed is a 5-dimensional network.
 
-Overlapping communication and computation
+Important DCMF environment variables
 ===============================================
+`DCMF <http://dcmf.anl-external.org/wiki/index.php/Main_Page>`_  is one
+of the lower layers in the BG/P implementation of MPI software stack. 
+
+
+To understand th DCMF environment variables in greater detail, please read the
+appropriate sections of the  IBM System Blue Gene Solution:  
+`Blue Gene/P Application Development <http://www.redbooks.ibm.com/abstracts/sg247287.html?Open>`_ 
+
+DCMF_EAGER
+============
 The computation of the hamiltonian and overlap matrix elements, as well as
 the computation of the new wavefunctions, is accomplished by a hand-coded 
 parallel matrix-multiply ``hs_operators.py`` employing a 1D ring algorithm.
@@ -86,6 +96,11 @@ number is specified in bytes and not megabytes.
 
 For larger blocks of wavefunctions, it will be necessary to increase
 DCMF_RECFIFO as well. This will depend on whether you are using smp, dual
-or vn mode. To understand these variables in greater detail, please read the
-appropriate sections of the  IBM System Blue Gene Solution:  
-`Blue Gene/P Application Development <http://www.redbooks.ibm.com/abstracts/sg247287.html?Open>`_ 
+or vn mode. 
+
+DCMF_REUSE_STORAGE
+====================
+If you receive receive allocation error on MPI_Allreduce, please add the following
+environment variables::
+
+  --env=DCMF_REDUCE_REUSE_STORAGE=N:DCMF_ALLREDUCE_REUSE_STORAGE=N:DCMF_REDUCE=RECT

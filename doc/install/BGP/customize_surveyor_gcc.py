@@ -21,13 +21,17 @@ scalapack = True
 # & ESSL, LAPACK SHOULD BE LINKED FIRST.
 #
 # Goto appears to be much faster for general
-# DGEMM operations, particularly those with
-# alpha != beta != 0
+# DGEMM operations, particularly those with:
+# alpha != 1.0 and beta != 0.0
 #
 # Goto is hand-tuned assembly, it will most
 # likely always be faster than ESSL-4.x.
 # NAR: Goto appears to cause core dumps for
 # some problems, use at your own risk.
+# Disabling the stackground seems to make
+# the problem go away, but this is not 
+# recommended.
+# --env BG_STACKGUARDENABLE=0
 
 libraries = [
            'scalapack',
