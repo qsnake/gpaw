@@ -21,10 +21,15 @@ class BaseDiagonalizer:
         self.bd = bd
 
     def diagonalize(self, H_NN, eps_n):
-        # eps_N = np.empty((self.bd.nbands))
-        info = self._diagonalize(H_NN, eps_n)
+        nbands = self.bd.nbands
+        eps_N = np.empty(nbands)
+        info = self._diagonalize(H_NN, eps_N)
         if info != 0:
             raise RuntimeError('Failed to diagonalize: %d' % info)
+
+        if self.gd.comm.rank == 0:
+            self.bd.distribute(eps_N, eps_n)
+            self.bd.comm.broadcast(H_NN, 0)
 
     def _diagonalize(self, H_NN, eps_n):
         raise NotImplementedError
@@ -72,7 +77,6 @@ class Eigensolver:
         if self.mynbands != self.nbands or self.operator.nblocks != 1:
             self.keep_htpsit = False
 
-        self.eps_n = np.empty(self.nbands)
         # Belows this will eventually be a BLACS matrix
         # and will be used as a ScaLAPACK workspace.
         # self.U_nn = np.empty((self.nbands, self.nbands), dtype=self.dtype)
@@ -214,11 +218,7 @@ class Eigensolver:
 
         diagonalizationstring = self.diagonalizer.__class__.__name__
         wfs.timer.start(diagonalizationstring)
-        self.diagonalizer.diagonalize(H_nn, self.eps_n)
-
-        if self.gd.comm.rank == 0:
-            self.bd.distribute(self.eps_n, kpt.eps_n)
-            self.bd.comm.broadcast(H_nn, 0)
+        self.diagonalizer.diagonalize(H_nn, kpt.eps_n)
 
         U_nn = H_nn
         del H_nn
