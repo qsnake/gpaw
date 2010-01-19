@@ -30,20 +30,27 @@ class BaseDiagonalizer:
 
 
 class SLDiagonalizer(BaseDiagonalizer):
-    """ScaLAPACK diagonalizer using redundantly distributed arrays."""
+    """Original ScaLAPACK diagonalizer using redundantly distributed arrays."""
     def __init__(self, gd, bd, root=0):
         BaseDiagonalizer.__init__(self, gd, bd)
         self.root = root
         # Keep buffers?
 
     def _diagonalize(self, H_MM, S_MM, eps_M):
+        # Work is done on BLACS grid, but one processor still collects
+        # all eigenvectors. Only processors on the BLACS grid return
+        # meaningful values of info.         
         return general_diagonalize(H_MM, eps_M, S_MM, root=self.root)
 
 
 class LapackDiagonalizer(BaseDiagonalizer):
     """Serial diagonalizer."""
     def _diagonalize(self, H_MM, S_MM, eps_M):
-        return general_diagonalize(H_MM, eps_M, S_MM)
+        # Only one processor really does any work.
+        if self.gd.comm.rank == 0 and self.bd.comm.rank == 0:
+            return general_diagonalize(H_MM, eps_M, S_MM)
+        else:
+            return 0
 
 
 class LCAO:

@@ -36,7 +36,7 @@ class BaseDiagonalizer:
 
 
 class SLDiagonalizer(BaseDiagonalizer):
-    """ScaLAPACK diagonalizer using redundantly distributed arrays."""
+    """Original ScaLAPACK diagonalizer using redundantly distributed arrays."""
     def __init__(self, gd, bd, root=0):
         BaseDiagonalizer.__init__(self, gd, bd)
         self.root = root
@@ -49,7 +49,7 @@ class SLDiagonalizer(BaseDiagonalizer):
 class LapackDiagonalizer(BaseDiagonalizer):
     """Serial diagonalizer."""
     def _diagonalize(self, H_NN, eps_N):
-        # Temporary Hack
+        # Only one processor really does any work.
         if self.gd.comm.rank == 0 and self.bd.comm.rank == 0:
             return diagonalize(H_NN, eps_N)
         else:
