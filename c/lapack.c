@@ -96,8 +96,40 @@ PyObject* diagonalize(PyObject *self, PyObject *args)
 {
   PyArrayObject* a;
   PyArrayObject* w;
-  PyArrayObject* b = 0;
-  if (!PyArg_ParseTuple(args, "OO|O", &a, &w, &b))
+  if (!PyArg_ParseTuple(args, "OO", &a, &w))
+    return NULL;
+  int n = a->dimensions[0];
+  int lda = n;
+  int info = 0;
+  if (a->descr->type_num == PyArray_DOUBLE)
+    {
+      int lwork = 3 * n + 1;
+      double* work = GPAW_MALLOC(double, lwork);
+      dsyev_("V", "U", &n, DOUBLEP(a), &lda,
+	     DOUBLEP(w), work, &lwork, &info);
+      free(work);
+    }
+  else
+    {
+      int lwork = 2 * n + 1;
+      int lrwork = 3 * n + 1;
+      void* work = GPAW_MALLOC(double_complex, lwork);
+      double* rwork = GPAW_MALLOC(double, lrwork);
+      zheev_("V", "U", &n, (void*)COMPLEXP(a), &lda,
+	     DOUBLEP(w),
+	     work, &lwork, rwork, &lrwork, &info);
+      free(work);
+      free(rwork);
+    }
+  return Py_BuildValue("i", info);
+}
+
+PyObject* general_diagonalize(PyObject *self, PyObject *args)
+{
+  PyArrayObject* a;
+  PyArrayObject* w;
+  PyArrayObject* b;
+  if (!PyArg_ParseTuple(args, "OOO", &a, &w, &b))
     return NULL;
   int n = a->dimensions[0];
   int lda = n;
@@ -108,13 +140,9 @@ PyObject* diagonalize(PyObject *self, PyObject *args)
     {
       int lwork = 3 * n + 1;
       double* work = GPAW_MALLOC(double, lwork);
-      if (b == 0)
-        dsyev_("V", "U", &n, DOUBLEP(a), &lda,
-               DOUBLEP(w), work, &lwork, &info);
-      else
-        dsygv_(&itype, "V", "U", &n, DOUBLEP(a), &lda,
-                DOUBLEP(b), &ldb, DOUBLEP(w),
-                work, &lwork, &info);
+      dsygv_(&itype, "V", "U", &n, DOUBLEP(a), &lda,
+	     DOUBLEP(b), &ldb, DOUBLEP(w),
+	     work, &lwork, &info);
       free(work);
     }
   else
@@ -123,15 +151,10 @@ PyObject* diagonalize(PyObject *self, PyObject *args)
       int lrwork = 3 * n + 1;
       void* work = GPAW_MALLOC(double_complex, lwork);
       double* rwork = GPAW_MALLOC(double, lrwork);
-      if (b == 0)
-        zheev_("V", "U", &n, (void*)COMPLEXP(a), &lda,
-               DOUBLEP(w),
-               work, &lwork, rwork, &lrwork, &info);
-      else
-        zhegv_(&itype, "V", "U", &n, (void*)COMPLEXP(a), &lda,
-                (void*)COMPLEXP(b), &lda,
-                DOUBLEP(w),
-                work, &lwork, rwork, &lrwork, &info);
+      zhegv_(&itype, "V", "U", &n, (void*)COMPLEXP(a), &lda,
+	     (void*)COMPLEXP(b), &lda,
+	     DOUBLEP(w),
+	     work, &lwork, rwork, &lrwork, &info);
       free(work);
       free(rwork);
     }

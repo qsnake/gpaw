@@ -7,7 +7,7 @@ from gpaw.aseinterface import GPAW
 from gpaw.wavefunctions import WaveFunctions
 from gpaw.grid_descriptor import EquidistantRadialGridDescriptor
 from gpaw.utilities import unpack
-from gpaw.utilities.lapack import diagonalize
+from gpaw.utilities.lapack import general_diagonalize
 from gpaw.occupations import OccupationNumbers
 import gpaw.mpi as mpi
 
@@ -120,7 +120,7 @@ class AtomEigensolver:
                         i2 += 2 * l2 + 1
                     i1 += 2 * l1 + 1
                 H0 = H.copy()#XXX
-                error = diagonalize(H, e_n, self.S_l[l].copy())
+                error = general_diagonalize(H, e_n, self.S_l[l].copy())
                 if error != 0:
                     raise RuntimeError('Diagonalization failed for l=%d.' % l)
 

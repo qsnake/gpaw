@@ -20,20 +20,13 @@ class BaseDiagonalizer:
         self.gd = gd
         self.bd = bd
 
-    def diagonalize(self, H_NN, C_nN, eps_n):
-        eps_N = np.empty(C_nN.shape[-1])
-        info = self._diagonalize(H_NN, eps_N)
+    def diagonalize(self, H_NN, eps_n):
+        # eps_N = np.empty((self.bd.nbands))
+        info = self._diagonalize(H_NN, eps_n)
         if info != 0:
             raise RuntimeError('Failed to diagonalize: %d' % info)
-        
-        if self.bd.rank == 0:
-            nbands = self.bd.nbands
-            self.gd.comm.broadcast(H_NN[:nbands], 0)
-            self.gd.comm.broadcast(eps_N[:nbands], 0)
-            self.bd.distribute(H_NN[:nbands], C_nM)
-            self.bd.distribute(eps_N[:nbands], eps_n)
-    
-    def _diagonalize(self, H_NN, eps_N):
+
+    def _diagonalize(self, H_NN, eps_n):
         raise NotImplementedError
 
 
@@ -44,14 +37,18 @@ class SLDiagonalizer(BaseDiagonalizer):
         self.root = root
         # Keep buffers?
 
-    def _diagonalize(self, H_NN, eps_n):
-        return diagonalize(H_NN, eps_n, root=self.root)
+    def _diagonalize(self, H_NN, eps_N):
+        return diagonalize(H_NN, eps_N, root=self.root)
 
 
 class LapackDiagonalizer(BaseDiagonalizer):
     """Serial diagonalizer."""
-    def _diagonalize(self, H_NN, eps_n):
-        return diagonalize(H_NN, eps_n)
+    def _diagonalize(self, H_NN, eps_N):
+        # Temporary Hack
+        if self.gd.comm.rank == 0 and self.bd.comm.rank == 0:
+            return diagonalize(H_NN, eps_N)
+        else:
+            return 0
 
 class Eigensolver:
     def __init__(self, keep_htpsit=True):
@@ -76,6 +73,9 @@ class Eigensolver:
             self.keep_htpsit = False
 
         self.eps_n = np.empty(self.nbands)
+        # Belows this will eventually be a BLACS matrix
+        # and will be used as a ScaLAPACK workspace.
+        # self.U_nn = np.empty((self.nbands, self.nbands), dtype=self.dtype)
 
         # Preconditioner for the electronic gradients:
         self.preconditioner = Preconditioner(self.gd, wfs.kin, self.dtype)
@@ -88,6 +88,11 @@ class Eigensolver:
             if kpt.eps_n is None:
                 kpt.eps_n = np.empty(self.mynbands)
         
+        if sl_diagonalize:
+            self.diagonalizer = SLDiagonalizer(self.gd, self.bd)
+        else:
+            self.diagonalizer = LapackDiagonalizer(self.gd, self.bd)
+
         self.initialized = True
 
     def iterate(self, hamiltonian, wfs):
@@ -180,6 +185,7 @@ class Eigensolver:
 
         self.timer.start('Subspace diag')
 
+        # U_nn = self.U_nn
         psit_nG = kpt.psit_nG
         P_ani = kpt.P_ani
 
@@ -206,27 +212,13 @@ class Eigensolver:
                                                  hamiltonian)
         self.timer.stop('calc_matrix')
 
-        if sl_diagonalize:
-            assert scalapack()
-            dsyev_zheev_string = 'pdsyevd/pzheevd'
-        else:
-            dsyev_zheev_string = 'dsyev/zheev'
-
-        self.timer.start(dsyev_zheev_string)
-        if sl_diagonalize:
-            info = diagonalize(H_nn, self.eps_n, root=0)
-            if info != 0:
-                raise RuntimeError('Failed to diagonalize: info=%d' % info)
-        else:
-            if self.gd.comm.rank == 0 and self.band_comm.rank == 0:
-                info = diagonalize(H_nn, self.eps_n)
-                if info != 0:
-                    raise RuntimeError('Failed to diagonalize: info=%d' % info)
-        self.timer.stop(dsyev_zheev_string)
+        diagonalizationstring = self.diagonalizer.__class__.__name__
+        wfs.timer.start(diagonalizationstring)
+        self.diagonalizer.diagonalize(H_nn, self.eps_n)
 
         if self.gd.comm.rank == 0:
             self.bd.distribute(self.eps_n, kpt.eps_n)
-            self.band_comm.broadcast(H_nn, 0)
+            self.bd.comm.broadcast(H_nn, 0)
 
         U_nn = H_nn
         del H_nn
@@ -234,6 +226,8 @@ class Eigensolver:
         self.gd.comm.broadcast(U_nn, 0)
         self.gd.comm.broadcast(kpt.eps_n, 0)
 
+        wfs.timer.stop(diagonalizationstring)
+        
         if not rotate:
             self.timer.stop('Subspace diag')
             return
@@ -260,6 +254,7 @@ class Eigensolver:
         else:
             mem.subnode('No Htpsit', 0)
 
+        # mem.subnode('U_nn', nbands*nbands*mem.floatsize)
         mem.subnode('eps_n', nbands*mem.floatsize)
         mem.subnode('Preconditioner', 4 * gridmem)
         mem.subnode('Work', gridmem)

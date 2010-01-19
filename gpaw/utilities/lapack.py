@@ -17,17 +17,13 @@ from gpaw.utilities.tools import tri2full
 from gpaw.utilities.blas import gemm
 
 
-def diagonalize(a, w, b=None, root=0):
+def diagonalize(a, w, root=0):
     """Diagonalize a symmetric/hermitian matrix.
 
     Uses dsyevd/zheevd to diagonalize symmetric/hermitian matrix
     `a`. The eigenvectors are returned in the rows of `a`, and the
     eigenvalues in `w` in ascending order. Only the lower triangle of
-    `a` is considered.
-
-    If a symmetric/hermitian positive definite matrix b is given, then
-    dsygvd/zhegvd is used to solve a generalized eigenvalue
-    problem: a*v=b*v*w."""
+    `a` is considered."""
 
     assert a.flags.contiguous
     assert w.flags.contiguous
@@ -39,37 +35,50 @@ def diagonalize(a, w, b=None, root=0):
 
     if sl_diagonalize:
         assert scalapack()
-
-    if b is not None:
-        assert b.flags.contiguous
-        assert b.dtype == a.dtype
-        assert b.shape == a.shape
-        if sl_diagonalize:
-            assert len(sl_diagonalize) == 4
-            assert sl_diagonalize[0]*sl_diagonalize[1] <= size
-            # symmetrize the matrix
-            tri2full(a)
-            tri2full(b)
-            
-            #assert (not sl_diagonalize)
-            info = world.diagonalize(a, w,
-                                     sl_diagonalize[0],
-                                     sl_diagonalize[1],
-                                     sl_diagonalize[2], root, b)
-        else:
-            info = _gpaw.diagonalize(a, w, b)
+        assert len(sl_diagonalize) == 4
+        assert sl_diagonalize[0]*sl_diagonalize[1] <= size
+        # symmetrize the matrix
+        tri2full(a)
+        info = world.diagonalize(a, w,
+                                 sl_diagonalize[0],
+                                 sl_diagonalize[1],
+                                 sl_diagonalize[2], root)
     else:
-        if sl_diagonalize:
-            assert len(sl_diagonalize) == 4
-            assert sl_diagonalize[0]*sl_diagonalize[1] <= size
-            # symmetrize the matrix
-            tri2full(a)
-            info = world.diagonalize(a, w,
-                                     sl_diagonalize[0],
-                                     sl_diagonalize[1],
-                                     sl_diagonalize[2], root)
-        else:
-            info = _gpaw.diagonalize(a, w)
+        info = _gpaw.diagonalize(a, w)
+    return info
+
+def general_diagonalize(a, w, b, root=0):
+    """Diagonalize a generalized symmetric/hermitian matrix.
+
+    Uses dsygvd/zhegvd to diagonalize symmetric/hermitian matrix
+    `a`. The eigenvectors are returned in the rows of `a`, and the
+    eigenvalues in `w` in ascending order. Only the lower triangle of
+    `a` is considered."""
+
+    assert a.flags.contiguous
+    assert w.flags.contiguous
+    assert a.dtype in [float, complex]
+    assert w.dtype == float
+    n = len(a)
+    assert a.shape == (n, n)
+    assert w.shape == (n,)
+    assert b.flags.contiguous
+    assert b.dtype == a.dtype
+    assert b.shape == a.shape
+
+    if sl_diagonalize:
+        assert scalapack()
+        assert len(sl_diagonalize) == 4
+        assert sl_diagonalize[0]*sl_diagonalize[1] <= size
+        # symmetrize the matrix
+        tri2full(a)
+        tri2full(b)
+        info = world.diagonalize(a, w,
+                                 sl_diagonalize[0],
+                                 sl_diagonalize[1],
+                                 sl_diagonalize[2], root, b)
+    else:
+        info = _gpaw.diagonalize(a, w, b)
     return info
 
 def inverse_cholesky(a, root=0):
@@ -198,5 +207,7 @@ if not debug:
     # For ScaLAPACK, we can't bypass the Python wrappers!
     if not sl_diagonalize:
         diagonalize = _gpaw.diagonalize
+    if not sl_diagonalize:
+        general_diagonalize = _gpaw.general_diagonalize
     if not sl_inverse_cholesky:
         inverse_cholesky = _gpaw.inverse_cholesky

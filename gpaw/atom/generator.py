@@ -12,7 +12,7 @@ from gpaw.setup_data import SetupData
 from gpaw.atom.configurations import configurations
 from gpaw.version import version
 from gpaw.atom.all_electron import AllElectron, shoot
-from gpaw.utilities.lapack import diagonalize
+from gpaw.utilities.lapack import general_diagonalize
 from gpaw.utilities import hartree
 from gpaw.exx import constructX, atomic_exact_exchange
 from gpaw.atom.filter import Filter
@@ -884,7 +884,7 @@ class Generator(AllElectron):
             H.ravel()[ng::ng + 1] -= 0.5 / h**2
             S.ravel()[::ng + 1] += 1.0
             e_n = np.zeros(ng)
-            error = diagonalize(H, e_n, S)
+            error = general_diagonalize(H, e_n, S)
             if error != 0:
                 raise RuntimeError('Diagonalization failed for l=%d.' % l)
             ePAW = e_n[0]

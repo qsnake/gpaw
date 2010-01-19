@@ -1,6 +1,6 @@
 import numpy as np
 from gpaw.utilities import unpack
-from gpaw.utilities.lapack import diagonalize
+from gpaw.utilities.lapack import general_diagonalize
 from gpaw.utilities.blas import gemm
 from gpaw.utilities import scalapack
 from gpaw import sl_diagonalize, extra_parameters
@@ -36,14 +36,14 @@ class SLDiagonalizer(BaseDiagonalizer):
         self.root = root
         # Keep buffers?
 
-    def _diagonalize(self, H_MM, S_MM, eps_n):
-        return diagonalize(H_MM, eps_n, b=S_MM, root=self.root)
+    def _diagonalize(self, H_MM, S_MM, eps_M):
+        return general_diagonalize(H_MM, eps_M, S_MM, root=self.root)
 
 
 class LapackDiagonalizer(BaseDiagonalizer):
     """Serial diagonalizer."""
-    def _diagonalize(self, H_MM, S_MM, eps_n):
-        return diagonalize(H_MM, eps_n, S_MM)
+    def _diagonalize(self, H_MM, S_MM, eps_M):
+        return general_diagonalize(H_MM, eps_M, S_MM)
 
 
 class LCAO:

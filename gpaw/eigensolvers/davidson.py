@@ -3,7 +3,7 @@
 import numpy as np
 
 from gpaw.utilities.blas import axpy, rk, r2k, gemm
-from gpaw.utilities.lapack import diagonalize
+from gpaw.utilities.lapack import diagonalize, general_diagonalize
 from gpaw.utilities import unpack
 from gpaw.eigensolvers.eigensolver import Eigensolver
 
@@ -133,7 +133,7 @@ class Davidson(Eigensolver):
             S_2n2n[nbands:, nbands:] = self.S_nn
 
             if self.gd.comm.rank == 0:
-                info = diagonalize(H_2n2n, eps_2n, S_2n2n)
+                info = general_diagonalize(H_2n2n, eps_2n, S_2n2n)
                 if info != 0:
                     raise RuntimeError, 'Very Bad!!'
 

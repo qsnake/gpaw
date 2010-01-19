@@ -16,7 +16,7 @@ import sys
 import numpy as np
 
 from gpaw.blacs import BlacsGrid, Redistributor, parallelprint
-from gpaw.utilities.lapack import diagonalize
+from gpaw.utilities.lapack import diagonalize, general_diagonalize
 from gpaw.utilities.blas import rk, gemm
 from gpaw.utilities.blacs import scalapack_general_diagonalize_ex, \
     scalapack_diagonalize_ex, scalapack_diagonalize_dc
@@ -63,7 +63,7 @@ def main(N=1000, seed=42, mprocs=2, nprocs=2, dtype=float):
         info = diagonalize(H0.copy(), W0)
         if info > 0:
             raise RuntimeError('LAPACK diagonalized failed.')
-        info = diagonalize(H0.copy(), W0_g, S0.copy())
+        info = general_diagonalize(H0.copy(), W0_g, S0.copy())
         if info > 0:
             raise RuntimeError('LAPACK general diagonalize failed.')
         
