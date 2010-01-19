@@ -31,18 +31,25 @@ class BaseDiagonalizer:
             self.bd.distribute(eps_N, eps_n)
             self.bd.comm.broadcast(H_NN, 0)
 
+        self.gd.comm.broadcast(H_NN, 0)
+        self.gd.comm.broadcast(eps_n, 0)
+
     def _diagonalize(self, H_NN, eps_n):
         raise NotImplementedError
 
 
 class SLDiagonalizer(BaseDiagonalizer):
-    """Original ScaLAPACK diagonalizer using redundantly distributed arrays."""
+    """Original ScaLAPACK diagonalizer using 
+    redundantly distributed arrays."""
     def __init__(self, gd, bd, root=0):
         BaseDiagonalizer.__init__(self, gd, bd)
         self.root = root
         # Keep buffers?
 
     def _diagonalize(self, H_NN, eps_N):
+        # Work is done on BLACS grid, but one processor still collects
+        # all eigenvectors. Only processors on the BLACS grid return
+        # meaningful values of info.
         return diagonalize(H_NN, eps_N, root=self.root)
 
 
@@ -219,13 +226,9 @@ class Eigensolver:
         diagonalizationstring = self.diagonalizer.__class__.__name__
         wfs.timer.start(diagonalizationstring)
         self.diagonalizer.diagonalize(H_nn, kpt.eps_n)
-
+        # The two lines below will go away soon
         U_nn = H_nn
         del H_nn
-
-        self.gd.comm.broadcast(U_nn, 0)
-        self.gd.comm.broadcast(kpt.eps_n, 0)
-
         wfs.timer.stop(diagonalizationstring)
         
         if not rotate:
