@@ -66,7 +66,7 @@ class Transport(GPAW):
             if key in ['use_lead', 'identical_leads',
                        'pl_atoms', 'pl_cells', 'pl_kpts',
                        'use_buffer', 'buffer_atoms', 'edge_atoms', 'bias',
-                       'lead_restart',
+                       'lead_restart', 'use_guess_file',
                        
                        'lead_atoms', 'nleadlayers', 'mol_atoms', 'la_index',
                        
@@ -121,6 +121,7 @@ class Transport(GPAW):
         self.use_qzk_boundary = p['use_qzk_boundary']
         self.scat_restart = p['scat_restart']
         self.guess_steps = p['guess_steps']
+        self.use_guess_file = p['use_guess_file']
         self.foot_print = p['foot_print']
         self.save_file = p['save_file']
         self.restart_file = p['restart_file']
@@ -205,6 +206,7 @@ class Transport(GPAW):
         p['recal_path'] = False
         p['min_energy'] = -700
         p['guess_steps'] = 30
+        p['use_guess_file'] = False
         p['foot_print'] = True
         p['use_qzk_boundary'] = False
         p['scat_restart'] = False
@@ -329,7 +331,12 @@ class Transport(GPAW):
             self.timer.stop('surround set_position')
         
         if self.analysis_mode >= 0:
-            self.get_hamiltonian_initial_guess()
+            if self.use_guess_file:
+                fd = file('eq_hsd', 'r')
+                self.hsd = pickle.load(fd)
+                fd.close()
+            else:
+                self.get_hamiltonian_initial_guess()
         
         if self.analysis_mode > -3:
             del self.wfs
@@ -669,7 +676,7 @@ class Transport(GPAW):
                 
         #if self.scat_restart:
         #    self.recover_kpts(self)
-        if not self.optimize:
+        if not self.optimize and not self.use_guess_file:
             self.append_buffer_hsd()
         #self.fill_guess_with_leads()           
         self.scat_restart = False
@@ -777,7 +784,10 @@ class Transport(GPAW):
         self.analysor.save_ele_step()            
         self.analysor.save_bias_step()
         self.analysor.save_data_to_file('bias', self.data_file)
-  
+        fd = file('eq_hsd', 'w')
+        pickle.dump(self.hsd, fd, 2)
+        fd.close()
+ 
     def get_density_matrix(self):
         self.timer.start('DenMM')
         if self.use_qzk_boundary:
