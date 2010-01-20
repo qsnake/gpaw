@@ -63,6 +63,7 @@ class HGHSetup(BaseSetup):
 
         r, g = data.get_compensation_charge_function()
         self.ghat_l = [Spline(0, r[-1], g)]
+        self.rcgauss = data.rcgauss
 
         # accuracy is rather sensitive to this
         self.vbar = data.get_local_potential()
@@ -185,7 +186,8 @@ class HGHSetupData:
         self.Z = hghdata.Z
         self.Nc = hghdata.Z -  hghdata.Nv
         self.Nv = hghdata.Nv
-        
+        self.rcgauss = sqrt(2.0) * hghdata.rloc
+
         threshold = 1e-8
         if len(hghdata.c_n) > 0:
             vloc_g = create_local_shortrange_potential(rgd.r_g, hghdata.rloc,
@@ -364,9 +366,8 @@ class HGHSetupData:
         return basis
 
     def get_compensation_charge_function(self):
-        rcgauss = sqrt(2.0) * self.hghdata.rloc
-        alpha = rcgauss**-2
-        rcutgauss = rcgauss * 5.0 # smaller values break charge conservation
+        alpha = self.rcgauss**-2
+        rcutgauss = self.rcgauss * 5.0 # smaller values break charge conservation
         r = np.linspace(0.0, rcutgauss, 100)
         g = alpha**1.5 * np.exp(-alpha * r**2) * 4.0 / sqrt(pi)
         g[-1] = 0.0

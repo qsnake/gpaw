@@ -51,6 +51,7 @@ class GhostSetup(BaseSetup):
         self.lmax = 0
         self.xc_correction = null_xc_correction
         self.ghat_l = [nonzero_function] * (self.lmax + 1) # XXXXXX
+        self.rcgauss = 1e12 # XXX XXX XXX XXX
         self.vbar = zero_function
 
         self.Delta0 = 0.0

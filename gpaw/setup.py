@@ -366,6 +366,7 @@ class LeanSetup(BaseSetup):
 
         self.lmax = s.lmax
         self.ghat_l = s.ghat_l
+        self.rcgauss = s.rcgauss
         self.vbar = s.vbar
 
         self.Delta_pL = s.Delta_pL
@@ -725,8 +726,8 @@ class Setup(BaseSetup):
         
         r = 0.02 * rcut2 * np.arange(51, dtype=float)
         alpha = data.rcgauss**-2
-        self.alpha = alpha
         self.ghat_l = data.get_ghat(lmax, alpha, r, rcut2)
+        self.rcgauss = data.rcgauss
         #self.rcutcomp = sqrt(10) * rcgauss # ??? XXX Not used for anything
         
         rgd = RadialGridDescriptor(r_g, dr_g)
