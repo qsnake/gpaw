@@ -462,6 +462,9 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
         self.timer.stop('Distribute overlap matrix')
         return S_qmm.reshape(xshape + blockdesc.shape)
 
+    def get_overlap_matrix_shape(self):
+        return self.mmdescriptor.shape
+
     def calculate_density_matrix(self, f_n, C_nM, rho_mM=None):
         nbands = self.bd.nbands
         mynbands = self.bd.mynbands
@@ -515,6 +518,9 @@ class OrbitalDescriptor:
 
     def distribute_overlap_matrix(self, S_qMM):
         return S_qMM
+
+    def get_overlap_matrix_shape(self):
+        return self.nao, self.nao
 
     def calculate_density_matrix(self, f_n, C_nM, rho_MM=None):
         # Only a madman would use a non-transposed density matrix.
