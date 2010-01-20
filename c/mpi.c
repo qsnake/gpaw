@@ -860,10 +860,10 @@ static int InitMPIObject(MPIObject* self, PyObject *args, PyObject *kwds)
 PyTypeObject MPIType = {
   PyObject_HEAD_INIT(&PyType_Type)
   0,                         /*ob_size*/
-  "MPI",             /*tp_name*/
-  sizeof(MPIObject),             /*tp_basicsize*/
+  "MPI",                     /*tp_name*/
+  sizeof(MPIObject),         /*tp_basicsize*/
   0,                         /*tp_itemsize*/
-  (destructor)mpi_dealloc, /*tp_dealloc*/
+  (destructor)mpi_dealloc,   /*tp_dealloc*/
   0,                         /*tp_print*/
   0,                         /*tp_getattr*/
   0,                         /*tp_setattr*/
@@ -872,31 +872,31 @@ PyTypeObject MPIType = {
   0,                         /*tp_as_number*/
   0,                         /*tp_as_sequence*/
   0,                         /*tp_as_mapping*/
-  0,                         /*tp_hash */
+  0,                         /*tp_hash*/
   0,                         /*tp_call*/
   0,                         /*tp_str*/
   0,                         /*tp_getattro*/
   0,                         /*tp_setattro*/
   0,                         /*tp_as_buffer*/
   Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-  "MPI object",           /* tp_doc */
-  0,                   /* tp_traverse */
-  0,                   /* tp_clear */
-  0,                   /* tp_richcompare */
-  0,                   /* tp_weaklistoffset */
-  0,                   /* tp_iter */
-  0,                   /* tp_iternext */
-  mpi_methods,             /* tp_methods */
-  mpi_members,
-  0,                         /* tp_getset */
-  0,                         /* tp_base */
-  0,                         /* tp_dict */
-  0,                         /* tp_descr_get */
-  0,                         /* tp_descr_set */
-  0,                         /* tp_dictoffset */
-  (initproc)InitMPIObject,      /* tp_init */
-  0,                         /* tp_alloc */
-  NewMPIObject,                 /* tp_new */
+  "MPI object",              /*tp_doc*/
+  0,                         /*tp_traverse*/
+  0,                         /*tp_clear*/
+  0,                         /*tp_richcompare*/
+  0,                         /*tp_weaklistoffset*/
+  0,                         /*tp_iter*/
+  0,                         /*tp_iternext*/
+  mpi_methods,               /*tp_methods*/
+  mpi_members,               /*tp_members*/
+  0,                         /*tp_getset*/
+  0,                         /*tp_base*/
+  0,                         /*tp_dict*/
+  0,                         /*tp_descr_get*/
+  0,                         /*tp_descr_set*/
+  0,                         /*tp_dictoffset*/
+  (initproc)InitMPIObject,   /*tp_init*/
+  0,                         /*tp_alloc*/
+  NewMPIObject,              /*tp_new*/
 };
 
 
@@ -971,7 +971,7 @@ static PyObject * MPICommunicator(MPIObject *self, PyObject *args)
       memcpy(obj->members, (int *) PyArray_BYTES(iranks), obj->size*sizeof(int));
       Py_DECREF(iranks);
 
-      // Make sure that MPI_COMM_WORLD is kept alive til the end (we
+      // Make sure that MPI_COMM_WORLD is kept alive till the end (we
       // don't want MPI_Finalize to be called before MPI_Comm_free):
       Py_INCREF(self);
       obj->parent = (PyObject*)self;
