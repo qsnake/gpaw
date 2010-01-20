@@ -70,7 +70,7 @@ class Transport(GPAW):
                        
                        'lead_atoms', 'nleadlayers', 'mol_atoms', 'la_index',
                        
-                       'LR_leads', 'gate',  'cal_loc',                       
+                       'LR_leads', 'gate',                       
                        'recal_path', 'min_energy',
                        'use_qzk_boundary',
                        'scat_restart', 'save_file', 'restart_file',
@@ -115,7 +115,6 @@ class Transport(GPAW):
             
         self.LR_leads = p['LR_leads']            
         self.gate = p['gate']
-        self.cal_loc = p['cal_loc']
         self.recal_path = p['recal_path']
         self.min_energy = p['min_energy']
         self.use_qzk_boundary = p['use_qzk_boundary']
@@ -145,8 +144,6 @@ class Transport(GPAW):
         self.master = (world.rank==0)
     
         bias = self.bias
-        #self.cal_loc = self.cal_loc and np.max(np.abs(bias)) != 0
- 
       
         if self.LR_leads and self.lead_num != 2:
             raise RuntimeError('wrong way to use keyword LR_leads')
@@ -202,7 +199,6 @@ class Transport(GPAW):
         
         p['LR_leads'] = True
         p['gate'] = 0
-        p['cal_loc'] = True
         p['recal_path'] = False
         p['min_energy'] = -700
         p['guess_steps'] = 30
@@ -560,7 +556,7 @@ class Transport(GPAW):
                 self.eq_par_energy_index[s].append([])
                 self.ne_par_energy_index[s].append([])
                      
-        if self.cal_loc and not self.ground:
+        if not self.ground:
             self.loc_par_energy_index = []
             for s in range(ns):
                 self.loc_par_energy_index.append([])
@@ -573,7 +569,7 @@ class Transport(GPAW):
                 eq_ind = np.array_split(np.arange(neeq), size)
                 self.eq_par_energy_index[s][k] = eq_ind[rank]
 
-                if self.cal_loc and not self.ground:
+                if not self.ground:
                     neloc = self.locpathinfo[s][k].num
                     loc_ind = np.array_split(np.arange(neloc), size)
                     self.loc_par_energy_index[s][k] = loc_ind[rank]
@@ -913,14 +909,14 @@ class Transport(GPAW):
         for s in range(self.my_nspins):
             self.eqpathinfo.append([])
             self.nepathinfo.append([])
-            if self.cal_loc and not self.ground:
+            if not self.ground:
                 self.locpathinfo.append([])                
-            if self.cal_loc and not self.ground:
+            if not self.ground:
                 self.locpathinfo.append([])
             for k in range(self.my_npk):
                 self.eqpathinfo[s].append(PathInfo('eq', self.lead_num))
                 self.nepathinfo[s].append(PathInfo('ne', self.lead_num))    
-                if self.cal_loc and not self.ground:
+                if not self.ground:
                     self.locpathinfo[s].append(PathInfo('eq',
                                                          self.lead_num))
                     
@@ -930,7 +926,7 @@ class Transport(GPAW):
             for k in range(self.my_npk):      
                 self.get_eqintegral_points(s, k)
                 self.get_neintegral_points(s, k)
-                if self.cal_loc and not self.ground:
+                if not self.ground:
                     self.get_neintegral_points(s, k, 'locInt')
         ne = self.eqpathinfo[0][0].num + self.nepathinfo[0][0].num
         self.text('energy point' + str(ne))           
@@ -1017,7 +1013,7 @@ class Transport(GPAW):
         self.hsd.s = s
         self.hsd.pk = k
 
-        if calcutype == 'neInt' or calcutype == 'neVirInt':
+        if calcutype == 'neInt':
             for n in range(1, len(intctrl.neintpath)):
                 self.cntint = -1
                 self.fint = []
@@ -1057,10 +1053,10 @@ class Transport(GPAW):
                                                           zgp[1] - zgp[0])
                     wgp = list(wgp)
                     sgforder = range(nefcnt)
-                    sumga = np.zeros([1, nbmol, nbmol], complex)
+                    sumga = np.zeros([1, 2, nbmol, nbmol], complex)
                     for i in range(nefcnt):
                         sumga += self.calgfunc(zgp[i], calcutype) * wgp[i]
-                den += sumga[0] / np.pi / 2
+                den += sumga[0, 0] / np.pi / 2
                 flist = [] 
                 siglist = []
                 for i in range(self.lead_num):
@@ -1147,6 +1143,8 @@ class Transport(GPAW):
         
         if calcutype == 'resInt':
             gfunc = np.zeros([nbmol, nbmol], complex)
+        elif calcutype == 'neInt':
+            gfunc = np.zeros([nume, 2, nbmol, nbmol], complex)            
         else:
             gfunc = np.zeros([nume, nbmol, nbmol], complex)
         for i in range(nume):
@@ -1173,6 +1171,8 @@ class Transport(GPAW):
             kt = intctrl.kt
             ff = []
             if calcutype == 'neInt':
+                ffocc = []
+                ffvir = []
                 for n in range(self.lead_num):
                     lead_ef = intctrl.leadfermi[n]
                     min_ef = intctrl.minfermi
@@ -1183,28 +1183,14 @@ class Transport(GPAW):
                     self.fint[n][1].append(fermidistribution(zp[i] - max_ef,
                                            kt) - fermidistribution(zp[i] -
                                             lead_ef, kt))                    
-                    ff.append(self.fint[n][0][self.cntint])
+                    ffocc.append(self.fint[n][0][self.cntint])
+                    ffvir.append(self.fint[n][1][self.cntint])
                     
-                gfunc[i] = self.hsd.calculate_ne_green_function(zp[i],
-                                                                sigma, ff, False)
+                gfunc[i, 0], gfunc[i, 1] = \
+                                        self.hsd.calculate_ne_green_function(
+                                                                 zp[i], sigma,
+                                                          ffocc, ffvir, False)
                 
-
-            elif calcutype == 'neVirInt':
-                gammavir = np.zeros([nbmol, nbmol], complex)
-                for n in range(self.lead_num):
-                    lead_ef = intctrl.leadfermi[n]
-                    min_ef = intctrl.minfermi
-                    max_ef = intctrl.maxfermi
-                    self.fint[n][0].append(fermidistribution(zp[i] - lead_ef,
-                                           kt) - fermidistribution(zp[i] -
-                                          min_ef, kt))
-                    self.fint[n][1].append(fermidistribution(zp[i] - max_ef,
-                                           kt) - fermidistribution(zp[i] -
-                                            lead_ef, kt))
-                    gammavir += gamma[n] * self.fint[n][1][self.cntint]
-                avir = dot(gr, gammavir)
-                avir = dot(avir, gr.T.conj())
-                gfunc[i] = avir
             # --local-Integral--
             elif calcutype == 'locInt':
                 # fmax-fmin
@@ -1235,12 +1221,11 @@ class Transport(GPAW):
         self.hsd.pk = k
 
         den = self.eq_fock2den(s, k)
-        denocc = self.ne_fock2den(s, k, ov='occ')    
+        denocc, denvir = self.ne_fock2den(s, k)    
         den += denocc
 
-        if self.cal_loc and not self.ground:
+        if not self.ground:
             denloc = self.eq_fock2den(s, k, el='loc')
-            denvir = self.ne_fock2den(s, k, ov='vir')
             weight_mm = self.integral_diff_weight(denocc, denvir,
                                                                  'transiesta')
             diff = (denloc - (denocc + denvir)) * weight_mm
@@ -1252,10 +1237,11 @@ class Transport(GPAW):
             den = np.real(den).copy()
         return den    
 
-    def ne_fock2den(self, s, k, ov='occ'):
+    def ne_fock2den(self, s, k):
         pathinfo = self.nepathinfo[s][k]
         nbmol = self.nbmol_inner
-        den = np.zeros([nbmol, nbmol], complex)
+        denocc = np.zeros([nbmol, nbmol], complex)
+        denvir = np.zeros([nbmol, nbmol], complex)
         ind = self.ne_par_energy_index[s][k]
         zp = pathinfo.energy
 
@@ -1264,22 +1250,20 @@ class Transport(GPAW):
             sigma = []
             for n in range(self.lead_num):
                 sigma.append(pathinfo.sigma[n][i])
-            ff = []
+            ffocc = []
+            ffvir = []
             for n in range(self.lead_num):
-                if ov == 'occ':
-                    fermifactor = pathinfo.fermi_factor[n][0][i]
-                    ff.append(fermifactor)
-                elif ov == 'vir':
-                    fermifactor = pathinfo.fermi_factor[n][1][i]
-                    ff.append(fermifactor)                    
-           
-            glesser = self.hsd.calculate_ne_green_function(zp[i], sigma,
-                                                           ff, False)
+                ffocc.append(pathinfo.fermi_factor[n][0][i])
+                ffvir.append(pathinfo.fermi_factor[n][1][i])
+            glesser, ggreater = self.hsd.calculate_ne_green_function(zp[i],
+                                                 sigma, ffocc, ffvir, False)
             weight = pathinfo.weight[i]            
-            den += glesser * weight / np.pi / 2
-        self.energy_comm.sum(den)
+            denocc += glesser * weight / np.pi / 2
+            denvir += ggreater * weight / np.pi / 2
+        self.energy_comm.sum(denocc)
+        self.energy_comm.sum(denvir)
         self.timer.stop('ne fock2den')
-        return den  
+        return denocc, denvir
 
     def eq_fock2den(self, s, k, el='eq'):
         if el =='loc':
