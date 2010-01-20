@@ -1347,11 +1347,8 @@ class Transport_Analysor:
    
     def abstract_d_and_v(self):
         tp = self.tp
-        if not tp.non_sc:
-            calc = tp.extended_calc
-        else:
-            calc = tp
-        gd = calc.wfs.gd        
+        calc = tp.extended_calc
+        gd = calc.gd        
 
         nt_sG = tp.gd.collect(tp.density.nt_sG)
         vt_sG = gd.collect(calc.hamiltonian.vt_sG)
