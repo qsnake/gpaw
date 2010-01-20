@@ -10,7 +10,7 @@ from gpaw.fd_operators import Gradient
 from gpaw.utilities.timing import nulltimer
 from gpaw.band_descriptor import BandDescriptor
 import gpaw.mpi as mpi
-from gpaw import extra_parameters, debug
+from gpaw import sl_diagonalize, extra_parameters, debug
 
 class EmptyWaveFunctions:
     def __nonzero__(self):
@@ -848,14 +848,22 @@ class LCAOWaveFunctions(WaveFunctions):
     def estimate_memory(self, mem):
         nq = len(self.ibzk_qc)
         nao = self.setups.nao
+        B = self.band_comm.size 
+        mynao = nao // B # approximate
         ni_total = sum([setup.ni for setup in self.setups])
         itemsize = mem.itemsize[self.dtype]
         mem.subnode('C [qnM]', nq * self.mynbands * nao * itemsize)
-        mem.subnode('T, S [qMM]', 2 * nq * nao * nao * itemsize)
+        if extra_parameters.get('blacs'):
+            ncpus, mcpus, blocksize = sl_diagonalize[:3]
+            mem.subnode('S [qmm]', nq * (nao/ncpus) * (nao/mcpus) * itemsize)
+            mem.subnode('T [qmM]', nq * mynao * nao * itemsize)
+        else:
+            mem.subnode('S [qMM]', nq * nao * nao * itemsize)
+            mem.subnode('T [qMM]', nq * nao * nao * itemsize)
         mem.subnode('P [aqMi]', nq * nao * ni_total / self.gd.comm.size)
         self.tci.estimate_memory(mem.subnode('TCI'))
         self.basis_functions.estimate_memory(mem.subnode('BasisFunctions'))
-        self.eigensolver.estimate_memory(mem.subnode('Eigensolver'))
+        self.eigensolver.estimate_memory(mem.subnode('Eigensolver'), self.dtype)
 
 
 from gpaw.eigensolvers import get_eigensolver

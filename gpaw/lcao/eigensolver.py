@@ -28,9 +28,16 @@ class BaseDiagonalizer:
     def _diagonalize(self, H_MM, S_MM, eps_M):
         raise NotImplementedError
 
+    def estimate_memory(self, mem, dtype):
+        nao = self.setups.nao
+        itemsize = mem.itemsize[dtype]
+        mem.subnode('eps [M]', self.nao * mem.floatsize)
+        mem.subnode('H [MM]', self.nao * self.nao * itemsize)
+    
 
 class SLDiagonalizer(BaseDiagonalizer):
-    """Original ScaLAPACK diagonalizer using redundantly distributed arrays."""
+    """Original ScaLAPACK diagonalizer using
+    redundantly distributed arrays."""
     def __init__(self, gd, bd, root=0):
         BaseDiagonalizer.__init__(self, gd, bd)
         self.root = root
@@ -42,6 +49,13 @@ class SLDiagonalizer(BaseDiagonalizer):
         # meaningful values of info.         
         return general_diagonalize(H_MM, eps_M, S_MM, root=self.root)
 
+    def estimate_memory(self, mem, dtype):
+        BaseDiagonalizer.estimate(self, mem, dtype)
+        itemsize = mem.itemsize[dtype]
+        ncpus, mcpus, blocksize = sl_diagonalize[:3]
+        mem.subnode('ScaLAPACK Workspace1', (nao/ncpus) * (nao/mcpus) * itemsize)
+        mem.subnode('ScaLAPACK Workspace2', nao * nao * itemsize)
+        
 
 class LapackDiagonalizer(BaseDiagonalizer):
     """Serial diagonalizer."""
@@ -137,9 +151,6 @@ class LCAO:
             P_ni.fill(117)
             gemm(1.0, kpt.P_aMi[a], kpt.C_nM, 0.0, P_ni, 'n')
 
-    def estimate_memory(self, mem):
-        pass
-        # XXX forward to diagonalizer
-        #itemsize = np.array(1, self.dtype).itemsize
-        #mem.subnode('H [MM]', self.nao * self.nao * itemsize)
-
+    def estimate_memory(self, mem, dtype):
+        pass 
+        # self.diagonalizer.estimate_memory(mem, dtype)
