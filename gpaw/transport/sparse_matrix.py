@@ -254,16 +254,19 @@ class Tp_Sparse_HSD:
             self.G.inv_eq()
             return self.G.recover(ex)
 
-    def calculate_ne_green_function(self, zp, sigma, fermi_factors, ex=True):
+    def calculate_ne_green_function(self, zp, sigma, ffocc, ffvir, ex=True):
         s, pk = self.s, self.pk        
         self.G.reset_from_others(self.S[pk], self.H[s][pk], zp, -1)
         self.G.substract_sigma(sigma)
-        gamma = []
-        for ff, tgt in zip(fermi_factors, sigma):
+        gammaocc = []
+        gammavir = []
+        for ff0, ff1, tgt in zip(ffocc, ffvir, sigma):
             full_tgt = tgt.recover()
-            gamma.append(ff * 1.j * (full_tgt - full_tgt.T.conj()))
-        self.G.calculate_less_green(gamma)
-        return self.G.recover(ex)     
+            gammaocc.append(ff0 * 1.j * (full_tgt - full_tgt.T.conj()))
+            gammavir.append(ff1 * 1.j * (full_tgt - full_tgt.T.conj()))            
+        glesser, ggreater = self.G.calculate_non_equilibrium_green(gammaocc,
+                                                                gammavir, ex)
+        return glesser, ggreater
 
     def abstract_sub_green_matrix(self, zp, sigma, l1, l2, inv_mat=None):
         if inv_mat == None:
@@ -649,43 +652,58 @@ class Tp_Sparse_Matrix:
     def dotdot(self, mat1, mat2, mat3):
         return dot(mat1, dot(mat2, mat3))
     
-    def calculate_less_green(self, se_less):
+    def calculate_non_equilibrium_green(self, se_less, se_great, ex=True):
+        inv_mat = self.inv_ne()
+        glesser = self.calculate_keldysh_green(inv_mat, se_less, ex)
+        ggreater = self.calculate_keldysh_green(inv_mat, se_great, ex)
+        return glesser, ggreater  
+    
+    def calculate_keldysh_green(self, inv_mat, keldysh_se, ex=True):
         #se_less less selfenergy, structure  se_1, se_2, se_3,..., se_n
         #the lead sequence of se_less should be the same to self.ll_index
-        inv_mat = self.inv_ne()
         self.mol_h.spar.fill(0.0)
         for i in range(self.lead_num):
             nll = self.lead_nlayer[i]
             for j in range(nll - 1):
                 self.diag_h[i][j].spar.fill(0.0)
                 self.upc_h[i][j].fill(0.0)
-                self.dwnc_h[i][j].fill(0.0)
+                self.dwnc_h[i][j].fill(0.0)                    
         
         for i in range(self.lead_num):
             # less selfenergy loop
-            self.mol_h.reset_plus(self.dotdot(inv_mat[i][self.lead_num], se_less[i],
-                                 inv_mat[i][self.lead_num].T.conj()), full=True)            
+            self.mol_h.reset_plus(self.dotdot(inv_mat[i][self.lead_num],
+                                              keldysh_se[i],
+                                          inv_mat[i][self.lead_num].T.conj()),
+                                              full=True)            
             for j in range(self.lead_num):
                # matrix operation loop    
                 nlj = self.lead_nlayer[j]
-                self.diag_h[j][0].reset_plus(self.dotdot(inv_mat[i][j][0], se_less[i],
-                                                 inv_mat[i][j][0].T.conj()), full=True)            
+                self.diag_h[j][0].reset_plus(self.dotdot(inv_mat[i][j][0],
+                                                    keldysh_se[i],
+                                                 inv_mat[i][j][0].T.conj()),
+                                                      full=True)            
             
-                self.dwnc_h[j][0] += self.dotdot(inv_mat[i][j][0], se_less[i],
-                                            inv_mat[i][self.lead_num].T.conj())
+                self.dwnc_h[j][0] += self.dotdot(inv_mat[i][j][0], keldysh_se[i],
+                                           inv_mat[i][self.lead_num].T.conj())
             
-                self.upc_h[j][0] += self.dotdot(inv_mat[i][self.lead_num], se_less[i],
+                self.upc_h[j][0] += self.dotdot(inv_mat[i][self.lead_num],
+                                                keldysh_se[i],
                                             inv_mat[i][j][0].T.conj())
             
                 for k in range(1, nlj -1):
-                    self.diag_h[j][k].reset_plus(self.dotdot(inv_mat[i][j][k], se_less[i],
-                                                 inv_mat[i][j][k].T.conj()), full=True)
+                    self.diag_h[j][k].reset_plus(self.dotdot(inv_mat[i][j][k],
+                                                             keldysh_se[i],
+                                                 inv_mat[i][j][k].T.conj()),
+                                                    full=True)
                     
-                    self.dwnc_h[j][k] += self.dotdot(inv_mat[i][j][k], se_less[i],
-                                                 inv_mat[i][j][k - 1].T.conj())
+                    self.dwnc_h[j][k] += self.dotdot(inv_mat[i][j][k],
+                                                     keldysh_se[i],
+                                                inv_mat[i][j][k - 1].T.conj())
                         
-                    self.upc_h[j][k] +=  self.dotdot(inv_mat[i][j][k - 1], se_less[i],
+                    self.upc_h[j][k] +=  self.dotdot(inv_mat[i][j][k - 1],
+                                                     keldysh_se[i],
                                                     inv_mat[i][j][k].T.conj())
+        return self.recover(ex)            
 
     def test_inv_speed(self):
         full_mat = self.recover()
