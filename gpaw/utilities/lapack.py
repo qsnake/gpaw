@@ -78,7 +78,7 @@ def general_diagonalize(a, w, b, root=0):
                                  sl_diagonalize[1],
                                  sl_diagonalize[2], root, b)
     else:
-        info = _gpaw.diagonalize(a, w, b)
+        info = _gpaw.general_diagonalize(a, w, b)
     return info
 
 def inverse_cholesky(a, root=0):
