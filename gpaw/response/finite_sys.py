@@ -14,13 +14,14 @@ class FiniteSys(CHI):
         CHI.__init__(self)
 
 
-    def get_dipole_strength(self, calc, q, wcut, wmin, wmax, dw, eta=0.2, sigma=2*1e-5):
+    def get_dipole_strength(self, calc, q, wcut, wmin, wmax, dw, eta=0.2, sigma=0.5*1e-5):
         """Obtain the dipole strength spectra for a finite system.
 
         Parameters: 
 
         n_S: ndarray 
             Pair-orbitals in real space, (1, nS)
+
         specfunc_wSS: ndarray
             Spectral function, (NwS, nS, nS, dtype = C_knM.type), can be complex128 or float64
         chi0_wSS: ndarray
@@ -44,6 +45,9 @@ class FiniteSys(CHI):
         n_S = self.pair_orbital_Rspace(orb_MG, calc.wfs.gd,
                                        calc.wfs.setups, P_aMi)
 
+        # check wfs
+        self.check_wfs_orthonormalization(C_knM, orb_MG, calc.wfs.gd, calc.wfs.setups, P_aMi)
+            
         # Get kernel
         if isfile('kernel.npz'):
             foo = np.load('kernel.npz')
@@ -61,19 +65,21 @@ class FiniteSys(CHI):
         SLDA_w = np.zeros((self.Nw,3))
         for iw in range(self.Nw):
             if not self.HilbertTrans:
+                if iw == 1:
+                    print 'Calculating chi0 directly!'
                 chi0_SS = self.calculate_chi0(bzkpt_kG, e_kn, f_kn, C_knM, q, iw*self.dw, eta=eta/Hartree)
             else:
                 chi0_SS = chi0_wSS[iw]
 
             SNonInter_w[iw,:] = self.calculate_dipole_strength(chi0_SS, n_S, iw*self.dw)
-            chi_SS = self.solve_Dyson(chi0_SS, kernelRPA_SS)
-            SRPA_w[iw,:] = self.calculate_dipole_strength(chi_SS, n_S, iw*self.dw)
-            chi_SS = self.solve_Dyson(chi0_SS, kernelLDA_SS)
-            SLDA_w[iw,:] = self.calculate_dipole_strength(chi_SS, n_S, iw*self.dw)
+#            chi_SS = self.solve_Dyson(chi0_SS, kernelRPA_SS)
+#            SRPA_w[iw,:] = self.calculate_dipole_strength(chi_SS, n_S, iw*self.dw)
+#            chi_SS = self.solve_Dyson(chi0_SS, kernelLDA_SS)
+#            SLDA_w[iw,:] = self.calculate_dipole_strength(chi_SS, n_S, iw*self.dw)
 
         # Solve Casida's equation to get the excitation energies in eV
-        eCasidaRPA_s, sCasidaRPA_s = self.solve_casida(e_kn[0], f_kn[0], C_knM[0], kernelRPA_SS, n_S)
-        eCasidaLDA_s, sCasidaLDA_s = self.solve_casida(e_kn[0], f_kn[0], C_knM[0], kernelLDA_SS, n_S)
+#        eCasidaRPA_s, sCasidaRPA_s = self.solve_casida(e_kn[0], f_kn[0], C_knM[0], kernelRPA_SS, n_S)
+#        eCasidaLDA_s, sCasidaLDA_s = self.solve_casida(e_kn[0], f_kn[0], C_knM[0], kernelLDA_SS, n_S)
 
         # Check sum-rule
         print 'Checking f-sum rule:'
@@ -224,29 +230,99 @@ class FiniteSys(CHI):
         tmp =  sqrt(4. * pi / 3.)    
         Li = np.array([3, 1, 2])
 
+        for i, (mu, nu) in enumerate(self.Sindex):
+#           n_S[i] = - gd.calculate_dipole_moment(orb_MG[mu].conj() * orb_MG[nu])
+            n_S[i] = gd.integrate(orb_MG[mu].conj() * orb_MG[nu])
+        for ix in range(3): # loop over x, y, z axis
+            phi_I={}
+            for a in range(len(setups)):
+#                phi_p = setups[a].Delta_pL[:,Li[ix]].copy()
+                phi_p = setups[a].Delta_pL[:,0].copy()
+                phi_I[a] = unpack(phi_p).ravel()
+                    
+                for i, (mu, nu) in enumerate(self.Sindex):
+                    P_I = np.outer(P_aMi[a][mu], P_aMi[a][nu]).ravel()
+                    n_S[i, ix] += np.sum(P_I * phi_I[a]) * tmp
+
+#        for ix in range(3): # loop over x, y, z axis
+#            phi_I={}
+#            for a in range(len(setups)):
+#                phi_p = setups[a].Delta_pL[:,Li[ix]].copy()
+#                phi_I[a] = unpack(phi_p).ravel() * tmp
+#       
+#            for i in range(N_gd[0]):
+#                for j in range(N_gd[1]):
+#                    for k in range(N_gd[2]):
+#                        if ix == 0:
+#                            r[i,j,k] = i*self.h_c[0]
+#                        elif ix == 1:
+#                            r[i,j,k] = j*self.h_c[1] 
+#                        else:
+#                            r[i,j,k] = k*self.h_c[2]
+#    
+#            for i, (mu, nu) in enumerate(self.Sindex):
+##                n_S[i, ix] = gd.integrate(orb_MG[mu].conj() * orb_MG[nu] * r)
+#                for a, P_Mi in enumerate(P_aMi):
+#                    P_I = np.outer(P_Mi[mu], P_Mi[nu]).ravel()
+#                    n_S[i, ix] += np.sum(P_I * phi_I[a]) 
+#
+        # check gd.calculate_dipole_moments
+#        n_S2 = np.zeros_like(n_S)
+#        for i, (mu, nu) in enumerate(self.Sindex):
+#            n_S2[i] = gd.calculate_dipole_moment(orb_MG[mu].conj() * orb_MG[nu])
+#
+#        for iS, (mu, nu) in enumerate(self.Sindex):
+#            print iS, (mu,nu), n_S[iS], n_S2[iS]
+#            
+        return n_S
+
+
+    def check_wfs_orthonormalization(self, C_knM, orb_MG, gd, setups, P_aMi):
+
+        n_S = np.zeros(self.nS, dtype=orb_MG.dtype)
+        
+        for iS, (mu, nu) in enumerate(self.Sindex):
+            n_S[iS] = gd.integrate(orb_MG[mu] * orb_MG[nu])
+#            print 'before PAW', (mu, nu), n_S[iS]
+            for a in range(len(setups)):
+                phi_p = setups[a].Delta_pL[:,0].copy()
+                phi_I = unpack(phi_p) * sqrt(4*pi)
+                P_I = np.outer(P_aMi[a][mu], P_aMi[a][nu])
+                n_S[iS] += np.sum(phi_I * P_I)
+
+#            print 'after PAW',(mu, nu), n_S[iS]
+
+        tmp_S = np.zeros_like(n_S)
+        for i in range(self.nband):
+            for j in range(self.nband):
+                for iS, (mu, nu) in enumerate(self.Sindex):
+                    tmp_S[iS] = C_knM[0,i,mu] * C_knM[0,j,nu]
+#                print 'band', (i,j), np.inner(tmp_S, n_S)
+###############################################################
+
+        n_S = np.zeros((self.nS, 3))
+        Li = np.array([3, 1, 2])
+                
+        for i, (mu, nu) in enumerate(self.Sindex):
+            n_S[i] = - gd.calculate_dipole_moment(orb_MG[mu].conj() * orb_MG[nu])
         for ix in range(3): # loop over x, y, z axis
             phi_I={}
             for a in range(len(setups)):
                 phi_p = setups[a].Delta_pL[:,Li[ix]].copy()
-                phi_I[a] = unpack(phi_p).ravel()
-       
-            for i in range(N_gd[0]):
-                for j in range(N_gd[1]):
-                    for k in range(N_gd[2]):
-                        if ix == 0:
-                            r[i,j,k] = i*self.h_c[0]
-                        elif ix == 1:
-                            r[i,j,k] = j*self.h_c[1] 
-                        else:
-                            r[i,j,k] = k*self.h_c[2]
-    
-            for i, (mu, nu) in enumerate(self.Sindex):
-                n_S[i, ix] = gd.integrate(orb_MG[mu] * orb_MG[nu] * r)
-                for a, P_Mi in enumerate(P_aMi):
-                    P_I = np.outer(P_Mi[mu], P_Mi[nu]).ravel()
-                    n_S[i, ix] += np.sum(P_I * phi_I[a]) * tmp
+                phi_I[a] = unpack(phi_p).ravel() * sqrt(4 * pi / 3)
+                    
+                for i, (mu, nu) in enumerate(self.Sindex):
+                    P_I = np.outer(P_aMi[a][mu], P_aMi[a][nu]).ravel()
+                    n_S[i, ix] += np.sum(P_I * phi_I[a])
 
-        return n_S
+            print 'ix = ', ix
+            for n in range(self.nband):
+                for m in range(self.nband):
+                    for iS, (mu, nu) in enumerate(self.Sindex):
+                        tmp_S[iS] = C_knM[0,n,mu] * C_knM[0,m,nu]
+                    print 'band', (n,m), np.inner(tmp_S, n_S[:,ix])
+
+        return
 
 
     def solve_casida(self, e_n, f_n, C_nM, kernel_SS, n_S):

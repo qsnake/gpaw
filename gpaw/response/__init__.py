@@ -158,7 +158,7 @@ class CHI:
 
             # if C_knM is not read from file, then we should chnage C_knM
             # C_knM *= e{i k. R_a}
-            if not isfile('C_knM.npz'):
+#            if not isfile('C_knM.npz'):
                 #print 'calculating renormalized C_knM'
                 #bzkpt_kG = calc.get_bz_k_points()
                 #pos_a = calc.get_atoms().positions / Bohr
@@ -169,7 +169,7 @@ class CHI:
                 #    for ik in range(self.nkpt):
                 #        kk =  np.array([np.inner(bzkpt_kG[ik], self.bcell[:,i]) for i in range(3)])
                 #        C_knM[ik,:,m1:m2] *= np.exp(-1j * np.dot(kk, pos_a[a]))
-                np.savez('C_knM.npz',C=C_knM)
+#                np.savez('C_knM.npz',C=C_knM)
 
 
         # whether to use hilbert tranform
@@ -220,7 +220,6 @@ class CHI:
             LCAO coefficients, (nkpt,nband,nLCAO)
         """
 
-        print 'Calculating chi0 directly'
         chi0_SS = np.zeros((self.nS, self.nS), dtype=complex)
 
         kq = np.zeros(self.nkpt)
@@ -327,7 +326,7 @@ class CHI:
 
         return chi0_wSS
 
-
+    
     def solve_Dyson(self, chi0_SS, kernel_SS):
         """Solve Dyson's equation for a certain q and w. 
 
@@ -595,7 +594,7 @@ class CHI:
         """
 
         try:
-             self.threshold
+            self.threshold
         except AttributeError:
             self.threshold = threshold
 

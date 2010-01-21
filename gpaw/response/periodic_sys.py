@@ -529,3 +529,41 @@ class PeriodicSys(CHI):
                 sph_n[3] = (15./z**3 - 6./z) * tmp1 - (15./z**2 -1.) * tmp2
                 
         return sph_n[0:n+1]
+
+
+    def check_sum_rule(self, calc, q, wcut, wmin, wmax, dw, eta=0.2):
+
+        self.OpticalLimit = True
+        
+        e_kn, f_kn, C_knM, orb_MG, P_aMi, spos_ac, nt_G, tmp = (
+           self.initialize(calc, q, wcut, wmin, wmax, dw, eta))
+
+        
+        assert tmp.shape == (self.Nw, self.nS, self.nS) and tmp.dtype == complex
+        chi0_wSS = tmp
+
+        nG0_S = np.zeros(len(self.Sindex), dtype = complex)
+
+        self.q = np.array([0.01, 0, 0])
+        if self.OpticalLimit:
+            print 'Optical limit calculation'
+            #qq = np.array([np.inner(self.q, self.bcell[:,i]) for i in range(3)])
+            qq = np.array([1., 0, 0])
+            for iS, (mu, nu) in enumerate(self.Sindex):
+                    nG0_S[iS] = (-1j) * np.dot(qq, 
+                         calc.wfs.gd.calculate_dipole_moment( orb_MG[mu].conj() * orb_MG[nu]))
+
+        N = 0
+        for iw in range(chi0_wSS.shape[0]):
+            chi0 = self.chi_to_Gspace(chi0_wSS[iw], nG0_S)
+            N += iw*self.dw * np.imag(chi0)
+
+        
+        N *=  - 2 / pi  / np.inner(qq,qq) * self.dw
+
+        print np.inner(qq,qq)
+        print 'Check f-sum rule, N = ', N
+
+        return
+        
+        
