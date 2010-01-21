@@ -6,7 +6,7 @@ from numpy.fft import fftn
 from ase.units import Hartree
 from gpaw.lfc import LocalizedFunctionsCollection as LFC
 from gpaw.pair_density import PairDensity2 as PairDensity
-from gpaw.poisson import PoissonSolver
+from gpaw.poisson import PoissonSolver, FFTPoissonSolver
 from gpaw.utilities import pack, unpack, packed_index, unpack2
 from gpaw.utilities.tools import construct_reciprocal, tri2full, symmetrize
 from gpaw.utilities.gauss import Gaussian
@@ -165,12 +165,15 @@ class Coulomb:
 
 
 class CoulombNEW:
-    def __init__(self, gd, setups, spos_ac):
+    def __init__(self, gd, setups, spos_ac, fft=False):
         self.rhot1_G = gd.empty()
         self.rhot2_G = gd.empty()
         self.pot_G = gd.empty()
         self.dv = gd.dv
-        self.poisson = PoissonSolver(nn=3)
+        if fft:
+            self.poisson = FFTPoissonSolver()
+        else:
+            self.poisson = PoissonSolver(nn=3)
         self.poisson.set_grid_descriptor(gd)
         self.poisson.initialize()
         self.setups = setups
