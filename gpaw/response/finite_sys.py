@@ -72,20 +72,20 @@ class FiniteSys(CHI):
                 chi0_SS = chi0_wSS[iw]
 
             SNonInter_w[iw,:] = self.calculate_dipole_strength(chi0_SS, n_S, iw*self.dw)
-#            chi_SS = self.solve_Dyson(chi0_SS, kernelRPA_SS)
-#            SRPA_w[iw,:] = self.calculate_dipole_strength(chi_SS, n_S, iw*self.dw)
-#            chi_SS = self.solve_Dyson(chi0_SS, kernelLDA_SS)
-#            SLDA_w[iw,:] = self.calculate_dipole_strength(chi_SS, n_S, iw*self.dw)
+            chi_SS = self.solve_Dyson(chi0_SS, kernelRPA_SS)
+            SRPA_w[iw,:] = self.calculate_dipole_strength(chi_SS, n_S, iw*self.dw)
+            chi_SS = self.solve_Dyson(chi0_SS, kernelLDA_SS)
+            SLDA_w[iw,:] = self.calculate_dipole_strength(chi_SS, n_S, iw*self.dw)
 
         # Solve Casida's equation to get the excitation energies in eV
-#        eCasidaRPA_s, sCasidaRPA_s = self.solve_casida(e_kn[0], f_kn[0], C_knM[0], kernelRPA_SS, n_S)
-#        eCasidaLDA_s, sCasidaLDA_s = self.solve_casida(e_kn[0], f_kn[0], C_knM[0], kernelLDA_SS, n_S)
+        eCasidaRPA_s, sCasidaRPA_s = self.solve_casida(e_kn[0], f_kn[0], C_knM[0], kernelRPA_SS, n_S)
+        eCasidaLDA_s, sCasidaLDA_s = self.solve_casida(e_kn[0], f_kn[0], C_knM[0], kernelLDA_SS, n_S)
 
         # Check sum-rule
         print 'Checking f-sum rule:'
-        print '    For non-interacting chi: N = ', self.check_sum_rule(SNonInter_w), '% error'
-        print '    For       RPA       chi: N = ', self.check_sum_rule(SRPA_w), '% error'
-        print '    For       LDA       chi: N = ', self.check_sum_rule(SLDA_w), '% error'
+#        print '    For non-interacting chi: N = ', self.check_sum_rule(SNonInter_w), '% error'
+#        print '    For       RPA       chi: N = ', self.check_sum_rule(SRPA_w), '% error'
+#        print '    For       LDA       chi: N = ', self.check_sum_rule(SLDA_w), '% error'
 
         return SNonInter_w, SRPA_w, SLDA_w, eCasidaRPA_s, eCasidaLDA_s, sCasidaRPA_s, sCasidaLDA_s
 
@@ -315,12 +315,12 @@ class FiniteSys(CHI):
                     P_I = np.outer(P_aMi[a][mu], P_aMi[a][nu]).ravel()
                     n_S[i, ix] += np.sum(P_I * phi_I[a])
 
-            print 'ix = ', ix
+#            print 'ix = ', ix
             for n in range(self.nband):
                 for m in range(self.nband):
                     for iS, (mu, nu) in enumerate(self.Sindex):
                         tmp_S[iS] = C_knM[0,n,mu] * C_knM[0,m,nu]
-                    print 'band', (n,m), np.inner(tmp_S, n_S[:,ix])
+#                    print 'band', (n,m), np.inner(tmp_S, n_S[:,ix])
 
         return
 
