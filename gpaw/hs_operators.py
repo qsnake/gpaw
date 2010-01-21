@@ -25,8 +25,8 @@ class Operator:
     hermitian = True
     blacs = False
 
-    def __init__(self, bd, gd, world, kpt_comm, nblocks=None, async=None, hermitian=None,
-                 blacs=None):
+    def __init__(self, bd, gd, world, kpt_comm, nblocks=None, async=None,
+                 hermitian=None, blacs=None):
         self.bd = bd
         self.gd = gd
         self.world = world
@@ -45,7 +45,8 @@ class Operator:
             self.blacs = blacs
         if self.blacs: ### Works for Hermitian case only
             from gpaw.blacs import BlacsBandDescriptor
-            self.bbd = BlacsBandDescriptor(self.world, self.gd, self.bd, self.kpt_comm)
+            self.bbd = BlacsBandDescriptor(self.world, self.gd,
+                                           self.bd, self.kpt_comm)
  
     def allocate_work_arrays(self, dtype):
         """This is a little complicated, but let's look at the facts.
@@ -87,7 +88,8 @@ class Operator:
             X = mynbands // self.nblocks
             if self.gd.n_c.prod() % self.nblocks != 0:
                 X += int(np.ceil(mynbands/self.gd.n_c.prod()))
-            if not self.hermitian and self.blacs: ### more space need for non-Hermitian case?
+            if not self.hermitian and self.blacs:
+                ### more space needed for non-Hermitian case?
                 X *= 2
             self.work1_xG = self.gd.zeros(X, dtype)
             self.work2_xG = self.gd.zeros(X, dtype)
@@ -512,8 +514,8 @@ class Operator:
                 # and receiving next set of kets from rank above us.
                 # If we're at the last slice, start cycling P_ani too.
                 if q < Q - 1:
-                    self._initialize_cycle(sbuf_ng, rbuf_ng, \
-                        sbuf_In, rbuf_In, cycle_P_ani)
+                    self._initialize_cycle(sbuf_ng, rbuf_ng,
+                                           sbuf_In, rbuf_In, cycle_P_ani)
 
                 # Calculate wave-function contributions from the current slice
                 # of grid data by the current mynbands x mynbands matrix block.
@@ -532,7 +534,7 @@ class Operator:
                 # Swap send and receive buffer such that next becomes current.
                 # If we're at the last slice, also finishes the P_ani cycle.
                 if q < Q - 1:
-                    sbuf_ng, rbuf_ng, sbuf_In, rbuf_In = self._finish_cycle( \
+                    sbuf_ng, rbuf_ng, sbuf_In, rbuf_In = self._finish_cycle(
                         sbuf_ng, rbuf_ng, sbuf_In, rbuf_In, cycle_P_ani)
 
                 # First iteration was special because we initialized the kets
