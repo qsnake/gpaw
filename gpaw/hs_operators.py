@@ -385,8 +385,8 @@ class Operator:
                 # and receiving next set of kets from rank above us.
                 # If we're at the last slice, start cycling P_ani too.
                 if q < Q - 1:
-                    self._initialize_cycle(sbuf_mG, rbuf_mG, \
-                        sbuf_In, rbuf_In, cycle_P_ani)
+                    self._initialize_cycle(sbuf_mG, rbuf_mG,
+                                           sbuf_In, rbuf_In, cycle_P_ani)
 
                 # Calculate pseudo-braket contributions for the current slice
                 # of bands in the current mynbands x mynbands matrix block.
@@ -409,7 +409,7 @@ class Operator:
                 # Swap send and receive buffer such that next becomes current.
                 # If we're at the last slice, also finishes the P_ani cycle.
                 if q < Q - 1:
-                    sbuf_mG, rbuf_mG, sbuf_In, rbuf_In = self._finish_cycle( \
+                    sbuf_mG, rbuf_mG, sbuf_In, rbuf_In = self._finish_cycle(
                         sbuf_mG, rbuf_mG, sbuf_In, rbuf_In, cycle_P_ani)
 
                 # First iteration was special because we had the ket to ourself
