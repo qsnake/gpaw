@@ -1,13 +1,87 @@
 """Module for high-level BLACS interface.
 
-Array index symbol conventions:
+Usage
+=====
 
-* M, N: indices in global array
-* m, n: indices in local array
+A BLACS grid is a logical grid of processors.  To use BLACS, first
+create a BLACS grid.  If comm contains 8 or more ranks, this example
+will work::
 
-Note that we take into account C vs. F ordering at the blacs grid
-and descriptor level here. It will still be necessary to switch
-uplo='U' to 'L', trans='N' to 'T', etc.
+  from gpaw.mpi import world
+  from gpaw.blacs import BlacsGrid
+  grid = BlacsGrid(world, 4, 2)
+
+Use the processor grid to create various descriptors for distributed
+arrays::
+
+  block_desc = grid.new_descriptor(500, 500, 64, 64)
+  local_desc = grid.new_descriptor(500, 500, 500, 500)
+
+The first descriptor describes 500 by 500 arrays distributed amongst
+the 8 CPUs of the BLACS grid in blocks of 64 by 64 elements (which is
+a sensible block size).  That means each CPU has many blocks located
+all over the array::
+
+  print world.rank, block_desc.shape, block_desc.gshape
+
+Here block_desc.shape is the local array shape while gshape is the
+global shape.  The local array shape varies a bit on each CPU as the
+block distribution may be slightly uneven.
+
+The second descriptor, local_desc, has a block size equal to the
+global size of the array, and will therefore only have one block.
+This block will then reside on the first CPU -- local_desc therefore
+represents non-distributed arrays.  Let us instantiate some arrays::
+
+  H_MM = local_desc.empty()
+  
+  if world.rank == 0:
+      assert H_MM.shape == (500, 500)
+      H_MM[:, :] = calculate_hamiltonian_or_something()
+  else:
+      assert H_MM.shape[0] == 0 or H_MM.shape[1] == 0
+
+  H_mm = block_desc.empty()
+  print H_mm.shape # many elements on all CPUs
+
+We can then redistribute the local H_MM into H_mm::
+
+  from gpaw.blacs import Redistributor
+  redistributor = Redistributor(world, local_desc, block_desc)
+  redistributor.redistribute(H_MM, H_mm)
+  
+Now we can run parallel linear algebra on H_mm.  This will diagonalize
+H_mm, place the eigenvectors in C_mm and the eigenvalues globally in
+eps_M::
+
+  eps_M = np.empty(500)
+  C_mm = block_desc.empty()
+  block_desc.diagonalize_ex(H_mm, C_mm, eps_M)
+
+We can redistribute C_mm back to the master process if we want::
+
+  C_MM = local_desc.empty()
+  redistributor2 = Redistributor(world, block_desc, local_desc)
+  redistributor2.redistribute(C_mm, C_MM)
+
+If somebody wants to do all this more easily, they will probably write
+a function for that.
+
+List of interesting classes
+===========================
+
+ * BlacsGrid
+ * BlacsDescriptor
+ * Redistributor
+
+The other classes in this module are coded specifically for GPAW and
+are inconvenient to use otherwise.
+
+The module gpaw.utilities.blacs contains several functions like gemm,
+gemv and r2k.  These functions may or may not have appropriate
+docstings, and may use Fortran-like variable naming.  Also, either
+this module or gpaw.utilities.blacs will be renamed at some point.
+
 """
 
 import numpy as np
@@ -26,8 +100,364 @@ INACTIVE = -1
 BLOCK_CYCLIC_2D = 1
 
 
+class BlacsGrid:
+    """Class representing a 2D grid of processors sharing a Blacs context.
+        
+    A BLACS grid defines a logical M by N ordering of a collection of
+    CPUs.  A BLACS grid can be used to create BLACS descriptors.  On
+    an npcol by nprow BLACS grid, a matrix is distributed amongst M by
+    N CPUs along columns and rows, respectively, while the matrix
+    shape and blocking properties are determined by the descriptors.
+
+    Use the method new_descriptor() to create any number of BLACS
+    descriptors sharing the same CPU layout.
+    
+    Most matrix operations require the involved matrices to all be on
+    the same BlacsGrid.  Use a Redistributor to redistribute matrices
+    from one BLACS grid to another if necessary.
+
+    Parameters::
+
+      * comm:  MPI communicator for CPUs of the BLACS grid or None.  A BLACS
+        grid may use all or some of the CPUs of the communicator.
+      * nprow:  Number of CPU rows.
+      * npcol: Number of CPU columns.
+      * order: 'R' or 'C', meaning rows or columns.  I'm not sure what this 
+        does, it probably interchanges the meaning of rows and columns. XXX
+
+    Complicated stuff
+    -----------------
+
+    It may be useful to know that a BLACS grid is said to be active
+    and will evaluate to True on any process where comm is not None
+    *and* comm.rank < nprow * npcol.  Otherwise it is considered
+    inactive and evaluates to False.  Ranks where a grid is inactive
+    never do anything at all.
+
+    BLACS identifies each grid by a unique ID number called the
+    context (frequently abbreviated ConTxt).  Grids on inactive ranks
+    have context -1."""
+    def __init__(self, comm, nprow, npcol, order='R'):
+        assert nprow > 0
+        assert npcol > 0
+        assert len(order) == 1
+        assert order in 'CcRr'
+
+        if isinstance(comm, SerialCommunicator):
+            raise ValueError('Instance of SerialCommunicator not supported')
+        if comm is None: # if and only if rank is not part of the communicator
+            context = INACTIVE
+        else:
+            if nprow * npcol > comm.size:
+                raise ValueError('Impossible: %dx%d Blacs grid with %d CPUs'
+                                 % (nprow, npcol, comm.size))
+            # This call may not return INACTIVE
+            context = _gpaw.new_blacs_context(comm.get_c_object(),
+                                              npcol, nprow, order)
+        
+        self.context = context
+        self.comm = comm
+        self.nprow = nprow
+        self.npcol = npcol
+        self.ncpus = nprow * npcol
+        self.order = order
+
+    def new_descriptor(self, M, N, mb, nb, rsrc=0, csrc=0):
+        """Create a new descriptor from this BLACS grid.
+
+        See documentation for BlacsDescriptor.__init__."""
+        return BlacsDescriptor(self, M, N, mb, nb, rsrc, csrc)
+
+    def is_active(self):
+        """Whether context is active on this rank."""
+        return self.context != INACTIVE
+
+    def __nonzero__(self):
+        return self.is_active()
+
+    def __str__(self):
+        classname = self.__class__.__name__
+        template = '%s[comm:size=%d,rank=%d; context=%d; %dx%d]'
+        string = template % (classname, self.comm.size, self.comm.rank, 
+                             self.context, self.nprow, self.npcol)
+        return string
+    
+    def __del__(self):
+        if self.is_active():
+            _gpaw.blacs_destroy(self.context)
+
+
+class MatrixDescriptor:
+    """Class representing a 2D matrix shape.  Base class for parallel
+    matrix descriptor with BLACS."""
+    
+    def __init__(self, M, N):
+        self.shape = (M, N)
+    
+    def __nonzero__(self):
+        return self.shape[0] != 0 and self.shape[1] != 0
+
+    def zeros(self, n=(), dtype=float):
+        """Return array of zeroes with the correct size on all CPUs.
+
+        The last two dimensions will be equal to the shape of this
+        descriptor.  If specified as a tuple, can have any preceding
+        dimension."""
+        return self._new_array(np.zeros, n, dtype)
+
+    def empty(self, n=(), dtype=float):
+        """Return array of zeros with the correct size on all CPUs.
+
+        See zeros()."""
+        return self._new_array(np.empty, n, dtype)
+
+    def _new_array(self, func, n, dtype):
+        if isinstance(n, int):
+            n = n,
+        shape = n + self.shape
+        return func(shape, dtype)
+
+    def check(self, a_mn):
+        """Check that specified array is compatible with this descriptor."""
+        return a_mn.shape == self.shape and a_mn.flags.contiguous
+
+    def checkassert(self, a_mn):
+        ok = self.check(a_mn)
+        if not ok:
+            if not a_mn.flags.contiguous:
+                msg = 'Matrix with shape %s is not contiguous' % (a_mn.shape,)
+            else:
+                msg = ('%s-descriptor incompatible with %s-matrix' %
+                       (self.shape, a_mn.shape))
+            raise AssertionError(msg)
+
+
+class BlacsDescriptor(MatrixDescriptor):
+    """Class representing a 2D matrix distribution on a blacs grid.
+
+    A BlacsDescriptor represents a particular shape and distribution
+    of matrices.  A BlacsDescriptor has a global matrix shape and a
+    rank-dependent local matrix shape.  The local shape is not
+    necessarily equal on all ranks.
+
+    A numpy array is said to be compatible with a BlacsDescriptor if,
+    on all ranks, the shape of the numpy array is equal to the local
+    shape of the BlacsDescriptor.  Compatible arrays can be created
+    conveniently with the zeros() and empty() methods.
+
+    An array with a global shape of M by N is distributed such that
+    each process gets a number of distinct blocks of size mb by nb.
+    The blocks on one process generally reside in very different areas
+    of the matrix to improve load balance.
+    
+    The following chart describes how different ranks (there are 4
+    ranks in this example, 0 through 3) divide the matrix into blocks.
+    This is called 2D block cyclic distribution::
+
+        +--+--+--+--+..+--+
+        | 0| 1| 0| 1|..| 1|
+        +--+--+--+--+..+--+
+        | 2| 3| 2| 3|..| 3|
+        +--+--+--+--+..+--+
+        | 0| 1| 0| 1|..| 1|
+        +--+--+--+--+..+--+
+        | 2| 3| 2| 3|..| 3|
+        +--+--+--+--+..+--+
+        ...................
+        ...................
+        +--+--+--+--+..+--+
+        | 2| 3| 2| 3|..| 3|
+        +--+--+--+--+..+--+
+
+    Also refer to:
+    http://acts.nersc.gov/scalapack/hands-on/datadist.html
+
+    Parameters:
+     * blacsgrid: the BLACS grid of processors to distribute matrices.
+     * M: global row count
+     * N: global column count
+     * mb: number of rows per block
+     * nb: number of columns per block
+     * rsrc: rank on which the first row is stored
+     * csrc: rank on which the first column is stored
+
+    Complicated stuff
+    -----------------
+    
+    If there is trouble with matrix shapes, the below caveats are
+    probably the reason.
+
+    Depending on layout, a descriptor may have a local shape of zero
+    by N or something similar.  If the row blocksize is 7, the global
+    row count is 10, and the blacs grid contains 3 row processes: The
+    first process will have 7 rows, the next will have 3, and the last
+    will have 0.  The shapes in this case must still be correctly
+    given to BLACS functions, which can be confusing.
+    
+    A blacs descriptor must also give the correct local leading
+    dimension (lld), which is the local array size along the
+    memory-contiguous direction in the matrix, and thus equal to the
+    local column number, *except* when local shape is zero, but the
+    implementation probably works.
+
+    """
+    def __init__(self, blacsgrid, M, N, mb, nb, rsrc, csrc):
+        assert M > 0
+        assert N > 0
+        assert 1 <= mb <= M
+        assert 1 <= nb <= N
+        assert 0 <= rsrc < blacsgrid.nprow
+        assert 0 <= csrc < blacsgrid.npcol
+        
+        self.blacsgrid = blacsgrid
+        self.M = M # global size 1
+        self.N = N # global size 2
+        self.mb = mb # block cyclic distr dim 1
+        self.nb = nb # and 2.  How many rows or columns are on this processor
+        # more info:
+        # http://www.netlib.org/scalapack/slug/node75.html
+        self.rsrc = rsrc
+        self.csrc = csrc
+        
+        if 1:#blacsgrid.is_active():
+            locN, locM = _gpaw.get_blacs_shape(self.blacsgrid.context,
+                                               self.N, self.M,
+                                               self.nb, self.mb, 
+                                               self.csrc, self.rsrc)
+            self.lld  = max(1, locN) # max 1 is nonsensical, but appears
+                                     # to be required by PBLAS
+        else:
+            locN, locM = 0, 0
+            self.lld = 0
+        
+        MatrixDescriptor.__init__(self, max(0, locM), max(0, locN))
+        
+        self.active = locM > 0 and locN > 0 # inactive descriptor can
+                                            # exist on an active OR
+                                            # inactive blacs grid
+        
+        self.bshape = (self.mb, self.nb) # Shape of one block
+        self.gshape = (M, N) # Global shape of array
+
+
+    def asarray(self):
+        """Return a nine-element array representing this descriptor.
+        
+        In the C/Fortran code, a BLACS descriptor is represented by a
+        special array of arcane nature.  The value of asarray() must 
+        generally be passed to BLACS functions in the C code."""
+        arr = np.array([BLOCK_CYCLIC_2D, self.blacsgrid.context, 
+                        self.N, self.M, self.nb, self.mb, self.csrc, self.rsrc,
+                        self.lld], np.int32)
+        return arr
+
+    def __repr__(self):
+        classname = self.__class__.__name__
+        template = '%s[context=%d, glob %s, block %s, lld %d, loc %s]'
+        string = template % (classname, self.blacsgrid.context,
+                             self.gshape,
+                             self.bshape, self.lld, self.shape)
+        return string
+
+    def diagonalize_ex(self, H_nn, C_nn, eps_n, UL='U', iu=None):
+        """Diagonalize symmetric matrix using Expert Driver algorithm.
+
+        Solves the eigenvalue equation::
+
+          H_nn C_nn = eps_n C_nn
+
+        Diagonalizes H_nn and writes eigenvectors to C_nn.  Both H_nn
+        and C_nn must be compatible with this descriptor.  Values in
+        H_nn will be overwritten.
+
+        Eigenvalues are written to the global array eps_n.
+
+        UL can be either 'U' (default) or 'L', meaning that the
+        matrices are taken to be upper or lower triangular.
+
+        If the integer iu is specified, calculates only eigenvectors
+        corresponding to the lowest iu eigenvalues."""
+        scalapack_diagonalize_ex(self, H_nn, C_nn, eps_n, UL, iu=iu)
+
+    def general_diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M, UL='U', iu=None):
+        """Solve generalized eigenvalue problem.
+        
+        Solves::
+
+          H_mm C_mm = S_mm C_mm eps_M.
+
+        H_mm, C_mm and S_mm are distributed arrays all compatible with
+        this descriptor.  eps_M is a global output array of
+        eigenvalues.  H_mm and S_mm will be overwritten.
+
+        See also documentation for diagonalize_ex."""
+        scalapack_general_diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M,
+                                         UL, iu=iu)
+
+
+class Redistributor:
+    """Class for redistributing BLACS matrices on different contexts."""
+    def __init__(self, supercomm, srcdescriptor, dstdescriptor):
+        """Create redistributor.
+
+        Source and destination descriptors may reside on different
+        BLACS grids, but the descriptors should describe arrays with
+        the same number of elements.  
+
+        The communicators of the BLACS grid of srcdescriptor as well
+        as that of dstdescriptor *must* both be subcommunicators of
+        supercomm."""
+        self.supercomm = supercomm
+        self.srcdescriptor = srcdescriptor
+        self.dstdescriptor = dstdescriptor
+    
+    def redistribute_submatrix(self, src_mn, dst_mn, subM, subN):
+        """Redistribute submatrix into other submatrix.  
+
+        A bit more general than redistribute().  See also redistribute()."""
+        # self.supercomm must be a supercommunicator of the communicators
+        # corresponding to the context of srcmatrix as well as dstmatrix.
+        # We should verify this somehow.
+        dtype = src_mn.dtype
+        assert dtype == dst_mn.dtype
+        
+        isreal = (dtype == float)
+        assert dtype == float or dtype == complex
+
+        self.srcdescriptor.checkassert(src_mn)
+        self.dstdescriptor.checkassert(dst_mn)
+        
+        _gpaw.scalapack_redist(self.srcdescriptor.asarray(), 
+                               self.dstdescriptor.asarray(),
+                               src_mn.T, dst_mn.T,
+                               self.supercomm.get_c_object(),
+                               subN, subM, isreal)
+    
+    def redistribute(self, src_mn, dst_mn):
+        """Redistribute src_mn to dst_mn.
+
+        src_mn must be compatible with the source descriptor of this
+        redistributor, while dst_mn must be compatible with the
+        destination descriptor."""
+        subM, subN = self.srcdescriptor.gshape
+        self.redistribute_submatrix(src_mn, dst_mn, subM, subN)
+
+
+def parallelprint(comm, obj):
+    import sys
+    for a in range(comm.size):
+        if a == comm.rank:
+            print 'rank=%d' % a
+            print obj
+            print
+            sys.stdout.flush()
+        comm.barrier()
+
+
 class SLDenseLinearAlgebra:
-    """ScaLAPACK Dense Linear Algebra."""
+    """ScaLAPACK Dense Linear Algebra.
+
+    This class is instantiated in LCAO.  Not for casual use."""
     def __init__(self, gd, bd, cols2blocks, blocks2cols, timer=nulltimer):
         self.gd = gd
         self.bd = bd
@@ -105,223 +535,6 @@ class SLDenseLinearAlgebra:
         self.gd.comm.broadcast(C_nM, 0)
         self.gd.comm.broadcast(eps_n, 0)
         self.timer.stop('Send coefs to domains')
-
-
-class BlacsGrid:
-    """Class representing a 2D grid of processors sharing a Blacs context."""
-    def __init__(self, comm, nprow, npcol, order='R'):
-        assert nprow > 0
-        assert npcol > 0
-        assert len(order) == 1
-        assert order in 'CcRr'
-
-        if isinstance(comm, SerialCommunicator):
-            raise ValueError('Instance of SerialCommunicator not supported')
-        if comm is None: # if and only if rank is not part of the communicator
-            context = INACTIVE
-        else:
-            if nprow * npcol > comm.size:
-                raise ValueError('Impossible: %dx%d Blacs grid with %d CPUs'
-                                 % (nprow, npcol, comm.size))
-            # This call may not return INACTIVE
-            context = _gpaw.new_blacs_context(comm.get_c_object(),
-                                              npcol, nprow, order)
-        
-        self.context = context
-        self.comm = comm
-        self.nprow = nprow
-        self.npcol = npcol
-        self.ncpus = nprow * npcol
-        self.order = order
-
-    def new_descriptor(self, M, N, mb, nb, rsrc=0, csrc=0):
-        return BlacsDescriptor(self, M, N, mb, nb, rsrc, csrc)
-
-    def is_active(self):
-        """Whether context is active on this rank."""
-        return self.context != INACTIVE
-
-    def __nonzero__(self):
-        return self.is_active()
-
-    def __str__(self):
-        classname = self.__class__.__name__
-        template = '%s[comm:size=%d,rank=%d; context=%d; %dx%d]'
-        string = template % (classname, self.comm.size, self.comm.rank, 
-                             self.context, self.nprow, self.npcol)
-        return string
-    
-    def __del__(self):
-        if self.is_active():
-            _gpaw.blacs_destroy(self.context)
-
-
-class MatrixDescriptor:
-    """Class representing a 2D matrix shape.  Base class for parallel
-    matrix descriptor with BLACS.  This class is by itself serial."""
-    
-    def __init__(self, M, N):
-        self.shape = (M, N)
-    
-    def __nonzero__(self):
-        return self.shape[0] != 0 and self.shape[1] != 0
-
-    def zeros(self, n=(), dtype=float):
-        return self._new_array(np.zeros, n, dtype)
-
-    def empty(self, n=(), dtype=float):
-        return self._new_array(np.empty, n, dtype)
-
-    def _new_array(self, func, n, dtype):
-        if isinstance(n, int):
-            n = n,
-        shape = n + self.shape
-        return func(shape, dtype)
-
-    def check(self, a_mn):
-        return a_mn.shape == self.shape and a_mn.flags.contiguous
-
-    def checkassert(self, a_mn):
-        ok = self.check(a_mn)
-        if not ok:
-            if not a_mn.flags.contiguous:
-                msg = 'Matrix with shape %s is not contiguous' % (a_mn.shape,)
-            else:
-                msg = ('%s-descriptor incompatible with %s-matrix' %
-                       (self.shape, a_mn.shape))
-            raise AssertionError(msg)
-
-
-class BlacsDescriptor(MatrixDescriptor):
-    """Class representing a 2D matrix distributed on a blacs grid.
-
-    The global shape is M by N, being distributed on the specified BlacsGrid
-    such that mb and nb are rows and columns on each processor.
-    
-    The following chart describes how different ranks (there are 4
-    ranks in this example, 0 through 3) divide the matrix into blocks.
-    This is called 2D block cyclic distribution::
-
-        +--+--+--+--+..+--+
-        | 0| 1| 0| 1|..| 1|
-        +--+--+--+--+..+--+
-        | 2| 3| 2| 3|..| 3|
-        +--+--+--+--+..+--+
-        | 0| 1| 0| 1|..| 1|
-        +--+--+--+--+..+--+
-        | 2| 3| 2| 3|..| 3|
-        +--+--+--+--+..+--+
-        ...................
-        ...................
-        +--+--+--+--+..+--+
-        | 2| 3| 2| 3|..| 3|
-        +--+--+--+--+..+--+
-
-    Also refer to:
-    http://acts.nersc.gov/scalapack/hands-on/datadist.html
-        
-    """
-    def __init__(self, blacsgrid, M, N, mb, nb, rsrc, csrc):
-        assert M > 0
-        assert N > 0
-        assert 1 <= mb <= M
-        assert 1 <= nb <= N
-        assert 0 <= rsrc < blacsgrid.nprow
-        assert 0 <= csrc < blacsgrid.npcol
-        
-        self.blacsgrid = blacsgrid
-        self.M = M # global size 1
-        self.N = N # global size 2
-        self.mb = mb # block cyclic distr dim 1
-        self.nb = nb # and 2.  How many rows or columns are on this processor
-        # more info:
-        # http://www.netlib.org/scalapack/slug/node75.html
-        self.rsrc = rsrc
-        self.csrc = csrc
-        
-        if 1:#blacsgrid.is_active():
-            locN, locM = _gpaw.get_blacs_shape(self.blacsgrid.context,
-                                               self.N, self.M,
-                                               self.nb, self.mb, 
-                                               self.csrc, self.rsrc)
-            self.lld  = max(1, locN) # max 1 is nonsensical, but appears
-                                     # to be required by PBLAS
-        else:
-            locN, locM = 0, 0
-            self.lld = 0
-        
-        MatrixDescriptor.__init__(self, max(0, locM), max(0, locN))
-        
-        self.active = locM > 0 and locN > 0 # inactive descriptor can
-                                            # exist on an active OR
-                                            # inactive blacs grid
-        
-        self.bshape = (self.mb, self.nb) # Shape of one block
-        self.gshape = (M, N) # Global shape of array
-
-
-    def asarray(self):
-        arr = np.array([BLOCK_CYCLIC_2D, self.blacsgrid.context, 
-                        self.N, self.M, self.nb, self.mb, self.csrc, self.rsrc,
-                        self.lld], np.int32)
-        return arr
-
-    def __repr__(self):
-        classname = self.__class__.__name__
-        template = '%s[context=%d, glob %s, block %s, lld %d, loc %s]'
-        string = template % (classname, self.blacsgrid.context,
-                             self.gshape,
-                             self.bshape, self.lld, self.shape)
-        return string
-
-    def diagonalize_ex(self, H_nn, C_nn, eps_n, UL='U', iu=None):
-        scalapack_diagonalize_ex(self, H_nn, C_nn, eps_n, UL, iu=iu)
-
-    def general_diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M, UL='U', iu=None):
-        scalapack_general_diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M,
-                                         UL, iu=iu)
-
-
-class Redistributor:
-    """Class for redistributing BLACS matrices on different contexts."""
-    def __init__(self, supercomm, srcdescriptor, dstdescriptor):
-        self.supercomm = supercomm
-        self.srcdescriptor = srcdescriptor
-        self.dstdescriptor = dstdescriptor
-    
-    def redistribute_submatrix(self, src_mn, dst_mn, subM, subN):
-        # self.supercomm must be a supercommunicator of the communicators
-        # corresponding to the context of srcmatrix as well as dstmatrix.
-        # We should verify this somehow.
-        dtype = src_mn.dtype
-        assert dtype == dst_mn.dtype
-        
-        isreal = (dtype == float)
-        assert dtype == float or dtype == complex
-
-        self.srcdescriptor.checkassert(src_mn)
-        self.dstdescriptor.checkassert(dst_mn)
-        
-        _gpaw.scalapack_redist(self.srcdescriptor.asarray(), 
-                               self.dstdescriptor.asarray(),
-                               src_mn.T, dst_mn.T,
-                               self.supercomm.get_c_object(),
-                               subN, subM, isreal)
-    
-    def redistribute(self, src_mn, dst_mn):
-        subM, subN = self.srcdescriptor.gshape
-        self.redistribute_submatrix(src_mn, dst_mn, subM, subN)
-
-
-def parallelprint(comm, obj):
-    import sys
-    for a in range(comm.size):
-        if a == comm.rank:
-            print 'rank=%d' % a
-            print obj
-            print
-            sys.stdout.flush()
-        comm.barrier()
 
 
 class BlacsBandDescriptor:
