@@ -478,11 +478,6 @@ class LCAOWaveFunctions(WaveFunctions):
                 
             S_qMM = np.empty((nq, mynao, nao), self.dtype)
             T_qMM = np.empty((nq, mynao, nao), self.dtype)
-            for kpt in self.kpt_u:
-                q = kpt.q
-                kpt.S_MM = S_qMM[q]
-                kpt.T_MM = T_qMM[q]
-                kpt.C_nM = np.empty((mynbands, nao), self.dtype)
 
         self.allocate_arrays_for_projections(
             self.basis_functions.my_atom_indices)
@@ -512,9 +507,21 @@ class LCAOWaveFunctions(WaveFunctions):
         comm.sum(S_qMM)
         comm.sum(T_qMM)
         self.timer.stop('TCI: Calculate S, T, P')
-        
+
+        S_MM = None # allow garbage collection of old S_qMM after redist
+        if debug:
+            import sys
+            assert sys.getrefcount(S_qMM) == 2
+            assert sys.getrefcount(T_qMM) == 2
         self.S_qMM = self.od.distribute_overlap_matrix(S_qMM)
         self.T_qMM = self.od.distribute_overlap_matrix(T_qMM)
+
+        for kpt in self.kpt_u:
+            q = kpt.q
+            kpt.S_MM = S_qMM[q]
+            kpt.T_MM = T_qMM[q]
+            kpt.C_nM = np.empty((mynbands, nao), self.dtype)
+
 
         if debug and self.band_comm.size == 1:
             from numpy.linalg import eigvalsh
