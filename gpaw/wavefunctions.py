@@ -509,10 +509,6 @@ class LCAOWaveFunctions(WaveFunctions):
         self.timer.stop('TCI: Calculate S, T, P')
 
         S_MM = None # allow garbage collection of old S_qMM after redist
-        if debug:
-            import sys
-            assert sys.getrefcount(S_qMM) == 2
-            assert sys.getrefcount(T_qMM) == 2
         S_qMM = self.od.distribute_overlap_matrix(S_qMM)
         T_qMM = self.od.distribute_overlap_matrix(T_qMM)
 
