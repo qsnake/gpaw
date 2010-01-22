@@ -6,7 +6,7 @@ import glob
 import tempfile
 
 def fail(subject, filename='/dev/null'):
-    assert os.system('mail -s "%s" jensj@fysik.dtu.dk < %s' %
+    assert os.system('mail -s "%s" gpaw-developers@fysik.dtu.dk < %s' %
                      (subject, filename)) == 0
     raise SystemExit
 
