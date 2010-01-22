@@ -513,8 +513,8 @@ class LCAOWaveFunctions(WaveFunctions):
             import sys
             assert sys.getrefcount(S_qMM) == 2
             assert sys.getrefcount(T_qMM) == 2
-        self.S_qMM = self.od.distribute_overlap_matrix(S_qMM)
-        self.T_qMM = self.od.distribute_overlap_matrix(T_qMM)
+        S_qMM = self.od.distribute_overlap_matrix(S_qMM)
+        T_qMM = self.od.distribute_overlap_matrix(T_qMM)
 
         for kpt in self.kpt_u:
             q = kpt.q
@@ -531,6 +531,8 @@ class LCAOWaveFunctions(WaveFunctions):
                     raise RuntimeError('Overlap matrix has negative '
                                        'eigenvalue: %e' % smin)
         self.positions_set = True
+        self.S_qMM = S_qMM
+        self.T_qMM = T_qMM
 
     def initialize(self, density, hamiltonian, spos_ac):
         if density.nt_sG is None:
