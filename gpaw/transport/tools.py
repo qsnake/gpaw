@@ -363,6 +363,51 @@ def get_lcao_density_matrix(calc):
             wfs.calculate_density_matrix(kpt.f_n, kpt.C_nM, d_skmm[kpt.s, kpt.q])            
     return d_skmm
 
+def generate_selfenergy_database(atoms, ntk, filename, direction=0, kt=0.1,
+                                 bias=[-3,3], depth=3):
+    from gpaw.transport.sparse_matrix import Banded_Sparse_HSD, CP_Sparse_HSD, Se_Sparse_Matrix
+    from gpaw.transport.selfenergy import LeadSelfEnergy
+    from gpaw.transport.contour import Contour
+    hl_skmm, sl_kmm = get_hs(atoms)
+    dl_skmm = get_lcao_density_matrix(atoms.calc)
+    fermi = atoms.calc.get_fermi_level()
+    wfs = atoms.calc.wfs
+    hl_spkmm, sl_pkmm, dl_spkmm,  \
+    hl_spkcmm, sl_pkcmm, dl_spkcmm = get_pk_hsd(2, ntk,
+                                                wfs.ibzk_qc,
+                                                hl_skmm, sl_kmm, dl_skmm,
+                                                None, wfs.dtype,
+                                                direction=direction)    
+    my_npk = len(wfs.ibzk_qc) / ntk
+    my_nspins = len(wfs.kpt_u) / ( my_npk * ntk)
+    
+    lead_hsd = Banded_Sparse_HSD(wfs.dtype, my_nspins, my_npk)
+    lead_couple_hsd = CP_Sparse_HSD(wfs.dtype, my_nspins, my_npk)
+    for pk in range(my_npk):
+        lead_hsd.reset(0, pk, sl_pkmm[pk], 'S', init=True)
+        lead_couple_hsd.reset(0, pk, sl_pkcmm[pk], 'S', init=True)
+        for s in range(my_nspins):
+            lead_hsd.reset(s, pk, hl_spkmm[s, pk], 'H', init=True)     
+            lead_hsd.reset(s, pk, dl_spkmm[s, pk], 'D', init=True)
+            lead_couple_hsd.reset(s, pk, hl_spkcmm[s, pk], 'H', init=True)     
+            lead_couple_hsd.reset(s, pk, dl_spkcmm[s, pk], 'D', init=True)          
+    lead_se = LeadSelfEnergy(lead_hsd, lead_couple_hsd)
+    contour = Contour(kt, fermi, bias, depth)    
+    contour.get_dense_contour()
+    
+    index = []
+    se = []
+    fd = file('filename', 'w')
+    for path in contour.paths:
+        for nid in path.nids:
+            flags = path.get_flags(nid, path_flag=True)
+            energy = path.get_energy(flags[1:])
+            index.append([nid, energy])
+            se.append(lead_se(energy))
+    pickle.dump((index, se), fd, 2)
+    fd.close()    
+
+
 class P_info:
     def __init__(self):
         P.x = 0
