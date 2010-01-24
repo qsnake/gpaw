@@ -34,14 +34,17 @@ class Path:
             return int((real_energy - self.bias_window_begin) //
                                               self.bias_step)
 
-    def get_flags(self, num):
+    def get_flags(self, num, path_flag=False):
         flags = []
         if self.type == 'Gaussian':
-            assert num < self.num
+            if path_flag:
+                assert num < self.num * 10
+            else:
+                assert num < self.num                
             digits = self.maxdepth
             
         elif self.type == 'linear':
-            nids_num = int((self.end - self.begin) / self.step) + 1
+            nids_num = int(abs((self.end - self.begin)) / self.step) + 1
             digits = int(np.ceil(np.log10(nids_num)))            
             
         elif self.type == 'poles':
@@ -52,7 +55,10 @@ class Path:
                 digits = int(np.ceil(np.log10(nids_num))) 
             else:
                 digits = 3
-            
+
+        if path_flag:
+            digits += 1
+
         for i in range(digits):
             unit = 10 ** (digits - i)
             digit = (num - (num // unit) * unit) // (unit / 10)
@@ -151,12 +157,12 @@ class Path:
                 lls.append(np.product(pps[:i+1]))
             ss = np.append(self.zone_sample[np.array(flags[:-1])- 1],
                            self.sample[flags[-1] - 1])
-            energy = np.sum(ss * lls)
+            energy = np.sum(ss * lls) * (self.end - self.begin) + self.begin
             
         elif self.type == 'linear':
-            num = int(self.end - self.begin) / self.step 
-            tens = np.arange(len(flags) - 1, -1) ** 10
-            energy =  np.sum(flags * tens) / num
+            num = int(abs(self.end - self.begin)) / self.step 
+            tens = np.arange(len(flags) - 1, -1, -1) ** 10
+            energy =  np.sum(flags * tens) / num * (self.end - self.begin) + self.begin
        
         elif self.type == 'poles':
             if self.full_nodes:
@@ -166,7 +172,7 @@ class Path:
                                         self.bias_window_end, num)                
                 tens = np.arange(len(flags[:-1]) - 1, -1) ** 10
                 line_index = np.sum(flags[:-1] * tens)
-                energy = real_energyies[line_index] + (2 * flags[-1] -
+                energy = real_energies[line_index] + (2 * flags[-1] -
                                                        1) * np.pi * 1.j
             else:
                 lines = [self.begin, self.end]
@@ -192,7 +198,8 @@ class Contour:
     nkt = 1.
     dkt = np.pi
     calcutype = ['eqInt', 'eqInt', 'eqInt', 'resInt', 'neInt', 'locInt']
-    def __init__(self, kt, fermi, bias, maxdepth=7, comm=None, neint='linear', tp=None):
+    def __init__(self, kt, fermi, bias, maxdepth=7, comm=None, neint='linear',
+                  tp=None):
         self.kt = kt
         self.fermis = fermi
         self.bias = bias
