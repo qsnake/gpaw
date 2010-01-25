@@ -397,7 +397,7 @@ def generate_selfenergy_database(atoms, ntk, filename, direction=0, kt=0.1,
     
     index = []
     se = []
-    fd = file('filename', 'w')
+    fd = file(filename, 'w')
     for path in contour.paths:
         for nid in path.nids:
             flags = path.get_flags(nid, path_flag=True)
@@ -406,6 +406,68 @@ def generate_selfenergy_database(atoms, ntk, filename, direction=0, kt=0.1,
             se.append(lead_se(energy))
     pickle.dump((index, se), fd, 2)
     fd.close()    
+
+def test_selfenergy_interpolation(atoms, ntk, filename, begin, end, base, scale, direction=0):
+    from gpaw.transport.sparse_matrix import Banded_Sparse_HSD, CP_Sparse_HSD, Se_Sparse_Matrix
+    from gpaw.transport.selfenergy import LeadSelfEnergy
+    from gpaw.transport.contour import Contour
+    hl_skmm, sl_kmm = get_hs(atoms)
+    dl_skmm = get_lcao_density_matrix(atoms.calc)
+    fermi = atoms.calc.get_fermi_level()
+    wfs = atoms.calc.wfs
+    hl_spkmm, sl_pkmm, dl_spkmm,  \
+    hl_spkcmm, sl_pkcmm, dl_spkcmm = get_pk_hsd(2, ntk,
+                                                wfs.ibzk_qc,
+                                                hl_skmm, sl_kmm, dl_skmm,
+                                                None, wfs.dtype,
+                                                direction=direction)    
+    my_npk = len(wfs.ibzk_qc) / ntk
+    my_nspins = len(wfs.kpt_u) / ( my_npk * ntk)
+    
+    lead_hsd = Banded_Sparse_HSD(wfs.dtype, my_nspins, my_npk)
+    lead_couple_hsd = CP_Sparse_HSD(wfs.dtype, my_nspins, my_npk)
+    for pk in range(my_npk):
+        lead_hsd.reset(0, pk, sl_pkmm[pk], 'S', init=True)
+        lead_couple_hsd.reset(0, pk, sl_pkcmm[pk], 'S', init=True)
+        for s in range(my_nspins):
+            lead_hsd.reset(s, pk, hl_spkmm[s, pk], 'H', init=True)     
+            lead_hsd.reset(s, pk, dl_spkmm[s, pk], 'D', init=True)
+            lead_couple_hsd.reset(s, pk, hl_spkcmm[s, pk], 'H', init=True)     
+            lead_couple_hsd.reset(s, pk, dl_spkcmm[s, pk], 'D', init=True)          
+    lead_se = LeadSelfEnergy(lead_hsd, lead_couple_hsd)
+    begin += fermi
+    end += fermi
+    
+    ee = np.linspace(begin, end, base)
+    cmp_ee = np.linspace(begin, end, base * scale)
+  
+    se = []
+    cmp_se = []
+    from scipy import interpolate
+
+    for e in ee:
+        se.append(lead_se(e).recover())
+    se = np.array(se)
+    ne, ny, nz= se.shape
+    nie = len(cmp_ee)
+    data = np.zeros([nie, ny, nz], se.dtype)
+    for yy in range(ny):
+        for zz in range(nz):
+            ydata = se[:, yy, zz]
+            f = interpolate.interp1d(ee, ydata)
+            data[:, yy, zz] = f(cmp_ee)
+    inter_se_linear = data
+    
+    for e in cmp_ee:
+        cmp_se.append(lead_se(e).recover())
+    
+    fd = file(filename, 'w')
+    pickle.dump((cmp_se, inter_se_linear, ee, cmp_ee), fd, 2)
+    fd.close()
+    
+    for i,e in enumerate(cmp_ee):
+        print e, np.max(abs(cmp_se[i] - inter_se_linear[i])), 'linear', np.max(abs(cmp_se[i]))
+
 
 
 class P_info:
