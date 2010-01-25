@@ -1,6 +1,6 @@
 from ase.units import Bohr, Hartree
 from gpaw import GPAW
-from gpaw.fd_operators import Laplace
+from gpaw.operators import Laplace
 from gpaw.utilities.tools import tri2full
 from gpaw.lcao.projected_wannier import dots
 from gpaw.grid_descriptor import GridDescriptor
@@ -31,8 +31,7 @@ class LocalizedFunctions:
         return len(self.f_iG)
 
     def set_phase_factor(self, k_c):
-        self.phase = np.exp(2.j * pi * np.inner(k_c, self.sdisp_c))
-        #self.phase = np.exp(-2.j * pi * np.inner(k_c, self.sdisp_c))
+        self.phase = np.exp(-2.j * pi * np.inner(k_c, self.sdisp_c))
 
     def apply_t(self):
         """Apply kinetic energy operator and return new object."""
@@ -51,6 +50,7 @@ class LocalizedFunctions:
                                   self.index)
         
     def overlap(self, other):
+        """Calculate the overlap between two Localized functions objects"""
         start_c = np.maximum(self.corner_c, other.corner_c)
         stop_c = np.minimum(self.corner_c + self.size_c,
                             other.corner_c + other.size_c)
@@ -77,7 +77,7 @@ class LocalizedFunctions:
             return None
         
     def restrict(self):
-        """Restricts the box of the objet to the current grid"""
+        """Restricts the box of the object to the current grid"""
         start_c = np.maximum(self.corner_c, np.zeros(3))
         stop_c = np.minimum(self.corner_c + self.size_c, self.gd.N_c)
         if (start_c < stop_c).all():
@@ -158,14 +158,59 @@ class AtomCenteredFunctions(LocalizedFunctions):
                                      index=index)
 
 class STM:
+    """Simulate STM-images using Green's function methods"""
     def __init__(self, tip=None, surface=None, lead1=None, lead2 = None, **kwargs):
-        self.tip = tip
-        self.srf = surface
-        self.lead1 = lead1
-        self.lead2 = lead2
-        self.stm_calc = None
-        self.scans = {}
-        self.potential_shift = 0
+        """Create the STM-calculators
+    
+        Parameters
+        ==========
+        tip_atom_index : index of the atom that defines the tip apex
+        dmin : minimal distance between tip and surface
+        hs1 : {None, (h1, s1) tuple}
+              here  h1 and s1 are the Hamiltonan and overlap
+              matrix for the tip region.
+        hs10: {None, (h10, s10) tuple} 
+              where h10 and s10 are the Hamiltonian and
+              overlap matrix for tip lead.
+        hs2 : {None, (h2, s2) tuple} 
+              here h2 and s2 are the Hamiltonan and overlap
+              matrix for the tip region.
+        hs20: {None (h20, s20) tuple}
+              here h20 and s20 are the Hamiltonian and
+              overlap matrix for tip lead.
+        align_bf : {1, Int} 
+              Use align_bf=m to shift the surface region
+              by a constant potential so that the m'th onsite element in
+              the surface is aligned with the m'th onsite element in the 
+              surface lead. Further the tip lead is shifted so that the
+              -m'th onsite element of the tip is aligned with the -m'th 
+              onsite element of the tip lead.
+        bias : {1, float} 
+               sets the bias value across the tunneling junction
+        de : {0.01, float} 
+             spacing of the energy grid which the transmission function
+             should be calcualted on. 
+        w : {0.0, [0:1], float} 
+             symmetry of the applied bias: 
+             w=0 surface potential is fixed,
+             w=1 tip potential is fixed.
+        k_c :{(0, 0), array} 
+             array of a k-point of the irreducible transverse
+             Brillouin zone.
+        energies: {None, array} 
+             A custom energy grid, on which the transmission
+             function should be calculated. 
+        eta1/eta2: {1e-4, float}
+            Infinitesimal for the calculation of the tip/surface lead
+            self-energies
+        cpu_grid : {None, (N,N) ndarray, dtype=Int}
+            define the cpu grid that is used for the calculation.
+            The first index refers to a parallelisation over tip positions,
+            while the second index refers to a prallelisation over basis functions.
+            If 'None' is used the prallelisation is over tip position only.
+        logfile: {None , str}
+            Write a logfile in the local directory with name given by 'str'
+        """
 
         self.input_parameters = {'tip_atom_index': 0,
                                  'dmin': 6.0,
@@ -174,21 +219,24 @@ class STM:
                                  'hs2': None,
                                  'hs20': None,
                                  'align_bf': 1,
-                                 'cvl1': 0,
-                                 'cvl2': 0,
                                  'bias': 1.0,
                                  'de': 0.01,
                                  'k_c': (0, 0),
                                  'energies': None,
                                  'w': 0.0,
-                                 'eta1': 1e-3,
-                                 'eta2': 1e-3,
+                                 'eta1': 1e-4,
+                                 'eta2': 1e-4,
                                  'cpu_grid': None,
-                                 'molecular_subspace': [],
-                                 'pdos': True,
-                                 'logfile': '-', # '-' for stdin
-                                 'verbose': False}
-        
+                                 'logfile': None}
+ 
+        self.tip = tip
+        self.srf = surface
+        self.lead1 = lead1
+        self.lead2 = lead2
+        self.stm_calc = None
+        self.scans = {}
+        self.potential_shift = 0
+       
         #initialize communicators
         if kwargs.has_key('cpu_grid'):
             self.input_parameters['cpu_grid'] = kwargs['cpu_grid']
@@ -240,19 +288,29 @@ class STM:
             from sys import stdout
             self.log = stdout
         elif 'logfile' in kwargs:
-            self.log = open(log + str(world.rank), 'w') #XXX
+            self.log = open(log + str(world.rank), 'w') 
 
     def initialize(self):
+        """Initialize the STM-calculator:
+           
+                1. Preselect tip and surface basis functions with
+                   overlapping values in the z-direction.
+                2. Initialize the tip region
+                3. Initialize the surface region
+                4. Initialize the transport calculator. This includes
+                   a pre-calculation of the Green's functions.
+         """
+
         if self.initialized and self.transport_uptodate:
             return
         elif not self.transport_uptodate and self.initialized:
             self.initialize_transport()
             return
         
-        #if world.rank == 0: #XXX
-        T = time.localtime()
-        self.log.write('#%d:%02d:%02d' % (T[3], T[4], T[5]) + ' Initializing\n')    
-        self.log.flush()
+        if world.rank == 0:
+            T = time.localtime()
+            self.log.write('#%d:%02d:%02d' % (T[3], T[4], T[5]) + ' Initializing\n')    
+            self.log.flush()
 
         p = self.input_parameters        
         self.dmin = p['dmin'] / Bohr
@@ -276,13 +334,14 @@ class STM:
         
         tip_indices = np.where(tip_zmin_a < srf_zmax_a.max() - self.dmin)[0]  
         srf_indices = np.where(srf_zmax_a > tip_zmin_a.min() + self.dmin)[0]  
+        srf_indices = np.arange(srf_indices.min(), len(srf_zmax_a)).astype(int)
         
         # tip initialization
         self.tip_cell = TipCell(self.tip, self.srf)
         self.tip_cell.initialize(tip_indices, tip_atom_index)
-        self.ni = self.tip_cell.ni       
+        self.ni = self.tip_cell.ni # number tip basis functions    
        
-        # distribution of surface bfs over CPUs in bfs-communicator
+        # distribution of surface basis functions over CPUs in bfs-communicator
         bcomm = self.bfs_comm
         bfs_indices = []
         j = 0
@@ -308,9 +367,6 @@ class STM:
         
         bfs_indices = bfs_indices[start:stop] # surface bfs on this CPU
 
-        self.log.write('bfs on this cpu:' + '%d to %d\n'
-                     % (min(bfs_indices), max(bfs_indices))) #XXX
-
         # surface initialization
         self.srf_cell = SrfCell(self.srf)
         self.srf_cell.initialize(self.tip_cell, srf_indices, bfs_indices, p['k_c'])
@@ -318,8 +374,8 @@ class STM:
          
         self.set_tip_position([0, 0])
         
-        #if world.rank == 0: #XXX
-        self.log.write(' dmin = %.3f\n' % (self.dmin * Bohr) +
+        if world.rank == 0: 
+            self.log.write(' dmin = %.3f\n' % (self.dmin * Bohr) +
                            ' tip atoms: %i to %i,  tip functions: %i\n' 
                            % (tip_indices.min(), tip_indices.max(),
                               len(self.tip_cell.functions))
@@ -327,37 +383,38 @@ class STM:
                             %(srf_indices.min(), srf_indices.max(),
                               len(self.srf_cell.functions))
                              )
-        self.log.flush()            
-
+            self.log.flush()            
+        
         if not self.transport_uptodate:
             self.initialize_transport()            
 
-        
+        # Shift the potential of the tip cell so that the fermi level
+        # of the combined stm 
+        # is in the middle of the original tip and surface fermi level.
         srf_efermi = self.srf.get_fermi_level() / Hartree
         tip_efermi = self.tip.get_fermi_level() / Hartree
 
         self.tip_cell.shift_potential(-self.potential_shift
                                       -(srf_efermi + tip_efermi) / 2)
 
-
         self.initialized = True
 
     def initialize_transport(self, restart = False):
+        """Initialize the transport calculator that is used to 
+           calculate the Green's function matrices."""
+
         p = self.input_parameters        
         h1, s1 = p['hs1']
         h10, s10 = p['hs10']
         h2, s2 = p['hs2']
         h20, s20 = p['hs20']
-        cvl1 = p['cvl1']
-        cvl2 = p['cvl2']
         align_bf = p['align_bf']
         de = p['de']
         bias = p['bias']        
         w = p['w']
         eta1 = p['eta1']
         eta2 = p['eta2']
-        bfs = p['molecular_subspace']
-        
+
         if not self.hs_aligned:
             tip_efermi = self.tip.get_fermi_level() / Hartree
             srf_efermi = self.srf.get_fermi_level() / Hartree
@@ -379,11 +436,14 @@ class STM:
         if not self.transport_uptodate:
             from ase.transport.stm import STM as STMCalc
             
-            #if world.rank == 0: #XXX
-            T = time.localtime()
-            self.log.write('\n  %d:%02d:%02d' % (T[3], T[4], T[5]) + 
-                               ' Precalculating green functions\n')
-            self.log.flush()            
+            if world.rank == 0:
+                T = time.localtime()
+                self.log.write('\n %d:%02d:%02d' % (T[3], T[4], T[5]) + 
+                               ' Precalculating Green\'s functions\n')
+                self.log.flush()            
+
+            # Determine the energy grid on which the transmission function
+            # should be evaluated.
 
             if p['energies'] == None:
                 energies = np.sign(bias) * \
@@ -403,40 +463,38 @@ class STM:
             else:
                 start = l * world.rank + rest
                 stop = l * (world.rank + 1) + rest
- 
+            
             energies = energies[start:stop] # energy grid on this cpu 
-            self.log.write('%d,%s,%d,%d' % (world.rank,\
-                           str((energies.min(), energies.max())),\
-                            len(energies), len(self.energies)) + '\n') #XXX
-            self.log.flush() #XXX
 
+            # set up current calculator
             stm_calc = STMCalc(h2,  s2, 
                                h1,  s1, 
                                h20, s20, 
                                h10, s10, 
-                               eta1, eta2, 
-                               w=w, logfile = self.log)
-
+                               eta1, eta2,
+                               w=w, logfile=self.log)
+            
+            # precalculate Green's functions for tip and surface.
             if not restart:
-                stm_calc.initialize(energies, bias=bias)
+                stm_calc.initialize(energies, 
+                                    bias=bias,)
             
             self.stm_calc = stm_calc
             self.transport_uptodate = True            
-
-            #if world.rank == 0: XXX
-            T = time.localtime()
-            self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
-                               ' Done\n')
-            self.log.flush()
             
+            if world.rank == 0: 
+                T = time.localtime()
+                self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
+                               ' Done\n')
+                self.log.flush()
             self.world.barrier()
-            self.log.write('rank ' + str( world.rank) + ' I passed \n') #XXX
 
     def set_tip_position(self, position_c):   
         """Positions tip atom as close as possible above the surface at 
-           the grid point given by positions_c"""
-        position_c = np.resize(position_c,3)
+           the grid point given by positions_c and sums the tip and surface 
+            potentials"""
 
+        position_c = np.resize(position_c,3)
         h_c = self.srf_cell.gd.h_c        
         tip_cell = self.tip_cell
         tip_atom_index = tip_cell.tip_atom_index
@@ -457,16 +515,14 @@ class STM:
         self.tip_position = cell_corner_c + \
                            tip_pos_av_grpt[tip_atom_index] - extension_c        
         self.dmin = self.tip_position[2] * h_c[2] - srf_zmax
-        self.srf_zmax = srf_zmax #XXX
-        self.tip_zmin = tip_zmin #XXX
         self.tip_cell.set_position(cell_corner_c)        
 
         # sum potentials
         size_c = self.tip_cell.gd.n_c
         current_Vt = self.srf_cell.vt_G.copy()
-        current_Vt[cell_corner_c[0]:cell_corner_c[0] + size_c[0],
-                   cell_corner_c[1]:cell_corner_c[1] + size_c[1],
-                   cell_corner_c[2]:cell_corner_c[2] + size_c[2]]\
+        current_Vt[cell_corner_c[0] + 1:cell_corner_c[0] + 1 + size_c[0],
+                   cell_corner_c[1] + 1:cell_corner_c[1] + 1 + size_c[1],
+                   cell_corner_c[2] + 1:cell_corner_c[2] + 1 + size_c[2]]\
                 += self.tip_cell.vt_G # +1 since grid starts at (1,1,1), pbc = 0
         self.current_v = current_Vt 
 
@@ -492,7 +548,6 @@ class STM:
                 i1 = t.index
                 i2 = i1 + len(t)
                 V = (s | vt_G | t)
-                #V=None #XXX
                 if V is None:
                     V = 0
                 kin = (s | t_kin)
@@ -504,6 +559,7 @@ class STM:
         return V_ij * Hartree 
     
     def get_transmission(self, position_c):
+        """Calculates the transmission function for a given tip postion_c"""
         energies = self.energies # global energy grid
         l = len(energies) / world.size # minimum number of enpts per cpu
         rest = len(energies) % world.size # first #rest cpus get +1 enpt
@@ -527,7 +583,7 @@ class STM:
         if bias == None:
             bias = self.stm_calc.bias
         T_e = self.get_transmission(position_c)
-        bias = self.stm_calc.bias #XXX
+        bias = self.stm_calc.bias 
         w = self.stm_calc.w
         bias_window = -np.array([bias * w, bias * (w - 1)])
         bias_window.sort()
@@ -541,6 +597,7 @@ class STM:
         return I * 77466.1509   #units: nA
 
     def get_s(self, position_c):
+        """Returns the overlap matrix for a given tip postion position_c"""
         dtype = 'float'        
         if np.any(self.input_parameters['k_c']):
             dtype = 'complex'
@@ -557,7 +614,6 @@ class STM:
                 overlap = (s | t) 
                 if overlap is not None:
                     S_ij[j1:j2, i1:i2] += overlap
-                    #print t.corner_c, s.corner_c, s.index, s.sdisp_c, overlap
   
         return S_ij
 
@@ -565,14 +621,42 @@ class STM:
         self.scans = {}
 
     def scan(self):
+        """Performs a scan at constant height.
+           
+           Parallel run:
+           The calculation of the Green's functions is done in
+           parallel by all processors. Hence the energy grid is, at this point,
+           distributed over all processors.
+
+           Further it is possible to parallize over
+                1. tip-positions (domain_comm)
+                2. basis functions (bfs_comm)        
+
+           Assume a processor grid of NxM CPU's. The first axis corresponds
+           to a parallelization over tip positions an the second axis corresponds
+           to a parallelization over basis functions:
+
+           1. The tip positions are distributed among the N rows
+              of the cpu grid.
+           2. For each tip position the basis functions are distributed over the M
+              colums of the processor grid.
+
+           Primarily, the overlap Hamiltonian at each tip position is calculated.
+           Secondly the transmission function is evaluated for each tip-position.
+           Since the energy grid is distributed over all processors, the total transmission
+           has to be calculated in succesive steps by sending the Green's function matrices
+           along the N-axis of the processor grid. 
+         """
+
         dtype = 'float'        
         if np.any(self.input_parameters['k_c']):
             dtype = 'complex'
-        #if world.rank == 0: #XXX
-        T = time.localtime()
-        self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
-                     + 'Fullscan\n')
-        self.log.flush()
+
+        if world.rank == 0:
+            T = time.localtime()
+            self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
+                         + 'Fullscan\n')
+            self.log.flush()
         
         #distribute grid points over cpu's
         dcomm = self.domain_comm
@@ -605,31 +689,31 @@ class STM:
 
         bias = self.stm_calc.bias
 
-        #if world.rank == 0: #XXX
-        T = time.localtime()
-        self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
-                           + 'Done VS, starting T\n') # XXX
-        self.log.flush() #XXX
+        if world.rank == 0:
+            T = time.localtime()
+            self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
+                         + 'Done VS, starting T\n') 
+            self.log.flush() 
         
         nepts = len(self.stm_calc.energies) # number of e-points on this cpu
         T_pe = np.zeros((len(V_g), len(self.energies))) # Transmission function
-
+        self.log.write(str(T_pe.shape))
         for j, V in enumerate(V_g):
             T_pe[j, estart:estart + nepts] = self.stm_calc.get_transmission(V)
-
-        #if world.rank == 0: #XXX
-        T = time.localtime() #XXX
-        self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
-                           + 'T done\n') #XXX
-        self.log.flush() #XXX 
+            self.log.flush()
+            
+        if world.rank == 0:
+            T = time.localtime()
+            self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
+                           + 'T done\n') 
+            self.log.flush() 
         world.barrier()
     
-        #send green functions
-        self.stm_calc.energies_req = self.stm_calc.energies.copy()#XXX
-        for i in range(dcomm.size - 1): # parallel run over domains
+        #send Green's functions if a parallel run
+        self.stm_calc.energies_req = self.stm_calc.energies.copy()
+        for i in range(dcomm.size - 1): # parallel run over tip positions
             # send Green functions along the domain_comm axis
-            # 
-            # tip and surface green functions have to be send separately since
+            # tip and surface Green's functions have to be send separately, since
             # in general they do not have the same shapes
             rank_send = (dcomm.rank + 1) % dcomm.size
             rank_receive = (dcomm.rank - 1) % dcomm.size
@@ -646,7 +730,7 @@ class STM:
             estart, nepts = data[:2]
             shape = data[1:]
             
-            # sent Green function of the tip
+            # send Green function of the tip
             gft1_receive = np.empty(tuple(shape), dtype = complex)
             request = dcomm.send(gft1, rank_send, block=False)
             dcomm.receive(gft1_receive, rank_receive)
@@ -670,19 +754,21 @@ class STM:
             self.stm_calc.gft1_emm = gft1_receive
             self.stm_calc.gft2_emm = gft2_receive
             self.stm_calc.energies = self.energies[estart:estart + nepts] 
-
-            T = time.localtime() # XXX
-            self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5]) #XXX
-                          + 'Received another gft, start T\n') #XXX
-            self.log.flush() #XXX
+            
+            T = time.localtime()
+            if world.rank == 0:
+                self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
+                              + 'Received another gft, start T\n') 
+                self.log.flush() 
 
             for j, V in enumerate(V_g):
                 T_pe[j, estart:estart + nepts] = self.stm_calc.get_transmission(V)
         
-            T = time.localtime() #XXX
-            self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5]) #XXX
-                               + 'Done\n') #XXX
-            self.log.flush() #XXX
+            T = time.localtime()
+            if world.rank == 0:
+                self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5])
+                               + 'Done\n') 
+                self.log.flush() 
         
         self.bfs_comm.sum(T_pe)
 
@@ -700,16 +786,17 @@ class STM:
             start = l * bcomm.rank + rest
             stop = l * (bcomm.rank + 1) + rest + 1
 
-        T = time.localtime() # XXX
-        self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5]) #XXX
-                       + 'start Current\n') #XXX
-        self.log.flush() #XXX
+        T = time.localtime()
+        if world.rank == 0:
+            self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5]) 
+                           + 'start Current\n') 
+            self.log.flush() 
 
         energies = energies[start:stop] # energy grid on this CPU 
         T_pe = T_pe[:, start:stop]
         ngpts = len(T_pe)
 
-        bias = self.stm_calc.bias #XXX
+        bias = self.stm_calc.bias 
 
         w = self.stm_calc.w
         bias_window = -np.array([bias * w, bias * (w - 1)])
@@ -724,10 +811,12 @@ class STM:
         bcomm.sum(I_g)
         I_g *= 77466.1509 # units are nA
 
-        T = time.localtime() # XXX
-        self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5]) #XXX
-                       + 'stop current\n') #XXX
-        self.log.flush() #XXX
+        T = time.localtime() 
+            
+        if world.rank == 0:
+            self.log.write(' %d:%02d:%02d ' % (T[3], T[4], T[5]) 
+                           + 'stop current\n') 
+            self.log.flush() 
 
         # next gather the domains
         scan = np.zeros(N_c)
@@ -741,6 +830,7 @@ class STM:
         data = (bias, sgd.N_c, sgd.h_c, sgd.cell_cv, sgd.cell_c)
         dmin = self.get_dmin()
         fullscan = (data, scan)
+
         if world.rank == 0:
             fd = open('scan_' + str(np.round(self.get_dmin(), 2)) + '_bias_'\
                                         + str(bias) + '_.pckl', 'wb')
@@ -753,12 +843,15 @@ class STM:
         self.log.write(' %d:%02d:%02d' % (T[3], T[4], T[5]) + 
                        'Fullscan done\n')
 
-    def scan3d(self, zmin, zmax):
+    def scan3d(self, zmin, zmax, filename = 'scan3d.pckl'):
+        """Map the current between the minumum tip height zmin and the
+           maximum tip height zmax. The result is dumped to a file in the local
+           direcotry"""
         sgd = self.srf.wfs.gd
-        bias = self.stm_calc.bias
+        bias = self.input_parameters['bias']
         data = (bias, sgd.N_c, sgd.h_c, sgd.cell_cv, sgd.cell_c)
         self.scans['scan3d'] = (data, {})
-        hz = self.srf_cell.gd.h_c[2] * Bohr
+        hz = self.srf.wfs.gd.h_c[2] * Bohr
         dmins = -np.arange(zmin, zmax + hz, hz)
         dmins.sort()
         dmins = -dmins        
@@ -772,12 +865,15 @@ class STM:
             world.barrier()
             
         if world.rank == 0:
-            fd = open('scan3d.pckl', 'wb')
+            fd = open(filename, 'wb')
             pickle.dump(self.scans['scan3d'], fd, 2)   
             fd.close()
         world.barrier()
 
     def get_constant_current_image(self, I):
+        """Calculate the constant current image by interpolation between
+           constant height scans.          
+         """
         assert self.scans.has_key('scan3d')
         data, scans = self.scans['scan3d']
         hz = data[2][2] * Bohr
@@ -881,83 +977,11 @@ class STM:
     def get_dmin(self):
         return self.dmin * Bohr
 
-    def write(self, filename):
-        energies = self.energies # global energy grid
-        l = len(energies) / world.size 
-        rest = len(energies) % world.size 
-
-        if world.rank < rest:
-            start = (l + 1) * world.rank
-            stop = (l + 1) * (world.rank + 1)
-        else:
-            start = l * world.rank + rest
-            stop = l * (world.rank + 1) + rest
-     
-        stmc = self.stm_calc
-        shape1 = stmc.gft1_emm.shape[-2:]
-        shape2 = stmc.gft2_emm.shape[-2:]
-
-        gft1_emm = np.zeros((len(energies), ) + shape1, dtype=complex)
-        gft1_emm[start:stop] = stmc.gft1_emm
-
-        gft2_emm = np.zeros((len(energies), ) + shape2, dtype=complex)
-        gft2_emm[start:stop] = stmc.gft2_emm
-        world.sum(gft1_emm)
-        world.sum(gft2_emm)
-
-        print (stmc.gft2_emm.shape, gft2_emm[start:stop].shape)
-        if world.rank == 0:
-            fd = open(filename, 'wb')
-            pickle.dump({'p': self.input_parameters,
-                         'epot_shift': self.potential_shift,
-                         'energies': energies,
-                         'gft1_emm': gft1_emm,
-                         'gft2_emm': gft2_emm,
-                          }, fd, 2)
-            fd.close()
-        world.barrier()
-
-    def restart(self, filename):
-        restart = pickle.load(open(filename))
-        p = restart['p']
-        self.set(**p)
-        self.potential_shift = restart['epot_shift']
-        self.hs_aligned = True
-        self.initialize_transport(restart = True) 
-        energies = restart['energies'] 
-        self.energies = energies.copy()
-
-        l = len(energies) / world.size 
-        rest = len(energies) % world.size 
-
-        if world.rank < rest:
-            start = (l + 1) * world.rank
-            stop = (l + 1) * (world.rank + 1)
-        else:
-            start = l * world.rank + rest
-            stop = l * (world.rank + 1) + rest
-
-        energies = energies[start:stop]       
-        gft1_emm = restart['gft1_emm'][start:stop]
-        gft2_emm = restart['gft2_emm'][start:stop]
-
-        self.stm_calc.energies = energies
-        self.stm_calc.gft1_emm = gft1_emm    
-        self.stm_calc.gft2_emm = gft2_emm    
-        self.stm_calc.bias = p['bias']
-        class Dummy:
-            def __init__(self, bias):
-                self.bias = bias
-        self.stm_calc.selfenergy1 = Dummy(p['bias'] * p['w'])    
-        self.stm_calc.selfenergy2 = Dummy(p['bias'] * (1 - p['w']))    
-        self.log.flush()
-        self.initialize()
-
     def read_scans_from_file(self, filename):
         scan3d = pickle.load(open(filename))
         self.scans['scan3d'] = scan3d
 
-    def plot(self, repeat=(1, 1), vmin=None, vmax = None, show = True):
+    def plot(self, repeat=(1, 1), vmin=None, vmax = None, show = True, label=None):
         import matplotlib
         import pylab
         from pylab import ogrid, imshow, cm, colorbar
@@ -1038,32 +1062,42 @@ class STM:
             self.scans['interpolated_plot'] = plot
             if vmin == None:
                 vmin = scan0_iG.min()
-            norm = matplotlib.colors.normalize(vmin=vmin, vmax=scan0_iG.max())
+            if vmax == None:
+                vmax=scan0_iG.max()
+
+            norm = matplotlib.colors.normalize(vmin=vmin, vmax=vmax)
             self.pylab = pylab
             f0 = pylab.figure()
-            self.figure1 = f0
+            self.fig0 = f0
             p0 = f0.add_subplot(111)
             x,y = ogrid[0:plot.shape[0]:1, 0:plot.shape[1]:1]
             extent=[0, (plot.shape[1] - 1) * h[1] * Bohr,
                     0, (plot.shape[0] - 1) * h[0] * Bohr]        
             
-            #p0.set_ylabel('\xc5')
-            #p0.set_xlabel('\xc5')
+            p0.set_ylabel('\xc5')
+            p0.set_xlabel('\xc5')
             imshow(plot,
                    norm=norm,
                    interpolation='bicubic',
                    origin='lower',
                    cmap=cm.hot,
                    extent=extent)
+            fontsize=100
             cb = colorbar()            
-            #cb.set_label('I[nA]')
+            ax = cb.ax
+            if label is not None:
+              cb.set_label(label)
                        
         if self.scans.has_key('linescan'):
             startstop, line, linescan_n = self.scans['linescan']
             start = startstop[0]
             stop = startstop[1]
             f1 = pylab.figure()
+            self.fig1 = f1
             p1 = f1.add_subplot(111)
+            self.p1 = p1
+            if label is not None:
+              p1.set_ylabel(label)
             p1.plot(line, linescan_n)
             eMo = (cell_cv.T / cell_c)[:2,:2]
             start = np.dot(eMo, start * h_c[:2]) * Bohr
@@ -1136,7 +1170,8 @@ class TipCell:
         # If tip and surface cells differ in the xy-plane, 
         # determine the 2d-cell with the smallest area, having lattice vectors 
         # along those vectors describing the 2d-cell belonging to the surface. 
-
+        # This part is messy and can be disregarded if tip and surface a calculated
+        # in equal unit cells.
         srf_basis = srf_cell_cv.T / sgd.cell_c
         tip_basis = tip_cell_cv.T / tgd.cell_c
 
@@ -1269,7 +1304,7 @@ class TipCell:
         vt_G0 = vt_sG0[0]
         vt_G0 = vt_G0[:, :, self.cell_zmin_grpt:self.cell_zmax_grpt]
         tgd = self.tip.wfs.gd
-        newgd = self.wfs.gd
+        newgd = self.gd
         shape0 = vt_G0.shape
         tip_basis = tgd.cell_cv.T / tgd.cell_c
         new_basis = newgd.cell_cv.T / newgd.cell_c
@@ -1309,7 +1344,7 @@ class TipCell:
                         x0 = gpt_r[0] - C000[0]
                         y0 = gpt_r[1] - C000[1]
                         C = np.zeros((4,2))
-                        C1 = np.array([[vt_G0[tuple(C000)], vt_G0[tuple(C001 % shape0)]],
+                        C1 = np.array([[vt_G0[tuple(C000%shape0)], vt_G0[tuple(C001 % shape0)]],
                                       [ vt_G0[tuple(C010 % shape0)], vt_G0[tuple(C011 % shape0)]]])
                         C2 = np.array([[vt_G0[tuple(C100 % shape0)], vt_G0[tuple(C101 % shape0)]],
                                       [ vt_G0[tuple(C110 % shape0)], vt_G0[tuple(C111 % shape0)]]])
@@ -1331,7 +1366,14 @@ class SrfCell:
 
     def initialize(self, tip_cell, srf_indices, bfs_indices, k_c):
         self.srf_indices = srf_indices
+        
         # determine the extended unitcell
+        # The code is really messy. In short, this part determines teh number
+        # of times the
+        # original unit cell has to be repeated so that the tip cell
+        # fits in the simulation cell for all tip positions. Needs to be
+        # re-written badly.
+
         srf_vt_sG = self.srf.hamiltonian.vt_sG.copy()
         srf_vt_sG = self.srf.wfs.gd.collect(srf_vt_sG, broadcast = True)
         srf_vt_G = srf_vt_sG[0]        
@@ -1358,11 +1400,15 @@ class SrfCell:
         srf_shape  = sgd.N_c[:2]
         extension1 = ext1_c / srf_shape.astype(float)
         extension2 = ext2_c / srf_shape.astype(float)
-        newsize_c = ext1_c + ext2_c + sgd.N_c[:2]
+        newsize_c = ext1_c + ext2_c + sgd.N_c[:2] # Size of the extended grid 
+                                                  # in the transverse directions.
         sizez = srf_vt_G.shape[2]
-        newsizez = sizez + 10.0 / Bohr / sgd.h_c[2]
+        newsizez = sizez + 10.0 / Bohr / sgd.h_c[2] # New size of the extended grid
+                                                    # in the z direction.
+        # The extended potential
         vt_G = np.zeros(tuple(newsize_c) + (newsizez,))
  
+        # Add the potential to the grid
         intexa = ext1_c / srf_shape[:2]
         rest1 = ext1_c % srf_shape[:2]
         intexb = ext2_c / srf_shape[:2]
@@ -1379,7 +1425,7 @@ class SrfCell:
             rest2[1] += 1
         if rest2[0] == 0:
             rest2[0] += 1
-
+        
         vt_G[:rest1[0], rest1[1]: -rest2[1]]\
              = vt_G[-rest1[0] - rest2[0]:-rest2[0], rest1[1]:-rest2[1]]
         vt_G[-rest2[0]:, rest1[1]:-rest2[1]]\
@@ -1387,6 +1433,7 @@ class SrfCell:
         vt_G[:, :rest1[1]] = vt_G[:, -rest2[1] - rest1[1]:-rest2[1]]
         vt_G[:, -rest2[1]:] = vt_G[:, rest1[1]:rest1[1]+rest2[1]]
         
+        # Grid descriptor of the extended unit cell
         self.vt_G = vt_G
         newsize_c = np.resize(newsize_c, 3)
         newsize_c[2] = sgd.N_c[2]
@@ -1418,10 +1465,10 @@ class SrfCell:
 
         self.ext1 = ext1_c
 
-        # Add an appropriate number of periodic images.
-        # Translation vectors:
-        
-
+        # Add an appropriate number of periodic images. The function values are 
+        # only saved in the memory, f_iGs, for those functions belonging to the original
+        # unit cell. In order to be included a periodic image has to have a finite overlap
+        # with the extended surface cell.
         origo = np.array([0, 0])
         list = []
         f_iGs = {}
@@ -1431,13 +1478,14 @@ class SrfCell:
             list.append(f)
             for n in range(-100, 100, 1):
                 for m in range(-100, 100, 1):
-                    R = np.array((n, m))
+                    R = np.array((n, m)) # Translation vector of the periodic image
                     newcorner_c = f.corner_c[:2] +  R * sgd.N_c[:2]
                     start_c = np.maximum(newcorner_c, origo)
                     stop_c = np.minimum(newcorner_c + f.size_c[:2],
                                         newgd.n_c[:2])
-                            
-                    if (start_c < stop_c).all():
+                    
+                    # Check if the periodic image has an overlap with the extended surface cell.        
+                    if (start_c < stop_c).all(): 
                         newcorner_c = np.resize(newcorner_c, 3)
                         newcorner_c[2] = f.corner_c[2]
                         newf = LocalizedFunctions(f.gd, f_iGs[f.index],
@@ -1461,7 +1509,14 @@ class SrfCell:
 
 def dump_hs(calc, filename, region, cvl=0, direction= 'z', return_hs=False):
     """Pickle LCAO - Hamiltonian and overlap matrix for a tip or surface
-    calculation.
+       calculation.
+       region : {['tip', 'surface', 'None'] str}
+                has to be set 
+       cvl : {0, Int}
+             Number of basis functions in the convergence layer, that 
+             has to be 'cut' away in order to assure a smooth matching
+             of the potential at the lead-surface/tip interface.
+
     """    
     assert region in ['tip', 'surface', 'None']
     if calc.wfs.S_qMM is None:
@@ -1632,91 +1687,4 @@ def smallestbox(cell1, cell2, theta, plot=False):
         lat2 = pa-origo
     l1-=origo
     area = np.cross(lat1,lat2)
-
-    '''
-    if plot:
-        import pylab
-        f0 = pylab.figure()
-        p0 = f0.add_subplot(111)
-        p0.set_title(str(theta))
-        ltest = [np.array([0,0]),lat1,lat2+lat1,lat2,np.array([0,0])]
-        for i in range(4):
-            start = l1[i]
-            stop = l1[i+1]
-            p0.plot([start[0],stop[0]],[start[1],stop[1]],'-g')
-        for i in range(4):
-            start = lsrf[i]
-            stop = lsrf[i+1]
-            p0.plot([start[0],stop[0]],[start[1],stop[1]],'-b')
-        for i in range(4):
-            start = lct[i]
-            stop = lct[i+1]
-            p0.plot([start[0],stop[0]],[start[1],stop[1]],'--y')
-        for i in range(4):
-            start = ltest[i]
-            stop = ltest[i+1]
-            p0.plot([start[0],stop[0]],[start[1],stop[1]],'-r')
-        p0.set_xlim([-1,max(lsrf[2][0],(end-origo)[0])+1])
-        p0.set_ylim([-1,max(lsrf[2][1], (end-origo)[1])+1])
-        pylab.show()
-    cell = np.zeros((3,3))
-    cell[2,2] = 1
-    cell[0,:2] = lat1
-    cell[1,:2] = lat2
-    origo = np.zeros(3,)
-    origo[:2] = l1[0]
-    return cell/Bohr, origo/Bohr
-    '''
-
-class Spline:
-    def __init__(self,x,f, bc= None):
-        self.x = x
-        self.f = f
-
-        n = len(x) - 1 # number of knot intervals
-        h = np.diff(x) # n-vector with knot spacings
-        v = np.diff(f)/h # n-vector with divided differences
-
-        A = np.zeros((n+1,n+1))
-        r = np.zeros((n+1,1))
-        for i in range(n-1):
-            A[i+1, i:i+3] = [h[i+1], 2*(h[i]+h[i+1]), h[i]]
-            r[i+1] = 3*(h[i+1]*v[i]+h[i]*v[i+1])
-
-        if bc == None: # Natural Spline
-            A[0,0:2] = [2,1]
-            r[0] = 3*v[0]
-            A[n,n-1:n+1] = [1,2]
-            r[n] = 3*v[n-1]
-        else:          # Correct boundary conditions
-            A[0,0] = 1
-            r[0] = bc[0]
-            A[n,n] = 1
-            r[n] = bc[1]
-
-        ds = np.linalg.solve(A,r)
-
-        # Compute coefficients
-        p = np.zeros((n,4))
-        for i in range(n):
-            p[i,0] = f[i]
-            p[i,1] = h[i]*ds[i]
-            p[i,2] = 3*(f[i+1] - f[i]) - h[i]*(2*ds[i] + ds[i+1])
-            p[i,3] = 2*(f[i] - f[i+1]) + h[i]*(ds[i] + ds[i+1])
-
-        self.p = p
-
-    def __call__(self,t):
-        x = self.x
-        p = self.p
-        assert not any([t < x.min(),t > x.max()])
-        index=np.where(x<=t)[0].max()
-        if index == len(x)-1:
-            index -=1
-
-        u = (t-x[index])/(x[index+1]-x[index])
-
-        s = p[index,0] + u*(p[index,1]+u*(p[index,2]+u*p[index,3]))
-        return s
-
 
