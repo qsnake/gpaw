@@ -63,10 +63,10 @@ UL = 'L'
 # Generate the coefficients for the Fourier-Bessel transform
 C = []
 a = 0.0
-n = 5
+LMAX = 5
 if extra_parameters.get('fprojectors'):
-    n = 7
-for n in range(n):
+    LMAX = 7
+for n in range(LMAX):
     c = np.zeros(n + 1, complex)
     for s in range(n + 1):
         a = (1.0j)**s * fac[n + s] / (fac[s] * 2**s * fac[n - s])
@@ -98,7 +98,7 @@ def fbt(l, f, r, k):
     return g
 
 
-def spherical_harmonics(R_c, lmax=5):
+def spherical_harmonics(R_c, lmax=LMAX):
     R_c = np.asarray(R_c)
     rlY_lm = []
     for l in range(lmax):
@@ -108,7 +108,7 @@ def spherical_harmonics(R_c, lmax=5):
     return rlY_lm
 
 
-def spherical_harmonics_and_derivatives(R_c, lmax=5):
+def spherical_harmonics_and_derivatives(R_c, lmax=LMAX):
     R_c = np.asarray(R_c)
     drlYdR_lmc = []
     rlY_lm = spherical_harmonics(R_c, lmax)
