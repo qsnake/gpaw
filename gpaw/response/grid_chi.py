@@ -18,6 +18,7 @@ from gpaw.setup_data import SetupData
 from gpaw.setup import Setup
 from gpaw.fd_operators import Gradient
 
+from gpaw.mpi import _Communicator, world, rank, size
 
 class CHI:
     def __init__(self):
@@ -26,23 +27,30 @@ class CHI:
 
     def periodic(self, calc, q, wcut, wmin, wmax, dw, eta):
 
-        bzkpt_kG = calc.get_bz_k_points()
-        self.nkpt = bzkpt_kG.shape[0]
+        self.rank = rank
+        self.size = size
+        comm = _Communicator(world)
 
-        self.nband = calc.wfs.nbands
+        bzkpt_kG = calc.get_ibz_k_points()
+        self.nkpt = bzkpt_kG.shape[0]
+        kweight = calc.get_k_point_weights()
+
+        try:
+            self.nband
+        except:
+            self.nband = calc.wfs.nbands
         self.nvalence = calc.wfs.nvalence
         assert calc.wfs.nspins == 1
 
         self.acell = calc.atoms.cell / Bohr
         self.get_primitive_cell()
-        
+
         # obtain eigenvalues, occupations
         e_kn = np.array([calc.get_eigenvalues(kpt=k) for k in range(self.nkpt)])
         f_kn = np.array([calc.get_occupation_numbers(kpt=k) for k in range(self.nkpt)])
 
         self.nG = calc.get_number_of_grid_points()
         self.nG0 = self.nG[0] * self.nG[1] * self.nG[2]
-        print 'grid size', self.nG
 
         # obtain pseudo wfs
         if calc.wfs.kpt_u[0].psit_nG is not None:
@@ -51,12 +59,12 @@ class CHI:
             for k in range(self.nkpt):
                 for n in range(self.nband):
                     psit_knG[k, n]= calc.wfs.gd.zero_pad(calc.wfs.get_wave_function_array(n,k,0))
-            np.savez('psit_knG', psit = psit_knG)
+#            if rank == 0:
+#                np.savez('psit_knG', psit = psit_knG)
         else:
             foo= np.load('psit_knG.npz')
             psit_knG = foo['psit']
             
-    
         # Check the orthonormalization of wfs
         gd = calc.wfs.gd
         setups = calc.wfs.setups
@@ -92,7 +100,7 @@ class CHI:
                 kq[k] = k
         else:
             kq = self.find_kq(bzkpt_kG, q)
-        print 'q:', self.q
+
 
         self.h_c = h_c = calc.wfs.gd.h_c
         Li = np.array([3, 1, 2])
@@ -101,7 +109,7 @@ class CHI:
 
         # construct q.r
         self.qq = qq = np.array([np.inner(self.q, self.bcell[:,i]) for i in range(3)])
-        print qq
+
         for i in range(self.nG[0]):
             for j in range(self.nG[1]):
                 for k in range(self.nG[2]):
@@ -117,6 +125,14 @@ class CHI:
         self.Nw = int((wmax - wmin) / self.dw) + 1
         eta = eta / Hartree
 
+        self.Nwlocal = int(self.Nw / size)
+        self.wstart = rank * self.Nwlocal
+        self.wend = (rank + 1) * self.Nwlocal
+        if rank == size - 1:
+            self.wend = self.Nw
+            
+        self.print_stuff()
+        
         setups = calc.wfs.setups
         chi0_w = np.zeros(self.Nw, dtype = complex)
         rho_nn = np.zeros((self.nband, self.nband), dtype=complex)
@@ -124,7 +140,7 @@ class CHI:
         # calculate <phi_i | e**(-iq.r) | phi_j>
         phi_ii = {}
         R_a = calc.atoms.positions / Bohr
-
+        
         for a, id in enumerate(setups.id_a):
                 Z, type, basis = id
                 if self.OpticalLimit:
@@ -166,7 +182,8 @@ class CHI:
             d_c = [Gradient(gd, c, dtype=psit_knG.dtype).apply for c in range(3)]
             dpsit_G = gd.empty(dtype=psit_knG.dtype)
             tmp = np.zeros((3), dtype=psit_knG.dtype)
-            
+
+        epsilonM = 0.
         for k in range(self.nkpt):
             P1_ani = calc.wfs.kpt_u[k].P_ani
             P2_ani = calc.wfs.kpt_u[kq[k]].P_ani
@@ -175,7 +192,7 @@ class CHI:
                     # G = G' = 0 <psi_nk | e**(-iqr) | psi_n'k+q>
                     
                     if self.OpticalLimit:
-                        if e_kn[k, m] - e_kn[k, n] != 0:
+                        if np.abs(e_kn[k, m] - e_kn[k, n]) > 1e-6:
                             for ix in range(3):
                                 d_c[ix](psit_knG[k, m], dpsit_G, calc.wfs.kpt_u[k].phase_cd)
                                 tmp[ix] = gd.integrate( psit_knG[k, n].conj() * dpsit_G)
@@ -192,6 +209,7 @@ class CHI:
                                 Z, type, basis = id
                                 P_ii = np.outer(P1_ani[a][n].conj(), P2_ani[a][m])
                                 rho_nn[n, m] += (P_ii * phi_ii[Z]).sum()
+
                     else:
                         rho_nn[n, m] = gd.integrate( psit_knG[k, n].conj()
                                              * psit_knG[kq[k], m]
@@ -204,16 +222,30 @@ class CHI:
 
             # construct (f_nk - f_n'k+q) / (w + e_nk - e_n'k+q + ieta )
             C_nn = np.zeros((self.nband, self.nband), dtype=complex)
-
+            tmpC = np.zeros_like(C_nn)
             for iw in range(self.Nw):
                 w = iw * self.dw
                 for n in range(self.nband):
                     for m in range(self.nband):
-                        C_nn[n, m] = (f_kn[k, n] - f_kn[kq[k], m]) / (
+                        if  np.abs(f_kn[k, n] - f_kn[kq[k], m]) > 1e-6:
+                            C_nn[n, m] = (f_kn[k, n] - f_kn[kq[k], m]) / (
                              w + e_kn[k, n] - e_kn[kq[k], m] + 1j * eta)
+
                 # get chi0(G=0,G'=0,w)                
                 chi0_w[iw] += (rho_nn * C_nn * rho_nn.conj()).sum()
-                
+
+            chi0_w *= kweight[k] * calc.get_ibz_k_points().shape[0]
+            # Obtain Macroscopic Dielectric Constant
+            for n in range(self.nband):
+                for m in range(self.nband):
+                    C_nn[n, m] = 0.
+                    if np.abs(f_kn[k, n] - f_kn[kq[k], m]) > 1e-6:
+                        C_nn[n, m] = (f_kn[k, n] - f_kn[k, m]) / (
+                                  e_kn[k, n] - e_kn[k, m] )
+            epsilonM += (rho_nn * C_nn * rho_nn.conj()).sum()
+
+            
+
         epsilonRPA = np.zeros(self.Nw)
         for iw in range(self.Nw):
             epsilonRPA[iw] =  - 4 * pi / np.inner(qq, qq) * np.imag(chi0_w[iw])
@@ -228,14 +260,46 @@ class CHI:
         print 'sum rule:'
         print 'N = ', N, (N - self.nvalence) / self.nvalence * 100, '% error'
 
+        epsilonM *=  - 4 * pi / np.inner(qq, qq) / self.vol
+        epsilonM += 1.
+        print 'macroscopy dielectric constant:', epsilonM
+            
         f = open('Absorption','w')
         for iw in range(self.Nw):
-            print >> f, iw * self.dw * Hartree, epsilonRPA[iw]
+            print >> f, iw * self.dw * Hartree, epsilonRPA[iw] / self.vol
 #        import pylab as pl
 #        pl.plot(epsilonRPA)
 #        pl.show()
         
         return
+
+    def print_stuff(self):
+
+        if self.rank == 0:
+            print 
+            print 'Parameters used:'
+            print
+            print 'Number of bands:', self.nband
+            print 'Number of kpoints:', self.nkpt
+            print 'Unit cell (a.u.):'
+            print self.acell
+            print 'Reciprocal cell (1/a.u.)'
+            print self.bcell
+            print 'Volome of cell (a.u.**3):', self.vol
+            print 'BZ volume (1/a.u.**3):', self.BZvol
+            print
+            print 'Number of frequency points:', self.Nw
+    #        print 'Number of frequency points for spectral function:', self.NwS
+            print 'Number of Grid points / G-vectors, and in total:', self.nG, self.nG0
+            print 'Grid spacing (a.u.):', self.h_c
+            print
+            print 'q in reduced coordinate:', self.q
+            print 'q in cartesian coordinate:', self.qq
+            print 'The frequency is divided into:', self.size, 'part'
+
+        print 'Rank', self.rank, 'deals with frequency:', (self.wstart, self.wend), 'points'
+        
+    
 
     def two_phi_derivative(self, Z):
 
@@ -452,7 +516,7 @@ class CHI:
 
         a = self.acell
 
-        self.vol = np.dot(a[0],np.cross(a[1],a[2]))
+        self.vol = np.abs(np.dot(a[0],np.cross(a[1],a[2])))
         self.BZvol = (2. * pi)**3 / self.vol
 
         b = np.zeros_like(a)
