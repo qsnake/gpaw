@@ -27,7 +27,7 @@ from gpaw.transport.analysor import Transport_Analysor, Transport_Plotter
 
 import gpaw
 import numpy as np
-import pickle
+import cPickle
 
 class FixedBC_GridDescriptor(GridDescriptor):
     use_fixed_bc = True
@@ -192,7 +192,7 @@ class Transport(GPAW):
         p['analysis_data_list'] = []
         p['save_bias_data'] = True
         p['analysis_mode'] = 0
-        p['normalize_density'] = False
+        p['normalize_density'] = True
         p['neintmethod'] = 0
         p['neintstep'] = 0.02
         p['eqinttol'] = 1e-4
@@ -329,7 +329,7 @@ class Transport(GPAW):
         if self.analysis_mode >= 0:
             if self.use_guess_file:
                 fd = file('eq_hsd', 'r')
-                self.hsd = pickle.load(fd)
+                self.hsd = cPickle.load(fd)
                 fd.close()
             else:
                 self.get_hamiltonian_initial_guess()
@@ -740,6 +740,8 @@ class Transport(GPAW):
         ##temp
         
         while not self.cvgflag and self.step < self.max_steps:
+            if self.step > 30:
+                self.normalize_density = False
             self.iterate()
             self.cvgflag = self.d_cvg and self.h_cvg
             self.step +=  1
@@ -765,7 +767,7 @@ class Transport(GPAW):
             dH_asp = collect_D_asp3(self.hamiltonian, self.density.rank_a)
             if self.master:
                 fd = file('bias_data' + str(self.analysor.n_bias_step), 'wb')
-                pickle.dump((self.bias, vt_sG, dH_asp), fd, 2)
+                cPickle.dump((self.bias, vt_sG, dH_asp), fd, 2)
                 fd.close()
                 
         self.ground = False
@@ -781,7 +783,7 @@ class Transport(GPAW):
         self.analysor.save_bias_step()
         self.analysor.save_data_to_file('bias', self.data_file)
         fd = file('eq_hsd', 'w')
-        pickle.dump(self.hsd, fd, 2)
+        cPickle.dump(self.hsd, fd, 2)
         fd.close()
  
     def get_density_matrix(self):
@@ -1863,7 +1865,7 @@ class Transport(GPAW):
             if i > 0:
                 flag = False
             fd = file('bias_data' + str(i + 1), 'r')
-            self.bias, vt_sG, dH_asp = pickle.load(fd)
+            self.bias, vt_sG, dH_asp = cPickle.load(fd)
             fd.close()
             self.intctrl = IntCtrl(self.occupations.width * Hartree,
                                     self.lead_fermi, self.bias,
@@ -1890,7 +1892,7 @@ class Transport(GPAW):
             
     def analysis_prepare(self, bias_step):
         fd = file('lead_hs', 'r')
-        lead_s00, lead_s01, lead_h00, lead_h01 = pickle.load(fd)
+        lead_s00, lead_s01, lead_h00, lead_h01 = cPickle.load(fd)
         fd.close()
         plotter = Transport_Plotter('bias', 'bias_plot_data')
         s00 = plotter.bias_steps[bias_step].s00
