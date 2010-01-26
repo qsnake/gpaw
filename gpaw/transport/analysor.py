@@ -996,8 +996,9 @@ class Transport_Analysor:
                                  lead_vk, tp_eig_w, tp_eig_v, tp_eig_vc)
         elif tp.analysis_mode == -2:
             #lead_s00, lead_s01, lead_h00, lead_h01 = self.collect_lead_hs()
-            s00, h00 = self.collect_scat_hs()
-            step.initialize_data3(s00, h00, tp.lead_fermi)
+            pass
+            #s00, h00 = self.collect_scat_hs()
+            #step.initialize_data3(s00, h00, tp.lead_fermi)
             
         #step.ele_steps = self.ele_steps
         #del self.ele_steps
