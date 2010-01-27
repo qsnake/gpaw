@@ -478,6 +478,8 @@ class LCAOWaveFunctions(WaveFunctions):
                 
             S_qMM = np.empty((nq, mynao, nao), self.dtype)
             T_qMM = np.empty((nq, mynao, nao), self.dtype)
+            for kpt in self.kpt_u:
+                kpt.C_nM = np.empty((mynbands, nao), self.dtype)
 
         self.allocate_arrays_for_projections(
             self.basis_functions.my_atom_indices)
@@ -516,7 +518,6 @@ class LCAOWaveFunctions(WaveFunctions):
             q = kpt.q
             kpt.S_MM = S_qMM[q]
             kpt.T_MM = T_qMM[q]
-            kpt.C_nM = np.empty((mynbands, nao), self.dtype)
 
 
         if debug and self.band_comm.size == 1:

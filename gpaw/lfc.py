@@ -255,6 +255,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         self.dtype = complex
                 
     def set_positions(self, spos_ac):
+        spos_ac = np.asarray(spos_ac)
         movement = False
         for spos_c, sphere in zip(spos_ac, self.sphere_a):
             movement |= sphere.set_position(spos_c, self.gd, self.cut)
