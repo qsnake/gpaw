@@ -110,7 +110,7 @@ class Sphere:
             self.M_w = None
             self.sdisp_wc = None
             
-        self.spos_c = spos_c
+        self.spos_c = spos_c.copy()
         self.normalized = False
         return True
 
