@@ -527,6 +527,8 @@ class GridDescriptor(Domain):
 
     def calculate_dipole_moment(self, rho_xyz):
         """Calculate dipole moment of density."""
+        if not self.orthogonal:
+            print 'Warning: dipole moment not correct!'
         rho_xy = np.sum(rho_xyz, axis=2)
         rho_xz = np.sum(rho_xyz, axis=1)
         rho_cg = [np.sum(rho_xy, axis=1),
