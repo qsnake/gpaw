@@ -151,9 +151,9 @@ class BlacsGrid:
             if nprow * npcol > comm.size:
                 raise ValueError('Impossible: %dx%d Blacs grid with %d CPUs'
                                  % (nprow, npcol, comm.size))
-            # This call may not return INACTIVE
             context = _gpaw.new_blacs_context(comm.get_c_object(),
                                               npcol, nprow, order)
+            assert (context != INACTIVE) == (comm.rank < nprow * npcol)
         
         self.context = context
         self.comm = comm
