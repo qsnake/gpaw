@@ -1,27 +1,26 @@
-"""Test of pblas_pdgemm.  This test requires 4 processors unless other
-values of mprocs and nprocs are specified to main().
+"""Test of PBLAS Level 2 & 3 : rk, r2k, gemv, gemm.
 
-This is a test of the GPAW interface to the parallel
-matrix multiplication routine, pblas_pdgemm.
-
-The test generates random matrices A and B and their product C on master.
-
-Then A and B are distributed, and pblas_dgemm is invoked to get C in
-distributed form.  This is then collected to master and compared to
-the serially calculated reference.
+The test generates random matrices A0, B0, X0, etc. on a
+1-by-1 BLACS grid. They are redistributed to a mprocs-by-nprocs
+BLACS grid, BLAS operations are performed in parallel, and 
+results are compared against BLAS.
 """
 
 import sys
 
 import numpy as np
 
-from gpaw.blacs import BlacsGrid, Redistributor, parallelprint
-from gpaw.utilities.blas import gemm, gemv, r2k, rk
-from gpaw.utilities.blacs import pblas_simple_gemm, pblas_simple_gemv, pblas_simple_r2k, pblas_simple_rk
 from gpaw.mpi import world, rank
+from gpaw.blacs import BlacsGrid, Redistributor, parallelprint
+from gpaw.utilities import scalapack
+from gpaw.utilities.blas import gemm, gemv, r2k, rk
+from gpaw.utilities.blacs import pblas_simple_gemm, pblas_simple_gemv, \
+    pblas_simple_r2k, pblas_simple_rk
+
 import _gpaw
 
-tol = 2.0e-13
+tol = 2.0e-13 # may need to be be increased if the mprocs-by-nprocs \
+    # BLACS grid becomes larger
 
 def main(M=160, N=120, K=140, seed=42, mprocs=2, nprocs=2, dtype=float):
     gen = np.random.RandomState(seed)
@@ -138,10 +137,13 @@ def main(M=160, N=120, K=140, seed=42, mprocs=2, nprocs=2, dtype=float):
 
     assert gemm_err < tol
     assert gemv_err < tol
-    # assert r2k_err  < tol
+    assert r2k_err  < tol
     assert rk_err   < tol
 
 if __name__ == '__main__':
-    main(dtype=float)
-    main(dtype=complex)
+    if not scalapack():
+        print('Not built with ScaLAPACK. Test does not apply.')
+    else:
+        main(dtype=float)
+        main(dtype=complex)
                    

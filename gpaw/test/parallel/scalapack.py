@@ -1,26 +1,25 @@
-"""Test of pblas_pdgemm.  This test requires 4 processors unless other
-values of mprocs and nprocs are specified to main().
+"""Test of ScaLAPACK diagonalize and inverse cholesky.
 
-This is a test of the GPAW interface to the parallel
-matrix multiplication routine, pblas_pdgemm.
-
-The test generates random matrices A and B and their product C on master.
-
-Then A and B are distributed, and pblas_dgemm is invoked to get C in
-distributed form.  This is then collected to master and compared to
-the serially calculated reference.
+The test generates a random symmetric matrix H0 and 
+positive definite matrix S0 on a 1-by-1 BLACS grid, then we 
+redistribute to mprocs-by-nprocs BLACS grid. Diagonalize
+in parallel and then compare eigenvalues. Eigenvectors are
+not compared.
 """
 
 import sys
 
 import numpy as np
 
+from gpaw.mpi import world, rank
 from gpaw.blacs import BlacsGrid, Redistributor, parallelprint
+from gpaw.utilities import scalapack
 from gpaw.utilities.lapack import diagonalize, general_diagonalize
 from gpaw.utilities.blas import rk, gemm
 from gpaw.utilities.blacs import scalapack_general_diagonalize_ex, \
     scalapack_diagonalize_ex, scalapack_diagonalize_dc
-from gpaw.mpi import world, rank
+
+
 
 tol = 2.0e-8
 
@@ -111,8 +110,11 @@ def main(N=1000, seed=42, mprocs=2, nprocs=2, dtype=float):
     assert general_diag_ex_err < tol
 
 if __name__ == '__main__':
-    main(dtype=float)
-    main(dtype=complex)
+    if not scalapack():
+        print('Not built with ScaLAPACK. Test does not apply.')
+    else:
+        main(dtype=float)
+        main(dtype=complex)
 
 
                    
