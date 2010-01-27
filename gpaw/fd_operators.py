@@ -329,3 +329,94 @@ def LaplaceB(gd, dtype=float, allocate=True):
                      (0, -1, 0), (0, 1, 0),
                      (0, 0, -1), (0, 0, 1)],
                     gd, dtype, allocate=allocate)
+
+def GUCLaplace(gd, scale=1.0, n=1, dtype=float, allocate=True):
+    """Laplacian for general nororthorhombic grid.
+
+    gd: GridDescriptor
+        Descriptor for grid.
+    scale: float
+        Scaling factor.  Use scale=-0.5 for a kinetic energy operator.
+    n: int
+        Range of stencil.  Stencil has O(h^(2n)) error.
+    dtype: float or complex
+        Datatype to work on.
+    allocate: bool
+        Allocate work arrays.
+
+    For details, see:
+        *Real-space pseudopotential method for first principles
+        calculations of general periodic and partially periodic systems*:
+        Amir Natan, Ayelet Benjamini, Doron Naveh, Leeor Kronik,
+        Murilo L. Tiago, Scott P. Beckman, and James R. Chelikowsky,
+        Phys. Rev. B 78, 075109 (2008)  
+    """
+
+    if n == 9:
+        return FTLaplace(gd, scale, dtype)
+
+    s_ic = np.array([(0, 1, -1), (0, 1, 1),
+                     (1, -1, -1), (1, -1, 0), (1, -1, 1),
+                     (1, 0, -1), (1, 0, 1), (1, 1, -1),
+                     (1, 1, 0),  (1, 1, 1)])
+    m = 3
+    d_ic = np.dot(s_ic, gd.h_cv)
+    d2_i = (d_ic**2).sum(axis=1)
+    print d2_i
+    i_i = d2_i.argsort()[:m]
+    print i_i
+    m_ic = s_ic[i_i] / d2_i[i_i][:, np.newaxis]**0.5
+    F_cc = np.dot(gd.iucell_cv, gd.iucell_cv.T)
+    M_ix = []
+    for i in range(m):
+        M_ix.append([2 * m_ic[i, 0] * m_ic[i, 1],
+                     2 * m_ic[i, 0] * m_ic[i, 2],
+                     2 * m_ic[i, 1] * m_ic[i, 2]])
+    print M_ix
+    #e_i, U_xi = np.linalg.eig(M_ix)
+    f_x = [F_cc[0, 1] + F_cc[1, 0],
+           F_cc[0, 2] + F_cc[2, 0],
+           F_cc[1, 2] + F_cc[2, 1]]
+    b_i = np.dot(np.linalg.pinv(M_ix), f_x)
+    if 0:
+        c_i = np.dot(U_xi.T, f_x)
+        for i in range(3):
+            print i, e_i[i], c_i[i]
+            if abs(e_i[i]) < 1e-12:
+                e_i[i] = 0.0
+            else:
+                e_i[i] = 1.0 / e_i[i]
+        b_i = np.dot(U_xi, c_i * e_i)
+        if 0:
+            b_i = np.linalg.solve(M_ii, [F_cc[0, 1] + F_cc[1, 0],
+                                         F_cc[0, 2] + F_cc[2, 0],
+                                         F_cc[1, 2] + F_cc[2, 1]])
+    
+    f_c = F_cc.diagonal() - np.dot(b_i, m_ic**2)
+
+    print f_c, b_i
+
+    offsets = [(0, 0, 0)]
+    b_i /= d2_i[i_i]
+    f_c /= gd.h_c**2
+    coefs = [scale * laplace[n][0] * (f_c.sum() + b_i.sum())]
+    
+    for c in range(3):
+        s_c = np.zeros(3, int)
+        s_c[c] = 1
+        offsets.extend(np.arange(1, n + 1)[:, np.newaxis] * s_c)
+        coefs.extend(f_c[c] * np.array(laplace[n][1:]))
+        offsets.extend(np.arange(-1, -n - 1, -1)[:, np.newaxis] * s_c)
+        coefs.extend(f_c[c] * np.array(laplace[n][1:]))
+
+    for i in range(3):
+        if abs(b_i[i] )> 1e-12:
+            s_c = s_ic[i_i][i]
+            offsets.extend(np.arange(1, n + 1)[:, np.newaxis] * s_c)
+            coefs.extend(b_i[i] * np.array(laplace[n][1:]))
+            offsets.extend(np.arange(-1, -n - 1, -1)[:, np.newaxis] * s_c)
+            coefs.extend(b_i[i] * np.array(laplace[n][1:]))
+
+    print coefs
+    print offsets
+    return Operator(coefs, offsets, gd, dtype, allocate)
