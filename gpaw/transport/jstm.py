@@ -1,6 +1,6 @@
 from ase.units import Bohr, Hartree
 from gpaw import GPAW
-from gpaw.operators import Laplace
+from gpaw.fd_operators import Laplace
 from gpaw.utilities.tools import tri2full
 from gpaw.lcao.projected_wannier import dots
 from gpaw.grid_descriptor import GridDescriptor
