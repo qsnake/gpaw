@@ -99,7 +99,9 @@ if get('setups', ['setups-data.tar.gz'], '_static'):
     os.system('tar --directory=_static -xzf _static/setups-data.tar.gz')
     print 'Generating setup pages ...'
     os.system('cd setups; %s make_setup_pages.py' % executable)
+
 get('tutorials/lattice_constants', ['Fe_conv_k.png', 'Fe_conv_h.png'])
+get('tutorials/negfstm', ['fullscan.png', 'linescan.png'])
 
 # Retrieve latest code coverage pages:
 if get('.', ['gpaw-coverage-latest.tar.gz'], '_static'):

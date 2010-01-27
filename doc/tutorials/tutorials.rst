@@ -19,10 +19,10 @@ perform some of the most common tasks:
    plotting/plot_wave_functions
    bandstructures/bandstructures
    all-electron/all_electron_density
-
+   neb/neb
+   negfstm/negfstm
    ensembles/ensembles
 
-   neb/neb
 
 =========
 Exercises
