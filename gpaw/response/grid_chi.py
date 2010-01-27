@@ -525,6 +525,10 @@ class CHI:
         b[2] = np.cross(a[0], a[1])
         self.bcell = 2. * pi * b / self.vol
 
+        self.vol = np.abs(self.vol)
+
+        assert np.abs((np.dot(a, self.bcell) - 2.*pi*np.eye(3)).sum()) < 1e-10
+
         return
 
     def kernel_extended_sys(self):
