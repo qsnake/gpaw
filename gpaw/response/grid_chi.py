@@ -246,16 +246,16 @@ class CHI:
 
             
 
-        epsilonRPA = np.zeros(self.Nw)
+        epsilonRPA = np.zeros(self.Nw, dtype = complex)
         for iw in range(self.Nw):
-            epsilonRPA[iw] =  - 4 * pi / np.inner(qq, qq) * np.imag(chi0_w[iw])
+            epsilonRPA[iw] =  1 - 4 * pi / np.inner(qq, qq) * chi0_w[iw] / self.vol
 
         # Check sum rule
         N = 0
         for iw in range(self.Nw):
             w = iw * self.dw
             N += epsilonRPA[iw] * w 
-        N *= self.dw / (2 * pi**2)
+        N *= self.dw * self.vol / (2 * pi**2)
         
         print 'sum rule:'
         print 'N = ', N, (N - self.nvalence) / self.nvalence * 100, '% error'
@@ -266,7 +266,7 @@ class CHI:
             
         f = open('Absorption','w')
         for iw in range(self.Nw):
-            print >> f, iw * self.dw * Hartree, epsilonRPA[iw] / self.vol
+            print >> f, iw * self.dw * Hartree, np.real(epsilonRPA[iw]), np.imag(epsilonRPA[iw])
 #        import pylab as pl
 #        pl.plot(epsilonRPA)
 #        pl.show()
