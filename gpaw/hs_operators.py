@@ -70,6 +70,7 @@ class MatrixOperator:
         """
         ngroups = self.bd.comm.size
         mynbands = self.bd.mynbands
+        nbands = self.bd.nbands
         if ngroups == 1 and self.nblocks == 1:
             self.work1_xG = self.gd.zeros(mynbands, dtype)
         else:
@@ -85,7 +86,6 @@ class MatrixOperator:
                 else:
                     Q = ngroups
                 self.A_qnn = np.zeros((Q, mynbands, mynbands), dtype)
-        nbands = ngroups * mynbands
         self.A_nn = np.zeros((nbands, nbands), dtype)
 
     def estimate_memory(self, mem, dtype):
@@ -547,6 +547,14 @@ class BlacsMatrixOperator(MatrixOperator):
             blacs = BlacsBandDescriptor(world, self.gd, self.bd, kpt_comm)
 
         self.bdd = blacs
+
+    def allocate_work_arrays(self, dtype):
+        MatrixOperator.allocate_work_arrays(self, dtype)
+        if blacs:
+            self.A_Nn = self.bbd.Nndescriptor.zeros(dtype=dtype) # 1D layout
+        else:
+            nbands = self.bd.nbands
+            self.A_nn = np.zeros((nbands, nbands), dtype)
 
     def calculate_matrix_elements(self, psit_nG, P_ani, A, dA):
         MatrixOperator.calculate_matrix_elements(self, psit_nG, P_ani, A, dA)
