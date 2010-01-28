@@ -21,7 +21,7 @@ class AngularIntegral:
       grid spacing in the radius (Ang)
     """
     def __init__(self, center, gd, Rmax=None, dR=None):
-
+        assert gd.orthogonal
         center = Vector3d(center) / Bohr
 
         self.center = center
@@ -31,7 +31,7 @@ class AngularIntegral:
         # i.e. the corner distance
         if not Rmax:
             Rmax = 0
-            extreme = gd.h_c * gd.N_c
+            extreme = gd.h_cv.diagonal() * gd.N_c
             for corner in ([0,0,0],[1,0,0],[0,1,0],[1,1,0],
                            [0,0,1],[1,0,1],[0,1,1],[1,1,1]):
                 Rmax = max(Rmax,
@@ -41,7 +41,7 @@ class AngularIntegral:
         self.Rmax = Rmax
 
         if not dR:
-            dR = min(gd.h_c)
+            dR = min(gd.h_cv.diagonal())
         else:
             dR /= Bohr
         self.dR = dR
@@ -73,9 +73,9 @@ class AngularIntegral:
                 jj = j - gd.beg_c[1]
                 for k in range(gd.beg_c[2], gd.end_c[2]):
                     kk = k - gd.beg_c[2]
-                    vr = self.center - Vector3d([i * gd.h_c[0],
-                                                 j * gd.h_c[1],
-                                                 k * gd.h_c[2]])
+                    vr = self.center - Vector3d([i * gd.h_cv[0, 0],
+                                                 j * gd.h_cv[1, 1],
+                                                 k * gd.h_cv[2, 2]])
                     r = vr.length()
                     if r>0 and r<Rmax:
                         rhat = vr / r
@@ -167,9 +167,9 @@ class ExpandYl(AngularIntegral):
                 jj = j - gd.beg_c[1]
                 for k in range(gd.beg_c[2],gd.end_c[2]):
                     kk = k - gd.beg_c[2]
-                    vr = self.center - Vector3d([i * gd.h_c[0],
-                                                 j * gd.h_c[1],
-                                                 k * gd.h_c[2]])
+                    vr = self.center - Vector3d([i * gd.h_cv[0, 0],
+                                                 j * gd.h_cv[1, 1],
+                                                 k * gd.h_cv[2, 2]])
                     r = vr.length()
                     if r>0 and r<Rmax:
                         rhat = vr/r

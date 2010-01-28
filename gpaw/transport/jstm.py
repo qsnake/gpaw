@@ -37,8 +37,9 @@ class LocalizedFunctions:
         """Apply kinetic energy operator and return new object."""
         p = 2  # padding
         newsize_c = self.size_c + 2 * p
+        assert self.gd.orthogonal
         gd = GridDescriptor(N_c=newsize_c + 1,
-                            cell_cv=self.gd.h_c * (newsize_c + 1),
+                            cell_cv=self.gd.h_cv.diagonal() * (newsize_c + 1),
                             pbc_c=False,
                             comm=mpi.serial_comm)
         T = Laplace(gd, scale=-1/2., n=p)
@@ -132,21 +133,24 @@ class AtomCenteredFunctions(LocalizedFunctions):
         c = rcut/np.dot(diagonal,a)
         
         # Determine corner
-        A = cell.T / gd.cell_c # Basis change matrix
+        A = cell.T / gd.cell_cv.diagonal() # Basis change matrix
 
         pos = np.dot(np.linalg.inv(cell.T), diagonal * c)
-        pos[2] = rcut / gd.cell_c[2]
-        corner_c = np.ceil(spos_c * gd.N_c - pos * gd.cell_c / gd.h_c).astype(int)
-        self.center = pos * gd.cell_c / gd.h_c - corner_c
+        pos[2] = rcut / gd.cell_cv[2, 2]
+        h_c = gd.h_cv.diagonal()
+        cell_c = gd.cell_cv.diagonal()
+        assert gd.orthogonal
+        corner_c = np.ceil(spos_c * gd.N_c - pos * cell_c / h_c).astype(int)
+        self.center = pos * cell_c / h_c - corner_c
         size_c = np.ceil(spos_c * gd.N_c + \
-                         pos*gd.cell_c / gd.h_c).astype(int) - corner_c
+                         pos * cell_c / h_c).astype(int) - corner_c
 
         smallgd = GridDescriptor(N_c=size_c + 1,
-                                 cell_cv=(np.dot(A,np.diag(gd.h_c * (size_c + 1))).T),
+                                 cell_cv=(np.dot(A,np.diag(h_c * (size_c + 1))).T),
                                  pbc_c=False,
                                  comm=mpi.serial_comm)
 
-        self.test = (np.dot(A,np.diag(gd.h_c * (size_c +1))).T)
+        self.test = (np.dot(A,np.diag(h_c * (size_c +1))).T)
         self.smallgd=smallgd
         lfc = LFC(smallgd, [spline_j])
         lfc.set_positions((spos_c[np.newaxis, :] * gd.N_c - corner_c + 1) /
@@ -495,7 +499,8 @@ class STM:
             potentials"""
 
         position_c = np.resize(position_c,3)
-        h_c = self.srf_cell.gd.h_c        
+        assert self.srf_cell.gd.orthogonal
+        h_c = self.srf_cell.gd.h_cv.diagonal()        
         tip_cell = self.tip_cell
         tip_atom_index = tip_cell.tip_atom_index
         tip_pos_av = tip_cell.atoms.get_positions() / Bohr
@@ -827,7 +832,8 @@ class STM:
 
         self.domain_comm.sum(scan) # gather image
         sgd = self.srf.wfs.gd
-        data = (bias, sgd.N_c, sgd.h_c, sgd.cell_cv, sgd.cell_c)
+        data = (bias, sgd.N_c, sgd.h_cv.diagonal(), sgd.cell_cv,
+                sgd.cell_cv.diagonal())
         dmin = self.get_dmin()
         fullscan = (data, scan)
 
@@ -849,9 +855,10 @@ class STM:
            direcotry"""
         sgd = self.srf.wfs.gd
         bias = self.input_parameters['bias']
-        data = (bias, sgd.N_c, sgd.h_c, sgd.cell_cv, sgd.cell_c)
+        data = (bias, sgd.N_c, sgd.h_cv.diagonal(), sgd.cell_cv,
+                sgd.cell_cv.diagonal())
         self.scans['scan3d'] = (data, {})
-        hz = self.srf.wfs.gd.h_c[2] * Bohr
+        hz = self.srf.wfs.gd.h_cv[2, 2] * Bohr
         dmins = -np.arange(zmin, zmax + hz, hz)
         dmins.sort()
         dmins = -dmins        
@@ -923,8 +930,8 @@ class STM:
         else:
             sgd = self.srf.wfs.gd
             cell_cv = sgd.cell_cv
-            cell_c = sgd.cell_c
-            h_c = sgd.h_c
+            cell_c = sgd.cell_cv.diagonal()
+            h_c = sgd.h_cv.diagonal()
             N_c = sgd.N_c
 
         if startstop == None:
@@ -1155,14 +1162,14 @@ class TipCell:
         self.cell_zmin = cell_zmin
         self.cell_zmax = cell_zmax
 
-        if cell_zmax > tgd.cell_c[2] - tgd.h_c[2]:
-            cell_zmax = tgd.cell_c[2] - tgd.h_c[2]
+        if cell_zmax > tgd.cell_cv[2, 2] - tgd.h_cv[2, 2]:
+            cell_zmax = tgd.cell_cv[2, 2] - tgd.h_cv[2, 2]
 
-        cell_zmin_grpt = np.floor(cell_zmin / tgd.h_c[2] - p).astype(int)
+        cell_zmin_grpt = np.floor(cell_zmin / tgd.h_cv[2, 2] - p).astype(int)
         if cell_zmin_grpt < 0:
             cell_zmin_grpt = 0
 
-        cell_zmax_grpt = np.floor(cell_zmax / tgd.h_c[2]).astype(int)
+        cell_zmax_grpt = np.floor(cell_zmax / tgd.h_cv[2, 2]).astype(int)
         new_sizez = cell_zmax_grpt - cell_zmin_grpt
         self.cell_zmax_grpt = cell_zmax_grpt
         self.cell_zmin_grpt = cell_zmin_grpt
@@ -1172,8 +1179,8 @@ class TipCell:
         # along those vectors describing the 2d-cell belonging to the surface. 
         # This part is messy and can be disregarded if tip and surface a calculated
         # in equal unit cells.
-        srf_basis = srf_cell_cv.T / sgd.cell_c
-        tip_basis = tip_cell_cv.T / tgd.cell_c
+        srf_basis = srf_cell_cv.T / sgd.cell_cv.diagonal()
+        tip_basis = tip_cell_cv.T / tgd.cell_cv.diagonal()
 
         if (srf_basis - tip_basis).any(): # different unit cells   
             dointerpolate = True
@@ -1189,12 +1196,12 @@ class TipCell:
             newcell_cv, origo_c = smallestbox(tip_cell_cv, srf_cell_cv, theta_min)
             tip_pos_av = np.dot(rotate(theta_min), tip_pos_av.T).T + origo_c
             newcell_c = np.array([la.norm(cell_cv[x]) for x in range(3)])
-            newsize2_c = np.around(newcell_c / sgd.h_c).astype(int)
-        elif (sgd.h_c - tgd.h_c).any(): # different grid spacings
+            newsize2_c = np.around(newcell_c / sgd.h_cv.diagonal()).astype(int)
+        elif (sgd.h_cv - tgd.h_cv).any(): # different grid spacings
             dointerpolate = True
             newcell_cv = tip_cell_cv
-            newcell_c = tgd.cell_c
-            newsize2_c = np.around(newcell_c / sgd.h_c).astype(int)
+            newcell_c = tgd.cell_cv.diagonal()
+            newsize2_c = np.around(newcell_c / sgd.h_cv.diagonal()).astype(int)
             theta_min = 0.0
             origo_c = np.array([0,0,0])
         else:
@@ -1209,10 +1216,10 @@ class TipCell:
             self.vt_G = vt_G
         
         N_c_bak = self.tip.wfs.gd.N_c.copy()
-        tip_pos_av[:,2] -= cell_zmin_grpt * tgd.h_c[2]
+        tip_pos_av[:,2] -= cell_zmin_grpt * tgd.h_cv[2, 2]
         
         newsize2_c[2] = new_sizez.copy()
-        newcell_c = (newsize2_c + 1) * sgd.h_c 
+        newcell_c = (newsize2_c + 1) * sgd.h_cv.diagonal() 
         newcell_cv = srf_basis * newcell_c
 
         newgd = GridDescriptor(N_c=newsize2_c+1,
@@ -1220,10 +1227,10 @@ class TipCell:
                                pbc_c=False,
                                comm=mpi.serial_comm)
  
-        new_basis = newgd.cell_cv.T / newgd.cell_c
+        new_basis = newgd.cell_cv.T / newgd.cell_cv.diagonal()
 
-        origo_c += np.dot(new_basis, newgd.h_c)
-        tip_pos_av += np.dot(new_basis, newgd.h_c)
+        origo_c += np.dot(new_basis, newgd.h_cv.diagonal())
+        tip_pos_av += np.dot(new_basis, newgd.h_cv.diagonal())
         tip_atoms.set_positions(tip_pos_av * Bohr)
         tip_atoms.set_cell(newcell_cv * Bohr)
         self.atoms = tip_atoms
@@ -1231,7 +1238,7 @@ class TipCell:
         
         # quick check
         assert not (np.around(new_basis - srf_basis, 5)).all() 
-        assert not (np.around(newgd.h_c - sgd.h_c, 5)).all()
+        assert not (np.around(newgd.h_cv - sgd.h_cv, 5)).all()
 
         # add functions
         functions = []
@@ -1306,12 +1313,12 @@ class TipCell:
         tgd = self.tip.wfs.gd
         newgd = self.gd
         shape0 = vt_G0.shape
-        tip_basis = tgd.cell_cv.T / tgd.cell_c
-        new_basis = newgd.cell_cv.T / newgd.cell_c
+        tip_basis = tgd.cell_cv.T / tgd.cell_cv.diagonal()
+        new_basis = newgd.cell_cv.T / newgd.cell_cv.diagonal()
 
-        eMo = tip_basis * tgd.h_c
+        eMo = tip_basis * tgd.h_cv.diagonal()
         eMr = np.dot(rotate(theta_min), eMo)
-        eMn = new_basis * newgd.h_c
+        eMn = new_basis * newgd.h_cv.diagonal()
         rMn = np.dot(la.inv(eMr), eMn)
 
         vt_G = newgd.zeros()
@@ -1385,12 +1392,12 @@ class SrfCell:
         tgd = tip.gd
         sgd = self.srf.wfs.gd
         tip_cell_cv = tgd.cell_cv[:2, :2]
-        tip_cell_c = tgd.cell_c[:2]
+        tip_cell_c = tgd.cell_cv.diagonal()[:2]
         tip_basis = tip_cell_cv.T / tip_cell_c
         srf_cell_cv = sgd.cell_cv[:2, :2]
-        srf_cell_c = sgd.cell_c[:2]
+        srf_cell_c = sgd.cell_cv.diagonal()[:2]
         srf_basis = tip_cell_cv.T / tip_cell_c
-        assert not (np.round(tgd.h_c - sgd.h_c, 5)).all()
+        assert not (np.round(tgd.h_cv - sgd.h_cv, 5)).all()
         assert not (np.round(tip_basis - srf_basis, 5)).all()
         extension1_c = tip_atom_spos * tip_cell_c / srf_cell_c
         extension2_c = (1 - tip_atom_spos) * tip_cell_c / srf_cell_c
@@ -1403,7 +1410,7 @@ class SrfCell:
         newsize_c = ext1_c + ext2_c + sgd.N_c[:2] # Size of the extended grid 
                                                   # in the transverse directions.
         sizez = srf_vt_G.shape[2]
-        newsizez = sizez + 10.0 / Bohr / sgd.h_c[2] # New size of the extended grid
+        newsizez = sizez + 10.0 / Bohr / sgd.h_cv[2, 2] # New size of the extended grid
                                                     # in the z direction.
         # The extended potential
         vt_G = np.zeros(tuple(newsize_c) + (newsizez,))
@@ -1437,7 +1444,7 @@ class SrfCell:
         self.vt_G = vt_G
         newsize_c = np.resize(newsize_c, 3)
         newsize_c[2] = sgd.N_c[2]
-        newcell_cv = (newsize_c + 1) * sgd.cell_cv.T / sgd.cell_c * sgd.h_c
+        newcell_cv = (newsize_c + 1) * sgd.cell_cv.T / sgd.cell_cv.diagonal() * sgd.h_cv.diagonal()
         newgd = GridDescriptor(N_c=newsize_c + 1,
                                cell_cv=newcell_cv,
                                pbc_c=False,

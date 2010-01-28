@@ -392,11 +392,11 @@ class LocalizedFunctionsWrapper:
             
         size_c = end_c - beg_c
         corner_c = beg_c - gd.beg_c
-        pos_c = (beg_c - (spos_c - sdisp_c) * gd.N_c) * gd.h_c
+        pos_c = (beg_c - (spos_c - sdisp_c) * gd.N_c) * gd.h_cv.diagonal()
 
         self.lfs = _gpaw.LocalizedFunctions(
             [function.spline for function in functions],
-            size_c, gd.n_c, corner_c, gd.h_c, pos_c,
+            size_c, gd.n_c, corner_c, gd.h_cv.diagonal().copy(), pos_c,
             dtype == float, forces, compute)
         
         if locfuncbcaster is not None:

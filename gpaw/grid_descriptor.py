@@ -128,18 +128,18 @@ class GridDescriptor(Domain):
             
         self.n_c = self.end_c - self.beg_c
 
-        self.h_c = (self.cell_cv**2).sum(1)**0.5 / N_c
         self.h_cv = self.cell_cv / self.N_c[:, np.newaxis]
         self.dv = abs(np.linalg.det(self.cell_cv)) / self.N_c.prod()
 
+        self.orthogonal = not (self.cell_cv -
+                               np.diag(self.cell_cv.diagonal())).any()
+
         # Sanity check for grid spacings:
-        if max(self.h_c) / min(self.h_c) > 1.3:
+        h_c = (self.cell_cv**2).sum(1)**0.5 / N_c
+        if max(h_c) / min(h_c) > 1.3:
             raise ValueError('Very anisotropic grid spacings: %s' % self.h_c)
 
         self.use_fixed_bc = False
-
-        self.orthogonal = not (self.cell_cv -
-                               np.diag(self.cell_cv.diagonal())).any()
 
     def get_size_of_global_array(self, pad=False):
         if pad:
@@ -588,21 +588,12 @@ class GridDescriptor(Domain):
 
     def get_grid_point_coordinates(self, dtype=float, global_array=False):
         """Construct cartesian coordinates of grid points in the domain."""
-        r_vG = self.empty(3, dtype=dtype)
-        for c,r_G in enumerate(r_vG):
-           c2G = [np.newaxis, np.newaxis, np.newaxis]
-           c2G[c] = slice(None) #this means ':'
-           r_G[:] = self.h_c[c]*np.arange(self.beg_c[c], self.end_c[c])[c2G]
-
-        if not self.orthogonal:
-            basis_vc = self.cell_cv.T / (self.h_c * self.N_c)[np.newaxis, :]
-            r_vG[:] = np.dot(basis_vc,
-                             r_vG.reshape((3, -1))).reshape(r_vG.shape)
-
+        r_vG = np.dot(np.indices(self.n_c, dtype).T + self.beg_c,
+                      self.h_cv).T.copy()
         if global_array:
             return self.collect(r_vG, broadcast=True)
-
-        return r_vG
+        else:
+            return r_vG
 
 
 class RadialGridDescriptor:

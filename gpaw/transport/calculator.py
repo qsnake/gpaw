@@ -1737,7 +1737,8 @@ class Transport(GPAW):
         for i in range(self.lead_num):
             atoms_l = self.atoms[self.pl_atoms[i]].copy()
             cell_l = self.pl_cells[i]
-            ex_cell[di] += self.gd.h_c[2] * Bohr * self.bnc[i]
+            assert self.gd.orthogonal
+            ex_cell[di] += self.gd.h_cv[2, 2] * Bohr * self.bnc[i]
             for atom in atoms_l:
                 if i == 0:
                     atom.position[di] -= cell_l[di]

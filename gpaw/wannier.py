@@ -16,7 +16,7 @@ class Wannier:
             if not calc.wfs.gd.orthogonal:
                 raise NotImplementedError('Wannier function analysis ' +
                                           'requires an orthogonal cell.')
-            self.cell_c = calc.wfs.gd.cell_c * Bohr
+            self.cell_c = calc.wfs.gd.cell_cv.diagonal() * Bohr
             if nbands is None:
                 nbands = calc.get_number_of_bands()
             self.Z_nnc = np.empty((nbands, nbands, 3), complex)

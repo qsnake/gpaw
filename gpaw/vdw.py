@@ -431,9 +431,10 @@ class RealSpaceVDWFunctional(VDWFunctional):
                                       'an orthogonal cell.')
         n_c = n_g.shape
         R_gc = np.empty(n_c + (3,))
-        R_gc[..., 0] = (np.arange(0, n_c[0]) * gd.h_c[0]).reshape((-1, 1, 1))
-        R_gc[..., 1] = (np.arange(0, n_c[1]) * gd.h_c[1]).reshape((-1, 1))
-        R_gc[..., 2] = np.arange(0, n_c[2]) * gd.h_c[2]
+        h_c = gd.h_cv.diagonal()
+        R_gc[..., 0] = (np.arange(0, n_c[0]) * h_c[0]).reshape((-1, 1, 1))
+        R_gc[..., 1] = (np.arange(0, n_c[1]) * h_c[1]).reshape((-1, 1))
+        R_gc[..., 2] = np.arange(0, n_c[2]) * h_c[2]
 
         mask_g = (n_g.ravel() > self.ncut)
         R_ic = R_gc.reshape((-1, 3)).compress(mask_g, axis=0)
@@ -471,7 +472,7 @@ class RealSpaceVDWFunctional(VDWFunctional):
         self.Dhistogram = np.zeros(200)
         dr = 0.05
         dD = 0.05
-        E_vdwnl = _gpaw.vdw(n_i, q0_i, R_ic, gd.cell_c,
+        E_vdwnl = _gpaw.vdw(n_i, q0_i, R_ic, gd.cell_cv.diagonal().copy(),
                             gd.pbc_c,
                             repeat_c,
                             self.phi_ij, self.delta_i[1], self.D_j[1],
@@ -599,7 +600,7 @@ class FFTVDWFunctional(VDWFunctional):
         if (self.gd is not None and
             (self.gd.N_c == gd.N_c).all() and
             (self.gd.pbc_c == gd.pbc_c).all() and
-            (self.gd.cell_c == gd.cell_c).all()):
+            (self.gd.cell_cv == gd.cell_cv).all()):
             return
 
         VDWFunctional.set_grid_descriptor(self, gd)

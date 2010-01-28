@@ -108,7 +108,7 @@ class CHI:
         self.nLCAO = C_knM.shape[2]
         self.nG = calc.get_number_of_grid_points()
         self.nG0 = self.nG[0] * self.nG[1] * self.nG[2]
-        self.h_c = calc.wfs.gd.h_c
+        self.h_c = calc.wfs.gd.h_cv.diagonal()
 
         # get LCAO orbitals 
         # sum_I Phi(r-R_I) 

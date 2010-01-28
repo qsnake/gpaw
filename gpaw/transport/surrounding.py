@@ -89,7 +89,7 @@ class Side:
             self.boundary_vHt_g = self.slice(nn, vHt_g)
             self.boundary_nt_sg = self.slice(nn, nt_sg)        
            
-            h = self.h_cz / 2.
+            h = self.h_cz / 2.0
             
             self.boundary_vHt_g = interpolate_array(self.boundary_vHt_g, finegd, h, self.direction)
             vt_sg = interpolate_array(vt_sg, finegd, h, self.direction)
@@ -142,7 +142,7 @@ class Surrounding:
             for i in range(self.lead_num):
                 direction = self.directions[i]
                 side = Side('LR', self.tp.atoms_l[i], direction,
-                                                            self.tp.gd.h_c[2])
+                            self.tp.gd.h_cv[2, 2])
                 self.sides[direction] = side
                 self.bias_index[direction] = self.tp.bias[i]
                 self.side_basis_index[direction] = self.tp.lead_index[i]                

@@ -91,12 +91,14 @@ def coordinates(gd, origin=None):
        The origin is placed in the center of the box described by the given
        grid-descriptor 'gd'.
     """
+    assert gd.orthogonal
+    
     if origin is None:
-        origin = .5 * gd.cell_c
+        origin = .5 * gd.cell_cv.diagonal()
 
     I  = np.indices(gd.n_c)
-    dr = np.reshape(gd.h_c, (3, 1, 1, 1))
-    r0 = np.reshape(gd.h_c * gd.beg_c - origin, (3, 1, 1, 1))
+    dr = np.reshape(gd.h_cv.diagonal(), (3, 1, 1, 1))
+    r0 = np.reshape(gd.h_cv.diagonal() * gd.beg_c - origin, (3, 1, 1, 1))
     r0 = np.ones(I.shape) * r0
     xyz = r0 + I * dr
     r2 = np.sum(xyz**2, axis=0)

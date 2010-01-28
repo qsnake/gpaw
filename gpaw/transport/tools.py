@@ -668,19 +668,19 @@ def interpolate_array(array, gd, h, di='+'):
     dim = len(array.shape)
     assert dim == 3 or dim == 4
     spin_relate = dim == 4
-    if h <= gd.h_c[2]:
+    if h <= gd.h_cv[2, 2]:
         if di == '+':
-            x = np.arange(gd.N_c[2]) * gd.h_c[2]
+            x = np.arange(gd.N_c[2]) * gd.h_cv[2, 2]
             xnew = np.arange(gd.N_c[2]) * h
         else:
-            x = np.arange(-gd.N_c[2], 0) * gd.h_c[2]
+            x = np.arange(-gd.N_c[2], 0) * gd.h_cv[2, 2]
             xnew = np.arange(-gd.N_c[2], 0) * h            
     else:
         if di == '+':
-            x = np.arange(gd.N_c[2] * 2) * gd.h_c[2]
+            x = np.arange(gd.N_c[2] * 2) * gd.h_cv[2, 2]
             xnew = np.arange(gd.N_c[2]) * h
         else:
-            x = np.arange(-gd.N_c[2] * 2, 0) * gd.h_c[2]
+            x = np.arange(-gd.N_c[2] * 2, 0) * gd.h_cv[2, 2]
             xnew = np.arange(-gd.N_c[2], 0) * h         
         
     if spin_relate:
@@ -694,7 +694,7 @@ def interpolate_array(array, gd, h, di='+'):
         new_array = gd.zeros(global_array=True)
         new_array.shape = (nx * ny, nz)
       
-    if h > gd.h_c[2]:
+    if h > gd.h_cv[2, 2]:
         array = np.append(array, array, 1)
         
     for i, line in enumerate(array):

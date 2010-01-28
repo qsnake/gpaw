@@ -67,7 +67,7 @@ class LinearAbsorbingBoundary(DummyAbsorbingBoundary):
         self.type = 'IPOT'
         
         
-    def set_up(self,gd):
+    def set_up(self, gd):
 	"""
 	Creates the potential matrix self.v_imag.
 
@@ -76,21 +76,23 @@ class LinearAbsorbingBoundary(DummyAbsorbingBoundary):
         gd: grid descriptor
         """
 
+        assert gd.orthogonal
+        
 	#self.v_imag = np.zeros((gd.n_c[0],gd.n_c[1],gd.n_c[2]),dtype=complex)
         self.v_imag = gd.zeros(dtype=complex)
         
         # If positions array wasn't given, uses the middle point of the grid.
 	if self.positions is None:	
-	    self.positions=[np.array([gd.N_c[0] *gd.h_c[0] *0.5,
-                                       gd.N_c[1] *gd.h_c[1] *0.5,
-                                       gd.N_c[2] *gd.h_c[2] * 0.5])] # middle
+	    self.positions=[np.array([gd.N_c[0] *gd.h_cv[0, 0] * 0.5, # middle
+                                      gd.N_c[1] *gd.h_cv[1, 1] * 0.5,
+                                      gd.N_c[2] *gd.h_cv[2, 2] * 0.5])]
 
 	for i in range(gd.n_c[0]):
-            x = (i + gd.beg_c[0]) * gd.h_c[0]
+            x = (i + gd.beg_c[0]) * gd.h_cv[0, 0]
             for j in range(gd.n_c[1]):
-                y = (j + gd.beg_c[1]) * gd.h_c[1]
+                y = (j + gd.beg_c[1]) * gd.h_cv[1, 1]
                 for k in range(gd.n_c[2]):
-                    z = (k + gd.beg_c[2]) * gd.h_c[2]
+                    z = (k + gd.beg_c[2]) * gd.h_cv[2, 2]
                     position=np.array([x,y,z])
                     # Calculates the distance from the nearest chosen point
                     # in the grid
@@ -153,19 +155,19 @@ class P4AbsorbingBoundary(DummyAbsorbingBoundary):
 	# If positions array wasn't given, uses the middle point of the
         # grid as the center.
 	if self.positions is None:	
-	    self.positions=[np.array([gd.N_c[0] *gd.h_c[0] *0.5,
-                                       gd.N_c[1] *gd.h_c[1] *0.5,
-                                       gd.N_c[2] *gd.h_c[2] * 0.5])] # middle
+	    self.positions=[np.array([gd.N_c[0] *gd.h_cv[0, 0] *0.5, # middle
+                                      gd.N_c[1] *gd.h_cv[1, 1] *0.5,
+                                      gd.N_c[2] *gd.h_cv[2, 2] * 0.5])]
             
         if self.width is None:
             self.width = np.linalg.norm(self.positions[0]) / np.sqrt(3) - self.abc_r
 
         for i in range(gd.n_c[0]):
-            x = (i + gd.beg_c[0]) * gd.h_c[0]
+            x = (i + gd.beg_c[0]) * gd.h_cv[0, 0]
             for j in range(gd.n_c[1]):
-                y = (j + gd.beg_c[1]) * gd.h_c[1]
+                y = (j + gd.beg_c[1]) * gd.h_cv[1, 1]
                 for k in range(gd.n_c[2]):
-                    z = (k + gd.beg_c[2]) * gd.h_c[2]
+                    z = (k + gd.beg_c[2]) * gd.h_cv[2, 2]
                     position=np.array([x,y,z])
                     
                     position_vectors = self.positions-position
@@ -250,13 +252,15 @@ class PML:
         self.dG = gd.zeros(n=3, dtype=complex)
 	
 
-        r0=np.array([gd.N_c[0] *gd.h_c[0] *0.5,gd.N_c[1] *gd.h_c[1] *0.5,gd.N_c[2] *gd.h_c[2] * 0.5]) # middle point
+        r0=np.array([gd.N_c[0] * gd.h_cv[0, 0] * 0.5,
+                     gd.N_c[1] * gd.h_cv[1, 1] * 0.5,
+                     gd.N_c[2] * gd.h_cv[2, 2] * 0.5]) # middle point
         for i in range(gd.n_c[0]):
-            x = (i + gd.beg_c[0]) * gd.h_c[0]
+            x = (i + gd.beg_c[0]) * gd.h_cv[0, 0]
             for j in range(gd.n_c[1]):
-                y = (j + gd.beg_c[1]) * gd.h_c[1]
+                y = (j + gd.beg_c[1]) * gd.h_cv[1, 1]
                 for k in range(gd.n_c[2]):    
-                    z = (k + gd.beg_c[2]) * gd.h_c[2]
+                    z = (k + gd.beg_c[2]) * gd.h_cv[2, 2]
                     position=np.array([x,y,z])
                     r = np.linalg.norm(position - r0)
                     

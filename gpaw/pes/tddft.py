@@ -213,9 +213,9 @@ class TDDFTPES(BasePES):
 
 
     def check_systems(self):
-        if (self.c_m.wfs.gd.cell_c != self.c_d.wfs.gd.cell_c).any():
+        if (self.c_m.wfs.gd.cell_cv != self.c_d.wfs.gd.cell_cv).any():
             raise RuntimeError('Not the same grid')
-        if (self.c_m.wfs.gd.h_c != self.c_d.wfs.gd.h_c).any():
+        if (self.c_m.wfs.gd.h_cv != self.c_d.wfs.gd.h_cv).any():
             raise RuntimeError('Not the same grid')
         if (self.c_m.atoms.positions != self.c_m.atoms.positions).any():
             raise RuntimeError('Not the same atomic positions')

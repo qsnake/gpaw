@@ -17,6 +17,7 @@ class ExteriorElectronDensity:
         """Find the grid points outside of the van der Waals radii 
         of the atoms"""
 
+        assert gd.orthogonal
         self.gd = gd
 
         n = len(atoms)
@@ -27,7 +28,8 @@ class ExteriorElectronDensity:
 
         # define the exterior region mask
         mask = gd.empty(dtype=int)
-        _gpaw.eed_region(mask, atom_c, gd.beg_c, gd.end_c, gd.h_c, vdWradius)
+        _gpaw.eed_region(mask, atom_c, gd.beg_c, gd.end_c,
+                         gd.h_cv.diagonal().copy(), vdWradius)
         self.mask = mask
 
     def get_weight(self, psit_G):

@@ -17,6 +17,7 @@ class ExternalPotential:
         self.vext_g = vext_g
         self.gd = gd
         if self.gd is not None:
+            assert gd.orthogonal
             if np.alltrue(vext_g.shape ==
                            gd.get_size_of_global_array()):
                 # this is a global array and has to be distributed
@@ -29,7 +30,7 @@ class ExternalPotential:
         else:
             if gd is not None:
                 # make sure we are talking about the same grid
-                assert(gd == self.gd)
+                assert gd == self.gd
         return self.vext_g
 
     def get_taylor(self, position=None, spos_c=None):
@@ -77,7 +78,7 @@ class ExternalPotential:
         
         # apply local part of x to smooth wavefunctions psit_n
         for i in range(gd.n_c[0]):
-            x = (i + gd.beg_c[0]) * gd.h_c[0]
+            x = (i + gd.beg_c[0]) * gd.h_cv[0, 0]
             b_nG[:,i,:,:] += (strength[0] * x) * a_nG[:,i,:,:]
 
         # FIXME: combine y and z to one vectorized operation,
@@ -85,12 +86,12 @@ class ExternalPotential:
 
         # apply local part of y to smooth wavefunctions psit_n
         for i in range(gd.n_c[1]):
-            y = (i + gd.beg_c[1]) * gd.h_c[1]
+            y = (i + gd.beg_c[1]) * gd.h_cv[1, 1]
             b_nG[:,:,i,:] += (strength[1] * y) * a_nG[:,:,i,:]
 
         # apply local part of z to smooth wavefunctions psit_n
         for i in range(gd.n_c[2]):
-            z = (i + gd.beg_c[2]) * gd.h_c[2]
+            z = (i + gd.beg_c[2]) * gd.h_cv[2, 2]
             b_nG[:,:,:,i] += (strength[2] * z) * a_nG[:,:,:,i]
 
 
@@ -103,7 +104,7 @@ class ExternalPotential:
 
         coef_ani = {}
         for a, P_ni in P_ani.items():
-            c0 = np.dot(spos_ac[a] * gd.cell_c, strength)
+            c0 = np.dot(spos_ac[a] * gd.cell_cv.diagonal(), strength)
             cxyz = strength
             # calculate coefficient 
             # ---------------------
@@ -169,20 +170,20 @@ class ExternalPotential:
 
         # apply local part to smooth wavefunctions psit_n
         for i in range(kpt.gd.n_c[0]):
-            x = (i + kpt.gd.beg_c[0]) * kpt.gd.h_c[0]
+            x = (i + kpt.gd.beg_c[0]) * kpt.gd.h_cv[0, 0]
             for j in range(kpt.gd.n_c[1]):
-                y = (j + kpt.gd.beg_c[1]) * kpt.gd.h_c[1]
+                y = (j + kpt.gd.beg_c[1]) * kpt.gd.h_cv[1, 1]
                 for k in range(kpt.gd.n_c[2]):
-                    z = (k + kpt.gd.beg_c[2]) * kpt.gd.h_c[2]
+                    z = (k + kpt.gd.beg_c[2]) * kpt.gd.h_c[2, 2]
                     b_nG[:,i,j,k] = func.value(x,y,z) * a_nG[:,i,j,k]
 
         # apply the non-local part for each nucleus
         for nucleus in pt_nuclei:
             if nucleus.in_this_domain:
                 # position
-                x_c = nucleus.spos_c[0] * kpt.gd.cell_c[0]
-                y_c = nucleus.spos_c[1] * kpt.gd.cell_c[1]
-                z_c = nucleus.spos_c[2] * kpt.gd.cell_c[2]
+                x_c = nucleus.spos_c[0] * kpt.gd.cell_cv[0, 0]
+                y_c = nucleus.spos_c[1] * kpt.gd.cell_cv[1, 1]
+                z_c = nucleus.spos_c[2] * kpt.gd.cell_cv[2, 2]
                 # Delta r = max(r_cut) / 2
                 # factor sqrt(1/3) because (dr,dr,dr)^2 = Delta r
                 rcut = max(nucleus.setup.rcut_j)
@@ -303,10 +304,10 @@ class ConstantElectricField(ElectrostaticPotential):
 
         if self.center is None:
             # use the center of the grid as default
-            self.center = .5 * gd.h_c * gd.N_c
+            self.center = .5 * gd.h_cv.diagonal() * gd.N_c
 
         potential = gd.empty()
-        sp_c = gd.h_c * Bohr
+        sp_c = gd.h_cv.diagonal() * Bohr
         for i in range(gd.beg_c[0],gd.end_c[0]):
             ii = i - gd.beg_c[0]
             for j in range(gd.beg_c[1],gd.end_c[1]):
@@ -324,7 +325,7 @@ class ConstantElectricField(ElectrostaticPotential):
         position [Angstrom]"""
         if position is None:
             gd = self.gd
-            pos = spos_c * gd.h_c * gd.N_c * Bohr
+            pos = spos_c * gd.h_cv.diagonal() * gd.N_c * Bohr
         else:
             pos = position
         # see spherical_harmonics.py for the assignment
@@ -341,7 +342,7 @@ class ConstantElectricField(ElectrostaticPotential):
         spos_c scaled position on the grid"""
         gd = self.gd
         if position is None:
-            vr = spos_c * gd.h_c * gd.N_c - self.center
+            vr = spos_c * gd.h_cv.diagonal() * gd.N_c - self.center
         else:
             vr =  position / Bohr - self.center
         return self.strength * np.dot(vr, self.direction)

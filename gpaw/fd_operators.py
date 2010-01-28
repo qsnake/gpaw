@@ -151,8 +151,8 @@ else:
 
 
 def Gradient(gd, v, scale=1.0, n=1, dtype=float, allocate=True):
-    h = gd.h_c
-    d = gd.iucell_cv[:,v]
+    h = (gd.h_cv**2).sum(1)**0.5
+    d = gd.xxxiucell_cv[:,v]
     A=np.zeros((2*n+1,2*n+1))
     for i,io in enumerate(range(-n,n+1)):
         for j in range(2*n+1):
@@ -216,9 +216,9 @@ def Laplace(gd, scale=1.0, n=1, dtype=float, allocate=True):
     if n == 9:
         return FTLaplace(gd, scale, dtype)
     n = int(n)
-    h = gd.h_c
+    h = (gd.h_cv**2).sum(1)**0.5
     h2 = h**2
-    iucell_cv = gd.iucell_cv
+    iucell_cv = gd.xxxiucell_cv
 
     d2 = (iucell_cv**2).sum(1)
 
@@ -277,7 +277,7 @@ class FTLaplace:
         k_vq *= k_vq
         self.k2_Q = k_vq.sum(axis=0).reshape(gd.N_c)
         self.k2_Q *= -scale
-        self.d = 6.0 / gd.h_c[0]**2
+        self.d = 6.0 / gd.h_cv[0, 0]**2
         
     def apply(self, in_xg, out_xg, phase_cd=None):
         if in_xg.ndim > 3:
@@ -297,7 +297,8 @@ class FTLaplace:
 
 
 def LaplaceA(gd, scale, dtype=float, allocate=True):
-    c = np.divide(-1/12, gd.h_c**2) * scale  # Why divide? XXX
+    assert gd.orthogonal
+    c = np.divide(-1/12, gd.h_cv.diagonal()**2) * scale  # Why divide? XXX
     c0 = c[1] + c[2]
     c1 = c[0] + c[2]
     c2 = c[1] + c[0]
@@ -366,7 +367,7 @@ def GUCLaplace(gd, scale=1.0, n=1, dtype=float, allocate=True):
     i_i = d2_i.argsort()[:m]
     print i_i
     m_ic = s_ic[i_i] / d2_i[i_i][:, np.newaxis]**0.5
-    F_cc = np.dot(gd.iucell_cv, gd.iucell_cv.T)
+    F_cc = np.dot(gd.xxxiucell_cv, gd.xxxiucell_cv.T)
     M_ix = []
     for i in range(m):
         M_ix.append([2 * m_ic[i, 0] * m_ic[i, 1],
@@ -398,7 +399,7 @@ def GUCLaplace(gd, scale=1.0, n=1, dtype=float, allocate=True):
 
     offsets = [(0, 0, 0)]
     b_i /= d2_i[i_i]
-    f_c /= gd.h_c**2
+    f_c /= (gd.h_cv**2).sum(1)
     coefs = [scale * laplace[n][0] * (f_c.sum() + b_i.sum())]
     
     for c in range(3):

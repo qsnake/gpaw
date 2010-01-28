@@ -188,10 +188,9 @@ class AtomGridDescriptor(EquidistantRadialGridDescriptor):
         self.sdisp_cd = np.empty((3, 2))
         self.comm = mpi.serial_comm
         self.pbc_c = np.zeros(3, bool)
-        self.cell_c = np.ones(3) * rcut
         self.cell_cv = np.eye(3) * rcut
         self.N_c = np.ones(3, dtype=int) * 2 * ng
-        self.h_c = np.ones(3) * h
+        self.h_cv = self.cell_cv / self.N_c
         self.orthogonal = False
     def _get_position_array(self, h, ng):
         return np.linspace(h, ng * h, ng)

@@ -36,18 +36,16 @@ class Domain:
          ``stride_c``    Strides.
          =============== ==================================================
         """
-        self.cell_c = np.array(cell, float)
-        if self.cell_c.ndim == 1:
-            self.cell_cv = np.diag(self.cell_c)
+        cell_c = np.array(cell, float)
+        if cell_c.ndim == 1:
+            self.cell_cv = np.diag(cell_c)
         else:
-            self.cell_cv = self.cell_c
-            self.cell_c = np.array([np.linalg.norm(self.cell_cv[x])
-                                    for x in range(3)])
-
+            self.cell_cv = cell_c
+            cell_c = (self.cell_cv**2).sum(1)**0.5
         self.icell_cv = np.linalg.inv(self.cell_cv).T
-        self.ucell_cv = np.array([self.cell_cv[x] / self.cell_c[x]
-                                  for x in range(3)])
-        self.iucell_cv = np.linalg.inv(self.ucell_cv.T) # Jacobian        
+        self.xxxucell_cv = np.array([self.cell_cv[x] / cell_c[x]
+                                     for x in range(3)])
+        self.xxxiucell_cv = np.linalg.inv(self.xxxucell_cv.T) # Jacobian        
 
         self.pbc_c = np.asarray(pbc, bool)
 
