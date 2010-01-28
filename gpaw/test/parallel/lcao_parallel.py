@@ -9,14 +9,15 @@ from ase.data.molecules import molecule
 
 # Calculates energy and forces for various parallelizations
 
-tolerance = 2e-5
+tolerance = 4e-5
 
 parallel = dict()
 
 basekwargs = dict(mode='lcao',
                   maxiter=3,
-                  basis='dzp',
-                  nbands=18,
+                  #basis='dzp',
+                  #nbands=18,
+                  nbands=6,
                   parallel=parallel)
 
 Eref = None
