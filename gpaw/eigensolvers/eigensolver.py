@@ -219,7 +219,10 @@ class Eigensolver:
             H_nn = self.operator.calculate_matrix_elements(psit_nG, P_ani,
                                                            H, dH_aii)
         else:
-            H_nn = hamiltonian.xc.xcfunc.exx.grr(wfs, kpt, Htpsit_xG,
+            if self.band_comm.size > 1:
+                raise NotImplementedError
+            else:
+                H_nn = hamiltonian.xc.xcfunc.exx.grr(wfs, kpt, Htpsit_xG,
                                                  hamiltonian)
         self.timer.stop('calc_matrix')
 
