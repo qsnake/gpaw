@@ -1,14 +1,14 @@
 from gpaw.transport.selfenergy import LeadSelfEnergy
 from gpaw.transport.tools import get_matrix_index, aa1d, aa2d, sum_by_unit, \
                                 dot, fermidistribution, eig_states_norm, \
-                                find, get_atom_indices, dagger, write
+                                find, get_atom_indices, dagger, write, gather_ndarray_dict
 from gpaw.mpi import world
 from gpaw import GPAW, Mixer, MixerDif, PoissonSolver
 from ase.units import Hartree, Bohr
 from gpaw.utilities.memory import maxrss
 import numpy as np
 import copy
-import pickle
+import cPickle
 
 
 class Structure_Info:
@@ -31,10 +31,10 @@ class Transmission_Info:
     def initialize_data(self, bias, gate, ep, lead_pairs,
                         tc, dos, vt, nt, vtx, ntx, vty, nty,
                                  current, lead_fermis,
-                                 time_cost, force, charge):
+                                 time_cost, force, charge, contour):
         for name in ['bias', 'gate', 'ep', 'lead_pairs', 'tc', 'dos', 'vt',
                      'nt', 'vtx', 'ntx', 'vty', 'nty', 'current',
-                     'lead_fermis', 'time_cost', 'force', 'charge']:
+                     'lead_fermis', 'time_cost', 'force', 'charge', 'contour']:
             vars(self)[name] = eval(name)
         
     def initialize_data2(self, eig_tc_lead, eig_vc_lead, tp_tc, tp_vc,
@@ -171,10 +171,10 @@ class Transport_Analysor:
         atoms = self.tp.atoms.copy()
         if world.rank == 0:
             fd = file('analysis_overhead', 'wb')
-            pickle.dump((atoms, basis_information, contour_parameters), fd, 2)
+            cPickle.dump((atoms, basis_information, contour_parameters), fd, 2)
             fd.close()
             fd = file('lead_hs', 'wb')
-            pickle.dump(lead_hs, fd, 2)
+            cPickle.dump(lead_hs, fd, 2)
             fd.close()
       
     def reset_central_scattering_states(self):
@@ -866,7 +866,7 @@ class Transport_Analysor:
         
         if not self.matrix_foot_print:
             fd = file('matrix_sample', 'wb')
-            pickle.dump(tp.hsd.S[0], fd, 2)
+            cPickle.dump(tp.hsd.S[0], fd, 2)
             fd.close()
             self.matrix_foot_print = True
             
@@ -961,11 +961,11 @@ class Transport_Analysor:
             tp.F_av = None
         
         charge = self.collect_charge()
-        
+        contour = self.collect_contour()
         
         step.initialize_data(tp.bias, tp.gate, self.energies, self.lead_pairs,
                               tc, dos, vt, nt, vtx, ntx, vty, nty,
-                              current, tp.lead_fermi, time_cost, force, charge)
+                              current, tp.lead_fermi, time_cost, force, charge, contour)
 
 
         #prefix =  'Ab' + '_' + str(self.n_ion_step) + '_' \
@@ -1102,6 +1102,28 @@ class Transport_Analysor:
             charge_array = np.sum(charge_array, axis=1)
         return charge_array
 
+    def collect_contour(self):
+        tp = self.tp
+        my_eq_contour = {}
+        my_ne_contour = {}
+        my_loc_contour = {}
+        num = 0
+        for s in range(tp.my_nspins):
+            for q in range(tp.my_npk):
+                flag = str(tp.my_ks_map[num, 0]) + str(tp.my_ks_map[num, 1])
+                my_eq_contour[flag] = np.array(tp.eqpathinfo[s][q].energy)
+                my_ne_contour[flag] = np.array(tp.nepathinfo[s][q].energy)
+                if not tp.ground:
+                    my_loc_contour[flag] = np.array(tp.locpathinfo[s][q].energy)        
+        eq_contour = gather_ndarray_dict(my_eq_contour, tp.wfs.kpt_comm)
+        ne_contour = gather_ndarray_dict(my_ne_contour, tp.wfs.kpt_comm)        
+        if not tp.ground:
+            loc_contour = gather_ndarray_dict(my_loc_contour, tp.wfs.kpt_comm)
+        else:
+            loc_contour = None
+        contour = {'eq': eq_contour, 'ne': ne_contour, 'loc': loc_contour}
+        return contour
+        
     def collect_realspace_dos(self):
         if self.dos_realspace_energies is None:
             return None
@@ -1343,7 +1365,7 @@ class Transport_Analysor:
             data_file += '_' + flag
         if world.rank == 0:
             fd = file(data_file, 'wb')
-            pickle.dump((steps, self.energies), fd, 2)
+            cPickle.dump((steps, self.energies), fd, 2)
             fd.close()
    
     def abstract_d_and_v(self):
@@ -1470,7 +1492,7 @@ class Transport_Plotter:
             data_file = 'analysis_data'
         data_file += '_' + flag
         fd = file(data_file, 'r')
-        data = pickle.load(fd)
+        data = cPickle.load(fd)
         if flag == 'ion':
             if len(data) == 2:
                 self.ion_steps, self.energies = data
@@ -1492,7 +1514,7 @@ class Transport_Plotter:
 
     def read_overhead(self):
         fd = file('analysis_overhead', 'r')
-        atoms, basis_information, contour_information = pickle.load(fd)
+        atoms, basis_information, contour_information = cPickle.load(fd)
         fd.close()
         self.atoms = atoms
         self.basis = basis_information
@@ -1554,7 +1576,7 @@ class Transport_Plotter:
        
     def compare_two_calculations(self, nstep, s, k):
         fd = file('analysis_data_cmp', 'r')
-        self.ele_steps_cmp, self.energies_cmp = pickle.load(fd)
+        self.ele_steps_cmp, self.energies_cmp = cPickle.load(fd)
         fd.close()
         ee = self.energies
         #ee = np.linspace(-3, 3, 61)
