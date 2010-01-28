@@ -109,10 +109,10 @@ class Timer:
         t0 = time.time()
         tot = t0 - self.t0
 
-        out.write('\n%s\n' % ('=' * 60))
-        out.write('Timing:                   incl.     excl.\n')
-        out.write('%s\n' % ('=' * 60))
         n = max([len(names[-1]) + len(names) for names in self.timers]) + 1
+        out.write('\n%s\n' % ('=' * 60))
+        out.write('%-*s    incl.     excl.\n' % (n, 'Timing:'))
+        out.write('%s\n' % ('=' * 60))
         tother = tot
         
         inclusive = self.timers.copy()

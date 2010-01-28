@@ -94,9 +94,9 @@ class LCAO:
         vt_G = hamiltonian.vt_sG[kpt.s]
         H_MM = np.empty((wfs.od.mynao, wfs.od.nao), wfs.dtype)
 
-        wfs.timer.start('Calculate potential matrix')
+        wfs.timer.start('Potential matrix')
         wfs.basis_functions.calculate_potential_matrix(vt_G, H_MM, kpt.q)
-        wfs.timer.stop('Calculate potential matrix')
+        wfs.timer.stop('Potential matrix')
 
         # Add atomic contribution
         #
