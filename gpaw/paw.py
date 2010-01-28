@@ -647,7 +647,7 @@ class PAW(PAWTextOutput):
     def get_reference_energy(self):
         return self.wfs.setups.Eref * Hartree
     
-    def write(self, filename, mode='', cmr_params=None, **kwargs):
+    def write(self, filename, mode='', cmr_params={}, **kwargs):
         """Write state to file.
 
         use mode='all' to write the wave functions.  cmr_params is a
