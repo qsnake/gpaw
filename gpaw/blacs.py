@@ -91,7 +91,8 @@ from gpaw.mpi import SerialCommunicator, serial_comm
 from gpaw.matrix_descriptor import MatrixDescriptor
 from gpaw.utilities.blas import gemm, r2k, gemmdot
 from gpaw.utilities.blacs import scalapack_general_diagonalize_ex, \
-    scalapack_diagonalize_ex, pblas_simple_gemm
+    scalapack_diagonalize_ex, scalapack_diagonalize_dc, \
+    pblas_simple_gemm
 from gpaw.utilities.timing import nulltimer
 from gpaw.utilities.tools import tri2full
 import _gpaw
@@ -315,7 +316,7 @@ class BlacsDescriptor(MatrixDescriptor):
                              self.bshape, self.lld, self.shape)
         return string
 
-    def diagonalize_ex(self, H_nn, C_nn, eps_n, UL='U', iu=None):
+    def diagonalize_ex(self, H_nn, C_nn, eps_N, UL='U', iu=None):
         """Diagonalize symmetric matrix using Expert Driver algorithm.
 
         Solves the eigenvalue equation::
@@ -334,6 +335,12 @@ class BlacsDescriptor(MatrixDescriptor):
         If the integer iu is specified, calculates only eigenvectors
         corresponding to the lowest iu eigenvalues."""
         scalapack_diagonalize_ex(self, H_nn, C_nn, eps_n, UL, iu=iu)
+
+    def diagonalize_dc(self, H_nn, C_nn, eps_N, UL='U'):
+        """Diagonalize symmetrix matrix using Divide & Conquer algorithm.
+
+        Virtually identical to diagonalize_ex, but without iu parameter."""
+        scalapack_diagonalize_dc(self, H_nn, C_nn, eps_N, UL)
 
     def general_diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M, UL='U', iu=None):
         """Solve generalized eigenvalue problem.
@@ -451,7 +458,10 @@ class SLDenseLinearAlgebra:
     
     def diagonalize(self, H_mm, C_nM, eps_n, S_mm=None):
         if S_mm is None:
-            self._standard_diagonalize(H_mm, C_nM, eps_n) #XXX H_mm or H_Nn?
+            # Dummy variables below H_mm = H_Nn, C_nM = C_Nn
+            # This is very ugly, we will try to be more organized
+            # in the future.
+            self._standard_diagonalize(H_mm, C_nM, eps_n)
         else:
             self._general_diagonalize(H_mm, S_mm, C_nM, eps_n)
 
@@ -461,7 +471,7 @@ class SLDenseLinearAlgebra:
         blockdescriptor = self.blockdescriptor
 
         dtype = H_Nn.dtype
-        eps_n = np.empty(C_nN.shape[-1])
+        eps_N = np.empty(C_Nn.shape[0])
 
         # XXX where should inactive ranks be sorted out?
         if not indescriptor:
@@ -470,21 +480,20 @@ class SLDenseLinearAlgebra:
         
         H_nn = blockdescriptor.zeros(dtype=dtype)
         C_nn = blockdescriptor.zeros(dtype=dtype)
-        C_nN = outdescriptor.zeros(dtype=dtype)
+        C_Nn = outdescriptor.zeros(dtype=dtype)
 
         self.cols2blocks.redistribute(H_Nn, H_Nn)
-        blockdescriptor.general_diagonalize_ex(H_nn, C_nn, eps_M, UL='U',
-                                               iu=self.bd.nbands)
-        self.blocks2cols.redistribute(C_nn, C_nN) # XXX redist only nM somehow
+        blockdescriptor.diagonalize_dc(H_nn, C_nn, eps_N, UL='U')
+        self.blocks2cols.redistribute(C_nn, C_Nn) 
 
         if outdescriptor:
             assert self.gd.comm.rank == 0
             bd = self.bd
-            bd.distribute(eps_n[:bd.nbands], eps_n)
+            bd.distribute(eps_N, eps_n)
         else:
             assert self.gd.comm.rank != 0
 
-        self.gd.comm.broadcast(C_nN, 0)
+        self.gd.comm.broadcast(C_Nn, 0)
         self.gd.comm.broadcast(eps_n, 0)
 
     def _general_diagonalize(self, H_mm, S_mm, C_nM, eps_n):
