@@ -189,7 +189,7 @@ if mpi.size > 1:
 if mpi.size > 2:
     exclude += ['neb.py']
 
-if mpi.size >= 4:
+if mpi.size < 4:
     exclude += ['parallel/pblas.py',
                 'parallel/scalapack.py',
                 ]
