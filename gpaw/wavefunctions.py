@@ -506,8 +506,8 @@ class LCAOWaveFunctions(WaveFunctions):
                 gemm(1.0, dOP_iM, P_Mi[Mstart:Mstop], 1.0, S_MM, 'n')
 
         comm = self.gd.comm
-        comm.sum(S_qMM)
-        comm.sum(T_qMM)
+        comm.sum(S_qMM, 0)
+        comm.sum(T_qMM, 0)
         self.timer.stop('TCI: Calculate S, T, P')
 
         S_MM = None # allow garbage collection of old S_qMM after redist
