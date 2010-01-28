@@ -12,7 +12,7 @@ This module contains classes defining two kinds of band groups:
 import numpy as np
 
 from gpaw import debug
-import gpaw.mpi as mpi
+from gpaw.mpi import serial_comm
 
 NONBLOCKING = False
 
@@ -85,7 +85,7 @@ class BandDescriptor:
         """
         
         if comm is None:
-            comm = mpi.serial_comm
+            comm = serial_comm
         self.comm = comm
         self.rank = self.comm.rank
 
@@ -267,7 +267,19 @@ class BandDescriptor:
             for request, a_nx in requests:
                 self.comm.wait(request)
 
-    def matrix_assembly(self, A_qnn, A_NN, hermitian):
+# -------------------------------------------------------------------
+
+from gpaw.matrix_descriptor import MatrixDescriptor
+
+class BandMatrixDescriptor(MatrixDescriptor):
+    """Descriptor-class for square matrices of bands times bands."""
+
+    def __init__(self, bd, gd):
+        MatrixDescriptor.__init__(self, bd.nbands, bd.nbands)
+        self.bd = bd
+        self.gd = gd #XXX used?
+
+    def assemble_blocks(self, A_qnn, A_NN, hermitian):
         """Assign all distributed sub-blocks pertaining from various rank to
         the relevant parts of a Hermitian or non-Hermitian matrix A_NN.
 
@@ -284,20 +296,23 @@ class BandDescriptor:
         Note that the sub-block buffers are used for communicating across the
         band communicator, hence A_qnn will be altered during the assembly.
         """
-        if self.comm.size == 1:
-            self.blockwise_assign(A_qnn, A_NN, 0, hermitian)
+        if self.bd.comm.size == 1:
+            if hermitian:
+                self.triangular_blockwise_assign(A_qnn, A_NN, 0)
+            else:
+                self.full_blockwise_assign(A_qnn, A_NN, 0)
             return
 
-        if self.rank == 0:
-            for band_rank in range(self.comm.size):
+        if self.bd.comm.rank == 0:
+            for band_rank in range(self.bd.comm.size):
                 if band_rank > 0:
-                    self.comm.receive(A_qnn, band_rank, 13)
+                    self.bd.comm.receive(A_qnn, band_rank, 13)
                 if hermitian:
                     self.triangular_blockwise_assign(A_qnn, A_NN, band_rank)
                 else:
                     self.full_blockwise_assign(A_qnn, A_NN, band_rank)
         else:
-            self.comm.send(A_qnn, 0, 13)
+            self.bd.comm.send(A_qnn, 0, 13)
 
     def triangular_blockwise_assign(self, A_qnn, A_NN, band_rank):
         """Assign the sub-blocks pertaining from a given rank to the lower
@@ -316,8 +331,8 @@ class BandDescriptor:
         Note that a Hermitian matrix requires Q=B//2+1 blocks of M x M
         elements where B is the communicator size and M=N//B for N bands.
         """
-        N = self.mynbands
-        B = self.comm.size
+        N = self.bd.mynbands
+        B = self.bd.comm.size
         assert band_rank in xrange(B)
 
         if B == 1:
@@ -337,7 +352,7 @@ class BandDescriptor:
         # Note that for integer inequalities, these relations are useful (X>0):
         #     A*X > B   <=>   A > B//X   ^   A*X <= B   <=>   A <= B//X
 
-        if self.strided:
+        if self.bd.strided:
             A_nbnb = A_NN.reshape((N, B, N, B))
             mask = np.empty((N,N), dtype=bool)
             for q2 in range(Q):
@@ -401,8 +416,8 @@ class BandDescriptor:
         Note that a non-Hermitian matrix requires Q=B blocks of M x M
         elements where B is the communicator size and M=N//B for N bands.
         """
-        N = self.mynbands
-        B = self.comm.size
+        N = self.bd.mynbands
+        B = self.bd.comm.size
         assert band_rank in xrange(B)
 
         if B == 1:
@@ -417,7 +432,7 @@ class BandDescriptor:
         if debug:
             assert A_qnn.shape == (Q,N,N)
 
-        if self.strided:
+        if self.bd.strided:
             A_nbnb = A_NN.reshape((N, B, N, B))
             for q2 in range(Q):
                 A_nbnb[:, (q1+q2)%B, :, q1] = A_qnn[q2]
@@ -451,21 +466,20 @@ class BandDescriptor:
         Therefor, care should be taken to only request q1,q2 pairs which
         are connected by Q shifts or less if A_NN is lower triangular.
         """
-        N = self.mynbands
-        B = self.comm.size
+        N = self.bd.mynbands
+        B = self.bd.comm.size
 
         if B == 1:
             return A_NN
 
-        if self.strided:
+        if self.bd.strided:
             A_nbnb = A_NN.reshape((N, B, N, B))
             return A_nbnb[:, q1, :, q2].copy() # last dim must have unit stride
         else:
             A_bnbn = A_NN.reshape((B, N, B, N))
             return A_bnbn[q1, :, q2]
 
-    def full_columnwise_assign(self, A_qnn, A_Nn, band_rank):
-
+    def full_columnwise_assign(self, A_qnn, A_Nn, band_rank): #TODO blacs only?
         """Assign the sub-blocks pertaining from a given rank to the columns of
         non-Hermitian matrix A_Nn. This subroutine is used for column assembly.
 
@@ -481,8 +495,8 @@ class BandDescriptor:
         Note that a non-Hermitian matrix requires Q=B blocks of M x M
         elements where B is the communicator size and M=N//B for N bands.
         """
-        N = self.mynbands
-        B = self.comm.size
+        N = self.bd.mynbands
+        B = self.bd.comm.size
         assert band_rank in xrange(B)
 
         if B == 1:
@@ -497,7 +511,7 @@ class BandDescriptor:
         if debug:
             assert A_qnn.shape == (Q,N,N)
 
-        if self.strided:
+        if self.bd.strided:
             A_nbn = A_NN.reshape((N, B, N))
             for q2 in range(Q):
                 A_nbn[:, (q1+q2)%B] = A_qnn[q2]
@@ -512,5 +526,5 @@ class BandDescriptor:
             for q2 in range(Q):
                 A_bnn[(q1+q2)%B] = A_qnn[q2]
 
-            A_Nn.reshape(self.nbands, N)
+            A_Nn.reshape(self.bd.nbands, N)
 

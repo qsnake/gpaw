@@ -5,6 +5,7 @@ from __future__ import division
 
 import numpy as np
 from gpaw.utilities.blas import rk, r2k, gemm
+from gpaw.band_descriptor import BandMatrixDescriptor
 
 class MatrixOperator:
     """Base class for overlap and hamiltonian operators.
@@ -37,6 +38,7 @@ class MatrixOperator:
             self.async = async
         if hermitian is not None:
             self.hermitian = hermitian
+        self.bmd = BandMatrixDescriptor(bd, gd)
 
     def allocate_work_arrays(self, dtype):
         """This is a little complicated, but let's look at the facts.
@@ -86,7 +88,7 @@ class MatrixOperator:
                 else:
                     Q = ngroups
                 self.A_qnn = np.zeros((Q, mynbands, mynbands), dtype)
-        self.A_nn = np.zeros((nbands, nbands), dtype)
+        self.A_nn = self.bmd.zeros(dtype=dtype)
 
     def estimate_memory(self, mem, dtype):
         ngroups = self.bd.comm.size
@@ -405,7 +407,8 @@ class MatrixOperator:
             return A_NN
 
         if domain_comm.rank == 0:
-            self.bd.matrix_assembly(A_qnn, A_NN, self.hermitian)
+            self.bmd.assemble_blocks(A_qnn, A_NN, self.hermitian)
+
         # Because of the amount of communication involved, we need to
         # be syncronized up to this point.           
         band_comm.barrier()
@@ -501,7 +504,7 @@ class MatrixOperator:
 
                 # Calculate wave-function contributions from the current slice
                 # of grid data by the current mynbands x mynbands matrix block.
-                C_nn = self.bd.extract_block(C_NN, rank, (rank + q) % B)
+                C_nn = self.bmd.extract_block(C_NN, rank, (rank + q) % B)
                 gemm(1.0, sbuf_ng, C_nn, beta, psit_nG[:, G1:G2])
 
                 # If we're at the last slice, add contributions to P_ani's.
@@ -546,29 +549,30 @@ class BlacsMatrixOperator(MatrixOperator):
             kpt_comm = None #XXX should NOT be needed!
             blacs = BlacsBandDescriptor(world, self.gd, self.bd, kpt_comm)
 
-        self.bdd = blacs
+        self.bmd = blacs
 
     def allocate_work_arrays(self, dtype):
         MatrixOperator.allocate_work_arrays(self, dtype)
         if blacs:
-            self.A_Nn = self.bbd.Nndescriptor.zeros(dtype=dtype) # 1D layout
+            self.A_Nn = self.bmd.Nndescriptor.zeros(dtype=dtype) # 1D layout
         else:
-            nbands = self.bd.nbands
-            self.A_nn = np.zeros((nbands, nbands), dtype)
+            self.A_nn = self.bmd.zeros(dtype=dtype)
 
     def calculate_matrix_elements(self, psit_nG, P_ani, A, dA):
         MatrixOperator.calculate_matrix_elements(self, psit_nG, P_ani, A, dA)
         if blacs:
             A_Nn = self.A_Nn
-            self.bd.full_columnwise_assign(A_qnn, A_Nn, band_comm.rank)
-            return self.bdd.redistribute(A_Nn) # 1D->2D layout
+            # XXX only domain masters need to do this, right?
+            self.bmd.full_columnwise_assign(A_qnn, A_Nn, band_comm.rank)
+            return self.bmd.redistribute(A_Nn) # 1D->2D layout
         else:
+            A_NN = self.A_nn
             if domain_comm.rank == 0:
-                self.bd.matrix_assembly(A_qnn, A_NN, self.hermitian)
-            return A_NN
+                self.bmd.assemble_blocks(A_qnn, A_NN, self.hermitian)
+            return A_NN # XXX could be dummy bmd.redistribute(A_NN)
 
     def matrix_multiply(self, C_NN, psit_nG, P_ani=None):
         if blacs:
-            C_NN = self.bdd.redistribute(C_NN) # 2D->1D layout
+            C_NN = self.bmd.redistribute(C_NN) # 2D->1D layout
         MatrixOperator.matrix_multiply(self, C_NN, psit_nG, P_ani)
 
