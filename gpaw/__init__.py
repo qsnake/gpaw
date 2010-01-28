@@ -53,6 +53,22 @@ class PoissonConvergenceError(ConvergenceError):
     pass
 
 
+hooks = {}  # dictionary for callback functions
+
+home = os.environ.get('HOME')
+if home is not None:
+    rc = os.path.join(home, '.gpaw', 'rc.py')
+    if os.path.isfile(rc):
+        # Read file in ~/.gpaw/rc.py
+        glo = {}
+        loc = {}
+        execfile(rc, glo, loc)
+
+        # Fill in allowed hooks:
+        for name in ['converged', 'diverged', 'crashed', '...']:
+            if name in loc:
+                hooks[name] = loc[name]
+
 # Check for special command line arguments:
 debug = False
 trace = False

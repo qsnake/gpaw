@@ -14,7 +14,7 @@ from ase.dft import monkhorst_pack
 import gpaw.io
 import gpaw.mpi as mpi
 import gpaw.occupations as occupations
-from gpaw import dry_run, KohnShamConvergenceError
+from gpaw import dry_run, KohnShamConvergenceError, hooks
 from gpaw.density import Density
 from gpaw.eigensolvers import get_eigensolver
 from gpaw.band_descriptor import BandDescriptor
@@ -257,6 +257,8 @@ class PAW(PAWTextOutput):
         if self.scf.converged:
             self.call_observers(iter, final=True)
             self.print_converged(iter)
+            if 'converged' in hooks:
+                hooks['converged'](self)
         elif converge:
             raise KohnShamConvergenceError('Did not converge!')        
 
