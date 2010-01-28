@@ -7,7 +7,7 @@ from gpaw.grid_descriptor import GridDescriptor
 from gpaw.mpi import world, distribute_cpus
 from gpaw.utilities import gcd
 from gpaw.utilities.lapack import inverse_cholesky
-from gpaw.hs_operators import Operator
+from gpaw.hs_operators import MatrixOperator
 from gpaw.fd_operators import Laplace
 
 G = 120  # number of grid points (G x G x G)
@@ -68,7 +68,7 @@ vt_G = gd.empty()
 vt_G.fill(0.567)
 
 def run(psit_mG):
-    overlap = Operator(bd, gd, world, kpt_comm, J)
+    overlap = MatrixOperator(bd, gd, J)
     def H(psit_xG):
         kin(psit_xG, overlap.work1_xG[:M // J])
         for psit_G, y_G in zip(psit_xG, overlap.work1_xG):

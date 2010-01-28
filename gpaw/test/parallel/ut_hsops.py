@@ -17,7 +17,7 @@ from gpaw.mpi import world, distribute_cpus
 from gpaw.utilities.tools import tri2full, md5_array, gram_schmidt
 from gpaw.band_descriptor import BandDescriptor
 from gpaw.grid_descriptor import GridDescriptor
-from gpaw.hs_operators import Operator
+from gpaw.hs_operators import MatrixOperator
 from gpaw.parameters import InputParameters
 from gpaw.xc_functional import XCFunctional
 from gpaw.setup import Setups
@@ -482,8 +482,7 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         S = lambda x: x
         dS = lambda a, P_ni: np.dot(P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
-        overlap = Operator(self.bd, self.gd, world, self.kpt_comm, 
-                           nblocks, self.async, True)
+        overlap = MatrixOperator(self.bd, self.gd, nblocks, self.async, True)
         #S_nn = overlap.calculate_matrix_elements(self.psit_nG, \
         #    self.P_ani, S, dS).conj() # conjugate to get <psit_m|A|psit_n>
         #tri2full(S_nn) # lower to upper...
@@ -510,8 +509,7 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         S = lambda x: alpha*x
         dS = lambda a, P_ni: np.dot(alpha*P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
-        overlap = Operator(self.bd, self.gd, world, self.kpt_comm, 
-                           nblocks, self.async, False)
+        overlap = MatrixOperator(self.bd, self.gd, nblocks, self.async, False)
         S_nn = overlap.calculate_matrix_elements(self.psit_nG, \
             self.P_ani, S, dS).T.copy() # transpose to get <psit_m|A|psit_n>
 
@@ -565,8 +563,7 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         S = lambda x: x
         dS = lambda a, P_ni: np.dot(P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
-        overlap = Operator(self.bd, self.gd, world, self.kpt_comm, 
-                           nblocks, self.async, True)
+        overlap = MatrixOperator(self.bd, self.gd, nblocks, self.async, True)
         self.psit_nG = overlap.matrix_multiply(C_nn.T.copy(), self.psit_nG, self.P_ani)
         #D_nn = overlap.calculate_matrix_elements(self.psit_nG, \
         #    self.P_ani, S, dS).conj() # conjugate to get <psit_m|A|psit_n>
@@ -603,8 +600,7 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         S = lambda x: x
         dS = lambda a, P_ni: np.dot(P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
-        overlap = Operator(self.bd, self.gd, world, self.kpt_comm,
-                           nblocks, self.async, True)
+        overlap = MatrixOperator(self.bd, self.gd, nblocks, self.async, True)
         self.psit_nG = overlap.matrix_multiply(C_nn.T.copy(), self.psit_nG, self.P_ani)
         #D_nn = overlap.calculate_matrix_elements(self.psit_nG, \
         #    self.P_ani, S, dS).conj() # conjugate to get <psit_m|A|psit_n>
@@ -645,8 +641,7 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         S = lambda x: alpha*x
         dS = lambda a, P_ni: np.dot(alpha*P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
-        overlap = Operator(self.bd, self.gd, world, self.kpt_comm, 
-                           nblocks, self.async, False)
+        overlap = MatrixOperator(self.bd, self.gd, nblocks, self.async, False)
         self.psit_nG = overlap.matrix_multiply(C_nn.T.copy(), self.psit_nG, self.P_ani)
         D_nn = overlap.calculate_matrix_elements(self.psit_nG, \
             self.P_ani, S, dS).T.copy() # transpose to get <psit_m|A|psit_n>

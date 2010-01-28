@@ -5,7 +5,7 @@ import numpy as np
 
 #from ase import Atoms
 from ase.units import Bohr
-from ase.dft.kpoints import monkhorst_pack, kpoint_convert
+from ase.dft.kpoints import kpoint_convert
 from gpaw import debug
 from gpaw.mpi import world, distribute_cpus
 from gpaw.utilities import gcd

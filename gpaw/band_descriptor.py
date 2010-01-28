@@ -157,8 +157,8 @@ class BandDescriptor:
         """Return new zeroed 3D array for this domain.
 
         The type can be set with the ``dtype`` keyword (default:
-        ``float``).  Extra dimensions can be added with ``n=dim``.  A
-        global array spanning all domains can be allocated with
+        ``float``).  Extra dimensions can be added with ``n=dim``.
+        A global array spanning all domains can be allocated with
         ``global_array=True``."""
         #TODO XXX doc
         return self._new_array(n, dtype, True, global_array)
@@ -167,8 +167,8 @@ class BandDescriptor:
         """Return new uninitialized 3D array for this domain.
 
         The type can be set with the ``dtype`` keyword (default:
-        ``float``).  Extra dimensions can be added with ``n=dim``.  A
-        global array spanning all domains can be allocated with
+        ``float``).  Extra dimensions can be added with ``n=dim``.
+        A global array spanning all domains can be allocated with
         ``global_array=True``."""
         #TODO XXX doc
         return self._new_array(n, dtype, False, global_array)
@@ -292,32 +292,12 @@ class BandDescriptor:
             for band_rank in range(self.comm.size):
                 if band_rank > 0:
                     self.comm.receive(A_qnn, band_rank, 13)
-                self.blockwise_assign(A_qnn, A_NN, band_rank, hermitian)
+                if hermitian:
+                    self.triangular_blockwise_assign(A_qnn, A_NN, band_rank)
+                else:
+                    self.full_blockwise_assign(A_qnn, A_NN, band_rank)
         else:
             self.comm.send(A_qnn, 0, 13)
-
-    def blockwise_assign(self, A_qnn, A_NN, band_rank, hermitian):
-        """Assign the sub-blocks pertaining from a given rank to part of a
-        blocked Hermitian or non-Hermitian matrix A_NN. This subroutine is
-        used for matrix assembly.
-
-        Parameters:
-
-        A_qnn: ndarray
-            Sub-blocks belonging to the specified rank.
-        A_NN: ndarray
-            Full matrix in which to write contributions from sub-blocks.
-        band_rank: int
-            Communicator rank to which the sub-blocks belongs.
-        hermitian: bool
-            Indicates whether A_NN is a Hermitian matrix, in which
-            case only the lower triangular part is assigned to.
-
-        """
-        if hermitian:
-            self.triangular_blockwise_assign(A_qnn, A_NN, band_rank)
-        else:
-            self.full_blockwise_assign(A_qnn, A_NN, band_rank)
 
     def triangular_blockwise_assign(self, A_qnn, A_NN, band_rank):
         """Assign the sub-blocks pertaining from a given rank to the lower
@@ -484,7 +464,6 @@ class BandDescriptor:
             A_bnbn = A_NN.reshape((B, N, B, N))
             return A_bnbn[q1, :, q2]
 
-
     def full_columnwise_assign(self, A_qnn, A_Nn, band_rank):
 
         """Assign the sub-blocks pertaining from a given rank to the columns of
@@ -534,3 +513,4 @@ class BandDescriptor:
                 A_bnn[(q1+q2)%B] = A_qnn[q2]
 
             A_Nn.reshape(self.nbands, N)
+

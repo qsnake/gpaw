@@ -12,7 +12,7 @@ from gpaw.mpi import world
 from gpaw.utilities import gcd
 #from gpaw.utilities.tools import tri2full, md5_array, gram_schmidt
 from gpaw.kpt_descriptor import KPointDescriptor
-#from gpaw.hs_operators import Operator
+#from gpaw.hs_operators import MatrixOperator
 #from gpaw.parameters import InputParameters
 #from gpaw.xc_functional import XCFunctional
 #from gpaw.setup import Setup, Setups

@@ -7,7 +7,7 @@ from gpaw.grid_descriptor import GridDescriptor
 from gpaw.mpi import world, distribute_cpus
 from gpaw.utilities import gcd
 from gpaw.utilities.lapack import inverse_cholesky
-from gpaw.hs_operators import Operator
+from gpaw.hs_operators import MatrixOperator
 
 G = 120  # number of grid points (G x G x G)
 N = 2000  # number of bands
@@ -71,7 +71,7 @@ if 0:
     work2_xG = gd.empty(X)
 
 def run(psit_mG):
-    overlap = Operator(bd, gd, world, kpt_comm, K)
+    overlap = MatrixOperator(bd, gd, K)
     if 0:
         overlap.work1_xG = work1_xG
         overlap.work2_xG = work2_xG

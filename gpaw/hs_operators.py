@@ -6,7 +6,7 @@ from __future__ import division
 import numpy as np
 from gpaw.utilities.blas import rk, r2k, gemm
 
-class Operator:
+class MatrixOperator:
     """Base class for overlap and hamiltonian operators.
 
     Due to optimized BLAS usage, matrices are considered
@@ -23,14 +23,10 @@ class Operator:
     nblocks = 1
     async = True
     hermitian = True
-    blacs = False
 
-    def __init__(self, bd, gd, world, kpt_comm, nblocks=None, async=None,
-                 hermitian=None, blacs=None):
+    def __init__(self, bd, gd, nblocks=None, async=None, hermitian=None):
         self.bd = bd
         self.gd = gd
-        self.world = world
-        self.kpt_comm = kpt_comm
         self.work1_xG = None
         self.work2_xG = None
         self.A_qnn = None
@@ -41,13 +37,7 @@ class Operator:
             self.async = async
         if hermitian is not None:
             self.hermitian = hermitian
-        if blacs is not None:
-            self.blacs = blacs
-        if self.blacs: ### Works for Hermitian case only
-            from gpaw.blacs import BlacsBandDescriptor
-            self.bbd = BlacsBandDescriptor(self.world, self.gd,
-                                           self.bd, self.kpt_comm)
- 
+
     def allocate_work_arrays(self, dtype):
         """This is a little complicated, but let's look at the facts.
 
@@ -79,7 +69,6 @@ class Operator:
 
         """
         ngroups = self.bd.comm.size
-        nbands = self.bd.nbands
         mynbands = self.bd.mynbands
         if ngroups == 1 and self.nblocks == 1:
             self.work1_xG = self.gd.zeros(mynbands, dtype)
@@ -88,9 +77,6 @@ class Operator:
             X = mynbands // self.nblocks
             if self.gd.n_c.prod() % self.nblocks != 0:
                 X += int(np.ceil(mynbands/self.gd.n_c.prod()))
-            if not self.hermitian and self.blacs:
-                ### more space needed for non-Hermitian case?
-                X *= 2
             self.work1_xG = self.gd.zeros(X, dtype)
             self.work2_xG = self.gd.zeros(X, dtype)
             if ngroups > 1:
@@ -99,11 +85,8 @@ class Operator:
                 else:
                     Q = ngroups
                 self.A_qnn = np.zeros((Q, mynbands, mynbands), dtype)
-        
-        if not self.blacs:
-            self.A_nn = np.zeros((nbands, nbands), dtype)
-        else:
-            self.A_Nn = self.bbd.Nndescriptor.zeros(dtype=dtype)
+        nbands = ngroups * mynbands
+        self.A_nn = np.zeros((nbands, nbands), dtype)
 
     def estimate_memory(self, mem, dtype):
         ngroups = self.bd.comm.size
@@ -421,14 +404,13 @@ class Operator:
         if B == 1:
             return A_NN
 
-        if not self.blacs:
-            if domain_comm.rank == 0:
-                self.bd.matrix_assembly(A_qnn, A_NN, self.hermitian)
-            return A_NN
-        else:
-            A_Nn = self.A_Nn
-            self.bd.full_columnwise_assign(A_qnn, A_Nn, band_comm.rank)
-            return A_Nn
+        if domain_comm.rank == 0:
+            self.bd.matrix_assembly(A_qnn, A_NN, self.hermitian)
+        # Because of the amount of communication involved, we need to
+        # be syncronized up to this point.           
+        band_comm.barrier()
+        domain_comm.barrier()
+        return A_NN
         
     def matrix_multiply(self, C_NN, psit_nG, P_ani=None):
         """Calculate new linear combinations of wave functions.
@@ -444,7 +426,7 @@ class Operator:
 
         Parameters:
 
-        C_NN: ndarray XXX to be decided!
+        C_NN: ndarray
             Matrix representation of the requested linear combinations. Even
             with a hermitian operator, this matrix need not be self-adjoint.
             However, unlike the results from calculate_matrix_elements, it is
@@ -543,3 +525,42 @@ class Operator:
 
         psit_nG.shape = shape
         return psit_nG
+
+# -------------------------------------------------------------------
+
+# NB pseudo code below - just a mockup for now
+
+class BlacsMatrixOperator(MatrixOperator):
+
+    hermitian = True
+
+    def __init__(self, bd, gd, hermitian=None, blacs=None):
+        MatrixOperator.__init__(self, bd, gd, hermitian=hermitian)
+
+        if not self.hermitian:
+            raise NotImplementedError #XXX will need bigger buffers?
+
+        if blacs is None:
+            assert bd.parent is gd.parent
+            world = bd.parent
+            kpt_comm = None #XXX should NOT be needed!
+            blacs = BlacsBandDescriptor(world, self.gd, self.bd, kpt_comm)
+
+        self.bdd = blacs
+
+    def calculate_matrix_elements(self, psit_nG, P_ani, A, dA):
+        MatrixOperator.calculate_matrix_elements(self, psit_nG, P_ani, A, dA)
+        if blacs:
+            A_Nn = self.A_Nn
+            self.bd.full_columnwise_assign(A_qnn, A_Nn, band_comm.rank)
+            return self.bdd.redistribute(A_Nn) # 1D->2D layout
+        else:
+            if domain_comm.rank == 0:
+                self.bd.matrix_assembly(A_qnn, A_NN, self.hermitian)
+            return A_NN
+
+    def matrix_multiply(self, C_NN, psit_nG, P_ani=None):
+        if blacs:
+            C_NN = self.bdd.redistribute(C_NN) # 2D->1D layout
+        MatrixOperator.matrix_multiply(self, C_NN, psit_nG, P_ani)
+

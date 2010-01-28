@@ -16,7 +16,7 @@ from gpaw.mpi import parallel
 from gpaw.utilities.lapack import inverse_cholesky
 from gpaw.utilities import scalapack
 from gpaw import sl_inverse_cholesky
-from gpaw.hs_operators import Operator
+from gpaw.hs_operators import MatrixOperator
 
 
 class Overlap:
@@ -32,15 +32,10 @@ class Overlap:
 
     def __init__(self, wfs):
         """Create the Overlap operator."""
-
-        self.operator = Operator(wfs.bd, wfs.gd, wfs.world, wfs.kpt_comm)
+        self.operator = MatrixOperator(wfs.bd, wfs.gd)
         self.timer = wfs.timer
         self.domain_comm = wfs.gd.comm
         self.band_comm = wfs.bd.comm
-        self.kpt_comm = wfs.kpt_comm
-        self.world = wfs.world
-        self.mynbands = wfs.bd.mynbands
-        self.nbands = wfs.bd.nbands
         self.setups = wfs.setups
         
     def orthonormalize(self, wfs, kpt):
@@ -77,8 +72,6 @@ class Overlap:
         psit_nG = kpt.psit_nG
         P_ani = kpt.P_ani
         wfs.pt.integrate(psit_nG, P_ani, kpt.q)
-        mynbands = self.mynbands
-        nbands = self.nbands
 
         # Construct the overlap matrix:
         S = lambda x: x
@@ -167,3 +160,4 @@ class Overlap:
 
     def estimate_memory(self, mem, dtype):
         self.operator.estimate_memory(mem, dtype)
+

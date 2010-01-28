@@ -90,14 +90,14 @@ def SliceGen(psit_nG, operator):
 
 from gpaw.kpoint import GlobalKPoint
 from gpaw.kpt_descriptor import KPointDescriptor
-from gpaw.hs_operators import Operator
+from gpaw.hs_operators import MatrixOperator
 
 def dscf_kpoint_overlaps(paw, phasemod=True, broadcast=True):
     bd = paw.wfs.bd
     gd = paw.wfs.gd
     kd = KPointDescriptor(paw.wfs.nspins, paw.wfs.nibzkpts, \
         paw.wfs.kpt_comm, paw.wfs.gamma, paw.wfs.dtype)
-    operator = Operator(bd, gd, hermitian=False)
+    operator = MatrixOperator(bd, gd, hermitian=False)
     atoms = paw.get_atoms()
 
     # Find the kpoint with lowest kpt.k_c (closest to gamma point)
