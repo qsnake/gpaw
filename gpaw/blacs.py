@@ -463,7 +463,23 @@ def parallelprint(comm, obj):
 class SLDenseLinearAlgebra:
     """ScaLAPACK Dense Linear Algebra.
 
-    This class is instantiated in LCAO.  Not for casual use."""
+    This class is instantiated in LCAO and real-space codes.  Not for casual use,
+    at least for now.
+    
+    Requires two distributors and three descriptors for initialization as well as
+    grid descriptors and band descriptors. Distributors are for cols2blocks 
+    (1D -> 2D BLACS grid) and blocks2cols (2D -> 1D BLACS grid). ScaLAPACK
+    operations must occur on 2D BLACS grid for performance and scalability.
+
+    _general_diagonalize is "hard-coded" for LCAO, expects both Hamiltonian and
+    Overlap matrix to be on the 2D BLACS grid. This is done early on to save memory.
+
+    _standard_diagonalize is "hard-coded" for the real-space code, expects both
+    Hamiltonian matrix on a 1D BLACS grid. Method redistribute automatically
+    to a 2D BLACS grid. The resulting eigenvectors form the U matrix which needs
+    to be on a 2D BLACS grid for use with matrix_multiply method in hs_operators
+    class.
+    """
     def __init__(self, gd, bd, cols2blocks, blocks2cols, timer=nulltimer):
         self.gd = gd
         self.bd = bd
