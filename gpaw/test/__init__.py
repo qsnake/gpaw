@@ -111,10 +111,6 @@ tests = [
     'si.py',
     'gemm.py',
     'gemv.py',
-    'lcao_bulk.py',
-    'jstm.py',
-    'lxc_xcatom.py',
-    'simple_stm.py',
     'asewannier.py',
     'davidson.py',
     'cg.py',
@@ -123,6 +119,7 @@ tests = [
     'lcao_bsse.py',
     'lcao_force.py',
     'parallel/lcao_hamiltonian.py',
+    'parallel/lcao_parallel.py',
     'wannier_ethylene.py',
     'CH4.py',
     'neb.py',
@@ -133,11 +130,15 @@ tests = [
     'muffintinpot.py',
     'fixmom.py',
     'be_nltd_ip.py',
+    'lcao_bulk.py',
+    'jstm.py',
+    'simple_stm.py',
     'guc_force.py',
     'td_na2.py',
     'ldos.py',
     'exx_coarse.py',
     '2Al.py',
+    'lxc_xcatom.py',
     'aedensity.py',
     'si_primitive.py',
     'restart_band_structure.py',
@@ -193,6 +194,9 @@ if mpi.size < 4:
     exclude += ['parallel/pblas.py',
                 'parallel/scalapack.py',
                 ]
+
+if mpi.size != 4:
+    exclude += ['parallel/lcao_parallel.py']
 
 if mpi.size != 4 or not gpaw.debug:
     exclude += ['parallel/n2.py']
