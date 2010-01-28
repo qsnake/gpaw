@@ -88,6 +88,7 @@ import numpy as np
 
 from gpaw import sl_diagonalize
 from gpaw.mpi import SerialCommunicator, serial_comm
+from gpaw.matrix_descriptor import MatrixDescriptor
 from gpaw.utilities.blas import gemm, r2k, gemmdot
 from gpaw.utilities.blacs import scalapack_general_diagonalize_ex, \
     scalapack_diagonalize_ex, pblas_simple_gemm
@@ -185,51 +186,6 @@ class BlacsGrid:
     def __del__(self):
         if self.is_active():
             _gpaw.blacs_destroy(self.context)
-
-
-class MatrixDescriptor:
-    """Class representing a 2D matrix shape.  Base class for parallel
-    matrix descriptor with BLACS."""
-    
-    def __init__(self, M, N):
-        self.shape = (M, N)
-    
-    def __nonzero__(self):
-        return self.shape[0] != 0 and self.shape[1] != 0
-
-    def zeros(self, n=(), dtype=float):
-        """Return array of zeroes with the correct size on all CPUs.
-
-        The last two dimensions will be equal to the shape of this
-        descriptor.  If specified as a tuple, can have any preceding
-        dimension."""
-        return self._new_array(np.zeros, n, dtype)
-
-    def empty(self, n=(), dtype=float):
-        """Return array of zeros with the correct size on all CPUs.
-
-        See zeros()."""
-        return self._new_array(np.empty, n, dtype)
-
-    def _new_array(self, func, n, dtype):
-        if isinstance(n, int):
-            n = n,
-        shape = n + self.shape
-        return func(shape, dtype)
-
-    def check(self, a_mn):
-        """Check that specified array is compatible with this descriptor."""
-        return a_mn.shape == self.shape and a_mn.flags.contiguous
-
-    def checkassert(self, a_mn):
-        ok = self.check(a_mn)
-        if not ok:
-            if not a_mn.flags.contiguous:
-                msg = 'Matrix with shape %s is not contiguous' % (a_mn.shape,)
-            else:
-                msg = ('%s-descriptor incompatible with %s-matrix' %
-                       (self.shape, a_mn.shape))
-            raise AssertionError(msg)
 
 
 class BlacsDescriptor(MatrixDescriptor):
@@ -463,22 +419,24 @@ def parallelprint(comm, obj):
 class SLDenseLinearAlgebra:
     """ScaLAPACK Dense Linear Algebra.
 
-    This class is instantiated in LCAO and real-space codes.  Not for casual use,
-    at least for now.
+    This class is instantiated in LCAO and real-space codes.  Not for
+    casual use, at least for now.
     
-    Requires two distributors and three descriptors for initialization as well as
-    grid descriptors and band descriptors. Distributors are for cols2blocks 
-    (1D -> 2D BLACS grid) and blocks2cols (2D -> 1D BLACS grid). ScaLAPACK
-    operations must occur on 2D BLACS grid for performance and scalability.
+    Requires two distributors and three descriptors for initialization
+    as well as grid descriptors and band descriptors. Distributors are
+    for cols2blocks (1D -> 2D BLACS grid) and blocks2cols (2D -> 1D
+    BLACS grid). ScaLAPACK operations must occur on 2D BLACS grid for
+    performance and scalability.
 
-    _general_diagonalize is "hard-coded" for LCAO, expects both Hamiltonian and
-    Overlap matrix to be on the 2D BLACS grid. This is done early on to save memory.
+    _general_diagonalize is "hard-coded" for LCAO, expects both
+    Hamiltonian and Overlap matrix to be on the 2D BLACS grid. This is
+    done early on to save memory.
 
-    _standard_diagonalize is "hard-coded" for the real-space code, expects both
-    Hamiltonian matrix on a 1D BLACS grid. Method redistribute automatically
-    to a 2D BLACS grid. The resulting eigenvectors form the U matrix which needs
-    to be on a 2D BLACS grid for use with matrix_multiply method in hs_operators
-    class.
+    _standard_diagonalize is "hard-coded" for the real-space code,
+    expects both Hamiltonian matrix on a 1D BLACS grid. Method
+    redistribute automatically to a 2D BLACS grid. The resulting
+    eigenvectors form the U matrix which needs to be on a 2D BLACS
+    grid for use with matrix_multiply method in hs_operators class.
     """
     def __init__(self, gd, bd, cols2blocks, blocks2cols, timer=nulltimer):
         self.gd = gd
