@@ -1,8 +1,8 @@
 from gpaw.utilities import unpack
 from ase import Hartree
-import pickle
+import cPickle
 import numpy as np
-from gpaw.mpi import world, rank
+from gpaw.mpi import world, rank, send_string, receive_string
 from gpaw.utilities.blas import gemm
 from gpaw.utilities.timing import Timer
 from gpaw.utilities.lapack import inverse_general
@@ -11,12 +11,12 @@ import _gpaw
 
 def tw(mat, filename):
     fd = file(filename, 'wb')
-    pickle.dump(mat, fd, 2)
+    cPickle.dump(mat, fd, 2)
     fd.close()
 
 def tr(filename):
     fd = file(filename, 'r')
-    mat = pickle.load(fd)
+    mat = cPickle.load(fd)
     fd.close()
     return mat
 
@@ -404,7 +404,7 @@ def generate_selfenergy_database(atoms, ntk, filename, direction=0, kt=0.1,
             energy = path.get_energy(flags[1:])
             index.append([nid, energy])
             se.append(lead_se(energy))
-    pickle.dump((index, se), fd, 2)
+    cPickle.dump((index, se), fd, 2)
     fd.close()    
 
 def test_selfenergy_interpolation(atoms, ntk, filename, begin, end, base, scale, direction=0):
@@ -462,7 +462,7 @@ def test_selfenergy_interpolation(atoms, ntk, filename, begin, end, base, scale,
         cmp_se.append(lead_se(e).recover())
     
     fd = file(filename, 'w')
-    pickle.dump((cmp_se, inter_se_linear, ee, cmp_ee), fd, 2)
+    cPickle.dump((cmp_se, inter_se_linear, ee, cmp_ee), fd, 2)
     fd.close()
     
     for i,e in enumerate(cmp_ee):
@@ -508,7 +508,7 @@ def path_selfenergy(atoms, ntk, filename, begin, end, num= 257, direction=0):
     se = np.array(se)
     
     fd = file(filename + '_' + str(world.rank), 'w')
-    pickle.dump((se, ee), fd, 2)
+    cPickle.dump((se, ee), fd, 2)
     fd.close()
 
 class P_info:
@@ -737,7 +737,7 @@ def eig_states_norm(orbital, s_mm):
 def find(condition):
     return np.nonzero(condition)[0]
     
-def gather_to_list(comm, data):
+def gather_ndarray_list(data, comm):
     #data is a numpy array, maybe has different shape in different cpus
     #this function gather them to the all_data in master, all_data is
     # a list with the lenth world.size, all_data[i] = data {on i}
@@ -755,10 +755,33 @@ def gather_to_list(comm, data):
             all_data.append(tmp[:])
     else:
         comm.ssend(data, 0, 546)
-    
     return all_data            
-            
         
-    
+def gather_ndarray_dict(data, comm):
+    #data is dict of a numpy array, maybe has different shape in different cpus
+    #this function gather them to the all_data in master, all_data is
+    # a dict with the lenth world.size
+    all_data = {}
+    dim = data[data.keys()[0]].shape
+    dtype = data[data.keys()[0]].dtype
+    shape = np.zeros([len(dim)], int)
+
+    if comm.rank == 0:
+        for name in data:
+            all_data[name] = data[name]
+        for i in range(1, comm.size):
+            for j in range(len(data)):
+                name = receive_string(i, comm)
+                comm.receive(shape, i, 123)
+                tmp = np.zeros(shape, dtype)
+                comm.receive(tmp, i, 546)
+                all_data[name] = tmp
+    else:
+        for name in data:
+            send_string(name, 0, comm)
+            shape = np.array(data[name].shape)
+            comm.ssend(shape, 0, 123)
+            comm.ssend(data[name], 0, 546)
+    return all_data
     
     
