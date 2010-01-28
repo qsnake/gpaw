@@ -67,8 +67,8 @@ int Csys2blacs_handle_(MPI_Comm SysCtxt);
 #ifdef GPAW_NO_UNDERSCORE_CSCALAPACK
 #define   Cpdgemr2d_  Cpdgemr2d
 #define   Cpzgemr2d_  Cpzgemr2d
-#define   Cpdgemr2do_ Cpdgemr2do
-#define   Cpzgemr2do_ Cpzgemr2do
+#define   Cpdtrmr2d_  Cpdtrmr2d
+#define   Cpztrmr2d_  Cpztrmr2d
 #endif
 
 // tools
@@ -84,13 +84,15 @@ void Cpzgemr2d_(int m, int n,
                 void* b, int ib, int jb, int* descb,
                 int gcontext);
 
-void Cpdgemr2do_(int m, int n,
-                 double* a, int ia, int ja, int* desca,
-                 double* b, int ib, int jb, int* descb);
+void Cpdtrmr2d_(char* uplo, char* diag, int m, int n,
+                double* a, int ia, int ja, int* desca,
+                double* b, int ib, int jb, int* descb,
+                int gcontext);
 
-void Cpzgemr2do_(int m, int n,
-                 void* a, int ia, int ja, int* desca,
-                 void* b, int ib, int jb, int* descb);
+void Cpztrmr2d_(char* uplo, char* diag, int m, int n,
+                void* a, int ia, int ja, int* desca,
+                void* b, int ib, int jb, int* descb,
+                int gcontext);
 
 double pdlamch_(int* ictxt, char* cmach);
 
@@ -445,6 +447,8 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
   PyObject* comm_obj = Py_None; //intermediate communicator, must
                                 // encompass adesc + bdesc
   char order='R';
+  char uplo;
+  char diag='N'; // copy the diagonal
   int nprocs;
   int iam;
   int c_ConTxt;
@@ -453,8 +457,8 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
   int n;
   static int one = 1;
 
-  if (!PyArg_ParseTuple(args, "OOOOOiii", &desca, &descb, &a, &b,
-                        &comm_obj, &m, &n, &isreal))
+  if (!PyArg_ParseTuple(args, "OOOOOiiic", &desca, &descb, &a, &b,
+                        &comm_obj, &m, &n, &isreal, &uplo))
     return NULL;
 
   // Create intermediate blacs grid on this communicator
@@ -463,12 +467,25 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
   MPI_Comm_size(comm, &nprocs);
   c_ConTxt = Csys2blacs_handle(comm);
   Cblacs_gridinit(&c_ConTxt, &order, 1, nprocs);
-  if(isreal)
-    Cpdgemr2d_(m, n, DOUBLEP(a), one, one, INTP(desca),
-	       DOUBLEP(b), one, one, INTP(descb), c_ConTxt);
-  else
-    Cpzgemr2d_(m, n, (void*)COMPLEXP(a), one, one, INTP(desca),
-	       (void*)COMPLEXP(b), one, one, INTP(descb), c_ConTxt);
+  if (uplo == 'G') // General matrix
+    {
+      if(isreal)
+	Cpdgemr2d_(m, n, DOUBLEP(a), one, one, INTP(desca),
+		   DOUBLEP(b), one, one, INTP(descb), c_ConTxt);
+      else
+	Cpzgemr2d_(m, n, (void*)COMPLEXP(a), one, one, INTP(desca),
+		   (void*)COMPLEXP(b), one, one, INTP(descb), c_ConTxt);
+    }
+  else // Trapazoidal matrix
+    {
+      if(isreal)
+	Cpdtrmr2d_(&uplo, &diag, m, n, DOUBLEP(a), one, one, INTP(desca),
+		   DOUBLEP(b), one, one, INTP(descb), c_ConTxt);
+      else
+	Cpztrmr2d_(&uplo, &diag, m, n, (void*)COMPLEXP(a), one, one, INTP(desca),
+		   (void*)COMPLEXP(b), one, one, INTP(descb), c_ConTxt);      
+    }
+    
   Cblacs_gridexit(c_ConTxt);
   Py_RETURN_NONE;
 }

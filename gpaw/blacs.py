@@ -397,7 +397,7 @@ class BlacsDescriptor(MatrixDescriptor):
 
 class Redistributor:
     """Class for redistributing BLACS matrices on different contexts."""
-    def __init__(self, supercomm, srcdescriptor, dstdescriptor):
+    def __init__(self, supercomm, srcdescriptor, dstdescriptor, uplo='G'):
         """Create redistributor.
 
         Source and destination descriptors may reside on different
@@ -406,10 +406,16 @@ class Redistributor:
 
         The communicators of the BLACS grid of srcdescriptor as well
         as that of dstdescriptor *must* both be subcommunicators of
-        supercomm."""
+        supercomm.
+
+        Allowed values of UPLO are: G for general matrix, U for upper
+        triangular and L for lower triangular. The latter two are useful
+        for symmetric matrices."""
         self.supercomm = supercomm
         self.srcdescriptor = srcdescriptor
         self.dstdescriptor = dstdescriptor
+        assert uplo in ['G', 'U', 'L'] 
+        self.uplo = uplo
     
     def redistribute_submatrix(self, src_mn, dst_mn, subM, subN):
         """Redistribute submatrix into other submatrix.  
@@ -431,7 +437,7 @@ class Redistributor:
                                self.dstdescriptor.asarray(),
                                src_mn.T, dst_mn.T,
                                self.supercomm.get_c_object(),
-                               subN, subM, isreal)
+                               subN, subM, isreal, self.uplo)
     
     def redistribute(self, src_mn, dst_mn):
         """Redistribute src_mn to dst_mn.
