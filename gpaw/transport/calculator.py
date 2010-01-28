@@ -260,6 +260,7 @@ class Transport(GPAW):
         self.gamma = len(bzk_kc) == 1 and not bzk_kc[0].any()
         self.nbmol = self.wfs.setups.nao
 
+        self.get_ks_map()
         if self.use_lead:
             if self.npk == 1:
                 self.lead_kpts = self.atoms_l[0].calc.wfs.bzk_kc
@@ -350,7 +351,20 @@ class Transport(GPAW):
         p = {}
         p['energies'] = energies
         self.set_analysis_parameters(**p)
-                 
+
+    def get_ks_map(self):
+        self.ks_map = np.zeros([self.npk * self.nspins, 3], int)
+        self.my_ks_map = np.zeros([self.my_npk * self.my_nspins, 3], int)
+        for i, kpt in enumerate(self.wfs.kpt_u):
+            base = self.wfs.kpt_comm.rank * self.my_npk * self.my_nspins
+            self.ks_map[i + base, 0] = kpt.s
+            self.ks_map[i + base, 1] = kpt.k
+            self.ks_map[i + base, 2] = self.wfs.kpt_comm.rank
+            self.my_ks_map[i, 0] = kpt.s
+            self.my_ks_map[i, 1] = kpt.k
+            self.my_ks_map[i, 2] = self.wfs.kpt_comm.rank            
+        self.wfs.kpt_comm.sum(self.ks_map)
+        
     def get_hamiltonian_initial_guess(self):
         atoms = self.atoms.copy()
         #atoms.pbc[self.d] = True
