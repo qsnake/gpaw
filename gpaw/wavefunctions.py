@@ -520,9 +520,11 @@ class LCAOWaveFunctions(WaveFunctions):
             kpt.T_MM = T_qMM[q]
 
 
-        if debug and self.band_comm.size == 1:
+        if debug and self.band_comm.size == 1 and comm.rank == 0:
+            # S and T are summed only on comm master, so check only there
             from numpy.linalg import eigvalsh
             for S_MM in S_qMM:
+                tri2full(S_MM, UL='U')
                 smin = eigvalsh(S_MM).real.min()
                 if smin < 0:
                     raise RuntimeError('Overlap matrix has negative '
