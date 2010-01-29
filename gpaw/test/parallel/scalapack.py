@@ -76,10 +76,10 @@ def main(N=1000, seed=42, mprocs=2, nprocs=2, dtype=float):
     assert globH.check(H0) and globS.check(S0) and globC.check(C0)
 
     # Create distributed destriptors with various block sizes:
-    distH = grid.new_descriptor(N, N, 4, 4)
-    distS = grid.new_descriptor(N, N, 4, 4)
-    distZ = grid.new_descriptor(N, N, 4, 4)
-    distC = grid.new_descriptor(N, N, 4, 4)
+    distH = grid.new_descriptor(N, N, 64, 64)
+    distS = grid.new_descriptor(N, N, 64, 64)
+    distZ = grid.new_descriptor(N, N, 64, 64)
+    distC = grid.new_descriptor(N, N, 64, 64)
 
     # Distributed matrices:
     H = distH.empty(dtype=dtype)
