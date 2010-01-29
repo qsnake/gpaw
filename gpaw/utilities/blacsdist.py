@@ -7,9 +7,9 @@ from gpaw.blacs import BlacsGrid, Redistributor
 from gpaw.mpi import world, SerialCommunicator
 from gpaw.utilities import devnull
 
-if world.rank != 0:
-    sys.stdout = devnull
-    sys.stderr = devnull
+#if world.rank != 0:
+#    sys.stdout = devnull
+#    sys.stderr = devnull
 
 def build_parser():
     description = ('Print distribution layout of BLACS matrix.  '
@@ -33,11 +33,36 @@ def test(comm, M, N, mcpus, ncpus, mb, nb):
     desc1 = grid1.new_descriptor(M, N, mb, nb, 0, 0) # ???
     B_mn = desc1.zeros(dtype=float)
     B_mn[:] = comm.rank
+
+    if comm.rank == 0:
+        msg = 'Slices of global matrix indices by rank'
+        print msg
+        print '-' * len(msg)
+
+    for rank in range(comm.size):
+        comm.barrier()
+        if rank == comm.rank:
+            print 'Rank %d:' % rank
+            last_Nstart = 0
+            for Mstart, Mstop, Nstart, Nstop, block in desc1.my_blocks(B_mn):
+                if Nstart < last_Nstart:
+                    print
+                print '[%3d:%3d, %3d:%3d]' % (Mstart, Mstop, Nstart, Nstop),
+                last_Nstart = Nstart
+                assert (block == comm.rank).all()
+                #print block
+                #print
+            print
+            print
+        comm.barrier()
     
     redistributor = Redistributor(comm, desc1, desc0)
     redistributor.redistribute(B_mn, A_mn)
 
     if comm.rank == 0:
+        msg = 'Rank where each element of the global matrix is stored'
+        print msg
+        print '-' * len(msg)
         print A_mn
 
 def main():

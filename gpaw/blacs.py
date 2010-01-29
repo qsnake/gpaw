@@ -156,6 +156,9 @@ class BlacsGrid:
             context = _gpaw.new_blacs_context(comm.get_c_object(),
                                               npcol, nprow, order)
             assert (context != INACTIVE) == (comm.rank < nprow * npcol)
+
+        self.mycol, self.myrow = _gpaw.get_blacs_gridinfo(context, nprow,
+                                                          npcol)
         
         self.context = context
         self.comm = comm
@@ -277,10 +280,10 @@ class BlacsDescriptor(MatrixDescriptor):
         self.csrc = csrc
         
         if 1:#blacsgrid.is_active():
-            locN, locM = _gpaw.get_blacs_shape(self.blacsgrid.context,
-                                               self.N, self.M,
-                                               self.nb, self.mb, 
-                                               self.csrc, self.rsrc)
+            locN, locM = _gpaw.get_blacs_local_shape(self.blacsgrid.context,
+                                                     self.N, self.M,
+                                                     self.nb, self.mb, 
+                                                     self.csrc, self.rsrc)
             self.lld  = max(1, locN) # max 1 is nonsensical, but appears
                                      # to be required by PBLAS
         else:
@@ -356,6 +359,40 @@ class BlacsDescriptor(MatrixDescriptor):
         See also documentation for diagonalize_ex."""
         scalapack_general_diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M,
                                          UL, iu=iu)
+
+    def my_blocks(self, array_mn):
+        """Yield the local blocks and their global index limits.
+        
+        Yields tuples of the form (Mstart, Mstop, Nstart, Nstop, block),
+        for each locally stored block of the array.
+        """
+        if not self.check(array_mn):
+            raise ValueError('Bad array shape (%s vs %s)' % (self,
+                                                             array_mn.shape))
+        
+        grid = self.blacsgrid
+        mb = self.mb
+        nb = self.nb
+        myrow = grid.myrow
+        mycol = grid.mycol
+        nprow = grid.nprow
+        npcol = grid.npcol
+        M, N = self.gshape
+
+        Mmyblocks = -(-self.shape[0] // mb)
+        Nmyblocks = -(-self.shape[1] // nb)
+        for Mblock in range(Mmyblocks):
+            for Nblock in range(Nmyblocks):
+                myMstart = Mblock * mb
+                myNstart = Nblock * nb
+                Mstart = myrow * mb + Mblock * mb * nprow
+                Nstart = mycol * mb + Nblock * nb * npcol
+                Mstop = min(Mstart + mb, M)
+                Nstop = min(Nstart + nb, N)
+                block = array_mn[myMstart:myMstart + mb,
+                                 myNstart:myNstart + mb]
+                
+                yield Mstart, Mstop, Nstart, Nstop, block
 
 
 class Redistributor:

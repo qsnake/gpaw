@@ -409,7 +409,21 @@ PyObject* new_blacs_context(PyObject *self, PyObject *args)
   return returnvalue;
 }
 
-PyObject* get_blacs_shape(PyObject *self, PyObject *args)
+PyObject* get_blacs_gridinfo(PyObject *self, PyObject *args)
+{
+  int ConTxt, nprow, npcol;
+  int myrow, mycol;
+  
+  if (!PyArg_ParseTuple(args, "iii", &ConTxt, &nprow, &npcol)) {
+    return NULL;
+  }
+
+  Cblacs_gridinfo_(ConTxt, &nprow, &npcol, &myrow, &mycol);
+  return Py_BuildValue("(ii)", myrow, mycol);
+}
+
+
+PyObject* get_blacs_local_shape(PyObject *self, PyObject *args)
 {
   int ConTxt;
   int m, n, mb, nb, rsrc, csrc;
