@@ -6,7 +6,7 @@ import time
 import tempfile
 from optparse import OptionParser
 
-import gpaw.mpi as mpi
+from gpaw import mpi, hooks
 
 
 parser = OptionParser(usage='%prog [options] [tests]',
@@ -67,6 +67,8 @@ for test in exclude:
 
 from gpaw.test import TestRunner
 
+old_hooks = hooks.copy()
+hooks.clear()
 if mpi.rank == 0:
     tmpdir = tempfile.mkdtemp(prefix='gpaw-test-')
 else:
@@ -83,3 +85,5 @@ if mpi.rank == 0:
         open('failed-tests.txt', 'w').write('\n'.join(failed) + '\n')
     elif not opt.keep_tmpdir:
         os.system('rm -rf ' + tmpdir)
+hooks.update(old_hooks.items())
+
