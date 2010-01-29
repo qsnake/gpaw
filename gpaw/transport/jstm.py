@@ -163,55 +163,59 @@ class AtomCenteredFunctions(LocalizedFunctions):
 
 class STM:
     """Simulate STM-images using Green's function methods"""
-    def __init__(self, tip=None, surface=None, lead1=None, lead2 = None, **kwargs):
-        """Create the STM-calculators
+    def __init__(self, tip=None, surface=None, lead1=None, lead2=None,
+                 **kwargs):
+        """Create the STM-calculators.
     
-        Parameters
-        ==========
-        tip_atom_index : index of the atom that defines the tip apex
-        dmin : minimal distance between tip and surface
-        hs1 : {None, (h1, s1) tuple}
-              here  h1 and s1 are the Hamiltonan and overlap
-              matrix for the tip region.
+        Parameters:
+        
+        tip_atom_index: int
+            index of the atom that defines the tip apex
+        dmin: float
+            minimal distance between tip and surface
+        hs1: {None, (h1, s1) tuple}
+            here  h1 and s1 are the Hamiltonan and overlap
+            matrix for the tip region.
         hs10: {None, (h10, s10) tuple} 
-              where h10 and s10 are the Hamiltonian and
-              overlap matrix for tip lead.
-        hs2 : {None, (h2, s2) tuple} 
-              here h2 and s2 are the Hamiltonan and overlap
-              matrix for the tip region.
+            where h10 and s10 are the Hamiltonian and
+            overlap matrix for tip lead.
+        hs2: {None, (h2, s2) tuple} 
+            here h2 and s2 are the Hamiltonan and overlap
+            matrix for the tip region.
         hs20: {None (h20, s20) tuple}
-              here h20 and s20 are the Hamiltonian and
-              overlap matrix for tip lead.
-        align_bf : {1, Int} 
-              Use align_bf=m to shift the surface region
-              by a constant potential so that the m'th onsite element in
-              the surface is aligned with the m'th onsite element in the 
-              surface lead. Further the tip lead is shifted so that the
-              -m'th onsite element of the tip is aligned with the -m'th 
-              onsite element of the tip lead.
-        bias : {1, float} 
-               sets the bias value across the tunneling junction
-        de : {0.01, float} 
-             spacing of the energy grid which the transmission function
-             should be calcualted on. 
-        w : {0.0, [0:1], float} 
-             symmetry of the applied bias: 
-             w=0 surface potential is fixed,
-             w=1 tip potential is fixed.
-        k_c :{(0, 0), array} 
-             array of a k-point of the irreducible transverse
-             Brillouin zone.
+            here h20 and s20 are the Hamiltonian and
+            overlap matrix for tip lead.
+        align_bf: {1, Int} 
+            Use align_bf=m to shift the surface region
+            by a constant potential so that the m'th onsite element in
+            the surface is aligned with the m'th onsite element in the 
+            surface lead. Further the tip lead is shifted so that the
+            -m'th onsite element of the tip is aligned with the -m'th 
+            onsite element of the tip lead.
+        bias: {1, float} 
+            sets the bias value across the tunneling junction
+        de: {0.01, float} 
+            spacing of the energy grid which the transmission function
+            should be calcualted on. 
+        w: {0.0, [0:1], float} 
+            symmetry of the applied bias: 
+            w=0 surface potential is fixed,
+            w=1 tip potential is fixed.
+        k_c: {(0, 0), array} 
+            array of a k-point of the irreducible transverse
+            Brillouin zone.
         energies: {None, array} 
-             A custom energy grid, on which the transmission
-             function should be calculated. 
+            A custom energy grid, on which the transmission
+            function should be calculated. 
         eta1/eta2: {1e-4, float}
             Infinitesimal for the calculation of the tip/surface lead
             self-energies
-        cpu_grid : {None, (N,N) ndarray, dtype=Int}
-            define the cpu grid that is used for the calculation.
-            The first index refers to a parallelisation over tip positions,
-            while the second index refers to a prallelisation over basis functions.
-            If 'None' is used the prallelisation is over tip position only.
+        cpu_grid: {None, (N,N) ndarray, dtype=Int}
+            define the cpu grid that is used for the calculation.  The
+            first index refers to a parallelisation over tip
+            positions, while the second index refers to a
+            prallelisation over basis functions.  If 'None' is used
+            the prallelisation is over tip position only.
         logfile: {None , str}
             Write a logfile in the local directory with name given by 'str'
         """
@@ -494,9 +498,11 @@ class STM:
             self.world.barrier()
 
     def set_tip_position(self, position_c):   
-        """Positions tip atom as close as possible above the surface at 
-           the grid point given by positions_c and sums the tip and surface 
-            potentials"""
+        """Set tip positions.
+
+        Positions tip atom as close as possible above the surface at
+        the grid point given by positions_c and sums the tip and
+        surface potentials"""
 
         position_c = np.resize(position_c,3)
         assert self.srf_cell.gd.orthogonal
@@ -1515,15 +1521,17 @@ class SrfCell:
         self.energy_shift = shift
 
 def dump_hs(calc, filename, region, cvl=0, direction= 'z', return_hs=False):
-    """Pickle LCAO - Hamiltonian and overlap matrix for a tip or surface
-       calculation.
-       region : {['tip', 'surface', 'None'] str}
-                has to be set 
-       cvl : {0, Int}
-             Number of basis functions in the convergence layer, that 
-             has to be 'cut' away in order to assure a smooth matching
-             of the potential at the lead-surface/tip interface.
+    """Pickle H and S.
 
+    Pickle LCAO - Hamiltonian and overlap matrix for a tip or surface
+    calculation.
+
+    region: {['tip', 'surface', 'None'] str}
+        has to be set.
+    cvl: {0, Int}
+        Number of basis functions in the convergence layer, that 
+        has to be 'cut' away in order to assure a smooth matching
+        of the potential at the lead-surface/tip interface.
     """    
     assert region in ['tip', 'surface', 'None']
     if calc.wfs.S_qMM is None:
