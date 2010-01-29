@@ -519,7 +519,7 @@ class SLDenseLinearAlgebra:
         C_nn = blockdescriptor.zeros(dtype=dtype)
         C_Nn = outdescriptor.zeros(dtype=dtype)
 
-        self.cols2blocks.redistribute(H_Nn, H_Nn)
+        self.cols2blocks.redistribute(H_Nn, H_nn)
         blockdescriptor.diagonalize_dc(H_nn, C_nn, eps_N, UL='U')
         self.blocks2cols.redistribute(C_nn, C_Nn) 
 
@@ -565,9 +565,9 @@ class SLDenseLinearAlgebra:
 
 class BlacsBandDescriptor:
     # this class 'describes' all the Realspace/Blacs-related stuff
-    def __init__(self, world, gd, bd, kpt_comm):
-        ncpus, mcpus, blocksize = sl_diagonalize[:3]
-        
+    def __init__(self, world, gd, bd, kpt_comm, ncpus, mcpus, blocksize,
+                 timer=nulltimer):
+
         bcommsize = bd.comm.size
         gcommsize = gd.comm.size
         bcommrank = bd.comm.rank
@@ -578,9 +578,8 @@ class BlacsBandDescriptor:
         columncomm = world.new_communicator(column_ranks)
         blockcomm = world.new_communicator(block_ranks)
 
-        self.bd = bd
-        nbands = self.bd.nbands
-        mynbands = self.bd.mynbands
+        nbands = bd.nbands
+        mynbands = bd.mynbands
 
         # Create 1D and 2D BLACS grid
         columngrid = BlacsGrid(bd.comm, 1, bcommsize)
@@ -598,6 +597,17 @@ class BlacsBandDescriptor:
         self.nndescriptor = nndescriptor
         self.Nn2nn = Redistributor(blockcomm, Nndescriptor, nndescriptor)
         self.nn2Nn = Redistributor(blockcomm, nndescriptor, Nndescriptor)
+
+        self.world = world
+        self.gd = gd
+        self.bd = bd
+        self.columngrid = columngrid
+        self.blockgrid = blockgrid
+        self.timer = timer
+        
+    def get_diagonalizer(self):
+        return SLDenseLinearAlgebra(self.gd, self.bd, self.Nn2nn, self.nn2Nn,
+                                    self.timer)
 
 
 class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
