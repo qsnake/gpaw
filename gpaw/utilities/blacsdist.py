@@ -43,12 +43,12 @@ def test(comm, M, N, mcpus, ncpus, mb, nb):
         comm.barrier()
         if rank == comm.rank:
             print 'Rank %d:' % rank
-            last_Nstart = 0
+            last_Mstart = -1
             for Mstart, Mstop, Nstart, Nstop, block in desc1.my_blocks(B_mn):
-                if Nstart < last_Nstart:
+                if Mstart > last_Mstart and last_Mstart >= 0:
                     print
                 print '[%3d:%3d, %3d:%3d]' % (Mstart, Mstop, Nstart, Nstop),
-                last_Nstart = Nstart
+                last_Mstart = Mstart
                 assert (block == comm.rank).all()
                 #print block
                 #print
