@@ -110,7 +110,7 @@ class MatrixOperator:
                     Q = ngroups
                 count = Q * mynbands**2
                 mem.subnode('A_qnn', count * mem.itemsize[dtype])
-        mem.subnode('A_nn', nbands * nbands * mem.itemsize[dtype])
+        mem.subnode('A_nn', np.prod(self.bmd.shape) * mem.itemsize[dtype])
 
     def _pseudo_braket(self, bra_xG, ket_yG, A_yx, square=None):
         """Calculate matrix elements of braket pairs of pseudo wave functions.
