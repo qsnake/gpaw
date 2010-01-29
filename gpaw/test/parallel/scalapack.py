@@ -33,15 +33,13 @@ def main(N=1000, seed=42, mprocs=2, nprocs=2, dtype=float):
         epsilon = 0.0
 
     # Create descriptors for matrices on master:
-    globH = grid.new_descriptor(N, N, N, N)
-    globS = grid.new_descriptor(N, N, N, N)
-    globC = grid.new_descriptor(N, N, N, N)
+    glob = grid.new_descriptor(N, N, N, N)
 
     # print globA.asarray()
     # Populate matrices local to master:
-    H0 = globH.zeros(dtype=dtype) + gen.rand(*globH.shape)
-    S0 = globS.zeros(dtype=dtype) + gen.rand(*globS.shape)
-    C0 = globC.empty(dtype=dtype)
+    H0 = glob.zeros(dtype=dtype) + gen.rand(*glob.shape)
+    S0 = glob.zeros(dtype=dtype) + gen.rand(*glob.shape)
+    C0 = glob.empty(dtype=dtype)
     if rank == 0:
         # Complex case must have real numbers on the diagonal.
         # We make a simple complex Hermitian matrix below.
@@ -73,38 +71,35 @@ def main(N=1000, seed=42, mprocs=2, nprocs=2, dtype=float):
         if info > 0:
             raise RuntimeError('LAPACK inverse cholesky failed.')
         
-    assert globH.check(H0) and globS.check(S0) and globC.check(C0)
+    assert glob.check(H0) and glob.check(S0) and glob.check(C0)
 
     # Create distributed destriptors with various block sizes:
-    distH = grid.new_descriptor(N, N, 64, 64)
-    distS = grid.new_descriptor(N, N, 64, 64)
-    distZ = grid.new_descriptor(N, N, 64, 64)
-    distC = grid.new_descriptor(N, N, 64, 64)
+    dist = grid.new_descriptor(N, N, 64, 64)
 
     # Distributed matrices:
-    H = distH.empty(dtype=dtype)
-    S = distS.empty(dtype=dtype)
-    Z = distZ.empty(dtype=dtype)
-    C = distC.zeros(dtype=dtype)
+    H = dist.empty(dtype=dtype)
+    S = dist.empty(dtype=dtype)
+    Z = dist.empty(dtype=dtype)
+    C = dist.zeros(dtype=dtype)
 
     # Eigenvalues are non-BLACS matrices
     W = np.empty((N), dtype=float)
     W_dc = np.empty((N), dtype=float)
     W_g = np.empty((N), dtype=float)
     
-    Redistributor(world, globH, distH).redistribute(H0, H)
-    Redistributor(world, globS, distS).redistribute(S0, S)
-    Redistributor(world, globC, distC).redistribute(S0, C) # C0 was previously \
+    Redistributor(world, glob, dist).redistribute(H0, H)
+    Redistributor(world, glob, dist).redistribute(S0, S)
+    Redistributor(world, glob, dist).redistribute(S0, C) # C0 was previously \
         # overwritten
 
-    scalapack_diagonalize_ex(distH, H.copy(), Z, W, 'U')
-    scalapack_diagonalize_dc(distH, H.copy(), Z, W_dc, 'U')
-    scalapack_general_diagonalize_ex(distH, H.copy(), S.copy(), Z, W_g, 'U')
-    scalapack_inverse_cholesky(distC, C, 'U') # return result in upper and lower
+    scalapack_diagonalize_ex(dist, H.copy(), Z, W, 'U')
+    scalapack_diagonalize_dc(dist, H.copy(), Z, W_dc, 'U')
+    scalapack_general_diagonalize_ex(dist, H.copy(), S.copy(), Z, W_g, 'U')
+    scalapack_inverse_cholesky(dist, C, 'U') # return result in upper and lower
 
     # Undo redistribute
-    C_test = globC.zeros(dtype=dtype)
-    Redistributor(world, distC, globC, 'U').redistribute(C, C_test)
+    C_test = glob.zeros(dtype=dtype)
+    Redistributor(world, dist, glob, 'U').redistribute(C, C_test)
 
     if rank == 0:
         diag_ex_err = abs(W - W0).max()
