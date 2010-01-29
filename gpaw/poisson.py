@@ -419,7 +419,7 @@ class FixedBoundaryPoissonSolver(PoissonSolver):
             du0 = np.zeros(d3 - 1, dtype=complex)
             du20 = np.zeros(d3 - 2, dtype=complex)       
         
-            h2 = self.gd.h_c[2] ** 2
+            h2 = self.gd.h_cv[2, 2] ** 2
             for phi, rho, rv2, bp1, bp2, i in zip(phi_g2, rho_g1,
                                            self.k_vq2,
                                            self.b_phi1,
