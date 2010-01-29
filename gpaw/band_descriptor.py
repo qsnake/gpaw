@@ -256,7 +256,7 @@ class BandDescriptor:
             for band_rank in range(self.comm.size):
                 if band_rank != 0:
                     a_nx = B_nx[self.get_slice(band_rank), ...].copy()
-                    request = self.comm.send(a_nx, r, 421, NONBLOCKING)
+                    request = self.comm.send(a_nx, band_rank, 421, NONBLOCKING)
                     # Remember to store a reference to the
                     # send buffer (a_nx) so that is isn't
                     # deallocated:
