@@ -77,19 +77,24 @@ def main(N=1000, seed=42, mprocs=2, nprocs=2, dtype=float):
     dist = grid.new_descriptor(N, N, 64, 64)
 
     # Distributed matrices:
+    # We can use empty here, but end up with garbage on
+    # on the other half of the triangle when we redistribute.
+    # This is fine because ScaLAPACK does not care.
+
     H = dist.empty(dtype=dtype)
     S = dist.empty(dtype=dtype)
     Z = dist.empty(dtype=dtype)
-    C = dist.zeros(dtype=dtype)
+    C = dist.empty(dtype=dtype)
 
     # Eigenvalues are non-BLACS matrices
     W = np.empty((N), dtype=float)
     W_dc = np.empty((N), dtype=float)
     W_g = np.empty((N), dtype=float)
     
-    Redistributor(world, glob, dist).redistribute(H0, H)
-    Redistributor(world, glob, dist).redistribute(S0, S)
-    Redistributor(world, glob, dist).redistribute(S0, C) # C0 was previously \
+    Glob2dist = Redistributor(world, glob, dist, uplo='U')
+    Glob2dist.redistribute(H0, H)
+    Glob2dist.redistribute(S0, S)
+    Glob2dist.redistribute(S0, C) # C0 was previously \
         # overwritten
 
     scalapack_diagonalize_ex(dist, H.copy(), Z, W, 'U')
@@ -98,8 +103,9 @@ def main(N=1000, seed=42, mprocs=2, nprocs=2, dtype=float):
     scalapack_inverse_cholesky(dist, C, 'U') # return result in upper and lower
 
     # Undo redistribute
-    C_test = glob.zeros(dtype=dtype)
-    Redistributor(world, dist, glob, 'U').redistribute(C, C_test)
+    C_test = glob.zeros(dtype=dtype) # cannot do empty here!
+    Dist2glob = Redistributor(world, dist, glob, 'U')
+    Dist2glob.redistribute(C, C_test)
 
     if rank == 0:
         diag_ex_err = abs(W - W0).max()
