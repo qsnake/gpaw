@@ -102,7 +102,7 @@ class CHI:
             kq = self.find_kq(bzkpt_kG, q)
 
 
-        self.h_c = h_c = calc.wfs.gd.h_c
+        self.h_c = h_c =  calc.wfs.gd.h_cv.diagonal()
         Li = np.array([3, 1, 2])
         d_nn = np.zeros((self.nband, self.nband, 3))
         qr = np.zeros(self.nG)
@@ -254,7 +254,7 @@ class CHI:
         N = 0
         for iw in range(self.Nw):
             w = iw * self.dw
-            N += epsilonRPA[iw] * w 
+            N += np.imag(epsilonRPA[iw]) * w 
         N *= self.dw * self.vol / (2 * pi**2)
         
         print 'sum rule:'
@@ -519,13 +519,9 @@ class CHI:
         self.vol = np.abs(np.dot(a[0],np.cross(a[1],a[2])))
         self.BZvol = (2. * pi)**3 / self.vol
 
-        b = np.zeros_like(a)
-        b[0] = np.cross(a[1], a[2])
-        b[1] = np.cross(a[2], a[0])
-        b[2] = np.cross(a[0], a[1])
-        self.bcell = 2. * pi * b / self.vol
-
-        self.vol = np.abs(self.vol)
+        b = np.linalg.inv(a)
+    
+        self.bcell = 2 * pi * b
 
         assert np.abs((np.dot(a, self.bcell) - 2.*pi*np.eye(3)).sum()) < 1e-10
 
@@ -618,7 +614,7 @@ class CHI:
                         
         # get dipole
         N_gd = self.nG
-        self.h_c = calc.wfs.gd.h_c
+        self.h_c =  calc.wfs.gd.h_cv.diagonal()
 
         Li = np.array([3, 1, 2])
         d_nn = np.zeros((self.nband, self.nband, 3))
