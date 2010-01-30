@@ -79,6 +79,7 @@ PyObject* new_blacs_context(PyObject *self, PyObject *args);
 PyObject* get_blacs_gridinfo(PyObject* self, PyObject *args);
 PyObject* get_blacs_local_shape(PyObject* self, PyObject *args);
 PyObject* blacs_destroy(PyObject *self, PyObject *args);
+PyObject* scalapack_set(PyObject *self, PyObject *args);
 PyObject* scalapack_redist(PyObject *self, PyObject *args);
 PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args);
 PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args);
@@ -155,6 +156,7 @@ static PyMethodDef functions[] = {
   {"get_blacs_gridinfo", get_blacs_gridinfo, METH_VARARGS, NULL},
   {"get_blacs_local_shape", get_blacs_local_shape, METH_VARARGS, NULL},
   {"blacs_destroy",     blacs_destroy,      METH_VARARGS, 0},
+  {"scalapack_set", scalapack_set, METH_VARARGS, 0}, 
   {"scalapack_redist",      scalapack_redist,     METH_VARARGS, 0},
   {"scalapack_diagonalize_dc", scalapack_diagonalize_dc, METH_VARARGS, 0}, 
   {"scalapack_diagonalize_ex", scalapack_diagonalize_ex, METH_VARARGS, 0},

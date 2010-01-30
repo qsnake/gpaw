@@ -41,6 +41,8 @@ int Csys2blacs_handle_(MPI_Comm SysCtxt);
 #ifdef GPAW_NO_UNDERSCORE_SCALAPACK
 #define   numroc_  numroc
 #define   pdlamch_ pdlamch
+#define   pdlaset_ pdlaset
+#define   pzlaset_ pzlaset
 
 #define   pdpotrf_ pdpotrf
 #define   pzpotrf_ pzpotrf
@@ -95,6 +97,12 @@ void Cpztrmr2d_(char* uplo, char* diag, int m, int n,
                 int gcontext);
 
 double pdlamch_(int* ictxt, char* cmach);
+
+void pdlaset_(char* uplo, int* m, int* n, double* alpha,  double* beta,
+	      double* a, int* ia, int* ja, int* desca);
+
+void pzlaset_(char* uplo, int* m, int* n, void* alpha,  void* beta,
+	      void* a, int* ia, int* ja, int* desca);
 
 // cholesky
 void pdpotrf_(char* uplo, int* n, double* a,
@@ -452,6 +460,30 @@ PyObject* blacs_destroy(PyObject *self, PyObject *args)
   Py_RETURN_NONE;
 }
 
+PyObject* scalapack_set(PyObject *self, PyObject *args)
+{
+  PyArrayObject* a; //matrix;
+  PyArrayObject* desca; //descriptor
+  Py_complex alpha;
+  Py_complex beta;
+  int m, n;
+  char uplo;
+  static int one = 1;
+
+  if (!PyArg_ParseTuple(args, "OODDcii", &a, &desca,
+                        &alpha, &beta, &uplo, &m, &n))
+    return NULL;
+
+  if (a->descr->type_num == PyArray_DOUBLE)
+    pdlaset_(&uplo, &m, &n, &(alpha.real), &(beta.real), DOUBLEP(a), 
+	     &one, &one, INTP(desca));
+  else
+    pzlaset_(&uplo, &m, &n, &alpha, &beta, (void*)COMPLEXP(a), 
+	     &one, &one, INTP(desca));    
+
+  Py_RETURN_NONE;
+}
+
 PyObject* scalapack_redist(PyObject *self, PyObject *args)
 {
   PyArrayObject* a; //source matrix
@@ -575,14 +607,17 @@ PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args)
   // Computation part
   liwork = i_work;
   iwork = GPAW_MALLOC(int, liwork);
+  printf ("past query");
   if (a->descr->type_num == PyArray_DOUBLE)
     {
       double* work = GPAW_MALLOC(double, lwork);
+      printf ("right before compute");
       pdsyevd_(&jobz, &uplo, &n,
 	       DOUBLEP(a), &one, &one, INTP(desca),
 	       DOUBLEP(w),
 	       DOUBLEP(z), &one, &one, INTP(desca),
 	       work, &lwork, iwork, &liwork, &info);
+      printf ("right after compute");
       free(work);
     }
   else
