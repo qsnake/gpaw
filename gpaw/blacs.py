@@ -521,8 +521,10 @@ class SLDenseLinearAlgebra:
 
         self.cols2blocks.redistribute(H_Nn, H_nn)
         blockdescriptor.diagonalize_dc(H_nn, C_nn, eps_N, UL='U')
+        print 'past diagonalize', dtype
         self.blocks2cols.redistribute(C_nn, C_Nn) 
 
+        print 'past redist', dtype
         if outdescriptor:
             assert self.gd.comm.rank == 0
             bd = self.bd
@@ -582,7 +584,7 @@ class BlacsBandDescriptor:
         mynbands = bd.mynbands
 
         # Create 1D and 2D BLACS grid
-        columngrid = BlacsGrid(bd.comm, 1, bcommsize)
+        columngrid = BlacsGrid(columncomm, 1, bcommsize)
         blockgrid  = BlacsGrid(blockcomm, ncpus, mcpus)
 
         # 1D layout
