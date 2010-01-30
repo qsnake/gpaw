@@ -36,11 +36,11 @@ def scalapack_diagonalize_dc(desca, a, z, w, uplo):
     assert desca.check(a)
     assert desca.check(z)
     # only symmetric matrices
-    assert desca.gshape[0] == desca.gshape[1]
-    # stil need assert for eigenvalues
+    assert desca.gshape[0] == desca.gshape[1] 
     assert uplo in ['L', 'U']
     if not desca.blacsgrid.is_active():
         return
+    assert desca.gshape[0] == len(w)
     info = _gpaw.scalapack_diagonalize_dc(a, desca.asarray(), uplo, z, w)
     if info != 0:
         raise RuntimeError('scalapack_diagonalize_dc error: %d' % info)
@@ -57,6 +57,7 @@ def scalapack_diagonalize_ex(desca, a, z, w, uplo, iu=None):
     assert uplo in ['L', 'U']
     if not desca.blacsgrid.is_active():
         return
+    assert desca.gshape[0] == len(w)
     info = _gpaw.scalapack_diagonalize_ex(a, desca.asarray(), uplo, iu, z, w)
     if info not in [0, 2]:
         raise RuntimeError('scalapack_diagonalize_ex error: %d' % info)
@@ -74,6 +75,7 @@ def scalapack_general_diagonalize_ex(desca, a, b, z, w, uplo, iu=None):
     assert uplo in ['L', 'U']
     if not desca.blacsgrid.is_active():
         return
+    assert desca.gshape[0] == len(w)
     info = _gpaw.scalapack_general_diagonalize_ex(a, desca.asarray(), 
                                                   uplo, iu, b, z, w)
     if info not in [0, 2]:
