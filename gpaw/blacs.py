@@ -508,7 +508,8 @@ class SLDenseLinearAlgebra:
         blockdescriptor = self.blockdescriptor
 
         dtype = H_Nn.dtype
-        eps_N = np.empty(C_Nn.shape[0])
+        if blockdescriptor:
+            eps_N = np.empty(self.bd.nbands)
 
         # XXX where should inactive ranks be sorted out?
         if not indescriptor:
@@ -520,11 +521,16 @@ class SLDenseLinearAlgebra:
         C_Nn = outdescriptor.zeros(dtype=dtype)
 
         self.cols2blocks.redistribute(H_Nn, H_nn)
+        # parallelprint(self.bd.comm, H_nn)
+        # parallelprint(self.bd.comm, C_nn)
+        print 'past cols2blocks'
         blockdescriptor.diagonalize_dc(H_nn, C_nn, eps_N, UL='U')
         print 'past diagonalize', dtype
         self.blocks2cols.redistribute(C_nn, C_Nn) 
+        print 'past blocks2cols', dtype
 
-        print 'past redist', dtype
+        # broadcast/destribute of eps_N more complicated and
+        # not working
         if outdescriptor:
             assert self.gd.comm.rank == 0
             bd = self.bd
@@ -552,6 +558,9 @@ class SLDenseLinearAlgebra:
         self.blocks2cols.redistribute(C_mm, C_mM)
         self.timer.stop('Redistribute coefs')
         self.timer.start('Send coefs to domains')
+        # I don't think the distribute on eps_M should
+        # work since eps_M is only sensical on
+        # blockedgrid
         if outdescriptor:
             assert self.gd.comm.rank == 0
             bd = self.bd
