@@ -78,7 +78,7 @@ class Transport(GPAW):
                        'data_file',
                         'analysis_data_list', 'save_bias_data',
                         'analysis_mode', 'normalize_density',                      
-                        'neintmethod', 'neintstep', 'eqinttol']:
+                        'neintmethod', 'neintstep', 'eqinttol', 'extra_density']:
                 
                 del self.gpw_kwargs[key]
                 p[key] = kw[key]
@@ -133,6 +133,7 @@ class Transport(GPAW):
         self.save_bias_data = p['save_bias_data']
         self.analysis_mode = p['analysis_mode']
         self.normalize_density = p['normalize_density']
+        self.extra_density = p['extra_density']
         self.eqinttol = p['eqinttol']
         self.spinpol = p['spinpol']
         self.verbose = p['verbose']
@@ -193,6 +194,7 @@ class Transport(GPAW):
         p['save_bias_data'] = True
         p['analysis_mode'] = 0
         p['normalize_density'] = True
+        p['extra_density'] = False
         p['neintmethod'] = 0
         p['neintstep'] = 0.02
         p['eqinttol'] = 1e-4
@@ -417,7 +419,8 @@ class Transport(GPAW):
                 scf.energies.append(energy)
                 scf.check_convergence(density, wfs.eigensolver)
                 density.update(wfs)
-                density.rhot_g += self.surround.extra_rhot_g
+                if self.extra_density:
+                    density.rhot_g += self.surround.extra_rhot_g
                 hamiltonian.update(density)
                 calc.print_iteration(iter)
         
