@@ -5,8 +5,8 @@ from __future__ import division
 
 import numpy as np
 from gpaw.utilities.blas import rk, r2k, gemm
-from gpaw.band_descriptor import BandMatrixDescriptor, \
-                                 BlacsBandMatrixDescriptor
+from gpaw.matrix_descriptor import BandMatrixDescriptor, \
+                                   BlacsBandMatrixDescriptor
 
 class MatrixOperator:
     """Base class for overlap and hamiltonian operators.
