@@ -10,7 +10,14 @@ def fail(subject, filename='/dev/null'):
                      (subject, filename)) == 0
     raise SystemExit
 
-tmpdir = tempfile.mkdtemp(prefix='gpaw-parallel-')
+if '--dir' in sys.argv:
+    i = sys.argv.index('--dir')
+    sys.argv.pop(i)
+    dir = sys.argv.pop(i)
+else:
+    dir = None
+
+tmpdir = tempfile.mkdtemp(prefix='gpaw-parallel-', dir=dir)
 os.chdir(tmpdir)
 
 # Checkout a fresh version and install:

@@ -9,19 +9,21 @@ import tempfile
 
 
 def send_email(subject, filename='/dev/null'):
-    assert os.system('mail -s "%s" gpaw-developers@listserv.fysik.dtu.dk < %s' %
-    #assert os.system('mail -s "%s" jensj@fysik.dtu.dk < %s' %
-                     (subject, filename)) == 0
-
-def send_jj_email(subject, filename='/dev/null'):
-    assert os.system('mail -s "%s" jensj@fysik.dtu.dk < %s' %
+    assert os.system('mail -s "%s" gpaw-developers@fysik.dtu.dk < %s' %
                      (subject, filename)) == 0
 
 def fail(msg, filename='/dev/null'):
     send_email(msg, filename)
     raise SystemExit
 
-tmpdir = tempfile.mkdtemp(prefix='gpaw-')
+if '--dir' in sys.argv:
+    i = sys.argv.index('--dir')
+    sys.argv.pop(i)
+    dir = sys.argv.pop(i)
+else:
+    dir = None
+
+tmpdir = tempfile.mkdtemp(prefix='gpaw-', dir=dir)
 os.chdir(tmpdir)
 
 day = time.localtime()[6]
@@ -107,14 +109,6 @@ open('/home/camp/jensj/gpawrevision.ok', 'w').write('%d %d\n' %
                                                     (aserevision,
                                                      gpawrevision))
 
-if 0:
-    # PyLint:
-    os.chdir('../../lib/python')
-    os.system('rm -rf gpaw/gui')
-    if os.system(export + 'pylint -f html gpaw; ' +
-                 'cp pylint_global.html %s' % dir) != 0:
-        fail('PyLint failed!')
-
 def count(dir, pattern):
     p = os.popen('wc -l `find %s -name %s` | tail -1' % (dir, pattern), 'r')
     return int(p.read().split()[0])
@@ -171,37 +165,5 @@ pylab.legend(loc='upper left')
 pylab.title('Number of lines')
 pylab.savefig(dir + 'stat.png')
 
-"""
-# Coverage test:
-os.chdir('test')
-if day == 6:  # only Sunday
-    if os.system(export +
-                 'rm %s/*.cover; ' % dir +
-                 'python %s/trace.py' % os.path.dirname(trace.__file__) +
-                 ' --count --coverdir coverage --missing' +
-                 ' --ignore-dir /usr:%s test.py %s' % (home, args)) != 0:
-        fail('Coverage failed!')
-    
-    filenames = glob.glob('coverage/gpaw.*.cover')
-else:
-    filenames = glob.glob(dir + '*.cover')
-    
-names = []
-for filename in filenames:
-    missing = 0
-    for line in open(filename):
-        if line.startswith('>>>>>>'):
-            missing += 1
-    if missing > 0:
-        if filename.startswith('coverage/gpaw.'):
-            name = filename[14:-6]
-            if os.system('cp %s %s/%s.cover' %
-                         (filename, dir, name)) != 0:
-                fail('????')
-        else:
-            name = filename[28:-6]
-        names.append((-missing, name))
-
-"""
 os.system('cd; rm -r ' + tmpdir)
 
