@@ -762,24 +762,38 @@ def gather_ndarray_dict(data, comm):
     #this function gather them to the all_data in master, all_data is
     # a dict with the lenth world.size
     all_data = {}
-    dim = data[data.keys()[0]].shape
-    dtype = data[data.keys()[0]].dtype
-    shape = np.zeros([len(dim)], int)
-
+    data_len = np.zeros([comm.size], int)
+    data_len[comm.rank] = len(data)
+    comm.sum(data_len)
+    
+    info = np.zeros([np.sum(data_len), 3], int)
+    dtypes = [int, float, complex]
+    for i, name in enumerate(data):
+        base = np.sum(data_len[:comm.rank])
+        info[base + i, 0] = len(data[name].shape)
+        info[base + i, 1] = comm.rank
+        info[base + i, 2] = dtypes.index(data[name].dtype)
+    comm.sum(info)
+    
     if comm.rank == 0:
         for name in data:
             all_data[name] = data[name]
+ 
         for i in range(1, comm.size):
-            for j in range(len(data)):
+            base = np.sum(data_len[:i])
+            for j in range(data_len[i]):
+                shape = np.zeros([info[base + j, 0]], int)
+                dtype = dtypes[info[base + j, 2]]
                 name = receive_string(i, comm)
                 comm.receive(shape, i, 123)
                 tmp = np.zeros(shape, dtype)
                 comm.receive(tmp, i, 546)
                 all_data[name] = tmp
+
     else:
         for name in data:
             send_string(name, 0, comm)
-            shape = np.array(data[name].shape)
+            shape = np.array(data[name].shape, int)
             comm.ssend(shape, 0, 123)
             comm.ssend(data[name], 0, 546)
     return all_data
