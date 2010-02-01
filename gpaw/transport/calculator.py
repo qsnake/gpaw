@@ -945,6 +945,8 @@ class Transport(GPAW):
                 if not self.ground:
                     self.get_neintegral_points(s, k, 'locInt')
         ne = self.eqpathinfo[0][0].num + self.nepathinfo[0][0].num
+        if not self.ground:
+            ne += self.locpathinfo[0][0].num
         self.text('energy point' + str(ne))           
         
     def get_eqintegral_points(self, s, k):
