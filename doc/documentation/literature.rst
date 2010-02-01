@@ -390,7 +390,7 @@ Publications using the gpaw code
 
    Localized atomic basis set in the projector augmented wave method
 
-   Phys. Rev. B (accepted)
+   Physical Review B, Vol. **80**, 195112 (2009)
 
    .. 2 November 2009
 
