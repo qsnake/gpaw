@@ -5,7 +5,8 @@ from __future__ import division
 
 import numpy as np
 from gpaw.utilities.blas import rk, r2k, gemm
-from gpaw.band_descriptor import BandMatrixDescriptor
+from gpaw.band_descriptor import BandMatrixDescriptor, \
+                                 BlacsBandMatrixDescriptor
 
 class MatrixOperator:
     """Base class for overlap and hamiltonian operators.
@@ -38,7 +39,7 @@ class MatrixOperator:
             self.async = async
         if hermitian is not None:
             self.hermitian = hermitian
-        self.bmd = BandMatrixDescriptor(bd, gd)
+        self.bmd = BandMatrixDescriptor(bd, gd) #XXX prefix Blacs for 1D layout
 
     def allocate_work_arrays(self, dtype):
         """This is a little complicated, but let's look at the facts.
@@ -413,7 +414,7 @@ class MatrixOperator:
         # be syncronized up to this point.           
         band_comm.barrier()
         domain_comm.barrier()
-        return A_NN
+        return self.bmd.redistribute_output(A_NN)
         
     def matrix_multiply(self, C_NN, psit_nG, P_ani=None):
         """Calculate new linear combinations of wave functions.
@@ -451,6 +452,8 @@ class MatrixOperator:
             self.allocate_work_arrays(psit_nG.dtype)
         else:
             assert self.work1_xG.dtype == psit_nG.dtype
+
+        C_NN = self.bmd.redistribute_input(C_NN)
 
         if B == 1 and J == 1:
             # Simple case:
@@ -504,7 +507,7 @@ class MatrixOperator:
 
                 # Calculate wave-function contributions from the current slice
                 # of grid data by the current mynbands x mynbands matrix block.
-                C_nn = self.bmd.extract_block(C_NN, rank, (rank + q) % B)
+                C_nn = self.bmd.extract_block(C_NN, (rank + q) % B, rank)
                 gemm(1.0, sbuf_ng, C_nn, beta, psit_nG[:, G1:G2])
 
                 # If we're at the last slice, add contributions to P_ani's.
