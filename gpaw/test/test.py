@@ -6,7 +6,8 @@ import time
 import tempfile
 from optparse import OptionParser
 
-from gpaw import mpi, hooks
+import gpaw.mpi as mpi
+from gpaw import hooks
 
 
 parser = OptionParser(usage='%prog [options] [tests]',
