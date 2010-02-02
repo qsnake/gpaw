@@ -8,7 +8,7 @@ Ref. to Kresse-paper ... XXX
 import numpy as np
 
 from gpaw.utilities.blas import axpy
-from gpaw.fd_operators import Operator
+from gpaw.fd_operators import FDOperator
 
 
 class BaseMixer:
@@ -49,23 +49,23 @@ class BaseMixer:
             b = 0.0625 * (self.weight - 1)
             c = 0.03125 * (self.weight - 1)
             d = 0.015625 * (self.weight - 1)
-            self.metric = Operator([a,
-                                    b, b, b, b, b, b,
-                                    c, c, c, c, c, c, c, c, c, c, c, c,
-                                    d, d, d, d, d, d, d, d],
-                                   [(0, 0, 0),
-                                    (-1, 0, 0), (1, 0, 0),                 #b
-                                    (0, -1, 0), (0, 1, 0),                 #b
-                                    (0, 0, -1), (0, 0, 1),                 #b
-                                    (1, 1, 0), (1, 0, 1), (0, 1, 1),       #c
-                                    (1, -1, 0), (1, 0, -1), (0, 1, -1),    #c
-                                    (-1, 1, 0), (-1, 0, 1), (0, -1, 1),    #c
-                                    (-1, -1, 0), (-1, 0, -1), (0, -1, -1), #c
-                                    (1, 1, 1), (1, 1, -1), (1, -1, 1),     #d
-                                    (-1, 1, 1), (1, -1, -1), (-1, -1, 1),  #d
-                                    (-1, 1, -1), (-1, -1, -1)              #d
-                                    ],
-                                   gd, float).apply
+            self.metric = FDOperator([a,
+                                      b, b, b, b, b, b,
+                                      c, c, c, c, c, c, c, c, c, c, c, c,
+                                      d, d, d, d, d, d, d, d],
+                                     [(0, 0, 0),
+                                      (-1, 0, 0), (1, 0, 0),                 #b
+                                      (0, -1, 0), (0, 1, 0),                 #b
+                                      (0, 0, -1), (0, 0, 1),                 #b
+                                      (1, 1, 0), (1, 0, 1), (0, 1, 1),       #c
+                                      (1, -1, 0), (1, 0, -1), (0, 1, -1),    #c
+                                      (-1, 1, 0), (-1, 0, 1), (0, -1, 1),    #c
+                                      (-1, -1, 0), (-1, 0, -1), (0, -1, -1), #c
+                                      (1, 1, 1), (1, 1, -1), (1, -1, 1),     #d
+                                      (-1, 1, 1), (1, -1, -1), (-1, -1, 1),  #d
+                                      (-1, 1, -1), (-1, -1, -1)              #d
+                                      ],
+                                     gd, float).apply
             self.mR_G = gd.empty()
         
     def initialize(self, density):

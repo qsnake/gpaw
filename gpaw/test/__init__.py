@@ -66,6 +66,7 @@ tests = [
     'parallel/ut_parallel.py',
     'parallel/compare.py',
     'ase3k.py',
+    'laplace.py',
     'gauss_wave.py',
     'coulomb.py',
     'timing.py',
