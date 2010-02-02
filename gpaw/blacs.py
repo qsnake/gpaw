@@ -807,7 +807,18 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
     def get_coefficient_descriptor(self):
         return self.nMdescriptor
 
-    def distribute_overlap_matrix(self, S_qmM):
+    def distribute_overlap_matrix(self, S_qmM, root=0):
+        # Some MPI implementations need a lot of memory to do large
+        # reductions.  To avoid trouble, we do comm.sum on smaller blocks
+        # of S (this code is also safe for arrays smaller than blocksize)
+        Sflat_x = S_qmM.ravel()
+        blocksize = 2**23 // Sflat_x.itemsize # 8 MiB
+        nblocks = -(-len(Sflat_x) // blocksize)
+        Mstart = 0
+        for i in range(nblocks):
+            self.gd.comm.sum(Sflat_x[Mstart:Mstart + blocksize])
+        assert Mstart + blocksize >= len(Sflat_x)
+
         xshape = S_qmM.shape[:-2]
         nm, nM = S_qmM.shape[-2:]
         S_qmM = S_qmM.reshape(-1, nm, nM)
@@ -879,7 +890,8 @@ class OrbitalDescriptor:
     def get_coefficent_descriptor(self):
         return self.nMdescriptor
 
-    def distribute_overlap_matrix(self, S_qMM):
+    def distribute_overlap_matrix(self, S_qMM, root=0):
+        self.gd.comm.sum(S_qMM, root)
         return S_qMM
 
     def get_overlap_matrix_shape(self):

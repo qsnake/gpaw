@@ -505,9 +505,6 @@ class LCAOWaveFunctions(WaveFunctions):
                 gemm(1.0, P_Mi, dO_ii, 0.0, dOP_iM, 'c')
                 gemm(1.0, dOP_iM, P_Mi[Mstart:Mstop], 1.0, S_MM, 'n')
 
-        comm = self.gd.comm
-        comm.sum(S_qMM, 0)
-        comm.sum(T_qMM, 0)
         self.timer.stop('TCI: Calculate S, T, P')
 
         S_MM = None # allow garbage collection of old S_qMM after redist
@@ -520,7 +517,7 @@ class LCAOWaveFunctions(WaveFunctions):
             kpt.T_MM = T_qMM[q]
 
 
-        if debug and self.band_comm.size == 1 and comm.rank == 0:
+        if debug and self.band_comm.size == 1 and self.gd.comm.rank == 0:
             # S and T are summed only on comm master, so check only there
             from numpy.linalg import eigvalsh
             for S_MM in S_qMM:
