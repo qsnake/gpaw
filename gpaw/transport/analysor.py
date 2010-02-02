@@ -961,8 +961,10 @@ class Transport_Analysor:
             tp.F_av = None
         
         charge = self.collect_charge()
-        contour = self.collect_contour()
-        
+        if tp.non_sc:
+            contour = None
+        else:    
+            contour = self.collect_contour()
         step.initialize_data(tp.bias, tp.gate, self.energies, self.lead_pairs,
                               tc, dos, vt, nt, vtx, ntx, vty, nty,
                               current, tp.lead_fermi, time_cost, force, charge, contour)
