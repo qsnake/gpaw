@@ -53,6 +53,7 @@ else:
     cpus = 2 ** (1 + day % 3)
     
 # Run test-suite:
+print 'Run'
 if os.system('source /home/camp/modulefiles.sh; ' +
              'module load NUMPY; ' +
              'module load openmpi/1.3.3-1.el5.fys.gfortran43.4.3.2; ' +
@@ -61,7 +62,7 @@ if os.system('source /home/camp/modulefiles.sh; ' +
              'mpiexec -np %d ' % cpus +
              tmpdir + '/bin/gpaw-python ' +
              'tools/gpaw-test %s >& test.out' % args) != 0:
-    fail('Testsuite failed!')
+    fail('Testsuite crashed!', 'test.out')
 
 try:
     failed = open('failed-tests.txt').readlines()
@@ -79,4 +80,5 @@ else:
             subject += ', ...'
     fail(subject, 'test.out')
 
+print 'Done'
 os.system('cd; rm -r ' + tmpdir)
