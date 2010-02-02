@@ -883,7 +883,7 @@ class Transport_Analysor:
         assert tp.d == 2
         
         calc = tp.extended_calc
-        gd = calc.wfs.gd
+        gd = calc.gd
         finegd = calc.hamiltonian.finegd
 
         nt_sG = tp.gd.collect(tp.density.nt_sG)
