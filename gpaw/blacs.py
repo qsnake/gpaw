@@ -490,55 +490,77 @@ class SLDenseLinearAlgebra:
         self.blockdescriptor = cols2blocks.dstdescriptor
         self.outdescriptor = blocks2cols.dstdescriptor
         self.cols2blocks = cols2blocks
+        # For the real-space code, this will be blocks2rows
         self.blocks2cols = blocks2cols
         self.timer = timer
     
     def diagonalize(self, H_mm, C_nM, eps_n, S_mm=None):
         if S_mm is None:
-            # Dummy variables below H_mm = H_Nn, C_nM = C_Nn
+            # Dummy variables below H_mm = H_Nn, C_nM = C_nN
             # This is very ugly, we will try to be more organized
             # in the future.
             self._standard_diagonalize(H_mm, C_nM, eps_n)
         else:
             self._general_diagonalize(H_mm, S_mm, C_nM, eps_n)
 
-    def _standard_diagonalize(self, H_Nn, C_Nn, eps_n):
+    def _standard_diagonalize(self, H_Nn, C_nN, eps_n):
         indescriptor = self.indescriptor
         outdescriptor = self.outdescriptor
         blockdescriptor = self.blockdescriptor
 
-        dtype = H_Nn.dtype
-        if blockdescriptor:
-            eps_N = np.empty(self.bd.nbands)
+        gd = self.gd
+        nbands = self.bd.nbands
+        mynbands = self.bd.mynbands
 
-        # XXX where should inactive ranks be sorted out?
+        dtype = H_Nn.dtype
+        eps_N = np.empty(nbands) # empty helps us debug
+
+        # Make H_Nn compatible with the redistributor
         if not indescriptor:
-           shape = indescriptor.shape
-           H_Nn = np.zeros(shape, dtype=dtype)
-        
+            assert gd.comm.rank != 0
+            shape = indescriptor.shape
+            H_Nn = np.empty(shape, dtype=dtype)
+        else:
+            assert gd.comm.rank == 0
+
+        # C_nN needs to be simultaneously both
+        # compatible with the outdescriptor 
+        # and compatible with the broadcast 
+        # on gd.comm. Haven't figured out
+        # how to do this properly.
+        # if not outdescriptor:
+        #     shape = outdescriptor.shape
+        #     C_nN = np.empty(shape, dtype=dtype)
+        # else:
+        #     assert gd.comm.rank == 0
+
         H_nn = blockdescriptor.zeros(dtype=dtype)
         C_nn = blockdescriptor.zeros(dtype=dtype)
-        C_Nn = outdescriptor.zeros(dtype=dtype)
+        C2_nN = outdescriptor.empty(dtype=dtype)
 
+        # Column grid -> Block Grid
         self.cols2blocks.redistribute(H_Nn, H_nn)
-        # parallelprint(self.bd.comm, H_nn)
-        # parallelprint(self.bd.comm, C_nn)
-        print 'past cols2blocks'
         blockdescriptor.diagonalize_dc(H_nn, C_nn, eps_N, UL='U')
-        print 'past diagonalize', dtype
-        self.blocks2cols.redistribute(C_nn, C_Nn) 
-        print 'past blocks2cols', dtype
+        # Blocked grid -> Row grid
+        self.blocks2cols.redistribute(C_nn, C2_nN) 
 
-        # broadcast/destribute of eps_N more complicated and
-        # not working
-        if outdescriptor:
+        if outdescriptor: # grid masters only
             assert self.gd.comm.rank == 0
-            bd = self.bd
-            bd.distribute(eps_N, eps_n)
+            # attempt at re-using C_nN not working
+            # doing copy instead
+            # del C_nN
+            # C_nN = np.empty((mynbands, nbands), dtype=dtype)
+            C_nN[:] = C2_nN
+            del C2_nN
+            # grid master with bd.rank = 0 
+            # scatters to other grid masters
+            # NOTE: If the origin of the blacs grid
+            # ever shifts this will not work
+            self.bd.distribute(eps_N, eps_n)
         else:
             assert self.gd.comm.rank != 0
 
-        self.gd.comm.broadcast(C_Nn, 0)
+        self.gd.comm.broadcast(C_nN, 0)
         self.gd.comm.broadcast(eps_n, 0)
 
     def _general_diagonalize(self, H_mm, S_mm, C_nM, eps_n):
@@ -547,7 +569,7 @@ class SLDenseLinearAlgebra:
         blockdescriptor = self.blockdescriptor
 
         dtype = S_mm.dtype
-        eps_M = np.empty(C_nM.shape[-1])
+        eps_M = np.empty(C_nM.shape[-1]) # empty helps us debug
         C_mm = blockdescriptor.zeros(dtype=dtype)
         self.timer.start('General diagonalize ex')
         blockdescriptor.general_diagonalize_ex(H_mm, S_mm.copy(), C_mm, eps_M,
@@ -558,13 +580,14 @@ class SLDenseLinearAlgebra:
         self.blocks2cols.redistribute(C_mm, C_mM)
         self.timer.stop('Redistribute coefs')
         self.timer.start('Send coefs to domains')
-        # I don't think the distribute on eps_M should
-        # work since eps_M is only sensical on
-        # blockedgrid
-        if outdescriptor:
+        if outdescriptor: # grid masters only
             assert self.gd.comm.rank == 0
             bd = self.bd
             C_nM[:] = C_mM[:bd.mynbands, :]
+            # grid master with bd.rank = 0 
+            # scatters to other grid masters
+            # NOTE: If the origin of the blacs grid
+            # ever shifts this will not work
             bd.distribute(eps_M[:bd.nbands], eps_n)
         else:
             assert self.gd.comm.rank != 0
@@ -595,8 +618,9 @@ class BlacsBandDescriptor:
         # Create 1D and 2D BLACS grid
         columngrid = BlacsGrid(columncomm, 1, bcommsize)
         blockgrid  = BlacsGrid(blockcomm, ncpus, mcpus)
+        rowgrid    = BlacsGrid(columncomm, bcommsize, 1)
 
-        # 1D layout
+        # 1D layout - columns
         Nndescriptor = columngrid.new_descriptor(nbands, nbands, nbands,
                                                  mynbands)
         
@@ -604,20 +628,27 @@ class BlacsBandDescriptor:
         nndescriptor = blockgrid.new_descriptor(nbands, nbands, blocksize,
                                                 blocksize)
 
+        # 1D layout - rows
+        nNdescriptor = rowgrid.new_descriptor(nbands, nbands, mynbands,
+                                                 nbands)
+
         self.Nndescriptor = Nndescriptor
         self.nndescriptor = nndescriptor
+        self.nNdescriptor = nNdescriptor
+
         self.Nn2nn = Redistributor(blockcomm, Nndescriptor, nndescriptor)
-        self.nn2Nn = Redistributor(blockcomm, nndescriptor, Nndescriptor)
+        self.nn2nN = Redistributor(blockcomm, nndescriptor, nNdescriptor)
 
         self.world = world
         self.gd = gd
         self.bd = bd
         self.columngrid = columngrid
         self.blockgrid = blockgrid
+        self.rowgrid = rowgrid
         self.timer = timer
         
     def get_diagonalizer(self):
-        return SLDenseLinearAlgebra(self.gd, self.bd, self.Nn2nn, self.nn2Nn,
+        return SLDenseLinearAlgebra(self.gd, self.bd, self.Nn2nn, self.nn2nN,
                                     self.timer)
 
 
