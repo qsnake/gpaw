@@ -47,19 +47,29 @@ def main(seed=42, dtype=float):
     bbd = BlacsBandDescriptor(world, gd, bd, kpt_comm, mcpus, ncpus, blocksize)
     nbands = bd.nbands
     mynbands = bd.mynbands
+
+    # Diagonalize
     # We would *not* create H_Nn in the real-space code this way.
     # This is just for testing purposes.
     # Note after MPI_Reduce, only meaningful information on gd masters
     H_Nn = bbd.Nndescriptor.zeros(dtype=dtype)
-    scalapack_set(bbd.Nndescriptor, H_Nn, 0.1, 75.0, 'U')
-    # We would create C_nN in the real-space code this way.
-    C_nN = np.empty((mynbands, nbands), dtype=dtype)
+    scalapack_set(bbd.Nndescriptor, H_Nn, 0.1, 75.0, 'L')
+    # We would create U_nN in the real-space code this way.
+    U_nN = np.empty((mynbands, nbands), dtype=dtype)
     diagonalizer = bbd.get_diagonalizer()
     eps_n = np.zeros(bd.mynbands)
-    diagonalizer.diagonalize(H_Nn, C_nN, eps_n)
+    diagonalizer.diagonalize(H_Nn, U_nN, eps_n)
     print 'after broadcast'
-    parallelprint(world, C_nN)
+    parallelprint(world, U_nN)
     parallelprint(world, eps_n)
+    
+    # Inverse Cholesky
+    S_Nn = bbd.Nndescriptor.zeros(dtype=dtype)
+    scalapack_set(bbd.Nndescriptor, S_Nn, 0.1, 75.0, 'L')
+    C_nN = np.empty((mynbands, nbands), dtype=dtype)
+    diagonalizer.inverse_cholesky(S_Nn, C_nN)
+    print 'after cholesky'
+    parallelprint(world, C_nN)
 
 if __name__ == '__main__':
     main(dtype=float)
