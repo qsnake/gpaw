@@ -614,7 +614,7 @@ class SLDenseLinearAlgebra:
 
         # Column grid -> Block Grid
         self.cols2blocks.redistribute(H_Nn, H_nn)
-        blockdescriptor.diagonalize_dc(H_nn, C_nn, eps_N, UL='L')
+        blockdescriptor.diagonalize_dc(H_nn, C_nn, eps_N, UL='U')
         # Blocked grid -> Row grid
         self.blocks2cols.redistribute(C_nn, C2_nN) 
 
@@ -707,7 +707,7 @@ class BlacsBandDescriptor:
         self.nNdescriptor = nNdescriptor
 
         # Only redistribute upper half since all are matrices are symmetric/Hermitian
-        self.Nn2nn = Redistributor(blockcomm, Nndescriptor, nndescriptor, 'L')
+        self.Nn2nn = Redistributor(blockcomm, Nndescriptor, nndescriptor, 'U')
         # Resulting matrix below will be used in dgemm which is obvlious
         self.nn2nN = Redistributor(blockcomm, nndescriptor, nNdescriptor)
 
