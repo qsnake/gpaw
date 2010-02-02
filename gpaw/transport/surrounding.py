@@ -232,10 +232,13 @@ class Surrounding:
             bias_shift0 = self.bias_index['-'] / Hartree
             bias_shift1 = self.bias_index['+'] / Hartree
 
-            if self.tp.fixed and self.tp.gd.comm.rank == 0:
-                self.tp.inner_poisson.initialize(
-                        self.sides['-'].boundary_vHt_g + bias_shift0,
-                        self.sides['+'].boundary_vHt_g + bias_shift1)
+            if self.tp.fixed:
+                if self.tp.gd.comm.rank == 0:
+                    self.tp.inner_poisson.initialize(
+                            self.sides['-'].boundary_vHt_g + bias_shift0,
+                            self.sides['+'].boundary_vHt_g + bias_shift1)
+                else:
+                    self.tp.inner_poisson.initialize(None, None)                    
             
             if self.tp.gd.comm.rank == 0:
                 vHt_g = ham.finegd.zeros(global_array=True)
