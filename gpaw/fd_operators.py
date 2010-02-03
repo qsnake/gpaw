@@ -280,6 +280,7 @@ class FTLaplace:
         self.k2_Q = k_vq.sum(axis=0).reshape(gd.N_c)
         self.k2_Q *= -scale
         self.d = 6.0 / gd.h_cv[0, 0]**2
+        self.npoints = 1000
         
     def apply(self, in_xg, out_xg, phase_cd=None):
         if in_xg.ndim > 3:
@@ -293,6 +294,9 @@ class FTLaplace:
 
     def allocate(self):
         pass
+    
+    def is_allocated(self):
+        return True
 
     def estimate_memory(self, mem):
         mem.subnode('FTLaplace estimate not implemented', 0)
