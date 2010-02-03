@@ -19,6 +19,7 @@ Real-valued spherical harmonics
  8   2   2   x2-y2
 === === === =======
 
+For a more complete list, see trunk/c/bmgs/sharmonic.py
 
 
 Gaunt coefficients::
