@@ -28,6 +28,7 @@ class Path:
         self.nids = []
         self.energies = []
         self.functions = []
+        self.ses = []
         self.num = 10 ** self.maxdepth
         self.full_nodes = False
     
@@ -133,8 +134,8 @@ class Path:
         elif self.type == 'poles':
             assert depth == 0
             base = zone * 100
-            res_nids0 = np.arange(1, 9, 2) * np.pi * 1.j + self.begin
-            res_nids1 = np.arange(1, 9, 2) * np.pi * 1.j + self.end
+            res_nids0 = np.arange(1, 10, 2) * np.pi * 1.j + self.begin
+            res_nids1 = np.arange(1, 10, 2) * np.pi * 1.j + self.end
             nids0 = np.arange(len(res_nids0)) + base + 10 + 1
             nids1 = np.arange(len(res_nids1)) + base + 20 + 1
             nids = np.append(nids0, nids1).tolist()
@@ -143,10 +144,11 @@ class Path:
         #self.nids += nids
         return nids
     
-    def add_node(self, nid, energy, function):
+    def add_node(self, nid, energy, function, se):
         self.nids.append(nid)
         self.functions.append(function)
         self.energies.append(energy)
+        self.ses.append(se)
   
     def get_ends_nids(self):
         nids = []
@@ -223,12 +225,14 @@ class Contour:
         assert np.abs(self.kt - 0.1) < 1e-6
         self.maxdepth = maxdepth
         self.num = 10 ** (self.maxdepth - 1)
-       
+        self.converged_zones = []
+        self.total_sum = 0
+        
     def get_dense_contour(self):
         self.paths = []
         depth = self.maxdepth
-        self.paths.append(Path(-700., -700. + 20. * 1.j, 1, depth))
-        self.paths.append(Path(-700. + 20. * 1.j,  -4. + np.pi * 1.j, 2, depth))
+        self.paths.append(Path(-700., -700. + 20. * 1.j, 1, 1))
+        self.paths.append(Path(-700. + 20. * 1.j,  -4. + np.pi * 1.j, 2, 3))
         self.paths.append(Path(-4. + np.pi * 1.j, 4. + np.pi * 1.j, 3, depth,
                               type='linear'))
         self.paths.append(Path(-3., 3., 4, depth, type='poles'))
@@ -264,7 +268,6 @@ class Contour:
             converge, zones = self.check_convergence(zones, depth)
             depth += 1
             self.transfer(zones, depth)
-            print depth
         
     def collect(self, zones, depth):
         nids = []
@@ -294,9 +297,10 @@ class Contour:
             if self.tp.recal_path or (not self.tp.recal_path and
                                       path_index in [0, 1, 2, 5]) :
                 calcutype = self.calcutype[path_index]
-                green_function = self.tp.calgfunc(energy, calcutype)
+                green_function, se = self.tp.calgfunc(energy, calcutype, 'new')
                 self.paths[path_index].functions.append(green_function)
                 self.paths[path_index].energies.append(energy)
+                self.paths[path_index].ses.append(se)
                 self.paths[path_index].nids.append(nid)
                 
     def joint(self, zones):
@@ -318,22 +322,28 @@ class Contour:
                                            path_index, link_path_index], int)
                 num += 1
                 
-        info_dict = gather_ndarray_dict(my_info_dict, self.comm)
-        
+        info_dict = gather_ndarray_dict(my_info_dict, self.comm,
+                                                             broadcast=True)
+        #print self.comm.rank, info_dict
         for name in info_dict:
             nid, link_nid, path_index, link_path_index = info_dict[name]
             rank = self.get_rank(link_path_index, link_nid)
+            #print self.comm.rank, self.paths[0].nids, self.paths[1].nids, self.paths[2].nids, link_nid, rank
+            
             if self.comm.rank == rank:
                 link_path = self.paths[link_path_index]                
                 index = link_path.nids.index(link_nid)
                 function = link_path.functions[index]
+                se = link_path.ses[index]
                 energy = link_path.energies[index]
-                self.paths[path_index].add_node(nid, energy, function)
+                self.paths[path_index].add_node(nid, energy, function, se)
 
     def transfer(self, zones, depth):
         my_zones = np.array_split(zones, self.comm.size)[self.comm.rank]
         my_info_dict = {}
-        num = 0        
+        num = 0
+        maximum = 100000
+        name_flags = []
         for zone in my_zones:
             path_index = zone // (10 ** depth) - 1
             order = 10 ** (self.maxdepth - depth)
@@ -342,27 +352,36 @@ class Contour:
             nid = zone * order + 1
 
             link_nid = (zone - node_index) * order + 2 * node_index - 1
-            flag = str(self.comm.rank) + '_' + str(num)                
+            flag = str((self.comm.rank  + 1) * maximum + num)                
             my_info_dict[flag] = np.array([nid, link_nid, path_index], int)
             num += 1
                 
             nid = zone * order + 7
             link_nid = (zone - node_index) * order + 2 * node_index + 1
-            flag = str(self.comm.rank) + '_' + str(num)
+            flag = str((self.comm.rank + 1) * maximum + num)
             my_info_dict[flag] = np.array([nid, link_nid, path_index], int)
             num += 1                
-                
-                
-        info_dict = gather_ndarray_dict(my_info_dict, self.comm)        
+            
+        info_dict = gather_ndarray_dict(my_info_dict, self.comm,
+                                                             broadcast=True)        
         for name in info_dict:
-            nid, link_nid, path_index = info_dict[name]
+            name_flags.append(eval(name))
+        name_flags = np.sort(name_flags)
+        #sort is necessrary because sometime the dict sequency is different for
+        #different processors!!
+
+        for name_flag in name_flags:
+            nid, link_nid, path_index = info_dict[str(name_flag)]
+            #if name_flag == 1000000:
+                #print self.comm.rank, info_dict[name], len(info_dict), nid, link_nid, path_index
             rank = self.get_rank(path_index, link_nid)
             if self.comm.rank == rank:
                 path = self.paths[path_index]                
                 index = path.nids.index(link_nid)
                 function = path.functions[index]
                 energy = path.energies[index]
-                self.paths[path_index].add_node(nid, energy, function)                
+                se = path.ses[index]
+                self.paths[path_index].add_node(nid, energy, function, se)                
             
     def get_rank(self, path_index, nid):
         info_array = np.zeros([self.comm.size], int)
@@ -393,6 +412,8 @@ class Contour:
         nbmol = self.tp.nbmol
         converged = True
         errs = [0]
+        err = 0
+
         for zone in zones:
             if zone in [4, 5]:
                 pass
@@ -423,8 +444,72 @@ class Contour:
                     converged = False
                     new_zones += range(zone * 10 + 1, zone * 10 + 4)
                     errs.append(err)
-        print 'err', np.max(np.abs(errs))
+                if err < self.eq_err:
+                    self.total_sum += gr_sum0
+            if err < self.eq_err:
+                self.converged_zones.append(zone)
+        print self.total_sum, 'totalsum'
+        #print np.max(np.abs(errs))            
         return converged, new_zones        
+
+    def sort_contour(self, cal_den=False):
+        weights = []
+        energies = []
+        nids = []
+        ses = []
+        nbmol = self.tp.nbmol
+        for zone in self.converged_zones:
+            if zone in [4, 5]:
+                if cal_den:
+                    den_ne = np.zeros([nbmol, nbmol], dtype=self.dtype)
+                else:    
+                    pass
+            else:
+                depth = int(np.floor(np.log10(zone)))
+                order = 10 ** (self.maxdepth - depth)
+                base = zone * order
+                original_nids = np.arange(1, 8) + base
+                path_index = zone // 10 ** depth - 1
+                if cal_den:
+                    den_eq = np.zeros([nbmol, nbmol], dtype=self.dtype)
+                path = self.paths[path_index]            
+                for nid in original_nids:
+                    if nid in path.nids:
+                        flags = path.get_flags(nid, True)
+                        weight0, weight1 = path.get_weight(flags)
+                        energy = path.get_energy(flags[1:])   
+                        index = path.nids.index(nid)
+                        se = path.ses[index]
+                        weights.append(weight0)
+                        energies.append(energy)
+                        nids.append(nid)
+                        ses.append(se)
+                        if cal_den:
+                            den_eq += path.functions[index] * weight0
+                if cal_den:
+                    self.comm.sum(den_eq)
+                    self.comm.sum(den_ne)
+        
+        seq = np.argsort(nids)
+        del_seq = []
+        tol = 1e-9
+        for i, j in zip(seq[:-1], seq[1:]):
+            if np.abs(energies[i] - energies[j]) < tol:
+                weights[j] += weights[i]     
+                del_seq.append(i)
+                
+        del_seq.sort()
+        del_seq.reverse()
+        for i in del_seq:
+            del nids[i]
+            del energies[i]
+            del weights[i]
+            del ses[i]
+   
+        if cal_den:
+            return nids, energies, weights, ses, (den_eq + den_ne)
+        else:
+            return nids, energies, weights, ses
         
         
     
