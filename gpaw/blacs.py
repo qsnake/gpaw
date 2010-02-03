@@ -405,6 +405,23 @@ class BlacsDescriptor(MatrixDescriptor):
                 
                 yield Mstart, Mstop, Nstart, Nstop, block
 
+    def as_serial(self):
+        return self.blacsgrid.new_descriptor(self.M, self.N, self.M, self.N)
+
+    def redistribute(self, otherdesc, src_mn, dst_mn=None):
+        if self.blacsgrid != otherdesc.blacsgrid:
+            raise ValueError('Cannot redistribute to other BLACS grid.  '
+                             'Requires using Redistributor class explicitly')
+        if dst_mn is None:
+            dst_mn = otherdesc.empty()
+        r = Redistributor(self.blacsgrid.comm, self, otherdesc)
+        r.redistribute(src_mn, dst_mn)
+        return dst_mn
+
+    def collect_on_master(self, src_mn):
+        desc = self.as_serial()
+        return self.redistribute(desc, src_mn)
+
 
 class Redistributor:
     """Class for redistributing BLACS matrices on different contexts."""

@@ -53,7 +53,7 @@ def main(seed=42, dtype=float):
     # This is just for testing purposes.
     # Note after MPI_Reduce, only meaningful information on gd masters
     H_Nn = bbd.Nndescriptor.zeros(dtype=dtype)
-    scalapack_set(bbd.Nndescriptor, H_Nn, 0.1, 75.0, 'U')
+    scalapack_set(bbd.Nndescriptor, H_Nn, 0.1, 75.0, 'L')
     # We would create U_nN in the real-space code this way.
     U_nN = np.empty((mynbands, nbands), dtype=dtype)
     diagonalizer = bbd.get_diagonalizer()
@@ -65,7 +65,7 @@ def main(seed=42, dtype=float):
     
     # Inverse Cholesky
     S_Nn = bbd.Nndescriptor.zeros(dtype=dtype)
-    scalapack_set(bbd.Nndescriptor, S_Nn, 0.1, 75.0, 'U')
+    scalapack_set(bbd.Nndescriptor, S_Nn, 0.1, 75.0, 'L')
     C_nN = np.empty((mynbands, nbands), dtype=dtype)
     diagonalizer.inverse_cholesky(S_Nn, C_nN)
     print 'after cholesky'

@@ -21,16 +21,23 @@ from gpaw import debug
 import gpaw.mpi as mpi
 import _gpaw
 
+def _switch(uplo):
+    if uplo == 'L':
+        return 'U'
+    else:
+        return 'L'
+
 def scalapack_set(desca, a, alpha, beta, uplo, m=None, n=None):
     assert desca.check(a)
     assert uplo in ['L', 'U']
+    uplo = _switch(uplo)
     if m is None:
         m = desca.gshape[0]
     if n is None:
-        n = desca.gshape[0]
+        n = desca.gshape[1]
     if not desca.blacsgrid.is_active():
         return
-    _gpaw.scalapack_set(a, desca.asarray(), alpha, beta, uplo, m, n)
+    _gpaw.scalapack_set(a, desca.asarray(), alpha, beta, uplo, n, m)
 
 def scalapack_diagonalize_dc(desca, a, z, w, uplo):
     assert desca.check(a)
