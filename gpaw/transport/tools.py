@@ -2,7 +2,7 @@ from gpaw.utilities import unpack
 from ase import Hartree
 import cPickle
 import numpy as np
-from gpaw.mpi import world, rank, send_string, receive_string
+from gpaw.mpi import world, rank, send_string, receive_string, broadcast_string
 from gpaw.utilities.blas import gemm
 from gpaw.utilities.timing import Timer
 from gpaw.utilities.lapack import inverse_general
@@ -757,7 +757,7 @@ def gather_ndarray_list(data, comm):
         comm.ssend(data, 0, 546)
     return all_data            
         
-def gather_ndarray_dict(data, comm):
+def gather_ndarray_dict(data, comm, broadcast=False):
     #data is dict of a numpy array, maybe has different shape in different cpus
     #this function gather them to the all_data in master, all_data is
     # a dict with the lenth world.size
@@ -796,6 +796,27 @@ def gather_ndarray_dict(data, comm):
             shape = np.array(data[name].shape, int)
             comm.ssend(shape, 0, 123)
             comm.ssend(data[name], 0, 546)
+    
+    if broadcast:
+        num = np.zeros([1], int)
+        if comm.rank == 0:
+            num[0] = len(all_data)
+            comm.broadcast(num, 0)
+            for name in all_data:
+                broadcast_string(name, 0, comm)
+                shape = np.array(all_data[name].shape, int)
+                comm.broadcast(shape, 0)
+                comm.broadcast(all_data[name], 0)
+        else:
+            comm.broadcast(num, 0)              
+            for i in range(num):
+                name = broadcast_string(None, 0, comm)
+                shape = np.zeros([info[i, 0]], int)
+                dtype = dtypes[info[i, 2]]
+                comm.broadcast(shape, 0)
+                tmp = np.zeros(shape, dtype)
+                comm.broadcast(tmp, 0)
+                all_data[name] = tmp
     return all_data
     
     
