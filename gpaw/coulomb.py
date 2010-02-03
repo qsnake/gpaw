@@ -167,6 +167,7 @@ class Coulomb:
 
 class CoulombNEW:
     def __init__(self, gd, setups, spos_ac, fft=False):
+        assert gd.comm.size == 1
         self.rhot1_G = gd.empty()
         self.rhot2_G = gd.empty()
         self.pot_G = gd.empty()
