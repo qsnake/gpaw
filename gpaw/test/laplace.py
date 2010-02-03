@@ -2,6 +2,7 @@ from math import sin, cos, pi
 import numpy as np
 from gpaw.fd_operators import GUCLaplace as Laplace
 from gpaw.grid_descriptor import GridDescriptor
+from gpaw.mpi import size
 
 cells = [# distorted hexagonal
     (4, [(1, 0, 0),
@@ -24,26 +25,27 @@ cells = [# distorted hexagonal
     # distorted sc
     (6, [(1, 0, 0), (0.01, 1, 0), (0, 0.02, 1)])]
 
-for D, cell in cells:
-    print cell
-    for n in range(1, 4):
-        N = 2 * n + 2
-        gd = GridDescriptor((N, N, N), cell)
-        b_g = gd.zeros()
-        r_gv = gd.get_grid_point_coordinates().transpose((1, 2, 3, 0))
-        c_v = gd.cell_cv.sum(0) / 2
-        r_gv -= c_v
-        lap = Laplace(gd, n=n)
-        assert lap.npoints == D * 2 * n + 1
-        for m in range(0, 2 * n + 1):
-            for ix in range(m + 1):
-                for iy in range(m - ix + 1):
-                    iz = m - ix - iy
-                    a_g = (r_gv**(ix, iy, iz)).prod(3)
-                    if ix + iy + iz == 2 and max(ix, iy, iz) == 2:
-                        r = 2.0
-                    else:
-                        r = 0.0
-                    lap.apply(a_g, b_g)
-                    e = b_g[n + 1, n + 1, n + 1] - r
-                    assert abs(e) < 1e-13
+if size == 1:
+    for D, cell in cells:
+        print cell
+        for n in range(1, 4):
+            N = 2 * n + 2
+            gd = GridDescriptor((N, N, N), cell)
+            b_g = gd.zeros()
+            r_gv = gd.get_grid_point_coordinates().transpose((1, 2, 3, 0))
+            c_v = gd.cell_cv.sum(0) / 2
+            r_gv -= c_v
+            lap = Laplace(gd, n=n)
+            assert lap.npoints == D * 2 * n + 1
+            for m in range(0, 2 * n + 1):
+                for ix in range(m + 1):
+                    for iy in range(m - ix + 1):
+                        iz = m - ix - iy
+                        a_g = (r_gv**(ix, iy, iz)).prod(3)
+                        if ix + iy + iz == 2 and max(ix, iy, iz) == 2:
+                            r = 2.0
+                        else:
+                            r = 0.0
+                        lap.apply(a_g, b_g)
+                        e = b_g[n + 1, n + 1, n + 1] - r
+                        assert abs(e) < 1e-13
