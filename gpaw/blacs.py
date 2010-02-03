@@ -474,8 +474,7 @@ def parallelprint(comm, obj):
 class SLDenseLinearAlgebra:
     """ScaLAPACK Dense Linear Algebra.
 
-    This class is instantiated in LCAO and real-space codes.  Not for
-    casual use, at least for now.
+    This class is instantiated in LCAO.  Not for casual use, at least for now.
     
     Requires two distributors and three descriptors for initialization
     as well as grid descriptors and band descriptors. Distributors are
@@ -483,31 +482,11 @@ class SLDenseLinearAlgebra:
     BLACS grid). ScaLAPACK operations must occur on 2D BLACS grid for
     performance and scalability.
 
-    inverse_cholesky is "hard-coded" for real-space code.
-    Expects overlap matrix (S) and the coefficient matrix (C) to be a
-    replicated data structures and *not* created by the BLACS descriptor class. 
-    This is due to the MPI_Reduce and MPI_Broadcast that will occur
-    in the parallel matrix multiply.
-    S = np.empty((nbands, mybands), dtype)
-    C = np.empty((mybands, nbands), dtype)
-
     _general_diagonalize is "hard-coded" for LCAO.
     Expects both Hamiltonian and Overlap matrix to be on the 2D BLACS grid. 
     This is done early on to save memory.
-
-    _standard_diagonalize is "hard-coded" for the real-space code.
-    Expects both hamiltonian (H) and eigenvector matrix (U) to be a
-    replicated data structures and not created by the BLACS descriptor class.
-    This is due to the MPI_Reduce and MPI_Broadcast that will occur
-    in the parallel matrix multiply.
-    H = np.empty((nbands, mynbands), dtype)
-    U = np.empty((mynbands, nbands), dtype)
-    eps_n = np.empty(mynbands, dtype = float)
-
-    redistribute automatically to a 2D BLACS grid. The resulting
-    eigenvectors form the U matrix which needs to be on a 2D BLACS
-    grid for use with matrix_multiply method in hs_operators class.
     """
+
     def __init__(self, gd, bd, cols2blocks, blocks2cols, timer=nulltimer):
         self.gd = gd
         self.bd = bd
@@ -516,8 +495,93 @@ class SLDenseLinearAlgebra:
         self.blockdescriptor = cols2blocks.dstdescriptor
         self.outdescriptor = blocks2cols.dstdescriptor
         self.cols2blocks = cols2blocks
-        # For the real-space code, this will be blocks2rows
         self.blocks2cols = blocks2cols
+        self.timer = timer
+    
+    def diagonalize(self, H_mm, C_nM, eps_n, S_mm):
+        # In the near future, we should be able to plug in different diagonalize
+        # routines. For example, general_diagonalize_dc, general_diagonalize_rm3
+        self._general_diagonalize_ex(H_mm, S_mm, C_nM, eps_n)
+
+    def _general_diagonalize_ex(self, H_mm, S_mm, C_nM, eps_n):
+        indescriptor = self.indescriptor
+        outdescriptor = self.outdescriptor
+        blockdescriptor = self.blockdescriptor
+
+        dtype = S_mm.dtype
+        eps_M = np.empty(C_nM.shape[-1]) # empty helps us debug
+        C_mm = blockdescriptor.zeros(dtype=dtype)
+        self.timer.start('General diagonalize ex')
+        blockdescriptor.general_diagonalize_ex(H_mm, S_mm.copy(), C_mm, eps_M,
+                                               UL='U', iu=self.bd.nbands)
+        self.timer.stop('General diagonalize ex')
+        C_mM = outdescriptor.zeros(dtype=dtype)
+        self.timer.start('Redistribute coefs')
+        self.blocks2cols.redistribute(C_mm, C_mM)
+        self.timer.stop('Redistribute coefs')
+        self.timer.start('Send coefs to domains')
+        if outdescriptor: # grid masters only
+            assert self.gd.comm.rank == 0
+            bd = self.bd
+            C_nM[:] = C_mM[:bd.mynbands, :]
+            # grid master with bd.rank = 0 
+            # scatters to other grid masters
+            # NOTE: If the origin of the blacs grid
+            # ever shifts this will not work
+            bd.distribute(eps_M[:bd.nbands], eps_n)
+        else:
+            assert self.gd.comm.rank != 0
+
+        self.gd.comm.broadcast(C_nM, 0)
+        self.gd.comm.broadcast(eps_n, 0)
+        self.timer.stop('Send coefs to domains')
+
+class SLDenseLinearAlgebra2:
+    """ScaLAPACK Dense Linear Algebra.
+
+    This class is instantiated in the real-space code.  Not for
+    casual use, at least for now.
+    
+    Requires two distributors and three descriptors for initialization
+    as well as grid descriptors and band descriptors. Distributors are
+    for cols2blocks (1D -> 2D BLACS grid) and blocks2rows (2D -> 1D
+    BLACS grid). ScaLAPACK operations must occur on a 2D BLACS grid for
+    performance and scalability. Redistribute of 1D *column* layout
+    matrix will operate only on lower half of H or S. Redistribute of
+    2D block will operate on entire matrix for U, but only lower half
+    of C.
+
+    inverse_cholesky is "hard-coded" for real-space code.
+    Expects overlap matrix (S) and the coefficient matrix (C) to be a
+    replicated data structures and *not* created by the BLACS descriptor class. 
+    This is due to the MPI_Reduce and MPI_Broadcast that will occur
+    in the parallel matrix multiply. Input matrices should be:
+    S = np.empty((nbands, mybands), dtype)
+    C = np.empty((mybands, nbands), dtype)
+
+    
+    _standard_diagonalize is "hard-coded" for the real-space code.
+    Expects both hamiltonian (H) and eigenvector matrix (U) to be a
+    replicated data structures and not created by the BLACS descriptor class.
+    This is due to the MPI_Reduce and MPI_Broadcast that will occur
+    in the parallel matrix multiply. Input matrices should be:
+    H = np.empty((nbands, mynbands), dtype)
+    U = np.empty((mynbands, nbands), dtype)
+    eps_n = np.empty(mynbands, dtype = float)
+    """
+
+    def __init__(self, gd, bd, cols2blocks, blocks2rows, blocks2rows_tri, 
+                 timer=nulltimer):
+        self.gd = gd
+        self.bd = bd
+        assert cols2blocks.dstdescriptor == blocks2rows.srcdescriptor
+        assert blocks2rows.dstdescriptor == blocks2rows_tri.dstdescriptor
+        self.indescriptor = cols2blocks.srcdescriptor
+        self.blockdescriptor = cols2blocks.dstdescriptor
+        self.outdescriptor = blocks2rows.dstdescriptor
+        self.cols2blocks = cols2blocks
+        self.blocks2rows = blocks2rows
+        self.blocks2rows_tri = blocks2rows_tri
         self.timer = timer
     
     def inverse_cholesky(self, S_Nn, C_nN):
@@ -557,9 +621,9 @@ class SLDenseLinearAlgebra:
         
         # Column grid -> Block Grid
         self.cols2blocks.redistribute(S_Nn, S_nn)
-        blockdescriptor.inverse_cholesky(S_nn, 'L')
+        blockdescriptor.inverse_cholesky(S_nn, 'U')
         # Blocked grid -> Row grid
-        self.blocks2cols.redistribute(S_nn, C2_nN)
+        self.blocks2rows_tri.redistribute(S_nn, C2_nN)
 
         if outdescriptor: # grid masters only
             assert self.gd.comm.rank == 0
@@ -570,21 +634,15 @@ class SLDenseLinearAlgebra:
 
         self.gd.comm.broadcast(C_nN, 0)
 
-    def diagonalize(self, H_mm, C_nM, eps_n, S_mm=None):
-        if S_mm is None:
-            # Dummy variables below H_mm = H_Nn, C_nM = U_nN
-            # This is very ugly, we will try to be more organized
-            # in the future.
-            self._standard_diagonalize(H_mm, C_nM, eps_n)
-        else:
-            self._general_diagonalize(H_mm, S_mm, C_nM, eps_n)
+    def diagonalize(self, H_nn, U_nM, eps_n):
+        self._standard_diagonalize_dc(H_nn, U_nM, eps_n)
+ 
+    def _standard_diagonalize_dc(self, H_Nn, U_nN, eps_n):
+        # H_Nn must be lower triangular or symmetric, 
+        # but not upper triangular.
+        # U_nN will be symmetric
 
-    def _standard_diagonalize(self, H_Nn, C_nN, eps_n): # C_nN -> U_nN
-        # H_Nn must be upper triangular or symmetric, 
-        # but not lower triangular.
-        # C_nN will be symmetric
-
-        # C_Nn needs to be simultaneously compatible with:
+        # U_Nn needs to be simultaneously compatible with:
         # 1. outdescriptor
         # 2. broadcast with gd.comm
         # We will do this with a number of seperate buffers
@@ -609,19 +667,19 @@ class SLDenseLinearAlgebra:
             assert gd.comm.rank == 0
 
         H_nn = blockdescriptor.zeros(dtype=dtype)
-        C_nn = blockdescriptor.zeros(dtype=dtype)
-        C2_nN = outdescriptor.empty(dtype=dtype) # temporary buffer
+        U_nn = blockdescriptor.zeros(dtype=dtype)
+        U2_nN = outdescriptor.empty(dtype=dtype) # temporary buffer
 
         # Column grid -> Block Grid
         self.cols2blocks.redistribute(H_Nn, H_nn)
-        blockdescriptor.diagonalize_dc(H_nn, C_nn, eps_N, UL='U')
+        blockdescriptor.diagonalize_dc(H_nn, U_nn, eps_N, 'U')
         # Blocked grid -> Row grid
-        self.blocks2cols.redistribute(C_nn, C2_nN) 
+        self.blocks2rows.redistribute(U_nn, U2_nN) 
 
         if outdescriptor: # grid masters only
             assert self.gd.comm.rank == 0
-            C_nN[:] = C2_nN
-            del C2_nN
+            U_nN[:] = U2_nN
+            del U2_nN
             # grid master with bd.rank = 0 
             # scatters to other grid masters
             # NOTE: If the origin of the blacs grid
@@ -630,42 +688,8 @@ class SLDenseLinearAlgebra:
         else:
             assert self.gd.comm.rank != 0
 
-        self.gd.comm.broadcast(C_nN, 0)
+        self.gd.comm.broadcast(U_nN, 0)
         self.gd.comm.broadcast(eps_n, 0)
-
-    def _general_diagonalize(self, H_mm, S_mm, C_nM, eps_n):
-        indescriptor = self.indescriptor
-        outdescriptor = self.outdescriptor
-        blockdescriptor = self.blockdescriptor
-
-        dtype = S_mm.dtype
-        eps_M = np.empty(C_nM.shape[-1]) # empty helps us debug
-        C_mm = blockdescriptor.zeros(dtype=dtype)
-        self.timer.start('General diagonalize ex')
-        blockdescriptor.general_diagonalize_ex(H_mm, S_mm.copy(), C_mm, eps_M,
-                                               UL='U', iu=self.bd.nbands)
-        self.timer.stop('General diagonalize ex')
-        C_mM = outdescriptor.zeros(dtype=dtype)
-        self.timer.start('Redistribute coefs')
-        self.blocks2cols.redistribute(C_mm, C_mM)
-        self.timer.stop('Redistribute coefs')
-        self.timer.start('Send coefs to domains')
-        if outdescriptor: # grid masters only
-            assert self.gd.comm.rank == 0
-            bd = self.bd
-            C_nM[:] = C_mM[:bd.mynbands, :]
-            # grid master with bd.rank = 0 
-            # scatters to other grid masters
-            # NOTE: If the origin of the blacs grid
-            # ever shifts this will not work
-            bd.distribute(eps_M[:bd.nbands], eps_n)
-        else:
-            assert self.gd.comm.rank != 0
-
-        self.gd.comm.broadcast(C_nM, 0)
-        self.gd.comm.broadcast(eps_n, 0)
-        self.timer.stop('Send coefs to domains')
-
 
 class BlacsBandDescriptor:
     # this class 'describes' all the Realspace/Blacs-related stuff
@@ -708,8 +732,10 @@ class BlacsBandDescriptor:
 
         # Only redistribute upper half since all are matrices are symmetric/Hermitian
         self.Nn2nn = Redistributor(blockcomm, Nndescriptor, nndescriptor, 'U')
-        # Resulting matrix below will be used in dgemm which is obvlious
+        # Resulting matrix below will be used in dgemm which is obvlious to symmetry
         self.nn2nN = Redistributor(blockcomm, nndescriptor, nNdescriptor)
+        # Resulting matrix below will be used in orthornomalize and must be triangular
+        self.nn2nN_tri = Redistributor(blockcomm, nndescriptor, nNdescriptor, 'U')
 
         self.world = world
         self.gd = gd
@@ -720,8 +746,8 @@ class BlacsBandDescriptor:
         self.timer = timer
         
     def get_diagonalizer(self):
-        return SLDenseLinearAlgebra(self.gd, self.bd, self.Nn2nn, self.nn2nN,
-                                    self.timer)
+        return SLDenseLinearAlgebra2(self.gd, self.bd, self.Nn2nn, self.nn2nN,
+                                     self.nn2nN_tri, self.timer)
 
 
 class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
