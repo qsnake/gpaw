@@ -467,19 +467,21 @@ PyObject* scalapack_set(PyObject *self, PyObject *args)
   Py_complex alpha;
   Py_complex beta;
   int m, n;
+  int ia, ja;
   char uplo;
   static int one = 1;
 
-  if (!PyArg_ParseTuple(args, "OODDcii", &a, &desca,
-                        &alpha, &beta, &uplo, &m, &n))
+  if (!PyArg_ParseTuple(args, "OODDciiii", &a, &desca,
+                        &alpha, &beta, &uplo, 
+			&m, &n, &ia, &ja))
     return NULL;
 
   if (a->descr->type_num == PyArray_DOUBLE)
     pdlaset_(&uplo, &m, &n, &(alpha.real), &(beta.real), DOUBLEP(a), 
-	     &one, &one, INTP(desca));
+	     &ia, &ja, INTP(desca));
   else
     pzlaset_(&uplo, &m, &n, &alpha, &beta, (void*)COMPLEXP(a), 
-	     &one, &one, INTP(desca));    
+	     &ia, &ja, INTP(desca));    
 
   Py_RETURN_NONE;
 }
@@ -607,17 +609,14 @@ PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args)
   // Computation part
   liwork = i_work;
   iwork = GPAW_MALLOC(int, liwork);
-  printf ("past query");
   if (a->descr->type_num == PyArray_DOUBLE)
     {
       double* work = GPAW_MALLOC(double, lwork);
-      printf ("right before compute");
       pdsyevd_(&jobz, &uplo, &n,
 	       DOUBLEP(a), &one, &one, INTP(desca),
 	       DOUBLEP(w),
 	       DOUBLEP(z), &one, &one, INTP(desca),
 	       work, &lwork, iwork, &liwork, &info);
-      printf ("right after compute");
       free(work);
     }
   else

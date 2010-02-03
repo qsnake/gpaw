@@ -27,7 +27,17 @@ def _switch(uplo):
     else:
         return 'L'
 
-def scalapack_set(desca, a, alpha, beta, uplo, m=None, n=None):
+def scalapack_zero(desca, a, uplo, ia=1, ja=1):
+    """Zero the upper or lower half of a square matrix."""
+    assert desca.gshape[0] == desca.gshape[1]
+    n = desca.gshape[0] - 1
+    if uplo == 'L':
+        ia = ia + 1
+    else:
+        ja = ja + 1
+    scalapack_set(desca, a, 0.0, 0.0, uplo, n, n, ia, ja)
+
+def scalapack_set(desca, a, alpha, beta, uplo, m=None, n=None, ia=1, ja=1):
     assert desca.check(a)
     assert uplo in ['L', 'U']
     uplo = _switch(uplo)
@@ -37,7 +47,7 @@ def scalapack_set(desca, a, alpha, beta, uplo, m=None, n=None):
         n = desca.gshape[1]
     if not desca.blacsgrid.is_active():
         return
-    _gpaw.scalapack_set(a, desca.asarray(), alpha, beta, uplo, n, m)
+    _gpaw.scalapack_set(a, desca.asarray(), alpha, beta, uplo, n, m, ja, ia)
 
 def scalapack_diagonalize_dc(desca, a, z, w, uplo):
     assert desca.check(a)
