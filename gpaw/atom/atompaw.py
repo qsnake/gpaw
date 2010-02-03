@@ -191,6 +191,7 @@ class AtomGridDescriptor(EquidistantRadialGridDescriptor):
         self.cell_cv = np.eye(3) * rcut
         self.N_c = np.ones(3, dtype=int) * 2 * ng
         self.h_cv = self.cell_cv / self.N_c
+        self.dv = (rcut / 2 / ng)**3
         self.orthogonal = False
     def _get_position_array(self, h, ng):
         return np.linspace(h, ng * h, ng)
