@@ -113,12 +113,16 @@ class PAWTextOutput:
                   '      Points  Spacing')
         self.text('  -----------------------------------------------' +
                   '---------------------')
-        h_c = (self.wfs.gd.h_cv**2).sum(1)**0.5
+        gd = self.wfs.gd
+        h_c = (gd.h_cv**2).sum(1)**0.5
         for c in range(3):
             self.text('  %d. axis:    %s  %10.6f  %10.6f  %10.6f   %3d   %8.4f'
-                      % ((c + 1, ['no ', 'yes'][int(self.wfs.gd.pbc_c[c])]) +
-                         tuple(Bohr * self.wfs.gd.cell_cv[c]) +
-                         (self.wfs.gd.N_c[c], Bohr * h_c[c])))
+                      % ((c + 1, ['no ', 'yes'][int(gd.pbc_c[c])]) +
+                         tuple(Bohr * gd.cell_cv[c]) +
+                         (gd.N_c[c], Bohr * h_c[c])))
+        self.text()
+        self.text('Grid-points per volume: %.2f' % (1 / gd.dv / Bohr**3))
+        self.text('Effective grid-spacing: %.4f' % (gd.dv**(1.0 / 3) * Bohr))
         self.text()
 
     def print_positions(self):
