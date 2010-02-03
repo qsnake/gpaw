@@ -20,6 +20,7 @@ from gpaw.transport.sparse_matrix import Tp_Sparse_HSD, Banded_Sparse_HSD, \
                                   CP_Sparse_HSD, Se_Sparse_Matrix
 
 from gpaw.transport.intctrl import IntCtrl, PathInfo
+from gpaw.transport.contour import Contour
 from gpaw.transport.surrounding import Surrounding, collect_D_asp2, \
                                               collect_D_asp3, distribute_D_asp
 from gpaw.transport.selfenergy import LeadSelfEnergy
@@ -701,6 +702,7 @@ class Transport(GPAW):
         S_qMM = wfs.S_qMM.copy()
         for S_MM in S_qMM:
             tri2full(S_MM)
+        self.gd.comm.broadcast(S_qMM, 0)
         H_sqMM = np.empty((self.my_nspins,) + S_qMM.shape, wfs.dtype)
         for kpt in wfs.kpt_u:
             H_MM = eigensolver.calculate_hamiltonian_matrix(ham, wfs, kpt)
@@ -710,6 +712,7 @@ class Transport(GPAW):
                 H_sqMM[kpt.s, kpt.q] = H_MM
             else:
                 H_sqMM[0, kpt.q] = H_MM
+        self.gd.comm.broadcast(H_sqMM, 0)                
         return H_sqMM, S_qMM
        
     def get_lead_atoms(self, l):
@@ -885,7 +888,10 @@ class Transport(GPAW):
         self.intctrl = IntCtrl(self.occupations.width * Hartree,
                                 self.lead_fermi, self.bias,
                                 self.min_energy,
-                            self.neintmethod, self.neintstep, self.eqinttol)            
+                            self.neintmethod, self.neintstep, self.eqinttol)
+        
+        self.contour = Contour(self.occupations.width * Hartree,
+                               self.lead_fermi, self.bias, comm=self.gd.comm)
         if not self.use_qzk_boundary:
             self.surround.reset_bias(self.bias)
         else:
@@ -951,7 +957,122 @@ class Transport(GPAW):
         if not self.ground:
             ne += self.locpathinfo[0][0].num
         self.text('energy point' + str(ne))           
+
+    def calculate_integral_path2(self):
+        self.initialize_path()
+        for s in range(self.my_nspins):
+            for k in range(self.my_npk):      
+                self.find_contour(s, k)  
+        ne = self.eqpathinfo[0][0].num + self.nepathinfo[0][0].num
+        if not self.ground:
+            ne += self.locpathinfo[0][0].num
+        self.text('energy point' + str(ne))
+
+    def find_contour(self, s, k):
+        self.reset_lead_hs(s, k)        
+        self.hsd.s = s
+        self.hsd.pk = k        
+        self.contour.get_optimized_contour()
+        nids, energies, weights, ses = self.contour.sort_contour()
+        elist = []
+        wlist = []
+        flist = []
+        siglist = []
+
+        elist1 = []
+        wlist1 = []
+        flist1 = []
+        siglist1 = []        
         
+        kt = self.contour.kt
+        max_ef = np.max(self.intctrl.leadfermi)
+        min_ef = np.min(self.intctrl.leadfermi)
+        for nid, energy, weight, se in zip(nids, energies, weights, ses):
+            if str(nid)[0] == 6:
+                elist1.append(energy)
+                wlist1.append(weight)
+                siglist1.append(se)
+                fermi_factors = []
+                for i in range(self.lead_num):
+                    fermi_factors.append(fermidistribution(zp[i] - max_ef, kt) - 
+                                      fermidistribution(zp[i] - min_ef, kt) )            
+                flist1.append(fermi_factors)
+            else:
+                elist.append(energy)
+                wlist.append(weight)
+                siglist.append(se)
+                fermi_factors = []
+                for i in range(self.lead_num):
+                    fermi_factors.append(fermidistribution(zp[i] - min_ef, kt))            
+                flist.append(fermi_factors)                
+
+        comm = self.gd.comm
+        ne_poles = np.array_split(np.arange(5), comm.size)
+        myne = ne_poles[comm.rank]
+        
+        eq_poles = np.arange(1, 10, 2) * np.pi * 1.j + min_ef
+        my_eq_poles = eq_poles[myne]
+        
+        my_eq_ffp = [-2.j * np.pi * kt] * len(myne)
+        my_eq_wp = [1] * len(myne)
+        my_eq_ses = []
+        for i in range(self.lead_num):
+            sigmas = []
+            for e in my_eq_poles:
+                sigmas.append(self.selfenergies[i](e))
+            my_eq_ses.append(simgas)
+        
+        elist += my_eq_poles.tolist()
+        wlist += my_eq_wp
+        flist += my_eq_ffp
+        siglist += my_eq_ses
+
+        self.eqpathinfo[s][k].add(elist, wlist, flist, siglist)
+        
+        if not self.ground:
+            comm = self.gd.comm
+            ne_poles = np.array_split(np.arange(10), comm.size)
+            myne = ne_poles[comm.rank]            
+            
+            loc_poles1 = np.arange(1, 10, 2) * np.pi * 1.j + min_ef
+            loc_poles2 = np.arange(1, 10, 2) * np.pi * 1.j + max_ef
+            loc_poles = np.append(loc_poles1, loc_poles2)
+            
+            my_loc_poles = loc_poles[myne]
+            my_loc_ffp = [-2.j * np.pi * kt] * len(myne)
+            loc_wp = [-1.] * 5 + [1.] * 5
+            my_loc_wp = np.array_split(loc_wp, comm.size)[comm.rank]
+            my_loc_ses = []
+            
+            for i in range(self.lead_num):
+                sigmas = []
+                for e in my_loc_poles:
+                    sigmas.append(self.selfenergies[i](e))
+                my_loc_ses.append(simgas)        
+            elist1 += my_loc_poles
+            wlist1 += my_loc_wp
+            flist1 += my_loc_ffp
+            siglist1 += my_loc_ses
+            self.locpathinfo[s][k].add(elist1, wlist1, flist1, siglist1)              
+
+
+            elist2 = self.contour.paths[4].energies
+            wlist2 = self.contour.paths[4].weights
+            flist2 = []
+            siglist2 = []
+            for i in range(self.lead_num):
+                flist2.append([[], []])
+                siglist2.append([]) 
+                for e in elist2:
+                    flist2[i][0].append(fermidistribution(e - lead_ef,
+                                           kt) - fermidistribution(e -
+                                          min_ef, kt)) 
+            
+                    flist2[i][1].append(fermidistribution(e - max_ef,
+                                           kt) - fermidistribution(e -
+                                            lead_ef, kt))  
+                    siglist2.append(self.selfenergies[i](e))
+       
     def get_eqintegral_points(self, s, k):
         if self.recal_path:
             self.timer.start('eq fock2den')
@@ -1142,7 +1263,7 @@ class Transport(GPAW):
             del self.fint
         return den
          
-    def calgfunc(self, zp, calcutype):
+    def calgfunc(self, zp, calcutype, flag='old'):
         #calcutype = 
         #  - 'eqInt':  gfunc[Mx*Mx,nE] (default)
         #  - 'neInt':  gfunc[Mx*Mx,nE]
@@ -1233,7 +1354,10 @@ class Transport(GPAW):
                     min_ef = intctrl.minfermi
                     self.fint.append(fermidistribution(zp[i] - min_ef, kt))
                 gfunc[i] = gr * self.fint[self.cntint]    
-        return gfunc        
+        if flag == 'old':
+            return gfunc
+        else:
+            return gfunc, sigma
     
     def fock2den(self, s, k):
         intctrl = self.intctrl
