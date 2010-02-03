@@ -71,10 +71,11 @@
 \fancyhead[RE]{\leftmark}
 \fancyhead[LO]{\rightmark}
 
-\title{\textbf{The Projector Augmented-wave Method}}
+\title{\vspace*{-21mm}%
+  \textbf{The Projector Augmented-wave Method}}
 \author{Carsten Rostgaard}
-%\date{October 19, 2009}
-\date{Available online at \url{http://arxiv.org/abs/0910.1921}.}
+\date{February 3, 2010\footnote{%
+    Oct. 10 version available online at \url{http://arxiv.org/abs/0910.1921}.}}
 
 \begin{document}
 \thispagestyle{empty}
@@ -878,11 +879,11 @@ Using this, we get
 %
 &= \frac{\delta T_s[\{\s{\psi}_n\}]}{\delta \s{\psi}^*_n(\br)} \\
 &\quad + \int d\br' \left[ \frac{\delta E_{xc}[\s{n}]}{\delta \s{n}(\br')} + \frac{\delta U_H[\s{\rho}]}{\delta \s{n}(\br')} \right] \frac{\delta \s{n}(\br')}{\delta \s{\psi}^*_n(\br)}\\
-&\quad + \sum_a \sum_{i_1i_2} \left[\int d\br' \frac{\delta U_H[\s{n} + \textstyle\sum_a \s{Z}^a]}{\delta \s{Z}^a(\br')}\frac{\delta \s{Z}^a(\br')}{\delta D^a_{i_1i_2}} + \frac{\delta \Delta E^a}{\delta D^a_{i_1i_2}} \right]\frac{\delta D^a_{i_1i_2}}{\delta \s{\psi}^*_n(\br)}\\
+&\quad + \sum_a \sum_{i_1i_2} \left[\int d\br' \frac{\delta U_H[\s{\rho}]}{\delta \s{Z}^a(\br')}\frac{\delta \s{Z}^a(\br')}{\delta D^a_{i_1i_2}} + \frac{\delta \Delta E^a}{\delta D^a_{i_1i_2}} \right]\frac{\delta D^a_{i_1i_2}}{\delta \s{\psi}^*_n(\br)}\\
 %
 &= f_n (-\tfrac{1}{2}\nabla^2)\psi_n(\br)\\
 &\quad + \int d\br' \left[ v_{xc}[\s{n}](\br') + u_H[\s{\rho}](\br') \right] f_n \delta(\br-\br')\s{\psi}_n(\br')\\
-&\quad + \sum_a \sum_{i_1i_2} \left[\int d\br' u_H[\s{n} + \textstyle\sum_a\s{Z}^a](\br')\sum_L \Delta^a_{Li_1i_2}\s{g}^a_L(\br') + \frac{\delta \Delta E^a}{\delta D^a_{i_1i_2}} \right] f_n\s{p}^a_{i_1}(\br)P^a_{ni_2}
+&\quad + \sum_a \sum_{i_1i_2} \left[\int d\br' u_H[\s{\rho}](\br')\sum_L \Delta^a_{Li_1i_2}\s{g}^a_L(\br') + \frac{\delta \Delta E^a}{\delta D^a_{i_1i_2}} \right] f_n\s{p}^a_{i_1}(\br)P^a_{ni_2}
 \end{align*}
 %
 where $v_{xc}[n](\br) = \frac{\delta E_{xc}[n]}{\delta n(\br)}$ is the
@@ -961,7 +962,7 @@ energy on the nuclei coordinates is
 \begin{equation}
   \begin{split}
     \frac{\partial E}{\partial \bR^a} &= \int d\br' \frac{\delta E}{\delta \s{n}(\br')}\frac{\partial \s{n}(\br')}{\partial \bR^a} + \sum_{i_1i_2} \frac{\partial E}{\partial D^a_{i_1i_2}}\frac{\partial D^a_{i_1i_2}}{\partial \bR^a} + \int d\br' \sum_L \frac{\delta E}{\delta \s{g}^a_L(\br')}\frac{\partial \s{g}^a_L(\br')}{\partial \bR^a}\\
-    &=\int d\br' \s{v}_\text{eff}(\br')\frac{\partial \s{n}^a_c(\br')}{\partial \bR^a} + \sum_{i_1i_2} \Delta H^a_{i_1i_2}\frac{\partial D^a_{i_1i_2}}{\partial \bR^a} + \int d\br' \sum_L u_H(\br')Q_L\frac{\partial \s{g}^a_L(\br')}{\partial \bR^a}
+    &=\int d\br' [u_H(\br') + v_{xc}(\br')]\frac{\partial \s{n}^a_c(\br')}{\partial \bR^a} + \sum_{i_1i_2} \Delta H^a_{i_1i_2}\frac{\partial D^a_{i_1i_2}}{\partial \bR^a} + \int d\br' \sum_L u_H(\br')Q_L\frac{\partial \s{g}^a_L(\br')}{\partial \bR^a}
   \end{split}
 \end{equation}
 %
@@ -969,7 +970,7 @@ giving the force expression
 %
 \begin{equation}\label{eq: force no exx}
   \begin{split}
-    \f{F}^a = - &\int d\br' \left\{ \s{v}_\text{eff}(\br')\frac{\partial \s{n}^a_c(\br')}{\partial \bR^a} + u_H(\br')\sum_L Q_L\frac{\partial \s{g}^a_L(\br')}{\partial \bR^a} \right\}\\
+    \f{F}^a = - &\int d\br' \left\{ [u_H(\br') + v_{xc}(\br')]\frac{\partial \s{n}^a_c(\br')}{\partial \bR^a} + u_H(\br')\sum_L Q_L\frac{\partial \s{g}^a_L(\br')}{\partial \bR^a} \right\}\\
     &- \sum_n f_n \sum_{i_1i_2}\left\{\Delta H^a_{i_1i_2} - \epsilon_n\Delta S^a_{i_1i_2}\right\}\left( P^{a*}_{ni_1}\braket{\frac{d \s{p}^a_{i_2}}{d\bR^a}}{\s{\psi}_n} + \braket{\s{\psi}_n}{\frac{d \s{p}^a_{i_1}}{d\bR^a}} P^a_{ni_2}\right)
   \end{split}
 \end{equation}
@@ -1259,13 +1260,13 @@ This expression can be used as an `intelligent zero'. Using this, we
 can make the replacement of the smooth potential
 %
 \begin{equation}
-  \s{v}_s(\br) = u_H[\s{\rho}](\br) + v_{xc}[\s{n}](\br) \to \s{v}_s(\br) = u_H[\s{\rho}](\br) + v_{xc}[\s{n}](\br) + \bar{v}(\br)  
+  \s{v}_\text{eff}(\br) = u_H[\s{\rho}](\br) + v_{xc}[\s{n}](\br) \to \s{v}_\text{eff}(\br) = u_H[\s{\rho}](\br) + v_{xc}[\s{n}](\br) + \bar{v}(\br)  
 \end{equation}
 %
 if we at the same time add 
 %
 \begin{equation}
-  B^a + \sum_{i_1i_2} \Delta B^a_{i_1i_2} D^a_{i_1i_2}
+  B^a + \sum_{i_1i_2} B^a_{i_1i_2} D^a_{i_1i_2}
 \end{equation}
 %
 to the energy corrections $\Delta E^a$, where
@@ -1288,7 +1289,9 @@ $\bar{v}^a$ is by expanding it in some basis, and then choosing the
 coefficients such that the potential $u_H[\s{\rho}](\br) +
 v_{xc}[\s{n}](\br) + \bar{v}(\br)$ is optimally smooth at the core for
 the reference system.
-\par Inclusion of $\bar{v}^a(\br)$ changes the forces on each atom only through the redefinitions of $\s{v}_s(\br)$ and $\Delta H^a_{i_1i_2}$.
+\par Inclusion of $\bar{v}^a(\br)$ changes the forces on each atom
+only through the redefinitions of $\s{v}_\text{eff}(\br)$ and $\Delta
+H^a_{i_1i_2}$.
 
 \subsubsection*{Summary}
 When constructing a data set for a specific atom, one must specify the
@@ -1302,7 +1305,7 @@ only:
 \item $\s{g}_L^a$ localized within $r<r_c$, and satisfying $\int d\f{r} r^{l'} \s{g}_L^a(\f{r})Y_{L'}(\wh{\br - \bR^a}) = \delta_{LL'}$
 \item $n_c^a$ follows from $\phi_i^a$ by \eqref{eq: core density}
 \item $\s{n}_c^a$ by appropriate smooth continuation of $n_c^a$
-\item $\bar{v}^a$ localized within $r<r_c^a$, otherwise freely chosen to make $\s{v}_s$ optimally smooth for the reference system
+\item $\bar{v}^a$ localized within $r<r_c^a$, otherwise freely chosen to make $\s{v}_\text{eff}$ optimally smooth for the reference system
 \end{enumerate}
 %
 The adjustable parameters besides the shape of $\s{\phi}^a$,
@@ -1324,11 +1327,10 @@ stable than for e.g. norm conserving or ultra soft pseudopotentials.
 \par Once the quantities above have been constructed, all other
 ingredients of the PAW transformation follows, such as $\Delta^a$,
 $\Delta_{Lii'}^a$, $T_c^a$, $\Delta T^a_{i_1i_2}$, $\Delta C^a$,
-$\Delta C^a_{i_1i_2}$, $\Delta C^a_{i_1i_2i_3i_4}$, $\Delta
-\bar{v}^a$, and $\Delta \bar{v}^a_{i_1i_2}$.  The first two are needed
-for the construction of the compensation charges and the overlap
-operator, and the rest for determining the Hamiltonian, and for
-evaluating the total energy.
+$\Delta C^a_{i_1i_2}$, $\Delta C^a_{i_1i_2i_3i_4}$, $B^a$, and
+$B^a_{i_1i_2}$.  The first two are needed for the construction of the
+compensation charges and the overlap operator, and the rest for
+determining the Hamiltonian, and for evaluating the total energy.
 
 \section{Non-standard Quantities}
 The preceding sections have described the details of making a
@@ -1566,12 +1568,12 @@ Thus doing LDA + U is a simple matter of picking out the d-type
 elements of $D^a$, and adding to the total energy the contribution
 \begin{equation}
   \label{eq:hubbard energy}
-  \sum_a \sum_{i_1i_2}^\text{d type}\frac{U}{2} \tr \left(D^a_{i_1i_2} - \sum_{i_3} D^a_{i_1i_3} D^a_{i_3i_2} \right)
+  \frac{U}{2} \sum_a \sum_{i_1}^\text{d type} \left(D^a_{i_1i_1} - \sum_{i_2} D^a_{i_1i_2} D^a_{i_2i_1} \right)
 \end{equation}
 and adding the gradient of this to the Hamiltonian
 \begin{equation}
   \label{eq:hubbard hamiltonian}
-  \sum_a \sum_{i_1i_2}^\text{d type}\ket{\s{p}_{i_1}^a} \frac{U}{2} \left( \delta_{i_1i_2} - 2 D^a_{i_1i_2} \right)\bra{\s{p}_{i_1}^a}
+  \frac{U}{2} \sum_a \ket{\s{p}_{i_1}^a} \left( \delta_{i_1i_2} - 2 D^a_{i_1i_2} \right)\bra{\s{p}_{i_2}^a}
 \end{equation}
 
 \subsection{Coulomb Integrals}
@@ -1675,7 +1677,7 @@ The EXX energy functional is given by
 \end{equation}
 Terms where $n$ and $m$ both refer to valence states transform in
 PAW as in equation \eqref{eq:coulomb-matrix-partition}. Terms where
-either index refers to a core orbital can be reduce to
+either index refers to a core orbital can be reduced to
 trivial functionals of $P^a_{ni}$, resulting in (see e.g. \cite{Paier2005})
 \begin{equation}
   \begin{split}
@@ -1809,5 +1811,5 @@ the number of SCF iterations in the KS cycle are greatly reduced.
 \clearpage
 \addcontentsline{toc}{section}{References}
 \bibliographystyle{unsrt}
-\bibliography{ref}
+\bibliography{references}
 \end{document}

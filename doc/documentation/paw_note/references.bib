@@ -2,7 +2,7 @@
 % Encoding: ISO8859_1
 
 @ARTICLE{Blochl1994,
-  author = {Bl\"ochl, P. E.},
+  author = {P. E. Bl{\"o}chl},
   title = {Projector augmented-wave method},
   journal = {Physical Review B},
   year = {1994},
@@ -12,7 +12,8 @@
   month = {Dec},
   doi = {10.1103/PhysRevB.50.17953},
   numpages = {26},
-  publisher = {American Physical Society}
+  publisher = {American Physical Society},
+  review = {The original PAW paper.}
 }
 
 @ARTICLE{Blochl2003,
@@ -23,7 +24,7 @@
   year = {2003},
   volume = {26},
   pages = {33--41},
-  review = {Review of the PAW method by Bl{\o}chl and coworkers. Easier to read
+  review = {Review of the PAW method by Bl{\"o}chl and coworkers. Easier to read
 	than the original.}
 }
 
@@ -32,7 +33,7 @@
 	C. J. and Sutton, A. P.},
   title = {Electron-energy-loss spectra and the structural stability of nickel
 	oxide: An LSDA+U study},
-  journal = {Physical Review B},
+  journal = {Phys. Rev. B},
   year = {1998},
   volume = {57},
   pages = {1505--1509},
@@ -67,6 +68,27 @@
   url = {http://stacks.iop.org/0953-8984/19/036215}
 }
 
+@ARTICLE{Gorling1994,
+  author = {A. G\"orling and M. Levy},
+  title = {Exact Kohn-Sham scheme based on perturbation theory},
+  journal = PRA,
+  year = {1994},
+  volume = {50},
+  pages = {196--204},
+  review = {Scheme for doing exact xc}
+}
+
+@ARTICLE{Kummel2003,
+  author = {S. K\"ummel and J. P. Perdew},
+  title = {Simple Iterative Construction of the Optimized Effective Potential
+	for Orbital Functionals, Including Exact Exchange},
+  journal = PRL,
+  year = {2003},
+  volume = {90},
+  pages = {043004},
+  review = {Iterate from KLI to OEP: short}
+}
+
 @ARTICLE{Kresse1999,
   author = {G. Kresse and D. Joubert},
   title = {From ultrasoft pseudopotentials to the projector augmented-wave method},
@@ -74,6 +96,24 @@
   year = {1999},
   volume = {59},
   pages = {1758--1775},
+  month = {Jan},
+  abstract = {The formal relationship between ultrasoft (US) Vanderbilt-type pseudopotentials
+	and Blöchl's projector augmented wave (PAW) method is derived. It
+	is shown that the total energy functional for US pseudopotentials
+	can be obtained by linearization of two terms in a slightly modified
+	PAW total energy functional. The Hamilton operator, the forces, and
+	the stress tensor are derived for this modified PAW functional. A
+	simple way to implement the PAW method in existing plane-wave codes
+	supporting US pseudopotentials is pointed out. In addition, critical
+	tests are presented to compare the accuracy and efficiency of the
+	PAW and the US pseudopotential method with relaxed core all electron
+	methods. These tests include small molecules (H2, H2O, Li2, N2, F2,
+	BF3, SiF4) and several bulk systems (diamond, Si, V, Li, Ca, CaF2,
+	Fe, Co, Ni). Particular attention is paid to the bulk properties
+	and magnetic energies of Fe, Co, and Ni.},
+  doi = {10.1103/PhysRevB.59.1758},
+  numpages = {17},
+  publisher = {American Physical Society},
   review = {From USPP to PAW}
 }
 
@@ -93,25 +133,28 @@
   url = {http://link.aip.org/link/?JCP/125/104101/1}
 }
 
-@ARTICLE{Mortensen2005,
-  author = {J. J. Mortensen and L. B. Hansen and K. W. Jacobsen},
-  title = {Real-space grid implementation of the projector augmented wave method},
-  journal = {Physical Review B (Condensed Matter and Materials Physics)},
+@ARTICLE{Paier2005,
+  author = {Joachim Paier and Robin Hirschl and Martijn Marsman and Georg Kresse},
+  title = {The Perdew--Burke--Ernzerhof exchange-correlation functional applied
+	to the G2-1 test set using a plane-wave basis set},
+  journal = {The Journal of Chemical Physics},
   year = {2005},
-  volume = {71},
-  pages = {035109},
-  number = {3},
-  eid = {035109},
-  doi = {10.1103/PhysRevB.71.035109},
-  keywords = {aluminium; density functional theory; APW calculations; elastic moduli;
-	lattice constants; Poisson equation; valence bands; wave functions},
-  numpages = {11},
-  publisher = {APS},
-  url = {http://link.aps.org/abstract/PRB/v71/e035109}
+  volume = {122},
+  pages = {234102},
+  number = {23},
+  eid = {234102},
+  doi = {10.1063/1.1926272},
+  keywords = {molecular configurations; dissociation energies; ab initio calculations;
+	electron correlations},
+  numpages = {13},
+  publisher = {AIP},
+  review = {Implementation of exact exchange in VASP, (PAW program), and very
+	large test on molecular systems.},
+  url = {http://link.aip.org/link/?JCP/122/234102/1}
 }
 
 @ARTICLE{Rohrbach2004,
-  author = {Rohrbach, A. and Hafner, J. and Kresse, G. },
+  author = {Rohrbach, A. and Hafner, J. and Kresse, G.},
   title = {Molecular adsorption on the surface of strongly correlated transition-metal
 	oxides: A case study for CO/NiO(100)},
   journal = {Physical Review B},
@@ -125,13 +168,40 @@
   publisher = {American Physical Society}
 }
 
-@UNPUBLISHED{Tang2008,
-  author = {W. Tang and E. Sanville and G. Henkelman},
+@UNPUBLISHED{Rostgaard2009,
+  author = {Carsten Rostgaard and Karsten W. Jacobsen and Kristian S. Thygesen},
+  title = {Assessment of the GW approximation for molecules. II. Ionization
+	potentials from first principles and comparison to hybrid density
+	functional theory},
+  note = {Submitted},
+  year = {2009}
+}
+
+@ARTICLE{Tang2009,
+  author = {W Tang and E Sanville and G Henkelman},
   title = {A grid-based Bader analysis algorithm without lattice bias},
-  note = {In press, J. Phys.: Condens. Matter},
-  year = {2008},
   journal = {Journal of Physics: Condensed Matter},
-  url = {http://theory.cm.utexas.edu/bader/}
+  year = {2009},
+  volume = {21},
+  pages = {084204 (7pp)},
+  number = {8},
+  abstract = {A computational method for partitioning a charge density grid into
+	Bader volumes is presented which is efficient, robust, and scales
+	linearly with the number of grid points. The partitioning algorithm
+	follows the steepest ascent paths along the charge density gradient
+	from grid point to grid point until a charge density maximum is reached.
+	In this paper, we describe how accurate off-lattice ascent paths
+	can be represented with respect to the grid points. This improvement
+	maintains the efficient linear scaling of an earlier version of the
+	algorithm, and eliminates a tendency for the Bader surfaces to be
+	aligned along the grid directions. As the algorithm assigns grid
+	points to charge density maxima, subsequent paths are terminated
+	when they reach previously assigned grid points. It is this grid-based
+	approach which gives the algorithm its efficiency, and allows for
+	the analysis of the large grids generated from plane-wave-based density
+	functional theory calculations.},
+  pdf = {Tang2009.pdf},
+  url = {http://stacks.iop.org/0953-8984/21/084204}
 }
 
 @ARTICLE{Thygesen2005,
@@ -157,7 +227,7 @@
 }
 
 @ARTICLE{Walter2008,
-  author = {Michael Walter and Hannu H\"{a}kkinen and Lauri Lehtovaara and Martti
+  author = {Michael Walter and Hannu H{\"a}kkinen and Lauri Lehtovaara and Martti
 	Puska and Jussi Enkovaara and Carsten Rostgaard and Jens J{\o}rgen
 	Mortensen},
   title = {Time-dependent density-functional theory in the projector augmented-wave
@@ -176,6 +246,23 @@
   url = {http://link.aip.org/link/?JCP/128/244101/1}
 }
 
+@ARTICLE{Yin2009,
+  author = {F. Yin and J. Akola and P. Koskinen and M. Manninen and R. E. Palmer},
+  title = {Bright Beaches of Nanoscale Potassium Islands on Graphite in STM
+	Imaging},
+  journal = {Physical Review Letters},
+  year = {2009},
+  volume = {102},
+  pages = {106102},
+  number = {10},
+  eid = {106102},
+  doi = {10.1103/PhysRevLett.102.106102},
+  numpages = {4},
+  publisher = {APS},
+  review = {GPAW with linear external potential applied to STM simulation.},
+  url = {http://link.aps.org/abstract/PRL/v102/e106102}
+}
+
 @BOOK{Fiolhais2003,
   title = {A Primer in Density Functional Theory},
   publisher = {Springer},
@@ -184,6 +271,13 @@
   volume = {620},
   series = {Lecture Notes in Physics},
   review = {Very good DFT book.}
+}
+
+@MISC{gpaw,
+  title = {{The real-space PAW-DFT code GPAW is part of the CAMP Open-Source
+	(CAMPOS) project.}},
+  note = {GPAW is freely available at \url{https://wiki.fysik.dtu.dk/gpaw}.},
+  review = {Where to find GPAW}
 }
 
 @comment{jabref-meta: selector_publisher:}
