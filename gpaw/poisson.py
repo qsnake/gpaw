@@ -555,5 +555,4 @@ class FixedBoundaryPoissonSolver(PoissonSolver):
             self.gd.distribute(global_phi_g, phi_g)
         else:
             phi_g[:] = phi_g3
-        
-    
+
