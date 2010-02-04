@@ -458,7 +458,7 @@ class BlacsBandMatrixDescriptor(MatrixDescriptor): #TODO from BlacsDescriptor
             for q2 in range(Q):
                 A_bnn[(q1+q2)%B] = A_qnn[q2]
 
-    def extract_block(self, A_Nn, q1, q2):
+    def extract_block_from_column(self, A_Nn, q1, q2):
         """Extract the sub-block pertaining from a given pair of ranks within
         the full matrix A_NN. Extraction may result in copies to assure unit
         stride, thus one should not utilize this routine for altering A_NN.
@@ -519,16 +519,58 @@ class BlacsBandMatrixDescriptor(MatrixDescriptor): #TODO from BlacsDescriptor
         self.bd.comm.sendreceive(sbuf_nn, srank, A_nn, rrank)
         return A_nn
 
-    def redistribute_input(self, A_NN): # 2D -> 1D column layout (TODO 1D row!)
+    def extract_block_from_row(self, A_nN, q1, q2):
+        """Extract the sub-block pertaining from a given pair of ranks within
+        the full matrix A_NN. Extraction may result in copies to assure unit
+        stride, thus one should not utilize this routine for altering A_NN.
+
+        Parameters:
+
+        A_nN: ndarray
+            Full row vector, from which to read the requested sub-block.
+        q1: int
+            Communicator rank to which the sub-block belongs (row index).
+        q2: int
+            Communicator rank the sub-block originated from (column index).
+
+        Note that a Hermitian matrix requires just Q=B//2+1 blocks of M x M
+        elements where B is the communicator size and M=N//B for N bands.
+        Therefor, care should be taken to only request q1,q2 pairs which
+        are connected by Q shifts or less if A_NN is lower triangular.
+        """
+        N = self.bd.mynbands
+        B = self.bd.comm.size
+
+        if B == 1:
+            return A_nN
+
+        if q2 == self.bd.comm.rank: #XXX must evaluate the same on all ranks!
+            if self.bd.strided:
+                A_nnb = A_nN.reshape((N, N, B))
+                return A_nbn[..., q1].copy() # block must be contiguous
+            else:
+                A_nbn = A_nN.reshape((N, B, N))
+                return A_nbn[:, q1, :].copy() # block must be contiguous
+        else:
+            raise NotImplementedError
+
+    extract_block = extract_block_from_row #XXX ugly but works
+
+    def redistribute_input(self, A_NN): # 2D -> 1D row layout
         # XXX instead of a BLACS-distribute from 2D, we disassemble the full matrix
         A_nN = np.empty((self.bd.mynbands,self.bd.nbands), dtype=A_NN.dtype)
-        self.bd.distribute(A_NN.T.copy(), A_nN)
-        return A_nN.T.copy()
+        self.bd.distribute(A_NN, A_nN)
+        return A_nN
+
+    #def redistribute_input(self, A_NN): # 2D -> 1D column layout
+    #    # XXX instead of a BLACS-distribute from 2D, we disassemble the full matrix
+    #    A_nN = np.empty((self.bd.mynbands,self.bd.nbands), dtype=A_NN.dtype)
+    #    self.bd.distribute(A_NN.T.copy(), A_nN)
+    #    return A_nN.T.copy()
 
     def redistribute_output(self, A_Nn): # 1D column -> 2D layout
         # XXX instead of a BLACS-distribute to 2D, we assemble the full matrix
-        A_nN = A_Nn.T.copy()
-        A_NN = self.bd.collect(A_nN)
+        A_NN = self.bd.collect(A_Nn.T.copy())
         if self.bd.comm.rank == 0:
             return A_NN.T.copy()
         else:
