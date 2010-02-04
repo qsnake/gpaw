@@ -411,3 +411,13 @@ Publications using the gpaw code
    __ http://dx.doi.org/10.1103/PhysRevLett.103.238301
 
    .. 4 December 2009
+
+#) Carsten Rostgaard, Karsten W. Jacobsen, and K. S. Thygesen
+
+   `Fully self-consistent GW calculations for molecules`__
+
+   Physical Review B, Vol. **81**, 085103 (2010)
+
+   __ http://dx.doi.org/10.1103/PhysRevB.81.085103
+
+   .. 3 February 2010
