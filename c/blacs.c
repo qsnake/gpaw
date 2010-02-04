@@ -235,7 +235,7 @@ PyObject* pblas_gemm(PyObject *self, PyObject *args)
   Py_complex beta;
   PyArrayObject *a, *b, *c;
   PyArrayObject *desca, *descb, *descc;
-  static int one = 1;
+  int one = 1;
   
   if (!PyArg_ParseTuple(args, "iiiDOODOOOOcc", &m, &n, &k, &alpha,
                         &a, &b, &beta, &c,
@@ -277,7 +277,7 @@ PyObject* pblas_gemv(PyObject *self, PyObject *args)
   PyArrayObject *a, *x, *y;
   int incx = 1, incy = 1; // what should these be?
   PyArrayObject *desca, *descx, *descy;
-  static int one = 1;
+  int one = 1;
   if (!PyArg_ParseTuple(args, "iiDOODOOOOc", 
                         &m, &n, &alpha, 
                         &a, &x, &beta, &y,
@@ -318,7 +318,7 @@ PyObject* pblas_r2k(PyObject *self, PyObject *args)
   Py_complex beta;
   PyArrayObject *a, *b, *c;
   PyArrayObject *desca, *descb, *descc;
-  static int one = 1;
+  int one = 1;
   
   if (!PyArg_ParseTuple(args, "iiDOODOOOOc", &n, &k, &alpha,
                         &a, &b, &beta, &c,
@@ -359,7 +359,7 @@ PyObject* pblas_rk(PyObject *self, PyObject *args)
   Py_complex beta;
   PyArrayObject *a, *c;
   PyArrayObject *desca, *descc;
-  static int one = 1;
+  int one = 1;
   
   if (!PyArg_ParseTuple(args, "iiDODOOOc", &n, &k, &alpha,
                         &a, &beta, &c,
@@ -502,7 +502,7 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
   int isreal;
   int m;
   int n;
-  static int one = 1;
+  int one = 1;
 
   if (!PyArg_ParseTuple(args, "OOOOOiiic", &desca, &descb, &a, &b,
                         &comm_obj, &m, &n, &isreal, &uplo))
@@ -546,7 +546,7 @@ PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args)
   PyArrayObject* desca; // symmetric matrix description vector
   PyArrayObject* z; // eigenvector matrix
   PyArrayObject* w; // eigenvalue array
-  static int one = 1;
+  int one = 1;
 
   char jobz = 'V'; // eigenvectors also
   char uplo;
@@ -652,7 +652,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   int il = 1;  // not used when range = 'A' or 'V'
   int iu;
   int eigvalm, nz;
-  static int one = 1;
+  int one = 1;
 
   double vl, vu; // not used when range = 'A' or 'I'
 
@@ -796,7 +796,7 @@ PyObject* scalapack_general_diagonalize_ex(PyObject *self, PyObject *args)
   int il = 1;  // not used when range = 'A' or 'V'
   int iu;     // 
   int eigvalm, nz;
-  static int one = 1;
+  int one = 1;
 
   double vl, vu; // not used when range = 'A' or 'I'
 
@@ -934,10 +934,10 @@ PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args)
   PyArrayObject* a; // overlap matrix
   PyArrayObject* desca; // symmetric matrix description vector
   int info;
-  static double dzero = 0.0;
-  static double_complex czero = 0.0;
-  static int one = 1;
-  static int two = 2;
+  double dzero = 0.0;
+  double_complex czero = 0.0;
+  int one = 1;
+  int two = 2;
 
   char diag = 'N'; // non-unit triangular
   char uplo;

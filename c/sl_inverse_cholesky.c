@@ -1,8 +1,8 @@
 static PyObject* inverse_cholesky(MPIObject *self, PyObject *args)
 {
-  static int minusone = -1;
-  static int zero = 0;
-  static int one = 1;
+  int minusone = -1;
+  int zero = 0;
+  int one = 1;
 
   PyArrayObject* a; // symmetric/hermitian matrix
   PyArrayObject* w; // eigenvalues of `a` in ascending order
