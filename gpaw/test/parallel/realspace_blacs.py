@@ -10,7 +10,7 @@ import numpy as np
 from gpaw.band_descriptor import BandDescriptor
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.mpi import world, distribute_cpus
-from gpaw.utilities.blacs import scalapack_set 
+from gpaw.utilities.blacs import scalapack_set
 from gpaw.blacs import BlacsGrid, Redistributor, parallelprint, \
     BlacsBandDescriptor
 
@@ -22,8 +22,8 @@ N = 10  # number of bands
 B = 2
 D = 2
 
-M = N // B     # number of bands per group
-assert M * B == N, 'M=%d, B=%d, N=%d' % (M,B,N)
+n = N // B     # number of bands per group
+assert n * B == N, 'n=%d, B=%d, N=%d' % (n, B, N)
 
 h = 0.2        # grid spacing
 a = h * G      # side length of box
@@ -31,7 +31,7 @@ a = h * G      # side length of box
 # Set up communicators:
 domain_comm, kpt_comm, band_comm = distribute_cpus(parsize=D, parsize_bands=B, \
                                                    nspins=1, nibzkpts=2)
-assert world.size >= D*B*kpt_comm.size
+assert world.size == D*B*kpt_comm.size
 
 if world.rank == 0:
     print 'MPI: %d domains, %d band groups, %d kpts' % (domain_comm.size, band_comm.size, kpt_comm.size)
@@ -42,7 +42,6 @@ gd = GridDescriptor((G, G, G), (a, a, a), True, domain_comm, parsize=D)
 
 mcpus, ncpus, blocksize = 2, 2, 6
 
-# horrible acronym
 def main(seed=42, dtype=float):
     bbd = BlacsBandDescriptor(world, gd, bd, kpt_comm, mcpus, ncpus, blocksize)
     nbands = bd.nbands
@@ -54,6 +53,9 @@ def main(seed=42, dtype=float):
     # Note after MPI_Reduce, only meaningful information on gd masters
     H_Nn = bbd.Nndescriptor.zeros(dtype=dtype)
     scalapack_set(bbd.Nndescriptor, H_Nn, 0.1, 75.0, 'L')
+    parallelprint(world, H_Nn)
+    parallelprint(world, H_Nn)
+    
     # We would create U_nN in the real-space code this way.
     U_nN = np.empty((mynbands, nbands), dtype=dtype)
     diagonalizer = bbd.get_diagonalizer()

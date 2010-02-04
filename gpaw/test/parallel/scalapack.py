@@ -103,8 +103,8 @@ def main(N=1000, seed=42, mprocs=2, nprocs=2, dtype=float):
     scalapack_inverse_cholesky(dist, C, 'U') # return result in upper and lower
 
     # Undo redistribute
-    C_test = glob.zeros(dtype=dtype) # cannot do empty here!
-    Dist2glob = Redistributor(world, dist, glob, 'U')
+    C_test = glob.empty(dtype=dtype)
+    Dist2glob = Redistributor(world, dist, glob)
     Dist2glob.redistribute(C, C_test)
 
     if rank == 0:

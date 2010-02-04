@@ -524,7 +524,7 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
 	Cpzgemr2d_(m, n, (void*)COMPLEXP(a), one, one, INTP(desca),
 		   (void*)COMPLEXP(b), one, one, INTP(descb), c_ConTxt);
     }
-  else // Trapazoidal matrix
+  else // Trapezoidal matrix
     {
       if(isreal)
 	Cpdtrmr2d_(&uplo, &diag, m, n, DOUBLEP(a), one, one, INTP(desca),
@@ -936,7 +936,10 @@ PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args)
   PyArrayObject* desca; // symmetric matrix description vector
   int info1;
   int info2;
+  static double dzero = 0.0;
+  static double_complex czero = 0.0;
   static int one = 1;
+  static int two = 2;
 
   char diag = 'N'; // non-unit triangular
   char uplo;
@@ -952,7 +955,8 @@ PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args)
   // Only square matrices
   assert (a_m == a_n);
   int n = a_n;
-
+  int p = a_n - 1;
+  
   // If process not on BLACS grid, then return.
   // if (a_ConTxt == -1) Py_RETURN_NONE;
 
@@ -962,6 +966,12 @@ PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args)
 	       INTP(desca), &info1);
       pdtrtri_(&uplo, &diag, &n, DOUBLEP(a), &one, &one,
 	       INTP(desca), &info2);
+      if (uplo == 'L')
+	pdlaset_("U", &p, &p, &dzero, &dzero, DOUBLEP(a),
+		 &one, &two, INTP(desca));
+      else
+	pdlaset_("L", &p, &p, &dzero, &dzero, DOUBLEP(a),
+		 &two, &one, INTP(desca));
     }
   else
     {
@@ -969,6 +979,12 @@ PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args)
 	       INTP(desca), &info1);
       pztrtri_(&uplo, &diag, &n, (void*)COMPLEXP(a), &one, &one,
 	       INTP(desca), &info2);
+      if (uplo == 'L')
+	pzlaset_("U", &p, &p, &czero, &czero, (void*)COMPLEXP(a),
+		 &one, &two, INTP(desca));
+      else
+	pzlaset_("L", &p, &p, &czero, &czero, (void*)COMPLEXP(a),
+		 &two, &one, INTP(desca));
     }
 
   if (info1 != 0)

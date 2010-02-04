@@ -30,12 +30,12 @@ def _switch(uplo):
 def scalapack_zero(desca, a, uplo, ia=1, ja=1):
     """Zero the upper or lower half of a square matrix."""
     assert desca.gshape[0] == desca.gshape[1]
-    n = desca.gshape[0] - 1
+    p = desca.gshape[0] - 1
     if uplo == 'L':
         ia = ia + 1
     else:
         ja = ja + 1
-    scalapack_set(desca, a, 0.0, 0.0, uplo, n, n, ia, ja)
+    scalapack_set(desca, a, 0.0, 0.0, uplo, p, p, ia, ja)
 
 def scalapack_set(desca, a, alpha, beta, uplo, m=None, n=None, ia=1, ja=1):
     assert desca.check(a)

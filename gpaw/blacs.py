@@ -587,18 +587,16 @@ class SLDenseLinearAlgebra2:
     eps_n = np.empty(mynbands, dtype = float)
     """
 
-    def __init__(self, gd, bd, cols2blocks, blocks2rows, blocks2rows_tri, 
+    def __init__(self, gd, bd, cols2blocks, blocks2rows, 
                  timer=nulltimer):
         self.gd = gd
         self.bd = bd
         assert cols2blocks.dstdescriptor == blocks2rows.srcdescriptor
-        assert blocks2rows.dstdescriptor == blocks2rows_tri.dstdescriptor
         self.indescriptor = cols2blocks.srcdescriptor
         self.blockdescriptor = cols2blocks.dstdescriptor
         self.outdescriptor = blocks2rows.dstdescriptor
         self.cols2blocks = cols2blocks
         self.blocks2rows = blocks2rows
-        self.blocks2rows_tri = blocks2rows_tri
         self.timer = timer
     
     def inverse_cholesky(self, S_Nn, C_nN):
@@ -640,7 +638,7 @@ class SLDenseLinearAlgebra2:
         self.cols2blocks.redistribute(S_Nn, S_nn)
         blockdescriptor.inverse_cholesky(S_nn, 'U')
         # Blocked grid -> Row grid
-        self.blocks2rows_tri.redistribute(S_nn, C2_nN)
+        self.blocks2rows.redistribute(S_nn, C2_nN)
 
         if outdescriptor: # grid masters only
             assert self.gd.comm.rank == 0
@@ -651,8 +649,8 @@ class SLDenseLinearAlgebra2:
 
         self.gd.comm.broadcast(C_nN, 0)
 
-    def diagonalize(self, H_nn, U_nM, eps_n):
-        self._standard_diagonalize_dc(H_nn, U_nM, eps_n)
+    def diagonalize(self, H_nn, U_nN, eps_n):
+        self._standard_diagonalize_dc(H_nn, U_nN, eps_n)
  
     def _standard_diagonalize_dc(self, H_Nn, U_nN, eps_n):
         # H_Nn must be lower triangular or symmetric, 
@@ -693,6 +691,7 @@ class SLDenseLinearAlgebra2:
         # Blocked grid -> Row grid
         self.blocks2rows.redistribute(U_nn, U2_nN) 
 
+        print 'made it past redistribute'
         if outdescriptor: # grid masters only
             assert self.gd.comm.rank == 0
             U_nN[:] = U2_nN
@@ -705,8 +704,11 @@ class SLDenseLinearAlgebra2:
         else:
             assert self.gd.comm.rank != 0
 
+        print 'made it past distribute'
         self.gd.comm.broadcast(U_nN, 0)
+        print 'made it pass U_nN'
         self.gd.comm.broadcast(eps_n, 0)
+        print 'made it pass eps_n'
 
 class BlacsBandDescriptor:
     # this class 'describes' all the Realspace/Blacs-related stuff
@@ -751,8 +753,6 @@ class BlacsBandDescriptor:
         self.Nn2nn = Redistributor(blockcomm, Nndescriptor, nndescriptor, 'U')
         # Resulting matrix below will be used in dgemm which is obvlious to symmetry
         self.nn2nN = Redistributor(blockcomm, nndescriptor, nNdescriptor)
-        # Resulting matrix below will be used in orthornomalize and must be triangular
-        self.nn2nN_tri = Redistributor(blockcomm, nndescriptor, nNdescriptor, 'U')
 
         self.world = world
         self.gd = gd
@@ -764,7 +764,7 @@ class BlacsBandDescriptor:
         
     def get_diagonalizer(self):
         return SLDenseLinearAlgebra2(self.gd, self.bd, self.Nn2nn, self.nn2nN,
-                                     self.nn2nN_tri, self.timer)
+                                     self.timer)
 
 
 class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
