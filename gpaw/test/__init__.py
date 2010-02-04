@@ -167,6 +167,7 @@ tests = [
     'vdw/ar2.py',
     'fd2lcao_restart.py',
     'parallel/ut_hsops.py',
+    'parallel/ut_hsblacs.py',
     'parallel/ut_invops.py',
     'parallel/ut_kptops.py',
     'parallel/pblas.py',

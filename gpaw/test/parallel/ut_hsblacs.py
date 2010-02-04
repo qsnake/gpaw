@@ -9,6 +9,7 @@ from gpaw.utilities.tools import tri2full
 from gpaw.hs_operators import MatrixOperator
 from gpaw.matrix_descriptor import BlacsBandMatrixDescriptor
 
+from gpaw.utilities import scalapack
 #from gpaw.utilities.blacs import scalapack_set
 from gpaw.blacs import parallelprint, BlacsBandDescriptor
 
@@ -393,7 +394,7 @@ def UTConstantWavefunctionFactory(dtype, parstride_bands, blocking, async):
 
 # -------------------------------------------------------------------
 
-if __name__ in ['__main__', '__builtin__']:
+if __name__ in ['__main__', '__builtin__'] and scalapack():
     # We may have been imported by test.py, if so we should redirect to logfile
     if __name__ == '__builtin__':
         testrunner = CustomTextTestRunner('ut_hsblacs.log', verbosity=2)
@@ -415,7 +416,7 @@ if __name__ in ['__main__', '__builtin__']:
 
     testcases = []
     for dtype in [float, complex]:
-        for parstride_bands in [False]: #[False, True]:
+        for parstride_bands in [False]: #XXX [False, True]:
             for blocking in ['fast', 'best']: # 'light'
                 for async in [False, True]:
                     testcases.append(UTConstantWavefunctionFactory(dtype, \
