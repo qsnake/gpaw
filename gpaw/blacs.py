@@ -701,7 +701,6 @@ class SLDenseLinearAlgebra2:
         # Blocked grid -> Row grid
         self.blocks2rows.redistribute(U_nn, U2_nN) 
 
-        print 'made it past redistribute'
         if outdescriptor: # grid masters only
             assert self.gd.comm.rank == 0
              # grid master with bd.rank = 0 
@@ -712,11 +711,8 @@ class SLDenseLinearAlgebra2:
         else:
             assert self.gd.comm.rank != 0
 
-        print 'made it past distribute'
         self.gd.comm.broadcast(U_nN, 0)
-        print 'made it pass U_nN'
         self.gd.comm.broadcast(eps_n, 0)
-        print 'made it pass eps_n'
 
 class BlacsBandDescriptor:
     # this class 'describes' all the Realspace/Blacs-related stuff
