@@ -258,9 +258,13 @@ class BandMatrixDescriptor(MatrixDescriptor):
             return A_bnbn[q2, :, q1]
 
     def redistribute_input(self, A_NN): # do nothing
+        if debug:
+            self.checkassert(A_NN)
         return A_NN
 
     def redistribute_output(self, A_NN): # do nothing
+        if debug:
+            self.checkassert(A_NN)
         return A_NN
 
 # -------------------------------------------------------------------
