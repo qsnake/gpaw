@@ -388,11 +388,13 @@ Publications using the gpaw code
 #) \A. H. Larsen, M. Vanin, J. J. Mortensen, K. S. Thygesen,
    K. W. Jacobsen
 
-   Localized atomic basis set in the projector augmented wave method
+   `Localized atomic basis set in the projector augmented wave method`__
 
    Physical Review B, Vol. **80**, 195112 (2009)
 
-   .. 2 November 2009
+   __ http://dx.doi.org/10.1103/PhysRevB.80.195112
+
+   .. 18 November 2009
 
 #) Jiří Klimeš, David R. Bowler, and Angelos Michaelides
 
@@ -421,3 +423,14 @@ Publications using the gpaw code
    __ http://dx.doi.org/10.1103/PhysRevB.81.085103
 
    .. 3 February 2010
+
+#) J. Wellendorff, A. Kelkkanen, J. J. Mortensen, B. Lundqvist, and T. Bligaard
+
+   `RPBE-vdW Description of Benzene Adsorption on Au(111)`__
+
+   Topics in Catalysis (2010)
+
+   __ http://dx.doi.org/10.1007/s11244-010-9443-6
+
+   .. 4 February 2010
+
