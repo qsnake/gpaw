@@ -611,9 +611,7 @@ class SLDenseLinearAlgebra2:
         # 1. indescriptor
         # 2. outdescriptor
         # 3. broadcast with gd.comm
-        # We will do this with a number of seperate buffers
-        # for now.
- 
+        # We will do this with a number of seperate buffers.
         indescriptor = self.indescriptor
         outdescriptor = self.outdescriptor
         blockdescriptor = self.blockdescriptor
@@ -624,6 +622,10 @@ class SLDenseLinearAlgebra2:
 
         dtype = S_Nn.dtype
 
+        # Detect shape incompatibilities early on.
+        assert S_Nn.shape == (nbands, mynbands)
+        assert C_nN.shape == (mynbands, nbands)
+
         # Make S_Nn compatible with the redistributor
         if not indescriptor:
             assert gd.comm.rank != 0
@@ -632,23 +634,19 @@ class SLDenseLinearAlgebra2:
         else:
             assert gd.comm.rank == 0
 
-        # Do not create S_nn with empty because of the 
-        # last 2D -> 1D. Otherwise, you will redistribute NaN.
-        S_nn = blockdescriptor.zeros(dtype=dtype) 
-        C2_nN = outdescriptor.empty(dtype=dtype) # temporary buffer
+        S_nn  = blockdescriptor.empty(dtype=dtype)
+
+        if outdescriptor:
+            C2_nN = C_nN
+        else:
+            C2_nN = outdescriptor.empty(dtype=dtype)
+        assert outdescriptor.check(C2_nN)
         
         # Column grid -> Block Grid
         self.cols2blocks.redistribute(S_Nn, S_nn)
-        blockdescriptor.inverse_cholesky(S_nn, 'U')
+        blockdescriptor.inverse_cholesky(S_nn, 'L')
         # Blocked grid -> Row grid
         self.blocks2rows.redistribute(S_nn, C2_nN)
-
-        if outdescriptor: # grid masters only
-            assert self.gd.comm.rank == 0
-            C_nN[:] = C2_nN
-            del C2_nN
-        else:
-            assert self.gd.comm.rank != 0
 
         self.gd.comm.broadcast(C_nN, 0)
 
@@ -676,6 +674,10 @@ class SLDenseLinearAlgebra2:
         dtype = H_Nn.dtype
         eps_N = np.empty(nbands) # empty helps us debug
 
+        # Detect shape incompatibilities early on.
+        assert H_Nn.shape == (nbands, mynbands)
+        assert U_nN.shape == (mynbands, nbands)
+
         # Make H_Nn compatible with the redistributor
         if not indescriptor:
             assert gd.comm.rank != 0
@@ -686,20 +688,23 @@ class SLDenseLinearAlgebra2:
 
         H_nn = blockdescriptor.zeros(dtype=dtype)
         U_nn = blockdescriptor.zeros(dtype=dtype)
-        U2_nN = outdescriptor.empty(dtype=dtype) # temporary buffer
+
+        if outdescriptor:
+            U2_nN = U_nN
+        else:
+            U2_nN = outdescriptor.empty(dtype=dtype)
+        assert outdescriptor.check(U2_nN)
 
         # Column grid -> Block Grid
         self.cols2blocks.redistribute(H_Nn, H_nn)
-        blockdescriptor.diagonalize_dc(H_nn, U_nn, eps_N, 'U')
+        blockdescriptor.diagonalize_dc(H_nn, U_nn, eps_N, 'L')
         # Blocked grid -> Row grid
         self.blocks2rows.redistribute(U_nn, U2_nN) 
 
         print 'made it past redistribute'
         if outdescriptor: # grid masters only
             assert self.gd.comm.rank == 0
-            U_nN[:] = U2_nN
-            del U2_nN
-            # grid master with bd.rank = 0 
+             # grid master with bd.rank = 0 
             # scatters to other grid masters
             # NOTE: If the origin of the blacs grid
             # ever shifts this will not work
@@ -753,7 +758,7 @@ class BlacsBandDescriptor:
         self.nNdescriptor = nNdescriptor
 
         # Only redistribute upper half since all are matrices are symmetric/Hermitian
-        self.Nn2nn = Redistributor(blockcomm, Nndescriptor, nndescriptor, 'U')
+        self.Nn2nn = Redistributor(blockcomm, Nndescriptor, nndescriptor, 'L')
         # Resulting matrix below will be used in dgemm which is obvlious to symmetry
         self.nn2nN = Redistributor(blockcomm, nndescriptor, nNdescriptor)
 
@@ -768,7 +773,6 @@ class BlacsBandDescriptor:
     def get_diagonalizer(self):
         return SLDenseLinearAlgebra2(self.gd, self.bd, self.Nn2nn, self.nn2nN,
                                      self.timer)
-
 
 class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
     # This class 'describes' all the LCAO/Blacs-related stuff

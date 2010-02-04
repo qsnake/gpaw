@@ -10,7 +10,7 @@ import numpy as np
 from gpaw.band_descriptor import BandDescriptor
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.mpi import world, distribute_cpus
-from gpaw.utilities.blacs import scalapack_set
+from gpaw.utilities.blacs import scalapack_set, scalapack_zero 
 from gpaw.blacs import BlacsGrid, Redistributor, parallelprint, \
     BlacsBandDescriptor
 
@@ -51,30 +51,42 @@ def main(seed=42, dtype=float):
     # We would *not* create H_Nn in the real-space code this way.
     # This is just for testing purposes.
     # Note after MPI_Reduce, only meaningful information on gd masters
-    H_Nn = bbd.Nndescriptor.zeros(dtype=dtype)
-    scalapack_set(bbd.Nndescriptor, H_Nn, 0.1, 75.0, 'L')
-    parallelprint(world, H_Nn)
+    H_Nn = np.zeros((nbands, mynbands), dtype=dtype)
+    U_nN = np.empty((mynbands, nbands), dtype=dtype)
+
+    if bbd.Nndescriptor: # hack
+        scalapack_set(bbd.Nndescriptor, H_Nn, 0.1, 75.0, 'L')
+    else:
+        gd.comm.rank != 0
+
+    print "H_Nn"
     parallelprint(world, H_Nn)
     
-    # We would create U_nN in the real-space code this way.
-    U_nN = np.empty((mynbands, nbands), dtype=dtype)
     diagonalizer = bbd.get_diagonalizer()
     eps_n = np.zeros(bd.mynbands)
     diagonalizer.diagonalize(H_Nn, U_nN, eps_n)
-    print 'after broadcast'
+    print "U_nN"
     parallelprint(world, U_nN)
+    print "eps_n"
     parallelprint(world, eps_n)
     
     # Inverse Cholesky
-    S_Nn = bbd.Nndescriptor.zeros(dtype=dtype)
-    scalapack_set(bbd.Nndescriptor, S_Nn, 0.1, 75.0, 'L')
-    C_nN = np.empty((mynbands, nbands), dtype=dtype)
+    S_Nn = np.zeros((nbands, mynbands), dtype=dtype)
+    C_nN = np.empty((mynbands, nbands), dtype=dtype) 
+
+    if bbd.Nndescriptor: # hack
+        scalapack_set(bbd.Nndescriptor, S_Nn, 0.1, 75.0, 'L')
+    else:
+        gd.comm.rank != 0
+
+    print "S_Nn"
+    parallelprint(world, S_Nn)
     diagonalizer.inverse_cholesky(S_Nn, C_nN)
-    print 'after cholesky'
+    print "C_nN"
     parallelprint(world, C_nN)
 
 if __name__ == '__main__':
     main(dtype=float)
-    # main(dtype=complex)
+    main(dtype=complex)
 
 

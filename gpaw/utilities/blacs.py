@@ -48,8 +48,8 @@ def scalapack_set(desca, a, alpha, beta, uplo, m=None, n=None, ia=1, ja=1):
         n = desca.gshape[1]
     if not desca.blacsgrid.is_active():
         return
-    _gpaw.scalapack_set(a, desca.asarray(), alpha, beta, switch_lu[uplo],
-                        n, m, ja, ia)
+    _gpaw.scalapack_set(a, desca.asarray(), alpha, beta, 
+                        switch_lu[uplo], n, m, ja, ia)
 
 
 def scalapack_diagonalize_dc(desca, a, z, w, uplo):
@@ -63,7 +63,8 @@ def scalapack_diagonalize_dc(desca, a, z, w, uplo):
     if not desca.blacsgrid.is_active():
         return
     assert desca.gshape[0] == len(w)
-    info = _gpaw.scalapack_diagonalize_dc(a, desca.asarray(), uplo, z, w)
+    info = _gpaw.scalapack_diagonalize_dc(a, desca.asarray(), 
+                                          switch_lu[uplo], z, w)
     if info != 0:
         raise RuntimeError('scalapack_diagonalize_dc error: %d' % info)
 
@@ -87,9 +88,12 @@ def scalapack_diagonalize_ex(desca, a, z, w, uplo, iu=None):
     if not desca.blacsgrid.is_active():
         return
     assert desca.gshape[0] == len(w)
-    info = _gpaw.scalapack_diagonalize_ex(a, desca.asarray(), switch_lu[uplo],
+    info = _gpaw.scalapack_diagonalize_ex(a, desca.asarray(), 
+                                          switch_lu[uplo], 
                                           iu, z, w)
-    if info not in [0, 2]: # ??? What does 2 mean?
+    if info not in [0, 2]:
+        # 0 means you are OK
+        # 2 means eigenvectors not guaranteed to be orthogonal
         raise RuntimeError('scalapack_diagonalize_ex error: %d' % info)
 
 
@@ -108,8 +112,11 @@ def scalapack_general_diagonalize_ex(desca, a, b, z, w, uplo, iu=None):
         return
     assert desca.gshape[0] == len(w)
     info = _gpaw.scalapack_general_diagonalize_ex(a, desca.asarray(), 
-                                                  uplo, iu, b, z, w)
+                                                  switch_lu[uplo], 
+                                                  iu, b, z, w)
     if info not in [0, 2]:
+        # 0 means you are OK
+        # 2 means eigenvectors not guaranteed to be orthogonal        
         raise RuntimeError('scalapack_general_diagonalize_ex error: %d' % info)
 
 
@@ -120,7 +127,10 @@ def scalapack_inverse_cholesky(desca, a, uplo):
     assert uplo in ['L', 'U']
     if not desca.blacsgrid.is_active():
         return
-    _gpaw.scalapack_inverse_cholesky(a, desca.asarray(), uplo)
+    info = _gpaw.scalapack_inverse_cholesky(a, desca.asarray(),
+                                            switch_lu[uplo])
+    if info != 0:
+        raise RuntimeError('scalapack_inverse_cholesky error: %d' % info)
 
 def pblas_gemm(alpha, a_MK, b_KN, beta, c_MN, desca, descb, descc,
                transa='N', transb='N'):

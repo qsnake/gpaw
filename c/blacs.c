@@ -469,7 +469,6 @@ PyObject* scalapack_set(PyObject *self, PyObject *args)
   int m, n;
   int ia, ja;
   char uplo;
-  static int one = 1;
 
   if (!PyArg_ParseTuple(args, "OODDciiii", &a, &desca,
                         &alpha, &beta, &uplo, 
@@ -934,8 +933,7 @@ PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args)
 
   PyArrayObject* a; // overlap matrix
   PyArrayObject* desca; // symmetric matrix description vector
-  int info1;
-  int info2;
+  int info;
   static double dzero = 0.0;
   static double_complex czero = 0.0;
   static int one = 1;
@@ -963,45 +961,38 @@ PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args)
   if (a->descr->type_num == PyArray_DOUBLE)
     {
       pdpotrf_(&uplo, &n, DOUBLEP(a), &one, &one,
-	       INTP(desca), &info1);
-      pdtrtri_(&uplo, &diag, &n, DOUBLEP(a), &one, &one,
-	       INTP(desca), &info2);
-      if (uplo == 'L')
-	pdlaset_("U", &p, &p, &dzero, &dzero, DOUBLEP(a),
-		 &one, &two, INTP(desca));
-      else
-	pdlaset_("L", &p, &p, &dzero, &dzero, DOUBLEP(a),
+	       INTP(desca), &info);
+      if (info == 0)
+	{
+	  pdtrtri_(&uplo, &diag, &n, DOUBLEP(a), &one, &one,
+		   INTP(desca), &info);
+	  if (uplo == 'L')
+	    pdlaset_("U", &p, &p, &dzero, &dzero, DOUBLEP(a),
+		     &one, &two, INTP(desca));
+	  else
+	    pdlaset_("L", &p, &p, &dzero, &dzero, DOUBLEP(a),
 		 &two, &one, INTP(desca));
+	}
     }
   else
     {
       pzpotrf_(&uplo, &n, (void*)COMPLEXP(a), &one, &one,
-	       INTP(desca), &info1);
-      pztrtri_(&uplo, &diag, &n, (void*)COMPLEXP(a), &one, &one,
-	       INTP(desca), &info2);
-      if (uplo == 'L')
-	pzlaset_("U", &p, &p, &czero, &czero, (void*)COMPLEXP(a),
-		 &one, &two, INTP(desca));
-      else
-	pzlaset_("L", &p, &p, &czero, &czero, (void*)COMPLEXP(a),
-		 &two, &one, INTP(desca));
+	       INTP(desca), &info);
+      if (info == 0)
+	{
+	  pztrtri_(&uplo, &diag, &n, (void*)COMPLEXP(a), &one, &one,
+		   INTP(desca), &info);
+	  if (uplo == 'L')
+	    pzlaset_("U", &p, &p, &czero, &czero, (void*)COMPLEXP(a),
+		     &one, &two, INTP(desca));
+	  else
+	    pzlaset_("L", &p, &p, &czero, &czero, (void*)COMPLEXP(a),
+		     &two, &one, INTP(desca));
+	}
     }
 
-  if (info1 != 0)
-    {
-      PyErr_SetString(PyExc_RuntimeError,
-		      "scalapack_inverse_cholesky error in potrf.");
-      return NULL;
-    }
-
-  if (info2 != 0)
-    {
-      PyErr_SetString(PyExc_RuntimeError,
-		      "scalapack_inverse_cholesky error in trtri.");
-      return NULL;
-    }
-
-  Py_RETURN_NONE;
+  PyObject* returnvalue = Py_BuildValue("i", info);
+  return returnvalue;
 }
 
 #endif
