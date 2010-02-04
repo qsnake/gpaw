@@ -699,10 +699,10 @@ class Transport(GPAW):
         wfs = calc.wfs
         eigensolver = wfs.eigensolver
         ham = calc.hamiltonian
+        self.gd.comm.broadcast(wfs.S_qMM, 0)
         S_qMM = wfs.S_qMM.copy()
         for S_MM in S_qMM:
             tri2full(S_MM)
-        self.gd.comm.broadcast(S_qMM, 0)
         H_sqMM = np.empty((self.my_nspins,) + S_qMM.shape, wfs.dtype)
         for kpt in wfs.kpt_u:
             H_MM = eigensolver.calculate_hamiltonian_matrix(ham, wfs, kpt)
