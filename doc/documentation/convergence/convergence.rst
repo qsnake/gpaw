@@ -25,6 +25,10 @@ encountering convergence problems:
   system may be ``mixer=Mixer(0.05, 5, weight=100.0)``.
   For spin polarised systems you can use either ``mixer=MixerSum()`` or
   ``mixer=MixerDif()`` using the same options as with ``mixer=Mixer()``.
+* Try changing the :ref:`eigensolver <manual_eigensolver>`. The
+  default, ``rmm-diis``, is good for speed, but can sometimes have
+  poor convergence properties. The conjugate gradient, ``cg``, solver
+  might be more stable.
 * The initial guess for the electron density is always calculated
   using the LCAO scheme, with a default single-zeta basis, i.e. one
   orbital for each valence electron. You can try to make a better
@@ -32,7 +36,3 @@ encountering convergence problems:
   by setting ``basis='szp'`` if you want to use a
   single-zeta-polarized basis. Note that you first need to generate
   the basis file, as described in :ref:`LCAO mode <lcao>`.
-* Try changing the :ref:`eigensolver <manual_eigensolver>`. The
-  default, ``RMM-DIIS``, is good for speed, but can sometimes have
-  poor convergence properties. The conjugate gradient, ``CG``, solver
-  might be more stable.
