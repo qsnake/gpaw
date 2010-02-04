@@ -464,7 +464,7 @@ class FixedBoundaryPoissonSolver(PoissonSolver):
         index = self.r_distribution[comm.rank]
         d1, d2, d3 = self.d1, self.d2, self.d3
         if comm.rank == 0:
-            global_rho_g = np.zeros([d2, d2, d3], dtype)
+            global_rho_g = np.zeros([d1, d2, d3], dtype)
             global_rho_g[:, :, index] = rho_g
             for i in range(1, comm.size):
                 ind = self.r_distribution[i]
