@@ -171,6 +171,7 @@ tests = [
     'parallel/ut_kptops.py',
     'parallel/pblas.py',
     'parallel/scalapack.py',
+    'parallel/realspace_blacs.py',
     'parallel/lcao_projections.py',
     'parallel/n2.py',
     #'dscf_forces.py',
@@ -194,10 +195,11 @@ if mpi.size > 2:
 if mpi.size < 4:
     exclude += ['parallel/pblas.py',
                 'parallel/scalapack.py',
-                ]
+                'AA_exx_enthalpy.py']
 
 if mpi.size != 4:
-    exclude += ['parallel/lcao_parallel.py']
+    exclude += ['parallel/lcao_parallel.py',
+                'parallel/realspace_blacs.py']
 
 if mpi.size != 4 or not gpaw.debug:
     exclude += ['parallel/n2.py']
@@ -205,9 +207,9 @@ if mpi.size != 4 or not gpaw.debug:
 if mpi.size == 8:
     exclude += ['transport.py']
 
-if mpi.size < 4:
-    exclude += ['AA_exx_enthalpy.py',
-                ]
+if mpi.size != 8:
+    exclude += ['parallel/realspace_blacs.py']
+
 
 for test in exclude:
     if test in tests:
