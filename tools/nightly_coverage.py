@@ -319,6 +319,9 @@ else:
     elif hostname.endswith('.fysik.dtu.dk'):
         customload = ''
         flags = ''
+        customrc = '%s/customize-%s.py' % (os.getenv('HOME'), hostname[:-13])
+        if os.path.isfile(customrc):
+            flags += ' --customize=' + customrc
         pydir = 'lib/python'
     else:
         raise EnvironmentError('Unknown host. Automatic installation failed.')
