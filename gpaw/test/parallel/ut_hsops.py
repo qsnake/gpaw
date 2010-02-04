@@ -434,7 +434,7 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
 
     # =================================
 
-    def test_wavefunction_content(self):
+    def test_contents_wavefunction(self):
         # Integrate diagonal brakets of pseudo wavefunctions
         gpts_c = self.gd.get_size_of_global_array()
 
@@ -453,7 +453,7 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         intpsit_n = self.bd.collect(intpsit_myn, broadcast=True)
         self.assertAlmostEqual(np.abs(intpsit_n-np.arange(self.nbands)).max(), 0, 9)
 
-    def test_projection_content(self):
+    def test_contents_projection(self):
         # Distribute inverse effective charges to everybody in domain
         all_Qeff_a = np.empty(len(self.atoms), dtype=float)
         for a,rank in enumerate(self.rank_a):
@@ -483,9 +483,6 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         dS = lambda a, P_ni: np.dot(P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
         overlap = MatrixOperator(self.bd, self.gd, nblocks, self.async, True)
-        #S_nn = overlap.calculate_matrix_elements(self.psit_nG, \
-        #    self.P_ani, S, dS).conj() # conjugate to get <psit_m|A|psit_n>
-        #tri2full(S_nn) # lower to upper...
         S_nn = overlap.calculate_matrix_elements(self.psit_nG, \
             self.P_ani, S, dS).T.copy() # transpose to get <psit_m|A|psit_n>
         tri2full(S_nn, 'U') # upper to lower...
@@ -522,7 +519,41 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
 
         self.check_and_plot(S_nn, alpha*self.S0_nn, 9, 'overlaps,nonhermitian')
 
-    def test_multiply_orthonormal(self):
+    def test_trivial_cholesky(self):
+        # Known starting point of SI_nn = <psit_m|S+alpha*I|psit_n>
+        I_nn = np.eye(*self.S0_nn.shape)
+        alpha = 1e-3 # shift eigenvalues away from zero
+        SI_nn = self.S0_nn + alpha * I_nn
+
+        # Try Cholesky decomposition SI_nn = L_nn * L_nn^dag
+        L_nn = np.linalg.cholesky(SI_nn)
+        # |psit_n> -> C_nn |psit_n> , C_nn^(-1) = L_nn^dag
+        # <psit_m|SI|psit_n> -> <psit_m|C_nn^dag SI C_nn|psit_n> = diag(W_n)
+        C_nn = np.linalg.inv(L_nn.T.conj())
+        W_n = np.ones(self.nbands).astype(self.dtype)
+
+        # Set up Hermitian overlap operator:
+        S = lambda x: x
+        dS = lambda a, P_ni: np.dot(P_ni, self.setups[a].dO_ii)
+        nblocks = self.get_optimal_number_of_blocks(self.blocking)
+        overlap = MatrixOperator(self.bd, self.gd, nblocks, self.async, True)
+        self.psit_nG = overlap.matrix_multiply(C_nn.T.copy(), self.psit_nG, self.P_ani)
+        D_nn = overlap.calculate_matrix_elements(self.psit_nG, \
+            self.P_ani, S, dS).T.copy() # transpose to get <psit_m|A|psit_n>
+        tri2full(D_nn, 'U') # upper to lower...
+
+        if self.bd.comm.rank == 0:
+            self.gd.comm.broadcast(D_nn, 0)
+        self.bd.comm.broadcast(D_nn, 0)
+
+        if memstats:
+            self.mem_test = record_memory()
+
+        # D_nn = C_nn^dag * S_nn * C_nn = I_nn - alpha * C_nn^dag * C_nn
+        D0_nn = I_nn - alpha * np.dot(C_nn.T.conj(), C_nn)
+        self.check_and_plot(D_nn, D0_nn, 9, 'trivial,cholesky')
+
+    def test_trivial_diagonalize(self):
         # Known starting point of S_nn = <psit_m|S|psit_n>
         S_nn = self.S0_nn
 
@@ -565,9 +596,6 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
         overlap = MatrixOperator(self.bd, self.gd, nblocks, self.async, True)
         self.psit_nG = overlap.matrix_multiply(C_nn.T.copy(), self.psit_nG, self.P_ani)
-        #D_nn = overlap.calculate_matrix_elements(self.psit_nG, \
-        #    self.P_ani, S, dS).conj() # conjugate to get <psit_m|A|psit_n>
-        #tri2full(D_nn) # lower to upper...
         D_nn = overlap.calculate_matrix_elements(self.psit_nG, \
             self.P_ani, S, dS).T.copy() # transpose to get <psit_m|A|psit_n>
         tri2full(D_nn, 'U') # upper to lower...
@@ -582,7 +610,7 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         # D_nn = C_nn^dag * S_nn * C_nn = W_n since Q_nn^dag = Q_nn^(-1)
         D0_nn = np.dot(C_nn.T.conj(), np.dot(S_nn, C_nn))
         self.assertAlmostEqual(np.abs(D0_nn-np.diag(W_n)).max(), 0, 9)
-        self.check_and_plot(D_nn, D0_nn, 9, 'multiply,orthonormal')
+        self.check_and_plot(D_nn, D0_nn, 9, 'trivial,diagonalize')
 
     def test_multiply_randomized(self):
         # Known starting point of S_nn = <psit_m|S|psit_n>
@@ -602,9 +630,6 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
         overlap = MatrixOperator(self.bd, self.gd, nblocks, self.async, True)
         self.psit_nG = overlap.matrix_multiply(C_nn.T.copy(), self.psit_nG, self.P_ani)
-        #D_nn = overlap.calculate_matrix_elements(self.psit_nG, \
-        #    self.P_ani, S, dS).conj() # conjugate to get <psit_m|A|psit_n>
-        #tri2full(D_nn) # lower to upper...
         D_nn = overlap.calculate_matrix_elements(self.psit_nG, \
             self.P_ani, S, dS).T.copy() # transpose to get <psit_m|A|psit_n>
         tri2full(D_nn, 'U') # upper to lower...
@@ -656,22 +681,6 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         # D_nn = C_nn^dag * S_nn * C_nn
         D0_nn = np.dot(C_nn.T.conj(), np.dot(S_nn, C_nn))
         self.check_and_plot(D_nn, D0_nn, 9, 'multiply,nonhermitian')
-
-    """
-    def test_multiply_cholesky(self):
-        # Known starting point of S_nn = <psit_m|S|psit_n>
-        S_nn = self.S0_nn
-
-        try:
-            # Try Cholesky decomposition S_nn = L_nn * L_nn^dag
-            L_nn = np.linalg.cholesky(S_nn)
-            # |psit_n> -> C_nn |psit_n> , C_nn^(-1) = L_nn^dag
-            # <psit_m|S|psit_n> -> <psit_m|C_nn^dag S C_nn|psit_n> = diag(W_n)
-            C_nn = np.linalg.inv(L_nn.T.conj())
-            W_n = np.ones(self.nbands).astype(self.dtype)
-        except np.linalg.LinAlgError:
-            self.fail(...)
-    """
 
 
 # -------------------------------------------------------------------
