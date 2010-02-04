@@ -460,12 +460,15 @@ class Redistributor:
 
         self.srcdescriptor.checkassert(src_mn)
         self.dstdescriptor.checkassert(dst_mn)
+
+        # Switch to Fortran conventions
+        uplo = {'U': 'L', 'L': 'U', 'G': 'G'}[self.uplo]
         
         _gpaw.scalapack_redist(self.srcdescriptor.asarray(), 
                                self.dstdescriptor.asarray(),
                                src_mn.T, dst_mn.T,
                                self.supercomm.get_c_object(),
-                               subN, subM, isreal, self.uplo)
+                               subN, subM, isreal, uplo)
     
     def redistribute(self, src_mn, dst_mn):
         """Redistribute src_mn to dst_mn.
@@ -860,6 +863,7 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
         Mstart = 0
         for i in range(nblocks):
             self.gd.comm.sum(Sflat_x[Mstart:Mstart + blocksize])
+            Mstart += blocksize
         assert Mstart + blocksize >= len(Sflat_x)
 
         xshape = S_qmM.shape[:-2]

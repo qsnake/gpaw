@@ -21,11 +21,8 @@ from gpaw import debug
 import gpaw.mpi as mpi
 import _gpaw
 
-def _switch(uplo):
-    if uplo == 'L':
-        return 'U'
-    else:
-        return 'L'
+switch_lu = {'U': 'L', 'L': 'U'}
+
 
 def scalapack_zero(desca, a, uplo, ia=1, ja=1):
     """Zero the upper or lower half of a square matrix."""
@@ -37,19 +34,27 @@ def scalapack_zero(desca, a, uplo, ia=1, ja=1):
         ja = ja + 1
     scalapack_set(desca, a, 0.0, 0.0, uplo, p, p, ia, ja)
 
+
 def scalapack_set(desca, a, alpha, beta, uplo, m=None, n=None, ia=1, ja=1):
+    """Set the diagonal and upper/lower triangular part of a.
+
+    Set the upper or lower triangular part of a to alpha, and the diagonal
+    of a to beta, where alpha and beta are real or complex numbers."""
     assert desca.check(a)
     assert uplo in ['L', 'U']
-    uplo = _switch(uplo)
     if m is None:
         m = desca.gshape[0]
     if n is None:
         n = desca.gshape[1]
     if not desca.blacsgrid.is_active():
         return
-    _gpaw.scalapack_set(a, desca.asarray(), alpha, beta, uplo, n, m, ja, ia)
+    _gpaw.scalapack_set(a, desca.asarray(), alpha, beta, switch_lu[uplo],
+                        n, m, ja, ia)
+
 
 def scalapack_diagonalize_dc(desca, a, z, w, uplo):
+    """Diagonalize a using the divide & conquer algorithm.
+    XXX does this work?"""
     assert desca.check(a)
     assert desca.check(z)
     # only symmetric matrices
@@ -61,8 +66,15 @@ def scalapack_diagonalize_dc(desca, a, z, w, uplo):
     info = _gpaw.scalapack_diagonalize_dc(a, desca.asarray(), uplo, z, w)
     if info != 0:
         raise RuntimeError('scalapack_diagonalize_dc error: %d' % info)
+
  
 def scalapack_diagonalize_ex(desca, a, z, w, uplo, iu=None):
+    """Diagonalize a using Expert Driver algorithm.
+
+    Solves the eigenvalue problem a z = w z.
+
+    XXX how are eigenvalues ordered?
+    XXX How are eigenvectors ordered?"""
     assert desca.check(a)
     assert desca.check(z)
     # only symmetric matrices
@@ -75,9 +87,11 @@ def scalapack_diagonalize_ex(desca, a, z, w, uplo, iu=None):
     if not desca.blacsgrid.is_active():
         return
     assert desca.gshape[0] == len(w)
-    info = _gpaw.scalapack_diagonalize_ex(a, desca.asarray(), uplo, iu, z, w)
-    if info not in [0, 2]:
+    info = _gpaw.scalapack_diagonalize_ex(a, desca.asarray(), switch_lu[uplo],
+                                          iu, z, w)
+    if info not in [0, 2]: # ??? What does 2 mean?
         raise RuntimeError('scalapack_diagonalize_ex error: %d' % info)
+
 
 def scalapack_general_diagonalize_ex(desca, a, b, z, w, uplo, iu=None):
     assert desca.check(a)
@@ -198,6 +212,7 @@ def pblas_simple_gemv(desca, descx, descy, a, x, y):
     beta = 0.0
     pblas_gemv(alpha, a, x, beta, y, desca, descx, descy)
 
+
 def pblas_r2k(alpha, a_NK, b_NK, beta, c_NN, desca, descb, descc,
                 uplo='U'):
     if not desca.blacsgrid.is_active():
@@ -223,6 +238,7 @@ def pblas_simple_r2k(desca, descb, descc, a, b, c):
     beta = 0.0
     pblas_r2k(alpha, a, b, beta, c, 
                 desca, descb, descc)
+
 
 def pblas_rk(alpha, a_NK, beta, c_NN, desca, descc,
              uplo='U'):

@@ -97,9 +97,9 @@ def main(N=1000, seed=42, mprocs=2, nprocs=2, dtype=float):
     Glob2dist.redistribute(S0, C) # C0 was previously \
         # overwritten
 
-    scalapack_diagonalize_ex(dist, H.copy(), Z, W, 'U')
+    scalapack_diagonalize_ex(dist, H.copy(), Z, W, 'L')
     scalapack_diagonalize_dc(dist, H.copy(), Z, W_dc, 'U')
-    scalapack_general_diagonalize_ex(dist, H.copy(), S.copy(), Z, W_g, 'U')
+    scalapack_general_diagonalize_ex(dist, H.copy(), S.copy(), Z, W_g, 'L')
     scalapack_inverse_cholesky(dist, C, 'U') # return result in upper and lower
 
     # Undo redistribute
