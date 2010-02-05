@@ -282,8 +282,12 @@ class GPAWRunner(Runner):
             kwargs['h'] = None
             kwargs['gpts'] = gpts
         
-        calc = GPAW(**kwargs)
-        config.set_calculator(calc)
+        self.calc = GPAW(**kwargs)
+        config.set_calculator(self.calc)
+
+    def get_calculator(self):
+        """Returns the calculator object - available when finished only."""
+        return self.calc
 
     def check_occupation_numbers(self, config):
         """Check that occupation numbers are integers."""
