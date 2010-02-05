@@ -1889,7 +1889,7 @@ class Transport(GPAW):
             sum += ns * npk * nb**2 * unit
             #print 'lead matrix memery  MB',  sum *1e-6
            
-            ntgt = 200
+            ntgt = 200 / self.wfs.gd.comm.size
             tmp = self.lead_num * ns * npk * ntgt * nb**2 * unit_complex
             sum += tmp
             #print 'selfenergy memery  MB',  tmp *1e-6
