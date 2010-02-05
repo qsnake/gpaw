@@ -510,6 +510,3 @@ class Contour:
             return nids, energies, weights, ses, (den_eq + den_ne)
         else:
             return nids, energies, weights, ses
-        
-        
-    
