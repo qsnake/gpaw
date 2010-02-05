@@ -712,6 +712,78 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         for request in srequests:
             comm.wait(request)
 
+    def second_derivative(self, a_G, c_avv):
+        """Calculate second derivatives.
+
+        ::
+
+                              2 a _ _a
+                   /  _   _  d f (r-R )
+          c_avv =  | dr a(r) ----------
+                   /             a  a
+                               dR dR
+                                 i  j
+        """
+        assert not self.use_global_indices
+
+        if debug:
+            assert a_G.ndim == 3
+            assert (np.sort(c_avv.keys()) == self.my_atom_indices).all()
+
+        dtype = a_G.dtype
+
+        c_Mvv = np.zeros((self.Mmax, 3, 3), dtype)
+
+        cspline_M = []
+        for a in self.atom_indices:
+            assert len(self.sphere_a[a].spline_j) == 1
+            spline = self.sphere_a[a].spline_j[0]
+            assert spline.get_angular_momentum_number() == 0
+            cspline_M.append(spline.spline)
+        gd = self.gd
+        self.lfc.second_derivative(a_G, c_Mvv, gd.h_cv, gd.n_c, cspline_M,
+                                   gd.beg_c, self.pos_Wv)
+
+        comm = self.gd.comm
+        rank = comm.rank
+        srequests = []
+        rrequests = []
+        c_arvv = {}
+        b_avv = {}
+        M1 = 0
+        for a in self.atom_indices:
+            sphere = self.sphere_a[a]
+            M2 = M1 + sphere.Mmax
+            if sphere.rank != rank:
+                c_vv = c_Mvv[M1:M2].copy()
+                b_avv[a] = c_vv
+                srequests.append(comm.send(c_vv, sphere.rank, a, False))
+            else:
+                if len(sphere.ranks) > 0:
+                    c_rvv = np.empty(sphere.ranks.shape + (3, 3), dtype)
+                    c_arvv[a] = c_rvv
+                    for r, b_vv in zip(sphere.ranks, c_rvv):
+                        rrequests.append(comm.receive(b_vv, r, a, False))
+            M1 = M2
+
+        for request in rrequests:
+            comm.wait(request)
+
+        M1 = 0
+        for a in self.atom_indices:
+            c_vv = c_avv.get(a)
+            sphere = self.sphere_a[a]
+            M2 = M1 + sphere.Mmax
+            if c_vv is not None:
+                if len(sphere.ranks) > 0:
+                    c_vv[:] = c_Mvv[M1] + c_arvv[a].sum(axis=0)
+                else:
+                    c_vv[:] = c_Mvv[M1]
+            M1 = M2
+
+        for request in srequests:
+            comm.wait(request)
+
     def griditer(self):
         """Iterate over grid points."""
         self.g_W = np.zeros(len(self.M_W), np.intc)

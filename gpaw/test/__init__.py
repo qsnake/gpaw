@@ -55,6 +55,7 @@ tests = [
     'Gauss.py',
     'cluster.py',
     'derivatives.py',
+    'second_derivative.py',
     'integral4.py',
     'transformations.py',
     'pbc.py',
