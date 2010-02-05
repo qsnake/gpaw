@@ -2,11 +2,47 @@ import numpy as np
 from gpaw.mpi import world
 from gpaw.transport.tools import fermidistribution, gather_ndarray_dict
 
+#---------------------------------------------------------------------------#
+# This class is used to get the integral contour parallelly and control
+# the necesarry parameters.
+
+# To get a Keldysh Green Function, one need to to the integral like this:
+#
+#                     /                          
+#                     |                         ---- 
+#     D=    1.j/(2*pi)| (Gr(Z) - Ga(Z)f(Z)dZ -  \   (Gr(E) - Ga(E)) * kt 
+#                     /                         /___
+#                  1, 2, 3                        4
+#                            /
+#                            |
+#                  + 1/(2*pi)| G<(E)dE
+#                            /
+#                            5
+# The Path indexed by (1,2,3,4,5,6) looks like below:   
+#
+#                             ^   
+#           |\                |
+#           | \               |
+#           |  \ 2            |
+#           |   \             |
+#         1 |    \            |
+#           |     \    3      |        6
+#           |      \---------------------
+#           |                 |4                 5
+#           |    --------------------------------------
+#          --------------------------------------------->
+#
+#
+#  Hierachy:
+#      NID(node ID) is the most important information of the energy node.
+#      With it you can get the corresponding energy and weight.
+
+
+
 class Path:
-    ###
-    poles_num = 5
+    poles_num = 4
+    int_step = 0.02
     bias_step = 0.1
-    step = 0.2
     bias_window_begin = -3
     bias_window_end = 3
     zone_sample = np.array([0, 0.55278640450004, 1.44721359549996, 2.0, 0.0]) / 2.
@@ -14,12 +50,16 @@ class Path:
                                                      0.55278640450004]) / 2.0
     sample = np.array([0, 0.18350341907227,   0.55278640450004,   1.0,
          1.44721359549996,   1.81649658092773, 2.0]) / 2.
-    zone_weight = np.array([6.0, 1.0, 5.0, 5.0, 1.0]) / 6.0
+    #zone_weight = np.array([6.0, 1.0, 5.0, 5.0, 1.0]) / 6.0
+    zone_weight  = np.array([2., 0.55278640450004, 0.89442719099992007,
+                                                     0.55278640450004]) / 2.0    
     weights0 = np.array([6.0, 1.0, 0.0, 5.0, 0.0, 5.0, 0.0, 1.0]) / 6.0
     weights1 = np.array([1470., 77.0, 432.0, 625.0, 672.0, 625.0,
                           432.0, 77.0]) / 1470.
+    weights2 = [3.0 / 8, 7.0 / 6, 23.0 / 24] 
+    weights3 = [23.0 / 24, 7.0 / 6, 3.0 / 8]
 
-    def __init__(self, begin, end, index, maxdepth=7, type='Gaussian'):
+    def __init__(self, begin, end, index, maxdepth=7, type='Gaussian', kt=0.1):
         self.begin = begin
         self.end = end
         self.type = type
@@ -31,7 +71,15 @@ class Path:
         self.ses = []
         self.num = 10 ** self.maxdepth
         self.full_nodes = False
-    
+        self.kt = kt 
+        self.initialize()
+
+    def initialize(self):
+        if self.type == 'linear':
+            self.ne = int(max(np.ceil(np.abs((self.end - self.begin)
+                                                  / self.int_step)) + 1, 6))
+            self.int_step = np.abs(self.end - self.begin) / (self.ne - 1)
+        
     def get_poles_index(self, real_energy):
         if self.type == 'poles':
             return int((real_energy - self.bias_window_begin) //
@@ -47,8 +95,7 @@ class Path:
             digits = self.maxdepth
             
         elif self.type == 'linear':
-            nids_num = int(abs((self.end - self.begin)) / self.step) + 1
-            digits = int(np.ceil(np.log10(nids_num)))            
+            digits = int(np.ceil(np.log10(self.ne)))            
             
         elif self.type == 'poles':
             if self.full_nodes:
@@ -94,13 +141,13 @@ class Path:
                     self.energies.append(self.get_energy(flags))
         
         elif self.type == 'linear':
-            num = int((np.abs(self.end - self.begin)) // self.step) + 1
+            num = self.ne
             vector = (self.end - self.begin) / (num - 1)
             digits = int(np.ceil(np.log10(num)))
             base = self.index * 10 ** digits
             for i in range(num):
                 self.nids.append(i + base)
-                self.energies.append(self.begin + i * self.step * vector)
+                self.energies.append(self.begin + i * self.int_step * vector)
         
         elif self.type == 'poles':
             num = int((self.bias_window_end - self.bias_window_begin) //
@@ -113,7 +160,7 @@ class Path:
                 for k in range(self.poles_num):
                     self.nids.append(k + i * 10 + base)
                     self.energies.append(real_energies[i] +
-                                                 (2 * k + 1) * np.pi * 1.j)
+                                        (2 * k + 1) * np.pi * self.kt * 1.j)
         else:
             raise RuntimeWarning('Wrong path type %s' % self.type)
             
@@ -126,18 +173,16 @@ class Path:
                 nids.append(base + i)
         elif self.type == 'linear':
             assert depth == 0
-            nids_num = int((self.end - self.begin) / self.step) + 1
+            nids_num = self.ne
             digits = int(np.ceil(np.log10(nids_num)))
             base = self.index * 10 ** digits
-            for i in range(nids_num):
+            for i in range(1, nids_num + 1):
                 nids.append(i + base)
         elif self.type == 'poles':
             assert depth == 0
             base = zone * 100
-            res_nids0 = np.arange(1, 10, 2) * np.pi * 1.j + self.begin
-            res_nids1 = np.arange(1, 10, 2) * np.pi * 1.j + self.end
-            nids0 = np.arange(len(res_nids0)) + base + 10 + 1
-            nids1 = np.arange(len(res_nids1)) + base + 20 + 1
+            nids0 = base + 10 + np.arange(self.poles_num) + 1
+            nids1 = base + 20 + np.arange(self.poles_num) + 1
             nids = np.append(nids0, nids1).tolist()
         else:
             raise RuntimeError('Wrong Path Type % s' % self.type)
@@ -171,9 +216,8 @@ class Path:
             energy = np.sum(ss * lls) * (self.end - self.begin) + self.begin
             
         elif self.type == 'linear':
-            num = int(abs(self.end - self.begin)) / self.step 
-            tens = np.arange(len(flags) - 1, -1, -1) ** 10
-            energy =  np.sum(flags * tens) / num * (self.end - self.begin) + self.begin
+            ind = self.tonid(flags[1:])
+            energy = np.linspace(self.begin, self.end, self.ne)[ind - 1]
        
         elif self.type == 'poles':
             if self.full_nodes:
@@ -184,30 +228,43 @@ class Path:
                 tens = np.arange(len(flags[:-1]) - 1, -1) ** 10
                 line_index = np.sum(flags[:-1] * tens)
                 energy = real_energies[line_index] + (2 * flags[-1] -
-                                                       1) * np.pi * 1.j
+                                                       1) * np.pi * self.kt * 1.j
             else:
                 lines = [self.begin, self.end]
-                energy = lines[flags[0] - 1] + (2 * flags[-1] - 1) * np.pi * 1.j
+                energy = lines[flags[0] - 1] + (2 * flags[-1] - 1) * np.pi * self.kt * 1.j
         return energy
     
     def get_weight(self, flags):
         if self.type == 'Gaussian':
-            wei0 = np.abs(self.end - self.begin) / 2.
+            wei0 = (self.end - self.begin) / 2.
             for i in range(self.maxdepth - 1):
                 wei0 *= self.zone_weight[flags[i + 1]]
             wei1 = wei0
             wei0 *= self.weights0[flags[-1]]
             wei1 *= self.weights1[flags[-1]]
             return wei0, wei1
+        elif self.type == 'linear':
+            wei = self.weights2 + (self.ne - 6) * 1 + self.weights3
+            ind = self.tonid(flags[1:]) - 1
+            return wei[ind]
+        elif self.type == 'poles':
+            return 1
+
+    def tonid(self, flags):
+        dim = len(flags)
+        nid = 0
+        for i in range(dim):
+            nid += flags[i] * 10 ** (dim - i - 1)
+        return nid
 
 class Contour:
     # see the file description of contour
-    eq_err = 1e-3
+    eq_err = 1e-4
     ne_err = 1e-4
-    eta = 1e-4
+    eta = 1e-2
     kt = 0.1
-    nkt = 1.
-    dkt = np.pi
+    nkt = 0.4
+    dkt = 0.8 * np.pi
     calcutype = ['eqInt', 'eqInt', 'eqInt', 'resInt', 'neInt', 'locInt']
     def __init__(self, kt, fermi, bias, maxdepth=7, comm=None, neint='linear',
                   tp=None):
@@ -216,8 +273,11 @@ class Contour:
         self.bias = bias
         self.tp = tp
         self.neint = neint
-        self.min_bias = np.min(bias)
-        self.max_bias = np.max(bias)
+        self.leadfermi = []
+        for i in range(len(bias)):
+            self.leadfermi.append(fermi[i] + bias[i])
+        self.minfermi = min(self.leadfermi)
+        self.maxfermi = max(self.leadfermi)
         self.dtype = complex
         self.comm = comm
         if self.comm == None:
@@ -231,11 +291,13 @@ class Contour:
     def get_dense_contour(self):
         self.paths = []
         depth = self.maxdepth
-        self.paths.append(Path(-700., -700. + 20. * 1.j, 1, 1))
-        self.paths.append(Path(-700. + 20. * 1.j,  -4. + np.pi * 1.j, 2, 3))
+        self.paths.append(Path(-700., -700. + 20. * 1.j, 1, 1,
+                               type='Gaussian'))
+        self.paths.append(Path(-700. + 20. * 1.j,  -4. + np.pi * 1.j,
+                               2, 3, type='Gaussian'))
         self.paths.append(Path(-4. + np.pi * 1.j, 4. + np.pi * 1.j, 3, depth,
                               type='linear'))
-        self.paths.append(Path(-3., 3., 4, depth, type='poles'))
+        self.paths.append(Path(-3., 3., 4, depth, type='poles', kt=self.kt))
         self.paths.append(Path(-5. + self.eta * 1.j, 5. + self.eta * 1.j, 5,
                               depth, type='linear')) 
         for i in range(5):
@@ -245,17 +307,35 @@ class Contour:
         assert self.tp is not None
         self.paths = []
         depth = self.maxdepth
-        self.paths.append(Path(-700., -700. + 20. * 1.j, 1, depth))
-        self.paths.append(Path(-700. + 20. * 1.j,
-                                self.min_bias - self.nkt + self.dkt * 1.j, 2, depth))
-        self.paths.append(Path(self.min_bias - self.nkt + self.dkt * 1.j,
-                              self.min_bias + self.nkt + self.dkt * 1.j, 3, depth))
-        self.paths.append(Path(self.min_bias, self.max_bias, 4, depth, type='poles'))
-        self.paths.append(Path(self.min_bias - self.nkt + self.eta * 1.j,
-                              self.max_bias + self.nkt + self.eta * 1.j, 5,
-                              depth, type=self.neint))
-        self.paths.append(Path(self.min_bias - self.nkt + self.dkt * 1.j,
-                              self.max_bias + self.nkt + self.dkt * 1.j, 6, depth))
+        self.paths.append(Path(-700. + self.minfermi,
+                               -700. + self.minfermi + (10. + self.dkt) * 1.j,
+                                1, depth,
+                               type='Gaussian'))
+        
+        self.paths.append(Path(-700. + self.minfermi + (10 + self.dkt) * 1.j,
+                                self.minfermi - self.nkt + self.dkt * 1.j,
+                                2, depth,
+                                type='Gaussian'))
+        
+        self.paths.append(Path(self.minfermi - self.nkt + self.dkt * 1.j,
+                              self.minfermi + self.nkt + self.dkt * 1.j,
+                              3, depth,
+                              type='Gaussian'))
+        
+        self.paths.append(Path(self.minfermi,
+                               self.maxfermi,
+                               4, depth,
+                               type='poles', kt=self.kt))
+        
+        self.paths.append(Path(self.minfermi - self.nkt + self.eta * 1.j,
+                              self.maxfermi + self.nkt + self.eta * 1.j,
+                               5, depth,
+                               type=self.neint))
+        
+        self.paths.append(Path(self.minfermi - self.nkt + self.dkt * 1.j,
+                              self.maxfermi + self.nkt + self.dkt * 1.j,
+                               6, depth,
+                               type='Gaussian'))
         zones = np.arange(1, 7)
         depth = 0
         converge = False
@@ -427,8 +507,8 @@ class Contour:
 
                 original_nids = np.arange(1, 8) + base
                 path_index = zone // 10 ** depth - 1
-                gr_sum0 = np.zeros([nbmol, nbmol], dtype=self.dtype)
-                gr_sum1 = np.zeros([nbmol, nbmol], dtype=self.dtype)
+                gr_sum0 = np.zeros([1, nbmol, nbmol], dtype=self.dtype)
+                gr_sum1 = np.zeros([1, nbmol, nbmol], dtype=self.dtype)
                 path = self.paths[path_index]            
                 for nid in original_nids:
                     if nid in path.nids:
@@ -444,11 +524,11 @@ class Contour:
                     converged = False
                     new_zones += range(zone * 10 + 1, zone * 10 + 4)
                     errs.append(err)
-                if err < self.eq_err:
-                    self.total_sum += gr_sum0
+                #if err < self.eq_err:
+                #    self.total_sum += gr_sum0
             if err < self.eq_err:
                 self.converged_zones.append(zone)
-        print self.total_sum, 'totalsum'
+        #print self.total_sum, 'totalsum'
         #print np.max(np.abs(errs))            
         return converged, new_zones        
 
@@ -468,7 +548,7 @@ class Contour:
                 depth = int(np.floor(np.log10(zone)))
                 order = 10 ** (self.maxdepth - depth)
                 base = zone * order
-                original_nids = np.arange(1, 8) + base
+                original_nids = np.arange(1, 8, 2) + base
                 path_index = zone // 10 ** depth - 1
                 if cal_den:
                     den_eq = np.zeros([nbmol, nbmol], dtype=self.dtype)
@@ -510,3 +590,34 @@ class Contour:
             return nids, energies, weights, ses, (den_eq + den_ne)
         else:
             return nids, energies, weights, ses
+        
+    def distribute_nodes(self, path_index):
+        path = self.paths[path_index]
+        if path.type == 'linear':
+            digits = int(np.ceil(np.log10(path.ne)))
+            base = path.index * 10 ** digits
+            energies = np.linspace(path.begin, path.end, path.ne)
+            weights = path.weights2 + [1] * (path.ne - 6) + path.weights3
+            weights = np.array(weights) * path.int_step
+            nids = np.arange(path.ne) + base + 1
+        
+        elif path.type == 'poles':
+            base = path.index * 100
+            nids0 = base + 10 + np.arange(path.poles_num) + 1
+            nids1 = base + 20 + np.arange(path.poles_num) + 1
+            nids = np.append(nids0, nids1)
+            energies0 = path.begin + (np.arange(path.poles_num) * 2
+                                                        - 1) * np.pi * 1.j
+            energies1 = path.end + (np.arange(path.poles_num) * 2
+                                                        - 1) * np.pi * 1.j
+            weights0 = [-1] * path.poles_num
+            weights1 = [1] * path.poles_num
+            weights = np.append(weights0, weights1)
+        
+        loc_nids = np.array_split(nids, self.comm.size)[self.comm.rank]
+        loc_energies = np.array_split(energies, self.comm.size)[self.comm.rank]
+        loc_weights = np.array_split(weights, self.comm.size)[self.comm.rank]
+        return loc_nids, loc_energies, loc_weights
+    
+    
+    
