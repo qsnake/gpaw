@@ -650,8 +650,8 @@ class SLDenseLinearAlgebra2:
 
         self.gd.comm.broadcast(C_nN, 0)
 
-    def diagonalize(self, H_nn, U_nN, eps_n):
-        self._standard_diagonalize_dc(H_nn, U_nN, eps_n)
+    def diagonalize(self, H_Nn, U_nN, eps_n):
+        self._standard_diagonalize_dc(H_Nn, U_nN, eps_n)
  
     def _standard_diagonalize_dc(self, H_Nn, U_nN, eps_n):
         # H_Nn must be lower triangular or symmetric, 
@@ -703,7 +703,7 @@ class SLDenseLinearAlgebra2:
 
         if outdescriptor: # grid masters only
             assert self.gd.comm.rank == 0
-             # grid master with bd.rank = 0 
+            # grid master with bd.rank = 0 
             # scatters to other grid masters
             # NOTE: If the origin of the blacs grid
             # ever shifts this will not work
