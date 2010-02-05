@@ -49,12 +49,14 @@ int Csys2blacs_handle_(MPI_Comm SysCtxt);
 #define   pdtrtri_ pdtrtri
 #define   pztrtri_ pztrtri
 
-#define   pdsyevd_ pdsyevd
-#define   pzheevd_ pzheevd
-#define   pdsyevx_ pdsyevx
-#define   pzheevx_ pzheevx
-#define   pdsygvx_ pdsygvx
-#define   pzhegvx_ pzhegvx
+#define   pdsyevd_  pdsyevd
+#define   pzheevd_  pzheevd
+#define   pdsyevx_  pdsyevx
+#define   pzheevx_  pzheevx
+#define   pdsygvx_  pdsygvx
+#define   pzhegvx_  pzhegvx
+#define   pdsyngst_ pdsyngst
+#define   pzhengst_ pzhengst
 
 #define   pdgemm_  pdgemm
 #define   pzgemm_  pzgemm
@@ -64,6 +66,8 @@ int Csys2blacs_handle_(MPI_Comm SysCtxt);
 #define   pzher2k_ pzher2k
 #define   pdsyrk_  pdsyrk
 #define   pzherk_  pzherk
+#define   pdtrsm_  pdtrsm
+#define   pztrsm_  pztrsm
 #endif
 
 #ifdef GPAW_NO_UNDERSCORE_CSCALAPACK
@@ -174,20 +178,30 @@ void pzhegvx_(int* ibtype, char* jobz, char* range,
               int* iwork, int* liwork,
               int* ifail, int* iclustr, double* gap, int* info);
 
+void pdsyngst_(int* ibtype, char* uplo, int*n, 
+	       double* a, int* ia, int* ja, int* desca,
+	       double* b, int* ib, int* jb, int* descb,
+	       double* scale, double* work, int* lwork, int* info);
+
+void pzhengst_(int* ibtype, char* uplo, int*n, 
+	       void* a, int* ia, int* ja, int* desca,
+	       void* b, int* ib, int* jb, int* descb,
+	       double* scale, void* work, int* lwork, int* info);
+
 // pblas
 void pdgemm_(char* transa, char* transb, int* m, int* n, int* k,
              double* alpha,
-             double* a, int* ia, int *ja, int *desca,
-             double* b, int* ib, int *jb, int *descb,
+             double* a, int* ia, int* ja, int* desca,
+             double* b, int* ib, int* jb, int* descb,
              double* beta,
-             double* c, int* ic, int *jc, int *descc);
+             double* c, int* ic, int* jc, int* descc);
 
 void pzgemm_(char* transa, char* transb, int* m, int* n, int* k,
              void* alpha,
-             void* a, int* ia, int *ja, int *desca,
-             void* b, int* ib, int *jb, int *descb,
+             void* a, int* ia, int* ja, int* desca,
+             void* b, int* ib, int* jb, int* descb,
              void* beta,
-             void* c, int* ic, int *jc, int *descc);
+             void* c, int* ic, int* jc, int* descc);
 
 void pdgemv_(char* transa, int* m, int* n, double* alpha, 
              double* a, int* ia, int* ja, int* desca,
@@ -203,28 +217,38 @@ void pzgemv_(char* transa, int* m, int* n, void* alpha,
 
 void pdsyr2k_(char* uplo, char* trans, int* n, int* k,
 	      double* alpha,
-	      double* a, int* ia, int *ja, int *desca,
-	      double* b, int* ib, int *jb, int *descb,
+	      double* a, int* ia, int* ja, int* desca,
+	      double* b, int* ib, int* jb, int* descb,
 	      double* beta,
-	      double* c, int* ic, int *jc, int *descc);
+	      double* c, int* ic, int *jc, int* descc);
 
 void pzher2k_(char* uplo, char* trans, int* n, int* k,
 	      void* alpha,
-	      void* a, int* ia, int *ja, int *desca,
-	      void* b, int* ib, int *jb, int *descb,
+	      void* a, int* ia, int* ja, int* desca,
+	      void* b, int* ib, int* jb, int* descb,
 	      void* beta,
-	      void* c, int* ic, int *jc, int *descc);
+	      void* c, int* ic, int* jc, int* descc);
 
 void pdsyrk_(char* uplo, char* trans, int* n, int* k,
 	     double* alpha,
-	     double* a, int* ia, int *ja, int *desca,
+	     double* a, int* ia, int* ja, int* desca,
 	     double* beta,
-	     double* c, int* ic, int *jc, int *descc);
+	     double* c, int* ic, int* jc, int* descc);
 void pzherk_(char* uplo, char* trans, int* n, int* k,
 	     void* alpha,
-	     void* a, int* ia, int *ja, int *desca,
+	     void* a, int* ia, int* ja, int* desca,
 	     void* beta,
-	     void* c, int* ic, int *jc, int *descc);
+	     void* c, int* ic, int* jc, int* descc);
+
+void pdtrsm_(char* side, char* uplo, char* diag,
+	     int* m, int *n, double* alpha,
+	     double* a, int* ia, int* ja, int* desca,
+	     double* b, int* ib, int* jb, int* descb);
+
+void pztrsm_(char* side, char* uplo, char* diag,
+	     int* m, int *n, void* alpha,
+	     void* a, int* ia, int* ja, int* desca,
+	     void* b, int* ib, int* jb, int* descb);
 
 PyObject* pblas_gemm(PyObject *self, PyObject *args)
 {
