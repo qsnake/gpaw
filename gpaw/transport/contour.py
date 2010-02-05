@@ -269,7 +269,7 @@ class Contour:
     def __init__(self, kt, fermi, bias, maxdepth=7, comm=None, neint='linear',
                   tp=None):
         self.kt = kt
-        self.fermi = fermi
+        self.fermi = fermi[0]
         self.bias = bias
         self.tp = tp
         self.neint = neint
@@ -287,6 +287,7 @@ class Contour:
         self.num = 10 ** (self.maxdepth - 1)
         self.converged_zones = []
         self.total_sum = 0
+        self.plot_path = None
         
     def get_dense_contour(self):
         self.paths = []
@@ -348,7 +349,35 @@ class Contour:
             converge, zones = self.check_convergence(zones, depth)
             depth += 1
             self.transfer(zones, depth)
-        
+
+    def get_plot_path(self):
+        if self.plot_path is None:
+            self.plot_path = Path(-5. + self.fermi + self.eta * 1.j,
+                              5. + self.fermi + self.eta * 1.j,
+                               7, 1,
+                               type='linear')
+            path = self.plot_path  
+            path.ne = 201
+            path.int_step = 10. / 200
+           
+            digits = int(np.ceil(np.log10(path.ne)))
+            base = path.index * 10 ** digits
+            energies = np.linspace(path.begin, path.end, path.ne)
+            weights = path.weights2 + [1] * (path.ne - 6) + path.weights3
+            weights = np.array(weights) * path.int_step
+            nids = np.arange(path.ne) + base + 1
+
+            loc_nids = np.array_split(nids, self.comm.size)[self.comm.rank]
+            loc_energies = np.array_split(energies, self.comm.size)[self.comm.rank]
+            loc_weights = np.array_split(weights, self.comm.size)[self.comm.rank]            
+            path.my_nids = loc_nids
+            path.my_energies = loc_energies
+            path.my_weights = loc_weights
+            path.weights = weights
+            path.energies = energies
+            path.nids = nids
+        return self.plot_path
+           
     def collect(self, zones, depth):
         nids = []
         path_indices = []
