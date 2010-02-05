@@ -392,20 +392,18 @@ def generate_selfenergy_database(atoms, ntk, filename, direction=0, kt=0.1,
             lead_couple_hsd.reset(s, pk, hl_spkcmm[s, pk], 'H', init=True)     
             lead_couple_hsd.reset(s, pk, dl_spkcmm[s, pk], 'D', init=True)          
     lead_se = LeadSelfEnergy(lead_hsd, lead_couple_hsd)
-    contour = Contour(kt, fermi, bias, depth)    
-    contour.get_dense_contour()
-    
-    index = []
-    se = []
-    fd = file(filename, 'w')
-    for path in contour.paths:
-        for nid in path.nids:
-            flags = path.get_flags(nid, path_flag=True)
-            energy = path.get_energy(flags[1:])
-            index.append([nid, energy])
-            se.append(lead_se(energy))
-    cPickle.dump((index, se), fd, 2)
-    fd.close()    
+    contour = Contour(kt, [fermi] * 2, bias, depth)    
+    path = contour.get_plot_path()
+    for nid, energy in zip(path.my_nids, path.my_energies):
+        for kpt in wfs.kpt_u:
+                if kpt.q % ntk == 0:
+                    flag = str(kpt.k // ntk) + '_' + str(nid)
+                    lead_se.s = kpt.s
+                    lead_se.pk = kpt.q // ntk
+                    data = lead_se(energy)
+                    fd = file(flag, 'w')    
+                    cPickle.dump(data, fd, 2)
+                    fd.close()    
 
 def test_selfenergy_interpolation(atoms, ntk, filename, begin, end, base, scale, direction=0):
     from gpaw.transport.sparse_matrix import Banded_Sparse_HSD, CP_Sparse_HSD, Se_Sparse_Matrix
