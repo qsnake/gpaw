@@ -1923,6 +1923,7 @@ class Transport(GPAW):
         self.calculate_to_bias(v_limit, num_v)
         del self.analysor
         del self.surround
+        del self.contour
   
     def recover_kpts(self, calc):
         wfs = calc.wfs
