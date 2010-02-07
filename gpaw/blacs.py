@@ -356,7 +356,7 @@ class BlacsDescriptor(MatrixDescriptor):
         Virtually identical to diagonalize_ex, but without iu parameter."""
         scalapack_diagonalize_dc(self, H_nn, C_nn, eps_N, UL)
 
-    def general_diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M, UL='U', iu=None):
+    def general_diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M, UL='L', iu=None):
         """Solve generalized eigenvalue problem.
         
         Solves::
@@ -533,7 +533,7 @@ class SLDenseLinearAlgebra:
         C_mm = blockdescriptor.zeros(dtype=dtype)
         self.timer.start('General diagonalize ex')
         blockdescriptor.general_diagonalize_ex(H_mm, S_mm.copy(), C_mm, eps_M,
-                                               UL='U', iu=self.bd.nbands)
+                                               UL='L', iu=self.bd.nbands)
         self.timer.stop('General diagonalize ex')
         C_mM = outdescriptor.zeros(dtype=dtype)
         self.timer.start('Redistribute coefs')
