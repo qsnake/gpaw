@@ -445,6 +445,11 @@ class XCFunctional:
 
     def calculate_fxc_spinpaired(self, n_g, dvdn_g, a2_g=None,
                                  dvdnda2_g=None, dvda2da2_g=None):
+
+        # Arrays are passed to C-code -> must be 1-dimensional
+        assert n_g.ndim == 1
+        assert dvdn_g.ndim == 1
+        
         if self.timer is not None:
             self.timer.start('Local fxc')
         if self.gga:
@@ -457,6 +462,11 @@ class XCFunctional:
 
     def calculate_fxc_fd_spinpaired(self, n_g, dvdn_g, a2_g=None,
                                  dvdnda2_g=None, dvda2da2_g=None):
+
+        # Arrays are passed to C-code -> must be 1-dimensional
+        assert n_g.ndim == 1
+        assert dvdn_g.ndim == 1
+        
         if self.timer is not None:
             self.timer.start('Local fxc fd')
         if self.gga:
