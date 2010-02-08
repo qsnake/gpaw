@@ -193,11 +193,11 @@ class Hamiltonian:
             if(scale==0 or scale=='False' or scale =='false'):
                 lq_a  = lq[aa]
                 lq_ab = lq[ab]
-                lq_b  = lq[ab]
+                lq_b  = lq[bb]
             else:
                 lq_a  = 1
                 lq_ab = lq[ab]/lq[aa]
-                lq_b  = lq[ab]/lq[aa]
+                lq_b  = lq[bb]/lq[aa]
  
             # and the correct entrances in the DM
             nn = (2*np.array(l_j)+1)[0:nl[0]].sum()
