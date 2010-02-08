@@ -24,7 +24,7 @@ from gpaw.transport.contour import Contour
 from gpaw.transport.surrounding import Surrounding, collect_D_asp2, \
                                               collect_D_asp3, distribute_D_asp
 from gpaw.transport.selfenergy import LeadSelfEnergy
-from gpaw.transport.analysor import Transport_Analysor, Transport_Plotter
+from gpaw.transport.newanalysor import Transport_Analysor, Transport_Plotter
 
 import gpaw
 import numpy as np
@@ -2078,6 +2078,9 @@ class Transport(GPAW):
         self.guess_steps = 1
         self.negf_prepare()
         flag = True
+        self.contour = Contour(self.occupations.width * Hartree,
+                            self.lead_fermi, self.bias, comm=self.wfs.gd.comm,
+                             tp=self)
         if not hasattr(self, 'analysor'):
             self.analysor = Transport_Analysor(self, True)        
         for i in range(n):
@@ -2090,6 +2093,7 @@ class Transport(GPAW):
                                     self.lead_fermi, self.bias,
                                     self.min_energy,
                                     self.neintmethod, self.neintstep)
+          
             for j in range(self.lead_num):
                 self.analysor.selfenergies[j].set_bias(self.bias[j])
             self.surround.combine_dH_asp(dH_asp)
@@ -2126,6 +2130,11 @@ class Transport(GPAW):
                                     self.lead_fermi, self.bias,
                                     self.min_energy,
                                     self.neintmethod, self.neintstep)
+        self.contour = Contour(self.occupations.width * Hartree,
+                               self.lead_fermi, self.bias,
+                               comm=self.wfs.gd.comm,
+                               tp=self)
+        
         for j in range(self.lead_num):
                 self.analysor.selfenergies[j].set_bias(self.bias[j])
         dtype = s00.dtype
