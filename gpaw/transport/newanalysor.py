@@ -1498,13 +1498,17 @@ class Transport_Analysor:
         lead_ef2 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][1]]
         if lead_ef2 > lead_ef1:
             lead_ef1, lead_ef2 = lead_ef2, lead_ef1
-        inteval = np.real(self.my_energies[1] - self.my_energies[0])
+        interval = np.real(self.my_energies[1] - self.my_energies[0])
         tc_all = np.sum(tc_array, axis=1) / tp.npk 
         fermi_factor = fd(self.my_energies - lead_ef1, kt) - fd(
                                              self.my_energies - lead_ef2, kt)
-        current =  simps(tc_all[s, lead_pair_index] * fermi_factor,
-                                                               None, interval)
+        #current =  simps(tc_all[s, lead_pair_index] * fermi_factor,
+        #                                                       None, interval)
+        current = np.sum(tc_all[s, lead_pair_index] * fermi_factor * self.my_weights)
+        current = np.array(current)
+        
         tp.contour.comm.sum(current)
+        tp.wfs.kpt_comm.sum(current)
         return current    
          
 class Transport_Plotter:
