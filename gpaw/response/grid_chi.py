@@ -171,25 +171,24 @@ class CHI:
 
 
         for k in range(self.nkpt):
-            P1_ani = calc.wfs.kpt_u[k].P_ani
-            P2_ani = calc.wfs.kpt_u[k].P_ani
+            P_ani = calc.wfs.kpt_u[k].P_ani
             rho_nn = np.zeros((self.nband, self.nband), dtype=complex)
             for n in range(self.nband):
                 for m in range(self.nband):
                     # G = G' = 0 <psi_nk | e**(-iqr) | psi_n'k+q>
                     
-                    if np.abs(e_kn[k, m] - e_kn[k, n]) > 1e-6:
+                    if np.abs(e_kn[k, m] - e_kn[k, n]) > 1e-10:
                         for ix in range(3):
                             d_c[ix](psit_knG[k, m], dpsit_G, calc.wfs.kpt_u[k].phase_cd)
                             tmp[ix] = gd.integrate( psit_knG[k, n].conj() * dpsit_G)
-                            rho_nn[n, m] = -1j * np.inner(qq, tmp) / (e_kn[k, m] - e_kn[k, n])
+                        rho_nn[n, m] = -1j * np.inner(qq, tmp) 
 
-                            # PAW correction
+                        # PAW correction
                         for a, id in enumerate(setups.id_a):
                             Z, type, basis = id
-                            P_ii = np.outer(P1_ani[a][n].conj(), P2_ani[a][m])
-                            rho_nn[n, m] += (P_ii * phi_ii[Z]).sum()
-
+                            P_ii = np.outer(P_ani[a][n].conj(), P_ani[a][m])
+                            rho_nn[n, m] += (P_ii * phi_ii[Z]).sum() 
+                        rho_nn[n, m] /= e_kn[k, m] - e_kn[k, n]
 
             # construct (f_nk - f_n'k+q) / (w + e_nk - e_n'k+q + ieta )
             C_nn = np.zeros((self.nband, self.nband), dtype=complex)
@@ -197,7 +196,7 @@ class CHI:
                 w = iw * self.dw
                 for n in range(self.nband):
                     for m in range(self.nband):
-                        if  np.abs(f_kn[k, n] - f_kn[k, m]) > 1e-6:
+                        if  np.abs(f_kn[k, n] - f_kn[k, m]) > 1e-10:
                             C_nn[n, m] = (f_kn[k, n] - f_kn[k, m]) / (
                              w + e_kn[k, n] - e_kn[k, m] + 1j * eta)
 
@@ -209,7 +208,7 @@ class CHI:
             for n in range(self.nband):
                 for m in range(self.nband):
                     C_nn[n, m] = 0.
-                    if np.abs(f_kn[k, n] - f_kn[k, m]) > 1e-6:
+                    if np.abs(f_kn[k, n] - f_kn[k, m]) > 1e-10:
                         C_nn[n, m] = (f_kn[k, n] - f_kn[k, m]) / (
                                   e_kn[k, n] - e_kn[k, m] )
             self.epsilonM += (rho_nn * C_nn * rho_nn.conj()).sum()
