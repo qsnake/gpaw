@@ -262,6 +262,7 @@ class Contour:
     eq_err = 1e-4
     ne_err = 1e-4
     eta = 1e-2
+    plot_eta = 1e-4
     kt = 0.1
     nkt = 0.4
     dkt = 0.8 * np.pi
@@ -352,8 +353,8 @@ class Contour:
 
     def get_plot_path(self):
         if self.plot_path is None:
-            self.plot_path = Path(-5. + self.fermi + self.eta * 1.j,
-                              5. + self.fermi + self.eta * 1.j,
+            self.plot_path = Path(-5. + self.fermi + self.plot_eta * 1.j,
+                              5. + self.fermi + self.plot_eta * 1.j,
                                7, 1,
                                type='linear')
             path = self.plot_path  
