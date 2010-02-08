@@ -54,7 +54,7 @@ def scalapack_set(desca, a, alpha, beta, uplo, m=None, n=None, ia=1, ja=1):
 
 def scalapack_diagonalize_dc(desca, a, z, w, uplo):
     """Diagonalize a using the divide & conquer algorithm.
-    XXX does this work?"""
+    Orthogonal eigenvectors not guaranteed"""
     assert desca.check(a)
     assert desca.check(z)
     # only symmetric matrices
@@ -74,7 +74,7 @@ def scalapack_diagonalize_ex(desca, a, z, w, uplo, iu=None):
 
     Solves the eigenvalue problem a z = w z.
 
-    XXX how are eigenvalues ordered?
+    Eigenvectors stored in ascending order, i.e. most negative first
     XXX How are eigenvectors ordered?"""
     assert desca.check(a)
     assert desca.check(z)
@@ -96,6 +96,22 @@ def scalapack_diagonalize_ex(desca, a, z, w, uplo, iu=None):
         # 2 means eigenvectors not guaranteed to be orthogonal
         raise RuntimeError('scalapack_diagonalize_ex error: %d' % info)
 
+def scalapack_general_diagonalize_dc(desca, a, b, z, w, uplo):
+    """Diagonalize a using the divide & conquer algorithm.
+    XXX does this work?"""
+    assert desca.check(a)
+    assert desca.check(b)
+    assert desca.check(z)
+    # only symmetric matrices
+    assert desca.gshape[0] == desca.gshape[1] 
+    assert uplo in ['L', 'U']
+    if not desca.blacsgrid.is_active():
+        return
+    assert desca.gshape[0] == len(w)
+    info = _gpaw.scalapack_general_diagonalize_dc(a, desca.asarray(), 
+                                          switch_lu[uplo], b, z, w)
+    if info != 0:
+        raise RuntimeError('scalapack_general_diagonalize_dc error: %d' % info)
 
 def scalapack_general_diagonalize_ex(desca, a, b, z, w, uplo, iu=None):
     assert desca.check(a)
