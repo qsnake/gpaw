@@ -62,17 +62,6 @@ class CHI:
             self.f_kn = np.array([calc.get_occupation_numbers(kpt=k)
                         for k in range(self.nkpt)])    
 
-            # obtain pseudo wfs
-            assert calc.wfs.kpt_u[0].psit_nG is not None
-            self.psit_knG = np.zeros((self.nkpt, self.nband, self.nG[0],
-                                     self.nG[1], self.nG[2]),dtype=complex)
-            for k in range(self.nkpt):
-                for n in range(self.nband):
-                    self.psit_knG[k, n]= calc.wfs.gd.zero_pad(calc.wfs.get_wave_function_array(n,k,0))
-
-            # check orthornormalization of wfs
-            #self.check_ortho(calc, self.psit_knG)
-
         else:
             
             assert self.ncalc == 2
@@ -88,25 +77,6 @@ class CHI:
             self.f2_kn = np.array([c[1].get_occupation_numbers(kpt=k)
                          for k in range(self.nkpt)])
     
-    
-            # obtain pseudo wfs
-            assert c[0].wfs.kpt_u[0].psit_nG is not None
-            assert c[1].wfs.kpt_u[0].psit_nG is not None
-            assert c[0].wfs.get_wave_function_array(0,0,0).shape[0] == self.nG[0]
-            
-            self.psit1_knG = np.zeros((self.nkpt, self.nband, self.nG[0],
-                                     self.nG[1], self.nG[2]),dtype=complex)
-            self.psit2_knG = np.zeros_like(self.psit1_knG)
-                                
-            for k in range(self.nkpt):
-                for n in range(self.nband):
-                    self.psit1_knG[k, n]= c[0].wfs.get_wave_function_array(n,k,0)
-                    self.psit2_knG[k, n]= c[1].wfs.get_wave_function_array(n,k,0)
-    
-            # Check orthornormalization of wfs
-            #self.check_ortho(c[0], self.psit1_knG)
-            #self.check_ortho(c[1], self.psit2_knG)
-            
         self.qr = np.zeros(self.nG)
 
         # construct q.r
@@ -155,7 +125,6 @@ class CHI:
         e_kn = self.e_kn
         qq = self.qq
         eta = self.eta
-        psit_knG = self.psit_knG
 
         chi0_w = np.zeros(self.Nw, dtype = complex)
 
@@ -165,22 +134,26 @@ class CHI:
             if not phi_ii.has_key(Z):
                 phi_ii[Z] = self.two_phi_derivative(Z)
 
-        d_c = [Gradient(gd, i, dtype=psit_knG.dtype).apply for i in range(3)]
-        dpsit_G = gd.empty(dtype=psit_knG.dtype)
-        tmp = np.zeros((3), dtype=psit_knG.dtype)
+        d_c = [Gradient(gd, i, dtype=complex).apply for i in range(3)]
+        dpsit_G = gd.empty(dtype=complex)
+        tmp = np.zeros((3), dtype=complex)
 
 
         for k in range(self.nkpt):
-            P_ani = calc.wfs.kpt_u[k].P_ani
-            rho_nn = np.zeros((self.nband, self.nband), dtype=complex)
+            kpt = calc.wfs.kpt_u[k]
+            P_ani = kpt.P_ani
+            psit_nG = kpt.psit_nG    
+
+            rho_nn = np.zeros((self.nband, self.nband), dtype=complex)            
+
             for n in range(self.nband):
                 for m in range(self.nband):
                     # G = G' = 0 <psi_nk | e**(-iqr) | psi_n'k+q>
                     
                     if np.abs(e_kn[k, m] - e_kn[k, n]) > 1e-10:
                         for ix in range(3):
-                            d_c[ix](psit_knG[k, m], dpsit_G, calc.wfs.kpt_u[k].phase_cd)
-                            tmp[ix] = gd.integrate( psit_knG[k, n].conj() * dpsit_G)
+                            d_c[ix](psit_nG[m], dpsit_G, kpt.phase_cd)
+                            tmp[ix] = gd.integrate( psit_nG[n].conj() * dpsit_G)
                         rho_nn[n, m] = -1j * np.inner(qq, tmp) 
 
                         # PAW correction
@@ -212,6 +185,8 @@ class CHI:
                         C_nn[n, m] = (f_kn[k, n] - f_kn[k, m]) / (
                                   e_kn[k, n] - e_kn[k, m] )
             self.epsilonM += (rho_nn * C_nn * rho_nn.conj()).sum()
+
+            print 'finished kpoint', k
             
         for iw in range(self.Nw):
             self.epsilonRPA[iw] =  1 - 4 * pi / np.inner(qq, qq) * chi0_w[iw] / self.vol
@@ -219,8 +194,6 @@ class CHI:
 
     def ShiftKpoint(self):
 
-        psit1_knG = self.psit1_knG
-        psit2_knG = self.psit2_knG
         f1_kn = self.f1_kn
         f2_kn = self.f2_kn
         e1_kn = self.e1_kn
@@ -246,14 +219,19 @@ class CHI:
                                   * np.exp(-1j * np.inner(qq, R_a[a])) )
 
         # calculate chi0
-        for k in range(self.nkpt):
-            P1_ani = c[0].wfs.kpt_u[k].P_ani
-            P2_ani = c[1].wfs.kpt_u[k].P_ani
+        for k in range(10):#self.nkpt):
+            kpt0 = c[0].wfs.kpt_u[k]
+            kpt1 = c[1].wfs.kpt_u[k]
+            P1_ani = kpt0.P_ani
+            P2_ani = kpt1.P_ani
+            psit1_nG = kpt0.psit_nG
+            psit2_nG = kpt1.psit_nG
+            
             for n in range(self.nband):
                 for m in range(self.nband):
                     # G = G' = 0 <psi_nk | e**(-iqr) | psi_n'k+q>
-                    rho_nn[n, m] = gd.integrate( psit1_knG[k, n].conj()
-                                         * psit2_knG[k, m]
+                    rho_nn[n, m] = gd.integrate( psit1_nG[n].conj()
+                                         * psit2_nG[m]
                                          * np.exp(-1j * qr) )
                     # PAW correction 
                     for a, id in enumerate(setups.id_a):
