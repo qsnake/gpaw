@@ -155,6 +155,7 @@ def get_hs(atoms):
     """Calculate the Hamiltonian and overlap matrix."""
     calc = atoms.calc
     wfs = calc.wfs
+    wfs.gd.comm.broadcast(wfs.S_qMM, 0)    
     Ef = calc.get_fermi_level()
     eigensolver = wfs.eigensolver
     ham = calc.hamiltonian
@@ -166,8 +167,9 @@ def get_hs(atoms):
         H_MM = eigensolver.calculate_hamiltonian_matrix(ham, wfs, kpt)
         tri2full(H_MM)
         H_MM *= Hartree
-        H_MM -= Ef * S_qMM[kpt.q]
+        #H_MM -= Ef * S_qMM[kpt.q]
         H_sqMM[kpt.s, kpt.q] = H_MM
+    wfs.gd.comm.broadcast(H_sqMM, 0)        
     return H_sqMM, S_qMM
 
 def substract_pk(d, npk, ntk, kpts, k_mm, hors='s', position=[0, 0, 0]):
@@ -393,7 +395,7 @@ def generate_selfenergy_database(atoms, ntk, filename, direction=0, kt=0.1,
             lead_couple_hsd.reset(s, pk, dl_spkcmm[s, pk], 'D', init=True)          
     lead_se = LeadSelfEnergy(lead_hsd, lead_couple_hsd)
     contour = Contour(kt, [fermi] * 2, bias, depth)    
-    path = contour.get_plot_path()
+    path = contour.get_plot_path(ex=True)
     for nid, energy in zip(path.my_nids, path.my_energies):
         for kpt in wfs.kpt_u:
                 if kpt.q % ntk == 0:
