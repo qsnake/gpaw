@@ -2074,7 +2074,7 @@ class Transport(GPAW):
         self.forces.reset()
         self.print_positions()
 
-    def analysis(self, n):
+    def analysis(self, n, n1=0):
         self.guess_steps = 1
         self.negf_prepare()
         flag = True
@@ -2083,8 +2083,8 @@ class Transport(GPAW):
                              tp=self)
         if not hasattr(self, 'analysor'):
             self.analysor = Transport_Analysor(self, True)        
-        for i in range(n):
-            if i > 0:
+        for i in range(n1, n):
+            if i > n1:
                 flag = False
             fd = file('bias_data' + str(i + 1), 'r')
             self.bias, vt_sG, dH_asp = cPickle.load(fd)
