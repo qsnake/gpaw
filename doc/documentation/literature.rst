@@ -414,7 +414,7 @@ Publications using the gpaw code
 
    .. 4 December 2009
 
-#) Carsten Rostgaard, Karsten W. Jacobsen, and K. S. Thygesen
+#) Carsten Rostgaard, Karsten W. Jacobsen, and Kristian S. Thygesen
 
    `Fully self-consistent GW calculations for molecules`__
 
@@ -424,7 +424,7 @@ Publications using the gpaw code
 
    .. 3 February 2010
 
-#) J. Wellendorff, A. Kelkkanen, J. J. Mortensen, B. Lundqvist, and T. Bligaard
+#) \J. Wellendorff, A. Kelkkanen, J. J. Mortensen, B. Lundqvist, and T. Bligaard
 
    `RPBE-vdW Description of Benzene Adsorption on Au(111)`__
 
