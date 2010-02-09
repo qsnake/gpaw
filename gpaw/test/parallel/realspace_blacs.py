@@ -85,7 +85,7 @@ def main(seed=42, dtype=float):
     print "C_nN"
     parallelprint(world, C_nN)
 
-if __name__ == '__main__':
+if __name__ in ['__main__', '__builtin__']:
     main(dtype=float)
     main(dtype=complex)
 
