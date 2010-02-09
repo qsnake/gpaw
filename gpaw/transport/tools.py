@@ -366,7 +366,7 @@ def get_lcao_density_matrix(calc):
     return d_skmm
 
 def generate_selfenergy_database(atoms, ntk, filename, direction=0, kt=0.1,
-                                 bias=[-3,3], depth=3):
+                                 bias=[-3,3], depth=3, comm=None):
     from gpaw.transport.sparse_matrix import Banded_Sparse_HSD, CP_Sparse_HSD, Se_Sparse_Matrix
     from gpaw.transport.selfenergy import LeadSelfEnergy
     from gpaw.transport.contour import Contour
@@ -394,7 +394,7 @@ def generate_selfenergy_database(atoms, ntk, filename, direction=0, kt=0.1,
             lead_couple_hsd.reset(s, pk, hl_spkcmm[s, pk], 'H', init=True)     
             lead_couple_hsd.reset(s, pk, dl_spkcmm[s, pk], 'D', init=True)          
     lead_se = LeadSelfEnergy(lead_hsd, lead_couple_hsd)
-    contour = Contour(kt, [fermi] * 2, bias, depth)    
+    contour = Contour(kt, [fermi] * 2, bias, depth, comm=comm)    
     path = contour.get_plot_path(ex=True)
     for nid, energy in zip(path.my_nids, path.my_energies):
         for kpt in wfs.kpt_u:
