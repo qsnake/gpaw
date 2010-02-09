@@ -140,7 +140,7 @@ def main(N=1000, seed=42, mprocs=2, nprocs=2, dtype=float):
     assert general_diag_dc_err < tol
     assert inverse_chol_err < tol
 
-if __name__ == '__main__':
+if __name__ in ['__main__', '__builtin__']:
     if not scalapack():
         print('Not built with ScaLAPACK. Test does not apply.')
     else:

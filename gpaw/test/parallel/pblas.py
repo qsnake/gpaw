@@ -140,7 +140,7 @@ def main(M=160, N=120, K=140, seed=42, mprocs=2, nprocs=2, dtype=float):
     assert r2k_err  < tol
     assert rk_err   < tol
 
-if __name__ == '__main__':
+if __name__ in ['__main__', '__builtin__']:
     if not scalapack():
         print('Not built with ScaLAPACK. Test does not apply.')
     else:
