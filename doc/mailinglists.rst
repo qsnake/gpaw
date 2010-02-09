@@ -4,17 +4,20 @@
 Mailing Lists
 =============
 
-The mailing list for GPAW users and developers:
+The mailing list for GPAW users:
 
-* gpaw-developers_
+* gpaw-users_
 
 You should consider also subscribing
 to the ASE :ase:`Mailing lists <mailinglists.html>`.
 
 The mailing lists below are of interest for active GPAW developers only:
 
+* gpaw-developers_
+
 * gpaw-svncheckins_
 
+.. _gpaw-users: http://listserv.fysik.dtu.dk/mailman/listinfo/gpaw-users
 .. _gpaw-developers: http://listserv.fysik.dtu.dk/mailman/listinfo/gpaw-developers
 .. _gridpaw-developer: http://lists.berlios.de/mailman/listinfo/gridpaw-developer
 .. _gridpaw-developer_fys: http://listserv.fysik.dtu.dk/mailman/listinfo/gridpaw-developer
