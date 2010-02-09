@@ -351,14 +351,22 @@ class Contour:
             depth += 1
             self.transfer(zones, depth)
 
-    def get_plot_path(self):
+    def get_plot_path(self, ex=False):
+        if ex:
+            limit = 6.5
+        else:    
+            limit = 5.
+        
         if self.plot_path is None:
-            self.plot_path = Path(-5. + self.fermi + self.plot_eta * 1.j,
-                              5. + self.fermi + self.plot_eta * 1.j,
+            self.plot_path = Path(-limit + self.fermi + self.plot_eta * 1.j,
+                              limit + self.fermi + self.plot_eta * 1.j,
                                7, 1,
                                type='linear')
             path = self.plot_path  
-            path.ne = 201
+            if ex:
+                path.ne = 261
+            else:    
+                path.ne = 201
             path.int_step = 10. / 200
            
             digits = int(np.ceil(np.log10(path.ne)))
