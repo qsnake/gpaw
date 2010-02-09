@@ -259,9 +259,12 @@ class Transport_Analysor:
         self.selfenergies = []
         tp = self.tp
         if tp.use_lead:
+            directions = ['left', 'right']
             for i in range(tp.lead_num):
                 self.selfenergies.append(LeadSelfEnergy(tp.lead_hsd[i],
-                                                     tp.lead_couple_hsd[i]))
+                                                     tp.lead_couple_hsd[i],
+                                                     tp.se_data_path,
+                                                     directions[i]))
     
                 self.selfenergies[i].set_bias(tp.bias[i])
             
@@ -274,24 +277,29 @@ class Transport_Analysor:
         tp.hsd.pk = k
       
     def calculate_green_function_of_k_point(self, s, k, energy, re_flag=0,
-                                                                 full=False):
+                                                    full=False, nid_flag=None):
         tp = self.tp 
         sigma = []
         for i in range(tp.lead_num):
-            sigma.append(self.selfenergies[i](energy))
+            sigma.append(self.selfenergies[i](energy, nid_flag))
         gr = tp.hsd.calculate_eq_green_function(energy, sigma, False, full)
         if re_flag==0:
             return gr
         else:
             return gr, sigma 
     
-    def calculate_transmission_and_dos(self, s, k, energies):
+    def calculate_transmission_and_dos(self, s, k, energies, nid_flags=None):
         self.reset_selfenergy_and_green_function(s, k)
         transmission_list = []
         dos_list = []
-        for energy in energies:
+        for num, energy in enumerate(energies):
+            if nid_flags is not None:
+                nid_flag = nid_flags[num]
+                nid_flag = str(self.tp.wfs.kpt_comm.rank) + '_' + str(nid_flag)
+            else:
+                nid_flag = None
             gr, sigma = self.calculate_green_function_of_k_point(s, k,
-                                                                   energy, 1)
+                                                energy, 1, nid_flag=nid_flag)
             trans_coff = []
             gamma = []
             for i in range(self.tp.lead_num):
@@ -1330,9 +1338,11 @@ class Transport_Analysor:
             cost['record'] = self.tp.record_time_cost
         return cost
 
-    def collect_transmission_and_dos(self, energies=None):
+    def collect_transmission_and_dos(self, energies=None, nids=None):
         if energies == None:
             energies = self.my_energies
+        if nids == None:
+            nids = self.my_nids
         tp = self.tp
       
         nlp = len(self.lead_pairs)
@@ -1344,7 +1354,7 @@ class Transport_Analysor:
         for s in range(ns):
             for q in range(npk):
                 local_tc_array[s, q], local_dos_array[s, q] = \
-                          self.calculate_transmission_and_dos(s, q, energies)
+                          self.calculate_transmission_and_dos(s, q, energies, nids)
         return local_tc_array, local_dos_array
 
     def save_ion_step(self):
@@ -1597,7 +1607,26 @@ class Transport_Plotter:
                 p.show()
             else:
                 pass
-    
+
+    def tc(self, bias_step, s=0, k=0, all=True):
+        step = self.bias_steps[bias_step]
+        tc_all = step.tc['E0']
+        num = 1
+        flag = True
+        while flag:
+            flag = False
+            for name in step.tc:
+                if name[0] == 'E' and name[1] == str(num):
+                    tc_all = np.append(tc_all, step.tc[name], axis=-1)
+                    flag = True
+                    num += 1
+        if all:
+            tc_all = np.sum(tc_all, axis=1) / tc_all.shape[1]
+            tc_all = np.sum(tc_all, axis=1)[s]
+        else:
+            tc_all = tc_all[s, k, 0]
+        return tc_all
+  
     def set_ele_steps(self, n_ion_step=None, n_bias_step=0):
         if n_ion_step != None:
             self.bias_steps = self.ion_steps[n_ion_step].bias_steps
@@ -1689,6 +1718,25 @@ class Transport_Plotter:
         #p.show()
         self.show(p)
 
+    def plot_tc(self, bias_step, s=0, k=0, all=True):
+        tc = self.tc(bias_step, s=s, k=k, all=all)
+        title = 'trasmission coefficeints'
+        xlabel = 'Energy(eV)'
+        ylabel = 'T'        
+        energies = self.energies
+        eye = np.zeros([10, 1]) + 1
+        step = self.bias_steps[bias_step]
+        f1 = (step.lead_fermis[0] + step.bias[0]) * eye
+        f2 = (step.lead_fermis[1] + step.bias[1]) * eye        
+        a1 = np.max(tc)
+        l1 = np.linspace(0, a1, 10)
+        import pylab as p
+        flags = self.flags
+        p.plot(energies, tc, flags[0], f1, l1, flags[1],f2, l1, flags[1])        
+        p.xlabel(xlabel)
+        p.ylabel(ylabel)
+        p.show()
+        
     def plot_bias_step_info(self, info, steps_indices, s, k,
                                             height=None, unit=None,
                                         all=False, show=True, dense_level=0):
@@ -2009,14 +2057,16 @@ class Transport_Plotter:
         if not spinpol:
             current *= 2
         from scipy import interpolate
-        tck = interpolate.splrep(bias, current, s=0)
-        numb = len(bias)
-        newbias = np.linspace(bias[0], bias[-1], numb * (dense_level + 1))
-        newcurrent = interpolate.splev(newbias, tck, der=0)
-        newcurrent *= unit
+        bias = abs(np.array(bias))
+        #tck = interpolate.splrep(bias, current, s=0)
+        #numb = len(bias)
+        #newbias = np.linspace(bias[0], bias[-1], numb * (dense_level + 1))
+        #newcurrent = interpolate.splev(newbias, tck, der=0)
+        #newcurrent *= unit
+        current *= unit
         ylabel = '$ln(I/V^2)$'
-        ydata = np.log(abs(newcurrent[1:]) / (newbias[1:] * newbias[1:]))
-        xdata = 1 / newbias[1:]
+        ydata = np.log(abs(current) / (bias * bias))
+        xdata = 1 / bias
         p.plot(xdata, ydata, self.flags[0])
         self.set_options('1/V', ylabel)
         self.show(p)      
