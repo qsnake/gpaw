@@ -656,6 +656,5 @@ class Contour:
         loc_energies = np.array_split(energies, self.comm.size)[self.comm.rank]
         loc_weights = np.array_split(weights, self.comm.size)[self.comm.rank]
         return loc_nids, loc_energies, loc_weights
-    
-    
-    
+
+
