@@ -261,6 +261,7 @@ void pdsyrk_(char* uplo, char* trans, int* n, int* k,
 	     double* a, int* ia, int* ja, int* desca,
 	     double* beta,
 	     double* c, int* ic, int* jc, int* descc);
+
 void pzherk_(char* uplo, char* trans, int* n, int* k,
 	     void* alpha,
 	     void* a, int* ia, int* ja, int* desca,
@@ -513,8 +514,8 @@ PyObject* blacs_destroy(PyObject *self, PyObject *args)
 
 PyObject* scalapack_set(PyObject *self, PyObject *args)
 {
-  PyArrayObject* a; //matrix;
-  PyArrayObject* desca; //descriptor
+  PyArrayObject* a; // matrix;
+  PyArrayObject* desca; // descriptor
   Py_complex alpha;
   Py_complex beta;
   int m, n;
@@ -538,11 +539,11 @@ PyObject* scalapack_set(PyObject *self, PyObject *args)
 
 PyObject* scalapack_redist(PyObject *self, PyObject *args)
 {
-  PyArrayObject* a; //source matrix
-  PyArrayObject* b; //destination matrix
-  PyArrayObject* desca; //source descriptor
-  PyArrayObject* descb; //destination descriptor
-  PyObject* comm_obj = Py_None; //intermediate communicator, must
+  PyArrayObject* a; // source matrix
+  PyArrayObject* b; // destination matrix
+  PyArrayObject* desca; // source descriptor
+  PyArrayObject* descb; // destination descriptor
+  PyObject* comm_obj = Py_None; // intermediate communicator, must
                                 // encompass adesc + bdesc
   char order='R';
   char uplo;
@@ -629,6 +630,7 @@ PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args)
   int i_work;
   double d_work;
   double_complex c_work;
+
   if (a->descr->type_num == PyArray_DOUBLE)
     {
       pdsyevd_(&jobz, &uplo, &n,
@@ -649,6 +651,7 @@ PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args)
       lwork = (int)(c_work);
       lrwork = (int)(d_work);
     }
+
   if (info != 0)
     {
       PyErr_SetString(PyExc_RuntimeError,
@@ -756,6 +759,7 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   int i_work;
   double d_work[3];
   double_complex c_work;
+
   if (a->descr->type_num == PyArray_DOUBLE)
     {
       pdsyevx_(&jobz, &range, &uplo, &n,
@@ -780,18 +784,19 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
       lwork = (int)(c_work);
       lrwork = (int)(d_work[0]);
     }
-  
+
   if (info != 0) {
     printf ("info = %d", info);
     PyErr_SetString(PyExc_RuntimeError,
                     "scalapack_diagonalize_ex error in query.");
     return NULL;
   }
-  
+
   // Computation part
   // lwork = lwork + (n-1)*n; // this is a ridiculous amount of workspace
   liwork = i_work;
   iwork = GPAW_MALLOC(int, liwork);
+
   if (a->descr->type_num == PyArray_DOUBLE)
     {
       double* work = GPAW_MALLOC(double, lwork);
@@ -836,6 +841,7 @@ PyObject* scalapack_diagonalize_mr3(PyObject *self, PyObject *args)
   // Standard driver for MRRR algorithm
   // Computes 'iu' eigenvalues and eigenvectors
   // http://icl.cs.utk.edu/lapack-forum/archives/scalapack/msg00159.html
+
   PyArrayObject* a; // Hamiltonian matrix
   PyArrayObject* desca; // Hamintonian matrix descriptor
   PyArrayObject* z; // eigenvector matrix
@@ -879,6 +885,7 @@ PyObject* scalapack_diagonalize_mr3(PyObject *self, PyObject *args)
   int i_work;
   double d_work[3];
   double_complex c_work;
+
   if (a->descr->type_num == PyArray_DOUBLE)
     {
       pdsyevr_(&jobz, &range, &uplo, &n,
@@ -907,14 +914,14 @@ PyObject* scalapack_diagonalize_mr3(PyObject *self, PyObject *args)
   if (info != 0) {
     printf ("info = %d", info);
     PyErr_SetString(PyExc_RuntimeError,
-                    "scalapack_diagonalize_ex error in query.");
+                    "scalapack_diagonalize_evr error in query.");
     return NULL;
   }
   
   // Computation part
-  // lwork = lwork + (n-1)*n; // this is a ridiculous amount of workspace
   liwork = i_work;
   iwork = GPAW_MALLOC(int, liwork);
+
   if (a->descr->type_num == PyArray_DOUBLE)
     {
       double* work = GPAW_MALLOC(double, lwork);
@@ -1010,7 +1017,6 @@ PyObject* scalapack_general_diagonalize_dc(PyObject *self, PyObject *args)
   int i_work;
   double d_work;
   double_complex c_work;
-
   // NGST Query 
   if (a->descr->type_num == PyArray_DOUBLE)
     {
@@ -1028,6 +1034,7 @@ PyObject* scalapack_general_diagonalize_dc(PyObject *self, PyObject *args)
 		&scale, (void*)&c_work, &querywork, &info);
       lwork = (int)(c_work);
     }
+
   if (info != 0) {
     PyErr_SetString(PyExc_RuntimeError,
                     "scalapack_general_diagonalize_dc error in NGST query.");
@@ -1052,6 +1059,7 @@ PyObject* scalapack_general_diagonalize_dc(PyObject *self, PyObject *args)
 		&scale, (void*)work, &lwork, &info);      
       free(work);
     }
+
   if (info != 0) {
     PyErr_SetString(PyExc_RuntimeError,
                     "scalapack_general_diagonalize_dc error in NGST compute.");
@@ -1083,12 +1091,14 @@ PyObject* scalapack_general_diagonalize_dc(PyObject *self, PyObject *args)
       lwork = (int)(c_work);
       lrwork = (int)(d_work);
     }
+
   if (info != 0)
     {
       PyErr_SetString(PyExc_RuntimeError,
 		      "scalapack_general_diagonalize_dc error in EVD query.");
       return NULL;
     }
+
   // EVD Computation
   liwork = i_work;
   iwork = GPAW_MALLOC(int, liwork);
@@ -1210,6 +1220,7 @@ PyObject* scalapack_general_diagonalize_ex(PyObject *self, PyObject *args)
   int i_work;
   double d_work[3];
   double_complex c_work;
+
   if (a->descr->type_num == PyArray_DOUBLE)
     {
       pdsygvx_(&ibtype, &jobz, &range, &uplo, &n,
@@ -1286,7 +1297,217 @@ PyObject* scalapack_general_diagonalize_ex(PyObject *self, PyObject *args)
   return returnvalue;
 }
 
+#ifdef GPAW_MR3
+PyObject* scalapack_general_diagonalize_mr3(PyObject *self, PyObject *args)
+{
+  // General driver for MRRR algorithm
+  // Computes 'iu' eigenvalues and eigenvectors
+  // http://icl.cs.utk.edu/lapack-forum/archives/scalapack/msg00159.html
 
+  PyArrayObject* a; // Hamiltonian matrix
+  PyArrayObject* b; // overlap matrix
+  PyArrayObject* desca; // Hamintonian matrix descriptor
+  PyArrayObject* z; // eigenvector matrix
+  PyArrayObject* w; // eigenvalue array
+  int ibtype  =  1; // Solve H*psi = lambda*S*psi
+  int il = 1;  // not used when range = 'A' or 'V'
+  int iu;
+  int eigvalm, nz;
+  int one = 1;
+
+  double vl, vu; // not used when range = 'A' or 'I'
+
+  char jobz = 'V'; // eigenvectors also
+  char range = 'I'; // eigenvalues il-th thru iu-th
+  char uplo;
+
+  double scale;
+
+  if (!PyArg_ParseTuple(args, "OOciOOO", &a, &desca, &uplo, &iu,
+			&b, &z, &w))
+    return NULL;
+
+  // a desc
+  // int a_ConTxt = INTP(desca)[1];
+  int a_m      = INTP(desca)[2];
+  int a_n      = INTP(desca)[3];
+
+  // Only square matrices
+  assert (a_m == a_n);
+  int n = a_n;
+
+  // zdesc = adesc = bdesc can be relaxed a bit according to pdsyevd.f
+
+  // If process not on BLACS grid, then return.
+  // if (a_ConTxt == -1) Py_RETURN_NONE;
+
+  // Cholesky Decomposition
+  int info;
+  if (b->descr->type_num == PyArray_DOUBLE)
+    pdpotrf_(&uplo, &n, DOUBLEP(b), &one, &one, INTP(desca), &info);
+  else
+    pzpotrf_(&uplo, &n, (void*)COMPLEXP(b), &one, &one, INTP(desca), &info);
+
+  if (info != 0)
+    {
+      PyErr_SetString(PyExc_RuntimeError,
+		      "scalapack_general_diagonalize_mr3 error in Cholesky.");
+      return NULL;
+    }
+
+  // Query variables
+  int querywork = -1;
+  int* iwork;
+  int liwork;
+  int lwork;
+  int lrwork;
+  int i_work;
+  double d_work[3];
+  double_complex c_work;
+  // NGST Query 
+  if (a->descr->type_num == PyArray_DOUBLE)
+    {
+      pdsyngst_(&ibtype, &uplo, &n,
+		DOUBLEP(a), &one, &one, INTP(desca),
+		DOUBLEP(b), &one, &one, INTP(desca),
+		&scale, d_work, &querywork, &info);
+      lwork = (int)(d_work[0]);
+    } 
+  else
+    {
+      pzhengst_(&ibtype, &uplo, &n,
+		(void*)COMPLEXP(a), &one, &one, INTP(desca),
+		(void*)COMPLEXP(b), &one, &one, INTP(desca),
+		&scale, (void*)&c_work, &querywork, &info);
+      lwork = (int)(c_work);
+    }
+
+  if (info != 0) {
+    PyErr_SetString(PyExc_RuntimeError,
+                    "scalapack_general_diagonalize_mr3 error in NGST query.");
+    return NULL;
+  }
+
+  // NGST Compute
+  if (a->descr->type_num == PyArray_DOUBLE)
+    {
+      double* work = GPAW_MALLOC(double, lwork);
+      pdsyngst_(&ibtype, &uplo, &n,
+		DOUBLEP(a), &one, &one, INTP(desca),
+		DOUBLEP(b), &one, &one, INTP(desca),
+		&scale, work, &lwork, &info);
+      free(work);
+    }  
+  else 
+    {
+      double_complex* work = GPAW_MALLOC(double_complex, lwork);
+      pzhengst_(&ibtype, &uplo, &n,
+		(void*)COMPLEXP(a), &one, &one, INTP(desca),
+		(void*)COMPLEXP(b), &one, &one, INTP(desca),
+		&scale, (void*)work, &lwork, &info);      
+      free(work);
+    }
+
+  if (info != 0) {
+    PyErr_SetString(PyExc_RuntimeError,
+                    "scalapack_general_diagonalize_mr3 error in NGST compute.");
+    return NULL;
+  }
+
+  // NOTE: Scale is always equal to 1.0 above. In future version of ScaLAPACK, we
+  // may need to rescale eigenvalues by scale. This can be accomplised by using
+  // the BLAS1 d/zscal. See pdsygvx.f
+
+  // EVR Query
+  if (a->descr->type_num == PyArray_DOUBLE)
+    {
+      pdsyevr_(&jobz, &range, &uplo, &n,
+	       DOUBLEP(a), &one, &one, INTP(desca),
+	       &vl, &vu, &il, &iu, &eigvalm,
+	       &nz, DOUBLEP(w), 
+	       DOUBLEP(z), &one, &one, INTP(desca),
+	       d_work, &querywork,  &i_work, &querywork,
+	       &info);
+      lwork = (int)(d_work[0]);
+    }
+  else
+    {
+      pzheevr_(&jobz, &range, &uplo, &n,
+	       (void*)COMPLEXP(a), &one, &one, INTP(desca),
+	       &vl, &vu, &il, &iu, &eigvalm,
+               &nz, DOUBLEP(w),
+               (void*)COMPLEXP(z), &one, &one, INTP(desca),
+               (void*)&c_work, &querywork, d_work, &querywork,
+               &i_work, &querywork,
+               &info);
+      lwork = (int)(c_work);
+      lrwork = (int)(d_work[0]);
+    }
+
+  if (info != 0) {
+    printf ("info = %d", info);
+    PyErr_SetString(PyExc_RuntimeError,
+                    "scalapack_general_diagonalize_evr error in query.");
+    return NULL;
+  }
+
+  // EVR Computation
+  liwork = i_work;
+  iwork = GPAW_MALLOC(int, liwork);
+  if (a->descr->type_num == PyArray_DOUBLE)
+    {
+      double* work = GPAW_MALLOC(double, lwork);
+      pdsyevr_(&jobz, &range, &uplo, &n,
+               DOUBLEP(a), &one, &one, INTP(desca),
+               &vl, &vu, &il, &iu, &eigvalm,
+               &nz, DOUBLEP(w),
+               DOUBLEP(z), &one, &one, INTP(desca),
+               work, &lwork, iwork, &liwork,
+               &info);
+      free(work);
+    } 
+  else 
+    {
+      double_complex* work = GPAW_MALLOC(double_complex, lwork);
+      double* rwork = GPAW_MALLOC(double, lrwork);
+      pzheevr_(&jobz, &range, &uplo, &n,
+               (void*)COMPLEXP(a), &one, &one, INTP(desca),
+               &vl, &vu, &il, &iu, &eigvalm,
+               &nz, DOUBLEP(w),
+               (void*)COMPLEXP(z), &one, &one, INTP(desca), 
+	       (void*)work, &lwork, rwork, &lrwork,
+               iwork, &liwork,
+               &info);
+      free(rwork);
+      free(work);
+    }
+  free(iwork);
+
+  // Backtransformation to the original problem
+  char trans;
+  double d_one = 1.0;
+  double_complex c_one = 1.0;
+
+  if (uplo == 'U')
+    trans = 'N';
+  else
+    trans = 'T';
+
+  if (a->descr->type_num == PyArray_DOUBLE)
+    pdtrsm_("L", &uplo, &trans, "N", &n, &n, &d_one,
+	    DOUBLEP(b), &one, &one, INTP(desca),
+	    DOUBLEP(z), &one, &one, INTP(desca));
+  else
+    pztrsm_("L", &uplo, &trans, "N", &n, &n, (void*)&c_one,
+	    (void*)COMPLEXP(b), &one, &one, INTP(desca),
+	    (void*)COMPLEXP(z), &one, &one, INTP(desca));
+
+  // If this fails, fewer eigenvalues than requested were computed.
+  assert (eigvalm == iu); 
+  PyObject* returnvalue = Py_BuildValue("i", info);
+  return returnvalue;
+}
+#endif
 
 PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args)
 {

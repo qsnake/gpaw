@@ -83,16 +83,19 @@ PyObject* scalapack_set(PyObject *self, PyObject *args);
 PyObject* scalapack_redist(PyObject *self, PyObject *args);
 PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args);
 PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args);
+#ifdef GPAW_MR3
+PyObject* scalapack_diagonalize_mr3(PyObject *self, PyObject *args);
+#endif
 PyObject* scalapack_general_diagonalize_dc(PyObject *self, PyObject *args);
 PyObject* scalapack_general_diagonalize_ex(PyObject *self, PyObject *args);
+#ifdef GPAW_MR3
+PyObject* scalapack_general_diagonalize_mr3(PyObject *self, PyObject *args);
+#endif 
 PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args);
 PyObject* pblas_gemm(PyObject *self, PyObject *args);
 PyObject* pblas_gemv(PyObject *self, PyObject *args);
 PyObject* pblas_r2k(PyObject *self, PyObject *args);
 PyObject* pblas_rk(PyObject *self, PyObject *args);
-#ifdef GPAW_MR3
-PyObject* scalapack_diagonalize_mr3(PyObject *self, PyObject *args);
-#endif 
 #endif
 
 // Moving least squares interpolation
@@ -164,25 +167,31 @@ static PyMethodDef functions[] = {
   {"scalapack_redist",      scalapack_redist,     METH_VARARGS, 0},
   {"scalapack_diagonalize_dc", scalapack_diagonalize_dc, METH_VARARGS, 0}, 
   {"scalapack_diagonalize_ex", scalapack_diagonalize_ex, METH_VARARGS, 0},
-  {"scalapack_general_diagonalize_dc", scalapack_general_diagonalize_dc, METH_VARARGS, 0},
-  {"scalapack_general_diagonalize_ex", scalapack_general_diagonalize_ex, METH_VARARGS, 0},
+#ifdef GPAW_MR3
+  {"scalapack_diagonalize_mr3", scalapack_diagonalize_mr3, METH_VARARGS, 0},
+#endif // GPAW_MR3
+  {"scalapack_general_diagonalize_dc", 
+   scalapack_general_diagonalize_dc, METH_VARARGS, 0},
+  {"scalapack_general_diagonalize_ex", 
+   scalapack_general_diagonalize_ex, METH_VARARGS, 0},
+#ifdef GPAW_MR3
+  {"scalapack_general_diagonalize_mr3",
+   scalapack_general_diagonalize_mr3, METH_VARARGS, 0},
+#endif // GPAW_MR3
   {"scalapack_inverse_cholesky", scalapack_inverse_cholesky, METH_VARARGS, 0},
   {"pblas_gemm", pblas_gemm, METH_VARARGS, 0},
   {"pblas_gemv", pblas_gemv, METH_VARARGS, 0},
   {"pblas_r2k", pblas_r2k, METH_VARARGS, 0},
   {"pblas_rk", pblas_rk, METH_VARARGS, 0},
-#ifdef GPAW_MR3
-  {"scalapack_diagonalize_mr3", scalapack_diagonalize_mr3, METH_VARARGS, 0},
-#endif
-#endif
+#endif // GPAW_WITH_SL && PARALLEL
 #ifdef GPAW_HPM
   {"hpm_start", ibm_hpm_start, METH_VARARGS, 0},
   {"hpm_stop", ibm_hpm_stop, METH_VARARGS, 0},
-#endif
+#endif // GPAW_HPM
 #ifdef GPAW_CRAYPAT
   {"craypat_region_begin", craypat_region_begin, METH_VARARGS, 0},
   {"craypat_region_end", craypat_region_end, METH_VARARGS, 0},
-#endif
+#endif // GPAW_CRAYPAT
   {"mlsqr", mlsqr, METH_VARARGS, 0}, 
   {0, 0, 0, 0}
 };
@@ -267,12 +276,12 @@ main(int argc, char **argv)
 	  printf("%s \n", procname);
       }
   }
-#endif
+#endif // GPAW_MPI_MAP
 
 #ifdef GPAW_HPM
   HPM_Init();
   HPM_Start("GPAW");
-#endif
+#endif 
 
 
 #ifdef GPAW_MPI_DEBUG

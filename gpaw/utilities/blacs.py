@@ -160,6 +160,28 @@ def scalapack_general_diagonalize_ex(desca, a, b, z, w, uplo, iu=None):
         # 2 means eigenvectors not guaranteed to be orthogonal        
         raise RuntimeError('scalapack_general_diagonalize_ex error: %d' % info)
 
+def scalapack_general_diagonalize_mr3(desca, a, b, z, w, uplo, iu=None):
+    """Diagonalize a using MRRR algorithm.
+
+    Solves the eigenvalue problem a z = w b z."""
+    assert desca.check(a)
+    assert desca.check(b)
+    assert desca.check(z)
+    # only symmetric matrices
+    assert desca.gshape[0] == desca.gshape[1]
+    if iu is None: # calculate all eigenvectors and eigenvalues
+        iu = desca.gshape[0]
+    assert 1 < iu <= desca.gshape[0]
+    # still need assert for eigenvalues
+    assert uplo in ['L', 'U']
+    if not desca.blacsgrid.is_active():
+        return
+    assert desca.gshape[0] == len(w)
+    info = _gpaw.scalapack_general_diagonalize_mr3(a, desca.asarray(), 
+                                                   switch_lu[uplo], 
+                                                   iu, b, z, w)
+    if info != 0:
+        raise RuntimeError('scalapack_general_diagonalize_mr3 error: %d' % info)
 
 def scalapack_inverse_cholesky(desca, a, uplo):
     assert desca.check(a)
