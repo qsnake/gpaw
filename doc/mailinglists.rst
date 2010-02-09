@@ -19,8 +19,8 @@ The mailing lists below are of interest for active GPAW developers only:
 
 .. _gpaw-users: http://listserv.fysik.dtu.dk/mailman/listinfo/gpaw-users
 .. _gpaw-developers: http://listserv.fysik.dtu.dk/mailman/listinfo/gpaw-developers
-.. _gridpaw-developer: http://lists.berlios.de/mailman/listinfo/gridpaw-developer
-.. _gridpaw-developer_fys: http://listserv.fysik.dtu.dk/mailman/listinfo/gridpaw-developer
+.. _gridpaw-developer_berlios: http://lists.berlios.de/mailman/listinfo/gridpaw-developer
+.. _gridpaw-developer: http://listserv.fysik.dtu.dk/mailman/listinfo/gridpaw-developer
 .. _gpaw-svncheckins: https://listserv.fysik.dtu.dk/mailman/listinfo/gpaw-svncheckins
 .. _ase-developers: https://listserv.fysik.dtu.dk/mailman/listinfo/ase-developers
 .. _ase-svncheckins: https://listserv.fysik.dtu.dk/mailman/listinfo/ase-svncheckins
@@ -29,6 +29,8 @@ The mailing lists below are of interest for active GPAW developers only:
 .. _campos-devel: https://listserv.fysik.dtu.dk/mailman/listinfo/campos-devel
 .. _BerliOS: http://www.berlios.de
 
+For topics before Oct 20 2009 browse gridpaw-developer_.
+The list is inactive and serves as an archive only.
 
 Internet Relay Chat
 ===================
