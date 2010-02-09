@@ -15,18 +15,19 @@ import os
 from sys import executable
 
 srcpath = 'http://wiki.fysik.dtu.dk/gpaw-files'
-#srcpath = 'http://dcwww.camp.dtu.dk/~askhl/gpaw-files'
 
-def get(path, names, target=None):
+def get(path, names, target=None, source=None):
     """Get files from web-server.
 
     Returns True if something new was fetched."""
     
     if target is None:
         target = path
+    if source is None:
+        source = srcpath
     got_something = False
     for name in names:
-        src = os.path.join(srcpath, path, name)
+        src = os.path.join(source, path, name)
         dst = os.path.join(target, name)
 
         if not os.path.isfile(dst):
@@ -104,6 +105,7 @@ get('tutorials/lattice_constants', ['Fe_conv_k.png', 'Fe_conv_h.png'])
 get('tutorials/negfstm', ['fullscan.png', 'linescan.png'])
 
 # Retrieve latest code coverage pages:
-if get('.', ['gpaw-coverage-latest.tar.gz'], '_static'):
+if get('.', ['gpaw-coverage-latest.tar.gz'], '_static',
+       source='http://dcwww.camp.dtu.dk/~s032082'):
     print 'Extracting coverage pages ...'
     os.system('tar --directory=devel -xzf _static/gpaw-coverage-latest.tar.gz')
