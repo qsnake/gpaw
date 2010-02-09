@@ -11,6 +11,7 @@ import sys
 import numpy as np
 
 from gpaw.mpi import world, rank
+from gpaw.test import equal
 from gpaw.blacs import BlacsGrid, Redistributor, parallelprint
 from gpaw.utilities import scalapack
 from gpaw.utilities.blas import gemm, gemv, r2k, rk
@@ -19,7 +20,7 @@ from gpaw.utilities.blacs import pblas_simple_gemm, pblas_simple_gemv, \
 
 import _gpaw
 
-tol = 2.0e-13 # may need to be be increased if the mprocs-by-nprocs \
+tol = 3.0e-13 # may need to be be increased if the mprocs-by-nprocs \
     # BLACS grid becomes larger
 
 def main(M=160, N=120, K=140, seed=42, mprocs=2, nprocs=2, dtype=float):
@@ -135,10 +136,10 @@ def main(M=160, N=120, K=140, seed=42, mprocs=2, nprocs=2, dtype=float):
     r2k_err  = world.sum(r2k_err)
     rk_err   = world.sum(rk_err)
 
-    assert gemm_err < tol
-    assert gemv_err < tol
-    assert r2k_err  < tol
-    assert rk_err   < tol
+    equal(gemm_err, 0, tol)
+    equal(gemv_err, 0, tol)
+    equal(r2k_err, 0, tol)
+    equal(rk_err,0, tol)
 
 if __name__ in ['__main__', '__builtin__']:
     if not scalapack():
