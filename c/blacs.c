@@ -57,6 +57,10 @@ int Csys2blacs_handle_(MPI_Comm SysCtxt);
 #define   pzhegvx_  pzhegvx
 #define   pdsyngst_ pdsyngst
 #define   pzhengst_ pzhengst
+#ifdef GPAW_MR3
+#define   pdsyevr_  pdsyevr
+#define   pzheevr_  pzheevr
+#endif // GPAW_MR3
 
 #define   pdgemm_  pdgemm
 #define   pzgemm_  pzgemm
@@ -187,6 +191,29 @@ void pzhengst_(int* ibtype, char* uplo, int* n,
 	       void* a, int* ia, int* ja, int* desca,
 	       void* b, int* ib, int* jb, int* descb,
 	       double* scale, void* work, int* lwork, int* info);
+
+#ifdef GPAW_MR3
+void pdsyevr_(char* jobz, char* range,
+              char* uplo, int* n,
+              double* a, int* ia, int* ja, int* desca,
+              double* vl, double* vu,
+              int* il, int* iu, 
+              int* m, int* nz, double* w, 
+              double* z, int* iz, int* jz, int* descz,
+              double* work, int* lwork, int* iwork, int* liwork,
+              int* info);
+
+void pzheevr_(char* jobz, char* range,
+              char* uplo, int* n,
+              void* a, int* ia, int* ja, int* desca,
+              double* vl, double* vu,
+              int* il, int* iu, 
+              int* m, int* nz,  double* w, 
+              void* z, int* iz, int* jz, int* descz,
+              void* work, int* lwork, double* rwork, int* lrwork,
+              int* iwork, int* liwork,
+              int* info);
+#endif // GPAW_MR3
 
 // pblas
 void pdgemm_(char* transa, char* transb, int* m, int* n, int* k,
@@ -802,6 +829,127 @@ PyObject* scalapack_diagonalize_ex(PyObject *self, PyObject *args)
   PyObject* returnvalue = Py_BuildValue("i", info);
   return returnvalue;
 }
+
+#ifdef GPAW_MR3
+PyObject* scalapack_diagonalize_mr3(PyObject *self, PyObject *args)
+{
+  // Standard driver for MRRR algorithm
+  // Computes 'iu' eigenvalues and eigenvectors
+  // http://icl.cs.utk.edu/lapack-forum/archives/scalapack/msg00159.html
+  PyArrayObject* a; // Hamiltonian matrix
+  PyArrayObject* desca; // Hamintonian matrix descriptor
+  PyArrayObject* z; // eigenvector matrix
+  PyArrayObject* w; // eigenvalue array
+  int il = 1;  // not used when range = 'A' or 'V'
+  int iu;
+  int eigvalm, nz;
+  int one = 1;
+
+  double vl, vu; // not used when range = 'A' or 'I'
+
+  char jobz = 'V'; // eigenvectors also
+  char range = 'I'; // eigenvalues il-th thru iu-th
+  char uplo;
+
+  if (!PyArg_ParseTuple(args, "OOciOO", &a, &desca, &uplo, &iu,
+                        &z, &w))
+    return NULL;
+
+  // a desc
+  // int a_ConTxt = INTP(desca)[1];
+  int a_m      = INTP(desca)[2];
+  int a_n      = INTP(desca)[3];
+
+  // Only square matrices
+  assert (a_m == a_n);
+  int n = a_n;
+
+  // zdesc = adesc = bdesc; required by pdsyevx.f
+
+  // If process not on BLACS grid, then return.
+  // if (a_ConTxt == -1) Py_RETURN_NONE;
+
+  // Query part, need to find the optimal size of a number of work arrays
+  int info;
+  int querywork = -1;
+  int* iwork;
+  int liwork;
+  int lwork;
+  int lrwork;
+  int i_work;
+  double d_work[3];
+  double_complex c_work;
+  if (a->descr->type_num == PyArray_DOUBLE)
+    {
+      pdsyevr_(&jobz, &range, &uplo, &n,
+	       DOUBLEP(a), &one, &one, INTP(desca),
+	       &vl, &vu, &il, &iu, &eigvalm,
+	       &nz, DOUBLEP(w), 
+	       DOUBLEP(z), &one, &one, INTP(desca),
+	       d_work, &querywork,  &i_work, &querywork,
+	       &info);
+      lwork = (int)(d_work[0]);
+    }
+  else
+    {
+      pzheevr_(&jobz, &range, &uplo, &n,
+	       (void*)COMPLEXP(a), &one, &one, INTP(desca),
+	       &vl, &vu, &il, &iu, &eigvalm,
+               &nz, DOUBLEP(w),
+               (void*)COMPLEXP(z), &one, &one, INTP(desca),
+               (void*)&c_work, &querywork, d_work, &querywork,
+               &i_work, &querywork,
+               &info);
+      lwork = (int)(c_work);
+      lrwork = (int)(d_work[0]);
+    }
+  
+  if (info != 0) {
+    printf ("info = %d", info);
+    PyErr_SetString(PyExc_RuntimeError,
+                    "scalapack_diagonalize_ex error in query.");
+    return NULL;
+  }
+  
+  // Computation part
+  // lwork = lwork + (n-1)*n; // this is a ridiculous amount of workspace
+  liwork = i_work;
+  iwork = GPAW_MALLOC(int, liwork);
+  if (a->descr->type_num == PyArray_DOUBLE)
+    {
+      double* work = GPAW_MALLOC(double, lwork);
+      pdsyevr_(&jobz, &range, &uplo, &n,
+               DOUBLEP(a), &one, &one, INTP(desca),
+               &vl, &vu, &il, &iu, &eigvalm,
+               &nz, DOUBLEP(w),
+               DOUBLEP(z), &one, &one, INTP(desca),
+               work, &lwork, iwork, &liwork,
+               &info);
+      free(work);
+    } 
+  else 
+    {
+      double_complex* work = GPAW_MALLOC(double_complex, lwork);
+      double* rwork = GPAW_MALLOC(double, lrwork);
+      pzheevr_(&jobz, &range, &uplo, &n,
+               (void*)COMPLEXP(a), &one, &one, INTP(desca),
+               &vl, &vu, &il, &iu, &eigvalm,
+               &nz, DOUBLEP(w),
+               (void*)COMPLEXP(z), &one, &one, INTP(desca), 
+	       (void*)work, &lwork, rwork, &lrwork,
+               iwork, &liwork,
+               &info);
+      free(rwork);
+      free(work);
+    }
+  free(iwork);
+  
+  // If this fails, fewer eigenvalues than requested were computed.
+  assert (eigvalm == iu); 
+  PyObject* returnvalue = Py_BuildValue("i", info);
+  return returnvalue;
+}
+#endif
 
 PyObject* scalapack_general_diagonalize_dc(PyObject *self, PyObject *args)
 {

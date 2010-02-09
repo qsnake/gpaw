@@ -48,8 +48,8 @@ PyObject* NewLocalizedFunctionsObject(PyObject *self, PyObject *args);
 PyObject* NewOperatorObject(PyObject *self, PyObject *args);
 PyObject* NewSplineObject(PyObject *self, PyObject *args);
 PyObject* NewTransformerObject(PyObject *self, PyObject *args);
-PyObject *pc_potential(PyObject *self, PyObject *args);
-PyObject *pc_potential_value(PyObject *self, PyObject *args);
+PyObject* pc_potential(PyObject *self, PyObject *args);
+PyObject* pc_potential_value(PyObject *self, PyObject *args);
 PyObject* elementwise_multiply_add(PyObject *self, PyObject *args);
 PyObject* utilities_gaussian_wave(PyObject *self, PyObject *args);
 PyObject* utilities_vdot(PyObject *self, PyObject *args);
@@ -63,8 +63,8 @@ PyObject* localize(PyObject *self, PyObject *args);
 PyObject* NewXCFunctionalObject(PyObject *self, PyObject *args);
 PyObject* NewMGGAFunctionalObject(PyObject *self, PyObject *args);
 PyObject* NewlxcXCFunctionalObject(PyObject *self, PyObject *args);
-PyObject *exterior_electron_density_region(PyObject *self, PyObject *args);
-PyObject *plane_wave_grid(PyObject *self, PyObject *args);
+PyObject* exterior_electron_density_region(PyObject *self, PyObject *args);
+PyObject* plane_wave_grid(PyObject *self, PyObject *args);
 PyObject* overlap(PyObject *self, PyObject *args);
 PyObject* wigner_seitz_grid(PyObject *self, PyObject *args);
 PyObject* vdw(PyObject *self, PyObject *args);
@@ -90,6 +90,9 @@ PyObject* pblas_gemm(PyObject *self, PyObject *args);
 PyObject* pblas_gemv(PyObject *self, PyObject *args);
 PyObject* pblas_r2k(PyObject *self, PyObject *args);
 PyObject* pblas_rk(PyObject *self, PyObject *args);
+#ifdef GPAW_MR3
+PyObject* scalapack_diagonalize_mr3(PyObject *self, PyObject *args);
+#endif 
 #endif
 
 // Moving least squares interpolation
@@ -168,6 +171,9 @@ static PyMethodDef functions[] = {
   {"pblas_gemv", pblas_gemv, METH_VARARGS, 0},
   {"pblas_r2k", pblas_r2k, METH_VARARGS, 0},
   {"pblas_rk", pblas_rk, METH_VARARGS, 0},
+#ifdef GPAW_MR3
+  {"scalapack_diagonalize_mr3", scalapack_diagonalize_mr3, METH_VARARGS, 0},
+#endif
 #endif
 #ifdef GPAW_HPM
   {"hpm_start", ibm_hpm_start, METH_VARARGS, 0},

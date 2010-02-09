@@ -96,6 +96,31 @@ def scalapack_diagonalize_ex(desca, a, z, w, uplo, iu=None):
         # 2 means eigenvectors not guaranteed to be orthogonal
         raise RuntimeError('scalapack_diagonalize_ex error: %d' % info)
 
+def scalapack_diagonalize_mr3(desca, a, z, w, uplo, iu=None):
+    """Diagonalize a using MRRR algorithm.
+
+    Solves the eigenvalue problem a z = w z.
+
+    Eigenvectors stored in ascending order, i.e. most negative first
+    XXX How are eigenvectors ordered?"""
+    assert desca.check(a)
+    assert desca.check(z)
+    # only symmetric matrices
+    assert desca.gshape[0] == desca.gshape[1]
+    if iu is None: # calculate all eigenvectors and eigenvalues
+        iu = desca.gshape[0]
+    assert 1 < iu <= desca.gshape[0]
+    # stil need assert for eigenvalues
+    assert uplo in ['L', 'U']
+    if not desca.blacsgrid.is_active():
+        return
+    assert desca.gshape[0] == len(w)
+    info = _gpaw.scalapack_diagonalize_mr3(a, desca.asarray(), 
+                                           switch_lu[uplo], 
+                                           iu, z, w)
+    if info != 0:
+        raise RuntimeError('scalapack_diagonalize_mr3 error: %d' % info)
+
 def scalapack_general_diagonalize_dc(desca, a, b, z, w, uplo):
     """Diagonalize a using the divide & conquer algorithm.
     XXX does this work?"""
