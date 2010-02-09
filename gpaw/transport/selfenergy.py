@@ -1,34 +1,48 @@
 from gpaw.transport.tools import dagger, dot
-from gpaw.transport.sparse_matrix import Banded_Sparse_Matrix
+from gpaw.transport.sparse_matrix import Banded_Sparse_Matrix, Se_Sparse_Matrix
 import copy
 import numpy as np
+import cPickle
 
 class LeadSelfEnergy:
     conv = 1e-8 # Convergence criteria for surface Green function
     
-    def __init__(self, hsd_ii, hsd_ij, eta=1e-8):
+    def __init__(self, hsd_ii, hsd_ij, data_path=None, direction='left', eta=1e-8):
         self.hsd_ii = hsd_ii
         self.hsd_ij = hsd_ij
+        self.data_path = data_path
+        self.direction = direction
         self.eta = eta
         self.energy = None
         self.bias = 0
         self.s = 0
         self.pk = 0
-
-    def __call__(self, energy):
-        self.energy = energy
-        z = energy - self.bias + self.eta * 1.j           
-        tau_ij = z * self.hsd_ij.S[self.pk].recover() - \
+        self.nid_plus = 30
+        
+    def __call__(self, energy, flag=None):
+        if self.data_path is not None and flag is not None:
+            nid = int(flag[2:])
+            nid += self.nid_plus
+            flag = str(flag[:2]) + str(nid)
+            fd = file(self.data_path[self.direction] + '/' +
+                      self.direction + '/' + flag, 'r')
+            data = cPickle.load(fd)
+            return data
+        else:
+            self.energy = energy
+            z = energy - self.bias + self.eta * 1.j           
+            tau_ij = z * self.hsd_ij.S[self.pk].recover() - \
                                      self.hsd_ij.H[self.s][self.pk].recover()
-        tau_ji = z * dagger(self.hsd_ij.S[self.pk].recover()) - \
+            tau_ji = z * dagger(self.hsd_ij.S[self.pk].recover()) - \
                              dagger(self.hsd_ij.H[self.s][self.pk].recover())
-        ginv = self.get_sgfinv(energy)
-        a_ij = dot(ginv, tau_ij)        
-        return Banded_Sparse_Matrix(complex, dot(tau_ji, a_ij),
+            ginv = self.get_sgfinv(energy)
+            a_ij = dot(ginv, tau_ij)        
+            return Banded_Sparse_Matrix(complex, dot(tau_ji, a_ij),
                                     self.hsd_ii.S[self.pk].band_index)
        
     def set_bias(self, bias):
         self.bias = bias
+        self.nid_plus = -int(bias // 0.05) + 30
         
     def get_lambda(self, energy):
         sigma = self(energy)
