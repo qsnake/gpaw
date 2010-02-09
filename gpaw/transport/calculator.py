@@ -78,7 +78,7 @@ class Transport(GPAW):
                        'non_sc', 'fixed_boundary', 'guess_steps', 'foot_print',
                        'data_file',
                         'analysis_data_list', 'save_bias_data',
-                        'analysis_mode', 'normalize_density',                      
+                        'analysis_mode', 'normalize_density', 'se_data_path',                     
                         'neintmethod', 'neintstep', 'eqinttol', 'extra_density']:
                 
                 del self.gpw_kwargs[key]
@@ -132,6 +132,7 @@ class Transport(GPAW):
         self.data_file = p['data_file']
         self.analysis_data_list = p['analysis_data_list']
         self.save_bias_data = p['save_bias_data']
+        self.se_data_path = p['se_data_path']
         self.analysis_mode = p['analysis_mode']
         self.normalize_density = p['normalize_density']
         self.extra_density = p['extra_density']
@@ -196,6 +197,7 @@ class Transport(GPAW):
         p['analysis_mode'] = 0
         p['normalize_density'] = True
         p['extra_density'] = False
+        p['se_data_path'] = None
         p['neintmethod'] = 0
         p['neintstep'] = 0.02
         p['eqinttol'] = 1e-4
@@ -1913,9 +1915,10 @@ class Transport(GPAW):
     def initialize_green_function(self):
         self.selfenergies = []
         if self.use_lead:
+            directions = ['left', 'right']
             for i in range(self.lead_num):
                 self.selfenergies.append(LeadSelfEnergy(self.lead_hsd[i],
-                                                      self.lead_couple_hsd[i]))
+                   self.lead_couple_hsd[i], self.se_data_path, directions[i]))
     
                 self.selfenergies[i].set_bias(self.bias[i])
  
