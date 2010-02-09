@@ -974,10 +974,11 @@ class Transport_Analysor:
             contour = None
         else:    
             contour = self.collect_contour()
-        tc_dict = {}
-        tc_dict['E' + str(tp.contour.comm.rank)] = tc
         dos_dict = {}
-        dos_dict['E' + str(tp.contour.comm.rank)] = dos
+        tc_dict = {}
+        if 'tc' in tp.analysis_data_list:            
+            tc_dict['E' + str(tp.contour.comm.rank)] = tc
+            dos_dict['E' + str(tp.contour.comm.rank)] = dos
         total_tc = gather_ndarray_dict(tc_dict, tp.contour.comm)
         total_dos = gather_ndarray_dict(dos_dict, tp.contour.comm)        
             
@@ -2020,44 +2021,44 @@ class Transport_Plotter:
         self.set_options('1/V', ylabel)
         self.show(p)      
    
-    def plot_zero_bias_tvs(self, bias_window=[-3,3], nn=61):
-        from scipy.integrate import simps
-        npk = self.bias_steps[0].tc.shape[1]
-        transmission = np.sum(self.bias_steps[0].tc[0, :, 0], axis=0)
-        bias = np.linspace(bias_window[0], bias_window[1], nn)
-        current = np.zeros([nn])
-        self.read_overhead()
-        if kt not in self.contour:
-            kt = 0.1
-        else:
-            kt = self.contour['kt']
-        lead_ef1 = self.contour['leadfermi'][0]
-        lead_ef2 = self.contour['leadfermi'][1]
+   
+    #def tc(self, bs, s=None, k=None):
+        #transmission = self.bias_steps[bs].tc
         
-        if lead_ef2 > lead_ef1:
-            lead_ef1, lead_ef2 = lead_ef2, lead_ef1
-        lead_ef1 += 2 * kt
-        lead_ef2 -= 2 * kt
-        
-        ne = int((lead_ef1 - lead_ef2) // 0.02)
-        epts = np.linspace(lead_ef1, lead_ef2, ne) + 1e-4 * 1.j
-        interval = epts[1] - epts[0]
-        #ne = len(self.energies)
-        #epts = self.energies
-        #interval = self.energies[1] - self.energies[0]
-        cures = self.calculate_current_of_energy(epts, lead_pair_index, s)
-        if world.rank == 0:
-            if ne != 0:
-                current =  simps(cures, None, interval)
-            else:
-                current = 0
-        else:
-            current = None
-        return current        
-        
-        
-
-           
+        #for name in transmission:
+   
+    def plot_zero_bias_tvs(self, energies, transmission, fermi, kt=0.1, direction=-1):
+        N = 121
+        bias = np.linspace(0, 3., N)
+        current = np.zeros([N])
+        fd = fermidistribution
+        unit = 6.624 * 1e-3        
+        for i in range(N):
+            fermi0 = fermi
+            fermi1 = fermi
+            if direction == 1:
+                fermi0 += bias[i]
+            elif direction == -1:
+                fermi0 -= bias[i]
+            elif direction == 0:
+                fermi0 += bias[i] / 2
+                fermi1 -= bias[i] / 2
+                
+            cc = 0    
+            for energy, tc in zip(energies, transmission):
+                ff = fd(energy - fermi0, kt) - fd(energy - fermi1, kt)
+                cc += ff * tc
+            current[i] = cc
+        current *= energies[1] - energies[0]
+        current *= 2 * unit /(Hartree * np.pi)
+        import pylab as p        
+        ylabel = '$ln(I/V^2)$'
+        ydata = np.log(abs(current) / (bias * bias))
+        xdata = 1 / bias
+        p.plot(xdata, ydata, 'b--o')
+        self.set_options('1/V', ylabel)
+        self.show(p)              
+         
     def compare_ele_step_info2(self, info, steps_indices, s, dense_level=0):
         import pylab as p
         if info[:2] == 'nt':
