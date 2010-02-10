@@ -1,3 +1,4 @@
+import sys
 from math import pi, sqrt
 from os.path import isfile
 from scipy.special import sph_jn
@@ -8,7 +9,7 @@ from ase.data import chemical_symbols
 from gpaw.xc_functional import XCFunctional
 from gpaw.lcao.pwf2 import LCAOwrap
 from gpaw.utilities.blas import gemmdot
-from gpaw.utilities import unpack
+from gpaw.utilities import unpack, devnull
 from gpaw.lfc import BasisFunctions
 from gpaw import GPAW
 
@@ -17,11 +18,18 @@ from gpaw.spherical_harmonics import Y
 from gpaw.setup_data import SetupData
 from gpaw.setup import Setup
 from gpaw.fd_operators import Gradient
+from gpaw.mpi import _Communicator, world, rank, size
+
 
 class CHI:
     def __init__(self):
         self.xc = 'LDA'
         self.nspin = 1
+
+        self.comm = _Communicator(world)
+        if rank != 0:
+            sys.stdout = devnull 
+
 
     def initialize(self, c, q, wmax, dw, eta=0.2, Ecut=100.): # eV
         try:
@@ -36,6 +44,15 @@ class CHI:
         bzkpt_kG = calc.get_ibz_k_points()
         self.nkpt = bzkpt_kG.shape[0]
         kweight = calc.get_k_point_weights()
+
+        # parallize in kpoints
+        self.nkpt_local = int(self.nkpt / size)
+
+        self.kstart = rank * self.nkpt_local
+        self.kend = (rank + 1) * self.nkpt_local
+        if rank == size - 1:
+            self.kend = self.nkpt
+
     
         try:
             self.nband
@@ -103,6 +120,9 @@ class CHI:
         self.Ecut = Ecut / Hartree
 
         self.set_Gvectors()
+
+#        nt_G = calc.density.nt_sG[0] # G is the number of grid points
+#        self.Kxc_GG = self.calculate_Kxc(calc.wfs.gd, nt_G)          # G here is the number of plane waves
 
         # dielectric function and macroscopic dielectric function 
         self.eRPA_wGG = np.zeros((self.Nw, self.npw, self.npw), dtype = complex)
@@ -229,7 +249,7 @@ class CHI:
         print 'phi_Gii obtained!'
 
         # calculate chi0
-        for k in range(self.nkpt):
+        for k in range(self.kstart, self.kend):
             kpt0 = c[0].wfs.kpt_u[k]
             kpt1 = c[1].wfs.kpt_u[k]
             P1_ani = kpt0.P_ani
@@ -285,7 +305,11 @@ class CHI:
             print 'finished k', k
 
 
+        comm = self.comm
+        comm.sum(chi0_wGG)
+        comm.sum(chi0M_GG)
         tmp = np.eye(self.npw, self.npw)
+        
         for iw in range(self.Nw):
             for iG in range(self.npw):
                 qG = np.array([np.inner(self.q + self.Gvec[iG],
@@ -293,6 +317,8 @@ class CHI:
                 self.eRPA_wGG[iw,iG] =  tmp[iG] - 4 * pi / np.inner(qG, qG) * chi0_wGG[iw,iG] / self.vol
                 if iw == 0:
                     self.eMRPA_GG[iG] = tmp[iG] - 4 * pi / np.inner(qG, qG) * chi0M_GG[iG] / self.vol
+
+
 
     def check_ortho(self, calc, psit_knG):
         # Check the orthonormalization of wfs
@@ -571,11 +597,12 @@ class CHI:
 
         e1 = self.eRPANLF_w
         e2 = self.eRPALFC_w
-        f = open(filename,'w')
-        for iw in range(self.Nw):
-            energy = iw * self.dw * Hartree
-            print >> f, energy, np.real(e1[iw]), np.imag(e1[iw]),np.real(e2[iw]), np.imag(e2[iw])
-
+        if rank == 0:
+            f = open(filename,'w')
+            for iw in range(self.Nw):
+                energy = iw * self.dw * Hartree
+                print >> f, energy, np.real(e1[iw]), np.imag(e1[iw]),np.real(e2[iw]), np.imag(e2[iw])
+    
 
     def set_Gvectors(self):
 
@@ -611,3 +638,36 @@ class CHI:
         self.Gvec = G[:n]
 
         return
+
+
+    def fxc(self, n):
+        
+        name = self.xc
+        nspins = self.nspin
+
+        libxc = XCFunctional(name, nspins)
+       
+        N = n.shape
+        n = np.ravel(n)
+        fxc = np.zeros_like(n)
+
+        libxc.calculate_fxc_spinpaired(n, fxc)
+        return np.reshape(fxc, N)
+
+    def calculate_Kxc(self, gd, nt_G):
+        # Currently without PAW correction
+        
+        Kxc_GG = np.zeros((self.npw, self.npw), dtype = complex)
+        Gvec = self.Gvec
+
+        fxc_G = self.fxc(nt_G)
+
+        for iG in range(self.npw):
+            for jG in range(self.npw):
+                dG = np.array([np.inner(Gvec[iG] - Gvec[jG],
+                              self.bcell[:,i]) for i in range(3)])
+                dGr = np.inner(dG, self.r)
+                Kxc_GG[iG, jG] = gd.integrate(np.exp(-1j * dGr) * fxc_G)
+                
+        return Kxc_GG / self.vol
+                
