@@ -23,7 +23,7 @@ class CHI:
         self.xc = 'LDA'
         self.nspin = 1
 
-    def initialize(self, c, q, wmax, dw, eta=0.2):
+    def initialize(self, c, q, wmax, dw, eta=0.2, Ecut=100.): # eV
         try:
             self.ncalc = len(c)
         except:
@@ -78,7 +78,8 @@ class CHI:
                          for k in range(self.nkpt)])
     
         self.qr = np.zeros(self.nG)
-
+        self.r = np.zeros((self.nG[0],self.nG[1],self.nG[2], 3))
+        
         # construct q.r
         h_c = self.h_c
         self.q = q
@@ -89,6 +90,9 @@ class CHI:
                 for k in range(self.nG[2]):
                     tmp = np.array([i*h_c[0], j*h_c[1], k*h_c[2]])
                     self.qr[i,j,k] = np.inner(qq, tmp)
+                    self.r[i,j,k] = tmp
+        
+        
 
         # unit conversion
         self.wmin = 0
@@ -96,8 +100,13 @@ class CHI:
         self.dw = dw / Hartree
         self.Nw = int((self.wmax - self.wmin) / self.dw) + 1
         self.eta = eta / Hartree
+        self.Ecut = Ecut / Hartree
 
-        self.epsilonRPA = np.zeros(self.Nw, dtype = complex)
+        self.set_Gvectors()
+
+        # dielectric function and macroscopic dielectric function 
+        self.eRPA_wGG = np.zeros((self.Nw, self.npw, self.npw), dtype = complex)
+        self.eMRPA_GG = np.zeros((self.npw, self.npw), dtype = complex)
         self.epsilonM = 0.
 
         self.print_stuff()
@@ -205,39 +214,47 @@ class CHI:
         setups = c[0].wfs.setups
         gd = c[0].wfs.gd
 
-        chi0_w = np.zeros(self.Nw, dtype = complex)
-        rho_nn = np.zeros((self.nband, self.nband), dtype=complex)        
-
+        chi0_wGG = np.zeros((self.Nw, self.npw, self.npw), dtype = complex)
+        chi0M_GG = np.zeros((self.npw, self.npw), dtype = complex)
+        
         # calculate <phi_i | e**(-iq.r) | phi_j>
-        phi_ii = {}
+        phi_Gii = {}
         R_a = c[0].atoms.positions / Bohr
         
         for a, id in enumerate(setups.id_a):
             Z, type, basis = id
-            if not phi_ii.has_key(Z):
-                phi_ii[Z] = ( self.two_phi_planewave_integrals(Z)
+            if not phi_Gii.has_key(Z):
+                phi_Gii[Z] = ( self.two_phi_planewave_integrals(Z)
                                   * np.exp(-1j * np.inner(qq, R_a[a])) )
+        print 'phi_Gii obtained!'
 
         # calculate chi0
-        for k in range(10):#self.nkpt):
+        for k in range(self.nkpt):
             kpt0 = c[0].wfs.kpt_u[k]
             kpt1 = c[1].wfs.kpt_u[k]
             P1_ani = kpt0.P_ani
             P2_ani = kpt1.P_ani
             psit1_nG = kpt0.psit_nG
             psit2_nG = kpt1.psit_nG
-            
+
+            rho_Gnn = np.zeros((self.npw, self.nband, self.nband), dtype=complex)        
             for n in range(self.nband):
                 for m in range(self.nband):
-                    # G = G' = 0 <psi_nk | e**(-iqr) | psi_n'k+q>
-                    rho_nn[n, m] = gd.integrate( psit1_nG[n].conj()
-                                         * psit2_nG[m]
-                                         * np.exp(-1j * qr) )
-                    # PAW correction 
-                    for a, id in enumerate(setups.id_a):
-                        Z, type, basis = id
-                        P_ii = np.outer(P1_ani[a][n].conj(), P2_ani[a][m])
-                        rho_nn[n, m] += (P_ii * phi_ii[Z]).sum()
+                    if  np.abs(f1_kn[k, n] - f2_kn[k, m]) > 1e-10:
+                        for iG in range(self.npw):
+                            qG = np.array([np.inner(self.q + self.Gvec[iG],
+                                           self.bcell[:,i]) for i in range(3)])
+                            qGr = np.inner(qG, self.r)
+                            
+                            # <psi_nk | e**(-i (q+G).r)  | psi_n'k+q>
+                            rho_Gnn[iG, n, m] = gd.integrate( psit1_nG[n].conj()
+                                                 * psit2_nG[m]
+                                                 * np.exp(-1j * qGr) )
+                            # PAW correction 
+                            for a, id in enumerate(setups.id_a):
+                                Z, type, basis = id
+                                P_ii = np.outer(P1_ani[a][n].conj(), P2_ani[a][m])
+                                rho_Gnn[iG, n, m] += (P_ii * phi_Gii[Z][iG]).sum()
 
             # construct (f_nk - f_n'k+q) / (w + e_nk - e_n'k+q + ieta )
             C_nn = np.zeros((self.nband, self.nband), dtype=complex)
@@ -249,23 +266,33 @@ class CHI:
                             C_nn[n, m] = (f1_kn[k, n] - f2_kn[k, m]) / (
                              w + e1_kn[k, n] - e2_kn[k, m] + 1j * eta)
 
-                # get chi0(G=0,G'=0,w)                
-                chi0_w[iw] += (rho_nn * C_nn * rho_nn.conj()).sum()
+                # get chi0(G=0,G'=0,w)
+                for iG in range(self.npw):
+                    for jG in range(self.npw):
+                        chi0_wGG[iw,iG,jG] += (rho_Gnn[iG] * C_nn * rho_Gnn[jG].conj()).sum()
 
             # Obtain Macroscopic Dielectric Constant
             for n in range(self.nband):
                 for m in range(self.nband):
                     C_nn[n, m] = 0.
-                    if np.abs(f1_kn[k, n] - f2_kn[k, m]) > 1e-6:
+                    if np.abs(f1_kn[k, n] - f2_kn[k, m]) > 1e-10:
                         C_nn[n, m] = (f1_kn[k, n] - f2_kn[k, m]) / (
                                   e1_kn[k, n] - e2_kn[k, m] )
-            self.epsilonM += (rho_nn * C_nn * rho_nn.conj()).sum()
-
+            for iG in range(self.npw):
+                for jG in range(self.npw):
+                    chi0M_GG[iG,jG] += (rho_Gnn[iG] * C_nn * rho_Gnn[jG].conj()).sum()
+                    
             print 'finished k', k
 
 
+        tmp = np.eye(self.npw, self.npw)
         for iw in range(self.Nw):
-            self.epsilonRPA[iw] =  1 - 4 * pi / np.inner(qq, qq) * chi0_w[iw] / self.vol
+            for iG in range(self.npw):
+                qG = np.array([np.inner(self.q + self.Gvec[iG],
+                                       self.bcell[:,i]) for i in range(3)])
+                self.eRPA_wGG[iw,iG] =  tmp[iG] - 4 * pi / np.inner(qG, qG) * chi0_wGG[iw,iG] / self.vol
+                if iw == 0:
+                    self.eMRPA_GG[iG] = tmp[iG] - 4 * pi / np.inner(qG, qG) * chi0M_GG[iG] / self.vol
 
     def check_ortho(self, calc, psit_knG):
         # Check the orthonormalization of wfs
@@ -315,7 +342,6 @@ class CHI:
 
     def two_phi_planewave_integrals(self, Z):
 
-        # Create setup for a certain specie
         xcfunc = XCFunctional('LDA',nspins=1)
         symbol = chemical_symbols[Z]
         data = SetupData(symbol,'LDA')
@@ -356,7 +382,7 @@ class CHI:
         # Initialize        
         R_jj = np.zeros((s.nj, s.nj))
         R_ii = np.zeros((ni, ni))
-        phi_ii = np.zeros((ni, ni), dtype=complex)
+        phi_Gii = np.zeros((self.npw, ni, ni), dtype=complex)
         j_lg = np.zeros((lmax, ng))
    
         # Store (phi_j1 * phi_j2 - phit_j1 * phit_j2 ) for further use
@@ -365,34 +391,37 @@ class CHI:
             for j2 in range(s.nj): 
                 tmp_jjg[j1, j2] = phi_jg[j1] * phi_jg[j2] - phit_jg[j1] * phit_jg[j2]
 
-        qq = np.array([np.inner(self.q, self.bcell[:,i]) for i in range(3)])
-        q = np.sqrt(np.inner(qq, qq)) # calculate length of q+G
+        # Loop over G vectors
+        Gvec = self.Gvec
+        for iG in range(self.npw):
+            kk = np.array([np.inner(self.q + Gvec[iG], self.bcell[:,i]) for i in range(3)])
+            k = np.sqrt(np.inner(kk, kk)) # calculate length of q+G
+            
+            # Calculating spherical bessel function
+            for ri in range(ng):
+                j_lg[:,ri] = sph_jn(lmax - 1,  k*r_g[ri])[0]
+
+            for li in range(lmax):
+                # Radial part 
+                for j1 in range(s.nj):
+                    for j2 in range(s.nj): 
+                        R_jj[j1, j2] = np.dot(r2dr_g, tmp_jjg[j1, j2] * j_lg[li])
+
+                for mi in range(2 * li + 1):
+                    # Angular part
+                    for i1 in range(ni):
+                        L1 = L_i[i1]
+                        j1 = j_i[i1]
+                        for i2 in range(ni):
+                            L2 = L_i[i2]
+                            j2 = j_i[i2]
+                            R_ii[i1, i2] =  G_LLL[L1, L2, li**2+mi]  * R_jj[j1, j2]
+
+                    phi_Gii[iG] += R_ii * Y(li**2 + mi, kk[0], kk[1], kk[2]) * (-1j)**li
         
-        # Calculating spherical bessel function
-        for ri in range(ng):
-            j_lg[:,ri] = sph_jn(lmax - 1,  q*r_g[ri])[0]
+        phi_Gii *= 4 * pi
 
-        for li in range(lmax):
-            # Radial part 
-            for j1 in range(s.nj):
-                for j2 in range(s.nj): 
-                    R_jj[j1, j2] = np.dot(r2dr_g, tmp_jjg[j1, j2] * j_lg[li])
-
-            for mi in range(2 * li + 1):
-                # Angular part
-                for i1 in range(ni):
-                    L1 = L_i[i1]
-                    j1 = j_i[i1]
-                    for i2 in range(ni):
-                        L2 = L_i[i2]
-                        j2 = j_i[i2]
-                        R_ii[i1, i2] =  G_LLL[L1, L2, li**2+mi]  * R_jj[j1, j2]
-
-                phi_ii += R_ii * Y(li**2 + mi, qq[0], qq[1], qq[2]) * (-1j)**li
-
-        phi_ii *= 4 * pi
-
-        return phi_ii
+        return phi_Gii
 
 
     def two_phi_derivative(self, Z):
@@ -499,36 +528,86 @@ class CHI:
         print 'q in reduced coordinate:', self.q
         print 'q in cartesian coordinate:', self.qq
 
+        print 'Planewave cutoff energy (eV):', self.Ecut * Hartree
+        print 'Number of planewave used:', self.npw
+
 
     def check_sum_rule(self):
 
-        N = 0
+        N1 = N2 = 0
         for iw in range(self.Nw):
             w = iw * self.dw
-            N += np.imag(self.epsilonRPA[iw]) * w 
-        N *= self.dw * self.vol / (2 * pi**2)
+            N1 += np.imag(self.eRPANLF_w[iw]) * w
+            N2 += np.imag(self.eRPALFC_w[iw]) * w
+        N1 *= self.dw * self.vol / (2 * pi**2)
+        N2 *= self.dw * self.vol / (2 * pi**2)
         
         print 'sum rule:'
-        print 'N = ', N, (N - self.nvalence) / self.nvalence * 100, '% error'
+        nv = self.nvalence
+        print 'Without local field correction, N1 = ', N1, (N1 - nv) / nv * 100, '% error'
+        print 'Include local field correction, N2 = ', N2, (N2 - nv) / nv * 100, '% error'
 
 
-    def get_microscopic_dielectric_constant(self):
+    def get_macroscopic_dielectric_constant(self):
+        eMicro = self.eMRPA_GG[0, 0]
+        eMacro = 1. / np.linalg.inv(self.eMRPA_GG)[0, 0]
 
-        qq = self.qq
-        epsilonM = self.epsilonM
-        
-        epsilonM *=  - 4 * pi / np.inner(qq, qq) / self.vol
-        epsilonM += 1.
-
-        return epsilonM
+        return np.real(eMicro), np.real(eMacro)
         
 
     def get_dielectric_function(self):
-        return self.epsilonRPA
+
+        self.eRPALFC_w = np.zeros(self.Nw, dtype = complex)
+        self.eRPANLF_w = np.zeros(self.Nw, dtype = complex)
+        
+        for iw in range(self.Nw):
+            tmp = self.eRPA_wGG[iw]
+            self.eRPALFC_w[iw] = 1. / np.linalg.inv(tmp)[0, 0]
+            self.eRPANLF_w[iw] = tmp[0, 0]    
+        return 
 
     def get_absorption_spectrum(self, filename='Absorption'):
-        epsilonRPA = self.epsilonRPA
+        self.get_dielectric_function()
+
+        e1 = self.eRPANLF_w
+        e2 = self.eRPALFC_w
         f = open(filename,'w')
         for iw in range(self.Nw):
-            print >> f, iw * self.dw * Hartree, np.real(epsilonRPA[iw]), np.imag(epsilonRPA[iw])
+            energy = iw * self.dw * Hartree
+            print >> f, energy, np.real(e1[iw]), np.imag(e1[iw]),np.real(e2[iw]), np.imag(e2[iw])
 
+
+    def set_Gvectors(self):
+
+        # Refer to R.Martin P85
+        Gcut = sqrt(2*self.Ecut)
+        Gmax = np.zeros(3, dtype=int)
+        for i in range(3):
+            a = self.acell[i]
+            Gmax[i] = sqrt(a[0]**2 + a[1]**2 + a[2]**2) * Gcut/ (2*pi)
+         
+        Nmax = 2 * Gmax + 1
+        
+        m = {}
+        for dim in range(3):
+            m[dim] = np.zeros(Nmax[dim],dtype=int)
+            for i in range(Nmax[dim]):
+                m[dim][i] = i
+                if m[dim][i] > np.int(Gmax[dim]):
+                    m[dim][i] = i- Nmax[dim]       
+
+        G = np.zeros((Nmax[0]*Nmax[1]*Nmax[2],3),dtype=int)
+        n = 0
+        for i in range(Nmax[0]):
+            for j in range(Nmax[1]):
+                for k in range(Nmax[2]):
+                    tmp = np.array([m[0][i], m[1][j], m[2][k]])
+                    tmpG = np.array([np.inner(tmp, self.bcell[:,ii]) for ii in range(3)])
+                    Gmod = sqrt(tmpG[0]**2 + tmpG[1]**2 + tmpG[2]**2)
+                    if Gmod < Gcut:
+                        G[n] = tmp
+                        n += 1
+        self.npw = n
+        self.Gvec = G[:n]
+
+        return
