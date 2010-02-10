@@ -340,9 +340,9 @@ class Transport(GPAW):
             else:
                 self.get_hamiltonian_initial_guess()
         
-        if self.analysis_mode > -3:
-            del self.wfs
-            self.wfs = self.extended_calc.wfs
+        #if self.analysis_mode > -3:
+            #del self.wfs
+            #self.wfs = self.extended_calc.wfs
 
         self.initialized_transport = True
         self.matrix_mode = 'sparse'
@@ -687,8 +687,8 @@ class Transport(GPAW):
             self.extended_calc = calc
             self.gd1, self.finegd1 = calc.gd, calc.finegd
             self.set_extended_positions()
-            del self.wfs
-            self.wfs = self.extended_calc.wfs
+            #del self.wfs
+            #self.wfs = self.extended_calc.wfs
                 
         #if self.scat_restart:
         #    self.recover_kpts(self)
@@ -771,7 +771,9 @@ class Transport(GPAW):
             self.analysor.save_data_to_file('bias', self.data_file)            
          
         self.scf.converged = self.cvgflag
-        
+        if self.fixed and self.scf.converged and self.normalize_density:
+            self.normalize_density = False
+   
         ## these temperary lines is for storage the transport object
         #for kpt in self.wfs.kpt_u:
         #    kpt.rho_MM = None
@@ -876,8 +878,8 @@ class Transport(GPAW):
                 if self.master:
                     self.text('density: diff = %f  tol=%f' % (self.diff_d,
                                             tol))
-                if self.diff_d < tol * 100 and self.fixed and self.normalize_density is True:
-                    self.normalize_density = False
+                #if self.diff_d < tol * 100 and self.fixed and self.normalize_density is True:
+                #    self.normalize_density = False
                 if self.diff_d < tol:
                     cvg = True
         return cvg
@@ -1013,7 +1015,10 @@ class Transport(GPAW):
         myne = ne_poles[comm.rank]
         
         eq_poles = np.arange(1, 8, 2) * np.pi * 1.j * kt + min_ef
-        my_eq_poles = eq_poles[myne]
+        if not myne.tolist() == []:
+            my_eq_poles = eq_poles[myne]
+        else:
+            my_eq_poles = np.array([], int)
         
         my_eq_ffp = [-2.j * np.pi * kt] * len(myne)
         my_eq_wp = [1] * len(myne)
@@ -1039,7 +1044,10 @@ class Transport(GPAW):
             loc_poles2 = np.arange(1, 8, 2) * np.pi * 1.j * kt + max_ef
             loc_poles = np.append(loc_poles1, loc_poles2)
             
-            my_loc_poles = loc_poles[myne]
+            if not myne.tolist() == []:
+                my_loc_poles = loc_poles[myne]
+            else:
+                my_loc_poles = np.array([], int)
             my_loc_ffp = [-2.j * np.pi * kt] * len(myne)
             loc_wp = [-1.] * 4 + [1.] * 4
             my_loc_wp = np.array_split(loc_wp, comm.size)[comm.rank]
@@ -1560,7 +1568,7 @@ class Transport(GPAW):
         """Return the atomic forces.""" 
         if self.F_av is not None:
             return self.F_av[:len(self.atoms)]
-        natoms = len(self.wfs.setups)
+        natoms = len(self.extended_calc.wfs.setups)
         self.F_av = np.zeros((natoms, 3))
 
         hamiltonian = self.extended_calc.hamiltonian
@@ -1571,7 +1579,7 @@ class Transport(GPAW):
             vt_G = vt_sG[0]
 
         # Force from projector functions (and basis set):
-        self.wfs.calculate_forces(hamiltonian, self.F_av)
+        self.extended_calc.wfs.calculate_forces(hamiltonian, self.F_av)
 
         nn = self.surround.nn[0] * 2
         vHt_g = self.surround.uncapsule(nn, hamiltonian.vHt_g,
@@ -1635,7 +1643,7 @@ class Transport(GPAW):
     def update_density(self):
         self.timer.start('dmm recover')
         #self.fill_guess_with_leads()
-        for kpt in self.wfs.kpt_u:
+        for kpt in self.extended_calc.wfs.kpt_u:
             if self.my_nspins == 2:
                 kpt.rho_MM = self.hsd.D[kpt.s][kpt.q].recover(True)
             else:
@@ -1646,7 +1654,7 @@ class Transport(GPAW):
         self.timer.start('construct density')
 
         nt_sG = self.gd1.zeros(self.nspins)
-        self.wfs.calculate_density_contribution(nt_sG)
+        self.extended_calc.wfs.calculate_density_contribution(nt_sG)
         nn = self.surround.nn[0]
         density.nt_sG = self.surround.uncapsule(nn, nt_sG, self.gd1,
                                                     self.gd)
@@ -1656,8 +1664,8 @@ class Transport(GPAW):
         self.timer.start('atomic density')
 
         D_asp = self.extended_D_asp
-        self.wfs.calculate_atomic_density_matrices(D_asp)
-        all_D_asp = collect_D_asp2(D_asp, self.wfs.setups, self.nspins,
+        self.extended_calc.wfs.calculate_atomic_density_matrices(D_asp)
+        all_D_asp = collect_D_asp2(D_asp, self.extended_calc.wfs.setups, self.nspins,
                             self.gd.comm, self.extended_calc.wfs.rank_a)
             
         D_asp = all_D_asp[:len(self.atoms)]
@@ -2004,6 +2012,7 @@ class Transport(GPAW):
     def set_extended_positions(self):
         spos_ac0 = self.atoms.get_scaled_positions() % 1.0
         spos_ac = self.extended_atoms.get_scaled_positions() % 1.0
+        self.wfs.set_positions(spos_ac0)
         self.extended_calc.wfs.set_positions(spos_ac)
 
         self.density.set_positions(spos_ac0, self.inner_rank_a)
