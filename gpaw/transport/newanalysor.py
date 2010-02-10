@@ -420,7 +420,7 @@ class Transport_Analysor:
 
     def calculate_realspace_wave_functions(self, C_nm, q):
         #nl number of molecular levels
-        wfs = self.tp.wfs
+        wfs = self.tp.extended_calc.wfs
         nao = wfs.setups.nao
         nb, nl = C_nm.shape
         if wfs.dtype == float:
@@ -473,7 +473,7 @@ class Transport_Analysor:
     def calculate_realspace_dos(self, s, q):
         energies = self.dos_realspace_energies
         realspace_dos = []
-        wfs = self.tp.wfs        
+        wfs = self.tp.extended_calc.wfs        
         for energy in energies:
             gr = self.calculate_green_function_of_k_point(s, q, energy)
             dos_mm = np.dot(gr, self.tp.hsd.S[q].recover())
@@ -841,7 +841,7 @@ class Transport_Analysor:
         tp = self.tp
         ns, npk = tp.nspins, tp.npk
         nx, ny, nz = tp.gd.N_c
-        exnb = tp.wfs.setups.nao
+        exnb = tp.extended_calc.wfs.setups.nao
         nb = tp.nbmol
         ne = len(self.energies)
         na = len(tp.atoms)
@@ -870,7 +870,7 @@ class Transport_Analysor:
         step = Electron_Step_Info(self.n_ion_step, self.n_bias_step,
                                                            self.n_ele_step)
         dtype = tp.wfs.dtype
-        nbmol = tp.wfs.setups.nao
+        nbmol = tp.extended_calc.wfs.setups.nao
         dd = np.empty([tp.my_nspins, tp.my_npk, nbmol], dtype)
         df = np.empty([tp.my_nspins, tp.my_npk, nbmol], dtype)
         
