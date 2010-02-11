@@ -529,26 +529,38 @@ class SLDenseLinearAlgebra:
         self._general_diagonalize_ex(H_mm, S_mm, C_nM, eps_n)
 
     def _general_diagonalize_ex(self, H_mm, S_mm, C_nM, eps_n):
+        # C_nM needs to be simultaneously compatible with:
+        # 1. outdescriptor
+        # 2. broadcast with gd.comm
+        # We will does this with a dummy buffer C2_nM
         indescriptor = self.indescriptor
         outdescriptor = self.outdescriptor
         blockdescriptor = self.blockdescriptor
 
         dtype = S_mm.dtype
         eps_M = np.empty(C_nM.shape[-1]) # empty helps us debug
+        subM, subN = outdescriptor.gshape
+        
         C_mm = blockdescriptor.zeros(dtype=dtype)
         self.timer.start('General diagonalize ex')
         blockdescriptor.general_diagonalize_ex(H_mm, S_mm.copy(), C_mm, eps_M,
                                                UL='L', iu=self.bd.nbands)
         self.timer.stop('General diagonalize ex')
-        C_mM = outdescriptor.zeros(dtype=dtype)
+ 
+       # Make C_nM compatible with the redistributor
         self.timer.start('Redistribute coefs')
-        self.blocks2cols.redistribute(C_mm, C_mM)
+        if outdescriptor:
+            C2_nM = C_nM
+        else:
+            C2_nM = outdescriptor.empty(dtype=dtype)
+        assert outdescriptor.check(C2_nM)
+        self.blocks2cols.redistribute_submatrix(C_mm, C2_nM, subM, subN)
         self.timer.stop('Redistribute coefs')
+
         self.timer.start('Send coefs to domains')
         if outdescriptor: # grid masters only
             assert self.gd.comm.rank == 0
             bd = self.bd
-            C_nM[:] = C_mM[:bd.mynbands, :]
             # grid master with bd.rank = 0 
             # scatters to other grid masters
             # NOTE: If the origin of the blacs grid
@@ -666,8 +678,7 @@ class SLDenseLinearAlgebra2:
         # U_Nn needs to be simultaneously compatible with:
         # 1. outdescriptor
         # 2. broadcast with gd.comm
-        # We will do this with a number of seperate buffers
-        # for now.
+        # We will do this with a dummy buffer U2_nN
         indescriptor = self.indescriptor
         outdescriptor = self.outdescriptor
         blockdescriptor = self.blockdescriptor
@@ -824,7 +835,7 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
         #
         # The array will then be trimmed and broadcast across
         # the grid descriptor's communicator.
-        nM_unique_descriptor = single_column_grid.new_descriptor(nao, nao,
+        nM_unique_descriptor = single_column_grid.new_descriptor(nbands, nao,
                                                                  mynbands, nao)
 
         # Fully blocked grid for diagonalization with many CPUs:
