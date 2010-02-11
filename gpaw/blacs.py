@@ -463,7 +463,7 @@ class Redistributor:
 
         # Check to make sure the submatrix of the source
         # matrix will fit into the destination matrix
-        assert self.srcdescriptor.gshape <= (subM, subN)
+        assert self.srcdescriptor.gshape >= (subM, subN)
         assert self.dstdescriptor.gshape >= (subM, subN)
 
         # Switch to Fortran conventions
