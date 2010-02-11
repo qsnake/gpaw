@@ -461,22 +461,27 @@ class Redistributor:
         self.srcdescriptor.checkassert(src_mn)
         self.dstdescriptor.checkassert(dst_mn)
 
+        # Check to make sure the submatrix of the source
+        # matrix will fit into the destination matrix
+        assert self.srcdescriptor.gshape <= (subM, subN)
+        assert self.dstdescriptor.gshape >= (subM, subN)
+
         # Switch to Fortran conventions
         uplo = {'U': 'L', 'L': 'U', 'G': 'G'}[self.uplo]
         
         _gpaw.scalapack_redist(self.srcdescriptor.asarray(), 
                                self.dstdescriptor.asarray(),
-                               src_mn.T, dst_mn.T,
+                               src_mn, dst_mn,
                                self.supercomm.get_c_object(),
                                subN, subM, isreal, uplo)
     
-    def redistribute(self, src_mn, dst_mn):
+    def redistribute(self, src_mn, dst_mn, subM=None, subN=None):
         """Redistribute src_mn to dst_mn.
 
-        src_mn must be compatible with the source descriptor of this
-        redistributor, while dst_mn must be compatible with the
-        destination descriptor."""
-        subM, subN = self.srcdescriptor.gshape
+        submatrix of src_mn must fit into dst_mn. Default is to
+        copy all of src_mn into dst_mn."""
+        if subM or subN is None:
+            subM, subN = self.srcdescriptor.gshape
         self.redistribute_submatrix(src_mn, dst_mn, subM, subN)
 
 
