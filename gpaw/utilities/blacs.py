@@ -53,8 +53,21 @@ def scalapack_set(desca, a, alpha, beta, uplo, m=None, n=None, ia=1, ja=1):
 
 
 def scalapack_diagonalize_dc(desca, a, z, w, uplo):
-    """Diagonalize a using the divide & conquer algorithm.
-    Orthogonal eigenvectors not guaranteed"""
+    """Diagonalize symmetric matrix using the divide & conquer algorithm.
+    Orthogonal eigenvectors not guaranteed; no warning is provided.
+ 
+    Solve the eigenvalue equation::
+    
+    A_nn Z_nn = w_N Z_nn
+
+    Diagonalizes A_nn and writes eigenvectors to Z_nn.  Both A_nn
+    and Z_nn must be compatible with desca descriptor.  Values in
+    A_nn will be overwritten.
+    
+    Eigenvalues are written to the global array w_N in ascending order.
+
+    uplo can be either 'L' or 'U', meaning that the
+    matrices are taken to be upper or lower triangular."""
     assert desca.check(a)
     assert desca.check(z)
     # only symmetric matrices
@@ -70,12 +83,26 @@ def scalapack_diagonalize_dc(desca, a, z, w, uplo):
 
  
 def scalapack_diagonalize_ex(desca, a, z, w, uplo, iu=None):
-    """Diagonalize a using Expert Driver algorithm.
+    """Diagonalize symmetric matrix using the bisection and inverse
+    iteration algorithm. Re-orthogonalization of eigenvectors 
+    is an issue for tightly clustered eigenvalue problems; it 
+    requires substantial memory and is not scalable. See ScaLAPACK
+    pdsyevx.f routine for more information.
+ 
+    Solve the eigenvalue equation::
+    
+    A_nn Z_nn = w_N Z_nn
 
-    Solves the eigenvalue problem a z = w z.
+    Diagonalizes A_nn and writes eigenvectors to Z_nn.  Both A_nn
+    and Z_nn must be compatible with desca descriptor.  Values in
+    A_nn will be overwritten.
+    
+    Eigenvalues are written to the global array w_N in ascending order.
 
-    Eigenvectors stored in ascending order, i.e. most negative first
-    XXX How are eigenvectors ordered?"""
+    uplo can be either 'L' or 'U', meaning that the
+    matrices are taken to be upper or lower triangular
+
+    iu eigenvectors and eigenvalues computed."""
     assert desca.check(a)
     assert desca.check(z)
     # only symmetric matrices
@@ -97,12 +124,22 @@ def scalapack_diagonalize_ex(desca, a, z, w, uplo, iu=None):
         raise RuntimeError('scalapack_diagonalize_ex error: %d' % info)
 
 def scalapack_diagonalize_mr3(desca, a, z, w, uplo, iu=None):
-    """Diagonalize a using MRRR algorithm.
+    """Diagonalize symmetric matrix using the MRRR algorithm.
+ 
+    Solve the eigenvalue equation::
+    
+    A_nn Z_nn = w_N Z_nn
 
-    Solves the eigenvalue problem a z = w z.
+    Diagonalizes A_nn and writes eigenvectors to Z_nn.  Both A_nn
+    and Z_nn must be compatible with this desca descriptor.  Values in
+    A_nn will be overwritten.
+    
+    Eigenvalues are written to the global array w_N in ascending order.
 
-    Eigenvectors stored in ascending order, i.e. most negative first
-    XXX How are eigenvectors ordered?"""
+    uplo can be either 'L' or 'U', meaning that the
+    matrices are taken to be upper or lower triangular
+
+    iu eigenvectors and eigenvalues computed."""
     assert desca.check(a)
     assert desca.check(z)
     # only symmetric matrices
@@ -122,8 +159,21 @@ def scalapack_diagonalize_mr3(desca, a, z, w, uplo, iu=None):
         raise RuntimeError('scalapack_diagonalize_mr3 error: %d' % info)
 
 def scalapack_general_diagonalize_dc(desca, a, b, z, w, uplo):
-    """Diagonalize a using the divide & conquer algorithm.
-    XXX does this work?"""
+    """Diagonalize symmetric matrix using the divide & conquer algorithm.
+    Orthogonal eigenvectors not guaranteed; no warning is provided.
+ 
+    Solve the generalized eigenvalue equation::
+    
+    A_nn Z_nn = w_N B_nn Z_nn
+
+    B_nn is assumed to be positivde definite. Eigenvectors written to Z_nn. 
+    Both A_nn, B_nn and Z_nn must be compatible with desca descriptor.
+    Values in A_nn and B_nn will be overwritten.
+    
+    Eigenvalues are written to the global array w_N in ascending order.
+
+    uplo can be either 'L' or 'U', meaning that the
+    matrices are taken to be upper or lower triangular."""
     assert desca.check(a)
     assert desca.check(b)
     assert desca.check(z)
@@ -139,6 +189,26 @@ def scalapack_general_diagonalize_dc(desca, a, b, z, w, uplo):
         raise RuntimeError('scalapack_general_diagonalize_dc error: %d' % info)
 
 def scalapack_general_diagonalize_ex(desca, a, b, z, w, uplo, iu=None):
+    """Diagonalize symmetric matrix using the bisection and inverse
+    iteration algorithm. Re-orthogonalization of eigenvectors 
+    is an issue for tightly clustered eigenvalue problems; it 
+    requires substantial memory and is not scalable. See ScaLAPACK
+    pdsyevx.f routine for more information.
+ 
+    Solves the eigenvalue equation::
+    
+    A_nn Z_nn = w_N B_nn Z_nn
+
+    B_nn is assumed to be positivde definite. Eigenvectors written to Z_nn. 
+    Both A_nn, B_nn and Z_nn must be compatible with desca descriptor.
+    Values in A_nn and B_nn will be overwritten.
+    
+    Eigenvalues are written to the global array w_N in ascending order.
+
+    uplo can be either 'L' or 'U', meaning that the
+    matrices are taken to be upper or lower triangular
+
+    iu eigenvectors and eigenvalues computed."""
     assert desca.check(a)
     assert desca.check(b)
     assert desca.check(z)
@@ -161,9 +231,22 @@ def scalapack_general_diagonalize_ex(desca, a, b, z, w, uplo, iu=None):
         raise RuntimeError('scalapack_general_diagonalize_ex error: %d' % info)
 
 def scalapack_general_diagonalize_mr3(desca, a, b, z, w, uplo, iu=None):
-    """Diagonalize a using MRRR algorithm.
+    """Diagonalize symmetric matrix using the MRRR algorithm.
 
-    Solves the eigenvalue problem a z = w b z."""
+    Solve the generalized eigenvalue equation::
+    
+    A_nn Z_nn = w_N B_nn Z_nn
+
+    B_nn is assumed to be positivde definite. Eigenvectors written to Z_nn. 
+    Both A_nn, B_nn and Z_nn must be compatible with desca descriptor.
+    Values in A_nn and B_nn will be overwritten.
+    
+    Eigenvalues are written to the global array w_N in ascending order.
+
+    uplo can be either 'L' or 'U', meaning that the
+    matrices are taken to be upper or lower triangular
+
+    iu eigenvectors and eigenvalues computed."""
     assert desca.check(a)
     assert desca.check(b)
     assert desca.check(z)
@@ -184,6 +267,11 @@ def scalapack_general_diagonalize_mr3(desca, a, b, z, w, uplo, iu=None):
         raise RuntimeError('scalapack_general_diagonalize_mr3 error: %d' % info)
 
 def scalapack_inverse_cholesky(desca, a, uplo):
+    """Perform Cholesky decomposin followed by inverse of triangular
+    matrix.
+
+    Only the upper or lower half of S_nn are modified, the
+    other half is zeroed out."""
     assert desca.check(a)
     # only symmetric matrices
     assert desca.gshape[0] == desca.gshape[1]

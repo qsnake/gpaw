@@ -91,8 +91,9 @@ from gpaw.mpi import SerialCommunicator, serial_comm
 from gpaw.matrix_descriptor import MatrixDescriptor
 from gpaw.utilities.blas import gemm, r2k, gemmdot
 from gpaw.utilities.blacs import scalapack_inverse_cholesky, \
-    scalapack_general_diagonalize_ex, \
-    scalapack_diagonalize_ex, scalapack_diagonalize_dc, \
+    scalapack_diagonalize_ex, scalapack_general_diagonalize_ex, \
+    scalapack_diagonalize_dc, scalapack_general_diagonalize_dc, \
+    scalapack_diagonalize_mr3, scalapack_general_diagonalize_mr3, \
     pblas_simple_gemm
 from gpaw.utilities.timing import nulltimer
 from gpaw.utilities.tools import tri2full
@@ -320,56 +321,39 @@ class BlacsDescriptor(MatrixDescriptor):
                              self.bshape, self.lld, self.shape)
         return string
 
-    def inverse_cholesky(self, S_nn, UL='U'):
-        """Perform Cholesky decomposin followed by inverse of triangular
-        matrix.
-
-        Only the upper or lower half of S_nn are modified, therefore the
-        other half should be zeroed out. Otherwise, there will likely
-        be problems later on.
-        """
-        scalapack_inverse_cholesky(self, S_nn, UL)
-
-    def diagonalize_ex(self, H_nn, C_nn, eps_N, UL='U', iu=None):
-        """Diagonalize symmetric matrix using Expert Driver algorithm.
-
-        Solves the eigenvalue equation::
-
-          H_nn C_nn = eps_n C_nn
-
-        Diagonalizes H_nn and writes eigenvectors to C_nn.  Both H_nn
-        and C_nn must be compatible with this descriptor.  Values in
-        H_nn will be overwritten.
-
-        Eigenvalues are written to the global array eps_n.
-
-        UL can be either 'U' (default) or 'L', meaning that the
-        matrices are taken to be upper or lower triangular.
-
-        If the integer iu is specified, calculates only eigenvectors
-        corresponding to the lowest iu eigenvalues."""
-        scalapack_diagonalize_ex(self, H_nn, C_nn, eps_N, UL, iu=iu)
-
-    def diagonalize_dc(self, H_nn, C_nn, eps_N, UL='U'):
-        """Diagonalize symmetrix matrix using Divide & Conquer algorithm.
-
-        Virtually identical to diagonalize_ex, but without iu parameter."""
+    def diagonalize_dc(self, H_nn, C_nn, eps_N, UL='L'):
+        """See documentation in gpaw/utilities/blacs.py."""
         scalapack_diagonalize_dc(self, H_nn, C_nn, eps_N, UL)
 
-    def general_diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M, UL='L', iu=None):
-        """Solve generalized eigenvalue problem.
-        
-        Solves::
+    def diagonalize_ex(self, H_nn, C_nn, eps_N, UL='L', iu=None):
+        """See documentation in gpaw/utilities/blacs.py."""
+        scalapack_diagonalize_ex(self, H_nn, C_nn, eps_N, UL, iu=iu)
 
-          H_mm C_mm = S_mm C_mm eps_M.
+    def diagonalize_mr3(self, H_nn, C_nn, eps_N, UL='L', iu=None):
+        """See documentation in gpaw/utilities/blacs.py."""
+        scalapack_diagonalize_mr3(self, H_nn, C_nn, eps_N, UL, iu=iu)
 
-        H_mm, C_mm and S_mm are distributed arrays all compatible with
-        this descriptor.  eps_M is a global output array of
-        eigenvalues.  H_mm and S_mm will be overwritten.
+    def general_diagonalize_dc(self, H_mm, S_mm, C_mm, eps_M,
+                               UL='L'):
+        """See documentation in gpaw/utilities/blacs.py."""
+        scalapack_general_diagonalize_dc(self, H_mm, S_mm, C_mm, eps_M,
+                                         UL)
 
-        See also documentation for diagonalize_ex."""
+    def general_diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M,
+                               UL='L', iu=None):
+        """See documentation in gpaw/utilities/blacs.py."""
         scalapack_general_diagonalize_ex(self, H_mm, S_mm, C_mm, eps_M,
                                          UL, iu=iu)
+
+    def general_diagonalize_mr3(self, H_mm, S_mm, C_mm, eps_M,
+                                UL='L', iu=None):
+        """See documentation in gpaw/utilities/blacs.py."""
+        scalapack_general_diagonalize_mr3(self, H_mm, S_mm, C_mm, eps_M,
+                                          UL, iu=iu)
+
+    def inverse_cholesky(self, S_nn, UL='L'):
+        """See documentation in gpaw/utilities/blacs.py."""
+        scalapack_inverse_cholesky(self, S_nn, UL)
 
     def my_blocks(self, array_mn):
         """Yield the local blocks and their global index limits.
@@ -524,11 +508,6 @@ class SLDenseLinearAlgebra:
         self.timer = timer
     
     def diagonalize(self, H_mm, C_nM, eps_n, S_mm):
-        # In the near future, we should be able to plug in different diagonalize
-        # routines. For example, general_diagonalize_dc, general_diagonalize_rm3
-        self._general_diagonalize_ex(H_mm, S_mm, C_nM, eps_n)
-
-    def _general_diagonalize_ex(self, H_mm, S_mm, C_nM, eps_n):
         # C_nM needs to be simultaneously compatible with:
         # 1. outdescriptor
         # 2. broadcast with gd.comm
@@ -668,9 +647,6 @@ class SLDenseLinearAlgebra2:
         self.gd.comm.broadcast(C_nN, 0)
 
     def diagonalize(self, H_Nn, U_nN, eps_n):
-        self._standard_diagonalize_dc(H_Nn, U_nN, eps_n)
- 
-    def _standard_diagonalize_dc(self, H_Nn, U_nN, eps_n):
         # H_Nn must be lower triangular or symmetric, 
         # but not upper triangular.
         # U_nN will be symmetric
