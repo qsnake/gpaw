@@ -442,19 +442,23 @@ class Redistributor:
         isreal = (dtype == float)
         assert dtype == float or dtype == complex
 
-        self.srcdescriptor.checkassert(src_mn)
-        self.dstdescriptor.checkassert(dst_mn)
-
         # Check to make sure the submatrix of the source
         # matrix will fit into the destination matrix
-        assert self.srcdescriptor.gshape >= (subM, subN)
-        assert self.dstdescriptor.gshape >= (subM, subN)
+        # plus standard BLACS matrix checks.
+        srcdescriptor = self.srcdescriptor
+        dstdescriptor = self.dstdescriptor
+        srcdescriptor.checkassert(src_mn)
+        dstdescriptor.checkassert(dst_mn)
+        assert srcdescriptor.gshape[0] >= subM
+        assert srcdescriptor.gshape[1] >= subN
+        assert dstdescriptor.gshape[0] >= subM
+        assert dstdescriptor.gshape[1] >= subN
 
         # Switch to Fortran conventions
         uplo = {'U': 'L', 'L': 'U', 'G': 'G'}[self.uplo]
         
-        _gpaw.scalapack_redist(self.srcdescriptor.asarray(), 
-                               self.dstdescriptor.asarray(),
+        _gpaw.scalapack_redist(srcdescriptor.asarray(), 
+                               dstdescriptor.asarray(),
                                src_mn, dst_mn,
                                self.supercomm.get_c_object(),
                                subN, subM, isreal, uplo)
