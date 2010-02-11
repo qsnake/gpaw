@@ -15,15 +15,19 @@ def parallel_eigh(matrixfile, blacsgrid=(4, 2), blocksize=64):
         assert H_MM.shape[0] == H_MM.shape[1]
         NM = len(H_MM)
     else:
-        H_MM = None
         NM = 0
-    NM = world.sum(NM)
+    NM = world.sum(NM) # Distribute matrix shape to all nodes
 
     # descriptor for the individual blocks
     block_desc = grid.new_descriptor(NM, NM, blocksize, blocksize)
 
     # descriptor for global array on MASTER
     local_desc = grid.new_descriptor(NM, NM, NM, NM)
+
+    # Make some dummy array on all the slaves
+    if world.rank != MASTER:
+        H_MM = local_desc.zeros()
+    assert local_desc.check(H_MM)
 
     # The local version of the matrix
     H_mm = block_desc.empty()
@@ -59,7 +63,7 @@ if __name__ == '__main__':
         print eps
 
     eps, U = parallel_eigh(matrixfile='H_50x50.pckl',
-                           blacsgrid=(2, 1), blocksize=6)
+                           blacsgrid=(2, 2), blocksize=6)
     if world.rank == MASTER:
         print eps
         print U

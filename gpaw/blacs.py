@@ -348,7 +348,7 @@ class BlacsDescriptor(MatrixDescriptor):
 
         If the integer iu is specified, calculates only eigenvectors
         corresponding to the lowest iu eigenvalues."""
-        scalapack_diagonalize_ex(self, H_nn, C_nn, eps_n, UL, iu=iu)
+        scalapack_diagonalize_ex(self, H_nn, C_nn, eps_N, UL, iu=iu)
 
     def diagonalize_dc(self, H_nn, C_nn, eps_N, UL='U'):
         """Diagonalize symmetrix matrix using Divide & Conquer algorithm.
