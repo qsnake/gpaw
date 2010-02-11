@@ -167,6 +167,7 @@ tests = [
     'vdw/quick_spin.py',
     'vdw/ar2.py',
     'fd2lcao_restart.py',
+    'parallel/parallel_eigh.py',
     'parallel/ut_hsops.py',
     'parallel/ut_hsblacs.py',
     'parallel/ut_invops.py',
