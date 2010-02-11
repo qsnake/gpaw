@@ -18,12 +18,12 @@ def polygon(x, y1, y2, *args, **kwargs):
     pl.fill(x, y, *args, **kwargs)
 
 
-def plot_count(fname):
+def plot_count(fname, dpi=70):
     # Load data
     date, libxc, c, code, test, doc = pl.load(fname, unpack=True)
     zero = pl.zeros_like(date)
 
-    fig = pl.figure(1, figsize=(7.5, 5))
+    fig = pl.figure(1, figsize=(7.5, 5), dpi=dpi)
     ax = fig.add_subplot(111)
     polygon(date, c + code + test, c + code + test + doc,
              facecolor='m', label='Documentation')
@@ -35,10 +35,10 @@ def plot_count(fname):
             facecolor='r', label='C-code')
 
     months = pl.MonthLocator()
-    months3 = pl.MonthLocator(interval=3)
+    months4 = pl.MonthLocator(interval=4)
     month_year_fmt = pl.DateFormatter("%b '%y")
 
-    ax.xaxis.set_major_locator(months3)
+    ax.xaxis.set_major_locator(months4)
     ax.xaxis.set_minor_locator(months)
     ax.xaxis.set_major_formatter(month_year_fmt)
     labels = ax.get_xticklabels()
@@ -46,7 +46,7 @@ def plot_count(fname):
     pl.axis('tight')
     pl.legend(loc='upper left')
     pl.title('Number of lines')
-    pl.savefig(fname.split('.')[0] + '.png')
+    pl.savefig(fname.split('.')[0] + '.png', dpi=dpi)
 
 
 if __name__ == '__main__':
