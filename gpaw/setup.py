@@ -1012,7 +1012,7 @@ class Setups(list):
 
     def set_symmetry(self, symmetry):
         """Find rotation matrices for spherical harmonics."""
-        R_slmm = [[rotation(l, symm) for l in range(3)]
+        R_slmm = [[rotation(l, symm) for l in range(4)]
                   for symm in symmetry.symmetries]
         
         for setup in self.setups.values():

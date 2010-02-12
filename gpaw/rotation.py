@@ -17,7 +17,8 @@ sphere_lm = [ \
     np.array([(1, 0, 0), (0, 1, 0), (0, 0, 1)]), # p
     np.array([(s, s, 0), (0, s, s), (s, 0, s), (1, 0, 0), (0, 0, 1)]), # d
     np.array([(s, s, 0), (0, s, s), (s, 0, s),
-              (1, 0, 0), (0, 1, 0), (0, 0, 1), (t, t, t)])] # f
+              (1, 0, 0), (s, -s, 0),
+              (t, -t, t), (t, t, -t)])] # f
 
 def Y_matrix(l, symmetry):
     """YMatrix(l, symmetry) -> matrix.
@@ -37,7 +38,7 @@ def Y_matrix(l, symmetry):
     return Y_mm
 
 identity = ((0, 1, 2), (1, 1, 1))
-iY_lmm = [np.linalg.inv(Y_matrix(l, identity)) for l in range(3)]
+iY_lmm = [np.linalg.inv(Y_matrix(l, identity)) for l in range(4)]
          
 
 def rotation(l, symmetry):
