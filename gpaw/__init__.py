@@ -206,6 +206,8 @@ def get_gpaw_python_path():
 paths = os.environ.get('GPAW_SETUP_PATH', '')
 if paths != '':
     setup_paths += paths.split(':')
+if 'setup_path' in extra_parameters:
+    setup_paths = extra_parameters['setup_path'].split(':') + setup_paths
 
 from gpaw.aseinterface import GPAW
 from gpaw.mixer import Mixer, MixerSum, MixerDif

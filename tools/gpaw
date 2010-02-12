@@ -3,8 +3,15 @@
 
 import sys
 
-# importing GPAW may remove args such as --setups from argv, so save a copy
-argv = sys.argv[1:]
+# Importing GPAW will remove --setups=... from argv, so save a copy
+# Use --gpaw="setup_path='...'" instead.
+for i, arg in enumerate(sys.argv):
+    if arg.startswith('--setups='):
+        sys.argv.pop(i)
+        import gpaw
+        sys.argv.append(arg)
+        break
+
 import traceback
 from optparse import OptionParser, OptionGroup
 
@@ -106,7 +113,7 @@ if 0:
                          help='Number of bands / states.')
     parser.add_option_group(calc_opts)
 
-opt, args = parser.parse_args(argv)
+opt, args = parser.parse_args()
 
 def run():
     if len(args) != 1:
