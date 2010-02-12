@@ -229,7 +229,7 @@ for b in all:
 latex = [latex] + allboxes + allarrows + ['\\end{pspicture}\n\\end{document}']
 open('bigpicture.tex', 'w').write('\n'.join(latex))
 
-os.system('latex bigpicture.tex > bigpicture.log')
+os.system('latex -halt-on-error bigpicture.tex > bigpicture.log')
 os.system('dvipdf bigpicture.dvi')
 os.system('cp bigpicture.pdf ../_build')
 os.system('convert bigpicture.pdf -resize 50% bigpicture.png')

@@ -65,6 +65,7 @@ the corresponding objects are defined in the code:
 
    overview
    developersguide
+   proposals/proposals
    paw
    wavefunctions
    setups
