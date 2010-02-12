@@ -84,7 +84,7 @@ def construct_reciprocal(gd):
     return k2_Q, N3
 
 
-def coordinates(gd, origin=None):
+def coordinates(gd, origin=None, tiny=1e-12):
     """Constructs and returns matrices containing cartesian coordinates,
        and the square of the distance from the origin.
 
@@ -103,7 +103,7 @@ def coordinates(gd, origin=None):
     xyz = r0 + I * dr
     r2 = np.sum(xyz**2, axis=0)
     # Remove singularity at origin and replace with small number
-    r2 = np.where(r2 < 1e-12, 1e-12, r2)
+    r2 = np.where(r2 < tiny, tiny, r2)
 
     # Return r^2 matrix
     return xyz, r2

@@ -7,6 +7,7 @@ import gpaw.mpi as mpi
 from gpaw.spherical_harmonics import Y
 from gpaw.utilities.vector import Vector3d
 from gpaw.utilities.timing import StepTimer
+from gpaw.utilities.tools import coordinates
 
 class AngularIntegral:
     """Perform an angular integral on the grid.
@@ -158,34 +159,27 @@ class ExpandYl(AngularIntegral):
         # self.y_Lg will contain the YL values corresponding to
         #     each grid point
         V_R = np.zeros((int(Rmax / dR + 1),))
-        y_Lg = gd.zeros((nL,))
-        R_g = np.zeros(y_Lg[0].shape, int) - 1
-        ball_g = np.zeros(y_Lg[0].shape, int)
-        for i in range(gd.beg_c[0],gd.end_c[0]):
-            ii = i - gd.beg_c[0]
-            for j in range(gd.beg_c[1],gd.end_c[1]):
-                jj = j - gd.beg_c[1]
-                for k in range(gd.beg_c[2],gd.end_c[2]):
-                    kk = k - gd.beg_c[2]
-                    vr = self.center - Vector3d([i * gd.h_cv[0, 0],
-                                                 j * gd.h_cv[1, 1],
-                                                 k * gd.h_cv[2, 2]])
-                    r = vr.length()
-                    if r>0 and r<Rmax:
-                        rhat = vr/r
-                        for L in range(nL):
-                            y_Lg[L,ii,jj,kk] = Y(L, rhat[0], 
-                                                 rhat[1], rhat[2])
-                        iR = int(r/dR)
-                        R_g[ii,jj,kk] = iR
-                        ball_g[ii,jj,kk] = 1
-                        V_R[iR] += 1
+        npY = np.vectorize(Y, (float,), 'spherical harmonic')
+
+        r_cg, r2_g = coordinates(gd, self.center, tiny=1.e-78)
+        r_g = np.sqrt(r2_g)
+        rhat_cg = r_cg / r_g
+
+        ball_g = np.where(r_g < Rmax, 1, 0)
+        R_g = np.where(r_g < Rmax, r_g / dR, -1).astype(int)
+        y_Lg = []
+        for L in range(nL):
+            y_Lg.append(npY(L, rhat_cg[0], rhat_cg[1], rhat_cg[2]))
+
+        for i, v in enumerate(V_R):
+            V_R[i] = np.where(R_g == i, 1, 0).sum()
         gd.comm.sum(V_R)
 
         self.R_g = R_g
         self.ball_g = ball_g
         self.V_R = V_R * gd.dv
         self.y_Lg = y_Lg
+
 
     def expand(self,psit_g):
         """Expand a wave function"""
