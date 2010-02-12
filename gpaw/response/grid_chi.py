@@ -25,10 +25,13 @@ class CHI:
     def __init__(self):
         self.xc = 'LDA'
         self.nspin = 1
-
+        
         self.comm = _Communicator(world)
-        if rank != 0:
-            sys.stdout = devnull 
+        if rank == 0:
+            self.txt = open('out.txt','w')
+        else:
+            sys.stdout = devnull
+            self.txt = devnull
 
 
     def initialize(self, c, q, wmax, dw, eta=0.2, Ecut=100.): # eV
@@ -138,10 +141,10 @@ class CHI:
         
         if self.ncalc == 1:
             self.OpticalLimit()
-            print 'Optical limit calculation !'
+            print >> self.txt, 'Optical limit calculation !'
         else:
             self.ShiftKpoint()
-            print 'Numerically shift kpoint calculation !'
+            print >> self.txt, 'Numerically shift kpoint calculation !'
 
     def OpticalLimit(self):
 
@@ -215,7 +218,7 @@ class CHI:
                                   e_kn[k, n] - e_kn[k, m] )
             self.epsilonM += (rho_nn * C_nn * rho_nn.conj()).sum()
 
-            print 'finished kpoint', k
+            print >> self.txt, 'finished kpoint', k
             
         for iw in range(self.Nw):
             self.epsilonRPA[iw] =  1 - 4 * pi / np.inner(qq, qq) * chi0_w[iw] / self.vol
@@ -246,7 +249,7 @@ class CHI:
             if not phi_Gii.has_key(Z):
                 phi_Gii[Z] = ( self.two_phi_planewave_integrals(Z)
                                   * np.exp(-1j * np.inner(qq, R_a[a])) )
-        print 'phi_Gii obtained!'
+        print >> self.txt, 'phi_Gii obtained!'
 
         # calculate chi0
         for k in range(self.kstart, self.kend):
@@ -302,7 +305,7 @@ class CHI:
                 for jG in range(self.npw):
                     chi0M_GG[iG,jG] += (rho_Gnn[iG] * C_nn * rho_Gnn[jG].conj()).sum()
                     
-            print 'finished k', k
+            print >> self.txt, 'finished k', k
 
 
         comm = self.comm
@@ -535,27 +538,31 @@ class CHI:
 
     def print_stuff(self):
 
-        print 
-        print 'Parameters used:'
-        print
-        print 'Number of bands:', self.nband
-        print 'Number of kpoints:', self.nkpt
-        print 'Unit cell (a.u.):'
-        print self.acell
-        print 'Reciprocal cell (1/a.u.)'
-        print self.bcell
-        print 'Volome of cell (a.u.**3):', self.vol
-        print 'BZ volume (1/a.u.**3):', self.BZvol
-        print
-        print 'Number of frequency points:', self.Nw
-        print 'Number of Grid points / G-vectors, and in total:', self.nG, self.nG0
-        print 'Grid spacing (a.u.):', self.h_c
-        print
-        print 'q in reduced coordinate:', self.q
-        print 'q in cartesian coordinate:', self.qq
+        txt = self.txt
+        print >> txt
+        print >> txt, 'Parameters used:'
 
-        print 'Planewave cutoff energy (eV):', self.Ecut * Hartree
-        print 'Number of planewave used:', self.npw
+        print >> txt 
+        print >> txt, 'Number of bands:', self.nband
+        print >> txt, 'Number of kpoints:', self.nkpt
+        print >> txt, 'Unit cell (a.u.):'
+        print >> txt, self.acell
+        print >> txt, 'Reciprocal cell (1/a.u.)'
+        print >> txt, self.bcell
+        print >> txt, 'Volome of cell (a.u.**3):', self.vol
+        print >> txt, 'BZ volume (1/a.u.**3):', self.BZvol
+
+        print >> txt 
+        print >> txt, 'Number of frequency points:', self.Nw
+        print >> txt, 'Number of Grid points / G-vectors, and in total:', self.nG, self.nG0
+        print >> txt, 'Grid spacing (a.u.):', self.h_c
+
+        print >> txt 
+        print >> txt, 'q in reduced coordinate:', self.q
+        print >> txt, 'q in cartesian coordinate:', self.qq
+
+        print >> txt, 'Planewave cutoff energy (eV):', self.Ecut * Hartree
+        print >> txt, 'Number of planewave used:', self.npw
 
 
     def check_sum_rule(self):
@@ -568,10 +575,10 @@ class CHI:
         N1 *= self.dw * self.vol / (2 * pi**2)
         N2 *= self.dw * self.vol / (2 * pi**2)
         
-        print 'sum rule:'
+        print >> self.txt, 'sum rule:'
         nv = self.nvalence
-        print 'Without local field correction, N1 = ', N1, (N1 - nv) / nv * 100, '% error'
-        print 'Include local field correction, N2 = ', N2, (N2 - nv) / nv * 100, '% error'
+        print >> self.txt, 'Without local field correction, N1 = ', N1, (N1 - nv) / nv * 100, '% error'
+        print >> self.txt, 'Include local field correction, N2 = ', N2, (N2 - nv) / nv * 100, '% error'
 
 
     def get_macroscopic_dielectric_constant(self):
