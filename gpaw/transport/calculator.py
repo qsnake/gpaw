@@ -1556,12 +1556,13 @@ class Transport(GPAW):
                 self.ground = True
             self.get_selfconsistent_hamiltonian()
             self.analysor.save_ion_step()
-            self.analysor.save_data_to_file('ion')
+            self.analysor.save_data_to_file('ion')    
         if self.initialized_transport:
             self.F_av = None
         #f = GPAW.get_forces(self, atoms)
         f = self.calculate_force()
         self.optimize = True
+        self.normalize_density = True
         return f
 
     def calculate_force(self):
