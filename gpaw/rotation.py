@@ -36,9 +36,8 @@ def Y_matrix(l, symmetry):
             Y_mm[m1, m2] = Y(L, x, y, z)
     return Y_mm
 
-
 identity = ((0, 1, 2), (1, 1, 1))
-iY_lmm = [np.linalg.inv(Y_matrix(l, identity)) for l in range(4)]
+iY_lmm = [np.linalg.inv(Y_matrix(l, identity)) for l in range(3)]
          
 
 def rotation(l, symmetry):
