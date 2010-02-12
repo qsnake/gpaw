@@ -88,10 +88,15 @@ class Side:
         if gd.comm.rank == 0: 
             self.boundary_vHt_g = self.slice(nn, vHt_g)
             self.boundary_nt_sg = self.slice(nn, nt_sg)        
-           
+            if self.direction == '-':
+                other_direction= '+'
+            else:
+                other_direction= '-'                
             h = self.h_cz / 2.0
+            b_vHt_g0 = self.boundary_vHt_g.copy()
+            self.boundary_vHt_g = interpolate_array(b_vHt_g0, finegd, h, self.direction)
+            self.boundary_vHt_g1 = interpolate_array(b_vHt_g0, finegd, h, other_direction)            
             
-            self.boundary_vHt_g = interpolate_array(self.boundary_vHt_g, finegd, h, self.direction)
             vt_sg = interpolate_array(vt_sg, finegd, h, self.direction)
             self.boundary_vt_sg_line =  aa1d(vt_sg)            
             #self.boundary_vt_sg_line = interpolate_array(
@@ -252,10 +257,10 @@ class Surrounding:
                                                                   bias_shift1
                 extra_vHt_g[:, :, :nn] = bias_shift0 + \
                                              self.sides['-'].boundary_vHt_g -\
-                                             self.sides['+'].boundary_vHt_g
+                                             self.sides['+'].boundary_vHt_g1
                 extra_vHt_g[:, :, -nn:] = bias_shift1 + \
                                              self.sides['+'].boundary_vHt_g -\
-                                             self.sides['-'].boundary_vHt_g            
+                                             self.sides['-'].boundary_vHt_g1            
                 nt_sg[:, :, :, :nn] = self.sides['-'].boundary_nt_sg
                 nt_sg[:, :, :, -nn:] = self.sides['+'].boundary_nt_sg
 
