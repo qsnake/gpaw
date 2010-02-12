@@ -702,8 +702,10 @@ def interpolate_array(array, gd, h, di='+'):
         new_array[i] = interpolate.splev(xnew, tck, der=0)
     
     if spin_relate:
+        array.shape = (ns, nx, ny, nz)
         new_array.shape = (ns, nx, ny, nz)
     else:
+        array.shape = (nx, ny, nz)
         new_array.shape = (nx, ny, nz)
     
     return new_array
