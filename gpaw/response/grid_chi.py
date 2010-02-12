@@ -20,7 +20,6 @@ from gpaw.setup import Setup
 from gpaw.fd_operators import Gradient
 from gpaw.mpi import _Communicator, world, rank, size
 
-
 class CHI:
     def __init__(self):
         self.xc = 'LDA'
@@ -28,7 +27,7 @@ class CHI:
         
         self.comm = _Communicator(world)
         if rank == 0:
-            self.txt = open('out.txt','w')
+            self.txt = sys.stdout #open('out.txt','w')
         else:
             sys.stdout = devnull
             self.txt = devnull
