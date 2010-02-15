@@ -649,7 +649,7 @@ def broadcast_string(string=None, root=0, comm=world):
         assert string is None
         n = np.zeros(1, int)
     comm.broadcast(n, root)
-    if rank == root:
+    if comm.rank == root:
         string = np.fromstring(string, np.int8)
     else:
         string = np.zeros(n, np.int8)
