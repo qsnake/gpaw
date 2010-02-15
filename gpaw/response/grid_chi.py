@@ -1,4 +1,5 @@
 import sys
+import time
 from math import pi, sqrt
 from os.path import isfile
 from scipy.special import sph_jn
@@ -240,44 +241,50 @@ class CHI:
         chi0M_GG = np.zeros((self.npw, self.npw), dtype = complex)
         
         # calculate <phi_i | e**(-iq.r) | phi_j>
-        phi_Gii = {}
+        phi_Gp = {}
         R_a = c[0].atoms.positions / Bohr
         
         for a, id in enumerate(setups.id_a):
             Z, type, basis = id
-            if not phi_Gii.has_key(Z):
-                phi_Gii[Z] = ( self.two_phi_planewave_integrals(Z)
+            if not phi_Gp.has_key(Z):
+                phi_Gp[Z] = ( self.two_phi_planewave_integrals(Z)
                                   * np.exp(-1j * np.inner(qq, R_a[a])) )
         print >> self.txt, 'phi_Gii obtained!'
 
+        expqr_G = np.exp(-1j * self.qr)
+        
         # calculate chi0
         for k in range(self.kstart, self.kend):
+            t1 = time.time()
+            
             kpt0 = c[0].wfs.kpt_u[k]
             kpt1 = c[1].wfs.kpt_u[k]
             P1_ani = kpt0.P_ani
             P2_ani = kpt1.P_ani
-            psit1_nG = kpt0.psit_nG
-            psit2_nG = kpt1.psit_nG
 
-            rho_Gnn = np.zeros((self.npw, self.nband, self.nband), dtype=complex)        
+            rho_Gnn = np.zeros((self.npw, self.nband, self.nband), dtype=complex)
             for n in range(self.nband):
+                psit1_G = kpt0.psit_nG[n].conj() * expqr_G
                 for m in range(self.nband):
                     if  np.abs(f1_kn[k, n] - f2_kn[k, m]) > 1e-10:
-                        for iG in range(self.npw):
-                            qG = np.array([np.inner(self.q + self.Gvec[iG],
-                                           self.bcell[:,i]) for i in range(3)])
-                            qGr = np.inner(qG, self.r)
-                            
-                            # <psi_nk | e**(-i (q+G).r)  | psi_n'k+q>
-                            rho_Gnn[iG, n, m] = gd.integrate( psit1_nG[n].conj()
-                                                 * psit2_nG[m]
-                                                 * np.exp(-1j * qGr) )
-                            # PAW correction 
-                            for a, id in enumerate(setups.id_a):
-                                Z, type, basis = id
-                                P_ii = np.outer(P1_ani[a][n].conj(), P2_ani[a][m])
-                                rho_Gnn[iG, n, m] += (P_ii * phi_Gii[Z][iG]).sum()
+                        psit2_G = kpt1.psit_nG[m] * psit1_G
+                        # fft
+                        tmp_G = np.fft.fftn(psit2_G) * self.vol / self.nG0
 
+                        for iG in range(self.npw):
+                            index = self.Gindex[iG]
+                            rho_Gnn[iG, n, m] = tmp_G[index[0], index[1], index[2]]
+
+                            # PAW correction
+                        for a, id in enumerate(setups.id_a):
+                            Z, type, basis = id
+                            P_p = np.outer(P1_ani[a][n].conj(), P2_ani[a][m]).ravel()
+                            rho_Gnn[:, n, m] += np.dot(phi_Gp[Z], P_p)
+
+            t2 = time.time()
+
+            #print  >> self.txt,'Time for calculating density matrix:', t2 - t1, 'seconds'
+            
             # construct (f_nk - f_n'k+q) / (w + e_nk - e_n'k+q + ieta )
             C_nn = np.zeros((self.nband, self.nband), dtype=complex)
             for iw in range(self.Nw):
@@ -292,7 +299,10 @@ class CHI:
                 for iG in range(self.npw):
                     for jG in range(self.npw):
                         chi0_wGG[iw,iG,jG] += (rho_Gnn[iG] * C_nn * rho_Gnn[jG].conj()).sum()
-
+                        
+            t3 = time.time()
+            #print  >> self.txt,'Time for omega loop:', t3 - t2, 'seconds'
+            
             # Obtain Macroscopic Dielectric Constant
             for n in range(self.nband):
                 for m in range(self.nband):
@@ -449,7 +459,7 @@ class CHI:
         
         phi_Gii *= 4 * pi
 
-        return phi_Gii
+        return phi_Gii.reshape(self.npw, ni*ni)
 
 
     def two_phi_derivative(self, Z):
@@ -643,6 +653,20 @@ class CHI:
         self.npw = n
         self.Gvec = G[:n]
 
+        Gindex = {}
+        id = np.zeros(3, dtype=int)
+        print type(id)
+        for iG in range(self.npw):
+            Gvec = self.Gvec[iG]
+            for dim in range(3):
+                if Gvec[dim] >= 0:
+                    id[dim] = Gvec[dim]
+                else:
+                    id[dim] = self.nG[dim] - np.abs(Gvec[dim])
+            Gindex[iG] = np.array(id)
+
+        self.Gindex = Gindex        
+        
         return
 
 
