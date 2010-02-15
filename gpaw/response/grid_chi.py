@@ -1,5 +1,5 @@
 import sys
-import time
+from time import time
 from math import pi, sqrt
 from os.path import isfile
 from scipy.special import sph_jn
@@ -34,7 +34,7 @@ class CHI:
             self.txt = devnull
 
 
-    def initialize(self, c, q, wmax, dw, eta=0.2, Ecut=100.): # eV
+    def initialize(self, c, q, wmax, dw, eta=0.2, Ecut=100., sigma=1e-5): # eV
         try:
             self.ncalc = len(c)
         except:
@@ -117,11 +117,14 @@ class CHI:
         # unit conversion
         self.wmin = 0
         self.wmax  = wmax / Hartree
+        self.wcut = (wmax + 5.) / Hartree
         self.dw = dw / Hartree
         self.Nw = int((self.wmax - self.wmin) / self.dw) + 1
+        self.NwS = int((self.wcut - self.wmin) / self.dw) + 1
         self.eta = eta / Hartree
         self.Ecut = Ecut / Hartree
-
+        self.sigma = sigma
+        
         self.set_Gvectors()
 
 #        nt_G = calc.density.nt_sG[0] # G is the number of grid points
@@ -238,6 +241,7 @@ class CHI:
         gd = c[0].wfs.gd
 
         chi0_wGG = np.zeros((self.Nw, self.npw, self.npw), dtype = complex)
+        specfunc_wGG = np.zeros((self.NwS, self.npw, self.npw))
         chi0M_GG = np.zeros((self.npw, self.npw), dtype = complex)
         
         # calculate <phi_i | e**(-iq.r) | phi_j>
@@ -255,7 +259,7 @@ class CHI:
         
         # calculate chi0
         for k in range(self.kstart, self.kend):
-            t1 = time.time()
+            t1 = time()
             
             kpt0 = c[0].wfs.kpt_u[k]
             kpt1 = c[1].wfs.kpt_u[k]
@@ -281,29 +285,27 @@ class CHI:
                             P_p = np.outer(P1_ani[a][n].conj(), P2_ani[a][m]).ravel()
                             rho_Gnn[:, n, m] += np.dot(phi_Gp[Z], P_p)
 
-            t2 = time.time()
+            t2 = time()
 
-            #print  >> self.txt,'Time for calculating density matrix:', t2 - t1, 'seconds'
-            
-            # construct (f_nk - f_n'k+q) / (w + e_nk - e_n'k+q + ieta )
-            C_nn = np.zeros((self.nband, self.nband), dtype=complex)
-            for iw in range(self.Nw):
-                w = iw * self.dw
-                for n in range(self.nband):
-                    for m in range(self.nband):
-                        if  np.abs(f1_kn[k, n] - f2_kn[k, m]) > 1e-10:
-                            C_nn[n, m] = (f1_kn[k, n] - f2_kn[k, m]) / (
-                             w + e1_kn[k, n] - e2_kn[k, m] + 1j * eta)
+            # calculate spectral function
+            for n in range(self.nband):
+                for m in range(self.nband):
+                    focc = f1_kn[k,n] - f2_kn[k,m]
+                    if focc > 1e-10:
+                        w0 = e2_kn[k,m] - e1_kn[k,n]
+                        tmp_GG = focc * np.real(np.outer(rho_Gnn[:,n,m], rho_Gnn[:,n,m].conj() ))
 
-                # get chi0(G=0,G'=0,w)
-                for iG in range(self.npw):
-                    for jG in range(self.npw):
-                        chi0_wGG[iw,iG,jG] += (rho_Gnn[iG] * C_nn * rho_Gnn[jG].conj()).sum()
-                        
-            t3 = time.time()
-            #print  >> self.txt,'Time for omega loop:', t3 - t2, 'seconds'
+                        # calculate delta function
+                        deltaw = self.delta_function(w0, self.dw, self.NwS, self.sigma)
+                        for wi in range(self.NwS):
+                            if deltaw[wi] > 1e-5:
+                                specfunc_wGG[wi] += tmp_GG * deltaw[wi]
+
+            t4 = time()
+#            print  >> self.txt,'Time for spectral function loop:', t4 - t2, 'seconds'
             
             # Obtain Macroscopic Dielectric Constant
+            C_nn = np.zeros((self.nband, self.nband))
             for n in range(self.nband):
                 for m in range(self.nband):
                     C_nn[n, m] = 0.
@@ -316,12 +318,15 @@ class CHI:
                     
             print >> self.txt, 'finished k', k
 
-
         comm = self.comm
         comm.sum(chi0_wGG)
         comm.sum(chi0M_GG)
-        tmp = np.eye(self.npw, self.npw)
-        
+        comm.sum(specfunc_wGG)
+
+        # Hilbert Transform
+        chi0_wGG = self.hilbert_transform(specfunc_wGG)
+
+        tmp = np.eye(self.npw, self.npw)        
         for iw in range(self.Nw):
             for iG in range(self.npw):
                 qG = np.array([np.inner(self.q + self.Gvec[iG],
@@ -329,6 +334,31 @@ class CHI:
                 self.eRPA_wGG[iw,iG] =  tmp[iG] - 4 * pi / np.inner(qG, qG) * chi0_wGG[iw,iG] / self.vol
                 if iw == 0:
                     self.eMRPA_GG[iG] = tmp[iG] - 4 * pi / np.inner(qG, qG) * chi0M_GG[iG] / self.vol
+
+
+    def delta_function(self, x0, dx, Nx, sigma):
+
+        deltax = np.zeros(Nx)
+        for i in range(Nx):
+            deltax[i] = np.exp(-(i * dx - x0)**2/(4. * sigma))
+        return deltax / (2. * sqrt(pi * sigma))
+
+
+
+    def hilbert_transform(self, specfunc_wGG):
+
+        tmp_ww = np.zeros((self.Nw, self.NwS), dtype=complex)
+
+        eta = self.eta
+        for iw in range(self.Nw):
+            w = iw * self.dw
+            for jw in range(self.NwS):
+                ww = jw * self.dw 
+                tmp_ww[iw, jw] = 1. / (w - ww + 1j*eta) - 1. / (w + ww + 1j*eta)
+
+        chi0_wGG = gemmdot(tmp_ww, np.complex128(specfunc_wGG), beta = 0.)
+
+        return chi0_wGG * self.dw
 
 
 
@@ -655,7 +685,7 @@ class CHI:
 
         Gindex = {}
         id = np.zeros(3, dtype=int)
-        print type(id)
+
         for iG in range(self.npw):
             Gvec = self.Gvec[iG]
             for dim in range(3):
