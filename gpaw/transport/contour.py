@@ -439,7 +439,7 @@ class Contour:
                 my_info_dict[flag] = np.array([nid, link_nid,
                                            path_index, link_path_index], int)
                 num += 1
-                
+                  
         info_dict = gather_ndarray_dict(my_info_dict, self.comm,
                                                              broadcast=True)
         #print self.comm.rank, info_dict
@@ -623,7 +623,7 @@ class Contour:
             del energies[i]
             del weights[i]
             del ses[i]
-   
+        del self.converged_zones[:]
         if cal_den:
             return nids, energies, weights, ses, (den_eq + den_ne)
         else:
