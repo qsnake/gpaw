@@ -125,7 +125,7 @@ tests = [
     'wannier_ethylene.py',
     'CH4.py',
     'neb.py',
-    'chi_molNa.py',
+    'Diamond_Absorption.py',
     'hgh_h2o.py',
     'apmb.py',
     'relax.py',
@@ -189,8 +189,7 @@ if mpi.size > 1:
                 'coreeig.py',
                 'asewannier.py',
                 'wannier_ethylene.py',
-                'muffintinpot.py',
-                'chi_molNa.py']
+                'muffintinpot.py']
 
 if mpi.size > 2:
     exclude += ['neb.py']
