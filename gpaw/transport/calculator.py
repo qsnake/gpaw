@@ -313,7 +313,8 @@ class Transport(GPAW):
         # save memory
         del self.atoms_l
 
-        self.get_inner_setups()        
+        self.get_inner_setups()
+        self.extended_D_asp = None        
         if not self.non_sc and self.analysis_mode > -3:
             self.timer.start('surround set_position')
             if not self.fixed:
@@ -686,6 +687,7 @@ class Transport(GPAW):
             del calc.density
             self.extended_calc = calc
             self.gd1, self.finegd1 = calc.gd, calc.finegd
+            self.density.reset()
             self.set_extended_positions()
             #del self.wfs
             #self.wfs = self.extended_calc.wfs
@@ -1541,6 +1543,8 @@ class Transport(GPAW):
         self.timer.stop('project hamiltonian')                  
        
         for q in range(self.my_npk):
+            if self.optimize:
+                self.hsd.reset(0, q, s_pkmm[q], 'S')
             for s in range(self.my_nspins):
                 self.hsd.reset(s, q, h_spkmm[s, q], 'H')
   
@@ -2014,12 +2018,35 @@ class Transport(GPAW):
         spos_ac0 = self.atoms.get_scaled_positions() % 1.0
         spos_ac = self.extended_atoms.get_scaled_positions() % 1.0
         self.wfs.set_positions(spos_ac0)
+        old_extended_rank_a = self.extended_calc.wfs.rank_a
         self.extended_calc.wfs.set_positions(spos_ac)
 
-        self.density.set_positions(spos_ac0, self.inner_rank_a)
-        self.hamiltonian.set_positions(spos_ac0, self.inner_rank_a)
+        self.density.set_positions(spos_ac0, self.wfs.rank_a)
+        self.hamiltonian.set_positions(spos_ac0, self.wfs.rank_a)
         self.extended_calc.hamiltonian.set_positions(spos_ac,
                                                 self.extended_calc.wfs.rank_a)
+
+        if self.extended_D_asp is not None:
+            requests = []
+            D_asp = {}
+            for a in self.extended_calc.wfs.basis_functions.my_atom_indices:
+                if a in self.extended_D_asp:
+                    D_asp[a] = self.extended_D_asp.pop(a)
+                else:
+                    # Get matrix from old domain:
+                    ni = self.extended_calc.wfs.setups[a].ni
+                    D_sp = np.empty((self.nspins, ni * (ni + 1) // 2))
+                    D_asp[a] = D_sp
+                    requests.append(self.gd.comm.receive(D_sp, old_extended_rank_a[a],
+                                                         tag=a, block=False))
+                
+            for a, D_sp in self.extended_D_asp.items():
+                # Send matrix to new domain:
+                requests.append(self.gd.comm.send(D_sp, self.extended_calc.wfs.rank_a[a],
+                                                  tag=a, block=False))
+            for request in requests:
+                self.gd.comm.wait(request)
+            self.extended_D_asp = D_asp
 
         density = self.density
         wfs = self.extended_calc.wfs
@@ -2043,11 +2070,11 @@ class Transport(GPAW):
                                 wfs.setups[a].initialize_density_matrix(f_si)
                     f_asi[a] = f_si
 
-                for a in self.inner_atom_indices:
-                    setup = self.inner_setups[a]
+                for a in self.wfs.basis_functions.atom_indices:
+                    setup = self.wfs.setups[a]
                     f_si = setup.calculate_initial_occupation_numbers(
                                   density.magmom_a[a], density.hund, charge=c)
-                    if a in self.inner_my_atom_indices:
+                    if a in self.wfs.basis_functions.my_atom_indices:
                         density.D_asp[a] = setup.initialize_density_matrix(
                                                                          f_si)                    
 
@@ -2077,7 +2104,7 @@ class Transport(GPAW):
                 density.calculate_pseudo_density(wfs)
                 density.nt_sG += density.nct_G
                 density.normalize() 
-        
+  
         comp_charge = density.calculate_multipole_moments()
         density.interpolate(comp_charge)
         density.calculate_pseudo_charge(comp_charge)            
