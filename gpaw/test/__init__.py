@@ -125,7 +125,7 @@ tests = [
     'wannier_ethylene.py',
     'CH4.py',
     'neb.py',
-    'Diamond_Absorption.py',
+    'diamond_absorption.py',
     'hgh_h2o.py',
     'apmb.py',
     'relax.py',
@@ -212,6 +212,10 @@ if mpi.size == 8:
 if mpi.size != 8:
     exclude += ['parallel/realspace_blacs.py']
 
+try:
+    import scipy
+except ImportError:
+    exclude += ['diamond_absorption.py']
 
 for test in exclude:
     if test in tests:
