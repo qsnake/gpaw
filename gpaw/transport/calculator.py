@@ -156,7 +156,7 @@ class Transport(GPAW):
             self.normalize_density = False
         self.analysis_parameters = []            
         self.atoms_l = [None] * self.lead_num
-        
+        self.optimize = False        
         kpts = kw['kpts']
         if np.product(kpts) == kpts[self.d]:
             self.gpw_kwargs['usesymm'] = None
@@ -351,7 +351,6 @@ class Transport(GPAW):
             self.plot_option = None
         self.ground = True
         self.F_av = None
-        self.optimize = False
 
     def set_energies(self, energies):
         p = {}
@@ -682,11 +681,6 @@ class Transport(GPAW):
             for i in range(self.lead_num):
                 self.atoms_l.append(self.get_lead_atoms(i))
             self.get_extended_atoms()
-            calc = self.extended_atoms.calc
-            calc.initialize(self.extended_atoms)
-            del calc.density
-            self.extended_calc = calc
-            self.gd1, self.finegd1 = calc.gd, calc.finegd
             self.density.reset()
             self.set_extended_positions()
             #del self.wfs
@@ -1983,19 +1977,21 @@ class Transport(GPAW):
         atoms.set_pbc(self.atoms._pbc)
         self.extended_atoms = atoms
         self.extended_atoms.center()
-        p = self.gpw_kwargs.copy()
-        p['h'] = None
-        N_c = self.gd.N_c.copy()
-        for i in range(self.lead_num):
-            N_c[2] += self.bnc[i]
-        p['gpts'] = N_c
-        if 'mixer' in p:
-            if not self.spinpol:
-                p['mixer'] = Mixer(0.1, 5, weight=100.0)
-            else:
-                p['mixer'] = MixerDif(0.1, 5, weight=100.0)
-        p['poissonsolver'] = PoissonSolver(nn=2)        
-        self.extended_atoms.set_calculator(Lead_Calc(**p))
+        
+        if not self.optimize:
+            p = self.gpw_kwargs.copy()
+            p['h'] = None
+            N_c = self.gd.N_c.copy()
+            for i in range(self.lead_num):
+                N_c[2] += self.bnc[i]
+            p['gpts'] = N_c
+            if 'mixer' in p:
+                if not self.spinpol:
+                    p['mixer'] = Mixer(0.1, 5, weight=100.0)
+                else:
+                    p['mixer'] = MixerDif(0.1, 5, weight=100.0)
+            p['poissonsolver'] = PoissonSolver(nn=2)        
+            self.extended_atoms.set_calculator(Lead_Calc(**p))
 
     def get_linear_hartree_potential(self):
         global_linear_vHt = self.finegd.zeros(global_array=True)
