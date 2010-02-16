@@ -11,7 +11,7 @@ mapping=ZYXT
 job=${type}_${nodes}_${mode}_${mapping}
 input=${type}.py
 # pos=Au102_revised.xyz
-scratch=/pvfs-surveyor/${user}
+scratch=/pvfs-surveyor/${USER}
 
 rm -rf $scratch/$job
 mkdir $scratch/$job
