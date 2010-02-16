@@ -85,11 +85,11 @@ class Overlap:
         if sl_inverse_cholesky:
             assert parallel and scalapack()
             if inverse_cholesky(S_nn, 0) != 0:
-                raise RuntimeError('Orthogonalization failed!')
+                raise RuntimeError('Orthogonalization failed! You may want to check your structure.')
         else:
             if self.domain_comm.rank == 0 and self.band_comm.rank == 0:
                 if inverse_cholesky(S_nn) != 0:
-                    raise RuntimeError('Orthogonalization failed!')
+                    raise RuntimeError('Orthogonalization failed! You may want to check your structure.')
         self.timer.stop('inverse_cholesky')
 
         # S_nn now contains the inverse of the Cholesky factorization.

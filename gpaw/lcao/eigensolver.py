@@ -143,7 +143,8 @@ class LCAO:
         self.diagonalizer.diagonalize(H_MM, kpt.C_nM, kpt.eps_n, S_MM)
         wfs.timer.stop(diagonalizationstring)
 
-        assert kpt.eps_n[0] != 42
+        if (kpt.eps_n[0] == 42):
+            raise RuntimeError('LCAO diagonalization failed! You may want to check your structure.')    
 
         for a, P_ni in kpt.P_ani.items():
             # ATLAS can't handle uninitialized output array:
