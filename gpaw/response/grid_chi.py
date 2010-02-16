@@ -1,18 +1,14 @@
 import sys
 from time import time
 from math import pi, sqrt
-from os.path import isfile
 from scipy.special import sph_jn
 import numpy as np
 from ase.units import Hartree, Bohr
 from ase.data import chemical_symbols
 
 from gpaw.xc_functional import XCFunctional
-from gpaw.lcao.pwf2 import LCAOwrap
 from gpaw.utilities.blas import gemmdot
 from gpaw.utilities import unpack, devnull
-from gpaw.lfc import BasisFunctions
-from gpaw import GPAW
 
 from gpaw.gaunt import gaunt as G_LLL
 from gpaw.spherical_harmonics import Y
@@ -34,7 +30,8 @@ class CHI:
             self.txt = devnull
 
 
-    def initialize(self, c, q, wmax, dw, eta=0.2, Ecut=100., sigma=1e-5): # eV
+    def initialize(self, c, q, wmax, dw, eta=0.2, Ecut=100.,
+                   sigma=1e-5, HilbertTrans = True): # eV
         try:
             self.ncalc = len(c)
         except:
@@ -134,6 +131,8 @@ class CHI:
         self.eRPA_wGG = np.zeros((self.Nw, self.npw, self.npw), dtype = complex)
         self.eMRPA_GG = np.zeros((self.npw, self.npw), dtype = complex)
         self.epsilonM = 0.
+
+        self.HilbertTrans = HilbertTrans
 
         self.print_stuff()
 
@@ -287,19 +286,36 @@ class CHI:
 
             t2 = time()
 
-            # calculate spectral function
-            for n in range(self.nband):
-                for m in range(self.nband):
-                    focc = f1_kn[k,n] - f2_kn[k,m]
-                    if focc > 1e-10:
-                        w0 = e2_kn[k,m] - e1_kn[k,n]
-                        tmp_GG = focc * np.real(np.outer(rho_Gnn[:,n,m], rho_Gnn[:,n,m].conj() ))
 
-                        # calculate delta function
-                        deltaw = self.delta_function(w0, self.dw, self.NwS, self.sigma)
-                        for wi in range(self.NwS):
-                            if deltaw[wi] > 1e-5:
-                                specfunc_wGG[wi] += tmp_GG * deltaw[wi]
+            if not self.HilbertTrans:
+                # construct (f_nk - f_n'k+q) / (w + e_nk - e_n'k+q + ieta )
+                C_nn = np.zeros((self.nband, self.nband), dtype=complex)
+                for iw in range(self.Nw):
+                    w = iw * self.dw
+                    for n in range(self.nband):
+                        for m in range(self.nband):
+                            if  np.abs(f1_kn[k, n] - f2_kn[k, m]) > 1e-10:
+                                C_nn[n, m] = (f1_kn[k, n] - f2_kn[k, m]) / (
+                                 w + e1_kn[k, n] - e2_kn[k, m] + 1j * eta)
+                
+                    # get chi0(G=0,G'=0,w)
+                    for iG in range(self.npw):
+                        for jG in range(self.npw):
+                            chi0_wGG[iw,iG,jG] += (rho_Gnn[iG] * C_nn * rho_Gnn[jG].conj()).sum()
+            else:
+            # calculate spectral function
+                for n in range(self.nband):
+                    for m in range(self.nband):
+                        focc = f1_kn[k,n] - f2_kn[k,m]
+                        if focc > 1e-10:
+                            w0 = e2_kn[k,m] - e1_kn[k,n]
+                            tmp_GG = focc * np.real(np.outer(rho_Gnn[:,n,m], rho_Gnn[:,n,m].conj() ))
+                
+                            # calculate delta function
+                            deltaw = self.delta_function(w0, self.dw, self.NwS, self.sigma)
+                            for wi in range(self.NwS):
+                                if deltaw[wi] > 1e-5:
+                                    specfunc_wGG[wi] += tmp_GG * deltaw[wi]
 
             t4 = time()
 #            print  >> self.txt,'Time for spectral function loop:', t4 - t2, 'seconds'
@@ -319,12 +335,14 @@ class CHI:
             print >> self.txt, 'finished k', k
 
         comm = self.comm
-        comm.sum(chi0_wGG)
         comm.sum(chi0M_GG)
-        comm.sum(specfunc_wGG)
 
         # Hilbert Transform
-        chi0_wGG = self.hilbert_transform(specfunc_wGG)
+        if not self.HilbertTrans:
+            comm.sum(chi0_wGG)
+        else:
+            comm.sum(specfunc_wGG)
+            chi0_wGG = self.hilbert_transform(specfunc_wGG)
 
         tmp = np.eye(self.npw, self.npw)        
         for iw in range(self.Nw):
@@ -603,6 +621,8 @@ class CHI:
         print >> txt, 'Planewave cutoff energy (eV):', self.Ecut * Hartree
         print >> txt, 'Number of planewave used:', self.npw
 
+        print >> txt, 'Use Hilbert Transform:', self.HilbertTrans
+
 
     def check_sum_rule(self):
 
@@ -637,6 +657,7 @@ class CHI:
             self.eRPALFC_w[iw] = 1. / np.linalg.inv(tmp)[0, 0]
             self.eRPANLF_w[iw] = tmp[0, 0]    
         return 
+
 
     def get_absorption_spectrum(self, filename='Absorption'):
         self.get_dielectric_function()
@@ -713,6 +734,7 @@ class CHI:
 
         libxc.calculate_fxc_spinpaired(n, fxc)
         return np.reshape(fxc, N)
+
 
     def calculate_Kxc(self, gd, nt_G):
         # Currently without PAW correction
