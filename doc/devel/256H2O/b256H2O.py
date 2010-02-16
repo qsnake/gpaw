@@ -73,9 +73,6 @@ calc = GPAW(nbands=nbands,
             txt=prefix + '.txt',
             )
 atoms.set_calculator(calc)
-# uncomment next two lines to use a random guess
-#calc.initialize(atoms)
-#calc.nao = 0
 from gpaw.mpi import rank
 try:
     pot = atoms.get_potential_energy()
