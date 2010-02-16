@@ -1,1 +1,23 @@
-qsub -A Gpaw -q prod -n 512 -t 90 --mode smp --env OMP_NUM_THREADS=1:GPAW_SETUP_PATH=$GPAW_SETUP_PATH:PYTHONPATH="${HOME}/gpaw:$PYTHONPATH":LD_LIBRARY_PATH="/bgsys/drivers/ppcfloor/gnu-linux/powerpc-bgp-linux/lib:$LD_LIBRARY_PATH" ${HOME}/gpaw/build/bin.linux-ppc64-2.5/gpaw-python ../Au_cluster.py --sl_diagonalize=5,5,64,4 --gpaw=usenewlfc=1
+type=Au_cluster
+cwd=`pwd`
+acct=Gpaw
+queue=prod
+time=90
+nodes=512
+mode=vn
+mapping=ZYXT
+# mapfile=BGMAP_128_4x4x4x8
+# mapping=$mapfile
+job=${type}_${nodes}_${mode}_${mapping}
+input=${type}.py
+# pos=Au102_revised.xyz
+scratch=/intrepid-fs0/users/${user}/persistent
+
+rm -rf $scratch/$job
+mkdir $scratch/$job
+cp $input $scratch/$job
+# cp $mapfile $scratch/$job
+# cp $pos $scratch/$job
+cd $scratch/$job
+
+qsub -A $acct -n $nodes -t $time --mode $mode --env BG_MAPPING=$mapping:MPIRUN_ENABLE_TTY_REPORTING=0:OMP_NUM_THREADS=1:GPAW_SETUP_PATH=$GPAW_SETUP_PATH:PYTHONPATH=${HOME}/gpaw:${HOME}/ase:$PYTHONPATH:LD_LIBRARY_PATH=$CN_LD_LIBRARY_PATH ${HOME}/gpaw/build/bin.linux-ppc64-2.6/gpaw-python ${type}.py --domain-decomposition=8,8,8 --state-parallelization=4 --sl_diagonalize=5,5,64,4 
