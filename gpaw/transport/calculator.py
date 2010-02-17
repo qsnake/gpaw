@@ -698,6 +698,7 @@ class Transport(GPAW):
         eigensolver = wfs.eigensolver
         ham = calc.hamiltonian
         self.gd.comm.broadcast(wfs.S_qMM, 0)
+        self.gd.comm.broadcast(wfs.T_qMM, 0)        
         S_qMM = wfs.S_qMM.copy()
         for S_MM in S_qMM:
             tri2full(S_MM)
@@ -710,7 +711,6 @@ class Transport(GPAW):
                 H_sqMM[kpt.s, kpt.q] = H_MM
             else:
                 H_sqMM[0, kpt.q] = H_MM
-        self.gd.comm.broadcast(H_sqMM, 0)                
         return H_sqMM, S_qMM
        
     def get_lead_atoms(self, l):
