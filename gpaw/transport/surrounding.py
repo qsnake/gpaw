@@ -94,8 +94,10 @@ class Side:
                 other_direction= '-'                
             h = self.h_cz / 2.0
             b_vHt_g0 = self.boundary_vHt_g.copy()
+            b_vHt_g1 = self.boundary_vHt_g.copy()
+
             self.boundary_vHt_g = interpolate_array(b_vHt_g0, finegd, h, self.direction)
-            self.boundary_vHt_g1 = interpolate_array(b_vHt_g0, finegd, h, other_direction)            
+            self.boundary_vHt_g1 = interpolate_array(b_vHt_g1, finegd, h, other_direction)            
             
             vt_sg = interpolate_array(vt_sg, finegd, h, self.direction)
             self.boundary_vt_sg_line =  aa1d(vt_sg)            
