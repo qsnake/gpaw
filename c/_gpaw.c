@@ -24,6 +24,7 @@ PyObject* craypat_region_end(PyObject *self, PyObject *args);
 #endif
 
 
+PyObject* symmetrize(PyObject *self, PyObject *args);
 PyObject* scal(PyObject *self, PyObject *args);
 PyObject* gemm(PyObject *self, PyObject *args);
 PyObject* gemv(PyObject *self, PyObject *args);
@@ -103,6 +104,7 @@ PyObject* mlsqr(PyObject *self, PyObject *args);
 
 
 static PyMethodDef functions[] = {
+  {"symmetrize", symmetrize, METH_VARARGS, 0},
   {"scal", scal, METH_VARARGS, 0},
   {"gemm", gemm, METH_VARARGS, 0},
   {"gemv", gemv, METH_VARARGS, 0},
