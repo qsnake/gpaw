@@ -1,5 +1,5 @@
 import sys
-from time import time
+from time import time, ctime
 from math import pi, sqrt
 from scipy.special import sph_jn
 import numpy as np
@@ -32,6 +32,12 @@ class CHI:
 
     def initialize(self, c, q, wmax, dw, eta=0.2, Ecut=100.,
                    sigma=1e-5, HilbertTrans = True): # eV
+
+        print  >> self.txt
+        print  >> self.txt, 'Response function calculation started at:'
+        self.starttime = time()
+        print  >> self.txt, ctime()
+
         try:
             self.ncalc = len(c)
         except:
@@ -142,11 +148,20 @@ class CHI:
     def periodic(self):
         
         if self.ncalc == 1:
+            print >> self.txt, 'Optical limit calculation !'            
             self.OpticalLimit()
-            print >> self.txt, 'Optical limit calculation !'
+
         else:
-            self.ShiftKpoint()
             print >> self.txt, 'Numerically shift kpoint calculation !'
+            self.ShiftKpoint()
+
+            print  >> self.txt
+            print  >> self.txt, 'Response function calculation ended at:'
+            endtime = time()
+            print  >> self.txt, ctime()
+            dt = (endtime - self.starttime) / 60
+            print  >> self.txt, 'For excited states calc, it  took',dt, 'minutes'
+
 
     def OpticalLimit(self):
 
@@ -184,7 +199,7 @@ class CHI:
                 for m in range(self.nband):
                     # G = G' = 0 <psi_nk | e**(-iqr) | psi_n'k+q>
                     
-                    if np.abs(e_kn[k, m] - e_kn[k, n]) > 1e-10:
+                    if np.abs(e_kn[k, m] - e_kn[k, n]) > 1e-5:
                         for ix in range(3):
                             d_c[ix](psit_nG[m], dpsit_G, kpt.phase_cd)
                             tmp[ix] = gd.integrate( psit_nG[n].conj() * dpsit_G)
@@ -203,7 +218,7 @@ class CHI:
                 w = iw * self.dw
                 for n in range(self.nband):
                     for m in range(self.nband):
-                        if  np.abs(f_kn[k, n] - f_kn[k, m]) > 1e-10:
+                        if  np.abs(f_kn[k, n] - f_kn[k, m]) > 1e-5:
                             C_nn[n, m] = (f_kn[k, n] - f_kn[k, m]) / (
                              w + e_kn[k, n] - e_kn[k, m] + 1j * eta)
 
@@ -215,7 +230,7 @@ class CHI:
             for n in range(self.nband):
                 for m in range(self.nband):
                     C_nn[n, m] = 0.
-                    if np.abs(f_kn[k, n] - f_kn[k, m]) > 1e-10:
+                    if np.abs(f_kn[k, n] - f_kn[k, m]) > 1e-5:
                         C_nn[n, m] = (f_kn[k, n] - f_kn[k, m]) / (
                                   e_kn[k, n] - e_kn[k, m] )
             self.epsilonM += (rho_nn * C_nn * rho_nn.conj()).sum()
@@ -285,7 +300,7 @@ class CHI:
                             rho_Gnn[:, n, m] += np.dot(phi_Gp[Z], P_p)
 
             t2 = time()
-
+            #print  >> self.txt,'Time for density matrix:', t2 - t1, 'seconds'
 
             if not self.HilbertTrans:
                 # construct (f_nk - f_n'k+q) / (w + e_nk - e_n'k+q + ieta )
@@ -318,7 +333,7 @@ class CHI:
                                     specfunc_wGG[wi] += tmp_GG * deltaw[wi]
 
             t4 = time()
-#            print  >> self.txt,'Time for spectral function loop:', t4 - t2, 'seconds'
+            #print  >> self.txt,'Time for spectral function loop:', t4 - t2, 'seconds'
             
             # Obtain Macroscopic Dielectric Constant
             C_nn = np.zeros((self.nband, self.nband))
