@@ -63,7 +63,7 @@ class Symmetry:
              for c2 in range(3)], dtype=bool)
         
         # Metric tensor
-        metric_vv = np.dot(self.cell_cv.T, self.cell_cv)
+        metric_vv = np.dot(self.cell_cv, self.cell_cv.T)
         
         # Generate all possible 3x3 symmetry matrices using base-3 integers
         power = (6561, 2187, 729, 243, 81, 27, 9, 3, 1)
@@ -92,7 +92,7 @@ class Symmetry:
 
             # The metric of the cell should be conserved after applying
             # the operation
-            opcell_cv = np.dot(self.cell_cv, operation_vv)
+            opcell_cv = np.dot(self.cell_cv.T, operation_vv)
             opcellmetric_vv = np.dot(opcell_cv.T, opcell_cv)
             if abs(metric_vv - opcellmetric_vv).sum() > self.tol:
                 continue
