@@ -2024,7 +2024,7 @@ class Transport_Plotter:
             current.append(np.real(step.current))
         import pylab as p
         unit = 6.624 * 1e3 
-        current = np.array(current) / (Hartree * np.pi)
+        current = np.array(current) / (Hartree * 2 * np.pi)
         current = current.reshape(-1)
         if not spinpol:
             current *= 2
@@ -2052,7 +2052,7 @@ class Transport_Plotter:
             current.append(np.real(step.current))
         import pylab as p
         unit = 6.624 * 1e-3
-        current = np.array(current) / (Hartree * np.pi)
+        current = np.array(current) / (Hartree * 2 * np.pi)
         current = current.reshape(-1)
         if not spinpol:
             current *= 2
