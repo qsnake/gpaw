@@ -6,7 +6,7 @@ import numpy as np
 
 from gpaw.fd_operators import Laplace
 from gpaw.preconditioner import Preconditioner
-from gpaw.utilities.lapack import diagonalize
+from gpaw.utilities.lapack import diagonalize, sldiagonalize
 from gpaw.utilities.blas import axpy, r2k, gemm
 from gpaw.utilities.tools import apply_subspace_mask
 from gpaw.utilities import unpack
@@ -16,9 +16,11 @@ from gpaw import debug
 
 
 class BaseDiagonalizer:
-    def __init__(self, gd, bd):
+    def __init__(self, world, gd, bd, kpt_comm):
+        self.world = world
         self.gd = gd
         self.bd = bd
+        self.kpt_comm = kpt_comm
 
     def diagonalize(self, H_NN, eps_n):
         nbands = self.bd.nbands
@@ -41,8 +43,14 @@ class BaseDiagonalizer:
 class SLDiagonalizer(BaseDiagonalizer):
     """Original ScaLAPACK diagonalizer using 
     redundantly distributed arrays."""
-    def __init__(self, gd, bd, root=0):
-        BaseDiagonalizer.__init__(self, gd, bd)
+    def __init__(self, world, gd, bd, kpt_comm, root=0):
+        BaseDiagonalizer.__init__(self, world, gd, bd, kpt_comm)
+        bcommsize = bd.comm.size
+        gcommsize = gd.comm.size
+        shiftks = kpt_comm.rank * bcommsize * gcommsize
+        block_ranks = shiftks + np.arange(bcommsize * gcommsize)
+        blockcomm = world.new_communicator(block_ranks)
+        self.blockcomm = blockcomm
         self.root = root
         # Keep buffers?
 
@@ -50,7 +58,7 @@ class SLDiagonalizer(BaseDiagonalizer):
         # Work is done on BLACS grid, but one processor still collects
         # all eigenvectors. Only processors on the BLACS grid return
         # meaningful values of info.
-        return diagonalize(H_NN, eps_N, root=self.root)
+        return sldiagonalize(H_NN, eps_N, self.blockcomm, root=self.root)
 
 
 class LapackDiagonalizer(BaseDiagonalizer):
@@ -71,6 +79,7 @@ class Eigensolver:
         
     def initialize(self, wfs):
         self.timer = wfs.timer
+        self.world = wfs.world
         self.kpt_comm = wfs.kpt_comm
         self.band_comm = wfs.band_comm
         self.dtype = wfs.dtype
@@ -100,9 +109,11 @@ class Eigensolver:
                 kpt.eps_n = np.empty(self.mynbands)
         
         if sl_diagonalize:
-            self.diagonalizer = SLDiagonalizer(self.gd, self.bd)
+            self.diagonalizer = SLDiagonalizer(self.world, self.gd, 
+                                               self.bd, self.kpt_comm)
         else:
-            self.diagonalizer = LapackDiagonalizer(self.gd, self.bd)
+            self.diagonalizer = LapackDiagonalizer(self.world, self.gd,
+                                                   self.bd, self.kpt_comm)
 
         self.initialized = True
 

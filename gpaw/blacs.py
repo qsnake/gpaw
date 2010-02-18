@@ -916,12 +916,8 @@ class OrbitalDescriptor:
         self.orbital_comm = serial_comm
 
     def get_diagonalizer(self):
-        if sl_diagonalize:
-            from gpaw.lcao.eigensolver import SLDiagonalizer
-            diagonalizer = SLDiagonalizer(self.gd, self.bd)
-        else:
-            from gpaw.lcao.eigensolver import LapackDiagonalizer
-            diagonalizer = LapackDiagonalizer(self.gd, self.bd)
+        from gpaw.lcao.eigensolver import LapackDiagonalizer
+        diagonalizer = LapackDiagonalizer(self.gd, self.bd)
         return diagonalizer
 
     def get_overlap_descriptor(self):

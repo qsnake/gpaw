@@ -35,28 +35,6 @@ class BaseDiagonalizer:
         mem.subnode('H [MM]', self.nao * self.nao * itemsize)
     
 
-class SLDiagonalizer(BaseDiagonalizer):
-    """Original ScaLAPACK diagonalizer using
-    redundantly distributed arrays."""
-    def __init__(self, gd, bd, root=0):
-        BaseDiagonalizer.__init__(self, gd, bd)
-        self.root = root
-        # Keep buffers?
-
-    def _diagonalize(self, H_MM, S_MM, eps_M):
-        # Work is done on BLACS grid, but one processor still collects
-        # all eigenvectors. Only processors on the BLACS grid return
-        # meaningful values of info.         
-        return general_diagonalize(H_MM, eps_M, S_MM, root=self.root)
-
-    def estimate_memory(self, mem, dtype):
-        BaseDiagonalizer.estimate(self, mem, dtype)
-        itemsize = mem.itemsize[dtype]
-        ncpus, mcpus, blocksize = sl_diagonalize[:3]
-        mem.subnode('ScaLAPACK Workspace1', (nao/ncpus) * (nao/mcpus) * itemsize)
-        mem.subnode('ScaLAPACK Workspace2', nao * nao * itemsize)
-        
-
 class LapackDiagonalizer(BaseDiagonalizer):
     """Serial diagonalizer."""
     def _diagonalize(self, H_MM, S_MM, eps_M):

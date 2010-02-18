@@ -11,13 +11,12 @@ import numpy as np
 from gpaw import debug
 from gpaw.utilities import scalapack
 from gpaw import sl_diagonalize, sl_inverse_cholesky
-from gpaw.mpi import size, world
 import _gpaw
 from gpaw.utilities.tools import tri2full
 from gpaw.utilities.blas import gemm
 
 
-def diagonalize(a, w, root=0):
+def diagonalize(a, w):
     """Diagonalize a symmetric/hermitian matrix.
 
     Uses dsyevd/zheevd to diagonalize symmetric/hermitian matrix
@@ -33,21 +32,38 @@ def diagonalize(a, w, root=0):
     assert a.shape == (n, n)
     assert w.shape == (n,)
 
-    if sl_diagonalize:
-        assert scalapack()
-        assert len(sl_diagonalize) == 4
-        assert sl_diagonalize[0]*sl_diagonalize[1] <= size
-        # symmetrize the matrix
-        tri2full(a)
-        info = world.diagonalize(a, w,
+    info = _gpaw.diagonalize(a, w)
+    return info
+
+def sldiagonalize(a, w, blockcomm, root=0):
+    """Diagonalize a symmetric/hermitian matrix.
+
+    Uses dsyevd/zheevd to diagonalize symmetric/hermitian matrix
+    `a`. The eigenvectors are returned in the rows of `a`, and the
+    eigenvalues in `w` in ascending order. Only the lower triangle of
+    `a` is considered."""
+
+    assert a.flags.contiguous
+    assert w.flags.contiguous
+    assert a.dtype in [float, complex]
+    assert w.dtype == float
+    n = len(a)
+    assert a.shape == (n, n)
+    assert w.shape == (n,)
+
+    assert scalapack()
+    assert len(sl_diagonalize) == 4
+    size = blockcomm.size
+    assert sl_diagonalize[0]*sl_diagonalize[1] <= size
+    # symmetrize the matrix
+    tri2full(a)
+    info = blockcomm.diagonalize(a, w,
                                  sl_diagonalize[0],
                                  sl_diagonalize[1],
                                  sl_diagonalize[2], root)
-    else:
-        info = _gpaw.diagonalize(a, w)
     return info
 
-def general_diagonalize(a, w, b, root=0):
+def general_diagonalize(a, w, b):
     """Diagonalize a generalized symmetric/hermitian matrix.
 
     Uses dsygvd/zhegvd to diagonalize symmetric/hermitian matrix
@@ -66,22 +82,43 @@ def general_diagonalize(a, w, b, root=0):
     assert b.dtype == a.dtype
     assert b.shape == a.shape
 
-    if sl_diagonalize:
-        assert scalapack()
-        assert len(sl_diagonalize) == 4
-        assert sl_diagonalize[0]*sl_diagonalize[1] <= size
-        # symmetrize the matrix
-        tri2full(a)
-        tri2full(b)
-        info = world.diagonalize(a, w,
+    info = _gpaw.general_diagonalize(a, w, b)
+    return info
+
+def slgeneral_diagonalize(a, w, b, blockcomm, root=0):
+    """Diagonalize a generalized symmetric/hermitian matrix.
+
+    Uses dsygvd/zhegvd to diagonalize symmetric/hermitian matrix
+    `a`. The eigenvectors are returned in the rows of `a`, and the
+    eigenvalues in `w` in ascending order. Only the lower triangle of
+    `a` is considered."""
+
+    assert a.flags.contiguous
+    assert w.flags.contiguous
+    assert a.dtype in [float, complex]
+    assert w.dtype == float
+    n = len(a)
+    assert a.shape == (n, n)
+    assert w.shape == (n,)
+    assert b.flags.contiguous
+    assert b.dtype == a.dtype
+    assert b.shape == a.shape
+
+    assert scalapack()
+    assert len(sl_diagonalize) == 4
+    size = blockcomm.size
+    assert sl_diagonalize[0]*sl_diagonalize[1] <= size
+    # symmetrize the matrix
+    tri2full(a)
+    tri2full(b)
+    info = blockcomm.diagonalize(a, w,
                                  sl_diagonalize[0],
                                  sl_diagonalize[1],
                                  sl_diagonalize[2], root, b)
-    else:
-        info = _gpaw.general_diagonalize(a, w, b)
+
     return info
 
-def inverse_cholesky(a, root=0):
+def inverse_cholesky(a):
     """Calculate the inverse of the Cholesky decomposition of
     a symmetric/hermitian positive definite matrix `a`.
 
@@ -93,20 +130,32 @@ def inverse_cholesky(a, root=0):
     n = len(a)
     assert a.shape == (n, n)
 
-    if sl_inverse_cholesky:
-        assert scalapack()
+    info = _gpaw.inverse_cholesky(a)
+    return info
 
-    if sl_inverse_cholesky:
-        assert len(sl_inverse_cholesky) == 4
-        assert sl_inverse_cholesky[0]*sl_inverse_cholesky[1] <= size
-        # symmetrize the matrix
-        tri2full(a)
-        info = world.inverse_cholesky(a,
-                                      sl_inverse_cholesky[0],
-                                      sl_inverse_cholesky[1],
-                                      sl_inverse_cholesky[2], root)
-    else:
-        info = _gpaw.inverse_cholesky(a)
+def slinverse_cholesky(a, blockcomm, root=0):
+    """Calculate the inverse of the Cholesky decomposition of
+    a symmetric/hermitian positive definite matrix `a`.
+
+    Uses dpotrf/zpotrf to calculate the decomposition and then
+    dtrtri/ztrtri for the inversion"""
+
+    assert a.flags.contiguous
+    assert a.dtype in [float, complex]
+    n = len(a)
+    assert a.shape == (n, n)
+
+    assert scalapack()
+
+    assert len(sl_inverse_cholesky) == 4
+    size = blockcomm.size
+    assert sl_inverse_cholesky[0]*sl_inverse_cholesky[1] <= size
+    # symmetrize the matrix
+    tri2full(a)
+    info = blockcomm.inverse_cholesky(a,
+                                  sl_inverse_cholesky[0],
+                                  sl_inverse_cholesky[1],
+                                  sl_inverse_cholesky[2], root)
     return info
 
 def inverse_general(a):
