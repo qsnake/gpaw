@@ -21,6 +21,7 @@ class _Transformer:
         self.gdin = gdin
         self.gdout = gdout
         self.nn = nn
+        assert 1 <= nn <= 4
         self.dtype = dtype
 
         pad_cd = np.empty((3, 2), int)
