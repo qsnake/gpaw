@@ -513,8 +513,8 @@ class CHI:
                     kplusq[dim] += 1.
 
                 N[dim] = int(np.round((kplusq[dim] + kmax[dim])/dk[dim]))
-            
-            kq[k] = N[2] + N[1] * nkptxyz[1] + N[0] * nkptxyz[2]**2
+
+            kq[k] = N[2] + N[1] * nkptxyz[2] + N[0] * nkptxyz[2]* nkptxyz[1]
 
             tmp = bzkpt_kG[kq[k]]
             if (abs(kplusq - tmp)).sum() > 1e-8:
@@ -805,6 +805,7 @@ class CHI:
         assert type(a) == np.ndarray
         
         return a.itemsize * a.size /1024**2 # 'Megabyte'
+
 
     def check_sum_rule(self):
 
