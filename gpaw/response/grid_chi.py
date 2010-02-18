@@ -5,10 +5,12 @@ from scipy.special import sph_jn
 import numpy as np
 from ase.units import Hartree, Bohr
 from ase.data import chemical_symbols
+from ase.dft.kpoints import get_monkhorst_shape
 
 from gpaw.xc_functional import XCFunctional
 from gpaw.utilities.blas import gemmdot
 from gpaw.utilities import unpack, devnull
+from gpaw.utilities.memory import maxrss
 
 from gpaw.gaunt import gaunt as G_LLL
 from gpaw.spherical_harmonics import Y
@@ -30,7 +32,7 @@ class CHI:
             self.txt = devnull
 
 
-    def initialize(self, c, q, wmax, dw, nkptxyz, eta=0.2, Ecut=100.,
+    def initialize(self, c, q, wmax, dw, eta=0.2, Ecut=100.,
                    sigma=1e-5, HilbertTrans = True): # eV
 
         print  >> self.txt
@@ -46,10 +48,10 @@ class CHI:
             
         self.calc = calc = c[0]
         self.c = c
-
+        
         bzkpt_kG = calc.get_ibz_k_points()
         self.nkpt = bzkpt_kG.shape[0]
-        self.nkptxyz = nkptxyz
+        self.nkptxyz = get_monkhorst_shape(bzkpt_kG)
         kweight = calc.get_k_point_weights()
 
         # parallize in kpoints
@@ -143,6 +145,7 @@ class CHI:
 
         self.print_stuff()
 
+        #print 'memory usage:', maxrss() / 1024**2, 'M'
         return
 
 
@@ -303,6 +306,8 @@ class CHI:
                             P_p = np.outer(P1_ani[a][n].conj(), P2_ani[a][m]).ravel()
                             rho_Gnn[:, n, m] += np.dot(phi_Gp[Z], P_p)
 
+            #print 'memory usage:', maxrss() / 1024**2, 'M'
+            del psit1_G, psit2_G
             t2 = time()
             #print  >> self.txt,'Time for density matrix:', t2 - t1, 'seconds'
 
@@ -333,7 +338,7 @@ class CHI:
                             # calculate delta function
                             deltaw = self.delta_function(w0, self.dw, self.NwS, self.sigma)
                             for wi in range(self.NwS):
-                                if deltaw[wi] > 1e-8:
+                                if deltaw[wi] > 1e-5:
                                     specfunc_wGG[wi] += tmp_GG * deltaw[wi]
 
             t4 = time()
@@ -492,15 +497,14 @@ class CHI:
     def find_kq(self, bzkpt_kG, q):
         """Find the index of k+q for all kpoints in BZ."""
 
-        found = False
         kq = np.zeros(self.nkpt, dtype=int)
+        assert self.nkptxyz is not None
         nkptxyz = self.nkptxyz
         dk = 1. / nkptxyz 
         kmax = (nkptxyz - 1) * dk / 2.
         N = np.zeros(3, dtype=int)
 
         for k in range(self.nkpt):
-
             kplusq = bzkpt_kG[k] + q
             for dim in range(3):
                 if kplusq[dim] > 0.5: # 
@@ -509,12 +513,10 @@ class CHI:
                     kplusq[dim] += 1.
 
                 N[dim] = int(np.round((kplusq[dim] + kmax[dim])/dk[dim]))
-
             
             kq[k] = N[2] + N[1] * nkptxyz[1] + N[0] * nkptxyz[2]**2
 
             tmp = bzkpt_kG[kq[k]]
-            
             if (abs(kplusq - tmp)).sum() > 1e-8:
                 print k, kplusq, tmp
                 raise ValueError('k+q index not correct!')

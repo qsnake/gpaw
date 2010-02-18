@@ -45,7 +45,7 @@ wmax = 24.
 q = np.array([0.25, 0., 0.])
 nkptxyz = np.array([4, 4, 4]) 
 chi = CHI()
-chi.initialize((calc,), q, wmax, dw, nkptxyz, eta=0.2, Ecut = 10)
+chi.initialize((calc,), q, wmax, dw, eta=0.2, Ecut = 10)
 chi.periodic()
 
 chi.get_EELS_spectrum()
