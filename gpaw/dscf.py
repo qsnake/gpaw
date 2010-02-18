@@ -16,7 +16,7 @@ import copy
 import numpy as np
 
 from ase.parallel import paropen
-
+from ase.units import Hartree
 from gpaw import mpi
 from gpaw.utilities import devnull
 from gpaw.occupations import OccupationNumbers, FermiDirac
@@ -56,9 +56,8 @@ def dscf_calculation(paw, orbitals, atoms):
     if isinstance(occ, OccupationsDSCF):
         paw.occupations.orbitals = orbitals
     else:
-        new_occ = OccupationsDSCF(occ.width, orbitals)
+        new_occ = OccupationsDSCF(occ.width * Hartree, orbitals)
         paw.occupations = new_occ
-
     # If the calculator has already converged (for the ground state),
     # reset self-consistency and let the density be updated right away
     if paw.scf.converged:
@@ -72,10 +71,9 @@ class OccupationsDSCF(FermiDirac):
     difference is that it forces some electrons in the supplied orbitals
     in stead of placing all the electrons by a Fermi-Dirac distribution.
     """
-
+    
     def __init__(self, width, orbitals):
         FermiDirac.__init__(self, width)
-        
         self.orbitals = orbitals
         self.norbitals = len(self.orbitals)
 
