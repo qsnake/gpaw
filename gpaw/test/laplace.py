@@ -23,12 +23,14 @@ cells = [# distorted hexagonal
     # sc
     (3, [1, 1, 1]),
     # distorted sc
-    (6, [(1, 0, 0), (0.01, 1, 0), (0, 0.02, 1)])]
+    (6, [(1, 0, 0), (0.01, 1, 0), (0, 0.02, 1)]),
+    # rocksalt
+    (6, [(2.*np.sqrt(1./3.), np.sqrt(1./8.), -np.sqrt(1./24.)), (2.*np.sqrt(1./3.), -np.sqrt(1./8.), -np.sqrt(1./24.)), (2.*np.sqrt(1./3.), 0., np.sqrt(1./6.))])]
 
 if size == 1:
     for D, cell in cells:
         print cell
-        for n in range(1, 4):
+        for n in range(1, 6):
             N = 2 * n + 2
             gd = GridDescriptor((N, N, N), cell)
             b_g = gd.zeros()
@@ -48,4 +50,4 @@ if size == 1:
                             r = 0.0
                         lap.apply(a_g, b_g)
                         e = b_g[n + 1, n + 1, n + 1] - r
-                        assert abs(e) < 1e-13
+                        assert abs(e) < 1e-12
