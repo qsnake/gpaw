@@ -91,7 +91,7 @@ class GridDescriptor(Domain):
         ``n_c``     Number of grid points on this CPU.
         ``beg_c``   Beginning of grid-point indices (inclusive).
         ``end_c``   End of grid-point indices (exclusive).
-        ``comm``    MPI-communicator for domain decomosition.
+        ``comm``    MPI-communicator for domain decomposition.
         ==========  ========================================================
 
         The length unit is Bohr.

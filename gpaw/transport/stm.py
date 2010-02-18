@@ -306,7 +306,7 @@ class STM:
             tbox.corner_c += shift
         # get the combined effective potential on the extended surface grid
         """
-        This part needs to be updated for a seperate xc calculation
+        This part needs to be updated for a separate xc calculation
         """
         tip_ox = self.ox
         tip_oy = self.oy

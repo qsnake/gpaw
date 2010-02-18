@@ -611,7 +611,7 @@ class SLDenseLinearAlgebra2:
         # 1. indescriptor
         # 2. outdescriptor
         # 3. broadcast with gd.comm
-        # We will do this with a number of seperate buffers.
+        # We will do this with a number of separate buffers.
         indescriptor = self.indescriptor
         outdescriptor = self.outdescriptor
         blockdescriptor = self.blockdescriptor

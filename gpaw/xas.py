@@ -124,8 +124,8 @@ class XAS:
         stick:
           if False return broadened spectrum, if True return stick spectrum
           
-        Symmtrization has been moved inside get_spectra because we want to
-        symmtrice squares of transition dipoles."""
+        Symmetrization has been moved inside get_spectra because we want to
+        symmetrize squares of transition dipoles."""
         
         # eps_n = self.eps_n[k_in*self.n: (k_in+1)*self.n -1]
          

@@ -86,7 +86,7 @@ class SIC:
         # the LDA/GGA part of the functional
         self.xcbasis.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
         
-        # orbital dependend components of the functional
+        # orbital dependent components of the functional
         if n_g.ndim == 3:
             ESI = self.calculate_sic_potentials()
             if self.density.finegd.comm.rank == 0:
@@ -214,7 +214,7 @@ class SIC:
         else:
             psolver = self.hamiltonian.poisson
             #
-            # interpolare on fine grid
+            # interpolate on fine grid
             density.interpolator.apply(v_cou_G, v_cou_g)
             #
             # solve poisson equation

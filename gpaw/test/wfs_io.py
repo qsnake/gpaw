@@ -39,7 +39,7 @@ for ending in endings:
               convergence=
               {'eigenstates': 1.e-5}).get_atoms().get_potential_energy()
         
-    # refine the restart file and seperate wfs 
+    # refine the restart file and separate wfs 
     calc = GPAW(restart, convergence={'eigenstates': 1.e-5})
     calc.read_wave_functions(mode)
     E2 = calc.get_atoms().get_potential_energy()

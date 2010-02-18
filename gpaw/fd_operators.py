@@ -338,7 +338,7 @@ def LaplaceB(gd, dtype=float, allocate=True):
                       gd, dtype, allocate=allocate)
 
 def GUCLaplace(gd, scale=1.0, n=1, dtype=float, allocate=True):
-    """Laplacian for general nororthorhombic grid.
+    """Laplacian for general non orthorhombic grid.
 
     gd: GridDescriptor
         Descriptor for grid.

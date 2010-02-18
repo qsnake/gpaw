@@ -256,7 +256,7 @@ class GPAW(PAW):
         Fold eigenvalues with Gaussians, and put on an energy grid.
 
         returns an (energies, dos) tuple, where energies are relative to the
-        vacuum level for non-periodic systems, and the average potentail for
+        vacuum level for non-periodic systems, and the average potential for
         periodic systems.
         """
         if width is None:
@@ -677,7 +677,7 @@ class GPAW(PAW):
         return Bohr * self.wfs.gd.h_cv.diagonal()
 
     def read_wave_functions(self, mode='gpw'):
-        """Read wave functions one by one from seperate files"""
+        """Read wave functions one by one from separate files"""
 
         from gpaw.io import read_wave_function
         for u, kpt in enumerate(self.wfs.kpt_u):

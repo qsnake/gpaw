@@ -154,7 +154,7 @@ def get_locfun_rotation(projections_nj, M=None, T=0, ortho=False):
     # Check for linear dependencies
     Scd = np.diagonal(np.linalg.cholesky(S_jj)).min()
     if Scd < 0.01:
-        print ('Warning: possibly near linear depedence.\n'
+        print ('Warning: possibly near linear dependence.\n'
                'Minimum eigenvalue of cholesky decomposition is %s' % Scd)
 
     if ortho:

@@ -125,9 +125,9 @@ class MatrixOperator:
         Parameters:
 
         bra_xG: ndarray
-            Set of bra-like vectors in which the matrix elements are evaulated.
+            Set of bra-like vectors in which the matrix elements are evaluated.
         key_yG: ndarray
-            Set of ket-like vectors in which the matrix elements are evaulated.
+            Set of ket-like vectors in which the matrix elements are evaluated.
         A_yx: ndarray
             Matrix in which to put calculated elements. Take care: Due to the
             difference in Fortran/C array order and the inherent BLAS nature,
@@ -284,7 +284,7 @@ class MatrixOperator:
         Parameters:
 
         psit_nG: ndarray
-            Set of vectors in which the matrix elements are evaulated.
+            Set of vectors in which the matrix elements are evaluated.
         P_ani: dict
             Dictionary of projector overlap integrals P_ni = <p_i | psit_nG>.
         A: function
@@ -436,7 +436,7 @@ class MatrixOperator:
             However, unlike the results from calculate_matrix_elements, it is
             assumed that all matrix elements are filled in (use e.g. tri2full).
         psit_nG: ndarray
-            Set of vectors in which the matrix elements are evaulated.
+            Set of vectors in which the matrix elements are evaluated.
         P_ani: dict
             Dictionary of projector overlap integrals P_ni = <p_i | psit_nG>.
 
