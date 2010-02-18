@@ -30,7 +30,7 @@ class CHI:
             self.txt = devnull
 
 
-    def initialize(self, c, q, wmax, dw, eta=0.2, Ecut=100.,
+    def initialize(self, c, q, wmax, dw, nkptxyz, eta=0.2, Ecut=100.,
                    sigma=1e-5, HilbertTrans = True): # eV
 
         print  >> self.txt
@@ -49,6 +49,7 @@ class CHI:
 
         bzkpt_kG = calc.get_ibz_k_points()
         self.nkpt = bzkpt_kG.shape[0]
+        self.nkptxyz = nkptxyz
         kweight = calc.get_k_point_weights()
 
         # parallize in kpoints
@@ -148,19 +149,22 @@ class CHI:
     def periodic(self):
         
         if self.ncalc == 1:
-            print >> self.txt, 'Optical limit calculation !'            
-            self.OpticalLimit()
+            # Disable optical limit calculation at the moment
+            #print >> self.txt, 'Optical limit calculation !'            
+            #self.OpticalLimit()
+            print >> self.txt, 'EELS spectrum (finite q) calculation !'
+            self.Finiteq()
 
         else:
             print >> self.txt, 'Numerically shift kpoint calculation !'
             self.ShiftKpoint()
 
-            print  >> self.txt
-            print  >> self.txt, 'Response function calculation ended at:'
-            endtime = time()
-            print  >> self.txt, ctime()
-            dt = (endtime - self.starttime) / 60
-            print  >> self.txt, 'For excited states calc, it  took',dt, 'minutes'
+        print  >> self.txt
+        print  >> self.txt, 'Response function calculation ended at:'
+        endtime = time()
+        print  >> self.txt, ctime()
+        dt = (endtime - self.starttime) / 60
+        print  >> self.txt, 'For excited states calc, it  took',dt, 'minutes'
 
 
     def OpticalLimit(self):
@@ -199,7 +203,7 @@ class CHI:
                 for m in range(self.nband):
                     # G = G' = 0 <psi_nk | e**(-iqr) | psi_n'k+q>
                     
-                    if np.abs(e_kn[k, m] - e_kn[k, n]) > 1e-5:
+                    if np.abs(e_kn[k, m] - e_kn[k, n]) > 1e-8:
                         for ix in range(3):
                             d_c[ix](psit_nG[m], dpsit_G, kpt.phase_cd)
                             tmp[ix] = gd.integrate( psit_nG[n].conj() * dpsit_G)
@@ -218,7 +222,7 @@ class CHI:
                 w = iw * self.dw
                 for n in range(self.nband):
                     for m in range(self.nband):
-                        if  np.abs(f_kn[k, n] - f_kn[k, m]) > 1e-5:
+                        if  np.abs(f_kn[k, n] - f_kn[k, m]) > 1e-8:
                             C_nn[n, m] = (f_kn[k, n] - f_kn[k, m]) / (
                              w + e_kn[k, n] - e_kn[k, m] + 1j * eta)
 
@@ -230,7 +234,7 @@ class CHI:
             for n in range(self.nband):
                 for m in range(self.nband):
                     C_nn[n, m] = 0.
-                    if np.abs(f_kn[k, n] - f_kn[k, m]) > 1e-5:
+                    if np.abs(f_kn[k, n] - f_kn[k, m]) > 1e-8:
                         C_nn[n, m] = (f_kn[k, n] - f_kn[k, m]) / (
                                   e_kn[k, n] - e_kn[k, m] )
             self.epsilonM += (rho_nn * C_nn * rho_nn.conj()).sum()
@@ -255,7 +259,7 @@ class CHI:
         gd = c[0].wfs.gd
 
         chi0_wGG = np.zeros((self.Nw, self.npw, self.npw), dtype = complex)
-        specfunc_wGG = np.zeros((self.NwS, self.npw, self.npw))
+        specfunc_wGG = np.zeros((self.NwS, self.npw, self.npw), dtype = complex)
         chi0M_GG = np.zeros((self.npw, self.npw), dtype = complex)
         
         # calculate <phi_i | e**(-iq.r) | phi_j>
@@ -284,7 +288,7 @@ class CHI:
             for n in range(self.nband):
                 psit1_G = kpt0.psit_nG[n].conj() * expqr_G
                 for m in range(self.nband):
-                    if  np.abs(f1_kn[k, n] - f2_kn[k, m]) > 1e-10:
+                    if  np.abs(f1_kn[k, n] - f2_kn[k, m]) > 1e-8:
                         psit2_G = kpt1.psit_nG[m] * psit1_G
                         # fft
                         tmp_G = np.fft.fftn(psit2_G) * self.vol / self.nG0
@@ -309,7 +313,7 @@ class CHI:
                     w = iw * self.dw
                     for n in range(self.nband):
                         for m in range(self.nband):
-                            if  np.abs(f1_kn[k, n] - f2_kn[k, m]) > 1e-10:
+                            if  np.abs(f1_kn[k, n] - f2_kn[k, m]) > 1e-8:
                                 C_nn[n, m] = (f1_kn[k, n] - f2_kn[k, m]) / (
                                  w + e1_kn[k, n] - e2_kn[k, m] + 1j * eta)
                 
@@ -322,14 +326,14 @@ class CHI:
                 for n in range(self.nband):
                     for m in range(self.nband):
                         focc = f1_kn[k,n] - f2_kn[k,m]
-                        if focc > 1e-10:
+                        if focc > 1e-8:
                             w0 = e2_kn[k,m] - e1_kn[k,n]
-                            tmp_GG = focc * np.real(np.outer(rho_Gnn[:,n,m], rho_Gnn[:,n,m].conj() ))
+                            tmp_GG = focc * np.outer(rho_Gnn[:,n,m], rho_Gnn[:,n,m].conj() )
                 
                             # calculate delta function
                             deltaw = self.delta_function(w0, self.dw, self.NwS, self.sigma)
                             for wi in range(self.NwS):
-                                if deltaw[wi] > 1e-5:
+                                if deltaw[wi] > 1e-8:
                                     specfunc_wGG[wi] += tmp_GG * deltaw[wi]
 
             t4 = time()
@@ -340,7 +344,7 @@ class CHI:
             for n in range(self.nband):
                 for m in range(self.nband):
                     C_nn[n, m] = 0.
-                    if np.abs(f1_kn[k, n] - f2_kn[k, m]) > 1e-10:
+                    if np.abs(f1_kn[k, n] - f2_kn[k, m]) > 1e-8:
                         C_nn[n, m] = (f1_kn[k, n] - f2_kn[k, m]) / (
                                   e1_kn[k, n] - e2_kn[k, m] )
             for iG in range(self.npw):
@@ -368,6 +372,155 @@ class CHI:
                 if iw == 0:
                     self.eMRPA_GG[iG] = tmp[iG] - 4 * pi / np.inner(qG, qG) * chi0M_GG[iG] / self.vol
 
+    
+    def Finiteq(self):
+
+        assert self.ncalc == 1
+        calc = self.calc
+        setups = calc.wfs.setups
+        gd = calc.wfs.gd
+
+        f_kn = self.f_kn
+        e_kn = self.e_kn
+        eta = self.eta
+        qr = self.qr
+        qq = self.qq
+        q = self.q
+        bzkpt_kG = calc.get_ibz_k_points()
+        kq = self.find_kq(bzkpt_kG, q)
+        del bzkpt_kG
+
+        chi0_wGG = np.zeros((self.Nw, self.npw, self.npw), dtype = complex)
+        specfunc_wGG = np.zeros((self.NwS, self.npw, self.npw), dtype = complex)
+        
+        # calculate <phi_i | e**(-iq.r) | phi_j>
+        phi_Gp = {}
+        R_a = calc.atoms.positions / Bohr
+        
+        for a, id in enumerate(setups.id_a):
+            Z, type, basis = id
+            if not phi_Gp.has_key(Z):
+                phi_Gp[Z] = ( self.two_phi_planewave_integrals(Z)
+                                  * np.exp(-1j * np.inner(qq, R_a[a])) )
+        print >> self.txt, 'phi_Gii obtained!'
+
+        expqr_G = np.exp(-1j * self.qr)
+        
+        # calculate chi0
+        for k in range(self.kstart, self.kend):
+            t1 = time()
+            
+            kpt0 = calc.wfs.kpt_u[k]
+            kpt1 = calc.wfs.kpt_u[kq[k]]
+            P1_ani = kpt0.P_ani
+            P2_ani = kpt1.P_ani
+
+            rho_Gnn = np.zeros((self.npw, self.nband, self.nband), dtype=complex)
+            for n in range(self.nband):
+                psit1_G = kpt0.psit_nG[n].conj() * expqr_G
+                for m in range(self.nband):
+                    if  np.abs(f_kn[k, n] - f_kn[kq[k], m]) > 1e-8:
+                        psit2_G = kpt1.psit_nG[m] * psit1_G
+                        # fft
+                        tmp_G = np.fft.fftn(psit2_G) * self.vol / self.nG0
+
+                        for iG in range(self.npw):
+                            index = self.Gindex[iG]
+                            rho_Gnn[iG, n, m] = tmp_G[index[0], index[1], index[2]]
+
+                            # PAW correction
+                        for a, id in enumerate(setups.id_a):
+                            Z, type, basis = id
+                            P_p = np.outer(P1_ani[a][n].conj(), P2_ani[a][m]).ravel()
+                            rho_Gnn[:, n, m] += np.dot(phi_Gp[Z], P_p)
+
+            t2 = time()
+            #print  >> self.txt,'Time for density matrix:', t2 - t1, 'seconds'
+
+            if not self.HilbertTrans:
+                # construct (f_nk - f_n'k+q) / (w + e_nk - e_n'k+q + ieta )
+                C_nn = np.zeros((self.nband, self.nband), dtype=complex)
+                for iw in range(self.Nw):
+                    w = iw * self.dw
+                    for n in range(self.nband):
+                        for m in range(self.nband):
+                            if  np.abs(f_kn[k, n] - f_kn[kq[k], m]) > 1e-8:
+                                C_nn[n, m] = (f_kn[k, n] - f_kn[kq[k], m]) / (
+                                 w + e_kn[k, n] - e_kn[kq[k], m] + 1j * eta)
+                
+                    # get chi0(G=0,G'=0,w)
+                    for iG in range(self.npw):
+                        for jG in range(self.npw):
+                            chi0_wGG[iw,iG,jG] += (rho_Gnn[iG] * C_nn * rho_Gnn[jG].conj()).sum()
+            else:
+            # calculate spectral function
+                for n in range(self.nband):
+                    for m in range(self.nband):
+                        focc = f_kn[k,n] - f_kn[kq[k],m]
+                        if focc > 1e-8:
+                            w0 = e_kn[kq[k],m] - e_kn[k,n]
+                            tmp_GG = focc * np.real(np.outer(rho_Gnn[:,n,m], rho_Gnn[:,n,m].conj() ))
+                
+                            # calculate delta function
+                            deltaw = self.delta_function(w0, self.dw, self.NwS, self.sigma)
+                            for wi in range(self.NwS):
+                                if deltaw[wi] > 1e-8:
+                                    specfunc_wGG[wi] += tmp_GG * deltaw[wi]
+
+            t4 = time()
+            #print  >> self.txt,'Time for spectral function loop:', t4 - t2, 'seconds'
+            
+            print >> self.txt, 'finished k', k
+
+        comm = self.comm
+ 
+        # Hilbert Transform
+        if not self.HilbertTrans:
+            comm.sum(chi0_wGG)
+        else:
+            comm.sum(specfunc_wGG)
+            chi0_wGG = self.hilbert_transform(specfunc_wGG)
+
+        tmp = np.eye(self.npw, self.npw)        
+        for iw in range(self.Nw):
+            for iG in range(self.npw):
+                qG = np.array([np.inner(self.q + self.Gvec[iG],
+                                       self.bcell[:,i]) for i in range(3)])
+                self.eRPA_wGG[iw,iG] =  tmp[iG] - 4 * pi / np.inner(qG, qG) * chi0_wGG[iw,iG] / self.vol
+ 
+
+    def find_kq(self, bzkpt_kG, q):
+        """Find the index of k+q for all kpoints in BZ."""
+
+        found = False
+        kq = np.zeros(self.nkpt, dtype=int)
+        nkptxyz = self.nkptxyz
+        dk = 1. / nkptxyz 
+        kmax = (nkptxyz - 1) * dk / 2.
+        N = np.zeros(3, dtype=int)
+
+        for k in range(self.nkpt):
+
+            kplusq = bzkpt_kG[k] + q
+            for dim in range(3):
+                if kplusq[dim] > 0.5: # 
+                    kplusq[dim] -= 1.
+                elif kplusq[dim] < -0.5:
+                    kplusq[dim] += 1.
+
+                N[dim] = int(np.round((kplusq[dim] + kmax[dim])/dk[dim]))
+
+            
+            kq[k] = N[2] + N[1] * nkptxyz[1] + N[0] * nkptxyz[2]**2
+
+            tmp = bzkpt_kG[kq[k]]
+            
+            if (abs(kplusq - tmp)).sum() > 1e-8:
+                print k, kplusq, tmp
+                raise ValueError('k+q index not correct!')
+
+        return kq
+
 
     def delta_function(self, x0, dx, Nx, sigma):
 
@@ -389,7 +542,7 @@ class CHI:
                 ww = jw * self.dw 
                 tmp_ww[iw, jw] = 1. / (w - ww + 1j*eta) - 1. / (w + ww + 1j*eta)
 
-        chi0_wGG = gemmdot(tmp_ww, np.complex128(specfunc_wGG), beta = 0.)
+        chi0_wGG = gemmdot(tmp_ww, specfunc_wGG, beta = 0.)
 
         return chi0_wGG * self.dw
 
@@ -685,6 +838,20 @@ class CHI:
                 energy = iw * self.dw * Hartree
                 print >> f, energy, np.real(e1[iw]), np.imag(e1[iw]),np.real(e2[iw]), np.imag(e2[iw])
     
+
+    def get_EELS_spectrum(self, filename='EELS'):
+        
+        self.get_dielectric_function()
+        
+        e1 = self.eRPANLF_w
+        e2 = self.eRPALFC_w
+        if rank == 0:
+            f = open(filename,'w')
+            for iw in range(self.Nw):
+                energy = iw * self.dw * Hartree
+                print >> f, energy, -np.imag(1./e1[iw]), -np.imag(1./e2[iw])
+
+
 
     def set_Gvectors(self):
 
