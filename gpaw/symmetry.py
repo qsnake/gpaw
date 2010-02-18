@@ -7,7 +7,7 @@ from gpaw import debug
 
 
 class Symmetry:
-    def __init__(self, id_a, cell_cv, pbc_c, tolerance=1e-11):
+    def __init__(self, id_a, cell_cv, pbc_c=np.ones(3, bool), tolerance=1e-11):
         """Symmetry object.
 
         Two atoms can only be identical if they have the same atomic
@@ -17,29 +17,12 @@ class Symmetry:
 
         self.id_a = id_a
         self.cell_cv = np.array(cell_cv, float)
-        self.pbc_c = pbc_c
+        assert self.cell_cv.shape == (3, 3)
+        self.pbc_c = np.array(pbc_c, bool)
         self.tol = tolerance
 
-        # Construct the Jacobian of the 123<->XYZ basis transformation
-        if self.cell_cv.ndim == 1:
-            cell_c = self.cell_cv
-            self.cell_cv = np.diag(cell_c)
-        else:
-            cell_c = (self.cell_cv**2).sum(1)**0.5
-        ucell_cv = self.cell_cv / cell_c[:, np.newaxis]
-        self.iucell_cv = np.linalg.inv(ucell_cv.T) # Jacobian
-
-        # Use full set of symmetries if set to True.
-        # False detects only orthogonal
-        # symmetry matrices (subset of full symmetry operations in non
-        # orthogonal cell)
-        self.use_all_symmetries = True
-
-        self.symmetries = [((0, 1, 2), np.array((1, 1, 1)))]
-        self.operations = [np.identity(3)]
-        self.operations_xyz = [np.identity(3)]      
-        self.op2sym = [0]
-
+        self.op_scc = np.identity(3, int).reshape((1, 3, 3))
+        
     def analyze(self, spos_ac):
         """Determine list of symmetry operations.
 
@@ -48,69 +31,45 @@ class Symmetry:
         are not satisfied by the atoms.
         """
 
-        self.symmetries = [] # Symmetry operations as pairs of swaps and mirrors
-        self.operations = [] # Symmetry operations as matrices in 123 basis
-        self.operations_xyz = [] # Symmetry operations as matrices in XYZ basis
-        self.op2sym = [] # Orthogonal operation to (swap, mirror) symmetry
-                         # pointer
-        
-        # Only swap axes that are both periodic, and of equal length
-        cellsyms_cc = np.array(
-            [[self.pbc_c[c1] and self.pbc_c[c2] and
-              abs(np.linalg.norm(self.cell_cv[c1]) -
-                  np.linalg.norm(self.cell_cv[c2])) < self.tol
-              for c1 in range(3)]
-             for c2 in range(3)], dtype=bool)
+        self.op_scc = [] # Symmetry operations as matrices in 123 basis
         
         # Metric tensor
-        metric_vv = np.dot(self.cell_cv, self.cell_cv.T)
-        
+        metric_cc = np.dot(self.cell_cv, self.cell_cv.T)
+
         # Generate all possible 3x3 symmetry matrices using base-3 integers
         power = (6561, 2187, 729, 243, 81, 27, 9, 3, 1)
 
         # operation is a 3x3 matrix, with possible elements -1, 0, 1, thus
         # there are 3**9 = 19683 possible matrices
         for base3id in xrange(19683):
-            operation_vv = np.empty((3, 3), dtype=int)
+            op_cc = np.empty((3, 3), dtype=int)
             m = base3id
             for ip, p in enumerate(power):
                 d, m = divmod(m, p)
-                operation_vv[ip // 3, ip % 3] = 1 - d
-
-            # Check if current operation satisfies all criteria for being
-            # a symmertry operation
-
-            # All rows must have some non-zero element
-            if not abs(operation_vv).sum(1).all():
-                continue
-
-            # If we only want orthogonal symmetry operations, discard those
-            # that are not
-            if (not self.use_all_symmetries) and np.any(
-                np.dot(operation_vv, operation_vv.T) - np.eye(3)):
-                continue
+                op_cc[ip // 3, ip % 3] = 1 - d
 
             # The metric of the cell should be conserved after applying
             # the operation
-            opcell_cv = np.dot(self.cell_cv.T, operation_vv)
-            opcellmetric_vv = np.dot(opcell_cv.T, opcell_cv)
-            if abs(metric_vv - opcellmetric_vv).sum() > self.tol:
+            opmetric_cc = np.dot(np.dot(op_cc, metric_cc), op_cc.T)
+                                       
+            if np.abs(metric_cc - opmetric_cc).sum() > self.tol:
                 continue
 
-            # Operation must not swap axes that are not both periodic
-            # and of equal length
-            if np.any([not cellsyms_cc[i, (i + 1) % 3] and
-                       (abs(operation_vv[i, (i + 1) % 3]) +
-                        abs(operation_vv[(i + 1) % 3, i]) != 0)
-                       for i in range(3)]):
+            # Operation must not swap axes that are not both periodic:
+            pbc_cc = np.logical_and.outer(self.pbc_c, self.pbc_c)
+            if op_cc[~(pbc_cc | np.identity(3, bool))].any():
                 continue
-            if np.any((operation_vv.diagonal() == -1) &
-                      ~cellsyms_cc.diagonal()):
+
+            # Operation must not invert axes that are not periodic:
+            pbc_cc = np.logical_and.outer(self.pbc_c, self.pbc_c)
+            if not (op_cc[np.diag(~self.pbc_c)] == 1).all():
                 continue
 
             # operation is a valid symmetry of the unit cell
-            self.operations.append(operation_vv)
+            self.op_scc.append(op_cc)
 
+        self.op_scc = np.array(self.op_scc)
+        
         # Check if symmetry operations are also valid when taking account
         # of atomic positions
         self.prune_symmetries(spos_ac)
@@ -134,11 +93,11 @@ class Symmetry:
         opok = []
         maps = []
         # Reduce point group using operation matrices
-        for ioperation, operation in enumerate(self.operations):
+        for op_cc in self.op_scc:
             map = np.zeros(len(spos_ac), int)
             for specie in species.values():
                 for a1, spos1_c in specie:
-                    spos1_c = np.dot(operation, spos1_c)
+                    spos1_c = np.dot(spos1_c, op_cc)
                     ok = False
                     for a2, spos2_c in specie:
                         sdiff = spos1_c - spos2_c
@@ -152,152 +111,88 @@ class Symmetry:
                 if not ok:
                     break
             if ok:
-                opok.append(operation)
+                opok.append(op_cc)
                 maps.append(map)
 
         if debug:
-            for symmetry, map in zip(opok, maps):
+            for op_cc, map_a in zip(opok, maps):
                 for a1, id1 in enumerate(self.id_a):
-                    a2 = map[a1]
+                    a2 = map_a[a1]
                     assert id1 == self.id_a[a2]
                     spos1_c = spos_ac[a1]
                     spos2_c = spos_ac[a2]
-                    sdiff = np.dot(symmetry, spos1_c) - spos2_c
+                    sdiff = np.dot(spos1_c, op_cc) - spos2_c
                     sdiff -= np.floor(sdiff + 0.5)
                     assert np.dot(sdiff, sdiff) < self.tol
 
-        self.opmaps = maps
-        self.operations = opok
+        self.maps = maps
+        self.op_scc = np.array(opok)
 
     def check(self, spos_ac):
         """Check(positions) -> boolean
 
         Check if positions satisfy symmetry operations."""
 
-        nsymold = len(self.operations)
+        nsymold = len(self.op_scc)
         self.prune_symmetries(spos_ac)
-        if len(self.operations) < nsymold:
+        if len(self.op_scc) < nsymold:
             raise RuntimeError('Broken symmetry!')
 
     def reduce(self, bzk_kc):
-        # Add inversion symmetry if it's not there:
+        op_scc = self.op_scc
+        inv_cc = -np.identity(3, int)
         have_inversion_symmetry = False
-        identity = np.identity(3)
-        for operation in self.operations:
-            if abs(operation + identity).sum() < self.tol:
+        for op_cc in op_scc:
+            if (op_cc == inv_cc).all():
                 have_inversion_symmetry = True
                 break
-        nsym = len(self.operations)
+
+        # Add inversion symmetry if it's not there:
         if not have_inversion_symmetry:
-            for operation in self.operations[:nsym]:
-                self.operations.append(-operation)
+            op_scc = np.concatenate((op_scc, -op_scc))
 
         nbzkpts = len(bzk_kc)
         ibzk0_kc = np.empty((nbzkpts, 3))
         ibzk_kc = ibzk0_kc[:0]
         weight_k = np.ones(nbzkpts)
         nibzkpts = 0
+        kbz = nbzkpts
+        kibz_k = np.empty(nbzkpts, int)
         for k_c in bzk_kc[::-1]:
+            kbz -= 1
             found = False
-            for operation in self.operations:
+            for op_cc in op_scc:
                 if len(ibzk_kc) == 0:
                     break
-                opit = np.linalg.inv(operation).T
-                d_kc = [np.dot(opit, ibzk_kc[i1])
-                        for i1 in range(len(ibzk_kc))] - k_c
-                d_kc *= d_kc
-                d_k = d_kc.sum(1) < self.tol
-                if d_k.any():
+                b_k = ((np.dot(ibzk_kc, op_cc.T) - k_c)**2).sum(1) < self.tol
+                if b_k.any():
                     found = True
-                    weight_k[:nibzkpts] += d_k
+                    kibz = np.where(b_k)[0][0]
+                    weight_k[kibz] += 1.0
+                    kibz_k[kbz] = kibz 
                     break
             if not found:
+                kibz_k[kbz] = nibzkpts 
                 nibzkpts += 1
                 ibzk_kc = ibzk0_kc[:nibzkpts]
                 ibzk_kc[-1] = k_c
 
-        del self.operations[nsym:]
-        (self.symmetries, self.maps, self.op2sym,
-         self.operations_xyz) = self.convert_operations(self.operations)
-
+        # Reverse order (looks more natural):
+        self.kibz_k = nibzkpts - 1 - kibz_k
         return ibzk_kc[::-1].copy(), weight_k[:nibzkpts][::-1] / nbzkpts
 
-    def convert_operations(self, operations):
-        # Create (swap, mirror) pairs for orthogonal matrices and pointers
-        symmetries = []
-        maps = []
-        op2sym = []
-        operations_xyz = []
-        for ioperation, operation in enumerate(self.operations):
-            # Create pair if operation is orthogonal
-            if not np.sometrue(np.dot(operation, operation.T) -
-                               np.identity(3)):
-                swap_c, mirror_c = self.break_operation(operation)
-                symmetries.append((swap_c, mirror_c))
-                op2sym.append(len(symmetries) - 1)
-                maps.append(self.opmaps[ioperation]) 
-            else:
-                op2sym.append(-1)
-            # Conversion of basis of operation matrix to XYZ
-            operation_xyz = np.dot(np.linalg.inv(self.iucell_cv), operation)
-            operation_xyz = np.dot(operation_xyz, self.iucell_cv)
-            operations_xyz.append(operation_xyz)
-
-        return (symmetries, maps, op2sym, operations_xyz)
-
-    def break_operation(self, operation):
-        # Auxiliary method.
-        # Break an orthogonal matrix to a (swap, mirror) pair.
-        swap = [0, 0, 0]
-        mirror = np.array([0., 0., 0.])
-        for i1 in range(3):
-            for i2 in range(3):
-                if abs(operation[i1, i2]) > 0:
-                    swap[i1] = i2
-                    mirror[i2] = operation[i1, i2]
-        return tuple(swap), mirror
-
     def symmetrize(self, a, gd):
-        b = a.copy()
-        a[:] = 0.0
-        for ioperation, operation in enumerate(self.operations):
-            # Apply non orthogonal operation
-            if self.op2sym[ioperation] == -1:
-                a += gd.apply_operation(b, operation)
-            else:
-                # Apply orthogonal operation using (swap, mirror) pair
-                swap, mirror = self.symmetries[self.op2sym[ioperation]]
-                d = b
-                for c, m in enumerate(mirror):
-                    if m == -1:
-                        d = gd.mirror(d, c)
-                a += gd.swap_axes(d, swap)
-        a /= len(self.operations)
+        gd.symmetrize(a, self.op_scc)
 
     def symmetrize_forces(self, F0_av):
         F_ac = np.zeros_like(F0_av)
-        for map_a, operation in zip(self.opmaps, self.operations_xyz):
+        for map_a, op_cc in zip(self.maps, self.op_scc):
+            op_vv = np.dot(np.linalg.inv(self.cell_cv),
+                           np.dot(op_cc, self.cell_cv))
             for a1, a2 in enumerate(map_a):
-                F_ac[a2] += np.dot(operation, F0_av[a1])
-        return F_ac / len(self.operations)
+                F_ac[a2] += np.dot(F0_av[a1], op_vv)
+        return F_ac / len(self.op_scc)
         
     def print_symmetries(self, text):
-        n = len(self.operations)
-        text('Symmetries present: %s' % (str(n), 'all')[n == 48])
-        n = len(self.symmetries)
-        if n == 48:
-            return
-        line1 = []
-        line2 = []
-        for swap, mirror in self.symmetries:
-            line1.extend(['_  '[int(s) + 1] for s in mirror] + [' '])
-            line2.extend(['123'[c] for c in swap] + [' '])
-        line1 = ''.join(line1)
-        line2 = ''.join(line2)
-        n1 = 0
-        n2 = 64
-        text('Orthogonal symmetry operations:')
-        while n1 < 4 * n:
-            text('%s\n%s\n' % (line1[n1:n2], line2[n1:n2]), end='')
-            n1 = n2
-            n2 += 64
+        n = len(self.op_scc)
+        text('Symmetries present: %s' % n)

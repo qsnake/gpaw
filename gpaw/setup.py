@@ -1012,8 +1012,11 @@ class Setups(list):
 
     def set_symmetry(self, symmetry):
         """Find rotation matrices for spherical harmonics."""
-        R_slmm = [[rotation(l, symm) for l in range(4)]
-                  for symm in symmetry.symmetries]
+        R_slmm = []
+        for op_cc in symmetry.op_scc:
+            op_vv = np.dot(np.linalg.inv(symmetry.cell_cv),
+                           np.dot(op_cc, symmetry.cell_cv))
+            R_slmm.append([rotation(l, op_vv) for l in range(4)])
         
         for setup in self.setups.values():
             setup.calculate_rotations(R_slmm)

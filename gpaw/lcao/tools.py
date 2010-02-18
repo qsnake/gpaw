@@ -101,7 +101,7 @@ def get_realspace_hs(h_skmm, s_kmm, bzk_kc, weight_k,
         # below assure reduction in the transverse dirs.
         # For now this part seems to do the job, but it may be written
         # in a smarter way in the future.
-        symmetry = Symmetry([1], [1, 1, 1], 1)
+        symmetry = Symmetry([1], np.eye(3))
         symmetry.prune_symmetries([[0, 0, 0]])
         ibzk_kc, ibzweight_k = symmetry.reduce(bzk_kc)
         ibzk_t_kc, weights_t_k = symmetry.reduce(bzk_t_kc)

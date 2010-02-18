@@ -12,7 +12,8 @@ class XAS:
     def __init__(self, paw, mode="xas", center=None, spin=0):
         wfs = paw.wfs
         assert wfs.world.size == 1 #assert not mpi.parallel
-
+        assert wfs.gd.orthogonal
+        
         #
         # to allow spin polarized calclulation
         #
@@ -166,12 +167,9 @@ class XAS:
             if self.symmetry is not None:
                 sigma0_cn = sigma2_cn.copy()
                 sigma2_cn = np.zeros((len(sigma0_cn), len(sigma0_cn[0])))
-                swaps = {}  # Python 2.4: use a set
-                for swap, mirror in self.symmetry.symmetries:
-                    swaps[swap] = None
-                for swap in swaps:
-                    sigma2_cn += sigma0_cn.take(swap, axis=0)
-                sigma2_cn /= len(swaps)
+                for op_cc in self.symmetry.op_scc:
+                    sigma2_cn += np.dot(op_cc**2, sigma0_cn)
+                sigma2_cn /= len(self.symmetry.op_scc)
         
         eps_n = self.eps_n[:]
         if kpoint is not None:
@@ -241,6 +239,7 @@ class RecursionMethod:
 
         if paw is not None:
             wfs = paw.wfs
+            assert wfs.gd.orthogonal
             assert wfs.nspins == 1 # restricted - for now
             self.wfs = wfs
             self.hamiltonian = paw.hamiltonian
@@ -249,10 +248,9 @@ class RecursionMethod:
             self.nmykpts = len(wfs.kpt_u)
             self.k1 = wfs.kpt_comm.rank * self.nmykpts
             self.k2 = self.k1 + self.nmykpts
-            self.swaps = {}  # Python 2.4: use a set
+            self.op_scc = None
             if wfs.symmetry is not None:
-                for swap, mirror in wfs.symmetry.symmetries:
-                    self.swaps[swap] = None
+                self.op_scc = wfs.symmetry.op_scc
         else:
             self.k1 = 0
             self.k2 = None
@@ -273,7 +271,12 @@ class RecursionMethod:
     def read(self, filename):
         data = pickle.load(open(filename))
         self.nkpts = data['nkpts']
-        self.swaps = data['swaps']
+        if 'swaps' in data:
+            # This is an old file:
+            self.op_scc = np.array([np.identity(3, int)[list(swap)]
+                                    for swap in data['swaps']])
+        else:
+            self.op_scc = data['symmetry operations']
         self.weight_k = data['weight_k']
         self.dim = data['dim']
         k1, k2 = self.k1, self.k2
@@ -308,7 +311,7 @@ class RecursionMethod:
                 b_kci.shape = (self.nkpts, dim, ni)
                 data = {'ab': (a_kci, b_kci),
                         'nkpts': self.nkpts,
-                        'swaps': self.swaps,
+                        'symmetry operations': self.op_scc,
                         'weight_k':self.weight_k,
                         'dim':dim}
             else:
@@ -495,12 +498,12 @@ class RecursionMethod:
                     sigma_cn[c] += weight*self.continued_fraction(eps_n, k, c,
                                                                0, imax).imag
 
-        if len(self.swaps) > 0:
+        if self.op_scc is not None:
             sigma0_cn = sigma_cn
             sigma_cn = np.zeros((self.dim, n))
-            for swap in self.swaps:
-                sigma_cn += sigma0_cn.take(swap, axis=0)
-            sigma_cn /= len(self.swaps)
+            for op_cc in self.op_scc:
+                sigma_cn += np.dot(op_cc**2, sigma0_cn)
+            sigma_cn /= len(self.op_scc)
 
         # gaussian broadening 
         if fwhm is not None:

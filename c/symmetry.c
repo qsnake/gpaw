@@ -6,8 +6,8 @@
 //
 // Apply symmetry operation op_cc to a and add result to b:
 // 
-//     =_       _
-//   b(Ug) += a(g),
+//     =T_       _
+//   b(U g) += a(g),
 // 
 // where:
 // 

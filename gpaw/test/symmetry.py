@@ -1,4 +1,6 @@
+from math import sqrt
 import numpy as np
+
 from gpaw.symmetry import Symmetry
 from ase.dft.kpoints import monkhorst_pack
 
@@ -15,18 +17,23 @@ bzk_kc = monkhorst_pack((4, 4, 4))
 symm = Symmetry(id_a, cell_cv, pbc_c)
 symm.analyze(spos_ac)
 ibzk_kc, w_k = symm.reduce(bzk_kc)
-assert len(symm.operations) == 24
-assert len(symm.operations_xyz) == 24
-assert len(symm.symmetries) == 6
+assert len(symm.op_scc) == 24
 assert len(w_k) == 10
 a = 3 / 32.; b = 1 / 32.; c = 6 / 32.
 assert np.all(w_k == [a, b, a, c, c, a, a, a, a, b])
-jacobian = 0.5 * 2**0.5 * np.array([(1, 1, -1), (1, -1, 1), (-1, 1, 1)])
-assert np.all(abs(symm.iucell_cv - jacobian) < 1E-11)
-v = [1., 2., 3.] 
-for operation in symm.operations_xyz: 
-    v += np.dot(operation, v)
-assert np.all(abs(v - [0., 0., -96.]) <1E-11)
+assert not symm.op_scc.sum(0).any()
+
+# Rotate unit cell and check again:
+cell_cv = a / sqrt(2) * np.array([(1, 0, 0),
+                                  (0.5, sqrt(3) / 2, 0),
+                                  (0.5, sqrt(3) / 6, sqrt(2.0 / 3))])
+symm = Symmetry(id_a, cell_cv, pbc_c)
+symm.analyze(spos_ac)
+ibzkb_kc, wb_k = symm.reduce(bzk_kc)
+assert len(symm.op_scc) == 24
+assert abs(w_k - wb_k).sum() < 1e-14
+assert abs(ibzk_kc - ibzkb_kc).sum() < 1e-14
+assert not symm.op_scc.sum(0).any()
 
 # Linear chain of four atoms, with H lattice parameter
 cell_cv = np.diag((8., 5., 5.))
@@ -42,9 +49,7 @@ bzk_kc = monkhorst_pack((3, 1, 1))
 symm = Symmetry(id_a, cell_cv, pbc_c)
 symm.analyze(spos_ac)
 ibzk_kc, w_k = symm.reduce(bzk_kc)
-assert len(symm.operations) == 2
-assert len(symm.operations_xyz) == 2
-assert len(symm.symmetries) == 2
+assert len(symm.op_scc) == 2
 assert len(w_k) == 2
 assert np.all(w_k == [1 / 3., 2 / 3.])
 
@@ -60,8 +65,6 @@ bzk_kc = monkhorst_pack((2, 2, 2))
 symm = Symmetry(id_a, cell_cv, pbc_c)
 symm.analyze(spos_ac)
 ibzk_kc, w_k = symm.reduce(bzk_kc)
-assert len(symm.operations) == 12
-assert len(symm.operations_xyz) == 12
-assert len(symm.symmetries) == 12
+assert len(symm.op_scc) == 12
 assert len(w_k) == 2
 assert np.all(w_k == [3/4., 1/4.])

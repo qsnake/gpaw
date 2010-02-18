@@ -14,6 +14,7 @@ from cmath import exp
 
 import numpy as np
 
+import _gpaw
 import gpaw.mpi as mpi
 from gpaw.domain import Domain
 from gpaw.utilities import divrl, mlsqr
@@ -322,115 +323,17 @@ class GridDescriptor(Domain):
                 g_c[c] = min(g_c[c], self.end_c[c] - 1)
         return g_c - self.beg_c
 
-    def interpolate_grid_points(self, spos_nc, vt_g, target_n, use_mlsqr=True):
-        """Return interpolated value from array vt_g based on the scaled coordinates on spos_c.
 
-        Uses moving least squares algorithm by default, or otherwise trilinear interpolation.
-        
-        This doesn't work in parallel, since it would require communication between neighbouring grid.
-        """
-
-        assert mpi.world.size==1
-
-        if use_mlsqr:
-            mlsqr(3, 2.3, spos_nc, self.N_c, self.beg_c, vt_g, target_n)     
-        else:
-            for n, spos_c in enumerate(spos_nc):
-                g_c = self.N_c * spos_c - self.beg_c
-
-                # The begin and end of the array slice
-                bg_c = np.floor(g_c).astype(int)
-                Bg_c = np.ceil(g_c).astype(int)
-
-                # The coordinate within the box (bottom left = 0, top right = h_c)
-                dg_c = g_c - bg_c
-                Bg_c %= self.N_c
-
-                target_n[n] = (vt_g[bg_c[0],bg_c[1],bg_c[2]] * (1.0 - dg_c[0]) * (1.0 - dg_c[1]) * (1.0 - dg_c[2]) + 
-                               vt_g[Bg_c[0],bg_c[1],bg_c[2]] * (0.0 + dg_c[0]) * (1.0 - dg_c[1]) * (1.0 - dg_c[2]) + 
-                               vt_g[bg_c[0],Bg_c[1],bg_c[2]] * (1.0 - dg_c[0]) * (0.0 + dg_c[1]) * (1.0 - dg_c[2]) +  
-                               vt_g[Bg_c[0],Bg_c[1],bg_c[2]] * (0.0 + dg_c[0]) * (0.0 + dg_c[1]) * (1.0 - dg_c[2]) + 
-                               vt_g[bg_c[0],bg_c[1],Bg_c[2]] * (1.0 - dg_c[0]) * (1.0 - dg_c[1]) * (0.0 + dg_c[2]) + 
-                               vt_g[Bg_c[0],bg_c[1],Bg_c[2]] * (0.0 + dg_c[0]) * (1.0 - dg_c[1]) * (0.0 + dg_c[2]) + 
-                               vt_g[bg_c[0],Bg_c[1],Bg_c[2]] * (1.0 - dg_c[0]) * (0.0 + dg_c[1]) * (0.0 + dg_c[2]) + 
-                               vt_g[Bg_c[0],Bg_c[1],Bg_c[2]] * (0.0 + dg_c[0]) * (0.0 + dg_c[1]) * (0.0 + dg_c[2]))
-        
-    def mirror(self, a_g, c):
-        """Apply mirror symmetry to array.
-
-        The mirror plane goes through origo and is perpendicular to
-        the ``c``'th axis: 0, 1, 2 -> *x*, *y*, *z*."""
-        
-        N = self.parsize_c[c]
-        if c == 0:
-            b_g = a_g.copy()
-        else:
-            axes = [0, 1, 2]
-            axes[c] = 0
-            axes[0] = c
-            b_g = np.transpose(a_g, axes).copy()
-        n = self.parpos_c[c]
-        m = (-n) % N
-        if n != m:
-            rank = self.rank + (m - n) * self.stride_c[c]
-            b_yz = b_g[0].copy()
-            request = self.comm.receive(b_g[0], rank, 117, NONBLOCKING)
-            self.comm.send(b_yz, rank, 117)
-            self.comm.wait(request)
-        c_g = b_g[-1:0:-1].copy()
-        m = N - n - 1
-        if n != m:
-            rank = self.rank + (m - n) * self.stride_c[c]
-            request = self.comm.receive(b_g[1:], rank, 118, NONBLOCKING)
-            self.comm.send(c_g, rank, 118)
-            self.comm.wait(request)
-        else:
-            b_g[1:] = c_g
-        if c == 0:
-            return b_g
-        else:
-            return np.transpose(b_g, axes).copy()
-                
-    def swap_axes(self, a_g, axes):
-        """Swap axes of array.
-
-        The ``axes`` argument gives the new ordering of the axes.
-        Example: With ``axes=(0, 2, 1)`` the *y*, *z* axes will be
-        swapped."""
-        
-        assert np.alltrue(self.N_c == np.take(self.N_c, axes)), \
-               'Can only swap axes with same length!'
-
-        if self.comm.size == 1:
-            return np.transpose(a_g, axes).copy()
-
-        # Collect all arrays on the master, do the swapping, and
-        # redistribute the result:
+    def symmetrize(self, a_g, op_scc):
         A_g = self.collect(a_g)
-
-        if self.rank == 0:
-            A_g = np.transpose(A_g, axes).copy()
-
-        b_g = self.empty()
-        self.distribute(A_g, b_g)
-        return b_g
-
-    def apply_operation(self, a_g, operation):
-        """Apply an operation on an array."""
-
-        a_g = self.collect(a_g)
-
-        if self.rank == 0:
-            A_g = np.empty_like(a_g)
-            for g, value in np.ndenumerate(a_g):
-                g2 = tuple(np.dot(operation, g) % a_g.shape)
-                A_g[g2] = value
+        if self.comm.rank == 0:
+            B_g = np.zeros_like(A_g)
+            for op_cc in op_scc:
+                _gpaw.symmetrize(A_g, B_g, op_cc)
         else:
-            A_g = None
-
-        b_g = self.empty()
-        self.distribute(A_g, b_g)
-        return b_g                    
+            B_g = None
+        self.distribute(B_g, a_g)
+        a_g /= len(op_scc)
     
     def collect(self, a_xg, broadcast=False):
         """Collect distributed array to master-CPU or all CPU's."""
@@ -595,6 +498,53 @@ class GridDescriptor(Domain):
         else:
             return r_vG
 
+    def interpolate_grid_points(self, spos_nc, vt_g, target_n, use_mlsqr=True):
+        """Return interpolated values.
+
+        Calculate interpolated values from array vt_g based on the
+        scaled coordinates on spos_c.
+
+        Uses moving least squares algorithm by default, or otherwise
+        trilinear interpolation.
+        
+        This doesn't work in parallel, since it would require
+        communication between neighbouring grid.  """
+
+        assert mpi.world.size == 1
+
+        if use_mlsqr:
+            mlsqr(3, 2.3, spos_nc, self.N_c, self.beg_c, vt_g, target_n)     
+        else:
+            for n, spos_c in enumerate(spos_nc):
+                g_c = self.N_c * spos_c - self.beg_c
+
+                # The begin and end of the array slice
+                bg_c = np.floor(g_c).astype(int)
+                Bg_c = np.ceil(g_c).astype(int)
+
+                # The coordinate within the box (bottom left = 0,
+                # top right = h_c)
+                dg_c = g_c - bg_c
+                Bg_c %= self.N_c
+
+                target_n[n] = (
+                    vt_g[bg_c[0],bg_c[1],bg_c[2]] *
+                    (1.0 - dg_c[0]) * (1.0 - dg_c[1]) * (1.0 - dg_c[2]) + 
+                    vt_g[Bg_c[0],bg_c[1],bg_c[2]] *
+                    (0.0 + dg_c[0]) * (1.0 - dg_c[1]) * (1.0 - dg_c[2]) + 
+                    vt_g[bg_c[0],Bg_c[1],bg_c[2]] *
+                    (1.0 - dg_c[0]) * (0.0 + dg_c[1]) * (1.0 - dg_c[2]) +  
+                    vt_g[Bg_c[0],Bg_c[1],bg_c[2]] *
+                    (0.0 + dg_c[0]) * (0.0 + dg_c[1]) * (1.0 - dg_c[2]) + 
+                    vt_g[bg_c[0],bg_c[1],Bg_c[2]] *
+                    (1.0 - dg_c[0]) * (1.0 - dg_c[1]) * (0.0 + dg_c[2]) + 
+                    vt_g[Bg_c[0],bg_c[1],Bg_c[2]] *
+                    (0.0 + dg_c[0]) * (1.0 - dg_c[1]) * (0.0 + dg_c[2]) + 
+                    vt_g[bg_c[0],Bg_c[1],Bg_c[2]] *
+                    (1.0 - dg_c[0]) * (0.0 + dg_c[1]) * (0.0 + dg_c[2]) + 
+                    vt_g[Bg_c[0],Bg_c[1],Bg_c[2]] *
+                    (0.0 + dg_c[0]) * (0.0 + dg_c[1]) * (0.0 + dg_c[2]))
+                
 
 class RadialGridDescriptor:
     """Descriptor-class for radial grid."""
