@@ -62,7 +62,6 @@ class CHI:
         if rank == size - 1:
             self.kend = self.nkpt
 
-    
         try:
             self.nband
         except:
@@ -105,7 +104,7 @@ class CHI:
     
         self.qr = np.zeros(self.nG)
         self.r = np.zeros((self.nG[0],self.nG[1],self.nG[2], 3))
-        
+
         # construct q.r
         h_c = self.h_c
         self.q = q
@@ -118,8 +117,6 @@ class CHI:
                     self.qr[i,j,k] = np.inner(qq, tmp)
                     self.r[i,j,k] = tmp
         
-        
-
         # unit conversion
         self.wmin = 0
         self.wmax  = wmax / Hartree
@@ -136,7 +133,7 @@ class CHI:
 #        nt_G = calc.density.nt_sG[0] # G is the number of grid points
 #        self.Kxc_GG = self.calculate_Kxc(calc.wfs.gd, nt_G)          # G here is the number of plane waves
 
-        # dielectric function and macroscopic dielectric function 
+        # dielectric function and macroscopic dielectric function
         self.eRPA_wGG = np.zeros((self.Nw, self.npw, self.npw), dtype = complex)
         self.eMRPA_GG = np.zeros((self.npw, self.npw), dtype = complex)
         self.epsilonM = 0.
@@ -145,7 +142,6 @@ class CHI:
 
         self.print_stuff()
 
-        #print 'memory usage:', maxrss() / 1024**2, 'M'
         return
 
 
@@ -168,6 +164,7 @@ class CHI:
         print  >> self.txt, ctime()
         dt = (endtime - self.starttime) / 60
         print  >> self.txt, 'For excited states calc, it  took',dt, 'minutes'
+        print  >> self.txt, '    and use memory', maxrss() / 1024**2, 'M'
 
 
     def OpticalLimit(self):
@@ -261,10 +258,12 @@ class CHI:
         setups = c[0].wfs.setups
         gd = c[0].wfs.gd
 
-        chi0_wGG = np.zeros((self.Nw, self.npw, self.npw), dtype = complex)
-        specfunc_wGG = np.zeros((self.NwS, self.npw, self.npw), dtype = complex)
+        if not self.HilbertTrans:
+            chi0_wGG = np.zeros((self.Nw, self.npw, self.npw), dtype = complex)
+        else:
+            specfunc_wGG = np.zeros((self.NwS, self.npw, self.npw), dtype = complex)
         chi0M_GG = np.zeros((self.npw, self.npw), dtype = complex)
-        
+
         # calculate <phi_i | e**(-iq.r) | phi_j>
         phi_Gp = {}
         R_a = c[0].atoms.positions / Bohr
@@ -288,6 +287,7 @@ class CHI:
             P2_ani = kpt1.P_ani
 
             rho_Gnn = np.zeros((self.npw, self.nband, self.nband), dtype=complex)
+
             for n in range(self.nband):
                 psit1_G = kpt0.psit_nG[n].conj() * expqr_G
                 for m in range(self.nband):
@@ -306,7 +306,6 @@ class CHI:
                             P_p = np.outer(P1_ani[a][n].conj(), P2_ani[a][m]).ravel()
                             rho_Gnn[:, n, m] += np.dot(phi_Gp[Z], P_p)
 
-            #print 'memory usage:', maxrss() / 1024**2, 'M'
             del psit1_G, psit2_G
             t2 = time()
             #print  >> self.txt,'Time for density matrix:', t2 - t1, 'seconds'
@@ -367,7 +366,8 @@ class CHI:
         else:
             comm.sum(specfunc_wGG)
             chi0_wGG = self.hilbert_transform(specfunc_wGG)
-
+            del specfunc_wGG
+            
         tmp = np.eye(self.npw, self.npw)        
         for iw in range(self.Nw):
             for iG in range(self.npw):
@@ -377,7 +377,7 @@ class CHI:
                 if iw == 0:
                     self.eMRPA_GG[iG] = tmp[iG] - 4 * pi / np.inner(qG, qG) * chi0M_GG[iG] / self.vol
 
-    
+
     def Finiteq(self):
 
         assert self.ncalc == 1
@@ -793,6 +793,18 @@ class CHI:
 
         print >> txt, 'Use Hilbert Transform:', self.HilbertTrans
 
+        print >> txt
+        print >> txt, 'Memory usage estimation:'
+        print >> txt, '    eRPA_wGG    :', self.Nw * self.npw**2 * 8. / 1024**2, 'M'
+        print >> txt, '    chi0_wGG    :', self.Nw * self.npw**2 * 8. / 1024**2, 'M'
+        print >> txt, '    specfunc_wGG:', self.NwS *self.npw**2 * 8. / 1024**2, 'M'
+        print >> txt
+
+
+    def memory_usage(self, a):
+        assert type(a) == np.ndarray
+        
+        return a.itemsize * a.size /1024**2 # 'Megabyte'
 
     def check_sum_rule(self):
 
