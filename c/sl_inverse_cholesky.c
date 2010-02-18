@@ -45,7 +45,9 @@ static PyObject* inverse_cholesky(MPIObject *self, PyObject *args)
   //char lolo = 'R'; // All grid
   //Cblacs_gridinit_(&ConTxt, &lolo, nprow, npcol);
 
-  sl_init_(&ConTxt, &nprow, &npcol);
+  ConTxt = Csys2blacs_handle(self->comm);
+  Cblacs_gridinit_(&ConTxt, "R", nprow, npcol);
+  // sl_init_(&ConTxt, &nprow, &npcol);
   // get information back about the grid
   int myrow = -1;
   int mycol = -1;

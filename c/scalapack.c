@@ -207,7 +207,9 @@ static PyObject* diagonalize(MPIObject *self, PyObject *args)
   //char lolo = 'R'; // All grid
   //Cblacs_gridinit_(&ConTxt, &lolo, nprow, npcol);
 
-  sl_init_(&ConTxt, &nprow, &npcol);
+  ConTxt = Csys2blacs_handle(self->comm);
+  Cblacs_gridinit_(&ConTxt, "R", nprow, npcol);
+  // sl_init_(&ConTxt, &nprow, &npcol);
   // get information back about the grid
   int myrow = -1;
   int mycol = -1;
@@ -388,8 +390,9 @@ static PyObject* diagonalize(MPIObject *self, PyObject *args)
                  work, &querylwork, iwork, &queryliwork, ifail, iclustr, gap, &info);
 
       int lwork = (int)work[0];
-      if (b != 0)
-        lwork = lwork + (n-1)*n;
+      // Ridiculous amount of workspace
+      // if (b != 0)
+      //  lwork = lwork + (n-1)*n;
       //printf("lwork %d\n", lwork);
       free(work);
       int liwork = (int)iwork[0];
