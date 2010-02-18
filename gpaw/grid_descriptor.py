@@ -36,9 +36,9 @@ class GridDescriptor(Domain):
     grid points are used in each direction of the unit cell.
 
     There are methods for tasks such as allocating arrays, performing
-    rotation- and mirror-symmetry operations and integrating functions
-    over space.  All methods work correctly also when the domain is
-    parallelized via domain decomposition.
+    symmetry operations and integrating functions over space.  All
+    methods work correctly also when the domain is parallelized via
+    domain decomposition.
 
     This is how a 2x2x2 3D array is laid out in memory::
 

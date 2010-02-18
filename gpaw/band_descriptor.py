@@ -23,11 +23,6 @@ class BandDescriptor:
     into groups according to band indices. The main information here is
     how many bands are stored on each processor and who gets what.
 
-    There are methods for tasks such as allocating arrays, performing
-    rotation- and mirror-symmetry operations and integrating functions
-    over space.  All methods work correctly also when the domain is
-    parallelized via domain decomposition.
-
     This is how a 12 band array is laid out in memory on 3 cpu's::
 
       a) Blocked groups       b) Strided groups

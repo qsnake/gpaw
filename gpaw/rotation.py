@@ -25,8 +25,7 @@ def Y_matrix(l, U_vv):
 
     For 2*l+1 points on the unit sphere (m1=0,...,2*l) calculate the
     value of Y_lm2 for m2=0,...,2*l.  The points are those from the
-    list sphere_lm[l] rotated as described by symmetry = (swap,
-    mirror)."""
+    list sphere_lm[l] rotated as described by U_vv."""
     
     Y_mm = np.zeros((2 * l + 1, 2 * l + 1))
     for m1, point in enumerate(sphere_lm[l]):
