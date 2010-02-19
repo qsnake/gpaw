@@ -108,21 +108,32 @@ def list_systems(obj):
     for host in dir(obj):
         if not p.match(host):
             print '', host
- 
+
+def unique_name(name):
+    import string
+    letters = list(string.letters)
+    n = name
+    while os.path.exists(n):
+        n = name + letters.pop(0)
+    return n
+
 class RunScript:
     def __init__(self, set, env, name=None):
         if not hasattr(self,set['qsys']):
-            print "unkown system >"+set['qsys']+"<"
+            print "unkown system >" + set['qsys'] + "<"
             list_systems(self)
             sys.exit()
         if name is None:
-            name = 'run.'+set['qsys']
-        f = open(name,'w')
-        call = "self."+set['qsys']+"(f,set,env)"
+            name = 'run.' + set['qsys']
+            if set['qsys'] == 'xc2':
+                name = unique_name(name)
+        self.name = name
+        f = open(name, 'w')
+        call = "self." + set['qsys'] + "(f,set,env)"
         eval(call)
         if not f.closed:
             f.close()
-        print name,"written"
+        print name, 'written'
 
     def loadleveler(self, f, set, env):
         print >> f,"#!/bin/bash"
@@ -430,7 +441,7 @@ echo \"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\"
         print >> f, 'mpirun $GPAW_PYTHON', set['script']
         f.close()
         os.chmod(f.name, 0755)
-        if set['cores'] > 16 or set['mem']:
+        if set['cores'] > 16 or set['mem'] or minutes(set['time']) > 60:
             jobclass = 'p'
         else:
             jobclass = 'd'
@@ -440,7 +451,7 @@ echo \"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\"
             mem = 2000
         msg = 'use: job_submit -t ' + str(minutes(set['time'])) +\
               ' -m ' + str(mem) +' -p' + str(set['cores']) +\
-              ' -c ' + jobclass + ' run.xc2'
+              ' -c ' + jobclass + ' ' + self.name
         if set['mail'] is not None:
             msg += ' -Nbc:' + str(set['mail'])
         print msg
