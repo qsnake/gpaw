@@ -231,21 +231,26 @@ class Hamiltonian:
         self.timer.start('Hamiltonian')
 
         if self.vt_sg is None:
+            self.timer.start('Initialize Hamiltonian')
             self.vt_sg = self.finegd.empty(self.nspins)
             self.vHt_g = self.finegd.zeros()
             self.vt_sG = self.gd.empty(self.nspins)
             self.poisson.initialize()
+            self.timer.stop('Initialize Hamiltonian')
 
+        self.timer.start('vbar')
         Ebar = self.finegd.integrate(self.vbar_g, density.nt_g,
                                      global_integral=False) 
 
         vt_g = self.vt_sg[0]
         vt_g[:] = self.vbar_g
+        self.timer.stop('vbar')
 
         Eext = 0.0
         if self.vext_g is not None:
             vt_g += self.vext_g.get_potential(self.finegd)
-            Eext = self.finegd.integrate(vt_g, density.nt_g, global_integral=False) - Ebar
+            Eext = self.finegd.integrate(vt_g, density.nt_g,
+                                         global_integral=False) - Ebar
 
         if self.nspins == 2:
             self.vt_sg[1] = vt_g
@@ -266,6 +271,7 @@ class Hamiltonian:
                                            charge=-density.charge)
         self.timer.stop('Poisson')
 
+        self.timer.start('Hartree integrate/restrict')
         Epot = 0.5 * self.finegd.integrate(self.vHt_g, density.rhot_g,
                                            global_integral=False)
         Ekin = 0.0
@@ -274,6 +280,7 @@ class Hamiltonian:
             self.restrict(vt_g, vt_G)
             Ekin -= self.gd.integrate(vt_G, nt_G - density.nct_G,
                                       global_integral=False)
+        self.timer.stop('Hartree integrate/restrict')
             
         # Calculate atomic hamiltonians:
         self.timer.start('Atomic')
@@ -298,11 +305,13 @@ class Hamiltonian:
             if self.vext_g is not None:
                 vext = self.vext_g.get_taylor(spos_c=self.spos_ac[a, :])
                 # Tailor expansion to the zeroth order
-                Eext += vext[0][0] * (sqrt(4 * pi) * density.Q_aL[a][0] + setup.Z)
+                Eext += vext[0][0] * (sqrt(4 * pi) * density.Q_aL[a][0]
+                                      + setup.Z)
                 dH_p += vext[0][0] * sqrt(4 * pi) * setup.Delta_pL[:, 0]
                 if len(vext) > 1:
                     # Tailor expansion to the first order
-                    Eext += sqrt(4 * pi / 3) * np.dot(vext[1], density.Q_aL[a][1:4])
+                    Eext += sqrt(4 * pi / 3) * np.dot(vext[1],
+                                                      density.Q_aL[a][1:4])
                     # there must be a better way XXXX
                     Delta_p1 = np.array([setup.Delta_pL[:, 1],
                                           setup.Delta_pL[:, 2],
@@ -310,10 +319,10 @@ class Hamiltonian:
                     dH_p += sqrt(4 * pi / 3) * np.dot(vext[1], Delta_p1)
 
             self.dH_asp[a] = dH_sp = np.zeros_like(D_sp)
-            self.timer.start('xc_correction')
+            self.timer.start('XC Correction')
             Exc += setup.xc_correction.calculate_energy_and_derivatives(
                 D_sp, dH_sp, a)
-            self.timer.stop('xc_correction')
+            self.timer.stop('XC Correction')
 
             if setup.HubU is not None:
                 nspins = len(D_sp)
@@ -357,7 +366,9 @@ class Hamiltonian:
         self.Enlkin = xcfunc.get_non_local_kinetic_corrections()
 
         energies = np.array([Ekin, Epot, Ebar, Eext, Exc])
+        self.timer.start('Communicate energies')
         self.gd.comm.sum(energies)
+        self.timer.stop('Communicate energies')
         (self.Ekin0, self.Epot, self.Ebar, self.Eext, self.Exc) = energies
 
         self.Exc += self.Enlxc

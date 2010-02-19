@@ -14,6 +14,7 @@ from gpaw.transformers import Transformer
 from gpaw.lfc import LFC, BasisFunctions
 from gpaw.wavefunctions import LCAOWaveFunctions
 from gpaw.utilities import unpack2
+from gpaw.utilities.timing import nulltimer
 
 
 class Density:
@@ -59,6 +60,7 @@ class Density:
         self.rank_a = None
 
         self.mixer = BaseMixer()
+        self.timer = nulltimer
         self.allocated = False
         
     def initialize(self, setups, stencil, timer, magmom_a, hund):
@@ -144,14 +146,26 @@ class Density:
         self.nt_sG += self.nct_G
 
     def update(self, wfs):
+        self.timer.start('Density')
+        self.timer.start('Pseudo density')
         self.calculate_pseudo_density(wfs)
+        self.timer.stop('Pseudo density')
+        self.timer.start('Atomic density matrices')
         wfs.calculate_atomic_density_matrices(self.D_asp)
+        self.timer.stop('Atomic density matrices')
+        self.timer.start('Multipole moments')
         comp_charge = self.calculate_multipole_moments()
+        self.timer.stop('Multipole moments')
         
         if isinstance(wfs, LCAOWaveFunctions):
+            self.timer.start('Normalize')
             self.normalize(comp_charge)
+            self.timer.stop('Normalize')
 
+        self.timer.start('Mix')
         self.mix(comp_charge)
+        self.timer.stop('Mix')
+        self.timer.stop('Density')
 
     def normalize(self, comp_charge=None):
         """Normalize pseudo density."""

@@ -454,8 +454,12 @@ class LCAOWaveFunctions(WaveFunctions):
                                self.od.get_diagonalizer())
 
     def set_positions(self, spos_ac):
-        WaveFunctions.set_positions(self, spos_ac)        
+        self.timer.start('Basic WFS set positions')
+        WaveFunctions.set_positions(self, spos_ac)
+        self.timer.stop('Basic WFS set positions')
+        self.timer.start('Basis functions set positions')
         self.basis_functions.set_positions(spos_ac)
+        self.timer.stop('Basis functions set positions')
         if self.od is not None:
             self.basis_functions.set_matrix_distribution(self.od.Mstart,
                                                          self.od.Mstop)
@@ -522,12 +526,14 @@ class LCAOWaveFunctions(WaveFunctions):
         if debug and self.band_comm.size == 1 and self.gd.comm.rank == 0:
             # S and T are summed only on comm master, so check only there
             from numpy.linalg import eigvalsh
+            self.timer.start('Check positive definiteness')
             for S_MM in S_qMM:
                 tri2full(S_MM, UL='U')
                 smin = eigvalsh(S_MM).real.min()
                 if smin < 0:
                     raise RuntimeError('Overlap matrix has negative '
                                        'eigenvalue: %e' % smin)
+            self.timer.stop('Check positive definiteness')
         self.positions_set = True
         self.S_qMM = S_qMM
         self.T_qMM = T_qMM
@@ -966,7 +972,9 @@ class GridWaveFunctions(WaveFunctions):
                                     self.weight_k, self.symmetry)
         lcaowfs.basis_functions = basis_functions
         lcaowfs.timer = self.timer
+        self.timer.start('Set positions (LCAO WFS)')
         lcaowfs.set_positions(spos_ac)
+        self.timer.stop('Set positions (LCAO WFS)')
         eigensolver = get_eigensolver('lcao', 'lcao')
 
         diagonalizer = lcaowfs.od.get_diagonalizer()
@@ -985,11 +993,13 @@ class GridWaveFunctions(WaveFunctions):
         # and get rid of potentially big arrays early:
         del eigensolver, lcaowfs
 
+        self.timer.start('LCAO to grid')
         for kpt in self.kpt_u:
             kpt.psit_nG = self.gd.zeros(self.mynbands, self.dtype)
             basis_functions.lcao_to_grid(kpt.C_nM, 
                                          kpt.psit_nG[:lcaomynbands], kpt.q)
             kpt.C_nM = None
+        self.timer.stop('LCAO to grid')
 
         if self.mynbands > lcaomynbands:
             # Add extra states.  If the number of atomic orbitals is

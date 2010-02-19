@@ -83,6 +83,7 @@ class LCAO:
         #  mu nu    --   mu i  ij nu j
         #           aij
         #
+        wfs.timer.start('Atomic Hamiltonian')
         Mstart = wfs.basis_functions.Mstart
         Mstop = wfs.basis_functions.Mstop
         for a, P_Mi in kpt.P_aMi.items():
@@ -91,7 +92,10 @@ class LCAO:
             # (ATLAS can't handle uninitialized output array)
             gemm(1.0, P_Mi, dH_ii, 0.0, dHP_iM, 'c')
             gemm(1.0, dHP_iM, P_Mi[Mstart:Mstop], 1.0, H_MM)
+        wfs.timer.stop('Atomic Hamiltonian')
+        wfs.timer.start('Distribute overlap matrix')
         H_MM = wfs.od.distribute_overlap_matrix(H_MM, root)
+        wfs.timer.stop('Distribute overlap matrix')
         H_MM += wfs.T_qMM[kpt.q]
         return H_MM
 
@@ -124,10 +128,15 @@ class LCAO:
         if (kpt.eps_n[0] == 42):
             raise RuntimeError('LCAO diagonalization failed! You may want to check your structure.')    
 
+        wfs.timer.start('Calculate projections')
+        # P_ani are not strictly necessary as required quantities can be
+        # evaluated directly using P_aMi.  We should probably get rid
+        # of the places in the LCAO code using P_ani directly
         for a, P_ni in kpt.P_ani.items():
             # ATLAS can't handle uninitialized output array:
             P_ni.fill(117)
             gemm(1.0, kpt.P_aMi[a], kpt.C_nM, 0.0, P_ni, 'n')
+        wfs.timer.stop('Calculate projections')
 
     def estimate_memory(self, mem, dtype):
         pass 
