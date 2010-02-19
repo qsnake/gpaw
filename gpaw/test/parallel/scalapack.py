@@ -25,7 +25,7 @@ from gpaw.utilities.blacs import scalapack_general_diagonalize_dc, \
 
 tol = 1.0e-8
 
-def main(N=1000, seed=42, mprocs=2, nprocs=2, dtype=float):
+def main(N=73, seed=42, mprocs=2, nprocs=2, dtype=float):
     gen = np.random.RandomState(seed)
     grid = BlacsGrid(world, mprocs, nprocs)
     
@@ -76,7 +76,7 @@ def main(N=1000, seed=42, mprocs=2, nprocs=2, dtype=float):
     assert glob.check(H0) and glob.check(S0) and glob.check(C0)
 
     # Create distributed destriptors with various block sizes:
-    dist = grid.new_descriptor(N, N, 64, 64)
+    dist = grid.new_descriptor(N, N, 8, 8)
 
     # Distributed matrices:
     # We can use empty here, but end up with garbage on
