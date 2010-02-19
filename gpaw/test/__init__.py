@@ -126,7 +126,7 @@ tests = [
     'CH4.py',
     'neb.py',
     'diamond_absorption.py',
-    'aluminum_EELS.py'
+    'aluminum_EELS.py',
     'hgh_h2o.py',
     'apmb.py',
     'relax.py',
