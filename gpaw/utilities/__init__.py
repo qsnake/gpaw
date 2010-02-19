@@ -351,7 +351,9 @@ def fix2(formula):
     return s
 
 
-def scalapack():
+def scalapack(extended_check=False):
+    if extended_check and not hasattr(_gpaw, 'Communicator'):
+        return False
     return _gpaw.compiled_with_sl()
 
 def load_balance(paw, atoms):
