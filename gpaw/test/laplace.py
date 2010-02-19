@@ -4,32 +4,54 @@ from gpaw.fd_operators import GUCLaplace as Laplace
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.mpi import size
 
-cells = [# distorted hexagonal
-    (4, [(1, 0, 0),
-         (1.02*cos(pi/3-0.02), 1.02*sin(pi/3-0.02), 0),
-         (0, 0, 1.0)]),
-    # hexagonal
-    (4, [(1, 0, 0),
-         (0.5, 3**0.5 / 2, 0),
-         (0, 0, 1.1)]),
-    # fcc
-    (6, [(1, 0, 0),
-         (0.5, 3**0.5 / 2, 0),
-         (0.5, 3**0.5 / 6, (2.0 / 3)**0.5)]),
-    # fcc
-    (6, [(0, 1, 1), (1, 0, 1), (1, 1, 0)]),
-    # bcc
-    (4, [(-1, 1, 1), (1, -1, 1), (1, 1, -1)]),
-    # sc
-    (3, [1, 1, 1]),
-    # distorted sc
-    (6, [(1, 0, 0), (0.01, 1, 0), (0, 0.02, 1)]),
-    # rocksalt
-    (6, [(2.*np.sqrt(1./3.), np.sqrt(1./8.), -np.sqrt(1./24.)), (2.*np.sqrt(1./3.), -np.sqrt(1./8.), -np.sqrt(1./24.)), (2.*np.sqrt(1./3.), 0., np.sqrt(1./6.))])]
+cells = [
+    ('distorted hexagonal', 4,
+     [(1, 0, 0),
+      (1.02 * cos(pi / 3 - 0.02), 1.02 * sin(pi / 3 - 0.02), 0),
+      (0, 0, 1.0)]),
+    ('hexagonal', 4,
+     [(1, 0, 0),
+      (0.5, 3**0.5 / 2, 0),
+      (0, 0, 1.1)]),
+    ('fcc', 6,
+     [(0, 1, 1),
+      (1, 0, 1),
+      (1, 1, 0)]),
+    ('fcc-alternative', 6,
+     [(1, 0, 0),
+      (0.5, 3**0.5 / 2, 0),
+      (0.5, 3**0.5 / 6, (2.0 / 3)**0.5)]),
+    ('bcc', 4,
+     [(-1, 1, 1),
+      (1, -1, 1),
+      (1, 1, -1)]),
+    ('sc', 3,
+     [1.1, 1.02, 1.03]),
+    ('distorted sc', 6,
+     [(1, 0, 0),
+      (0.01, 1, 0),
+      (0, 0.02, 1)]),
+    ('rocksalt', 6,
+     [(2 * np.sqrt(1.0 / 3), np.sqrt(1.0 / 8), -np.sqrt(1.0/ 24)),
+      (2 * np.sqrt(1.0 / 3), -np.sqrt(1.0 / 8), -np.sqrt(1.0 / 24)),
+      (2 * np.sqrt(1.0 / 3), 0, np.sqrt(1.0 / 6))]),
+    ('nasty', 6,
+     [(1, 0, 0),
+      (0.0001, 1.03, 0),
+      (0.0001, 0.0001, 1.0)]),
+    ('Mike', 6,
+     5 * np.array([(5.565 / 28, 0, 0),
+                   (0.0001 / 28, 5.565 / 28, 0),
+                   (0.0001 / 24, 0.0001 / 24, 4.684 / 24)]))
+    ]
 
 if size == 1:
-    for D, cell in cells:
-        print cell
+    for name, D, cell in cells:
+        print '------------------'
+        print name, D
+        print cell[0]
+        print cell[1]
+        print cell[2]
         for n in range(1, 6):
             N = 2 * n + 2
             gd = GridDescriptor((N, N, N), cell)
@@ -50,4 +72,4 @@ if size == 1:
                             r = 0.0
                         lap.apply(a_g, b_g)
                         e = b_g[n + 1, n + 1, n + 1] - r
-                        assert abs(e) < 1e-12
+                        assert abs(e) < 1e-12, e

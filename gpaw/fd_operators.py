@@ -357,9 +357,9 @@ def GUCLaplace(gd, scale=1.0, n=1, dtype=float, allocate=True):
     
     # Order the 13 neighbor grid points:
     M_ic = np.indices((3, 3, 3)).reshape((3, -3)).T[-13:] - 1
-    h2_i = (np.dot(M_ic, gd.h_cv)**2).sum(1)
-    i_d = h2_i.argsort()
-
+    u_cv = gd.h_cv / (gd.h_cv**2).sum(1)[:, np.newaxis]**0.5
+    u2_i = (np.dot(M_ic, u_cv)**2).sum(1)
+    i_d = u2_i.argsort()
     
     m_mv = np.array([(2, 0, 0), (0, 2, 0), (0, 0, 2),
                      (0, 1, 1), (1, 0, 1), (1, 1, 0)])
@@ -367,8 +367,9 @@ def GUCLaplace(gd, scale=1.0, n=1, dtype=float, allocate=True):
     for D in range(3, 7):
         h_dv = np.dot(M_ic[i_d[:D]], gd.h_cv)
         A_md = (h_dv**m_mv[:, np.newaxis, :]).prod(2)
-        a_d, residual = np.linalg.lstsq(A_md, [1, 1, 1, 0, 0, 0])[:2]
+        a_d, residual, rank, s = np.linalg.lstsq(A_md, [1, 1, 1, 0, 0, 0])
         if residual.sum() < 1e-14:
+            assert rank == D
             # D directions was OK
             break
 
@@ -383,7 +384,6 @@ def GUCLaplace(gd, scale=1.0, n=1, dtype=float, allocate=True):
         coefs.extend(a_d[d] * np.array(laplace[n][1:]))
 
     return FDOperator(coefs, offsets, gd, dtype, allocate)
-
 
 if extra_parameters.get('newgucstencil'):
     Laplace = GUCLaplace
