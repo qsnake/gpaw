@@ -137,6 +137,7 @@ class Runner:
             dyn.attach(traj, 1, config)
             dyn.run(fmax=self.fmax)
             e = config.get_potential_energy()
+            self.post_process(config)
             self.energies.append(e)
         elif not config.pbc.any() and len(config) == 2:
             # This is a dimer.
@@ -148,6 +149,7 @@ class Runner:
                 self.bondlengths.append(d)
                 e = config.get_potential_energy()
                 self.energies.append(e)
+                self.post_process(config)
                 traj.write(config)
         else:
             self.volumes = []
@@ -156,9 +158,13 @@ class Runner:
                 self.volumes.append(config.get_volume())
                 e = config.get_potential_energy()
                 self.energies.append(e)
+                self.post_process(config)
                 traj.write(config)
         return config
     
+    def post_process(self, config):
+        pass
+
     def summary(self, plot=False, a0=None):
         if self.energies is None:
             return
@@ -257,13 +263,18 @@ class EMTRunner(Runner):
 
 class GPAWRunner(Runner):
     """GPAW implementation"""
-    def set_parameters(self, vacuum=3.0, **kwargs):
+    def set_parameters(self, vacuum=3.0, write_gpw_file=False, **kwargs):
         self.vacuum = vacuum
+        self.write_gpw_file = write_gpw_file
+        self.gpwfilename = None
         self.input_parameters = kwargs
         
     def set_calculator(self, config, filename):
         kwargs = {}
         kwargs.update(self.input_parameters)
+
+        if self.write_gpw_file:
+            self.gpwfilename = filename[:-4] + 'gpw'
 
         if 'txt' not in kwargs:
             kwargs['txt'] = filename[:-4] + 'txt'
@@ -289,6 +300,10 @@ class GPAWRunner(Runner):
         """Returns the calculator object - available when finished only."""
         return self.calc
 
+    def post_process(self, config):
+        if self.write_gpw_file:
+            self.calc.write(self.gpwfilename, mode='all')
+        
     def check_occupation_numbers(self, config):
         """Check that occupation numbers are integers."""
         if config.pbc.any():

@@ -84,6 +84,9 @@ defaults = InputParameters()
 for key in defaults:
     calc_opts.add_option('--%s' % key, type=str,
                          help='default=%default')
+
+calc_opts.add_option('--write-gpw-file', action='store_true',
+                     help='Write gpw file.')
 parser.add_option_group(calc_opts)
 
 if 0:
@@ -203,7 +206,9 @@ def run():
                 except (NameError, SyntaxError):
                     input_parameters[key] = value
 
-        runner.set_parameters(vacuum=opt.vacuum, **input_parameters)
+        runner.set_parameters(vacuum=opt.vacuum,
+                              write_gpw_file=opt.write_gpw_file,
+                              **input_parameters)
 
     runner.run()
 
