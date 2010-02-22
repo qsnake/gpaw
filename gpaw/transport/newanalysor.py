@@ -1626,7 +1626,26 @@ class Transport_Plotter:
         else:
             tc_all = tc_all[s, k, 0]
         return tc_all
-  
+
+    def dos(self, bias_step, s=0, k=0, all=True):
+        step = self.bias_steps[bias_step]
+        dos_all = step.dos['E0']
+        num = 1
+        flag = True
+        while flag:
+            flag = False
+            for name in step.dos:
+                if name[0] == 'E' and name[1] == str(num):
+                    dos_all = np.append(dos_all, step.dos[name], axis=-1)
+                    flag = True
+                    num += 1
+        if all:
+            dos_all = np.sum(dos_all, axis=1) / dos_all.shape[1]
+            dos_all = dos_all[s]
+        else:
+            dos_all = dos_all[s, k, 0]
+        return dos_all
+ 
     def set_ele_steps(self, n_ion_step=None, n_bias_step=0):
         if n_ion_step != None:
             self.bias_steps = self.ion_steps[n_ion_step].bias_steps
@@ -1733,6 +1752,24 @@ class Transport_Plotter:
         import pylab as p
         flags = self.flags
         p.plot(energies, tc, flags[0], f1, l1, flags[1],f2, l1, flags[1])        
+        p.xlabel(xlabel)
+        p.ylabel(ylabel)
+        p.show()
+
+    def plot_dos(self, bias_step, s=0, k=0, all=True):
+        dos = self.dos(bias_step, s=s, k=k, all=all)
+        xlabel = 'Energy(eV)'
+        ylabel = 'Density of States(Electron/ev)'        
+        energies = self.energies
+        eye = np.zeros([10, 1]) + 1
+        step = self.bias_steps[bias_step]
+        f1 = (step.lead_fermis[0] + step.bias[0]) * eye
+        f2 = (step.lead_fermis[1] + step.bias[1]) * eye        
+        a1 = np.max(dos)
+        l1 = np.linspace(0, a1, 10)
+        import pylab as p
+        flags = self.flags
+        p.plot(energies, dos, flags[0], f1, l1, flags[1],f2, l1, flags[1])        
         p.xlabel(xlabel)
         p.ylabel(ylabel)
         p.show()
