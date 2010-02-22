@@ -1,7 +1,9 @@
 from gpaw.transport.selfenergy import LeadSelfEnergy
 from gpaw.transport.tools import get_matrix_index, aa1d, aa2d, sum_by_unit, \
                                 dot, fermidistribution, eig_states_norm, \
-                                find, get_atom_indices, dagger, write, gather_ndarray_dict
+                                find, get_atom_indices, dagger, \
+                                write, gather_ndarray_dict
+from gpaw.transport.sparse_matrix import Tp_Sparse_Matrix
 from gpaw.mpi import world
 from gpaw import GPAW, Mixer, MixerDif, PoissonSolver
 from ase.units import Hartree, Bohr
@@ -9,7 +11,7 @@ from gpaw.utilities.memory import maxrss
 import numpy as np
 import copy
 import cPickle
-
+import os
 
 class Structure_Info:
     def __init__(self, ion_step):
@@ -20,11 +22,6 @@ class Structure_Info:
         self.forces = forces
 
 class Transmission_Info:
-    # member variables:
-    # ------------------------------
-    # ep(energy points), tc(transmission coefficients), dos, bias
-    # pdos, eigen_channel
-    
     def __init__(self, ion_step, bias_step):
         self.ion_step, self.bias_step = ion_step, bias_step
     
@@ -42,26 +39,10 @@ class Transmission_Info:
                          tp_eig_w, tp_eig_v, tp_eig_vc, nk_on_energy):
         for name in ['eig_tc_lead', 'eig_vc_lead', 'tp_tc', 'tp_vc', 'dos_g'
                      'project_tc', 'left_tc', 'left_vc', 'lead_k', 'lead_vk',
-                     'tp_eig_w', 'tp_eig_v', 'tp_eig_vc', 'nk_on_energy']:
+                     'tp_eig_w', 'tp_eig_v', 'tp_eig_vc']:
             vars(self)[name] = eval(name)
-            
-    def initialize_data3(self, s00, h00, lead_fermi):
-        self.s00 = s00
-        self.h00 = h00
-        self.lead_fermi = lead_fermi
 
 class Electron_Step_Info:
-    # member variables:
-    # ------------------------------
-    # ion_step
-    # bias_step
-    # step(index of electron step)
-    # bias, gate
-    # dd(diagonal element of d_spkmm), df(diagonal element of f_spkmm),
-    # nt(density in a line along transport direction),
-    # vt(potential in a line along transport direction)
-    
-   
     def __init__(self, ion_step, bias_step, ele_step):
         self.ion_step, self.bias_step, self.ele_step = ion_step, \
                                                          bias_step, ele_step
@@ -82,34 +63,10 @@ class Transport_Analysor:
         self.n_ele_step = 0
         self.n_bias_step = 0
         self.n_ion_step = 0
-        self.max_k_on_energy = 15
         self.matrix_foot_print = False
         self.reset = False
         self.scattering_states_initialized = False
         self.initialize()
-        # --------------------------------------------------------------------
-        #  analysis array name     &    size     &      units     & dtype
-        # --------------------------------------------------------------------
-        #  aX_X_X_nt  (X: int)          ns, nz                         float
-        #         vt                    ns, nz                         float
-        #         df                ns, npk, exnb               float || complex
-        #         dd                ns, npk, exnb               float || complex
-        #         vHt                  nz * 2                       float
-        #         rho                  nz * 2                       float       
-        #         dos               ns, npk, ne                     float
-        #         tc                ns, npk, ne                     float
-        #     
-  
-    def set_plot_option(self):
-        tp = self.tp
-        if tp.plot_option == None:
-            ef = tp.lead_fermi[0]
-            self.energies = np.linspace(ef - 3, ef + 3, 61) + 1e-4 * 1.j
-            self.lead_pairs = [[0,1]]
-        else:
-            self.energies = tp.plot_option['energies'] + tp.lead_fermi[0] + \
-                                                              1e-4 * 1.j
-            self.lead_pairs = tp.plot_option['lead_pairs']
        
     def initialize(self):
         kw = self.tp.analysis_parameters
@@ -129,7 +86,15 @@ class Transport_Analysor:
             vars(self)[key] = p[key]       
 
         ef = self.tp.lead_fermi[0]
-        self.energies +=  ef + 1e-4 * 1.j
+        #self.energies = self.energies + ef + 1e-4 * 1.j
+        path = self.tp.contour.get_plot_path()
+        self.energies = path.energies
+        self.my_energies = path.my_energies
+        self.weights = path.weights
+        self.my_weights = path.my_weights
+        self.nids = path.nids
+        self.my_nids = path.my_nids
+        
         for variable in [self.eig_trans_channel_energies,
                          self.dos_realspace_energies]:
             if variable is not None:
@@ -143,15 +108,19 @@ class Transport_Analysor:
         if self.isolate_atoms is not None:
             self.calculate_isolate_molecular_levels()
         self.overhead_data_saved = False
-        self.nk_on_energy = None
-        self.set_analysis_data_form()
- 
+        if not os.access('analysis_data', os.F_OK):
+            os.mkdir('analysis_data')
+        if not os.access('analysis_data/ionic_step_0', os.F_OK):            
+            os.mkdir('analysis_data/ionic_step_0')
+        self.data = {}
+
     def save_overhead_data(self):
         contour_parameters = {}
         cp = contour_parameters
         cp['neintmethod'] = self.tp.neintmethod
         cp['neintstep'] = self.tp.neintstep
         cp['lead_fermi'] = self.tp.lead_fermi
+        cp['kt'] = self.tp.occupations.width * Hartree
         if not self.tp.non_sc:
             cp['eqinttol'] = self.tp.intctrl.eqinttol
             cp['neinttol'] = self.tp.intctrl.neinttol
@@ -176,64 +145,10 @@ class Transport_Analysor:
             fd = file('lead_hs', 'wb')
             cPickle.dump(lead_hs, fd, 2)
             fd.close()
-      
-    def reset_central_scattering_states(self):
-        total_t = []
-        total_vc = []
-        total_k = []
-        total_vl = []
-        ns, npk = self.tp.my_nspins, self.tp.my_npk
-        
-        nl = self.tp.lead_num
-        nb = np.max(self.tp.nblead)
-        nbmol = self.tp.nbmol
-        mkoe = self.max_k_on_energy
-        dtype = complex
-        self.nk_on_energy = np.zeros([ns, npk, len(self.energies)], dtype=int)
-       
-        for s in range(ns):
-            total_t.append([])
-            total_vc.append([])
-            total_k.append([])
-            total_vl.append([])
-            for pk in range(npk):
-                total_t[s].append([])
-                total_vc[s].append([])
-                total_k[s].append([])
-                total_vl[s].append([])
-                for e, energy in enumerate(self.energies):
-                    t, vc, k, vl = self.central_scattering_states(
-                                                           energy.real, s, pk)
-                    t_array = np.zeros([nl, nl, mkoe, mkoe], dtype)
-                    vc_array = np.zeros([nl, nbmol, mkoe], dtype)
-                    k_array = np.zeros([nl, mkoe], dtype)
-                    vl_array = np.zeros([nl, nb, mkoe], dtype)
-                    nbl, nbloch = vl.shape[-2:]  
-                    self.nk_on_energy[s, pk, e] = nbloch
-                    t_array[:, :, :nbloch, :nbloch] = t
-                    vc_array[:, :, :nbloch] = vc
-                    k_array[:, :nbloch] = k
-                    vl_array[:, :nbl, :nbloch] = vl                 
-
-                    total_t[s][pk].append(t_array)
-                    total_vc[s][pk].append(vc_array)                    
-                    total_k[s][pk].append(k_array)
-                    total_vl[s][pk].append(vl_array)
-        self.total_scattering_t = np.array(total_t)            
-        self.total_scattering_vc = np.array(total_vc)
-        self.total_scattering_k = np.array(total_k)
-        self.total_scattering_vl = np.array(total_vl)           
-
-    def get_central_scattering_states(self, s, q, e):
-        nbloch = self.nk_on_energy[s, q, e]
-        return self.total_scattering_t[s, q, e, :, :, :nbloch, :nbloch], \
-               self.total_scattering_vc[s, q, e, :, :, :nbloch], \
-               self.total_scattering_k[s, q, e, :, :nbloch],  \
-               self.total_scattering_vl[s, q, e, :, :, :nbloch]
            
     def set_default_analysis_parameters(self):
         p = {}
-        p['energies'] = np.linspace(-3, 3, 61) 
+        p['energies'] = np.linspace(-5., 5., 201) 
         p['lead_pairs'] = [[0,1]]
         p['dos_project_atoms'] = None
         p['project_molecular_levels'] = None
@@ -256,91 +171,83 @@ class Transport_Analysor:
     
                 self.selfenergies[i].set_bias(tp.bias[i])
             
-    def reset_selfenergy_and_green_function(self, s, k):
-        tp = self.tp
-        for i in range(tp.lead_num):
+    def reset_selfenergy(self, s, k):
+        for i in range(self.tp.lead_num):
             self.selfenergies[i].s = s
             self.selfenergies[i].pk = k
-        tp.hsd.s = s
-        tp.hsd.pk = k
+    
+    def reset_green_function(self, s, k): 
+        self.tp.hsd.s = s
+        self.tp.hsd.pk = k
       
-    def calculate_green_function_of_k_point(self, s, k, energy, re_flag=0,
+    def calculate_green_function_of_k_point(self, s, k, energy, sigma,
                                                                  full=False):
-        tp = self.tp 
+        self.reset_green_function(s, k)
+        return self.tp.hsd.calculate_eq_green_function(energy, sigma,
+                                                       ex=False, full=full)
+ 
+    def calculate_sigma(self, s, k, energy, nid_flag=None):
         sigma = []
-        for i in range(tp.lead_num):
-            sigma.append(self.selfenergies[i](energy))
-        gr = tp.hsd.calculate_eq_green_function(energy, sigma, False, full)
-        if re_flag==0:
-            return gr
-        else:
-            return gr, sigma 
-    
-    def calculate_transmission_and_dos(self, s, k, energies):
-        self.reset_selfenergy_and_green_function(s, k)
-        transmission_list = []
-        dos_list = []
-        for energy in energies:
-            gr, sigma = self.calculate_green_function_of_k_point(s, k,
-                                                                   energy, 1)
-            trans_coff = []
-            gamma = []
-            for i in range(self.tp.lead_num):
-                gamma.append(1.j * (sigma[i].recover() -
-                                                sigma[i].recover().T.conj()))
-        
-            
-            for i, lead_pair in enumerate(self.lead_pairs):
-                l1, l2 = lead_pair
-                if i == 0:
-                    gr_sub, inv_mat = self.tp.hsd.abstract_sub_green_matrix(
-                                                        energy, sigma, l1, l2)
-                else:
-                    gr_sub = self.tp.hsd.abstract_sub_green_matrix(energy,
-                                                    sigma, l1, l2, inv_mat)                    
-                transmission =  dot(dot(gamma[l1], gr_sub),
-                                              dot(gamma[l2], gr_sub.T.conj()))
-       
-                trans_coff.append(np.real(np.trace(transmission)))
-            transmission_list.append(trans_coff)
-            del trans_coff
-            
-            dos = - np.imag(np.trace(dot(gr,
-                                         self.tp.hsd.S[k].recover()))) / np.pi                
-            dos_list.append(dos)
-        
-        ne = len(energies)
-        npl = len(self.lead_pairs)
-        transmission_list = np.array(transmission_list)
-        transmission_list = np.resize(transmission_list.T, [npl, ne])
-        return transmission_list, np.array(dos_list)
+        for i in range(self.tp.lead_num):
+            sigma.append(self.selfenergies[i](energy, nid_flag))        
+        return sigma
 
-    def calculate_eigen_transport_channels(self, s, q):
-        energies = self.eig_trans_channel_energies
-        ne = len(energies)
-        nl = self.tp.lead_num
-        total_w = []
-        total_v = []
-        total_vc = []
-        for n in range(ne):
-            total_w.append([])
-            total_v.append([])
-            total_vc.append([])
-            t, vc, k, vl = self.central_scattering_states(
-                                                    energies[n], s, q)
-            for i in range(nl):
-                total_w[n].append([])
-                total_v[n].append([])
-                total_vc[n].append([])
-                for j in range(nl):
-                    zeta = t[i][j]
-                    zeta2 = np.dot(zeta.T.conj(), zeta)
-                    w, v = np.linalg.eig(zeta2)
-                    total_w[n][i].append(w)
-                    total_v[n][i].append(v)
-                    total_vc[n][i].append(np.dot(vc[i], v))
-        return np.array(total_w), np.array(total_v), np.array(total_vc)
+    def get_gamma(self, sigma):
+        gamma = []
+        for i in range(self.tp.lead_num):
+            gamma.append(1.j * (sigma[i].recover() -
+                                                sigma[i].recover().T.conj()))
+        return gamma
+        
+    def calculate_transmission(self, s, k, energy, nid_flag=None):
+        self.reset_selfenergy(s, k)
+        self.reset_green_function(s, k)
+        sigma = self.calculate_sigma(s, k, energy, nid_flag)
+        gamma = self.get_gamma(sigma)    
+        trans_coff = []
+        for i, lead_pair in enumerate(self.lead_pairs):
+            l1, l2 = lead_pair
+            if i == 0:
+                gr_sub, inv_mat = self.tp.hsd.abstract_sub_green_matrix(
+                                                        energy, sigma, l1, l2)
+            else:
+                gr_sub = self.tp.hsd.abstract_sub_green_matrix(energy,
+                                                    sigma, l1, l2, inv_mat)                    
+            transmission =  dot(dot(gamma[l1], gr_sub),
+                                              dot(gamma[l2], gr_sub.T.conj()))
+            trans_coff.append(np.real(np.trace(transmission)))        
+        trans_coff = np.array(trans_coff)
+        return trans_coff
     
+    def calculate_dos(self, s, k, energy, nid_flag=None):
+        self.reset_selfenergy(s, k)
+        self.reset_green_function(s, k)
+        sigma = self.calculate_sigma(s, k, energy, nid_flag)
+        gr = self.calculate_green_function_of_k_point(s, k, energy, sigma)        
+        dos = - np.imag(np.diag(dot(gr, self.tp.hsd.S[k].recover()))) / np.pi         
+        return dos
+    
+    def calculate_eigen_transport_channel(self, s, q, energy):
+        t, vc, k, vl = self.central_scattering_states(energies, s, q)
+        weights = []
+        velocities = []
+        vectors = []
+        for i in range(self.tp.lead_num):
+            weights.append([])
+            velocities.append([])
+            vectors.append([])
+            for j in range(self.tp.lead_num):
+                zeta = t[i][j]
+                zeta2 = np.dot(zeta.T.conj(), zeta)
+                w, v = np.linalg.eig(zeta2)
+                weights[i].append(w)
+                velocities[i].append(v)
+                vectors[i].append(np.dot(vc[i], v))
+        weights = np.array(weights)
+        velocities = np.array(velocities)
+        vectors = np.array(vectors)
+        return weights, velocities, vectors
+  
     def calculate_charge_distribution(self, s, q):
         d_mm = self.tp.hsd.D[s][q].recover(True)
         s_mm = self.tp.hsd.S[q].recover(True)
@@ -372,38 +279,34 @@ class Transport_Analysor:
         self.isolate_eigen_vectors = c_nm
         self.isolate_s_mm = s_mm
 
-    def calculate_project_transmission(self, s, q):
-        project_transmission = []
-        if self.project_molecular_levels is not None:
-            eps_n, c_nm, s_mm = self.isolate_eigen_values, \
+    def calculate_project_transmission(self, s, q, energy):
+        eps_n, c_nm, s_mm = self.isolate_eigen_values, \
                                  self.isolate_eigen_vectors, self.isolate_s_mm
-            ne = len(self.energies)
-            nl = self.tp.lead_num
-            T0 = np.zeros(c_nm.shape[0])
-            ind1 = self.project_basis_in_molecule
-            ind2 = self.project_basis_in_device
-            for i in range(ne):
-                total_t, total_vc, total_k, total_vl = \
-                                   self.get_central_scattering_states(s, q, i)
-                project_transmission.append([])
-                for j in range(nl):
-                    project_transmission[i].append([])
-                    for k in range(nl):
-                        vs = total_vc[k][ind2]
-                        vm = np.dot(np.dot(c_nm.T.conj(), s_mm)[:, ind1], vs)
-                        t0 = total_t[j][k]
-                        if len(t0) > 0:
-                            pt = vm * vm.conj() * \
-                                     np.diag(np.dot(t0.T.conj(), t0)) \
-                                          / np.diag(np.dot(vm.T.conj(), vm))
-                        else:
-                            pt = T0
-                        project_transmission[i][j].append(pt)
-        return np.array(project_transmission)
+        nl = self.tp.lead_num
+        T0 = np.zeros(c_nm.shape[0])
+        ind1 = self.project_basis_in_molecule
+        ind2 = self.project_basis_in_device
+        t, vc, k, vl = self.central_scattering_states(energy, s, q)
+        project_transmission = []
+        for j in range(nl):
+            project_transmission.append([])
+            for k in range(nl):
+                vs = vc[k][ind2]
+                vm = np.dot(np.dot(c_nm.T.conj(), s_mm)[:, ind1], vs)
+                t0 = t[j][k]
+                if len(t0) > 0:
+                    pt = vm * vm.conj() * \
+                             np.diag(np.dot(t0.T.conj(), t0)) \
+                                  / np.diag(np.dot(vm.T.conj(), vm))
+                else:
+                    pt = T0
+                project_transmission[i][j].append(pt)
+        project_transmission = np.array(project_transmission)
+        return project_transmission
 
     def calculate_realspace_wave_functions(self, C_nm, q):
         #nl number of molecular levels
-        wfs = self.tp.wfs
+        wfs = self.tp.extended_calc.wfs
         nao = wfs.setups.nao
         nb, nl = C_nm.shape
         if wfs.dtype == float:
@@ -420,8 +323,9 @@ class Transport_Analysor:
         return np.array(total_psi_g)
 
     def get_left_channels(self, energy, s, k):
-        g_s_ii, sigma = self.calculate_green_function_of_k_point(s, k,
-                                                              energy, 1, True)
+        sigma = self.calculate_sigma(s, k, energy)
+        g_s_ii = self.calculate_green_function_of_k_point(s, k, energy,
+                                                          sigma, full=True)
         nb = g_s_ii.shape[-1]
         dtype = g_s_ii.dtype
         lambda_l_ii = np.zeros([nb, nb], dtype)
@@ -453,17 +357,19 @@ class Transport_Analysor:
         v_in = np.dot(np.dot(s_s_isqrt_ii, ut_ii), c_in)
         return T_n, v_in
     
-    def calculate_realspace_dos(self, s, q):
-        energies = self.dos_realspace_energies
-        realspace_dos = []
-        wfs = self.tp.wfs        
-        for energy in energies:
-            gr = self.calculate_green_function_of_k_point(s, q, energy)
-            dos_mm = np.dot(gr, self.tp.hsd.S[q].recover())
+    def calculate_realspace_dos(self, energy):
+        wfs = self.tp.extended_calc.wfs
+        for kpt in wfs.kpt_u:
+            s = kpt.s
+            q = kpt.q
+            sigma = self.calculate_sigma(s, q, energy)
+            gr = self.calculate_green_function_of_k_point(s, q, energy, sigma)
+            dos_mm += np.dot(gr, self.tp.hsd.S[q].recover())
+        
             if wfs.dtype == float:
                 dos_mm = np.real(dos_mm).copy()
-                #kpt.rho_MM = dos_mm
-                #wfs.add_to_density_from_k_point(dos_g, kpt)
+            #kpt.rho_MM = dos_mm
+            #wfs.add_to_density_from_k_point(dos_g, kpt)
             #wfs.kpt_comm.sum(dos_g)
             #total_dos_g = self.tp.gd1.collect(dos_g)
             #realspace_dos.append(total_dos_g)
@@ -819,68 +725,19 @@ class Transport_Analysor:
                             t_lead_all[i][j][:, :, n] += abs(t0[m1,
                                           m2]) ** 2 * np.dot(w2, w1.T.conj())
         return np.array(t_lead_all), np.array(t_all)
-    
-    def set_analysis_data_form(self):
-        tp = self.tp
-        ns, npk = tp.nspins, tp.npk
-        nx, ny, nz = tp.gd.N_c
-        exnb = tp.wfs.setups.nao
-        nb = tp.nbmol
-        ne = len(self.energies)
-        na = len(tp.atoms)
-        dtype = tp.wfs.dtype
-        self.analysis_data_form = {}
-        adf = self.analysis_data_form
-        adf['nt'] = ((ns, nz), float)
-        adf['vt'] = ((ns, nz), float)
-        adf['df'] = ((ns, npk, exnb), dtype)
-        adf['dd'] = ((ns, npk, exnb), dtype)
-        adf['vHt'] = ((nz * 2,), float)
-        adf['rho'] = ((nz * 2,), float)
-        adf['dos'] = ((ns, npk, ne), float)
-        adf['tc'] = ((ns, npk, ne), float)
-        adf['force'] = ((na, 3), float)
-        adf['charge'] = ((ns, nb), float)
-        adf['ntx'] = ((ns, nx, nz), float)
-        adf['nty'] = ((ns, ny, nz), float)
-        adf['vtx'] = ((ns, nx, nz), float)
-        adf['vty'] = ((ns, ny, nz), float)
-        adf['current'] = ((1,), float)
- 
 
     def save_ele_step(self):
         tp = self.tp
-        step = Electron_Step_Info(self.n_ion_step, self.n_bias_step,
-                                                           self.n_ele_step)
-        dtype = tp.wfs.dtype
-        nbmol = tp.wfs.setups.nao
-        dd = np.empty([tp.my_nspins, tp.my_npk, nbmol], dtype)
-        df = np.empty([tp.my_nspins, tp.my_npk, nbmol], dtype)
-        
-        if tp.wfs.kpt_comm.rank == 0:
-            total_dd = np.empty([tp.nspins, tp.npk, nbmol], dtype)
-            total_df = np.empty([tp.nspins, tp.npk, nbmol], dtype)
-        else:
-            total_dd = None
-            total_df = None
-        
         if not self.matrix_foot_print:
             fd = file('matrix_sample', 'wb')
-            cPickle.dump(tp.hsd.S[0], fd, 2)
+            sample = Tp_Sparse_Matrix(complex, tp.hsd.ll_index)
+            sample.reset_from_others(tp.hsd.S[0], tp.hsd.H[0][0], 1.,
+                                                      -1.j, init=True)
+            cPickle.dump(sample, fd, 2)
             fd.close()
             self.matrix_foot_print = True
-            
-        for s in range(tp.my_nspins):
-            for k in range(tp.my_npk):
-                dd[s, k] = np.diag(tp.hsd.D[s][k].recover(True))
-                df[s, k] = np.diag(tp.hsd.H[s][k].recover(True))
-       
-        
-        tp.wfs.kpt_comm.gather(dd, 0, total_dd)
-        tp.wfs.kpt_comm.gather(df, 0, total_df)
-
-        dim = tp.gd.N_c
-        assert tp.d == 2
+        #selfconsistent calculation: extended_calc ---> extended_atoms
+        #non_selfconsistent calculation: extended_calc ---> original_atoms        
         
         calc = tp.extended_calc
         gd = calc.gd
@@ -889,6 +746,8 @@ class Transport_Analysor:
         nt_sG = tp.gd.collect(tp.density.nt_sG)
         vt_sG = gd.collect(calc.hamiltonian.vt_sG)
         
+        data = self.data
+        flag = 'ele_' + str(self.n_ele_step) + '_'
         if world.rank == 0:
             nt = []
             vt = []
@@ -901,11 +760,11 @@ class Transport_Analysor:
                 nts = np.append(nts, nt2)
                 nt.append(nts)
                 vt.append(vts)
+            data[flag + 'nt'] = np.array(nt)
+            data[flag + 'vt'] = np.array(vt)            
         else:
             nt = None
             vt = None
-        nt = np.array(nt)
-        vt = np.array(vt)
          
         gd = tp.finegd
         rhot_g = gd.collect(tp.density.rhot_g)
@@ -916,6 +775,7 @@ class Transport_Analysor:
             rho = aa1d(rhot_g)
             rho = np.append(rho1, rho)
             rho = np.append(rho, rho2)
+            data[flag + 'rho'] = np.array(rho)
         else:
             rho = None
             
@@ -923,17 +783,9 @@ class Transport_Analysor:
         vHt_g = gd.collect(calc.hamiltonian.vHt_g)
         if world.rank == 0:
             vHt = aa1d(vHt_g) * Hartree
+            data[flag + 'vHt'] = vHt
         else:
             vHt = None
-          
-        mem_cost = maxrss()
-        if (not self.tp.non_sc) and (self.tp.analysis_mode >= 0) :  
-            time_cost = self.ele_step_time_collect()
-        else:
-            time_cost = None
-      
-        step.initialize_data(vt, nt, df, dd, vHt, rho, time_cost, mem_cost)
-        self.ele_steps.append(step)
         self.n_ele_step += 1
       
     def save_bias_step(self):
@@ -941,74 +793,79 @@ class Transport_Analysor:
             self.save_overhead_data()
             self.overhead_data_saved = True
         tp = self.tp
-        step = Transmission_Info(self.n_ion_step, self.n_bias_step)
-        time_cost = self.bias_step_time_collect()
+        ks_map = tp.my_ks_map
         if 'tc' in tp.analysis_data_list:
             tc, dos = self.collect_transmission_and_dos()
-        else:
-            tc = None
-            dos = None
+            current = self.calculate_current(tc)
+            flag = 'ER_' + str(tp.energy_comm.rank) 
+            self.data[flag + '_tc'] = tc
+            self.data[flag + '_dos'] = dos
+            self.data[flag + '_current'] = current
         nt, vt, ntx, vtx, nty, vty = self.abstract_d_and_v()
-                    
-        if not tp.non_sc and 'current' in tp.analysis_data_list:
-            current = self.calculate_current2(0)
-        else:
-            current = None
+        if world.rank == 0 :           
+            for name in ['nt', 'vt', 'ntx', 'vtx', 'nty', 'vty']:
+                self.data[name] = eval(name)
         if tp.non_sc or self.tp.analysis_mode < 0:
             force = None
+            contour = None
         else:       
             force = tp.calculate_force()
             tp.F_av = None
-        
+            contour = self.collect_contour()            
         charge = self.collect_charge()
-        if tp.non_sc:
-            contour = None
-        else:    
-            contour = self.collect_contour()
-        step.initialize_data(tp.bias, tp.gate, self.energies, self.lead_pairs,
-                              tc, dos, vt, nt, vtx, ntx, vty, nty,
-                              current, tp.lead_fermi, time_cost, force, charge, contour)
-
-
-        #prefix =  'Ab' + '_' + str(self.n_ion_step) + '_' \
-        #                    + str(self.n_bias_step) + '_' \
-                            
-        #for name in ['nt', 'vt', 'ntx', 'vtx', 'nty', 'vty',
-        #                    'dos', 'tc', 'current']:
-        #    dimension, dtype = self.analysis_data_form[name]
-        #    data_name = prefix + name
-        #    write('analysis_data.nc', data_name, eval(name), dimension, dtype)
-            
-            
-        if tp.analysis_mode == 2:  
-            self.reset_central_scattering_states()
-            eig_tc_lead, eig_vc_lead = \
-                                       self.collect_lead_scattering_channels()
-            tp_tc, tp_vc, lead_k, lead_vk = \
-                                       self.collect_scat_scattering_channels()
-            tp_eig_w, tp_eig_v, tp_eig_vc = \
-                                       self.collect_eigen_transport_channels() 
-        
-            project_tc = self.collect_project_transmission()
-            dos_g = self.collect_realspace_dos()
-            left_tc, left_vc = self.collect_left_channels()
- 
-            step.initialize_data2(eig_tc_lead, eig_vc_lead, tp_tc, tp_vc,
-                                 dos_g, project_tc, left_tc, left_vc, lead_k,
-                                 lead_vk, tp_eig_w, tp_eig_v, tp_eig_vc)
-        elif tp.analysis_mode == -2:
-            #lead_s00, lead_s01, lead_h00, lead_h01 = self.collect_lead_hs()
-            pass
-            #s00, h00 = self.collect_scat_hs()
-            #step.initialize_data3(s00, h00, tp.lead_fermi)
-            
-        #step.ele_steps = self.ele_steps
-        #del self.ele_steps
-        self.ele_steps = []
+        if world.rank == 0:
+            lead_fermi = np.array(tp.lead_fermi)
+            lead_pairs = np.array(self.lead_pairs)
+            bias = np.array(tp.bias)
+            gate = np.array(tp.gate)
+            for name in ['force', 'lead_fermi', 'lead_pairs', 'bias', 'gate']:
+                self.data[name] = eval(name)
+        # do not include contour now because it is a dict, not a array able to
+        # collect, but will do it at last
+        self.data = gather_ndarray_dict(self.data, tp.energy_comm)
+        self.data['contour'] = contour
+        if world.rank == 0:
+            fd = file('analysis_data/ionic_step_' + str(self.n_ion_step)
+                      + '/bias_step_' + str(self.n_bias_step), 'wb')
+            cPickle.dump(self.data, fd, 2)
+            fd.close()
+        self.data = {}
         self.n_ele_step = 0
-        self.bias_steps.append(step)
         self.n_bias_step += 1
 
+    def collect_transmission_and_dos(self, energies=None, nids=None):
+        if energies == None:
+            energies = self.my_energies
+        if nids == None:
+            nids = self.my_nids
+        tp = self.tp
+      
+        nlp = len(self.lead_pairs)
+        ne = len(energies)
+        nbmol = tp.nbmol_inner
+        ns, npk = tp.my_nspins, tp.my_npk
+        local_tc_array = np.empty([ns, npk, nlp, ne], float)
+        local_dos_array = np.empty([ns, npk, nbmol, ne], float)
+        
+        for s in range(ns):
+            for q in range(npk):
+                for e, energy, nid in zip(range(len(energies)), energies, nids):
+                    local_tc_array[s, q, :, e] =  self.calculate_transmission(s,
+                                                            q, energy, nid)
+                    local_dos_array[s, q, :, e] = self.calculate_dos(s, q,
+                                                               energy, nid)
+        kpt_comm = tp.wfs.kpt_comm
+        ns, npk = tp.nspins, tp.npk
+        if kpt_comm.rank == 0:
+            tc_array = np.empty([ns, npk, nlp, ne], float)
+            dos_array = np.empty([ns, npk, nbmol, ne], float)
+        else:
+            tc_array = None
+            dos_array = None
+        kpt_comm.gather(local_tc_array, 0, tc_array)
+        kpt_comm.gather(local_dos_array, 0, dos_array)                    
+        return tc_array, dos_array
+    
     def collect_lead_scattering_channels(self):
         tp = self.tp
         energies = self.eig_trans_channel_energies
@@ -1221,163 +1078,23 @@ class Transport_Analysor:
         kpt_comm.all_gather(local_vc_array, vc_array) 
         return w_array, v_array, vc_array        
 
-    def collect_lead_hs(self):
-        tp = self.tp
-        ns, npk = tp.nspins, tp.npk
-        dtype = tp.wfs.dtype
-        nl = tp.lead_num
-        nb = tp.nblead[0]
-
-        kpt_comm = tp.wfs.kpt_comm        
-        if kpt_comm.rank == 0:
-            s00 = np.zeros([npk, nl, nb, nb], dtype)
-            s01 = np.zeros([npk, nl, nb, nb], dtype)        
-            h00 = np.zeros([ns, npk, nl, nb, nb], dtype)
-            h01 = np.zeros([ns, npk, nl, nb, nb], dtype)
-        else:
-            s00 = None
-            s01 = None
-            h00 = None
-            h01 = None
-
-        ns, npk = tp.my_nspins, tp.my_npk
-        local_s00 = np.zeros([npk, nl, nb, nb], dtype)
-        local_s01 = np.zeros([npk, nl, nb, nb], dtype)        
-        local_h00 = np.zeros([ns, npk, nl, nb, nb], dtype)
-        local_h01 = np.zeros([ns, npk, nl, nb, nb], dtype)        
-        for q in range(npk):
-            for l in range(nl):
-                local_s00[q, l] = tp.lead_hsd[l].S[q].recover()
-                local_s01[q, l] = tp.lead_couple_hsd[l].S[q].recover()                
-                for s in range(ns):
-                    local_h00[s, q, l] = tp.lead_hsd[l].H[s][q].recover()
-                    local_h01[s, q, l] = \
-                                       tp.lead_couple_hsd[l].H[s][q].recover()
-        
-        kpt_comm.gather(local_s00, 0, s00)
-        kpt_comm.gather(local_s01, 0, s01)        
-        kpt_comm.gather(local_h00, 0, h00)                     
-        kpt_comm.gather(local_h01, 0, h01)                
-        return s00, s01, h00, h01
-    
-    def collect_scat_hs(self):
-        tp = self.tp
-        ns, npk = tp.nspins, tp.npk
-        dtype = tp.wfs.dtype
-        nb = tp.nbmol
-        kpt_comm = tp.wfs.kpt_comm
-        
-        if kpt_comm.rank == 0:
-            s00 = np.zeros([npk, nb, nb], dtype)
-            h00 = np.zeros([ns, npk, nb, nb], dtype)
-        else:
-            s00 = None
-            h00 = None
-            
-        ns, npk = tp.my_nspins, tp.my_npk
-        local_s00 = np.zeros([npk, nb, nb], dtype)
-        local_h00 = np.zeros([ns, npk, nb, nb], dtype)
-     
-        for q in range(npk):
-            local_s00[q] = tp.hsd.S[q].recover()
-            for s in range(ns):
-                local_h00[s, q] = tp.hsd.H[s][q].recover()
-        kpt_comm.gather(local_s00, 0, s00)
-        kpt_comm.gather(local_h00, 0, h00)                     
-        return s00, h00       
-        
-    def bias_step_time_collect(self):
-        timers = self.tp.timer.timers
-        cost = {}
-        if not self.tp.non_sc and self.tp.analysis_mode >= 0:
-            cost['init scf'] = timers['init scf', ]
-        return cost
-        
-    def ele_step_time_collect(self):    
-        timers = self.tp.timer.timers
-        cost = {}
-        cost['eq fock2den'] = timers['DenMM', 'eq fock2den']
-        cost['ne fock2den'] = timers['DenMM', 'ne fock2den']
-        cost['Poisson'] = timers['HamMM', 'Hamiltonian', 'Poisson']
-        cost['construct density'] = timers['HamMM', 'construct density']
-        cost['atomic density'] = timers['HamMM', 'atomic density']
-        cost['atomic hamiltonian'] = timers['HamMM', 'Hamiltonian',
-                                                    'atomic hamiltonian']
-
-        if self.tp.step == 0:
-            cost['project hamiltonian'] = 0
-            cost['record'] = 0
-        else:
-            cost['project hamiltonian'] = timers['HamMM',
-                                                        'project hamiltonian']
-            cost['record'] = self.tp.record_time_cost
-        return cost
-
-    def collect_transmission_and_dos(self, energies=None):
-        if energies == None:
-            energies = self.energies
-        tp = self.tp
-      
-        nlp = len(self.lead_pairs)
-        ne = len(energies)
-        ns, npk = tp.nspins, tp.npk
-        kpt_comm = tp.wfs.kpt_comm
-        
-        if kpt_comm.rank == 0:
-            tc_array = np.empty([ns, npk, nlp, ne], float)
-            dos_array = np.empty([ns, npk, ne], float)
-        else:
-            tc_array = None
-            dos_array = None
-
-        ns, npk = tp.my_nspins, tp.my_npk
-        local_tc_array = np.empty([ns, npk, nlp, ne], float)
-        local_dos_array = np.empty([ns, npk, ne], float)
-        
-        for s in range(ns):
-            for q in range(npk):
-                local_tc_array[s, q], local_dos_array[s, q] = \
-                          self.calculate_transmission_and_dos(s, q, energies)
-
-        kpt_comm.gather(local_tc_array, 0, tc_array)
-        kpt_comm.gather(local_dos_array, 0, dos_array)            
-        return tc_array, dos_array
-
     def save_ion_step(self):
-        tp = self.tp
-        step = Structure_Info(self.n_ion_step)
-        step.initialize_data(tp.atoms.positions, tp.forces)
-        step.bias_steps = self.bias_steps
-        del self.bias_steps
-        self.bias_steps = []
-        self.n_bias_step = 0
-        self.ion_steps.append(step)
-        self.n_ion_step += 1
- 
-    def save_data_to_file(self, flag='bias', data_file=None):
-        if flag == 'ion':
-            steps = self.ion_steps
-        elif flag == 'bias':
-            steps = self.bias_steps
-        else:
-            steps = self.ele_steps
-        if data_file is None:
-            data_file = 'analysis_data_' + flag
-        else:
-            data_file += '_' + flag
         if world.rank == 0:
-            fd = file(data_file, 'wb')
-            cPickle.dump((steps, self.energies), fd, 2)
+            fd = file('analysis_data/ionic_step_' +
+                  str(self.n_ion_step) +'/positions', 'wb')
+            cPickle.dump(self.tp.atoms.positions, fd, 2)
             fd.close()
-   
+        self.n_bias_step = 0
+        self.n_ion_step += 1
+        if world.rank == 0:
+            os.mkdir('analysis_data/ionic_step_' + str(self.n_ion_step))
+ 
     def abstract_d_and_v(self):
         tp = self.tp
         calc = tp.extended_calc
         gd = calc.gd        
-
         nt_sG = tp.gd.collect(tp.density.nt_sG)
         vt_sG = gd.collect(calc.hamiltonian.vt_sG)
-
         nt = []
         vt = []
         ntx = []
@@ -1406,113 +1123,47 @@ class Transport_Analysor:
             vty = np.array(vty)
         return nt, vt, ntx, vtx, nty, vty
     
-    def calculate_current(self):
-        # temperary, because different pk point may have different ep,
-        # and also for multi-terminal, energies is wrong
-        tp = self.tp
-        assert hasattr(tp, 'nepathinfo')
-        ep = np.array(tp.nepathinfo[0][0].energy)
-        weight = np.array(tp.nepathinfo[0][0].weight)
-        fermi_factor = np.array(tp.nepathinfo[0][0].fermi_factor)
-
-        nep = np.array(ep.shape)
-        ff_dim = np.array(fermi_factor.shape)
-
-        world.broadcast(nep, 0)
-        world.broadcast(ff_dim, 0)
-
-        if world.rank != 0: 
-            ep = np.zeros(nep, ep.dtype) 
-            weight = np.zeros(nep, weight.dtype)
-            fermi_factor = np.zeros(ff_dim, fermi_factor.dtype)
-        world.broadcast(ep, 0)
-        world.broadcast(weight, 0)
-        world.broadcast(fermi_factor,0)
-        
-        tc_array, dos_array = self.collect_transmission_and_dos(ep)
-        current = np.zeros([tp.nspins, len(self.lead_pairs)])
-        tc_all = np.sum(tc_array, axis=1) / tp.npk
-        
-        #attention here, pk weight should be changed
-        for s in range(tp.nspins):
-            for i in range(len(self.lead_pairs)):
-                for j in range(len(ep)):
-                    current[s, i] += tc_all[s, i, j] * weight[j] * \
-                                                       fermi_factor[i][0][j]
-        return current
-
-    def calculate_current_of_energy(self, epts, lead_pair_index, s):
-        # temperary, because different lead_pairs have different energy points
-        tp = self.tp
-        tc_array, dos_array = self.collect_transmission_and_dos(epts)
-        if world.rank == 0:
-            tc_all = np.sum(tc_array, axis=1) / tp.npk
-            #attention here, pk weight should be changed
-            fd = fermidistribution
-            intctrl = tp.intctrl
-            kt = intctrl.kt
-            lead_ef1 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][0]]
-            lead_ef2 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][1]]
-            fermi_factor = fd(epts - lead_ef1, kt) - fd(epts - lead_ef2, kt)
-            current = tc_all[s, lead_pair_index] * fermi_factor
-        else:
-            current = None
-        return current
-    
-    def calculate_current2(self, lead_pair_index=0, s=0):
+    def calculate_current(self, tc_array, lead_pair_index=0, s=0):
         from scipy.integrate import simps
-        intctrl = self.tp.intctrl
+        tp = self.tp
+        intctrl = tp.intctrl
         kt = intctrl.kt
+        fd = fermidistribution        
         lead_ef1 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][0]]
         lead_ef2 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][1]]
         if lead_ef2 > lead_ef1:
             lead_ef1, lead_ef2 = lead_ef2, lead_ef1
-        lead_ef1 += 2 * kt
-        lead_ef2 -= 2 * kt
-        ne = int(abs(lead_ef1 -lead_ef2) / 0.02)
-        epts = np.linspace(lead_ef1, lead_ef2, ne) + 1e-4 * 1.j
-        interval = epts[1] - epts[0]
-        #ne = len(self.energies)
-        #epts = self.energies
-        #interval = self.energies[1] - self.energies[0]
-        cures = self.calculate_current_of_energy(epts, lead_pair_index, s)
-        if world.rank == 0:
-            if ne != 0:
-                current =  simps(cures, None, interval)
-            else:
-                current = 0
-        else:
-            current = None
-        return current
+        interval = np.real(self.my_energies[1] - self.my_energies[0])
+        tc_all = np.sum(tc_array, axis=1) / tp.npk 
+        fermi_factor = fd(self.my_energies - lead_ef1, kt) - fd(
+                                             self.my_energies - lead_ef2, kt)
+        current = np.sum(tc_all[s, lead_pair_index] * fermi_factor *
+                                                              self.my_weights)
+        current = np.array(current)
+        
+        tp.contour.comm.sum(current)
+        tp.wfs.kpt_comm.sum(current)
+        return current 
          
 class Transport_Plotter:
-    flags = ['b-o', 'r--']
-    #xlabel, ylabel, title, legend, xtick, ytick,
-    
-    def __init__(self, flag='bias', data_file=None):
-        if data_file is None:
-            data_file = 'analysis_data'
-        data_file += '_' + flag
-        fd = file(data_file, 'r')
-        data = cPickle.load(fd)
-        if flag == 'ion':
-            if len(data) == 2:
-                self.ion_steps, self.energies = data
-            else:
-                self.ion_steps = data
-        elif flag == 'bias':
-            if len(data) == 2:
-                self.bias_steps, self.energies = data
-            else:
-                self.bias_steps = data
-        else:
-            if len(data) == 2:
-                self.ele_steps, self.energies = data
-            else:
-                self.ele_steps = data
-        fd.close()
+    def __init__(self):
         self.my_options = False
-        self.show_window = False
+        self.ion_step = 0
+        self.bias_step = 0
+        self.ele_step = 0
+        self.plot_setup()
+        self.initialize()
+    
+    def initialize(self):
+        self.xlabels = {}
+        self.ylabels = {}
+        names = ['tc', 'dos', 'nt', 'vt']
+        xls = ['Energy(eV)', 'Energy(eV)', 'Transport Axis', 'Transport Axis']
+        yls = ['Transmission Coefficient', 'Density of States(Electron/eV)',
+               'Electron Density', 'Effective Potential']
+        for name, xl, yl in zip(names, xls, yls):
+            self.xlabels[name] = xl
+            self.ylabels[name] = yl
 
     def read_overhead(self):
         fd = file('analysis_overhead', 'r')
@@ -1530,721 +1181,49 @@ class Transport_Plotter:
         rcParams['axes.titlesize'] = 18
         rcParams['axes.labelsize'] = 18
         rcParams['font.size'] = 18
-        
-    def set_default_options(self):
-        self.xlabel = []
-        self.ylabel = []
-        self.legend = []
-        self.title = []
+  
+    def get_data(self, bias_step, ion_step):
+        fd = file('analysis_data/ionic_step_' + str(ion_step) +
+                  '/bias_step_' + str(bias_step), 'r')
+        data = cPickle.load(fd)
+        fd.close()        
+        return data
 
-    def set_my_options(self, xlabel=None, ylabel=None, legend=None,
-                                                            title=None):
-        self.xlabel = xlabel
-        self.ylabel = ylabel
-        self.legend = legend
-        self.title = title
-        self.my_options = True
-            
-    def set_options(self, xlabel=None, ylabel=None, legend=None, title=None):
-        if self.my_options:
-            pass
+    def get_info(self, name, bias_step, ion_step=0):
+        data = self.get_data(bias_step, ion_step)
+        if name in ['tc', 'dos']:
+            info = data['ER_0_' + name]        
+            data_name = 'ER_1_' + name
+            n = 1
+            while data_name in data:
+                info = np.append(info, data[data_name], axis=-1)
+                n += 1
+                data_name = 'ER_' + str(n) + '_' + name        
         else:
-            self.xlabel = xlabel
-            self.ylabel = ylabel
-            self.legend = legend
-            self.title = title
-      
-    def show(self, p, option='default'):
-        if not self.show_window:
-            if option == None:
-                p.show()
-            elif option == 'default':
-                if self.legend != None:
-                    p.legend(self.legend)
-                if self.xlabel != None:
-                    p.xlabel(self.xlabel)
-                if self.ylabel != None:
-                    p.ylabel(self.ylabel)
-                if self.title != None:
-                    p.title(self.title)
-                p.show()
-            else:
-                pass
+            info = data[name]
+        return info
+
+    def process(self, info, s=0, k=None, lp=None):
+        if s is None:
+            info = np.sum(info, axis=0) / info.shape[0]
+        else:
+            info = info[s]
+        if k is None:
+            info = np.sum(info, axis=0) / info.shape[0]
+        if lp is not None:
+            info = info[lp]
+        return info
+        
+    def tc(self, bias_step, ion_step=0, lp=0, s=0, k=None):
+        info = self.get_info('tc', bias_step, ion_step)
+        return self.process(info, s, k, lp)
     
-    def set_ele_steps(self, n_ion_step=None, n_bias_step=0):
-        if n_ion_step != None:
-            self.bias_steps = self.ion_steps[n_ion_step].bias_steps
-        self.ele_steps = self.bias_steps[n_bias_step].ele_steps
-       
-    def compare_two_calculations(self, nstep, s, k):
-        fd = file('analysis_data_cmp', 'r')
-        self.ele_steps_cmp, self.energies_cmp = cPickle.load(fd)
-        fd.close()
-        ee = self.energies
-        #ee = np.linspace(-3, 3, 61)
-        step = self.ele_steps[nstep]
-        step_cmp = self.ele_steps_cmp[nstep]
-        
-        import pylab as p
-        p.plot(step.dd[s, k] - step_cmp.dd[s, k], 'b--o')
-        p.title('density matrix')
-        p.show()
-        
-        p.plot(step.df[s, k] - step_cmp.df[s, k], 'b--o')
-        p.title('hamiltonian matrix')
-        p.show()
-        
-        p.plot(step.nt - step_cmp.nt, 'b--o')
-        p.title('density')
-        p.show()
- 
-        p.plot(step.vt - step_cmp.vt, 'b--o')
-        p.title('hamiltonian')
-        p.show()
-        
-        p.plot(ee, step.tc[s, k, 0] - step_cmp.tc[s, k, 0], 'b--o')
-        p.title('transmission')
-        p.show()
-        
-        p.plot(ee, step.dos[s, k] - step_cmp.dos[s, k], 'b--o')
-        p.title('dos')
-        p.show()
-       
-    def plot_ele_step_info(self, info, steps_indices, s, k,
-                                                     height=None, unit=None):
-        xdata = self.energies
-        #xdata = np.linspace(-3, 3, 61)
-        energy_axis = False        
-        import pylab as p
-        legends = []
-        if info == 'dd':
-            data = 'dd[s, k]'
-            title = 'density matrix diagonal elements'
-        elif info == 'df':
-            data = 'df[s, k]'
-            title = 'hamiltonian matrix diagonal elements'
-        elif info == 'den':
-            data = 'nt[s]'
-            title = 'density'
-        elif info == 'ham':
-            data = 'vt[s]'
-            title = 'hamiltonian'
-        elif info == 'rho':
-            data = 'rho'
-            title = 'total poisson density'
-        elif info == 'vHt':
-            data = 'vHt'
-            title = 'total Hartree potential'            
-        elif info == 'tc':
-            data = 'tc[s, k, 0]'
-            title = 'trasmission coefficeints'
-            energy_axis = True
-        elif info == 'dos':
-            data = 'dos[s, k]'
-            title = 'density of states'
-            energy_axis = True
-        else:
-            raise ValueError('no this info type---' + info)        
-
-        for i, step in enumerate(self.ele_steps):
-            if i in steps_indices:
-                ydata = eval('step.' + data)
-                if unit != None:
-                    ydata = sum_by_unit(ydata, unit)
-                if not energy_axis:
-                    p.plot(ydata)
-                else:
-                    p.plot(xdata, ydata)
-                legends.append('step' + str(step.ele_step))
-        self.set_options(None, None, legends, title)
-        if height != None:
-            p.axis([xdata[0], xdata[-1], 0, height])
-        #p.show()
-        self.show(p)
-
-    def plot_bias_step_info(self, info, steps_indices, s, k,
-                                            height=None, unit=None,
-                                        all=False, show=True, dense_level=0):
-        xdata = np.real(self.energies)
-        #xdata = np.linspace(-3, 3, 61)
-        energy_axis = False        
-        import pylab as p
-        legends = []
-        if info == 'tc':
-            data = 'tc[s, k, 0]'
-            title = 'trasmission coefficeints'
-            xlabel = 'Energy(eV)'
-            ylabel = 'T'
-            dim = 3
-            energy_axis = True
-        elif info == 'dos':
-            data = 'dos[s, k]'
-            title = 'density of states'
-            xlabel = 'Energy(eV)'
-            ylabel = 'DOS(Electron / eV)'
-            dim = 2
-            energy_axis = True
-        elif info == 'den':
-            data = "nt[s]"
-            title = 'density'
-            xlabel = 'Transport axis'
-            ylabel = 'Electron'
-            energy_axis = False
-        elif info == 'ham':
-            data = "vt[s]"
-            title = 'hamiltonian'
-            xlabel = 'Transport axis'
-            ylabel = 'Energy(eV)'
-            energy_axis = False
-        else:
-            raise ValueError('no this info type---' + info)        
-
-        eye = np.zeros([10, 1]) + 1
-        
-        for i, step in enumerate(self.bias_steps):
-            if i in steps_indices:
-                if not all:
-                    ydata = eval('step.' + data)
-                else:
-                    ydata = eval('step.' + info)
-                    npk = ydata.shape[1]
-                    for j in range(dim):
-                        ydata = np.sum(ydata, axis=0)
-                    if info == 'dos':
-                        ydata /= npk
-                if unit != None:
-                    ydata = sum_by_unit(ydata, unit)
-                f1 = (step.lead_fermis[0] + step.bias[0]) * eye
-                f2 = (step.lead_fermis[1] + step.bias[1]) * eye
-                a1 = np.max(ydata)
-                l1 = np.linspace(0, a1, 10)
-                flags = self.flags
-                if not energy_axis:
-                    xdata = np.arange(len(ydata))
-                if dense_level != 0:
-                    from scipy import interpolate
-                    tck = interpolate.splrep(xdata, ydata, s=0)
-                    num = len(xdata)
-                    xdata = np.linspace(xdata[0], xdata[-1], num * (
-                                                            dense_level + 1))
-                    ydata = interpolate.splev(xdata, tck, der=0)                                
-                if not energy_axis:
-                    if info == 'ham':
-                        p.plot(xdata, ydata * Hartree)
-                    else:
-                        p.plot(xdata, ydata)
-                else:
-                    p.plot(xdata, ydata, flags[0], f1, l1, flags[1],
-                                                             f2, l1, flags[1])
-                legends.append('step' + str(step.bias_step))
-        self.set_options(xlabel, ylabel, legends, title)
-        if height != None:
-            p.axis([xdata[0], xdata[-1], 0, height])
-        if show:
-            self.show(p)
-        return xdata, ydata            
-
-    def compare_ele_step_info(self, info, steps_indices, s, k, height=None,
-                                                                   unit=None):
-        xdata = self.energies
-        #xdata = np.linspace(-3, 3, 61)
-        energy_axis = False        
-        import pylab as p
-        legends = []
-        if info == 'dd':
-            data = 'dd[s, k]'
-            title = 'density matrix diagonal elements'
-        elif info == 'df':
-            data = 'df[s, k]'
-            title = 'hamiltonian matrix diagonal elements'
-        elif info == 'den':
-            data = 'nt[s]'
-            title = 'density'
-        elif info == 'ham':
-            data = 'vt[s]'
-            title = 'hamiltonian'
-        elif info == 'rho':
-            data = 'rho'
-            title = 'total poisson density'
-        elif info == 'vHt':
-            data = 'vHt'
-            title = 'total Hartree potential'             
-        elif info == 'tc':
-            data = 'tc[s, k, 0]'
-            title = 'trasmission coefficeints'
-            energy_axis = True
-        elif info == 'dos':
-            data = 'dos[s, k]'
-            title = 'density of states'
-            energy_axis = True
-        else:
-            raise ValueError('no this info type---' + info)        
-
-        for i, step in enumerate(self.ele_steps):
-            if i == steps_indices[0]:
-                ydata0 = eval('step.' + data)
-                if unit != None:
-                    ydata0 = sum_by_unit(ydata0, unit)
-            elif i == steps_indices[1]:   
-                ydata1 = eval('step.' + data)
-                if unit != None:
-                    ydata1 = sum_by_unit(ydata1, unit)                
-        if not energy_axis:
-            p.plot(ydata1 - ydata0)
-        else:
-            p.plot(xdata, ydata1 - ydata0)
-        
-        legends.append('step' + str(steps_indices[1]) +
-                       'minus step' + str(steps_indices[0]))
-        self.set_options(None, None, legends, title)
-        if height != None:
-            p.axis([xdata[0], xdata[-1], 0, height])
-        self.show(p)
-
-    def compare_bias_step_info(self, info, steps_indices, s, k,
-                               height=None, unit=None):
-        xdata = self.energies
-        #xdata = np.linspace(-3, 3, 61)
-        energy_axis = False        
-        import pylab as p
-        legends = []
-        if info == 'dd':
-            data = 'dd[s, k]'
-            title = 'density matrix diagonal elements'
-            xlabel = 'Basis Sequence'
-            ylabel = 'Number'
-            energy_axis = False      
-        elif info == 'df':
-            data = 'df[s, k]'
-            title = 'hamiltonian matrix diagonal elements'
-            xlabel = 'Basis Sequence'
-            ylabel = 'Number'
-            energy_axis = False           
-        elif info == 'den':
-            data = 'nt[s]'
-            title = 'density'
-            xlabel = 'Transport Axis'
-            ylabel = 'Electron'
-            energy_axis = False            
-        elif info == 'ham':
-            data = 'vt[s]'
-            title = 'hamiltonian'
-            xlabel = 'Transport Axis'
-            ylabel = 'Energy(eV)'
-            energy_axis = False             
-        elif info == 'rho':
-            data = 'rho'
-            title = 'total poisson density'
-            xlabel = 'Transport Axis'
-            ylabel = 'Electron'
-            energy_axis = False             
-        elif info == 'vHt':
-            data = 'vHt'
-            title = 'total Hartree potential'
-            xlabel = 'Transport Axis'
-            ylabel = 'Energy(eV)'
-            energy_axis = False             
-        elif info == 'tc':
-            data = 'tc[s, k, 0]'
-            title = 'trasmission coefficeints'
-            xlabel = 'Energy(eV)'
-            ylabel = 'T'            
-            energy_axis = True
-        elif info == 'dos':
-            data = 'dos[s, k]'
-            title = 'density of states'
-            xlabel = 'Energy(eV)'
-            ylabel = 'DOS(Electron/eV)'              
-            energy_axis = True
-        else:
-            raise ValueError('no this info type---' + info)        
-
-        for i, step in enumerate(self.bias_steps):
-            if i == steps_indices[0]:
-                ydata0 = eval('step.ele_steps[-1].' + data)
-                if unit != None:
-                    ydata0 = sum_by_unit(ydata0, unit)
-            elif i == steps_indices[1]:   
-                ydata1 = eval('step.ele_steps[-1].' + data)
-                if unit != None:
-                    ydata1 = sum_by_unit(ydata1, unit)                
-        if not energy_axis:
-            p.plot(ydata1 - ydata0)
-        else:
-            p.plot(xdata, ydata1 - ydata0)
-        
-        legends.append('step' + str(steps_indices[1]) +
-                       'minus step' + str(steps_indices[0]))
-        self.set_options(xlabel, ylabel, legends, title)
-        if height != None:
-            p.axis([xdata[0], xdata[-1], 0, height])
-        self.show(p)
-
-    def show_bias_step_info(self, info, steps_indices, s, dense_level=0,
-                                                                  shrink=1.0):
-        import pylab as p
-        if info[:2] == 'nt':
-            title = 'density overview in axis ' + info[-1]
-        elif info[:2] == 'vt':
-            title = 'hamiltonian overview in axis ' + info[-1]
-        data = 's' + str(s) + info
-        for i, step in enumerate(self.bias_steps):
-            if i in steps_indices:
-                zdata = eval('step.' + info)[s]
-                nx, ny = zdata.shape[:2]
-                xdata, ydata = np.mgrid[0:nx:nx*1j,0:ny:ny*1j]
-                if dense_level != 0:
-                    #from scipy import interpolate
-                    #tck = interpolate.bisplrep(xdata, ydata, zdata, s=0)
-                    dl = dense_level + 1
-                   #xdata, ydata = np.mgrid[0:nx:nx*dl*1j, 0:ny:ny*dl*1j]
-                    #zdata = interpolate.bisplev(xdata[:,0],ydata[0,:],tck)
-                    from gpaw.transport.tools import interpolate_2d
-                    for i in range(dl):
-                        zdata = interpolate_2d(zdata)
-                p.matshow(zdata)
-                #p.pcolor(xdata, ydata, zdata)
-                self.set_options(None, None, None, title)
-                p.colorbar(shrink=shrink)
-                self.show(p)
-
-    def plot_current(self, au=True, spinpol=False, dense_level=0, symm=False):
-        bias = []
-        current = []
-        
-        for step in self.bias_steps:
-            bias.append(step.bias[0] - step.bias[1])
-            current.append(-np.real(step.current))
-        import pylab as p
-        unit = 6.624 * 1e3 
-        current = np.array(current) / (Hartree * 2 * np.pi)
-        current = current.reshape(-1)
-        if not spinpol:
-            current *= 2
-        ylabel = 'Current(au.)'
-        if not au:
-            current *= unit
-            ylabel = 'Current($\mu$A)'
-        bias = np.array(bias)    
-        p.plot(bias, current, self.flags[0])
-        if symm:
-            p.plot(-bias, -current, self.flags[0])            
-        
-        if dense_level != 0:
-            from scipy import interpolate
-            tck = interpolate.splrep(bias, current, s=0)
-            numb = len(bias)
-            newbias = np.linspace(bias[0], bias[-1], numb * (dense_level + 1))
-            newcurrent = interpolate.splev(newbias, tck, der=0)
-            p.plot(newbias, newcurrent, self.flags[0])
-        self.set_options('Bias(V)', ylabel)
-        self.show(p)
-
-    def plot_didv(self, au=True, spinpol=False, dense_level=0):
-        bias = []
-        current = []
-        
-        for step in self.bias_steps:
-            bias.append(step.bias[0] - step.bias[1])
-            current.append(np.real(step.current))
-        import pylab as p
-        unit = 6.624 * 1e3 
-        current = np.array(current) / (Hartree * np.pi)
-        current = current.reshape(-1)
-        if not spinpol:
-            current *= 2
-        from scipy import interpolate
-        tck = interpolate.splrep(bias, current, s=0)
-        numb = len(bias)
-        newbias = np.linspace(bias[0], bias[-1], numb * (dense_level + 1))
-        newcurrent = interpolate.splev(newbias, tck, der=0)
-        if not au:
-            newcurrent *= unit
-            ylabel = 'dI/dV($\mu$A/V)'
-        else:
-            newcurrent *= Hartree
-            ylabel = 'dI/dV(au.)'            
-
-        p.plot(newbias[:-1], np.diff(newcurrent), self.flags[0])
-        self.set_options('Bias(V)', ylabel)
-        self.show(p)
-
-    def plot_tvs_curve(self, spinpol=False, dense_level=0):
-        bias = []
-        current = []
-        for step in self.bias_steps:
-            bias.append(step.bias[0] - step.bias[1])
-            current.append(np.real(step.current))
-        import pylab as p
-        unit = 6.624 * 1e-3
-        current = np.array(current) / (Hartree * np.pi)
-        current = current.reshape(-1)
-        if not spinpol:
-            current *= 2
-        from scipy import interpolate
-        tck = interpolate.splrep(bias, current, s=0)
-        numb = len(bias)
-        newbias = np.linspace(bias[0], bias[-1], numb * (dense_level + 1))
-        newcurrent = interpolate.splev(newbias, tck, der=0)
-        newcurrent *= unit
-        ylabel = '$ln(I/V^2)$'
-        ydata = np.log(abs(newcurrent[1:]) / (newbias[1:] * newbias[1:]))
-        xdata = 1 / newbias[1:]
-        p.plot(xdata, ydata, self.flags[0])
-        self.set_options('1/V', ylabel)
-        self.show(p)      
-           
-    def compare_ele_step_info2(self, info, steps_indices, s, dense_level=0):
-        import pylab as p
-        if info[:2] == 'nt':
-            title = 'density difference overview in axis ' + info[-1]
-        elif info[:2] == 'vt':
-            title = 'hamiltonian difference overview in axis ' + info[-1]
-        assert steps_indices[0] < len(self.ele_steps)
-        assert steps_indices[1] < len(self.ele_steps)
-        step0 = self.ele_steps[steps_indices[0]]
-        step1 = self.ele_steps[steps_indices[1]]
-        data0 = 's' + str(s[0]) + info
-        data1 = 's' + str(s[1]) + info        
-        ydata = eval('step0.' + info)[s[0]] - eval('step1.' + info)[s[1]]
-        p.matshow(ydata)
-        self.set_options(None, None, None, title)
-        self.show(p)
-        p.colorbar()
-        #p.legend([str(steps_indices[0]) + '-' + str(steps_indices[0])])
-        self.show(p)
-        
-    def compare_bias_step_info2(self, info, steps_indices, s, shrink=1.0,
-                                                              dense_level=0):
-        import pylab as p
-        if info[:2] == 'nt':
-            title = 'density difference overview in axis ' + info[-1]
-        elif info[:2] == 'vt':
-            title = 'hamiltonian difference overview in axis ' + info[-1]
-        assert steps_indices[0] < len(self.bias_steps)
-        assert steps_indices[1] < len(self.bias_steps)
-        step0 = self.bias_steps[steps_indices[0]]
-        step1 = self.bias_steps[steps_indices[1]]
-        data0 = 's' + str(s[0]) + info
-        data1 = 's' + str(s[1]) + info        
-        ydata = eval('step0.' + info)[s[0]] - eval('step1.' + info)[s[1]]
-        if dense_level != 0:
-            dl = dense_level + 1
-            from gpaw.transport.tools import interpolate_2d
-            for i in range(dl):
-                ydata = interpolate_2d(ydata) 
-        p.matshow(ydata)
-        self.set_options(None, None, None, title)
-        p.colorbar(shrink=shrink)
-        #p.legend([str(steps_indices[0]) + '-' + str(steps_indices[0])])
-        self.show(p)        
-             
-    def set_cmp_step0(self, ele_step, bias_step=None):
-        if bias_step == None:
-            self.cmp_step0 = self.ele_steps[ele_step]
-        else:
-            self.cmp_step0 = self.bias_steps[bias_step].ele_steps[ele_step]
-                                  
-    def cmp_steps(self, info, ele_step, bias_step=None):
-        if bias_step == None:
-            step = self.ele_steps[ele_step]
-        else:
-            step = self.bias_steps[bias_step].ele_steps[ele_step]            
-        #xdata = np.linspace(-3, 3, 61)
-        xdata = self.energies
-        energy_axis = False        
-        import pylab as p
-        if info == 'dd':
-            data = 'dd[s, k]'
-            title = 'density matrix diagonal elements'
-        elif info == 'df':
-            data = 'df[s, k]'
-            title = 'hamiltonian matrix diagonal elements'
-        elif info == 'den':
-            data = 'nt'
-            title = 'density'
-        elif info == 'ham':
-            data = 'vt'
-            title = 'hamiltonian'
-        elif info == 'rho':
-            data = 'rho'
-            title = 'total poisson density'
-        elif info == 'vHt':
-            data = 'vHt'
-            title = 'total Hartree potential'             
-        elif info == 'tc':
-            data = 'tc[s, k, 0]'
-            title = 'trasmission coefficeints'
-            energy_axis = True
-        elif info == 'dos':
-            data = 'dos[s, k]'
-            title = 'density of states'
-            energy_axis = True
-        else:
-            raise ValueError('no this info type---' + info)        
-
-        ydata0 = eval('self.cmp_step0.' + data)
-        ydata1 = eval('step.' + data)
-           
-        if not energy_axis:
-            p.plot(ydata1 - ydata0)
-        else:
-            p.plot(xdata, ydata1 - ydata0)
-
-        self.set_options(None, None, None, title)
-        self.show(p)
- 
-    def plot_force(self, atom_indices, direction=2, bias_indices=None):
-        if bias_indices == None:
-            bias_indices = range(len(self.bias_steps))
-        import pylab as p
-        legends = []
-        for i in atom_indices:
-            forces = []
-            bias = []
-            legends.append('force of Atom' + str(i))
-            for j in bias_indices:
-                bias.append(self.bias_steps[j].bias[0] -
-                                         self.bias_steps[j].bias[1])
-                forces.append(self.bias_steps[j].force[i, direction])
-            p.plot(bias, forces)
-        self.set_options('Bias(V)', 'Force(au.)', legends)
-        self.show(p)
- 
-    def plot_charge_on_bias(self, atom_indices=None, orbital_type=None,
-                                            bias_indices=None, spin_type=None):
-        if bias_indices == None:
-            bias_indices = range(len(self.bias_steps))           
-        if atom_indices == None:
-            atom_indices = range(len(self.atoms))
-        if orbital_type == None:
-            orbital_type = 'all'
-        import pylab as p
-        charge = []
-        bias = []
-        orbital_indices = self.basis['orbital_indices']
-        orbital_map = {'s': 0, 'p': 1, 'd': 2, 'f': 3}
-        for i in bias_indices:
-            bias.append(self.bias_steps[i].bias[0] -
-                                              self.bias_steps[i].bias[1])
-            cc = 0
-            for j in atom_indices:
-                atom_index = orbital_indices[:, 0] - j == 0
-                if orbital_type == 'all':
-                    orbital_index = np.zeros([orbital_indices.shape[0]]) + 1
-                else:
-                    orbital_index = orbital_indices[:, 1] - orbital_map[
-                                                     orbital_type] ==  0 
-                tmp = np.sum(self.bias_steps[i].charge, axis =1) 
-                ind = orbital_indices.shape[0]
-                tmp = tmp[:, :ind]
-                if spin_type == None:
-                    tmp = np.sum(tmp, axis=0)
-                elif spin_type == 'up':
-                    tmp = tmp[0]
-                else:
-                    tmp = tmp[1]
-                cc += np.sum(tmp * atom_index * orbital_index)
-            charge.append(cc)
-        p.plot(bias, charge)
-        self.set_options('Bias(V)', 'Charge(au.)')
-        self.show(p)
-        return bias, charge
-
-    def plot_charge_on_atoms(self, bias_step, atom_indices=None, orbital_type=None,
-                                                            spin_type=None):
-        if atom_indices == None:
-            atom_indices = range(len(self.atoms))        
-        if orbital_type == None:
-            orbital_type = 'all'
-        import pylab as p
-        charge = []
-        orbital_indices = self.basis['orbital_indices']
-        orbital_map = {'s': 0, 'p': 1, 'd': 2, 'f': 3}
-        atom_symbols = []
-        from ase.data import chemical_symbols
-        for i, atom in zip(atom_indices, self.atoms[atom_indices]):
-            atom_index = orbital_indices[:, 0] - i == 0
-            if orbital_type == 'all':
-                orbital_index = np.zeros([orbital_indices.shape[0]]) + 1
-            else:
-                orbital_index = orbital_indices[:, 1] - orbital_map[
-                                                       orbital_type] ==  0             
-            tmp = np.sum(self.bias_steps[bias_step].charge, axis =1) 
-            ind = orbital_indices.shape[0]
-            tmp = tmp[:, :ind]
-            if spin_type == None:
-                tmp = np.sum(tmp, axis=0)
-            elif spin_type == 'up':
-                tmp = tmp[0]
-            else:
-                tmp = tmp[1]
-            charge.append(np.sum(tmp * atom_index * orbital_index))
-            atom_symbols.append(chemical_symbols[atom.number])
-        from matplotlib.ticker import MultipleLocator, FixedFormatter
-        ax = p.subplot(111)
-        p.plot(charge, 'b--o')
-        p.xlabel('Project Atom')
-        p.ylabel('Charge(au.)')
-        majorLocator = MultipleLocator(1)
-        majorFormatter = FixedFormatter(atom_symbols)
-        ax.xaxis.set_major_locator(majorLocator)
-        ax.xaxis.set_major_formatter(majorFormatter)
-        p.show()
-        
-    def show_force(self, bias_step, file=None):      
-        import vtk
-        from ase.visualize.vtk.atoms import vtkAtoms
-        usewx = False
-        try:
-            import wx
-            usewx = True
-        except ImportError:
-            pass
-        if usewx:
-            from vtk.wx.wxVTKRenderWindow import wxVTKRenderWindow
-            app = wx.PySimpleApp()
-            frame = wx.Frame(None, -1, 'wxVTKRenderWindow', size=(800,600))
-            widget = wxVTKRenderWindow(frame, -1)
-            win = widget.GetRenderWindow()
-            ren = vtk.vtkRenderer()
-            win.AddRenderer(ren)
-        else:
-            ren = vtk.vtkRenderer()
-            win = vtk.vtkRenderWindow()
-            win.AddRenderer(ren)
-            win.SetSize(800,600)
-            iren = vtk.vtkRenderWindowInteractor()
-            iren.SetRenderWindow(win)
-            style = vtk.vtkInteractorStyleTrackballCamera()
-            iren.SetInteractorStyle(style)
-        atoms = self.atoms.copy()
-        calc = GPAW()
-        atoms.set_calculator(calc)
-        calc.initialize(atoms)
-        calc.scf.converged = True
-        calc.forces.F_av = self.bias_steps[bias_step].force
-
-        va = vtkAtoms(atoms)
-        va.add_cell()
-        va.add_axes()
-        va.add_forces()
-        va.add_actors_to_renderer(ren)
-        if usewx:
-            frame.Show()
-            app.MainLoop()
-        else:
-            iren.Initialize()
-            win.OffScreenRenderingOff()
-            win.Render()
-            iren.Start()
-        w2i=vtk.vtkWindowToImageFilter()
-        w2i.SetInput(win)
-        if file is not None:
-            pw = vtk.vtkPNGWriter()
-            pw.SetFileName(file)
-            pw.SetInputConnection(w2i.GetOutputPort())
-            pw.Write()
-
-           
+    def dos_array(self, bias_step, ion_step=0, s=0, k=None):
+        info = self.get_info('dos', bias_step, ion_step)
+        return self.process(info, s, k, lp)
+    
+    def dos(self, bias_step, ion_step=0, s=0, k=None):
+        info = self.get_info('dos', bias_step, ion_step)
+        info = self.process(info, s, k)
+        return np.sum(info, axis=-2)
 
