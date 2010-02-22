@@ -7,17 +7,18 @@ import cPickle
 class LeadSelfEnergy:
     conv = 1e-8 # Convergence criteria for surface Green function
     
-    def __init__(self, hsd_ii, hsd_ij, data_path=None, direction='left', eta=1e-8):
+    def __init__(self, hsd_ii, hsd_ij, data_path=None, direction='left'):
         self.hsd_ii = hsd_ii
         self.hsd_ij = hsd_ij
         self.data_path = data_path
         self.direction = direction
-        self.eta = eta
         self.energy = None
         self.bias = 0
         self.s = 0
         self.pk = 0
         self.nid_plus = 30
+        self.sigma = None
+        self.tol = 1e-6
         
     def __call__(self, energy, flag=None):
         if self.data_path is not None and flag is not None:
@@ -29,16 +30,19 @@ class LeadSelfEnergy:
             data = cPickle.load(fd)
             return data
         else:
-            self.energy = energy
-            z = energy - self.bias + self.eta * 1.j           
-            tau_ij = z * self.hsd_ij.S[self.pk].recover() - \
+            #self.energy = None
+            if self.energy is None or abs(energy - self.energy) > self.tol:
+                self.energy = energy
+                z = energy - self.bias         
+                tau_ij = z * self.hsd_ij.S[self.pk].recover() - \
                                      self.hsd_ij.H[self.s][self.pk].recover()
-            tau_ji = z * dagger(self.hsd_ij.S[self.pk].recover()) - \
+                tau_ji = z * dagger(self.hsd_ij.S[self.pk].recover()) - \
                              dagger(self.hsd_ij.H[self.s][self.pk].recover())
-            ginv = self.get_sgfinv(energy)
-            a_ij = dot(ginv, tau_ij)        
-            return Banded_Sparse_Matrix(complex, dot(tau_ji, a_ij),
-                                    self.hsd_ii.S[self.pk].band_index)
+                ginv = self.get_sgfinv(energy)
+                a_ij = dot(ginv, tau_ij)        
+                self.sigma = Banded_Sparse_Matrix(complex, dot(tau_ji, a_ij),
+                                            self.hsd_ii.S[self.pk].band_index)
+            return self.sigma
        
     def set_bias(self, bias):
         self.bias = bias
@@ -51,7 +55,7 @@ class LeadSelfEnergy:
     
     def get_sgfinv(self, energy):
         """The inverse of the retarded surface Green function"""
-        z = energy - self.bias + self.eta * 1.0j
+        z = energy - self.bias 
         v_00 = Banded_Sparse_Matrix(complex,
                                      None,
                                      self.hsd_ii.S[self.pk].band_index)
