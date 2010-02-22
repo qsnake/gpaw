@@ -1355,7 +1355,17 @@ class Transport_Analysor:
             for q in range(npk):
                 local_tc_array[s, q], local_dos_array[s, q] = \
                           self.calculate_transmission_and_dos(s, q, energies, nids)
-        return local_tc_array, local_dos_array
+        kpt_comm = tp.wfs.kpt_comm
+        ns, npk = tp.nspins, tp.npk
+        if kpt_comm.rank == 0:
+            tc_array = np.empty([ns, npk, nlp, ne], float)
+            dos_array = np.empty([ns, npk, ne], float)
+        else:
+            tc_array = None
+            dos_array = None
+        kpt_comm.gather(local_tc_array, 0, tc_array)
+        kpt_comm.gather(local_dos_array, 0, dos_array)
+        return tc_array, dos_array
 
     def save_ion_step(self):
         tp = self.tp
