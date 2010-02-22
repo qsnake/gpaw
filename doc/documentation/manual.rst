@@ -533,10 +533,15 @@ initialization in FD mode.
 In FD mode, the initial guess for the density / wave functions is
 determined by solving the Kohn-Sham equations in the LCAO basis.
 
-The ``basis`` keyword can be a string or a dictionary, and the rules
-for specifying these are exactly like for the :ref:`setups
-<manual_setups>` keyword, except that there is only one "special
-name".
+The ``basis`` keyword can be a string or a dictionary with string
+values, and the rules for specifying these are similar to those for
+the :ref:`setups <manual_setups>` keyword: If ``basis`` is a string,
+GPAW will look for a file named :file:`{symbol}.{basis}.basis` in the
+:envvar:`GPAW_SETUP_PATH` for each species of atom.  If ``basis`` is a
+dictionary, the basis set can be specified differently for different
+atomic species by using the atomic symbol as a key, or for individual
+atoms by using an ``int`` as a key.  In the latter case the integer
+corresponds to the index of that atom in the ``Atoms`` object.
 
 The value ``None`` (default) implies that the pseudo partial waves
 from the setup are used as a basis. This basis is always available;
