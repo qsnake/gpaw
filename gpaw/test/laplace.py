@@ -72,4 +72,4 @@ if size == 1:
                             r = 0.0
                         lap.apply(a_g, b_g)
                         e = b_g[n + 1, n + 1, n + 1] - r
-                        assert abs(e) < 1e-12, e
+                        assert abs(e) < 2e-12, e
