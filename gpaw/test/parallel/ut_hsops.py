@@ -530,7 +530,6 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         # |psit_n> -> C_nn |psit_n> , C_nn^(-1) = L_nn^dag
         # <psit_m|SI|psit_n> -> <psit_m|C_nn^dag SI C_nn|psit_n> = diag(W_n)
         C_nn = np.linalg.inv(L_nn.T.conj())
-        W_n = np.ones(self.nbands).astype(self.dtype)
 
         # Set up Hermitian overlap operator:
         S = lambda x: x
