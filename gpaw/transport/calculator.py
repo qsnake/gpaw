@@ -744,6 +744,7 @@ class Transport(GPAW):
             for i, a in enumerate(self.pl_atoms[l]):
                 basis[i] = p['basis'][a]
             p['basis'] = basis
+        print p['basis'], 'lead', l
         p['nbands'] = None
         p['kpts'] = self.pl_kpts
         if 'mixer' in p:
@@ -2013,6 +2014,16 @@ class Transport(GPAW):
                 else:
                     p['mixer'] = MixerDif(0.1, 5, weight=100.0)
             p['poissonsolver'] = PoissonSolver(nn=2)        
+            if type(p['basis']) is dict and len(p['basis']) == len(self.atoms):
+                basis = {}
+                for i, btype in enumerate(range(len(self.atoms))):
+                    basis[i] = p['basis'][i]
+                for i, btype in enumerate(self.pl_atoms[0]):
+                    basis[i + len(self.atoms)] = p['basis'][i]
+                for i, btype in enumerate(self.pl_atoms[1]):
+                    basis[i + len(self.atoms) + len(self.pl_atoms[0])] = p['basis'][i]
+                p['basis'] = basis
+            print p['basis'], 'extended'
             self.extended_atoms.set_calculator(Lead_Calc(**p))
 
     def get_linear_hartree_potential(self):
