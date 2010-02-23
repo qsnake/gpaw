@@ -13,45 +13,6 @@ import copy
 import cPickle
 import os
 
-class Structure_Info:
-    def __init__(self, ion_step):
-        self.ion_step = ion_step
-    
-    def initialize_data(self, positions, forces):
-        self.positions = positions
-        self.forces = forces
-
-class Transmission_Info:
-    def __init__(self, ion_step, bias_step):
-        self.ion_step, self.bias_step = ion_step, bias_step
-    
-    def initialize_data(self, bias, gate, ep, lead_pairs,
-                        tc, dos, vt, nt, vtx, ntx, vty, nty,
-                                 current, lead_fermis,
-                                 time_cost, force, charge, contour):
-        for name in ['bias', 'gate', 'ep', 'lead_pairs', 'tc', 'dos', 'vt',
-                     'nt', 'vtx', 'ntx', 'vty', 'nty', 'current',
-                     'lead_fermis', 'time_cost', 'force', 'charge', 'contour']:
-            vars(self)[name] = eval(name)
-        
-    def initialize_data2(self, eig_tc_lead, eig_vc_lead, tp_tc, tp_vc,
-                         dos_g, project_tc, left_tc, left_vc, lead_k, lead_vk,
-                         tp_eig_w, tp_eig_v, tp_eig_vc, nk_on_energy):
-        for name in ['eig_tc_lead', 'eig_vc_lead', 'tp_tc', 'tp_vc', 'dos_g'
-                     'project_tc', 'left_tc', 'left_vc', 'lead_k', 'lead_vk',
-                     'tp_eig_w', 'tp_eig_v', 'tp_eig_vc']:
-            vars(self)[name] = eval(name)
-
-class Electron_Step_Info:
-    def __init__(self, ion_step, bias_step, ele_step):
-        self.ion_step, self.bias_step, self.ele_step = ion_step, \
-                                                         bias_step, ele_step
-        
-    def initialize_data(self, vt, nt, df, dd, vHt, rho, time_cost, mem_cost):
-        for name in ['vt', 'nt', 'df', 'dd',
-                     'vHt', 'rho', 'time_cost', 'mem_cost']:
-            vars(self)[name] = eval(name)
-    
 class Transport_Analysor:
     def __init__(self, transport, restart=False):
         self.tp = transport
@@ -807,7 +768,7 @@ class Transport_Analysor:
                 self.data[flag + '_tc'] = tc
                 self.data[flag + '_dos'] = dos
                 if tp.contour.comm.rank == 0:
-                    self.data[flag + '_current'] = current
+                    self.data['current'] = current
         nt, vt, ntx, vtx, nty, vty = self.abstract_d_and_v()
         if world.rank == 0 :           
             for name in ['nt', 'vt', 'ntx', 'vtx', 'nty', 'vty']:
