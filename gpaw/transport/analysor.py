@@ -796,11 +796,16 @@ class Transport_Analysor:
         ks_map = tp.my_ks_map
         if 'tc' in tp.analysis_data_list:
             tc, dos = self.collect_transmission_and_dos()
-            current = self.calculate_current(tc)
-            flag = 'ER_' + str(tp.energy_comm.rank) 
-            self.data[flag + '_tc'] = tc
-            self.data[flag + '_dos'] = dos
-            self.data[flag + '_current'] = current
+            if not tp.non_sc:
+                current = self.calculate_current(tc)
+            else:
+                current = np.array([0])
+            flag = 'ER_' + str(tp.contour.comm.rank)
+            if tp.wfs.kpt_comm.rank == 0:
+                self.data[flag + '_tc'] = tc
+                self.data[flag + '_dos'] = dos
+                if tp.contour.comm.rank == 0:
+                    self.data[flag + '_current'] = current
         nt, vt, ntx, vtx, nty, vty = self.abstract_d_and_v()
         if world.rank == 0 :           
             for name in ['nt', 'vt', 'ntx', 'vtx', 'nty', 'vty']:
@@ -818,12 +823,14 @@ class Transport_Analysor:
             lead_pairs = np.array(self.lead_pairs)
             bias = np.array(tp.bias)
             gate = np.array(tp.gate)
-            for name in ['force', 'lead_fermi', 'lead_pairs', 'bias', 'gate']:
+            for name in ['lead_fermi', 'lead_pairs', 'bias', 'gate']:
                 self.data[name] = eval(name)
         # do not include contour now because it is a dict, not a array able to
         # collect, but will do it at last
-        self.data = gather_ndarray_dict(self.data, tp.energy_comm)
+        self.data = gather_ndarray_dict(self.data, tp.contour.comm)
         self.data['contour'] = contour
+        self.data['force'] = force
+        
         if world.rank == 0:
             fd = file('analysis_data/ionic_step_' + str(self.n_ion_step)
                       + '/bias_step_' + str(self.n_bias_step), 'wb')
@@ -850,10 +857,11 @@ class Transport_Analysor:
         for s in range(ns):
             for q in range(npk):
                 for e, energy, nid in zip(range(len(energies)), energies, nids):
-                    local_tc_array[s, q, :, e] =  self.calculate_transmission(s,
-                                                            q, energy, nid)
                     local_dos_array[s, q, :, e] = self.calculate_dos(s, q,
                                                                energy, nid)
+                    local_tc_array[s, q, :, e] =  self.calculate_transmission(s,
+                                                            q, energy, nid)
+
         kpt_comm = tp.wfs.kpt_comm
         ns, npk = tp.nspins, tp.npk
         if kpt_comm.rank == 0:
@@ -1123,26 +1131,25 @@ class Transport_Analysor:
             vty = np.array(vty)
         return nt, vt, ntx, vtx, nty, vty
     
-    def calculate_current(self, tc_array, lead_pair_index=0, s=0):
-        from scipy.integrate import simps
+    def calculate_current(self, tc_array, lead_pair_index=0, s=0):             
         tp = self.tp
-        intctrl = tp.intctrl
-        kt = intctrl.kt
-        fd = fermidistribution        
-        lead_ef1 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][0]]
-        lead_ef2 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][1]]
-        if lead_ef2 > lead_ef1:
-            lead_ef1, lead_ef2 = lead_ef2, lead_ef1
-        interval = np.real(self.my_energies[1] - self.my_energies[0])
-        tc_all = np.sum(tc_array, axis=1) / tp.npk 
-        fermi_factor = fd(self.my_energies - lead_ef1, kt) - fd(
+        current = np.array([0])
+        if tp.wfs.kpt_comm.rank == 0:
+            intctrl = tp.intctrl
+            kt = intctrl.kt
+            fd = fermidistribution        
+            lead_ef1 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][0]]
+            lead_ef2 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][1]]
+            if lead_ef2 > lead_ef1:
+                lead_ef1, lead_ef2 = lead_ef2, lead_ef1
+            interval = np.real(self.my_energies[1] - self.my_energies[0])
+            tc_all = np.sum(tc_array, axis=1) / tp.npk 
+            fermi_factor = fd(self.my_energies - lead_ef1, kt) - fd(
                                              self.my_energies - lead_ef2, kt)
-        current = np.sum(tc_all[s, lead_pair_index] * fermi_factor *
+            current = np.sum(tc_all[s, lead_pair_index] * fermi_factor *
                                                               self.my_weights)
-        current = np.array(current)
-        
-        tp.contour.comm.sum(current)
-        tp.wfs.kpt_comm.sum(current)
+            current = np.array(current)
+            tp.contour.comm.sum(current)
         return current 
          
 class Transport_Plotter:
