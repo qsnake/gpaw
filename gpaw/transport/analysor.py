@@ -1220,6 +1220,8 @@ class Transport_Plotter:
             info = info[s]
         if k is None:
             info = np.sum(info, axis=0) / info.shape[0]
+        else:
+            info = info[k]
         if lp is not None:
             info = info[lp]
         return info
