@@ -55,6 +55,8 @@ class TimeDependentHamiltonian:
         #self.ti_vext_g = hamiltonian.vext_g
         #self.td_vext_g = hamiltonian.finegd.zeros(n=hamiltonian.nspins)
 
+        self.P = None
+
         self.spos_ac = atoms.get_scaled_positions() % 1.0
         self.absorbing_boundary = None
         
@@ -65,8 +67,8 @@ class TimeDependentHamiltonian:
         Parameters
         ----------
         density: Density
-            the density at the given time 
-            (TimeDependentDensity.get_density())
+            the density at the given time  
+           (TimeDependentDensity.get_density())
         time: float
             the current time
 
@@ -198,6 +200,9 @@ class TimeDependentHamiltonian:
 
         self.hamiltonian.apply(psit, hpsit, self.wfs, kpt, calculate_P_ani)
 
+        # PAW correction
+        if self.P is not None:
+            self.P.add(psit, hpsit, self.wfs, kpt)
 
         # Absorbing boundary conditions
 
@@ -225,6 +230,7 @@ class TimeDependentHamiltonian:
                 hpsit[:] -= (.5 * self.absorbing_boundary.get_G()
                              * self.absorbing_boundary.get_dG()[i]
                              * self.lpsit)
+
 
         # Time-dependent dipole field
         if self.td_potential is not None:

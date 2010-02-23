@@ -24,6 +24,7 @@ from gpaw.tddft.cscg import CSCG
 from gpaw.tddft.propagators import \
     ExplicitCrankNicolson, \
     SemiImplicitCrankNicolson, \
+    EnforcedTimeReversalSymmetryCrankNicolson, \
     SemiImplicitTaylorExponential, \
     SemiImplicitKrylovExponential, \
     AbsorptionKick
@@ -84,7 +85,7 @@ class TDDFT(GPAW):
             Function class for the time-dependent potential. Must have a method
             'strength(time)' which returns the strength of the linear potential
             to each direction as a vector of three floats.
-        propagator:  {'SICN', 'ECN', 'SITE', 'SIKE4', 'SIKE5', 'SIKE6'}, optional
+        propagator:  {'SICN', 'ETRSCN', 'ECN', 'SITE', 'SIKE4', 'SIKE5', 'SIKE6'}, optional
             Name of the time propagator for the Kohn-Sham wavefunctions
         solver: {'CSCG','BiCGStab'}, optional
             Name of the iterative linear equations solver for time propagation
@@ -191,6 +192,11 @@ class TDDFT(GPAW):
                 self.preconditioner, wfs.gd, self.timer)
         elif propagator is 'SICN':
             self.propagator = SemiImplicitCrankNicolson(self.td_density,
+                self.td_hamiltonian, self.td_overlap, self.solver,
+                self.preconditioner, wfs.gd, self.timer)
+        elif propagator is 'ETRSCN':
+            self.propagator = EnforcedTimeReversalSymmetryCrankNicolson(
+                self.td_density,
                 self.td_hamiltonian, self.td_overlap, self.solver,
                 self.preconditioner, wfs.gd, self.timer)
         elif propagator in ['SITE4', 'SITE']:
