@@ -524,8 +524,7 @@ class PAW(PAWTextOutput):
                     from gpaw import sl_diagonalize
                 from gpaw.blacs import BlacsOrbitalDescriptor
                 ncpus, mcpus, blocksize = sl_diagonalize[:3]
-                od = BlacsOrbitalDescriptor(world, gd, self.bd,
-                                            kpt_comm, nao,
+                od = BlacsOrbitalDescriptor(gd, self.bd, nao,
                                             ncpus, mcpus, blocksize,
                                             self.timer)
             else:

@@ -712,14 +712,14 @@ class SLDenseLinearAlgebra2:
 
 class BlacsBandDescriptor:
     # this class 'describes' all the Realspace/Blacs-related stuff
-    def __init__(self, world, gd, bd, kpt_comm, ncpus, mcpus, blocksize,
-                 timer=nulltimer):
+    def __init__(self, gd, bd, ncpus, mcpus, blocksize, timer=nulltimer):
 
         bcommsize = bd.comm.size
         gcommsize = gd.comm.size
-        bcommrank = bd.comm.rank
-        
-        shiftks = kpt_comm.rank * bcommsize * gcommsize
+
+        assert gd.comm.parent is bd.comm.parent # must have same parent comm
+        world = bd.comm.parent
+        shiftks = world.rank - world.rank % (bcommsize * gcommsize)
         column_ranks = shiftks + np.arange(bcommsize) * gcommsize
         block_ranks = shiftks + np.arange(bcommsize * gcommsize)
         columncomm = world.new_communicator(column_ranks)
@@ -728,38 +728,31 @@ class BlacsBandDescriptor:
         nbands = bd.nbands
         mynbands = bd.mynbands
 
-        # Create 1D and 2D BLACS grid
-        columngrid = BlacsGrid(columncomm, 1, bcommsize)
-        blockgrid  = BlacsGrid(blockcomm, ncpus, mcpus)
-        rowgrid    = BlacsGrid(columncomm, bcommsize, 1)
-
         # 1D layout - columns
-        Nndescriptor = columngrid.new_descriptor(nbands, nbands, nbands,
-                                                 mynbands)
+        self.columngrid = BlacsGrid(columncomm, 1, bcommsize)
+        self.Nndescriptor = self.columngrid.new_descriptor(nbands, nbands,
+                                                           nbands, mynbands)
         
         # 2D layout
-        nndescriptor = blockgrid.new_descriptor(nbands, nbands, blocksize,
-                                                blocksize)
+        self.blockgrid = BlacsGrid(blockcomm, ncpus, mcpus)
+        self.nndescriptor = self.blockgrid.new_descriptor(nbands, nbands,
+                                                          blocksize, blocksize)
 
         # 1D layout - rows
-        nNdescriptor = rowgrid.new_descriptor(nbands, nbands, mynbands,
-                                                 nbands)
+        self.rowgrid = BlacsGrid(columncomm, bcommsize, 1)
+        self.nNdescriptor = self.rowgrid.new_descriptor(nbands, nbands,
+                                                        mynbands, nbands)
 
-        self.Nndescriptor = Nndescriptor
-        self.nndescriptor = nndescriptor
-        self.nNdescriptor = nNdescriptor
+        # Only redistribute upper half since all matrices are Hermitian
+        self.Nn2nn = Redistributor(blockcomm, self.Nndescriptor,
+                                   self.nndescriptor, 'L')
 
-        # Only redistribute upper half since all are matrices are symmetric/Hermitian
-        self.Nn2nn = Redistributor(blockcomm, Nndescriptor, nndescriptor, 'L')
-        # Resulting matrix below will be used in dgemm which is obvlious to symmetry
-        self.nn2nN = Redistributor(blockcomm, nndescriptor, nNdescriptor)
+        # Resulting matrix will be used in dgemm which is symmetry obvlious
+        self.nn2nN = Redistributor(blockcomm, self.nndescriptor,
+                                   self.nNdescriptor)
 
-        self.world = world
         self.gd = gd
         self.bd = bd
-        self.columngrid = columngrid
-        self.blockgrid = blockgrid
-        self.rowgrid = rowgrid
         self.timer = timer
         
     def get_diagonalizer(self):
@@ -768,16 +761,14 @@ class BlacsBandDescriptor:
 
 class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
     # This class 'describes' all the LCAO/Blacs-related stuff
-    def __init__(self, world, gd, bd, kpt_comm, nao, ncpus, mcpus, blocksize,
-                 timer=nulltimer):
+    def __init__(self, gd, bd, nao, ncpus, mcpus, blocksize, timer=nulltimer):
         
         bcommsize = bd.comm.size
         gcommsize = gd.comm.size
-        bcommrank = bd.comm.rank
 
-        # XXX these things can probably be obtained in a more programmatically
-        # convenient way
-        shiftks = kpt_comm.rank * bcommsize * gcommsize
+        assert gd.comm.parent is bd.comm.parent # must have same parent comm
+        world = bd.comm.parent
+        shiftks = world.rank - world.rank % (bcommsize * gcommsize)
         column_ranks = shiftks + np.arange(bcommsize) * gcommsize
         block_ranks = shiftks + np.arange(bcommsize * gcommsize)
         columncomm = world.new_communicator(column_ranks)
@@ -790,48 +781,46 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
 
         # Range of basis functions for BLACS distribution of matrices:
         self.Mmax = nao
-        self.Mstart = bcommrank * naoblocksize
+        self.Mstart = bd.comm.rank * naoblocksize
         self.Mstop = min(self.Mstart + naoblocksize, self.Mmax)
         self.mynao = self.Mstop - self.Mstart
 
         # Column layout for one matrix per band rank:
         columngrid = BlacsGrid(bd.comm, bcommsize, 1)
-        self.mMdescriptor = columngrid.new_descriptor(nao, nao, naoblocksize,
-                                                      nao)
-        self.nMdescriptor = columngrid.new_descriptor(nbands, nao, mynbands,
-                                                      nao)
+        self.mMdescriptor = columngrid.new_descriptor(nao, nao,
+                                                      naoblocksize, nao)
+        self.nMdescriptor = columngrid.new_descriptor(nbands, nao,
+                                                      mynbands, nao)
         assert self.mMdescriptor.shape == (self.mynao, nao)
 
         #parallelprint(world, (mynao, self.mMdescriptor.shape))
 
         # Column layout for one matrix in total (only on grid masters):
         single_column_grid = BlacsGrid(columncomm, bcommsize, 1)
-        mM_unique_descriptor = single_column_grid.new_descriptor(nao, nao,
-                                                                 naoblocksize,
-                                                                 nao)
+        self.mM_unique_descriptor = single_column_grid.new_descriptor(nao,
+            nao, naoblocksize, nao)
+
         # nM_unique_descriptor is meant to hold the coefficients after
         # diagonalization.  BLACS requires it to be nao-by-nao, but
         # we only fill meaningful data into the first nbands columns.
         #
         # The array will then be trimmed and broadcast across
         # the grid descriptor's communicator.
-        nM_unique_descriptor = single_column_grid.new_descriptor(nbands, nao,
-                                                                 mynbands, nao)
+        self.nM_unique_descriptor = single_column_grid.new_descriptor(nbands,
+            nao, mynbands, nao)
 
         # Fully blocked grid for diagonalization with many CPUs:
         blockgrid = BlacsGrid(blockcomm, mcpus, ncpus)
-        mmdescriptor = blockgrid.new_descriptor(nao, nao, blocksize, blocksize)
+        self.mmdescriptor = blockgrid.new_descriptor(nao, nao, blocksize,
+                                                     blocksize)
 
-        self.mM_unique_descriptor = mM_unique_descriptor
-        self.mmdescriptor = mmdescriptor
         #self.nMdescriptor = nMdescriptor
-        self.mM2mm = Redistributor(blockcomm, mM_unique_descriptor,
-                                   mmdescriptor)
-        self.mm2nM = Redistributor(blockcomm, mmdescriptor,
-                                   nM_unique_descriptor)
+        self.mM2mm = Redistributor(blockcomm, self.mM_unique_descriptor,
+                                   self.mmdescriptor)
+        self.mm2nM = Redistributor(blockcomm, self.mmdescriptor,
+                                   self.nM_unique_descriptor)
 
         self.orbital_comm = bd.comm
-        self.world = world
         self.gd = gd
         self.bd = bd
         self.timer = timer

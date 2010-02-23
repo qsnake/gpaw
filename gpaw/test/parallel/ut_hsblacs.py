@@ -183,9 +183,7 @@ class UTConstantWavefunctionBlacsSetup(UTConstantWavefunctionSetup,
             if self.bd.comm.rank == 0: print 'SI_Nn:'
             parallelprint(self.bd.comm, SI_Nn)
 
-        blocksize = 6
-        bbd = BlacsBandDescriptor(world, self.gd, self.bd, self.kpt_comm,
-                                  self.mcpus, self.ncpus, blocksize)
+        bbd = BlacsBandDescriptor(self.gd, self.bd, self.mcpus, self.ncpus, 6)
 
         # We would create C_nN in the real-space code this way.
         C_nN = np.empty((self.bd.mynbands, self.bd.nbands), dtype=S_Nn.dtype)
@@ -261,9 +259,7 @@ class UTConstantWavefunctionBlacsSetup(UTConstantWavefunctionSetup,
         S_Nn = overlap.calculate_matrix_elements(self.psit_nG, self.P_ani, S, dS)
         self.assertEqual(S_Nn.shape, (self.bd.nbands,self.bd.mynbands))
 
-        blocksize = 6
-        bbd = BlacsBandDescriptor(world, self.gd, self.bd, self.kpt_comm,
-                                  self.mcpus, self.ncpus, blocksize)
+        bbd = BlacsBandDescriptor(self.gd, self.bd, self.mcpus, self.ncpus, 6)
 
         # We would create C_nN in the real-space code this way.
         C_nN = np.empty((self.bd.mynbands, self.bd.nbands), dtype=S_Nn.dtype)
