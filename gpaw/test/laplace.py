@@ -1,6 +1,6 @@
 from math import sin, cos, pi
 import numpy as np
-from gpaw.fd_operators import GUCLaplace as Laplace
+from gpaw.fd_operators import NewGUCLaplace as Laplace
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.mpi import size
 
