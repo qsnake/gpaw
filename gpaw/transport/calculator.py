@@ -24,7 +24,7 @@ from gpaw.transport.contour import Contour
 from gpaw.transport.surrounding import Surrounding, collect_D_asp2, \
                                               collect_D_asp3, distribute_D_asp
 from gpaw.transport.selfenergy import LeadSelfEnergy
-from gpaw.transport.newanalysor import Transport_Analysor, Transport_Plotter
+from gpaw.transport.analysor import Transport_Analysor, Transport_Plotter
 
 import gpaw
 import numpy as np
@@ -51,6 +51,7 @@ class Transport(GPAW):
         if self.scat_restart:
             GPAW.__init__(self, self.restart_file + '.gpw', **self.gpw_kwargs)
             self.set_positions()
+            self.recover_kpts(self)
         else:
             GPAW.__init__(self, **self.gpw_kwargs)
             
@@ -266,6 +267,9 @@ class Transport(GPAW):
         self.nbmol = self.wfs.setups.nao
 
         self.get_ks_map()
+        self.set_local_spin_index(self.wfs)
+        self.set_local_spin_index(self.extended_calc.wfs)
+        
         if self.use_lead:
             if self.npk == 1:
                 self.lead_kpts = self.atoms_l[0].calc.wfs.bzk_kc
@@ -369,7 +373,16 @@ class Transport(GPAW):
             self.my_ks_map[i, 1] = kpt.k
             self.my_ks_map[i, 2] = self.wfs.kpt_comm.rank            
         self.wfs.kpt_comm.sum(self.ks_map)
-        
+    
+    def set_local_spin_index(self, wfs):
+        for kpt in wfs.kpt_u:
+            if kpt.s == 0:
+                kpt.v = 0
+            elif self.my_nspins == 2:
+                kpt.v = kpt.s
+            else:
+                kpt.v = 0
+       
     def get_hamiltonian_initial_guess(self):
         atoms = self.atoms.copy()
         #atoms.pbc[self.d] = True
@@ -398,6 +411,7 @@ class Transport(GPAW):
         if self.non_sc:
             if not self.scat_restart:
                 atoms.get_potential_energy()
+                calc = atoms.calc
                 if self.save_file:
                     atoms.calc.write('scat.gpw')
                 self.hamiltonian = atoms.calc.hamiltonian
@@ -408,8 +422,8 @@ class Transport(GPAW):
                 self.extended_calc.wfs.basis_functions = self.wfs.basis_functions
    
             else:
-                atoms.calc = self
-                self.recover_kpts(atoms.calc)                
+                calc = self
+                #self.recover_kpts(atoms.calc)                
                 self.extended_calc.hamiltonian = self.hamiltonian
                 self.extended_calc.gd = self.gd
                 self.extended_calc.finegd = self.finegd
@@ -725,6 +739,11 @@ class Transport(GPAW):
     
     def get_lead_calc(self, l):
         p = self.gpw_kwargs.copy()
+        if type(p['basis']) is dict and len(p['basis'])==len(self.atoms):
+            basis = {}
+            for i, a in enumerate(self.pl_atoms[l]):
+                basis[i] = p['basis'][a]
+            p['basis'] = basis
         p['nbands'] = None
         p['kpts'] = self.pl_kpts
         if 'mixer' in p:
@@ -764,8 +783,7 @@ class Transport(GPAW):
         
         if self.foot_print:
             self.analysor.save_bias_step()
-            self.analysor.save_data_to_file('bias', self.data_file)            
-         
+        
         self.scf.converged = self.cvgflag
         if self.fixed and self.scf.converged and self.normalize_density:
             self.normalize_density = False
@@ -795,11 +813,16 @@ class Transport(GPAW):
                                                               self.max_steps)
         
     def non_sc_analysis(self):
+        if not hasattr(self, 'contour'):
+            self.contour = Contour(0.1,
+                               self.lead_fermi, self.bias, comm=self.gd.comm,
+                                tp=self)
+            
         if not hasattr(self, 'analysor'):
             self.analysor = Transport_Analysor(self, True)
+            
         self.analysor.save_ele_step()            
         self.analysor.save_bias_step()
-        self.analysor.save_data_to_file('bias', self.data_file)
         fd = file('eq_hsd', 'w')
         cPickle.dump(self.hsd, fd, 2)
         fd.close()
@@ -1525,7 +1548,6 @@ class Transport(GPAW):
         self.timer.start('record')        
         if self.foot_print:
             self.analysor.save_ele_step()
-            self.analysor.save_data_to_file('ele', self.data_file)
         self.timer.stop('record')
         self.record_time_cost = self.timer.timers['HamMM', 'record']
         
@@ -1554,7 +1576,6 @@ class Transport(GPAW):
                 self.ground = True
             self.get_selfconsistent_hamiltonian()
             self.analysor.save_ion_step()
-            self.analysor.save_data_to_file('ion')    
         if self.initialized_transport:
             self.F_av = None
         #f = GPAW.get_forces(self, atoms)
@@ -1577,6 +1598,7 @@ class Transport(GPAW):
         else:
             vt_G = vt_sG[0]
 
+        wfs = self.extended_calc.wfs
         # Force from projector functions (and basis set):
         self.extended_calc.wfs.calculate_forces(hamiltonian, self.F_av)
 
@@ -1584,7 +1606,7 @@ class Transport(GPAW):
         vHt_g = self.surround.uncapsule(nn, hamiltonian.vHt_g,
                                                     self.finegd1, self.finegd)
         vt_G0 = self.surround.uncapsule(nn / 2, vt_G, self.gd1, self.gd)  
-        if self.wfs.band_comm.rank == 0 and self.wfs.kpt_comm.rank == 0:
+        if wfs.band_comm.rank == 0 and wfs.kpt_comm.rank == 0:
             # Force from compensation charges:
             dF_aLv = self.density.ghat.dict(derivative=True)
 
@@ -1604,15 +1626,15 @@ class Transport(GPAW):
             for a, dF_v in dF_av.items():
                 self.F_av[a] += dF_v[0]
     
-            self.wfs.gd.comm.sum(self.F_av, 0)
+            wfs.gd.comm.sum(self.F_av, 0)
 
-        self.wfs.world.broadcast(self.F_av, 0)
+        wfs.world.broadcast(self.F_av, 0)
         # Add non-local contributions:
-        for kpt in self.wfs.kpt_u:
+        for kpt in wfs.kpt_u:
             self.F_av += hamiltonian.xcfunc.get_non_local_force(kpt)
     
-        if self.wfs.symmetry:
-            self.F_av = self.wfs.symmetry.symmetrize_forces(self.F_av)
+        if wfs.symmetry:
+            self.F_av = wfs.symmetry.symmetrize_forces(self.F_av)
 
         self.F_av *= Hartree / Bohr
         return self.F_av[:len(self.atoms)]
@@ -2047,7 +2069,7 @@ class Transport(GPAW):
         density = self.density
         wfs = self.extended_calc.wfs
         gd = self.gd
-        gd1 = self.extended_atoms.calc.gd
+        gd1 = self.extended_calc.gd
 
         magmom_a = self.extended_atoms.get_initial_magnetic_moments()
         if density.nt_sG is None:
@@ -2147,7 +2169,6 @@ class Transport(GPAW):
  
             self.analysor.save_ele_step()            
             self.analysor.save_bias_step()
-            self.analysor.save_data_to_file('bias', 'bias_plot_data')
             
     def analysis_prepare(self, bias_step):
         fd = file('lead_hs', 'r')
