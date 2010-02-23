@@ -108,10 +108,12 @@ class Transport_Analysor:
         if self.isolate_atoms is not None:
             self.calculate_isolate_molecular_levels()
         self.overhead_data_saved = False
-        if not os.access('analysis_data', os.F_OK):
-            os.mkdir('analysis_data')
-        if not os.access('analysis_data/ionic_step_0', os.F_OK):            
-            os.mkdir('analysis_data/ionic_step_0')
+        if world.rank == 0:
+            if not os.access('analysis_data', os.F_OK):
+                os.mkdir('analysis_data')
+            if not os.access('analysis_data/ionic_step_0', os.F_OK):            
+                os.mkdir('analysis_data/ionic_step_0')
+        world.barrier()
         self.data = {}
 
     def save_overhead_data(self):
@@ -1096,6 +1098,7 @@ class Transport_Analysor:
         self.n_ion_step += 1
         if world.rank == 0:
             os.mkdir('analysis_data/ionic_step_' + str(self.n_ion_step))
+        world.barrier()
  
     def abstract_d_and_v(self):
         tp = self.tp
