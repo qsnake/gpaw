@@ -119,7 +119,7 @@ Things we need to write:
   converge, eigenstate error(s)?
 
 * Calculated stuff: Ekin, Epot, Ebar, Eext, Exc, S, forces, potential
-  energy, magnetic moments.
+  energy, magnetic moments, dipole moment.
 
 * Brillouin zone sampling: BZ, IBZ, weights, maps, symmetries.
 
