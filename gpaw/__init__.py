@@ -61,7 +61,7 @@ if home is not None:
     if os.path.isfile(rc):
         # Read file in ~/.gpaw/rc.py
         glo = {}
-        loc = {}
+        loc = glo
         execfile(rc, glo, loc)
 
         # Fill in allowed hooks:

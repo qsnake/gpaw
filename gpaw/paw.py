@@ -260,6 +260,8 @@ class PAW(PAWTextOutput):
             if 'converged' in hooks:
                 hooks['converged'](self)
         elif converge:
+            if 'crashed' in hooks:
+                hooks['crashed'](self)
             raise KohnShamConvergenceError('Did not converge!')        
 
     def initialize_positions(self, atoms=None):
