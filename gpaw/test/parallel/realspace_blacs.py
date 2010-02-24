@@ -10,6 +10,7 @@ import numpy as np
 from gpaw.band_descriptor import BandDescriptor
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.mpi import world, distribute_cpus
+from gpaw.utilities import scalapack
 from gpaw.utilities.blacs import scalapack_set, scalapack_zero 
 from gpaw.blacs import BlacsGrid, Redistributor, parallelprint, \
     BlacsBandDescriptor
@@ -43,7 +44,7 @@ gd = GridDescriptor((G, G, G), (a, a, a), True, domain_comm, parsize=D)
 mcpus, ncpus, blocksize = 2, 2, 6
 
 def main(seed=42, dtype=float):
-    bbd = BlacsBandDescriptor(world, gd, bd, kpt_comm, mcpus, ncpus, blocksize)
+    bbd = BlacsBandDescriptor(gd, bd, mcpus, ncpus, blocksize)
     nbands = bd.nbands
     mynbands = bd.mynbands
 
@@ -86,7 +87,10 @@ def main(seed=42, dtype=float):
     parallelprint(world, C_nN)
 
 if __name__ in ['__main__', '__builtin__']:
-    main(dtype=float)
-    main(dtype=complex)
+    if not scalapack(True):
+        print('Not built with ScaLAPACK. Test does not apply.')
+    else:
+        main(dtype=float)
+        main(dtype=complex)
 
 
