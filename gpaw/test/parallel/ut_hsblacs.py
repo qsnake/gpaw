@@ -75,31 +75,6 @@ class UTBandParallelBlacsSetup_Strided(UTBandParallelSetup):
 
 # -------------------------------------------------------------------
 
-"""
-class MyBlacsBandMatrixDescriptor(BlacsBandMatrixDescriptor):
-    def __init__(self, bd, gd, bbd):
-        BlacsBandMatrixDescriptor.__init__(self, bd, gd)
-        self.bbd = bbd # XXX ugly hack!!!
-
-    def redistribute_input(self, A_nn, A_nN=None): # 2D -> 1D row layout
-        if A_nN is None:
-            A_nN = self.bbd.nNdescriptor.empty(dtype=A_nn.dtype)
-        self.bbd.nn2nN.redistribute(A_nn, A_nN)
-        if not self.bbd.nNdescriptor.blacsgrid.is_active(): #XXX wtf fix
-            assert A_nN.shape == (0,0)
-            A_nN = np.empty((self.bd.mynbands, self.bd.nbands), dtype=A_nN.dtype)
-        self.gd.comm.broadcast(A_nN, 0) #XXX copy/paste from BlacsBandDescriptor
-        return A_nN
-
-    def redistribute_output(self, A_Nn, A_nn=None): # 1D column -> 2D layout
-        if not self.bbd.Nndescriptor.blacsgrid.is_active(): #XXX wtf fix
-            A_Nn = np.empty((0,0), dtype=A_Nn.dtype)
-        if A_nn is None:
-            A_nn = self.bbd.nndescriptor.empty(dtype=A_Nn.dtype)
-        self.bbd.Nn2nn.redistribute(A_Nn, A_nn)
-        return A_nn
-"""
-
 class UTConstantWavefunctionBlacsSetup(UTConstantWavefunctionSetup,
                                        UTBandParallelBlacsSetup):
     __doc__ = UTBandParallelBlacsSetup.__doc__ + """
