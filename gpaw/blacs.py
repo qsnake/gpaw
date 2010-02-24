@@ -397,14 +397,14 @@ class BlacsDescriptor(MatrixDescriptor):
             raise ValueError('Cannot redistribute to other BLACS grid.  '
                              'Requires using Redistributor class explicitly')
         if dst_mn is None:
-            dst_mn = otherdesc.empty()
+            dst_mn = otherdesc.empty(dtype=src_mn.dtype)
         r = Redistributor(self.blacsgrid.comm, self, otherdesc)
         r.redistribute(src_mn, dst_mn)
         return dst_mn
 
-    def collect_on_master(self, src_mn):
+    def collect_on_master(self, src_mn, dst_mn=None):
         desc = self.as_serial()
-        return self.redistribute(desc, src_mn)
+        return self.redistribute(desc, src_mn, dst_mn)
 
 
 class Redistributor:
