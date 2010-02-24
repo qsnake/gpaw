@@ -156,7 +156,7 @@ def main(N=73, seed=42, mprocs=2, nprocs=2, dtype=float):
     assert inverse_chol_err < tol
 
 if __name__ in ['__main__', '__builtin__']:
-    if not scalapack():
+    if not scalapack(True):
         print('Not built with ScaLAPACK. Test does not apply.')
     else:
         main(dtype=float)

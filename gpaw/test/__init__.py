@@ -174,6 +174,7 @@ tests = [
     'parallel/ut_invops.py',
     'parallel/ut_kptops.py',
     'parallel/pblas.py',
+    'parallel/blacsdist.py',
     'parallel/scalapack.py',
     'parallel/realspace_blacs.py',
     'parallel/lcao_projections.py',
