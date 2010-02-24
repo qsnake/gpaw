@@ -919,7 +919,7 @@ class OrbitalDescriptor:
     def get_diagonalization_descriptor(self):
         return self.mMdescriptor
 
-    def get_coefficent_descriptor(self):
+    def get_coefficient_descriptor(self):
         return self.nMdescriptor
 
     def distribute_overlap_matrix(self, S_qMM, root=0):
