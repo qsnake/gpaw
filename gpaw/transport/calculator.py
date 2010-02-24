@@ -66,7 +66,7 @@ class Transport(GPAW):
         self.gpw_kwargs = kw.copy()
         for key in kw:
             if key in ['use_lead', 'identical_leads',
-                       'pl_atoms', 'pl_cells', 'pl_kpts',
+                       'pl_atoms', 'pl_cells', 'pl_kpts', 'leads',
                        'use_buffer', 'buffer_atoms', 'edge_atoms', 'bias',
                        'lead_restart', 'use_guess_file',
                        
@@ -92,6 +92,7 @@ class Transport(GPAW):
         self.transport_parameters = p
         self.use_lead = p['use_lead']
         self.identical_leads = p['identical_leads']
+        self.leads = p['leads']
         self.pl_atoms = p['pl_atoms']
         self.lead_num = len(self.pl_atoms)
         self.bias = p['bias']
@@ -184,6 +185,7 @@ class Transport(GPAW):
         p['use_buffer'] = False
         p['buffer_atoms'] = None
         p['edge_atoms'] = None
+        p['leads'] = None
         p['bias'] = [0, 0]
         p['d'] = 2
         p['lead_restart'] = False
@@ -729,11 +731,14 @@ class Transport(GPAW):
        
     def get_lead_atoms(self, l):
         """Here is a multi-terminal version """
-        atoms = self.atoms.copy()
-        atomsl = atoms[self.pl_atoms[l]]
-        atomsl.cell = self.pl_cells[l]
-        atomsl.center()
-        atomsl._pbc[self.d] = True
+        if self.leads is not None:
+            atomsl = self.leads[l]
+        else:
+            atoms = self.atoms.copy()
+            atomsl = atoms[self.pl_atoms[l]]
+            atomsl.cell = self.pl_cells[l]
+            atomsl.center()
+            atomsl._pbc[self.d] = True
         atomsl.set_calculator(self.get_lead_calc(l))
         return atomsl
     
