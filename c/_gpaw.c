@@ -242,11 +242,6 @@ int
 main(int argc, char **argv)
 {
   int status;
-#ifdef GPAW_MPI_MAP
-  int tag = 99;
-  int myid, numprocs, i, procnamesize;
-  char procname[MPI_MAX_PROCESSOR_NAME];
-#endif
 
 #ifdef GPAW_CRAYPAT
   PAT_region_begin(1, "C-Initializations");
@@ -261,6 +256,9 @@ main(int argc, char **argv)
 #endif // GPAW_OMP
 
 #ifdef GPAW_MPI_MAP
+  int tag = 99;
+  int myid, numprocs, i, procnamesize;
+  char procname[MPI_MAX_PROCESSOR_NAME];
   MPI_Comm_size(MPI_COMM_WORLD, &numprocs );
   MPI_Comm_rank(MPI_COMM_WORLD, &myid );
   MPI_Get_processor_name(procname, &procnamesize);
@@ -321,4 +319,4 @@ main(int argc, char **argv)
   MPI_Finalize();
   return status;
 }
-#endif
+#endif // GPAW_INTERPRETER
