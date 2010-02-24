@@ -406,6 +406,10 @@ class BlacsDescriptor(MatrixDescriptor):
         desc = self.as_serial()
         return self.redistribute(desc, src_mn, dst_mn)
 
+    def distribute_from_master(self, src_mn, dst_mn=None):
+        desc = self.as_serial()
+        return desc.redistribute(self, src_mn, dst_mn)
+
 
 class Redistributor:
     """Class for redistributing BLACS matrices on different contexts."""
