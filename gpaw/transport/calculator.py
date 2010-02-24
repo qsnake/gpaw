@@ -744,7 +744,6 @@ class Transport(GPAW):
             for i, a in enumerate(self.pl_atoms[l]):
                 basis[i] = p['basis'][a]
             p['basis'] = basis
-        print p['basis'], 'lead', l
         p['nbands'] = None
         p['kpts'] = self.pl_kpts
         if 'mixer' in p:
@@ -827,7 +826,10 @@ class Transport(GPAW):
         fd = file('eq_hsd', 'w')
         cPickle.dump(self.hsd, fd, 2)
         fd.close()
- 
+        del self.analysor
+        del self.surround
+        del self.contour       
+
     def get_density_matrix(self):
         self.timer.start('DenMM')
         if self.use_qzk_boundary:
@@ -1582,7 +1584,7 @@ class Transport(GPAW):
         #f = GPAW.get_forces(self, atoms)
         f = self.calculate_force()
         self.optimize = True
-        self.normalize_density = True
+        #self.normalize_density = True
         return f
 
     def calculate_force(self):
@@ -1675,6 +1677,9 @@ class Transport(GPAW):
         density = self.density
         self.timer.start('construct density')
 
+        if not self.normalize_density:
+            density.charge_eps = 1000
+            
         nt_sG = self.gd1.zeros(self.nspins)
         self.extended_calc.wfs.calculate_density_contribution(nt_sG)
         nn = self.surround.nn[0]
