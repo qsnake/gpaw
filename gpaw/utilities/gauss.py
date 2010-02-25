@@ -59,14 +59,13 @@ class Gaussian:
     The gaussians are centered in the middle of input grid-descriptor."""
     
     def __init__(self, gd, a=19., center=None):
-        assert gd.orthogonal
         self.gd = gd
         self.xyz, self.r2 = coordinates(gd, center)
         self.set_width(a)
 
     def set_width(self, a):
         """Set exponent of exp-function to -a on the boundary."""
-        self.a = 4 * a / min(self.gd.cell_cv.diagonal())**2
+        self.a = 4 * a * (self.gd.icell_cv**2).sum(1).max()
         
     def get_gauss(self, L):
         a = self.a
