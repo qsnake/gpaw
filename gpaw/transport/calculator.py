@@ -1107,6 +1107,7 @@ class Transport(GPAW):
                                             self.intctrl.leadfermi[i], kt))  
                     siglist2[i].append(self.selfenergies[i](e))
             self.nepathinfo[s][k].add(elist2, wlist2, flist2, siglist2)        
+        self.contour.release()
        
     def get_eqintegral_points(self, s, k):
         if self.recal_path:
