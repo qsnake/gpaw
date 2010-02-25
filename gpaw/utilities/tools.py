@@ -91,22 +91,20 @@ def coordinates(gd, origin=None, tiny=1e-12):
        The origin is placed in the center of the box described by the given
        grid-descriptor 'gd'.
     """
-    assert gd.orthogonal
     
     if origin is None:
-        origin = .5 * gd.cell_cv.diagonal()
+        origin = 0.5 * gd.cell_cv.sum(0)
 
-    I  = np.indices(gd.n_c)
-    dr = np.reshape(gd.h_cv.diagonal(), (3, 1, 1, 1))
-    r0 = np.reshape(gd.h_cv.diagonal() * gd.beg_c - origin, (3, 1, 1, 1))
-    r0 = np.ones(I.shape) * r0
-    xyz = r0 + I * dr
-    r2 = np.sum(xyz**2, axis=0)
+    r0_v = np.array(origin)
+
+    r_vG = (gd.get_grid_point_coordinates() -
+            r0_v[:, np.newaxis, np.newaxis, np.newaxis])
+    r2_G = np.sum(r_vG**2, axis=0)
     # Remove singularity at origin and replace with small number
-    r2 = np.where(r2 < tiny, tiny, r2)
+    r2_G = np.where(r2_G < tiny, tiny, r2_G)
 
     # Return r^2 matrix
-    return xyz, r2
+    return r_vG, r2_G
 
 
 def pick(a_ix, i):
