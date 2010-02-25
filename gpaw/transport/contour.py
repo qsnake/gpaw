@@ -531,8 +531,9 @@ class Contour:
         converged = True
         errs = [0]
         err = 0
-
         for zone in zones:
+            indices = []
+            nids = []
             if zone in [4, 5]:
                 pass
             else:
@@ -553,6 +554,8 @@ class Contour:
                         flags = path.get_flags(nid, True)
                         weight0, weight1 = path.get_weight(flags)
                         index = path.nids.index(nid)
+                        indices.append(index)
+                        nids.append(nid)
                         gr_sum0 += path.functions[index] * weight0
                         gr_sum1 += path.functions[index] * weight1
                 self.comm.sum(gr_sum0)
@@ -566,6 +569,11 @@ class Contour:
                 #    self.total_sum += gr_sum0
             if err < self.eq_err:
                 self.converged_zones.append(zone)
+                for ind, nid in zip(indices, nids):
+                    digit = nid % 10
+                    if digit > 1 and digit < 7:            
+                        path.functions[ind] = None
+                        
         #print self.total_sum, 'totalsum'
         #print np.max(np.abs(errs))            
         return converged, new_zones        
@@ -615,7 +623,7 @@ class Contour:
             if np.abs(energies[i] - energies[j]) < tol:
                 weights[j] += weights[i]     
                 del_seq.append(i)
-                
+    
         del_seq.sort()
         del_seq.reverse()
         for i in del_seq:
@@ -624,11 +632,20 @@ class Contour:
             del weights[i]
             del ses[i]
         del self.converged_zones[:]
+        
+        
         if cal_den:
             return nids, energies, weights, ses, (den_eq + den_ne)
         else:
             return nids, energies, weights, ses
-        
+
+    def release(self):
+        for path in self.paths:
+            for function in path.functions:
+                function = None
+            for se in path.ses:
+                se = None
+       
     def distribute_nodes(self, path_index):
         path = self.paths[path_index]
         if path.type == 'linear':
