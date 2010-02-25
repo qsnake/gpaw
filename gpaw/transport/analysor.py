@@ -60,6 +60,21 @@ class Transport_Analysor:
                          self.dos_realspace_energies]:
             if variable is not None:
                 variable = np.array(variable) + ef
+        ecomm = self.tp.contour.comm
+        
+        if self.eig_trans_channel_energies is not None:
+            self.my_eig_trans_channel_energies = np.array_split(
+                self.eig_trans_channel_energies, ecomm.size)[ecomm.rank]
+            self.my_eig_trans_channel_nids = np.array_split(
+                 np.arange(len(self.eig_trans_channel_energies)),
+                 ecomm.size)[ecomm.rank]
+        
+        if self.dos_realspace_energies is not None:
+            self.my_dos_realspace_energies = np.array_split(
+                 self.dos_realspace_energies, ecomm.size)[ecomm.rank]
+            self.my_dos_realspace_nids = np.array_split(
+                np.arange(len(self.dos_realspace_energies)),
+                ecomm.size)[ecomm.rank]
 
         setups = self.tp.inner_setups
         self.project_atoms_in_device = self.project_equal_atoms[0]
@@ -191,7 +206,7 @@ class Transport_Analysor:
         return dos
     
     def calculate_eigen_transport_channel(self, s, q, energy):
-        t, vc, k, vl = self.central_scattering_states(energies, s, q)
+        t, vc, k, vl = self.central_scattering_states(energy, s, q)
         weights = []
         velocities = []
         vectors = []
@@ -202,10 +217,11 @@ class Transport_Analysor:
             for j in range(self.tp.lead_num):
                 zeta = t[i][j]
                 zeta2 = np.dot(zeta.T.conj(), zeta)
-                w, v = np.linalg.eig(zeta2)
-                weights[i].append(w)
-                velocities[i].append(v)
-                vectors[i].append(np.dot(vc[i], v))
+                if np.product(zeta2.shape) != 0:
+                    w, v = np.linalg.eig(zeta2)
+                    weights[i].append(w)
+                    velocities[i].append(v)
+                    vectors[i].append(np.dot(vc[i], v))
         weights = np.array(weights)
         velocities = np.array(velocities)
         vectors = np.array(vectors)
@@ -228,6 +244,9 @@ class Transport_Analysor:
             else:
                 p['mixer'] = MixerDif(0.1, 5, weight=100.0)
         p['poissonsolver'] = PoissonSolver(nn=2)
+        if type(p['basis']) is dict and len(p['basis']) == len(self.tp.atoms):
+            p['basis'] = 'dzp'
+            raise Warning('the dict basis is not surpported in isolate atoms')
         if 'txt' in p and p['txt'] != '-':
             p['txt'] = 'isolate_' + p['txt']
         atoms.set_calculator(GPAW(**p))
@@ -263,7 +282,7 @@ class Transport_Analysor:
                                   / np.diag(np.dot(vm.T.conj(), vm))
                 else:
                     pt = T0
-                project_transmission[i][j].append(pt)
+                project_transmission[j].append(pt)
         project_transmission = np.array(project_transmission)
         return project_transmission
 
@@ -286,6 +305,7 @@ class Transport_Analysor:
         return np.array(total_psi_g)
 
     def get_left_channels(self, energy, s, k):
+        # to get the left scattering channel from lead to scattering region
         sigma = self.calculate_sigma(s, k, energy)
         g_s_ii = self.calculate_green_function_of_k_point(s, k, energy,
                                                           sigma, full=True)
@@ -322,44 +342,20 @@ class Transport_Analysor:
     
     def calculate_realspace_dos(self, energy):
         wfs = self.tp.extended_calc.wfs
+        dosg = wfs.gd.zeros(self.tp.nspins)
         for kpt in wfs.kpt_u:
             s = kpt.s
             q = kpt.q
             sigma = self.calculate_sigma(s, q, energy)
             gr = self.calculate_green_function_of_k_point(s, q, energy, sigma)
-            dos_mm += np.dot(gr, self.tp.hsd.S[q].recover())
+            dos_mm = np.dot(gr, self.tp.hsd.S[q].recover())
         
             if wfs.dtype == float:
                 dos_mm = np.real(dos_mm).copy()
-            #kpt.rho_MM = dos_mm
-            #wfs.add_to_density_from_k_point(dos_g, kpt)
-            #wfs.kpt_comm.sum(dos_g)
-            #total_dos_g = self.tp.gd1.collect(dos_g)
-            #realspace_dos.append(total_dos_g)
-            realspace_dos.append(dos_mm)
-        return realspace_dos
-
-    def calculate_partial_dos(self, s, q, atom_indices=None,
-                                                          orbital_type='all'):
-        energies = self.energies
-        dos = []
-        orbital_map = {'s': 0, 'p': 1, 'd': 2, 'f': 3}
-        orbital_indices = self.tp.orbital_indices     
-        for energy in energies:
-            gr = self.calculate_green_function_of_k_point(s, q, energy)
-            dos_mm = -np.imag(np.dot(gr, self.tp.hsd.S[q].recover())) / np.pi
-            dos_line = np.diag(dos_mm)
-            tmp = 0
-            if orbital_type == 'all':
-                orbital_index = np.zeros([orbital_indices.shape[0]]) + 1
-            else:
-                orbital_index = orbital_indices[:, 1] - orbital_map[
-                                                      orbital_type] ==  0 
-            for j in atom_indices:
-                atom_index = orbital_indices[:, 0] - j == 0
-                tmp += np.sum(dos_line * atom_index * orbital_index)
-            dos.append(tmp)
-        return dos
+            wfs.basis_functions.construct_density(dos_mm, dosg[kpt.s], kpt.q)
+        wfs.kpt_comm.sum(dosg)
+        wfs.band_comm.sum(dosg)
+        return dosg
        
     def lead_k_matrix(self, l, s, pk, k_vec, hors='S'):
         tp = self.tp
@@ -441,6 +437,7 @@ class Transport_Analysor:
         return np.array(k[proindex]), np.array(Vk[:, proindex])
                    
     def central_scattering_states(self, energy, s, q):
+        #To get the scattering states corresponding to a Bloch vector in lead
         MaxLambda = 1e2
         MinErr = 1e-8
         tp = self.tp        
@@ -528,8 +525,8 @@ class Transport_Analysor:
             total_lambdar.append(lambdar)
             total_lambdat.append(lambdat)
             
-            vkr = vk[:, left_index]
-            vkt = vk[:, right_index]
+            vkr = np.take(vk, left_index, axis=1)
+            vkt = np.take(vk, right_index, axis=1)
             vr = v[pro_left_index]
             vt = v[pro_right_index]
             total_vkr.append(vkr)
@@ -583,11 +580,12 @@ class Transport_Analysor:
             Acl = np.dot(hcl, vkt)
             bpi = total_bproin[i]
             vkr = total_vkr[i]
-            Bc = -np.dot(hcl, vkr[:, bpi])
+            vkr_bpi = np.take(vkr, bpi, axis=1)
+            Bc = -np.dot(hcl, vkr_bpi)
             ind = get_matrix_index(bpi)
-            Bl = -np.dot(tp.lead_hsd[i].H[s][q].recover(), vkr[:, bpi]) + \
+            Bl = -np.dot(tp.lead_hsd[i].H[s][q].recover(), vkr_bpi) + \
                     np.dot(np.dot(tp.lead_couple_hsd[i].H[s][q].recover(),
-                        vkr[:, bpi]) ,total_lambdar[i][ind.T, ind])
+                        vkr_bpi) ,total_lambdar[i][ind.T, ind])
             total_Alc.append(Alc)
             total_Acl.append(Acl)
             total_hcl.append(hcl)
@@ -615,7 +613,8 @@ class Transport_Analysor:
         total_vl = []
         for i in range(tp.lead_num):
             total_k[i] = total_k[i][total_pro_right_index[i]]
-            total_vl.append(total_vk[i][:, total_pro_right_index[i]])
+            total_vl.append(np.take(total_vk[i],
+                                    total_pro_right_index[i], axis=1))
          
         total_vc = []
         t = []
@@ -640,6 +639,9 @@ class Transport_Analysor:
                                          np.array(total_k), np.array(total_vl)
             
     def cal_sstates(self, energies, s, q):
+        #To see how much the transmision from one orbital(local basis) in lead a
+        # to the orbital in the lead b, the transmission is decomposited to
+        # Bloch wave in leads
         MinErr = 1e-8
         MaxLambda = 1 + MinErr
         
@@ -659,8 +661,8 @@ class Transport_Analysor:
         total_vl = []
         sk1 = []
         sk2 = []
-        for n in range(ne):
-            t, vc, k, vl = self.get_central_scattering_states(s, q, n)
+        for n, energy in enumerate(energies):
+            t, vc, k, vl = self.central_scattering_states(energy, s, q)
             total_t.append(t)
             total_vc.append(vc)
             total_k.append(k)
@@ -689,6 +691,7 @@ class Transport_Analysor:
                                           m2]) ** 2 * np.dot(w2, w1.T.conj())
         return np.array(t_lead_all), np.array(t_all)
 
+    
     def save_ele_step(self):
         tp = self.tp
         if not self.matrix_foot_print:
@@ -837,81 +840,6 @@ class Transport_Analysor:
         kpt_comm.gather(local_dos_array, 0, dos_array)                    
         return tc_array, dos_array
     
-    def collect_lead_scattering_channels(self):
-        tp = self.tp
-        energies = self.eig_trans_channel_energies
-        if energies is not None:
-            nl = tp.lead_num
-            ne = len(energies)
-            ns, npk = tp.nspins, tp.npk
-            nb = np.max(tp.nblead)
-            mkoe = self.max_k_on_energy
-            dtype = tp.wfs.dtype
-            tc_array = np.zeros([ns, npk, ne, nl, mkoe], dtype)
-            vc_array = np.zeros([ns, npk, ne, nl, nb, mkoe], dtype)
-
-            ns, npk = tp.my_nspins, tp.my_npk
-            local_tc_array = np.zeros([ns, npk, ne, nl, mkoe], dtype)
-            local_vc_array = np.zeros([ns, npk, ne, nl, nb, mkoe], dtype)
-            for s in range(ns):
-                for q in range(npk):
-                    for e, energy in enumerate(energies):
-                        for l in range(nl):
-                            tc, vc = self.lead_scattering_states(energy,
-                                                                 l, s, q)
-                            nbl, nbloch = vc.shape
-                            local_tc_array[s, q, e, l, :nbloch] = tc
-                            local_vc_array[s, q, e, l, :nbl, :nbloch] = vc 
-                 
-            kpt_comm = tp.wfs.kpt_comm
-            kpt_comm.all_gather(local_tc_array, tc_array)
-            kpt_comm.all_gather(local_vc_array, vc_array)             
-            return tc_array, vc_array
-        else:
-            return None, None
-       
-    def collect_scat_scattering_channels(self):
-        tp = self.tp
-        energies = self.eig_trans_channel_energies
-        if energies is not None:
-            nl = tp.lead_num
-            ne = len(energies)
-            ns, npk = tp.nspins, tp.npk
-            nbmol = tp.nbmol
-            nb = np.max(tp.nblead)
-            mkoe = self.max_k_on_energy
-            dtype = tp.wfs.dtype
-            tc_array = np.zeros([ns, npk, ne, nl, nl, mkoe, mkoe], dtype)
-            vc_array = np.zeros([ns, npk, ne, nl, nbmol, mkoe], dtype)
-            k_array = np.zeros([ns, npk, ne, nl, mkoe], dtype)
-            vk_array = np.zeros([ns, npk, ne, nl, nb, mkoe], dtype)
-            
-            ns, npk = tp.my_nspins, tp.my_npk
-            local_tc_array = np.zeros([ns, npk, ne, nl, nl, mkoe, mkoe],
-                                                                        dtype)
-            local_vc_array = np.zeros([ns, npk, ne, nl, nbmol, mkoe], dtype)
-            local_k_array = np.zeros([ns, npk, ne, nl, mkoe], dtype)
-            local_vk_array = np.zeros([ns, npk, ne, nl, nb, mkoe], dtype)
-            for s in range(ns):
-                for q in range(npk):
-                    for e, energy in enumerate(energies):
-                        tc, vc, k, vk = self.central_scattering_states(energy,
-                                                                       s, q)
-                        nbl, nbloch = vk.shape[-2:]
-                        local_tc_array[s, q, e, :, :, :nbloch, :nbloch] = tc
-                        local_vc_array[s, q, e, :, :, :nbloch] = vc
-                        local_k_array[s, q, e, :, :nbloch] = k
-                        local_vk_array[s, q, e, :, :nbl, :nbloch] = vk
-                 
-            kpt_comm = tp.wfs.kpt_comm
-            kpt_comm.all_gather(local_tc_array, tc_array)
-            kpt_comm.all_gather(local_vc_array, vc_array)
-            kpt_comm.all_gather(local_k_array, k_array)
-            kpt_comm.all_gather(local_vk_array, vk_array)            
-            return tc_array, vc_array, k_array, vk_array 
-        else:
-            return None, None, None, None        
-
     def collect_charge(self):
         tp = self.tp
         ns, npk = tp.nspins, tp.npk
@@ -953,102 +881,7 @@ class Transport_Analysor:
             loc_contour = None
         contour = {'eq': eq_contour, 'ne': ne_contour, 'loc': loc_contour}
         return contour
-        
-    def collect_realspace_dos(self):
-        if self.dos_realspace_energies is None:
-            return None
-        tp = self.tp
-        ns, npk = tp.nspins, tp.npk
-        nbmol = tp.nbmol
-        dtype = tp.wfs.dtype
-        energies = self.dos_realspace_energies
-        ne = len(energies)
-        dos_array = np.zeros([ns, npk, ne, nbmol, nbmol], dtype)
-        ns, npk = tp.my_nspins, tp.my_npk
-        local_dos_array = np.zeros([ns, npk, ne, nbmol, nbmol], dtype)
-        for s in range(ns):
-            for q in range(npk):
-                local_dos_array[s, q] = self.calculate_realspace_dos(s, q)
-        kpt_comm = tp.wfs.kpt_comm
-        kpt_comm.all_gather(local_dos_array, dos_array)
-        return dos_array        
-
-    def collect_project_transmission(self):
-        if self.isolate_atoms is None:
-            return None
-        tp = self.tp
-        ns, npk = tp.nspins, tp.npk
-        nbmol = tp.nbmol
-        energies = self.energies
-        ne = len(energies)
-        nl = tp.lead_num
-        nbi = len(self.isolate_eigen_values)
-        project_tc = np.zeros([ns, npk, ne, nl, nl, nbi, 1])
-        ns, npk = tp.my_nspins, tp.my_npk
-        local_project_tc = np.zeros([ns, npk, ne, nl, nl, nbi, 1])
-        for s in range(ns):
-            for q in range(npk):
-                local_project_tc[s, q] = \
-                                     self.calculate_project_transmission(s, q)
-        kpt_comm = tp.wfs.kpt_comm
-        kpt_comm.all_gather(local_project_tc, project_tc)
-        return project_tc
-
-    def collect_left_channels(self):
-        if self.eig_trans_channel_energies is None:
-            return None, None
-        tp = self.tp
-        ns, npk = tp.nspins, tp.npk
-        nbmol = tp.nbmol
-        dtype = tp.wfs.dtype
-        energies = self.eig_trans_channel_energies
-        ne = len(energies)
-        tc_array = np.zeros([ns, npk, ne, nbmol], dtype)
-        vc_array = np.zeros([ns, npk, ne, nbmol, nbmol], dtype)        
-        ns, npk = tp.my_nspins, tp.my_npk
-        local_tc_array = np.zeros([ns, npk, ne, nbmol], dtype)
-        local_vc_array = np.zeros([ns, npk, ne, nbmol, nbmol], dtype)
-        for s in range(ns):
-            for q in range(npk):
-                for e, energy in enumerate(energies):
-                    local_tc_array[s, q, e], local_vc_array[s, q, e] = \
-                                          self.get_left_channels(energy, s, q)
-        kpt_comm = tp.wfs.kpt_comm
-        kpt_comm.all_gather(local_tc_array, tc_array)
-        kpt_comm.all_gather(local_vc_array, vc_array)        
-        return tc_array, vc_array 
-       
-    def collect_eigen_transport_channels(self):
-        if self.eig_trans_channel_energies is None:
-            return None, None, None
-        tp = self.tp
-        ns, npk = tp.nspins, tp.npk
-        nbmol = tp.nbmol
-        nl = tp.lead_num
-        mkoe = self.max_k_on_energy
-        dtype = tp.wfs.dtype
-        energies = self.eig_trans_channel_energies
-        ne = len(energies)
-        w_array = np.zeros([ns, npk, ne, nl, nl, mkoe], dtype)
-        v_array = np.zeros([ns, npk, ne, nl, nl, mkoe, mkoe], dtype)
-        vc_array = np.zeros([ns, npk, ne, nl, nl, nbmol, mkoe], dtype)        
-        ns, npk = tp.my_nspins, tp.my_npk
-        local_w_array = np.zeros([ns, npk, ne, nl, nl, mkoe], dtype)
-        local_v_array = np.zeros([ns, npk, ne, nl, nl, mkoe, mkoe], dtype)
-        local_vc_array = np.zeros([ns, npk, ne, nl, nl, nbmol, mkoe], dtype) 
-        for s in range(ns):
-            for q in range(npk):
-                w, v, vc = self.calculate_eigen_transport_channels(s, q)
-                nbloch = w.shape[-1]
-                local_w_array[s, q, :, :, :, :nbloch] = w
-                local_v_array[s, q, :, :, :, :nbloch, :nbloch] = v
-                local_vc_array[s, q, :, :, :, :, :nbloch] = vc
-        kpt_comm = tp.wfs.kpt_comm
-        kpt_comm.all_gather(local_w_array, w_array)
-        kpt_comm.all_gather(local_v_array, v_array)        
-        kpt_comm.all_gather(local_vc_array, vc_array) 
-        return w_array, v_array, vc_array        
-
+ 
     def save_ion_step(self):
         if world.rank == 0:
             fd = file('analysis_data/ionic_step_' +
@@ -1193,10 +1026,29 @@ class Transport_Plotter:
     
     def dos_array(self, bias_step, ion_step=0, s=0, k=None):
         info = self.get_info('dos', bias_step, ion_step)
-        return self.process(info, s, k, lp)
+        return self.process(info, s, k)
     
     def dos(self, bias_step, ion_step=0, s=0, k=None):
         info = self.get_info('dos', bias_step, ion_step)
         info = self.process(info, s, k)
         return np.sum(info, axis=-2)
+ 
+    def partial_dos(self, bias_step, ion_step=0, s=0, k=None,
+                    atom_indices=None, orbital_type=None):
+        self.read_overhead()
+        dos_array = self.dos_array(bias_step, ion_step, s, k)
+        orbital_indices = self.basis['orbital_indices']
+        orbital_map = {'s': 0, 'p': 1, 'd': 2, 'f': 3}
+        if orbital_type is None:
+            orbital_index = np.zeros([orbital_indices.shape[0]]) + 1
+        else:
+            orbital_index = orbital_indices[:, 1] - orbital_map[
+                                                      orbital_type] ==  0
+        atom_index = np.zeros([orbital_indices.shape[0]]) + 1
+        if atom_indices is not None:
+            atom_index -= 1
+            for i in atom_indices:
+                atom_index += orbital_indices[:, 0] - j == 0
+        pdos = np.sum(dos_array * orbital_index * atom_index)
+        return pdos
 
