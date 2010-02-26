@@ -416,7 +416,7 @@ class Contour:
                                       path_index in [0, 1, 2, 5]) :
                 calcutype = self.calcutype[path_index]
                 green_function, se = self.tp.calgfunc(energy, calcutype, 'new')
-                self.paths[path_index].functions.append(green_function)
+                self.paths[path_index].functions.append(np.diag(green_function[0]))
                 self.paths[path_index].energies.append(energy)
                 self.paths[path_index].ses.append(se)
                 self.paths[path_index].nids.append(nid)
