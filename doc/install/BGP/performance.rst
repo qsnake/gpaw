@@ -29,14 +29,21 @@ It is essential to think of the BG/P network as a 4-dimensional object with
 3 spatial dimentions and a T-dimension. For optimum efficiency, we
 must simultaneously satisfy at least two distinct communications patterns
 due to different parts of the DFT calculation: a) H*Psi products 
-b) diagonalization. This can only be accomplished with a 4-dimensional
+b) parallel dense linear algebra, pdgemm for calculating inner
+produtors. This can only be accomplished with a 4-dimensional
 (or higher) network.
 
 The domain decomposition can be specified on the 
 ``gpaw-python`` command line with ``--domain-decomposition=Nx,Ny,Nz``
-and band parallelization with ``--state-parallelization=B``. Here *N* bands
-are divided into *B* groups. It was empirically determined that you need to
-have *N/B > 256*. It will be necessary to have the combined band-domain
+and band parallelization with ``--state-parallelization=B``. Here *nbands*
+is divided into *B* groups. It was empirically determined that you need to
+have *nbands/B > 256* for reasonable performance. It is possible to get
+away with smaller values, *N/B < 256*, with fairly large domains. Additionally,
+*nbands/B* integer divisible. It is also required that *nbands/B/K*,
+where *K* is the blocking factor, be integer divisible as well (more
+information about *K* below) in the  DCMF_EAGER section.
+
+It will be necessary to have the combined band-domain
 decomposition match the partition dimension exactly, i.e. ::
 
   {Nx, Ny, Nz, B} = {Px, Py, Pz, T},
@@ -55,9 +62,15 @@ mapfile via Cobalt::
 
 Simultaneous parallelization on k-points, spins, bands and domains
 =====================================================================
-This is currently in the works. However, even when this is finished we will
-need to figure out how to map this correctly to the torus. What is really
-needed is a 5-dimensional network.
+Simultaneous parallelization of spins, bands and domains is now
+working, but simultaneous parallelization on k-points, bands, and
+domains is not. Obviously, neither is simultaneous parallelization on
+k-points, spins, band and domains. All these combination of
+parallelization would benefit from a higher dimensional
+network; at least 5-dimensional, but 6-dimensional would
+be better. For now we are stuck with a 4-dimensional network, so you
+will have to think of *B' = B*nspins* and adjust things
+accordingly. This is suboptimal, but appears to work.
 
 Important DCMF environment variables
 ===============================================
@@ -73,28 +86,27 @@ DCMF_EAGER
 ============
 The computation of the hamiltonian and overlap matrix elements, as well as
 the computation of the new wavefunctions, is accomplished by a hand-coded 
-parallel matrix-multiply ``hs_operators.py`` employing a 1D ring algorithm.
-Please refer to the details of :ref:`band parallelization <band_parallelization>`.
+parallel matrix-multiply ``hs_operators.py`` employing a 1D systolic
+ring algorithm. Please refer to the details of :ref:`band parallelization <band_parallelization>`.
 
 Communication and computation is overlapped to the extent allowed by the
-hardware by using non-block sends (Isend)and receives (Irecv). It will be
+hardware by using non-blocking sends (Isend)and receives (Irecv). It will be
 necessary to select appropriate values for the number of blocks ``nblocks``::
 
-  from gpaw.hs_operators import Operator
-  Operator.nblocks = K
-  Operator.async = True (default)
+  from gpaw.hs_operators import MatrixOperator
+  MatrixOperator.nblocks = K
+  MatrixOperator.async = True (default)
 
-where the ``B`` groups of bands are further divided into ``K`` blocks for
-efficiency and to save on memory. The value of ``K`` should be selected
-so that 4 - 8 MB of wavefunctions are sent/received. It will be also be
-necessary to pass to Cobalt::
+where the ``B`` groups of bands are further divided into ``K``
+blocks. The value of ``K`` should be chosen so that about 4 - 6 MB of
+wavefunctions are sent/received. It will be also be necessary to pass to Cobalt::
 
   --env=DCMF_EAGER=8388608
 
 which corresponds to the size of this block of wavefunctions. Note that the
 number is specified in bytes and not megabytes.
 
-For larger blocks of wavefunctions, it will be necessary to increase
+For larger blocks of wavefunctions, it may be necessary to increase
 DCMF_RECFIFO as well. This will depend on whether you are using smp, dual
 or vn mode. 
 
@@ -104,3 +116,5 @@ If you receive receive allocation error on MPI_Allreduce, please add the followi
 environment variables::
 
   --env=DCMF_REDUCE_REUSE_STORAGE=N:DCMF_ALLREDUCE_REUSE_STORAGE=N:DCMF_REDUCE=RECT
+
+Please also report this on the GPAW user mailing list.
