@@ -20,6 +20,7 @@ perform some of the most common tasks:
    bandstructures/bandstructures
    all-electron/all_electron_density
    neb/neb
+   xas/xas
    negfstm/negfstm
    ensembles/ensembles
 

@@ -103,6 +103,7 @@ if get('setups', ['setups-data.tar.gz'], '_static'):
 
 get('tutorials/lattice_constants', ['Fe_conv_k.png', 'Fe_conv_h.png'])
 get('tutorials/negfstm', ['fullscan.png', 'linescan.png'])
+get('tutorials/xas', ['h2o_xas_2.png', 'h2o_xas_3.png', 'h2o_xas_4.png'])
 
 # Retrieve latest code coverage pages:
 if get('.', ['gpaw-coverage-latest.tar.gz'], '_static',
