@@ -852,7 +852,10 @@ class CHI:
             for iw in range(self.Nw):
                 energy = iw * self.dw * Hartree
                 print >> f, energy, np.real(e1[iw]), np.imag(e1[iw]),np.real(e2[iw]), np.imag(e2[iw])
-    
+            f.close()
+
+        # Wait for I/O to finish
+        self.comm.barrier()    
 
     def get_EELS_spectrum(self, filename='EELS'):
         
@@ -865,8 +868,10 @@ class CHI:
             for iw in range(self.Nw):
                 energy = iw * self.dw * Hartree
                 print >> f, energy, -np.imag(1./e1[iw]), -np.imag(1./e2[iw])
+            f.close()
 
-
+        # Wait for I/O to finish
+        self.comm.barrier()
 
     def set_Gvectors(self):
 
