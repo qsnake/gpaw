@@ -714,73 +714,78 @@ class SLDenseLinearAlgebra2:
         self.gd.comm.broadcast(U_nN, 0)
         self.gd.comm.broadcast(eps_n, 0)
 
-class BlacsBandDescriptor:
-    # this class 'describes' all the Realspace/Blacs-related stuff
-    def __init__(self, gd, bd, ncpus, mcpus, blocksize, timer=nulltimer):
+# -------------------------------------------------------------------
 
-        bcommsize = bd.comm.size
-        gcommsize = gd.comm.size
+class BlacsLayouts:
+    def __init__(self, gd, bd, ncpus, mcpus, blocksize, timer=nulltimer):
+        self.gd = gd
+        self.bd = bd
+        self.timer = timer
+
+        bcommsize = self.bd.comm.size
+        gcommsize = self.gd.comm.size
 
         assert gd.comm.parent is bd.comm.parent # must have same parent comm
         world = bd.comm.parent
         shiftks = world.rank - world.rank % (bcommsize * gcommsize)
         column_ranks = shiftks + np.arange(bcommsize) * gcommsize
         block_ranks = shiftks + np.arange(bcommsize * gcommsize)
-        columncomm = world.new_communicator(column_ranks)
-        blockcomm = world.new_communicator(block_ranks)
+        self.columncomm = world.new_communicator(column_ranks) #XXX rename?
+        self.blockcomm = world.new_communicator(block_ranks)
+
+        assert ncpus * mcpus <= bcommsize * gcommsize
+        self.blockgrid = BlacsGrid(self.blockcomm, mcpus, ncpus)
+
+    def get_diagonalizer(self):
+        raise RuntimeError('Virtual member function should not be called.')
+
+
+class BlacsBandLayouts(BlacsLayouts):
+    # This class 'describes' all the realspace Blacs-related layouts
+    def __init__(self, gd, bd, mcpus, ncpus, blocksize, timer=nulltimer):
+        BlacsLayouts.__init__(self, gd, bd, mcpus, ncpus, blocksize, timer)
 
         nbands = bd.nbands
         mynbands = bd.mynbands
 
         # 1D layout - columns
-        self.columngrid = BlacsGrid(columncomm, 1, bcommsize)
+        self.columngrid = BlacsGrid(self.columncomm, 1, bd.comm.size)
         self.Nndescriptor = self.columngrid.new_descriptor(nbands, nbands,
                                                            nbands, mynbands)
-        
+
         # 2D layout
-        self.blockgrid = BlacsGrid(blockcomm, ncpus, mcpus)
         self.nndescriptor = self.blockgrid.new_descriptor(nbands, nbands,
                                                           blocksize, blocksize)
 
         # 1D layout - rows
-        self.rowgrid = BlacsGrid(columncomm, bcommsize, 1)
+        self.rowgrid = BlacsGrid(self.columncomm, bd.comm.size, 1)
         self.nNdescriptor = self.rowgrid.new_descriptor(nbands, nbands,
                                                         mynbands, nbands)
 
-        # Only redistribute upper half since all matrices are Hermitian
-        self.Nn2nn = Redistributor(blockcomm, self.Nndescriptor,
-                                   self.nndescriptor, 'L')
+        # Only redistribute filled out half for Hermitian matrices
+        self.Nn2nn = Redistributor(self.blockcomm, self.Nndescriptor,
+                                   self.nndescriptor)
+        self.Nn2nn_lower = Redistributor(self.blockcomm, self.Nndescriptor,
+                                         self.nndescriptor, 'L')
 
         # Resulting matrix will be used in dgemm which is symmetry obvlious
-        self.nn2nN = Redistributor(blockcomm, self.nndescriptor,
+        self.nn2nN = Redistributor(self.blockcomm, self.nndescriptor,
                                    self.nNdescriptor)
-
-        self.gd = gd
-        self.bd = bd
-        self.timer = timer
         
     def get_diagonalizer(self):
         return SLDenseLinearAlgebra2(self.gd, self.bd, self.Nn2nn, self.nn2nN,
                                      self.timer)
 
-class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
-    # This class 'describes' all the LCAO/Blacs-related stuff
-    def __init__(self, gd, bd, nao, ncpus, mcpus, blocksize, timer=nulltimer):
-        
-        bcommsize = bd.comm.size
-        gcommsize = gd.comm.size
 
-        assert gd.comm.parent is bd.comm.parent # must have same parent comm
-        world = bd.comm.parent
-        shiftks = world.rank - world.rank % (bcommsize * gcommsize)
-        column_ranks = shiftks + np.arange(bcommsize) * gcommsize
-        block_ranks = shiftks + np.arange(bcommsize * gcommsize)
-        columncomm = world.new_communicator(column_ranks)
-        blockcomm = world.new_communicator(block_ranks)
+class BlacsOrbitalLayouts(BlacsLayouts):
+    # This class 'describes' all the LCAO Blacs-related layouts
+    def __init__(self, gd, bd, nao, mcpus, ncpus, blocksize, timer=nulltimer):
+        BlacsLayouts.__init__(self, gd, bd, mcpus, ncpus, blocksize, timer)
 
         nbands = bd.nbands
         mynbands = bd.mynbands
-        naoblocksize = -((-nao) // bcommsize)
+        self.orbital_comm = self.bd.comm
+        naoblocksize = -((-nao) // self.orbital_comm.size)
         self.nao = nao
 
         # Range of basis functions for BLACS distribution of matrices:
@@ -790,19 +795,19 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
         self.mynao = self.Mstop - self.Mstart
 
         # Column layout for one matrix per band rank:
-        columngrid = BlacsGrid(bd.comm, bcommsize, 1)
-        self.mMdescriptor = columngrid.new_descriptor(nao, nao,
-                                                      naoblocksize, nao)
-        self.nMdescriptor = columngrid.new_descriptor(nbands, nao,
-                                                      mynbands, nao)
+        self.columngrid = BlacsGrid(bd.comm, bd.comm.size, 1)
+        self.mMdescriptor = self.columngrid.new_descriptor(nao, nao,
+                                                           naoblocksize, nao)
+        self.nMdescriptor = self.columngrid.new_descriptor(nbands, nao,
+                                                           mynbands, nao)
         assert self.mMdescriptor.shape == (self.mynao, nao)
 
         #parallelprint(world, (mynao, self.mMdescriptor.shape))
 
         # Column layout for one matrix in total (only on grid masters):
-        single_column_grid = BlacsGrid(columncomm, bcommsize, 1)
-        self.mM_unique_descriptor = single_column_grid.new_descriptor(nao,
-            nao, naoblocksize, nao)
+        self.single_column_grid = BlacsGrid(self.columncomm, bd.comm.size, 1)
+        self.mM_unique_descriptor = self.single_column_grid.new_descriptor( \
+            nao, nao, naoblocksize, nao)
 
         # nM_unique_descriptor is meant to hold the coefficients after
         # diagonalization.  BLACS requires it to be nao-by-nao, but
@@ -810,37 +815,22 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
         #
         # The array will then be trimmed and broadcast across
         # the grid descriptor's communicator.
-        self.nM_unique_descriptor = single_column_grid.new_descriptor(nbands,
-            nao, mynbands, nao)
+        self.nM_unique_descriptor = self.single_column_grid.new_descriptor( \
+            nbands, nao, mynbands, nao)
 
         # Fully blocked grid for diagonalization with many CPUs:
-        blockgrid = BlacsGrid(blockcomm, mcpus, ncpus)
-        self.mmdescriptor = blockgrid.new_descriptor(nao, nao, blocksize,
-                                                     blocksize)
+        self.mmdescriptor = self.blockgrid.new_descriptor(nao, nao, blocksize,
+                                                          blocksize)
 
         #self.nMdescriptor = nMdescriptor
-        self.mM2mm = Redistributor(blockcomm, self.mM_unique_descriptor,
+        self.mM2mm = Redistributor(self.blockcomm, self.mM_unique_descriptor,
                                    self.mmdescriptor)
-        self.mm2nM = Redistributor(blockcomm, self.mmdescriptor,
+        self.mm2nM = Redistributor(self.blockcomm, self.mmdescriptor,
                                    self.nM_unique_descriptor)
-
-        self.orbital_comm = bd.comm
-        self.gd = gd
-        self.bd = bd
-        self.timer = timer
 
     def get_diagonalizer(self):
         return SLDenseLinearAlgebra(self.gd, self.bd, self.mM2mm, self.mm2nM,
                                     self.timer)
-
-    def get_overlap_descriptor(self):
-        return self.mMdescriptor
-
-    def get_diagonalization_descriptor(self):
-        return self.mmdescriptor
-
-    def get_coefficient_descriptor(self):
-        return self.nMdescriptor
 
     def distribute_overlap_matrix(self, S_qmM, root=0):
         # Some MPI implementations need a lot of memory to do large
@@ -894,7 +884,7 @@ class BlacsOrbitalDescriptor: # XXX can we find a less confusing name?
         return self.calculate_density_matrix(f_n, C_nM, rho_mM)
         
 
-class OrbitalDescriptor:
+class OrbitalLayouts:
     def __init__(self, gd, bd, nao):
         self.gd = gd # XXX shouldn't be necessary
         self.bd = bd
@@ -912,15 +902,6 @@ class OrbitalDescriptor:
         from gpaw.lcao.eigensolver import LapackDiagonalizer
         diagonalizer = LapackDiagonalizer(self.gd, self.bd)
         return diagonalizer
-
-    def get_overlap_descriptor(self):
-        return self.mMdescriptor
-
-    def get_diagonalization_descriptor(self):
-        return self.mMdescriptor
-
-    def get_coefficient_descriptor(self):
-        return self.nMdescriptor
 
     def distribute_overlap_matrix(self, S_qMM, root=0):
         self.gd.comm.sum(S_qMM, root)

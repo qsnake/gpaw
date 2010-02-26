@@ -11,7 +11,7 @@ from gpaw.matrix_descriptor import BlacsBandMatrixDescriptor
 
 from gpaw.utilities import scalapack
 from gpaw.utilities.blacs import scalapack_set
-from gpaw.blacs import parallelprint, BlacsBandDescriptor, Redistributor
+from gpaw.blacs import BlacsBandLayouts, Redistributor
 
 if debug:
     np.set_printoptions(linewidth=168) #XXX large xterm width
@@ -62,7 +62,8 @@ class UTBandParallelBlacsSetup(UTBandParallelSetup):
         self.assertEqual((self.nspins*self.nibzkpts) % self.kpt_comm.size, 0)
 
     def verify_blacs_stuff(self):
-        bbd = BlacsBandDescriptor(self.gd, self.bd, self.mcpus, self.ncpus, 6)
+        # TODO do more here :)
+        ksl = BlacsBandLayouts(self.gd, self.bd, self.mcpus, self.ncpus, 6)
 
 
 class UTBandParallelBlacsSetup_Blocked(UTBandParallelBlacsSetup):
@@ -97,14 +98,13 @@ class UTConstantWavefunctionBlacsSetup(UTConstantWavefunctionSetup,
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
         overlap = MatrixOperator(self.bd, self.gd, nblocks, self.async, True)
 
-        bbd = BlacsBandDescriptor(self.gd, self.bd, self.mcpus, self.ncpus, 6)
-        overlap.bmd = BlacsBandMatrixDescriptor(self.bd, self.gd, bbd)
+        overlap.bmd = BlacsBandMatrixDescriptor(self.bd, self.gd, self.mcpus, self.ncpus, 6)
         S_nn = overlap.calculate_matrix_elements(self.psit_nG, self.P_ani, S, dS)
 
         if memstats:
             self.mem_test = record_memory()
 
-        S_NN = bbd.nndescriptor.collect_on_master(S_nn)
+        S_NN = overlap.bmd.nndescriptor.collect_on_master(S_nn)
         if self.bd.comm.rank == 0 and self.gd.comm.rank == 0:
             assert S_NN.shape == (self.bd.nbands,) * 2
             S_NN = S_NN.T.copy() # Fortran -> C indexing
@@ -130,19 +130,16 @@ class UTConstantWavefunctionBlacsSetup(UTConstantWavefunctionSetup,
         dS = lambda a, P_ni: np.dot(alpha*P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
         overlap = MatrixOperator(self.bd, self.gd, nblocks, self.async, False)
-
-        bbd = BlacsBandDescriptor(self.gd, self.bd, self.mcpus, self.ncpus, 6)
+        overlap.bmd = BlacsBandMatrixDescriptor(self.bd, self.gd, self.mcpus, self.ncpus, 6)
         if 1: #XXX non-hermitian case so Nn2nn not just uplo='L' but rather 'G'
-            blockcomm = bbd.nndescriptor.blacsgrid.comm
-            bbd.Nn2nn = Redistributor(blockcomm, bbd.Nndescriptor, bbd.nndescriptor)
-        overlap.bmd = BlacsBandMatrixDescriptor(self.bd, self.gd, bbd)
-
+            blockcomm = overlap.bmd.nndescriptor.blacsgrid.comm
+            overlap.bmd.Nn2nn = Redistributor(blockcomm, overlap.bmd.Nndescriptor, overlap.bmd.nndescriptor)
         S_nn = overlap.calculate_matrix_elements(self.psit_nG, self.P_ani, S, dS)
 
         if memstats:
             self.mem_test = record_memory()
 
-        S_NN = bbd.nndescriptor.collect_on_master(S_nn)
+        S_NN = overlap.bmd.nndescriptor.collect_on_master(S_nn)
         if self.bd.comm.rank == 0 and self.gd.comm.rank == 0:
             assert S_NN.shape == (self.bd.nbands,) * 2
             S_NN = S_NN.T.copy() # Fortran -> C indexing
@@ -162,22 +159,20 @@ class UTConstantWavefunctionBlacsSetup(UTConstantWavefunctionSetup,
         dS = lambda a, P_ni: np.dot(P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
         overlap = MatrixOperator(self.bd, self.gd, nblocks, self.async, True)
-
-        bbd = BlacsBandDescriptor(self.gd, self.bd, self.mcpus, self.ncpus, 6)
-        overlap.bmd = BlacsBandMatrixDescriptor(self.bd, self.gd, bbd)
+        overlap.bmd = BlacsBandMatrixDescriptor(self.bd, self.gd, self.mcpus, self.ncpus, 6)
         S_nn = overlap.calculate_matrix_elements(self.psit_nG, self.P_ani, S, dS)
 
         # Known starting point of SI_nn = <psit_m|S+alpha*I|psit_n>
-        I_nn = bbd.nndescriptor.empty(dtype=S_nn.dtype)
-        scalapack_set(bbd.nndescriptor, I_nn, 0.0, 1.0, 'L')
+        I_nn = overlap.bmd.nndescriptor.empty(dtype=S_nn.dtype)
+        scalapack_set(overlap.bmd.nndescriptor, I_nn, 0.0, 1.0, 'L')
         alpha = 1e-3 # shift eigenvalues away from zero
 
         C_nn = S_nn + alpha * I_nn
-        bbd.nndescriptor.inverse_cholesky(C_nn, 'L')
+        overlap.bmd.nndescriptor.inverse_cholesky(C_nn, 'L')
         self.psit_nG = overlap.matrix_multiply(C_nn, self.psit_nG, self.P_ani)
         D_nn = overlap.calculate_matrix_elements(self.psit_nG, self.P_ani, S, dS)
 
-        D_NN = bbd.nndescriptor.collect_on_master(D_nn)
+        D_NN = overlap.bmd.nndescriptor.collect_on_master(D_nn)
         if self.bd.comm.rank == 0 and self.gd.comm.rank == 0:
             assert D_NN.shape == (self.bd.nbands,) * 2
             D_NN = D_NN.T.copy() # Fortran -> C indexing
@@ -210,14 +205,12 @@ class UTConstantWavefunctionBlacsSetup(UTConstantWavefunctionSetup,
         dS = lambda a, P_ni: np.dot(P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
         overlap = MatrixOperator(self.bd, self.gd, nblocks, self.async, True)
-
-        bbd = BlacsBandDescriptor(self.gd, self.bd, self.mcpus, self.ncpus, 6)
-        overlap.bmd = BlacsBandMatrixDescriptor(self.bd, self.gd, bbd)
+        overlap.bmd = BlacsBandMatrixDescriptor(self.bd, self.gd, self.mcpus, self.ncpus, 6)
         S_nn = overlap.calculate_matrix_elements(self.psit_nG, self.P_ani, S, dS)
 
         eps_N = self.bd.empty(global_array=True) # XXX dtype?
-        C_nn = bbd.nndescriptor.empty(dtype=S_nn.dtype)
-        bbd.nndescriptor.diagonalize_dc(S_nn, C_nn, eps_N, 'L')
+        C_nn = overlap.bmd.nndescriptor.empty(dtype=S_nn.dtype)
+        overlap.bmd.nndescriptor.diagonalize_dc(S_nn, C_nn, eps_N, 'L')
         self.assertAlmostEqual(np.abs(np.sort(eps_N)-np.sort(W_n)).max(), 0, 9)
 
         #eps_n = self.bd.empty()
@@ -229,7 +222,7 @@ class UTConstantWavefunctionBlacsSetup(UTConstantWavefunctionSetup,
         # Recaulculate the overlap matrix, which should now be diagonal
         D_nn = overlap.calculate_matrix_elements(self.psit_nG, self.P_ani, S, dS)
 
-        D_NN = bbd.nndescriptor.collect_on_master(D_nn)
+        D_NN = overlap.bmd.nndescriptor.collect_on_master(D_nn)
         if self.bd.comm.rank == 0 and self.gd.comm.rank == 0:
             assert D_NN.shape == (self.bd.nbands,) * 2
             D_NN = D_NN.T.copy() # Fortran -> C indexing
@@ -257,28 +250,27 @@ class UTConstantWavefunctionBlacsSetup(UTConstantWavefunctionSetup,
         C_NN = C_NN.reshape((self.nbands,self.nbands)) / np.linalg.norm(C_NN,2)
         world.broadcast(C_NN, 0)
 
-        bbd = BlacsBandDescriptor(self.gd, self.bd, self.mcpus, self.ncpus, 6)
-
-        if self.bd.comm.rank == 0 and self.gd.comm.rank == 0:
-            assert C_NN.shape == (self.bd.nbands,) * 2
-            tmp_NN = C_NN.T.copy() # C -> Fortran indexing
-        else:
-            tmp_NN = bbd.nndescriptor.as_serial().empty(dtype=C_NN.dtype)
-        C_nn = bbd.nndescriptor.distribute_from_master(tmp_NN)
-
         # Set up Hermitian overlap operator:
         S = lambda x: x
         dS = lambda a, P_ni: np.dot(P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
         overlap = MatrixOperator(self.bd, self.gd, nblocks, self.async, True)
-        overlap.bmd = BlacsBandMatrixDescriptor(self.bd, self.gd, bbd)
+        overlap.bmd = BlacsBandMatrixDescriptor(self.bd, self.gd, self.mcpus, self.ncpus, 6)
+
+        if self.bd.comm.rank == 0 and self.gd.comm.rank == 0:
+            assert C_NN.shape == (self.bd.nbands,) * 2
+            tmp_NN = C_NN.T.copy() # C -> Fortran indexing
+        else:
+            tmp_NN = overlap.bmd.nndescriptor.as_serial().empty(dtype=C_NN.dtype)
+        C_nn = overlap.bmd.nndescriptor.distribute_from_master(tmp_NN)
+
         self.psit_nG = overlap.matrix_multiply(C_nn, self.psit_nG, self.P_ani)
         D_nn = overlap.calculate_matrix_elements(self.psit_nG, self.P_ani, S, dS)
 
         if memstats:
             self.mem_test = record_memory()
 
-        D_NN = bbd.nndescriptor.collect_on_master(D_nn)
+        D_NN = overlap.bmd.nndescriptor.collect_on_master(D_nn)
         if self.bd.comm.rank == 0 and self.gd.comm.rank == 0:
             assert D_NN.shape == (self.bd.nbands,) * 2
             D_NN = D_NN.T.copy() # Fortran -> C indexing
@@ -312,31 +304,30 @@ class UTConstantWavefunctionBlacsSetup(UTConstantWavefunctionSetup,
         C_NN = C_NN.reshape((self.nbands,self.nbands)) / np.linalg.norm(C_NN,2)
         world.broadcast(C_NN, 0)
 
-        bbd = BlacsBandDescriptor(self.gd, self.bd, self.mcpus, self.ncpus, 6)
-        if 1: #XXX non-hermitian case so Nn2nn not just uplo='L' but rather 'G'
-            blockcomm = bbd.nndescriptor.blacsgrid.comm
-            bbd.Nn2nn = Redistributor(blockcomm, bbd.Nndescriptor, bbd.nndescriptor)
-
-        if self.bd.comm.rank == 0 and self.gd.comm.rank == 0:
-            assert C_NN.shape == (self.bd.nbands,) * 2
-            tmp_NN = C_NN.T.copy() # C -> Fortran indexing
-        else:
-            tmp_NN = bbd.nndescriptor.as_serial().empty(dtype=C_NN.dtype)
-        C_nn = bbd.nndescriptor.distribute_from_master(tmp_NN)
-
         # Set up Hermitian overlap operator:
         S = lambda x: alpha*x
         dS = lambda a, P_ni: np.dot(alpha*P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
         overlap = MatrixOperator(self.bd, self.gd, nblocks, self.async, False)
-        overlap.bmd = BlacsBandMatrixDescriptor(self.bd, self.gd, bbd)
+        overlap.bmd = BlacsBandMatrixDescriptor(self.bd, self.gd, self.mcpus, self.ncpus, 6)
+        if 1: #XXX non-hermitian case so Nn2nn not just uplo='L' but rather 'G'
+            blockcomm = overlap.bmd.nndescriptor.blacsgrid.comm
+            overlap.bmd.Nn2nn = Redistributor(blockcomm, overlap.bmd.Nndescriptor, overlap.bmd.nndescriptor)
+
+        if self.bd.comm.rank == 0 and self.gd.comm.rank == 0:
+            assert C_NN.shape == (self.bd.nbands,) * 2
+            tmp_NN = C_NN.T.copy() # C -> Fortran indexing
+        else:
+            tmp_NN = overlap.bmd.nndescriptor.as_serial().empty(dtype=C_NN.dtype)
+        C_nn = overlap.bmd.nndescriptor.distribute_from_master(tmp_NN)
+
         self.psit_nG = overlap.matrix_multiply(C_nn, self.psit_nG, self.P_ani)
         D_nn = overlap.calculate_matrix_elements(self.psit_nG, self.P_ani, S, dS)
 
         if memstats:
             self.mem_test = record_memory()
 
-        D_NN = bbd.nndescriptor.collect_on_master(D_nn)
+        D_NN = overlap.bmd.nndescriptor.collect_on_master(D_nn)
         if self.bd.comm.rank == 0 and self.gd.comm.rank == 0:
             assert D_NN.shape == (self.bd.nbands,) * 2
             D_NN = D_NN.T.copy() # Fortran -> C indexing

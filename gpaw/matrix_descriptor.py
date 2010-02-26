@@ -269,17 +269,16 @@ class BandMatrixDescriptor(MatrixDescriptor):
 
 # -------------------------------------------------------------------
 
-#from gpaw.blacs import BlacsDescriptor
+#from gpaw.blacs import BlacsDescriptor #TODO XXX derive from BlacsDescriptor
+from gpaw.blacs import BlacsBandLayouts
 
-class BlacsBandMatrixDescriptor(MatrixDescriptor): #TODO from BlacsDescriptor
+class BlacsBandMatrixDescriptor(MatrixDescriptor, BlacsBandLayouts):
     """Descriptor-class for square BLACS matrices of bands times bands."""
 
-    def __init__(self, bd, gd, bbd):
+    def __init__(self, bd, gd, mcpus, ncpus, blocksize):
         #BlacsDescriptor.__init__(self, blacsgrid, M, N, mb, nb, rsrc, csrc)
         MatrixDescriptor.__init__(self, bd.nbands, bd.mynbands)
-        self.bd = bd
-        self.gd = gd #XXX used?
-        self.bbd = bbd # XXX ugly hack!!!
+        BlacsBandLayouts.__init__(self, gd, bd, mcpus, ncpus, blocksize)
 
     def assemble_blocks(self, A_qnn, A_Nn, hermitian):
         """Assign all distributed sub-blocks pertaining from various rank to
@@ -559,20 +558,20 @@ class BlacsBandMatrixDescriptor(MatrixDescriptor): #TODO from BlacsDescriptor
 
     def redistribute_input(self, A_nn, A_nN=None): # 2D -> 1D row layout
         if A_nN is None:
-            A_nN = self.bbd.nNdescriptor.empty(dtype=A_nn.dtype)
-        self.bbd.nn2nN.redistribute(A_nn, A_nN)
-        if not self.bbd.nNdescriptor.blacsgrid.is_active(): #XXX wtf fix
+            A_nN = self.nNdescriptor.empty(dtype=A_nn.dtype)
+        self.nn2nN.redistribute(A_nn, A_nN)
+        if not self.nNdescriptor.blacsgrid.is_active():
             assert A_nN.shape == (0,0)
             A_nN = np.empty((self.bd.mynbands, self.bd.nbands), dtype=A_nN.dtype)
-        self.gd.comm.broadcast(A_nN, 0) #XXX copy/paste from BlacsBandDescriptor
+        self.gd.comm.broadcast(A_nN, 0)
         return A_nN
 
     def redistribute_output(self, A_Nn, A_nn=None): # 1D column -> 2D layout
-        if not self.bbd.Nndescriptor.blacsgrid.is_active(): #XXX wtf fix
+        if not self.Nndescriptor.blacsgrid.is_active():
             A_Nn = np.empty((0,0), dtype=A_Nn.dtype)
         if A_nn is None:
-            A_nn = self.bbd.nndescriptor.empty(dtype=A_Nn.dtype)
-        self.bbd.Nn2nn.redistribute(A_Nn, A_nn)
+            A_nn = self.nndescriptor.empty(dtype=A_Nn.dtype)
+        self.Nn2nn.redistribute(A_Nn, A_nn)
         return A_nn
 
     #def redistribute_input(self, A_NN): # 2D -> 1D row layout

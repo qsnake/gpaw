@@ -70,7 +70,7 @@ class LCAO:
         # XXX document parallel stuff, particularly root parameter
         assert self.has_initialized
         vt_G = hamiltonian.vt_sG[kpt.s]
-        H_MM = np.empty((wfs.od.mynao, wfs.od.nao), wfs.dtype)
+        H_MM = np.empty((wfs.ksl.mynao, wfs.ksl.nao), wfs.dtype)
 
         wfs.timer.start('Potential matrix')
         wfs.basis_functions.calculate_potential_matrix(vt_G, H_MM, kpt.q)
@@ -94,7 +94,7 @@ class LCAO:
             gemm(1.0, dHP_iM, P_Mi[Mstart:Mstop], 1.0, H_MM)
         wfs.timer.stop('Atomic Hamiltonian')
         wfs.timer.start('Distribute overlap matrix')
-        H_MM = wfs.od.distribute_overlap_matrix(H_MM, root)
+        H_MM = wfs.ksl.distribute_overlap_matrix(H_MM, root)
         wfs.timer.stop('Distribute overlap matrix')
         H_MM += wfs.T_qMM[kpt.q]
         return H_MM

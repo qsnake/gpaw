@@ -524,20 +524,20 @@ class PAW(PAWTextOutput):
                 sl_diagonalize = par.parallel['scalapack']
                 if sl_diagonalize is None:
                     from gpaw import sl_diagonalize
-                from gpaw.blacs import BlacsOrbitalDescriptor
+                from gpaw.blacs import BlacsOrbitalLayouts
                 ncpus, mcpus, blocksize = sl_diagonalize[:3]
-                od = BlacsOrbitalDescriptor(gd, self.bd, nao,
-                                            ncpus, mcpus, blocksize,
-                                            self.timer)
+                ksl = BlacsOrbitalLayouts(gd, self.bd, nao,
+                                        ncpus, mcpus, blocksize,
+                                        self.timer)
             else:
                 # XXX This is actually a non-BLACS object.  The class should be
                 # defined somewhere else
-                from gpaw.blacs import OrbitalDescriptor
-                od = OrbitalDescriptor(gd, self.bd, setups.nao)
+                from gpaw.blacs import OrbitalLayouts
+                ksl = OrbitalLayouts(gd, self.bd, setups.nao)
 
             
             # do k-point analysis here? XXX
-            args = (gd, od, nspins, nvalence, setups, self.bd,
+            args = (gd, ksl, nspins, nvalence, setups, self.bd,
                     dtype, world, kpt_comm,
                     gamma, bzk_kc, ibzk_kc, weight_k, symmetry, self.timer)
             if par.mode == 'lcao':

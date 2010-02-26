@@ -49,11 +49,11 @@ class WaveFunctions(EmptyWaveFunctions):
     kpt_comm:
         MPI-communicator for parallelization over **k**-points.
     """
-    def __init__(self, gd, od, nspins, nvalence, setups, bd, dtype, world,
+    def __init__(self, gd, ksl, nspins, nvalence, setups, bd, dtype, world,
                  kpt_comm,
                  gamma, bzk_kc, ibzk_kc, weight_k, symmetry, timer=nulltimer):
         self.gd = gd
-        self.od = od
+        self.ksl = ksl
         self.nspins = nspins
         self.nvalence = nvalence
         self.bd = bd
@@ -451,7 +451,7 @@ class LCAOWaveFunctions(WaveFunctions):
     def set_eigensolver(self, eigensolver):
         WaveFunctions.set_eigensolver(self, eigensolver)
         eigensolver.initialize(self.gd, self.dtype, self.setups.nao,
-                               self.od.get_diagonalizer())
+                               self.ksl.get_diagonalizer())
 
     def set_positions(self, spos_ac):
         self.timer.start('Basic WFS set positions')
@@ -460,16 +460,16 @@ class LCAOWaveFunctions(WaveFunctions):
         self.timer.start('Basis functions set positions')
         self.basis_functions.set_positions(spos_ac)
         self.timer.stop('Basis functions set positions')
-        if self.od is not None:
-            self.basis_functions.set_matrix_distribution(self.od.Mstart,
-                                                         self.od.Mstop)
+        if self.ksl is not None:
+            self.basis_functions.set_matrix_distribution(self.ksl.Mstart,
+                                                         self.ksl.Mstop)
 
         nq = len(self.ibzk_qc)
         nao = self.setups.nao
         mynbands = self.mynbands
         
-        Mstop = self.od.Mstop
-        Mstart = self.od.Mstart
+        Mstop = self.ksl.Mstop
+        Mstart = self.ksl.Mstart
         mynao = Mstop - Mstart
         
         S_qMM = self.S_qMM
@@ -478,8 +478,8 @@ class LCAOWaveFunctions(WaveFunctions):
         if S_qMM is None: # XXX
             # First time:
             assert T_qMM is None
-            from gpaw.blacs import BlacsOrbitalDescriptor
-            if isinstance(self.od, BlacsOrbitalDescriptor): # XXX
+            from gpaw.blacs import BlacsOrbitalLayouts
+            if isinstance(self.ksl, BlacsOrbitalLayouts): # XXX
                 self.tci.set_matrix_distribution(Mstart, mynao)
                 
             S_qMM = np.empty((nq, mynao, nao), self.dtype)
@@ -514,8 +514,8 @@ class LCAOWaveFunctions(WaveFunctions):
         self.timer.stop('TCI: Calculate S, T, P')
 
         S_MM = None # allow garbage collection of old S_qMM after redist
-        S_qMM = self.od.distribute_overlap_matrix(S_qMM)
-        T_qMM = self.od.distribute_overlap_matrix(T_qMM)
+        S_qMM = self.ksl.distribute_overlap_matrix(S_qMM)
+        T_qMM = self.ksl.distribute_overlap_matrix(T_qMM)
 
         for kpt in self.kpt_u:
             q = kpt.q
@@ -558,10 +558,10 @@ class LCAOWaveFunctions(WaveFunctions):
         # ATLAS can't handle uninitialized output array:
         #rho_MM.fill(42)
 
-        #from gpaw.blacs import BlacsOrbitalDescriptor
-        #if isinstance(self.od, BlacsOrbitalDescriptor):
+        #from gpaw.blacs import BlacsOrbitalLayouts
+        #if isinstance(self.ksl, BlacsOrbitalLayouts):
         self.timer.start('Calculate density matrix')
-        rho_MM = self.od.calculate_density_matrix(f_n, C_nM, rho_MM)
+        rho_MM = self.ksl.calculate_density_matrix(f_n, C_nM, rho_MM)
         self.timer.stop('Calculate density matrix')
         return rho_MM
 
@@ -606,8 +606,8 @@ class LCAOWaveFunctions(WaveFunctions):
     def calculate_forces(self, hamiltonian, F_av):
         self.timer.start('LCAO forces')
         spos_ac = self.tci.atoms.get_scaled_positions() % 1.0
-        nao = self.od.nao
-        mynao = self.od.mynao
+        nao = self.ksl.nao
+        mynao = self.ksl.mynao
         nq = len(self.ibzk_qc)
         dtype = self.dtype
         dThetadR_qvMM = np.empty((nq, 3, mynao, nao), dtype)
@@ -634,7 +634,7 @@ class LCAOWaveFunctions(WaveFunctions):
                                             dThetadR_qvMM[kpt.q],
                                             dTdR_qvMM[kpt.q],
                                             dPdR_aqvMi)
-        self.od.orbital_comm.sum(F_av)
+        self.ksl.orbital_comm.sum(F_av)
         if self.bd.comm.rank == 0:
             self.kpt_comm.sum(F_av, 0)
         self.timer.stop('LCAO forces')
@@ -654,12 +654,12 @@ class LCAOWaveFunctions(WaveFunctions):
                                    dThetadR_vMM, dTdR_vMM, dPdR_aqvMi):
         k = kpt.k
         q = kpt.q
-        mynao = self.od.mynao
-        nao = self.od.nao
+        mynao = self.ksl.mynao
+        nao = self.ksl.nao
         dtype = self.dtype
 
-        Mstart = self.od.Mstart
-        Mstop = self.od.Mstop
+        Mstart = self.ksl.Mstart
+        Mstop = self.ksl.Mstop
         
         basis_functions = self.basis_functions
         my_atom_indices = basis_functions.my_atom_indices
@@ -689,9 +689,9 @@ class LCAOWaveFunctions(WaveFunctions):
         # if rho is given, otherwise the coefficients are used.
         self.timer.start('LCAO forces: initial')
         if kpt.rho_MM is None:
-            rhoT_MM = self.od.get_transposed_density_matrix(kpt.f_n, kpt.C_nM)
-            ET_MM = self.od.get_transposed_density_matrix(kpt.f_n * kpt.eps_n,
-                                                          kpt.C_nM)
+            rhoT_MM = self.ksl.get_transposed_density_matrix(kpt.f_n, kpt.C_nM)
+            ET_MM = self.ksl.get_transposed_density_matrix(kpt.f_n * kpt.eps_n,
+                                                           kpt.C_nM)
         else:
             H_MM = self.eigensolver.calculate_hamiltonian_matrix(hamiltonian,
                                                                  self,
@@ -864,7 +864,7 @@ class LCAOWaveFunctions(WaveFunctions):
         ni_total = sum([setup.ni for setup in self.setups])
         itemsize = mem.itemsize[self.dtype]
         mem.subnode('C [qnM]', nq * self.mynbands * nao * itemsize)
-        nM1, nM2 = self.od.get_overlap_matrix_shape()
+        nM1, nM2 = self.ksl.get_overlap_matrix_shape()
         mem.subnode('S, T [2 x qmm]', 2 * nq * nM1 * nM2 * itemsize)
         mem.subnode('P [aqMi]', nq * nao * ni_total / self.gd.comm.size)
         self.tci.estimate_memory(mem.subnode('TCI'))
@@ -965,7 +965,7 @@ class GridWaveFunctions(WaveFunctions):
         lcaobd = BandDescriptor(lcaonbands, self.band_comm, self.bd.strided)
         assert lcaobd.mynbands == lcaomynbands #XXX
 
-        lcaowfs = LCAOWaveFunctions(self.gd, self.od, self.nspins,
+        lcaowfs = LCAOWaveFunctions(self.gd, self.ksl, self.nspins,
                                     self.nvalence, self.setups, lcaobd,
                                     self.dtype, self.world, self.kpt_comm,
                                     self.gamma, self.bzk_kc, self.ibzk_kc,
@@ -977,7 +977,7 @@ class GridWaveFunctions(WaveFunctions):
         self.timer.stop('Set positions (LCAO WFS)')
         eigensolver = get_eigensolver('lcao', 'lcao')
 
-        diagonalizer = lcaowfs.od.get_diagonalizer()
+        diagonalizer = lcaowfs.ksl.get_diagonalizer()
         eigensolver.initialize(self.gd,
                                self.dtype,
                                self.setups.nao,

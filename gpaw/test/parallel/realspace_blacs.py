@@ -13,7 +13,7 @@ from gpaw.mpi import world, distribute_cpus
 from gpaw.utilities import scalapack
 from gpaw.utilities.blacs import scalapack_set, scalapack_zero 
 from gpaw.blacs import BlacsGrid, Redistributor, parallelprint, \
-    BlacsBandDescriptor
+    BlacsBandLayouts
 
 G = 120  # number of grid points (G x G x G)
 N = 10  # number of bands
@@ -44,7 +44,7 @@ gd = GridDescriptor((G, G, G), (a, a, a), True, domain_comm, parsize=D)
 mcpus, ncpus, blocksize = 2, 2, 6
 
 def main(seed=42, dtype=float):
-    bbd = BlacsBandDescriptor(gd, bd, mcpus, ncpus, blocksize)
+    ksl = BlacsBandLayouts(gd, bd, mcpus, ncpus, blocksize)
     nbands = bd.nbands
     mynbands = bd.mynbands
 
@@ -55,15 +55,15 @@ def main(seed=42, dtype=float):
     H_Nn = np.zeros((nbands, mynbands), dtype=dtype)
     U_nN = np.empty((mynbands, nbands), dtype=dtype)
 
-    if bbd.Nndescriptor: # hack
-        scalapack_set(bbd.Nndescriptor, H_Nn, 0.1, 75.0, 'L')
+    if ksl.Nndescriptor: # hack
+        scalapack_set(ksl.Nndescriptor, H_Nn, 0.1, 75.0, 'L')
     else:
         gd.comm.rank != 0
 
     print "H_Nn"
     parallelprint(world, H_Nn)
     
-    diagonalizer = bbd.get_diagonalizer()
+    diagonalizer = ksl.get_diagonalizer()
     eps_n = np.zeros(bd.mynbands)
     diagonalizer.diagonalize(H_Nn, U_nN, eps_n)
     print "U_nN"
@@ -75,8 +75,8 @@ def main(seed=42, dtype=float):
     S_Nn = np.zeros((nbands, mynbands), dtype=dtype)
     C_nN = np.empty((mynbands, nbands), dtype=dtype) 
 
-    if bbd.Nndescriptor: # hack
-        scalapack_set(bbd.Nndescriptor, S_Nn, 0.1, 75.0, 'L')
+    if ksl.Nndescriptor: # hack
+        scalapack_set(ksl.Nndescriptor, S_Nn, 0.1, 75.0, 'L')
     else:
         gd.comm.rank != 0
 
