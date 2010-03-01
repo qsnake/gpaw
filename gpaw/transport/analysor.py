@@ -891,7 +891,9 @@ class Transport_Analysor:
         self.n_bias_step = 0
         self.n_ion_step += 1
         if world.rank == 0:
-            os.mkdir('analysis_data/ionic_step_' + str(self.n_ion_step))
+            dirname = 'analysis_data/ionic_step_' + str(self.n_ion_step)
+            if not os.access(dirname, os.F_OK):            
+                os.mkdir(dirname)
         world.barrier()
  
     def abstract_d_and_v(self):
