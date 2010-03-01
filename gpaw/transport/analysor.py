@@ -1048,7 +1048,33 @@ class Transport_Plotter:
         if atom_indices is not None:
             atom_index -= 1
             for i in atom_indices:
-                atom_index += orbital_indices[:, 0] - j == 0
-        pdos = np.sum(dos_array * orbital_index * atom_index)
+                atom_index += orbital_indices[:, 0] - i == 0
+        pdos = []
+        for i in range(dos_array.shape[1]):
+            pdos.append(np.sum(dos_array[:,i] * orbital_index * atom_index))
+        pdos = np.array(pdos)
         return pdos
+
+    def iv(self, nsteps=16, spinpol=True):
+        current = []
+        bias = []
+        for i in range(nsteps):
+            bias_list = self.get_info('bias', i)
+            bias.append(bias_list[0]-bias_list[1])
+            current.append(self.get_info('current', i))
+        unit = 6.624 * 1e3 
+        current = np.array(current) * unit / (Hartree * 2 * np.pi)
+        if not spinpol:
+            current *= 2
+        bias = np.array(bias)
+        return bias, current
+    
+    def tvs(self, nsteps=16, spinpol=True):
+        bias, current = self.iv(nsteps,  spinpol)
+        current *= 1e-6 # switch unit to Ampier
+        ydata = np.log(abs(current) / (bias * bias))
+        xdata = 1 / bias
+        return xdata, ydata
+
+
 
