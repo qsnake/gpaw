@@ -97,12 +97,54 @@ February 11 2010.
 *Documentation* refers solely the contents of this homepage. Inline
 documentation is included in the other line counts.
 
-.. ::
 
-   Commented text!
+Contributing to GPAW
+====================
 
-   The gpaw development project currently count about 20 active
-   developers in 7 universities, and has 93 subscribers to the mailing
-   list.
+Getting commit access to our SVN repository works the same way as for
+the `ASE project`_.  Here is the list of current committers:
 
 
+==============  ============================
+id              real name
+==============  ============================
+askhl           Ask Hjorth Larsen
+carstenr        Carsten Rostgaard
+dlandis         David Landis
+dulak           Marcin Dulak
+georg           Poul Georg Moses
+getri           George Tritsaris
+hahansen        Heine Anton Hansen
+haiping         Haiping Lin
+hhk05           Henrik Kristoffersen
+jensj           Jens Jørgen Mortensen
+jingzhe         Jingzhe Chen
+jsm             Jess Stausholm-Møller
+jstenlund       Jonathan Stenlund
+jussie          Jussi Enkovaara
+juya            Jun Yan
+kelkkane        Andre Kelkkanen
+kuismam         Mikael Kuisma
+lara            Lara Ferrighi
+lauri           Lauri Lethovaara
+lopeza          Olga Lopez
+madsbk          Mads Burgdorff Kristensen
+marsalek        Ondrej Marsalek
+mathiasl        Mathias Ljungberg
+miwalter        Michael Walter
+moses           Poul Georg Moses
+mvanin          Marco Vanin
+naromero        Nichols Romero
+peterklue       Peter Kluepfel
+rostgaard       Carsten Rostgaard
+s032082         Christian Glinsvad
+s042606         Janosch Michael Rauba
+s052580         Troels Kofoed Jacobsen
+schiotz         Jakob Schiotz
+strange         Mikkel Strange
+tolsen          Thomas Olsen
+==============  ============================
+
+.. _ASE project: https://wiki.fysik.dtu.dk/ase/development/contribute.html
+
+.. epost={'askhl': 'askhl fysik,dtu,dk', 'tolsen': 'tolsen fysik,dtu,dk', 'jussie': 'jussi,enkovaara csc,fi', 'dulak': 'dulak fysik,dtu,dk', 'hhk05': 'hhk05 inano,dk', 'carstenr': 'carstenr fysik,dtu,dk', 'lara': 'laraf phys,au,dk', 'lauri': 'lauri,lehtovaara iki,fi', 'naromero': 'naromero alcf,anl,gov', 'kuismam': 'mikael,kuisma tut,fi', 'mathiasl': 'mathiasl physto,se', 'haiping': 'H,Lin1 liverpool,ac,uk', 'georg': 'georg fysik,dtu,dk', 'jingzhe': 'jingzhe fysik,dtu,dk', 'strange': 'strange fysik,dtu,dk', 'rostgaard': 'rostgaard fysik,dtu,dk', 'schiotz': 'schiotz fysik,dtu,dk', 'peterklue': 'peter theochem,org', 'moses': 'poulgeorgmoses gmail,com', 's032082': 's032082 fysik,dtu,dk', 'jensj': 'jensj fysik,dtu,dk', 'jstenlund': 'jonathan,stenlund abo,fi', 'jsm': 'jsm phys,au,dk', 'dlandis': 'dlandis fysik,dtu,dk', 'getri': 'getri fysik,dtu,dk', 'marsalek': 'ondrej,marsalek gmail,com', 's052580': 's052580 fysik,dtu,dk', 's042606': 's042606 fysik,dtu,dk', 'hahansen': 'hahansen fysik,dtu,dk', 'miwalter': 'Michael,Walter fmf,uni-freiburg,de', 'mvanin': 'mvanin fysik,dtu,dk', 'juya': 'juya fysik,dtu,dk', 'lopeza': 'lopez cc,jyu,fi', 'kelkkane': 'kelkkane fysik,dtu,dk', 'madsbk': 'madsbk diku,dk'}
