@@ -1585,10 +1585,14 @@ class Transport(GPAW):
                 self.ground = True
             self.get_selfconsistent_hamiltonian()
             self.analysor.save_ion_step()
+            self.text('--------------ionic_step---' +
+                      str(self.analysor.n_ion_step) + '---------------')
         if self.initialized_transport:
             self.F_av = None
         #f = GPAW.get_forces(self, atoms)
         f = self.calculate_force()
+        self.forces.F_av = self.F_av
+        self.print_forces()
         self.optimize = True
         #self.normalize_density = True
         return f
