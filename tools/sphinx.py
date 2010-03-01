@@ -42,9 +42,18 @@ def build():
                  '--show-imports --no-frames -v gpaw >& epydoc.out') != 0:
         raise RuntimeError('Epydoc failed!')
 
-    epydoc_errors = open('epydoc.out').read()
-    if ' Warning:' in epydoc_errors:
-        sys.stderr.write(epydoc_errors)
+    epydoc_output = open('epydoc.out').readlines()
+    errors = []
+    for line in epydoc_output:
+        if line[0] == '|' or line[:2] == '+-':
+            errors.append(line)
+    if errors:
+        fd = open('epydoc.errors', 'w')
+        fd.write(''.join(errors))
+        fd.close()
+        email = 'gpaw-developers@fysik.dtu.dk'
+        x = os.system('mail -s "EpyDoc errors" %s < epydoc.errors' % email)
+        assert x == 0
 
     sys.path.insert(0, tmpdir + '/lib/python')
     from gpaw.version import version
