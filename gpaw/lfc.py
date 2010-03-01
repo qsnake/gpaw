@@ -255,6 +255,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         self.dtype = complex
                 
     def set_positions(self, spos_ac):
+        assert len(spos_ac) == len(self.sphere_a)
         spos_ac = np.asarray(spos_ac)
         movement = False
         for spos_c, sphere in zip(spos_ac, self.sphere_a):
@@ -292,7 +293,8 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         # Holm-Nielsen check:
         if ((self.gd.comm.sum(float(sum(self.my_atom_indices))) !=
              natoms * (natoms - 1) // 2)):
-            raise RuntimeError('Grid too coarse. Use h < 0.306 Ang.')
+            raise RuntimeError('Holm-Nielsen check failed.  Grid might be '
+                               'too coarse.  Use h < 0.306 Ang.')
 
         self.M_W = np.empty(nW, np.intc)
         self.G_B = np.empty(nB, np.intc)
