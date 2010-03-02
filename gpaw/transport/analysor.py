@@ -780,7 +780,7 @@ class Transport_Analysor:
             force = None
             contour = None
         else:       
-            force = tp.calculate_force()
+            force = tp.calculate_force() * Hartree / Bohr
             tp.F_av = None
             contour = self.collect_contour()            
         charge = self.collect_charge()
