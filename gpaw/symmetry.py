@@ -164,7 +164,8 @@ class Symmetry:
             for op_cc in op_scc:
                 if len(ibzk_kc) == 0:
                     break
-                b_k = ((np.dot(ibzk_kc, op_cc.T) - k_c)**2).sum(1) < self.tol
+                diff_kc = np.dot(ibzk_kc, op_cc.T) - k_c
+                b_k = ((diff_kc - diff_kc.round())**2).sum(1) < self.tol
                 if b_k.any():
                     found = True
                     kibz = np.where(b_k)[0][0]

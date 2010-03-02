@@ -35,6 +35,15 @@ assert abs(w_k - wb_k).sum() < 1e-14
 assert abs(ibzk_kc - ibzkb_kc).sum() < 1e-14
 assert not symm.op_scc.sum(0).any()
 
+bzk_kc = monkhorst_pack((3, 3, 3))
+symm = Symmetry(id_a, cell_cv, pbc_c)
+symm.analyze(spos_ac)
+ibzk_kc, w_k = symm.reduce(bzk_kc)
+assert len(symm.op_scc) == 24
+assert len(w_k) == 4
+assert abs(w_k * 27 - (1, 12, 6, 8)).sum() < 1e-14
+assert not symm.op_scc.sum(0).any()
+
 # Linear chain of four atoms, with H lattice parameter
 cell_cv = np.diag((8., 5., 5.))
 spos_ac = np.array([[ 0.125,  0.5  ,  0.5  ],
