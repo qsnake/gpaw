@@ -177,13 +177,12 @@ Analysis:
 
 >>> from gpaw.transport.analysor import Transport_Plotter
 >>> plotter = Transport_Plotter()
->>> plotter.plot_bias_step_info(XXX, [a1, a2], s, k) 
+>>> data = plotter.get_info(XXX, bias_step, ion_step) 
 
-XXX can be one in the list ['ham', 'den', 'df', 'dd', 'tc', 'dos'].
-a1, a2 are the indices of the bias step, s and k are the spin
-index and k point index respectively.
+Transport_Plotter now just get the data, users need to plot the data themselves.
+XXX can be one in the list ['tc', 'dos', 'force', 'lead_fermi', 'bias', 'gate', 'nt', 'vt'].
 The analysis functionality only works after a transport calculation
-is done successfully and the file analysis_data_bias is generated. 
+is done successfully and the directory analysis_data and some files in it are generated. 
  
 .. _manual_pl_atoms:
 
