@@ -7,6 +7,7 @@ define_macros += [('GPAW_NO_UNDERSCORE_BLACS', '1')]
 define_macros += [('GPAW_NO_UNDERSCORE_SCALAPACK', '1')]
 define_macros += [("GPAW_ASYNC",1)]
 define_macros += [("GPAW_MPI2",1)]
+define_macros += [("GPAW_MR3",1)]
 # define_macros += [('GPAW_HPM',1)] # FLOP rate measurements
 # define_macros += [("GPAW_MPI_DEBUG",1)] # debugging
 # define_macros += [("GPAW_OMP",1)] # not really working
@@ -34,6 +35,7 @@ scalapack = True
 # --env BG_STACKGUARDENABLE=0
 
 libraries = [
+           'scalapackmr3',
            'scalapack',
            'blacsCinit_MPI-BGP-0',
            'blacs_MPI-BGP-0',
@@ -46,6 +48,7 @@ libraries = [
            'xlfmath',
            'xlomp_ser',
 #           'hpm',
+           'SPI.cna',
            ]
 
 library_dirs = [
@@ -54,8 +57,8 @@ library_dirs = [
            '/soft/apps/LAPACK',
            '/soft/apps/ESSL-4.4.1-0/lib',
 #           '/soft/apps/LIBGOTO',
-           '/opt/ibmcmp/xlf/bg/11.1/bglib',
-           '/opt/ibmcmp/xlsmp/bg/1.7/bglib',
+           '/soft/apps/ibmcmp/xlf/bg/11.1/bglib',
+           '/soft/apps/ibmcmp/xlsmp/bg/1.7/bglib',
            '/bgsys/drivers/ppcfloor/gnu-linux/lib',
 #           '/soft/apps/UPC/lib',
            ]
@@ -64,6 +67,21 @@ include_dirs += [
     '/soft/apps/python/python-2.6-cnk-gcc/numpy-1.3.0/lib/python2.6/site-packages/numpy/core/include'
     ]
 
+mpi_libraries = [
+    'mpich.cnk',
+    'opa',
+    'dcmf.cnk',
+    'dcmfcoll.cnk',
+    'SPI.cna',
+    ]
+
+mpi_library_dirs = [
+    '/bgsys/drivers/ppcfloor/comm/default/lib',
+    '/bgsys/drivers/ppcfloor/comm/sys/lib',
+    '/bgsys/drivers/ppcfloor/runtime/SPI',
+    ]
+
+   
 compiler = "bgp_gcc.py"
 mpicompiler = "bgp_gcc.py"
-mpilinker   = "bgp_gcc.py"
+mpilinker   = "bgp_gcc_linker.py"
