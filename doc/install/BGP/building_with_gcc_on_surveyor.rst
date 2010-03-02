@@ -9,16 +9,9 @@ NumPy
 
 If you do not wish to build NumPy for yourself, you can use one of the following versions::
 
-  /soft/apps/python/python-2.5-cnk-gcc/numpy-1.0.4/lib/python2.5/site-packages
-  /soft/apps/python/python-2.5-cnk-gcc/numpy-1.0.4.essl-4.4/lib/python2.5/site-packages
-  /soft/apps/python/python-2.5-cnk-gcc/numpy-1.0.4.goto/lib/python2.5/site-packages
-  /soft/apps/python/python-2.5-cnk-gcc/numpy-1.2.1/lib/python2.5/site-packages
-  /soft/apps/python/python-2.6-cnk-gcc/numpy-1.2.1/lib/python2.5/site-packages
-  /soft/apps/python/python-2.6-cnk-gcc/numpy-1.3.0/lib/python2.5/site-packages
+ /soft/apps/python/python-2.6-cnk-gcc/numpy-1.2.1/lib/python2.5/site-packages
+ /soft/apps/python/python-2.6-cnk-gcc/numpy-1.3.0/lib/python2.5/site-packages
 
-At the moment, the computers are transitioning from the ``V1R3M0_460_2008-081112P`` to the
-``V1R4M0_320_2009-090815P`` driver. The major difference are that the latter  (newer) driver
-uses Python 2.6 and GCC 4.1.2. Surveyor is at the newer driver, but Intrepid is still at the older one.
 Choose your version of NumPy accordingly. NumPy 1.3.0 officially supports Python 2.6, NumPy 1.2.1
 is available as a fall back for use with Python 2.6.
 
@@ -116,28 +109,22 @@ Step 2
 
 Set these environment variables in the :file:`.softenvrc` file::
 
-  PYTHONPATH += $HOME/numpy-1.0.4-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages
-  PYTHONPATH += ${HOME}/python-nose-0.11.0-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages
+  PYTHONPATH += $HOME/numpy-1.0.4-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.6/site-packages
+  PYTHONPATH += ${HOME}/python-nose-0.11.0-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.6/site-packages
   PYTHONPATH += ${HOME}/ase3k
   PYTHONPATH += $HOME/gpaw
-  PYTHONPATH += $HOME/gpaw/build/lib.linux-ppc64-2.5
+  PYTHONPATH += $HOME/gpaw/build/lib.linux-ppc64-2.6
   GPAW_SETUP_PATH = $HOME/gpaw-setups
 
   LD_LIBRARY_PATH += /bgsys/drivers/ppcfloor/gnu-linux/lib
   # Compute node
   # qsub --env LD_LIBRARY_PATH=$CN_LD_LIBRARY_PATH
   # some of these are only relevant for gcc, xlc, or TAU
-  CN_LD_LIBRARY_PATH = /bgsys/drivers/ppcfloor/runtime/SPI
-  CN_LD_LIBRARY_PATH = /opt/ibmcmp/xlf/bg/11.1/bglib:${CN_LD_LIBRARY_PATH}
-  CN_LD_LIBRARY_PATH = /opt/ibmcmp/xlsmp/bg/1.7/bglib:${CN_LD_LIBRARY_PATH}
-  CN_LD_LIBRARY_PATH = /opt/ibmcmp/lib/bg/bglib:${CN_LD_LIBRARY_PATH}
-  CN_LD_LIBRARY_PATH = /bgsys/drivers/ppcfloor/gnu-linux/lib:${CN_LD_LIBRARY_PATH}
+  CN_LD_LIBRARY_PATH = /bgsys/drivers/ppcfloor/gnu-linux/lib
   CN_LD_LIBRARY_PATH = /bgsys/drivers/ppcfloor/gnu-linux/powerpc-bgp-linux/lib:${CN_LD_LIBRARY_PATH}
-  CN_LD_LIBRARY_PATH = /bgsys/drivers/ppcfloor/comm/lib:${CN_LD_LIBRARY_PATH}
 
   PATH += $HOME/ase3k/tools
   PATH += $HOME/gpaw/tools
-  PYTHONPATH += $HOME/gpaw/build/bin.linux-ppc64-2.5
 
 and type::
 
@@ -160,12 +147,19 @@ Step 4
 
 A number of the GPAW source files in ``gpaw/c`` directory are built using
 the ``distutils`` module which makes it difficult to control the flags
-which are passed to the gnu compiler.
-A workaround is to use the following python
-script: :svn:`~doc/install/BGP/bgp_gcc.py`
-with the corresponding :svn:`~doc/install/BGP/customize_surveyor_gcc.py` file.
+which are passed to the gnu compiler. A workaround is to use the following python
+script: :svn:`~doc/install/BGP/bgp_gcc.py`.  Additionaly, it is
+desirable to static link as many libraries as possible. This requires
+bypassing the mpi wrapper to the compiler using another python
+script :svn:`~doc/install/BGP/bgp_gcc_linker.py`.
+Lastly, we must use these work arounds in conjuction with two
+configures files :svn:`~doc/install/BGP/customize_surveyor_gcc.py`  and
+:svn:`~doc/install/BGP/config_surveyor.py`, the latter requires
+renaming to ``config.py`` in the top level directory.
 
 .. literalinclude:: bgp_gcc.py
+
+.. literalinclude:: bgp_gcc_linker.py
 
 .. literalinclude:: customize_surveyor_gcc.py
 
@@ -174,7 +168,11 @@ Download these scripts into the top level GPAW directory::
   export GPAW_TRUNK=http://svn.fysik.dtu.dk/projects/gpaw/trunk
   wget --no-check-certificate ${GPAW_TRUNK}/doc/install/BGP/bgp_gcc.py
   chmod u+x bgp_gcc.py
+  wget --no-check-certificate ${GPAW_TRUNK}/doc/install/BGP/bgp_gcc_linker.py
+  chmod u+x bgp_gcc_linker.py
   wget --no-check-certificate ${GPAW_TRUNK}/doc/install/BGP/customize_surveyor_gcc.py
+  wget --no-check-certificate ${GPAW_TRUNK}/doc/install/BGP/config_surveyor.py
+  mv config_surveyor.py config.py
 
 Finally, we build GPAW by typing::
 

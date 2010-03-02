@@ -48,7 +48,6 @@ libraries = [
            'xlfmath',
            'xlomp_ser',
 #           'hpm',
-           'SPI.cna',
            ]
 
 library_dirs = [
