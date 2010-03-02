@@ -790,8 +790,8 @@ class Transport(GPAW):
             self.analysor.save_bias_step()
         
         self.scf.converged = self.cvgflag
-        if self.fixed and self.scf.converged and self.normalize_density:
-            self.normalize_density = False
+        #if self.fixed and self.scf.converged and self.normalize_density:
+        #    self.normalize_density = False
    
         ## these temperary lines is for storage the transport object
         #for kpt in self.wfs.kpt_u:
@@ -897,18 +897,16 @@ class Transport(GPAW):
         if var == 'd':
             if self.step > 0:
                 self.diff_d = self.density.mixer.get_charge_sloshing()
-                if self.ground:
-                    tol =  self.scf.max_density_error
-                else:
-                    tol =  self.scf.max_density_error
+                tol =  self.scf.max_density_error
  
                 if self.master:
                     self.text('density: diff = %f  tol=%f' % (self.diff_d,
                                             tol))
-                #if self.diff_d < tol * 100 and self.fixed and self.normalize_density is True:
-                #    self.normalize_density = False
                 if self.diff_d < tol:
-                    cvg = True
+                    if self.fixed and self.normalize_density:
+                        self.normalize_density = False
+                    else:
+                        cvg = True
         return cvg
  
     def initialize_scf(self):
@@ -1576,8 +1574,7 @@ class Transport(GPAW):
     def get_forces(self, atoms):
         if (atoms.positions != self.atoms.positions).any():
             self.scf.converged = False
-        if not self.initialized_transport or (
-                       hasattr(self.scf, 'converged') and self.scf.converged):
+        if  hasattr(self.scf, 'converged') and self.scf.converged:
             pass
         else:
             self.negf_prepare(atoms)
@@ -1587,15 +1584,11 @@ class Transport(GPAW):
             self.analysor.save_ion_step()
             self.text('--------------ionic_step---' +
                       str(self.analysor.n_ion_step) + '---------------')
-        if self.initialized_transport:
-            self.F_av = None
-        #f = GPAW.get_forces(self, atoms)
+            self.F_av = None   
         f = self.calculate_force()
-        self.forces.F_av = self.F_av
-        self.print_forces()
-        self.optimize = True
-        #self.normalize_density = True
-        return f
+        if not self.optimize:
+            self.optimize = True
+        return f * Hartree / Bohr 
 
     def calculate_force(self):
         """Return the atomic forces.""" 
@@ -1649,7 +1642,8 @@ class Transport(GPAW):
         if wfs.symmetry:
             self.F_av = wfs.symmetry.symmetrize_forces(self.F_av)
 
-        self.F_av *= Hartree / Bohr
+        self.forces.F_av = self.F_av[:len(self.atoms)]
+        self.print_forces()
         return self.F_av[:len(self.atoms)]
 
     def calculate_to_bias(self, v_limit, num_v):
