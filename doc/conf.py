@@ -218,3 +218,5 @@ pngmath_dvipng_args = [
 
 # correctly aligns the baselines
 pngmath_use_preview = True
+
+autoclass_content = 'both'

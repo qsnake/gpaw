@@ -26,8 +26,8 @@ class Symmetry:
     def analyze(self, spos_ac):
         """Determine list of symmetry operations.
 
-        First determine all symmetry operations of the cell.
-        Then call prune_symmetries(spos_ac) to remove those symmetries that
+        First determines all symmetry operations of the cell.
+        Then calls prune_symmetries(spos_ac) to remove those symmetries that
         are not satisfied by the atoms.
         """
 
@@ -139,6 +139,10 @@ class Symmetry:
             raise RuntimeError('Broken symmetry!')
 
     def reduce(self, bzk_kc):
+        """Reduce k-points to irreducible part of BZ.
+
+        Returns the irreducible k-points and the weights."""
+        
         op_scc = self.op_scc
         inv_cc = -np.identity(3, int)
         have_inversion_symmetry = False
@@ -183,9 +187,11 @@ class Symmetry:
         return ibzk_kc[::-1].copy(), weight_k[:nibzkpts][::-1] / nbzkpts
 
     def symmetrize(self, a, gd):
+        """Symmetrice array."""
         gd.symmetrize(a, self.op_scc)
 
     def symmetrize_forces(self, F0_av):
+        """Symmetrice forces."""
         F_ac = np.zeros_like(F0_av)
         for map_a, op_cc in zip(self.maps, self.op_scc):
             op_vv = np.dot(np.linalg.inv(self.cell_cv),

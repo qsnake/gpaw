@@ -67,6 +67,7 @@ the corresponding objects are defined in the code:
    developersguide
    proposals/proposals
    paw
+   symmetry
    wavefunctions
    setups
    density_and_hamiltonian
