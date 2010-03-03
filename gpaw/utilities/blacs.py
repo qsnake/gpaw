@@ -66,8 +66,8 @@ def scalapack_diagonalize_dc(desca, a, z, w, uplo):
     
     Eigenvalues are written to the global array w_N in ascending order.
 
-    uplo can be either 'L' or 'U', meaning that the
-    matrices are taken to be upper or lower triangular.
+    The `uplo` flag can be either 'L' or 'U', meaning that the
+    matrices are taken to be upper or lower triangular respectively.
     """
     assert desca.check(a)
     assert desca.check(z)
@@ -103,7 +103,8 @@ def scalapack_diagonalize_ex(desca, a, z, w, uplo, iu=None):
     The `uplo` flag can be either 'L' or 'U', meaning that the
     matrices are taken to be upper or lower triangular respectively.
 
-    iu eigenvectors and eigenvalues computed."""
+    The `iu` specifies how many eigenvectors and eigenvalues to compute.
+    """
     assert desca.check(a)
     assert desca.check(z)
     # only symmetric matrices
