@@ -198,7 +198,7 @@ class Transport(GPAW):
         p['analysis_data_list'] = []
         p['save_bias_data'] = True
         p['analysis_mode'] = 0
-        p['normalize_density'] = False
+        p['normalize_density'] = True
         p['extra_density'] = False
         p['se_data_path'] = None
         p['neintmethod'] = 0
@@ -864,7 +864,7 @@ class Transport(GPAW):
                     d_mm = self.get_eqintegral_points(s, k) + \
                                               self.get_neintegral_points(s, k)
                 else:
-                    d_mm = self.fock2den2(s, k)
+                    d_mm = self.fock2den(s, k)
                 d_mm = self.spin_coff * (d_mm + d_mm.T.conj()) / (2 * self.npk)
                 self.hsd.reset(s, k, d_mm, 'D') 
         self.timer.stop('DenMM')
@@ -1407,30 +1407,6 @@ class Transport(GPAW):
         else:
             return gfunc, sigma
 
-    def fock2den2(self, s, k):
-        intctrl = self.intctrl
-        
-        self.hsd.s = s
-        self.hsd.pk = k
-
-        den = self.eq_fock2den2(s, k)
-        denocc, denvir = self.ne_fock2den2(s, k)    
-        den += denocc
-
-        if not self.ground:
-            denloc = self.eq_fock2den2(s, k, el='loc')
-            weight_mm = self.integral_diff_weight(denocc, denvir,
-                                                                 'transiesta')
-            diff = (denloc - (denocc + denvir)) * weight_mm
-            den += diff
-            percents = np.sum( diff * diff ) / np.sum( denocc * denocc )
-            self.text('local percents %f' % percents)
-        
-        den = (den + den.T.conj()) / 2
-        if self.wfs.dtype == float:
-            den = np.real(den).copy()
-        return den
-    
     def fock2den(self, s, k):
         intctrl = self.intctrl
         
@@ -1449,40 +1425,13 @@ class Transport(GPAW):
             den += diff
             percents = np.sum( diff * diff ) / np.sum( denocc * denocc )
             self.text('local percents %f' % percents)
+        
         den = (den + den.T.conj()) / 2
         if self.wfs.dtype == float:
             den = np.real(den).copy()
-        return den    
-
+        return den
+    
     def ne_fock2den(self, s, k):
-        pathinfo = self.nepathinfo[s][k]
-        nbmol = self.nbmol_inner
-        denocc = np.zeros([nbmol, nbmol], complex)
-        denvir = np.zeros([nbmol, nbmol], complex)
-        ind = self.ne_par_energy_index[s][k]
-        zp = pathinfo.energy
-
-        self.timer.start('ne fock2den')
-        for i in ind:
-            sigma = []
-            for n in range(self.lead_num):
-                sigma.append(pathinfo.sigma[n][i])
-            ffocc = []
-            ffvir = []
-            for n in range(self.lead_num):
-                ffocc.append(pathinfo.fermi_factor[n][0][i])
-                ffvir.append(pathinfo.fermi_factor[n][1][i])
-            glesser, ggreater = self.hsd.calculate_ne_green_function(zp[i],
-                                                 sigma, ffocc, ffvir, False)
-            weight = pathinfo.weight[i]            
-            denocc += glesser * weight / np.pi / 2
-            denvir += ggreater * weight / np.pi / 2
-        self.energy_comm.sum(denocc)
-        self.energy_comm.sum(denvir)
-        self.timer.stop('ne fock2den')
-        return denocc, denvir
-
-    def ne_fock2den2(self, s, k):
         pathinfo = self.nepathinfo[s][k]
         nbmol = self.nbmol_inner
         denocc = np.zeros([nbmol, nbmol], complex)
@@ -1511,31 +1460,6 @@ class Transport(GPAW):
         return denocc, denvir
     
     def eq_fock2den(self, s, k, el='eq'):
-        if el =='loc':
-            pathinfo = self.locpathinfo[s][k]
-            ind = self.loc_par_energy_index[s][k]
-        else:
-            pathinfo = self.eqpathinfo[s][k]
-            ind = self.eq_par_energy_index[s][k]       
-
-        nbmol = self.nbmol_inner
-        den = np.zeros([nbmol, nbmol], complex)
-        zp = pathinfo.energy
-        self.timer.start('eq fock2den')
-        for i in ind:
-            sigma = []
-            for n in range(self.lead_num):
-                sigma.append(pathinfo.sigma[n][i])
-            gr = self.hsd.calculate_eq_green_function(zp[i], sigma, False)
-            fermifactor = pathinfo.fermi_factor[i]
-            weight = pathinfo.weight[i]
-            den += gr * fermifactor * weight
-        self.energy_comm.sum(den)
-        den = 1.j * (den - den.T.conj()) / np.pi / 2
-        self.timer.stop('eq fock2den')
-        return den
-
-    def eq_fock2den2(self, s, k, el='eq'):
         if el =='loc':
             pathinfo = self.locpathinfo[s][k]
         else:
@@ -1584,9 +1508,9 @@ class Transport(GPAW):
                 self.hsd.reset(0, q, s_pkmm[q], 'S')
             for s in range(self.my_nspins):
                 self.hsd.reset(s, q, h_spkmm[s, q], 'H')
-        if self.ground:
-            self.boundary_align_up()
-            self.text('align shift-----' + str(self.align_shift))
+        #if self.ground:
+        #    self.boundary_align_up()
+        #    self.text('align shift-----' + str(self.align_shift))
   
     def get_forces(self, atoms):
         if (atoms.positions != self.atoms.positions).any():
