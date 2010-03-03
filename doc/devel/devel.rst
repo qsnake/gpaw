@@ -125,6 +125,7 @@ jstenlund       Jonathan Stenlund
 jussie          Jussi Enkovaara
 juya            Jun Yan
 kelkkane        Andre Kelkkanen
+kkaa            Kristen Kaasbjerg
 kuismam         Mikael Kuisma
 lara            Lara Ferrighi
 lauri           Lauri Lethovaara
@@ -148,4 +149,22 @@ tolsen          Thomas Olsen
 
 .. _ASE project: https://wiki.fysik.dtu.dk/ase/development/contribute.html
 
-.. epost={'askhl': 'askhl fysik,dtu,dk', 'tolsen': 'tolsen fysik,dtu,dk', 'jussie': 'jussi,enkovaara csc,fi', 'dulak': 'dulak fysik,dtu,dk', 'hhk05': 'hhk05 inano,dk', 'carstenr': 'carstenr fysik,dtu,dk', 'lara': 'laraf phys,au,dk', 'lauri': 'lauri,lehtovaara iki,fi', 'naromero': 'naromero alcf,anl,gov', 'kuismam': 'mikael,kuisma tut,fi', 'mathiasl': 'mathiasl physto,se', 'haiping': 'H,Lin1 liverpool,ac,uk', 'georg': 'georg fysik,dtu,dk', 'jingzhe': 'jingzhe fysik,dtu,dk', 'strange': 'strange fysik,dtu,dk', 'rostgaard': 'rostgaard fysik,dtu,dk', 'schiotz': 'schiotz fysik,dtu,dk', 'peterklue': 'peter theochem,org', 'moses': 'poulgeorgmoses gmail,com', 's032082': 's032082 fysik,dtu,dk', 'jensj': 'jensj fysik,dtu,dk', 'jstenlund': 'jonathan,stenlund abo,fi', 'jsm': 'jsm phys,au,dk', 'dlandis': 'dlandis fysik,dtu,dk', 'getri': 'getri fysik,dtu,dk', 'marsalek': 'ondrej,marsalek gmail,com', 's052580': 's052580 fysik,dtu,dk', 's042606': 's042606 fysik,dtu,dk', 'hahansen': 'hahansen fysik,dtu,dk', 'miwalter': 'Michael,Walter fmf,uni-freiburg,de', 'mvanin': 'mvanin fysik,dtu,dk', 'juya': 'juya fysik,dtu,dk', 'lopeza': 'lopez cc,jyu,fi', 'kelkkane': 'kelkkane fysik,dtu,dk', 'madsbk': 'madsbk diku,dk'}
+.. epost={'askhl': 'askhl fysik,dtu,dk', 'tolsen': 'tolsen fysik,dtu,dk',
+   'jussie': 'jussi,enkovaara csc,fi', 'dulak': 'dulak fysik,dtu,dk',
+   'hhk05': 'hhk05 inano,dk', 'carstenr': 'carstenr fysik,dtu,dk',
+   'lara': 'laraf phys,au,dk', 'lauri': 'lauri,lehtovaara iki,fi',
+   'naromero': 'naromero alcf,anl,gov', 'kuismam': 'mikael,kuisma
+   tut,fi', 'mathiasl': 'mathiasl physto,se', 'haiping': 'H,Lin1
+   liverpool,ac,uk', 'georg': 'georg fysik,dtu,dk', 'jingzhe': 'jingzhe
+   fysik,dtu,dk', 'strange': 'strange fysik,dtu,dk', 'rostgaard':
+   'rostgaard fysik,dtu,dk', 'schiotz': 'schiotz fysik,dtu,dk',
+   'peterklue': 'peter theochem,org', 'moses': 'poulgeorgmoses
+   gmail,com', 's032082': 's032082 fysik,dtu,dk', 'jensj': 'jensj
+   fysik,dtu,dk', 'jstenlund': 'jonathan,stenlund abo,fi', 'jsm': 'jsm
+   phys,au,dk', 'dlandis': 'dlandis fysik,dtu,dk', 'getri': 'getri
+   fysik,dtu,dk', 'marsalek': 'ondrej,marsalek gmail,com', 's052580':
+   's052580 fysik,dtu,dk', 's042606': 's042606 fysik,dtu,dk', 'hahansen':
+   'hahansen fysik,dtu,dk', 'miwalter': 'Michael,Walter
+   fmf,uni-freiburg,de', 'mvanin': 'mvanin fysik,dtu,dk', 'juya': 'juya
+   fysik,dtu,dk', 'lopeza': 'lopez cc,jyu,fi', 'kelkkane': 'kelkkane
+   fysik,dtu,dk', 'madsbk': 'madsbk diku,dk', 'kkaa': 'kkaa fysik,dtu,dk'}
