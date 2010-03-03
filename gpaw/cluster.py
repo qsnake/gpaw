@@ -1,6 +1,8 @@
 import numpy as np
 
 from ase import Atom, Atoms, read, write
+from ase.calculators.neighborlist import NeighborList
+
 from ase.io.cube import write_cube
 from ase.io.xyz import read_xyz, write_xyz
 from ase.io.pdb import write_pdb
@@ -38,34 +40,35 @@ class Cluster(Atoms):
         return np.array([np.minimum.reduce(pos), np.maximum.reduce(pos)])
 
     def find_connected(self, i, dmax):
-        """Find the atoms connected to self[i] and return them."""
-        
-        def add_if_new(atoms, atom):
-            new = False
-            va = Vector3d(atom.position)
-            dmin = 99999999999
-            for a in atoms:
-                dmin = min(dmin, va.distance(a.position))
-            if dmin > 0.1:
-                atoms += atom
-                return True
-            return False
+        """Find the atoms connected to self[i] and return them.
 
-        connected = Cluster(self[i:i + 1])
+        Atoms are defined to be connected if they are nearer than dmax
+        to each other.
+        """
+  
+        nl = NeighborList([0.5 * dmax] * len(self), skin=0)
+        nl.update(self)
+
+        indices, offsets = nl.get_neighbors(i)
+        connected = list(indices)
 
         isolated = False
         while not isolated:
-            new = 0
-            for ca in connected:
-                # search atoms that are connected to you
-                vca = Vector3d(ca.position)
-                for oa in self:
-                    if vca.distance(oa.position) < dmax:
-                        new += int(add_if_new(connected, oa))
-            if new == 0:
-                isolated = True
+            isolated = True
+            for i in connected:
+                indices, offsets = nl.get_neighbors(i)
+                for j in indices:
+                    if j in connected:
+                        pass
+                    else:
+                        connected.append(j)
+                        isolated = False 
+ 
+        atoms = Cluster()
+        for i in connected:
+            atoms.append(self[i])
 
-        return connected
+        return atoms
 
     def minimal_box(self, border=0, h=None):
         """The box needed to fit the structure in.
