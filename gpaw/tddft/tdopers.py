@@ -68,7 +68,7 @@ class TimeDependentHamiltonian:
         ----------
         density: Density
             the density at the given time  
-           (TimeDependentDensity.get_density())
+            (TimeDependentDensity.get_density())
         time: float
             the current time
 
@@ -209,10 +209,10 @@ class TimeDependentHamiltonian:
         # Imaginary potential
         if self.absorbing_boundary is not None \
                and self.absorbing_boundary.type == 'IPOT':
-	    hpsit[:] += self.absorbing_boundary.get_potential_matrix() * psit
+            hpsit[:] += self.absorbing_boundary.get_potential_matrix() * psit
 
         # Perfectly matched layers
-	if self.absorbing_boundary is not None \
+        if self.absorbing_boundary is not None \
                and self.absorbing_boundary.type == 'PML':
             # Perfectly matched layer is applied as potential Vpml = Tpml-T
             # Where  T = -0.5*\nabla^{2}\psi  (Use latex for these equations)
