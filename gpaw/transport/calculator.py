@@ -198,7 +198,7 @@ class Transport(GPAW):
         p['analysis_data_list'] = []
         p['save_bias_data'] = True
         p['analysis_mode'] = 0
-        p['normalize_density'] = True
+        p['normalize_density'] = False
         p['extra_density'] = False
         p['se_data_path'] = None
         p['neintmethod'] = 0
@@ -766,11 +766,24 @@ class Transport(GPAW):
             self.initialize_transport()
         if self.analysis_mode >= 0:    
             self.update_scat_hamiltonian(atoms)
-        self.boundary_check()
+        if self.ground:
+            self.boundary_align_up()
 
-    def boundary_check(self):
-        tol = 5.e-4
-           
+    def boundary_align_up(self):
+        tol = 0.1
+        ind = self.edge_index[0][0]
+        level_in_lead = self.lead_hsd[0].H[0][0].recover()[ind, ind]
+        ind = self.edge_index[1][0]
+        level_in_scat = self.hsd.H[0][0].recover()[ind, ind]
+        overlap_on_site = self.hsd.S[0].recover()[ind, ind]
+        shift = (level_in_scat - level_in_lead) / overlap_on_site
+        if abs(shift) > tol:
+            for s in range(self.my_nspins):
+                for pk in range(self.my_npk):
+                    self.hsd.H[s][pk].reset_from_others(self.hsd.H[s][pk],
+                                                    self.hsd.S[pk], 1, -shift)
+        self.align_shift = shift
+       
     def get_selfconsistent_hamiltonian(self):
         self.timer.start('init scf')
         self.initialize_scf()
@@ -1560,6 +1573,7 @@ class Transport(GPAW):
         
         self.timer.start('project hamiltonian')
         h_spkmm, s_pkmm = self.get_hs(self.extended_calc)
+        
         ind = get_matrix_index(self.gate_mol_index)
         h_spkmm[:, :, ind.T, ind] += self.gate * s_pkmm[:, ind.T, ind]        
 
@@ -1570,6 +1584,9 @@ class Transport(GPAW):
                 self.hsd.reset(0, q, s_pkmm[q], 'S')
             for s in range(self.my_nspins):
                 self.hsd.reset(s, q, h_spkmm[s, q], 'H')
+        if self.ground:
+            self.boundary_align_up()
+            self.text('align shift-----' + str(self.align_shift))
   
     def get_forces(self, atoms):
         if (atoms.positions != self.atoms.positions).any():
