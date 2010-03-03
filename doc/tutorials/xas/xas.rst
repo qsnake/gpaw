@@ -37,10 +37,6 @@ unoccupied states.
 
 .. literalinclude:: run.py
 
-Plot the spectrum:
-
-.. literalinclude:: plot.py
-
 To get the absolute energy scale we do a Delta Kohn-Sham calculation
 where we compute the total energy difference between the ground state
 and the first core excited state. The excited state should be spin
@@ -51,12 +47,17 @@ the magnetic moment to one on the atom with the hole and set
 
 .. literalinclude:: dks.py
 
-.. figure:: h2o_xas_2.png
+
+Plot the spectrum:
+
+.. literalinclude:: plot.py
+
+
+.. figure:: xas_spectrum.png
    :width: 400 px
 
 
-Spectrum calculation using the recursion method, Diamond. For systems
-in the condensed phase it is much more efficient to use the Haydock
+For systems in the condensed phase it is much more efficient to use the Haydock
 recursion method to calculate the spectrum, thus avoiding to determine
 many unoccupied states. First we do a core hole calculation with
 enough k-points to converge the ground state density. Then we compute
@@ -64,7 +65,8 @@ the recursion coefficients with a denser k-point mesh to converge the
 uncoccupied DOS. A Delta Kohn-Sham calculation can be done for the
 gamma point, and the shift is made so that the first unoccupied
 eigenvalue at the gamma point ends up at the computed total energy
-difference.
+difference. 
+
 
 .. literalinclude:: diamond1.py
 
@@ -74,7 +76,7 @@ Compute recursion coefficients:
 
 Compute the spectrum with the get_spectra method. delta is the HWHM
 (should we change it to FWHM???) width of the lorentzian broadening,
-and fwhm is the FWHM of the Gaussian broadening.
+and fwhm is the FWHM of the Gaussian broadening. 
 
 ::
 
@@ -95,7 +97,7 @@ and fwhm is the FWHM of the Gaussian broadening.
 
 
 Below the calculated spectrum of Diamond with half and full core holes
-are shown along with the experimental spectrum
+are shown along with the experimental spectrum. 
 
 .. figure:: h2o_xas_3.png
    :width: 400 px
@@ -105,10 +107,10 @@ are shown along with the experimental spectrum
 
 XES:
 
-Do compute XES, first do a ground state calcualtion with an 0.0 core
+To compute XES, first do a ground state calcualtion with an 0.0 core
 hole (an 'xes1s' setup as created above ). The system will not be
 charged so the setups can be placed on all atoms one wants to
-calcualte XES for. Since XES probes the occupied states no unoccupied
+calculte XES for. Since XES probes the occupied states no unoccupied
 states need to be determined. Calculate the spectrum with
 
 ::
@@ -116,15 +118,18 @@ states need to be determined. Calculate the spectrum with
   xas = XAS(calc, mode='xes', center=n)
 
 Where n is the number of the atom in the atoms object, the center
-keyword is only necessary if there are more than one xes setup.
- 
+keyword is only necessary if there are more than one xes setup. The spectrum 
+can be shifted by putting the first transition to the fermi level, or to 
+compute the total energy diffrence between the core hole state and the state
+with a valence hole in HOMO.
+
 
 Further considerations:
 
 For XAS: Gridspacing can be set to the default value. The shape of the
 spectrum is quite insensitive to the functional used, the DKS shifts
 are more sensitive. The absolute energy position can be shifted so
-that the calculated XPS energy amtches the expreimental value
+that the calculated XPS energy matches the expreimental value
 [Leetmaa2006]. Use a large box, see convergence with box size for a
 water molecule below:
 
