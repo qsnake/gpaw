@@ -58,7 +58,7 @@ def scalapack_diagonalize_dc(desca, a, z, w, uplo):
  
     Solve the eigenvalue equation::
     
-    A_nn Z_nn = w_N Z_nn
+      A_nn Z_nn = w_N Z_nn
 
     Diagonalizes A_nn and writes eigenvectors to Z_nn.  Both A_nn
     and Z_nn must be compatible with desca descriptor.  Values in
@@ -67,7 +67,8 @@ def scalapack_diagonalize_dc(desca, a, z, w, uplo):
     Eigenvalues are written to the global array w_N in ascending order.
 
     uplo can be either 'L' or 'U', meaning that the
-    matrices are taken to be upper or lower triangular."""
+    matrices are taken to be upper or lower triangular.
+    """
     assert desca.check(a)
     assert desca.check(z)
     # only symmetric matrices
@@ -91,7 +92,7 @@ def scalapack_diagonalize_ex(desca, a, z, w, uplo, iu=None):
  
     Solve the eigenvalue equation::
     
-    A_nn Z_nn = w_N Z_nn
+      A_nn Z_nn = w_N Z_nn
 
     Diagonalizes A_nn and writes eigenvectors to Z_nn.  Both A_nn
     and Z_nn must be compatible with desca descriptor.  Values in
@@ -99,8 +100,8 @@ def scalapack_diagonalize_ex(desca, a, z, w, uplo, iu=None):
     
     Eigenvalues are written to the global array w_N in ascending order.
 
-    uplo can be either 'L' or 'U', meaning that the
-    matrices are taken to be upper or lower triangular
+    The `uplo` flag can be either 'L' or 'U', meaning that the
+    matrices are taken to be upper or lower triangular respectively.
 
     iu eigenvectors and eigenvalues computed."""
     assert desca.check(a)
@@ -136,10 +137,11 @@ def scalapack_diagonalize_mr3(desca, a, z, w, uplo, iu=None):
     
     Eigenvalues are written to the global array w_N in ascending order.
 
-    uplo can be either 'L' or 'U', meaning that the
-    matrices are taken to be upper or lower triangular
+    The `uplo` flag can be either 'L' or 'U', meaning that the
+    matrices are taken to be upper or lower triangular respectively.
 
-    iu eigenvectors and eigenvalues computed."""
+    The `iu` specifies how many eigenvectors and eigenvalues to compute.
+    """
     assert desca.check(a)
     assert desca.check(z)
     # only symmetric matrices
@@ -164,7 +166,7 @@ def scalapack_general_diagonalize_dc(desca, a, b, z, w, uplo):
  
     Solve the generalized eigenvalue equation::
     
-    A_nn Z_nn = w_N B_nn Z_nn
+      A_nn Z_nn = w_N B_nn Z_nn
 
     B_nn is assumed to be positivde definite. Eigenvectors written to Z_nn. 
     Both A_nn, B_nn and Z_nn must be compatible with desca descriptor.
@@ -172,8 +174,9 @@ def scalapack_general_diagonalize_dc(desca, a, b, z, w, uplo):
     
     Eigenvalues are written to the global array w_N in ascending order.
 
-    uplo can be either 'L' or 'U', meaning that the
-    matrices are taken to be upper or lower triangular."""
+    The `uplo` flag can be either 'L' or 'U', meaning that the
+    matrices are taken to be upper or lower triangular respectively.
+    """
     assert desca.check(a)
     assert desca.check(b)
     assert desca.check(z)
@@ -197,7 +200,7 @@ def scalapack_general_diagonalize_ex(desca, a, b, z, w, uplo, iu=None):
  
     Solves the eigenvalue equation::
     
-    A_nn Z_nn = w_N B_nn Z_nn
+      A_nn Z_nn = w_N B_nn Z_nn
 
     B_nn is assumed to be positivde definite. Eigenvectors written to Z_nn. 
     Both A_nn, B_nn and Z_nn must be compatible with desca descriptor.
@@ -205,10 +208,11 @@ def scalapack_general_diagonalize_ex(desca, a, b, z, w, uplo, iu=None):
     
     Eigenvalues are written to the global array w_N in ascending order.
 
-    uplo can be either 'L' or 'U', meaning that the
-    matrices are taken to be upper or lower triangular
+    The `uplo` flag can be either 'L' or 'U', meaning that the
+    matrices are taken to be upper or lower triangular respectively.
 
-    iu eigenvectors and eigenvalues computed."""
+    The `iu` specifies how many eigenvectors and eigenvalues to compute.
+    """
     assert desca.check(a)
     assert desca.check(b)
     assert desca.check(z)
@@ -235,7 +239,7 @@ def scalapack_general_diagonalize_mr3(desca, a, b, z, w, uplo, iu=None):
 
     Solve the generalized eigenvalue equation::
     
-    A_nn Z_nn = w_N B_nn Z_nn
+      A_nn Z_nn = w_N B_nn Z_nn
 
     B_nn is assumed to be positivde definite. Eigenvectors written to Z_nn. 
     Both A_nn, B_nn and Z_nn must be compatible with desca descriptor.
@@ -243,10 +247,11 @@ def scalapack_general_diagonalize_mr3(desca, a, b, z, w, uplo, iu=None):
     
     Eigenvalues are written to the global array w_N in ascending order.
 
-    uplo can be either 'L' or 'U', meaning that the
-    matrices are taken to be upper or lower triangular
+    The `uplo` flag can be either 'L' or 'U', meaning that the
+    matrices are taken to be upper or lower triangular respectively.
 
-    iu eigenvectors and eigenvalues computed."""
+    The `iu` specifies how many eigenvectors and eigenvalues to compute.
+    """
     assert desca.check(a)
     assert desca.check(b)
     assert desca.check(z)
@@ -267,11 +272,15 @@ def scalapack_general_diagonalize_mr3(desca, a, b, z, w, uplo, iu=None):
         raise RuntimeError('scalapack_general_diagonalize_mr3 error: %d' % info)
 
 def scalapack_inverse_cholesky(desca, a, uplo):
-    """Perform Cholesky decomposin followed by inverse of triangular
-    matrix.
+    """Perform Cholesky decomposin followed by an inversion
+    of the resulting triangular matrix.
 
-    Only the upper or lower half of S_nn are modified, the
-    other half is zeroed out."""
+    Only the upper or lower half of the matrix a will be
+    modified; the other half is zeroed out.
+
+    The `uplo` flag can be either 'L' or 'U', meaning that the
+    matrices are taken to be upper or lower triangular respectively.
+    """
     assert desca.check(a)
     # only symmetric matrices
     assert desca.gshape[0] == desca.gshape[1]
