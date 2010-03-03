@@ -255,6 +255,10 @@ main(int argc, char **argv)
   if(granted != MPI_THREAD_MULTIPLE) exit(1);
 #endif // GPAW_OMP
 
+#ifdef IO_WRAPPERS
+  init_io_wrappers();
+#endif
+
 #ifdef GPAW_MPI_MAP
   int tag = 99;
   int myid, numprocs, i, procnamesize;
@@ -306,6 +310,10 @@ main(int argc, char **argv)
   Py_INCREF(&MPIType);
   PyModule_AddObject(m, "Communicator", (PyObject *)&MPIType);
   import_array1(-1);
+#ifdef HDF5
+  printf("Init h5py!\n");
+  init_h5py();
+#endif
   MPI_Barrier(MPI_COMM_WORLD);
 #ifdef GPAW_CRAYPAT
   PAT_region_end(1);

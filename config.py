@@ -440,6 +440,38 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
     else:
         extra_link_args.append(cfgDict['LINKFORSHARED'])
 
+    if ('IO_WRAPPERS', 1) in define_macros:
+        extra_link_args += ['-Wl,-wrap,fread',
+                            '-Wl,-wrap,_IO_getc',
+                            '-Wl,-wrap,getc_unlocked',
+                            '-Wl,-wrap,fgets',
+                            '-Wl,-wrap,ungetc',
+                            '-Wl,-wrap,feof',
+                            '-Wl,-wrap,ferror',
+                            '-Wl,-wrap,fflush',
+                            '-Wl,-wrap,fseek',
+                            '-Wl,-wrap,rewind',
+                            # '-Wl,-wrap,fileno',
+                            '-Wl,-wrap,flockfile',
+                            '-Wl,-wrap,funlockfile',
+                            '-Wl,-wrap,clearerr',
+                            '-Wl,-wrap,fgetpos',
+                            '-Wl,-wrap,fsetpos',
+                            '-Wl,-wrap,setbuf',
+                            '-Wl,-wrap,setvbuf',
+                            '-Wl,-wrap,ftell',
+                            '-Wl,-wrap,fstat',
+                            '-Wl,-wrap,fstat64',
+                            '-Wl,-wrap,fgetc',
+                            # '-Wl,-wrap,fputc',
+                            # '-Wl,-wrap,fputs',
+                            # '-Wl,-wrap,fwrite',
+                            # '-Wl,-wrap,_IO_putc',
+                            '-Wl,-wrap,fopen',
+                            '-Wl,-wrap,fopen64',
+                            '-Wl,-wrap,fclose',
+                           ]
+
     # Compile the parallel sources
     for src in sources:
         obj = 'build/temp.%s/' % plat + src[:-1] + 'o'
