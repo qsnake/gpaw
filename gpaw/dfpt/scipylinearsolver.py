@@ -1,7 +1,5 @@
 import numpy as np
-
 import scipy.sparse.linalg as sla
-
 
 class ScipyLinearSolver:
     """Wrapper class for the linear solvers in scipy.sparse.linalg.
@@ -43,7 +41,7 @@ class ScipyLinearSolver:
             raise RuntimeError("Unsupported solver %s" % method)
                                    
         self.solver = ScipyLinearSolver.solvers[method]
-        # self.pc = pcs[preconditioner]
+        self.pc = preconditioner
 
         self.tolerance = tolerance
         self.max_iter = max_iter
@@ -73,6 +71,6 @@ class ScipyLinearSolver:
         return self.i, info
             
     def iteration(self, x_i):
-        """Callback function called by the scipy routine in each iteration."""
+        """Callback function called by the scipy-routine in each iteration."""
 
         self.i += 1

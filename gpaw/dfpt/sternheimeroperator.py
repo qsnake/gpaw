@@ -1,9 +1,14 @@
+"""This module implements the linear operator in the Sternheimer equation."""
+
+__author__ = "Kristen Kaasbjerg (kkaa@fysik.dtu.dk)"
+__date__ = "2010-01-01 -- 20xx-xx-xx"
+
 import numpy as np
 
 class SternheimerOperator:
     """Class implementing the linear operator in the Sternheimer equation.
 
-    Sternheimer equation:
+    Sternheimer equation::
     
          (H - eps_n) P_c |\delta\Psi_n> = - P_c * \deltaV_KS * |\Psi_n>
 
@@ -69,9 +74,10 @@ class SternheimerOperator:
         assert self.n is not None
 
         kpt = self.wfs.kpt_u[self.k]
-        
+
+        # Remember to set P_ani = True later on
         self.hamiltonian.apply(x_G, y_G, self.wfs, kpt,
-                               calculate_P_ani=False)
+                               calculate_P_ani=True)
 
         y_G -= kpt.eps_n[self.n] * x_G
 
@@ -102,7 +108,7 @@ class SternheimerOperator:
         kpt = self.wfs.kpt_u[self.k]
         
         self.hamiltonian.apply(x_G, y_G, self.wfs, kpt,
-                               calculate_P_ani=False)
+                               calculate_P_ani=True)
 
         y_G -= kpt.eps_n[self.n] * x_G
 
@@ -115,23 +121,27 @@ class SternheimerOperator:
 
         Implementation for q != 0 to be done !
 
+        ::
 
                --                    --             
           P  = >  |Psi ><Psi | = 1 - >  |Psi ><Psi |
            c   --     c     c        --     v     v 
-                c                     v             
+                c                     v
+        
         """
 
-        nvalence = self.wfs.nvalence
+        nbands = self.wfs.nvalence/2
         # k+q-vector
         kpt = self.wfs.kpt_u[self.k]
         psit_nG = kpt.psit_nG
-            
-        for n in range(nvalence/2):
+
+        x_temp_G = x_G.copy()
+        
+        for n in range(nbands):
 
             psit_G = psit_nG[n]
             
-            proj_n = self.gd.integrate(x_G * psit_G)
+            proj_n = self.gd.integrate(x_temp_G * psit_G)
             x_G -= proj_n * psit_G
         
     def norm(self, x_G):
