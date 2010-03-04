@@ -111,7 +111,9 @@ class SternheimerOperator:
                                calculate_P_ani=True)
 
         y_G -= kpt.eps_n[self.n] * x_G
-
+        # Project out undesired (numerical) components
+        self.project(y_G)
+        
         y = y_G.ravel()
         
         return y
@@ -133,17 +135,18 @@ class SternheimerOperator:
         nbands = self.wfs.nvalence/2
         # k+q-vector
         kpt = self.wfs.kpt_u[self.k]
-        psit_nG = kpt.psit_nG
+        psit_nG = kpt.psit_nG[:nbands]
 
-        x_temp_G = x_G.copy()
-        
+        proj_n = self.gd.integrate(x_G * psit_nG)
+
+        # Do the projection in one go - figure out how to use np.dot correctly
+        # x_G -= np.dot(proj_n, psit_nG)
+
+        # Project out one orbital at a time
         for n in range(nbands):
 
-            psit_G = psit_nG[n]
-            
-            proj_n = self.gd.integrate(x_temp_G * psit_G)
-            x_G -= proj_n * psit_G
-        
+            x_G -= proj_n[n] * psit_nG[n]
+       
     def norm(self, x_G):
         """L2-norm."""
 

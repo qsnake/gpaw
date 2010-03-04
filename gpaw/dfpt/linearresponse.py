@@ -40,7 +40,27 @@ class LinearResponse:
         # 2) constant E-field
         # 3) etc
         self.perturbation = perturbation
+
+    def initialize(self, tolerance_sternheimer = 1e-5):
+        """Make the object ready for a calculation."""
+
+        hamiltonian = self.calc.hamiltonian
+        wfs = self.calc.wfs
+        kpt_u = self.calc.wfs.kpt_u
+        num_kpts = len(kpt_u)
+        nbands = self.calc.wfs.nvalence/2
         
+        # Linear solver for the solution of Sternheimer equation
+        self.linear_solver = ScipyLinearSolver(tolerance = tolerance_sternheimer)
+        # Linear operator in the Sternheimer equation
+        self.sternheimer_operator = SternheimerOperator(hamiltonian, wfs, self.gd)
+        # List for storing the variations in the wave-functions
+        self.psit1_unG = np.array([[self.gd.zeros() for j in range(nbands)]
+                                   for i in range(num_kpts)],dtype=float)
+
+        # Variation of the pseudo-potential
+        self.vloc1_G = self.perturbation.calculate_derivative()
+        self.vnl1_nG = self.perturbation.calculate_nonlocal_derivative(0)        
    
     def __call__(self, alpha = 0.4, max_iter = 100, tolerance_sc = 1e-5,
                  tolerance_sternheimer = 1e-5):
@@ -72,28 +92,10 @@ class LinearResponse:
         print "Atomic symbol: %s" % symbols[self.perturbation.a]
         print "Component: %s" % components[self.perturbation.v]
         
-        hamiltonian = self.calc.hamiltonian
-        wfs = self.calc.wfs
-        kpt_u = self.calc.wfs.kpt_u
-        num_kpts = len(kpt_u)
-        num_occ_bands = self.calc.wfs.nvalence/2
-        
-        # Linear solver for the solution of Sternheimer equation
-        self.linear_solver = ScipyLinearSolver(tolerance = tolerance_sternheimer)
-        # Linear operator in the Sternheimer equation
-        self.sternheimer_operator = SternheimerOperator(hamiltonian, wfs, self.gd)
-        # List for storing the variations in the wave-functions
-        self.psit1_unG = np.array([[self.gd.zeros() for j in range(num_occ_bands)]
-                                   for i in range(num_kpts)],dtype=float)
-
-        # Variation of the local part of the pseudo-potential
-        # self.Vloc1t_G = self.calculate_derivative(a, c, eps)
-        # Use perturbation class instead
-        self.vloc1_G = self.perturbation.calculate_derivative()
-        self.vnl1_nG = self.perturbation.calculate_nonlocal_derivative(0)
+        self.initialize(tolerance_sternheimer)
         
         for iter in range(max_iter):
-            print "iter:%3.i" % iter,
+            print "iter:%3i" % iter,
             print "\tcalculating wave function variations"            
             if iter == 0:
                 self.first_iteration()
@@ -110,7 +112,6 @@ class LinearResponse:
 
         return self.nt1_G.copy()
     
-
     def first_iteration(self):
         """Perform first iteration of sc-loop."""
 
@@ -238,89 +239,3 @@ class LinearResponse:
                 nt1_G += 4 * psit_G * psit1_G
 
         return nt1_G
-    
-
-#------------------------------ old stuff to be removed from this class---------
-
-##     def calculate_derivative(self, atom, cartesian, eps):
-##         """Derivate of the local PAW potential wrt an atomic displacement.
-
-##         Parameters
-##         ----------
-##         atom: int
-##             Index of the atom
-##         cartesian: int
-##             Cartesian component of the displacement
-##         eps: float
-##             Magnitude (in Bohr) of the atomic displacement used in the
-##             finite-difference evaluation of the derivative.
-
-##         """
-        
-##         a = atom
-##         v = cartesian
-##         # Array for the derivative of the local part of the PAW potential
-##         Vloc1t_g = self.finegd.zeros()
-        
-##         # Contributions from compensation charges (ghat) and local potential
-##         # (vbar)
-##         ghat = self.calc.density.ghat
-##         vbar = self.calc.hamiltonian.vbar
-
-##         # Atomic displacements in scaled coordinates
-##         eps_s = eps/self.gd.cell_cv[v,v]
-        
-##         # grid for density derivative of ions
-##         ghat1_g = self.finegd.zeros()
-
-##         # Calculate finite-difference derivatives
-##         spos_ac = self.calc.atoms.get_scaled_positions()
-        
-##         dict_ghat = ghat.dict(zero=True)
-##         dict_vbar = vbar.dict(zero=True)
-
-##         dict_ghat[a] = -1 * self.calc.density.Q_aL[a]
-##         dict_vbar[a] -= 1.
-
-##         spos_ac[a, v] -= eps_s
-##         ghat.set_positions(spos_ac)
-##         ghat.add(ghat1_g, dict_ghat)
-##         vbar.set_positions(spos_ac)
-##         vbar.add(Vloc1t_g, dict_vbar)
-
-##         dict_ghat[a] *= -1
-##         dict_vbar[a] *= -1
-            
-##         spos_ac[a, v] += 2 * eps_s
-##         ghat.set_positions(spos_ac)
-##         ghat.add(ghat1_g, dict_ghat)
-##         vbar.set_positions(spos_ac)
-##         vbar.add(Vloc1t_g, dict_vbar)
-
-##         # Return to initial positions
-##         spos_ac[a, v] -= eps_s
-##         ghat.set_positions(spos_ac)
-##         vbar.set_positions(spos_ac)
-
-##         # Convert changes to a derivatives
-##         d = 2 * eps
-##         Vloc1t_g /= d
-##         ghat1_g /= d
-        
-##         # Solve Poisson's eq. for the potential from the compensation charges
-##         hamiltonian = self.calc.hamiltonian
-##         ps = hamiltonian.poisson
-##         Vghat1_g = self.finegd.zeros()
-##         ps.solve(Vghat1_g, ghat1_g)
-
-##         Vloc1t_g += Vghat1_g
-       
-##         # Transfer to coarse grid
-##         Vloc1t_G = self.gd.zeros()
-##         hamiltonian.restrictor.apply(Vloc1t_g, Vloc1t_G)
-
-##         self.Vloc1t_g = Vloc1t_g.copy()
-##         self.Vghat1_g = Vghat1_g.copy()
-        
-##         return Vloc1t_G
-

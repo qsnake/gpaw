@@ -28,18 +28,17 @@ References
 
 """
 
-__version__ = "0.1"
+# __version__ = "0.1"
 
 # Sort out what is imported when doing import gpaw.dfpt as dfpt
 
-import phononcalculator
-import linearresponse
-import phononperturbation
+import gpaw.dfpt.phononcalculator
+import gpaw.dfpt.linearresponse
+import gpaw.dfpt.phononperturbation
 
-from gpaw.dfpt.phononcalculator import *
-from gpaw.dfpt.linearresponse import *
-from gpaw.dfpt.phononperturbation import *
-
+from gpaw.dfpt.phononcalculator import PhononCalculator
+from gpaw.dfpt.linearresponse import LinearResponse
+from gpaw.dfpt.phononperturbation import PhononPerturbation
 
 __all__ = []
 __all__.extend(phononcalculator.__all__)
