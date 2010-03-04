@@ -916,7 +916,7 @@ class Transport(GPAW):
                     self.text('density: diff = %f  tol=%f' % (self.diff_d,
                                             tol))
                 if self.diff_d < tol:
-                    if self.fixed and self.normalize_density:
+                    if self.fixed and self.normalize_density and not self.optimize:
                         self.normalize_density = False
                     else:
                         cvg = True
@@ -1529,6 +1529,7 @@ class Transport(GPAW):
         f = self.calculate_force()
         if not self.optimize:
             self.optimize = True
+        self.normalize_density = True
         return f * Hartree / Bohr 
 
     def calculate_force(self):
@@ -1596,6 +1597,14 @@ class Transport(GPAW):
             self.bias = [v/2., -v /2.]
             self.get_selfconsistent_hamiltonian()        
     
+    def calculate_to_gate(self, v_limie, num_v):
+        gate = np.linspace(0, v_limit, num_v)
+        current = np.empty([num_v])
+        self.negf_prepare() 
+        for i in range(num_v):
+            self.gate = gate[i]
+            self.get_selfconsistent_hamiltonian()          
+        
     def get_potential_energy(self, atoms=None, force_consistent=False):
         if hasattr(self.scf, 'converged') and self.scf.converged:
             pass
@@ -1973,7 +1982,6 @@ class Transport(GPAW):
                 for i, btype in enumerate(self.pl_atoms[1]):
                     basis[i + len(self.atoms) + len(self.pl_atoms[0])] = p['basis'][i]
                 p['basis'] = basis
-            print p['basis'], 'extended'
             self.extended_atoms.set_calculator(Lead_Calc(**p))
 
     def get_linear_hartree_potential(self):
