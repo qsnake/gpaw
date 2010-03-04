@@ -109,19 +109,11 @@ class Transport_Analysor:
         bi['lead_orbital_indices'] = self.tp.lead_orbital_indices
         bi['ll_index'] = self.tp.hsd.S[0].ll_index
         bi['ex_ll_index'] = self.tp.hsd.S[0].ex_ll_index
-        
-        if self.tp.analysis_mode == -2:
-            lead_hs = self.collect_lead_hs()
-        else:
-            lead_hs = None
-            
+          
         atoms = self.tp.atoms.copy()
         if world.rank == 0:
             fd = file('analysis_overhead', 'wb')
             cPickle.dump((atoms, basis_information, contour_parameters), fd, 2)
-            fd.close()
-            fd = file('lead_hs', 'wb')
-            cPickle.dump(lead_hs, fd, 2)
             fd.close()
            
     def set_default_analysis_parameters(self):
@@ -765,7 +757,7 @@ class Transport_Analysor:
             if not tp.non_sc:
                 current = self.calculate_current(tc)
             else:
-                current = np.array([0])
+                current = np.array(0)
             flag = 'ER_' + str(tp.contour.comm.rank)
             if tp.wfs.kpt_comm.rank == 0:
                 self.data[flag + '_tc'] = tc
