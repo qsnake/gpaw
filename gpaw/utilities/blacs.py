@@ -40,7 +40,7 @@ def scalapack_set(desca, a, alpha, beta, uplo, m=None, n=None, ia=1, ja=1):
 
     Set the upper or lower triangular part of a to alpha, and the diagonal
     of a to beta, where alpha and beta are real or complex numbers."""
-    assert desca.check(a)
+    desca.checkassert(a)
     assert uplo in ['L', 'U']
     if m is None:
         m = desca.gshape[0]
@@ -69,8 +69,8 @@ def scalapack_diagonalize_dc(desca, a, z, w, uplo):
     The `uplo` flag can be either 'L' or 'U', meaning that the
     matrices are taken to be upper or lower triangular respectively.
     """
-    assert desca.check(a)
-    assert desca.check(z)
+    desca.checkassert(a)
+    desca.checkassert(z)
     # only symmetric matrices
     assert desca.gshape[0] == desca.gshape[1] 
     assert uplo in ['L', 'U']
@@ -105,8 +105,8 @@ def scalapack_diagonalize_ex(desca, a, z, w, uplo, iu=None):
 
     The `iu` specifies how many eigenvectors and eigenvalues to compute.
     """
-    assert desca.check(a)
-    assert desca.check(z)
+    desca.checkassert(a)
+    desca.checkassert(z)
     # only symmetric matrices
     assert desca.gshape[0] == desca.gshape[1]
     if iu is None: # calculate all eigenvectors and eigenvalues
@@ -143,8 +143,8 @@ def scalapack_diagonalize_mr3(desca, a, z, w, uplo, iu=None):
 
     The `iu` specifies how many eigenvectors and eigenvalues to compute.
     """
-    assert desca.check(a)
-    assert desca.check(z)
+    desca.checkassert(a)
+    desca.checkassert(z)
     # only symmetric matrices
     assert desca.gshape[0] == desca.gshape[1]
     if iu is None: # calculate all eigenvectors and eigenvalues
@@ -178,9 +178,9 @@ def scalapack_general_diagonalize_dc(desca, a, b, z, w, uplo):
     The `uplo` flag can be either 'L' or 'U', meaning that the
     matrices are taken to be upper or lower triangular respectively.
     """
-    assert desca.check(a)
-    assert desca.check(b)
-    assert desca.check(z)
+    desca.checkassert(a)
+    desca.checkassert(b)
+    desca.checkassert(z)
     # only symmetric matrices
     assert desca.gshape[0] == desca.gshape[1] 
     assert uplo in ['L', 'U']
@@ -214,9 +214,9 @@ def scalapack_general_diagonalize_ex(desca, a, b, z, w, uplo, iu=None):
 
     The `iu` specifies how many eigenvectors and eigenvalues to compute.
     """
-    assert desca.check(a)
-    assert desca.check(b)
-    assert desca.check(z)
+    desca.checkassert(a)
+    desca.checkassert(b)
+    desca.checkassert(z)
     # only symmetric matrices
     assert desca.gshape[0] == desca.gshape[1]
     if iu is None: # calculate all eigenvectors and eigenvalues
@@ -253,9 +253,9 @@ def scalapack_general_diagonalize_mr3(desca, a, b, z, w, uplo, iu=None):
 
     The `iu` specifies how many eigenvectors and eigenvalues to compute.
     """
-    assert desca.check(a)
-    assert desca.check(b)
-    assert desca.check(z)
+    desca.checkassert(a)
+    desca.checkassert(b)
+    desca.checkassert(z)
     # only symmetric matrices
     assert desca.gshape[0] == desca.gshape[1]
     if iu is None: # calculate all eigenvectors and eigenvalues
@@ -282,7 +282,7 @@ def scalapack_inverse_cholesky(desca, a, uplo):
     The `uplo` flag can be either 'L' or 'U', meaning that the
     matrices are taken to be upper or lower triangular respectively.
     """
-    assert desca.check(a)
+    desca.checkassert(a)
     # only symmetric matrices
     assert desca.gshape[0] == desca.gshape[1]
     assert uplo in ['L', 'U']
@@ -295,9 +295,9 @@ def scalapack_inverse_cholesky(desca, a, uplo):
 
 def pblas_gemm(alpha, a_MK, b_KN, beta, c_MN, desca, descb, descc,
                transa='N', transb='N'):
-    assert desca.check(a_MK)
-    assert descb.check(b_KN)
-    assert descc.check(c_MN)
+    desca.checkassert(a_MK)
+    descb.checkassert(b_KN)
+    descc.checkassert(c_MN)
     assert transa in ['N', 'T', 'C'] and transb in ['N', 'T', 'C']
     M, Ka = desca.gshape
     Kb, N = descb.gshape
@@ -359,9 +359,9 @@ def pblas_simple_gemm(desca, descb, descc, a_MK, b_KN, c_MN,
 
 def pblas_gemv(alpha, a, x, beta, y, desca, descx, descy,
                transa='T'):
-    assert desca.check(a)
-    assert descx.check(x)
-    assert descy.check(y)
+    desca.checkassert(a)
+    descx.checkassert(x)
+    descy.checkassert(y)
     M, N = desca.gshape
     # XXX transa = 'N' not implemented
     assert transa in ['T', 'C']
@@ -388,9 +388,9 @@ def pblas_r2k(alpha, a_NK, b_NK, beta, c_NN, desca, descb, descc,
                 uplo='U'):
     if not desca.blacsgrid.is_active():
         return
-    assert desca.check(a_NK)
-    assert descb.check(b_NK)
-    assert descc.check(c_NN)
+    desca.checkassert(a_NK)
+    descb.checkassert(b_NK)
+    descc.checkassert(c_NN)
     assert descc.gshape[0] == descc.gshape[1] # symmetric matrix
     assert desca.gshape == descb.gshape # same shape
     assert uplo in ['L', 'U']
@@ -415,8 +415,8 @@ def pblas_rk(alpha, a_NK, beta, c_NN, desca, descc,
              uplo='U'):
     if not desca.blacsgrid.is_active():
         return
-    assert desca.check(a_NK)
-    assert descc.check(c_NN)
+    desca.checkassert(a_NK)
+    descc.checkassert(c_NN)
     assert descc.gshape[0] == descc.gshape[1] # symmetrix matrix
     assert uplo in ['L', 'U']
     N = descc.gshape[0] # order of C
