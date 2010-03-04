@@ -56,6 +56,7 @@ def check_convergence(lr,             # LrTDDFT object
     
     # kss
     spectrum(lr.kss, fname('kss.dat'), width=width)
+    spectrum(lr.kss, fname('ksssticks.dat'), folding=None)
 
     # full
     lr.diagonalize(istart=istart0, jend=jend0)
