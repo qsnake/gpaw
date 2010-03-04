@@ -58,7 +58,7 @@ def main(seed=42, dtype=float):
     if ksl.Nndescriptor: # hack
         scalapack_set(ksl.Nndescriptor, H_Nn, 0.1, 75.0, 'L')
     else:
-        gd.comm.rank != 0
+        assert gd.comm.rank != 0
 
     print "H_Nn"
     parallelprint(world, H_Nn)
@@ -78,7 +78,7 @@ def main(seed=42, dtype=float):
     if ksl.Nndescriptor: # hack
         scalapack_set(ksl.Nndescriptor, S_Nn, 0.1, 75.0, 'L')
     else:
-        gd.comm.rank != 0
+        assert gd.comm.rank != 0
 
     print "S_Nn"
     parallelprint(world, S_Nn)
