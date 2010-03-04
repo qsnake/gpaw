@@ -118,6 +118,7 @@ tests = [
     'cg.py',
     'h2o_xas_recursion.py',
     'lrtddft.py',
+    'spectrum.py',
     'lcao_bsse.py',
     'lcao_force.py',
     'parallel/lcao_hamiltonian.py',
