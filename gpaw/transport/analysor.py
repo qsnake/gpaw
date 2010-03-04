@@ -790,8 +790,12 @@ class Transport_Analysor:
         self.data['force'] = force
         
         if world.rank == 0:
+            if self.tp.analysis_mode == -2:
+                filename = '/abias_step_' + str(self.n_bias_step)
+            else:
+                filename = '/bias_step_' + str(self.n_bias_step)
             fd = file('analysis_data/ionic_step_' + str(self.n_ion_step)
-                      + '/bias_step_' + str(self.n_bias_step), 'wb')
+                      + filename, 'wb')
             cPickle.dump(self.data, fd, 2)
             fd.close()
         self.data = {}
@@ -944,13 +948,14 @@ class Transport_Analysor:
         return current 
          
 class Transport_Plotter:
-    def __init__(self):
+    def __init__(self, mode=0):
         self.my_options = False
         self.ion_step = 0
         self.bias_step = 0
         self.ele_step = 0
         self.plot_setup()
         self.initialize()
+        self.mode = mode
     
     def initialize(self):
         self.xlabels = {}
@@ -981,8 +986,12 @@ class Transport_Plotter:
         rcParams['font.size'] = 18
   
     def get_data(self, bias_step, ion_step):
-        fd = file('analysis_data/ionic_step_' + str(ion_step) +
+        if self.mode == 0:
+            fd = file('analysis_data/ionic_step_' + str(ion_step) +
                   '/bias_step_' + str(bias_step), 'r')
+        else:
+            fd = file('analysis_data/ionic_step_' + str(ion_step) +
+                  '/abias_step_' + str(bias_step), 'r')            
         data = cPickle.load(fd)
         fd.close()        
         return data
