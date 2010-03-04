@@ -1,8 +1,6 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
-from math import sqrt, pi, exp
-
 import numpy as np
 
 from gpaw.utilities import erf
@@ -40,13 +38,13 @@ def I1(R, ap1, b, alpha, beta, m=0):
         if b != (0, 0, 0):
             return I1(-R, b, ap1, beta, alpha, m)
         else:
-            f = 2 * sqrt(pi**5 / (alpha + beta)) / (alpha * beta)
+            f = 2 * np.sqrt(np.pi**5 / (alpha + beta)) / (alpha * beta)
             if np.sometrue(R):
                 T = alpha * beta / (alpha + beta) * np.dot(R, R)
-                f1 = f * erf(T**0.5) * (pi / T)**0.5
+                f1 = f * erf(T**0.5) * (np.pi / T)**0.5
                 if m == 0:
                     return 0.5 * f1
-                f2 = f * exp(-T) / T**m
+                f2 = f * np.exp(-T) / T**m
                 if m == 1:
                     return 0.25 * f1 / T - 0.5 * f2
                 if m == 2:
@@ -119,11 +117,11 @@ class Gauss:
         self.set_width(width)
         
     def get(self,x):
-        return self.norm * exp(-(x * self.wm1)**2)
+        return self.norm * np.exp(-(x * self.wm1)**2)
     
     def set_width(self, width=0.08):
-        self.norm = 1. / width / sqrt(2 * pi)
-        self.wm1 = sqrt(.5) / width
+        self.norm = 1. / width / np.sqrt(2 * np.pi)
+        self.wm1 = np.sqrt(.5) / width
 
 class Lorentz:
     """Normalised Lorentz distribution"""
@@ -134,6 +132,6 @@ class Lorentz:
         return self.norm / (x**2 + self.width2)
     
     def set_width(self, width=0.08):
-        self.norm = width / pi
+        self.norm = width / np.pi
         self.width2 = width**2
 
