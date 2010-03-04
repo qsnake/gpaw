@@ -130,7 +130,7 @@ def scalapack_diagonalize_mr3(desca, a, z, w, uplo, iu=None):
  
     Solve the eigenvalue equation::
     
-    A_nn Z_nn = w_N Z_nn
+      A_nn Z_nn = w_N Z_nn
 
     Diagonalizes A_nn and writes eigenvectors to Z_nn.  Both A_nn
     and Z_nn must be compatible with this desca descriptor.  Values in
