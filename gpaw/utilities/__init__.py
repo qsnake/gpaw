@@ -306,7 +306,7 @@ def warning(msg):
 
 def uncamelcase(name):
     """Convert a CamelCase name to a string of space-seperated words."""
-    words = re.split('([A-Z]{1}[^A-Z]+)', name)
+    words = re.split('([A-Z]{1}[a-z]+)', name)
     return ' '.join([word for word in words if word != ''])
 
 
