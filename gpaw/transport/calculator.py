@@ -766,7 +766,7 @@ class Transport(GPAW):
             self.initialize_transport()
         if self.analysis_mode >= 0:    
             self.update_scat_hamiltonian(atoms)
-        if self.ground:
+        if self.ground and self.analysis_mode > 0:
             self.boundary_align_up()
 
     def boundary_align_up(self):
