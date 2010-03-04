@@ -262,7 +262,7 @@ class Contour:
     eq_err = 1e-4
     ne_err = 1e-4
     eta = 1e-2
-    plot_eta = 1e-4
+    plot_eta = 1e-2
     kt = 0.1
     nkt = 0.4
     dkt = 0.8 * np.pi
