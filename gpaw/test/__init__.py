@@ -201,13 +201,11 @@ if mpi.size < 4:
     exclude += ['parallel/pblas.py',
                 'parallel/scalapack.py',
                 'parallel/realspace_blacs.py',
+                'parallel/n2.py',
                 'AA_exx_enthalpy.py']
 
 if mpi.size != 4:
     exclude += ['parallel/lcao_parallel.py']
-
-if mpi.size != 4 or not gpaw.debug:
-    exclude += ['parallel/n2.py']
 
 if mpi.size == 8:
     exclude += ['transport.py']

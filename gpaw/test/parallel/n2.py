@@ -1,14 +1,14 @@
 from ase import *
 from gpaw import GPAW, mpi, sl_diagonalize, extra_parameters, FermiDirac
 from gpaw.eigensolvers.rmm_diis import RMM_DIIS
-from gpaw.utilities import scalapack
+from gpaw.utilities import scalapack, gcd
 if scalapack():
     sl_diagonalize += [2, 2, 2, 'd']
     extra_parameters['blacs'] = True
 a = molecule('N2')
 a.center(vacuum=3)
 c = GPAW(nbands=8,
-         parsize_bands=mpi.size,
+         parsize_bands=gcd(mpi.size, 4), # needs mynbands>1
          eigensolver=RMM_DIIS(0),
          occupations=FermiDirac(width=0.01))
 a.set_calculator(c)
