@@ -4,6 +4,7 @@
 """Utility functions and classes."""
 
 import os
+import re
 from math import sqrt, exp
 
 import numpy as np
@@ -301,6 +302,12 @@ def warning(msg):
         start, end = end, start
     msg += ' %s/' % bar[1:]
     return msg
+
+
+def uncamelcase(name):
+    """Convert a CamelCase name to a string of space-seperated words."""
+    words = re.split('([A-Z]{1}[^A-Z]+)', name)
+    return ' '.join([word for word in words if word != ''])
 
 
 def divrl(a_g, l, r_g):
