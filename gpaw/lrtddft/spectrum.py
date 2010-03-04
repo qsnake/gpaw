@@ -1,9 +1,6 @@
 import sys
-import numpy as np
-from math import exp, pi, sqrt
 
 from ase import Hartree as Ha
-from gpaw.gauss import Gauss, Lorentz
 from gpaw.version import version
 from gpaw.utilities.folder import Folder
 
@@ -15,8 +12,7 @@ def spectrum(exlist=None,
              energyunit='eV',
              folding='Gauss',
              width=0.08, # Gauss/Lorentz width
-             comment=None,
-             title='Photoabsorption spectrum from linear response TD-DFT'
+             comment=None
              ):
     """Write out a folded spectrum.
 
@@ -47,7 +43,8 @@ def spectrum(exlist=None,
     print >> out, '# Photoabsorption spectrum from linear response TD-DFT'
     print >> out, '# GPAW version:', version
     if folding is not None: # fold the spectrum
-        print >> out, '# %s folded, width=%g [%s]' % (folding,width,energyunit)
+        print >> out, '# %s folded, width=%g [%s]' % (folding, width, 
+                                                      energyunit)
     print >> out,\
         '# om [%s]     osz          osz x       osz y       osz z'\
         % energyunit
@@ -58,8 +55,8 @@ def spectrum(exlist=None,
         x.append(ex.get_energy() * Ha)
         y.append(ex.get_oscillator_strength())
         
-    el, vl = Folder(width, folding).fold(x, y, de, emin, emax)
-    for e, val in zip(el, vl):
+    energies, values = Folder(width, folding).fold(x, y, de, emin, emax)
+    for e, val in zip(energies, values):
         print >> out, "%10.5f %12.7e %12.7e %11.7e %11.7e" % \
             (e,val[0],val[1],val[2],val[3])
 
@@ -88,13 +85,13 @@ class Writer(Folder):
                                                           self.width)
         print >> out, '#', self.fields
 
-        el, vl = self.fold(self.energies, self.values,
-                           de, emin, emax)
-        for e, val in zip(el, vl):
-            str = '%10.5f' % e
+        energies, values = self.fold(self.energies, self.values,
+                                     de, emin, emax)
+        for e, val in zip(energies, values):
+            string = '%10.5f' % e
             for vf in val:
-                str += ' %12.7e' % vf
-            print >> out, str
+                string += ' %12.7e' % vf
+            print >> out, string
             
         if filename != None: 
             out.close()
