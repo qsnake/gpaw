@@ -1,6 +1,7 @@
 import sys
+import numpy as np
 
-from ase import Hartree as Ha
+from ase.units import Hartree
 from gpaw.version import version
 from gpaw.utilities.folder import Folder
 
@@ -23,16 +24,13 @@ def spectrum(exlist=None,
     ``emin``        min. energy, set to cover all energies if not given
     ``emax``        max. energy, set to cover all energies if not given
     ``de``          energy spacing
-    ``energyunit``  Energy unit, default 'eV'
+    ``energyunit``  Energy unit 'eV' or 'nm', default 'eV'
     ``folding``     Gauss (default) or Lorentz
     ``width``       folding width in terms of the chosen energyunit
     =============== ===================================================
     all energies in [eV]
     """
 
-    if energyunit != 'eV':
-        raise RuntimeError('currently only eV supported')
- 
     # output
     out = sys.stdout
     if filename != None:
@@ -52,8 +50,18 @@ def spectrum(exlist=None,
     x = []
     y = []
     for ex in exlist:
-        x.append(ex.get_energy() * Ha)
+        x.append(ex.get_energy() * Hartree)
         y.append(ex.get_oscillator_strength())
+
+    if energyunit == 'nm':
+        # transform to experimentally used wavelength
+        # XXX hack ! XXX
+        x = 1239.942 / np.array(x)
+        y = np.array(y)
+        for xx, yy in zip(x, y):
+            yy *= xx**2
+    elif energyunit != 'eV':
+        raise RuntimeError('currently only eV and nm are supported')
         
     energies, values = Folder(width, folding).fold(x, y, de, emin, emax)
     for e, val in zip(energies, values):
