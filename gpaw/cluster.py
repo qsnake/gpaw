@@ -1,17 +1,11 @@
-from math import sqrt
+"""Extensions to the ase Atoms class
+
+"""
 import numpy as np
 
-from ase import Atom, Atoms, read, write
+from ase import Atoms, read, write
 from ase.data import covalent_radii
 from ase.calculators.neighborlist import NeighborList
-
-from ase.io.cube import write_cube
-from ase.io.xyz import read_xyz, write_xyz
-from ase.io.pdb import write_pdb
-from gpaw.io.cc1 import read_cc1
-from ase.io.cube import read_cube
-from gpaw.utilities.vector import Vector3d
-#from gpaw.io.xyz import read_xyz
 
 class Cluster(Atoms):
     """A class for cluster structures
@@ -51,6 +45,7 @@ class Cluster(Atoms):
         If dmax is None:
         Atoms are defined to be connected if they are nearer than the
         sum of their covalent radii * scale to each other.
+
         """
 
         # set neighbor lists
@@ -58,8 +53,7 @@ class Cluster(Atoms):
         if dmax is None:
             # define neighbors according to covalent radii
             radii = scale * covalent_radii[self.get_atomic_numbers()]
-            for ii, atom in enumerate(self):
-                neighbors = []
+            for atom in self:
                 positions = self.positions - atom.position
                 distances = np.sqrt(np.sum(positions**2, axis=1))
                 radius = scale * covalent_radii[atom.get_atomic_number()]
@@ -69,8 +63,7 @@ class Cluster(Atoms):
             nl = NeighborList([0.5 * dmax] * len(self), skin=0)
             nl.update(self)
             for i, atom in enumerate(self):
-                indices, offsets = nl.get_neighbors(i)
-                neighborlist.append(list(indices))
+                neighborlist.append(list(nl.get_neighbors(i)[0]))
 
         connected = list(neighborlist[index])
         isolated = False
