@@ -857,6 +857,7 @@ class CHI:
         # Wait for I/O to finish
         self.comm.barrier()    
 
+
     def get_EELS_spectrum(self, filename='EELS'):
         
         self.get_dielectric_function()
@@ -872,6 +873,72 @@ class CHI:
 
         # Wait for I/O to finish
         self.comm.barrier()
+
+
+    def calculate_induced_density(self, q, w):
+        """ Evaluate induced density for a certain q and w.
+
+        Parameters:
+
+        q: ndarray
+            Momentum tranfer at reduced coordinate.
+        w: scalar
+            Energy (eV).
+        """
+
+        w /= Hartree 
+        iw = int(np.round(w / self.dw))
+        print >> self.txt, 'Calculating Induced density at q, w (iw)'
+        print >> self.txt, q, w*Hartree, iw
+
+        # delta_G0
+        delta_G = np.zeros(self.npw)
+        delta_G[0] = 1.
+
+        # coef is (q+G)**2 / 4pi
+        coef_G = np.zeros(self.npw) 
+        for iG in range(self.npw):
+            qG = np.array([np.inner(q + self.Gvec[iG],
+                            self.bcell[:,i]) for i in range(3)])
+            
+            coef_G[iG] = np.inner(qG, qG)
+        coef_G /= 4 * pi
+
+        # obtain chi_G0(q,w)
+        tmp = self.eRPA_wGG[iw]
+        chi_G = (np.linalg.inv(tmp)[:, 0] - delta_G) * coef_G
+
+        gd = self.calc.wfs.gd
+        r = gd.get_grid_point_coordinates()
+
+        # calculate dn(r,q,w)
+        drho_R = gd.zeros(dtype=complex)
+        for iG in range(self.npw):
+            qG = np.array([np.inner(q + self.Gvec[iG],
+                            self.bcell[:,i]) for i in range(3)])
+            qGr_R = np.inner(qG, r.T).T
+            drho_R += chi_G[iG] * np.exp(1j * qGr_R)
+
+            tmp = chi_G[iG] * np.exp(1j * qGr_R)
+            print >> self.txt, iG, chi_G[iG], gd.integrate(tmp), gd.integrate(drho_R)
+        # phase = sum exp(iq.R_i)
+        # drho_R /= self.vol * nkpt / phase
+        return drho_R
+
+
+    def get_induced_density_z(self, q, w):
+        """Get induced density on z axis (summation over xy-plane). """
+        
+        drho_R = self.calculate_induced_density(q, w)
+
+        drho_z = np.zeros(self.nG[2],dtype=complex)
+        dxdy = self.h_c[0] * self.h_c[1]
+        
+        for iz in range(self.nG[2]):
+            drho_z[iz] = drho_R[:,:,iz].sum()
+            
+        return drho_z * dxdy
+
 
     def set_Gvectors(self):
 
