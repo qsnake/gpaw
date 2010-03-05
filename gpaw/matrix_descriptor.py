@@ -52,10 +52,11 @@ class MatrixDescriptor:
 class BandMatrixDescriptor(MatrixDescriptor):
     """Descriptor-class for square matrices of bands times bands."""
 
-    def __init__(self, bd, gd):
+    def __init__(self, bd, gd, ksl):
         MatrixDescriptor.__init__(self, bd.nbands, bd.nbands)
         self.bd = bd
         self.gd = gd #XXX used?
+        self.ksl = ksl # not really used...
 
     def assemble_blocks(self, A_qnn, A_NN, hermitian):
         """Assign all distributed sub-blocks pertaining from various rank to
@@ -270,15 +271,18 @@ class BandMatrixDescriptor(MatrixDescriptor):
 # -------------------------------------------------------------------
 
 #from gpaw.blacs import BlacsDescriptor #TODO XXX derive from BlacsDescriptor
-from gpaw.blacs import BlacsBandLayouts
+#from gpaw.blacs import BlacsBandLayouts
 
-class BlacsBandMatrixDescriptor(MatrixDescriptor, BlacsBandLayouts):
+class BlacsBandMatrixDescriptor(MatrixDescriptor):#, BlacsBandLayouts):
     """Descriptor-class for square BLACS matrices of bands times bands."""
 
-    def __init__(self, bd, gd, mcpus, ncpus, blocksize):
+    def __init__(self, bd, gd, ksl): #mcpus, ncpus, blocksize):
+        MatrixDescriptor.__init__(self, bd.nbands, bd.mynbands) #XXX a hack...
+        #BlacsBandLayouts.__init__(self, gd, bd, mcpus, ncpus, blocksize)
         #BlacsDescriptor.__init__(self, blacsgrid, M, N, mb, nb, rsrc, csrc)
-        MatrixDescriptor.__init__(self, bd.nbands, bd.mynbands)
-        BlacsBandLayouts.__init__(self, gd, bd, mcpus, ncpus, blocksize)
+        self.bd = bd
+        self.gd = gd #XXX used?
+        self.ksl = ksl
 
     def assemble_blocks(self, A_qnn, A_Nn, hermitian):
         """Assign all distributed sub-blocks pertaining from various rank to
@@ -558,20 +562,20 @@ class BlacsBandMatrixDescriptor(MatrixDescriptor, BlacsBandLayouts):
 
     def redistribute_input(self, A_nn, A_nN=None): # 2D -> 1D row layout
         if A_nN is None:
-            A_nN = self.nNdescriptor.empty(dtype=A_nn.dtype)
-        self.nn2nN.redistribute(A_nn, A_nN)
-        if not self.nNdescriptor.blacsgrid.is_active():
+            A_nN = self.ksl.nNdescriptor.empty(dtype=A_nn.dtype)
+        self.ksl.nn2nN.redistribute(A_nn, A_nN)
+        if not self.ksl.nNdescriptor.blacsgrid.is_active():
             assert A_nN.shape == (0,0)
             A_nN = np.empty((self.bd.mynbands, self.bd.nbands), dtype=A_nN.dtype)
         self.gd.comm.broadcast(A_nN, 0)
         return A_nN
 
     def redistribute_output(self, A_Nn, A_nn=None): # 1D column -> 2D layout
-        if not self.Nndescriptor.blacsgrid.is_active():
+        if not self.ksl.Nndescriptor.blacsgrid.is_active():
             A_Nn = np.empty((0,0), dtype=A_Nn.dtype)
         if A_nn is None:
-            A_nn = self.nndescriptor.empty(dtype=A_Nn.dtype)
-        self.Nn2nn.redistribute(A_Nn, A_nn)
+            A_nn = self.ksl.nndescriptor.empty(dtype=A_Nn.dtype)
+        self.ksl.Nn2nn.redistribute(A_Nn, A_nn)
         return A_nn
 
     #def redistribute_input(self, A_NN): # 2D -> 1D row layout

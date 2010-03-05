@@ -26,7 +26,7 @@ class MatrixOperator:
     async = True
     hermitian = True
 
-    def __init__(self, bd, gd, nblocks=None, async=None, hermitian=None):
+    def __init__(self, bd, gd, ksl, nblocks=None, async=None, hermitian=None):
         self.bd = bd
         self.gd = gd
         self.work1_xG = None
@@ -39,7 +39,7 @@ class MatrixOperator:
             self.async = async
         if hermitian is not None:
             self.hermitian = hermitian
-        self.bmd = BandMatrixDescriptor(bd, gd) #XXX prefix Blacs for 1D layout
+        self.bmd = ksl.new_descriptor() #XXX take hermitian as argument?
 
     def allocate_work_arrays(self, dtype):
         """This is a little complicated, but let's look at the facts.

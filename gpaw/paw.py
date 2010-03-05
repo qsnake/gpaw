@@ -19,6 +19,7 @@ from gpaw.density import Density
 from gpaw.eigensolvers import get_eigensolver
 from gpaw.band_descriptor import BandDescriptor
 from gpaw.grid_descriptor import GridDescriptor
+from gpaw.blacs import get_kohn_sham_layouts
 from gpaw.hamiltonian import Hamiltonian
 from gpaw.utilities.timing import Timer
 from gpaw.xc_functional import XCFunctional
@@ -516,26 +517,23 @@ class PAW(PAWTextOutput):
                                             domain_comm, parsize)
             
 
-            # Construct orbital descriptor for LCAO mode or initialization:
+            # Figure out layout of Kohn-Sham orbitals for LCAO or FD mode:
+            kwargs = {'timer': self.timer}
+            if par.mode == 'lcao':
+                kwargs['nao'] = nao
             from gpaw import extra_parameters
-            use_blacs = (par.parallel['scalapack']
-                         or extra_parameters.get('blacs'))
-            if use_blacs:
+            if par.parallel['scalapack'] or extra_parameters.get('blacs'):
                 sl_diagonalize = par.parallel['scalapack']
                 if sl_diagonalize is None:
                     from gpaw import sl_diagonalize
-                from gpaw.blacs import BlacsOrbitalLayouts
-                ncpus, mcpus, blocksize = sl_diagonalize[:3]
-                ksl = BlacsOrbitalLayouts(gd, self.bd, nao,
-                                        ncpus, mcpus, blocksize,
-                                        self.timer)
+                mcpus, ncpus, blocksize = sl_diagonalize[:3]
+                kwargs.update(mcpus=mcpus, ncpus=ncpus, blocksize=blocksize)
+                use_blacs = True
             else:
-                # XXX This is actually a non-BLACS object.  The class should be
-                # defined somewhere else
-                from gpaw.blacs import OrbitalLayouts
-                ksl = OrbitalLayouts(gd, self.bd, setups.nao)
+                use_blacs = False
+            ksl = get_kohn_sham_layouts(par.mode, use_blacs, gd,
+                                        self.bd, **kwargs)
 
-            
             # do k-point analysis here? XXX
             args = (gd, ksl, nspins, nvalence, setups, self.bd,
                     dtype, world, kpt_comm,

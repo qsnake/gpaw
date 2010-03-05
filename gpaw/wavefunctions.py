@@ -121,10 +121,10 @@ class WaveFunctions(EmptyWaveFunctions):
         self.kpt_comm.sum(nt_sG)
         
         if self.symmetry:
-            self.timer.start('symmetrize density')
+            self.timer.start('Symmetrize density')
             for nt_G in nt_sG:
                 self.symmetry.symmetrize(nt_G, self.gd)
-            self.timer.stop('symmetrize density')
+            self.timer.stop('Symmetrize density')
 
     def add_to_density_from_k_point(self, nt_sG, kpt):
         self.add_to_density_from_k_point_with_occupation(nt_sG, kpt, kpt.f_n)
@@ -450,8 +450,7 @@ class LCAOWaveFunctions(WaveFunctions):
 
     def set_eigensolver(self, eigensolver):
         WaveFunctions.set_eigensolver(self, eigensolver)
-        eigensolver.initialize(self.gd, self.dtype, self.setups.nao,
-                               self.ksl.get_diagonalizer())
+        eigensolver.initialize(self.gd, self.dtype, self.setups.nao, self.ksl)
 
     def set_positions(self, spos_ac):
         self.timer.start('Basic WFS set positions')
@@ -478,8 +477,7 @@ class LCAOWaveFunctions(WaveFunctions):
         if S_qMM is None: # XXX
             # First time:
             assert T_qMM is None
-            from gpaw.blacs import BlacsOrbitalLayouts
-            if isinstance(self.ksl, BlacsOrbitalLayouts): # XXX
+            if self.ksl.using_blacs: # XXX
                 self.tci.set_matrix_distribution(Mstart, mynao)
                 
             S_qMM = np.empty((nq, mynao, nao), self.dtype)
@@ -558,8 +556,6 @@ class LCAOWaveFunctions(WaveFunctions):
         # ATLAS can't handle uninitialized output array:
         #rho_MM.fill(42)
 
-        #from gpaw.blacs import BlacsOrbitalLayouts
-        #if isinstance(self.ksl, BlacsOrbitalLayouts):
         self.timer.start('Calculate density matrix')
         rho_MM = self.ksl.calculate_density_matrix(f_n, C_nM, rho_MM)
         self.timer.stop('Calculate density matrix')
@@ -965,7 +961,10 @@ class GridWaveFunctions(WaveFunctions):
         lcaobd = BandDescriptor(lcaonbands, self.band_comm, self.bd.strided)
         assert lcaobd.mynbands == lcaomynbands #XXX
 
-        lcaowfs = LCAOWaveFunctions(self.gd, self.ksl, self.nspins,
+        from gpaw.blacs import get_kohn_sham_layouts
+        lcaoksl = get_kohn_sham_layouts('lcao', self.ksl.using_blacs, self.gd,
+                                        lcaobd, nao=nao, **self.ksl.get_keywords())
+        lcaowfs = LCAOWaveFunctions(self.gd, lcaoksl, self.nspins,
                                     self.nvalence, self.setups, lcaobd,
                                     self.dtype, self.world, self.kpt_comm,
                                     self.gamma, self.bzk_kc, self.ibzk_kc,
@@ -977,11 +976,10 @@ class GridWaveFunctions(WaveFunctions):
         self.timer.stop('Set positions (LCAO WFS)')
         eigensolver = get_eigensolver('lcao', 'lcao')
 
-        diagonalizer = lcaowfs.ksl.get_diagonalizer()
         eigensolver.initialize(self.gd,
                                self.dtype,
                                self.setups.nao,
-                               diagonalizer)
+                               lcaoksl)
         # XXX when density matrix is properly distributed, be sure to
         # update the density here also
         eigensolver.iterate(hamiltonian, lcaowfs)

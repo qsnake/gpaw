@@ -9,15 +9,9 @@ functions.
 
 """
 import sys
-
 import numpy as np
 
-from gpaw.mpi import parallel
-from gpaw.utilities.lapack import inverse_cholesky
-from gpaw.utilities import scalapack
-from gpaw import sl_inverse_cholesky
 from gpaw.hs_operators import MatrixOperator
-
 
 class Overlap:
     """Overlap operator class.
@@ -32,10 +26,8 @@ class Overlap:
 
     def __init__(self, wfs):
         """Create the Overlap operator."""
-        self.operator = MatrixOperator(wfs.bd, wfs.gd)
+        self.operator = MatrixOperator(wfs.bd, wfs.gd, wfs.ksl)
         self.timer = wfs.timer
-        self.domain_comm = wfs.gd.comm
-        self.band_comm = wfs.bd.comm
         self.setups = wfs.setups
         
     def orthonormalize(self, wfs, kpt):
@@ -66,9 +58,7 @@ class Overlap:
             Optional work array for overlap matrix.
 
         """
-
         self.timer.start('Orthonormalize')
-
         psit_nG = kpt.psit_nG
         P_ani = kpt.P_ani
         wfs.pt.integrate(psit_nG, P_ani, kpt.q)
@@ -80,26 +70,15 @@ class Overlap:
         S_nn = self.operator.calculate_matrix_elements(psit_nG, P_ani,
                                                        S, dS_aii)
         self.timer.stop('calc_matrix')
-        self.timer.start('inverse_cholesky')
 
-        if sl_inverse_cholesky:
-            assert parallel and scalapack()
-            if inverse_cholesky(S_nn, 0) != 0:
-                raise RuntimeError('Orthogonalization failed! You may want to check your structure.')
-        else:
-            if self.domain_comm.rank == 0 and self.band_comm.rank == 0:
-                if inverse_cholesky(S_nn) != 0:
-                    raise RuntimeError('Orthogonalization failed! You may want to check your structure.')
-        self.timer.stop('inverse_cholesky')
-
+        orthonormalization_string = repr(wfs.ksl)
+        self.timer.start(orthonormalization_string)
+        wfs.ksl.inverse_cholesky(S_nn)
         # S_nn now contains the inverse of the Cholesky factorization.
         # Let's call it something different:
         C_nn = S_nn
         del S_nn
-
-        if self.band_comm.rank == 0:
-            self.domain_comm.broadcast(C_nn, 0)
-        self.band_comm.broadcast(C_nn, 0)
+        self.timer.stop(orthonormalization_string)
 
         self.timer.start('rotate_psi')
         kpt.psit_nG = self.operator.matrix_multiply(C_nn, psit_nG, P_ani)
@@ -123,7 +102,6 @@ class Overlap:
             When False, existing P_ani are used
 
         """
-
         self.timer.start('Apply overlap')
         b_xG[:] = a_xG
         shape = a_xG.shape[:-3]

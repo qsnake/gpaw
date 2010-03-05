@@ -16,6 +16,7 @@ from gpaw.utilities.tools import md5_array
 from gpaw.utilities.gauss import gaussian_wave
 from gpaw.band_descriptor import BandDescriptor
 from gpaw.grid_descriptor import GridDescriptor
+from gpaw.blacs import BandLayouts
 from gpaw.parameters import InputParameters
 from gpaw.xc_functional import XCFunctional
 from gpaw.setup import Setups
@@ -106,8 +107,8 @@ class UTDomainParallelSetup_Mixed(UTDomainParallelSetup):
 class GDWFS(GridWaveFunctions):
     def __init__(self, gd, bd, kpt_comm, setups, dtype): # override constructor
         assert kpt_comm.size == 1
-        # hack: orbital descriptor set to None (no LCAO initialization used)
-        WaveFunctions.__init__(self, gd, None, 1, 1, setups, bd, dtype, \
+        ksl = BandLayouts(gd, bd)
+        WaveFunctions.__init__(self, gd, ksl, 1, 1, setups, bd, dtype, \
             world, kpt_comm, True, [None], [None], [1.], None)
         self.kin = Laplace(gd, -0.5, dtype=dtype, allocate=False)
         self.overlap = None

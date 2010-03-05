@@ -6,69 +6,11 @@ import numpy as np
 
 from gpaw.fd_operators import Laplace
 from gpaw.preconditioner import Preconditioner
-from gpaw.utilities.lapack import diagonalize, sldiagonalize
 from gpaw.utilities.blas import axpy, r2k, gemm
 from gpaw.utilities.tools import apply_subspace_mask
 from gpaw.utilities import unpack
-from gpaw.utilities import scalapack
-from gpaw import sl_diagonalize
 from gpaw import debug
 
-
-class BaseDiagonalizer:
-    def __init__(self, world, gd, bd, kpt_comm):
-        self.world = world
-        self.gd = gd
-        self.bd = bd
-        self.kpt_comm = kpt_comm
-
-    def diagonalize(self, H_NN, eps_n):
-        nbands = self.bd.nbands
-        eps_N = np.empty(nbands)
-        info = self._diagonalize(H_NN, eps_N)
-        if info != 0:
-            raise RuntimeError('Failed to diagonalize: %d' % info)
-
-        if self.gd.comm.rank == 0:
-            self.bd.distribute(eps_N, eps_n)
-            self.bd.comm.broadcast(H_NN, 0)
-
-        self.gd.comm.broadcast(H_NN, 0)
-        self.gd.comm.broadcast(eps_n, 0)
-
-    def _diagonalize(self, H_NN, eps_n):
-        raise NotImplementedError
-
-
-class SLDiagonalizer(BaseDiagonalizer):
-    """Original ScaLAPACK diagonalizer using 
-    redundantly distributed arrays."""
-    def __init__(self, world, gd, bd, kpt_comm, root=0):
-        BaseDiagonalizer.__init__(self, world, gd, bd, kpt_comm)
-        bcommsize = bd.comm.size
-        gcommsize = gd.comm.size
-        shiftks = kpt_comm.rank * bcommsize * gcommsize
-        block_ranks = shiftks + np.arange(bcommsize * gcommsize)
-        blockcomm = world.new_communicator(block_ranks)
-        self.blockcomm = blockcomm
-        self.root = root
-        # Keep buffers?
-
-    def _diagonalize(self, H_NN, eps_N):
-        # Work is done on BLACS grid, but one processor still collects
-        # all eigenvectors. Only processors on the BLACS grid return
-        # meaningful values of info.
-        return sldiagonalize(H_NN, eps_N, self.blockcomm, root=self.root)
-
-
-class LapackDiagonalizer(BaseDiagonalizer):
-    """Serial diagonalizer."""
-    def _diagonalize(self, H_NN, eps_N):
-        # Only one processor really does any work.
-        if self.gd.comm.rank == 0 and self.bd.comm.rank == 0:
-            return diagonalize(H_NN, eps_N)
-        else:
-            return 0
 
 class Eigensolver:
     def __init__(self, keep_htpsit=True):
@@ -85,6 +27,7 @@ class Eigensolver:
         self.dtype = wfs.dtype
         self.bd = wfs.bd
         self.gd = wfs.gd
+        self.diagonalizer = wfs.ksl #XXX we should just call it ksl...
         self.nbands = wfs.nbands
         self.mynbands = wfs.mynbands
 
@@ -108,13 +51,6 @@ class Eigensolver:
             if kpt.eps_n is None:
                 kpt.eps_n = np.empty(self.mynbands)
         
-        if sl_diagonalize:
-            self.diagonalizer = SLDiagonalizer(self.world, self.gd, 
-                                               self.bd, self.kpt_comm)
-        else:
-            self.diagonalizer = LapackDiagonalizer(self.world, self.gd,
-                                                   self.bd, self.kpt_comm)
-
         self.initialized = True
 
     def iterate(self, hamiltonian, wfs):
@@ -234,16 +170,17 @@ class Eigensolver:
                 raise NotImplementedError
             else:
                 H_nn = hamiltonian.xc.xcfunc.exx.grr(wfs, kpt, Htpsit_xG,
-                                                 hamiltonian)
+                                                     hamiltonian)
         self.timer.stop('calc_matrix')
 
-        diagonalizationstring = self.diagonalizer.__class__.__name__
-        wfs.timer.start(diagonalizationstring)
+        diagonalization_string = repr(self.diagonalizer)
+        wfs.timer.start(diagonalization_string)
         self.diagonalizer.diagonalize(H_nn, kpt.eps_n)
-        # The two lines below will go away soon
+        # H_nn now contains the result of the diagonalization.
+        # Let's call it something different:
         U_nn = H_nn
         del H_nn
-        wfs.timer.stop(diagonalizationstring)
+        wfs.timer.stop(diagonalization_string)
         
         if not rotate:
             self.timer.stop('Subspace diag')

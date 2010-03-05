@@ -1,48 +1,9 @@
 import numpy as np
 from gpaw.utilities import unpack
-from gpaw.utilities.lapack import general_diagonalize
 from gpaw.utilities.blas import gemm
 from gpaw.utilities import scalapack
 from gpaw import sl_diagonalize, extra_parameters
 import gpaw.mpi as mpi
-
-
-class BaseDiagonalizer:
-    def __init__(self, gd, bd):
-        self.gd = gd
-        self.bd = bd
-
-    def diagonalize(self, H_MM, C_nM, eps_n, S_MM):
-        eps_M = np.empty(C_nM.shape[-1])
-        info = self._diagonalize(H_MM, S_MM.copy(), eps_M)
-        if info != 0:
-            raise RuntimeError('Failed to diagonalize: %d' % info)
-        
-        nbands = self.bd.nbands
-        if self.bd.rank == 0:
-            self.gd.comm.broadcast(H_MM[:nbands], 0)
-            self.gd.comm.broadcast(eps_M[:nbands], 0)
-        self.bd.distribute(H_MM[:nbands], C_nM)
-        self.bd.distribute(eps_M[:nbands], eps_n)
-    
-    def _diagonalize(self, H_MM, S_MM, eps_M):
-        raise NotImplementedError
-
-    def estimate_memory(self, mem, dtype):
-        nao = self.setups.nao
-        itemsize = mem.itemsize[dtype]
-        mem.subnode('eps [M]', self.nao * mem.floatsize)
-        mem.subnode('H [MM]', self.nao * self.nao * itemsize)
-    
-
-class LapackDiagonalizer(BaseDiagonalizer):
-    """Serial diagonalizer."""
-    def _diagonalize(self, H_MM, S_MM, eps_M):
-        # Only one processor really does any work.
-        if self.gd.comm.rank == 0 and self.bd.comm.rank == 0:
-            return general_diagonalize(H_MM, eps_M, S_MM)
-        else:
-            return 0
 
 
 class LCAO:
@@ -120,10 +81,10 @@ class LCAO:
 
         kpt.eps_n[0] = 42
         
-        diagonalizationstring = self.diagonalizer.__class__.__name__
-        wfs.timer.start(diagonalizationstring)
+        diagonalization_string = repr(self.diagonalizer)
+        wfs.timer.start(diagonalization_string)
         self.diagonalizer.diagonalize(H_MM, kpt.C_nM, kpt.eps_n, S_MM)
-        wfs.timer.stop(diagonalizationstring)
+        wfs.timer.stop(diagonalization_string)
 
         if (kpt.eps_n[0] == 42):
             raise RuntimeError('LCAO diagonalization failed! You may want to check your structure.')    
@@ -140,4 +101,4 @@ class LCAO:
 
     def estimate_memory(self, mem, dtype):
         pass 
-        # self.diagonalizer.estimate_memory(mem, dtype)
+        # self.diagonalizer.estimate_memory(mem, dtype) #XXX enable this

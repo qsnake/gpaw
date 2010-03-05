@@ -43,6 +43,39 @@ gd = GridDescriptor((G, G, G), (a, a, a), True, domain_comm, parsize=D)
 
 mcpus, ncpus, blocksize = 2, 2, 6
 
+def blacs_diagonalize(ksl, H_Nn, U_nN, eps_n):
+    # H_Nn must be lower triangular or symmetric, 
+    # but not upper triangular.
+    # U_nN will be symmetric
+
+    # U_Nn needs to be simultaneously compatible with:
+    # 1. outdescriptor
+    # 2. broadcast with gd.comm
+    # We will do this with a dummy buffer U2_nN
+    bmd = ksl.new_descriptor()
+    H_nn = bmd.redistribute_output(H_Nn)
+    ksl.diagonalize(H_nn, eps_n)
+    U_nn = H_nn
+    del H_nn
+    U_nN[:] = bmd.redistribute_input(U_nn)
+
+def blacs_inverse_cholesky(ksl, S_Nn, C_nN):
+    # S_Nn must be upper triangular or symmetric, 
+    # but not lower triangular.
+    # C_nN will be upper triangular.
+
+    # S_Nn needs to be simultaneously compatible with:
+    # 1. indescriptor
+    # 2. outdescriptor
+    # 3. broadcast with gd.comm
+    # We will do this with a number of separate buffers.
+    bmd = ksl.new_descriptor()
+    S_nn = bmd.redistribute_output(S_Nn)
+    ksl.inverse_cholesky(S_nn)
+    C_nn = S_nn
+    del S_nn
+    C_nN[:] = bmd.redistribute_input(C_nn)
+
 def main(seed=42, dtype=float):
     ksl = BlacsBandLayouts(gd, bd, mcpus, ncpus, blocksize)
     nbands = bd.nbands
@@ -63,9 +96,8 @@ def main(seed=42, dtype=float):
     print "H_Nn"
     parallelprint(world, H_Nn)
     
-    diagonalizer = ksl.get_diagonalizer()
     eps_n = np.zeros(bd.mynbands)
-    diagonalizer.diagonalize(H_Nn, U_nN, eps_n)
+    blacs_diagonalize(ksl, H_Nn, U_nN, eps_n)
     print "U_nN"
     parallelprint(world, U_nN)
     print "eps_n"
@@ -82,7 +114,7 @@ def main(seed=42, dtype=float):
 
     print "S_Nn"
     parallelprint(world, S_Nn)
-    diagonalizer.inverse_cholesky(S_Nn, C_nN)
+    blacs_inverse_cholesky(ksl, S_Nn, C_nN)
     print "C_nN"
     parallelprint(world, C_nN)
 

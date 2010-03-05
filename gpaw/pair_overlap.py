@@ -325,7 +325,7 @@ class ProjectorPairOverlap(Overlap, GridPairOverlap):
                 #self.B_aa[self.ni_a[a1]:self.ni_a[a1+1], \
                 #          self.ni_a[a2]:self.ni_a[a2+1]] = B_ii
                 self.assign_atomic_pair_matrix(self.B_aa, a1, a2, B_ii)
-        self.domain_comm.sum(self.B_aa) #TODO too heavy?
+        self.gd.comm.sum(self.B_aa) #TODO too heavy?
         """
         #self.B_aa = overlap_projectors(wfs.gd, wfs.pt, wfs.setups)
 
@@ -377,7 +377,7 @@ class ProjectorPairOverlap(Overlap, GridPairOverlap):
             dI_p = dI_sp[kpt.s]
             dI_ii = unpack(dI_p)
             self.assign_atomic_pair_matrix(dI_aa, a, a, dI_ii)
-        self.domain_comm.sum(dI_aa) #TODO too heavy?
+        self.gd.comm.sum(dI_aa) #TODO too heavy?
 
         dM_aa = self.get_rotated_coefficients(dI_aa)
         Q_axi = wfs.pt.dict(shape, zero=True)
@@ -390,7 +390,7 @@ class ProjectorPairOverlap(Overlap, GridPairOverlap):
             for a2, P_xi in P_axi.items():
                 dM_ii = self.extract_atomic_pair_matrix(dM_aa, a1, a2)
                 Q_xi += np.dot(P_xi, dM_ii.T) #sum over a2 and last i in dM_ii
-            self.domain_comm.sum(Q_xi)
+            self.gd.comm.sum(Q_xi)
 
         self.timer.stop('Update two-center projections')
 
@@ -449,7 +449,7 @@ class ProjectorPairOverlap(Overlap, GridPairOverlap):
                     # xO_aa are the overlap extrapolators across atomic pairs
                     xO_ii = self.extract_atomic_pair_matrix(self.xO_aa, a1, a2)
                     Q_xi += np.dot(P_xi, xO_ii.T) #sum over a2 and last i in xO_ii
-                self.domain_comm.sum(Q_xi)
+                self.gd.comm.sum(Q_xi)
 
             return Q_axi
         else:
@@ -480,7 +480,7 @@ class ProjectorPairOverlap(Overlap, GridPairOverlap):
                 # dC_aa are the inverse coefficients across atomic pairs
                 dC_ii = self.extract_atomic_pair_matrix(self.dC_aa, a1, a2)
                 Q_xi += np.dot(P_xi, dC_ii.T) #sum over a2 and last i in dC_ii
-            self.domain_comm.sum(Q_xi)
+            self.gd.comm.sum(Q_xi)
 
         wfs.pt.add(b_xG, Q_axi, kpt.q)
         self.timer.stop('Apply inverse overlap')
@@ -497,7 +497,7 @@ class ProjectorPairOverlap(Overlap, GridPairOverlap):
                     # xC_aa are the inverse extrapolators across atomic pairs
                     xC_ii = self.extract_atomic_pair_matrix(self.xC_aa, a1, a2)
                     Q_xi += np.dot(P_xi, xC_ii.T) #sum over a2 and last i in xC_ii
-                self.domain_comm.sum(Q_xi)
+                self.gd.comm.sum(Q_xi)
 
             return Q_axi
         else:
