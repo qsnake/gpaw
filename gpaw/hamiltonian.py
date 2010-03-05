@@ -177,18 +177,9 @@ class Hamiltonian:
         nl  = np.where(np.equal(l_j, l))[0]
         V = np.zeros(np.shape(DM))
         if len(nl) == 2:
-            
-            # cup and cdown gives us the index of Delta_lq we need
-            cup     = (nl[0]-1)*(nl[0])/2
-            if cup<=0:cup=0
-            cdown   = (nl[1]-1)*(nl[1])/2
-            if cdown<=0:cup=0
-            
-            # lets find the correct entrances in the lq,
-            # and enable scaling eg. force <p|p>=1
-            aa = nl[0]*len(l_j)-cup
-            ab = nl[0]*len(l_j)-cup+nl[1]-l
-            bb = nl[1]*len(l_j)-cdown
+            aa = (nl[0])*len(l_j)-((nl[0]-1)*(nl[0])/2)
+            bb = (nl[1])*len(l_j)-((nl[1]-1)*(nl[1])/2)
+            ab = aa+nl[1]-nl[0]
             
             if(scale==0 or scale=='False' or scale =='false'):
                 lq_a  = lq[aa]
