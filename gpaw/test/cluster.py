@@ -2,9 +2,9 @@ import numpy as np
 
 from ase import *
 from ase.parallel import barrier, rank, size
-#from gpaw.utilities.vector import Vector3d
 from gpaw.cluster import Cluster
 from gpaw.test import equal
+from ase.data.molecules import molecule
 
 R = 2.0
 CO = Atoms([Atom('C', (1, 0, 0)), Atom('O', (1, 0, R))])
@@ -45,9 +45,14 @@ for c in range(3):
 ##    print "cc[c,c], cc[c,c] / h % 4 =", cc[c, c], cc[c, c] / h % 4
     equal(cc[c, c] / h % 4, 0.0, 1e-10)
 
+# .............................................
 # connected atoms
 assert(len(CO.find_connected(0, 1.1 * R)) == 2)
 assert(len(CO.find_connected(0, 0.9 * R)) == 1)
+
+H2O = Cluster(molecule('H2O'))
+assert (len(H2O.find_connected(0)) == 3)
+assert (len(H2O.find_connected(0, scale=0.9)) == 1)
 
 # .............................................
 # I/O

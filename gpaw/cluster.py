@@ -1,6 +1,8 @@
+from math import sqrt
 import numpy as np
 
 from ase import Atom, Atoms, read, write
+from ase.data import covalent_radii
 from ase.calculators.neighborlist import NeighborList
 
 from ase.io.cube import write_cube
@@ -39,25 +41,43 @@ class Cluster(Atoms):
         pos = self.get_positions()
         return np.array([np.minimum.reduce(pos), np.maximum.reduce(pos)])
 
-    def find_connected(self, i, dmax):
-        """Find the atoms connected to self[i] and return them.
+    def find_connected(self, index, dmax=None, scale=1.5):
+        """Find the atoms connected to self[index] and return them.
 
+        If dmax is not None:
         Atoms are defined to be connected if they are nearer than dmax
         to each other.
+
+        If dmax is None:
+        Atoms are defined to be connected if they are nearer than the
+        sum of their covalent radii * scale to each other.
         """
-  
-        nl = NeighborList([0.5 * dmax] * len(self), skin=0)
-        nl.update(self)
 
-        indices, offsets = nl.get_neighbors(i)
-        connected = list(indices)
+        # set neighbor lists
+        neighborlist = []
+        if dmax is None:
+            # define neighbors according to covalent radii
+            radii = scale * covalent_radii[self.get_atomic_numbers()]
+            for ii, atom in enumerate(self):
+                neighbors = []
+                positions = self.positions - atom.position
+                distances = np.sqrt(np.sum(positions**2, axis=1))
+                radius = scale * covalent_radii[atom.get_atomic_number()]
+                neighborlist.append(np.where(distances < radii + radius)[0])
+        else:
+            # define neighbors according to distance
+            nl = NeighborList([0.5 * dmax] * len(self), skin=0)
+            nl.update(self)
+            for i, atom in enumerate(self):
+                indices, offsets = nl.get_neighbors(i)
+                neighborlist.append(list(indices))
 
+        connected = list(neighborlist[index])
         isolated = False
         while not isolated:
             isolated = True
             for i in connected:
-                indices, offsets = nl.get_neighbors(i)
-                for j in indices:
+                for j in neighborlist[i]:
                     if j in connected:
                         pass
                     else:
