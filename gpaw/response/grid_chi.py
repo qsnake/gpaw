@@ -919,8 +919,6 @@ class CHI:
             qGr_R = np.inner(qG, r.T).T
             drho_R += chi_G[iG] * np.exp(1j * qGr_R)
 
-            tmp = chi_G[iG] * np.exp(1j * qGr_R)
-            print >> self.txt, iG, chi_G[iG], gd.integrate(tmp), gd.integrate(drho_R)
         # phase = sum exp(iq.R_i)
         # drho_R /= self.vol * nkpt / phase
         return drho_R

@@ -48,10 +48,10 @@ def find_peaks(x,y,threshold = None):
         
     return peakarray
 
-def lorz_fit(x,y,initpara = None):
+def lorz_fit(x,y, npeak=1, initpara = None):
     """ Fit curve using Lorentzian function
 
-    Note: currently only valid for a single lorentizian
+    Note: currently only valid for one and two lorentizian
 
     The lorentzian function is defined as::
 
@@ -75,21 +75,30 @@ def lorz_fit(x,y,initpara = None):
     
     def residual(p, x, y):
         
-        err = y - lorz(x, p)
+        err = y - lorz(x, p, npeak)
         return err
 
-    def lorz(x, p):
+    def lorz(x, p, npeak):
 
-        return p[0] * p[3] / ( (x-p[1])**2 + p[3]**2 ) + p[2]
-
+        if npeak == 1:        
+            return p[0] * p[3] / ( (x-p[1])**2 + p[3]**2 ) + p[2]
+        if npeak == 2:
+            return ( p[0] * p[3] / ( (x-p[1])**2 + p[3]**2 ) + p[2]
+                   + p[4] * p[7] / ( (x-p[5])**2 + p[7]**2 ) + p[6] )
+        else:
+            raise ValueError('Larger than 2 peaks not supported yet!')
 
     if initpara is None:
-        initpara = np.array([1., 0., 0., 0.1])
+        if npeak == 1:
+            initpara[i] = np.array([1., 0., 0., 0.1])
+        if npeak == 2:
+            initpara[i] = np.array([1., 0., 0., 0.1,
+                                    3., 0., 0., 0.1])
     p0 = initpara
     
     result = leastsq(residual, p0, args=(x, y), maxfev=2000)
 
-    yfit = lorz(x, result[0])
+    yfit = lorz(x, result[0],npeak)
 
     return yfit, result[0]
     
