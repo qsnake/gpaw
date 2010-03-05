@@ -129,7 +129,8 @@ class Runner:
         cell = config.get_cell()
         self.energies = []
         if self.fmax is not None:
-            if not config.positions.any(axis=1).all():
+            if (not config.constraints and
+                not config.positions.any(axis=1).all()):
                 # one atom is at (0,0,0) - fix it:
                 mask = np.logical_not(config.positions.any(axis=1))
                 config.constraints = FixAtoms(mask=mask)

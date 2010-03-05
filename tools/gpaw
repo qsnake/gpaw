@@ -21,6 +21,7 @@ from ase.atoms import Atoms, string2symbols
 from ase.data.molecules import molecule
 from ase.visualize import view
 from ase.io import read, write
+from ase.constraints import FixAtoms
 
 from gpaw.utilities import devnull
 from gpaw.utilities.bulk2 import EMTRunner, GPAWRunner
@@ -71,6 +72,8 @@ behavior.add_option('-F', '--fit', action='store_true',
                     help='Find optimal volume or bondlength.')
 behavior.add_option('-R', '--relax', type='float', metavar='FMAX',
                     help='Relax internal coordinates using L-BFGS algorithm.')
+behavior.add_option('--constrain-tags', type='str', metavar='T1,T2,...',
+                    help='Constrain atoms with tags T1, T2, ...')
 behavior.add_option('--parameters',
                     help='read input parameters from this file')
 behavior.add_option('-E', '--effective-medium-theory',
@@ -188,6 +191,11 @@ def run():
         strains = np.linspace(0.98, 1.02, 5)
     else:
         strains = None
+
+    if opt.constrain_tags:
+        tags = [int(t) for t in opt.constrain_tags.split(',')]
+        constrain = FixAtoms(mask=[t in tags for t in atoms.get_tags()])
+        atoms.constraints = [constrain]
 
     runner = Runner(name, atoms, strains, tag=opt.identifier,
                     clean=not opt.read,
