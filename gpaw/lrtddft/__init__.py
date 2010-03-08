@@ -1,3 +1,6 @@
+"""This module defines a linear response TDDFT-class.
+
+"""
 from math import sqrt
 import sys
 
@@ -10,7 +13,7 @@ MASTER = mpi.MASTER
 from gpaw import debug
 from gpaw.poisson import PoissonSolver
 from gpaw.output import initialize_text_stream
-from gpaw.lrtddft.excitation import Excitation,ExcitationList
+from gpaw.lrtddft.excitation import Excitation, ExcitationList
 from gpaw.lrtddft.kssingle import KSSingles
 from gpaw.lrtddft.omega_matrix import OmegaMatrix
 from gpaw.lrtddft.apmb import ApmB
@@ -19,8 +22,6 @@ from gpaw.utilities import packed_index
 from gpaw.utilities.lapack import diagonalize
 from gpaw.xc_functional import XC3DGrid, XCFunctional
 from gpaw.lrtddft.spectrum import spectrum
-
-"""This module defines a linear response TDDFT-class."""
 
 __all__ = ['LrTDDFT', 'photoabsorption_spectrum', 'spectrum']
 
@@ -46,7 +47,7 @@ class LrTDDFT(ExcitationList):
       
     xc:
     Exchange-Correlation approximation in the Kernel
-    derivativeLevel:
+    derivative_level:
     0: use Exc, 1: use vxc, 2: use fxc  if available
 
     filename:
@@ -60,7 +61,7 @@ class LrTDDFT(ExcitationList):
                  jend=None,
                  energyrange=None,
                  xc=None,
-                 derivativeLevel=1,
+                 derivative_level=1,
                  numscale=0.00001,
                  txt=None,
                  filename=None,
@@ -70,8 +71,8 @@ class LrTDDFT(ExcitationList):
                  ):
 
         self.nspins = None
-        self.istart=None
-        self.jend=None
+        self.istart = None
+        self.jend = None
 
         if isinstance(calculator, str):
             ExcitationList.__init__(self, None, txt)
@@ -82,14 +83,14 @@ class LrTDDFT(ExcitationList):
         if filename is not None:
             return self.read(filename)
 
-        self.filename=None
-        self.calculator=None
-        self.eps=None
-        self.xc=None
-        self.derivativeLevel=None
-        self.numscale=numscale
-        self.finegrid=finegrid
-        self.force_ApmB=force_ApmB
+        self.filename = None
+        self.calculator = None
+        self.eps = None
+        self.xc = None
+        self.derivative_level = None
+        self.numscale = numscale
+        self.finegrid = finegrid
+        self.force_ApmB = force_ApmB
 
         if eh_comm is None:
             eh_comm = mpi.serial_comm
@@ -110,7 +111,7 @@ class LrTDDFT(ExcitationList):
                 
             self.update(calculator, nspins, eps, 
                         istart, jend, energyrange,
-                        xc, derivativeLevel, numscale)
+                        xc, derivative_level, numscale)
 
     def analyse(self, what=None, out=None, min=0.1):
         """Print info about the transitions.
@@ -139,16 +140,16 @@ class LrTDDFT(ExcitationList):
                jend=None,
                energyrange=None,
                xc=None,
-               derivativeLevel=None,
+               derivative_level=None,
                numscale=0.001):
 
-        changed=False
-        if self.calculator!=calculator or \
+        changed = False
+        if self.calculator != calculator or \
            self.nspins != nspins or \
            self.eps != eps or \
            self.istart != istart or \
            self.jend != jend :
-            changed=True
+            changed = True
 
         if not changed: return
 
@@ -158,8 +159,8 @@ class LrTDDFT(ExcitationList):
         self.istart = istart
         self.jend = jend
         self.xc = xc
-        self.derivativeLevel=derivativeLevel
-        self.numscale=numscale
+        self.derivative_level = derivative_level
+        self.numscale = numscale
         self.kss = KSSingles(calculator=calculator,
                              nspins=nspins,
                              eps=eps,
@@ -179,7 +180,7 @@ class LrTDDFT(ExcitationList):
             Om = ApmB
             name = 'LrTDDFThyb'
         self.Om = Om(self.calculator, self.kss,
-                     self.xc, self.derivativeLevel, self.numscale,
+                     self.xc, self.derivative_level, self.numscale,
                      finegrid=self.finegrid, eh_comm=self.eh_comm,
                      txt=self.txt)
         self.name = name
@@ -188,7 +189,7 @@ class LrTDDFT(ExcitationList):
     def diagonalize(self, istart=None, jend=None):
         self.istart = istart
         self.jend = jend
-        self.Om.diagonalize(istart,jend)
+        self.Om.diagonalize(istart, jend)
         
         # remove old stuff
         while len(self): self.pop()
@@ -224,13 +225,12 @@ class LrTDDFT(ExcitationList):
         values = f.readline().split()
         self.eps = float(values[0])
         if len(values) > 1:
-            self.derivativeLevel = int(values[1])
+            self.derivative_level = int(values[1])
             self.numscale = float(values[2])
             self.finegrid = int(values[3])
         else:
             # old writing style, use old defaults
             self.numscale = 0.001
-            pass
 
         self.kss = KSSingles(filehandle=f)
         if self.name == 'LrTDDFT':
@@ -253,11 +253,8 @@ class LrTDDFT(ExcitationList):
             for i in range(n):
                 l = f.readline().split()
                 E = float(l[0])
-                me = [float(l[1]),float(l[2]),float(l[3])]
-                self.append(LrTDDFTExcitation(e=E,m=me))
-
-            # load the eigenvectors
-            pass
+                me = [float(l[1]), float(l[2]), float(l[3])]
+                self.append(LrTDDFTExcitation(e=E, m=me))
 
         if fh is None:
             f.close()
@@ -272,16 +269,16 @@ class LrTDDFT(ExcitationList):
 
         slr = LrTDDFT(None, self.nspins, self.eps,
                       self.istart, self.jend, self.xc, 
-                      self.derivativeLevel, self.numscale)
+                      self.derivative_level, self.numscale)
         tlr = LrTDDFT(None, self.nspins, self.eps,
                       self.istart, self.jend, self.xc, 
-                      self.derivativeLevel, self.numscale)
+                      self.derivative_level, self.numscale)
         slr.Om, tlr.Om = self.Om.singlets_triplets()
         for lr in [slr, tlr]:
             lr.kss = lr.Om.fullkss
         return slr, tlr
 
-    def SPA(self, i, j):
+    def single_pole_approximation(self, i, j):
         """Return the excitation according to the
         single pole approximation. See e.g.:
         Grabo et al, Theochem 501 (2000) 353-367
@@ -290,7 +287,6 @@ class LrTDDFT(ExcitationList):
             if kss.i == i and kss.j == j:
                 return sqrt(self.Om.full[ij][ij]) * Hartree
                 return self.Om.full[ij][ij] / kss.energy * Hartree
-        return None
 
     def __str__(self):
         string = ExcitationList.__str__(self)
@@ -324,7 +320,7 @@ class LrTDDFT(ExcitationList):
             xc = self.xc
             if xc is None: xc = 'RPA'
             f.write(xc+'\n')
-            f.write('%g %d %g %d' % (self.eps, int(self.derivativeLevel),
+            f.write('%g %d %g %d' % (self.eps, int(self.derivative_level),
                                      self.numscale, int(self.finegrid)) + '\n')
             self.kss.write(fh=f)
             self.Om.write(fh=f)
@@ -332,10 +328,12 @@ class LrTDDFT(ExcitationList):
             if len(self):
                 f.write('# Eigenvalues\n')
                 istart = self.istart
-                if istart is None: istart = self.kss.istart
+                if istart is None: 
+                    istart = self.kss.istart
                 jend = self.jend
-                if jend is None: jend = self.kss.jend
-                f.write('%d %d %d'%(len(self),istart,jend)+'\n')
+                if jend is None: 
+                    jend = self.kss.jend
+                f.write('%d %d %d'%(len(self), istart, jend) + '\n')
                 for ex in self:
                     f.write(ex.outstring())
                 f.write('# Eigenvectors\n')
@@ -347,9 +345,9 @@ class LrTDDFT(ExcitationList):
             if fh is None:
                 f.close()
 
-def d2Excdnsdnt(dup,ddn):
+def d2Excdnsdnt(dup, ddn):
     """Second derivative of Exc polarised"""
-    res=[[0, 0], [0, 0]]
+    res = [[0, 0], [0, 0]]
     for ispin in range(2):
         for jspin in range(2):
             res[ispin][jspin]=np.zeros(dup.shape)
@@ -358,7 +356,7 @@ def d2Excdnsdnt(dup,ddn):
 
 def d2Excdn2(den):
     """Second derivative of Exc unpolarised"""
-    res=np.zeros(den.shape)
+    res = np.zeros(den.shape)
     _gpaw.d2Excdn2(den, res)
     return res
 
@@ -379,7 +377,7 @@ class LrTDDFTExcitation(Excitation):
             self.f = Om.eigenvectors[i]
             self.kss = Om.kss
             self.me = 0.
-            for f,k in zip(self.f,self.kss):
+            for f,k in zip(self.f, self.kss):
                 self.me += f * k.me
 
             return
@@ -407,10 +405,12 @@ class LrTDDFTExcitation(Excitation):
         return str
         
     def __str__(self):
-        m2 = np.sum(self.me*self.me)
+        m2 = np.sum(self.me * self.me)
         m = sqrt(m2)
-        if m>0: me = self.me/m
-        else:   me = self.me
+        if m > 0: 
+            me = self.me/m
+        else:   
+            me = self.me
         str = "<LrTDDFTExcitation> om=%g[eV] |me|=%g (%.2f,%.2f,%.2f)" % \
               (self.energy * Hartree, m, me[0], me[1], me[2])
         return str
