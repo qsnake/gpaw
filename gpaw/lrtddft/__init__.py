@@ -289,6 +289,7 @@ class LrTDDFT(ExcitationList):
         for ij, kss in enumerate(self.kss):
             if kss.i == i and kss.j == j:
                 return sqrt(self.Om.full[ij][ij]) * Hartree
+                return self.Om.full[ij][ij] / kss.energy * Hartree
         return None
 
     def __str__(self):
@@ -451,6 +452,8 @@ def photoabsorption_spectrum(excitation_list, spectrum_file=None,
     all energies in [eV]
     """
 
-    spectrum(exlist=excitation_list, filename=spectrum_file, emin=e_min, emax=e_max,
-             de=delta_e, energyunit='eV', folding=folding, width=width,
+    spectrum(exlist=excitation_list, filename=spectrum_file, 
+             emin=e_min, emax=e_max,
+             de=delta_e, energyunit='eV', 
+             folding=folding, width=width,
              comment=comment)
