@@ -520,32 +520,49 @@ class OmegaMatrix:
         st += '%d' % ti + 's'
         return st
 
-    def diagonalize(self, istart=None, jend=None):
+    def diagonalize(self, istart=None, jend=None, energy_range=None):
         self.istart = istart
         self.jend = jend
-        if istart is None and jend is None:
+        if istart is None and jend is None and energy_range is None:
             # use the full matrix
             kss = self.fullkss
             evec = self.full.copy()
         else:
             # reduce the matrix
-            if istart is None: istart = self.kss.istart
-            if self.fullkss.istart > istart:
-                raise RuntimeError('istart=%d has to be >= %d' %
-                                   (istart, self.kss.istart))
-            if jend is None: jend = self.kss.jend
-            if self.fullkss.jend < jend:
-                raise RuntimeError('jend=%d has to be <= %d' %
-                                   (jend, self.kss.jend))
             print >> self.txt,'# diagonalize: %d transitions original'\
                   % len(self.fullkss)
 
+            if energy_range is None:
+                if istart is None: istart = self.kss.istart
+                if self.fullkss.istart > istart:
+                    raise RuntimeError('istart=%d has to be >= %d' %
+                                       (istart, self.kss.istart))
+                if jend is None: jend = self.kss.jend
+                if self.fullkss.jend < jend:
+                    raise RuntimeError('jend=%d has to be <= %d' %
+                                       (jend, self.kss.jend))
+
+            else:
+                try:
+                    emin, emax = energy_range
+                except:
+                    emax = energy_range
+                    emin = 0.
+                emin /= Hartree
+                emax /= Hartree
+
             map= []
             kss = KSSingles()
-            for ij, k in zip(range(len(self.fullkss)),self.fullkss):
-                if k.i >= istart and k.j <= jend:
-                    kss.append(k)
-                    map.append(ij)
+            for ij, k in zip(range(len(self.fullkss)), self.fullkss):
+                if energy_range is None:
+                    if k.i >= istart and k.j <= jend:
+                        kss.append(k)
+                        map.append(ij)
+                else:
+                    if k.energy >= emin and k.energy < emax:
+                        kss.append(k)
+                        map.append(ij)
+                        
             kss.update()
             nij = len(kss)
             print >> self.txt,'# diagonalize: %d transitions now' % nij

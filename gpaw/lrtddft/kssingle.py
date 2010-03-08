@@ -121,7 +121,7 @@ class KSSingles(ExcitationList):
                         if fij > eps and epsij >= emin and epsij < emax:
                             # this is an accepted transition
                             ks = KSSingle(i, j, kpt.s, kpt, paw,
-                                          fijscale=fijscale)
+                                          fijscale = fijscale)
                             self.append(ks)
         else:
             # select transitions according to band index

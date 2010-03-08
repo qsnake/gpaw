@@ -186,10 +186,10 @@ class LrTDDFT(ExcitationList):
         self.name = name
 ##        self.diagonalize()
 
-    def diagonalize(self, istart=None, jend=None):
+    def diagonalize(self, istart=None, jend=None, energy_range=None):
         self.istart = istart
         self.jend = jend
-        self.Om.diagonalize(istart, jend)
+        self.Om.diagonalize(istart, jend, energy_range)
         
         # remove old stuff
         while len(self): self.pop()

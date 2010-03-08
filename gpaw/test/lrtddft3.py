@@ -58,6 +58,9 @@ for obj in [KSSingles, LrTDDFT]:
     if obj.__name__ == 'LrTDDFT':
         el.diagonalize()
     assert len(el) == 18
+    if obj.__name__ == 'LrTDDFT':
+        el.diagonalize(energy_range=8)
+        assert len(el) == 4
 
 lr = LrTDDFT(calc, nspins=2)
 lr.write('lrtddft3.dat.gz')
