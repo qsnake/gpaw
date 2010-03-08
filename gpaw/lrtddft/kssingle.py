@@ -1,21 +1,19 @@
+"""Kohn-Sham single particle excitations realated objects.
+
+"""
 from math import pi, sqrt
 
 import numpy as np
 from ase.units import Bohr, Hartree
 
 import gpaw.mpi as mpi
-from gpaw import debug
-from gpaw.utilities import pack, packed_index
-from gpaw.lrtddft.excitation import Excitation,ExcitationList
+from gpaw.utilities import packed_index
+from gpaw.lrtddft.excitation import Excitation, ExcitationList
 from gpaw.localized_functions import create_localized_functions
 from gpaw.pair_density import PairDensity
 from gpaw.fd_operators import Gradient
 from gpaw.gaunt import gaunt as G_LLL
 from gpaw.gaunt import ylnyl
-
-from gpaw.utilities import contiguous, is_contiguous
-
-# KS excitation classes
 
 class KSSingles(ExcitationList):
     """Kohn-Sham single particle excitations
@@ -71,7 +69,7 @@ class KSSingles(ExcitationList):
 
         trkm = self.get_trk()
         print >> self.txt, 'KSS TRK sum %g (%g,%g,%g)' % \
-              (np.sum(trkm)/3.,trkm[0],trkm[1],trkm[2])
+              (np.sum(trkm)/3., trkm[0], trkm[1], trkm[2])
         pol = self.get_polarizabilities(lmax=3)
         print >> self.txt, \
               'KSS polarisabilities(l=0-3) %g, %g, %g, %g' % \
@@ -96,7 +94,7 @@ class KSSingles(ExcitationList):
         #       i.e. the spin of the excited states
         self.nvspins = wfs.nspins
         self.npspins = wfs.nspins
-        fijscale=1
+        fijscale = 1
         if self.nvspins < 2:
             if nspins > self.nvspins:
                 self.npspins = nspins
@@ -126,16 +124,16 @@ class KSSingles(ExcitationList):
         else:
             # select transitions according to band index
             for ispin in range(self.npspins):
-                vspin=ispin
+                vspin = ispin
                 if self.nvspins<2:
-                    vspin=0
-                f=self.kpt_u[vspin].f_n
-                if jend==None: jend=len(f)-1
-                else         : jend=min(jend, len(f)-1)
+                    vspin = 0
+                f = self.kpt_u[vspin].f_n
+                if jend == None: jend = len(f)-1
+                else         : jend = min(jend, len(f)-1)
 
                 for i in range(istart, jend+1):
                     for j in range(istart, jend+1):
-                        fij=f[i]-f[j]
+                        fij = f[i]-f[j]
                         if fij > eps:
                             # this is an accepted transition
                             ks = KSSingle(i, j, ispin, 
@@ -160,7 +158,7 @@ class KSSingles(ExcitationList):
         f.readline()
         n = int(f.readline())
         for i in range(n):
-            kss = KSSingle(string=f.readline())
+            kss = KSSingle(string = f.readline())
             self.append(kss)
         self.update()
 
@@ -242,9 +240,9 @@ class KSSingle(Excitation, PairDensity):
         self.pspin=pspin
         
         f = kpt.f_n
-        self.fij=(f[iidx]-f[jidx])*fijscale
-        e=kpt.eps_n
-        self.energy=e[jidx]-e[iidx]
+        self.fij = (f[iidx] - f[jidx]) * fijscale
+        e = kpt.eps_n
+        self.energy = e[jidx] - e[iidx]
 
         # calculate matrix elements -----------
 
@@ -422,7 +420,7 @@ class KSSingle(Excitation, PairDensity):
         str = "# <KSSingle> %d->%d %d(%d) eji=%g[eV]" % \
               (self.i, self.j, self.pspin, self.spin,
                self.energy * Hartree)
-        str += " (%g,%g,%g)" % (self.me[0],self.me[1],self.me[2])
+        str += " (%g,%g,%g)" % (self.me[0], self.me[1], self.me[2])
         return str
     
     #####################
