@@ -36,7 +36,7 @@ class KSSingles(ExcitationList):
       First occupied state to consider
     jend:
       Last unoccupied state to consider
-    energyrange:
+    energy_range:
       The energy range [emin, emax] or emax for KS transitions to use as basis
     """
 
@@ -46,7 +46,7 @@ class KSSingles(ExcitationList):
                  eps=0.001,
                  istart=0,
                  jend=None,
-                 energyrange=None,
+                 energy_range=None,
                  filehandle=None,
                  txt=None):
 
@@ -67,7 +67,7 @@ class KSSingles(ExcitationList):
                                'the convergence criterion (' +
                                str(error) + ' > ' + str(criterion) + ')')
 
-        self.select(nspins, eps, istart, jend, energyrange)
+        self.select(nspins, eps, istart, jend, energy_range)
 
         trkm = self.get_trk()
         print >> self.txt, 'KSS TRK sum %g (%g,%g,%g)' % \
@@ -78,7 +78,7 @@ class KSSingles(ExcitationList):
               tuple(pol.tolist())
 
     def select(self, nspins=None, eps=0.001,
-               istart=0, jend=None, energyrange=None):
+               istart=0, jend=None, energy_range=None):
         """Select KSSingles according to the given criterium."""
 
         paw = self.calculator
@@ -102,11 +102,11 @@ class KSSingles(ExcitationList):
                 self.npspins = nspins
                 fijscale = 0.5
 
-        if energyrange is not None:
+        if energy_range is not None:
             try:
-                emin, emax = energyrange
+                emin, emax = energy_range
             except:
-                emax = energyrange
+                emax = energy_range
                 emin = 0.
             emin /= Hartree
             emax /= Hartree
@@ -131,10 +131,10 @@ class KSSingles(ExcitationList):
                     vspin=0
                 f=self.kpt_u[vspin].f_n
                 if jend==None: jend=len(f)-1
-                else         : jend=min(jend,len(f)-1)
+                else         : jend=min(jend, len(f)-1)
 
-                for i in range(istart,jend+1):
-                    for j in range(istart,jend+1):
+                for i in range(istart, jend+1):
+                    for j in range(istart, jend+1):
                         fij=f[i]-f[j]
                         if fij > eps:
                             # this is an accepted transition

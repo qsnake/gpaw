@@ -532,13 +532,14 @@ class OmegaMatrix:
             if istart is None: istart = self.kss.istart
             if self.fullkss.istart > istart:
                 raise RuntimeError('istart=%d has to be >= %d' %
-                                   (istart,self.kss.istart))
+                                   (istart, self.kss.istart))
             if jend is None: jend = self.kss.jend
             if self.fullkss.jend < jend:
                 raise RuntimeError('jend=%d has to be <= %d' %
-                                   (jend,self.kss.jend))
+                                   (jend, self.kss.jend))
             print >> self.txt,'# diagonalize: %d transitions original'\
                   % len(self.fullkss)
+
             map= []
             kss = KSSingles()
             for ij, k in zip(range(len(self.fullkss)),self.fullkss):

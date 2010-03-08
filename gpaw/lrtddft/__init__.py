@@ -59,7 +59,7 @@ class LrTDDFT(ExcitationList):
                  eps=0.001,
                  istart=0,
                  jend=None,
-                 energyrange=None,
+                 energy_range=None,
                  xc=None,
                  derivative_level=1,
                  numscale=0.00001,
@@ -110,7 +110,7 @@ class LrTDDFT(ExcitationList):
                 calculator.set_positions()
                 
             self.update(calculator, nspins, eps, 
-                        istart, jend, energyrange,
+                        istart, jend, energy_range,
                         xc, derivative_level, numscale)
 
     def analyse(self, what=None, out=None, min=0.1):
@@ -138,7 +138,7 @@ class LrTDDFT(ExcitationList):
                eps=0.001,
                istart=0,
                jend=None,
-               energyrange=None,
+               energy_range=None,
                xc=None,
                derivative_level=None,
                numscale=0.001):
@@ -166,7 +166,7 @@ class LrTDDFT(ExcitationList):
                              eps=eps,
                              istart=istart,
                              jend=jend,
-                             energyrange=energyrange,
+                             energy_range=energy_range,
                              txt=self.txt)
         if not self.force_ApmB:
             Om = OmegaMatrix

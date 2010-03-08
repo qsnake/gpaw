@@ -17,14 +17,14 @@ from cStringIO import StringIO
 
 L = 10.0
 txt=None
-#xt='-'
+xt='-'
 
 N2 = molecule('N2')
-N2.set_cell([L,L,L])
+N2.set_cell([L, L, L])
 #N2.set_pbc(True)
 N2.center()
 
-if 1:
+if 0:
     calc = GPAW(h = 0.25,
                 nbands = -5,
                 spinpol = True,
@@ -48,12 +48,12 @@ for obj in [KSSingles, LrTDDFT]:
 #    print "*************** obj, len(obj)", obj.__name__, len(el)
     assert len(el) == 8
     # selection using an energy range
-    el = obj(calc, energyrange=8, txt=txt)
+    el = obj(calc, energy_range=8, txt=txt)
     if obj.__name__ == 'LrTDDFT':
         el.diagonalize()
 #    print "*************** obj, len(obj)", obj.__name__, len(el)
     assert len(el) == 4
-    el = obj(calc, energyrange=11.5, txt=txt)
+    el = obj(calc, energy_range=11.5, txt=txt)
 #    print "*************** obj, len(obj)", obj.__name__, len(el)
     if obj.__name__ == 'LrTDDFT':
         el.diagonalize()
