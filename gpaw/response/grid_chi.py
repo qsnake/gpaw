@@ -77,7 +77,7 @@ class CHI:
         self.nG = calc.get_number_of_grid_points()
         self.nG0 = self.nG[0] * self.nG[1] * self.nG[2]
 
-        self.h_c = calc.wfs.gd.h_cv # .diagonal()
+        self.h_c = calc.wfs.gd.h_cv
 
         if self.ncalc == 1:
 
@@ -102,10 +102,6 @@ class CHI:
             self.f2_kn = np.array([c[1].get_occupation_numbers(kpt=k)
                          for k in range(self.nkpt)])
     
-#        self.qr = np.zeros(self.nG)
- 
-        #self.r = np.zeros((self.nG[0],self.nG[1],self.nG[2], 3))
-
         # construct q.r
         r = calc.wfs.gd.get_grid_point_coordinates() # (3, nG[0], nG[1], nG[2])
         h_c = self.h_c # 3 * 3 matrix
@@ -783,7 +779,7 @@ class CHI:
         print >> txt 
         print >> txt, 'q in reduced coordinate:', self.q
         print >> txt, 'q in cartesian coordinate (1/A):', self.qq / Bohr
-        print >> txt, '|q|:', sqrt(np.inner(self.qq, self.qq))
+        print >> txt, '|q| (1/A):', sqrt(np.inner(self.qq / Bohr, self.qq / Bohr))
 
         print >> txt, 'Planewave cutoff energy (eV):', self.Ecut * Hartree
         print >> txt, 'Number of planewave used:', self.npw
