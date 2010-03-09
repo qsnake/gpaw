@@ -1,4 +1,6 @@
-import sys
+"""Omega matrix for functionals with Hartree-Fock exchange.
+
+"""
 from math import sqrt
 
 import numpy as np
@@ -6,40 +8,16 @@ from numpy.linalg import inv
 
 from ase.units import Hartree
 
-import _gpaw
 import gpaw.mpi as mpi
-MASTER = mpi.MASTER
-
-from gpaw import debug
-import gpaw.mpi as mpi
-from gpaw.poisson import PoissonSolver
-from gpaw.lrtddft.excitation import Excitation,ExcitationList
 from gpaw.lrtddft.omega_matrix import OmegaMatrix
-#from gpaw.lrtddft.kssingle import KSSingle 
 from gpaw.pair_density import PairDensity
-from gpaw.transformers import Transformer
-from gpaw.utilities import pack,pack2,packed_index
+from gpaw.utilities import pack
 from gpaw.utilities.lapack import diagonalize, gemm, sqrt_matrix
 from gpaw.utilities.timing import Timer
-from gpaw.xc_functional import XC3DGrid, XCFunctional
-
-import time
 
 class ApmB(OmegaMatrix):
-    """
-    
-    Omega matrix in Casidas linear response formalism
-
-    Parameters
-      - calculator: the calculator object the ground state calculation
-      - kss: the Kohn-Sham singles object
-      - xc: the exchange correlation approx. to use
-      - derivativeLevel: which level i of d^i Exc/dn^i to use
-      - numscale: numeric epsilon for derivativeLevel=0,1
-      - filehandle: the oject can be read from a filehandle
-      - txt: output stream
-      - finegrid: level of fine grid to use. 0: nothing, 1 for poisson only,
-        2 everything on the fine grid
+    """Omega matrix for functionals with Hartree-Fock exchange.
+ 
     """
 
     def get_full(self):
@@ -54,18 +32,18 @@ class ApmB(OmegaMatrix):
             self.paw.timer.stop()
         
     def get_rpa(self):
-        """calculate RPA and Hartree-fock part of the A+-B matrices"""
+        """Calculate RPA and Hartree-fock part of the A+-B matrices."""
 
         # shorthands
-        kss=self.fullkss
-        finegrid=self.finegrid
+        kss = self.fullkss
+        finegrid = self.finegrid
 
         # calculate omega matrix
         nij = len(kss)
         print >> self.txt, 'RPAhyb', nij, 'transitions'
         
-        AmB = np.zeros((nij,nij))
-        ApB = np.zeros((nij,nij))
+        AmB = np.zeros((nij, nij))
+        ApB = np.zeros((nij, nij))
 
         # storage place for Coulomb integrals
         integrals = {}
@@ -96,12 +74,12 @@ class ApmB(OmegaMatrix):
             if finegrid == 1:
                 rhot = kss[ij].with_compensation_charges()
                 phit = self.gd.zeros()
-                self.restrict(phit_p,phit)
+                self.restrict(phit_p, phit)
             else:
                 phit = phit_p
                 rhot = rhot_p
 
-            for kq in range(ij,nij):
+            for kq in range(ij, nij):
                 if kq != ij:
                     # smooth density including compensation charges
                     timer2.start('kq with_compensation_charges')
@@ -127,7 +105,7 @@ class ApmB(OmegaMatrix):
 
             timer.stop()
 ##            timer2.write()
-            if ij < (nij-1):
+            if ij < (nij - 1):
                 t = timer.get_time(ij) # time for nij-ij calculations
                 t = .5*t*(nij-ij)  # estimated time for n*(n+1)/2, n=nij-(ij+1)
                 print >> self.txt,'RPAhyb estimated time left',\
@@ -245,37 +223,16 @@ class ApmB(OmegaMatrix):
         st+='%d'%ti+'s'
         return st
 
-    def diagonalize(self, istart=None, jend=None):
-        self.istart = istart
-        self.jend = jend
-        if istart is None and jend is None:
-            # use the full matrix
-            kss = self.fullkss
+    def diagonalize(self, istart=None, jend=None, energy_range=None):
+        """Evaluate Eigenvectors and Eigenvalues:"""
+
+        map, kss = self.get_map(istart, jend, energy_range)
+        nij = len(kss)
+        if map is None:
             ApB = self.ApB.copy()
             AmB = self.AmB.copy()
             nij = len(kss)
         else:
-            # reduce the matrix
-            if istart is None: istart = self.kss.istart
-            if self.fullkss.istart > istart:
-                raise RuntimeError('istart=%d has to be >= %d' %
-                                   (istart,self.kss.istart))
-            if jend is None: jend = self.kss.jend
-            if self.fullkss.jend < jend:
-                raise RuntimeError('jend=%d has to be <= %d' %
-                                   (jend,self.kss.jend))
-            print >> self.txt, '# diagonalize: %d transitions original'\
-                  % len(self.fullkss)
-            map= []
-            kss = KSSingles()
-            for ij, k in zip(range(len(self.fullkss)),self.fullkss):
-                if k.i >= istart and k.j <= jend:
-                    kss.append(k)
-                    map.append(ij)
-            kss.update()
-            nij = len(kss)
-            print >> self.txt, '# diagonalize: %d transitions now' % nij
-
             ApB = np.empty((nij, nij))
             AmB = np.empty((nij, nij))
             for ij in range(nij):
@@ -316,9 +273,9 @@ class ApmB(OmegaMatrix):
             ApB = np.zeros((nij, nij))
             for ij in range(nij):
                 l = f.readline().split()
-                for kq in range(ij,nij):
-                    ApB[ij,kq] = float(l[kq-ij])
-                    ApB[kq,ij] = ApB[ij,kq]
+                for kq in range(ij, nij):
+                    ApB[ij, kq] = float(l[kq - ij])
+                    ApB[kq, ij] = ApB[ij, kq]
             self.ApB = ApB
 
             f.readline()
@@ -326,9 +283,9 @@ class ApmB(OmegaMatrix):
             AmB = np.zeros((nij, nij))
             for ij in range(nij):
                 l = f.readline().split()
-                for kq in range(ij,nij):
-                    AmB[ij,kq] = float(l[kq-ij])
-                    AmB[kq,ij] = AmB[ij,kq]
+                for kq in range(ij, nij):
+                    AmB[ij, kq] = float(l[kq - ij])
+                    AmB[kq, ij] = AmB[ij, kq]
             self.AmB = AmB
 
             if fh is None:
@@ -350,29 +307,29 @@ class ApmB(OmegaMatrix):
             nij = len(self.fullkss)
             f.write('%d\n' % nij)
             for ij in range(nij):
-                for kq in range(ij,nij):
-                    f.write(' %g' % self.ApB[ij,kq])
+                for kq in range(ij, nij):
+                    f.write(' %g' % self.ApB[ij, kq])
                 f.write('\n')
             
             f.write('# A-B\n')
             nij = len(self.fullkss)
             f.write('%d\n' % nij)
             for ij in range(nij):
-                for kq in range(ij,nij):
-                    f.write(' %g' % self.AmB[ij,kq])
+                for kq in range(ij, nij):
+                    f.write(' %g' % self.AmB[ij, kq])
                 f.write('\n')
             
             if fh is None:
                 f.close()
 
     def __str__(self):
-        str='<ApmB> '
+        string = '<ApmB> '
         if hasattr(self,'eigenvalues'):
-            str += 'dimension '+ ('%d'%len(self.eigenvalues))
-            str += "\neigenvalues: "
+            string += 'dimension '+ ('%d'%len(self.eigenvalues))
+            string += "\neigenvalues: "
             for ev in self.eigenvalues:
-                str += ' ' + ('%f'%(sqrt(ev) * Hartree))
-        return str
+                string += ' ' + ('%f'%(sqrt(ev) * Hartree))
+        return string
     
 
 

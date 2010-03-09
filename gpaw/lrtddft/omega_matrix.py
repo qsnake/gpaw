@@ -520,53 +520,61 @@ class OmegaMatrix:
         st += '%d' % ti + 's'
         return st
 
-    def diagonalize(self, istart=None, jend=None, energy_range=None):
+    def get_map(self, istart=None, jend=None, energy_range=None):
+        """Return the reduction map for the given requirements"""
+
         self.istart = istart
         self.jend = jend
         if istart is None and jend is None and energy_range is None:
-            # use the full matrix
-            kss = self.fullkss
-            evec = self.full.copy()
-        else:
-            # reduce the matrix
-            print >> self.txt,'# diagonalize: %d transitions original'\
+            return None, self.fullkss
+
+        # reduce the matrix
+        print >> self.txt,'# diagonalize: %d transitions original'\
                   % len(self.fullkss)
 
+        if energy_range is None:
+            if istart is None: istart = self.kss.istart
+            if self.fullkss.istart > istart:
+                raise RuntimeError('istart=%d has to be >= %d' %
+                                   (istart, self.kss.istart))
+            if jend is None: jend = self.kss.jend
+            if self.fullkss.jend < jend:
+                raise RuntimeError('jend=%d has to be <= %d' %
+                                   (jend, self.kss.jend))
+
+        else:
+            try:
+                emin, emax = energy_range
+            except:
+                emax = energy_range
+                emin = 0.
+            emin /= Hartree
+            emax /= Hartree
+
+        map= []
+        kss = KSSingles()
+        for ij, k in zip(range(len(self.fullkss)), self.fullkss):
             if energy_range is None:
-                if istart is None: istart = self.kss.istart
-                if self.fullkss.istart > istart:
-                    raise RuntimeError('istart=%d has to be >= %d' %
-                                       (istart, self.kss.istart))
-                if jend is None: jend = self.kss.jend
-                if self.fullkss.jend < jend:
-                    raise RuntimeError('jend=%d has to be <= %d' %
-                                       (jend, self.kss.jend))
-
+                if k.i >= istart and k.j <= jend:
+                    kss.append(k)
+                    map.append(ij)
             else:
-                try:
-                    emin, emax = energy_range
-                except:
-                    emax = energy_range
-                    emin = 0.
-                emin /= Hartree
-                emax /= Hartree
+                if k.energy >= emin and k.energy < emax:
+                    kss.append(k)
+                    map.append(ij)
+        kss.update()
+        print >> self.txt, '# diagonalize: %d transitions now' % len(kss)
+            
+        return map, kss
 
-            map= []
-            kss = KSSingles()
-            for ij, k in zip(range(len(self.fullkss)), self.fullkss):
-                if energy_range is None:
-                    if k.i >= istart and k.j <= jend:
-                        kss.append(k)
-                        map.append(ij)
-                else:
-                    if k.energy >= emin and k.energy < emax:
-                        kss.append(k)
-                        map.append(ij)
-                        
-            kss.update()
-            nij = len(kss)
-            print >> self.txt,'# diagonalize: %d transitions now' % nij
+    def diagonalize(self, istart=None, jend=None, energy_range=None):
+        """Evaluate Eigenvectors and Eigenvalues:"""
 
+        map, kss = self.get_map(istart, jend, energy_range)
+        nij = len(kss)
+        if map is None:
+            evec = self.full.copy()
+        else:
             evec = np.zeros((nij,nij))
             for ij in range(nij):
                 for kq in range(nij):
@@ -579,7 +587,7 @@ class OmegaMatrix:
         if info != 0:
             raise RuntimeError('Diagonalisation error in OmegaMatrix')
 
-    def Kss(self,kss=None):
+    def Kss(self, kss=None):
         """Set and get own Kohn-Sham singles"""
         if kss is not None:
             self.fullkss = kss
