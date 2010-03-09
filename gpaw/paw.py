@@ -380,7 +380,8 @@ class PAW(PAWTextOutput):
         else:
             xcfunc = par.xc
 
-        setups = Setups(Z_a, par.setups, par.basis, nspins, par.lmax, xcfunc)
+        setups = Setups(Z_a, par.setups, par.basis, nspins, par.lmax, xcfunc,
+                        world)
 
         # Brillouin zone stuff:
         if gamma:
@@ -657,7 +658,7 @@ class PAW(PAWTextOutput):
         self.timer.start('IO')
         gpaw.io.write(self, filename, mode, cmr_params=cmr_params, **kwargs)
         self.timer.stop('IO')
-        
+
     def get_myu(self, k, s):
         """Return my u corresponding to a certain kpoint and spin - or None"""
         # very slow, but we are sure that we have it

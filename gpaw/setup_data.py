@@ -16,6 +16,7 @@ from gpaw.utilities import fac, divrl
 from gpaw.utilities.tools import md5_new
 from gpaw.xc_functional import XCRadialGrid
 from gpaw.xc_correction import XCCorrection
+from gpaw.mpi import broadcast_string
 
 try:
     import gzip
@@ -28,7 +29,7 @@ else:
 class SetupData:
     """Container class for persistent setup attributes and XML I/O."""
     def __init__(self, symbol, xcsetupname, name='paw', readxml=True,
-                 zero_reference=False):
+                 zero_reference=False, world=None):
         self.symbol = symbol
         self.setupname = xcsetupname
         self.name = name
@@ -102,7 +103,7 @@ class SetupData:
         self.has_corehole = False        
 
         if readxml:
-            PAWXMLParser(self).parse()
+            PAWXMLParser(self).parse(world)
             nj = len(self.l_j)
             self.e_kin_jj.shape = (nj, nj)
 
@@ -348,11 +349,21 @@ class SetupData:
         return setup
 
 
-def search_for_file(name):
+def search_for_file(name, world=None):
     """Traverse gpaw setup paths to find file.
 
     Returns the file path and file contents.  If the file is not found,
     contents will be None."""
+
+    if world is not None and world.size > 1:
+        if world.rank == 0:
+            filename, source = search_for_file(name)
+            string = filename + '|' + source
+        else:
+            string = None
+        string = broadcast_string(string, 0, world)
+        return string.split('|', 1)
+
     source = None
     filename = None
     for path in setup_paths:
@@ -379,10 +390,10 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
         self.id = None
         self.data = None
 
-    def parse(self):
+    def parse(self, world=None):
         setup = self.setup
 
-        (setup.filename, source) = search_for_file(setup.stdfilename)
+        (setup.filename, source) = search_for_file(setup.stdfilename, world)
 
         if source is None:
             print """

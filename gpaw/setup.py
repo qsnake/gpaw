@@ -29,7 +29,7 @@ from gpaw.rotation import rotation
 
 
 def create_setup(symbol, xcfunc, lmax=0, nspins=1,
-                 type='paw', basis=None, setupdata=None):
+                 type='paw', basis=None, setupdata=None, world=None):
     if setupdata is None:
         if type == 'hgh' or type == 'hgh.sc':
             lmax = 0
@@ -46,7 +46,8 @@ def create_setup(symbol, xcfunc, lmax=0, nspins=1,
         else:
             zero_reference = xcfunc.hybrid > 0
             setupdata = SetupData(symbol, xcfunc.get_setup_name(),
-                                  type, True, zero_reference=zero_reference)
+                                  type, True, zero_reference=zero_reference,
+                                  world=world)
     return LeanSetup(setupdata.build(xcfunc, lmax, nspins, basis))
 
 
@@ -976,7 +977,8 @@ class Setups(list):
     ``core_charge`` Core hole charge.
     """
 
-    def __init__(self, Z_a, setup_types, basis_sets, nspins, lmax, xcfunc):
+    def __init__(self, Z_a, setup_types, basis_sets, nspins, lmax, xcfunc,
+                 world=None):
         list.__init__(self)
         symbols = [chemical_symbols[Z] for Z in Z_a]
         type_a = types2atomtypes(symbols, setup_types, default='paw')
@@ -994,7 +996,7 @@ class Setups(list):
                 if not isinstance(type, str):
                     setupdata = type
                 setup = create_setup(symbol, xcfunc, lmax, nspins, type,
-                                     basis, setupdata=setupdata)
+                                     basis, setupdata=setupdata, world=world)
                 self.setups[id] = setup
             setup.natoms += 1
             self.append(setup)
