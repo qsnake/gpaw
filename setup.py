@@ -17,6 +17,7 @@ from stat import ST_MTIME
 from config import *
 
 # Get the current version number:
+execfile('gpaw/svnversion_io.py')
 execfile('gpaw/version.py')
 
 long_description = """\

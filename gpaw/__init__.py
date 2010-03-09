@@ -154,6 +154,7 @@ while len(sys.argv) > i:
         continue
     # Delete used command line argument:
     del sys.argv[i]
+extra_parameters['fprojectors'] = 1
 
 if debug:
     import numpy
