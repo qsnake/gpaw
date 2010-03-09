@@ -1597,7 +1597,7 @@ class Transport(GPAW):
             self.bias = [v/2., -v /2.]
             self.get_selfconsistent_hamiltonian()        
     
-    def calculate_to_gate(self, v_limie, num_v):
+    def calculate_to_gate(self, v_limit, num_v):
         gate = np.linspace(0, v_limit, num_v)
         current = np.empty([num_v])
         self.negf_prepare() 
@@ -2101,7 +2101,7 @@ class Transport(GPAW):
         self.forces.reset()
         self.print_positions()
 
-    def analysis(self, n, n1=0):
+    def analysis(self, n, n1=0, gate=False, gate_uplimit=None):
         self.guess_steps = 1
         self.negf_prepare()
         flag = True
@@ -2109,8 +2109,13 @@ class Transport(GPAW):
                             self.lead_fermi, self.bias, comm=self.wfs.gd.comm,
                              tp=self)
         if not hasattr(self, 'analysor'):
-            self.analysor = Transport_Analysor(self, True)        
+            self.analysor = Transport_Analysor(self, True)
+            
         for i in range(n1, n):
+            if gate :
+                self.gate = np.linspace(0, gate_uplimit, n)[i]
+            else:
+                self.gate = 0
             if i > n1:
                 flag = False
             fd = file('bias_data' + str(i + 1), 'r')
@@ -2126,6 +2131,9 @@ class Transport(GPAW):
             self.surround.combine_dH_asp(dH_asp)
             self.gd1.distribute(vt_sG, self.extended_calc.hamiltonian.vt_sG) 
             h_spkmm, s_pkmm = self.get_hs(self.extended_calc)
+            ind = get_matrix_index(self.gate_mol_index)
+            h_spkmm[:, :, ind.T, ind] += self.gate * s_pkmm[:, ind.T, ind]   
+            
             nb = s_pkmm.shape[-1]
             dtype = s_pkmm.dtype
             for q in range(self.my_npk):
