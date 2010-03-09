@@ -44,8 +44,3 @@ __all__ = []
 __all__.extend(phononcalculator.__all__)
 __all__.extend(linearresponse.__all__)
 __all__.extend(phononperturbation.__all__)
-
-
-
-
-

@@ -55,8 +55,8 @@ class LinearResponse:
         # Linear operator in the Sternheimer equation
         self.sternheimer_operator = SternheimerOperator(hamiltonian, wfs, self.gd)
         # List for storing the variations in the wave-functions
-        self.psit1_unG = np.array([[self.gd.zeros() for j in range(nbands)]
-                                   for i in range(num_kpts)],dtype=float)
+        self.psit1_unG = [np.array([self.gd.zeros() for n in range(nbands)])
+                          for kpt in kpt_u]
 
         # Variation of the pseudo-potential
         self.vloc1_G = self.perturbation.calculate_derivative()
@@ -109,13 +109,17 @@ class LinearResponse:
                     print "self-consistent loop converged in %i iterations" \
                           % iter
                     break
-
-        return self.nt1_G.copy()
+            if iter == max_iter-1:
+                print "self-consistent loop did not converge in %i iterations" \
+                      % iter
+                
+        return self.nt1_G.copy(), self.psit1_unG
     
     def first_iteration(self):
         """Perform first iteration of sc-loop."""
 
-        self.wave_function_variations(self.vloc1_G)
+        # Include only a fraction of the full local perturbation
+        self.wave_function_variations(0.1 * self.vloc1_G)
         self.nt1_G = self.density_response()
 
     def iteration(self, iter, alpha):

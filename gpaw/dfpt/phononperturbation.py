@@ -10,17 +10,18 @@ from gpaw.utilities import unpack, unpack2
 
 from gpaw.dfpt.perturbation import Perturbation
 
+
 class PhononPerturbation(Perturbation):
     """Implementation of phonon-related terms for the Sternheimer equation."""
     
     def __init__(self, calc, eps = 1e-5/units.Bohr):
-        """Store useful objects, e.g. lfc for the various atomic functions.
+        """Store useful objects, e.g. lfc's for the various atomic functions.
 
         Parameters
         ----------
         eps: float
             Displacement (in Bohr) of atoms for finite-difference evaluations
-            of the derivatives of localized functions
+            of the derivatives of localized functions (temp solution)
 
         """
 
@@ -44,9 +45,16 @@ class PhononPerturbation(Perturbation):
         self.q = None
 
         # Coefficients needed for the non-local part of the perturbation
-        self.dP_aniv = None
         self.P_ani = None
+        self.dP_aniv = None
+        self.d2P_anivv = None
+
+    def initialize(self):
+        """Calculate overlaps between projector functions and wfs."""
         
+        self.calculate_dP_aniv(0)
+        self.calculate_d2P_anivv(0)
+
     def set_perturbation(self, a, v):
         """Set atom and cartesian coordinate of the perturbation.
 
@@ -69,6 +77,119 @@ class PhononPerturbation(Perturbation):
 
         self.q = q
         
+    def calculate_dP_aniv(self, kpt):
+        """Coefficients for the derivative of the non-local part of the PP.
+
+        Parameters
+        ----------
+        kpt: k-point
+            K-point of the Bloch state on which the non-local potential acts
+            upon
+
+        The calculated coefficients are the following (except for an overall
+        sign of -1; see ``derivative`` method of the ``lfc`` class)::
+
+                     /        a*           
+          dP_aniv =  | dG dPhi  (G) Psi (G) ,
+                     /        iv       n
+
+        where::
+                       
+              a        d       a
+          dPhi  (G) =  ---  Phi (G) .
+              iv         a     i
+                       dR
+
+        """
+
+        # Projectors on the atoms
+        pt = self.pt
+        nbands = self.calc.wfs.nvalence/2
+        # Integration dict
+        dP_aniv = pt.dict(nbands, derivative=True)
+        # Wave functions
+        psit_nG = self.calc.wfs.kpt_u[0].psit_nG[:nbands]
+        # Integrate with derivative of projectors
+        pt.derivative(psit_nG, dP_aniv)
+        # Store the coefficients
+        self.dP_aniv = dP_aniv
+
+    def calculate_d2P_anivv(self, kpt):
+        """Coefficients for the second derivative of total energy.
+
+        Parameters
+        ----------
+        kpt: k-point
+            K-point of the Bloch state on which the non-local potential acts
+            upon
+
+        The calculated coefficients are the following::
+        
+                      /         a*           
+          d2P_aniv =  | dG d2Phi  (G) Psi (G) ,
+                      /         iv       n
+
+        where::
+        
+                         2
+               a        d       a
+          d2Phi  (G) =  ---  Phi (G) .
+               iv         2     i
+                        dR
+                          a
+        
+        """
+
+        atoms = self.calc.get_atoms()
+        # Projectors on the atoms
+        pt = self.pt
+        nbands = self.calc.wfs.nvalence/2
+        # Wave functions
+        psit_nG = self.calc.wfs.kpt_u[0].psit_nG[:nbands]
+        # Integration dict
+        d2P_anivv = dict([(
+            atom.index, np.zeros((nbands, pt.get_function_count(atom.index),
+                                  3, 3))) for atom in atoms ])
+
+        # Temp solution - finite difference of diagonal derivatives only
+        for atom in atoms:
+            a = atom.index
+            c_ai = pt.dict(zero=True)
+            c_ai[a][0]= 1.
+            
+            for v in [0,1,2]:
+
+                d2P_G = self.gd.zeros()
+                # Atomic displacements in scaled coordinates
+                eps_s = self.eps/self.gd.cell_cv[v,v]
+                spos_ac = self.calc.atoms.get_scaled_positions()
+                #
+                c_ai[a] *= -2
+                pt.add(d2P_G, c_ai)
+                # -
+                c_ai[a] *= -.5
+                spos_ac[a, v] -= eps_s
+                pt.set_positions(spos_ac)
+                pt.add(d2P_G, c_ai)
+                # +
+                spos_ac[a, v] += 2 * eps_s
+                pt.set_positions(spos_ac)
+                pt.add(d2P_G, c_ai)
+                # Return to initial positions
+                spos_ac[a, v] -= eps_s
+                pt.set_positions(spos_ac)
+                
+                # Convert change to a derivative
+                d = self.eps**2
+                d2P_G /= d
+
+                int_n = self.gd.integrate(d2P_G * psit_nG)
+
+                d2P_anivv[a][:,0,v,v] = int_n
+
+        # Store the coefficients
+        self.d2P_anivv = d2P_anivv
+
     def calculate_derivative(self):
         """Derivate of the local PAW potential wrt an atomic displacement."""
 
@@ -142,126 +263,19 @@ class PhononPerturbation(Perturbation):
         self.vghat1_g = vghat1_g.copy()
         
         return v1_G
-
-    def calculate_dP_aniv(self, kpt):
-        """Coefficients for the derivative of the non-local part of the PP.
-
-        Parameters
-        ----------
-        kpt: k-point
-            K-point of the Bloch state on which the non-local potential acts
-            upon
-
-        The calculated coefficients are the following (except for an overall
-        sign of -1; see ``derivative`` method of the ``lfc`` class)::
-
-                     /        a*           
-          dP_aniv =  | dG dPhi  (G) Psi (G) ,
-                     /        iv       n
-
-        where::
-                       
-              a        d       a
-          dPhi  (G) =  ---  Phi (G) .
-              iv         a     i
-                       dR
-
-        """
-
-        # Projectors on the atoms
-        pt = self.pt
-        nbands = self.calc.wfs.nvalence/2
-        # Integration dict
-        dP_aniv = pt.dict(nbands, derivative=True)
-        # Wave functions
-        psit_nG = self.calc.wfs.kpt_u[0].psit_nG[:nbands]
-        # Integrate with derivative of projectors
-        pt.derivative(psit_nG, dP_aniv)
-        # Store the coefficients
-        self.dP_aniv = dP_aniv
-
-    def calculate_d2P_anivv(self, kpt):
-        """Coefficients for the second derivative of total energy.
-
-        Parameters
-        ----------
-        kpt: k-point
-            K-point of the Bloch state on which the non-local potential acts
-            upon
-
-        The calculated coefficients are the following::
-        
-                      /         a*           
-          d2P_aniv =  | dG d2Phi  (G) Psi (G) ,
-                      /         iv       n
-
-        where::
-        
-                         2
-               a        d       a
-          d2Phi  (G) =  ---  Phi (G) .
-               iv         2     i
-                        dR
-                          a
-        
-        """
-
-        atoms = self.calc.get_atoms()
-        # Projectors on the atoms
-        pt = self.pt
-        nbands = self.calc.wfs.nvalence/2
-        # Wave functions
-        psit_nG = self.calc.wfs.kpt_u[0].psit_nG[:nbands]
-        # Integration dict
-        d2P_anivv = dict([(
-            atom.index, np.zeros((nbands, pt.get_function_count(atom.index), 3, 3))
-            ) for atom in atoms ])
-
-        # Temp solution - finite difference derivatives of diagonal derivatives
-        for atom in atoms:
-            a = atom.index
-            c_ai = pt.dict(zero=True)
-            c_ai[a][0] = 1.
-            for v in [0,1,2]:
-                d2P_G = self.gd.zeros()
-                # Atomic displacements in scaled coordinates
-                eps_s = self.eps/self.gd.cell_cv[v,v]
-                spos_ac = self.calc.atoms.get_scaled_positions()
-                #
-                c_ai[a] *= -2
-                pt.add(d2P_G, c_ai)
-                # -
-                c_ai[a] *= -.5
-                spos_ac[a, v] -= eps_s
-                pt.set_positions(spos_ac)
-                pt.add(d2P_G, c_ai)
-                # +
-                spos_ac[a, v] += 2 * eps_s
-                pt.set_positions(spos_ac)
-                pt.add(d2P_G, c_ai)
-                # Return to initial positions
-                spos_ac[a, v] -= eps_s
-                pt.set_positions(spos_ac)
-                
-                # Convert change to a derivative
-                d = self.eps**2
-                d2P_G /= d
-
-                int_n = self.gd.integrate(d2P_G * psit_nG)
-
-                d2P_anivv[a][:,0,v,v] = int_n
-
-        # Store the coefficients
-        self.d2P_anivv = d2P_anivv
-
-   
+    
     def calculate_nonlocal_derivative(self, kpt):
-        """Derivate of the non-local PAW potential wrt an atomic displacement."""
+        """Derivate of the non-local PAW potential wrt an atomic displacement.
 
+        Remember to generalize this to the case of complex wave-functions !!!!!
+        
+        """
+
+        assert self.a is not None
+        assert self.v is not None
+        
         a = self.a
         v = self.v
-
-        self.calculate_dP_aniv(kpt)
         
         # Projectors on the atoms
         pt = self.pt

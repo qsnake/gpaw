@@ -121,6 +121,8 @@ class SternheimerOperator:
     def project(self, x_G):
         """Project the vector onto the unoccupied states at k+q.
 
+        A new vector is not created!
+        
         Implementation for q != 0 to be done !
 
         ::
@@ -132,13 +134,15 @@ class SternheimerOperator:
         
         """
 
+        assert self.k is not None
+        
         nbands = self.wfs.nvalence/2
         # k+q-vector
         kpt = self.wfs.kpt_u[self.k]
         psit_nG = kpt.psit_nG[:nbands]
 
         proj_n = self.gd.integrate(x_G * psit_nG)
-
+        
         # Do the projection in one go - figure out how to use np.dot correctly
         # x_G -= np.dot(proj_n, psit_nG)
 
