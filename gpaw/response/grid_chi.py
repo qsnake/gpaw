@@ -77,7 +77,7 @@ class CHI:
         self.nG = calc.get_number_of_grid_points()
         self.nG0 = self.nG[0] * self.nG[1] * self.nG[2]
 
-        self.h_c = calc.wfs.gd.h_cv.diagonal()
+        self.h_c = calc.wfs.gd.h_cv # .diagonal()
 
         if self.ncalc == 1:
 
@@ -102,21 +102,17 @@ class CHI:
             self.f2_kn = np.array([c[1].get_occupation_numbers(kpt=k)
                          for k in range(self.nkpt)])
     
-        self.qr = np.zeros(self.nG)
-        self.r = np.zeros((self.nG[0],self.nG[1],self.nG[2], 3))
+#        self.qr = np.zeros(self.nG)
+ 
+        #self.r = np.zeros((self.nG[0],self.nG[1],self.nG[2], 3))
 
         # construct q.r
-        h_c = self.h_c
+        r = calc.wfs.gd.get_grid_point_coordinates() # (3, nG[0], nG[1], nG[2])
+        h_c = self.h_c # 3 * 3 matrix
         self.q = q
         self.qq = qq = np.array([np.inner(self.q, self.bcell[:,i]) for i in range(3)])
+        self.qr = np.inner(self.qq, r.T).T
 
-        for i in range(self.nG[0]):
-            for j in range(self.nG[1]):
-                for k in range(self.nG[2]):
-                    tmp = np.array([i*h_c[0], j*h_c[1], k*h_c[2]])
-                    self.qr[i,j,k] = np.inner(qq, tmp)
-                    self.r[i,j,k] = tmp
-        
         # unit conversion
         self.wmin = 0
         self.wmax  = wmax / Hartree
@@ -464,7 +460,7 @@ class CHI:
                         focc = f_kn[k,n] - f_kn[kq[k],m]
                         if focc > 1e-8:
                             w0 = e_kn[kq[k],m] - e_kn[k,n]
-                            tmp_GG = focc * np.real(np.outer(rho_Gnn[:,n,m], rho_Gnn[:,n,m].conj() ))
+                            tmp_GG = focc * np.outer(rho_Gnn[:,n,m], rho_Gnn[:,n,m].conj())
                 
                             # calculate delta function
                             deltaw = self.delta_function(w0, self.dw, self.NwS, self.sigma)
@@ -587,11 +583,11 @@ class CHI:
         self.vol = np.abs(np.dot(a[0],np.cross(a[1],a[2])))
         self.BZvol = (2. * pi)**3 / self.vol
 
-        b = np.linalg.inv(a)
+        b = np.linalg.inv(a.T)
     
         self.bcell = 2 * pi * b
 
-        assert np.abs((np.dot(a, self.bcell) - 2.*pi*np.eye(3)).sum()) < 1e-10
+        assert np.abs((np.dot(self.bcell.T, a) - 2.*pi*np.eye(3)).sum()) < 1e-10
 
         return
 
@@ -786,7 +782,8 @@ class CHI:
 
         print >> txt 
         print >> txt, 'q in reduced coordinate:', self.q
-        print >> txt, 'q in cartesian coordinate:', self.qq
+        print >> txt, 'q in cartesian coordinate (1/A):', self.qq / Bohr
+        print >> txt, '|q|:', sqrt(np.inner(self.qq, self.qq))
 
         print >> txt, 'Planewave cutoff energy (eV):', self.Ecut * Hartree
         print >> txt, 'Number of planewave used:', self.npw
@@ -930,7 +927,7 @@ class CHI:
         drho_R = self.calculate_induced_density(q, w)
 
         drho_z = np.zeros(self.nG[2],dtype=complex)
-        dxdy = self.h_c[0] * self.h_c[1]
+        dxdy = np.cross(self.h_c[0] * self.h_c[1])
         
         for iz in range(self.nG[2]):
             drho_z[iz] = drho_R[:,:,iz].sum()
