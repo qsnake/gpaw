@@ -4,7 +4,7 @@
 version = '0.7'
 
 ase_required_version = '3.2.0'
-ase_required_svnrevision = '1158'
+ase_required_svnversion = '1158'
 
 def get_gpaw_svnversion_from_import():
     try:

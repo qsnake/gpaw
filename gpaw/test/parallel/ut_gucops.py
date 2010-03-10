@@ -25,7 +25,7 @@ from gpaw.fd_operators import Laplace
 
 # -------------------------------------------------------------------
 
-from gpaw.test.ut_common import ase_svnrevision, shapeopt, TestCase, \
+from gpaw.test.ut_common import ase_svnversion, shapeopt, TestCase, \
     TextTestRunner, CustomTextTestRunner, defaultTestLoader, \
     initialTestLoader, create_random_atoms, create_parsize_minbands
 

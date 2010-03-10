@@ -36,13 +36,13 @@ if os.system('svn checkout ' +
 if day % 2:
     d = {}
     execfile('gpaw/gpaw/version.py', d)
-    asesvnrevision = d['ase_required_svnrevision']
+    asesvnversion = d['ase_required_svnversion']
 else:
-    asesvnrevision = 'HEAD'
+    asesvnversion = 'HEAD'
 
 if os.system('svn checkout ' +
              'https://svn.fysik.dtu.dk/projects/ase/trunk ase -r %s' %
-             asesvnrevision) != 0:
+             asesvnversion) != 0:
     fail('Checkout of ASE failed!')
 try: 
     # subprocess was introduced with python 2.4

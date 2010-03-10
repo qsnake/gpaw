@@ -26,14 +26,14 @@ from gpaw.lfc import LFC
 
 # -------------------------------------------------------------------
 
-from gpaw.test.ut_common import ase_svnrevision, shapeopt, TestCase, \
+from gpaw.test.ut_common import ase_svnversion, shapeopt, TestCase, \
     TextTestRunner, CustomTextTestRunner, defaultTestLoader, \
     initialTestLoader, create_random_atoms, create_parsize_maxbands
 
 memstats = False
 if memstats:
     # Developer use of this feature requires ASE 3.1.0 svn.rev. 905 or later.
-    assert ase_svnrevision >= 905 # wasn't bug-free untill 973!
+    assert ase_svnversion >= 905 # wasn't bug-free untill 973!
     from ase.utils.memory import MemorySingleton, MemoryStatistics
 
 # -------------------------------------------------------------------

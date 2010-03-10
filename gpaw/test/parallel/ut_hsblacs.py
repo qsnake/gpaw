@@ -16,13 +16,13 @@ if debug:
 
 # -------------------------------------------------------------------
 
-from gpaw.test.ut_common import ase_svnrevision, TextTestRunner, \
+from gpaw.test.ut_common import ase_svnversion, TextTestRunner, \
     CustomTextTestRunner, defaultTestLoader, initialTestLoader
 
 memstats = False
 if memstats:
     # Developer use of this feature requires ASE 3.1.0 svn.rev. 905 or later.
-    assert ase_svnrevision >= 905 # wasn't bug-free untill 973!
+    assert ase_svnversion >= 905 # wasn't bug-free untill 973!
     from ase.utils.memory import MemorySingleton, MemoryStatistics
 
 from gpaw.test.parallel.ut_hsops import UTBandParallelSetup, \

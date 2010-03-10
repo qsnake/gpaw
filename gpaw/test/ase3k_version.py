@@ -1,16 +1,16 @@
-from gpaw.version import ase_required_svnrevision
+from gpaw.version import ase_required_svnversion
 try:
-    from ase.svnrevision import svnrevision as ase_svnrevision
+    from ase.svnversion import svnversion as ase_svnversion
 except ImportError:
-    ase_svnrevision = 'unknown'
-if ase_svnrevision == 'unknown':
+    ase_svnversion = 'unknown'
+if ase_svnversion == 'unknown':
     pass
 else:
-    full_ase_svnrevision = ase_svnrevision
-    if ase_svnrevision[-1] == 'M':
-        ase_svnrevision = ase_svnrevision[:-1]
-    if ase_svnrevision.rfind(':') != -1:
-        ase_svnrevision = ase_svnrevision[:ase_svnrevision.rfind(':')]
-    print "Required ase svnrevision: "+ase_required_svnrevision,
-    print "; Current ase svnrevision: "+full_ase_svnrevision
-    assert int(ase_svnrevision) >= int(ase_required_svnrevision), int(ase_svnrevision)
+    full_ase_svnversion = ase_svnversion
+    if ase_svnversion[-1] == 'M':
+        ase_svnversion = ase_svnversion[:-1]
+    if ase_svnversion.rfind(':') != -1:
+        ase_svnversion = ase_svnversion[:ase_svnversion.rfind(':')]
+    print "Required ase svnversion: "+ase_required_svnversion,
+    print "; Current ase svnversion: "+full_ase_svnversion
+    assert int(ase_svnversion) >= int(ase_required_svnversion), int(ase_svnversion)

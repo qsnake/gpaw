@@ -135,9 +135,11 @@ to update your environment in the main login terminal.
 Step 3
 ======
 
+This step is obsolete with revision 6116.
+
 Because the ``popen3`` function is missing, you will need to remove all the
 contents of the :file:`gpaw/version.py` file
-after ``ase_required_svnrevision =``.
+after ``ase_required_svnversion =``.
 The same holds for :file:`ase/version.py` in the ase installation!
 Suggestions how to skip the ``popen3`` testing in
 :file:`gpaw/version.py` on BG/P are welcome!

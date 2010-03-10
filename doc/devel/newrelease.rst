@@ -11,7 +11,7 @@ When it is time for a new release of the code, here is what you have to do:
 * then :ref:`running_tests`.
 
 * If a new ase release is required to pass the tests
-  modify ``required_ase_version`` and ``required_ase_svnrevision``
+  modify ``required_ase_version`` and ``required_ase_svnversion``
   in :trac:`gpaw/version.py`, and checkin the changes.
 
 * ``svn up`` and :ref:`running_tests` again.
@@ -31,7 +31,11 @@ When it is time for a new release of the code, here is what you have to do:
 * Create the tar file::
 
    cd gpaw-0.4
-   rm -f MANIFEST gpaw/svnrevision.py*; python setup.py sdist
+   rm -f MANIFEST gpaw/svnversion.py*
+   # gpaw.version is used in the name of the tarball and
+   # from gpaw.version import version works only after c-extensions are built
+   python setup.py build_ext
+   python setup.py sdist
 
   Note that the ``tags_revision`` is put into the name of the
   tar file automatically. Make sure that you are getting only
