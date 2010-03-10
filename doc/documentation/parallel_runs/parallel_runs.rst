@@ -113,6 +113,24 @@ If you *really* want all nodes to write something to files, you should make sure
 >>> from ase.parallel import rank
 >>> f = open('data.%d' % rank, 'w')
 
+Writing text output
+===================
+
+Text output written by the ``print`` statement is written by all nodes.
+To avoid this use:
+
+>>> from ase.parallel import parprint
+>>> print 'This is written by all nodes'
+>>> parprint('This is written by the master only')
+
+which is equivalent to
+
+>>> from ase.parallel import rank
+>>> print 'This is written by all nodes'
+>>> if rank == 0:
+...     print 'This is written by the master only'
+
+Note that parprint has to be used as the print statement of python 3.
 
 Running different calculations in parallel
 ==========================================
