@@ -781,7 +781,7 @@ class Transport_Analysor:
             lead_pairs = np.array(self.lead_pairs)
             bias = np.array(tp.bias)
             gate = np.array(tp.gate)
-            for name in ['lead_fermi', 'lead_pairs', 'bias', 'gate']:
+            for name in ['lead_fermi', 'lead_pairs', 'bias', 'gate', 'charge']:
                 self.data[name] = eval(name)
         # do not include contour now because it is a dict, not a array able to
         # collect, but will do it at last
@@ -924,7 +924,7 @@ class Transport_Analysor:
             vtx = np.array(vtx)
             nty = np.array(nty)
             vty = np.array(vty)
-        return nt, vt * Hartree, ntx, vtx * Hartree, nty, vty * Hartree
+        return nt, vt, ntx, vtx, nty, vty
     
     def calculate_current(self, tc_array, lead_pair_index=0, s=0):             
         tp = self.tp
