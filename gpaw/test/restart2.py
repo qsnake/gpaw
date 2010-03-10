@@ -29,5 +29,5 @@ if rank == 0:
 
 energy_tolerance = 0.00006
 niter_tolerance = 0
-equal(e, 0.0424437782683, energy_tolerance) # svnversion 5252
-equal(niter, 12, niter_tolerance) # svnversion 5252
+equal(e, 0.0451789, energy_tolerance)
+equal(niter, 12, niter_tolerance)

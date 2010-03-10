@@ -1,4 +1,4 @@
-from gpaw import GPAW, restart, FermiDirac
+from gpaw import GPAW, restart, FermiDirac, PoissonSolver
 from ase import *
 from ase.calculators import numeric_force
 from gpaw.test import equal, gen
@@ -13,8 +13,10 @@ niter = {}
 energy_tolerance = 0.0001
 niter_tolerance = 0
 
-e_ref = {'LDA': {'restart': -5.5728768784094758}, 'GLLBSC': {'restart': -5.4458036264351}} # svnversion 5252
-niter_ref = {'LDA': {'restart': 16}, 'GLLBSC': {'restart': 16}} # svnversion 5252
+e_ref = {'LDA': {'restart': -5.5728768784094758},
+         'GLLBSC': {'restart': -5.4458036264351}} # svnversion 5252
+niter_ref = {'LDA': {'restart': 16},
+             'GLLBSC': {'restart': 16}} # svnversion 5252
 
 for xc in ['LDA','GLLBSC']:
     a = 4.23
@@ -22,8 +24,13 @@ for xc in ['LDA','GLLBSC']:
               scaled_positions=[[0, 0, 0], [.5, .5, .5]])
     calc = GPAW(h=0.25,
                 nbands=8,
+                poissonsolver=PoissonSolver(nn='M'),
                 occupations=FermiDirac(width=0.01),
-                kpts=(3, 3, 3), convergence={'eigenstates':1e-12, 'bands':8}, xc=xc, eigensolver='cg')
+                kpts=(3, 3, 3),
+                convergence={'eigenstates':1e-12,
+                             'bands':8},
+                xc=xc,
+                eigensolver='cg')
 
     bulk.set_calculator(calc)
     e[xc] = {'direct': bulk.get_potential_energy()}
@@ -33,7 +40,9 @@ for xc in ['LDA','GLLBSC']:
     calc.write('Si_gs.gpw')
     del bulk
     del calc
-    bulk, calc = restart('Si_gs.gpw', fixdensity=True, kpts=[[0,0,0],[1./3,1./3,1./3]])
+    bulk, calc = restart('Si_gs.gpw',
+                         fixdensity=True,
+                         kpts=[[0, 0, 0], [1.0 / 3, 1.0 / 3, 1.0 / 3]])
     e[xc] = {'restart': bulk.get_potential_energy()}
     niter[xc] = {'restart': calc.get_number_of_iterations()}
 

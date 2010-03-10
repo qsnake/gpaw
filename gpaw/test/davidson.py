@@ -25,13 +25,11 @@ calc = GPAW(h=h,
 bulk.set_calculator(calc)
 e1 = bulk.get_potential_energy()
 niter1 = calc.get_number_of_iterations()
-equal(e0, e1, 2.0e-5)
+equal(e0, e1, 5.0e-5)
 
 energy_tolerance = 0.00004
 niter_tolerance = 0
-equal(e0, -6.97125875119, energy_tolerance) # svnversion 5252
-#equal(niter0, 24, niter_tolerance) # svnversion 5252 # niter depends on the number of processes
-assert 19 <= niter0 <= 26, niter0
-equal(e1, -6.97126164349, energy_tolerance) # svnversion 5252
-#equal(niter1, 23, niter_tolerance) # svnversion 5252 # niter depends on the number of processes
-assert 23 <= niter1 <= 26, niter1
+equal(e0, -6.97626, energy_tolerance)
+assert 17 <= niter0 <= 22, niter0
+equal(e1, -6.976265, energy_tolerance)
+assert 22 <= niter1 <= 27, niter1

@@ -45,7 +45,7 @@ pes.save_folded_pes(filename=txt, folding='Gauss')
 
 energy_tolerance = 0.000008
 niter_tolerance = 0
-equal(e_H2, -3.9459295865, energy_tolerance) # svnversion 5252
-equal(niter_H2, 15, niter_tolerance) # svnversion 5252
-equal(e_H2_plus, 10.5197088833, energy_tolerance) # svnversion 5252
-equal(niter_H2_plus, 15, niter_tolerance) # svnversion 5252
+equal(e_H2, -3.90059, energy_tolerance)
+equal(niter_H2, 15, niter_tolerance)
+equal(e_H2_plus, 10.5659703, energy_tolerance)
+equal(niter_H2_plus, 15, niter_tolerance)

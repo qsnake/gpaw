@@ -62,6 +62,6 @@ for mode in modes:
 
     energy_tolerance = 0.0002
     niter_tolerance = 0
-    equal(e0, 27.142964444, energy_tolerance) # svnversion 5252
-    equal(niter0, 6, niter_tolerance) # svnversion 5252
-    equal(e1, 27.142964444, energy_tolerance) # svnversion 5252
+    equal(e0, 27.1408, energy_tolerance)
+    equal(niter0, 6, niter_tolerance)
+    equal(e1, 27.1408, energy_tolerance)

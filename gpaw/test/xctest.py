@@ -26,8 +26,7 @@ def run_test(tests=[0, 1, 2, 3]):
         E = bulk.get_potential_energy()
         niter = calc.get_number_of_iterations()
         printstr(calc)
-        equal(E, -1.873575, 1e-4) # svnversion 5252
-        #equal(niter, 27, 0) # svnversion 5252 # niter depends on the number of processes
+        equal(E, -1.873879, 1e-4)
         assert 26 <= niter <= 27, niter
 
     if 1 in tests:# spin paired GGA (libxc)
@@ -36,8 +35,8 @@ def run_test(tests=[0, 1, 2, 3]):
         E = bulk.get_potential_energy()
         niter = calc.get_number_of_iterations()
         printstr(calc)
-        equal(E, -1.746265, 2e-5) # svnversion 5252
-        equal(niter, 19, 0) # svnversion 5252
+        equal(E, -1.746562, 2e-5)
+        equal(niter, 19, 0)
 
     if 2 in tests: # spin polarized GGA (libxc)
         calc = GPAW(xc='PBE', **calc_kwargs)
@@ -45,8 +44,7 @@ def run_test(tests=[0, 1, 2, 3]):
         E = bulk.get_potential_energy()
         niter = calc.get_number_of_iterations()
         printstr(calc)
-        equal(E, -1.747591, 3e-5) # svnversion 5252
-        #equal(niter, 34, 0) # svnversion 5252 # niter depends on the number of processes
+        equal(E, -1.747841, 3e-5)
         assert 34 <= niter <= 51, niter
 
     if 3 in tests: # spin polarized GGA (gpaw built_in)
@@ -55,8 +53,8 @@ def run_test(tests=[0, 1, 2, 3]):
         E = bulk.get_potential_energy()
         niter = calc.get_number_of_iterations()
         printstr(calc)
-        equal(E, -1.747517, 1e-6) # svnversion 5252
-        equal(niter, 44, 0) # svnversion 5252
+        equal(E, -1.747855, 1e-6)
+        equal(niter, 39, 0)
 
 usenewxc = extra_parameters.get('usenewxc')
 try:

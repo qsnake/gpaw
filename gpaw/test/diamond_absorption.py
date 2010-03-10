@@ -82,9 +82,8 @@ print 'For ground state calc, it took', (t2 - t1) / 60, 'minutes'
 print 'For excited state calc, it took', (t3 - t2) / 60, 'minutes'
 
 
-eM1_ = 3.49251315123
-eM2_Ecut10 = 3.49251315123
-eM2_Ecut100 = 3.37971099838
+eM1_ = 3.49324502383
+eM2_Ecut10 = 3.49324502383
 if (np.abs(eM1 - eM1_) > 1e-5 or
     np.abs(eM2 - eM2_Ecut10) > 1e-5):
   raise ValueError('Macroscopic dielectric constant not correct ! ')

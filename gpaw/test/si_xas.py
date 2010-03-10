@@ -65,5 +65,5 @@ if 0:
 print e, niter
 energy_tolerance = 0.0003
 niter_tolerance = 0
-equal(e, 18.6019063823, energy_tolerance) # svnversion 5252
-equal(niter, 27, niter_tolerance) # svnversion 5252
+equal(e, 18.5772, energy_tolerance) # svnversion 5252
+equal(niter, 23, niter_tolerance) # svnversion 5252

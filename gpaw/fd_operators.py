@@ -150,7 +150,7 @@ class Gradient(FDOperator):
 def Laplace(gd, scale=1.0, n=1, dtype=float, allocate=True):
         if n == 9:
             return FTLaplace(gd, scale, dtype)
-        if extra_parameters.get('newgucstencil'):
+        if extra_parameters.get('newgucstencil', True):
             return NewGUCLaplace(gd, scale, n, dtype, allocate)
         else:
             return GUCLaplace(gd, scale, n, dtype, allocate)

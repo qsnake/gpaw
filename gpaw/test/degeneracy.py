@@ -26,6 +26,5 @@ equal(e[1], e[3], 9.3e-8)
 
 energy_tolerance = 0.0003
 niter_tolerance = 0
-equal(energy, -23.76976642, energy_tolerance) # svnversion 5252
-#equal(niter, 42, niter_tolerance) # svnversion 5252 # niter depends on the number of processes
-assert 39 <= niter <= 42, niter
+equal(energy, -23.6277, energy_tolerance)
+assert 33 <= niter <= 36, niter

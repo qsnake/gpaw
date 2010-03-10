@@ -1,5 +1,5 @@
 from ase import *
-from gpaw import GPAW
+from gpaw import GPAW, PoissonSolver
 from gpaw.test import equal
 
 a = 6.  # Size of unit cell (Angstrom)
@@ -9,7 +9,9 @@ atom = Atoms([Atom('H', (c, c, c), magmom=1)],
                    cell=(a, a, a), pbc=False)
 
 # gpaw calculator:
-calc = GPAW(h=0.2, nbands=1, xc='PBE', txt='H.txt')
+calc = GPAW(h=0.2, nbands=1, xc='PBE', txt='H.txt',
+            #????????????????????????????????
+            )#poissonsolver=PoissonSolver(nn='M', relax='J'))
 atom.set_calculator(calc)
 
 e1 = atom.get_potential_energy()
@@ -58,7 +60,7 @@ equal(PBEEXXbdifference, 0.91, 0.005)
 
 energy_tolerance = 0.00003
 niter_tolerance = 0
-equal(e1, -1.08431919659, energy_tolerance) # svnversion 5252
-equal(niter1, 16, niter_tolerance) # svnversion 5252
-equal(e2, -6.73093134646, energy_tolerance) # svnversion 5252
-equal(niter2, 19, niter_tolerance) # svnversion 5252
+equal(e1, -1.081638, energy_tolerance)
+equal(niter1, 16, niter_tolerance)
+equal(e2, -6.726356, energy_tolerance)
+equal(niter2, 19, niter_tolerance)

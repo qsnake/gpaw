@@ -26,8 +26,8 @@ niter = calc.get_number_of_iterations()
 
 energy_tolerance = 0.00003
 niter_tolerance = 0
-equal(e, -33.3201761979, energy_tolerance) # svnversion 5252
-equal(niter, 22, niter_tolerance) # svnversion 5252
+equal(e, -33.3232491, energy_tolerance)
+equal(niter, 25, niter_tolerance)
 
 def check(calc):
     wannier = Wannier(calc, nbands=6)

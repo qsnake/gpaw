@@ -35,7 +35,7 @@ equal(de21, de21b, 9e-8)
 
 energy_tolerance = 0.000001
 niter_tolerance = 0
-equal(e1, -0.0790191103842, energy_tolerance) # svnversion 5252
-equal(niter1, 13, niter_tolerance) # svnversion 5252
-equal(e2, -0.0814873123761, energy_tolerance) # svnversion 5252
-equal(niter2, 10, niter_tolerance) # svnversion 5252
+equal(e1, -0.07904951, energy_tolerance)
+equal(niter1, 14, niter_tolerance)
+equal(e2, -0.08149303, energy_tolerance)
+equal(niter2, 10, niter_tolerance)

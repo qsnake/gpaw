@@ -29,7 +29,7 @@ niter_tolerance = 0
 
 print e2, e4
 equal(e4 / 2, e2, 48e-6)
-equal(e2, -3.41632949402, energy_tolerance) # svnversion 5252
-equal(niter2, 25, niter_tolerance) # svnversion 5252
-equal(e4, -6.83267462864, energy_tolerance) # svnversion 5252
-equal(niter4, 25, niter_tolerance) # svnversion 5252
+equal(e2, -3.41595, energy_tolerance)
+equal(niter2, 24, niter_tolerance)
+equal(e4, -6.83191, energy_tolerance)
+equal(niter4, 23, niter_tolerance)

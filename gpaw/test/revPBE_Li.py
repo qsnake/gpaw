@@ -1,7 +1,7 @@
 import os
 from ase import *
 from ase.parallel import rank, barrier
-from gpaw import GPAW
+from gpaw import *
 from gpaw.test import equal, gen
 from gpaw.xc_functional import XCFunctional
 
@@ -12,7 +12,8 @@ a = 5.0
 n = 24
 li = Atoms('Li', magmoms=[1.0], cell=(a, a, a), pbc=True)
 
-calc = GPAW(gpts=(n, n, n), nbands=1, xc='PBE')
+calc = GPAW(gpts=(n, n, n), nbands=1, xc='PBE',
+            poissonsolver=PoissonSolver(nn='M'))
 li.set_calculator(calc)
 e = li.get_potential_energy() + calc.get_reference_energy()
 niter_PBE = calc.get_number_of_iterations()

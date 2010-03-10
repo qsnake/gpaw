@@ -17,11 +17,6 @@ atoms = Atoms(symbols='Si2', pbc=True,
 E = atoms.get_potential_energy()
 niter = calc.get_number_of_iterations()
 
-equal(E, -12.0736, 0.005)
+equal(E, -11.8572, 0.0001)
 equal(atoms.calc.get_fermi_level(), 5.16301, 0.005)
-
-energy_tolerance = 0.0001
-niter_tolerance = 0
-equal(E, -12.0735247139, energy_tolerance) # svnversion 5252
-#equal(niter, 29, niter_tolerance) # svnversion 5252 # niter depends on the number of processes
-assert 26 <= niter <= 28, niter
+assert 21 <= niter <= 23, niter

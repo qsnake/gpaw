@@ -38,9 +38,9 @@ def test():
     assert abs(Evdw - +0.0223) < 1e-4
 
     print e2, e
-    equal(e2, 0.041356501339, energy_tolerance) # svnversion 5252
-    equal(niter2, 18, niter_tolerance) # svnversion 5252
-    equal(e, 0.0182702058518, energy_tolerance) # svnversion 5252
-    equal(niter, 14, niter_tolerance) # svnversion 5252
+    equal(e2, -0.001581923, energy_tolerance)
+    equal(niter2, 17, niter_tolerance)
+    equal(e, -0.003224226, energy_tolerance)
+    equal(niter, 14, niter_tolerance)
 
 test()

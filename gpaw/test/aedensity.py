@@ -43,5 +43,5 @@ for gridrefinement in [1, 2, 4]:
 
 energy_tolerance = 0.00004
 niter_tolerance = 0
-equal(e, -4.88369376921, energy_tolerance) # svnversion 5252
-equal(niter, 20, niter_tolerance) # svnversion 5252
+equal(e, -4.908677, energy_tolerance)
+equal(niter, 20, niter_tolerance)

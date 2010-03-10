@@ -24,8 +24,8 @@ for i in range(3):
 energy_tolerance = 0.00006
 force_tolerance = 0.0001
 niter_tolerance = 0
-equal(e1, -0.556169066234, energy_tolerance) # svnversion 5252
-f1_ref = [-0.28508314, -0.29539639, -0.34577915] # svnversion 5252
+equal(e1, -0.531042, energy_tolerance)
+f1_ref = [-0.291893, -0.305174, -0.35329]
 for i in range(3):
     equal(f1[i], f1_ref[i], force_tolerance)
-equal(niter1, 30, niter_tolerance) # svnversion 5252
+assert 34 <= niter1 <= 35, niter1

@@ -20,8 +20,8 @@ if world.size >= 3:
     niter1 = calc.get_number_of_iterations()
     assert H.get_calculator().wfs.kpt_comm.size == 1
 
-    equal(e1, -2.24409538491, energy_tolerance) # svnversion 5252
-    equal(niter1, 16, niter_tolerance) # svnversion 5252
+    equal(e1, -2.23708481, energy_tolerance)
+    equal(niter1, 16, niter_tolerance)
 
     comm = world.new_communicator(np.array([0, 1, 2]))
     if world.rank < 3:

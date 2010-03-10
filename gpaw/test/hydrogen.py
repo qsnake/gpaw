@@ -27,10 +27,9 @@ equal(e1, e3 + log(2) * kT, 3.0e-7)
 
 energy_tolerance = 0.00006
 niter_tolerance = 0
-equal(e1, 0.521945345886, energy_tolerance) # svnversion 5252
-#equal(niter1, 25, niter_tolerance) # svnversion 5252 # niter depends on the number of processes
-assert 21 <= niter1 <= 25, niter1
-equal(e2, 0.521945343668, energy_tolerance) # svnversion 5252
-equal(niter2, 3, niter_tolerance) # svnversion 5252
-equal(e3, 0.521252179047, energy_tolerance) # svnversion 5252
-equal(niter3, 11, niter_tolerance) # svnversion 5252
+equal(e1, 0.526939, energy_tolerance)
+assert 24 <= niter1 <= 26, niter1
+equal(e2, 0.526938, energy_tolerance)
+equal(niter2, 3, niter_tolerance)
+equal(e3, 0.526245, energy_tolerance)
+equal(niter3, 11, niter_tolerance)

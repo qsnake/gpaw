@@ -33,6 +33,5 @@ if mpi.rank == 0:
     print e, niter
     energy_tolerance = 0.0002
     niter_tolerance = 0
-    equal(e, -0.268653164287, energy_tolerance) # svnversion 5252
-    #equal(niter, 23, niter_tolerance) # svnversion 5252 # niter depends on the number of processes
+    equal(e, -0.271504, energy_tolerance)
     assert 21 <= niter <= 26, niter

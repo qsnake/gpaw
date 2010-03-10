@@ -31,11 +31,6 @@ fit = np.polyfit(D, E, 2)
 d0 = np.roots(np.polyder(fit, 1))[0]
 e0 = np.polyval(fit, d0)
 print 'd,e =', d0, e0
-equal(d0, 1.0931, 0.0001)
-equal(e0, -23.228, 0.001)
-
-energy_tolerance = 0.0002
-niter_tolerance = 0
-equal(e0, -23.2277303435, energy_tolerance) # svnversion 5252
-#equal(niter0, 30, niter_tolerance) # svnversion 5252 # niter depends on the number of processes
-assert 28 <= niter0 <= 30, niter0
+equal(d0, 1.093204, 0.0001)
+equal(e0, -23.2076, 0.0002)
+assert 32 <= niter0 <= 34, niter0

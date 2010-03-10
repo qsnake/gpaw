@@ -82,10 +82,9 @@ ldos.by_element_to_file(fname, 2.0, shift=False)
 
 energy_tolerance = 0.00006
 niter_tolerance = 0
-equal(e_Hnospin, 0.146969814337, energy_tolerance) # svnversion 5252
-equal(niter_Hnospin, 17, niter_tolerance) # svnversion 5252
-equal(e_Hspin,  -0.78931, energy_tolerance) # svnversion 5252
-equal(niter_Hspin, 14, niter_tolerance) # svnversion 5252
-equal(e_LiH, -3.74706225051, energy_tolerance) # svnversion 5252
-#equal(niter_LiH, 26, niter_tolerance) # svnversion 5252 # niter depends on the number of processes
-assert 26 <= niter_LiH <= 28, niter_LiH
+equal(e_Hnospin, 0.153991, energy_tolerance)
+equal(niter_Hnospin, 17, niter_tolerance)
+equal(e_Hspin,  -0.782309, energy_tolerance)
+equal(niter_Hspin, 14, niter_tolerance)
+equal(e_LiH, -3.74582, energy_tolerance)
+assert 29 <= niter_LiH <= 31, niter_LiH

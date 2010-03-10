@@ -17,5 +17,5 @@ calc2 = GPAW('Li.gpw')
 
 energy_tolerance = 0.00005
 niter_tolerance = 0
-equal(e, -1.20246031655, energy_tolerance) # svnversion 5252
-equal(niter, 15, niter_tolerance) # svnversion 5252
+equal(e, -1.20258, energy_tolerance)
+equal(niter, 15, niter_tolerance)

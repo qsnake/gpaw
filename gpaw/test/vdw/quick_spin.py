@@ -22,7 +22,8 @@ e2 = a.get_potential_energy()
 assert abs(calc.get_eigenvalues(spin=0)[0] -
            calc.get_eigenvalues(spin=1)[0]) < 1e-10
 
-assert abs(e1 - e2) < 1e-12
+print e1-e2
+assert abs(e1 - e2) < 1e-11
 
 vdw = FFTVDWFunctional()
 calc = GPAW(xc=vdw, width=0.001,

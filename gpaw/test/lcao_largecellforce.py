@@ -46,10 +46,10 @@ fd = 0
 
 # Values taken from FD calculation below
 # (Symmetry means only z-component may be nonzero)
-ref = array([[0.0, 0.0,  4.61722829],
-             [0.0, 0.0, -2.74218082],
-             [0.0, 0.0,  2.74217255],
-             [0.0, 0.0, -4.61716028]])
+ref = array([[0.0, 0.0,  4.61734874],
+             [0.0, 0.0, -2.74398046],
+             [0.0, 0.0,  2.74398027],
+             [0.0, 0.0, -4.61734856]])
 
 if fd:
     from ase.calculators import numeric_forces

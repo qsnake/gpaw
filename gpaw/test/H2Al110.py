@@ -35,5 +35,5 @@ for i in range(1):
 print e, niter
 energy_tolerance = 0.00015
 niter_tolerance = 0
-equal(e, -44.710596073, energy_tolerance) # svnversion 5252
-equal(niter, 26, niter_tolerance) # svnversion 5252
+equal(e, -44.69217, energy_tolerance)
+equal(niter, 24, niter_tolerance)

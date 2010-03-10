@@ -49,7 +49,7 @@ assert abs(E_1 - E_2) < 0.005
 
 energy_tolerance = 0.00004
 niter_tolerance = 0
-equal(E_PBE, -5.4828534893, energy_tolerance) # svnversion 5252
-equal(E_PBE_no_wfs, -5.4828534893, energy_tolerance) # svnversion 5252
-equal(E_1, -5.78741931914, energy_tolerance) # svnversion 5252
-equal(E_2, -5.78744484259, energy_tolerance) # svnversion 5252
+equal(E_PBE, -5.33901, energy_tolerance)
+equal(E_PBE_no_wfs, -5.33901, energy_tolerance)
+equal(E_1, -5.6435, energy_tolerance)
+equal(E_2, -5.64352, energy_tolerance)

@@ -96,10 +96,9 @@ equal(2 * wf, stmp.gd.integrate(stmp.ldos), 0.02)
 
 energy_tolerance = 0.00007
 niter_tolerance = 0
-equal(e1, -2.77025728207, energy_tolerance) # svnversion 5252
-equal(niter1, 25, niter_tolerance) # svnversion 5252
-equal(e2, -1.74173802003, energy_tolerance) # svnversion 5252
-equal(niter2, 21, niter_tolerance) # svnversion 5252
-equal(e3, -3.06602004348, energy_tolerance) # svnversion 5252
-#equal(niter3, 40, niter_tolerance) # svnversion 5252 # niter depends on the number of processes
+equal(e1, -2.54026, energy_tolerance)
+equal(niter1, 26, niter_tolerance)
+equal(e2, -1.51101, energy_tolerance)
+equal(niter2, 21, niter_tolerance)
+equal(e3, -2.83573, energy_tolerance)
 assert 38 <= niter3 <= 40, niter3

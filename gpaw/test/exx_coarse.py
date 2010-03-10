@@ -45,9 +45,7 @@ equal(E[True], E[False], 0.02)
 
 energy_tolerance = 0.0003
 niter_tolerance = 0
-equal(E[False], -788.69544851733713, energy_tolerance) # svnversion 5252
-#equal(niter[False], 19, niter_tolerance) # svnversion 5252 # niter depends on the number of processes
+equal(E[False], -788.67538, energy_tolerance)
 assert 15 <= niter[False] <= 20, niter[False]
-equal(E[True], -788.69604168904459, energy_tolerance) # svnversion 5252
-#equal(niter[True], 19, niter_tolerance) # svnversion 5252 # niter depends on the number of processes
-assert 19 <= niter[True] <= 21, niter[True]
+equal(E[True], -788.68187, energy_tolerance)
+assert 16 <= niter[True] <= 22, niter[True]

@@ -1,6 +1,6 @@
 from ase import *
 from ase.calculators import numeric_force
-from gpaw import GPAW, FermiDirac
+from gpaw import GPAW, FermiDirac, PoissonSolver
 from gpaw.test import equal
 
 a = 5.404
@@ -19,6 +19,7 @@ n = 20
 calc = GPAW(gpts=(n, n, n),
             nbands=8*3,
             occupations=FermiDirac(width=0.01),
+            poissonsolver=PoissonSolver(nn='M', relax='J'),
             kpts=(2, 2, 2),
             convergence={'energy': 1e-7}
             )

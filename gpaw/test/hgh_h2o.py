@@ -17,7 +17,6 @@ import numpy as np
 from ase import *
 from gpaw import GPAW
 from gpaw.utilities import unpack
-from gpaw.poisson import PoissonSolver
 from gpaw.atom.basis import BasisMaker
 from gpaw.test import equal
 
@@ -34,11 +33,11 @@ e = mol.get_potential_energy()
 niter = calc.get_number_of_iterations()
 F_ac = mol.get_forces()
 
-F_ac_ref = np.array([[ 7.33694397,  3.81614796, -6.07914715],
-                     [-0.90850061, -1.17060449,  3.43945632],
-                     [-0.61183534, -0.41462055,  2.3438572 ]])
+F_ac_ref = np.array([[ 7.33077718,  3.81069249, -6.07405156],
+                     [-0.9079617 , -1.18203514,  3.43777589],
+                     [-0.61642527, -0.41889306,  2.332415  ]])
 
-eref = 724.496374168
+eref = 724.479830538
 
 eerr = abs(e - eref)
 
@@ -77,7 +76,7 @@ psit_nG = wfs.kpt_u[0].psit_nG
 dH_asp = calc.hamiltonian.dH_asp
 
 assert eerr < 1e-3, 'energy changed from reference'
-assert ferr < 0.006, 'forces do not match FD check'
+assert ferr < 0.015, 'forces do not match FD check'
 
 # Sanity check.  In HGH, the atomic Hamiltonian is constant.
 # Also the projectors should be normalized
@@ -106,5 +105,5 @@ for psit_G in psit_nG:
 
 energy_tolerance = 0.000001
 niter_tolerance = 0
-equal(e, 724.496375344, energy_tolerance) # svnversion 5252
-equal(niter, 34, niter_tolerance) # svnversion 5252
+equal(e, eref, energy_tolerance) # svnversion 5252
+equal(niter, 31, niter_tolerance) # svnversion 5252

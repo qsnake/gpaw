@@ -24,8 +24,8 @@ try:
 
     energy_tolerance = 0.00015
     niter_tolerance = 0
-    equal(e0, -0.0101614134194, energy_tolerance) # svnversion 5252
-    equal(niter0, 17, niter_tolerance) # svnversion 5252
+    equal(e0, -0.01040809, energy_tolerance)
+    equal(niter0, 17, niter_tolerance)
 except:
     extra_parameters['usenewxc'] = usenewxc
     raise

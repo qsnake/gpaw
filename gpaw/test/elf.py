@@ -35,5 +35,5 @@ if rank == 0:
     int1 = elf_G[Gx0:Gx1,Gy0:Gy1,Gz0:Gz1].sum() * gd.dv
     int2 = elf_g[gx0:gx1,gy0:gy1,gz0:gz1].sum() * finegd.dv
     print "Ints", int1, int2
-    equal(int1, 14.8083762412, 0.0001)
-    equal(int2, 13.0333520934, 0.0001)
+    equal(int1, 14.8078, 0.0001)
+    equal(int2, 13.0331, 0.0001)

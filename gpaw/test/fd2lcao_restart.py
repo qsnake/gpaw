@@ -31,8 +31,8 @@ if not os.path.isfile('Na4_fd.gpw'):
     calc.write('Na4_fd.gpw')
     del atoms,calc
 
-    equal(etot_fd, -1.98891667225, energy_tolerance) # svnversion 5252
-    equal(niter_fd, 18, niter_tolerance) # svnversion 5252
+    equal(etot_fd, -1.99055, energy_tolerance)
+    equal(niter_fd, 17, niter_tolerance)
 
 if os.path.isfile('Na4_fd.gpw'):
     # LCAO calculation based on grid kpts calculation
@@ -46,5 +46,5 @@ if os.path.isfile('Na4_fd.gpw'):
     calc.write('Na4_lcao.gpw')
     del atoms, calc
 
-    equal(etot_lcao, -1.9599011763, energy_tolerance) # svnversion 5252
-    equal(niter_lcao, 6, niter_tolerance) # svnversion 5252
+    equal(etot_lcao, -1.9616, energy_tolerance)
+    equal(niter_lcao, 6, niter_tolerance)
