@@ -157,7 +157,6 @@ tests = [
     'nsc_MGGA.py',
     '8Si.py',
     'coreeig.py',
-    'transport.py',
     'Cu.py',
     'exx.py',
     'dscf_CO.py',
@@ -184,6 +183,7 @@ tests = [
     #'dscf_forces.py',
     'lrtddft3.py',
     'AA_exx_enthalpy.py',
+    'transport.py',
     ]
 
 exclude = []
