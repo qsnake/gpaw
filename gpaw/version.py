@@ -8,7 +8,7 @@ ase_required_svnversion = '1158'
 
 try:
     from gpaw.svnversion import svnversion
-except AttributeError, ImportError:
+except (AttributeError, ImportError):
     version = version_base
 else:
     version = version_base + '.' + svnversion
