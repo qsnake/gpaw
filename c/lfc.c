@@ -37,6 +37,7 @@ PyObject* add(LFCObject *self, PyObject *args);
 PyObject* calculate_potential_matrix_derivative(LFCObject *self, 
                                                 PyObject *args);
 PyObject* second_derivative(LFCObject *self, PyObject *args);
+PyObject* add_derivative(LFCObject *self, PyObject *args);
 
 static PyMethodDef lfc_methods[] = {
     {"calculate_potential_matrix",
@@ -63,6 +64,8 @@ static PyMethodDef lfc_methods[] = {
      (PyCFunction)calculate_potential_matrix_derivative, METH_VARARGS, 0},
     {"second_derivative",
      (PyCFunction)second_derivative, METH_VARARGS, 0},
+    {"add_derivative",
+     (PyCFunction)add_derivative, METH_VARARGS, 0},
 #ifdef PARALLEL
     {"broadcast",
      (PyCFunction)localized_functions_broadcast, METH_VARARGS, 0},

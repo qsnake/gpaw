@@ -87,3 +87,14 @@ PyObject* second_derivative(LFCObject *lfc, PyObject *args)
   GRID_LOOP_STOP(lfc, -1);
   Py_RETURN_NONE;
 }
+
+PyObject* add_derivative(LFCObject *lfc, PyObject *args)
+{
+  int q;
+
+  if (!PyArg_ParseTuple(args, "i", &q))
+    return NULL; 
+  printf("q=%d", q);
+
+  Py_RETURN_NONE;
+}
