@@ -56,8 +56,8 @@ library_dirs = [
            '/soft/apps/LAPACK',
            '/soft/apps/ESSL-4.4.1-0/lib',
 #           '/soft/apps/LIBGOTO',
-           '/soft/apps/ibmcmp/xlf/bg/11.1/bglib',
-           '/soft/apps/ibmcmp/xlsmp/bg/1.7/bglib',
+           '/soft/apps/ibmcmp-jan2010/xlf/bg/11.1/bglib',
+           '/soft/apps/ibmcmp-jan2010/xlsmp/bg/1.7/bglib',
            '/bgsys/drivers/ppcfloor/gnu-linux/lib',
 #           '/soft/apps/UPC/lib',
            ]
