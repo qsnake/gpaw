@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 
-from ase.units import Hartree
+from ase.units import _hbar, _c, _e, Hartree
 from gpaw.version import version
 from gpaw.utilities.folder import Folder
 
@@ -54,12 +54,9 @@ def spectrum(exlist=None,
         y.append(ex.get_oscillator_strength())
 
     if energyunit == 'nm':
-        # transform to experimentally used wavelength
-        # XXX hack ! XXX
-        x = 1239.942 / np.array(x)
+        # transform to experimentally used wavelength [nm]
+        x = 1.e+9 * 2 * np.pi * _hbar * _c / _e / np.array(x)
         y = np.array(y)
-        for xx, yy in zip(x, y):
-            yy *= xx**2
     elif energyunit != 'eV':
         raise RuntimeError('currently only eV and nm are supported')
         
