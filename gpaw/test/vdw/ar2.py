@@ -7,7 +7,7 @@ from gpaw.vdw import FFTVDWFunctional
 
 gen('Ar', xcname='revPBE')
 
-energy_tolerance = 0.000002
+energy_tolerance = 0.000003
 niter_tolerance = 0
 
 def test():
