@@ -28,12 +28,12 @@ try:
     calc = GPAW('N2_wfs.gpw', txt=txt)
     calc.converge_wave_functions()
 except:
-    calc = GPAW(h = 0.25,
-                nbands = -5,
-                spinpol = True,
-                xc = 'PBE',
-                txt = txt,
-                eigensolver = 'cg',
+    calc = GPAW(h=0.25,
+                nbands=-5,
+                spinpol=True,
+                xc='PBE',
+                txt=txt,
+                eigensolver='cg',
                 parsize='domain only')
     N2.set_calculator(calc)
     E0 = N2.get_potential_energy()
@@ -102,7 +102,7 @@ if rank == 0:
     # Compare values of original and written/read objects   
     equal(E, E2, 1e-4)
     for i in range(len(osz)):
-        equal(osz[i], osz2[i], 1e-4)
+        equal(osz[i], osz2[i], 1.7e-4)
 
     width = 0.05
     photoabsorption_spectrum(lr, 
