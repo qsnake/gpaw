@@ -23,7 +23,8 @@ args2change = {"-fno-strict-aliasing":"",
                "-dynamic":"",
                "-O3":"",
                "-O2":"",
-               "-O1":""}
+               "-O1":"",
+               "-fwrapv":""}
 
 fragile_files = ["test.c"]
 qhot_files = ["c/blas.c", "c/utilities.c","c/lfc.c","c/localized_functions.c"]
@@ -46,10 +47,10 @@ for arg in sys.argv[1:]:
     else:
         cmd += arg
 
-flags_list = {1: "-O3 -qlanglvl=extc99 -qnostaticlink -qflag=w:w",
-              2: "-O3 -qstrict -qlanglvl=extc99 -qnostaticlink -qflag=w:w",
-              3: "-O3 -qnostaticlink -qflag=w:w",
-              4: "-O3 -qhot -qlanglvl=extc99 -qnostaticlink -qflag=w:w",
+flags_list = {1: "-O3 -qlanglvl=extc99 -qflag=w:w",
+              2: "-O3 -qstrict -qlanglvl=extc99 -qflag=w:w",
+              3: "-O3 -qflag=w:w",
+              4: "-O3 -qhot -qlanglvl=extc99 -qflag=w:w",
               }
 
 flags = flags_list[opt]  
