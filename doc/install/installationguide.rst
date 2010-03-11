@@ -23,6 +23,23 @@ Requirements
 
 .. _NumPy: http://www.scipy.org/NumPy
 
+Installation from the fys package repository
+============================================
+
+GPAW and dependencies will be installed system-wide. This procedure requires root acccess.
+
+.. note::
+
+   Most of the fys packages are relocatable, therefore suitable for installing also on a cluster.
+
+The packages are provided for the following RPMS-based systems:
+
+- Fedora Core 12: :ref:`Fedora`,
+
+- RedHat Enterprise Linux (or CentOS) 5: :ref:`CentOS`.
+
+If you prefer to install manually proceed to the next section.
+
 Standard installation
 =====================
 
@@ -40,6 +57,11 @@ Standard installation
    take a look at :ref:`install_custom_installation`.
    Then follow :ref:`developer_installation`.
 
+   .. note::
+
+   Take a look at :ref:`platforms_and_architectures` - it provides
+   installation instructions for different platforms.
+
    **Note**: alternatively (**not recommended**) to
    :ref:`developer_installation`, install with the standard (using bash)::
 
@@ -54,7 +76,6 @@ Standard installation
    :file:`{<my-directory}>/bin/gpaw-python` can be used when executing
    parallel runs. See :ref:`parallel_installation` for more details about
    parallel runs.
-
 
    .. note::
 
