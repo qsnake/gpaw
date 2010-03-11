@@ -32,9 +32,6 @@ When it is time for a new release of the code, here is what you have to do:
 
    cd gpaw-0.4
    rm -f MANIFEST gpaw/svnversion.py*
-   # gpaw.version is used in the name of the tarball and
-   # from gpaw.version import version works only after c-extensions are built
-   python setup.py build_ext
    python setup.py sdist
 
   Note that the ``tags_revision`` is put into the name of the

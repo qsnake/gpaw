@@ -17,8 +17,12 @@ from stat import ST_MTIME
 from config import *
 
 # Get the current version number:
-execfile('gpaw/svnversion_io.py')
-execfile('gpaw/version.py')
+execfile('gpaw/svnversion_io.py')  # write gpaw/svnversion.py and get svnversion
+execfile('gpaw/version.py')        # get version_base
+if svnversion:
+    version = version_base + '.' + svnversion
+else:
+    version = version_base
 
 long_description = """\
 A grid-based real-space Projector Augmented Wave (PAW) method Density
