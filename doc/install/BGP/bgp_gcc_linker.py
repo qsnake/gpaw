@@ -43,9 +43,9 @@ for arg in sys.argv[1:]:
     else:
         cmd += arg
 
-flags_list = {1: "-O3 -g -std=c99 -fPIC",
-              2: "-O2 -g -std=c99 -fPIC",
-              3: "-O3 -g -fPIC",
+flags_list = {1: "-g -O3 -std=c99",
+              2: "-g -O2 -std=c99",
+              3: "-g -O3",
               }
 
 flags = flags_list[opt]     
