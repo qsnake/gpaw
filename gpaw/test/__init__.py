@@ -14,7 +14,7 @@ from gpaw import mpi
 import gpaw
 
 
-def equal(x, y, tolerance=0, fail=not True, msg=''):
+def equal(x, y, tolerance=0, fail=True, msg=''):
     if abs(x - y) > tolerance:
         msg = (msg + '%.9g != %.9g (error: |%.9g| > %.9g)' %
                (x, y, x - y, tolerance))
