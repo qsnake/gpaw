@@ -47,14 +47,14 @@ for arg in sys.argv[1:]:
     else:
         cmd += arg
 
-flags_list = {1: "-g -O3 -qlanglvl=extc99 -qflag=w:w",
-              2: "-g -O3 -qstrict -qlanglvl=extc99 -qflag=w:w",
-              3: "-g -O3 -qflag=w:w",
-              4: "-g -O3 -qhot -qlanglvl=extc99 -qflag=w:w",
+flags_list = {1: "-g -O3 -qlanglvl=extc99 -qflag=w:w -qpic",
+              2: "-g -O3 -qstrict -qlanglvl=extc99 -qflag=w:w -qpic",
+              3: "-g -O3 -qflag=w:w -qpic",
+              4: "-g -O3 -qhot -qlanglvl=extc99 -qflag=w:w -qpic",
               }
 
 flags = flags_list[opt]  
-cmd = "/soft/apps/ibmcmp-aug2009/vac/bg/9.0/bin/bgxlc_r %s %s"%(flags, cmd)
+cmd = "/soft/apps/ibmcmp-jan2010/vac/bg/9.0/bin/bgxlc_r %s %s"%(flags, cmd)
 
 print "\nexecmd: %s\n"%cmd
 call(cmd, shell=True)
