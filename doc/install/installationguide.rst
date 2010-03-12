@@ -34,7 +34,7 @@ GPAW and dependencies will be installed system-wide. This procedure requires roo
 
 The packages are provided for the following RPMS-based systems:
 
-- Fedora Core 12: :ref:`Fedora`,
+- Fedora 12: :ref:`Fedora`,
 
 - RedHat Enterprise Linux (or CentOS) 5: :ref:`CentOS`.
 
