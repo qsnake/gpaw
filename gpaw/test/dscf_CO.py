@@ -57,7 +57,7 @@ equal(E_es1, E_gs+5.8, 0.1)
 equal(E_es1, E_es2, 0.001)
 
 energy_tolerance = 0.001
-niter_tolerance = 1
+niter_tolerance = 2
 equal(E_gs, -14.9313, energy_tolerance)
 equal(niter_gs, 20, niter_tolerance)
 equal(E_es1, -9.1067, energy_tolerance)
