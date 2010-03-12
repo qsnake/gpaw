@@ -36,7 +36,7 @@ class PhononCalculator:
     def run(self, tolerance_sc = 1e-5,
             tolerance_sternheimer = 1e-5, use_dfpt = True,
             file_dn = None, h = None, delta = None):
-        """................"""
+        """Run ..."""
 
         # Initialize phonon perturbation
         self.perturbation.initialize()

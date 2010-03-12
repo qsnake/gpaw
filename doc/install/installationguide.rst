@@ -59,8 +59,8 @@ Standard installation
 
    .. note::
 
-   Take a look at :ref:`platforms_and_architectures` - it provides
-   installation instructions for different platforms.
+       Take a look at :ref:`platforms_and_architectures` - it provides
+       installation instructions for different platforms.
 
    **Note**: alternatively (**not recommended**) to
    :ref:`developer_installation`, install with the standard (using bash)::
