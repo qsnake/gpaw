@@ -1,24 +1,16 @@
-import sys
-from math import pi, sqrt
+"""Excitation lists base classes
+
+"""
+from math import sqrt
 
 import numpy as np
-from ase.units import Hartree
 
-import _gpaw
 import gpaw.mpi as mpi
-MASTER = mpi.MASTER
-from gpaw import debug
-from gpaw.utilities import pack, packed_index
 from gpaw.output import initialize_text_stream
 
-#from gpaw.io.plt import write_plt
-
-# ..............................................................
-# general excitation classes
-
 class ExcitationList(list):
-    """
-    General Excitation List class
+    """General Excitation List class.
+
     """
     def __init__(self, calculator=None, txt=None):
 
@@ -29,6 +21,9 @@ class ExcitationList(list):
         if not txt and calculator:
             txt = calculator.txt
         self.txt, firsttime = initialize_text_stream(txt, mpi.rank)
+
+    def get_calculator(self):
+        return self.calculator
 
     def get_energies(self):
         """Get excitation energies in Hartrees"""
@@ -44,21 +39,24 @@ class ExcitationList(list):
             trkm += ex.get_energy()*ex.get_dipol_me()**2
         return 2.*trkm # scale to get the number of electrons
     
-    def get_polarizabilities(self,lmax=7):
+    def get_polarizabilities(self, lmax=7):
         """Calculate the Polarisabilities
         see Jamorski et al. J. Chem. Phys. 104 (1996) 5134"""
-        S=np.zeros((lmax+1))
+        S = np.zeros((lmax+1))
         for ex in self:
             e = ex.get_energy()
             f = ex.get_oscillator_strength()[0]
             for l in range(lmax+1):
-                S[l] += e**(-2*l) * f
+                S[l] += e**(-2 * l) * f
         return S
 
+    def set_calculator(self, calculator):
+        self.calculator = calculator
+
     def __str__(self):
-        string= '# ' + str(type(self))
+        string = '# ' + str(type(self))
         if len(self) != 0:
-            string+=', %d excitations:' % len(self)
+            string += ', %d excitations:' % len(self)
         string += '\n'
         for ex in self:
             string += '#  '+ex.__str__()+"\n"
@@ -99,7 +97,7 @@ class Excitation:
             # velocity form
             me = self.muv
 
-        osz=[0.]
+        osz = [0.]
         for c in range(3):
             val = 2. * me[c]**2
             osz.append(val)
