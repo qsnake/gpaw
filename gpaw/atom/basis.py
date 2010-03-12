@@ -375,6 +375,7 @@ class BasisMaker:
 
         Returns a fully initialized Basis object.
         """
+
         if txt == '-':
             txt = sys.stdout
         elif txt is None:
@@ -421,6 +422,12 @@ class BasisMaker:
                                   if f > 0])
             if lvalues[0] != 0: # Always include s-orbital !
                 lvalues = np.array([0] + list(lvalues))
+
+        #print energysplit
+        if isinstance(energysplit,float):
+            energysplit=[energysplit]*(max(lvalues)+1)
+            #print energysplit,'~~~~~~~~'
+            
             
         title = '%s Basis functions for %s' % (g.xcname, g.symbol)
         print >> txt, title
@@ -456,7 +463,7 @@ class BasisMaker:
                 adverb = 'softly'
             print >> txt, 'Zeta 1: %s confined pseudo wave,' % adverb,
 
-            u, e, de, vconf, rc = self.rcut_by_energy(j, energysplit,
+            u, e, de, vconf, rc = self.rcut_by_energy(j, energysplit[l],
                                                       tolerance,
                                                       vconf_args=vconf_args)
             if rc > rcutmax:
