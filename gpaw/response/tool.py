@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.optimize import leastsq
+import pylab as pl
 
 def find_peaks(x,y,threshold = None):
     """ Find peaks for a certain curve.
@@ -101,4 +102,37 @@ def lorz_fit(x,y, npeak=1, initpara = None):
     yfit = lorz(x, result[0],npeak)
 
     return yfit, result[0]
-    
+
+
+def plot_setfont():
+
+    params = {
+              'axes.labelsize': 18,
+              'text.fontsize': 18,
+              'legend.fontsize': 18,
+              'xtick.labelsize': 18,
+              'ytick.labelsize': 18,
+              'text.usetex': True}
+    #          'figure.figsize': fig_size}
+    pl.rcParams.update(params)
+
+
+def plot_setticks(x=True, y=True):
+
+    pl.minorticks_on()
+    ax = pl.gca()
+    if x:
+        ax.xaxis.set_major_locator(pl.AutoLocator())
+        x_major = ax.xaxis.get_majorticklocs()
+        dx_minor =  (x_major[-1]-x_major[0])/(len(x_major)-1) /5.
+        ax.xaxis.set_minor_locator(pl.MultipleLocator(dx_minor))
+    else:
+        pl.minorticks_off()
+        
+    if y:
+        ax.yaxis.set_major_locator(pl.AutoLocator())
+        y_major = ax.yaxis.get_majorticklocs()
+        dy_minor =  (y_major[-1]-y_major[0])/(len(y_major)-1) /5.
+        ax.yaxis.set_minor_locator(pl.MultipleLocator(dy_minor)) 
+    else:
+        pl.minorticks_off()
