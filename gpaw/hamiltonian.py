@@ -346,6 +346,15 @@ class Hamiltonian:
 
         self.timer.stop('Atomic')
 
+        #meta-gga correction
+        # < tilde_Psi | +1/2*nabla.(dedtau * nabla tilde_Psi)> = -< dedtau * tau> 
+        if self.xc.xcfunc.mgga:
+            self.Ekin_mgga = 0.0
+            for taut_G, dedtau_g in zip(self.xc.tautnocore_sG, self.xc.dedtau_sg):
+                self.xc.xcfunc.restrictor.apply(dedtau_g, self.xc.dedtau_G)
+                self.Ekin_mgga -= self.gd.integrate(self.xc.dedtau_G, taut_G, global_integral=False)
+            Ekin += self.Ekin_mgga
+
         # Make corrections due to non-local xc:
         xcfunc = self.xc.xcfunc
         self.Enlxc = xcfunc.get_non_local_energy()

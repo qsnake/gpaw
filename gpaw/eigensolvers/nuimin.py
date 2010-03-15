@@ -48,7 +48,7 @@ class NUIMin(Eigensolver):
             hamiltonian.apply_local_potential(psit_nG, R_nG, kpt.s)
             #
             # the unitary variant part (orbital dependency)
-            hamiltonian.xc.add_non_local_terms(psit_nG, R_nG, kpt.s)
+            hamiltonian.xc.add_non_local_terms(psit_nG, R_nG, kpt)
             return R_nG
         #
         # shortcuts to the wavefunctions and projections

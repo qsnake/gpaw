@@ -293,8 +293,7 @@ XC(mgga_c_revtpss)(XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma, FLOAT *tau,
   }
 
   grad = max(MIN_GRAD*MIN_GRAD, grad);
-  //tauw = max(grad/(8.0*dens), 1.0e-12);
-  tauw = grad/(8.0*dens);
+  tauw = max(grad/(8.0*dens), 1.0e-12);
 
   taut = max(tautr, tauw);
 

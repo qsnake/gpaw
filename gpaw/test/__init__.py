@@ -157,6 +157,7 @@ tests = [
     'nsc_MGGA.py',
     '8Si.py',
     'coreeig.py',
+    'revtpss_tpss_scf.py',
     'Cu.py',
     'exx.py',
     'dscf_CO.py',

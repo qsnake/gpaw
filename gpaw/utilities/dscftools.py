@@ -366,7 +366,7 @@ def dscf_hamiltonian_elements(paw, kpt):
     def H(psit_xG):
         paw.wfs.kin.apply(psit_xG, Htpsit_xG, kpt.phase_cd)
         paw.hamiltonian.apply_local_potential(psit_xG, Htpsit_xG, kpt.s)
-        paw.hamiltonian.xc.add_non_local_terms(psit_xG, Htpsit_xG, kpt.s)
+        paw.hamiltonian.xc.add_non_local_terms(psit_xG, Htpsit_xG, kpt)
         return Htpsit_xG
 
     dH_aii = dict([(a, unpack(dH_sp[kpt.s])) for a, dH_sp \

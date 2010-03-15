@@ -40,6 +40,13 @@ class ForceCalculator:
             for a, dF_v in dF_av.items():
                 self.F_av[a] += dF_v[0]
 
+            if hamiltonian.xc.xcfunc.mgga:
+                dF_av = hamiltonian.xc.tauct.dict(derivative=True)
+                dedtau_G = hamiltonian.xc.dedtau_G
+                hamiltonian.xc.tauct.derivative(dedtau_G, dF_av)
+                for a, dF_v in dF_av.items():
+                    self.F_av[a] += dF_v[0]
+
             # Force from zero potential:
             dF_av = hamiltonian.vbar.dict(derivative=True)
             hamiltonian.vbar.derivative(density.nt_g, dF_av)

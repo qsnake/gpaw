@@ -87,6 +87,7 @@ class Eigensolver:
         B = len(eps_n)  # block size
         wfs.kin.apply(psit_nG, R_nG, kpt.phase_cd)
         hamiltonian.apply_local_potential(psit_nG, R_nG, kpt.s)
+        hamiltonian.xc.add_non_local_terms(psit_nG, R_nG, kpt) #larin
         P_ani = dict([(a, np.zeros((B, wfs.setups[a].ni), wfs.dtype))
                       for a in kpt.P_ani])
         wfs.pt.integrate(psit_nG, P_ani, kpt.q)
@@ -155,7 +156,7 @@ class Eigensolver:
         def H(psit_xG):
             wfs.kin.apply(psit_xG, Htpsit_xG, kpt.phase_cd)
             hamiltonian.apply_local_potential(psit_xG, Htpsit_xG, kpt.s)
-            hamiltonian.xc.add_non_local_terms(psit_xG, Htpsit_xG, kpt.s)
+            hamiltonian.xc.add_non_local_terms(psit_xG, Htpsit_xG, kpt)
             return Htpsit_xG
                 
         dH_aii = dict([(a, unpack(dH_sp[kpt.s]))

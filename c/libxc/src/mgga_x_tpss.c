@@ -50,89 +50,82 @@ static FLOAT b=0.40, c=1.59096, e=1.537, kappa=0.804, mu=0.21951;
 
 /* This is Equation (7) from the paper and its derivatives */
 static void 
-x_tpss_7(FLOAT p, FLOAT z, 
-	 FLOAT *qb, FLOAT *dqbdp, FLOAT *dqbdz)
+x_tpss_7(FLOAT p, FLOAT alpha, 
+	 FLOAT *qb, FLOAT *dqbdp, FLOAT *dqbdalpha)
 {
-  FLOAT alpha, dalphadp, dalphadz;
 
-  { /* Eq. (8) */
-    FLOAT a = (1.0/z - 1.0), h = 5.0/3.0;
-    alpha    = h*a*p;
-    dalphadp = h*a;
-    dalphadz = -h*p/(z*z);
-  }
-
-  { /* Eq. (7) */
-    FLOAT dqbda;
+   /* Eq. (7) */
     FLOAT a = sqrt(1.0 + b*alpha*(alpha-1.0)), h = 9.0/20.0;
-    dqbda = h*(1.0 + 0.5*b*(alpha-1.0))/POW(a, 3);
 
     *qb    = h*(alpha - 1.0)/a + 2.0*p/3.0;
-    *dqbdp = dqbda*dalphadp + 2.0/3.0;
-    *dqbdz = dqbda*dalphadz;
-  }
+    *dqbdp = 2.0/3.0;
+    *dqbdalpha = h*(1.0 + 0.5*b*(alpha-1.0))/POW(a, 3);
+  
 
 }
 
 /* Equation (10) in all it's glory */
 static 
-void x_tpss_10(FLOAT p, FLOAT z, 
-	       FLOAT *x, FLOAT *dxdp, FLOAT *dxdz)
+void x_tpss_10(FLOAT p, FLOAT alpha,
+	       FLOAT *x, FLOAT *dxdp, FLOAT *dxdalpha)
 {
-  FLOAT x1, dxdp1, dxdz1;
-  FLOAT aux1, z2, p2;
-  FLOAT qb, dqbdp, dqbdz;
+  FLOAT x1, dxdp1, dxdalpha1;
+  FLOAT aux1, ap, apsr, p2;
+  FLOAT qb, dqbdp, dqbdalpha;
   
   /* Equation 7 */
-  x_tpss_7(p, z, &qb, &dqbdp, &dqbdz);
+  x_tpss_7(p, alpha, &qb, &dqbdp, &dqbdalpha);
 
-  z2   = z*z;
   p2   = p*p; 
   aux1 = 10.0/81.0;
+  ap = (3*alpha + 5*p)*(3*alpha + 5*p);
+  apsr = (3*alpha + 5*p);
   
   /* first we handle the numerator */
   x1    = 0.0;
   dxdp1 = 0.0;
-  dxdz1 = 0.0;
+  dxdalpha1 = 0.0;
 
   { /* first term */
-    FLOAT a = 1.0+z2, a2 = a*a;
-    x1    += (aux1 + c*z2/a2)*p;
-    dxdp1 += (aux1 + c*z2/a2);
-    dxdz1 += c*2.0*z*(1.0-z2)*p/(a*a2);
+    FLOAT a = (9*alpha*alpha+30*alpha*p+50*p2), a2 = a*a;
+    x1    += aux1*p + 25*c*p2*p*ap/a2;
+    dxdp1 += aux1 + ((3*225*c*p2*alpha*alpha+ 4*750*c*p*p2*alpha + 5*625*c*p2*p2)*a2 - 25*c*p2*p*ap*2*a*(30*alpha+50*2*p))/(a2*a2);
+    dxdalpha1 += ((225*c*p*p2*2*alpha + 750*c*p2*p2)*a2 - 25*c*p2*p*ap*2*a*(9*2*alpha+30*p))/(a2*a2);
   }
   
   { /* second term */
     FLOAT a = 146.0/2025.0*qb;
     x1    += a*qb;
-    dxdp1 += 2.0*a*dqbdp;
-    dxdz1 += 2.0*a*dqbdz;
+	dxdp1 += 2.0*a*dqbdp;
+	dxdalpha1 += 2.0*a*dqbdalpha;
   }
   
   { /* third term */
-    FLOAT a = sqrt(0.5*(9.0*z2/25.0 + p2));
-    FLOAT h = 73.0/405;
-    x1    += -h*qb*a;
-    dxdp1 += -h*(a*dqbdp + 0.5*qb*p/a);
-    dxdz1 += -h*(a*dqbdz + 0.5*qb*(9.0/25.0)*z/a);
+    FLOAT h = 73.0/(405*sqrt(2.0));
+    x1    += -h*qb*p/apsr * sqrt(ap+9);
+    dxdp1 += -h * qb *((3*alpha)/ap * sqrt(ap+9) + p/apsr * 1./2. * POW(ap+9,-1./2.)* 2*apsr*5) - h*p/apsr*sqrt(ap+9)*dqbdp; 
+	dxdalpha1 += -h*qb*( (-1)*p*3/ap * sqrt(ap+9) + p/apsr * 1./2. * POW(ap+9,-1./2.)* 2*apsr*3) - h*p/apsr*sqrt(ap+9)*dqbdalpha;
   }
   
+
   { /* forth term */
     FLOAT a = aux1*aux1/kappa;
     x1    += a*p2;
     dxdp1 += a*2.0*p;
+	dxdalpha1 += 0.0;
   }
   
   { /* fifth term */
-    FLOAT a = 2.0*sqrt(e)*aux1*9.0/25.0;
-    x1    += a*z2;
-    dxdz1 += a*2.0*z;
+    x1    += 20*sqrt(e)*p2/(9*ap);
+    dxdp1 += 20*sqrt(e)/9*(2*p*ap-p2*2*(3*alpha + 5*p)*5)/(ap*ap);
+	dxdalpha1 +=-20*2*sqrt(e)/3*p2/(ap*(3*alpha + 5*p));
   }
   
   { /* sixth term */
     FLOAT a = e*mu;
     x1    += a*p*p2;
     dxdp1 += a*3.0*p2;
+	dxdalpha1 += 0.0;
   }
   
   /* and now the denominator */
@@ -140,7 +133,7 @@ void x_tpss_10(FLOAT p, FLOAT z,
     FLOAT a = 1.0+sqrt(e)*p, a2 = a*a;
     *x    = x1/a2;
     *dxdp = (dxdp1*a - 2.0*sqrt(e)*x1)/(a2*a);
-    *dxdz = dxdz1/a2;
+	*dxdalpha = dxdalpha1/a2;
   }
 }
 
@@ -149,18 +142,19 @@ x_tpss_para(XC(mgga_type) *pt, FLOAT *rho, FLOAT sigma, FLOAT tau_,
 	    FLOAT *energy, FLOAT *dedd, FLOAT *vsigma, FLOAT *dedtau)
 {
 
-  FLOAT gdms, p, tau, tauw, z;
-  FLOAT x, dxdp, dxdz, Fx, dFxdx;
-  FLOAT exunif, vxunif;
-  FLOAT dpdd, dpdsigma, dzdtau, dzdd, dzdsigma;
+  FLOAT gdms, p, tau, tauw;
+  FLOAT x, dxdp, dxdalpha, Fx, dFxdx;
+  FLOAT tau_lsda, exunif, vxunif, dtau_lsdadd;
+  FLOAT dpdd, dpdsigma;
+  FLOAT alpha, dalphadtau_lsda, dalphadd, dalphadsigma, dalphadtau; 
+  FLOAT aux =  (3./10.) * pow((3*M_PI*M_PI),2./3.); 
 
 
   /* get the uniform gas energy and potential */
   XC(lda_vxc)(pt->lda_aux, rho, &exunif, &vxunif);
 
   /* calculate |nabla rho|^2 */
-  gdms = sigma;
-  gdms = max(MIN_GRAD*MIN_GRAD, gdms);
+  gdms = max(MIN_GRAD*MIN_GRAD, sigma);
   
   /* Eq. (4) */
   p = gdms/(4.0*POW(3*M_PI*M_PI, 2.0/3.0)*POW(rho[0], 8.0/3.0));
@@ -170,20 +164,26 @@ x_tpss_para(XC(mgga_type) *pt, FLOAT *rho, FLOAT sigma, FLOAT tau_,
   /* von Weisaecker kinetic energy density */
   tauw = max(gdms/(8.0*rho[0]), 1.0e-12);
   tau = max(tau_, tauw);
-  z  = tauw/tau;
 
-  if(tauw >= tau_ || ABS(tauw-tau_)< 1.0e-10){
-	  dzdtau = 0.0;
-	  dzdd = 0.0;
-	  dzdsigma = 0.0;
+  tau_lsda = aux * pow(rho[0],5./3.); 
+  dtau_lsdadd = aux * 5./3.* pow(rho[0],2./3.);
+  
+  alpha = (tau - tauw)/tau_lsda;
+  dalphadtau_lsda = -1./POW(tau_lsda,2.);
+  
+
+  if(ABS(tauw-tau_)< 1.0e-10){
+	  dalphadsigma = 0.0;
+	  dalphadtau = 0.0;
+	  dalphadd = 0.0; 
   }else{
-	  dzdtau= -z/tau;
-	  dzdd = -z/rho[0];
-	  dzdsigma = 1/(8*rho[0]*tau);
+	  dalphadtau = 1./tau_lsda;
+	  dalphadsigma = -1./(tau_lsda*8.0*rho[0]);
+	  dalphadd = (tauw/rho[0]* tau_lsda - (tau - tauw) * dtau_lsdadd)/ POW(tau_lsda,2.); 
   }
 
   /* get Eq. (10) */
-  x_tpss_10(p, z, &x, &dxdp, &dxdz);
+  x_tpss_10(p, alpha, &x, &dxdp, &dxdalpha);
 
   { /* Eq. (5) */
     FLOAT a = kappa/(kappa + x);
@@ -194,15 +194,15 @@ x_tpss_para(XC(mgga_type) *pt, FLOAT *rho, FLOAT sigma, FLOAT tau_,
   { /* Eq. (3) */
 
     *energy = exunif*Fx*rho[0];
-	//printf("Ex %.9e\n", *energy);
 
     /* exunif is en per particle already so we multiply by n the terms with exunif*/
 
-    *dedd   = vxunif*Fx + exunif*dFxdx*(dpdd*dxdp + dzdd*dxdz)*rho[0];
+    *dedd   = vxunif*Fx + exunif*dFxdx*rho[0]*(dxdp*dpdd + dxdalpha*dalphadd);
 
-    *vsigma = exunif*dFxdx*rho[0]*(dxdp*dpdsigma + dxdz*dzdsigma);
+    *vsigma = exunif*dFxdx*rho[0]*(dxdp*dpdsigma + dxdalpha*dalphadsigma);
 
-    *dedtau = exunif*dFxdx*rho[0]*(dzdtau*dxdz);
+    *dedtau = exunif*dFxdx*rho[0]*(dxdalpha*dalphadtau);
+
 
   }
 }

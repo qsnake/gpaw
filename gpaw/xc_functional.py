@@ -647,10 +647,11 @@ class XC3DGrid(XCGrid):
         if xcfunc.mgga:
             wfs = self.xcfunc.wfs
             self.dedtau_sg = gd.empty(self.nspins)
-            self.dpsidr_G = wfs.gd.empty()
-            self.tmp_G = wfs.gd.empty()
+            self.dpsidr_G = wfs.gd.empty(dtype=wfs.dtype)
+            self.tmp_G = wfs.gd.empty(dtype=wfs.dtype)
             self.dedtau_G = wfs.gd.empty()
             self.taut_sG = wfs.gd.empty(self.nspins)
+            self.tautnocore_sG = wfs.gd.empty(self.nspins)
             self.taut_sg = gd.empty(self.nspins)
             self.tauct = LFC(wfs.gd,
                              [[setup.tauct] for setup in wfs.setups],
@@ -679,6 +680,7 @@ class XC3DGrid(XCGrid):
 
         if self.xcfunc.mgga:
             self.taut_sG[:] = 0.
+            self.tautnocore_sG[:] = 0.
             wfs = self.xcfunc.wfs
             # Add contribution from all k-points
             for kpt in wfs.kpt_u:
@@ -686,12 +688,14 @@ class XC3DGrid(XCGrid):
             wfs.band_comm.sum(self.taut_sG)
             wfs.kpt_comm.sum(self.taut_sG)
 
+            self.tautnocore_sG[0] = self.taut_sG[0].copy()
             # Add the pseudo core kinetic array
             self.tauct.add(self.taut_sG[0])
 
             # For periodic boundary conditions
             if wfs.symmetry is not None:
                 wfs.symmetry.symmetrize(self.taut_sG[0], wfs.gd)
+                wfs.symmetry.symmetrize(self.tautnocore_sG[0], wfs.gd)
 
             # Interpolate pseudo electron kinetic density to the fine grid:
             self.xcfunc.interpolator.apply(self.taut_sG[0], self.taut_sg[0])
@@ -737,6 +741,7 @@ class XC3DGrid(XCGrid):
 
         if self.xcfunc.mgga:
             self.taut_sG[:] = 0.
+            self.tautnocore_sG[:] = 0.
             wfs = self.xcfunc.wfs
             # Add contribution from all k-points
             for kpt in wfs.kpt_u:
@@ -745,6 +750,8 @@ class XC3DGrid(XCGrid):
             wfs.band_comm.sum(self.taut_sG)
             wfs.kpt_comm.sum(self.taut_sG)
 
+            self.tautnocore_sG[0] = self.taut_sG[0].copy()
+            self.tautnocore_sG[1] = self.taut_sG[1].copy()
             # Add the pseudo core kinetic array
             for s in range(wfs.nspins):
                 self.tauct.add(self.taut_sG[s], 1.0 / wfs.nspins)
@@ -753,6 +760,8 @@ class XC3DGrid(XCGrid):
             if wfs.symmetry is not None:
                 for taut_G in self.taut_sG:
                     wfs.symmetry.symmetrize(taut_G, wfs.gd)
+                for tautnocore_G in self.tautnocore_sG:
+                    wfs.symmetry.symmetrize(tautnocore_G, wfs.gd)
 
             # Interpolate pseudo electron kinetic density to the fine grid:
             for s in range(self.nspins):
@@ -851,17 +860,23 @@ class XC3DGrid(XCGrid):
                                                 nb_g, vb_g)
         return e_g.sum() * self.dv
 
-    def add_non_local_terms(self, psit_nG, Htpsit_nG, s):
+    #def add_non_local_terms(self, psit_nG, Htpsit_nG, s):
+    def add_non_local_terms(self, psit_nG, Htpsit_nG, kpt):
+        s= kpt.s
         if self.xcfunc.mgga:
             self.xcfunc.restrictor.apply(self.dedtau_sg[s], self.dedtau_G)
-            for psit_G, Htpsit_G in zip(psit_nG, Htpsit_nG):
-                for c in range(3):
-                    if psit_G.dtype == float:
+            if self.xcfunc.wfs.dtype == float:                        
+                for psit_G, Htpsit_G in zip(psit_nG, Htpsit_nG):
+                    for c in range(3):
                         self.ddrG[c](psit_G, self.dpsidr_G)
-                    else:
-                        self.ddrG[c](a_G,dpsidr_G, kpt.phase_cd)
-                    self.ddrG[c](self.dedtau_G * self.dpsidr_G, self.tmp_G)
-                    axpy(-1.0, self.tmp_G, Htpsit_G)
+                        self.ddrG[c](self.dedtau_G * self.dpsidr_G, self.tmp_G)
+                        axpy(-1.0/2., self.tmp_G, Htpsit_G)
+            else:
+                for psit_G, Htpsit_G in zip(kpt.psit_nG, Htpsit_nG):
+                    for c in range(3):
+                        self.ddrG[c](psit_G, self.dpsidr_G, kpt.phase_cd)  #immaginary 
+                        self.ddrG[c](self.dedtau_G * self.dpsidr_G, self.tmp_G, kpt.phase_cd)
+                        axpy(-1.0/2., self.tmp_G, Htpsit_G)
         if self.xcfunc.xcname.endswith('-SIC'):
             self.xcfunc.add_non_local_terms(psit_nG, Htpsit_nG, s)
 
