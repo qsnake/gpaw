@@ -915,7 +915,7 @@ class BlacsOrbitalLayouts(BlacsLayouts):
 class OrbitalLayouts(KohnShamLayouts):
     def __init__(self, gd, bd, nao, timer=nulltimer):
         KohnShamLayouts.__init__(self, gd, bd, timer)
-        self._kwargs.update(nao=nao)
+        self._kwargs.update({'nao':nao})
         self.mMdescriptor = MatrixDescriptor(nao, nao)
         self.nMdescriptor = MatrixDescriptor(bd.mynbands, nao)
         
