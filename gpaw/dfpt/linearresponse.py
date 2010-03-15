@@ -1,4 +1,4 @@
-"""This module provides a class linear density response calculations."""
+"""This module provides a class for linear density response calculations."""
 
 
 import numpy as np
@@ -22,8 +22,8 @@ class LinearResponse:
     def __init__(self, calc, perturbation):
         """Store calculator and init the LinearResponse calculator."""
         
-        # init positions
-        calc.set_positions()
+        # Make sure that localized functions are initialized
+        # calc.set_positions()
         self.calc = calc
 
         # Store grids
@@ -41,6 +41,8 @@ class LinearResponse:
         # 3) etc
         self.perturbation = perturbation
 
+        self.initialized = False
+        
     def initialize(self, tolerance_sternheimer = 1e-5):
         """Make the object ready for a calculation."""
 
@@ -60,11 +62,13 @@ class LinearResponse:
 
         # Variation of the pseudo-potential
         self.vloc1_G = self.perturbation.calculate_derivative()
-        self.vnl1_nG = self.perturbation.calculate_nonlocal_derivative(0)        
-   
-    def __call__(self, alpha = 0.4, max_iter = 100, tolerance_sc = 1e-5,
+        self.vnl1_nG = self.perturbation.calculate_nonlocal_derivative(0)
+
+        self.initialized = True
+        
+    def __call__(self, alpha = 0.4, max_iter = 1000, tolerance_sc = 1e-5,
                  tolerance_sternheimer = 1e-5):
-        """Calculate linear density response for the provided perturbation.
+        """Calculate linear density response.
 
         Implementation of q != 0 to be done!
 
@@ -161,6 +165,8 @@ class LinearResponse:
         # Hartree part
         vHXC1_g = self.finegd.zeros()
         ps.solve(vHXC1_g, nt1_g)
+        # Store the Hartree potential from the density derivative
+        # self.vH1_g = vHXC1_g.copy()
         # XC part
         nt_g_ = density.nt_g.ravel()
         vXC1_g = self.finegd.zeros()

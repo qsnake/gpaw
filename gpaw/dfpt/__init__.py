@@ -26,11 +26,22 @@ References
 ----------
 1) Rev. Mod. Phys. 73, 515 (2001)
 
+
+Notes
+-----
+1) When using the ``derivative`` method of the ``lfc`` class to calculate
+integrals between derivatives of localized functions wrt atomic displacements
+and functions defined on the grid, the signs of the calculated integrals come
+out incorrectly (see doc string of the ``derivative`` method). All files of
+this ``dfpt`` package follows this rule for correcting the sign error::
+
+    X_niv = -1 * X_aniv[a] ,
+
+i.e. correct the sign when extracting from the dictionary.
+
 """
 
 # __version__ = "0.1"
-
-# Sort out what is imported when doing import gpaw.dfpt as dfpt
 
 import gpaw.dfpt.phononcalculator
 import gpaw.dfpt.linearresponse

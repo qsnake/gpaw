@@ -134,11 +134,11 @@ class SternheimerOperator:
         
         """
 
-        assert self.k is not None
+        # assert self.k is not None
         
         nbands = self.wfs.nvalence/2
         # k+q-vector
-        kpt = self.wfs.kpt_u[self.k]
+        kpt = self.wfs.kpt_u[0]
         psit_nG = kpt.psit_nG[:nbands]
 
         proj_n = self.gd.integrate(x_G * psit_nG)
