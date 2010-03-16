@@ -105,7 +105,7 @@ class GPAW(PAW):
         
         'LDA', 'PBE', ..."""
         
-        return self.xc 
+        return self.hamiltonian.xc.xcfunc.xcname
  
     def get_bz_k_points(self):
         """Return the k-points."""

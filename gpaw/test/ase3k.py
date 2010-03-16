@@ -17,3 +17,5 @@ energy_tolerance = 0.00007
 niter_tolerance = 0
 equal(e0, -6.55685, energy_tolerance)
 equal(niter0, 12, niter_tolerance)
+
+print calc.get_xc_functional()
