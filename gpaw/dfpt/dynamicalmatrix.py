@@ -77,7 +77,6 @@ class DynamicalMatrix:
             Cartesian index
         nt1_G: ndarray
             First-order density variation
-        etc ...
 
         """
 
@@ -134,8 +133,8 @@ class DynamicalMatrix:
         dH_asp = self.calc.hamiltonian.dH_asp
         # Overlap between wave-functions and projectors (NOTE: here n > nbands)
         P_ani = kpt.P_ani
-        # d2P_anivv = self.calculate_d2P_anivv()
         # Calculate d2P_anivv coefficients
+        # d2P_anivv = self.calculate_d2P_anivv()        
         d2P_anivv = dict([(atom.index,
                            np.zeros((nbands, pt.get_function_count(atom.index),
                                      3, 3))) for atom in self.atoms])
@@ -151,7 +150,6 @@ class DynamicalMatrix:
             for atom in self.atoms:
                 a = atom.index
                 d2P_anivv[a][n, 0] = d2P_avv[a]
-
         
         for atom in self.atoms:
 
