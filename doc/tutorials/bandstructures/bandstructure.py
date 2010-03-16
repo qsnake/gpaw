@@ -23,10 +23,12 @@ atoms.get_potential_energy()
 calc.write('Na_sc.gpw')
 
 # Calculate band structure along Gamma-X i.e. from 0 to 0.5
+# Do not use symmetry in band structure calculation, 
+# otherwise one may get less kpoints than one would expect 
 nkpt = 50
 kpts = [(k / float(2 * nkpt), 0, 0) for k in range(nkpt)]
 calc = GPAW('Na_sc.gpw', txt='out_Na_harris.txt',
-            kpts=kpts, fixdensity=True, nbands=7,
+            kpts=kpts, fixdensity=True, usesymm=None, nbands=7,
             eigensolver='cg', convergence={'bands': 'all'})
 ef = calc.get_fermi_level()
 calc.get_potential_energy()
