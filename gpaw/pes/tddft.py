@@ -1,3 +1,6 @@
+"""PES using approximate LrTDDFT scheme.
+
+"""
 import numpy as np
 
 from ase.units import Hartree
@@ -9,28 +12,29 @@ from gpaw.utilities import packed_index
 from numpy import sqrt, pi
 
 class TDDFTPES(BasePES):
-    def __init__(self, Mother, ExcitedDaughter, Daughter=None):
-        if ExcitedDaughter.calculator is not None:
-            self.c_d = ExcitedDaughter.calculator
+    def __init__(self, mother, excited_daughter, daughter=None):
+        if excited_daughter.calculator is not None:
+            self.c_d = excited_daughter.calculator
         else:
-            self.c_d = Daughter
+            self.c_d = daughter
 
-        self.c_m = Mother
+        self.c_m = mother
         self.gd = self.c_m.wfs.gd
-        self.lr_d = ExcitedDaughter
+        self.lr_d = excited_daughter
         
         self.c_m.converge_wave_functions()
         self.c_d.converge_wave_functions()
         self.lr_d.diagonalize()
         
         self.check_systems()
-        self.lr_d.jend=self.lr_d.kss[-1].j        
+        self.lr_d.jend = self.lr_d.kss[-1].j        
         
         # Make good way for initialising these
 
         self.imax=0
         for kpt in self.c_m.wfs.kpt_u:
-            self.imax+=int(kpt.f_n.sum()) # Isn't there a 'number of electrons' varible?
+            self.imax += int(kpt.f_n.sum()) # Isn't there a 'number of electrons' varible?
+#        print "#### imax=", self.imax
             
         self.kmax=self.imax-1                                #k=0,...,kmax-1  ### os ad 
         self.lmax=2*(self.lr_d.jend+1)-self.kmax #l=0,...,lmax-1
@@ -92,7 +96,10 @@ class TDDFTPES(BasePES):
                     self.h[i,k,l]=np.linalg.det(d_ikl)
 
     def _create_g0(self):
-        self.g0=np.zeros((self.imax))
+        """Evaluate overlap matrix of mother and daughter ground states.
+
+        """
+        self.g0 = np.zeros((self.imax))
         for i in range(self.imax):
             keep_row=range(self.imax)
             keep_row.remove(i)
@@ -108,8 +115,11 @@ class TDDFTPES(BasePES):
 
 
     def _create_g(self):
-        totspin=int(np.abs(self.c_d.get_magnetic_moment()))
-        self.g=np.zeros((len(self.lr_d)+1,self.imax))
+        """Evaluate overlap matrix of mother ground and daughter excited states.
+
+        """
+        totspin = int(np.abs(self.c_d.get_magnetic_moment()))
+        self.g = np.zeros((len(self.lr_d)+1, self.imax))
         self.g[0,:]=self.g0
 
         for I in range(len(self.lr_d)):
@@ -118,43 +128,49 @@ class TDDFTPES(BasePES):
                 gi=0
                 for kl in range(len(self.lr_d)):
 
-                    for index in range(2*self.lr_d.kss[kl].i-totspin, 2 * self.lr_d.kss[kl].i+2): 
-                        if (self.qnr_d[index,0:2] == 
+                    for index in range(2 * self.lr_d.kss[kl].i - totspin, 
+                                       2 * self.lr_d.kss[kl].i + 2): 
+                        if (self.qnr_d[index, 0:2] == 
                             np.array([self.lr_d.kss[kl].i,
                                       self.lr_d.kss[kl].pspin])).all():
                             k=index
                             break
                         
 
-                    for index in range(2*self.lr_d.kss[kl].j, 2*self.lr_d.kss[kl].j+2+totspin):
+                    for index in range(2 * self.lr_d.kss[kl].j, 
+                                       2 * self.lr_d.kss[kl].j+2 + totspin):
 
-                        if len(self.c_d.wfs.kpt_u)==1 and self.c_d.wfs.kpt_u[0].f_n.sum()%2==1:
-                            if (self.qnr_d[index,0:2] == 
+                        if (len(self.c_d.wfs.kpt_u) == 1 and 
+                            self.c_d.wfs.kpt_u[0].f_n.sum() % 2 == 1):
+                            if (self.qnr_d[index, 0:2] == 
                                 np.array([self.lr_d.kss[kl].j,
                                           (self.lr_d.kss[kl].pspin+1) % 2])).any():
                                 #Crap but in non spinpol lrtddft of open shell systems the HOMO and LUMO have equal quantum numbers, or so it seams 
-                                l=index-self.kmax
+                                l=index - self.kmax
                                 break
 
                         else:
-                            if (self.qnr_d[index,0:2]==np.array([self.lr_d.kss[kl].j,self.lr_d.kss[kl].pspin])).all():
+                            if (self.qnr_d[index,0:2] == 
+                                np.array([self.lr_d.kss[kl].j,
+                                          self.lr_d.kss[kl].pspin])).all():
                                 l=index-self.kmax
                                 break
 
-                    gi+=self.lr_d[I].f[kl]*self.h[i,k,l]
+                    gi += self.lr_d[I].f[kl] * self.h[i,k,l]
                     l=None
                     k=None
 
-                self.g[1+I,i]=(-1.)**(self.imax+i)*gi
+                self.g[1+I, i]=(-1.)**(self.imax + i) * gi
 
     def _create_f(self):
         self.f=(self.g*self.g).sum(axis=1)
 
-        if self.first_peak_energy==None:
-            self.first_peak_energy=(self.c_d.get_potential_energy()
-                                  -self.c_m.get_potential_energy())
-
-        self.be = self.first_peak_energy + np.array([0] + list(self.lr_d.get_energies() * Hartree))
+        if self.first_peak_energy == None:
+            self.first_peak_energy = (self.c_d.get_potential_energy() -
+                                      self.c_m.get_potential_energy())
+            
+        self.be = (self.first_peak_energy + 
+                   np.array([0] + list(self.lr_d.get_energies() * Hartree)))
 
     def _nuc_corr(self, i_m, j_d, k_m, k_d):
         ma = 0
@@ -213,6 +229,9 @@ class TDDFTPES(BasePES):
 
 
     def check_systems(self):
+        """Check that mother and daughter systems correspond to each other.
+
+        """
         if (self.c_m.wfs.gd.cell_cv != self.c_d.wfs.gd.cell_cv).any():
             raise RuntimeError('Not the same grid')
         if (self.c_m.wfs.gd.h_cv != self.c_d.wfs.gd.h_cv).any():
