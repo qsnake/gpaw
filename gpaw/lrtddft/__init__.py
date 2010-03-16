@@ -219,9 +219,9 @@ class LrTDDFT(ExcitationList):
 
         # get my name
         s = f.readline().replace('\n','')
-        hash, self.name = s.split()
+        self.name = s.split()[1]
 
-        self.xc = f.readline().replace('\n','')
+        self.xc = f.readline().replace('\n','').split()[0]
         values = f.readline().split()
         self.eps = float(values[0])
         if len(values) > 1:
@@ -319,7 +319,9 @@ class LrTDDFT(ExcitationList):
             f.write('# ' + self.name + '\n')
             xc = self.xc
             if xc is None: xc = 'RPA'
-            f.write(xc+'\n')
+            if self.calculator is not None:
+                xc += ' ' + self.calculator.get_xc_functional()
+            f.write(xc + '\n')
             f.write('%g %d %g %d' % (self.eps, int(self.derivative_level),
                                      self.numscale, int(self.finegrid)) + '\n')
             self.kss.write(fh=f)
