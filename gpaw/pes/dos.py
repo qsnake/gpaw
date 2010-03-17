@@ -35,6 +35,6 @@ class DOSPES(BasePES):
             e_d = self.c_d.get_potential_energy()
             energy_shift = e_d - e_m - ex_m[-1]
         else:
-            energy_shift = self.shiftex_m[-1]
+            energy_shift = self.shift
 
         self.be += energy_shift
