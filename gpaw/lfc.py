@@ -443,7 +443,74 @@ class NewLocalizedFunctionsCollection(BaseLFC):
             M1 = M2
 
         self.lfc.add(c_xM, a_xG, q)
-    
+
+    def add_derivative(self, a, v, a_xG, c_axi=1.0, q=-1):
+        """Add derivative of localized functions on atom to extended arrays.
+
+        Parameters
+        ----------
+        a: int
+            Atomic index of the derivative
+        v: int
+            Cartesian coordinate of the derivative (0, 1 or 2)
+
+        This function adds the following sum to the extended arrays::
+        
+                   --  a      a
+          a (G) += >  c   dPhi  (G)
+           x       --  xi     iv
+                    i
+
+        where::
+
+              a        d     a
+          dPhi  (G) =  -- Phi (g)
+              iv       dv    i
+
+        is the derivative of the Phi^a and v is either x, y, or z.
+        
+        """
+
+        assert not self.use_global_indices
+        assert v in [0, 1, 2]
+        
+        if q == -1:
+            assert self.dtype == float
+        
+        dtype = a_xG.dtype
+
+        if debug:
+            assert a_xG.ndim >= 3
+            assert (np.sort(c_axi.keys()) == self.my_atom_indices).all()
+            for c_xi in c_axi.values():
+                assert c_xi.dtype == dtype
+
+        cspline_M = []
+        for a_ in self.atom_indices:
+            for spline in self.sphere_a[a_].spline_j:
+                nm = 2 * spline.get_angular_momentum_number() + 1
+                cspline_M.extend([spline.spline] * nm)
+
+        #Temp solution - set all coefficient to zero except for those at atom a
+        # Coefficient indices for atom a
+        M1 = self.M_a[a]
+        M2 = M1 + self.sphere_a[a].Mmax
+        
+        if isinstance(c_axi, float):
+            assert q == -1
+            c_xM = np.zeros(self.Mmax)
+            c_xM[..., M1:M2] = c_axi
+        else:
+            xshape = a_xG.shape[:-3]
+            c_xM = np.zeros(xshape + (self.Mmax,), dtype)
+            c_xM[..., M1:M2] = c_axi[a]
+
+        gd = self.gd
+
+        self.lfc.add_derivative(c_xM, a_xG, gd.h_cv, gd.n_c, cspline_M,
+                                gd.beg_c, self.pos_Wv, a, v, q)
+
+            
     def integrate(self, a_xG, c_axi, q=-1):
         """Calculate integrals of arrays times localized functions.
 
@@ -452,6 +519,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
                    /             a*
           c_axi =  | dG a (G) Phi  (G)
                    /     x       i
+                   
         """
         assert not self.use_global_indices
         if q == -1:
@@ -521,16 +589,17 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         where::
 
                        
-              a        d       a
-          dPhi  (G) =  ---  Phi (g)
-              iv         a     i
-                       dR 
-                         v
+              a        d     a
+          dPhi  (G) =  -- Phi (g)
+              iv       dv    i
+                         
                          
         and v is either x, y, or z, and R^a_v is the center of Phi^a.
 
         Notice that d Phi^a_i / dR^a_v == - d Phi^a_i / d v.
+        
         """
+
         assert not self.use_global_indices
 
         if debug:
