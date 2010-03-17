@@ -9,8 +9,12 @@ class PESpectrum(Writer):
                  ):
         Writer.__init__(self, folding, width)
         self.title = 'Photo emission spectrum'
-        self.fields = 'Binding energy [eV]     Folded spectroscopic factor'
-    
+        self.fields = 'Binding energy [eV]   '
+        if folding is None:
+            self.fields += 'Spectroscopic factor'
+        else:
+            self.fields += 'Folded spectroscopic factor'
+   
         self.energies = enlist[0]
         self.values = []
         for val in enlist[1]:
@@ -19,7 +23,7 @@ class PESpectrum(Writer):
 class BasePES:
     def save_folded_pes(self,
              filename=None,
-             width=0.5, # Gauss/Lorentz width
+             width=0.08, # Gauss/Lorentz width
              emin=None,
              emax=None,
              de=None,
@@ -39,5 +43,3 @@ class BasePES:
 
     def set_first_peak_energy(self,energy):
         self.first_peak_energy=energy
-        
-
