@@ -3,8 +3,8 @@
 
 #include "extensions.h"
 #include "spline.h"
-#include "bmgs/spherical_harmonics.h"
 #include "lfc.h"
+#include "bmgs/spherical_harmonics.h"
 
 
 PyObject* second_derivative(LFCObject *lfc, PyObject *args)
