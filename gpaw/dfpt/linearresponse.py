@@ -5,6 +5,8 @@ import numpy as np
 
 import ase.units as units
 
+from gpaw.mixer import BaseMixer
+
 from gpaw.dfpt.sternheimeroperator import SternheimerOperator
 from gpaw.dfpt.linearsolver import LinearSolver
 from gpaw.dfpt.scipylinearsolver import ScipyLinearSolver
@@ -51,7 +53,11 @@ class LinearResponse:
         kpt_u = self.calc.wfs.kpt_u
         num_kpts = len(kpt_u)
         nbands = self.calc.wfs.nvalence/2
-        
+
+        # Initialize mixer
+        self.mixer = BaseMixer(beta=0.4, nmaxold=5, weight=1)
+        self.mixer.initialize(self.calc.density)
+        self.mixer.reset()
         # Linear solver for the solution of Sternheimer equation
         self.linear_solver = ScipyLinearSolver(tolerance = tolerance_sternheimer)
         # Linear operator in the Sternheimer equation
@@ -59,7 +65,7 @@ class LinearResponse:
         # List for storing the variations in the wave-functions
         self.psit1_unG = [np.array([self.gd.zeros() for n in range(nbands)])
                           for kpt in kpt_u]
-
+        
         # Variation of the pseudo-potential
         self.vloc1_G = self.perturbation.calculate_derivative()
         self.vnl1_nG = self.perturbation.calculate_nonlocal_derivative(0)
@@ -123,8 +129,9 @@ class LinearResponse:
         """Perform first iteration of sc-loop."""
 
         # Include only a fraction of the full local perturbation
-        self.wave_function_variations(0.1 * self.vloc1_G)
+        self.wave_function_variations(self.vloc1_G)
         self.nt1_G = self.density_response()
+        self.mixer.mix(self.nt1_G, [])
 
     def iteration(self, iter, alpha):
         """Perform iteration.
@@ -139,17 +146,19 @@ class LinearResponse:
         """
 
         # Copy old density
-        nt1_G_old = self.nt1_G.copy()
+        # nt1_G_old = self.nt1_G.copy()
         # Update variation in the effective potential
         v1_G = self.effective_potential_variation()
         # Update wave function variations
         self.wave_function_variations(v1_G)
         # Update density
-        nt1_G = self.density_response()
+        self.nt1_G = self.density_response()
         # Mix
-        self.nt1_G = alpha * nt1_G + (1. - alpha) * nt1_G_old
+        self.mixer.mix(self.nt1_G, [])
+        norm = self.mixer.get_charge_sloshing()
+        # self.nt1_G = alpha * nt1_G + (1. - alpha) * nt1_G_old
         # Integrated absolute density change
-        norm = self.gd.integrate(np.abs(self.nt1_G - nt1_G_old))
+        # norm = self.gd.integrate(np.abs(self.nt1_G - nt1_G_old))
 
         return norm
 
