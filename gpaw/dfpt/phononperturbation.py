@@ -115,6 +115,103 @@ class PhononPerturbation(Perturbation):
         self.dP_aniv = dP_aniv
 
     def calculate_derivative(self):
+        """Derivate of the local PAW potential wrt an atomic displacement.
+
+        The local part of the PAW potential has contributions from the
+        compensation charges (ghat) and a spherical symmetric atomic potential
+        (vbar).
+        
+        """
+
+        assert self.a is not None
+        assert self.v is not None
+        
+        a = self.a
+        v = self.v
+
+        # Get LFC's
+        ghat = self.ghat
+        vbar = self.vbar
+        # Expansion coefficients for the ghat functions
+        Q_aL = ghat.dict(zero=True)
+        # Remember sign convention for add_derivative method
+        Q_aL[a] = -1 * self.calc.density.Q_aL[a]
+        
+        # Derivative of the local part of the PAW potential
+        v1_g = self.finegd.zeros()
+
+        # Grid for derivative of compensation charges
+        ghat1_g = self.finegd.zeros()
+        ghat.add_derivative(a, v, ghat1_g, Q_aL)
+        # Solve Poisson's eq. for the potential from the compensation charges
+        hamiltonian = self.calc.hamiltonian
+        ps = hamiltonian.poisson
+        ps.solve(v1_g, ghat1_g)
+        # Store potential from the compensation charge
+        self.vghat1_g = v1_g.copy()
+        
+        # Add derivative of vbar - sign convention in add_derivative method
+        vbar.add_derivative(a, v, v1_g, -1.)
+
+        # Transfer to coarse grid
+        v1_G = self.gd.zeros()
+        hamiltonian.restrictor.apply(v1_g, v1_G)
+
+        # Store potential for the evaluation of the energy derivative
+        self.v1_g = v1_g.copy()
+        
+        return v1_G
+  
+    def calculate_nonlocal_derivative(self, kpt):
+        """Derivate of the non-local PAW potential wrt an atomic displacement.
+
+        Remember to generalize this to the case of complex wave-functions !!!!!
+        
+        """
+
+        assert self.a is not None
+        assert self.v is not None
+        assert self.dP_aniv is not None
+        
+        a = self.a
+        v = self.v
+        
+        # Projectors on the atoms
+        pt = self.pt
+        
+        nbands = self.calc.wfs.nvalence/2
+        hamiltonian = self.calc.hamiltonian
+
+        # <p_a^i | psi_n >
+        P_ni = self.calc.wfs.kpt_u[0].P_ani[a][:nbands]
+        # <dp_av^i | psi_n > - remember the sign convention of the calculated
+        # derivatives 
+        dP_ni = -1 * self.dP_aniv[a][...,v]
+
+        # Array for the derivative of the non-local part of the PAW potential
+        vnl1_nG = self.gd.zeros(n=nbands)
+        
+        # Expansion coefficients for the projectors on atom a
+        dH_ii = unpack(hamiltonian.dH_asp[a][0])
+
+        # The derivative of the non-local PAW potential has two contributions
+        # 1) Sum over projectors
+        c_ni = np.dot(dP_ni, dH_ii)
+        c_ani = pt.dict(shape=nbands, zero=True)
+        c_ani[a] = c_ni
+        pt.add(vnl1_nG, c_ani)
+
+        # 2) Sum over derivatives of the projectors
+        dc_ni = np.dot(P_ni, dH_ii)
+        dc_ani = pt.dict(shape=nbands, zero=True)
+        # Take care of sign of derivative in the coefficients
+        dc_ani[a] = -1 * dc_ni
+
+        pt.add_derivative(a, v, vnl1_nG, dc_ani)
+     
+        return vnl1_nG
+
+    def calculate_derivative_old(self):
         """Derivate of the local PAW potential wrt an atomic displacement."""
 
         assert self.a is not None
@@ -169,7 +266,7 @@ class PhononPerturbation(Perturbation):
         d = 2 * self.eps
         v1_g /= d
         ghat1_g /= d
-        
+
         # Solve Poisson's eq. for the potential from the compensation charges
         hamiltonian = self.calc.hamiltonian
         ps = hamiltonian.poisson
@@ -188,7 +285,7 @@ class PhononPerturbation(Perturbation):
         
         return v1_G
     
-    def calculate_nonlocal_derivative(self, kpt):
+    def calculate_nonlocal_derivative_old(self, kpt):
         """Derivate of the non-local PAW potential wrt an atomic displacement.
 
         Remember to generalize this to the case of complex wave-functions !!!!!
@@ -197,6 +294,7 @@ class PhononPerturbation(Perturbation):
 
         assert self.a is not None
         assert self.v is not None
+        assert self.dP_aniv is not None
         
         a = self.a
         v = self.v
@@ -254,7 +352,6 @@ class PhononPerturbation(Perturbation):
         # Convert change to a derivative
         d = 2 * self.eps
         vnl1_temp_nG /= d
-
         vnl1_nG += vnl1_temp_nG
         
         return vnl1_nG

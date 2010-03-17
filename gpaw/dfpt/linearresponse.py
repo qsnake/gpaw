@@ -1,6 +1,5 @@
 """This module provides a class for linear density response calculations."""
 
-
 import numpy as np
 
 import ase.units as units
@@ -34,7 +33,6 @@ class LinearResponse:
 
         # wave function derivative
         self.psit1_unG = None
-
         self.sternheimer_operator = None
         self.linear_solver = None
 
@@ -128,7 +126,6 @@ class LinearResponse:
     def first_iteration(self):
         """Perform first iteration of sc-loop."""
 
-        # Include only a fraction of the full local perturbation
         self.wave_function_variations(self.vloc1_G)
         self.nt1_G = self.density_response()
         self.mixer.mix(self.nt1_G, [])
@@ -145,8 +142,6 @@ class LinearResponse:
 
         """
 
-        # Copy old density
-        # nt1_G_old = self.nt1_G.copy()
         # Update variation in the effective potential
         v1_G = self.effective_potential_variation()
         # Update wave function variations
@@ -156,6 +151,9 @@ class LinearResponse:
         # Mix
         self.mixer.mix(self.nt1_G, [])
         norm = self.mixer.get_charge_sloshing()
+
+        # Copy old density
+        # nt1_G_old = self.nt1_G.copy()
         # self.nt1_G = alpha * nt1_G + (1. - alpha) * nt1_G_old
         # Integrated absolute density change
         # norm = self.gd.integrate(np.abs(self.nt1_G - nt1_G_old))
@@ -226,35 +224,40 @@ class LinearResponse:
                 rhs_G -= self.vnl1_nG[n]
                 self.sternheimer_operator.project(rhs_G)
                 
-                print "\t\tBand %i -" % n,
+                print "\t\tBand %2.1i -" % n,
                 iter, info = self.linear_solver.solve(self.sternheimer_operator,
                                                       psit1_G, rhs_G)
 
                 if info == 0:
                     print "linear solver converged in %i iterations" % iter
                 elif info > 0:
-                    print ("linear solver did not converge in %i iterations" %
-                           iter)
-                    assert info == 0
+                    assert info == 0, ("linear solver did not converge in "
+                                       "maximum number (=%i) of iterations"
+                                       % iter)
                 else:
-                    print "linear solver failed to converge" 
-                    assert info == 0
+                    assert info == 0, ("linear solver failed to converge")
                     
     def density_response(self):
         """Calculate density response from variation in the wave-functions."""
-
-        nt1_G = self.gd.zeros()
-    
+   
         nbands = self.calc.wfs.nvalence/2
         kpt_u = self.calc.wfs.kpt_u
 
+        nt1_G = self.gd.zeros()
+        
         for kpt in kpt_u:
 
-            psit_nG = kpt.psit_nG[:nbands]
+            f_n = kpt.f_n[:nbands]
+            psit_nG = kpt.psit_nG[:nbands] 
             psit1_nG = self.psit1_unG[kpt.k]
 
-            for psit_G, psit1_G in zip(psit_nG, psit1_nG):
+            for n, f in enumerate(f_n):
+                
+                nt1_G += 2 * f * psit_nG[n] * psit1_nG[n]
 
-                nt1_G += 4 * psit_G * psit1_G
+            ## Might be the source of my miseries ?????????
+            ## for psit_G, psit1_G in zip(psit_nG, psit1_nG):
+            ## 
+            ##     nt1_G += 4 * psit_G * psit1_G
 
         return nt1_G

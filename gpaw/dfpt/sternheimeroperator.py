@@ -14,9 +14,9 @@ class SternheimerOperator:
 
     where P_c is the projection operator onto the unoccupied states.
     
-    The main purpose of this class is to provide a method ("dot") that can
-    evaluate the multiplication with a an arbitrary vector. This functionality
-    is required by iterative Krylov solvers.
+    The main purpose of this class is to provide a method ``matvec`` that can
+    evaluate the multiplication with a vector. This is the only information
+    about the linear operator that is required by iterative Krylov solvers.
     
     """
     
@@ -35,7 +35,6 @@ class SternheimerOperator:
         N = np.prod(gd.n_c)
         self.shape = (N,N)
         self.dtype = float
-        # LinearOperator.__init__(self, shape, self.matvec, dtype=float)
         
     def set_blochstate(self, k, n):
         """Set k-vector and band index for the Bloch-state in consideration.
@@ -52,36 +51,6 @@ class SternheimerOperator:
         self.k = k
         self.n = n
         
-    def dot(self, x_G, y_G):
-        """Multiplication with a vector.
-
-        Evaluates the matrix-vector multiplication
-
-                y_G = L * x_G
-
-        where L is the linear operator appearing in the Sternheimer equation.
-                
-        Parameters
-        ----------
-        x_G: ndarray
-            Representation of a vector defined on a 3d-grid
-        y_G: ndarray
-            Representation of a vector defined on a 3d-grid
-            
-        """
-        
-        assert self.k is not None
-        assert self.n is not None
-
-        kpt = self.wfs.kpt_u[self.k]
-
-        # Remember to set P_ani = True later on
-        self.hamiltonian.apply(x_G, y_G, self.wfs, kpt,
-                               calculate_P_ani=True)
-
-        y_G -= kpt.eps_n[self.n] * x_G
-
-
     def matvec(self, x):
         """Matrix vector multiplication for scipy.sparse.linalg cgs solver.
 
@@ -95,12 +64,11 @@ class SternheimerOperator:
         assert self.k is not None
         assert self.n is not None
 
-        size = x.size
-        
         # Output array
         y_G = self.gd.zeros()
         shape = y_G.shape
 
+        size = x.size
         assert size == np.prod(shape)
         
         x_G = x.reshape(shape)
@@ -118,7 +86,7 @@ class SternheimerOperator:
         
         return y
     
-    def project(self, x_G):
+    def project(self, a_G):
         """Project the vector onto the unoccupied states at k+q.
 
         A new vector is not created!
@@ -141,17 +109,12 @@ class SternheimerOperator:
         kpt = self.wfs.kpt_u[0]
         psit_nG = kpt.psit_nG[:nbands]
 
-        proj_n = self.gd.integrate(x_G * psit_nG)
-        
-        # Do the projection in one go - figure out how to use np.dot correctly
-        # x_G -= np.dot(proj_n, psit_nG)
+        proj_n = self.gd.integrate(a_G * psit_nG)
 
         # Project out one orbital at a time
         for n in range(nbands):
 
-            x_G -= proj_n[n] * psit_nG[n]
-       
-    def norm(self, x_G):
-        """L2-norm."""
-
-        return self.gd.integrate(x_G**2)
+            a_G -= proj_n[n] * psit_nG[n]
+            
+        # Do the projection in one go - figure out how to use np.dot correctly
+        # a_G -= np.dot(proj_n, psit_nG)

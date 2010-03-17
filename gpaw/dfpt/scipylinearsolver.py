@@ -26,8 +26,8 @@ class ScipyLinearSolver:
                'qmr': sla.qmr
                }
     
-    def __init__(self, method='gmres', preconditioner=None, tolerance = 1e-5,
-                 max_iter = 1000):
+    def __init__(self, method='gmres', preconditioner=None, tolerance=1e-5,
+                 max_iter=1000):
         """Initialize the linear solver.
 
         method: str
@@ -63,8 +63,8 @@ class ScipyLinearSolver:
         x_0 = x_G.ravel()
         b = b_G.ravel()
         
-        x, info = self.solver(A, b, x0 = x_0, maxiter = self.max_iter,
-                              tol = self.tolerance, callback = self.iteration)
+        x, info = self.solver(A, b, x0=x_0, maxiter=self.max_iter,
+                              tol=self.tolerance, callback=self.iteration)
 
         x_G[:] = x.reshape(shape)
         
