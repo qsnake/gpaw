@@ -83,6 +83,7 @@ tests = [
     'pes.py',
     'elf.py',
     'usesymm.py',
+    'usesymm2.py',
     'eed.py',
     'mixer.py',
     'mixer_broydn.py',
