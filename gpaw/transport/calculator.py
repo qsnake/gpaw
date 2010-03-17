@@ -154,8 +154,6 @@ class Transport(GPAW):
             raise RuntimeError('wrong way to use keyword LR_leads')
        
         self.initialized_transport = False
-        if abs(self.gate)  > 1e-4:
-            self.normalize_density = False
         self.analysis_parameters = []            
         self.atoms_l = [None] * self.lead_num
         self.optimize = False        
@@ -352,6 +350,7 @@ class Transport(GPAW):
             #self.wfs = self.extended_calc.wfs
 
         self.initialized_transport = True
+        self.neutral = True
         self.matrix_mode = 'sparse'
         if not hasattr(self, 'plot_option'):
             self.plot_option = None
@@ -916,8 +915,8 @@ class Transport(GPAW):
                     self.text('density: diff = %f  tol=%f' % (self.diff_d,
                                             tol))
                 if self.diff_d < tol:
-                    if self.fixed and self.normalize_density and not self.optimize:
-                        self.normalize_density = False
+                    if self.fixed and not self.normalize_density and self.neutral:
+                        self.neutral = False
                     else:
                         cvg = True
         return cvg
@@ -1498,8 +1497,8 @@ class Transport(GPAW):
         self.timer.start('project hamiltonian')
         h_spkmm, s_pkmm = self.get_hs(self.extended_calc)
         
-        ind = get_matrix_index(self.gate_mol_index)
-        h_spkmm[:, :, ind.T, ind] += self.gate * s_pkmm[:, ind.T, ind]        
+        #ind = get_matrix_index(self.gate_mol_index)
+        #h_spkmm[:, :, ind.T, ind] += self.gate * s_pkmm[:, ind.T, ind]        
 
         self.timer.stop('project hamiltonian')                  
        
@@ -1529,7 +1528,6 @@ class Transport(GPAW):
         f = self.calculate_force()
         if not self.optimize:
             self.optimize = True
-        self.normalize_density = True
         return f * Hartree / Bohr 
 
     def calculate_force(self):
@@ -1631,7 +1629,7 @@ class Transport(GPAW):
         density = self.density
         self.timer.start('construct density')
 
-        if not self.normalize_density:
+        if not self.neutral:
             density.charge_eps = 1000
             
         nt_sG = self.gd1.zeros(self.nspins)
@@ -1654,7 +1652,7 @@ class Transport(GPAW):
 
         self.timer.stop('atomic density')
         comp_charge = density.calculate_multipole_moments()
-        if self.normalize_density:
+        if self.neutral:
             density.normalize(comp_charge)
         density.mix(comp_charge)
            
@@ -1702,8 +1700,10 @@ class Transport(GPAW):
 
         actual_charge = self.finegd.integrate(density.rhot_g)
         self.text('actual_charge' + str(actual_charge))
+        if self.fixed:
+            density.rhot_g += self.surround.gate_rhot_g
         ham.npoisson = self.inner_poisson.solve(self.hamiltonian.vHt_g,
-                                                        density.rhot_g,
+                                                  density.rhot_g,
                                                   charge=-density.charge)
         self.surround.combine_vHt_g(self.hamiltonian.vHt_g)
         self.text('poisson interations :' + str(ham.npoisson))
@@ -2131,8 +2131,8 @@ class Transport(GPAW):
             self.surround.combine_dH_asp(dH_asp)
             self.gd1.distribute(vt_sG, self.extended_calc.hamiltonian.vt_sG) 
             h_spkmm, s_pkmm = self.get_hs(self.extended_calc)
-            ind = get_matrix_index(self.gate_mol_index)
-            h_spkmm[:, :, ind.T, ind] += self.gate * s_pkmm[:, ind.T, ind]   
+            #ind = get_matrix_index(self.gate_mol_index)
+            #h_spkmm[:, :, ind.T, ind] += self.gate * s_pkmm[:, ind.T, ind]   
             
             nb = s_pkmm.shape[-1]
             dtype = s_pkmm.dtype
