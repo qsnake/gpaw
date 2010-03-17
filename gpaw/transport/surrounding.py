@@ -287,7 +287,7 @@ class Surrounding:
             
             #self.get_extra_density(ham.vHt_g)
             #self.calculate_extra_hartree_potential()
-            #self.calculate_gate()
+            self.get_gate_extra_density()
 
     def combine_vHt_g(self, vHt_g):
         nn = self.nn[0] * 2
@@ -328,21 +328,20 @@ class Surrounding:
                                                                    bias_shift1
         gd.distribute(vt_sG, self.tp.extended_calc.hamiltonian.vt_sG)
        
-    def calculate_gate(self):
-        gd0 = self.tp.finegd0
+    def get_gate_extra_density(self):
+        gd = self.tp.finegd
         if not hasattr(self, 'gate_vHt_g'):
-            self.gate_vHt_g = gd0.zeros()
-            self.gate_rhot_g = gd0.zeros()
+            self.gate_rhot_g = gd.zeros()
         nn = self.nn[0] * 2
         
-        gd = self.tp.finegd
-        global_gate_vHt_g = gd.zeros(global_array=True)
-        global_gate_vHt_g[:, :, nn:-nn] = 1e-3
-        gate_vHt_g = gd.zeros()
-        gate_rhot_g = gd.zeros()
-      
-        gd.distribute(global_gate_vHt_g, gate_vHt_g)
-        self.operator.apply(gate_vHt_g, gate_rhot_g)
-        self.gate_vHt_g = self.uncapsule(nn, gate_vHt_g, gd, gd0)
-        self.gate_rhot_g = self.uncapsule(nn, gate_rhot_g, gd, gd0)
+        gd1 = self.tp.finegd1
+        global_gate_vHt_g = gd1.zeros(global_array=True)
+        global_gate_vHt_g[:, :, :nn] = -self.tp.gate / Hartree
+        global_gate_vHt_g[:, :, -nn:] = -self.tp.gate / Hartree
+        gate_vHt_g = gd1.zeros()
+       
+        gd1.distribute(global_gate_vHt_g, gate_vHt_g)
+        rhot_g = gd1.zeros()
+        self.operator.apply(gate_vHt_g, rhot_g)
+        self.gate_rhot_g = self.uncapsule(nn, rhot_g, gd1, gd)       
        
