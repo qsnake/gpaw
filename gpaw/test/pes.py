@@ -39,9 +39,11 @@ lr = LrTDDFT(calc_plus, xc=xc)
 
 pes=DOSPES(calc, calc_plus)
 pes.save_folded_pes(filename=txt, folding=None)
+pes.save_folded_pes(filename=None, folding=None)
 
 pes=TDDFTPES(calc, lr)
 pes.save_folded_pes(filename=txt, folding='Gauss')
+pes.save_folded_pes(filename=None, folding=None)
 
 energy_tolerance = 0.000008
 niter_tolerance = 0
