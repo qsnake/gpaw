@@ -264,7 +264,7 @@ class Contour:
     eta = 1e-2
     plot_eta = 1e-4
     kt = 0.1
-    nkt = 0.4
+    nkt = 0.8
     dkt = 0.8 * np.pi
     calcutype = ['eqInt', 'eqInt', 'eqInt', 'resInt', 'neInt', 'locInt']
     def __init__(self, kt, fermi, bias, maxdepth=7, comm=None, neint='linear',
