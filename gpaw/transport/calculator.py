@@ -620,8 +620,7 @@ class Transport(GPAW):
             atoms = self.atoms_l[l]
             atoms.get_potential_energy()
             if self.save_file:
-                atoms.calc.write('lead' + str(l) + '.gpw', db=True,
-                                keywords=['transport', 'electrode', 'lcao']) 
+                atoms.calc.write('lead' + str(l) + '.gpw') 
         else:
             if restart_file == None:
                 restart_file = 'lead' + str(l)
@@ -838,7 +837,7 @@ class Transport(GPAW):
         if not hasattr(self, 'analysor'):
             self.analysor = Transport_Analysor(self, True)
             
-        self.analysor.save_ele_step()            
+        #self.analysor.save_ele_step()            
         self.analysor.save_bias_step()
         fd = file('eq_hsd', 'w')
         cPickle.dump(self.hsd, fd, 2)
@@ -2144,7 +2143,7 @@ class Transport(GPAW):
             if flag:
                 self.append_buffer_hsd()                    
  
-            self.analysor.save_ele_step()            
+            #self.analysor.save_ele_step()            
             self.analysor.save_bias_step()
             
     def analysis_prepare(self, bias_step):
