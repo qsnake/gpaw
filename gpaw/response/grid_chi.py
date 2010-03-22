@@ -901,13 +901,22 @@ class CHI:
         tmp = self.eRPA_wGG[iw]
         chi_G = (np.linalg.inv(tmp)[:, 0] - delta_G) * coef_G
 
+        from ase.parallel import paropen
+        f = paropen('chi_G'+str(iw), 'w')
+        for iG in range(self.npw):
+            print >> f, np.real(chi_G[iG]), np.imag(chi_G[iG])
+        f.close()
+
+        # Wait for I/O to finish
+        self.comm.barrier()  
+
         gd = self.calc.wfs.gd
         r = gd.get_grid_point_coordinates()
 
         # calculate dn(r,q,w)
         drho_R = gd.zeros(dtype=complex)
         for iG in range(self.npw):
-            qG = np.array([np.inner(q + self.Gvec[iG],
+            qG = np.array([np.inner(self.Gvec[iG],
                             self.bcell[:,i]) for i in range(3)])
             qGr_R = np.inner(qG, r.T).T
             drho_R += chi_G[iG] * np.exp(1j * qGr_R)
@@ -923,12 +932,12 @@ class CHI:
         drho_R = self.calculate_induced_density(q, w)
 
         drho_z = np.zeros(self.nG[2],dtype=complex)
-        dxdy = np.cross(self.h_c[0] * self.h_c[1])
+#        dxdy = np.cross(self.h_c[0], self.h_c[1])
         
         for iz in range(self.nG[2]):
             drho_z[iz] = drho_R[:,:,iz].sum()
             
-        return drho_z * dxdy
+        return drho_z
 
 
     def set_Gvectors(self):
