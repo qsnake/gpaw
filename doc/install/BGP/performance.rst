@@ -26,11 +26,10 @@ where smp, dual and vn are for 1, 2, and 4, MPI tasks respectively. Note that
 there are 4 cores per node and 2 GB per node on BG/P.
 
 It is essential to think of the BG/P network as a 4-dimensional object with
-3 spatial dimentions and a T-dimension. For optimum efficiency, we
+3 spatial dimentions and a T-dimension. For optimum scalability, we
 must simultaneously satisfy at least two distinct communications patterns
 due to different parts of the DFT calculation: a) H*Psi products 
-b) parallel dense linear algebra, pdgemm for calculating inner
-produtors. This can only be accomplished with a 4-dimensional
+b) parallel matrix multiplies. This can only be accomplished with a 4-dimensional
 (or higher) network.
 
 The domain decomposition can be specified on the 
@@ -38,8 +37,9 @@ The domain decomposition can be specified on the
 and band parallelization with ``--state-parallelization=B``. Here *nbands*
 is divided into *B* groups. It was empirically determined that you need to
 have *nbands/B > 256* for reasonable performance. It is possible to get
-away with smaller values, *N/B < 256*, with fairly large domains. Additionally,
-*nbands/B* integer divisible. It is also required that *nbands/B/K*,
+away with smaller values, *N/B < 256*, but this may require large
+domains. In addition to *nbands/B* being integer divisible, it is also
+required that *nbands/B/K*,
 where *K* is the blocking factor, be integer divisible as well (more
 information about *K* below) in the  DCMF_EAGER section.
 
@@ -77,7 +77,6 @@ Important DCMF environment variables
 `DCMF <http://dcmf.anl-external.org/wiki/index.php/Main_Page>`_  is one
 of the lower layers in the BG/P implementation of MPI software stack. 
 
-
 To understand th DCMF environment variables in greater detail, please read the
 appropriate sections of the  IBM System Blue Gene Solution:  
 `Blue Gene/P Application Development <http://www.redbooks.ibm.com/abstracts/sg247287.html?Open>`_ 
@@ -98,12 +97,13 @@ necessary to select appropriate values for the number of blocks ``nblocks``::
   MatrixOperator.async = True (default)
 
 where the ``B`` groups of bands are further divided into ``K``
-blocks. The value of ``K`` should be chosen so that about 4 - 6 MB of
+blocks. The value of ``K`` should be chosen so that about 2 - 6 MB of
 wavefunctions are sent/received. It will be also be necessary to pass to Cobalt::
 
   --env=DCMF_EAGER=8388608
 
-which corresponds to the size of this block of wavefunctions. Note that the
+which corresponds to the larger size message that can be overlapped
+(8 MB). Note that the
 number is specified in bytes and not megabytes.
 
 For larger blocks of wavefunctions, it may be necessary to increase
