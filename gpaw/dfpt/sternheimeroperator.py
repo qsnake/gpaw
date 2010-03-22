@@ -5,6 +5,7 @@ __date__ = "2010-01-01 -- 20xx-xx-xx"
 
 import numpy as np
 
+
 class SternheimerOperator:
     """Class implementing the linear operator in the Sternheimer equation.
 

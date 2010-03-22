@@ -43,13 +43,15 @@ i.e. correct the sign when extracting from the dictionary.
 
 # __version__ = "0.1"
 
+# Import things specified in the __all__ attributes
+from gpaw.dfpt.phononcalculator import *
+from gpaw.dfpt.linearresponse import *
+from gpaw.dfpt.phononperturbation import *
+
+# Set the behavior of from gpaw.dfpt import *
 import gpaw.dfpt.phononcalculator
 import gpaw.dfpt.linearresponse
 import gpaw.dfpt.phononperturbation
-
-from gpaw.dfpt.phononcalculator import PhononCalculator
-from gpaw.dfpt.linearresponse import LinearResponse
-from gpaw.dfpt.phononperturbation import PhononPerturbation
 
 __all__ = []
 __all__.extend(phononcalculator.__all__)

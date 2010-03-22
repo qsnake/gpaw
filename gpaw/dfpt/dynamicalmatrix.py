@@ -57,14 +57,14 @@ class DynamicalMatrix:
                 
                 # Mass prefactor
                 c = (m_a * m_a_)**(-.5)
-                D[3*a:3*a+3, 3*a_: 3*a_+3] += c * self.C_aavv[a][a_]
+                D[3*a : 3*a + 3, 3*a_ : 3*a_ + 3] += c * self.C_aavv[a][a_]
                 
-        # Symmetrize the dynamical matrix
+        # Symmetrize
         self.D_ = D.copy()
         D *= 0.5
         self.D = D + D.T
         
-        return self.D
+        return self.D, self.D_
 
     def update_row(self, a, v, nt1_G, psit1_nG, vghat1_g, dP_aniv):
         """Update row of force constant matrix.
@@ -82,7 +82,6 @@ class DynamicalMatrix:
 
         self.density_response_local(a, v, nt1_G, vghat1_g)
         self.wfs_variations_nonlocal(a, v, psit1_nG, dP_aniv)
-        
         
     def ground_state_local(self):
         """Contributions involving ground-state quantities only.
@@ -180,7 +179,6 @@ class DynamicalMatrix:
             #         B_vv[v1,v2] = (dP_niv[...,v2] * dHdP_niv[...,v1]).sum()
             
             self.C_aavv[a][a] += 2 * (A_vv + B_vv)
-
 
     def density_response_local(self, a, v, nt1_G, vghat1_g):
         """Contributions involving the first-order density response."""

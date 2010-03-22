@@ -9,6 +9,7 @@ import numpy as np
 
 import ase.units as units
 
+# Temp modules
 from gpaw.utilities import unpack, unpack2
 
 from gpaw.dfpt.linearresponse import LinearResponse
@@ -57,7 +58,7 @@ class PhononCalculator:
         # for atom in self.atoms:
         for a in self.atoms_a:
             
-            for v in [0,1,2]:
+            for v in [0, 1, 2]:
 
                 self.perturbation.set_perturbation(a, v)
 
@@ -75,12 +76,15 @@ class PhononCalculator:
                                              tolerance_sternheimer = tolerance_sternheimer)
                         if save:
                             assert filebase is not None
-                            file_av = "a_%.1i_v_%.1i.pckl" % (a,v)
+                            file_av = "a_%.1i_v_%.1i.pckl" % (a, v)
                             fname = "_".join([filebase, file_av])
-                            pickle.dump([nt1_G, psit1_unG], open(fname,'w'))
+                            f = open(fname, 'w')
+                            pickle.dump([nt1_G, psit1_unG], f)
+                            f.close()
+                            
                 else: # load from file
                     assert filebase is not None
-
+                
                     file_av = "a_%.1i_v_%.1i.pckl" % (a,v)
                     fname = "_".join([filebase, file_av])
                     dn, dpsi_n = pickle.load(open(fname))
@@ -104,6 +108,9 @@ class PhononCalculator:
         self.D_matrix.ground_state_local()
         self.D_matrix.ground_state_nonlocal(dP_aniv)
 
+    def get_dynamical_matrix(self):
+        """Assemble and return the dynamical matrix as an ndarray."""
+        
         return self.D_matrix.assemble()
         
     def frequencies(self):

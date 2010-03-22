@@ -1,5 +1,7 @@
 """This module provides a class for linear density response calculations."""
 
+__all__ = ["LinearResponse"]
+
 import numpy as np
 
 import ase.units as units
@@ -10,7 +12,6 @@ from gpaw.dfpt.sternheimeroperator import SternheimerOperator
 from gpaw.dfpt.linearsolver import LinearSolver
 from gpaw.dfpt.scipylinearsolver import ScipyLinearSolver
 
-__all__ = ["LinearResponse"]
 
 class LinearResponse:
     """This class is a calculator for the sc density variation.
@@ -61,8 +62,7 @@ class LinearResponse:
         # Linear operator in the Sternheimer equation
         self.sternheimer_operator = SternheimerOperator(hamiltonian, wfs, self.gd)
         # List for storing the variations in the wave-functions
-        self.psit1_unG = [np.array([self.gd.zeros() for n in range(nbands)])
-                          for kpt in kpt_u]
+        self.psit1_unG = [self.gd.zeros(n=nbands) for kpt in kpt_u]
         
         # Variation of the pseudo-potential
         self.vloc1_G = self.perturbation.calculate_derivative()
@@ -79,7 +79,7 @@ class LinearResponse:
         Parameters
         ----------
         alpha: float
-            Linear mixing parameter
+            Linear mixing parameter (deprecated)
         max_iter: int
             Maximum number of iterations in the self-consistent evaluation of
             the density variation
@@ -103,23 +103,23 @@ class LinearResponse:
         self.initialize(tolerance_sternheimer)
         
         for iter in range(max_iter):
-            print "iter:%3i" % iter,
-            print "\tcalculating wave function variations"            
+            print     "iter:%3i\t" % iter,
+            print     "calculating wave function variations"            
             if iter == 0:
                 self.first_iteration()
             else:
-                norm = self.iteration(iter, alpha)
+                norm = self.iteration(iter)
                 print "abs-norm: %6.3e\t" % norm,
                 print "integrated density response: %5.2e" % \
                       self.gd.integrate(self.nt1_G)
         
                 if norm < tolerance_sc:
-                    print "self-consistent loop converged in %i iterations" \
-                          % iter
+                    print ("self-consistent loop converged in %i iterations"
+                           % iter)
                     break
             if iter == max_iter-1:
-                print "self-consistent loop did not converge in %i iterations" \
-                      % iter
+                print     ("self-consistent loop did not converge in %i "
+                           "iterations" % iter)
                 
         return self.nt1_G.copy(), self.psit1_unG
     
@@ -130,7 +130,7 @@ class LinearResponse:
         self.nt1_G = self.density_response()
         self.mixer.mix(self.nt1_G, [])
 
-    def iteration(self, iter, alpha):
+    def iteration(self, iter):
         """Perform iteration.
 
         Parameters

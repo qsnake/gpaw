@@ -47,7 +47,7 @@ class PhononPerturbation(Perturbation):
         # Coefficients needed for the non-local part of the perturbation
         self.P_ani = None
         self.dP_aniv = None
-
+        ####################
         self.calculate_dP_aniv()
 
     def initialize(self):
