@@ -242,6 +242,11 @@ def dot(a, b, transa='n'):
     gemm(1.0, d, c, 0.0, e, transa)
     return e
 
+def gcd(m,n):
+    while n:
+        m,n=n,m%n
+    return m
+
 def plot_diag(mtx, ind=1):
     import pylab
     dim = mtx.shape
@@ -702,10 +707,10 @@ def interpolate_array(array, gd, h, di='+'):
         new_array[i] = interpolate.splev(xnew, tck, der=0)
     
     if spin_relate:
-        array.shape = (ns, nx, ny, nz)
+        #array.shape = (ns, nx, ny, nz)
         new_array.shape = (ns, nx, ny, nz)
     else:
-        array.shape = (nx, ny, nz)
+        #array.shape = (nx, ny, nz)
         new_array.shape = (nx, ny, nz)
     
     return new_array
