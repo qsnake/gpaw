@@ -62,8 +62,8 @@ class ScipyLinearSolver:
         # Reshape arrays for scipy
         x_0 = x_G.ravel()
         b = b_G.ravel()
-        
-        x, info = self.solver(A, b, x0=x_0, maxiter=self.max_iter,
+
+        x, info = self.solver(A, b, x0=x_0, maxiter=self.max_iter, M=self.pc,
                               tol=self.tolerance, callback=self.iteration)
 
         x_G[:] = x.reshape(shape)

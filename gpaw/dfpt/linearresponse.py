@@ -11,7 +11,7 @@ from gpaw.mixer import BaseMixer
 from gpaw.dfpt.sternheimeroperator import SternheimerOperator
 from gpaw.dfpt.linearsolver import LinearSolver
 from gpaw.dfpt.scipylinearsolver import ScipyLinearSolver
-
+from gpaw.dfpt.preconditioner import ScipyPreconditioner
 
 class LinearResponse:
     """This class is a calculator for the sc density variation.
@@ -27,7 +27,10 @@ class LinearResponse:
         # Make sure that localized functions are initialized
         # calc.set_positions()
         self.calc = calc
-
+        atoms = calc.get_atoms()
+        # Boundary conditions
+        pbc = atoms.get_pbc()
+        
         # Store grids
         self.gd = calc.density.gd
         self.finegd = calc.density.finegd
@@ -58,7 +61,9 @@ class LinearResponse:
         self.mixer.initialize(self.calc.density)
         self.mixer.reset()
         # Linear solver for the solution of Sternheimer equation
-        self.linear_solver = ScipyLinearSolver(tolerance = tolerance_sternheimer)
+        pc = ScipyPreconditioner(self.gd, wfs.kin)
+        self.linear_solver = ScipyLinearSolver(tolerance=tolerance_sternheimer,
+                                               preconditioner=pc)
         # Linear operator in the Sternheimer equation
         self.sternheimer_operator = SternheimerOperator(hamiltonian, wfs, self.gd)
         # List for storing the variations in the wave-functions
