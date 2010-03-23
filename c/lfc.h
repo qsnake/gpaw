@@ -2,6 +2,9 @@
  *  Copyright (C) 2007-2009  CAMd
  *  Please see the accompanying LICENSE file for further information. */
 
+#ifndef LFC_H
+#define LFC_H
+
 #include <Python.h>
 
 typedef struct
@@ -82,3 +85,5 @@ typedef struct
   for (int W = 0; W < lfc->nW; W++)                                \
     volume_W[W].A_gm -= lfc->ngm_W[W];                             \
 }
+
+#endif
