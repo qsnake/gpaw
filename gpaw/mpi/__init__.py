@@ -5,6 +5,7 @@ import os
 import sys
 import time
 import atexit
+import pickle
 import numpy as np
 
 from gpaw import debug
@@ -638,6 +639,19 @@ def compare_atoms(atoms, comm=world):
 
     return not mismatches.any()
 
+def broadcast(obj, root=0, comm=world):
+    """Broadcast a Python object across an MPI communicator and return it."""
+    if comm.rank == root:
+        assert obj is not None
+        string = pickle.dumps(obj, pickle.HIGHEST_PROTOCOL)
+    else:
+        assert obj is None
+        string = None
+    string = broadcast_string(string, root, comm)
+    if comm.rank == root:
+        return obj
+    else:
+        return pickle.loads(string)
 
 def broadcast_string(string=None, root=0, comm=world):
     """Broadcast a Python string across an MPI communicator and return it.
