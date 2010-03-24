@@ -434,3 +434,12 @@ Publications using the gpaw code
 
    .. 4 February 2010
 
+#) Thomas Olsen and Jakob Schiøtz
+
+   `Vibrationally mediated control of single-electron transmission in weakly coupled molecule-metal junctions`__  
+
+   Physical Review B, Vol. **81**, 115443 (2010)
+
+   __ http://dx.doi.org/10.1103/PhysRevB.81.115443
+
+   .. 23 Marts 2010
