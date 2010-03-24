@@ -286,7 +286,6 @@ def mtime(path, name, mtimes):
     This function fails if two include files with the same name
     are present in different directories."""
 
-#    global mtimes
     include = re.compile('^#\s*include "(\S+)"', re.MULTILINE)
 
     if mtimes.has_key(name):
@@ -294,11 +293,8 @@ def mtime(path, name, mtimes):
     t = os.stat(os.path.join(path, name))[ST_MTIME]
     for name2 in include.findall(open(os.path.join(path, name)).read()):
         path2, name22 = os.path.split(name2)
-        if (path2 != ''):
-            name2 = name22
-            path = os.path.join(path, path2)
-        if name2 != name:
-            t = max(t, mtime(path, name2,mtimes))
+        if name22 != name:
+            t = max(t, mtime(os.path.join(path, path2), name22, mtimes))
     mtimes[name] = t
     return t
 
