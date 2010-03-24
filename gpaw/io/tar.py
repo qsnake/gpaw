@@ -13,7 +13,7 @@ itemsizes = {'int': intsize, 'float': floatsize, 'complex': complexsize}
 
     
 class Writer:
-    def __init__(self, name):
+    def __init__(self, name, comm):
         self.dims = {}
         self.files = {}
         self.xml1 = ['<gpaw_io version="0.1" endianness="%s">' %
@@ -96,7 +96,7 @@ class Writer:
 
 
 class Reader(xml.sax.handler.ContentHandler):
-    def __init__(self, name):
+    def __init__(self, name, comm):
         self.dims = {}
         self.shapes = {}
         self.dtypes = {}

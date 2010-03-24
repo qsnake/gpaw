@@ -24,7 +24,7 @@ class Writer:
     """ This class is a wrapper to the db output writer
     and intended to be used with gpaw
     """
-    def __init__(self, filename):
+    def __init__(self, filename, comm):
         self.verbose = False
         self.data = XMLData()
         self.data.set_calculator_name(CALCULATOR_GPAW)
@@ -144,7 +144,7 @@ class Reader:
     """ This class allows gpaw to access
     to read a db-file
     """
-    def __init__(self, name):
+    def __init__(self, name, comm):
         self.reader = cmr.read(name,
                                read_mode=READ_DATA,
                                evaluation_mode=EVALUATE,

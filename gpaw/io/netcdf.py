@@ -3,7 +3,7 @@ from ase.io.pupynere import NetCDFFile
 
 
 class Reader:
-    def __init__(self, filename):
+    def __init__(self, filename, comm):
         self.nc = NetCDFFile(filename)
 
     def dimension(self, name):
