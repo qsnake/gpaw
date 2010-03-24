@@ -719,7 +719,9 @@ class Transport_Analysor:
                 nt.append(nts)
                 vt.append(vts)
             data[flag + 'nt'] = np.array(nt)
-            data[flag + 'vt'] = np.array(vt)            
+            data[flag + 'vt'] = np.array(vt)
+            data[flag + 'df'] = np.diag(tp.hsd.H[0][0].recover(True))
+            data[flag + 'dd'] = np.diag(tp.hsd.D[0][0].recover(True))            
         else:
             nt = None
             vt = None
