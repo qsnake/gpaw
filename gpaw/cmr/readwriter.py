@@ -2,7 +2,7 @@
 # Please see the accompanying LICENSE file for further information.
 
 import os
-import time
+import datetime
 import xml.sax
 
 import numpy as np
@@ -35,7 +35,7 @@ class Writer:
 
         uname = os.uname()
         self.data['user']=os.getenv('USER', '???')
-        self.data['date']=time.asctime()
+        self.data['date']=datetime.datetime.today().isoformat(" ")
 
         self.data['arch']=uname[4]
         self.data['ase_dir']=os.path.dirname(ase.__file__)
