@@ -354,7 +354,7 @@ class NeighborPairs:
     """Class for looping over pairs of atoms using a neighbor list."""
     def __init__(self, cutoff_a, cell_cv, pbc_c):
         self.neighbors = NeighborList(cutoff_a, skin=0, sorted=True)
-        self.atoms = Atoms('X' * len(cutoff_a), cell=cell_cv, pbc=pbc_c)
+        self.atoms = Atoms('X%d' % len(cutoff_a), cell=cell_cv, pbc=pbc_c)
 
     def set_positions(self, spos_ac):
         self.spos_ac = spos_ac
