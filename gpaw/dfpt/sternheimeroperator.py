@@ -15,7 +15,7 @@ class SternheimerOperator:
 
     where P_c is the projection operator onto the unoccupied states.
     
-    The main purpose of this class is to provide a method ``matvec`` that can
+    The main purpose of this class is to provide a method `matvec` that can
     evaluate the multiplication with a vector. This is the only information
     about the linear operator that is required by iterative Krylov solvers.
     
@@ -53,7 +53,7 @@ class SternheimerOperator:
         self.n = n
         
     def matvec(self, x):
-        """Matrix vector multiplication for scipy.sparse.linalg cgs solver.
+        """Matrix vector multiplication for scipy.sparse.linalg solvers.
 
         Parameters
         ----------

@@ -9,9 +9,9 @@ class ScipyLinearSolver:
             A * x = b
 
     where A is a linear operator and b is the known rhs. The linear operator
-    provided as argument in the 'solve' method must have a 'shape' (a tuble
-    (M,N) where M and N give the size of the corresponding matrix) and a
-    'dtype' attribute giving datatype of the matrix entries.
+    provided as argument in the `solve` method must have a `shape` attribute
+    (a tuble (M,N) where M and N give the size of the corresponding matrix) and
+    a `dtype` attribute giving datatype of the matrix entries.
     
     """
     
@@ -62,7 +62,7 @@ class ScipyLinearSolver:
         # Reshape arrays for scipy
         x_0 = x_G.ravel()
         b = b_G.ravel()
-
+        
         x, info = self.solver(A, b, x0=x_0, maxiter=self.max_iter, M=self.pc,
                               tol=self.tolerance, callback=self.iteration)
 

@@ -5,22 +5,23 @@ import numpy as np
 from gpaw.preconditioner import Preconditioner
 
 
-class ScipyPreconditioner(Preconditioner):
+class ScipyPreconditioner:
 
-    def __init__(self, gd, kin, dtype=float):
+    def __init__(self, gd, kin, project, dtype=float):
         """Init the gpaw preconditioner.
 
         Parameters
         ----------
-        gd0: GridDescriptor
+        gd: GridDescriptor
             Coarse grid
-        kin0:
-            Something ...
+        kin: Something
+            Kinetic energy operator
             
         """
 
-        Preconditioner.__init__(self, gd, kin, dtype=dtype)
-        Preconditioner.allocate(self)
+        self.project = project
+        self.pc = Preconditioner(gd, kin, dtype=dtype)
+        self.pc.allocate()
         self.gd = gd
         
         # For scipy's linear solver
@@ -29,7 +30,7 @@ class ScipyPreconditioner(Preconditioner):
         self.dtype = float
         
     def matvec(self, x):
-        """Matrix vector multiplication for scipy.sparse.linalg cgs solver.
+        """Matrix vector multiplication for scipy.sparse.linalg solvers.
 
         Parameters
         ----------
@@ -48,10 +49,10 @@ class ScipyPreconditioner(Preconditioner):
         x_G = x.reshape(shape)
 
         # Call gpaw preconditioner
-        y_G = self(x_G)
+        y_G = self.pc(x_G)
 
         # Project out undesired (numerical) components
-        # self.project(y_G)
+        self.project(y_G)
         
         y = y_G.ravel()
         

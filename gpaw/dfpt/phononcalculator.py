@@ -47,13 +47,15 @@ class PhononCalculator:
 
         self.atoms_a = atoms_a
         
-    def __call__(self, tolerance_sc = 1e-5,
-                 tolerance_sternheimer = 1e-5, use_dfpt=True,
+    def __call__(self, tolerance_sc=1.0e-4,
+                 tolerance_sternheimer=1.0e-5, use_dfpt=True,
                  save=False, load=False, filebase=None):
         """Run calculation for atomic displacements and update matrix."""
 
+        self.response.initialize()
+        self.perturbation.initialize()
+
         dP_aniv = self.perturbation.dP_aniv
-        
         # Calculate linear response wrt displacements of all atoms
         # for atom in self.atoms:
         for a in self.atoms_a:

@@ -17,7 +17,7 @@ class LinearResponse:
     """This class is a calculator for the sc density variation.
 
     From the given perturbation, the set of coupled equations for the
-    first-order density response is calculated self-consistently.
+    first-order density response is solved self-consistently.
     
     """
     
@@ -29,7 +29,7 @@ class LinearResponse:
         self.calc = calc
         atoms = calc.get_atoms()
         # Boundary conditions
-        pbc = atoms.get_pbc()
+        self.pbc = atoms.get_pbc()
         
         # Store grids
         self.gd = calc.density.gd
@@ -47,7 +47,7 @@ class LinearResponse:
 
         self.initialized = False
         
-    def initialize(self, tolerance_sternheimer = 1e-5):
+    def initialize(self, tolerance_sternheimer=1.0e-5, use_pc=False):
         """Make the object ready for a calculation."""
 
         hamiltonian = self.calc.hamiltonian
@@ -57,15 +57,20 @@ class LinearResponse:
         nbands = self.calc.wfs.nvalence/2
 
         # Initialize mixer
-        self.mixer = BaseMixer(beta=0.4, nmaxold=5, weight=1)
+        self.mixer = BaseMixer(beta=0.4, nmaxold=5, weight=10)
         self.mixer.initialize(self.calc.density)
         self.mixer.reset()
-        # Linear solver for the solution of Sternheimer equation
-        pc = ScipyPreconditioner(self.gd, wfs.kin)
-        self.linear_solver = ScipyLinearSolver(tolerance=tolerance_sternheimer,
-                                               preconditioner=pc)
         # Linear operator in the Sternheimer equation
         self.sternheimer_operator = SternheimerOperator(hamiltonian, wfs, self.gd)
+        # Preconditioning for the Sternheimer equation
+        if use_pc:
+            pc = ScipyPreconditioner(self.gd, wfs.kin,
+                                     self.sternheimer_operator.project)
+        else:
+            pc = None
+        # Linear solver for the solution of Sternheimer equation            
+        self.linear_solver = ScipyLinearSolver(tolerance=tolerance_sternheimer,
+                                               preconditioner=pc)
         # List for storing the variations in the wave-functions
         self.psit1_unG = [self.gd.zeros(n=nbands) for kpt in kpt_u]
         
@@ -75,16 +80,14 @@ class LinearResponse:
 
         self.initialized = True
         
-    def __call__(self, alpha = 0.4, max_iter = 1000, tolerance_sc = 1e-5,
-                 tolerance_sternheimer = 1e-5):
+    def __call__(self, max_iter=1000, tolerance_sc=1.0e-4,
+                 tolerance_sternheimer=1e-5):
         """Calculate linear density response.
 
         Implementation of q != 0 to be done!
 
         Parameters
         ----------
-        alpha: float
-            Linear mixing parameter (deprecated)
         max_iter: int
             Maximum number of iterations in the self-consistent evaluation of
             the density variation
@@ -98,14 +101,14 @@ class LinearResponse:
             
         """
 
+        assert self.initialized, ("Calculator not initizalized.")
+        
         components = ['x','y','z']
         atoms = self.calc.get_atoms()
         symbols = atoms.get_chemical_symbols()
         print "Atom index: %i" % self.perturbation.a
         print "Atomic symbol: %s" % symbols[self.perturbation.a]
         print "Component: %s" % components[self.perturbation.v]
-        
-        self.initialize(tolerance_sternheimer)
         
         for iter in range(max_iter):
             print     "iter:%3i\t" % iter,
@@ -142,8 +145,6 @@ class LinearResponse:
         ----------
         iter: int
             Iteration number
-        alpha: float
-            Linear mixing parameter
 
         """
 
@@ -177,8 +178,6 @@ class LinearResponse:
         # Hartree part
         vHXC1_g = self.finegd.zeros()
         ps.solve(vHXC1_g, nt1_g)
-        # Store the Hartree potential from the density derivative
-        # self.vH1_g = vHXC1_g.copy()
         # XC part
         nt_g_ = density.nt_g.ravel()
         vXC1_g = self.finegd.zeros()
@@ -260,7 +259,6 @@ class LinearResponse:
                 
                 nt1_G += 2 * f * psit_nG[n] * psit1_nG[n]
 
-            ## Might be the source of my miseries ?????????
             ## for psit_G, psit1_G in zip(psit_nG, psit1_nG):
             ## 
             ##     nt1_G += 4 * psit_G * psit1_G

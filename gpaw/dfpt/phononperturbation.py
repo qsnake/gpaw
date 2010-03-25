@@ -2,11 +2,15 @@
 
 __all__ = ["PhononPerturbation"]
 
+from math import sqrt, pi
+
 import numpy as np
 
 import ase.units as units
 
 from gpaw.utilities import unpack, unpack2
+from gpaw.poisson import PoissonSolver, FFTPoissonSolver
+from gpaw.lfc import LocalizedFunctionsCollection as LFC
 
 from gpaw.dfpt.perturbation import Perturbation
 
@@ -14,24 +18,37 @@ from gpaw.dfpt.perturbation import Perturbation
 class PhononPerturbation(Perturbation):
     """Implementation of phonon-related terms for the Sternheimer equation."""
     
-    def __init__(self, calc, eps = 1e-5/units.Bohr):
+    def __init__(self, calc):
         """Store useful objects, e.g. lfc's for the various atomic functions.
 
         Parameters
         ----------
-        eps: float
-            Displacement (in Bohr) of atoms for finite-difference evaluations
-            of the derivatives of localized functions (temp solution)
-
+        calc: calculator
+        
+        Depending on whether the system is periodic or not, Poisson's equation
+        is solved with FFT and multigrid techniques, respectively.
+       
         """
 
         self.calc = calc
-        self.eps = eps
-        
+        # Boundary conditions and Poisson solver
+        pbc = calc.atoms.get_pbc()
+        if np.all(pbc == False):
+            self.gamma = True
+            self.dtype = float
+            self.poisson = PoissonSolver()
+        else:
+            self.gamma = False
+            self.dtype = complex
+            self.poisson = FFTPoissonSolver(dtype=complex)
+
+        # Use existing ghat and vbar instances -- will be replaced by periodic
+        # versions in the ``initialize`` method in case of periodic BC's
         # Compensation charge functions
         self.ghat = calc.density.ghat
         # Local potential
         self.vbar = calc.hamiltonian.vbar
+
         # Projectors on the atoms
         self.pt = self.calc.wfs.pt
         
@@ -42,19 +59,48 @@ class PhononPerturbation(Perturbation):
         # Atom, cartesian coordinate and q-vector of the perturbation
         self.a = None
         self.v = None
-        self.q = None
+        if self.gamma:
+            self.q = -1
+        else:
+            self.q = None
 
         # Coefficients needed for the non-local part of the perturbation
         self.P_ani = None
         self.dP_aniv = None
-        ####################
-        self.calculate_dP_aniv()
 
     def initialize(self):
-        """Calculate overlaps between projector functions and wfs."""
-        
-        pass
+        """Prepare the various attributes for a calculation."""
 
+        # Replace ghat and vbar attributes with periodic versions 
+        if not self.gamma:
+            # Get setups
+            setups = self.calc.hamiltonian.setups
+            # Get k-points -- only temp, I need q-vectors; maybe the same ???
+            ibzk_qc = self.calc.get_ibz_k_points()
+            # Get scaled atomic positions
+            spos_ac = self.calc.atoms.get_scaled_positions()
+            
+            # Replace ghat attribute with Bloch periodic version
+            self.ghat = LFC(self.finegd,
+                            [setup.ghat_l for setup in setups],
+                            integral=sqrt(4 * pi))
+            # Set q-vectors and update 
+            self.ghat.set_k_points(ibzk_qc)
+            self.ghat.set_positions(spos_ac)
+
+            # Replace vbar attribute with Bloch periodic version
+            self.vbar = LFC(self.finegd,
+                            [[setup.vbar] for setup in setups])
+            # Set q-vectors and update 
+            self.vbar.set_k_points(ibzk_qc)
+            self.vbar.set_positions(spos_ac)
+        
+        # Setup Poisson solver
+        self.poisson.set_grid_descriptor(self.finegd)
+        self.poisson.initialize()
+        # Calculate coefficients needed for the non-local part of the PP
+        self.calculate_dP_aniv()
+        
     def set_perturbation(self, a, v):
         """Set atom and cartesian coordinate of the perturbation.
 
@@ -73,7 +119,7 @@ class PhononPerturbation(Perturbation):
         # - local part of pseudo-potential and the like
 
     def set_q(self, q):
-        """Set the q-vector of the perturbation."""
+        """Set the index of the q-vector of the perturbation."""
 
         self.q = q
         
@@ -125,11 +171,13 @@ class PhononPerturbation(Perturbation):
 
         assert self.a is not None
         assert self.v is not None
+        assert self.q is not None
         
         a = self.a
         v = self.v
-
-        # Get LFC's
+        q = self.q
+        
+        # LFC's
         ghat = self.ghat
         vbar = self.vbar
         # Expansion coefficients for the ghat functions
@@ -137,24 +185,25 @@ class PhononPerturbation(Perturbation):
         # Remember sign convention for add_derivative method
         Q_aL[a] = -1 * self.calc.density.Q_aL[a]
         
-        # Derivative of the local part of the PAW potential
-        v1_g = self.finegd.zeros()
-
         # Grid for derivative of compensation charges
-        ghat1_g = self.finegd.zeros()
-        ghat.add_derivative(a, v, ghat1_g, Q_aL)
+        ghat1_g = self.finegd.zeros(dtype=self.dtype)
+        ghat.add_derivative(a, v, ghat1_g, Q_aL, q=self.q)
         # Solve Poisson's eq. for the potential from the compensation charges
         hamiltonian = self.calc.hamiltonian
-        ps = hamiltonian.poisson
-        ps.solve(v1_g, ghat1_g)
+        # ps = hamiltonian.poisson
+        v1_g = self.finegd.zeros(dtype=self.dtype)
+        #self.poisson.solve(v1_g, ghat1_g)
+        #return v1_g
         # Store potential from the compensation charge
         self.vghat1_g = v1_g.copy()
         
         # Add derivative of vbar - sign convention in add_derivative method
-        vbar.add_derivative(a, v, v1_g, -1.)
-
+        c_ai = vbar.dict(zero=True)
+        c_ai[a][0] = -1
+        vbar.add_derivative(a, v, v1_g, c_axi=c_ai, q=self.q)
+        return v1_g
         # Transfer to coarse grid
-        v1_G = self.gd.zeros()
+        v1_G = self.gd.zeros(dtype=self.dtype)
         hamiltonian.restrictor.apply(v1_g, v1_G)
 
         # Store potential for the evaluation of the energy derivative
@@ -189,7 +238,7 @@ class PhononPerturbation(Perturbation):
         dP_ni = -1 * self.dP_aniv[a][...,v]
 
         # Array for the derivative of the non-local part of the PAW potential
-        vnl1_nG = self.gd.zeros(n=nbands)
+        vnl1_nG = self.gd.zeros(n=nbands, dtype=self.dtype)
         
         # Expansion coefficients for the projectors on atom a
         dH_ii = unpack(hamiltonian.dH_asp[a][0])
@@ -216,6 +265,8 @@ class PhononPerturbation(Perturbation):
 
         assert self.a is not None
         assert self.v is not None
+
+        eps = 1e-5/units.Bohr
         
         a = self.a
         v = self.v
@@ -228,7 +279,7 @@ class PhononPerturbation(Perturbation):
         vbar = self.vbar
 
         # Atomic displacements in scaled coordinates
-        eps_s = self.eps/self.gd.cell_cv[v,v]
+        eps_s = eps/self.gd.cell_cv[v,v]
         
         # grid for derivative of compensation charges
         ghat1_g = self.finegd.zeros()
@@ -263,7 +314,7 @@ class PhononPerturbation(Perturbation):
         vbar.set_positions(spos_ac)
 
         # Convert changes to a derivatives
-        d = 2 * self.eps
+        d = 2 * eps
         v1_g /= d
         ghat1_g /= d
 
@@ -332,7 +383,8 @@ class PhononPerturbation(Perturbation):
 
         # Finite-difference derivative: dp = (p(+eps) - p(-eps)) / 2*eps
         # Atomic displacements in scaled coordinates
-        eps_s = self.eps/self.gd.cell_cv[v,v]
+        eps = 1e-5/units.Bohr
+        eps_s = eps/self.gd.cell_cv[v,v]
         spos_ac = self.calc.atoms.get_scaled_positions()
         
         dc_ani[a] *= -1
@@ -350,7 +402,7 @@ class PhononPerturbation(Perturbation):
         pt.set_positions(spos_ac)
         
         # Convert change to a derivative
-        d = 2 * self.eps
+        d = 2 * eps
         vnl1_temp_nG /= d
         vnl1_nG += vnl1_temp_nG
         
