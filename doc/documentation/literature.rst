@@ -444,3 +444,15 @@ Publications using the gpaw code
    __ http://dx.doi.org/10.1103/PhysRevB.81.115443
 
    .. 23 March 2010
+
+#) Olga Lopez-Acevedo, Katarzyna A. Kacprzak, Jaakko Akola and Hannu
+   Häkkinen
+
+   `Quantum size effects in ambient CO oxidation catalysed by
+   ligand-protected gold clusters`__
+
+   Nature Chemistry **2**, 329 - 334 (2010) 
+
+   __ http://dx.doi.org/10.1038/nchem.589
+
+   .. 24 March 2010
