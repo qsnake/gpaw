@@ -1,26 +1,23 @@
 /*  Copyright (C) 2010       CSC - IT Center for Science Ltd.
  *  Please see the accompanying LICENSE file for further information. */
 
+#include "extensions.h"
 #ifdef IO_WRAPPERS
+#include "io_wrappers.h"
 #include <mpi.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <Python.h>
 
 #define MASTER 0
-#define MAX_FILES 5000  // Maximum number of files to open in parallel
+#define MAX_FILES FOPEN_MAX // 5000 Maximum number of files to open in parallel
 
 static int rank = MASTER; 
-static int initialized = 0;
+static int enabled = 0;
 
 static FILE *parallel_fps[MAX_FILES];
 static int current_fp = 0;
 static FILE *fp_dev_null;
-
-FILE* __real_fopen(const char *filename, const char *modes);
-FILE* __real_fopen64(const char *filename, const char *modes);
-int __real_fread(void *ptr, size_t size, size_t n, FILE* fp);
-char *__real_fgets(char *str, int num, FILE* fp);
-int __real_fseek(FILE *fp, long offset, int origin);
 
 // Initialize wrapper stuff
 void init_io_wrappers() 
@@ -29,15 +26,26 @@ void init_io_wrappers()
   for (int i=0; i < MAX_FILES; i++)
     parallel_fps[i] = -1;
   fp_dev_null = __real_fopen64("/dev/null", "rb");
-  initialized = 1;
+  enabled = 1;
+}
+
+// switching wrapping on and off
+void enable_io_wrappers()
+{
+  enabled = 1;
+}
+
+void disable_io_wrappers()
+{
+  enabled = 0;
 }
 
 // Utility function to check if the file pointer is "parallel"
 int check_fp(FILE *fp)
 {
-  for (int i=0; i < current_fp; i++)
+  for (int i=current_fp-1; i >=0; i--)
     if ( fp == parallel_fps[i] )
-      return 1;
+      return i+1;
 
   return 0;
 }
@@ -49,8 +57,11 @@ FILE* __wrap_fopen(const char *filename, const char *modes)
   FILE *fp;
   int fp_is_null;
   // Wrap only in read mode
-  if ( modes[0] == 'r' && initialized )
+  if ( modes[0] == 'r' && enabled )
     {
+#ifdef IO_DEBUG
+      printf("Opening: %d %s\n", rank, filename);
+#endif
       if (rank == MASTER )
 	{
 	  fp = __real_fopen(filename, modes);
@@ -91,8 +102,11 @@ FILE* __wrap_fopen64(const char *filename, const char *modes)
   FILE *fp;
   int fp_is_null;
   // Wrap only in read mode
-  if ( modes[0] == 'r' && initialized)
+  if ( modes[0] == 'r' && enabled)
     {
+#ifdef IO_DEBUG
+      printf("Opening: %d %s\n", rank, filename);
+#endif
       if (rank == MASTER )
 	{
 	  fp = __real_fopen64(filename, modes);
@@ -130,8 +144,14 @@ FILE* __wrap_fopen64(const char *filename, const char *modes)
 
 int  __wrap_fclose(FILE *fp)
 {
-  if ( ! check_fp(fp) || (rank == MASTER) ) 
-      __real_fclose(fp);
+  int x;
+  int i = check_fp(fp);
+  if ( i == current_fp && i > 0 )
+    current_fp--;
+  if ( ! i || (rank == MASTER) ) 
+    {
+      x = __real_fclose(fp);
+    }
 
   // TODO: Should one return the true return value of fclose?
   return 0;
@@ -246,7 +266,7 @@ void __wrap_rewind(FILE *fp)
 int __wrap_ungetc(int c, FILE* fp)
 {
    int x;
-   if (initialized) 
+   if (enabled) 
      if (rank == MASTER) 
        {
 	 x =__real_ungetc(c, fp);
@@ -280,7 +300,7 @@ int __wrap_fflush(FILE *fp)
 int __wrap_fgetpos ( FILE * fp, fpos_t * pos )
 {
   int x;
-  if (initialized) 
+  if (enabled) 
     if (rank == MASTER) 
       {
 	x = __real_fgetpos(fp, pos);
@@ -296,7 +316,7 @@ int __wrap_fgetpos ( FILE * fp, fpos_t * pos )
 int __wrap_fsetpos ( FILE * fp, const fpos_t * pos )
   {
     int x;
-    if (initialized) 
+    if (enabled) 
       if (rank == MASTER) 
 	{
 	  x = __real_fsetpos(fp, pos);
@@ -312,7 +332,7 @@ int __wrap_fsetpos ( FILE * fp, const fpos_t * pos )
 long int __wrap_ftell ( FILE * fp )
   {
     long x;
-    if (initialized) 
+    if (enabled) 
       if (rank == MASTER) 
 	{
 	  x = __real_ftell(fp);
@@ -328,8 +348,9 @@ long int __wrap_ftell ( FILE * fp )
 // Read functions
 int __wrap__IO_getc(FILE *fp)
 {
+  // printf("getc %d\n", rank);
   int x;
-  if (initialized) 
+  if (enabled) 
     if (rank == MASTER )
       {
 	x = __real__IO_getc(fp);
@@ -347,7 +368,7 @@ int __wrap__IO_getc(FILE *fp)
 int __wrap_getc_unlocked(FILE *fp)
 {
   int x;
-  if (initialized) 
+  if (enabled) 
     if (rank == MASTER )
       {
 	x = __real_getc_unlocked(fp);
@@ -364,9 +385,10 @@ int __wrap_getc_unlocked(FILE *fp)
 
 int __wrap_fread(void *ptr, size_t size, size_t n, FILE* fp)
 {
+   // printf("read %d\n", rank);
    // Is it OK to use just int for the size of data read?
    int x;
-   if (initialized) 
+   if (enabled) 
      if (rank == MASTER) 
        {
 	 x = __real_fread(ptr, size, n, fp);
@@ -387,7 +409,7 @@ char *__wrap_fgets(char *str, int num, FILE* fp)
 {
   char* s;
   int s_is_null=0;
-   if (initialized) 
+   if (enabled) 
      if (rank == MASTER) 
        {
 	 s = __real_fgets(str, num, fp);
@@ -418,7 +440,7 @@ char *__wrap_fgets(char *str, int num, FILE* fp)
 int __wrap_fgetc ( FILE * fp )
   {
   int x;
-  if (initialized) 
+  if (enabled) 
     if (rank == MASTER )
       {
 	x = __real_fgetc(fp);
@@ -433,8 +455,9 @@ int __wrap_fgetc ( FILE * fp )
 
 int __wrap_fstat(int fildes, struct stat *buf)
 {
+ // printf("fstat %d\n", rank);
  int size = sizeof(struct stat);
- if (initialized) 
+ if (enabled) 
    if (rank == MASTER) 
      {
        __real_fstat(fildes, buf);
@@ -451,8 +474,9 @@ int __wrap_fstat(int fildes, struct stat *buf)
 
 int __wrap_fstat64(int fildes, struct stat *buf)
 {
+ // printf("fstat64 %d\n", rank);
  int size = sizeof(struct stat);
- if (initialized) 
+ if (enabled) 
    if (rank == MASTER) 
      {
        __real_fstat(fildes, buf);
@@ -543,3 +567,20 @@ size_t __wrap_fwrite ( const void * ptr, size_t size, size_t count, FILE * fp )
   }
 */
 #endif
+
+// Python interfaces
+PyObject* Py_enable_io_wrappers(PyObject *self, PyObject *args)
+{
+#ifdef IO_WRAPPERS
+  enabled = 1;
+#endif
+  Py_RETURN_NONE;
+}
+
+PyObject* Py_disable_io_wrappers(PyObject *self, PyObject *args)
+{
+#ifdef IO_WRAPPERS
+  enabled = 0;
+#endif
+  Py_RETURN_NONE;
+}

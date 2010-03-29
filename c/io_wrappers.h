@@ -1,0 +1,33 @@
+FILE* __real_fopen(const char *filename, const char *modes);
+FILE* __real_fopen64(const char *filename, const char *modes);
+int  __real_fclose(FILE *fp);
+void  __real_setbuf(FILE *fp, char *buf);
+int  __real_setvbuf(FILE *fp, char *buf, int type, size_t size);
+int  __real_flockfile(FILE *fp);
+int  __real_funlockfile(FILE *fp);
+int __real_ferror(FILE* fp);
+int __real_feof(FILE* fp);
+void  __real_clearerr(FILE *fp);
+int __real_fseek(FILE *fp, long offset, int origin);
+void __real_rewind(FILE *fp);
+int __real_ungetc(int c, FILE* fp);
+int __real_fflush(FILE *fp);
+int __real_fgetpos ( FILE * fp, fpos_t * pos );
+int __real_fsetpos ( FILE * fp, const fpos_t * pos );
+long int __real_ftell ( FILE * fp );
+long int __real__IO_ftell ( FILE * fp );
+int __real__IO_getc(FILE *fp);
+int __real_getc_unlocked(FILE *fp);
+int __real_fread(void *ptr, size_t size, size_t n, FILE* fp);
+char *__real_fgets(char *str, int num, FILE* fp);
+int __real_fgetc ( FILE * fp );
+int __real_fstat(int fildes, struct stat *buf);
+int __real_fstat64(int fildes, struct stat *buf);
+int __real___fxstat64(int vers, int fildes, struct stat *buf);
+//int __real_fstatvfs64(int fildes, struct statfs *buf);
+int __real_fileno( FILE *fp );
+/*
+int __real_fputc ( int character, FILE * fp );
+int __real_fputs ( const char * str, FILE * fp );
+int __real__IO_putc ( int character, FILE * fp );
+size_t __real_fwrite ( const void * ptr, size_t size, size_t count, FILE * fp );*/
