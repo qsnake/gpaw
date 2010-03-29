@@ -1,6 +1,6 @@
 /*  Copyright (C) 2003-2007  CAMP
  *  Copyright (C) 2007-2009  CAMd
- *  Copyright (C) 2007-2008  CSC - IT Center for Science Ltd.
+ *  Copyright (C) 2007-2010  CSC - IT Center for Science Ltd.
  *  Please see the accompanying LICENSE file for further information. */
 
 #include <Python.h>
@@ -15,6 +15,10 @@ void HPM_Print(void);
 void HPM_Print_Flops(void);
 PyObject* ibm_hpm_start(PyObject *self, PyObject *args);
 PyObject* ibm_hpm_stop(PyObject *self, PyObject *args);
+#endif
+
+#ifdef GPAW_PAPI
+#include <papi.h>
 #endif
 
 #ifdef GPAW_CRAYPAT
@@ -102,6 +106,19 @@ PyObject* pblas_rk(PyObject *self, PyObject *args);
 // Moving least squares interpolation
 PyObject* mlsqr(PyObject *self, PyObject *args); 
 
+// Parallel HDF5
+#ifdef HDF5
+void init_h5py();
+PyObject* set_fapl_mpio(PyObject *self, PyObject *args);
+PyObject* set_dxpl_mpio(PyObject *self, PyObject *args);
+#endif
+
+// IO wrappers
+#ifdef IO_WRAPPERS
+void init_io_wrappers();
+#endif
+PyObject* Py_enable_io_wrappers(PyObject *self, PyObject *args);
+PyObject* Py_disable_io_wrappers(PyObject *self, PyObject *args);
 
 static PyMethodDef functions[] = {
   {"symmetrize", symmetrize, METH_VARARGS, 0},
@@ -195,6 +212,12 @@ static PyMethodDef functions[] = {
   {"craypat_region_end", craypat_region_end, METH_VARARGS, 0},
 #endif // GPAW_CRAYPAT
   {"mlsqr", mlsqr, METH_VARARGS, 0}, 
+#ifdef HDF5
+  {"h5_set_fapl_mpio", set_fapl_mpio, METH_VARARGS, 0}, 
+  {"h5_set_dxpl_mpio", set_dxpl_mpio, METH_VARARGS, 0}, 
+#endif // HDF5
+  {"enable_io_wrappers", Py_enable_io_wrappers, METH_VARARGS, 0},
+  {"disable_io_wrappers", Py_disable_io_wrappers, METH_VARARGS, 0},
   {0, 0, 0, 0}
 };
 
@@ -255,6 +278,12 @@ main(int argc, char **argv)
   if(granted != MPI_THREAD_MULTIPLE) exit(1);
 #endif // GPAW_OMP
 
+#ifdef GPAW_PAPI
+  float rtime, ptime, mflops;
+  long_long flpops;
+  PAPI_flops( &rtime, &ptime, &flpops, &mflops );
+#endif
+
 #ifdef IO_WRAPPERS
   init_io_wrappers();
 #endif
@@ -293,6 +322,10 @@ main(int argc, char **argv)
   MPI_Errhandler_set(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
 #endif
 
+#ifdef HDF5
+  init_h5py();
+#endif
+
   Py_Initialize();
 
 #ifdef NO_SOCKET
@@ -310,10 +343,6 @@ main(int argc, char **argv)
   Py_INCREF(&MPIType);
   PyModule_AddObject(m, "Communicator", (PyObject *)&MPIType);
   import_array1(-1);
-#ifdef HDF5
-  printf("Init h5py!\n");
-  init_h5py();
-#endif
   MPI_Barrier(MPI_COMM_WORLD);
 #ifdef GPAW_CRAYPAT
   PAT_region_end(1);
@@ -324,6 +353,28 @@ main(int argc, char **argv)
   HPM_Print();
   HPM_Print_Flops();
 #endif
+#ifdef GPAW_PAPI
+  // print out some statistics
+  int myid, numprocs;
+  long_long sum_flpops;
+  float ave_mflops;
+  MPI_Comm_size(MPI_COMM_WORLD, &numprocs );
+  MPI_Comm_rank(MPI_COMM_WORLD, &myid );
+  PAPI_flops( &rtime, &ptime, &flpops, &mflops );
+  MPI_Reduce(&mflops, &ave_mflops, 1, MPI_FLOAT, MPI_SUM, 0, 
+	     MPI_COMM_WORLD);
+  ave_mflops /= numprocs;
+  MPI_Reduce(&flpops, &sum_flpops, 1, MPI_LONG_LONG, MPI_SUM, 0, 
+	     MPI_COMM_WORLD);
+  if (myid == 0)
+    {
+      printf("GPAW: Information from PAPI counters\n");
+      printf("GPAW: Total time: %10.2f s\n", rtime);
+      printf("GPAW: Floating point operations: %lld \n", sum_flpops);
+      printf("GPAW: FLOP rate (GFLOP/s):  ave %10.3f  total %10.3f\n",
+	     ave_mflops / 1000.0 , sum_flpops / rtime / 1.e9);
+    }
+#endif      
   MPI_Finalize();
   return status;
 }
