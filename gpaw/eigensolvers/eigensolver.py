@@ -36,10 +36,6 @@ class Eigensolver:
         if self.mynbands != self.nbands or self.operator.nblocks != 1:
             self.keep_htpsit = False
 
-        # Belows this will eventually be a BLACS matrix
-        # and will be used as a ScaLAPACK workspace.
-        # self.U_nn = np.empty((self.nbands, self.nbands), dtype=self.dtype)
-
         # Preconditioner for the electronic gradients:
         self.preconditioner = Preconditioner(self.gd, wfs.kin, self.dtype)
 
@@ -144,7 +140,6 @@ class Eigensolver:
 
         self.timer.start('Subspace diag')
 
-        # U_nn = self.U_nn
         psit_nG = kpt.psit_nG
         P_ani = kpt.P_ani
 
