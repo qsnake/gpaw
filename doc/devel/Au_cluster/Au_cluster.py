@@ -33,7 +33,7 @@ mixer = Mixer(beta=0.1, nmaxold=5, weight=100.0)
 # the next three lines decrease memory usage
 es = RMM_DIIS(keep_htpsit=False)
 from gpaw.hs_operators import MatrixOperator
-MatrixOperator.nblocks = 8
+MatrixOperator.nblocks = 16
 calc = GPAW(nbands=nbands,
             # uncomment next two lines to use lcao/sz
             #mode='lcao',
