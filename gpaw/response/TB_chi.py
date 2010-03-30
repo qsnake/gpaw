@@ -70,9 +70,10 @@ def get_bandstructure(bcell, a, E_p, Vpppi):
 #    plot(np.arange(nkpt), E2 * Hartree)
 #    show()
 
+    return nkpt, np.array([E1, E2]) * Hartree
 
-def get_pz_orbital(calc):
-    """Get Carbon p_z orbital on 3D grid by lcao_to_grid method."""
+def get_orbitals(calc):
+    """Get Carbon orbitals on 3D grid by lcao_to_grid method."""
 
     bfs_a = [setup.phit_j for setup in calc.wfs.setups]
     
@@ -84,8 +85,6 @@ def get_pz_orbital(calc):
     orb_MG = calc.wfs.gd.zeros(8)
     C_M = np.identity(8)
     bfs.lcao_to_grid(C_M, orb_MG,q=-1)
-
-    phi_aG = [orb_MG[2], orb_MG[6]]
 
     # Plot orbitals
 #    r = calc.wfs.gd.get_grid_point_coordinates()
@@ -102,7 +101,7 @@ def get_pz_orbital(calc):
 #    colorbar()
 #    show()
 #
-    return phi_aG
+    return orb_MG 
 
 
 def generate_pz_orbital():
@@ -239,7 +238,8 @@ def calculate_RPA_dielectric_function(gd, f_nk, E_nk, psi_nk, kq, qq, vol, Hilbe
         for n in range(nband):
             psi1_G = psi_nk[n, k].conj() * expqr
             for m in range(nband):
-                if np.abs(f_nk[n, k] - f_nk[m, kq[k]]) > 1e-8:
+                if np.abs(f_nk[n, k] - f_nk[m, kq[k]]) > 1e-8 and n != m: # n == m for intraband,
+                                                                          # n != m for interband
                     rho_nn[n, m] = gd.integrate(psi1_G * psi_nk[m, kq[k]])
 
         if not HilbertTrans:
@@ -257,7 +257,7 @@ def calculate_RPA_dielectric_function(gd, f_nk, E_nk, psi_nk, kq, qq, vol, Hilbe
             for n in range(nband):
                 for m in range(nband):
                     focc = f_nk[n, k] - f_nk[m, kq[k]]
-                    if focc > 1e-8:
+                    if focc > 1e-8 and n != m: # n == m for intraband, n != m for interband
                         w0 = E_nk[m, kq[k]] - E_nk[n, k]
                         tmp = focc * rho_nn[n, m] * rho_nn[n, m].conj()
 
@@ -295,7 +295,7 @@ def Ab_calc(calc):
     return E_nk, f_nk, psi_nkG
 
 
-def TB_calc(calc, E_p, Vpppi, localization_factor):
+def TB_calc(calc, E_p, Vpppi, localization_factor, shift_Ef = 0., type='pi_orb'):
     """Get eigen-energies and wavefunctions from tight-binding calculation."""
     
     r_g, phi_g = generate_pz_orbital()
@@ -310,11 +310,23 @@ def TB_calc(calc, E_p, Vpppi, localization_factor):
     nkpt = bzkpt_kG.shape[0]
     acell = calc.atoms.cell / Bohr
     bcell = np.linalg.inv(acell.T) * 2. * pi
+
+    # different band options
+    # Pz orbitals
+    if type == 'pi_orb':
+        phi_aG = pz_orbital_to_GRID(phi_g, h_cv, nG, r, R_a, dr)
+    # s-p orbitals
+    elif type == 's_pz_orb':
+        orb_MG = get_orbitals(calc)
+        phi_aG = [(orb_MG[0] + orb_MG[4]) /sqrt(2), (orb_MG[2] + orb_MG[6]) / sqrt(2)]
+#        phi_aG = [orb_MG[0], orb_MG[2]]
+    elif type == 's_py_orb':
+        orb_MG = get_orbitals(calc)
+        phi_aG = [(orb_MG[0] + orb_MG[4]) /sqrt(2), (orb_MG[1] + orb_MG[5]) / sqrt(2)]
+    else:
+        raise ValueError('Orbital type not supported yet!')
     
-    phi_aG = pz_orbital_to_GRID(phi_g, h_cv, nG, r, R_a, dr)
-#    phi_aG = get_pz_orbital(calc)
-    
-#    get_bandstructure(bcell, a, E_p, Vpppi)
+#    nkpt, (E1, E2) = get_bandstructure(bcell, a, E_p, Vpppi)
     
     E1, E2, C1, C2 = solve_Schrodinger(bzkpt_kG, bcell, a, E_p, Vpppi)
     
@@ -322,13 +334,32 @@ def TB_calc(calc, E_p, Vpppi, localization_factor):
     E_nk = np.array([E1, E2])
     f_nk = np.zeros((nband, nkpt))
     f_nk[0] = 2. / nkpt
+    if shift_Ef > 0.:
+        print 'Fermi level shift upward.'
+        for k in range(nkpt):
+            if E_nk[1, k] < shift_Ef/Hartree :
+                f_nk[1, k] = 2./nkpt
+    elif shift_Ef < 0. :
+        print 'Fermi level shift downward.'
+        for k in range(nkpt):
+            if E_nk[0, k] > shift_Ef/Hartree :
+                f_nk[0, k] = 0.
 
+    else:
+        print 'Fermi level no shift'
+    
     psi_nkG = np.zeros((nband, nkpt, nG[0], nG[1], nG[2]),dtype=complex)
     
     C_nMk = np.array([C1, C2])
     for n in range(nband):
         for k in range(nkpt):
-            psi_nkG[n, k] = C_nMk[n, 0, k] * phi_aG[0] + C_nMk[n, 1, k] * phi_aG[1]
+            if type == 'pi_orb':
+                psi_nkG[n, k] = C_nMk[n, 0, k] * phi_aG[0] + C_nMk[n, 1, k] * phi_aG[1]
+            else:
+                if n == 0:
+                    psi_nkG[n, k] = phi_aG[0]
+                else:
+                    psi_nkG[n, k] = phi_aG[1]
 
             # Normalize ? 
 #            norm = gd.integrate(psi2_nkG[n, k].conj() * psi2_nkG[n, k])
