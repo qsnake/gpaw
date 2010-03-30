@@ -1,15 +1,34 @@
 # Mostly been tested on BG/P at Argonne National Laboratory
-# There are two modes for generating map files "domain" and "band".
-# "band" should be used for the band parallelization in ground
-# state DFT. "domain" could be useful for band parallelization
-# in TDDFT but is mostly here for historical reasons.
+# There are two modes for generating map files:
+#
+# Domain - used for band parallelization in TDDFT; 
+#          keep domains for same group of bands 
+#          on adjacent nodes
+#          
+# Band   - used for band parallelization in DFT; 
+#          keep domains for nearest-neighbor bands
+#          on adjacent nodes
 #
 # usage:
 #
-# python mapfile.py domain 128 4,4,4,8 > <BGP_MAPFILE>
+# Domain
+# ------
+# Four integers belows must match the integers used for
+# domain-decomposition (first three) and
+# state-parallelization (last):
 #
-# python mapfile.py band 128 X,Y,T,Z > <BGP_MAPFILE>
+# python mapfile.py domain <number of nodes> 4,4,4,8 > <filename>
 #
+# Band
+# ----
+# Four characters below must match the dimensions used for
+# domain-decomposition (first three) and 
+# state-parallelzation (last):
+#
+# python mapfile.py band <number of nodes> X,Y,T,Z > <filanme>
+#
+# Further reading notes available here:
+# https://wiki.fysik.dtu.dk/gpaw/install/BGP/performance.html
 from sys import argv
 mode = argv[1]
 nodes = int(argv[2])
