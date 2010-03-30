@@ -868,6 +868,31 @@ class CHI:
         self.comm.barrier()
 
 
+    def get_jdos(self, f_kn, e_kn, kq, dw, Nw, sigma):
+        """Calculate Joint density of states"""
+
+        # self.f_kn, self.e_kn, self.dw, self.Nw, self.sigma, self.kstart, self.kend
+
+        JDOS_w = np.zeros(Nw)
+        nkpt = f_kn.shape[0]
+        nband = f_kn.shape[1]
+
+        for k in range(nkpt):
+            for n in range(nband):
+                for m in range(nband):
+                    focc = f_kn[k, n] - f_kn[kq[k], m]
+                    w0 = e_kn[kq[k], m] - e_kn[k, n]
+                    if focc > 0 and w0 >= 0:
+                        deltaw = self.delta_function(w0, dw, Nw, sigma)
+                        for iw in range(Nw):
+                            if deltaw[iw] > 1e-8:
+                                JDOS_w[iw] += focc * deltaw[iw]
+
+        w = np.arange(Nw) * dw * Hartree
+
+        return w, JDOS_w
+
+                    
     def calculate_induced_density(self, q, w):
         """ Evaluate induced density for a certain q and w.
 
