@@ -286,7 +286,7 @@ class ProjectorPairOverlap(Overlap, GridPairOverlap):
 
         ============  ======================================================
         ``B_aa``      < p_i^a | p_i'^a' >
-        ``xO_aa``     TODO 
+        ``xO_aa``     TODO
         ``dC_aa``     TODO
         ``xC_aa``     TODO
         ============  ======================================================

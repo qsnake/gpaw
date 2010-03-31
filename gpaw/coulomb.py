@@ -21,7 +21,7 @@ def get_vxc(paw, spin=0, U=None):
     if U is not None: # Rotate xc matrix
         return np.dot(U.T.conj(), np.dot(get_vxc(paw, spin), U))
 
-    gd = paw.hamiltonian.gd    
+    gd = paw.hamiltonian.gd
     psit_nG = paw.wfs.kpt_u[spin].psit_nG[:]
     if paw.density.nt_sg is None:
         paw.density.interpolate()
@@ -53,7 +53,7 @@ class Coulomb:
     def __init__(self, gd, poisson=None):
         """Class should be initialized with a grid_descriptor 'gd' from
            the gpaw module.
-        """        
+        """
         self.gd = gd
         self.poisson = poisson
 
@@ -74,9 +74,9 @@ class Coulomb:
                 assert self.gd.orthogonal
                 rc = 0.5 * np.average(self.gd.cell_cv.diagonal())
                 # ewald potential: 1 - cos(k rc)
-                self.ewald = (np.ones(self.gd.n_c) - 
+                self.ewald = (np.ones(self.gd.n_c) -
                               np.cos(np.sqrt(self.k2) * rc))
-                # lim k -> 0 ewald / k2 
+                # lim k -> 0 ewald / k2
                 self.ewald[0, 0, 0] = 0.5 * rc**2
             elif method.endswith('gauss') and not hasattr(self, 'ng'):
                 gauss = Gaussian(self.gd)

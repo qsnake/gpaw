@@ -319,7 +319,7 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
     # Write the pseudodensity on the coarse grid:
     if master or hdf5:
         w.add('PseudoElectronDensity',
-              ('nspins', 'ngptsx', 'ngptsy', 'ngptsz'), dtype=float)        
+              ('nspins', 'ngptsx', 'ngptsy', 'ngptsz'), dtype=float)
 
     for s in range(wfs.nspins):
         if hdf5:
@@ -369,7 +369,7 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
                 for k in range(wfs.nibzkpts):
                     for n in range(wfs.nbands):
                         psit_G = wfs.get_wave_function_array(n, k, s)
-                        if master: 
+                        if master:
                             w.fill(psit_G, s, k, n)
 
     elif mode != '':
@@ -487,14 +487,14 @@ def read(paw, reader):
 
 
     # Read pseudo potential on the coarse grid
-    # and distribute out to nodes:    
+    # and distribute out to nodes:
     if version > 0.3:
         hamiltonian.vt_sG = wfs.gd.empty(hamiltonian.nspins)
         if hdf5:
             indices = [slice(0, hamiltonian.nspins), ] + wfs.gd.get_slice()
             hamiltonian.vt_sG[:] = r.get('PseudoPotential', *indices)
         else:
-            for s in range(hamiltonian.nspins): 
+            for s in range(hamiltonian.nspins):
                 wfs.gd.distribute(r.get('PseudoPotential', s),
                                   hamiltonian.vt_sG[s])
 
@@ -512,7 +512,7 @@ def read(paw, reader):
     try:
         hamiltonian.Eext = r['Eext']
     except (AttributeError, KeyError):
-        hamiltonian.Eext = 0.0        
+        hamiltonian.Eext = 0.0
     hamiltonian.Exc = r['Exc']
     hamiltonian.S = r['S']
     hamiltonian.Etot = r.get('PotentialEnergy') - 0.5 * hamiltonian.S

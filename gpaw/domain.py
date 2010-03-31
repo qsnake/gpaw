@@ -177,7 +177,7 @@ def decompose_domain(ng, p):
         else:
             m1 = float(n1) / p1
             m2 = float(n2) / p2
-            m3 = float(n3) / p3           
+            m3 = float(n3) / p3
         cost = abs(m1 - m2) + abs(m2 - m3) + abs(m3 - m1)
         # A long z-axis (unit stride) is best:
         if m1 <= m2 <= m3:

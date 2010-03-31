@@ -134,15 +134,15 @@ class GradientExpansion(YLExpansion):
             a2_sg = np.sum(a1_scg**2, 1)        # \
             a2_sg[:, 1:] /= self.rgd.r_g[1:]**2  # | angular contribution
             a2_sg[:, 0] = a2_sg[:, 1]            # /
-            axpy(1.0, a1_sg**2, a2_sg)           # radial contribution   
+            axpy(1.0, a1_sg**2, a2_sg)           # radial contribution
 
             # Square norm of gradient of total density
             if self.nspins == 1:
                 a2_g = a2_sg[0]
             else:
-                a2_g = np.sum(a1_scg.sum(0)**2, 0) # \                     
+                a2_g = np.sum(a1_scg.sum(0)**2, 0) # \
                 a2_g[1:] /= self.rgd.r_g[1:]**2     # | angular contribution
-                a2_g[0] = a2_g[1]                   # /                     
+                a2_g[0] = a2_g[1]                   # /
                 axpy(1.0, a1_sg.sum(0)**2, a2_g)    # radial contribution
             yield GradientSlice(a1_sg, a1_scg, a2_sg, a2_g, A_cL)
 
@@ -391,7 +391,7 @@ class BaseXCCorrection:
         self.nii = nii = ni * (ni + 1) // 2
         njj = nj * (nj + 1) // 2
 
-        # 
+        #
         self.B_Lqp = np.zeros((self.Lmax, njj, nii))
         p = 0
         i1 = 0
@@ -406,7 +406,7 @@ class BaseXCCorrection:
             i1 += 1
         self.B_pqL = self.B_Lqp.T.copy()
 
-        # 
+        #
         self.n_qg = np.zeros((njj, ng))
         self.nt_qg = np.zeros((njj, ng))
         q = 0
@@ -417,8 +417,8 @@ class BaseXCCorrection:
                 self.nt_qg[q] = rl1l2 * wt_jg[j1] * wt_jg[j2]
                 q += 1
 
-        # 
-        self.ncorehole_g = None       
+        #
+        self.ncorehole_g = None
         if nspins == 2 and fcorehole != 0.0:
             self.ncorehole_g = fcorehole * phicorehole_g**2 / (4 * pi)
 
@@ -503,19 +503,19 @@ class BaseXCCorrection:
         
         kinetic expression is::
 
-                                             __         __ 
+                                             __         __
           tau_s = 1/2 Sum_{i1,i2} D(s,i1,i2) \/phi_i1 . \/phi_i2 +tauc_s
 
         here the orbital dependent part is calculated::
 
-          __         __         
-          \/phi_i1 . \/phi_i2 = 
+          __         __
+          \/phi_i1 . \/phi_i2 =
                       __    __
                       \/YL1.\/YL2 phi_j1 phi_j2 +YL1 YL2 dphi_j1 dphi_j2
                                                          ------  ------
                                                            dr     dr
           __    __
-          \/YL1.\/YL2 [y] = Sum_c A[L1,c,y] A[L2,c,y] / r**2 
+          \/YL1.\/YL2 [y] = Sum_c A[L1,c,y] A[L2,c,y] / r**2
           
         """
         ng = self.ng
@@ -551,15 +551,15 @@ class BaseXCCorrection:
                 for j2, l2, L2 in jlL[i1:]:
                     temp = (A_Lxg[L1] * A_Lxg[L2] + A_Lyg[L1] * A_Lyg[L2]
                             + A_Lzg[L1] * A_Lzg[L2])
-                    temp *=  phi_jg[j1] * phi_jg[j2] 
-                    temp[1:] /= self.rgd.r_g[1:]**2                       
+                    temp *=  phi_jg[j1] * phi_jg[j2]
+                    temp[1:] /= self.rgd.r_g[1:]**2
                     temp[0] = temp[1]
                     tau_ypg[y, p, :] += temp
                     p += 1
                 i1 +=1
         tau_ypg *= 0.5
                     
-        return 
+        return
         
     def initialize_kinetic(self, data):
         r_g = self.rgd.r_g
@@ -581,7 +581,7 @@ class BaseXCCorrection:
         phi_jg = np.array([phi_g[:ng].copy() for phi_g in phi_jg])
         phit_jg = np.array([phit_g[:ng].copy() for phit_g in phit_jg])
         self.create_kinetic(jlL,jl,ny, nii,phit_jg, self.taut_ypg)
-        self.create_kinetic(jlL,jl,ny, nii,phi_jg, self.tau_ypg)            
+        self.create_kinetic(jlL,jl,ny, nii,phi_jg, self.tau_ypg)
         tauc_g = data.tauc_g
         tauct_g = data.tauct_g
         self.tauc_g = np.array(tauc_g[:ng].copy())
@@ -659,7 +659,7 @@ class NewXCCorrection(BaseXCCorrection):
         n_iter = self.expand_density(D_sLq, self.n_qg, self.nc_g,
                                      self.ncorehole_g)
         nt_iter = self.expand_density(D_sLq, self.nt_qg, self.nct_g)
-        for n_sg, nt_sg, integrator in izip(n_iter, nt_iter, 
+        for n_sg, nt_sg, integrator in izip(n_iter, nt_iter,
                                             self.get_integrator(H_sp)):
             # ae-density
             self.calculate_potential_slice(e_g, n_sg, vxc_sg)
@@ -762,7 +762,7 @@ class OldXCCorrection(BaseXCCorrection):
                 E -= self.xc.get_energy_and_potential(nt_g, vxct_g) * w
                 axpy(-1.0, self.quickdot(self.nt_qg, vxct_g * self.dv_g), dEdD_q)
                 axpy(w, self.quickdot(self.quickdot(self.B_pqL, Y_L), dEdD_q), dEdD_p)
-        else: 
+        else:
             Da_p = D_sp[0]
             Da_Lq = self.quickdot(self.B_Lqp, Da_p)
             na_Lg = self.quickdotmm(Da_Lq, self.n_qg)
@@ -1373,7 +1373,7 @@ class OldXCCorrection(BaseXCCorrection):
             y = 0
 
             for w, Y_L in zip(weights, self.Y_nL):
-                ## Calculate pseudo and all electron kinetic energy 
+                ## Calculate pseudo and all electron kinetic energy
                 ## from orbitals
                 taut_pg = self.taut_ypg[y]
                 taut_g = np.dot(D_p,taut_pg)
@@ -1492,7 +1492,7 @@ class OldXCCorrection(BaseXCCorrection):
                 taub_g += self.tauc_g * 0.5 / sqrt(4. * pi)
                 tauat_g += self.tauct_g * 0.5 / sqrt(4. * pi)
                 taubt_g += self.tauct_g * 0.5 / sqrt(4. * pi)
-                A_Li = A_Liy[:self.Lmax, :, y]                
+                A_Li = A_Liy[:self.Lmax, :, y]
 
                 na_g = np.dot(Y_L, na_Lg)
                 aa1x_g = np.dot(A_Li[:, 0], na_Lg)
@@ -1716,7 +1716,7 @@ class OldXCCorrection(BaseXCCorrection):
             y = 0
 
             for w, Y_L in zip(weights, self.Y_nL):
-                ## Calculate pseudo and all electron kinetic energy 
+                ## Calculate pseudo and all electron kinetic energy
                 ##from orbitals
                 taut_pg = self.taut_ypg[y]
                 taut_g = np.dot(D_p,taut_pg)
@@ -1836,7 +1836,7 @@ class OldXCCorrection(BaseXCCorrection):
                 taub_g += self.tauc_g * 0.5 / sqrt(4. * pi)
                 tauat_g += self.tauct_g * 0.5 / sqrt(4. * pi)
                 taubt_g += self.tauct_g * 0.5 / sqrt(4. * pi)
-                A_Li = A_Liy[:self.Lmax, :, y]                
+                A_Li = A_Liy[:self.Lmax, :, y]
 
                 na_g = np.dot(Y_L, na_Lg)
                 aa1x_g = np.dot(A_Li[:, 0], na_Lg)
@@ -1880,7 +1880,7 @@ class OldXCCorrection(BaseXCCorrection):
                                                dedtaub_g)
                 E += w * np.dot(e_g, self.dv_g)
 
-                x_g = -deda2_g * self.dv_g * aa1_g 
+                x_g = -deda2_g * self.dv_g * aa1_g
                 self.rgd.derivative2(x_g, x_g)
                 B_Lqp = self.B_Lqp
                  
@@ -1992,7 +1992,7 @@ class OldXCCorrection(BaseXCCorrection):
                                                dedtaub_g)
                 E -= w * np.dot(e_g, self.dv_g)
 
-                x_g = -deda2_g * self.dv_g * aa1_g 
+                x_g = -deda2_g * self.dv_g * aa1_g
                 self.rgd.derivative2(x_g, x_g)
                 B_Lqp = self.B_Lqp
 

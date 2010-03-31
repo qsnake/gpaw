@@ -61,8 +61,8 @@ class PointCharges(Atoms, ElectrostaticPotential):
             words = line.split()
             if len(words) > 3:
                 q, x, y, z = words[:4]
-                self.append(PointCharge(position=(float(x) * Bohr, 
-                                                  float(y) * Bohr, 
+                self.append(PointCharge(position=(float(x) * Bohr,
+                                                  float(y) * Bohr,
                                                   float(z) * Bohr),
                                         charge=float(q) ) )
             else:
@@ -84,8 +84,8 @@ class PointCharges(Atoms, ElectrostaticPotential):
         for i in range(n):
             words = lines[i].split()
             dummy, x, y, z, q = words[:5]
-            self.append(PointCharge(position=(float(x), 
-                                              float(y), 
+            self.append(PointCharge(position=(float(x),
+                                              float(y),
                                               float(z)),
                                     charge=float(q) ) )
 
@@ -105,12 +105,12 @@ class PointCharges(Atoms, ElectrostaticPotential):
         pc_nc = np.empty((n, 3))
         charge_n = np.empty((n))
         for a, pc in enumerate(self):
-            pc_nc[a] = pc.position / Bohr 
+            pc_nc[a] = pc.position / Bohr
             charge_n[a] = pc.charge
         self.pc_nc = pc_nc
         self.charge_n = charge_n
 
-        _gpaw.pc_potential(potential, pc_nc, charge_n, 
+        _gpaw.pc_potential(potential, pc_nc, charge_n,
                            gd.beg_c, gd.end_c, gd.h_c)
 
         # save grid descriptor and potential for future use
@@ -123,7 +123,7 @@ class PointCharges(Atoms, ElectrostaticPotential):
         return -1. * nucleus.setup.Z * self.get_value(spos_c = nucleus.spos_c)
 
     def get_value(self, position=None, spos_c=None):
-        """The potential value (as seen by an electron) 
+        """The potential value (as seen by an electron)
         at a certain grid point.
 
         position [Angstrom]
@@ -163,7 +163,7 @@ class PointCharges(Atoms, ElectrostaticPotential):
             nabla += dist * ( pc.charge / (d2 * np.sqrt(d2)) )
             
         # see spherical_harmonics.py for the assignment
-        return [[self.get_value(position=pos)], 
+        return [[self.get_value(position=pos)],
                 np.array([nabla[1], nabla[2], nabla[0]])]
         
     def write(self, file='PC.xyz', filetype=None):

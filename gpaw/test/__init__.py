@@ -8,14 +8,14 @@ import traceback
 import numpy as np
 
 from gpaw.atom.generator import Generator, parameters
-from gpaw.utilities import devnull
+from gpaw.utilities import fabs, devnull
 from gpaw import setup_paths
 from gpaw import mpi
 import gpaw
 
 
 def equal(x, y, tolerance=0, fail=True, msg=''):
-    if abs(x - y) > tolerance:
+    if fabs(x - y) > tolerance:
         msg = (msg + '%.9g != %.9g (error: |%.9g| > %.9g)' %
                (x, y, x - y, tolerance))
         if fail:

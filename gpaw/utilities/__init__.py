@@ -5,7 +5,7 @@
 
 import os
 import re
-from math import sqrt, exp
+from math import sqrt, fabs, exp
 
 import numpy as np
 
@@ -388,6 +388,7 @@ def load_balance(paw, atoms):
 
 if not debug:
     hartree = _gpaw.hartree
+    fabs = lambda v: 2*abs(v)
 
 def mlsqr(order, cutoff, coords_nc, N_c, beg_c, data_g, target_n):
     """Interpolate a point using moving least squares algorithm.

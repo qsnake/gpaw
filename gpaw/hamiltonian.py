@@ -226,7 +226,7 @@ class Hamiltonian:
 
         self.timer.start('vbar')
         Ebar = self.finegd.integrate(self.vbar_g, density.nt_g,
-                                     global_integral=False) 
+                                     global_integral=False)
 
         vt_g = self.vt_sg[0]
         vt_g[:] = self.vbar_g
@@ -324,7 +324,7 @@ class Hamiltonian:
                     
                     Eorb = setup.HubU/2. * (N_mm - np.dot(N_mm,N_mm)).trace()
                     Vorb = setup.HubU * (0.5 * np.eye(2*l+1) - N_mm)
-                    Exc += Eorb                    
+                    Exc += Eorb
                     
                     if len(nl)==2:
                         mm  = (2*np.array(l_j)+1)[0:nl[1]].sum()
@@ -347,7 +347,7 @@ class Hamiltonian:
         self.timer.stop('Atomic')
 
         #meta-gga correction
-        # < tilde_Psi | +1/2*nabla.(dedtau * nabla tilde_Psi)> = -< dedtau * tau> 
+        # < tilde_Psi | +1/2*nabla.(dedtau * nabla tilde_Psi)> = -< dedtau * tau>
         if self.xc.xcfunc.mgga:
             self.Ekin_mgga = 0.0
             for taut_G, dedtau_g in zip(self.xc.tautnocore_sG, self.xc.dedtau_sg):
@@ -376,7 +376,7 @@ class Hamiltonian:
         self.S = occupations.e_entropy
 
         # Total free energy:
-        self.Etot = (self.Ekin + self.Epot + self.Eext + 
+        self.Etot = (self.Ekin + self.Epot + self.Eext +
                      self.Ebar + self.Exc - self.S)
         #print self.Etot, self.Ekin, self.Epot, self.Eext, self.Ebar, self.Exc,
         #print self.S, self.Enlxc,self.Enlkin

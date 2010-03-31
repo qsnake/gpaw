@@ -98,7 +98,7 @@ class GPAW(PAW):
 
     def get_number_of_bands(self):
         """Return the number of bands."""
-        return self.wfs.nbands 
+        return self.wfs.nbands
   
     def get_xc_functional(self):
         """Return the XC-functional identifier.
@@ -123,7 +123,7 @@ class GPAW(PAW):
         return self.wfs.ibzk_kc
 
     def get_k_point_weights(self):
-        """Weights of the k-points. 
+        """Weights of the k-points.
         
         The sum of all weights is one."""
         
@@ -500,13 +500,13 @@ class GPAW(PAW):
         Calculate the correction to the wannier integrals Z,
         given by (Eq. 27 ref1)::
 
-                          -i G.r    
+                          -i G.r
             Z   = <psi | e      |psi >
              nm       n             m
                             
                            __                __
-                   ~      \              a  \     a*   a    a   
-            Z    = Z    +  ) exp[-i G . R ]  )   P   dO    P  
+                   ~      \              a  \     a*   a    a
+            Z    = Z    +  ) exp[-i G . R ]  )   P   dO    P
              nmx    nmx   /__            x  /__   ni   ii'  mi'
 
                            a                 ii'
@@ -514,7 +514,7 @@ class GPAW(PAW):
         Note that this correction is an approximation that assumes the
         exponential varies slowly over the extent of the augmentation sphere.
 
-        ref1: Thygesen et al, Phys. Rev. B 72, 125119 (2005) 
+        ref1: Thygesen et al, Phys. Rev. B 72, 125119 (2005)
         """
 
         if nbands is None:

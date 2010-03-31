@@ -67,7 +67,7 @@ class Spline:
     def get_functions(self, gd, start_c, end_c, spos_c):
         h_cv = gd.h_cv
         # start_c is the new origin so we translate gd.beg_c to start_c
-        origin_c = np.array([0,0,0]) 
+        origin_c = np.array([0,0,0])
         pos_v = np.dot(spos_c, gd.cell_cv) - np.dot(start_c, h_cv)
         A_gm, G_b = _gpaw.spline_to_grid(self.spline, origin_c, end_c-start_c,
                                          pos_v, h_cv, end_c-start_c, origin_c)
@@ -77,7 +77,7 @@ class Spline:
             assert is_contiguous(G_b, np.int32)
             assert A_gm.shape[:-1] == np.sum(G_b[1::2]-G_b[::2])
 
-        indices_gm, ng, nm = self.spline.get_indices_from_zranges(start_c, 
+        indices_gm, ng, nm = self.spline.get_indices_from_zranges(start_c,
                                                                   end_c, G_b)
         shape = (nm,) + tuple(end_c-start_c)
         work_mB = np.zeros(shape, dtype=A_gm.dtype)

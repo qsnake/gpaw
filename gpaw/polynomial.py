@@ -1,7 +1,7 @@
 import numpy as np
 
 class Polynomial:
-    """Polynomial p(x,y,z). 
+    """Polynomial p(x,y,z).
     """
     
     def __init__(self, values, coords, order):
@@ -33,8 +33,8 @@ class Polynomial:
         elif order == 2:
             A = np.zeros([len(coords), 10])
             b = np.zeros([len(coords)])
-            # c0 + c1 x + c2 y + c3 z 
-            #    + c4 x^2 + c5 y^2 + c6 z^2 
+            # c0 + c1 x + c2 y + c3 z
+            #    + c4 x^2 + c5 y^2 + c6 z^2
             #    + c7 x y + c8 x z + c9 y z = b
             for i in range(len(coords)):
                 A[i][0] = 1.
@@ -57,7 +57,7 @@ class Polynomial:
             
     def coeff(self, i,j,k):
         # if coeff(0,0,0)
-        if i+j+k == 0: 
+        if i+j+k == 0:
             return self.c[0]
         # if order == 0, other zeros
         elif self.order == 0:

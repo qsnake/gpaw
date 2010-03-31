@@ -121,7 +121,7 @@ class HGHSetupData:
     A HGH setup has the following form::
 
                   ----
-                   \   
+                   \
       V = Vlocal +  )  | p  > h   < p |
                    /      i    ij    j
                   ----
@@ -330,7 +330,7 @@ class HGHSetupData:
     def get_projectors(self):
         # XXX equal-range projectors still required for some reason
         maxlen = max([len(pt_g) for pt_g in self.pt_jg])
-        pt_jg = []        
+        pt_jg = []
         for pt1_g in self.pt_jg:
             pt2_g = np.zeros(maxlen)
             pt2_g[:len(pt1_g)] = pt1_g
@@ -602,7 +602,7 @@ def hgh2str(hgh):
 def parse_setups(lines):
     """Read HGH data from file."""
     setups = {}
-    entry_lines = [i for i in xrange(len(lines)) 
+    entry_lines = [i for i in xrange(len(lines))
                    if lines[i][0].isalpha()]
     lines_by_element = [lines[entry_lines[i]:entry_lines[i + 1]]
                         for i in xrange(len(entry_lines) - 1)]

@@ -69,7 +69,7 @@ class ELF:
         if not paw.initialized:
             raise RuntimeError('PAW instance is not initialized')
 
-        self.tauct = LFC(self.gd, 
+        self.tauct = LFC(self.gd,
                          [[setup.tauct] for setup in self.density.setups],
  	                 forces=True, cut=True)
         spos_ac = paw.atoms.get_scaled_positions() % 1.0
@@ -113,7 +113,7 @@ class ELF:
 
         self.nt_grad2_sG[:] = 0.0
 
-        ddr = [Gradient(self.gd, c).apply for c in range(3)]      
+        ddr = [Gradient(self.gd, c).apply for c in range(3)]
         d_G = self.gd.empty()
 
         for s in range(self.nspins):
