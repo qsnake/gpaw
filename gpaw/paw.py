@@ -709,7 +709,7 @@ class PAW(PAWTextOutput):
     def converge_wave_functions(self):
         """Converge the wave-functions if not present."""
 
-        if not self.wfs:
+        if not self.wfs or not self.scf:
             self.initialize()
         else:
             self.wfs.initialize_wave_functions_from_restart_file()
