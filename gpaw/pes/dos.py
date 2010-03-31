@@ -1,6 +1,8 @@
 """Photoelectron spectra from the (shifted) DOS approach.
 
 """
+import numpy as np
+
 from ase import Hartree
 from gpaw.pes import BasePES
 
@@ -14,7 +16,6 @@ class DOSPES(BasePES):
         self.f = None
         self.be = None
         self.shift = shift
-        self.first_peak_energy = 0.
 
     def _calculate(self, f_min=0.9):
         """Evaluate energies and spectroscopic factors."""
@@ -28,13 +29,14 @@ class DOSPES(BasePES):
                     self.be.append(- e * Hartree)
                     self.f.append(f)
                     ex_m.append(- e * Hartree)
+        self.be = np.array(self.be)
 
         if self.shift is True:
             ex_m.sort()
             e_m = self.c_m.get_potential_energy()
             e_d = self.c_d.get_potential_energy()
-            energy_shift = e_d - e_m - ex_m[-1]
+            energy_shift = e_d - e_m - ex_m[0]
         else:
-            energy_shift = self.shift
+            energy_shift = float(self.shift)
 
         self.be += energy_shift

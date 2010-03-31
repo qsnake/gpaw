@@ -12,7 +12,7 @@ from gpaw.utilities import packed_index
 from numpy import sqrt, pi
 
 class TDDFTPES(BasePES):
-    def __init__(self, mother, excited_daughter, daughter=None):
+    def __init__(self, mother, excited_daughter, daughter=None, shift=True):
         if excited_daughter.calculator is not None:
             self.c_d = excited_daughter.calculator
         else:
@@ -41,7 +41,7 @@ class TDDFTPES(BasePES):
 
         self.f = None
         self.be = None
-        self.first_peak_energy = None
+        self.shift = shift
 
         def gs_orbitals(calc):
             indicees = []
@@ -155,12 +155,14 @@ class TDDFTPES(BasePES):
     def _create_f(self):
         self.f = (self.g * self.g).sum(axis=1)
 
-        if self.first_peak_energy == None:
-            self.first_peak_energy = (self.c_d.get_potential_energy() -
-                                      self.c_m.get_potential_energy())
+        if self.shift is True:
+            shift = (self.c_d.get_potential_energy() -
+                     self.c_m.get_potential_energy())
+        else:
+            shift = float(self.shift)
             
-        self.be = (self.first_peak_energy + 
-                   np.array([0] + list(self.lr_d.get_energies() * Hartree)))
+        self.be = (np.array([0] + list(self.lr_d.get_energies() * Hartree)) +
+                   shift)
 
     def _nuc_corr(self, i_m, j_d, k_m, k_d):
         ma = 0
