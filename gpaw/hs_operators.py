@@ -326,7 +326,7 @@ class MatrixOperator:
                 # A_NN += np.dot(dAP_ani[a], P_ni.T.conj())
                 gemm(1.0, P_ni, dAP_ani[a], 1.0, A_NN, 'c')
             domain_comm.sum(A_NN, 0)
-            return A_NN
+            return self.bmd.redistribute_output(A_NN)
         
         # Now it gets nasty! We parallelize over B groups of bands and
         # each band group is blocked in J smaller slices (less memory).
