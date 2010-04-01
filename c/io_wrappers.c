@@ -2,6 +2,7 @@
  *  Please see the accompanying LICENSE file for further information. */
 
 #include "extensions.h"
+#ifdef PARALLEL
 #ifdef IO_WRAPPERS
 #include "io_wrappers.h"
 #include <mpi.h>
@@ -567,20 +568,25 @@ size_t __wrap_fwrite ( const void * ptr, size_t size, size_t count, FILE * fp )
   }
 */
 #endif
+#endif
 
 // Python interfaces
 PyObject* Py_enable_io_wrappers(PyObject *self, PyObject *args)
 {
+#ifdef PARALLEL
 #ifdef IO_WRAPPERS
   enabled = 1;
+#endif
 #endif
   Py_RETURN_NONE;
 }
 
 PyObject* Py_disable_io_wrappers(PyObject *self, PyObject *args)
 {
+#ifdef PARALLEL
 #ifdef IO_WRAPPERS
   enabled = 0;
+#endif
 #endif
   Py_RETURN_NONE;
 }
