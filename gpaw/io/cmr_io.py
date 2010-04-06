@@ -27,7 +27,7 @@ class Writer:
     """ This class is a wrapper to the db output writer
     and intended to be used with gpaw
     """
-    def __init__(self, filename):
+    def __init__(self, filename, comm=None):
         self.verbose = False
         self.data = XMLData()
         self.data.set_calculator_name(CALCULATOR_GPAW)
