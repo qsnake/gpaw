@@ -2,7 +2,7 @@
 # Please see the accompanying LICENSE file for further information.
 
 import os
-import datetime
+import time
 import xml.sax
 
 import numpy as np
@@ -19,12 +19,15 @@ from cmr.io import WRITE_CONVERT
 from cmr.io import CONVERTION_ORIGINAL
 from cmr.static import CALCULATOR_GPAW
 
+def create_db_filename():
+    import cmr
+    return cmr.create_db_filename()
 
 class Writer:
     """ This class is a wrapper to the db output writer
     and intended to be used with gpaw
     """
-    def __init__(self, filename, comm):
+    def __init__(self, filename):
         self.verbose = False
         self.data = XMLData()
         self.data.set_calculator_name(CALCULATOR_GPAW)
@@ -35,7 +38,7 @@ class Writer:
 
         uname = os.uname()
         self.data['user']=os.getenv('USER', '???')
-        self.data['date']=datetime.datetime.today().isoformat(" ")
+        self.data['date']=time.asctime()
 
         self.data['arch']=uname[4]
         self.data['ase_dir']=os.path.dirname(ase.__file__)
@@ -144,7 +147,7 @@ class Reader:
     """ This class allows gpaw to access
     to read a db-file
     """
-    def __init__(self, name, comm):
+    def __init__(self, name):
         self.reader = cmr.read(name,
                                read_mode=READ_DATA,
                                evaluation_mode=EVALUATE,

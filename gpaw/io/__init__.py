@@ -14,7 +14,7 @@ def open(filename, mode='r', comm=mpi.world):
     if filename.endswith('.nc'):
         import gpaw.io.netcdf as io
     elif filename.endswith('.db'):
-        import gpaw.cmr.readwriter as io
+        import gpaw.io.cmr_io as io
     elif filename.endswith('.hdf5'):
         import gpaw.io.hdf5 as io
     else:
@@ -55,7 +55,7 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
       The directory ``mywfs`` is created if not present. XXX
 
     cmr_params specifies the parameters that should be used for CMR.
-    (see gpaw.cmr.README for more)
+    (Computational Materials Repository)
 
     Please note: mode argument is ignored by for CMR.
     """
@@ -81,7 +81,7 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
 
     if master:
         if filename == ".db":
-            from gpaw.cmr import create_db_filename
+            from cmr_io import create_db_filename
             filename = create_db_filename()
 
     if master or hdf5:

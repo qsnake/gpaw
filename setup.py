@@ -52,7 +52,6 @@ platform_id = ''
 packages = ['gpaw',
             'gpaw.analyse',
             'gpaw.atom',
-            'gpaw.db',
             'gpaw.eigensolvers',
             'gpaw.gllb',
             'gpaw.gllb.contributions',

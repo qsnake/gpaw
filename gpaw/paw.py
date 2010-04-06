@@ -652,7 +652,7 @@ class PAW(PAWTextOutput):
 
         use mode='all' to write the wave functions.  cmr_params is a
         dictionary that allows you to specify parameters for CMR
-        (see gpaw.cmr.README).
+        (Computational Materials Repository).
         """
         
         self.timer.start('IO')
