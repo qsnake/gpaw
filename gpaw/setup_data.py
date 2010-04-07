@@ -358,6 +358,8 @@ def search_for_file(name, world=None):
     if world is not None and world.size > 1:
         if world.rank == 0:
             filename, source = search_for_file(name)
+            if not source:
+                return filename, source
             string = filename + '|' + source
         else:
             string = None
