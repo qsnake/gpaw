@@ -17,7 +17,7 @@ import pickle
 from math import sin, cos, exp, pi, log, sqrt, ceil
 
 import numpy as np
-from numpy.fft import fftn, fftfreq, fft, ifftn
+from numpy.fft import fft, rfftn, irfftn
 
 from gpaw.utilities.timing import nulltimer
 from gpaw.xc_functional import XCFunctional
@@ -615,7 +615,9 @@ class FFTVDWFunctional(VDWFunctional):
             
         scale_c1 = (self.shape / (1.0 * gd.N_c))[:, np.newaxis]
         gdfft = GridDescriptor(self.shape, gd.cell_cv * scale_c1, True)
-        k_k = construct_reciprocal(gdfft)[0]**0.5
+        k_k = construct_reciprocal(gdfft)[0][:,
+                                             :,
+                                             :self.shape[2] // 2 + 1]**0.5
         k_k[0, 0, 0] = 0.0
 
 
@@ -669,7 +671,7 @@ class FFTVDWFunctional(VDWFunctional):
             self.timer.stop('hmm2')
             del C_pg
             self.timer.start('FFT')
-            theta_ak[a] = fftn(n_g * pa_g, self.shape).copy()
+            theta_ak[a] = rfftn(n_g * pa_g, self.shape).copy()
             if extra_parameters.get('vdw0'):
                 theta_ak[a][0, 0, 0] = 0.0
             self.timer.stop()
@@ -694,7 +696,9 @@ class FFTVDWFunctional(VDWFunctional):
         energy = 0.0
         for a in range(N):
             ranka = a * world.size // N
-            F_k = np.zeros(self.shape, complex)
+            F_k = np.zeros((self.shape[0],
+                            self.shape[1],
+                            self.shape[2] // 2 + 1), complex)
             for b in self.alphas:
                 self.timer.start('Convolution')
                 _gpaw.vdw2(self.phi_aajp[a, b], self.j_k, dj_k,
@@ -708,7 +712,10 @@ class FFTVDWFunctional(VDWFunctional):
             if world.rank == ranka:
                 if not self.energy_only:
                     F_ak[a] = F_k
-                energy += np.vdot(theta_ak[a], F_k).real
+                energy += np.vdot(theta_ak[a][:, :, 0], F_k[:, :, 0]).real
+                energy += np.vdot(theta_ak[a][:, :, -1], F_k[:, :, -1]).real
+                energy += 2 * np.vdot(theta_ak[a][:, :, 1:-1],
+                                      F_k[:, :, 1:-1]).real
 
             if self.verbose:
                 print a,
@@ -724,7 +731,7 @@ class FFTVDWFunctional(VDWFunctional):
             for a in self.alphas:
                 n1, n2, n3 = gd.get_size_of_global_array()
                 self.timer.start('iFFT')
-                F_ag[a] = ifftn(F_ak[a]).real[:n1, :n2, :n3].copy()
+                F_ag[a] = irfftn(F_ak[a]).real[:n1, :n2, :n3].copy()
                 self.timer.stop()
 
             self.timer.start('potential')
