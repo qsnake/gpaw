@@ -264,7 +264,7 @@ class EMTRunner(Runner):
 
 class GPAWRunner(Runner):
     """GPAW implementation"""
-    def set_parameters(self, vacuum=3.0, write_gpw_file=False, **kwargs):
+    def set_parameters(self, vacuum=3.0, write_gpw_file=None, **kwargs):
         self.vacuum = vacuum
         self.write_gpw_file = write_gpw_file
         self.gpwfilename = None
@@ -274,7 +274,7 @@ class GPAWRunner(Runner):
         kwargs = {}
         kwargs.update(self.input_parameters)
 
-        if self.write_gpw_file:
+        if self.write_gpw_file is not None:
             self.gpwfilename = filename[:-4] + 'gpw'
 
         if 'txt' not in kwargs:
@@ -302,8 +302,8 @@ class GPAWRunner(Runner):
         return self.calc
 
     def post_process(self, config):
-        if self.write_gpw_file:
-            self.calc.write(self.gpwfilename, mode='all')
+        if self.write_gpw_file is not None:
+            self.calc.write(self.gpwfilename, mode=self.write_gpw_file)
         
     def check_occupation_numbers(self, config):
         """Check that occupation numbers are integers."""

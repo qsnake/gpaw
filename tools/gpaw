@@ -88,7 +88,7 @@ for key in defaults:
     calc_opts.add_option('--%s' % key, type=str,
                          help='default=%default')
 
-calc_opts.add_option('--write-gpw-file', action='store_true',
+calc_opts.add_option('--write-gpw-file', metavar='MODE',
                      help='Write gpw file.')
 parser.add_option_group(calc_opts)
 
