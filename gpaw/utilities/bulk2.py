@@ -223,10 +223,15 @@ class Runner:
         natoms = len(self.atoms)
         eos = EquationOfState(self.volumes, self.energies)
         v, e, B = eos.fit()
-        a = a0 * (v / self.atoms.get_volume())**(1.0 / 3)
+        x = (v / self.atoms.get_volume())**(1.0 / 3)
+
         self.log('Fit using %d points:' % len(self.energies))
         self.log('Volume per atom: %.3f Ang^3' % (v / natoms))
-        self.log('Lattice constant: %.3f Ang' % a)
+        if a0:
+            a = a0 * x
+            self.log('Lattice constant: %.3f Ang' % a)
+        else:
+            a = None
         self.log('Bulk modulus: %.1f GPa' % (B * 1e24 / units.kJ))
         self.log('Total energy: %.3f eV (%d atom%s)' %
                  (e, natoms, ' s'[1:natoms]))
@@ -239,7 +244,7 @@ class Runner:
             plt.show()
             
         bulk = self.atoms.copy()
-        bulk.set_cell(a / a0 * bulk.cell, scale_atoms=True)
+        bulk.set_cell(x * bulk.cell, scale_atoms=True)
         self.write_optimized(bulk, e)
 
         return e, v, B, a
