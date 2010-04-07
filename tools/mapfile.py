@@ -29,6 +29,9 @@
 #
 # Further reading notes available here:
 # https://wiki.fysik.dtu.dk/gpaw/install/BGP/performance.html
+#
+# Some results can be found in doc/devel/Au_cluster
+#
 from sys import argv
 mode = argv[1]
 nodes = int(argv[2])
