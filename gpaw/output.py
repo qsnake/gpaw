@@ -162,57 +162,14 @@ class PAWTextOutput:
         eigensolver = p['eigensolver']
         if eigensolver is None:
             eigensolver = {'lcao':'lcao (direct)', 'fd':'rmm-diis'}[p['mode']]
-        t('Eigen Solver:      %s' % eigensolver)
+        t('Eigensolver:       %s' % eigensolver)
         if p['mode'] != 'lcao':
             t('                   (%s)' % fd(p['stencils'][0]))
-        diag_string = 'Lapack'
-        if sl_diagonalize: assert scalapack()
-        if scalapack() and sl_diagonalize:
-            assert len(sl_diagonalize) == 4
-            # set ScaLapack defaults
-            # cpus_per_node used only to make the topology of the grid
-            if sl_diagonalize[3] is 'd':
-                cpus_per_node = 4
-            else:
-                cpus_per_node = int(sl_diagonalize[3])
-            assert cpus_per_node > 0
-            npcol = max(1, cpus_per_node *
-                        (int(sqrt(size) / cpus_per_node + 0.5)))
-            nprow = min(max(1, int(size / npcol)), npcol)
-            npcol = max(max(1, int(size / npcol)), npcol)
-            sl_defaults = [nprow, npcol, 32, cpus_per_node]
-            for sl_args_index in range(len(sl_diagonalize)):
-                if sl_diagonalize[sl_args_index] is 'd':
-                    sl_diagonalize[sl_args_index] = sl_defaults[sl_args_index]
-            assert sl_diagonalize[0] * sl_diagonalize[1] <= size
-            diag_string = ('ScaLapack - grid: [nprow, npcol, nb] = %s'
-                           % sl_diagonalize[:3])
-        t('Diagonalizer:      %s' % diag_string)
-        inverse_cholesky_string = 'Lapack'
-        if sl_inverse_cholesky: assert parallel
-        if sl_inverse_cholesky: assert scalapack()
-        if scalapack() and sl_inverse_cholesky:
-            assert len(sl_inverse_cholesky) == 4
-            # set ScaLapack defaults
-            # cpus_per_node used only to make the topology of the grid
-            if sl_inverse_cholesky[3] is 'd':
-                cpus_per_node = 4
-            else:
-                cpus_per_node = int(sl_inverse_cholesky[3])
-            assert cpus_per_node > 0
-            npcol = max(1, cpus_per_node *
-                        (int(sqrt(size) / cpus_per_node + 0.5)))
-            nprow = min(max(1, int(size / npcol)), npcol)
-            npcol = max(max(1, int(size / npcol)), npcol)
-            sl_defaults = [nprow, npcol, 32, cpus_per_node]
-            for sl_args_index in range(len(sl_inverse_cholesky)):
-                if sl_inverse_cholesky[sl_args_index] is 'd':
-                    sl_inverse_cholesky[sl_args_index] = sl_defaults[sl_args_index]
-            assert sl_inverse_cholesky[0]*sl_inverse_cholesky[1] <= size
-            inverse_cholesky_string = ('ScaLapack' +
-                                       ' - grid: [nprow, npcol, nb] = %s'
-                                       % sl_inverse_cholesky[:3])
-        t('Inverse Cholesky:  %s' % inverse_cholesky_string)
+
+        parallelization_information = self.wfs.ksl.get_description()
+        t(parallelization_information)
+        t()
+        
         t('Poisson Solver:    %s \n                   (%s)' %
           ([0, 'GaussSeidel', 'Jacobi'][self.hamiltonian.poisson.relax_method],
            fd(self.hamiltonian.poisson.nn)))

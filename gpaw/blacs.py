@@ -500,9 +500,10 @@ from gpaw.matrix_descriptor import BandMatrixDescriptor, \
 
 def get_kohn_sham_layouts(mode, use_blacs, gd, bd, **kwargs):
     """Create Kohn-Sham layouts object."""
-    # Not needed for AtomPAW special mode, so we hack it...
+    # Not needed for AtomPAW special mode, as usual we just provide whatever
+    # happens to make the code not crash
     if not isinstance(mode, str):
-        return None
+        return BandLayouts(gd, bd, **kwargs) # XXX yuckk
     name = {'fd': 'BandLayouts', 'lcao': 'OrbitalLayouts'}[mode]
     if use_blacs:
         assert 'mcpus' in kwargs
@@ -552,6 +553,12 @@ class KohnShamLayouts:
 
     def __repr__(self):
         return uncamelcase(self.__class__.__name__)
+
+    def get_description(self):
+        """Description of this object in prose, e.g. for logging.
+
+        Subclasses are expected to override this with something useful."""
+        return repr(self)
 
 
 class BlacsLayouts(KohnShamLayouts):
@@ -621,6 +628,9 @@ class BandLayouts(KohnShamLayouts):
             return inverse_cholesky(S_NN)
         else:
             return 0
+
+    def get_description(self):
+        return 'Using serial LAPACK for diagonalization and inverse Cholesky'
 
 
 class OldSLBandLayouts(BandLayouts): #old SL before BLACS grids. TODO delete!
@@ -748,6 +758,11 @@ class BlacsBandLayouts(BlacsLayouts): #XXX should derive from BandLayouts too!
         self.nndescriptor.inverse_cholesky(S_nn, 'L')
         return 0 #XXX scalapack_inverse_cholesky doesn't return this info!!!
 
+    def get_description(self):
+        s1 = 'Using ScaLAPACK/BLACS for diagonalization and inverse cholesky'
+        s2 = 'miscellaneous information about parallelization...'
+        # XXX update this
+        return '\n'.join([s1, s2])
 
 class BlacsOrbitalLayouts(BlacsLayouts):
     """ScaLAPACK Dense Linear Algebra.
@@ -911,11 +926,18 @@ class BlacsOrbitalLayouts(BlacsLayouts):
         # method should be changed
         return self.calculate_density_matrix(f_n, C_nM, rho_mM)
 
+    def get_description(self):
+        s1 = 'Parallelization over orbitals using ScaLAPACK/BLACS'
+        bg = self.blockgrid
+        desc = self.mmdescriptor
+        template = 'Diagonalization grid %d x %d, block size %d x %d'
+        s2 = template % (bg.npcol, bg.nprow, desc.mb, desc.nb)
+        return '\n'.join([s1, s2])
 
 class OrbitalLayouts(KohnShamLayouts):
     def __init__(self, gd, bd, nao, timer=nulltimer):
         KohnShamLayouts.__init__(self, gd, bd, timer)
-        self._kwargs.update({'nao':nao})
+        self._kwargs.update({'nao': nao})
         self.mMdescriptor = MatrixDescriptor(nao, nao)
         self.nMdescriptor = MatrixDescriptor(bd.mynbands, nao)
         
@@ -990,6 +1012,9 @@ class OrbitalLayouts(KohnShamLayouts):
         r2k(0.5, C_Mn, f_n * C_Mn, 0.0, rho_MM)
         tri2full(rho_MM)
         return rho_MM
+
+    def get_description(self):
+        return 'Using serial diagonalizer from LAPACK'
 
 
 class OldSLOrbitalLayouts(OrbitalLayouts): #old SL before BLACS grids. TODO delete!
