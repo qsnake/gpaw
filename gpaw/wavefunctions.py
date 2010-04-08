@@ -931,7 +931,7 @@ class GridWaveFunctions(WaveFunctions):
             # will make it necessary to do this for some reason.
             density.calculate_normalized_charges_and_mix()
         hamiltonian.update(density)
-
+                
         if self.kpt_u[0].psit_nG is None:
             self.initialize_wave_functions_from_basis_functions(
                 basis_functions, density, hamiltonian, spos_ac)
@@ -944,6 +944,7 @@ class GridWaveFunctions(WaveFunctions):
             self.timer.start('Random wavefunction initialization')
             for kpt in self.kpt_u:
                 kpt.psit_nG = self.gd.zeros(self.mynbands, self.dtype)
+                kpt.W_nn    = np.zeros(self.nbands,self.nbands, dtype=self.dtype)
             self.random_wave_functions(0)
             self.timer.stop('Random wavefunction initialization')
             return
@@ -994,6 +995,7 @@ class GridWaveFunctions(WaveFunctions):
         self.timer.start('LCAO to grid')
         for kpt in self.kpt_u:
             kpt.psit_nG = self.gd.zeros(self.mynbands, self.dtype)
+            kpt.W_nn    = np.zeros((self.nbands,self.nbands),dtype=self.dtype)
             basis_functions.lcao_to_grid(kpt.C_nM, 
                                          kpt.psit_nG[:lcaomynbands], kpt.q)
             kpt.C_nM = None
@@ -1015,6 +1017,7 @@ class GridWaveFunctions(WaveFunctions):
         for kpt in self.kpt_u:
             file_nG = kpt.psit_nG
             kpt.psit_nG = self.gd.empty(self.mynbands, self.dtype)
+            kpt.W_nn    = np.zeros((self.nbands,self.nbands),dtype=self.dtype)
             # Read band by band to save memory
             for n, psit_G in enumerate(kpt.psit_nG):
                 if self.gd.comm.rank == 0:
