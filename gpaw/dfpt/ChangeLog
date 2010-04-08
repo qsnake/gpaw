@@ -1,0 +1,5 @@
+2010-04-08
+ - Density is calculated as a complex quantity
+2010-03-29
+ - Implementation for periodic system initiated
+ - Changed default solver method from `gmres` to `cg` in ScipyLinearSolver

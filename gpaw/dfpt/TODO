@@ -1,0 +1,10 @@
+2010-04-08
+ - Generalize Poisson solver to handle complex potentials with Bloch BC's
+ - Generalize mixer to handle complex densities
+ - Generalize `second_derivative` method in the LFC class to arbitraty angular momentum
+ - Improve the `add_derivative` method of the LFC class
+ - Generalize `dict` method of the LFC class to provide dicts for integrals with second derivatives
+ - Does the linear solver handle complex vectors ??
+ - Implement q-vectors
+ - Implement symmetries
+ - Convergence criteria for density (and wave functions)
