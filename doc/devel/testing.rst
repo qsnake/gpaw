@@ -34,7 +34,7 @@ A temporary directory will be made and the tests will run in that
 directory.  If all tests pass, the directory is removed.
 
 The test suite consists of a large number of small and quick tests
-found in the :svn:`gpaw/test` directory.  Here are the results from a
+found in the :trac:`gpaw/test` directory.  Here are the results from a
 recent :ref:`test run <testsuite>`.  The tests run nightly in serial
 and in parallel.
 
@@ -55,7 +55,11 @@ A test script should fulfill a number of requirements:
 
 A test can produce standard output and files - it doesn't have to
 clean up.  Remember to add the new test to list of all tests specified
-in the :svn:`gpaw/test/__init__.py` file.
+in the :trac:`gpaw/test/__init__.py` file.
+
+Use this function to check results:
+
+.. function:: gpaw.test.equal(x, y, tolerance=0, fail=True, msg='')
 
 
 .. _big test:
@@ -63,6 +67,6 @@ in the :svn:`gpaw/test/__init__.py` file.
 Big tests
 =========
 
-The directory in :svn:`gpaw/test/big` contains a set of longer and
+The directory in :trac:`gpaw/test/big` contains a set of longer and
 more realistic tests.  These can be submitted to a queueing system of
 a large computer using the :program:`gpaw-weekly-big-test` command ...
