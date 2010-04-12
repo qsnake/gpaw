@@ -70,3 +70,40 @@ Big tests
 The directory in :trac:`gpaw/test/big` contains a set of longer and
 more realistic tests.  These can be submitted to a queueing system of
 a large computer using the :program:`gpaw-weekly-big-test` command ...
+
+Adding new tests
+----------------
+
+To add a new test, create a script somewhere in the file hierarchy ending with
+.agts.py (e.g. ``submit.agts.py``). This script defines how a number of scripts
+should be submitted to niflheim and how they depend on each other. Consider an
+example where one script, calculate.py, calculates something and saves a .gpw
+file and another script, analyse.py, analyses this output. Then the submit
+script should look something like::
+
+    def agtsmain(env):
+        metadata0 = dict(ncpus=8,
+                         walltime=25)
+        calc = env.add('calculate.py', metadata0)
+
+        metadata1 = dict(ncpus=1,
+                         walltime=5,
+                         depends=[calc])
+        env.add('analyse.py', metadata1)
+
+As shown, this script has to contain the definition of the function ``agtsmain``
+which should take exactly one argument, ``env``. Then some metadata for each
+script is defined and they are added to ``env``. Note how ``env.add`` returns a
+job object which can be used to specify dependencies.
+
+Possible metadata keys are
+
+=============  ========  =============  ===================================
+Name           Type      Default value  Description
+=============  ========  =============  ===================================
+``ncpu``       ``int``                  Number of cpus
+``walltime``   ``int``                  Requested walltime in minutes
+``depends``    ``list``                 List of jobs this job depends on
+=============  ========  =============  ===================================
+
+
