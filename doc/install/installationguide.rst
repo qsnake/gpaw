@@ -125,6 +125,12 @@ If tests pass, and the parallel version is built, test the parallel code::
   1
   0
 
+.. note::
+
+   Many MPI versions have their own `-c` option which may
+   invalidate python command line options. In this case
+   test the parallel code as in the example below.
+
 Try also::
 
   [test]$ cd ~/gpaw/examples
