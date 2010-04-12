@@ -82,28 +82,29 @@ file and another script, analyse.py, analyses this output. Then the submit
 script should look something like::
 
     def agtsmain(env):
-        metadata0 = dict(ncpus=8,
-                         walltime=25)
-        calc = env.add('calculate.py', metadata0)
+        calc = env.add('calculate.py',
+                       ncpus=8,
+                       walltime=25)
 
-        metadata1 = dict(ncpus=1,
-                         walltime=5,
-                         depends=[calc])
-        env.add('analyse.py', metadata1)
+        env.add('analyse.py'
+                ncpus=1,
+                walltime=5,
+                depends=[calc])
 
 As shown, this script has to contain the definition of the function ``agtsmain``
-which should take exactly one argument, ``env``. Then some metadata for each
-script is defined and they are added to ``env``. Note how ``env.add`` returns a
-job object which can be used to specify dependencies.
+which should take exactly one argument, ``env``. Then each script is added to
+the environment, ``env``, along with some data which defines how and when to
+run the job.  Note how ``env.add`` returns a job object which can be used to
+specify dependencies.
 
-Possible metadata keys are
+Possible keys are:
 
 =============  ========  =============  ===================================
 Name           Type      Default value  Description
 =============  ========  =============  ===================================
-``ncpu``       ``int``                  Number of cpus
+``ncpus``      ``int``                  Number of cpus
 ``walltime``   ``int``                  Requested walltime in minutes
-``depends``    ``list``                 List of jobs this job depends on
+``depends``    ``list``  []             List of jobs this job depends on
 =============  ========  =============  ===================================
 
 
