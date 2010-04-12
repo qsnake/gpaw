@@ -582,7 +582,6 @@ class Setup(BaseSetup):
         self.B_ii = self.calculate_projector_overlaps(r_g, dr_g, pt_jg)
 
         if data.phicorehole_g is not None:
-            print "ok"
             self.calculate_oscillator_strengths(r_g, dr_g, phi_jg)
 
         # Construct splines:
