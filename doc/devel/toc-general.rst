@@ -6,7 +6,7 @@
    debugging
    profiling
    coverage
-   testsuite
+   testing
 
    bugs
    newrelease
