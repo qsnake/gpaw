@@ -7,6 +7,7 @@
    profiling
    coverage
    testing
+   testsuite
 
    bugs
    newrelease
