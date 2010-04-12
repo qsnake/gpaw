@@ -168,7 +168,7 @@ class TDDFTPES(BasePES):
         ma = 0
         
         for a, P_ni_m in self.c_m.wfs.kpt_u[k_m].P_ani.items():
-            P_ni_d = self.c_d.wfs.kpt_u[k_d].P_ani.items()[a][1]
+            P_ni_d = self.c_d.wfs.kpt_u[k_d].P_ani[a]
             Pi_i = P_ni_m[i_m]
             Pj_i = P_ni_d[j_d]
             Delta_pL = self.c_m.wfs.setups[a].Delta_pL
