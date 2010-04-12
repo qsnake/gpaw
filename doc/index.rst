@@ -53,7 +53,10 @@ algorithms used <features_and_algorithms>`.
 News
 ====
 
-* GPAW now measures :ref:`code coverage <coverage>` of the test suite (Nov 5 2009)
+* GPAW is :math:`\Psi_k` `scientific highlight of the month`_ (Apr 3 2010)
+
+* GPAW now measures :ref:`code coverage <coverage>` of the test suite
+  (Nov 5 2009)
 
 * A third GPAW code sprint was successfully hosted at CAMD (Oct 20 2009)
 
@@ -100,3 +103,4 @@ News
 .. _CAMd summer school 2008: http://www.camd.dtu.dk/English/Events/CAMD_Summer_School_2008/Programme.aspx
 .. _code sprint 2007: http://www.dtu.dk/Nyheder/Nyt_fra_Institutterne.aspx?guid={38B92D63-FB09-4DFA-A074-504146A2D678}
 .. _Virtual NanoLab: http://www.quantumwise.com/products/12-products/28-atk-se-200906#GPAW
+.. _scientific highlight of the month: http://www.psi-k.org/newsletters/News_98/Highlight_98.pdf
