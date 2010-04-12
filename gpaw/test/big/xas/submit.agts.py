@@ -1,4 +1,4 @@
-def main(env):
+def agtsmain(env):
     metadata0 = dict(ncpus=1,
                      walltime=1)
     setups = env.add('setups.wrap.py', metadata0)
