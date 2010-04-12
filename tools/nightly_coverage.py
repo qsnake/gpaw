@@ -251,7 +251,7 @@ class CoverageIO(TableIO):
 # -------------------------------------------------------------------
 
 def fail(subject, filename='/dev/null'):
-    assert os.system('mail -s "%s" s032082@fysik.dtu.dk < %s' %
+    assert os.system('mail -s "%s" christian.glinsvad@fysik.dtu.dk < %s' %
                      (subject, filename)) == 0
     raise SystemExit
 
