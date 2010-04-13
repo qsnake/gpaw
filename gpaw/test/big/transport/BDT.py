@@ -1,11 +1,3 @@
-#!/usr/bin/env python
-#PBS -N ABA
-#PBS -e ABA.err
-#PBS -o ABA.log
-#PBS -m ae
-#PBS -q verylong
-#PBS -l nodes=4:ppn=4:opteron285
-
 from gpaw import *
 from ase import *
 from ase.lattice.surface import fcc111
