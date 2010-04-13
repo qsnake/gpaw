@@ -38,9 +38,9 @@ def h2gpts(h, cell_cv,idiv=4):
         Unit cell.
     """
 
-    L_c = (cell_cv**2).sum(1)**0.5
-    d = h * (L_c.prod() / abs(np.linalg.det(cell_cv)))**(1.0 / 3.0)
-    return np.maximum(idiv, (L_c / d / idiv + 0.5).astype(int) * idiv)
+    L_c = (np.linalg.inv(cell_cv)**2).sum(0)**-0.5
+    return np.maximum(idiv, (L_c / h / idiv + 0.5).astype(int) * idiv)
+
 
 def gcd(a, b):
     """Return greatest common divisor of a and b, using the

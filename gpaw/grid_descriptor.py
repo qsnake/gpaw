@@ -494,7 +494,7 @@ class GridDescriptor(Domain):
         r_vG = np.dot(np.indices(self.n_c, dtype).T + self.beg_c,
                       self.h_cv).T.copy()
         if global_array:
-            return self.collect(r_vG, broadcast=True)
+            return self.collect(r_vG, broadcast=True)  # XXX waste!
         else:
             return r_vG
 

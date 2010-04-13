@@ -24,8 +24,8 @@ try:
 
     energy_tolerance = 0.00015
     niter_tolerance = 0
-    equal(e0, -0.01040809, energy_tolerance)
-    equal(niter0, 17, niter_tolerance)
+    equal(e0, -0.0107707223, energy_tolerance)
+    equal(niter0, 14, niter_tolerance)
 except:
     extra_parameters['usenewxc'] = usenewxc
     raise

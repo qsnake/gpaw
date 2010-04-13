@@ -17,6 +17,6 @@ atoms = Atoms(symbols='Si2', pbc=True,
 E = atoms.get_potential_energy()
 niter = calc.get_number_of_iterations()
 
-equal(E, -11.8572, 0.0001)
-equal(atoms.calc.get_fermi_level(), 5.16301, 0.005)
-assert 21 <= niter <= 23, niter
+equal(E, -11.80913, 0.0001)
+equal(atoms.calc.get_fermi_level(), 5.15687, 0.005)
+assert 24 <= niter <= 26, niter
