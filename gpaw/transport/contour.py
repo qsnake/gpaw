@@ -263,7 +263,7 @@ class Contour:
     ne_err = 1e-4
     eta = 1e-2
     plot_eta = 1e-4
-    kt = 0.1
+    #kt = 0.1
     nkt = 0.8
     dkt = 0.8 * np.pi
     calcutype = ['eqInt', 'eqInt', 'eqInt', 'resInt', 'neInt', 'locInt']
@@ -283,7 +283,7 @@ class Contour:
         self.comm = comm
         if self.comm == None:
             self.comm = world
-        assert np.abs(self.kt - 0.1) < 1e-6
+        #assert np.abs(self.kt - 0.1) < 1e-6
         self.maxdepth = maxdepth
         self.num = 10 ** (self.maxdepth - 1)
         self.converged_zones = []
