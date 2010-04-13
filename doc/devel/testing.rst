@@ -102,9 +102,9 @@ Possible keys are:
 =============  ========  =============  ===================================
 Name           Type      Default value  Description
 =============  ========  =============  ===================================
-``ncpus``      ``int``                  Number of cpus
-``walltime``   ``int``                  Requested walltime in minutes
-``depends``    ``list``  []             List of jobs this job depends on
+``ncpus``      ``int``   ``1``          Number of cpus
+``walltime``   ``int``   ``15``         Requested walltime in minutes
+``depends``    ``list``  ``[]``         List of jobs this job depends on
 =============  ========  =============  ===================================
 
 
