@@ -68,11 +68,11 @@ class Transport(GPAW):
             if key in ['use_lead', 'identical_leads',
                        'pl_atoms', 'pl_cells', 'pl_kpts', 'leads',
                        'use_buffer', 'buffer_atoms', 'edge_atoms', 'bias',
-                       'lead_restart', 'use_guess_file',
+                       'lead_restart', 'use_guess_file', 'special_datas',
                        
                        'lead_atoms', 'nleadlayers', 'mol_atoms', 'la_index',
                        
-                       'LR_leads', 'gate',                       
+                       'LR_leads', 'gate', 'gate_mode', 'gate_atoms',                   
                        'recal_path', 'min_energy',
                        'use_qzk_boundary',
                        'scat_restart', 'save_file', 'restart_file',
@@ -118,6 +118,8 @@ class Transport(GPAW):
             
         self.LR_leads = p['LR_leads']            
         self.gate = p['gate']
+        self.gate_mode = p['gate_mode']
+        self.gate_atoms = p['gate_atoms']
         self.recal_path = p['recal_path']
         self.min_energy = p['min_energy']
         self.use_qzk_boundary = p['use_qzk_boundary']
@@ -132,6 +134,7 @@ class Transport(GPAW):
         self.fixed = p['fixed_boundary']
         self.non_sc = p['non_sc']
         self.data_file = p['data_file']
+        self.special_datas = p['special_datas']
         self.analysis_data_list = p['analysis_data_list']
         self.save_bias_data = p['save_bias_data']
         self.se_data_path = p['se_data_path']
@@ -154,7 +157,7 @@ class Transport(GPAW):
             raise RuntimeError('wrong way to use keyword LR_leads')
        
         self.initialized_transport = False
-        self.analysis_parameters = []            
+        self.analysis_parameters = []
         self.atoms_l = [None] * self.lead_num
         self.optimize = False        
         kpts = kw['kpts']
@@ -194,6 +197,7 @@ class Transport(GPAW):
 
         p['data_file'] = None
         p['analysis_data_list'] = []
+        p['special_datas'] = []
         p['save_bias_data'] = True
         p['analysis_mode'] = 0
         p['normalize_density'] = True
@@ -205,6 +209,8 @@ class Transport(GPAW):
         
         p['LR_leads'] = True
         p['gate'] = 0
+        p['gate_mode'] = 'VG'
+        p['gate_atoms'] = None
         p['recal_path'] = False
         p['min_energy'] = -700
         p['guess_steps'] = 30
@@ -383,7 +389,16 @@ class Transport(GPAW):
                 kpt.v = kpt.s
             else:
                 kpt.v = 0
-       
+
+    def initial_gate(self):
+        if self.gate_mode == 'SN':
+            assert self.gate_atoms is not None
+            #self.gate_rhot_g = 
+
+        elif self.gate_mode == 'AN':
+            setups = self.wfs.setups
+            self.gate_basis_index = get_atom_indices(self.gate_atoms, setups)
+     
     def get_hamiltonian_initial_guess(self):
         atoms = self.atoms.copy()
         #atoms.pbc[self.d] = True
@@ -864,11 +879,21 @@ class Transport(GPAW):
                 else:
                     d_mm = self.fock2den(s, k)
                 d_mm = self.spin_coff * (d_mm + d_mm.T.conj()) / (2 * self.npk)
+                if self.gate_mode == 'AN':
+                    d_mm_gate_plus = self.gate_filling()
+                    d_mm += d_mm_gate_plus
                 self.hsd.reset(s, k, d_mm, 'D') 
         self.timer.stop('DenMM')
         self.print_boundary_charge()
         if self.master:
             self.text('DenMM', self.timer.timers['DenMM', ], 'second')
+
+    def gate_filling(self):
+        ind = get_matrix_index(self.gate_basis_index)
+        sub_overlap = self.hsd.S[0][0].recover()[ind.T, ind]
+        unit_charge = np.trace(sub_overlap)        
+        dmm_plus = self.gate_charge / unit_charge * np.eye(len(ind))
+        return dmm_plus
 
     def iterate(self):
         if self.master:
@@ -944,7 +969,7 @@ class Transport(GPAW):
             for i in range(self.lead_num):
                 bias_info += 'lead' + str(i) + ': ' + str(self.bias[i]) + 'V'
             self.text(bias_info)
-            self.text('Gate: %f V' % self.gate)
+            self.text('Gate (Gate_Mode): %f V %s' % (self.gate, self.gate_mode))
 
         if not hasattr(self, 'analysor'):
             self.analysor = Transport_Analysor(self)
@@ -1496,8 +1521,9 @@ class Transport(GPAW):
         self.timer.start('project hamiltonian')
         h_spkmm, s_pkmm = self.get_hs(self.extended_calc)
         
-        #ind = get_matrix_index(self.gate_mol_index)
-        #h_spkmm[:, :, ind.T, ind] += self.gate * s_pkmm[:, ind.T, ind]        
+        if self.gate_mode == 'VM':
+            ind = get_matrix_index(self.gate_mol_index)
+            h_spkmm[:, :, ind.T, ind] += self.gate * s_pkmm[:, ind.T, ind]        
 
         self.timer.stop('project hamiltonian')                  
        
@@ -1699,8 +1725,12 @@ class Transport(GPAW):
 
         actual_charge = self.finegd.integrate(density.rhot_g)
         self.text('actual_charge' + str(actual_charge))
-        if self.fixed:
+        if self.fixed and self.gate_mode == 'VG':
             density.rhot_g += self.surround.gate_rhot_g
+
+        if self.fixed and self.gate_mode == 'SN':
+            density.rhot_g += self.gate_rhot_g
+
         ham.npoisson = self.inner_poisson.solve(self.hamiltonian.vHt_g,
                                                   density.rhot_g,
                                                   charge=-density.charge)
@@ -2130,8 +2160,9 @@ class Transport(GPAW):
             self.surround.combine_dH_asp(dH_asp)
             self.gd1.distribute(vt_sG, self.extended_calc.hamiltonian.vt_sG) 
             h_spkmm, s_pkmm = self.get_hs(self.extended_calc)
-            #ind = get_matrix_index(self.gate_mol_index)
-            #h_spkmm[:, :, ind.T, ind] += self.gate * s_pkmm[:, ind.T, ind]   
+            if self.gate_mode == 'VM':
+                ind = get_matrix_index(self.gate_mol_index)
+                h_spkmm[:, :, ind.T, ind] += self.gate * s_pkmm[:, ind.T, ind]   
             
             nb = s_pkmm.shape[-1]
             dtype = s_pkmm.dtype
