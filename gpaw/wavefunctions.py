@@ -470,6 +470,15 @@ class LCAOWaveFunctions(WaveFunctions):
         Mstop = self.ksl.Mstop
         Mstart = self.ksl.Mstart
         mynao = Mstop - Mstart
+
+        if self.ksl.using_blacs: # XXX
+            # S and T have been distributed to a layout with blacs, so
+            # discard them to force reallocation from scratch.
+            #
+            # TODO: evaluate S and T when they *are* distributed, thus saving
+            # memory and avoiding this problem
+            self.S_qMM = None
+            self.T_qMM = None
         
         S_qMM = self.S_qMM
         T_qMM = self.T_qMM
@@ -482,7 +491,9 @@ class LCAOWaveFunctions(WaveFunctions):
                 
             S_qMM = np.empty((nq, mynao, nao), self.dtype)
             T_qMM = np.empty((nq, mynao, nao), self.dtype)
-            for kpt in self.kpt_u:
+        
+        for kpt in self.kpt_u:
+            if kpt.C_nM is None:
                 kpt.C_nM = np.empty((mynbands, nao), self.dtype)
 
         self.allocate_arrays_for_projections(
