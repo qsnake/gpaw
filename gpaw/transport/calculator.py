@@ -354,7 +354,7 @@ class Transport(GPAW):
         #if self.analysis_mode > -3:
             #del self.wfs
             #self.wfs = self.extended_calc.wfs
-
+        self.initialize_gate() 
         self.initialized_transport = True
         self.neutral = True
         self.matrix_mode = 'sparse'
@@ -390,7 +390,7 @@ class Transport(GPAW):
             else:
                 kpt.v = 0
 
-    def initial_gate(self):
+    def initialize_gate(self):
         if self.gate_mode == 'SN':
             assert self.gate_atoms is not None
             #self.gate_rhot_g = 
@@ -881,7 +881,8 @@ class Transport(GPAW):
                 d_mm = self.spin_coff * (d_mm + d_mm.T.conj()) / (2 * self.npk)
                 if self.gate_mode == 'AN':
                     d_mm_gate_plus = self.gate_filling()
-                    d_mm += d_mm_gate_plus
+                    ind = get_matrix_index(self.gate_basis_index)
+                    d_mm[ind.T, ind] += d_mm_gate_plus
                 self.hsd.reset(s, k, d_mm, 'D') 
         self.timer.stop('DenMM')
         self.print_boundary_charge()
@@ -890,9 +891,9 @@ class Transport(GPAW):
 
     def gate_filling(self):
         ind = get_matrix_index(self.gate_basis_index)
-        sub_overlap = self.hsd.S[0][0].recover()[ind.T, ind]
+        sub_overlap = self.hsd.S[0].recover()[ind.T, ind]
         unit_charge = np.trace(sub_overlap)        
-        dmm_plus = self.gate_charge / unit_charge * np.eye(len(ind))
+        dmm_plus = self.gate / unit_charge * np.eye(len(ind))
         return dmm_plus
 
     def iterate(self):
