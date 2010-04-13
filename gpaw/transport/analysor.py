@@ -791,6 +791,10 @@ class Transport_Analysor:
         self.data['contour'] = contour
         self.data['force'] = force
         
+        for condition, obj, name in tp.special_datas:
+            if eval(condition):
+                self.data[name] = eval(obj)
+       
         if world.rank == 0:
             if self.tp.analysis_mode == -2:
                 filename = '/abias_step_' + str(self.n_bias_step)
