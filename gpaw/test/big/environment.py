@@ -1,5 +1,8 @@
 import os
+import sys
 import time
+
+import numpy as np
 
 import gpaw
 
@@ -13,7 +16,7 @@ state:
 
 
 class AGTSJob:
-    def __init__(self, agtsname, script, metadata, id):
+    def __init__(self, agtsname, script, argstring, metadata, id):
         self.metadata = metadata
         name1, agts, py = agtsname.rsplit('.', 2)
         self.identifier = '.'.join([name1, agts, str(id), py])
@@ -22,6 +25,7 @@ class AGTSJob:
         self.directory = dir
         self.filename = filename
         self.dependencies = [] # XXXX
+        self.argstring = argstring
 
     def is_submitted(self):
         return self.status != 'waiting'
@@ -37,12 +41,23 @@ class AGTSJob:
 
 
 class DryProfile:
+    def __init__(self):
+        self.rng = np.random.RandomState(42)
+    
     def gpaw_compile_cmd(self):
         return 'echo hello'
 
     def submit(self, job):
-        template = '(touch %s.start; sleep 10; touch %s.done) &'
-        os.system(template % (job.identifier, job.identifier))
+        duration = self.rng.randint(4, 12)
+        if self.rng.rand() < 0.4:
+            # randomly fail some of the jobs
+            result = 'failed'
+        else:
+            result = 'done'
+            
+        template = '(touch %s.start; sleep %s; touch %s.%s) &'
+        os.system(template % (job.identifier, duration, job.identifier,
+                              result))
 
     def update_job_status(self, job):
         id = job.identifier
@@ -50,6 +65,8 @@ class DryProfile:
             job.status = 'done'
         elif os.path.exists('%s.start' % id):
             job.status = 'running'
+        if os.path.exists('%s.failed' % id):
+            job.status = 'failed'
         
 
 class AGTSRunner:
@@ -62,7 +79,6 @@ class AGTSRunner:
                      done=0,
                      failed=0)
         for job in jobs:
-        #for key, (script, job) in ensemble.items():
             if not job.is_running():
                 ready = True
                 for dep in job.dependencies:
@@ -92,10 +108,11 @@ class AGTSRunner:
         
         while True:
             stats = self.check(jobs)
-            njobs = len(stats)
+            njobs = len(jobs)
             print stats
-            over = stats['done'] + stats['failed']
-            if over == njobs:
+            ndone = stats['done'] + stats['failed']
+            print 'ended: %d, total: %d' % (ndone, njobs)
+            if ndone == njobs:
                 return
             time.sleep(2.0)
 
@@ -121,17 +138,21 @@ class Collector:
             print fname
             metadatalist = []
             class MetaDataCollector:
-                def process(self, script, metadata, depends=None):
-                    metadata = dict(metadata)
+                def add(self, script, intradepends=None, **kwargs):
+                    tokens = script.split()
+                    script = tokens[0]
+                    argstring = ' '.join(tokens[1:])
+                    #script, argstring = script.split('\\s', 1)
+                    metadata = dict(kwargs)
                     if not 'depends' in metadata: # more 'cleaning' required?
                         metadata['depends'] = []
                     id = len(metadatalist)
                     key = (fname, script)
-                    if depends is not None:
-                        dep_key, dep_id = depends
+                    if intradepends is not None:
+                        dep_key, dep_id = intradepends
                         dependency_job = ensemble[dep_key][dep_id]
                         metadata['depends'].append(dependency_job.identifier)
-                    job = AGTSJob(fname, script, metadata, id)
+                    job = AGTSJob(fname, script, argstring, metadata, id)
                     if not metadatalist:
                         ensemble[key] = metadatalist
                     metadatalist.append(job)
@@ -141,8 +162,12 @@ class Collector:
             # yuckkk
             glob = {}
             execfile(fname, glob)
-            main = glob['main']
-            main(m)
+            main = glob['agtsmain']
+            try:
+                main(m)
+            except:
+                print >> sys.stderr, 'Bad things happened in %s' % fname
+                raise
         return ensemble
 
 
