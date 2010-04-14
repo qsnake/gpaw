@@ -1,3 +1,3 @@
 def agtsmain(env):
-    env.add('BDT.py', ncpus=4, walltime=4)
+    env.add('BDT.py', ncpus=8, walltime=2 * 60)
 
