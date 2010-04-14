@@ -206,8 +206,8 @@ class StepTimer(Timer):
         del self.timers[self.now]
         self.start(self.now)
 
-class TauTimer(Timer):
-    """TauTimer requires installation of the TAU Performance System
+class TAUTimer(Timer):
+    """TAUTimer requires installation of the TAU Performance System
     http://www.cs.uoregon.edu/research/tau/home.php
 
     The TAU Python API will not output any data if there are any
