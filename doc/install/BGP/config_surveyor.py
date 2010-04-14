@@ -286,7 +286,6 @@ def mtime(path, name, mtimes):
     This function fails if two include files with the same name
     are present in different directories."""
 
-#    global mtimes
     include = re.compile('^#\s*include "(\S+)"', re.MULTILINE)
 
     if mtimes.has_key(name):
@@ -294,11 +293,8 @@ def mtime(path, name, mtimes):
     t = os.stat(os.path.join(path, name))[ST_MTIME]
     for name2 in include.findall(open(os.path.join(path, name)).read()):
         path2, name22 = os.path.split(name2)
-        if (path2 != ''):
-            name2 = name22
-            path = os.path.join(path, path2)
-        if name2 != name:
-            t = max(t, mtime(path, name2,mtimes))
+        if name22 != name:
+            t = max(t, mtime(os.path.join(path, path2), name22, mtimes))
     mtimes[name] = t
     return t
 
@@ -377,6 +373,10 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
 
     cfiles = glob('c/[a-zA-Z_]*.c') + ['c/bmgs/bmgs.c']
     cfiles += glob('c/libxc/src/*.c')
+    if ('HDF5', 1) in define_macros:
+        cfiles += glob('h5py/c/*.c')
+        cfiles += glob('h5py/c/lzf/*.c')
+
     cfiles2remove = ['c/libxc/src/test.c',
                      'c/libxc/src/xc_f.c',
                      'c/libxc/src/work_gga_x.c',
@@ -389,7 +389,7 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
     for c2r in cfiles2remove: cfiles.remove(c2r)
     sources = ['c/bc.c', 'c/localized_functions.c', 'c/mpi.c', 'c/_gpaw.c',
                'c/operators.c', 'c/transformers.c', 'c/compiled_WITH_SL.c',
-               'c/blacs.c']
+               'c/blacs.c', 'c/io_wrappers.c']
     objects = ' '.join(['build/temp.%s/' % plat + x[:-1] + 'o'
                         for x in cfiles])
 
@@ -397,7 +397,7 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
         os.makedirs('build/bin.%s/' % plat)
     exefile = 'build/bin.%s/' % plat + '/gpaw-python'
 
-    libraries += mpi_libraries
+    # libraries += mpi_libraries
     library_dirs += mpi_library_dirs
     define_macros += mpi_define_macros
     include_dirs += mpi_include_dirs
@@ -418,7 +418,8 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
     # BlueGene/P statically links everything except
     # python, runtime and pthread library
     libs += ' -Wl,-dy'
-    libs += ' -lpython%s' % cfgDict['VERSION']
+    libs += ' -lpython%s ' % cfgDict['VERSION']
+    libs += ' '.join(['-l' + lib for lib in mpi_libraries])
     libs += ' -lrt -lpthread'
     # libs = ' '.join([libs, cfgDict['LIBS'], cfgDict['LIBM']])
 
@@ -443,6 +444,38 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
         pass
     else:
         extra_link_args.append(cfgDict['LINKFORSHARED'])
+
+    if ('IO_WRAPPERS', 1) in define_macros:
+        extra_link_args += ['-Wl,-wrap,fread',
+                            '-Wl,-wrap,_IO_getc',
+                            '-Wl,-wrap,getc_unlocked',
+                            '-Wl,-wrap,fgets',
+                            '-Wl,-wrap,ungetc',
+                            '-Wl,-wrap,feof',
+                            '-Wl,-wrap,ferror',
+                            '-Wl,-wrap,fflush',
+                            '-Wl,-wrap,fseek',
+                            '-Wl,-wrap,rewind',
+                            # '-Wl,-wrap,fileno',
+                            '-Wl,-wrap,flockfile',
+                            '-Wl,-wrap,funlockfile',
+                            '-Wl,-wrap,clearerr',
+                            '-Wl,-wrap,fgetpos',
+                            '-Wl,-wrap,fsetpos',
+                            '-Wl,-wrap,setbuf',
+                            '-Wl,-wrap,setvbuf',
+                            '-Wl,-wrap,ftell',
+                            '-Wl,-wrap,fstat',
+                            '-Wl,-wrap,fstat64',
+                            '-Wl,-wrap,fgetc',
+                            # '-Wl,-wrap,fputc',
+                            # '-Wl,-wrap,fputs',
+                            # '-Wl,-wrap,fwrite',
+                            # '-Wl,-wrap,_IO_putc',
+                            '-Wl,-wrap,fopen',
+                            '-Wl,-wrap,fopen64',
+                            '-Wl,-wrap,fclose',
+                           ]
 
     # Compile the parallel sources
     for src in sources:
