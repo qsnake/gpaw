@@ -9,7 +9,7 @@ from gpaw.preconditioner import Preconditioner
 from gpaw.utilities.blas import axpy, r2k, gemm
 from gpaw.utilities.tools import apply_subspace_mask
 from gpaw.utilities import unpack
-from gpaw import debug
+from gpaw import debug, extra_parameters
 
 
 class Eigensolver:
@@ -186,7 +186,8 @@ class Eigensolver:
         kpt.psit_nG = self.operator.matrix_multiply(U_nn, psit_nG, P_ani)
         #
 	# store the transformation for later use		
-	kpt.W_nn = U_nn.T.conj().copy()
+        if extra_parameters.get('sic'):
+            kpt.W_nn = U_nn.T.conj().copy()
 	if self.keep_htpsit:
             self.Htpsit_nG = self.operator.matrix_multiply(U_nn, Htpsit_xG)
         self.timer.stop('rotate_psi')

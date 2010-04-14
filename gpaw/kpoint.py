@@ -7,6 +7,7 @@ import numpy as np
 
 from gpaw.fd_operators import Gradient
 from gpaw.utilities.blas import axpy
+from gpaw import extra_parameters
 
 
 class KPoint:
@@ -90,7 +91,8 @@ class KPoint:
         self.psit_nG = None  # wave functions on 3D grid
         self.C_nM = None     # LCAO coefficients for wave functions XXX
 
-        self.W_nn = None     # storage for a unitary transformation
+        if extra_parameters.get('sic'):
+            self.W_nn = None  # storage for a unitary transformation
 
         self.rho_MM = None
         

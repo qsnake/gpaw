@@ -955,7 +955,9 @@ class GridWaveFunctions(WaveFunctions):
             self.timer.start('Random wavefunction initialization')
             for kpt in self.kpt_u:
                 kpt.psit_nG = self.gd.zeros(self.mynbands, self.dtype)
-                kpt.W_nn    = np.zeros(self.nbands,self.nbands, dtype=self.dtype)
+                if extra_parameters.get('sic'):
+                    kpt.W_nn = np.zeros((self.nbands, self.nbands),
+                                        dtype=self.dtype)
             self.random_wave_functions(0)
             self.timer.stop('Random wavefunction initialization')
             return
@@ -1006,7 +1008,9 @@ class GridWaveFunctions(WaveFunctions):
         self.timer.start('LCAO to grid')
         for kpt in self.kpt_u:
             kpt.psit_nG = self.gd.zeros(self.mynbands, self.dtype)
-            kpt.W_nn    = np.zeros((self.nbands,self.nbands),dtype=self.dtype)
+            if extra_parameters.get('sic'):
+                kpt.W_nn = np.zeros((self.nbands, self.nbands),
+                                    dtype=self.dtype)
             basis_functions.lcao_to_grid(kpt.C_nM, 
                                          kpt.psit_nG[:lcaomynbands], kpt.q)
             kpt.C_nM = None
@@ -1028,7 +1032,9 @@ class GridWaveFunctions(WaveFunctions):
         for kpt in self.kpt_u:
             file_nG = kpt.psit_nG
             kpt.psit_nG = self.gd.empty(self.mynbands, self.dtype)
-            kpt.W_nn    = np.zeros((self.nbands,self.nbands),dtype=self.dtype)
+            if extra_parameters.get('sic'):
+                kpt.W_nn = np.zeros((self.nbands, self.nbands),
+                                    dtype=self.dtype)
             # Read band by band to save memory
             for n, psit_G in enumerate(kpt.psit_nG):
                 if self.gd.comm.rank == 0:
