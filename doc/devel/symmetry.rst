@@ -30,6 +30,13 @@ transformed to `\mathbf r'` as:
 
 where `\mathbf M=\mathbf A^T\mathbf U^T\mathbf A^{-T}`.
 
+If we want to express `\mathbf r'` in terms of the original lattice
+vectors (`\mathbf r'=\mathbf A^T\mathbf s'`), we get:
+
+.. math::
+
+   \mathbf s' = \mathbf U^T\mathbf s.
+
 .. note::
 
    The `\mathbf U` matrices contain only the integers -1, 0 and 1.
