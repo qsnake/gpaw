@@ -34,26 +34,35 @@ class DatabaseHandler:
             os.rename(filename, filename + '.old')
         pickle.dump(self.data, open(filename, 'wb'), -1)
 
-    def add_data(self, name, date, info):
+    def add_data(self, name, date, time, info):
         if not self.data.has_key(name):
             self.data[name] = []
-        self.data[name].append((date, info))
+        self.data[name].append((date, time, info))
 
     def get_data(self, name):
         """Return date_array, time_array"""
-        date, time = [], []
+        dates, times = [], []
         if self.data.has_key(name):
             for datapoint in self.data[name]:
-                date.append(datapoint[0])
-                time.append(datapoint[1])
+                dates.append(datapoint[0])
+                times.append(datapoint[1])
 
-        return np.asarray(date), np.asarray(time)
+        return np.asarray(dates), np.asarray(times)
 
-def update_database(dirname, db):
-    """Traverse filesystem hierarchy below `dirname` and add all data to
-    database
+def update_database(env, db):
+    """Add all new data to database
     """
-    print 'TODO: This function does not do anything yet'
+    pass
+    #XXX: This function should add data from all tests in `env` to the database!
+    # Blind implementation
+    """
+    for agtsjob in env.???:                 # XXX: 
+        date = 'Something to identify which week it is run'
+        time = agtsjob.runtime              # XXX: Runtime in seconds
+        info = 'Success/Failed, whatever'       
+        db.add_data(agtsjob.itentifier,     # XXX: Does this change from week to week? It must not
+                    date, time, info)
+    """
 
 class TestAnalyzer:
     def __init__(self, name, dates, times):
@@ -161,14 +170,15 @@ def csv2database(infile, outfile):
     for test in csvdata:
         name = test[0]
         for i in range(1, len(test) - 1):
-            info = test[i]
-            db.add_data(name, 0, info)
+            runtime = float(test[i])
+            info = ''
+            db.add_data(name, 0, runtime, info)
     db.write()
 
-if __name__ == "__main__":
+def analyse(env):
     db = DatabaseHandler('history.pickle')
     db.read()
-    update_database(os.getenv('HOME') + '/src/gpaw', db)
+    update_database(env, db)
     db.write()
     mg = MailGenerator()
     for name in db.data.keys():
@@ -179,4 +189,11 @@ if __name__ == "__main__":
             mg.add_test(name, ta.abschange, ta.relchange)
         ta.plot()
 
-    #mg.send_mail('gpaw-developers@listserv.fysik.dtu.dk')
+    mailto = os.getenv('MAILTO')
+    if mailto is not None:
+        mg.send_mail(mailto)
+    else:
+        print mg.generate_mail()
+
+if __name__ == "__main__":
+    analyse(None)
