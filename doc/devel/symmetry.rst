@@ -57,7 +57,7 @@ k}(\mathbf M\mathbf r)` and:
    e^{i\mathbf k^T\mathbf M\mathbf R}
    \tilde\psi'_{\mathbf k'}(\mathbf r).
 
-From this equation it is seen that `\mathbf k'=\mathbf M\mathbf k`.
+From this equation it is seen that `\mathbf k'=\mathbf M^T\mathbf k`.
 In terms of scaled k-points `\mathbf q`, where:
 
 .. math:: \mathbf k=2\pi\mathbf A^{-1}\mathbf q,
