@@ -13,7 +13,8 @@ If you do not wish to build NumPy for yourself, you can use one of the following
  /soft/apps/python/python-2.6-cnk-gcc/numpy-1.3.0/lib/python2.5/site-packages
 
 Choose your version of NumPy accordingly. NumPy 1.3.0 officially supports Python 2.6, NumPy 1.2.1
-is available as a fall back for use with Python 2.6.
+is available as a fall back for use with Python 2.6. **We highly recommend that you use the pre-built
+NumPy 1.3.0 rather than building your own.**
 
 The **0.3** version of gpaw uses Numeric `<https://svn.fysik.dtu.dk/projects/gpaw/tags/0.3/>`_.
 
@@ -122,7 +123,9 @@ Set these environment variables in the :file:`.softenvrc` file::
   # some of these are only relevant for gcc, xlc, or TAU
   CN_LD_LIBRARY_PATH = /bgsys/drivers/ppcfloor/gnu-linux/lib
   CN_LD_LIBRARY_PATH = /bgsys/drivers/ppcfloor/gnu-linux/powerpc-bgp-linux/lib:${CN_LD_LIBRARY_PATH}
-
+  CN_LD_LIBRARY_PATH = /bgsys/drivers/ppcfloor/comm/default/lib:${CN_LD_LIBRARY_PATH}
+  CN_LD_LIBRARY_PATH = /bgsys/drivers/ppcfloor/comm/sys/lib:${CN_LD_LIBRARY_PATH}
+  CN_LD_LIBRARY_PATH = /bgsys/drivers/ppcfloor/comm/runtime/SPI:${CN_LD_LIBRARY_PATH}
   PATH += $HOME/ase3k/tools
   PATH += $HOME/gpaw/tools
 
@@ -180,7 +183,7 @@ Finally, we build GPAW by typing::
 
   /bgsys/drivers/ppcfloor/gnu-linux/bin/python setup.py build_ext --ignore-numpy --customize=customize_surveyor_gcc.py 2>&1 | tee build_ext.log
 
-If an optimized version of NumPy is in your $PYTHONPATH you may need to use "--ignore-numpy".
+If an optimized version of NumPy is in your $PYTHONPATH you may need append  "--ignore-numpy".
 
 Additional BG/P specific hacks
 ===============================
@@ -214,3 +217,9 @@ A gpaw script ``CH4.py`` (fetch it from ``gpaw/test``) can be submitted like thi
 
 It's convenient to customize as in :file:`gpaw-qsub.py` which can be
 found at the :ref:`parallel_runs` page.
+
+Running from ramdisk
+======================
+
+Running GPAW from ramdisk is recommended for jobs larger than 4096
+nodes. Please contact ALCF support for further information.
