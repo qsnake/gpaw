@@ -163,10 +163,6 @@ class PAWTextOutput:
         if p['mode'] != 'lcao':
             t('                   (%s)' % fd(p['stencils'][0]))
 
-        parallelization_information = self.wfs.ksl.get_description()
-        t(parallelization_information)
-        t()
-        
         t('Poisson Solver:    %s \n                   (%s)' %
           ([0, 'GaussSeidel', 'Jacobi'][self.hamiltonian.poisson.relax_method],
            fd(self.hamiltonian.poisson.nn)))
@@ -192,20 +188,23 @@ class PAWTextOutput:
         t('Total number of cores used: %d' % self.wfs.world.size)
         if self.wfs.kpt_comm.size > 1: # kpt/spin parallization
             if self.wfs.nspins == 2 and nibzkpts == 1:
-                t('Parallelization Over Spin')
+                t('Parallelization over spin')
             elif self.wfs.nspins == 2:
-                t('Parallelization Over k-points and Spin on %d Processors' %
+                t('Parallelization over k-points and spin: %d' %
                   self.wfs.kpt_comm.size)
             else:
-                t('Parallelization Over k-points on %d Processors' %
+                t('Parallelization over k-points: %d' %
                   self.wfs.kpt_comm.size)
         if self.wfs.gd.comm.size > 1: # domain parallelization
-            t('Using Domain Decomposition: %d x %d x %d' %
+            t('Domain Decomposition: %d x %d x %d' %
               tuple(self.wfs.gd.parsize_c))
         if self.wfs.bd.comm.size > 1: # band parallelization
-            t('Parallelization Over bands on %d Processors'
+            t('Parallelization over states: %d'
               % self.wfs.bd.comm.size)
-              
+        
+        parallelization_information = self.wfs.ksl.get_description()
+        t(parallelization_information)
+        t()      
 
         if self.wfs.symmetry is not None:
             self.wfs.symmetry.print_symmetries(t)

@@ -579,6 +579,10 @@ class BlacsLayouts(KohnShamLayouts):
         assert ncpus * mcpus <= bcommsize * gcommsize
         self.blockgrid = BlacsGrid(self.blockcomm, mcpus, ncpus)
 
+    def get_description(self):
+        title = 'Parallel eigensolver using ScaLAPACK/BLACS:'
+        template = '  %d x %d grid with %d x %d blocksize'
+        return (title, template)
 
 class BandLayouts(KohnShamLayouts):
     matrix_descriptor_class = BandMatrixDescriptor
@@ -759,10 +763,11 @@ class BlacsBandLayouts(BlacsLayouts): #XXX should derive from BandLayouts too!
         return 0 #XXX scalapack_inverse_cholesky doesn't return this info!!!
 
     def get_description(self):
-        s1 = 'Using ScaLAPACK/BLACS for diagonalization and inverse cholesky'
-        s2 = 'miscellaneous information about parallelization...'
-        # XXX update this
-        return '\n'.join([s1, s2])
+        (title, template) = BlacsLayouts.get_description(self)
+        bg = self.blockgrid
+        desc = self.nndescriptor
+        s = template % (bg.npcol, bg.nprow, desc.mb, desc.nb)
+        return '\n'.join([title, s])
 
 class BlacsOrbitalLayouts(BlacsLayouts):
     """ScaLAPACK Dense Linear Algebra.
@@ -927,12 +932,11 @@ class BlacsOrbitalLayouts(BlacsLayouts):
         return self.calculate_density_matrix(f_n, C_nM, rho_mM)
 
     def get_description(self):
-        s1 = 'Parallelization over orbitals using ScaLAPACK/BLACS'
+        (title, template) = BlacsLayouts.get_description(self)
         bg = self.blockgrid
         desc = self.mmdescriptor
-        template = 'Diagonalization grid %d x %d, block size %d x %d'
-        s2 = template % (bg.npcol, bg.nprow, desc.mb, desc.nb)
-        return '\n'.join([s1, s2])
+        s = template % (bg.npcol, bg.nprow, desc.mb, desc.nb)
+        return '\n'.join([title, s])
 
 class OrbitalLayouts(KohnShamLayouts):
     def __init__(self, gd, bd, nao, timer=nulltimer):
