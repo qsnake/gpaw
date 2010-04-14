@@ -121,9 +121,6 @@ class PAWTextOutput:
                          tuple(Bohr * gd.cell_cv[c]) +
                          (gd.N_c[c], Bohr * h_c[c])))
         self.text()
-        self.text('Grid-points per volume: %.2f' % (1 / gd.dv / Bohr**3))
-        self.text('Effective grid-spacing: %.4f' % (gd.dv**(1.0 / 3) * Bohr))
-        self.text()
 
     def print_positions(self):
         t = self.text
