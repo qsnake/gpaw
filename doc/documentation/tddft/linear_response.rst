@@ -44,6 +44,19 @@ The next step is to calculate the Omega Matrix from the ground state orbitals::
                nspins=2) # force the calculation of triplet excitations also
   lr.write('lr.dat.gz')
 
+alternatively one can also restrict the number of transitions by their energy::
+
+  from gpaw import GPAW
+  from gpaw.lrtddft import LrTDDFT
+
+  ifname = 'PBE_125bands.gpw'
+  c = GPAW(ifname)
+
+  dE = 2.5 # maximal Kohn-Sham transition energy to consider
+  lr = LrTDDFT(c, xc='LDA', energy_range=dE,
+               nspins=2) # force the calculation of triplet excitations also
+  lr.write('lr.dat.gz')
+
 Note, that parallelization over spin does not work here. As a workaround,
 domain decomposition only (see :ref:`manual_parsize`) 
 has to be used for spin polarised 
@@ -62,6 +75,33 @@ The dipole spectrum can be evaluated from the Omega matrix and written to a file
   # write the spectrum to the data file
   photoabsorption_spectrum(lr, 'spectrum_w.05eV.dat', # data file name
                            width=0.05)                # width in eV
+
+Testing convergence
+===================
+
+You can test the convergence of the Kohn-Sham transition basis size by restricting
+the basis in the diagonalisation step, e.g.::
+
+  from gpaw.lrtddft import LrTDDFT
+  from gpaw.lrtddft import photoabsorption_spectrum
+
+  lr = LrTDDFT('lr.dat.gz')
+  lr.diagonalize(energy_range=2.)
+
+This can be automated by using the check_convergence function::
+
+  from gpaw.lrtddft import LrTDDFT
+  from gpaw.lrtddft import photoabsorption_spectrum
+
+  lr = LrTDDFT('lr.dat.gz')
+  check_convergence(lr,
+                    'linear_response',
+                    'my plot title',
+                     dE=.2,
+		     emax=6.)
+
+which will create a directory 'linear_response'. In this directory there will be a
+file 'conv.gpl' for gnuplot that compares the spectra varying the basis size.
 
 Analysing the transitions
 =========================
