@@ -225,7 +225,7 @@ Example::
   td_calc.propagate(time_step, iterations, 'bda_dm.dat', 'bda_td.gpw')
 
   # Save result of the Fourier transformations to a .ftd file
-  obs.save('bda_fourier.ftd')
+  obs.write('bda_fourier.ftd')
 
 
 
