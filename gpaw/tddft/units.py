@@ -1,7 +1,9 @@
-
 # http://www.answers.com/topic/hartree-units
 
-from ase.units import _hbar, _eps0, _me, _e, pi, Hartree
+from math import pi
+
+from ase.units import _hbar, _eps0, _me, _e, Hartree
+
 _autime = _hbar**3*(4*pi*_eps0)**2/(_me*_e**4) # 1 autime ~ 2.42e-17 s
 
 # Conversion factors between ASE and GPAW units
