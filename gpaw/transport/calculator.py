@@ -762,6 +762,12 @@ class Transport(GPAW):
             for i, a in enumerate(self.pl_atoms[l]):
                 basis[i] = p['basis'][a]
             p['basis'] = basis
+        if 'setups' in p:
+            if type(p['setups']) is dict and len(p['setups'])==len(self.atoms):
+                setups = {}
+                for i, a in enumerate(self.pl_atoms[l]):
+                    setups[i] = p['setups'][a]
+                p['setups'] = setups
         p['nbands'] = None
         p['kpts'] = self.pl_kpts
         if 'mixer' in p:
@@ -1612,10 +1618,15 @@ class Transport(GPAW):
         self.print_forces()
         return self.F_av[:len(self.atoms)]
 
-    def calculate_to_bias(self, v_limit, num_v):
+    def calculate_to_bias(self, v_limit, num_v, gate=0, num_g=3):
         bias = np.linspace(0, v_limit, num_v)
-        current = np.empty([num_v])
-        self.negf_prepare() 
+        self.negf_prepare()
+        if abs(gate) > 0.001:
+            gate = np.linspace(0, gate, num_g)
+            for i in range(num_g):
+                self.gate = gate[i]
+                self.get_selfconsistent_hamiltonian()
+                
         for i in range(num_v):
             v = bias[i]
             self.bias = [v/2., -v /2.]
@@ -1623,7 +1634,6 @@ class Transport(GPAW):
     
     def calculate_to_gate(self, v_limit, num_v):
         gate = np.linspace(0, v_limit, num_v)
-        current = np.empty([num_v])
         self.negf_prepare() 
         for i in range(num_v):
             self.gate = gate[i]
