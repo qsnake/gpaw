@@ -69,7 +69,7 @@ class Transport(GPAW):
                        'pl_atoms', 'pl_cells', 'pl_kpts', 'leads',
                        'use_buffer', 'buffer_atoms', 'edge_atoms', 'bias',
                        'lead_restart', 'use_guess_file', 'special_datas',
-                       
+                       'plot_eta',
                        'lead_atoms', 'nleadlayers', 'mol_atoms', 'la_index',
                        
                        'LR_leads', 'gate', 'gate_mode', 'gate_atoms',                   
@@ -121,6 +121,7 @@ class Transport(GPAW):
         self.gate_mode = p['gate_mode']
         self.gate_atoms = p['gate_atoms']
         self.recal_path = p['recal_path']
+        self.plot_eta = p['plot_eta']
         self.min_energy = p['min_energy']
         self.use_qzk_boundary = p['use_qzk_boundary']
         self.scat_restart = p['scat_restart']
@@ -206,7 +207,7 @@ class Transport(GPAW):
         p['neintmethod'] = 0
         p['neintstep'] = 0.02
         p['eqinttol'] = 1e-4
-        
+        p['plot_eta'] = 1e-4
         p['LR_leads'] = True
         p['gate'] = 0
         p['gate_mode'] = 'VG'
@@ -853,7 +854,7 @@ class Transport(GPAW):
         if not hasattr(self, 'contour'):
             self.contour = Contour(0.1,
                                self.lead_fermi, self.bias, comm=self.gd.comm,
-                                tp=self)
+                                tp=self, plot_eta=self.plot_eta)
             
         if not hasattr(self, 'analysor'):
             self.analysor = Transport_Analysor(self, True)
@@ -960,7 +961,7 @@ class Transport(GPAW):
         
         self.contour = Contour(self.occupations.width * Hartree,
                                self.lead_fermi, self.bias, comm=self.gd.comm,
-                               tp=self)
+                               tp=self, plot_eta=self.plot_eta)
         if not self.use_qzk_boundary:
             self.surround.reset_bias(self.bias)
         else:
@@ -2147,7 +2148,7 @@ class Transport(GPAW):
         flag = True
         self.contour = Contour(self.occupations.width * Hartree,
                             self.lead_fermi, self.bias, comm=self.wfs.gd.comm,
-                             tp=self)
+                             tp=self, plot_eta=self.plot_eta)
         if not hasattr(self, 'analysor'):
             self.analysor = Transport_Analysor(self, True)
             
@@ -2208,7 +2209,7 @@ class Transport(GPAW):
         self.contour = Contour(self.occupations.width * Hartree,
                                self.lead_fermi, self.bias,
                                comm=self.wfs.gd.comm,
-                               tp=self)
+                               tp=self, plot_eta=self.plot_eta)
         
         for j in range(self.lead_num):
                 self.analysor.selfenergies[j].set_bias(self.bias[j])
