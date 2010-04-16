@@ -48,11 +48,10 @@ class CHI:
             
         self.calc = calc = c[0]
         self.c = c
-        
-        bzkpt_kG = calc.get_ibz_k_points()
+
+        bzkpt_kG = calc.get_bz_k_points()
         self.nkpt = bzkpt_kG.shape[0]
         self.nkptxyz = get_monkhorst_shape(bzkpt_kG)
-        kweight = calc.get_k_point_weights()
 
         # parallize in kpoints
         self.nkpt_local = int(self.nkpt / size)
@@ -69,7 +68,6 @@ class CHI:
         self.nvalence = calc.wfs.nvalence
 
         assert calc.wfs.nspins == 1
-        assert calc.get_bz_k_points().shape == calc.get_ibz_k_points().shape
     
         self.acell = calc.atoms.cell / Bohr
         self.get_primitive_cell()
@@ -80,22 +78,25 @@ class CHI:
         self.h_c = calc.wfs.gd.h_cv
 
         if self.ncalc == 1:
+            self.nibzkpt = calc.get_ibz_k_points().shape[0]
+            kweight = calc.get_k_point_weights()
 
             # obtain eigenvalues, occupations
             self.e_kn = np.array([calc.get_eigenvalues(kpt=k)
-                        for k in range(self.nkpt)]) / Hartree
-            self.f_kn = np.array([calc.get_occupation_numbers(kpt=k)
-                        for k in range(self.nkpt)])    
+                        for k in range(self.nibzkpt)]) / Hartree
+            self.f_kn = np.array([calc.get_occupation_numbers(kpt=k) / kweight[k]
+                        for k in range(self.nibzkpt)]) / self.nkpt
 
         else:
             
             assert self.ncalc == 2
+            assert calc.get_bz_k_points().shape == calc.get_ibz_k_points().shape
             
             # obtain eigenvalues, occupations
             self.e1_kn = np.array([c[0].get_eigenvalues(kpt=k)
                          for k in range(self.nkpt)]) / Hartree
             self.f1_kn = np.array([c[0].get_occupation_numbers(kpt=k)
-                         for k in range(self.nkpt)])
+                         for k in range(self.nkpt)]) 
     
             self.e2_kn = np.array([c[1].get_eigenvalues(kpt=k)
                          for k in range(self.nkpt)]) / Hartree
@@ -376,6 +377,7 @@ class CHI:
         calc = self.calc
         setups = calc.wfs.setups
         gd = calc.wfs.gd
+        op = calc.wfs.symmetry.op_scc
 
         f_kn = self.f_kn
         e_kn = self.e_kn
@@ -383,9 +385,9 @@ class CHI:
         qr = self.qr
         qq = self.qq
         q = self.q
-        bzkpt_kG = calc.get_ibz_k_points()
+        bzkpt_kG = calc.get_bz_k_points()
+        IBZkpt_kG = calc.get_ibz_k_points()
         kq = self.find_kq(bzkpt_kG, q)
-        del bzkpt_kG
 
         chi0_wGG = np.zeros((self.Nw, self.npw, self.npw), dtype = complex)
         specfunc_wGG = np.zeros((self.NwS, self.npw, self.npw), dtype = complex)
@@ -402,22 +404,51 @@ class CHI:
         print >> self.txt, 'phi_Gii obtained!'
 
         expqr_G = np.exp(-1j * self.qr)
+
+        # defined Projectors 
+        from gpaw.lfc import LocalizedFunctionsCollection as LFC
+        pt = LFC(gd, [setup.pt_j for setup in setups],
+                 calc.wfs.kpt_comm, dtype=calc.wfs.dtype, forces=True)
+        spos_ac = calc.atoms.get_scaled_positions()
+        pt.set_k_points(calc.get_bz_k_points())
+        pt.set_positions(spos_ac)
         
         # calculate chi0
         for k in range(self.kstart, self.kend):
             t1 = time()
-            
-            kpt0 = calc.wfs.kpt_u[k]
-            kpt1 = calc.wfs.kpt_u[kq[k]]
-            P1_ani = kpt0.P_ani
-            P2_ani = kpt1.P_ani
 
+            if op is None:
+                assert IBZkpt_kG.shape[0] == bzkpt_kG.shape[0]
+                ibzkpt1, iop1 = k, 0
+                ibzkpt2, iop2 = kq[k], 0
+                op = np.zeros((1, 3, 3), dtype=int)
+                op[0] = np.eye(3, dtype=int)
+            else:
+                ibzkpt1, iop1 = self.find_ibzkpt(op, IBZkpt_kG, bzkpt_kG[k])
+                ibzkpt2, iop2 = self.find_ibzkpt(op, IBZkpt_kG, bzkpt_kG[kq[k]])
+            
             rho_Gnn = np.zeros((self.npw, self.nband, self.nband), dtype=complex)
             for n in range(self.nband):
-                psit1_G = kpt0.psit_nG[n].conj() * expqr_G
+
+                psit1old_G = calc.wfs.kpt_u[ibzkpt1].psit_nG[n]
+                psit1new_G = self.symmetrize_wavefunction(psit1old_G, op[iop1], IBZkpt_kG[ibzkpt1])
+
+                P1_ai = pt.dict()
+                pt.integrate(psit1new_G, P1_ai, k)
+                
+                psit1_G = psit1new_G.conj() * expqr_G
+                
                 for m in range(self.nband):
-                    if  np.abs(f_kn[k, n] - f_kn[kq[k], m]) > 1e-8:
-                        psit2_G = kpt1.psit_nG[m] * psit1_G
+                    if  np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > 1e-8:
+
+                        psit2old_G = calc.wfs.kpt_u[ibzkpt2].psit_nG[m]
+                        psit2_G = self.symmetrize_wavefunction(psit2old_G, op[iop2], IBZkpt_kG[ibzkpt2])
+
+                        P2_ai = pt.dict()
+                        pt.integrate(psit2_G, P2_ai, kq[k])
+                        
+                        psit2_G *= psit1_G
+
                         # fft
                         tmp_G = np.fft.fftn(psit2_G) * self.vol / self.nG0
 
@@ -428,7 +459,7 @@ class CHI:
                             # PAW correction
                         for a, id in enumerate(setups.id_a):
                             Z, type, basis = id
-                            P_p = np.outer(P1_ani[a][n].conj(), P2_ani[a][m]).ravel()
+                            P_p = np.outer(P1_ai[a].conj(), P2_ai[a]).ravel()
                             rho_Gnn[:, n, m] += np.dot(phi_Gp[Z], P_p)
 
             t2 = time()
@@ -441,9 +472,9 @@ class CHI:
                     w = iw * self.dw
                     for n in range(self.nband):
                         for m in range(self.nband):
-                            if  np.abs(f_kn[k, n] - f_kn[kq[k], m]) > 1e-8:
-                                C_nn[n, m] = (f_kn[k, n] - f_kn[kq[k], m]) / (
-                                 w + e_kn[k, n] - e_kn[kq[k], m] + 1j * eta)
+                            if  np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > 1e-8:
+                                C_nn[n, m] = (f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) / (
+                                 w + e_kn[ibzkpt1, n] - e_kn[ibzkpt2, m] + 1j * eta)
                 
                     # get chi0(G=0,G'=0,w)
                     for iG in range(self.npw):
@@ -453,9 +484,11 @@ class CHI:
             # calculate spectral function
                 for n in range(self.nband):
                     for m in range(self.nband):
-                        focc = f_kn[k,n] - f_kn[kq[k],m]
+                        focc = f_kn[ibzkpt1,n] - f_kn[ibzkpt2,m]
+
                         if focc > 1e-8:
-                            w0 = e_kn[kq[k],m] - e_kn[k,n]
+                            w0 = e_kn[ibzkpt2,m] - e_kn[ibzkpt1,n]
+ 
                             tmp_GG = focc * np.outer(rho_Gnn[:,n,m], rho_Gnn[:,n,m].conj())
                 
                             # calculate delta function
@@ -484,7 +517,64 @@ class CHI:
                 qG = np.array([np.inner(self.q + self.Gvec[iG],
                                        self.bcell[:,i]) for i in range(3)])
                 self.eRPA_wGG[iw,iG] =  tmp[iG] - 4 * pi / np.inner(qG, qG) * chi0_wGG[iw,iG] / self.vol
- 
+
+
+    def find_ibzkpt(self, symrel, kpt_IBZkG, kptBZ):
+
+        find = False
+        
+        for ioptmp in range(symrel.shape[0]):
+            for i in range(kpt_IBZkG.shape[0]):
+                tmp = np.inner(symrel[ioptmp], kpt_IBZkG[i])
+                if (np.abs(tmp - kptBZ) < 1e-8).all():
+                    ibzkpt = i
+                    iop = ioptmp
+                    find = True
+                    break
+            if find == True:
+                break
+    
+        return ibzkpt, iop
+
+
+    def symmetrize_wavefunction(self, a_g, op_cc, kpt):
+
+        if (np.abs(op_cc - np.eye(3,dtype=int)) < 1e-10).all():
+            return a_g
+        else:
+            import _gpaw
+            b_g = np.zeros_like(a_g)
+            _gpaw.symmetrize_wavefunction(a_g, b_g, op_cc.T.copy(), kpt)
+    
+        return b_g
+
+        
+    def rotate_wfs(self, op_cc, psi_old, kpt):
+    
+        nG = psi_old.shape
+        psi_new = np.zeros_like(psi_old)
+        
+        for i in range(nG[0]):
+            for j in range(nG[1]):
+                for k in range(nG[2]):
+                    rold = np.array([i,j,k])
+        
+                    rnew = np.inner(op_cc, rold)
+                    assert rnew.dtype == int
+        
+                    R = np.zeros(3)
+                    for id, RR in enumerate(rnew):
+        
+                        R[id] = RR / nG[id]
+                        rnew[id] -= R[id] * nG[id] 
+    
+                    ii,jj,kk = rnew
+        
+                    phase = np.exp(1j*2.*pi*np.inner(kpt,R))
+    
+                    psi_new[ii,jj,kk] = psi_old[i,j,k] * phase
+        return psi_new
+     
 
     def find_kq(self, bzkpt_kG, q):
         """Find the index of k+q for all kpoints in BZ."""
