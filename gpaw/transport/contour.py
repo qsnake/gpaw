@@ -262,13 +262,12 @@ class Contour:
     eq_err = 1e-4
     ne_err = 1e-4
     eta = 1e-2
-    plot_eta = 1e-4
     #kt = 0.1
     nkt = 0.8
     dkt = 0.8 * np.pi
     calcutype = ['eqInt', 'eqInt', 'eqInt', 'resInt', 'neInt', 'locInt']
     def __init__(self, kt, fermi, bias, maxdepth=7, comm=None, neint='linear',
-                  tp=None):
+                  tp=None, plot_eta=1e-4):
         self.kt = kt
         self.fermi = fermi[0]
         self.bias = bias
@@ -279,6 +278,7 @@ class Contour:
             self.leadfermi.append(fermi[i] + bias[i])
         self.minfermi = min(self.leadfermi)
         self.maxfermi = max(self.leadfermi)
+        self.plot_eta = plot_eta
         self.dtype = complex
         self.comm = comm
         if self.comm == None:
