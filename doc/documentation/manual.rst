@@ -580,13 +580,13 @@ this::
     from gpaw import GPAW, PoissonSolver
     calc = GPAW(poissonsolver=PoissonSolver(nn=n))
 
-This will give an accuracy of `O(h^{2n})``, where ``n`` must be between
+This will give an accuracy of `O(h^{2n})`, where ``n`` must be between
 1 and 6.  The default value for version 0.6 is ``n='M'`` which is a
 special Mehrstellen stencil - this will be changed to ``n=3`` in
 version 0.7.
 
 With the ``sencils=(a, b)`` keyword, you can set the accuracy of the
-stencil used for the Kohn-Sham equation to `O(h^{2a})``.  The ``b``
+stencil used for the Kohn-Sham equation to `O(h^{2a})`.  The ``b``
 parameter (between 1 and 4) controls the accuracy of the
 interpolation of the density from the coarse grid to the fine grid.
 Default values are ``sencils=(3, 3)``.
