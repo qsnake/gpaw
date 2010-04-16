@@ -377,7 +377,6 @@ class CHI:
         calc = self.calc
         setups = calc.wfs.setups
         gd = calc.wfs.gd
-        op = calc.wfs.symmetry.op_scc
 
         f_kn = self.f_kn
         e_kn = self.e_kn
@@ -412,20 +411,24 @@ class CHI:
         spos_ac = calc.atoms.get_scaled_positions()
         pt.set_k_points(calc.get_bz_k_points())
         pt.set_positions(spos_ac)
-        
+
+        usesymm = calc.input_parameters.get('usesymm')
+        if usesymm == None:
+            op = np.zeros((1,3,3), dtype=int)
+            op[0] = np.eye(3, dtype=int)
+        elif usesymm == False:
+            op = np.zeros((2,3,3), dtype=int)
+            op[0] = np.eye(3, dtype=int)
+            op[1] = - np.eye(3, dtype=int)
+        else:
+            op = calc.wfs.symmetry.op_scc
+            
         # calculate chi0
         for k in range(self.kstart, self.kend):
             t1 = time()
 
-            if op is None:
-                assert IBZkpt_kG.shape[0] == bzkpt_kG.shape[0]
-                ibzkpt1, iop1 = k, 0
-                ibzkpt2, iop2 = kq[k], 0
-                op = np.zeros((1, 3, 3), dtype=int)
-                op[0] = np.eye(3, dtype=int)
-            else:
-                ibzkpt1, iop1 = self.find_ibzkpt(op, IBZkpt_kG, bzkpt_kG[k])
-                ibzkpt2, iop2 = self.find_ibzkpt(op, IBZkpt_kG, bzkpt_kG[kq[k]])
+            ibzkpt1, iop1 = self.find_ibzkpt(op, IBZkpt_kG, bzkpt_kG[k])
+            ibzkpt2, iop2 = self.find_ibzkpt(op, IBZkpt_kG, bzkpt_kG[kq[k]])
             
             rho_Gnn = np.zeros((self.npw, self.nband, self.nband), dtype=complex)
             for n in range(self.nband):
@@ -541,6 +544,8 @@ class CHI:
 
         if (np.abs(op_cc - np.eye(3,dtype=int)) < 1e-10).all():
             return a_g
+        elif (np.abs(op_cc + np.eye(3,dtype=int)) < 1e-10).all():
+            return a_g.conj()
         else:
             import _gpaw
             b_g = np.zeros_like(a_g)
