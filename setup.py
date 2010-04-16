@@ -12,7 +12,6 @@ from distutils.core import setup, Extension
 from distutils.sysconfig import get_config_var
 from glob import glob
 from os.path import join
-from stat import ST_MTIME
 
 from config import *
 
