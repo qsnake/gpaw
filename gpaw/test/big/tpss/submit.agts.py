@@ -1,3 +1,3 @@
-def agtsmain(env):
-    env.add('tpss.py', ncpus=8, walltime=60)
+def agts(queue):
+    queue.add('tpss.py', ncpus=8, walltime=60)
 

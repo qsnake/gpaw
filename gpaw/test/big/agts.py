@@ -7,7 +7,7 @@ import random
 class AGTSJob:
     def __init__(self, dir, script, args=None,
                  ncpus=1, walltime=10 * 60,
-                 dependencies=None, creates=None, agtsfile=None):
+                 deps=None, creates=None, agtsfile=None):
         pathname = os.path.normpath(os.path.join(dir, script))
         self.dir, self.script = os.path.split(pathname)
         if self.dir == '':
@@ -27,10 +27,10 @@ class AGTSJob:
         dir, self.name = os.path.split(self.absname)
         self.ncpus = ncpus
         self.walltime = walltime
-        if dependencies:
-            self.dependencies = dependencies
+        if deps:
+            self.deps = deps
         else:
-            self.dependencies = []
+            self.deps = []
         self.creates = creates
         self.agtsfile = agtsfile
 
@@ -67,21 +67,26 @@ class Cluster:
 
 class TestCluster(Cluster):
     def submit(self, job):
-        wait = random.randint(1, 12)
-        duration = random.randint(4, 12)
         if random.random() < 0.3:
             # randomly fail some of the jobs
             exitcode = 1
         else:
             exitcode = 0
         
+        wait = random.randint(1, 12)
+        cmd = 'sleep %s; touch %s.start; ' % (wait, job.absname)
+
         if random.random() < 0.3:
             # randomly time out some of the jobs
-            os.system('(sleep %s; touch %s.start) &' %
-                      (wait, job.absname))
+            pass
         else:
-            os.system('(sleep %s; touch %s.start; sleep %s; echo %d > %s.done)&'
-                      % (wait, job.absname, duration, exitcode, job.absname))
+            duration = random.randint(4, 12)
+            cmd += 'sleep %s; ' % duration
+            if exitcode == 0 and job.creates:
+                for filename in job.creates:
+                    cmd += 'echo 42 > %s; ' % os.path.join(job.dir, filename)
+            cmd += 'echo %d > %s.done' % (exitcode, job.absname)
+        os.system('(%s)&' % cmd)
 
     def clean(self, job):
         try:
@@ -94,7 +99,7 @@ class TestCluster(Cluster):
             pass
 
 
-class AGTSJobs:
+class AGTSQueue:
     def __init__(self, sleeptime=60, log=sys.stdout):
         self.sleeptime = sleeptime
         self.jobs = []
@@ -121,12 +126,12 @@ class AGTSJobs:
         self.fd.flush()
  
     def add(self, script, dir=None, args=None, ncpus=1, walltime=15,
-            depends=None, creates=None):
+            deps=None, creates=None):
         if dir is None:
             dir = self._dir
         print walltime;walltime = 10
         job = AGTSJob(dir, script, args, ncpus, walltime * 60,
-                      depends, creates, self._agtsfile)
+                      deps, creates, self._agtsfile)
         self.jobs.append(job)
         return job
 
@@ -148,10 +153,10 @@ class AGTSJobs:
 
     def normalize(self):
         for job in self.jobs:
-            for i, dep in enumerate(job.dependencies):
+            for i, dep in enumerate(job.deps):
                 if not isinstance(dep, AGTSJob):
                     absname = os.path.normpath(os.path.join(job.dir, dip))
-                    job.dependencies[i] = self.find(absname)
+                    job.deps[i] = self.find(absname)
 
     def find(self, absname):
         for job in self.jobs:
@@ -169,7 +174,7 @@ class AGTSJobs:
                 if job.status == 'waiting':
                     done = False
                     ready = True
-                    for dep in job.dependencies:
+                    for dep in job.deps:
                         if dep.status != 'succes':
                             ready = False
                             break
@@ -204,12 +209,12 @@ class AGTSJobs:
                 t = '     '
             self.fd.write('%-40s %-10s %s %5d %5d %5d\n' %
                           (job.absname, job.status, t, job.walltime,
-                           job.ncpus, len(job.dependencies)))
+                           job.ncpus, len(job.deps)))
 
     def fail(self, dep):
         """Recursively disable jobs depending on failed job."""
         for job in self.jobs:
-            if dep in job.dependencies:
+            if dep in job.deps:
                 job.status = 'disabled'
                 self.log(job)
                 self.fail(job)
@@ -218,11 +223,31 @@ class AGTSJobs:
         for job in self.jobs:
             cluster.clean(job)
 
+    def copy_created_files(self, dir):
+        for job in self.jobs:
+            if job.creates:
+                for filename in job.creates:
+                    path = os.path.join(job.dir, filename)
+                    if os.path.isfile(path):
+                        os.rename(path, os.path.join(dir, filename))
+
 
 if __name__ == '__main__':
-    jobs = AGTSJobs(sleeptime=2)
-    jobs.collect()
-    for job in jobs.jobs:
-        job.walltime = 10
+    # Quick test using dummy cluster and timeout after only 10 seconds:
     c = TestCluster()
-    j.run(c)
+    queue = AGTSQueue(sleeptime=2)
+    queue.collect()
+    for job in queue.jobs:
+        job.walltime = 10
+
+    queue.run(c)
+    queue.copy_created_files('.')
+
+    # Analysis:
+    #form gpaw.test.big.analysis import ???
+    #...
+    # hej Troels:  
+    # for job in queue.jobs:
+    #     hvis job.status == 'succes',
+    #     saa er job.tstop - job.tstart tiden i sekunder.
+    #     Navnet paa jobbet er job.absname
