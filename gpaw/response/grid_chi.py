@@ -387,7 +387,8 @@ class CHI:
         bzkpt_kG = calc.get_bz_k_points()
         IBZkpt_kG = calc.get_ibz_k_points()
         kq = self.find_kq(bzkpt_kG, q)
-
+        bcell = self.bcell
+        
         chi0_wGG = np.zeros((self.Nw, self.npw, self.npw), dtype = complex)
         specfunc_wGG = np.zeros((self.NwS, self.npw, self.npw), dtype = complex)
         
@@ -422,7 +423,8 @@ class CHI:
             op[1] = - np.eye(3, dtype=int)
         else:
             op = calc.wfs.symmetry.op_scc
-            
+
+        r_cG = calc.wfs.gd.get_grid_point_coordinates()
         # calculate chi0
         for k in range(self.kstart, self.kend):
             t1 = time()
@@ -433,9 +435,13 @@ class CHI:
             rho_Gnn = np.zeros((self.npw, self.nband, self.nband), dtype=complex)
             for n in range(self.nband):
 
-                psit1old_G = calc.wfs.kpt_u[ibzkpt1].psit_nG[n]
-                psit1new_G = self.symmetrize_wavefunction(psit1old_G, op[iop1], IBZkpt_kG[ibzkpt1])
-
+                kpt_c = np.inner(bcell.T, IBZkpt_kG[ibzkpt1])
+                uold_G = ( calc.wfs.kpt_u[ibzkpt1].psit_nG[n]
+                               * np.exp(-1j * np.inner(kpt_c, r_cG.T).T) )
+                psit1new_G = self.symmetrize_wavefunction(uold_G, op[iop1], IBZkpt_kG[ibzkpt1])
+                kpt_c = np.inner(bcell.T, bzkpt_kG[k])
+                psit1new_G *= np.exp(1j * np.inner(kpt_c, r_cG.T).T)
+                     
                 P1_ai = pt.dict()
                 pt.integrate(psit1new_G, P1_ai, k)
                 
@@ -444,9 +450,13 @@ class CHI:
                 for m in range(self.nband):
                     if  np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > 1e-8:
 
-                        psit2old_G = calc.wfs.kpt_u[ibzkpt2].psit_nG[m]
-                        psit2_G = self.symmetrize_wavefunction(psit2old_G, op[iop2], IBZkpt_kG[ibzkpt2])
-
+                        kpt_c = np.inner(bcell.T, IBZkpt_kG[ibzkpt2])
+                        uold_G = ( calc.wfs.kpt_u[ibzkpt2].psit_nG[m]
+                                        * np.exp(-1j * np.inner(kpt_c, r_cG.T).T) )
+                        psit2_G = self.symmetrize_wavefunction(uold_G, op[iop2], IBZkpt_kG[ibzkpt2])
+                        kpt_c = np.inner(bcell.T, bzkpt_kG[kq[k]])
+                        psit2_G *= np.exp(1j * np.inner(kpt_c, r_cG.T).T)
+                        
                         P2_ai = pt.dict()
                         pt.integrate(psit2_G, P2_ai, kq[k])
                         
