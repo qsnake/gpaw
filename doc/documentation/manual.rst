@@ -585,11 +585,11 @@ This will give an accuracy of `O(h^{2n})`, where ``n`` must be between
 special Mehrstellen stencil - this will be changed to ``n=3`` in
 version 0.7.
 
-With the ``sencils=(a, b)`` keyword, you can set the accuracy of the
+With the ``stencils=(a, b)`` keyword, you can set the accuracy of the
 stencil used for the Kohn-Sham equation to `O(h^{2a})`.  The ``b``
 parameter (between 1 and 4) controls the accuracy of the
 interpolation of the density from the coarse grid to the fine grid.
-Default values are ``sencils=(3, 3)``.
+Default values are ``stencils=(3, 3)``.
 
 
 .. _manual_hund:
