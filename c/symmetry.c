@@ -1,6 +1,5 @@
 /*  Copyright (C) 2010 CAMd
  *  Please see the accompanying LICENSE file for further information. */
-//#define Pi 3.1415926535897932384626433832795
 #include "extensions.h"
 
 //
@@ -37,6 +36,7 @@ PyObject* symmetrize(PyObject *self, PyObject *args)
         int p1 = ((C[1] * g0 + C[4] * g1 + C[7] * g2) % ng1 + ng1) % ng1;
         int p2 = ((C[2] * g0 + C[5] * g1 + C[8] * g2) % ng2 + ng2) % ng2;
         b_g[(p0 * ng1 + p1) * ng2 + p2] += *a_g++;
+      }
 
   Py_RETURN_NONE;
 }
