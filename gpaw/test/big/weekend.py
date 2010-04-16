@@ -1,185 +1,134 @@
 #!/usr/bin/env python
 """Run longer test jobs in parallel on Niflheim."""
 
-# crontab -e
-# MAILTO=name
-#dom=day of month
-#dow=day of week (0 - 6) (Sunday=0)
-#min hr dom month dow cmd
-#*  *  *    *    * python ..../weekend.py
+################################################################################
+## Register cronjob:                                                          ##
+################################################################################
 
+# 1. edit the crontab-file
+#    $ crontab -e
+# 2. adapt the following text
+#    MAILTO=name
+#    # dom=day of month
+#    # dow=day of week (0 - 6) (Sunday=0)
+#    # min hr dom month dow cmd
+#    *  *  *    *    * python weekend.py -q -niflheim
+
+# Do not import anything else than standard python modules here:
 import os
 import sys
 import glob
 import datetime
 import atexit
 import tempfile
+import platform
 
-tmpfilename = "/tmp/long_tests"
-
-#from optparse import OptionParser
-
-class RunProfile:
-
-    def __init__(self):
-        pass
-
-    def gpaw_compile_cmd(self):
-        return "Please overwrite"
-
-    def submit(self, script, env_vars):
-        return "Please overwrite"
-
-class Niflheim(RunProfile):
-    def gpaw_compile_cmd(self):
-        compile_cmd = 'source /home/camp/modulefiles.sh&& ' +\
-                      'module load NUMPY&& '+\
-                      'python setup.py --remove-default-flags ' +\
-                      '--customize=doc/install/Linux/Niflheim/' +\
-                      'customize-thul-acml.py ' +\
-                      'install --home='+install_directory+' 2>&1 | ' +\
-                      'grep -v "c/libxc/src"'
-
-        return compile_cmd
-
-    def submit(self, job, env_vars):
-        #todo:
-        # 1. set the environment variables correctly when running job
-        # 2. run/submit the script)
-
-        try:
-            os.remove(job.prefix + '.done')
-        except OSError:
-            pass
-
-        gpaw_python = self.gpawdir + '/bin/gpaw-python'
-        cmd = (
-            'cd %s/gpaw/gpaw/sunday/%s; ' % (self.gpawdir, job.dir) +
-            'mpiexec --mca mpi_paffinity_alone 1 ' +
-            '-x PYTHONPATH=%s/lib64/python:$PYTHONPATH ' % self.gpaw_dir +
-            '-x GPAW_SETUP_PATH=%s ' % self.setupsdir +
-            '%s _%s.py %s > %s.output' %
-            (gpaw_python, job.id, job.arg, job.id))
-
-        if job.ncpu == 1:
-            ppn = 1
-            nodes = 1
-        else:
-            assert job.ncpu % 8 == 0
-            ppn = 8
-            nodes = job.ncpu // 8
-        options = ('-l nodes=%d:ppn=%d:xeon5570 -l walltime=%d:%02d:00' %
-                   (nodes, ppn, job.tmax // 60, job.tmax % 60))
-
-        print 'qsub %s %s-job.py' % (options, job.id)
-        x = os.popen('/usr/local/bin/qsub %s %s-job.py' %
-                     (options, job.id), 'r').readline().split('.')[0]
-        #x = os.system('/usr/local/bin/qsub %s %s-job.py' % (options, job.id))
-
-        self.log('# Started: %s, %s' % (job.id, x))
-        job.status = 'running'
+################################################################################
+##                                                                            ##
+## Global settings that define behaviour of the tests                         ##
+##                                                                            ##
+## 1. define here the weekday the tests should run:                           ##
+run_day = 1 #0=Monday, 1=Tuesday, ...                                         ##
+##                                                                            ##
+##                                                                            ##
+## 2. define the base directory for the tests:                                ##
+test_base_path = os.path.join(os.environ["HOME"],                             ##
+                              "agts")                                         ##
+##                                                                            ##
+##                                                                            ##
+## define the name of the lock file                                           ##
+tmpfilename = os.path.join(tempfile.gettempdir(), "big_tests.lock")           ##
+##                                                                            ##
+##                                                                            ##
+################################################################################
 
 
-class Local(RunProfile):
-    def gpaw_compile_cmd(self, install_directory):
-        return        'python setup.py  ' +\
-                      'install --home='+install_directory+' 2>&1 | ' +\
-                      'grep -v "c/libxc/src"'
+def get_current_test_directory_name():
+    #determine the last day it should have run
+    today = datetime.date.today()
+    if run_day == today.weekday():
+        last_run = today
+    else:
+        week_offset = datetime.timedelta(days=(today.weekday()-run_day))
+        last_run = today - week_offset
+    return os.path.join(test_base_path,
+                        last_run.strftime("%y.%m.%d"))
 
-    def submit(self, script, env_vars, args):
-        """simply run the script env_vars is a dictionary with environment variables"""
-        #todo:
-        # 1. set the environment variables
-        # 2. run/submit the script)
-        os.system("python "+script)
+def get_paths():
+    return {
+        "ase":os.path.join(get_current_test_directory_name(), "ase"),
+        "gpaw":os.path.join(get_current_test_directory_name(), "gpaw"),
+        "root":get_current_test_directory_name(),
+        "setups":os.path.join(get_current_test_directory_name(),"gpaw_setups"),
+        "test_scripts":os.path.join(get_current_test_directory_name(), "test_scripts")
+    }
 
-
-
-class Test:
+def prepend_env(env_var_name, list_of_paths):
+    """prepends paths to the environment variables"""
+    if os.environ.has_key(env_var_name):
+        paths = os.path.pathsep+os.environ[env_var_name]
+    else:
+        paths = ""
     
-    def __init__(self, profile):
-        self.profile = profile
-        self.run_day = 1 #0=Monday, 1=Tuesday, ...
-        self.test_dir = os.path.join(
-                            os.environ["HOME"],
-                            "agts",
-                            self.get_current_test_directory_name())
-        self.ase_dir = os.path.join(self.test_dir, "ase")
-        self.gpaw_dir = os.path.join(self.test_dir, "gpaw")
-        self.script_dir = os.path.join(self.test_dir, "scripts")
-        self.determine_state()
+    for path in list_of_paths:
+        paths =  path + os.path.pathsep + paths
 
-    def get_current_test_directory_name(self):
-        #determine the last day it should have run
-        today = datetime.date.today()
-        if self.run_day == today.weekday():
-            last_run = today
-        else:
-            week_offset = datetime.timedelta(days=(today.weekday()-self.run_day))
-            last_run = today + week_offset
-        return last_run.strftime("%y.%m.%d")
+    if paths.endswith(os.path.pathsep):
+        paths = paths[:-1]
 
-    def setup(self):
-        """creates the setup and copies script instances to execute_path"""
-        if not os.path.exists(self.test_dir):
-            os.makedirs(self.test_dir)
-        if not os.path.exists(self.gpaw_dir):
-            #install gpaw, if not already
-            self.install_gpaw()
+    os.environ[env_var_name] = paths
 
-        #Copy the script files to the /output
-        
+def is_installed():
+    """true, if the test directory exist"""
+    return os.path.exists(get_current_test_directory_name())
 
+def install_all():
+    """calls functions to install ase and gpaw and sets up the directories"""
+    if not os.path.exists(test_base_path):
+        os.makedirs(test_base_path)
+    if not os.path.exists(get_paths()["gpaw"]):
+        install_ase_gpaw()
+    #create the other directories
+    for path in get_paths().values():
+        if not os.path.exists(path):
+            os.makedirs(path)
 
-    def install_gpaw(self):
-        """Install ASE and GPAW."""
-        # Export a fresh version and install:
-        if os.system('svn export ' +
-                     'https://svn.fysik.dtu.dk/projects/gpaw/trunk '+self.gpaw_dir) != 0:
-            raise RuntimeError('Export of GPAW failed!')
-        if os.system('svn export ' +
-                     'https://svn.fysik.dtu.dk/projects/ase/trunk '+self.ase_dir) != 0:
-            raise RuntimeError('Export of ASE failed!')
+def install_ase_gpaw():
+    """Install ASE and GPAW."""
+    # Export a fresh version and install:
+    if os.system('svn export ' +
+                 'https://svn.fysik.dtu.dk/projects/gpaw/trunk '+get_paths()["gpaw"]) != 0:
+        raise RuntimeError('Export of GPAW failed!')
+    if os.system('svn export ' +
+                 'https://svn.fysik.dtu.dk/projects/ase/trunk '+get_paths()["ase"]) != 0:
+        raise RuntimeError('Export of ASE failed!')
 
-        os.chdir(self.gpaw_dir)
+    os.chdir(get_paths()["gpaw"])
 
-        compile_cmd = self.profile.gpaw_compile_cmd(self.gpaw_dir)
+    if platform.architecture()[0].find("32")!=-1:
+        lib = "lib"
+    elif platform.architecture()[0].find("64")!=-1:
+        lib = "lib64"
+    else:
+        raise Exception("Unknown architecture: ", platform.architecture()[0])
 
-        print "Compile command", compile_cmd
-        if os.system(compile_cmd) != 0:
-            raise RuntimeError('Installation failed!')
+    compile_cmd = 'source /home/camp/modulefiles.sh&& ' +\
+                  'module load NUMPY&& '+\
+                  'python setup.py --remove-default-flags ' +\
+                  '--customize=doc/install/Linux/Niflheim/' +\
+                  'customize-thul-acml.py ' +\
+                  'install --home='+get_paths()["gpaw"]+' 2>&1 | ' +\
+                  'grep -v "c/libxc/src"'
 
-        os.system('mv ../ase/ase ../lib64/python')
+    os.system(compile_cmd)
 
-        os.system('wget --no-check-certificate --quiet ' +
-                  'http://wiki.fysik.dtu.dk/stuff/gpaw-setups-latest.tar.gz')
-        os.system('tar xzf gpaw-setups-latest.tar.gz')
-        self.setups_dir = os.path.join(self.gpaw_dir + glob.glob('gpaw-setups-[0-9]*')[0])
+    os.system('mv ../ase/ase ../%s/python' % lib)
 
-    def determine_state(self):
-        print "Load all scripts and determine dependencies."
-
-    def run_jobs(self):
-        print "Run the pending jobs"
-
-    def run(self):
-        """runs or continues the long tests"""
-        self.setup()
-        self.determine_state()
-        self.run_jobs()
-        self.print_state()
-
-    def print_state(self):
-        state_text = "State for the weekly tests"
-        print state_text
-        print len(state_text)*"="
-        print "Test directory:  ", self.test_dir
-        print "Ase directory:   ", self.ase_dir
-        print "GPAW directory:  ", self.gpaw_dir
-        print "Script directory:", self.script_dir
-        print ""
-        print "Not yet implemented"
-
+    os.system('wget --no-check-certificate --quiet ' +
+              'http://wiki.fysik.dtu.dk/stuff/gpaw-setups-latest.tar.gz')
+    os.system('tar xzf gpaw-setups-latest.tar.gz')
+    setups_dir = os.path.join(get_paths()["gpaw"], glob.glob('gpaw-setups-[0-9]*')[0])
+    os.system("mv "+setups_dir+" "+get_paths()["setups"])
 
 def lock():
     if os.path.exists(tmpfilename):
@@ -200,26 +149,105 @@ def print_usage():
     print "    python", sys.argv[0] + " --local"
     print "to run it locally (default is Niflheim"
 
+
+from optparse import OptionParser
+
 def main():
+    parser = OptionParser()
+    parser.add_option("-p", "--profile", dest="profile_name",
+                      help="select a profile - currently local "+\
+                           "and niflheim are supported", action="store", \
+                        default="local")
+    parser.add_option("-l", "--local",
+                      help="select the local profile (same as \"-p local\")",\
+                      action="store_const", dest="profile_name",const="local")
+    parser.add_option("-n", "--niflheim",
+                      help="select the niflheim profile (same as \"-p niflheim\")",\
+                      action="store_const", dest="profile_name",const="niflheim")
+    parser.add_option("-x", "--pure_local",
+                      help="runs in the local environment without installing ase/gpaw from svn",\
+                      action="store_true", dest="pure", default=False)
+    parser.add_option("-q", "--qiet",
+                      help="verbose mode",\
+                      action="store_false", dest="verbose", default=True)
+
+    (options, args) = parser.parse_args()
+    verbose = options.verbose
+
+    welcome = "Welcome to AGTS"
+
+    if verbose:
+        print len(welcome)*"*"
+        print welcome
+        print len(welcome)*"*"
+        print
+        print "Command line options: ", options
+
     #make sure only one instance is running at any time:
     if not lock():
+        #print "An other agts process is already running - aborting"
         return
-
     atexit.register(unlock)
 
-    if len(sys.argv)>=2:
-        if sys.argv[1]=="--info":
-            t.print_state()
-            return
-        elif sys.argv[1]=="--local":
-            t = Test(Local())
-        else:
-            print_usage()
-            return
+    if not options.pure and not is_installed():
+        installed = False
+        install_all()
     else:
-            t = Test(Niflheim())
-    t.print_state()
-    t.run()
+        installed = True
+
+    if not options.pure:
+        print "Setting PYTHONPATH to", [get_paths()["ase"],get_paths()["gpaw"]]
+        prepend_env("PYTHONPATH", [get_paths()["ase"],get_paths()["gpaw"]])
+        print "Setting GPAW_SETUP_PATH to", get_paths()["setups"]
+        prepend_env("GPAW_SETUP_PATH", [get_paths()["setups"]])
+        print "Paths:"
+        for name in get_paths().keys():
+            print name+":",get_paths()[name]
+
+    # The environment is set up, now we are allowed to to compile
+    # and load gpaw etc.
+
+    if verbose:
+        print "Loading profile \""+options.profile_name+"\" ..."
+
+    if options.profile_name=="local":
+        from profile import Local
+        profile = Local()
+    elif options.profile_name=="niflheim":
+        from profile import Niflheim
+        profile = Niflheim()
+    else:
+        raise Exception("unknown profile \""+options.profile_name+"\"")
+    
+    profile.set_paths(get_paths())
+
+    if not installed:
+        if verbose:
+            print "compiling gpaw ..."
+        profile.compile_gpaw(get_paths()["gpaw"])
+
+    print
+    print
+    print
+
+    if options.pure:
+        print 20*"*"
+        print "Using the current environment with the installed ase and gpaw"
+        print "The profile for compiling and submitting is", profile
+        print "Todo: create AGTSQueue object and run"
+    else:
+        # 
+        #
+        print 20*"*"
+        print "Using the modified environment with ase and gpaw from svn"
+        print "The profile for compiling and submitting is", profile
+        print "Paths:"
+        for name in get_paths().keys():
+            print name+":",get_paths()[name]
+        print
+        print "Todo: create AGTSQueue object and run"
+    print "Remember to use the correct environment (variables) when running jobs!"
+
 
 if __name__ == "__main__":
     main()
