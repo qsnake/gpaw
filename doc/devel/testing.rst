@@ -81,20 +81,20 @@ example where one script, calculate.py, calculates something and saves a .gpw
 file and another script, analyse.py, analyses this output. Then the submit
 script should look something like::
 
-    def agtsmain(env):
-        calc = env.add('calculate.py',
-                       ncpus=8,
-                       walltime=25)
+    def agts(queue):
+        calc = queue.add('calculate.py',
+                         ncpus=8,
+                         walltime=25)
 
-        env.add('analyse.py'
-                ncpus=1,
-                walltime=5,
-                depends=[calc])
+        queue.add('analyse.py'
+                  ncpus=1,
+                  walltime=5,
+                  deps=[calc])
 
-As shown, this script has to contain the definition of the function ``agtsmain``
-which should take exactly one argument, ``env``. Then each script is added to
-the environment, ``env``, along with some data which defines how and when to
-run the job.  Note how ``env.add`` returns a job object which can be used to
+As shown, this script has to contain the definition of the function ``agts``
+which should take exactly one argument, ``queue``. Then each script is added to
+a queue object, along with some data which defines how and when to
+run the job.  Note how ``queue.add`` returns a job object which can be used to
 specify dependencies.
 
 Possible keys are:
@@ -104,7 +104,5 @@ Name           Type      Default value  Description
 =============  ========  =============  ===================================
 ``ncpus``      ``int``   ``1``          Number of cpus
 ``walltime``   ``int``   ``15``         Requested walltime in minutes
-``depends``    ``list``  ``[]``         List of jobs this job depends on
+``deps``       ``list``  ``[]``         List of jobs this job depends on
 =============  ========  =============  ===================================
-
-

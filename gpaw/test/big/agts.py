@@ -129,7 +129,6 @@ class AGTSQueue:
             deps=None, creates=None):
         if dir is None:
             dir = self._dir
-        print walltime;walltime = 10
         job = AGTSJob(dir, script, args, ncpus, walltime * 60,
                       deps, creates, self._agtsfile)
         self.jobs.append(job)
@@ -143,12 +142,11 @@ class AGTSQueue:
 
     def collect(self):
         for dir, agtsfile in self.locate_tests():
-            print dir, agtsfile
             _global = {}
             execfile(os.path.join(dir, agtsfile), _global)
             self._dir = dir
             self.agtsfile = agtsfile
-            _global['agtsmain'](self)
+            _global['agts'](self)
         self.normalize()
 
     def normalize(self):
