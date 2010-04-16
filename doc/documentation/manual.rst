@@ -427,14 +427,6 @@ passed to the ``txt`` keyword, a file with that name will be opened
 and used for output.  Use ``txt=None`` to disable all text output.
 
 
-.. _manual_stencils:
-
-Finite-difference stencils
---------------------------
-
-XXX Missing doc
-
-
 .. _manual_mixer:
 
 Density mixing
@@ -575,6 +567,31 @@ LCAO mode has its own eigensolver, which directly diagonalizes the
 Hamiltonian matrix instead of using an iterative method.
 
 
+.. _manual_stencils:
+
+Finite-difference stencils
+--------------------------
+
+GPAW uses finite-difference stencils for the Laplacian in the
+Kohn-Sham and Poisson equations.  You can set the range of the stencil
+(number of neighbor grid points) used for the Poisson equation like
+this::
+
+    from gpaw import GPAW, PoissonSolver
+    calc = GPAW(poissonsolver=PoissonSolver(nn=n))
+
+This will give an accuracy of `O(h^{2n})``, where ``n`` must be between
+1 and 6.  The default value for version 0.6 is ``n='M'`` which is a
+special Mehrstellen stencil - this will be changed to ``n=3`` in
+version 0.7.
+
+With the ``sencils=(a, b)`` keyword, you can set the accuracy of the
+stencil used for the Kohn-Sham equation to `O(h^{2a})``.  The ``b``
+parameter (between 1 and 4) controls the accuracy of the
+interpolation of the density from the coarse grid to the fine grid.
+Default values are ``sencils=(3, 3)``.
+
+
 .. _manual_hund:
 
 Using Hund's rule for guessing initial magnetic moments
@@ -585,6 +602,7 @@ The ``hund`` keyword can be used for single atoms only. If set to
 ocupations, and magnetic moment of the atom will be fixed to the value
 required by Hund's rule. Any user specified magnetic moment is
 ignored. Default is False.
+
 
 .. _manual_parallel_calculations:
 
