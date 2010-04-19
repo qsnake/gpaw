@@ -242,10 +242,9 @@ if __name__ == '__main__':
     queue.copy_created_files('.')
 
     # Analysis:
-    #form gpaw.test.big.analysis import ???
-    #...
-    # hej Troels:  
-    # for job in queue.jobs:
-    #     hvis job.status == 'succes',
-    #     saa er job.tstop - job.tstart tiden i sekunder.
-    #     Navnet paa jobbet er job.absname
+    from gpaw.test.big.analysis import analyse
+    mailto = None # None => print to stdout, or email address
+    analyse(queue,
+            os.getenv('HOME') + '/analyse.pickle',  # file keeping history
+            os.getenv('HOME') + '/tmp/out',         # Where to dump figures!
+            mailto=mailto)

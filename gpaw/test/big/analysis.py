@@ -6,9 +6,9 @@ import matplotlib.pyplot as pl
 import tempfile
 
 """Database structure:
-dict(testname: [(date, time, info), (date, time, info), ...])
+dict(testname: [(date, runtime, info), (date, runtime, info), ...])
     date: Time since epoch in seconds
-    time: Run time in seconds. Negative for crashed jobs!
+    runtime: Run time in seconds. Negative for crashed jobs!
     info: A string describing the outcome
 """
 
@@ -34,41 +34,42 @@ class DatabaseHandler:
             os.rename(filename, filename + '.old')
         pickle.dump(self.data, open(filename, 'wb'), -1)
 
-    def add_data(self, name, date, time, info):
+    def add_data(self, name, date, runtime, info):
         if not self.data.has_key(name):
             self.data[name] = []
-        self.data[name].append((date, time, info))
+        self.data[name].append((date, runtime, info))
 
     def get_data(self, name):
         """Return date_array, time_array"""
-        dates, times = [], []
+        dates, runtimes = [], []
         if self.data.has_key(name):
             for datapoint in self.data[name]:
                 dates.append(datapoint[0])
-                times.append(datapoint[1])
+                runtimes.append(datapoint[1])
 
-        return np.asarray(dates), np.asarray(times)
+        return np.asarray(dates), np.asarray(runtimes)
 
-def update_database(env, db):
-    """Add all new data to database
-    """
-    pass
-    #XXX: This function should add data from all tests in `env` to the database!
-    # Blind implementation
-    """
-    for agtsjob in env.???:                 # XXX: 
-        date = 'Something to identify which week it is run'
-        time = agtsjob.runtime              # XXX: Runtime in seconds
-        info = 'Success/Failed, whatever'       
-        db.add_data(agtsjob.itentifier,     # XXX: Does this change from week to week? It must not
-                    date, time, info)
-    """
+    def update(self, queue):
+        """Add all new data to database"""
+        for job in queue.jobs:
+            absname = job.absname
+
+            tstart = job.tstart
+            if tstart is None:
+                tstart = np.nan
+            tstop = job.tstop
+            if tstop is None:
+                tstop = np.nan
+
+            info = job.status
+
+            self.add_data(absname, 0, tstop - tstart, info)
 
 class TestAnalyzer:
-    def __init__(self, name, dates, times):
+    def __init__(self, name, dates, runtimes):
         self.name = name
         self.dates = dates
-        self.times = times
+        self.runtimes = runtimes
         self.better = []
         self.worse = []
         self.relchange = None
@@ -83,15 +84,17 @@ class TestAnalyzer:
         """
         self.better = []
         self.worse = []
+        abschange = 0.0
+        relchange = 0.0
         status = 0
         current_first = 0   # Point to start analysis from
-        for i in range(1, len(self.times)):
-            tmptimes = self.times[current_first:i]
-            median = np.median(tmptimes[np.isfinite(tmptimes)])
+        for i in range(1, len(self.runtimes)):
+            tmpruntimes = self.runtimes[current_first:i]
+            median = np.median(tmpruntimes[np.isfinite(tmpruntimes)])
             if np.isnan(median):
                 current_first = i
-            elif np.isfinite(self.times[i]):
-                abschange = self.times[i] - median
+            elif np.isfinite(self.runtimes[i]):
+                abschange = self.runtimes[i] - median
                 relchange = abschange / median
                 if relchange < -reltol and abschange < -abstol:
                     # Improvement
@@ -110,15 +113,19 @@ class TestAnalyzer:
         self.abschange = abschange
         self.relchange = relchange * 100
 
-    def plot(self):
+    def plot(self, outputdir=None):
+        if outputdir is None:
+            return
         fig = pl.figure()
         ax = fig.add_subplot(1, 1, 1)
-        #ax.plot(self.dates, self.times)
-        ax.plot(self.times)
-        ax.plot(self.better, self.times[self.better], 'go')
-        ax.plot(self.worse, self.times[self.worse], 'ro')
+        ax.plot(self.runtimes, 'ko-')
+        ax.plot(self.better, self.runtimes[self.better], 'go', markersize=5)
+        ax.plot(self.worse, self.runtimes[self.worse], 'ro', markersize=5)
         ax.set_title(self.name)
-        fig.savefig(self.name + '.png')
+        if not outputdir.endswith('/'):
+            outputdir += '/'
+        figname = self.name.replace('/','_')
+        fig.savefig(outputdir + figname + '.png')
 
 class MailGenerator:
     def __init__(self):
@@ -163,33 +170,33 @@ class MailGenerator:
         os.system('mail -s "Results from weekly tests" %s < %s' % \
                   (address, fullpath))
 
-def csv2database(infile, outfile):
-    """Use this file once to import the old data from csv"""
-    csvdata = np.recfromcsv(infile)
-    db = DatabaseHandler(outfile)
-    for test in csvdata:
-        name = test[0]
-        for i in range(1, len(test) - 1):
-            runtime = float(test[i])
-            info = ''
-            db.add_data(name, 0, runtime, info)
-    db.write()
+#def csv2database(infile, outfile):
+#    """Use this file once to import the old data from csv"""
+#    csvdata = np.recfromcsv(infile)
+#    db = DatabaseHandler(outfile)
+#    for test in csvdata:
+#        name = test[0]
+#        for i in range(1, len(test) - 1):
+#            runtime = float(test[i])
+#            info = ''
+#            db.add_data(name, 0, runtime, info)
+#    db.write()
 
-def analyse(env):
-    db = DatabaseHandler('history.pickle')
+def analyse(queue, dbpath, outputdir=None, mailto=None):
+    db = DatabaseHandler(dbpath)
     db.read()
-    update_database(env, db)
+    db.update(queue)
     db.write()
     mg = MailGenerator()
-    for name in db.data.keys():
-        dates, times = db.get_data(name)
-        ta = TestAnalyzer(name, dates, times)
+    for job in queue.jobs:
+        name = job.absname
+        dates, runtimes = db.get_data(name)
+        ta = TestAnalyzer(name, dates, runtimes)
         ta.analyze()
         if ta.status:
             mg.add_test(name, ta.abschange, ta.relchange)
-        ta.plot()
+        ta.plot(outputdir)
 
-    mailto = os.getenv('MAILTO')
     if mailto is not None:
         mg.send_mail(mailto)
     else:
