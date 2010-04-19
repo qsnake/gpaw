@@ -74,6 +74,7 @@ if __name__ == '__main__' and len(args) == 0:
 from gpaw.atom.basis import BasisMaker
 from gpaw import ConvergenceError
 from gpaw.atom import polarization
+from gpaw.basis_data import parse_basis_name
 
 bad_density_warning = """\
 Bad initial electron density guess!  Try rerunning the basis generator
@@ -87,31 +88,6 @@ or non-scalar relativistic guess was not good enough for the scalar
 relativistic calculation.  You probably have to use the Python interface
 to the basis generator in gpaw.atom.basis directly and choose very
 smart parameters."""
-
-def parse_basis_name(name):
-    """Parse any basis type identifier: 'sz', 'dzp', 'qztp', '4z3p', ... """
-    letter2number = {'s' : 1, 'd' : 2, 't' : 3, 'q' : 4}
-    number2letter = 'Xsdtq56789'
-
-    newchars = ['', 'z', '', 'p']
-    zetacount = letter2number.get(name[0])
-    if zetacount is None:
-        zetacount = int(name[0])
-    assert name[1] == 'z'
-    newchars[0] = number2letter[zetacount]
-    if len(name) == 2:
-        polcount = 0
-        newchars[-1] = ''
-    elif len(name) == 3:
-        assert name[-1] == 'p'
-        polcount = 1
-    else:
-        assert len(name) == 4 and name[-1] == 'p'
-        polcount = letter2number.get(name[2])
-        if polcount is None:
-            polcount = int(name[2])
-        newchars[2] = number2letter[polcount]
-    return zetacount, polcount, ''.join(newchars)
 
 def main():
     zetacount, polcount, basistype = parse_basis_name(opts.type)

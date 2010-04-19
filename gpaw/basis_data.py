@@ -18,6 +18,32 @@ else:
     has_gzip = True
 
 
+def parse_basis_name(name):
+    """Parse any basis type identifier: 'sz', 'dzp', 'qztp', '4z3p', ... """
+    letter2number = {'s' : 1, 'd' : 2, 't' : 3, 'q' : 4}
+    number2letter = 'Xsdtq56789'
+
+    newchars = ['', 'z', '', 'p']
+    zetacount = letter2number.get(name[0])
+    if zetacount is None:
+        zetacount = int(name[0])
+    assert name[1] == 'z'
+    newchars[0] = number2letter[zetacount]
+    if len(name) == 2:
+        polcount = 0
+        newchars[-1] = ''
+    elif len(name) == 3:
+        assert name[-1] == 'p'
+        polcount = 1
+    else:
+        assert len(name) == 4 and name[-1] == 'p'
+        polcount = letter2number.get(name[2])
+        if polcount is None:
+            polcount = int(name[2])
+        newchars[2] = number2letter[polcount]
+    return zetacount, polcount, ''.join(newchars)
+
+
 class Basis:
     def __init__(self, symbol, name, readxml=True):
         self.symbol = symbol
@@ -83,6 +109,30 @@ class Basis:
             write('  </basis_function>\n')
         write('</paw_basis>\n')
 
+    def reduce(self, name):
+        """Reduce the number of basis functions.
+
+        Example: basis.reduce('sz') will remove all non single-zeta
+        and polarization functions."""
+        
+        zeta, pol = parse_basis_name(name)[:2]
+        newbf_j = []
+        N = {}
+        p = 0
+        for bf in self.bf_j:
+            if 'polarization' in bf.type:
+                if p < pol:
+                    newbf_j.append(bf)
+                    p += 1
+            else:
+                nl = (int(bf.type[0]), 'spdf'.index(bf.type[1]))
+                if nl not in N:
+                    N[nl] = 0
+                if N[nl] < zeta:
+                    newbf_j.append(bf)
+                    N[nl] += 1
+        self.bf_j = newbf_j
+
     def get_description(self):
         title = 'LCAO basis set for %s:' % self.symbol
         if self.name is not None:
@@ -129,10 +179,21 @@ class BasisSetXMLParser(xml.sax.handler.ContentHandler):
         self.l = None
 
     def parse(self, filename=None):
+        """Read from symbol.name.basis file.
+
+        Example of filename: N.dzp.basis.  Use sz(dzp) to read
+        the sz-part from the N.dzp.basis file."""
+        
         basis = self.basis
-        name = '%s.%s.basis' % (basis.symbol, basis.name)
+        if '(' in basis.name:
+            reduced, name = basis.name.split('(')
+            name = name[:-1]
+        else:
+            name = basis.name
+            reduced = None
+        fullname = '%s.%s.basis' % (basis.symbol, name)
         if filename is None:
-            basis.filename, source = search_for_file(name)
+            basis.filename, source = search_for_file(fullname)
             if source is None:
                 print """
 You need to set the GPAW_SETUP_PATH environment variable to point to
@@ -143,13 +204,16 @@ the directory where the basis set files are stored.  See
 for details."""
 
                 raise RuntimeError('Could not find "%s" basis for "%s".' %
-                                   (basis.name, basis.symbol))
+                                   (name, basis.symbol))
         else:
             basis.filename = filename
             source = open(filename).read()
 
         self.data = None
         xml.sax.parseString(source, self)
+
+        if reduced:
+            basis.reduce(reduced)
 
     def startElement(self, name, attrs):
         basis = self.basis

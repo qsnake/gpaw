@@ -14,7 +14,7 @@ from gpaw.atom.generator import Generator, parameters
 from gpaw.atom.polarization import PolarizationOrbitalGenerator, Reference,\
      QuasiGaussian, default_rchar_rel, rchar_rels
 from gpaw.utilities import devnull, divrl
-from gpaw.basis_data import Basis, BasisFunction
+from gpaw.basis_data import Basis, BasisFunction, parse_basis_name
 from gpaw.version import version
 
 
