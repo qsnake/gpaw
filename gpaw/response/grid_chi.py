@@ -436,11 +436,8 @@ class CHI:
             for n in range(self.nband):
 
                 kpt_c = np.inner(bcell.T, IBZkpt_kG[ibzkpt1])
-                uold_G = ( calc.wfs.kpt_u[ibzkpt1].psit_nG[n]
-                               * np.exp(-1j * np.inner(kpt_c, r_cG.T).T) )
-                psit1new_G = self.symmetrize_wavefunction(uold_G, op[iop1], IBZkpt_kG[ibzkpt1])
-                kpt_c = np.inner(bcell.T, bzkpt_kG[k])
-                psit1new_G *= np.exp(1j * np.inner(kpt_c, r_cG.T).T)
+                psitold_G =   calc.wfs.kpt_u[ibzkpt1].psit_nG[n]
+                psit1new_G = self.symmetrize_wavefunction(psitold_G, op[iop1], IBZkpt_kG[ibzkpt1], bzkpt_kG[k])                
                      
                 P1_ai = pt.dict()
                 pt.integrate(psit1new_G, P1_ai, k)
@@ -451,11 +448,8 @@ class CHI:
                     if  np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > 1e-8:
 
                         kpt_c = np.inner(bcell.T, IBZkpt_kG[ibzkpt2])
-                        uold_G = ( calc.wfs.kpt_u[ibzkpt2].psit_nG[m]
-                                        * np.exp(-1j * np.inner(kpt_c, r_cG.T).T) )
-                        psit2_G = self.symmetrize_wavefunction(uold_G, op[iop2], IBZkpt_kG[ibzkpt2])
-                        kpt_c = np.inner(bcell.T, bzkpt_kG[kq[k]])
-                        psit2_G *= np.exp(1j * np.inner(kpt_c, r_cG.T).T)
+                        psitold_G =   calc.wfs.kpt_u[ibzkpt2].psit_nG[m]
+                        psit2_G = self.symmetrize_wavefunction(psitold_G, op[iop2], IBZkpt_kG[ibzkpt2], bzkpt_kG[kq[k]])
                         
                         P2_ai = pt.dict()
                         pt.integrate(psit2_G, P2_ai, kq[k])
@@ -550,7 +544,7 @@ class CHI:
         return ibzkpt, iop
 
 
-    def symmetrize_wavefunction(self, a_g, op_cc, kpt):
+    def symmetrize_wavefunction(self, a_g, op_cc, kpt0, kpt1):
 
         if (np.abs(op_cc - np.eye(3,dtype=int)) < 1e-10).all():
             return a_g
@@ -559,7 +553,7 @@ class CHI:
         else:
             import _gpaw
             b_g = np.zeros_like(a_g)
-            _gpaw.symmetrize_wavefunction(a_g, b_g, op_cc.T.copy(), kpt)
+            _gpaw.symmetrize_wavefunction(a_g, b_g, op_cc.T.copy(), kpt0, kpt1)
     
         return b_g
 
