@@ -1098,11 +1098,18 @@ def construct_smooth_wavefunction(u, l, gc, r, s):
 if __name__ == '__main__':
     import os
     from gpaw.xc_functional import XCFunctional
+    from gpaw.atom.basis import BasisMaker
 
-    for xcname in ['LDA', 'PBE', 'RPBE']:
+    for xcname in ['LDA', 'PBE', 'RPBE', 'revPBE']:
         for symbol, par in parameters.items():
             filename = symbol + '.' + XCFunctional(xcname).get_name()
             if os.path.isfile(filename):
                 continue
             g = Generator(symbol, xcname, scalarrel=True, nofiles=True)
-            g.run(exx=True, logderiv=False, **par)
+            g.run(exx=True, logderiv=False, use_restart_file=False, **par)
+
+            if xcname == 'PBE':
+                bm = BasisMaker(g, name='dzp', run=False)
+                basis = bm.generate()
+                basis.write_xml()
+                

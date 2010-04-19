@@ -6,7 +6,7 @@ Atomic PAW Setups
 
 A setup is to the PAW method what a pseudo-potential is to the
 pseudo-potential method.  All available setups are contained in this
-tar-file: gpaw-setups-0.5.3574.tar.gz_.  Install them as described in the
+tar-file: gpaw-setups-0.6.6300.tar.gz_.  Install them as described in the
 :ref:`installationguide`.  The setups are stored as compressed pawxml_
 files.
 
@@ -27,7 +27,7 @@ See also `NIST Atomic Reference Data`_, `Computational Chemistry
 Comparison and Benchmark DataBase`_, `Dacapo pseudo potentials`_, and
 `Vasp pseudo potentials`_.
 
-.. _gpaw-setups-0.5.3574.tar.gz: http://wiki.fysik.dtu.dk/stuff/gpaw-setups-0.5.3574.tar.gz
+.. _gpaw-setups-0.6.6300.tar.gz: http://wiki.fysik.dtu.dk/stuff/gpaw-setups-0.6.6300.tar.gz
 .. _pawxml: http://wiki.fysik.dtu.dk/stuff/pawxml/pawxml.xhtml
 .. _NIST Atomic Reference Data: http://physics.nist.gov/PhysRefData/DFTdata/Tables/ptable.html
 .. _Computational Chemistry Comparison and Benchmark DataBase: http://srdata.nist.gov/cccbdb/
