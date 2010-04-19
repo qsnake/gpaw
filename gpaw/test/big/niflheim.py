@@ -1,70 +1,103 @@
 import os
-import sys
 import glob
+import subprocess
 
-class QueueingSystem:
-    pass
+from gpaw.test.big.agts import Cluster
 
-class Niflheim(QueueingSystem):
-    compile_cmd = ('source /home/camp/modulefiles.sh&& ' +
-                   'module load NUMPY&& '+
-                   'python setup.py --remove-default-flags ' +
-                   '--customize=doc/install/Linux/Niflheim/' +
-                   'customize-thul-acml.py ' +
-                   'install --home=.')
+
+class Niflheim(Cluster):
+
     gpawrepo = 'https://svn.fysik.dtu.dk/projects/gpaw/trunk'
     aserepo = 'https://svn.fysik.dtu.dk/projects/ase/trunk'
-    lib = 'lib64'
 
-    def install(self):
-        """Install ASE and GPAW."""
+    def __init__(self):
+        self.dir = os.getcwd()
 
-
-        # Export a fresh version and install:
+    def install_gpaw(self):
         if os.system('svn export %s gpaw' % self.gpawrepo) != 0:
             raise RuntimeError('Export of GPAW failed!')
-        if os.system('svn export %s ase' % self.aserepo) != 0:
-            raise RuntimeError('Export of ASE failed!')
 
         os.chdir('gpaw')
 
-        if os.system(self.compile_cmd) != 0:
-            raise RuntimeError('Installation failed!')
-
-        os.system('mv ../ase/ase ../%s/python' % self.lib)
-
-        os.chdir('..')
+        compile_cmd = 
+        if os.system('cd gpaw&& ' +
+                     'source /home/camp/modulefiles.sh&& ' +
+                     'module load NUMPY&& '+
+                     'python setup.py --remove-default-flags ' +
+                     '--customize=doc/install/Linux/Niflheim/' +
+                     'customize-thul-acml.py ' +
+                     'install --home=..') != 0:
+            raise RuntimeError('Installation of GPAW failed!')
 
         os.system('wget --no-check-certificate --quiet ' +
                   'http://wiki.fysik.dtu.dk/stuff/gpaw-setups-latest.tar.gz')
         os.system('tar xzf gpaw-setups-latest.tar.gz')
-        self.setupsdir = os.path.join(glob.glob('gpaw/gpaw-setups-[0-9]*')[0])
+        os.system('mv gpaw-setups-[0-9]* gpaw-setups')
+
+    def install_ase(self):
+        if os.system('svn checkout %s ase' % self.aserepo) != 0:
+            raise RuntimeError('Checkout of ASE failed!')
+        if os.system('cd ase; python setup.py install --home=..'):
+            raise RuntimeError('Installation of ASE failed!')
+
+    def install(self):
+        self.install_gpaw()
+        self.install_ase()
 
     def submit(self, job):
-        gpaw_python = 'gpaw/bin/gpaw-python'
-        cmd = (
-            'cd gpaw/gpaw/test/big/%s; ' % job.directory +
-            'mpiexec --mca mpi_paffinity_alone 1 ' +
-            '-x PYTHONPATH=gpaw/%s/python:$PYTHONPATH ' % self.lib +
-            '-x GPAW_SETUP_PATH=%s ' % self.setupsdir +
-            '%s %s %s > %s.output' %
-            (gpaw_python, job.filename, job.argstring, job.identifier))
+        dir = os.getcwd()
+        os.chdir(job.dir)
+        gpaw_python = os.path.join(self.dir, 'bin/gpaw-python')
 
-
-        if job.ncpu == 1:
+        if job.ncpus == 1:
             ppn = 1
             nodes = 1
         else:
-            assert job.ncpu % 8 == 0
+            assert job.ncpus % 8 == 0
             ppn = 8
-            nodes = job.ncpu // 8
+            nodes = job.ncpus // 8
 
-        options = ('-l nodes=%d:ppn=%d:xeon5570 -l walltime=%d:%02d:00' %
-                   (nodes, ppn, job.tmax // 60, job.tmax % 60))
-        
-        print 'qsub %s %s-job.py' % (options, job.id)
-        x = os.popen('/usr/local/bin/qsub %s %s-job.py' %
-                     (options, job.id), 'r').readline().split('.')[0]
+        p = subprocess.Popen(
+            ['/usr/local/bin/qsub',
+             '-l',
+             'nodes=%d:ppn=%d:xeon5570' % (nodes, ppn),
+             '-l',
+             'walltime=%d:%02d:00' %
+             (job.walltime // 3600, job.walltime % 3600 // 60),
+             '-N',
+             job.absname],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        p.stdin.write(
+            'touch %s.start\n' % job.name +
+            'mpiexec --mca mpi_paffinity_alone 1 ' +
+            '-x PYTHONPATH=%s/lib/python:%s/lib64/python:$PYTHONPATH ' %
+            (self.dir, self.dir) +
+            '-x GPAW_SETUP_PATH=%s/gpaw-setups ' % self.dir +
+            '%s %s %s > %s.output\n' %
+            (gpaw_python, job.name, job.args, job.name) +
+            'echo $? > %s.done\n' % job.name)
+        p.stdin.close()
+        id = p.stdout.readline().split('.')[0]
+        job.pbsid = id
+        os.chdir(dir)
 
-        self.log('# Started: %s, %s' % (job.id, x))
-        job.status = 'running'
+
+if __name__ == '__main__':
+    from gpaw.test.big.agts import AGTSQueue
+    
+    os.chdir(os.path.join(os.environ['HOME'], 'weekend-tests'))
+
+    niflheim = Niflheim()
+    if not os.path.isfile('bin/gpaw-python'):
+        niflheim.install()
+
+    os.chdir('gpaw')
+    queue = AGTSQueue()
+    queue.collect()
+
+    if 0:
+        queue.jobs = [j for j in queue.jobs if j.walltime < 3*60]
+
+    queue.run(niflheim)
+
+    queue.copy_created_files('../files')

@@ -64,6 +64,16 @@ class Cluster:
         # Nothing happened:
         return None
 
+    def clean(self, job):
+        try:
+            os.remove('%s.start' % job.absname)
+        except OSError:
+            pass
+        try:
+            os.remove('%s.done' % job.absname)
+        except OSError:
+            pass
+
 
 class TestCluster(Cluster):
     def submit(self, job):
@@ -88,16 +98,6 @@ class TestCluster(Cluster):
             cmd += 'echo %d > %s.done' % (exitcode, job.absname)
         os.system('(%s)&' % cmd)
 
-    def clean(self, job):
-        try:
-            os.remove('%s.start' % job.absname)
-        except OSError:
-            pass
-        try:
-            os.remove('%s.done' % job.absname)
-        except OSError:
-            pass
-
 
 class AGTSQueue:
     def __init__(self, sleeptime=60, log=sys.stdout):
@@ -118,7 +118,7 @@ class AGTSQueue:
                  succes=0, failed=0, disabled=0, timeout=0)
         for j in self.jobs:
             N[j.status] += 1
-        self.fd.write('%s %2d %2d %2d %2d %2d %2d %2d %-39s %s\n' %
+        self.fd.write('%s %2d %2d %2d %2d %2d %2d %2d %-49s %s\n' %
                       (time.strftime('%H:%M:%S'),
                        N['waiting'], N['submitted'], N['running'],
                        N['succes'], N['failed'], N['disabled'], N['timeout'],
@@ -198,14 +198,14 @@ class AGTSQueue:
         self.status()
     
     def status(self):
-        self.fd.write('job                                      ' +
+        self.fd.write('job                                                ' +
                       'status      time  tmax ncpus  deps\n')
         for job in self.jobs:
             if job.tstop is not None:
                 t = '%5d' % round(job.tstop - job.tstart)
             else:
                 t = '     '
-            self.fd.write('%-40s %-10s %s %5d %5d %5d\n' %
+            self.fd.write('%-50s %-10s %s %5d %5d %5d\n' %
                           (job.absname, job.status, t, job.walltime,
                            job.ncpus, len(job.deps)))
 
