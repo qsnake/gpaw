@@ -17,9 +17,6 @@ class Niflheim(Cluster):
         if os.system('svn export %s gpaw' % self.gpawrepo) != 0:
             raise RuntimeError('Export of GPAW failed!')
 
-        os.chdir('gpaw')
-
-        compile_cmd = 
         if os.system('cd gpaw&& ' +
                      'source /home/camp/modulefiles.sh&& ' +
                      'module load NUMPY&& '+
@@ -65,7 +62,7 @@ class Niflheim(Cluster):
              'walltime=%d:%02d:00' %
              (job.walltime // 3600, job.walltime % 3600 // 60),
              '-N',
-             job.absname],
+             job.name],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE)
         p.stdin.write(
             'touch %s.start\n' % job.name +
