@@ -415,29 +415,28 @@ class CHI:
 
         usesymm = calc.input_parameters.get('usesymm')
         if usesymm == None:
-            op = np.zeros((1,3,3), dtype=int)
-            op[0] = np.eye(3, dtype=int)
+            op = np.eye(3, dtype=int)
         elif usesymm == False:
-            op = np.zeros((2,3,3), dtype=int)
-            op[0] = np.eye(3, dtype=int)
-            op[1] = - np.eye(3, dtype=int)
+            op = (np.eye(3, dtype=int), -np.eye(3, dtype=int))
         else:
             op = calc.wfs.symmetry.op_scc
 
-        r_cG = calc.wfs.gd.get_grid_point_coordinates()
+            
         # calculate chi0
         for k in range(self.kstart, self.kend):
             t1 = time()
 
-            ibzkpt1, iop1 = self.find_ibzkpt(op, IBZkpt_kG, bzkpt_kG[k])
-            ibzkpt2, iop2 = self.find_ibzkpt(op, IBZkpt_kG, bzkpt_kG[kq[k]])
-            
+            ibzkpt1, iop1, timerev1 = self.find_ibzkpt(op, IBZkpt_kG, bzkpt_kG[k])
+            ibzkpt2, iop2, timerev2 = self.find_ibzkpt(op, IBZkpt_kG, bzkpt_kG[kq[k]])
+            print k, ibzkpt1, IBZkpt_kG[ibzkpt1], bzkpt_kG[k], timerev1
+            print op[iop1]
+
             rho_Gnn = np.zeros((self.npw, self.nband, self.nband), dtype=complex)
             for n in range(self.nband):
 
-                kpt_c = np.inner(bcell.T, IBZkpt_kG[ibzkpt1])
                 psitold_G =   calc.wfs.kpt_u[ibzkpt1].psit_nG[n]
-                psit1new_G = self.symmetrize_wavefunction(psitold_G, op[iop1], IBZkpt_kG[ibzkpt1], bzkpt_kG[k])                
+                psit1new_G = self.symmetrize_wavefunction(psitold_G, op[iop1], IBZkpt_kG[ibzkpt1],
+                                                          bzkpt_kG[k], timerev1)        
                      
                 P1_ai = pt.dict()
                 pt.integrate(psit1new_G, P1_ai, k)
@@ -447,9 +446,9 @@ class CHI:
                 for m in range(self.nband):
                     if  np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > 1e-8:
 
-                        kpt_c = np.inner(bcell.T, IBZkpt_kG[ibzkpt2])
                         psitold_G =   calc.wfs.kpt_u[ibzkpt2].psit_nG[m]
-                        psit2_G = self.symmetrize_wavefunction(psitold_G, op[iop2], IBZkpt_kG[ibzkpt2], bzkpt_kG[kq[k]])
+                        psit2_G = self.symmetrize_wavefunction(psitold_G, op[iop2], IBZkpt_kG[ibzkpt2],
+                                                               bzkpt_kG[kq[k]], timerev2)
                         
                         P2_ai = pt.dict()
                         pt.integrate(psit2_G, P2_ai, kq[k])
@@ -529,8 +528,11 @@ class CHI:
     def find_ibzkpt(self, symrel, kpt_IBZkG, kptBZ):
 
         find = False
-        
-        for ioptmp in range(symrel.shape[0]):
+        ibzkpt = 0
+        iop = 0
+        timerev = False
+
+        for ioptmp in range(len(symrel)):
             for i in range(kpt_IBZkG.shape[0]):
                 tmp = np.inner(symrel[ioptmp], kpt_IBZkG[i])
                 if (np.abs(tmp - kptBZ) < 1e-8).all():
@@ -540,22 +542,46 @@ class CHI:
                     break
             if find == True:
                 break
+        
+        if find == False:
+            for ioptmp in range(len(symrel)):
+                for i in range(kpt_IBZkG.shape[0]):
+                    tmp = np.inner(symrel[ioptmp], kpt_IBZkG[i])
+                    if (np.abs(tmp + kptBZ) < 1e-8).all():
+                        ibzkpt = i
+                        iop = ioptmp
+                        find = True
+                        timerev = True
+                        break
+                if find == True:
+                    break
+                
+        if find == False:        
+            print kptBZ
+            print kpt_IBZkG
+            raise ValueError('Cant find corresponding IBZ kpoint!')
     
-        return ibzkpt, iop
+        return ibzkpt, iop, timerev
 
 
-    def symmetrize_wavefunction(self, a_g, op_cc, kpt0, kpt1):
+    def symmetrize_wavefunction(self, a_g, op_cc, kpt0, kpt1, timerev):
 
         if (np.abs(op_cc - np.eye(3,dtype=int)) < 1e-10).all():
-            return a_g
+            if timerev:
+                return a_g.conj()
+            else:
+                return a_g
         elif (np.abs(op_cc + np.eye(3,dtype=int)) < 1e-10).all():
             return a_g.conj()
         else:
             import _gpaw
             b_g = np.zeros_like(a_g)
-            _gpaw.symmetrize_wavefunction(a_g, b_g, op_cc.T.copy(), kpt0, kpt1)
-    
-        return b_g
+            if timerev:
+                _gpaw.symmetrize_wavefunction(a_g, b_g, op_cc.T.copy(), kpt0, -kpt1)
+                return b_g.conj()
+            else:
+                _gpaw.symmetrize_wavefunction(a_g, b_g, op_cc.T.copy(), kpt0, kpt1)
+                return b_g
 
         
     def rotate_wfs(self, op_cc, psi_old, kpt):
