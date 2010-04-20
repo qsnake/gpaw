@@ -45,7 +45,10 @@ dady = gd.collect(dady, broadcast=True)
 assert dady[0, 0, 0] == 0.5 and np.sum(dady[0, :, 0]) == 3.0
 
 # a GUC cell
-gd = GridDescriptor((1, 7, 1), ((1.0, 0.0, 0.0), (5.0, 5.0, 0.0), (0.0, 0.0, 1.0)), comm=domain_comm)
+gd = GridDescriptor((1, 7, 1),
+                    ((1.0, 0.0, 0.0),
+                     (5.0, 5.0, 0.0),
+                     (0.0, 0.0, 0.7)), comm=domain_comm)
 dady = gd.zeros()
 grady = Gradient(gd, v=1)
 a = gd.zeros()
