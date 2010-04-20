@@ -110,3 +110,15 @@ if get('.', ['gpaw-coverage-latest.tar.gz'], '_static',
        source='http://dcwww.camp.dtu.dk/~chlg'):
     print 'Extracting coverage pages ...'
     os.system('tar --directory=devel -xzf _static/gpaw-coverage-latest.tar.gz')
+
+from gpaw.test.big.agts import AGTSQueue
+queue = AGTSQueue()
+queue.collect()
+names = set()
+for job in queue.jobs:
+    if job.creates:
+        for name in job.creates:
+            assert name not in names
+            names.add(name)
+            get('gpaw-files', [name], job.dir,
+                source='http://dcwww.camp.dtu.dk/~jensj')

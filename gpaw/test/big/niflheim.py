@@ -104,7 +104,7 @@ if __name__ == '__main__':
 
     nfailed = queue.run(niflheim)
 
-    queue.copy_created_files('../files')
+    queue.copy_created_files('/home/camp2/jensj/WWW/gpaw-files')
     
     # Analysis:
     from gpaw.test.big.analysis import analyse
