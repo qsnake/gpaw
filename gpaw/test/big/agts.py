@@ -246,7 +246,8 @@ class AGTSQueue:
                 for filename in job.creates:
                     path = os.path.join(job.dir, filename)
                     if os.path.isfile(path):
-                        os.rename(path, os.path.join(dir, filename))
+                        os.system('cp %s %s' %
+                                  (path, os.path.join(dir, filename))
 
 
 if __name__ == '__main__':
