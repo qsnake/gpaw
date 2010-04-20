@@ -19,7 +19,7 @@ from gpaw.utilities import devnull
 if rank != 0:
     sys.stdout = devnull 
 
-GS = 0
+GS = 1
 EELS = 1
 
 nband = 60
