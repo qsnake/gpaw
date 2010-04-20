@@ -115,9 +115,13 @@ class TestAnalyzer:
             return
         fig = pl.figure()
         ax = fig.add_subplot(1, 1, 1)
-        ax.plot(self.runtimes, 'ko-')
-        ax.plot(self.better, self.runtimes[self.better], 'go', markersize=5)
-        ax.plot(self.worse, self.runtimes[self.worse], 'ro', markersize=5)
+        ax.plot(self.revs, self.runtimes, 'ko-')
+        ax.plot(self.revs[self.better],
+                self.runtimes[self.better],
+                'go', markersize=8)
+        ax.plot(self.revs[self.worse],
+                self.runtimes[self.worse],
+                'ro', markersize=8)
         ax.set_title(self.name)
         if not outputdir.endswith('/'):
             outputdir += '/'
@@ -146,14 +150,14 @@ class MailGenerator:
         if len(self.better):
             mail += 'The following tests improved:\n'
             for test in self.better:
-                mail += '%-20s %7.2f s (%7.2f%%)\n' % test
+                mail += '%-40s %7.2f s (%7.2f%%)\n' % test
         else:
             mail += 'No tests improved!\n'
         mail += '\n'
         if len(self.worse):
             mail += 'The following tests regressed:\n'
             for test in self.worse:
-                mail += '%-20s +%6.2f s (+%6.2f%%)\n' % test
+                mail += '%-40s +%6.2f s (+%6.2f%%)\n' % test
         else:
             mail += 'No tests regressed!\n'
 
