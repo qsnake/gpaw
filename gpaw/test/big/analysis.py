@@ -29,7 +29,7 @@ class DatabaseHandler:
             filename = self.filename
         if os.path.isfile(filename):
             os.rename(filename, filename + '.old')
-        pickle.dump(self.data, open(filename, 'wb'), pickle.HIGHEST_PROTOCOL)
+        pickle.dump(self.data, open(filename, 'wb'))
 
     def add_data(self, name, rev, runtime, info):
         if not self.data.has_key(name):
