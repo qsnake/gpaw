@@ -57,13 +57,13 @@ class Cluster:
         name = job.absname
         if job.status == 'running':
             if time.time() - job.tstart > job.walltime:
-                job.status = 'timeout'
-                return 'timeout'
+                job.status = 'TIMEOUT'
+                return 'TIMEOUT'
             if os.path.exists('%s.done' % name):
                 job.tstop = os.stat('%s.done' % name).st_mtime
                 job.exitcode = int(open('%s.done' % name).readlines()[-1])
                 if job.exitcode:
-                    job.status = 'failed'
+                    job.status = 'FAILED'
                 else:
                     job.status = 'success'
                 return job.status
@@ -127,13 +127,13 @@ class AGTSQueue:
 
     def log(self, job):
         N = dict(waiting=0, submitted=0, running=0,
-                 success=0, failed=0, disabled=0, timeout=0)
+                 success=0, FAILED=0, disabled=0, TIMEOUT=0)
         for j in self.jobs:
             N[j.status] += 1
         self.fd.write('%s %2d %2d %2d %2d %2d %2d %2d %-49s %s\n' %
                       (time.strftime('%H:%M:%S'),
                        N['waiting'], N['submitted'], N['running'],
-                       N['success'], N['failed'], N['disabled'], N['timeout'],
+                       N['success'], N['FAILED'], N['disabled'], N['TIMEOUT'],
                        job.absname, job.status))
         self.fd.flush()
  
@@ -209,7 +209,7 @@ class AGTSQueue:
                 newstatus = cluster.check_status(job)
                 if newstatus:
                     self.log(job)
-                    if newstatus in ['timeout', 'failed']:
+                    if newstatus in ['TIMEOUT', 'FAILED']:
                         self.fail(job)
 
         self.status()
