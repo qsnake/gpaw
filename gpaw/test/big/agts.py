@@ -147,15 +147,15 @@ class AGTSQueue:
         self.jobs.append(job)
         return job
 
-    def locate_tests(self):
-        for root, dirs, files in os.walk('.'):
+    def locate_tests(self, dir):
+        for root, dirs, files in os.walk(dir):
             for fname in files:
                 if fname.endswith('.agts.py'):
                     yield root, fname
 
-    def collect(self):
+    def collect(self, dir='.'):
         """Find agts.py files and collect jobs."""
-        for dir, agtsfile in self.locate_tests():
+        for dir, agtsfile in self.locate_tests(dir):
             _global = {}
             execfile(os.path.join(dir, agtsfile), _global)
             self._dir = dir

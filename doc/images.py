@@ -116,15 +116,15 @@ jjwww = 'http://dcwww.camp.dtu.dk/~jensj'
 # Get png files and othe stuff from the AGTS scripts that run every weekend:
 from gpaw.test.big.agts import AGTSQueue
 queue = AGTSQueue()
-queue.collect()
+queue.collect('..')
 names = set()
 for job in queue.jobs:
     if job.creates:
         for name in job.creates:
             assert name not in names, 'Name clash!'
             names.add(name)
-            if job.dir.startswith('doc'):
-                dir = doc.dir
+            if job.dir.startswith('../doc'):
+                dir = job.dir
             else:
                 # This file was created by a test from the
                 # gpaw/test/big folder:
@@ -132,3 +132,4 @@ for job in queue.jobs:
             get('gpaw-files', [name], dir, source=jjwww)
 
 get('gpaw-stuff', ['xas_illustration.png'], 'tutorials/xas', jjwww)
+get('gpaw-stuff', ['xas_h2o_convergence.png'], 'tutorials/xas', jjwww)
