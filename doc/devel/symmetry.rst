@@ -72,6 +72,26 @@ In terms of scaled k-points `\mathbf q`, where:
 we get `\mathbf q'=\mathbf U\mathbf q`.
 
 
+Besides cystal symmetry, there is also time reversal symmetry for all 
+systems with no magnetic field. The wavefunction for `{\mathbf k}` 
+and `{-\mathbf k}` is related as:
+
+.. math::
+   
+   \tilde\psi_{-\mathbf k}(\mathbf r) = \tilde\psi^{\ast}_{\mathbf k}(\mathbf r)
+
+If in addition the crystal has inversion symmetry, then the wavefunction should 
+satisfies: 
+
+.. math::
+
+   \tilde\psi_{\mathbf k}(\mathbf r) = \tilde\psi_{-\mathbf k}(-\mathbf r) 
+   =  \tilde\psi^{\ast}_{\mathbf k}(-\mathbf r)
+
+.. note::
+
+   Time reversal symmetry operation is not included in ``symmetry.op_scc``.
+
 Details of the symmetry object
 ------------------------------
 
