@@ -428,8 +428,6 @@ class CHI:
 
             ibzkpt1, iop1, timerev1 = self.find_ibzkpt(op, IBZkpt_kG, bzkpt_kG[k])
             ibzkpt2, iop2, timerev2 = self.find_ibzkpt(op, IBZkpt_kG, bzkpt_kG[kq[k]])
-            print k, ibzkpt1, IBZkpt_kG[ibzkpt1], bzkpt_kG[k], timerev1
-            print op[iop1]
 
             rho_Gnn = np.zeros((self.npw, self.nband, self.nband), dtype=complex)
             for n in range(self.nband):
