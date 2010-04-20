@@ -4,11 +4,6 @@
 X-Ray Absorption Spectroscopy (XAS)
 ===================================
 
-.. toctree::
-   :maxdepth: 2
-
-   xas_examples
-
 .. default-role:: math
 
 Introduction

@@ -2,12 +2,10 @@
 XAS theory
 ==========
 
-Schematic illustration of XAS
- (from [Nil04]_):
+Schematic illustration of XAS (from [Nil04]_):
 
-.. figure:: ../../documentation/xas/xas.png
-   :width: 400 px
-
+.. figure:: xas_illustration.png
+   :width: 250 px
 
 The oscillator strengths are proportional to `|\langle \phi_{1s}|
 \mathbf{r} | \psi_n \rangle|^2`, where the one-center expansion of
@@ -18,7 +16,7 @@ XAS examples
 ============
 
 First we must create a core hole setup.  This can be done with the
-:program:`gpaw-setup`::
+:program:`gpaw-setup` command::
 
     gpaw-setup -f PBE N --name hch1s --core-hole=1s,0.5
 
@@ -146,5 +144,10 @@ that the calculated XPS energy matches the expreimental value
 water molecule below:
 
 
-.. figure:: ../../documentation/xas/xas_H2O.png
-        :width: 550 px
+.. figure:: xas_h2o_convergence.png
+        :width: 550 px  
+
+
+.. [Nil04] *Chemical bonding on surfaces probed by X-ray emission
+   spectroscopy and density functional theory*, A. Nilsson and
+   L. G. M. Pettersson, Surf. Sci. Rep. 55 (2004) 49-167

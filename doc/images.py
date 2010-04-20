@@ -43,6 +43,7 @@ def get(path, names, target=None, source=None):
                 print 'HTTP Error!'
     return got_something
 
+
 literature = """
 askhl_10302_report.pdf  mortensen_gpaw-dev.pdf      rostgaard_master.pdf
 askhl_master.pdf        mortensen_mini2003talk.pdf  rostgaard_paw_notes.pdf
@@ -88,8 +89,6 @@ get('tutorials/ensembles', ['ensemble.png'])
 get('.', ['2sigma.png', 'co_wavefunctions.png', 'molecules.png'], '_static')
 get('exercises/lrtddft', ['spectrum.png'])
 get('documentation/xc', 'g2test_pbe0.png  g2test_pbe.png  results.png'.split())
-get('documentation/xas', ['xas_32H2O.png', 'xas.png', 'xas_exp.png',
-                          'xas_H2O.png'])
 get('performance', 'dacapoperf.png  goldwire.png  gridperf.png'.split(),
     '_static')
 get('documentation/xc', ['phi.dat', 'makephi.tar.gz'], '_static')
@@ -103,7 +102,7 @@ if get('setups', ['setups-data.tar.gz'], '_static'):
 
 get('tutorials/lattice_constants', ['Fe_conv_k.png', 'Fe_conv_h.png'])
 get('tutorials/negfstm', ['fullscan.png', 'linescan.png'])
-get('tutorials/xas', ['h2o_xas_2.png', 'h2o_xas_3.png', 'h2o_xas_4.png'])
+get('tutorials/xas', ['h2o_xas_3.png', 'h2o_xas_4.png'])
 
 # Retrieve latest code coverage pages:
 if get('.', ['gpaw-coverage-latest.tar.gz'], '_static',
@@ -111,6 +110,10 @@ if get('.', ['gpaw-coverage-latest.tar.gz'], '_static',
     print 'Extracting coverage pages ...'
     os.system('tar --directory=devel -xzf _static/gpaw-coverage-latest.tar.gz')
 
+
+jjwww = 'http://dcwww.camp.dtu.dk/~jensj'
+
+# Get png files and othe stuff from the AGTS scripts that run every weekend:
 from gpaw.test.big.agts import AGTSQueue
 queue = AGTSQueue()
 queue.collect()
@@ -118,7 +121,14 @@ names = set()
 for job in queue.jobs:
     if job.creates:
         for name in job.creates:
-            assert name not in names
+            assert name not in names, 'Name clash!'
             names.add(name)
-            get('gpaw-files', [name], job.dir,
-                source='http://dcwww.camp.dtu.dk/~jensj')
+            if job.dir.startswith('doc'):
+                dir = doc.dir
+            else:
+                # This file was created by a test from the
+                # gpaw/test/big folder:
+                dir = '_static'
+            get('gpaw-files', [name], dir, source=jjwww)
+
+get('gpaw-stuff', ['xas_illustration.png'], 'tutorials/xas', jjwww)
