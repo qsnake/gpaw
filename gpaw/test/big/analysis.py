@@ -6,14 +6,11 @@ import matplotlib.pyplot as pl
 import tempfile
 
 """Database structure:
-dict(testname: [(date, runtime, info), (date, runtime, info), ...])
-    date: Time since epoch in seconds
+dict(testname: [(rev, runtime, info), (rev, runtime, info), ...])
+    rev: SVN revision
     runtime: Run time in seconds. Negative for crashed jobs!
     info: A string describing the outcome
 """
-
-#TODO: Date in x-axis
-#    : Only send mail if result is recent 
 
 class DatabaseHandler:
     """Database class for keeping timings and info for long tests"""
@@ -32,24 +29,24 @@ class DatabaseHandler:
             filename = self.filename
         if os.path.isfile(filename):
             os.rename(filename, filename + '.old')
-        pickle.dump(self.data, open(filename, 'wb'), -1)
+        pickle.dump(self.data, open(filename, 'wb'), pickle.HIGHEST_PROTOCOL)
 
-    def add_data(self, name, date, runtime, info):
+    def add_data(self, name, rev, runtime, info):
         if not self.data.has_key(name):
             self.data[name] = []
-        self.data[name].append((date, runtime, info))
+        self.data[name].append((rev, runtime, info))
 
     def get_data(self, name):
-        """Return date_array, time_array"""
-        dates, runtimes = [], []
+        """Return rev, time_array"""
+        revs, runtimes = [], []
         if self.data.has_key(name):
             for datapoint in self.data[name]:
-                dates.append(datapoint[0])
+                revs.append(datapoint[0])
                 runtimes.append(datapoint[1])
 
-        return np.asarray(dates), np.asarray(runtimes)
+        return np.asarray(revs), np.asarray(runtimes)
 
-    def update(self, queue):
+    def update(self, queue, rev):
         """Add all new data to database"""
         for job in queue.jobs:
             absname = job.absname
@@ -63,12 +60,12 @@ class DatabaseHandler:
 
             info = job.status
 
-            self.add_data(absname, 0, tstop - tstart, info)
+            self.add_data(absname, rev, tstop - tstart, info)
 
 class TestAnalyzer:
-    def __init__(self, name, dates, runtimes):
+    def __init__(self, name, revs, runtimes):
         self.name = name
-        self.dates = dates
+        self.revs = revs
         self.runtimes = runtimes
         self.better = []
         self.worse = []
@@ -182,17 +179,35 @@ class MailGenerator:
 #            db.add_data(name, 0, runtime, info)
 #    db.write()
 
-def analyse(queue, dbpath, outputdir=None, mailto=None):
+def analyse(queue, dbpath, outputdir=None, rev=None, mailto=None):
+    """Analyse runtimes from testsuite
+
+    Parameters:
+        queue: AGTSQueue
+            Que to analuze
+        dbpath: str
+            Path to file storing previous results
+        outputdir: str|None
+            If str, figures will be put in this dir
+        rev: int|None
+            GPAW revision. If None time.time() is used
+        mailto: str|None
+            Mailaddres to send results to. If None, results will be printed to
+            stdout.
+    """
+    if rev is None:
+        import time
+        rev = time.time()
     db = DatabaseHandler(dbpath)
     db.read()
-    db.update(queue)
+    db.update(queue, rev)
     db.write()
     mg = MailGenerator()
     for job in queue.jobs:
         name = job.absname
-        dates, runtimes = db.get_data(name)
-        ta = TestAnalyzer(name, dates, runtimes)
-        ta.analyze()
+        revs, runtimes = db.get_data(name)
+        ta = TestAnalyzer(name, revs, runtimes)
+        ta.analyze(abstol=0)
         if ta.status:
             mg.add_test(name, ta.abschange, ta.relchange)
         ta.plot(outputdir)
@@ -201,6 +216,3 @@ def analyse(queue, dbpath, outputdir=None, mailto=None):
         mg.send_mail(mailto)
     else:
         print mg.generate_mail()
-
-if __name__ == "__main__":
-    analyse(None)

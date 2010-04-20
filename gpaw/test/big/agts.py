@@ -247,4 +247,5 @@ if __name__ == '__main__':
     analyse(queue,
             os.getenv('HOME') + '/analyse.pickle',  # file keeping history
             os.getenv('HOME') + '/tmp/out',         # Where to dump figures!
+            rev=None,                               # gpaw revision
             mailto=mailto)
