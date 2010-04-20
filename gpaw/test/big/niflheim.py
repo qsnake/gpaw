@@ -12,13 +12,14 @@ class Niflheim(Cluster):
 
     def __init__(self):
         self.dir = os.getcwd()
+        self.revision = None
 
     def install_gpaw(self):
-        if os.system('svn export %s gpaw' % self.gpawrepo) != 0:
-            raise RuntimeError('Export of GPAW failed!')
+        if os.system('svn checkout %s gpaw' % self.gpawrepo) != 0:
+            raise RuntimeError('Checkout of GPAW failed!')
 
-        self.revision = int(subprocess.Popen(['svnversion', 'gpaw'],
-                                             stdout=subprocess.PIPE).read())
+        p = subprocess.Popen(['svnversion', 'gpaw'], stdout=subprocess.PIPE)
+        self.revision = int(p.stdout.read())
         
         if os.system('cd gpaw&& ' +
                      'source /home/camp/modulefiles.sh&& ' +
@@ -74,7 +75,7 @@ class Niflheim(Cluster):
             (self.dir, self.dir) +
             '-x GPAW_SETUP_PATH=%s/gpaw-setups ' % self.dir +
             '%s %s %s > %s.output\n' %
-            (gpaw_python, job.name, job.args, job.name) +
+            (gpaw_python, job.script, job.args, job.name) +
             'echo $? > %s.done\n' % job.name)
         p.stdin.close()
         id = p.stdout.readline().split('.')[0]
@@ -98,6 +99,9 @@ if __name__ == '__main__':
     if 0:
         queue.jobs = [j for j in queue.jobs if j.walltime < 3*60]
 
+    if 1:
+        queue.jobs = [j for j in queue.jobs if j.dir.startswith('doc')]
+
     nfailed = queue.run(niflheim)
 
     queue.copy_created_files('../files')
@@ -120,4 +124,4 @@ if __name__ == '__main__':
     dir = os.path.join('/scratch', user, 'gpaw-' + tag)
     os.system('rm -rf %s-old' % dir)
     os.system('mv %s %s-old' % (dir, dir))
-    os.system('mv gpaw %s' % dir)
+    #os.system('mv gpaw %s' % dir)

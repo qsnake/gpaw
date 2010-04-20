@@ -5,22 +5,34 @@ import random
 
 
 class AGTSJob:
-    def __init__(self, dir, script, args=None,
+    def __init__(self, dir, script,
                  ncpus=1, walltime=10 * 60,
                  deps=None, creates=None, agtsfile=None):
+        """Advaced GPAW test system job.
+        
+        Example:
+
+        >>> job = AGTSJob('doc/tutorial/xas', 'run.py --setups=.')
+        >>> job.dir
+        'doc/tutorial/xas'
+        >>> job.script
+        'run.py'
+        >>> job.args
+        '--setups=.'
+        >>> job.name
+        'run.py_--setups=.'
+        >>> job.absname
+        'doc/tutorial/xas/run.py_--setups=.'
+        """
+        
+        if ' ' in script:
+            script, self.args = script.split(' ', 1)
+        else:
+            self.args = ''
         pathname = os.path.normpath(os.path.join(dir, script))
         self.dir, self.script = os.path.split(pathname)
         if self.dir == '':
             self.dir = '.'
-        if args is None:
-            if ' ' in script:
-                script, self.args = script.split(' ', 1)
-            else:
-                self.args = ''
-        elif isinstance(args, str):
-            self.args = ' ' + args
-        else:
-            self.args = ' ' + ' '.join(args)
         self.absname = pathname
         if self.args:
             self.absname += '_' + self.args.replace(' ', '_')
@@ -33,7 +45,7 @@ class AGTSJob:
             self.deps = []
         self.creates = creates
         self.agtsfile = agtsfile
-
+        
         self.status = 'waiting'
         self.tstart = None
         self.tstop = None
@@ -125,12 +137,12 @@ class AGTSQueue:
                        job.absname, job.status))
         self.fd.flush()
  
-    def add(self, script, dir=None, args=None, ncpus=1, walltime=15,
+    def add(self, script, dir=None, ncpus=1, walltime=15,
             deps=None, creates=None):
         """Add job."""
         if dir is None:
             dir = self._dir
-        job = AGTSJob(dir, script, args, ncpus, walltime * 60,
+        job = AGTSJob(dir, script, ncpus, walltime * 60,
                       deps, creates, self._agtsfile)
         self.jobs.append(job)
         return job
