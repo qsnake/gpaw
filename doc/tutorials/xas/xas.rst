@@ -17,7 +17,12 @@ The oscillator strengths are proportional to `|\langle \phi_{1s}|
 XAS examples
 ============
 
-First we must create a core hole setup:
+First we must create a core hole setup.  This can be done with the
+:program:`gpaw-setup`::
+
+    gpaw-setup -f PBE N --name hch1s --core-hole=1s,0.5
+
+or you can write a small script to do it:
 
 .. literalinclude:: setups.py
 
@@ -27,10 +32,12 @@ directory, add the following lines to your scripts
 
 ::
 
-  from gpaw import setup_paths
-  setup_paths.insert(0, '.')
+    from gpaw import setup_paths
+    setup_paths.insert(0, '.')
 
-Spectrum calculation using unoccupied states:
+
+Spectrum calculation using unoccupied states
+============================================
 
 We do a "ground state" calculation with a core hole. Use a lot of
 unoccupied states.
@@ -53,9 +60,12 @@ Plot the spectrum:
 .. literalinclude:: plot.py
 
 
-.. figure:: xas_spectrum.png
+.. figure:: xas_h2o_spectrum.png
    :width: 400 px
 
+
+Haydock recursion method
+========================
 
 For systems in the condensed phase it is much more efficient to use the Haydock
 recursion method to calculate the spectrum, thus avoiding to determine
@@ -105,7 +115,8 @@ are shown along with the experimental spectrum.
 .. figure:: h2o_xas_4.png
    :width: 400 px
 
-XES:
+XES
+===
 
 To compute XES, first do a ground state calcualtion with an 0.0 core
 hole (an 'xes1s' setup as created above ). The system will not be
@@ -124,7 +135,8 @@ compute the total energy diffrence between the core hole state and the state
 with a valence hole in HOMO.
 
 
-Further considerations:
+Further considerations
+======================
 
 For XAS: Gridspacing can be set to the default value. The shape of the
 spectrum is quite insensitive to the functional used, the DKS shifts

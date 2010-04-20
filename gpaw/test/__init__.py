@@ -35,6 +35,20 @@ def gen(symbol, exx=False, name=None, **kwargs):
     if setup_paths[0] != '.':
         setup_paths.insert(0, '.')
 
+def wrap_pylab(names=[]):
+    """Use Agg backend and prevent windows from popping up."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import pylab
+    def show(names=names):
+        if names:
+            name = names.pop(0)
+        else:
+            name = 'fig.png'
+        pylab.savefig(name)
+    pylab.show = show
+
+
 tests = [
     'ase3k_version.py',
     'lapack.py',

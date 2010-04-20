@@ -1,18 +1,16 @@
-import os
 from math import pi, cos, sin
-from ase import *
-from ase.parallel import rank, barrier
+from ase import Atoms
 from gpaw import GPAW
 
-a = 12.0    # use a large cell                                                                                                                                                                                      
+a = 12.0  # use a large cell
+
 d = 0.9575
 t = pi / 180 * 104.51
 atoms = Atoms('OH2',
             [(0, 0, 0),
              (d, 0, 0),
              (d * cos(t), d * sin(t), 0)],
-            cell=(a, a, a),
-            pbc=False)
+            cell=(a, a, a))
 atoms.center()
 calc = GPAW(nbands=-30,
             h=0.2,
