@@ -83,7 +83,7 @@ using `h=0.18\text{Å}`, 8x8x8 **k**-points and
 These test calculations were performed with the Python interface behind
 the :program:`gpaw` program:
 
-.. literalinclude:: Fe_conv_calc.py
+.. literalinclude:: iron.py
 
 
 Convergence of lattice constant with respect to grid spacing
