@@ -53,7 +53,7 @@ class Cluster:
                 if job.exitcode:
                     job.status = 'failed'
                 else:
-                    job.status = 'succes'
+                    job.status = 'success'
                 return job.status
 
         elif job.status == 'submitted' and os.path.exists('%s.start' % name):
@@ -115,18 +115,19 @@ class AGTSQueue:
 
     def log(self, job):
         N = dict(waiting=0, submitted=0, running=0,
-                 succes=0, failed=0, disabled=0, timeout=0)
+                 success=0, failed=0, disabled=0, timeout=0)
         for j in self.jobs:
             N[j.status] += 1
         self.fd.write('%s %2d %2d %2d %2d %2d %2d %2d %-49s %s\n' %
                       (time.strftime('%H:%M:%S'),
                        N['waiting'], N['submitted'], N['running'],
-                       N['succes'], N['failed'], N['disabled'], N['timeout'],
+                       N['success'], N['failed'], N['disabled'], N['timeout'],
                        job.absname, job.status))
         self.fd.flush()
  
     def add(self, script, dir=None, args=None, ncpus=1, walltime=15,
             deps=None, creates=None):
+        """Add job."""
         if dir is None:
             dir = self._dir
         job = AGTSJob(dir, script, args, ncpus, walltime * 60,
@@ -141,6 +142,7 @@ class AGTSQueue:
                     yield root, fname
 
     def collect(self):
+        """Find agts.py files and collect jobs."""
         for dir, agtsfile in self.locate_tests():
             _global = {}
             execfile(os.path.join(dir, agtsfile), _global)
@@ -150,6 +152,7 @@ class AGTSQueue:
         self.normalize()
 
     def normalize(self):
+        """Convert string dependencies to actual job objects."""
         for job in self.jobs:
             for i, dep in enumerate(job.deps):
                 if not isinstance(dep, AGTSJob):
@@ -157,11 +160,13 @@ class AGTSQueue:
                     job.deps[i] = self.find(absname)
 
     def find(self, absname):
+        """Find job with a particular name."""
         for job in self.jobs:
             if job.absname == absname:
                 return job
 
     def run(self, cluster):
+        """Run jobs and return the number of unsuccessful jobs."""
         self.clean(cluster)
         self.status()
         self.fd.write('time      W  S  R  +  -  .  T job\n')
@@ -173,7 +178,7 @@ class AGTSQueue:
                     done = False
                     ready = True
                     for dep in job.deps:
-                        if dep.status != 'succes':
+                        if dep.status != 'success':
                             ready = False
                             break
                     if ready:
@@ -196,6 +201,8 @@ class AGTSQueue:
                         self.fail(job)
 
         self.status()
+
+        return len([None for job in self.jobs if job != 'success'])
     
     def status(self):
         self.fd.write('job                                                ' +

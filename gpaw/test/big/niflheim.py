@@ -17,6 +17,9 @@ class Niflheim(Cluster):
         if os.system('svn export %s gpaw' % self.gpawrepo) != 0:
             raise RuntimeError('Export of GPAW failed!')
 
+        self.revision = int(subprocess.Popen(['svnversion', 'gpaw'],
+                                             stdout=subprocess.PIPE).read())
+        
         if os.system('cd gpaw&& ' +
                      'source /home/camp/modulefiles.sh&& ' +
                      'module load NUMPY&& '+
@@ -95,6 +98,26 @@ if __name__ == '__main__':
     if 0:
         queue.jobs = [j for j in queue.jobs if j.walltime < 3*60]
 
-    queue.run(niflheim)
+    nfailed = queue.run(niflheim)
 
     queue.copy_created_files('../files')
+    
+    # Analysis:
+    from gpaw.test.big.analysis import analyse
+    user = os.environ['USER']
+    analyse(queue,
+            '../analysis/analyse.pickle',  # file keeping history
+            '../analysis',                 # Where to dump figures
+            rev=niflheim.revision,
+            mailto=user)
+
+    if nfailed == 0:
+        tag = 'success'
+    else:
+        tag = 'failed'
+
+    os.chdir('..')
+    dir = os.path.join('/scratch', user, 'gpaw-' + tag)
+    os.system('rm -rf %s-old' % dir)
+    os.system('mv %s %s-old' % (dir, dir))
+    os.system('mv gpaw %s' % dir)
