@@ -247,7 +247,7 @@ class AGTSQueue:
                     path = os.path.join(job.dir, filename)
                     if os.path.isfile(path):
                         os.system('cp %s %s' %
-                                  (path, os.path.join(dir, filename))
+                                  (path, os.path.join(dir, filename)))
 
 
 if __name__ == '__main__':
