@@ -3,7 +3,7 @@ def agts(queue):
                      ncpus=8,
                      walltime=200)
     
-    queue.add('plot_spectra.py'
+    queue.add('plot_spectra.py',
               ncpus=1,
               walltime=5,
               deps=[calc])
