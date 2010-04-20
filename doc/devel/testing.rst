@@ -75,11 +75,12 @@ Adding new tests
 ----------------
 
 To add a new test, create a script somewhere in the file hierarchy ending with
-.agts.py (e.g. ``submit.agts.py``). This script defines how a number of scripts
-should be submitted to niflheim and how they depend on each other. Consider an
-example where one script, calculate.py, calculates something and saves a .gpw
-file and another script, analyse.py, analyses this output. Then the submit
-script should look something like::
+.agts.py (e.g. ``submit.agts.py``). ``AGTS`` is short for Advanced GPAW Test
+Suite (or Another Great Time Sink). This script defines how a number of
+scripts should be submitted to niflheim and how they depend on each other.
+Consider an example where one script, calculate.py, calculates something and
+saves a .gpw file and another script, analyse.py, analyses this output. Then
+the submit script should look something like::
 
     def agts(queue):
         calc = queue.add('calculate.py',
