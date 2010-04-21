@@ -8,14 +8,14 @@ Note that the iteration number (steps) is not the same as the number of force
 evaluations. This is because some of the optimizers uses internal line searches
 or similar.
 
-N2Ru
+N2Cu
 ====
-Relaxation of Ru surface.
+Relaxation of Cu surface.
 
 Calculator used: EMT
 
 .. csv-table::
-   :file: ../_static/N2Ru-surf.csv       
+   :file: ../_static/N2Cu-surf.csv       
    :header: Optimizer, Steps, Force evaluations, Energy, Note
 
 N2 adsorption on relaxed Ru surface
@@ -23,7 +23,7 @@ N2 adsorption on relaxed Ru surface
 Calculator used: EMT
 
 .. csv-table::
-   :file: ../_static/N2Ru-N2.csv       
+   :file: ../_static/N2Cu-N2.csv       
    :header: Optimizer, Steps, Force evaluations, Energy, Note
 
 Cu_bulk
