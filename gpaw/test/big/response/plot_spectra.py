@@ -1,4 +1,6 @@
 import numpy as np
+from gpaw.test import wrap_pylab
+wrap_pylab()
 import pylab as pl
 
 def plot_EELS(head):
