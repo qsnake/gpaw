@@ -180,7 +180,7 @@ class AGTSQueue:
         for job in self.jobs:
             for i, dep in enumerate(job.deps):
                 if not isinstance(dep, AGTSJob):
-                    absname = os.path.normpath(os.path.join(job.dir, dip))
+                    absname = os.path.normpath(os.path.join(job.dir, dep))
                     job.deps[i] = self.find(absname)
 
     def find(self, absname):
