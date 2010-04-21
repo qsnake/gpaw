@@ -1,6 +1,6 @@
 from ase import *
 from gpaw.test import equal
-from gpaw import GPAW
+from gpaw import GPAW, mpi
 from gpaw.lrtddft import LrTDDFT
 import numpy
 
@@ -48,7 +48,7 @@ print '------ with spin'
 
 if not load:
     c_spin = GPAW(xc='PBE', nbands=2, 
-                  spinpol=True, parsize='domain only',
+                  spinpol=True, parallel={'domain': mpi.world.size},
                   txt=txt)
     H2.set_calculator(c_spin)
     c_spin.calculate(H2)

@@ -51,7 +51,7 @@ if not io_only:
 
     if not load:
         c_spin = GPAW(xc='PBE', nbands=2, 
-                      spinpol=True, parsize='domain only',
+                      spinpol=True, parallel={'domain': world.size},
                       txt=txt)
         H2.set_calculator(c_spin)
         c_spin.calculate(H2)

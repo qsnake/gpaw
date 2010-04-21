@@ -34,7 +34,7 @@ except:
                 xc='PBE',
                 txt=txt,
                 eigensolver='cg',
-                parsize='domain only')
+                parallel={'domain': world.size})
     N2.set_calculator(calc)
     E0 = N2.get_potential_energy()
     calc.write('N2_wfs.gpw', 'all')

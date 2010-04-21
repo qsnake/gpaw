@@ -13,7 +13,7 @@ niter_tolerance = 0
 if world.size >= 3:
     calc = GPAW(kpts=[6, 6, 1],
                 spinpol=True,
-                parsize=world.size,
+                parallel={'domain': world.size},
                 txt='H-a.txt')
     H.set_calculator(calc)
     e1 = H.get_potential_energy()

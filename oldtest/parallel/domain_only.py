@@ -10,8 +10,7 @@ calc = GPAW(nbands=6,
             h=.25,
             convergence={'eigenstates':1.e-2, 'energy':.1, 'density':.1},
             hund=True,
-            parsize='domain only'
-            )
+            parallel={'domain': world.size})
 O.set_calculator(calc)
 O.get_potential_energy()
 
