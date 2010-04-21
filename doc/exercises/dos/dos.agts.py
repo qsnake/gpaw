@@ -4,8 +4,6 @@ def agts(queue):
 if __name__ == '__main__':
     import os
     import sys
-    from gpaw.test import wrap_pylab
-    wrap_pylab()
     for filename in ['aluminium/Al-fcc.gpw',
                      'wannier/si.gpw',
                      'wavefunctions/CO.gpw',

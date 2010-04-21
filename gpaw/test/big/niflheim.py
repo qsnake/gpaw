@@ -48,6 +48,9 @@ class Niflheim(Cluster):
     def submit(self, job):
         dir = os.getcwd()
         os.chdir(job.dir)
+
+        self.write_pylab_wrapper(job)
+        
         gpaw_python = os.path.join(self.dir, 'bin/gpaw-python')
 
         if job.ncpus == 1:
@@ -74,7 +77,7 @@ class Niflheim(Cluster):
             '-x PYTHONPATH=%s/lib/python:%s/lib64/python:$PYTHONPATH ' %
             (self.dir, self.dir) +
             '-x GPAW_SETUP_PATH=%s/gpaw-setups ' % self.dir +
-            '%s %s %s > %s.output\n' %
+            '%s %s %s.py > %s.output\n' %
             (gpaw_python, job.script, job.args, job.name) +
             'echo $? > %s.done\n' % job.name)
         p.stdin.close()

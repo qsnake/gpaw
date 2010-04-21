@@ -21,58 +21,12 @@ class Job:
         self.arg = arg
         self.status = 'waiting'
 
-# Run exercises:
-path = '../../doc/exercises/'
-jobs = [
-    Job(path + 'neb/neb1'),
-    Job(path + 'aluminium/Al_fcc'),
-    Job(path + 'aluminium/Al_fcc_convergence'),
-    Job(path + 'surface/work_function', ncpu=1, deps=['testAl100']),
-    Job(path + 'surface/testAl100'),
-    Job(path + 'diffusion/initial'),
-    Job(path + 'diffusion/densitydiff', 20, deps=['solution']),
-    Job(path + 'diffusion/solution'),
-    Job(path + 'vibrations/H2O_vib', 20, deps=['h2o']),
-    Job(path + 'vibrations/h2o'),
-    Job(path + 'band_structure/Na_band'),
-    Job(path + 'band_structure/plot_band', 20, deps=['Na_band']),
-    Job(path + 'wannier/wannier-si', ncpu=1, deps=['si']),
-    Job(path + 'wannier/wannier-benzene', ncpu=1, deps=['benzene']),
-    Job(path + 'wannier/benzene'),
-    Job(path + 'lrtddft/ground_state'),
-    Job(path + 'transport/pt_h2_tb_transport'),
-    Job(path + 'transport/pt_h2_transport', 20, deps=['makebasis']),
-    Job(path + 'transport/makebasis', 5, 1),
-    Job(path + 'dos/testdos', 20, 1,
-        deps=['ferro', 'anti', 'non', 'CO', 'si', 'Al_fcc']),
-    Job(path + 'stm/HAl100'),
-    Job(path + 'wannier/si'),
-    Job(path + 'wavefunctions/CO'),
-    Job(path + 'iron/PBE', 20, deps=['ferro', 'anti', 'non']),
-    Job(path + 'iron/ferro'),
-    Job(path + 'iron/anti'),
-    Job(path + 'iron/non'),
-    Job(path + 'stm/teststm', 20, 1, deps=['HAl100']),
-    ]
 
-jobs += [
-    Job('Ru001/ruslab', tmax=5*60, ncpu=8),
-    Job('Ru001/ruslab', tmax=5*60, ncpu=8, arg='H'),
-    Job('Ru001/ruslab', tmax=5*60, ncpu=8, arg='N'),
-    Job('Ru001/ruslab', tmax=5*60, ncpu=16, arg='O'),
-    Job('Ru001/molecules', tmax=20, ncpu=8),
-    Job('Ru001/results', ncpu=1, deps=['ruslab', 'ruslabN', 'ruslabO',
-                                       'molecules']),
-#    Job('COAu38/Au038to', 10),
+jobs = [
 #    Job('O2Pt/o2pt', 40),
     Job('vdw/interaction', 60, deps=['dimers']),
     Job('vdw/dimers', 60)]
 
-jobs += [
-    Job('../../doc/tutorials/lattice_constants/Fe_conv_calc',
-        tmax=10*60, ncpu=8),
-    Job('../../doc/tutorials/lattice_constants/Fe_conv_plots',
-        ncpu=1, deps=['Fe_conv_calc'])]
 
 class Jobs:
     def __init__(self, log=sys.stdout):

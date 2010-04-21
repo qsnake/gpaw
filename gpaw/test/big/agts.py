@@ -6,10 +6,10 @@ import random
 
 class AGTSJob:
     def __init__(self, dir, script,
-                 ncpus=1, walltime=10 * 60,
-                 deps=None, creates=None, agtsfile=None):
+                 ncpus=1, walltime=10 * 60, deps=None, creates=None,
+                 show=None):
         """Advaced GPAW test system job.
-        
+
         Example:
 
         >>> job = AGTSJob('doc/tutorial/xas', 'run.py --setups=.')
@@ -44,7 +44,11 @@ class AGTSJob:
         else:
             self.deps = []
         self.creates = creates
-        self.agtsfile = agtsfile
+
+        # Filenames to use for pylab.savefig() replacement of pylab.show():
+        if not show:
+            show = []
+        self.show = show
         
         self.status = 'waiting'
         self.tstart = None
@@ -75,6 +79,14 @@ class Cluster:
 
         # Nothing happened:
         return None
+
+    def write_pylab_wrapper(self, job):
+        """Use Agg backend and prevent windows from popping up."""
+        fd = open(job.script + '.py', 'w')
+        fd.write('from gpaw.test import wrap_pylab\n')
+        fd.write('wrap_pylab(%s)\n' % job.show)
+        fd.write('execfile(%s)\n' % job.script)
+        fd.close()
 
     def clean(self, job):
         try:
@@ -123,7 +135,6 @@ class AGTSQueue:
 
         # used by add() method:
         self._dir = None
-        self._agtsfile = None
 
     def log(self, job):
         N = dict(waiting=0, submitted=0, running=0,
@@ -138,12 +149,14 @@ class AGTSQueue:
         self.fd.flush()
  
     def add(self, script, dir=None, ncpus=1, walltime=15,
-            deps=None, creates=None):
-        """Add job."""
+            deps=None, creates=None, show=None):
+        """Add job.
+
+        XXX move docs from doc/devel/testing to here and use Sphinx autodoc."""
+        
         if dir is None:
             dir = self._dir
-        job = AGTSJob(dir, script, ncpus, walltime * 60,
-                      deps, creates, self._agtsfile)
+        job = AGTSJob(dir, script, ncpus, walltime * 60, deps, creates, show)
         self.jobs.append(job)
         return job
 
@@ -159,7 +172,6 @@ class AGTSQueue:
             _global = {}
             execfile(os.path.join(dir, agtsfile), _global)
             self._dir = dir
-            self.agtsfile = agtsfile
             _global['agts'](self)
         self.normalize()
 

@@ -69,7 +69,7 @@ Big tests
 
 The directory in :trac:`gpaw/test/big` contains a set of longer and
 more realistic tests.  These can be submitted to a queueing system of
-a large computer using the :program:`gpaw-weekly-big-test` command ...
+a large computer.  Here is an example for Niflheim: :trac:`gpaw/test/big/niflheim.py`.
 
 Adding new tests
 ----------------
@@ -92,11 +92,11 @@ the submit script should look something like::
                   walltime=5,
                   deps=[calc])
 
-As shown, this script has to contain the definition of the function ``agts``
-which should take exactly one argument, ``queue``. Then each script is added to
-a queue object, along with some data which defines how and when to
-run the job.  Note how ``queue.add`` returns a job object which can be used to
-specify dependencies.
+As shown, this script has to contain the definition of the function
+``agts()`` which should take exactly one argument, ``queue``. Then
+each script is added to a queue object, along with some data which
+defines how and when to run the job.  Note how ``queue.add()`` returns
+a job object which can be used to specify dependencies.
 
 Possible keys are:
 

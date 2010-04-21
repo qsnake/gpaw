@@ -4,8 +4,6 @@ def agts(queue):
               creates=['Fe_conv_k.png', 'Fe_conv_h.png'])
 
 if __name__ == '__main__':
-    from gpaw.test import wrap_pylab
-    wrab_pylab()
     import numpy as np
     import pylab as plt
     from ase.utils.eos import EquationOfState
