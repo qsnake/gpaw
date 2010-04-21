@@ -17,7 +17,7 @@ atoms.positions[:, 1:] = L / 2.
 # Attach a GPAW calculator
 atoms.set_calculator(GPAW(h=0.3,
                           xc='PBE',
-                          basis='szp',
+                          basis='szp(dzp)',
                           occupations=FermiDirac(width=0.1),
                           kpts=(1, 1, 1),
                           mode='lcao',

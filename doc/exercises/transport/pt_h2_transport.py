@@ -24,7 +24,7 @@ atoms.rotate('x', 'z')
 atoms.set_calculator(
                  Transport(h=0.3, 
                            xc='PBE', 
-                           basis='szp', 
+                           basis='szp(dzp)', 
                            occupations=FermiDirac(width=0.1), 
                            kpts=(1, 1, 1),
                            mode='lcao', 
