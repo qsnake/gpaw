@@ -77,7 +77,7 @@ class Niflheim(Cluster):
             '-x PYTHONPATH=%s/lib/python:%s/lib64/python:$PYTHONPATH ' %
             (self.dir, self.dir) +
             '-x GPAW_SETUP_PATH=%s/gpaw-setups ' % self.dir +
-            '%s %s %s.py > %s.output\n' %
+            '%s %s.py %s > %s.output\n' %
             (gpaw_python, job.script, job.args, job.name) +
             'echo $? > %s.done\n' % job.name)
         p.stdin.close()
@@ -102,9 +102,11 @@ if __name__ == '__main__':
     if 0:
         queue.jobs = [j for j in queue.jobs if j.walltime < 3*60]
 
-    if 1:
+    if 0:
         queue.jobs = [j for j in queue.jobs if j.dir.startswith('doc')]
 
+    #queue.status();dasfg
+    
     nfailed = queue.run(niflheim)
 
     queue.copy_created_files('/home/camp2/jensj/WWW/gpaw-files')
