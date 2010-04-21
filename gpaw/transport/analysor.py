@@ -1064,6 +1064,27 @@ class Transport_Plotter:
         pdos = np.array(pdos)
         return pdos
 
+    def charge(self, bias_step, ion_step=0, atom_indices=None,
+               orbital_type=None):
+        self.read_overhead()
+        charge_array = self.get_info('charge', bias_step, ion_step)
+        orbital_indices = self.basis['orbital_indices']
+        orbital_map = {'s': 0, 'p': 1, 'd': 2, 'f': 3}
+        if orbital_type is None:
+            orbital_index = np.zeros([orbital_indices.shape[0]]) + 1
+        else:
+            orbital_index = orbital_indices[:, 1] - orbital_map[
+                                                      orbital_type] ==  0
+        n_atoms_basis = len(orbital_index)
+        charge_array = charge_array[:n_atom_basis]
+        atom_index = np.zeros([orbital_indices.shape[0]]) + 1
+        if atom_indices is not None:
+            atom_index -= 1
+            for i in atom_indices:
+                atom_index += orbital_indices[:, 0] - i == 0
+        charge = np.sum(charge_array * atom_index * orbital_index)
+        return charge
+       
     def iv(self, nsteps=16, spinpol=True):
         current = []
         bias = []
