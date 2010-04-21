@@ -70,6 +70,12 @@ class Cluster:
                     job.status = 'FAILED'
                 else:
                     job.status = 'success'
+                    if job.creates:
+                        for filename in job.creates:
+                            path = os.path.join(job.dir, filename)
+                            if not os.path.isfile(path):
+                                job.status = 'FAILED'
+                                break
                 return job.status
 
         elif job.status == 'submitted' and os.path.exists('%s.start' % name):
@@ -85,7 +91,7 @@ class Cluster:
         fd = open(job.script + '.py', 'w')
         fd.write('from gpaw.test import wrap_pylab\n')
         fd.write('wrap_pylab(%s)\n' % job.show)
-        fd.write('execfile(%s)\n' % job.script)
+        fd.write('execfile(%r)\n' % job.script)
         fd.close()
 
     def clean(self, job):
