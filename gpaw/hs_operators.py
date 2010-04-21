@@ -405,7 +405,7 @@ class MatrixOperator:
         domain_comm.sum(A_qnn, 0)
 
         if B == 1:
-            return A_NN
+            return self.bmd.redistribute_output(A_NN)
 
         if domain_comm.rank == 0:
             self.bmd.assemble_blocks(A_qnn, A_NN, self.hermitian)
