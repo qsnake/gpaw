@@ -93,43 +93,52 @@ get('performance', 'dacapoperf.png  goldwire.png  gridperf.png'.split(),
     '_static')
 get('documentation/xc', ['phi.dat', 'makephi.tar.gz'], '_static')
 
-# Generate one page for each setup:
-if get('setups', ['setups-data.tar.gz'], '_static'):
-    print 'Extracting setup data ...'
-    os.system('tar --directory=_static -xzf _static/setups-data.tar.gz')
-    print 'Generating setup pages ...'
-    os.system('cd setups; %s make_setup_pages.py' % executable)
-
-get('tutorials/lattice_constants', ['Fe_conv_k.png', 'Fe_conv_h.png'])
 get('tutorials/negfstm', ['fullscan.png', 'linescan.png'])
+
+
+
+
 get('tutorials/xas', ['h2o_xas_3.png', 'h2o_xas_4.png'])
-
-# Retrieve latest code coverage pages:
-if get('.', ['gpaw-coverage-latest.tar.gz'], '_static',
-       source='http://dcwww.camp.dtu.dk/~chlg'):
-    print 'Extracting coverage pages ...'
-    os.system('tar --directory=devel -xzf _static/gpaw-coverage-latest.tar.gz')
-
 
 jjwww = 'http://dcwww.camp.dtu.dk/~jensj'
 
-# Get png files and othe stuff from the AGTS scripts that run every weekend:
-from gpaw.test.big.agts import AGTSQueue
-queue = AGTSQueue()
-queue.collect('..')
-names = set()
-for job in queue.jobs:
-    if job.creates:
-        for name in job.creates:
-            assert name not in names, 'Name clash!'
-            names.add(name)
-            if job.dir.startswith('../doc'):
-                dir = job.dir
-            else:
-                # This file was created by a test from the
-                # gpaw/test/big folder:
-                dir = '_static'
-            get('gpaw-files', [name], dir, source=jjwww)
+def setup(app):
+    # Generate one page for each setup:
+    if get('setups', ['setups-data.tar.gz'], '_static'):
+        print 'Extracting setup data ...'
+        os.system('tar --directory=_static -xzf _static/setups-data.tar.gz')
+        print 'Generating setup pages ...'
+        os.system('cd setups; %s make_setup_pages.py' % executable)
 
-get('gpaw-stuff', ['xas_illustration.png'], 'tutorials/xas', jjwww)
-get('gpaw-stuff', ['xas_h2o_convergence.png'], 'tutorials/xas', jjwww)
+    # Retrieve latest code coverage pages:
+    if get('.', ['gpaw-coverage-latest.tar.gz'], '_static',
+           source='http://dcwww.camp.dtu.dk/~chlg'):
+        print 'Extracting coverage pages ...'
+        os.system(
+            'tar --directory=devel -xzf _static/gpaw-coverage-latest.tar.gz')
+
+    # Get png files and other stuff from the AGTS scripts that run
+    # every weekend:
+    from gpaw.test.big.agts import AGTSQueue
+    queue = AGTSQueue()
+    queue.collect('..')
+    names = set()
+    for job in queue.jobs:
+        if job.creates:
+            for name in job.creates:
+                assert name not in names, 'Name clash!'
+                names.add(name)
+                if job.dir.startswith('../doc'):
+                    dir = job.dir
+                else:
+                    # This file was created by a test from the
+                    # gpaw/test/big folder:
+                    dir = '_static'
+                get('gpaw-files', [name], dir, source=jjwww)
+
+    # Get files that we can't generate:
+    for dir, file in [
+        ('tutorials/xas', 'xas_illustration.png'),
+        ('tutorials/xas', 'xas_h2o_convergence.png')]:
+        get('gpaw-stuff', [file], dir, jjwww)
+
