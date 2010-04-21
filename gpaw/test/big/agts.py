@@ -54,7 +54,8 @@ class AGTSJob:
         self.tstart = None
         self.tstop = None
         self.exitcode = None
-
+        self.pbsid = None
+        
 
 class Cluster:
     def check_status(self, job):
@@ -153,7 +154,8 @@ class AGTSQueue:
                        N['success'], N['FAILED'], N['disabled'], N['TIMEOUT'],
                        job.absname, job.status))
         self.fd.flush()
- 
+        self.status()
+        
     def add(self, script, dir=None, ncpus=1, walltime=15,
             deps=None, creates=None, show=None):
         """Add job.
@@ -199,7 +201,6 @@ class AGTSQueue:
     def run(self, cluster):
         """Run jobs and return the number of unsuccessful jobs."""
         self.clean(cluster)
-        self.status()
         self.fd.write('time      W  S  R  +  -  .  T job\n')
         jobs = self.jobs
         while True:
@@ -231,21 +232,30 @@ class AGTSQueue:
                     if newstatus in ['TIMEOUT', 'FAILED']:
                         self.fail(job)
 
-        self.status()
-
         return len([None for job in self.jobs if job != 'success'])
     
     def status(self):
-        self.fd.write('job                                                ' +
-                      'status      time  tmax ncpus  deps\n')
+        fd = open('status.txt', 'w')
+        fd.write('# job                                              ' +
+                 'status      time  tmax ncpus  deps files id\n')
         for job in self.jobs:
             if job.tstop is not None:
                 t = '%5d' % round(job.tstop - job.tstart)
             else:
                 t = '     '
-            self.fd.write('%-50s %-10s %s %5d %5d %5d\n' %
-                          (job.absname, job.status, t, job.walltime,
-                           job.ncpus, len(job.deps)))
+            if job.creates:
+                c = len(job.creates)
+            else:
+                c = 0
+            if (job.pbsid is not None and
+                job.status in ['submitted', 'running']):
+                id = job.pbsid
+            else:
+                id = ''
+            fd.write('%-50s %-10s %s %5d %5d %5d %5d %s\n' %
+                     (job.absname, job.status, t, job.walltime,
+                      job.ncpus, len(job.deps), c, id))
+        fd.close()
 
     def fail(self, dep):
         """Recursively disable jobs depending on failed job."""
