@@ -188,7 +188,8 @@ class AGTSQueue:
         for job in self.jobs:
             if job.absname == absname:
                 return job
-
+        raise ValueError
+    
     def run(self, cluster):
         """Run jobs and return the number of unsuccessful jobs."""
         self.clean(cluster)
