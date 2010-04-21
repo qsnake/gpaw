@@ -1,5 +1,9 @@
 def agts(queue):
-    queue.add('dos.agts.py', ncpus=1, deps=['../submit.agts.py'])
+    queue.add('dos.agts.py', ncpus=1,
+              deps=['../iron/PBE.py',
+                    '../wavefunctions/CO.py',
+                    '../wannier/si.py',
+                    '../aluminium/Al_fcc.py'])
 
 if __name__ == '__main__':
     import os
