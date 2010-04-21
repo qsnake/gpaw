@@ -1047,7 +1047,7 @@ class Transport_Plotter:
         self.read_overhead()
         dos_array = self.dos_array(bias_step, ion_step, s, k)
         orbital_indices = self.basis['orbital_indices']
-        orbital_map = {'s': 0, 'p': 1, 'd': 2, 'f': 3}
+        orbital_map = {'S': 0, 'P': 1, 'D': 2, 'F': 3}
         if orbital_type is None:
             orbital_index = np.zeros([orbital_indices.shape[0]]) + 1
         else:
@@ -1077,11 +1077,21 @@ class Transport_Plotter:
             current *= 2
         bias = np.array(bias)
         return bias, current
+
+    def diamond(self, bias_step, ionic_step=0):
+        tc = self.tc(bias_step, ionic_step)
+        currents = np.zeros([20, 160])
+        for i in range(160):
+            for j in range(20):
+                begin = i + 20 - j
+                end = i + 20 + j
+                currents[j, i] = np.sum(tc[begin:end])
+        return currents
     
     def tvs(self, nsteps=16, spinpol=True):
         bias, current = self.iv(nsteps,  spinpol)
         current *= 1e-6 # switch unit to Ampier
-        ydata = np.log(abs(current) / (bias * bias))
+        ydata = np.log(abs(current) / (bias ** 2))
         xdata = 1 / bias
         return xdata, ydata
 
