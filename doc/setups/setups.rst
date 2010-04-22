@@ -32,7 +32,7 @@ Comparison and Benchmark DataBase`_, `Dacapo pseudo potentials`_, and
 .. _NIST Atomic Reference Data: http://physics.nist.gov/PhysRefData/DFTdata/Tables/ptable.html
 .. _Computational Chemistry Comparison and Benchmark DataBase: http://srdata.nist.gov/cccbdb/
 .. _Dacapo pseudo potentials: https://wiki.fysik.dtu.dk/dacapo/Pseudopotential_Library
-.. _Vasp pseudo potentials: http://cms.mpi.univie.ac.at/vasp/vasp/node236.html.
+.. _Vasp pseudo potentials: http://cms.mpi.univie.ac.at/vasp/vasp/node236.html
 
 
 .. toctree::
