@@ -26,7 +26,8 @@ class Overlap:
 
     def __init__(self, wfs):
         """Create the Overlap operator."""
-        self.operator = MatrixOperator(wfs.bd, wfs.gd, wfs.ksl)
+        self.ksl = wfs.orthoksl
+        self.operator = MatrixOperator(wfs.bd, wfs.gd, self.ksl)
         self.timer = wfs.timer
         self.setups = wfs.setups
         
@@ -71,9 +72,9 @@ class Overlap:
                                                        S, dS_aii)
         self.timer.stop('calc_matrix')
 
-        orthonormalization_string = repr(wfs.ksl)
+        orthonormalization_string = repr(self.ksl)
         self.timer.start(orthonormalization_string)
-        wfs.ksl.inverse_cholesky(S_nn)
+        self.ksl.inverse_cholesky(S_nn)
         # S_nn now contains the inverse of the Cholesky factorization.
         # Let's call it something different:
         C_nn = S_nn

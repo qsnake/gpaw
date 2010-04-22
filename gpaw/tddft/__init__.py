@@ -85,9 +85,9 @@ class TDDFT(GPAW):
             Function class for the time-dependent potential. Must have a method
             'strength(time)' which returns the strength of the linear potential
             to each direction as a vector of three floats.
-        propagator:  {'SICN', 'ETRSCN', 'ECN', 'SITE', 'SIKE4', 'SIKE5', 'SIKE6'}, optional
+        propagator:  {'SICN','ETRSCN','ECN','SITE','SIKE4','SIKE5','SIKE6'}
             Name of the time propagator for the Kohn-Sham wavefunctions
-        solver: {'CSCG','BiCGStab'}, optional
+        solver: {'CSCG','BiCGStab'}
             Name of the iterative linear equations solver for time propagation
         tolerance: float
             Tolerance for the linear solver
@@ -110,9 +110,9 @@ class TDDFT(GPAW):
         # Initialize paw-object without density mixing
         # NB: TDDFT restart files contain additional information which
         #     will override the initial settings for time/kick/niter.
-        GPAW.__init__(self, ground_state_file, txt=txt, mixer=DummyMixer(), \
-                      parsize=parsize, parsize_bands=parsize_bands, \
-                      parstride_bands=parstride_bands,
+        GPAW.__init__(self, ground_state_file, txt=txt, mixer=DummyMixer(),
+                      parallel={'domain': parsize, 'band': parsize_bands, 
+                                'stridebands': parstride_bands},
                       communicator=communicator)
 
         # Prepare for dipole moment file handle

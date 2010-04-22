@@ -48,7 +48,7 @@ class PAW(PAWTextOutput):
         The following parameters can be used: `nbands`, `xc`, `kpts`,
         `spinpol`, `gpts`, `h`, `charge`, `usesymm`, `width`, `mixer`,
         `hund`, `lmax`, `fixdensity`, `convergence`, `txt`, `parallel`,
-        `parsize`, `parsize_bands`, `softgauss` and `stencils`.
+        `softgauss` and `stencils`.
 
         If you don't specify any parameters, you will get:
 
@@ -186,16 +186,21 @@ class PAW(PAWTextOutput):
                 self.wfs = EmptyWaveFunctions()
                 self.occupations = None
             elif key in ['h', 'gpts', 'setups', 'spinpol', 'usesymm',
-                         'parallel', 'parsize', 'parsize_bands',
-                         'parstride_bands', 'communicator']:
+                         'parallel', 'communicator']:
                 self.density = None
                 self.occupations = None
                 self.hamiltonian = None
                 self.wfs = EmptyWaveFunctions()
             elif key in ['mode', 'basis']:
                 self.wfs = EmptyWaveFunctions()
+            elif key in ['parsize', 'parsize_bands', 'parstride_bands']:
+                name = {'parsize': 'domain',
+                        'parsize_bands': 'band',
+                        'parstride_bands': 'stridebands'}[key]
+                raise DeprecationWarning("Keyword argument has been moved " \
+                    "to the 'parallel' dictionary keyword under '%s'." % name)
             else:
-                raise TypeError('Unknown keyword argument:' + key)
+                raise TypeError("Unknown keyword argument: '%s'" % key)
          
         p.update(kwargs)
 
@@ -443,31 +448,8 @@ class PAW(PAWTextOutput):
                 self.occupations = par.occupations
 
         self.occupations.magmom = M
-        
-        from gpaw import parsize
-        if parsize is None:
-            parsize = par.parallel['domain']
-        if parsize is None:
-            parsize = par.parsize
-
-        from gpaw import parsize_bands
-        if parsize_bands is None:
-            parsize_bands = par.parallel['band']
-        if parsize_bands is None:
-            parsize_bands = par.parsize_bands
-        if parsize_bands is None:
-            parsize_bands = 1
 
         cc = par.convergence
-
-        # Number of bands to converge:
-        nbands_converge = cc['bands']
-        if nbands_converge == 'all':
-            nbands_converge = nbands
-        elif nbands_converge != 'occupied':
-            assert isinstance(nbands_converge, int)
-            if nbands_converge < 0:
-                nbands_converge += nbands
 
         if par.mode == 'lcao':
             niter_fixdensity = 0
@@ -480,6 +462,11 @@ class PAW(PAWTextOutput):
                                            cc['density'] * nvalence,
                                            par.maxiter, par.fixdensity,
                                            niter_fixdensity)
+
+        parsize, parsize_bands = par.parallel['domain'], par.parallel['band']
+
+        if parsize_bands is None:
+            parsize_bands = 1
 
         # TODO delete/restructure so all checks are in BandDescriptor
         if nbands % parsize_bands != 0:
@@ -498,10 +485,8 @@ class PAW(PAWTextOutput):
                 # reinitialize - err what exactly? WaveFunctions? XXX
                 raise NotImplementedError('Band communicator size changed.')
 
-            stridebands = par.parallel.get('stridebands',
-                                           par.get('parstride_bands',
-                                                   False))
-            self.bd = BandDescriptor(nbands, band_comm, stridebands)
+            parstride_bands = par.parallel['stridebands']
+            self.bd = BandDescriptor(nbands, band_comm, parstride_bands)
 
             if (self.density is not None and
                 self.density.gd.comm.size != domain_comm.size):
@@ -516,39 +501,55 @@ class PAW(PAWTextOutput):
             # Construct grid descriptor for coarse grids for wave functions:
             gd = self.grid_descriptor_class(N_c, cell_cv, pbc_c,
                                             domain_comm, parsize)
-            
-
-            # Figure out layout of Kohn-Sham orbitals for LCAO or FD mode:
-            kwargs = {'timer': self.timer}
-            if par.mode == 'lcao':
-                kwargs['nao'] = nao
-            from gpaw import extra_parameters
-            if par.parallel['scalapack'] or extra_parameters.get('blacs'):
-                sl_diagonalize = par.parallel['scalapack']
-                if sl_diagonalize is None:
-                    from gpaw import sl_diagonalize
-                mcpus, ncpus, blocksize = sl_diagonalize[:3]
-                kwargs.update(mcpus=mcpus, ncpus=ncpus, blocksize=blocksize)
-                use_blacs = True
-            else:
-                use_blacs = False
-            ksl = get_kohn_sham_layouts(par.mode, use_blacs, gd,
-                                        self.bd, **kwargs)
 
             # do k-point analysis here? XXX
-            args = (gd, ksl, nspins, nvalence, setups, self.bd,
+            args = (gd, nspins, nvalence, setups, self.bd,
                     dtype, world, kpt_comm,
                     gamma, bzk_kc, ibzk_kc, weight_k, symmetry, self.timer)
+
+            from gpaw import extra_parameters
+            use_blacs = bool(extra_parameters.get('blacs'))
+
             if par.mode == 'lcao':
-                self.wfs = LCAOWaveFunctions(*args)
+                # Layouts used for general diagonalizer
+                sl_lcao = par.parallel['sl_lcao']
+                if sl_lcao is None:
+                    sl_lcao = par.parallel['sl_default']
+                lcaoksl = get_kohn_sham_layouts(sl_lcao, par.mode, use_blacs,
+                                                gd, self.bd, nao=nao,
+                                                timer=self.timer)
+                self.wfs = LCAOWaveFunctions(lcaoksl, *args)
             elif par.mode == 'fd':
-                self.wfs = GridWaveFunctions(par.stencils[0], *args)
+                # Layouts used for diagonalizer
+                sl_diagonalize = par.parallel['sl_diagonalize']
+                if sl_diagonalize is None:
+                    sl_diagonalize = par.parallel['sl_default']
+                diagksl = get_kohn_sham_layouts(sl_diagonalize, par.mode,
+                                                use_blacs, gd, self.bd,
+                                                timer=self.timer)
+                # Layouts used for orthonormalizer
+                sl_inverse_cholesky = par.parallel['sl_inverse_cholesky']
+                if sl_inverse_cholesky is None:
+                    sl_inverse_cholesky = par.parallel['sl_default']
+                orthoksl = get_kohn_sham_layouts(sl_inverse_cholesky, par.mode,
+                                                 use_blacs, gd, self.bd,
+                                                 timer=self.timer)
+                self.wfs = GridWaveFunctions(par.stencils[0], diagksl,
+                                             orthoksl, *args)
             else:
                 self.wfs = par.mode(self, *args)
         else:
             self.wfs.set_setups(setups)
 
         if not self.wfs.eigensolver:
+            # Number of bands to converge:
+            nbands_converge = cc['bands']
+            if nbands_converge == 'all':
+                nbands_converge = nbands
+            elif nbands_converge != 'occupied':
+                assert isinstance(nbands_converge, int)
+                if nbands_converge < 0:
+                    nbands_converge += nbands
             eigensolver = get_eigensolver(par.eigensolver, par.mode,
                                           par.convergence)
             eigensolver.nbands_converge = nbands_converge

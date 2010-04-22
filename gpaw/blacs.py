@@ -494,24 +494,22 @@ def parallelprint(comm, obj):
 
 # We should probably move everything below into a seperate file...
 
-from gpaw import sl_diagonalize, sl_inverse_cholesky
 from gpaw.matrix_descriptor import BandMatrixDescriptor, \
                                    BlacsBandMatrixDescriptor
 
-def get_kohn_sham_layouts(mode, use_blacs, gd, bd, **kwargs):
+def get_kohn_sham_layouts(sl, mode, use_blacs, gd, bd, **kwargs):
     """Create Kohn-Sham layouts object."""
     # Not needed for AtomPAW special mode, as usual we just provide whatever
     # happens to make the code not crash
     if not isinstance(mode, str):
-        return BandLayouts(gd, bd, **kwargs) # XXX yuckk
+        return None #XXX
     name = {'fd': 'BandLayouts', 'lcao': 'OrbitalLayouts'}[mode]
+    args = (gd, bd)
     if use_blacs:
-        assert 'mcpus' in kwargs
-        assert 'ncpus' in kwargs
-        assert 'blocksize' in kwargs
         name = 'Blacs' + name
-    elif sl_diagonalize or sl_inverse_cholesky:
-        assert sl_diagonalize and sl_inverse_cholesky #XXX both must be given!?
+        assert len(sl) == 3
+        args += tuple(sl)
+    elif sl is not None: #TODO deprecate
         name = 'SL' + name
     ksl = {'BandLayouts':         BandLayouts,
            'BlacsBandLayouts':    BlacsBandLayouts,
@@ -519,7 +517,7 @@ def get_kohn_sham_layouts(mode, use_blacs, gd, bd, **kwargs):
            'BlacsOrbitalLayouts': BlacsOrbitalLayouts,
            'OrbitalLayouts':      OrbitalLayouts,
            'SLOrbitalLayouts':    OldSLOrbitalLayouts, #TODO deprecate
-            }[name](gd, bd, **kwargs)
+            }[name](*args, **kwargs)
     if 0: #XXX debug
         print 'USING KSL: %s' % repr(ksl)
     assert isinstance(ksl, KohnShamLayouts)
@@ -564,7 +562,7 @@ class KohnShamLayouts:
 class BlacsLayouts(KohnShamLayouts):
     using_blacs = True
 
-    def __init__(self, gd, bd, ncpus, mcpus, blocksize, timer=nulltimer):
+    def __init__(self, gd, bd, mcpus, ncpus, blocksize, timer=nulltimer):
         KohnShamLayouts.__init__(self, gd, bd, timer)
         self._kwargs.update({'mcpus': mcpus, 'ncpus': ncpus, 'blocksize': blocksize})
 
@@ -576,13 +574,14 @@ class BlacsLayouts(KohnShamLayouts):
         self.columncomm = self.world.new_communicator(column_ranks) #XXX rename?
         self.blockcomm = self.world.new_communicator(block_ranks)
 
-        assert ncpus * mcpus <= bcommsize * gcommsize
+        assert mcpus * ncpus <= bcommsize * gcommsize
         self.blockgrid = BlacsGrid(self.blockcomm, mcpus, ncpus)
 
     def get_description(self):
-        title = 'Parallel eigensolver using ScaLAPACK/BLACS:'
-        template = '  %d x %d grid with %d x %d blocksize'
+        title = 'BLACS'
+        template = '%d x %d grid with %d x %d blocksize'
         return (title, template)
+
 
 class BandLayouts(KohnShamLayouts):
     matrix_descriptor_class = BandMatrixDescriptor
@@ -634,7 +633,7 @@ class BandLayouts(KohnShamLayouts):
             return 0
 
     def get_description(self):
-        return 'Using serial LAPACK for diagonalization and inverse Cholesky'
+        return 'Serial LAPACK'
 
 
 class OldSLBandLayouts(BandLayouts): #old SL before BLACS grids. TODO delete!
@@ -658,6 +657,9 @@ class OldSLBandLayouts(BandLayouts): #old SL before BLACS grids. TODO delete!
 
     def _inverse_cholesky(self, S_NN):
         return slinverse_cholesky(S_NN, self.blockcomm, self.root)
+
+    def get_description(self):
+        return 'Old ScaLAPACK'
 
 
 class BlacsBandLayouts(BlacsLayouts): #XXX should derive from BandLayouts too!
@@ -766,8 +768,9 @@ class BlacsBandLayouts(BlacsLayouts): #XXX should derive from BandLayouts too!
         (title, template) = BlacsLayouts.get_description(self)
         bg = self.blockgrid
         desc = self.nndescriptor
-        s = template % (bg.npcol, bg.nprow, desc.mb, desc.nb)
-        return '\n'.join([title, s])
+        s = template % (bg.nprow, bg.npcol, desc.mb, desc.nb)
+        return ' '.join([title, s])
+
 
 class BlacsOrbitalLayouts(BlacsLayouts):
     """ScaLAPACK Dense Linear Algebra.
@@ -786,7 +789,7 @@ class BlacsOrbitalLayouts(BlacsLayouts):
     """ #XXX rewrite this docstring a bit!
 
     # This class 'describes' all the LCAO Blacs-related layouts
-    def __init__(self, gd, bd, nao, mcpus, ncpus, blocksize, timer=nulltimer):
+    def __init__(self, gd, bd, mcpus, ncpus, blocksize, nao, timer=nulltimer):
         BlacsLayouts.__init__(self, gd, bd, mcpus, ncpus, blocksize, timer)
         self._kwargs.update(nao=nao) #XXX should only be done by OrbitalLayouts!
 
@@ -935,8 +938,9 @@ class BlacsOrbitalLayouts(BlacsLayouts):
         (title, template) = BlacsLayouts.get_description(self)
         bg = self.blockgrid
         desc = self.mmdescriptor
-        s = template % (bg.npcol, bg.nprow, desc.mb, desc.nb)
-        return '\n'.join([title, s])
+        s = template % (bg.nprow, bg.npcol, desc.mb, desc.nb)
+        return ' '.join([title, s])
+
 
 class OrbitalLayouts(KohnShamLayouts):
     def __init__(self, gd, bd, nao, timer=nulltimer):
@@ -1018,7 +1022,7 @@ class OrbitalLayouts(KohnShamLayouts):
         return rho_MM
 
     def get_description(self):
-        return 'Using serial diagonalizer from LAPACK'
+        return 'Serial LAPACK'
 
 
 class OldSLOrbitalLayouts(OrbitalLayouts): #old SL before BLACS grids. TODO delete!
@@ -1040,4 +1044,8 @@ class OldSLOrbitalLayouts(OrbitalLayouts): #old SL before BLACS grids. TODO dele
         # meaningful values of info.
         return slgeneral_diagonalize(H_MM, eps_M, S_MM, self.blockcomm,
                                      root=self.root)
+
+    def get_description(self):
+        return 'Old ScaLAPACK'
+
 

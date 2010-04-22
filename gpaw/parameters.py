@@ -3,6 +3,8 @@ from ase.units import Hartree
 
 from gpaw.poisson import PoissonSolver, FFTPoissonSolver
 from gpaw.occupations import FermiDirac
+from gpaw import parsize, parsize_bands, sl_default, sl_diagonalize, \
+                 sl_inverse_cholesky, sl_lcao
 
 class InputParameters(dict):
     def __init__(self, **kwargs):
@@ -28,10 +30,13 @@ class InputParameters(dict):
             ('hund',            False),
             ('random',          False),
             ('maxiter',         120),
-            ('parallel',        dict(domain=None,
-                                     band=None,
-                                     stridebands=False,
-                                     scalapack=None)),
+            ('parallel',        {'domain':              parsize,
+                                 'band':                parsize_bands,
+                                 'stridebands':         False,
+                                 'sl_default':          sl_default,
+                                 'sl_diagonalize':      sl_diagonalize,
+                                 'sl_inverse_cholesky': sl_inverse_cholesky,
+                                 'sl_lcao':             sl_lcao}),
             ('parsize',         None),
             ('parsize_bands',   None),
             ('parstride_bands', False),

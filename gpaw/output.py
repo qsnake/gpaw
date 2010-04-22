@@ -201,9 +201,15 @@ class PAWTextOutput:
         if self.wfs.bd.comm.size > 1: # band parallelization
             t('Parallelization over states: %d'
               % self.wfs.bd.comm.size)
-        
-        parallelization_information = self.wfs.ksl.get_description()
-        t(parallelization_information)
+
+        if p['mode'] == 'lcao':
+            general_diagonalizer_layout = self.wfs.ksl.get_description()
+            t('Diagonalizer layout: ' + general_diagonalizer_layout)
+        elif p['mode'] == 'fd':
+            diagonalizer_layout = self.wfs.diagksl.get_description()
+            t('Diagonalizer layout: ' + diagonalizer_layout)
+            orthonormalizer_layout = self.wfs.orthoksl.get_description()
+            t('Orthonormalizer layout: ' + orthonormalizer_layout)
         t()      
 
         if self.wfs.symmetry is not None:

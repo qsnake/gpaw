@@ -76,8 +76,10 @@ setup_paths = []
 dry_run = 0
 parsize = None
 parsize_bands = None
-sl_diagonalize = []
-sl_inverse_cholesky = False
+sl_default = None
+sl_diagonalize = None
+sl_inverse_cholesky = None
+sl_lcao = None
 extra_parameters = {}
 profile = False
 i = 1
@@ -107,17 +109,35 @@ while len(sys.argv) > i:
             assert len(parsize) == 3
     elif arg.startswith('--state-parallelization='):
         parsize_bands = int(arg.split('=')[1])
+    elif arg.startswith('--sl_default='):
+        # --sl_default=nprow,npcol,mb,cpus_per_node
+        # use 'd' for the default of one or more of the parameters
+        # --sl_default=default to use all default values
+        sl_args = [n for n in arg.split('=')[1].split(',')]
+        if len(sl_args) == 1:
+            assert sl_args[0] == 'default'
+            sl_default = ['d']*3
+        else:
+            sl_default = []
+            assert len(sl_args) == 3
+            for sl_args_index in range(len(sl_args)):
+                assert sl_args[sl_args_index] is not None
+                if sl_args[sl_args_index] is not 'd':
+                    assert int(sl_args[sl_args_index]) > 0
+                    sl_default.append(int(sl_args[sl_args_index]))
+                else:
+                    sl_default.append(sl_args[sl_args_index])
     elif arg.startswith('--sl_diagonalize='):
-        # --sl_diagonalize=nprow,npcol,mb,cpus_per_node # see c/scalapack.c
+        # --sl_diagonalize=nprow,npcol,mb,cpus_per_node
         # use 'd' for the default of one or more of the parameters
         # --sl_diagonalize=default to use all default values
         sl_args = [n for n in arg.split('=')[1].split(',')]
         if len(sl_args) == 1:
             assert sl_args[0] == 'default'
-            sl_diagonalize = ['d']*4
+            sl_diagonalize = ['d']*3
         else:
             sl_diagonalize = []
-            assert len(sl_args) == 4
+            assert len(sl_args) == 3
             for sl_args_index in range(len(sl_args)):
                 assert sl_args[sl_args_index] is not None
                 if sl_args[sl_args_index] is not 'd':
@@ -126,16 +146,16 @@ while len(sys.argv) > i:
                 else:
                     sl_diagonalize.append(sl_args[sl_args_index])
     elif arg.startswith('--sl_inverse_cholesky='):
-        # --sl_inverse_cholesky=nprow,npcol,mb,cpus_per_node # see c/sl_inverse_cholesky.c
+        # --sl_inverse_cholesky=nprow,npcol,mb,cpus_per_node
         # use 'd' for the default of one or more of the parameters
         # --sl_inverse_cholesky=default to use all default values
         sl_args = [n for n in arg.split('=')[1].split(',')]
         if len(sl_args) == 1:
             assert sl_args[0] == 'default'
-            sl_inverse_cholesky = ['d']*4
+            sl_inverse_cholesky = ['d']*3
         else:
             sl_inverse_cholesky = []
-            assert len(sl_args) == 4
+            assert len(sl_args) == 3
             for sl_args_index in range(len(sl_args)):
                 assert sl_args[sl_args_index] is not None
                 if sl_args[sl_args_index] is not 'd':
@@ -143,6 +163,24 @@ while len(sys.argv) > i:
                     sl_inverse_cholesky.append(int(sl_args[sl_args_index]))
                 else:
                     sl_inverse_cholesky.append(sl_args[sl_args_index])
+    elif arg.startswith('--sl_lcao='):
+        # --sl_lcao=nprow,npcol,mb,cpus_per_node
+        # use 'd' for the default of one or more of the parameters
+        # --sl_lcao=default to use all default values
+        sl_args = [n for n in arg.split('=')[1].split(',')]
+        if len(sl_args) == 1:
+            assert sl_args[0] == 'default'
+            sl_lcao = ['d']*3
+        else:
+            sl_lcao = []
+            assert len(sl_args) == 3
+            for sl_args_index in range(len(sl_args)):
+                assert sl_args[sl_args_index] is not None
+                if sl_args[sl_args_index] is not 'd':
+                    assert int(sl_args[sl_args_index]) > 0
+                    sl_lcao.append(int(sl_args[sl_args_index]))
+                else:
+                    sl_lcao.append(sl_args[sl_args_index])
     elif arg.startswith('--gpaw='):
         extra_parameters = eval('dict(%s)' % arg[7:])
     elif arg == '--gpaw':

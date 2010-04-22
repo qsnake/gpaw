@@ -27,10 +27,9 @@ class Eigensolver:
         self.dtype = wfs.dtype
         self.bd = wfs.bd
         self.gd = wfs.gd
-        self.diagonalizer = wfs.ksl #XXX we should just call it ksl...
+        self.ksl = wfs.diagksl
         self.nbands = wfs.nbands
         self.mynbands = wfs.mynbands
-
         self.operator = wfs.overlap.operator
 
         if self.mynbands != self.nbands or self.operator.nblocks != 1:
@@ -169,9 +168,9 @@ class Eigensolver:
                                                      hamiltonian)
         self.timer.stop('calc_matrix')
 
-        diagonalization_string = repr(self.diagonalizer)
+        diagonalization_string = repr(self.ksl)
         wfs.timer.start(diagonalization_string)
-        self.diagonalizer.diagonalize(H_nn, kpt.eps_n)
+        self.ksl.diagonalize(H_nn, kpt.eps_n)
         # H_nn now contains the result of the diagonalization.
         # Let's call it something different:
         U_nn = H_nn
@@ -185,10 +184,10 @@ class Eigensolver:
         self.timer.start('rotate_psi')
         kpt.psit_nG = self.operator.matrix_multiply(U_nn, psit_nG, P_ani)
         #
-	# store the transformation for later use		
+        # store the transformation for later use
         if extra_parameters.get('sic'):
             kpt.W_nn = U_nn.T.conj().copy()
-	if self.keep_htpsit:
+        if self.keep_htpsit:
             self.Htpsit_nG = self.operator.matrix_multiply(U_nn, Htpsit_xG)
         self.timer.stop('rotate_psi')
 

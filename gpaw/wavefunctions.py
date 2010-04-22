@@ -49,11 +49,9 @@ class WaveFunctions(EmptyWaveFunctions):
     kpt_comm:
         MPI-communicator for parallelization over **k**-points.
     """
-    def __init__(self, gd, ksl, nspins, nvalence, setups, bd, dtype, world,
-                 kpt_comm,
+    def __init__(self, gd, nspins, nvalence, setups, bd, dtype, world, kpt_comm,
                  gamma, bzk_kc, ibzk_kc, weight_k, symmetry, timer=nulltimer):
         self.gd = gd
-        self.ksl = ksl
         self.nspins = nspins
         self.nvalence = nvalence
         self.bd = bd
@@ -431,8 +429,9 @@ from gpaw.utilities.blas import gemm, gemmdot
 
 
 class LCAOWaveFunctions(WaveFunctions):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, ksl, *args, **kwargs):
         WaveFunctions.__init__(self, *args, **kwargs)
+        self.ksl = ksl
         self.S_qMM = None
         self.T_qMM = None
         self.P_aqMi = None
@@ -888,10 +887,12 @@ from gpaw.utilities import unpack
 from gpaw.io.tar import TarFileReference
 
 class GridWaveFunctions(WaveFunctions):
-    def __init__(self, stencil, *args, **kwargs):
+    def __init__(self, stencil, diagksl, orthoksl, *args, **kwargs):
         WaveFunctions.__init__(self, *args, **kwargs)
         # Kinetic energy operator:
         self.kin = Laplace(self.gd, -0.5, stencil, self.dtype, allocate=False)
+        self.diagksl = diagksl
+        self.orthoksl = orthoksl
         self.set_orthonormalized(False)
         self.overlap = Overlap(self) # Object needed by memory estimate
         # (it has to be overwritten on each initialize() anyway, because of
@@ -976,9 +977,11 @@ class GridWaveFunctions(WaveFunctions):
         assert lcaobd.mynbands == lcaomynbands #XXX
 
         from gpaw.blacs import get_kohn_sham_layouts
-        lcaoksl = get_kohn_sham_layouts('lcao', self.ksl.using_blacs, self.gd,
-                                        lcaobd, nao=nao, **self.ksl.get_keywords())
-        lcaowfs = LCAOWaveFunctions(self.gd, lcaoksl, self.nspins,
+        sl_lcao = None #XXX how do we get sl_lcao from PAW.input_parameters?
+        use_blacs = False #XXX ksl.using_blacs
+        lcaoksl = get_kohn_sham_layouts(sl_lcao, 'lcao', use_blacs, self.gd,
+                                        lcaobd, nao=nao) # **ksl.get_keywords()
+        lcaowfs = LCAOWaveFunctions(lcaoksl, self.gd, self.nspins,
                                     self.nvalence, self.setups, lcaobd,
                                     self.dtype, self.world, self.kpt_comm,
                                     self.gamma, self.bzk_kc, self.ibzk_kc,

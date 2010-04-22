@@ -10,7 +10,7 @@ import numpy as np
 
 from gpaw import debug
 from gpaw.utilities import scalapack
-from gpaw import sl_diagonalize, sl_inverse_cholesky
+from gpaw import sl_default, sl_diagonalize, sl_inverse_cholesky, sl_lcao
 import _gpaw
 from gpaw.utilities.tools import tri2full
 from gpaw.utilities.blas import gemm
@@ -52,15 +52,15 @@ def sldiagonalize(a, w, blockcomm, root=0):
     assert w.shape == (n,)
 
     assert scalapack()
-    assert len(sl_diagonalize) == 4
+    if sl_diagonalize is not None:
+        mcpus, ncpus, blocksize = sl_diagonalize
+    else:
+        mcpus, ncpus, blocksize = sl_default
     size = blockcomm.size
-    assert sl_diagonalize[0]*sl_diagonalize[1] <= size
+    assert mcpus*ncpus <= size, 'Grid %d x %d > %d cpus' % (mcpus,ncpus,size)
     # symmetrize the matrix
     tri2full(a)
-    info = blockcomm.diagonalize(a, w,
-                                 sl_diagonalize[0],
-                                 sl_diagonalize[1],
-                                 sl_diagonalize[2], root)
+    info = blockcomm.diagonalize(a, w, mcpus, ncpus, blocksize, root)
     return info
 
 def general_diagonalize(a, w, b):
@@ -105,17 +105,16 @@ def slgeneral_diagonalize(a, w, b, blockcomm, root=0):
     assert b.shape == a.shape
 
     assert scalapack()
-    assert len(sl_diagonalize) == 4
+    if sl_lcao is not None:
+        mcpus, ncpus, blocksize = sl_lcao
+    else:
+        mcpus, ncpus, blocksize = sl_default
     size = blockcomm.size
-    assert sl_diagonalize[0]*sl_diagonalize[1] <= size
+    assert mcpus*ncpus <= size, 'Grid %d x %d > %d cpus' % (mcpus,ncpus,size)
     # symmetrize the matrix
     tri2full(a)
     tri2full(b)
-    info = blockcomm.diagonalize(a, w,
-                                 sl_diagonalize[0],
-                                 sl_diagonalize[1],
-                                 sl_diagonalize[2], root, b)
-
+    info = blockcomm.diagonalize(a, w, mcpus, ncpus, blocksize, root, b)
     return info
 
 def inverse_cholesky(a):
@@ -146,16 +145,15 @@ def slinverse_cholesky(a, blockcomm, root=0):
     assert a.shape == (n, n)
 
     assert scalapack()
-
-    assert len(sl_inverse_cholesky) == 4
+    if sl_inverse_cholesky is not None:
+        mcpus, ncpus, blocksize = sl_inverse_cholesky
+    else:
+        mcpus, ncpus, blocksize = sl_default
     size = blockcomm.size
-    assert sl_inverse_cholesky[0]*sl_inverse_cholesky[1] <= size
+    assert mcpus*ncpus <= size, 'Grid %d x %d > %d cpus' % (mcpus,ncpus,size)
     # symmetrize the matrix
     tri2full(a)
-    info = blockcomm.inverse_cholesky(a,
-                                  sl_inverse_cholesky[0],
-                                  sl_inverse_cholesky[1],
-                                  sl_inverse_cholesky[2], root)
+    info = blockcomm.inverse_cholesky(a, mcpus, ncpus, blocksize, root)
     return info
 
 def inverse_general(a):
@@ -256,7 +254,7 @@ if not debug:
     # For ScaLAPACK, we can't bypass the Python wrappers!
     if not sl_diagonalize:
         diagonalize = _gpaw.diagonalize
-    if not sl_diagonalize:
+    if not sl_lcao:
         general_diagonalize = _gpaw.general_diagonalize
     if not sl_inverse_cholesky:
         inverse_cholesky = _gpaw.inverse_cholesky

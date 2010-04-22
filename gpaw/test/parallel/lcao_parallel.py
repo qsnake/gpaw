@@ -96,7 +96,10 @@ parallel['domain'] = (1, 2, 1)
 run()
 
 if scalapack():
-    parallel['scalapack'] = (2, 2, 2, 'd')
+    from gpaw import extra_parameters
+    extra_parameters['blacs'] = True
+
+    parallel['sl_default'] = (2, 2, 2)
     run()
 
     OH_kwargs = dict(formula='NH2', vacuum=1.5, pbc=1, spinpol=1, width=0.1)
@@ -105,7 +108,7 @@ if scalapack():
     Fref = None
 
     del parallel['domain']
-    parallel['scalapack'] = (2, 1, 2, 'd')
+    parallel['sl_default'] = (2, 1, 2)
 
     run(**OH_kwargs)
 
@@ -113,7 +116,7 @@ if scalapack():
 
     run(**OH_kwargs)
 
-
+    extra_parameters['blacs'] = False
 
 
 # gamma point, kpts, kpt parallelization
