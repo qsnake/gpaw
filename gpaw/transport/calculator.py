@@ -69,7 +69,7 @@ class Transport(GPAW):
                        'pl_atoms', 'pl_cells', 'pl_kpts', 'leads',
                        'use_buffer', 'buffer_atoms', 'edge_atoms', 'bias',
                        'lead_restart', 'use_guess_file', 'special_datas',
-                       'plot_eta',
+                       'plot_eta', 'vaccs',
                        'lead_atoms', 'nleadlayers', 'mol_atoms', 'la_index',
                        
                        'LR_leads', 'gate', 'gate_mode', 'gate_atoms',                   
@@ -133,6 +133,7 @@ class Transport(GPAW):
         self.neintmethod = p['neintmethod']
         self.neintstep = p['neintstep']
         self.fixed = p['fixed_boundary']
+        self.vaccs = p['vaccs']
         self.non_sc = p['non_sc']
         self.data_file = p['data_file']
         self.special_datas = p['special_datas']
@@ -208,6 +209,7 @@ class Transport(GPAW):
         p['neintstep'] = 0.02
         p['eqinttol'] = 1e-4
         p['plot_eta'] = 1e-4
+        p['vaccs'] = None
         p['LR_leads'] = True
         p['gate'] = 0
         p['gate_mode'] = 'VG'
@@ -228,9 +230,21 @@ class Transport(GPAW):
         return p     
 
     def set_atoms(self, atoms):
-        atoms.center()
+        self.adjust_atom_positions(atoms)
         self.atoms = atoms.copy()
-        
+
+    def adjust_atom_positions(self, atoms):
+        if self.identical_leads or self.vaccs is None:
+            atoms.center()
+        else:
+            atoms.center(axis=0)
+            atoms.center(axis=1)
+            lb = np.min(atoms.positions[:,2])
+            rb = np.max(atoms.positions[:,2])
+            dis = self.vaccs[0] - lb
+            atoms.positions[:,2] += dis
+            assert abs(np.diag(atoms.cell)[2] - rb - dis -self.vaccs[1]) < 0.005
+       
     def initialize_transport(self):
         if self.use_lead:
             if self.LR_leads:
@@ -314,6 +328,7 @@ class Transport(GPAW):
                     self.update_lead_hamiltonian(i)
 
         self.fermi = self.lead_fermi[0]
+        self.leads_fermi_lineup()
         world.barrier()
         
         if self.analysis_mode != -3:
@@ -369,6 +384,22 @@ class Transport(GPAW):
         p['energies'] = energies
         self.set_analysis_parameters(**p)
 
+    def leads_fermi_lineup(self):
+        for i in range(1, self.lead_num):
+            shift = self.lead_fermi[0] - self.lead_fermi[i]
+            self.atoms_l[i].calc.hamiltonian.vt_sG += shift / Hartree
+            self.atoms_l[i].calc.hamiltonian.vHt_g += shift / Hartree
+            for pk in range(self.my_npk):
+                for s in range(self.my_nspins):
+                    h_mm = self.lead_hsd[i].H[s][pk].recover()
+                    h_cmm = self.lead_couple_hsd[i].H[s][pk].recover()
+                    s_mm = self.lead_hsd[i].S[pk].recover()
+                    s_cmm = self.lead_couple_hsd[i].S[pk].recover()
+                    h_mm += shift * s_mm
+                    h_cmm += shift * s_cmm
+                    self.lead_hsd[i].reset(s, pk, h_mm, 'H')     
+                    self.lead_couple_hsd[i].reset(s, pk, h_cmm,'H')     
+       
     def get_ks_map(self):
         self.ks_map = np.zeros([self.npk * self.nspins, 3], int)
         self.my_ks_map = np.zeros([self.my_npk * self.my_nspins, 3], int)
@@ -754,7 +785,7 @@ class Transport(GPAW):
             atoms = self.atoms.copy()
             atomsl = atoms[self.pl_atoms[l]]
             atomsl.cell = self.pl_cells[l]
-            atomsl.center()
+            atomsl.center(axis=2)
             atomsl._pbc[self.d] = True
         atomsl.set_calculator(self.get_lead_calc(l))
         return atomsl
@@ -1584,7 +1615,7 @@ class Transport(GPAW):
         # Force from projector functions (and basis set):
         self.extended_calc.wfs.calculate_forces(hamiltonian, self.F_av)
 
-        nn = self.surround.nn[0] * 2
+        nn = self.surround.nn * 2
         vHt_g = self.surround.uncapsule(nn, hamiltonian.vHt_g,
                                                     self.finegd1, self.finegd)
         vt_G0 = self.surround.uncapsule(nn / 2, vt_G, self.gd1, self.gd)  
@@ -1674,7 +1705,7 @@ class Transport(GPAW):
             
         nt_sG = self.gd1.zeros(self.nspins)
         self.extended_calc.wfs.calculate_density_contribution(nt_sG)
-        nn = self.surround.nn[0]
+        nn = self.surround.nn
         density.nt_sG = self.surround.uncapsule(nn, nt_sG, self.gd1,
                                                     self.gd)
         density.nt_sG += density.nct_G
@@ -1708,7 +1739,7 @@ class Transport(GPAW):
             ham.vt_sG = ham.gd.empty(ham.nspins)
             #self.inner_poisson.initialize()
  
-        nn = self.surround.nn[0] * 2
+        nn = self.surround.nn * 2
         nt_sg = self.surround.capsule(nn, density.nt_sg, self.surround.nt_sg,
                                                     self.finegd1, self.finegd)
   
@@ -1761,7 +1792,7 @@ class Transport(GPAW):
             ham.restrict(vt_g, vt_G)
         self.surround.refresh_vt_sG()
         
-        nn = self.surround.nn[0]
+        nn = self.surround.nn
         vt_sG = self.surround.uncapsule(nn, ham.vt_sG, self.gd1, self.gd)
         for vt_G, nt_G in zip(vt_sG, density.nt_sG):    
             Ekin -= self.gd.integrate(vt_G, nt_G - density.nct_G,
@@ -2001,8 +2032,8 @@ class Transport(GPAW):
             atoms += atoms_l
         atoms.set_cell(ex_cell)
         atoms.set_pbc(self.atoms._pbc)
+        atoms.positions[:, 2] += self.gd.h_cv[2, 2] * Bohr * self.bnc[0]
         self.extended_atoms = atoms
-        self.extended_atoms.center()
         
         if not self.optimize:
             p = self.gpw_kwargs.copy()
@@ -2125,7 +2156,7 @@ class Transport(GPAW):
 
                 nt_sG = gd1.zeros(self.nspins)
                 wfs.basis_functions.add_to_density(nt_sG, f_asi)
-                nn = self.surround.nn[0]
+                nn = self.surround.nn
                 density.nt_sG = self.surround.uncapsule(nn, nt_sG, gd1, gd)
                 density.nt_sG += density.nct_G
                 density.normalize()
@@ -2162,6 +2193,7 @@ class Transport(GPAW):
                 self.gate = 0
             if i > n1:
                 flag = False
+            self.analysor.n_bias_step = i
             fd = file('bias_data' + str(i + 1), 'r')
             self.bias, vt_sG, dH_asp = cPickle.load(fd)
             fd.close()
