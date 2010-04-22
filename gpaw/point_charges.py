@@ -11,12 +11,11 @@ from gpaw import debug
 from gpaw.external_potential import ElectrostaticPotential
 
 class PointCharges(Atoms, ElectrostaticPotential):
-    def __init__(self, file=None):
-        Atoms.__init__(self)
+    def __init__(self, **kwargs):
+        self.pc_nc = None
+        self.charge_n = None
+        Atoms.__init__(self, **kwargs)
         
-        if file is not None:
-            self.read(file)
-
     def charge(self):
         """Return the summed charge of all point charges."""
         charge = 0
@@ -111,7 +110,7 @@ class PointCharges(Atoms, ElectrostaticPotential):
         self.charge_n = charge_n
 
         _gpaw.pc_potential(potential, pc_nc, charge_n,
-                           gd.beg_c, gd.end_c, gd.h_c)
+                           gd.beg_c, gd.end_c, gd.h_cv)
 
         # save grid descriptor and potential for future use
         self.potential = potential
@@ -129,7 +128,7 @@ class PointCharges(Atoms, ElectrostaticPotential):
         position [Angstrom]
         spos_c scaled position on the grid"""
         if position is None:
-            vr = spos_c * self.gd.h_c * self.gd.N_c
+            vr = np.dot(spos_c, self.gd.h_cv * self.gd.N_c)
         else:
             vr = position / Bohr
 
@@ -140,6 +139,16 @@ class PointCharges(Atoms, ElectrostaticPotential):
                 d = np.sqrt(np.sum((vr - pc.position / Bohr)**2))
                 v -= pc.charge / d
         else:
+            if self.pc_nc is None or self.charge_n is None:
+                n = len(self)
+                pc_nc = np.empty((n, 3))
+                charge_n = np.empty((n))
+                for a, pc in enumerate(self):
+                    pc_nc[a] = pc.position / Bohr 
+                    charge_n[a] = pc.charge
+                self.pc_nc = pc_nc
+                self.charge_n = charge_n
+
             v = _gpaw.pc_potential_value(vr, self.pc_nc, self.charge_n)
         return v
 
@@ -151,7 +160,7 @@ class PointCharges(Atoms, ElectrostaticPotential):
         """
         if position is None:
             gd = self.gd
-            pos = spos_c * gd.h_c * gd.N_c * Bohr
+            pos = np.dot(spos_c, gd.h_cv * gd.N_c) * Bohr
         else:
             pos = position
         vr = pos / Bohr
@@ -190,6 +199,18 @@ class PointCharges(Atoms, ElectrostaticPotential):
             q = pc.charge
             f.write('PC  %12.6g %12.6g %12.6g  %12.6g\n' % (x, y, z, q))
         f.close()
+
+    def __eq__(self, other):
+        """
+        ASE atoms object does not compare charges. Hence, when calling
+        GPAW.set(external=...) two identical PointCharge object with different
+        charges won't trigger a reinitialization of the Hamiltionian object.
+        """
+        try:
+            return Atoms.__eq__(self, other) and \
+                   np.all(self.get_charges() == other.get_charges())
+        except:
+            return NotImplemented
                     
        
 

@@ -304,20 +304,23 @@ class ConstantElectricField(ElectrostaticPotential):
 
         if self.center is None:
             # use the center of the grid as default
-            self.center = .5 * gd.h_cv.diagonal() * gd.N_c
+            self.center = .5 * np.sum(gd.h_cv * gd.N_c, axis=0)
 
-        potential = gd.empty()
-        sp_c = gd.h_cv.diagonal() * Bohr
-        for i in range(gd.beg_c[0],gd.end_c[0]):
-            ii = i - gd.beg_c[0]
-            for j in range(gd.beg_c[1],gd.end_c[1]):
-                jj = j - gd.beg_c[1]
-                for k in range(gd.beg_c[2],gd.end_c[2]):
-                    kk = k - gd.beg_c[2]
-                    pos_c = np.array([i, j, k]) * sp_c
-                    potential[ii,jj,kk] = self.get_value(pos_c)
-        self.potential = potential
-        return potential
+        x = np.dot( ( (np.arange(gd.n_c[0]) + gd.beg_c[0]).reshape(-1, 1) *
+                      gd.h_cv[0, :] - self.center ), self.direction )
+        y = np.dot( ( (np.arange(gd.n_c[1]) + gd.beg_c[1]).reshape(-1, 1) *
+                      gd.h_cv[1, :] - self.center ), self.direction )
+        z = np.dot( ( (np.arange(gd.n_c[2]) + gd.beg_c[2]).reshape(-1, 1) *
+                      gd.h_cv[2, :] - self.center ), self.direction )
+
+        x.shape = (-1,1,1)
+        y.shape = (1,-1,1)
+        z.shape = (1,1,-1)
+
+        self.potential = self.strength * ( np.resize(x, gd.n_c) +
+                                           np.resize(y, gd.n_c) +
+                                           np.resize(z, gd.n_c) )
+        return self.potential
 
     def get_taylor(self, position=None, spos_c=None):
         """Get the Taylor expansion around a point
@@ -325,7 +328,7 @@ class ConstantElectricField(ElectrostaticPotential):
         position [Angstrom]"""
         if position is None:
             gd = self.gd
-            pos = spos_c * gd.h_cv.diagonal() * gd.N_c * Bohr
+            pos = np.dot(gd.N_c*spos_c, gd.h_cv) * Bohr
         else:
             pos = position
         # see spherical_harmonics.py for the assignment
@@ -342,7 +345,7 @@ class ConstantElectricField(ElectrostaticPotential):
         spos_c scaled position on the grid"""
         gd = self.gd
         if position is None:
-            vr = spos_c * gd.h_cv.diagonal() * gd.N_c - self.center
+            vr = np.dot(gd.N_c*spos_c, gd.h_cv) - self.center
         else:
-            vr =  position / Bohr - self.center
+            vr = position / Bohr - self.center
         return self.strength * np.dot(vr, self.direction)

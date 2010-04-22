@@ -198,6 +198,8 @@ tests = [
     'lrtddft3.py',
     'AA_exx_enthalpy.py',
     'transport.py',
+    'constant_electric_field.py',
+    'stark_shift.py',
     ]
 
 exclude = []
