@@ -139,7 +139,7 @@ if compiler is not None:
 
 custom_interpreter = False
 # Check the command line so that custom interpreter is build only with
-# "build", "build_ext", or "install":
+# 'build', 'build_ext', or 'install':
 if mpicompiler is not None:
     for cmd in ['build', 'build_ext', 'install']:
         if cmd in sys.argv:
@@ -158,7 +158,7 @@ msg += ['* Architecture: '+plat]
 plat = plat + '-' + sys.version[0:3]
 gpawso = 'build/lib.%s/' % plat + '_gpaw.so'
 gpawbin = 'build/bin.%s/' % plat + 'gpaw-python'
-if "clean" in sys.argv:
+if 'clean' in sys.argv:
     if os.path.isfile(gpawso):
         print 'removing ', gpawso
         os.remove(gpawso)
@@ -210,7 +210,7 @@ setup(name = 'gpaw',
       author='J. J. Mortensen, et.al.',
       author_email='jensj@fysik.dtu.dk',
       url='http://www.fysik.dtu.dk',
-      license='GPL',
+      license='GPLv3+',
       platforms=['unix'],
       packages=packages,
       ext_modules=[extension],
@@ -238,7 +238,7 @@ if custom_interpreter:
               author='J. J. Mortensen, et.al.',
               author_email='jensj@fysik.dtu.dk',
               url='http://www.fysik.dtu.dk',
-              license='GPL',
+              license='GPLv3+',
               platforms=['unix'],
               packages=packages,
               ext_modules=[extension],
@@ -250,6 +250,6 @@ else:
     msg += ['* Only a serial version of gpaw was built!']
 
 # Messages make sense only when building
-if "build" in sys.argv or "build_ext" in sys.argv or "install" in sys.argv:
+if 'build' in sys.argv or 'build_ext' in sys.argv or 'install' in sys.argv:
     for line in msg:
         print line

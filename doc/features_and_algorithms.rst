@@ -121,12 +121,12 @@ simulation environment (:ase:`ASE <>`). ASE provides:
 Open Software
 =============
 
-GPAW is released under the GNU
-Public License version 2.  See the file :trac:`LICENSE` which
-accompanies the downloaded files, or see the license at GNU's web
-server at http://www.gnu.org/licenses/old-licenses/gpl-2.0.html.
-Everybody is invited to participate in using and :ref:`developing the
-code <devel>`.
+GPAW is released under the GNU Public License version 3 or any later
+version.  See the file :trac:`COPYING` which accompanies the
+downloaded files, or see the license at GNU's web server at
+http://www.gnu.org/licenses/.  Everybody is
+invited to participate in using and :ref:`developing the code
+<devel>`.
 
 
 .. [Mor05] J. J. Mortensen, L. B. Hansen, and K. W. Jacobsen,
