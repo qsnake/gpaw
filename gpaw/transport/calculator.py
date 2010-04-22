@@ -395,6 +395,9 @@ class Transport(GPAW):
         if self.gate_mode == 'SN':
             assert self.gate_atoms is not None
             #self.gate_rhot_g = 
+        elif self.gate_mode == 'VM':
+            setups = self.wfs.setups
+            self.gate_basis_index = get_atom_indices(self.gate_atoms, setups)
 
         elif self.gate_mode == 'AN':
             setups = self.wfs.setups
@@ -992,7 +995,7 @@ class Transport(GPAW):
         self.step = 0
         self.cvgflag = False
         self.spin_coff = 3. - self.nspins
-        self.max_steps = 200
+        self.max_steps = 300
         self.h_cvg = False
         self.d_cvg = False
         self.ele_data = {}
@@ -1530,7 +1533,7 @@ class Transport(GPAW):
         h_spkmm, s_pkmm = self.get_hs(self.extended_calc)
         
         if self.gate_mode == 'VM':
-            ind = get_matrix_index(self.gate_mol_index)
+            ind = get_matrix_index(self.gate_basis_index)
             h_spkmm[:, :, ind.T, ind] += self.gate * s_pkmm[:, ind.T, ind]        
 
         self.timer.stop('project hamiltonian')                  
@@ -1868,7 +1871,7 @@ class Transport(GPAW):
 
         ind = np.delete(ind, buffer_ind)
         self.inner_mol_index = ind
-        self.gate_mol_index = np.delete(ind, lead_ind)
+        #self.gate_mol_index = np.delete(ind, lead_ind)
         
         for i in range(self.lead_num):
              self.inner_lead_index[i] = np.searchsorted(ind,
@@ -2173,7 +2176,7 @@ class Transport(GPAW):
             self.gd1.distribute(vt_sG, self.extended_calc.hamiltonian.vt_sG) 
             h_spkmm, s_pkmm = self.get_hs(self.extended_calc)
             if self.gate_mode == 'VM':
-                ind = get_matrix_index(self.gate_mol_index)
+                ind = get_matrix_index(self.gate_basis_index)
                 h_spkmm[:, :, ind.T, ind] += self.gate * s_pkmm[:, ind.T, ind]   
             
             nb = s_pkmm.shape[-1]
