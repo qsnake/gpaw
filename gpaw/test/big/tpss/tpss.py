@@ -90,7 +90,7 @@ for formula in systems:
 ii =0 
 file = paropen('atom_en.dat', 'a')
 print >>file, "# formula \t PBE \t TPSS \t revTPSS \t M06L \t Exp"
-for formula in systems:
+for formula in systems[:13]:
     try:
         atoms_formula = split_formula(formula)
         de_tpss = -1.0 * energies[formula][1]
