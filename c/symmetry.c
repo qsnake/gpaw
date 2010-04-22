@@ -70,8 +70,8 @@ PyObject* symmetrize_wavefunction(PyObject *self, PyObject *args)
         int p1 = ((C[1] * g0 + C[4] * g1 + C[7] * g2) % ng1 + ng1) % ng1;
         int p2 = ((C[2] * g0 + C[5] * g1 + C[8] * g2) % ng2 + ng2) % ng2;
 
-	double complex phase = cexp( I * 2. * M_PI *  \
-          (  kpt1[0]/ng0*p0 + kpt1[1]/ng1*p1 + kpt1[2]/ng2*p2  \ 
+	double complex phase = cexp( I * 2. * M_PI * 
+          (  kpt1[0]/ng0*p0 + kpt1[1]/ng1*p1 + kpt1[2]/ng2*p2 
            - kpt0[0]/ng0*g0 - kpt0[1]/ng1*g1 - kpt0[2]/ng2*g2) );
 	b_g[(p0 * ng1 + p1) * ng2 + p2] += (*a_g * phase);
         a_g++;
