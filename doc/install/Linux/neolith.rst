@@ -159,5 +159,5 @@ The installation of user's packages on neolith described below uses
    module load campos-gpaw-setups
    module load campos-gpaw
 
-   mpprun --force-mpi="openmpi/1.2.7-i101017" `which gpaw-python` ./CH4.py --sl_diagonalize=2,1,2,4
+   mpprun --force-mpi="openmpi/1.2.7-i101017" `which gpaw-python` ./CH4.py --sl_diagonalize=2,1,2
 

@@ -143,7 +143,7 @@ spins and the domain.
 
 If you enabled ScaLAPACK, do::
 
-  [examples]$ mpirun -np 2 gpaw-python ~/gpaw/test/CH4.py --sl_diagonalize=1,2,2,d
+  [examples]$ mpirun -np 2 gpaw-python ~/gpaw/test/CH4.py --sl_diagonalize=1,2,2
 
 This will enable ScaLAPACK's diagonalization on a 1x2 BLACS grid
 with the block size of 2. ScaLAPACK can be currently used
