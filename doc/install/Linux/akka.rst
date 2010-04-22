@@ -48,6 +48,8 @@ and build GPAW (``python setup.py build_ext``) with this
 
   scalapack = True
 
+  libraries = []
+
   extra_compile_args += [
       '-O3'
       ]
