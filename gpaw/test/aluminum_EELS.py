@@ -25,7 +25,7 @@ atoms = bulk('Al', 'fcc', a=a, orthorhombic=True)
 
 calc = GPAW(h=0.3,
             kpts=(4,4,4),
-            usesymm=None,
+#            usesymm=None,
             xc='LDA')
 
 atoms.set_calculator(calc)

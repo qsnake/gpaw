@@ -415,7 +415,7 @@ class CHI:
 
         usesymm = calc.input_parameters.get('usesymm')
         if usesymm == None:
-            op = np.eye(3, dtype=int)
+            op = (np.eye(3, dtype=int),)
         elif usesymm == False:
             op = (np.eye(3, dtype=int), -np.eye(3, dtype=int))
         else:
