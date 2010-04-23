@@ -290,14 +290,14 @@ class WaveFunctions(EmptyWaveFunctions):
                     if kpt_rank == 0:
                         return a_n
                     else:
-                        self.kpt_comm.send(a_n, 0, 1301)
+                        self.kpt_comm.ssend(a_n, 0, 1301)
                 else:
                     b_n = self.bd.collect(a_n)
                     if self.band_comm.rank == 0:
                         if kpt_rank == 0:
                             return b_n
                         else:
-                            self.kpt_comm.send(b_n, 0, 1301)
+                            self.kpt_comm.ssend(b_n, 0, 1301)
 
         elif self.world.rank == 0 and kpt_rank != 0:
             b_n = np.zeros(self.nbands, dtype=dtype)
@@ -377,7 +377,7 @@ class WaveFunctions(EmptyWaveFunctions):
         elif self.kpt_comm.rank == kpt_rank: # plain else works too...
             for a in range(natoms):
                 if a in P_ani:
-                    self.world.send(P_ani[a], 0, 1303 + a)
+                    self.world.ssend(P_ani[a], 0, 1303 + a)
 
     def get_wave_function_array(self, n, k, s):
         """Return pseudo-wave-function array.
