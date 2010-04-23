@@ -403,15 +403,51 @@ class _Communicator:
         return self.comm.receive(a, src, tag, block)
 
     def test(self, request):
-        return self.comm.test(request) # request is not modified
+        """Test whether a non-blocking MPI operation has completed. A boolean
+        is returned immediately and the request is not modified in any way.
+
+        Parameters:
+
+        request: MPI request
+            Request e.g. returned from send/receive when block=False is used.
+
+        """
+        return self.comm.test(request)
 
     def testall(self, requests):
+        """Test whether non-blocking MPI operations have completed. A boolean
+        is returned immediately but requests may have been deallocated as a
+        result, provided they have completed before or during this invokation.
+
+        Parameters:
+
+        request: MPI request
+            Request e.g. returned from send/receive when block=False is used.
+
+        """
         return self.comm.testall(requests) # may deallocate requests!
 
     def wait(self, request):
+        """Wait for a non-blocking MPI operation to complete before returning.
+
+        Parameters:
+
+        request: MPI request
+            Request e.g. returned from send/receive when block=False is used.
+
+        """
         self.comm.wait(request)
 
     def waitall(self, requests):
+        """Wait for non-blocking MPI operations to complete before returning.
+
+        Parameters:
+
+        requests: list
+            List of MPI requests e.g. aggregated from returned requests of
+            multiple send/receive calls where block=False was used.
+
+        """
         self.comm.waitall(requests)
 
     def abort(self, errcode):
@@ -476,10 +512,10 @@ class _Communicator:
         this reason.  The C-communicator object has a get_c_object()
         implementation which returns itself; thus, always call
         comm.get_c_object() and pass the resulting object to the C code.
-
-        XXX Must make a central check somewhere that the C type is
-        correct."""
-        return self.comm.get_c_object()
+        """
+        c_obj = self.comm.get_c_object()
+        assert type(c_obj) is _gpaw.Communicator
+        return c_obj
 
 
 # Serial communicator
