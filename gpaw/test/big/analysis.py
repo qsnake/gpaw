@@ -129,9 +129,12 @@ class TestAnalyzer:
         fig.savefig(outputdir + figname + '.png')
 
 class MailGenerator:
-    def __init__(self):
+    def __init__(self, queue):
         self.better = []
         self.worse = []
+
+        self.FAILED = []
+        self.TIMEOUT = []
 
     def add_test(self, name, abschange, relchange):
         if abschange < 0.0:
@@ -145,17 +148,42 @@ class MailGenerator:
     def add_worse(self, name, abschange, relchange):
         self.worse.append((name, abschange, relchange))
 
+    def add_failed(self, name):
+        self.FAILED.append(name)
+
+    def add_timeout(self, name):
+        self.TIMEOUT.append(name)
+
     def generate_mail(self):
-        mail = 'Results from weekly tests:\n\n'
+        mail = ''
+        if len(self.FAILED):
+            mail += 'The following %i tests failed:\n' % len(self.FAILED)
+            for name in self.FAILED:
+                mail += '%s\n' % name
+            mail += '\n'
+
+        if len(self.TIMEOUT):
+            mail += 'The following %i tests timed out:\n' % len(self.TIMEOUT)
+            for name in self.TIMEOUT:
+                mail += '%s\n' % name
+            mail += '\n'
+
+        if len(self.FAILED) or len(self.TIMEOUT):
+            mail += 'See attached log for details\n\n'
+
+        mail += 'Benchmark results from weekly tests:\n\n'
+
         if len(self.better):
-            mail += 'The following tests improved:\n'
+            mail += 'The following %i tests improved:\n' % len(self.better)
             for test in self.better:
                 mail += '%-40s %7.2f s (%7.2f%%)\n' % test
         else:
             mail += 'No tests improved!\n'
+
         mail += '\n'
+
         if len(self.worse):
-            mail += 'The following tests regressed:\n'
+            mail += 'The following tests %i regressed:\n' % len(self.worse)
             for test in self.worse:
                 mail += '%-40s +%6.2f s (+%6.2f%%)\n' % test
         else:
@@ -163,13 +191,23 @@ class MailGenerator:
 
         return mail
 
+    def generate_subject(self):
+        subject = 'Weekly tests: '
+        if len(self.FAILED):
+            subject += '%i FAILURES, ' % len(self.FAILED)
+        if len(self.TIMEOUT):
+            subject += '%i TIMEOUTS, ' % len(self.TIMEOUT)
+        subject += '%i regressions, ' % len(self.worse)
+        subject += '%i improvements.' % len(self.better)
+        return subject
+
     def send_mail(self, address):
         fullpath = tempfile.mktemp()
         f = open(fullpath, 'w')
         f.write(self.generate_mail())
         f.close()
-        os.system('mail -s "Results from weekly tests" %s < %s' % \
-                  (address, fullpath))
+        os.system('mail -s "%s" %s < %s' % \
+                  (self.generate_subject(), address, fullpath))
 
 #def csv2database(infile, outfile):
 #    """Use this file once to import the old data from csv"""
@@ -206,17 +244,23 @@ def analyse(queue, dbpath, outputdir=None, rev=None, mailto=None):
     db.read()
     db.update(queue, rev)
     db.write()
-    mg = MailGenerator()
+    mg = MailGenerator(queue)
     for job in queue.jobs:
         name = job.absname
-        revs, runtimes = db.get_data(name)
-        ta = TestAnalyzer(name, revs, runtimes)
-        ta.analyze(abstol=0)
-        if ta.status:
-            mg.add_test(name, ta.abschange, ta.relchange)
-        ta.plot(outputdir)
+        if job.status == 'success':
+            revs, runtimes = db.get_data(name)
+            ta = TestAnalyzer(name, revs, runtimes)
+            ta.analyze(abstol=0)
+            if ta.status:
+                mg.add_test(name, ta.abschange, ta.relchange)
+            ta.plot(outputdir)
+        elif job.status == 'FAILED':
+            mg.add_failed(name)
+        elif job.status == 'TIMEOUT':
+            mg.add_timeout(name)
 
     if mailto is not None:
         mg.send_mail(mailto)
     else:
+        print mg.generate_subject()
         print mg.generate_mail()
