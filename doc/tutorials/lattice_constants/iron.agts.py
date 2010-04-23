@@ -9,7 +9,7 @@ if __name__ == '__main__':
     from ase.utils.eos import EquationOfState
     from ase.io import read
     def f(width, k, g):
-        filename = 'Fe-B-%.2f-%02d-%2d.traj' % (width, k, g)
+        filename = 'Fe-%.2f-%02d-%2d.traj' % (width, k, g)
         configs = read(filename + '@::2')
         # Extract volumes and energies:
         volumes = [a.get_volume() for a in configs]
@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     plt.figure(figsize=(6, 4))
     for width in [0.05, 0.1, 0.15, 0.2]:
-        a = [f(width, k, 16)[0]**(1.0 / 3.0) for k in kk]
+        a = [f(width, k, 12)[0]**(1.0 / 3.0) for k in kk]
         print ('%7.3f ' * 7) % ((width,) + tuple(a))
         plt.plot(kk, a, label='width = %.2f eV' % width)
     plt.legend(loc='lower right')
@@ -32,8 +32,8 @@ if __name__ == '__main__':
     plt.savefig('Fe_conv_k.png')
 
     plt.figure(figsize=(6, 4))
-    gg = np.arange(12, 40, 4)
-    a = [f(0.1, 6, g)[0]**(1.0 / 3.0) for g in gg]
+    gg = np.arange(8, 32, 4)
+    a = [f(0.1, 8, g)[0]**(1.0 / 3.0) for g in gg]
     plt.plot(2.84 / gg, a, 'o-')
     plt.axis(ymin=2.83, ymax=2.85)
     plt.xlabel('grid-spacing [Ang]')
