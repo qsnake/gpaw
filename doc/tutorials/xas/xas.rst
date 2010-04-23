@@ -143,8 +143,13 @@ that the calculated XPS energy matches the expreimental value
 [Leetmaa2006]. Use a large box, see convergence with box size for a
 water molecule below:
 
+.. literalinclude:: h2o_xas_box1.py
 
-.. figure:: xas_h2o_convergence.png
+and plot it
+
+.. literalinclude:: h2o_xas_box2.py
+
+.. figure:: h2o_xas_box.png
         :width: 550 px  
 
 
