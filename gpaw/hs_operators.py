@@ -229,7 +229,7 @@ class MatrixOperator:
         # If syncronous, blocking send/receives of psit_nG's carried out here.
         if self.async:
             assert len(self.req) == 2, 'Expected asynchronous request pairs.'
-            map(band_comm.wait, self.req)
+            band_comm.waitall(self.req)
         else:
             assert len(self.req) == 0, 'Got unexpected asynchronous requests.'
             band_comm.sendreceive(sbuf_mG, rankm, rbuf_mG, rankp, 11, 11)
@@ -238,7 +238,7 @@ class MatrixOperator:
         # Auxiliary asyncronous cycle, also wait for P_ani's.
         if auxiliary:
             assert len(self.req2) == 2, 'Expected asynchronous request pairs.'
-            map(band_comm.wait, self.req2)
+            band_comm.waitall(self.req2)
             sbuf_In, rbuf_In = rbuf_In, sbuf_In
 
         return sbuf_mG, rbuf_mG, sbuf_In, rbuf_In
