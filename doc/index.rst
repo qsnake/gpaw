@@ -53,6 +53,8 @@ algorithms used <features_and_algorithms>`.
 News
 ====
 
+* :ref:`GPAW version 0.7 <releasenotes>` released (Apr 23 2010)
+
 * GPAW is :math:`\Psi_k` `scientific highlight of the month`_ (Apr 3 2010)
 
 * GPAW now measures :ref:`code coverage <coverage>` of the test suite

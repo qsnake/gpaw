@@ -4,7 +4,28 @@
 Release notes
 =============
 
-(The development version in trunk is now the version that will once become 0.7)
+Version 0.8 (development version in trunk)
+==========================================
+
+Nothing new - yet.
+
+
+Version 0.7
+===========
+
+23 April 2010: :trac:`tags/0.7 <../tags/0.7>`.
+
+* Better and much more efficient handling of non-orthorhombic unit
+  cells.  It may actually work now!
+* Much better use of ScaLAPACK and BLACS.  All large matrices can now
+  be distributed.
+* New test coverage pages for all files: :ref:`coverage`.
+* New default value for Poisson solver stencil: ``PoissonSolver(nn=3)``.
+* Much improved MPI module (:ref:`communicators`).
+* Selfconsistent Meta GGA.
+* New PAW setup tar-file now contains revPBE setups and also dzp basis
+  functions.
+
 
 Version 0.6
 ===========
