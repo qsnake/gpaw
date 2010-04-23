@@ -126,7 +126,7 @@ def setup(app):
     for job in queue.jobs:
         if job.creates:
             for name in job.creates:
-                assert name not in names, 'Name clash!'
+                assert name not in names, "Name '%s' clashes!" % name
                 names.add(name)
                 if job.dir.startswith('../doc'):
                     dir = job.dir
