@@ -199,7 +199,7 @@ tests = [
     'AA_exx_enthalpy.py',
     'transport.py',
     'constant_electric_field.py',
-    'stark_shift.py',
+    #'stark_shift.py',
     ]
 
 exclude = []
