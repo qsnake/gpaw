@@ -1579,23 +1579,61 @@ class Transport(GPAW):
         #    self.text('align shift-----' + str(self.align_shift))
   
     def get_forces(self, atoms):
-        if (atoms.positions != self.atoms.positions).any():
-            self.scf.converged = False
-        if  hasattr(self.scf, 'converged') and self.scf.converged:
-            pass
-        else:
-            self.negf_prepare(atoms)
-            if np.sum(np.abs(self.bias)) < 1e-3:
-                self.ground = True
-            self.get_selfconsistent_hamiltonian()
-            self.analysor.save_ion_step()
-            self.text('--------------ionic_step---' +
-                      str(self.analysor.n_ion_step) + '---------------')
-            self.F_av = None   
-        f = self.calculate_force()
-        if not self.optimize:
-            self.optimize = True
-        return f * Hartree / Bohr 
+        if self.non_sc:
+            if not hasattr(self, 'contour'):
+                self.contour = Contour(self.occupations.width * Hartree,
+                            self.lead_fermi, self.bias, comm=self.wfs.gd.comm,
+                             tp=self, plot_eta=self.plot_eta)            
+            if not hasattr(self, 'analysor'):
+                self.analysor = Transport_Analysor(self, True)            
+            if self.F_av is None:
+                self.equivalent_atoms = self.atoms.copy()
+                kwargs = self.gpw_kwargs.copy()
+                kwargs['poissonsolver'] = PoissonSolver(nn=2)
+                kpts = kwargs['kpts']
+                kpts = kpts[:2] + (1,)
+                kwargs['kpts'] = kpts
+                if self.spinpol:
+                    kwargs['mixer'] = MixerDif(0.1, 5, weight=100.0)
+                else:
+                    kwargs['mixer'] = Mixer(0.1, 5, weight=100.0)
+                if 'txt' in kwargs and kwargs['txt'] != '-':
+                    kwargs['txt'] = 'guess_' + kwargs['txt']            
+                self.equivalent_atoms.set_calculator(gpaw.GPAW(**kwargs))
+                calc = self.equivalent_atoms.calc
+                calc.initialize(self.equivalent_atoms)
+                calc.set_positions(self.equivalent_atoms)
+                self.F_av = calc.get_forces(self.equivalent_atoms)                
+
+            elif (atoms.positions != self.atoms.positions).any():
+                self.atoms.set_positions(atoms.positions)
+                self.equivalent_atoms.set_positions(atoms.positions)
+                calc = self.equivalent_atoms.calc
+                calc.density.reset()
+                calc.set_positions(atoms)
+                self.F_av = calc.get_forces(atoms)
+            self.analysor.save_bias_step()    
+            self.analysor.save_ion_step()                
+            return self.F_av
+        
+        else:            
+            if (atoms.positions != self.atoms.positions).any():
+                self.scf.converged = False
+            if  hasattr(self.scf, 'converged') and self.scf.converged:
+                pass
+            else:
+                self.negf_prepare(atoms)
+                if np.sum(np.abs(self.bias)) < 1e-3:
+                    self.ground = True
+                self.get_selfconsistent_hamiltonian()
+                self.analysor.save_ion_step()
+                self.text('--------------ionic_step---' +
+                          str(self.analysor.n_ion_step) + '---------------')
+                self.F_av = None   
+            f = self.calculate_force()
+            if not self.optimize:
+                self.optimize = True
+            return f * Hartree / Bohr 
 
     def calculate_force(self):
         """Return the atomic forces.""" 
@@ -1675,17 +1713,20 @@ class Transport(GPAW):
             self.get_selfconsistent_hamiltonian()          
         
     def get_potential_energy(self, atoms=None, force_consistent=False):
-        if hasattr(self.scf, 'converged') and self.scf.converged:
-            pass
+        if self.non_sc:
+            return self.equivalent_atoms.get_potential_energy()
         else:
-            self.negf_prepare()
-            self.get_selfconsistent_hamiltonian()
-        if force_consistent:
-            # Free energy:
-            return Hartree * self.hamiltonian.Etot
-        else:
-            # Energy extrapolated to zero Kelvin:
-            return Hartree * (self.hamiltonian.Etot + 0.5 * self.hamiltonian.S)
+            if hasattr(self.scf, 'converged') and self.scf.converged:
+                pass
+            else:
+                self.negf_prepare()
+                self.get_selfconsistent_hamiltonian()
+            if force_consistent:
+                # Free energy:
+                return Hartree * self.hamiltonian.Etot
+            else:
+                # Energy extrapolated to zero Kelvin:
+                return Hartree * (self.hamiltonian.Etot + 0.5 * self.hamiltonian.S)
        
     def update_density(self):
         self.timer.start('dmm recover')
