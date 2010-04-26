@@ -14,7 +14,8 @@ for cell in cells:
 
     calc = GPAW(xc='PBE',
                 h=h,
-                nbands=-5,
+                nbands=-40,
+                eigensolver='cg',
                 setups={'O': 'hch1s'},
                 stencils=(3,3) )
 
