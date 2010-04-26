@@ -7,6 +7,8 @@ Release notes
 Version 0.8 (development version in trunk)
 ==========================================
 
+:trac:`trunk <>`.
+
 Nothing new - yet.
 
 
@@ -22,9 +24,13 @@ Version 0.7
 * New test coverage pages for all files: :ref:`coverage`.
 * New default value for Poisson solver stencil: ``PoissonSolver(nn=3)``.
 * Much improved MPI module (:ref:`communicators`).
-* Selfconsistent Meta GGA.
-* New PAW setup tar-file now contains revPBE setups and also dzp basis
-  functions.
+* Self-consistent Meta GGA.
+* New :ref:`PAW setup tar-file <setups>` now contains revPBE setups and
+  also dzp basis functions.
+* New ``$HOME/.gpaw/rc.py`` configuration file.
+* License is now GPLv3+.
+* New HDF IO-format.
+* :ref:`Advanced GPAW Test System <big-test>` Introduced.
 
 
 Version 0.6
@@ -36,6 +42,7 @@ Version 0.6
 * Using higher order finite-difference stencil for kinetic energy.
 * Many many other improvements like: better parallelization, fewer bugs and
   smaller memory footprint.
+
 
 Version 0.5
 ===========

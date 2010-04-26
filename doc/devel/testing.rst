@@ -47,7 +47,7 @@ A test script should fulfill a number of requirements:
 
 * It should be quick.  Preferably a few seconds, but a few minutes is
   OK.  If the test takes several minutes or more, consider making the
-  test a `big test`_.
+  test a :ref:`big test <big-test>`.
 
 * It should not depend on other scripts.
 
@@ -62,7 +62,7 @@ Use this function to check results:
 .. function:: gpaw.test.equal(x, y, tolerance=0, fail=True, msg='')
 
 
-.. _big test:
+.. _big-test:
 
 Big tests
 =========
@@ -76,7 +76,7 @@ Adding new tests
 
 To add a new test, create a script somewhere in the file hierarchy ending with
 .agts.py (e.g. ``submit.agts.py``). ``AGTS`` is short for Advanced GPAW Test
-Suite (or Another Great Time Sink). This script defines how a number of
+System (or Another Great Time Sink). This script defines how a number of
 scripts should be submitted to niflheim and how they depend on each other.
 Consider an example where one script, calculate.py, calculates something and
 saves a .gpw file and another script, analyse.py, analyses this output. Then
