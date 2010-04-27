@@ -168,28 +168,108 @@ ScaLapack
 
 .. _manual_parallelization_types:
 
-Parallization modes
-===================
+.. _manual_parallel:
+
+Parallization options
+=====================
+
+In version 0.7, a new keyword called ``parallel`` was introduced to provide 
+a unified way of specifying parallelization-related options. Similar to
+the way we :ref:`specify convergence criteria <manual_convergence>` with the 
+``convergence`` keyword, a Python dictionary is used to contain all such
+options in a single keyword.
+
+The default value corresponds to this Python dictionary::
+
+  {'domain':              None,
+   'band':                1,
+   'stridebands':         False,
+   'sl_default':          None,
+   'sl_diagonalize':      None,
+   'sl_inverse_cholesky': None,
+   'sl_lcao':             None}
+
+In words:
+
+* The ``'domain'`` value specifies either an integer ``n``, or specifically a tuple
+  ``(nx,ny,nz)`` of 3 integers, for :ref:`domain decomposition <manual_parsize>`.
+  If not specified (i.e. ``None``), the calculator will try to determine the best
+  domain parallelization size based on number of kpoints, spins etc.
+
+* The ``'band'`` value specifies the number of parallelization groups to use for
+  :ref:`band parallelization <manual_parsize_bands>` and defaults to one, i.e.
+  no band parallelization.
+
+* The ``'stridebands'`` value only applies when band parallelization is used, and
+  can be used to toggle between grouped and strided band distribution.
+
+* The four ``'sl_...'`` values are for specifying ScaLAPACK parameters, which
+  must be a tuple ``(m,n,mb)`` of 3 integers to indicate a ``m*n`` grid of CPUs
+  and a blocking factor of ``mb``. If either of the three latter are not
+  specified (i.e. ``None``), they default to the value of ``'sl_default'``,
+  which can also be omitted.
+
+.. note::
+   With the exception of ``'stridebands'``, these parameters all have an
+   equivalent command line argument which can equally well be used to specify
+   these parallelization options. Note however that the values explicitly given
+   in the ``parallel`` keyword to a calculator will override those given via
+   the command line. As such, the command line arguments thus merely redefine
+   the default values which are used in case the ``parallel`` keyword doesn't
+   specifically state otherwise.
+
 
 .. _manual_parsize:
 
 Domain decomposition
 --------------------
 
-The choice for the domain decomposition can be forced using the 
-keyword ``parsize``. It can be set like ``parsize=(nx,ny,nz)`` to
-force the decomposition into nx, ny, and nz boxes in x,y, and z direction
-respectively. The use of domain decomposition only can be forced by
-``parsize='domain only'``.
+Any choice for the domain decomposition can be forced by specifying
+``domain`` in the ``parallel`` keyword. It can be given in the form
+``parallel={'domain': (nx,ny,nz)}`` to force the decomposition into ``nx``,
+``ny``, and ``nz`` boxes in x, y, and z direction respectively. Alternatively,
+one may just specify the total number of domains to decompose into, leaving
+it to an internal cost-minimizer algorithm to determine the number of domains
+in the x, y and z directions such that parallel efficiency is optimal. This
+is achieved by giving the ``domain`` argument as ``parallel={'domain': n}``
+where ``n`` is the total number of boxes.
 
-There is also a command line argument
-``--domain-decomposition`` that allows you to control the domain
-decomposition (see example at :ref:`submit_tool_on_niflheim`).
+.. tip::
+   ``parallel={'domain': world.size}`` will force all parallelization to be
+   carried out solely in terms of domain decomposition, and will in general
+   be much more efficient than e.g. ``parallel={'domain': (1,1,world.size)}``.
+
+There is also a command line argument ``--domain-decomposition`` which allows you
+to control domain decomposition (see example at :ref:`submit_tool_on_niflheim`).
+
+.. _manual_parsize_bands:
 
 Band parallelization
 --------------------
+
+Parallelization over Kohn-Sham orbitals (i.e. bands) becomes favorable when
+the number of bands :math:`N` is so large that :math:`\mathcal{O}(N^2)`
+operations begin to dominate in terms of computational time. Linear algebra
+for orthonormalization and diagonalization of the wavefunctions is the most
+noticeable contributor in this regime, and therefore, band parallelization
+can be used to distribute the computational load over several CPUs.
+
+.. tip::
+   Whereas band parallelization in itself will reduce the amount of operations
+   each CPU has to carry out to calculate e.g. the overlap matrix, the actual
+   linear algebra necessary to solve such linear systems is in fact still
+   done using serial LAPACK by default. It is therefor advisable to use both
+   band parallelization and ScaLAPACK / BLACS in conjunction to reduce this
+   potential bottleneck.
+
+There is also a command line argument ``--state-parallelization`` which allows you
+to control band parallelization (see example at :ref:`submit_tool_on_niflheim`).
+
+More information about these topics can be found here:
 
 .. toctree::
    :maxdepth: 1
 
    band_parallelization/band_parallelization
+   ScaLapack/ScaLapack
+

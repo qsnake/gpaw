@@ -106,8 +106,7 @@ keyword            type       default value        description
 ``txt``            ``str``,   ``'-'``              :ref:`manual_txt`
                    None, or   (``sys.stdout``)
                    file obj.
-``parsize``        *seq*                           Parallel
-                                                   :ref:`manual_parsize`
+``parallel``       ``dict``                        :ref:`manual_parallel`
 ``stencils``       tuple      ``(3, 3)``           Number of neighbors for
                                                    :ref:`manual_stencils`
 ``mixer``          Object                          Pulay :ref:`manual_mixer`
@@ -122,7 +121,6 @@ keyword            type       default value        description
 ``eigensolver``    ``str``    ``'rmm-diis'``       :ref:`manual_eigensolver`
 ``hund``           ``bool``   ``False``            :ref:`Use Hund's rule
                                                    <manual_hund>`
-``parsize_bands``  ``int``    ``1``                XXX Missing doc
 ``external``       Object                          XXX Missing doc
 ``verbose``        ``int``    ``0``                XXX Missing doc
 ``poissonsolver``  Object                          XXX Missing doc
@@ -143,6 +141,17 @@ keyword            type       default value        description
 
    This would send all output to a file named :file:`'H2.txt'`, and the
    calculation will be done with one electron removed.
+
+
+Deprecated keywords (in favour of the ``parallel`` keyword) include:
+
+=================  =========  ===================  ============================
+keyword            type       default value        description
+=================  =========  ===================  ============================
+``parsize``        *seq*                           Parallel
+                                                   :ref:`manual_parsize`
+``parsize_bands``  ``int``    ``1``                :ref:`manual_parsize_bands`
+=================  =========  ===================  ============================
 
 
 .. _manual_mode:
