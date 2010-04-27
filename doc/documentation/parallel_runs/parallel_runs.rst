@@ -71,9 +71,11 @@ Submit tool on Niflheim
 
 At CAMd, we use this submit tool: :svn:`~doc/documentation/parallel_runs/gpaw-qsub`.
 
-Example::
+Examples::
 
   $ gpaw-qsub -q medium -l nodes=8 -m abe fcc.py --domain-decomposition=1,2,2
+  $ gpaw-qsub -q long -l nodes=6:ppn=8:xeon5570 -m abe hcp_n2.py --gpaw=blacs=1 \
+    --sl_default=4,4,2 --domain-decomposition=8 --state-parallelization=2
 
 .. tip::
   CAMd users must always remember to source the openmpi environment settings before recompiling the code. See :ref:`Niflheim`.
