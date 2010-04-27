@@ -5,7 +5,7 @@ from gpaw.test import equal
 
 # Test of ase wannier using gpaw
 
-calc = GPAW(nbands=4)
+calc = GPAW(gpts=(32, 32, 32), nbands=4)
 atoms = molecule('H2', calculator=calc)
 atoms.center(vacuum=3.)
 e = atoms.get_potential_energy()

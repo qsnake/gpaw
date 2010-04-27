@@ -19,7 +19,7 @@ ethylene = Atoms([Atom('H', (-1.235,-0.936 , 0 )),
                  cell=(a, a, a), pbc=True)
 ethylene.center()
 
-calc = GPAW(nbands=8, h=0.20, convergence={'eigenstates': 1e-6})
+calc = GPAW(nbands=8, gpts=(32, 32, 32), convergence={'eigenstates': 1e-6})
 ethylene.set_calculator(calc)
 e = ethylene.get_potential_energy()
 niter = calc.get_number_of_iterations()

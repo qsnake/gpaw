@@ -2,7 +2,7 @@ from ase import *
 from gpaw import *
 from gpaw.test import equal
 a = 2.0
-calc = GPAW(txt='H.txt')
+calc = GPAW(gpts=(12, 12, 12), txt='H.txt')
 H = Atoms([Atom('H')],
           cell=(a, a, a),
           pbc=True,

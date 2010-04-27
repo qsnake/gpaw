@@ -22,21 +22,21 @@ LiH.center(vacuum=3.0)
 # architecture-independent results:
 LiH.translate(0.003234)
 
-calc = GPAW(communicator=comm)
+calc = GPAW(gpts=(24, 24, 24), communicator=comm)
 Hnospin.set_calculator(calc)
 e_Hnospin = Hnospin.get_potential_energy()
 niter_Hnospin = calc.get_number_of_iterations()
 energies, sweight = raw_orbital_LDOS(calc, a=0, spin=0, angular='s')
 energies, pdfweight = raw_orbital_LDOS(calc, a=0, spin=0, angular='pdf')
 
-calc = GPAW(occupations=FermiDirac(width=0, fixmagmom=True),
+calc = GPAW(gpts=(24, 24, 24), occupations=FermiDirac(width=0, fixmagmom=True),
             hund=True, communicator=comm)
 Hspin.set_calculator(calc)
 e_Hspin = Hspin.get_potential_energy()
 niter_Hspin = calc.get_number_of_iterations()
 energies,sweight_spin = raw_orbital_LDOS(calc, a=0, spin=0, angular='s')
 
-calc = GPAW(nbands=2, #eigensolver='dav',
+calc = GPAW(gpts=(32, 32, 40), nbands=2, #eigensolver='dav',
             communicator=comm)
 LiH.set_calculator(calc)
 e_LiH = LiH.get_potential_energy()

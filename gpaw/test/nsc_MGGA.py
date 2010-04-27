@@ -6,7 +6,7 @@ from gpaw.test import equal, gen
 
 atoms = Atoms('H', magmoms=[1], pbc=True)
 atoms.center(vacuum=3)
-calc = GPAW(nbands=1, xc='PBE', txt='Hnsc.txt')
+calc = GPAW(gpts=(32, 32, 32), nbands=1, xc='PBE', txt='Hnsc.txt')
 atoms.set_calculator(calc)
 e1 = atoms.get_potential_energy()
 niter1 = calc.get_number_of_iterations()
@@ -34,7 +34,7 @@ equal(e1 + de12r, -1.12386865515, 0.005)
 
 atomsHe = Atoms('He', pbc=True)
 atomsHe.center(vacuum=3)
-calc = GPAW(nbands=1, xc='PBE', txt='Hensc.txt')
+calc = GPAW(gpts=(32, 32, 32), nbands=1, xc='PBE', txt='Hensc.txt')
 atomsHe.set_calculator(calc)
 e1He = atomsHe.get_potential_energy()
 niter_1He = calc.get_number_of_iterations()

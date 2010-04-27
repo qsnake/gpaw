@@ -11,7 +11,7 @@ result  = 'gpaw-result'
 H = Atoms([Atom('H')])
 H.center(vacuum=3.0)
 
-calc = GPAW(nbands=1)
+calc = GPAW(gpts=(32, 32, 32), nbands=1)
 calc.attach(calc.write, 4, restart)
 H.set_calculator(calc)
 e = H.get_potential_energy()
