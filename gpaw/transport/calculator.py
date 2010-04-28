@@ -578,7 +578,7 @@ class Transport(GPAW):
                     l = phit.get_angular_momentum_number()
                     for j in range(2 * l  + 1):
                         self.lead_orbital_indices[i].append([n, l])                    
-        self.lead_orbital_indices = np.array(self.lead_orbital_indices)
+            self.lead_orbital_indices[i] = np.array(self.lead_orbital_indices[i])
         
         for i in range(self.lead_num):
             if self.la_index is None:
@@ -1902,8 +1902,6 @@ class Transport(GPAW):
 
     
     def print_boundary_charge(self):
-        nb = self.nblead[0]
-        qr_mm = np.zeros([self.lead_num, nb, nb])
         boundary_charge = []
         print_info = ''
         if self.hsd.S[0].extended:
@@ -1911,19 +1909,21 @@ class Transport(GPAW):
         else:
             n = -1
         for i in range(self.lead_num):
+            nb = self.nblead[i]
+            qr_mm = np.zeros([nb, nb])
             for s in range(self.my_nspins):
                 for pk in range(self.my_npk):
                     D = self.hsd.D[s][pk]
                     S = self.hsd.S[pk]
-                    qr_mm[i] += dot(D.diag_h[i][n].recover(),
+                    qr_mm+= dot(D.diag_h[i][n].recover(),
                                                      S.diag_h[i][n].recover())
-                    qr_mm[i] += dot(D.dwnc_h[i][n], S.upc_h[i][n])
+                    qr_mm += dot(D.dwnc_h[i][n], S.upc_h[i][n])
                     if S.extended:
-                        qr_mm[i] += dot(D.dwnc_h[i][n + 1], S.upc_h[i][n + 1])
+                        qr_mm += dot(D.dwnc_h[i][n + 1], S.upc_h[i][n + 1])
                     else:
-                        qr_mm[i] += dot(D.dwnc_h[i][n], S.upc_h[i][n])                        
-            self.wfs.kpt_comm.sum(qr_mm[i])
-            boundary_charge.append(np.real(np.trace(qr_mm[i])))
+                        qr_mm += dot(D.dwnc_h[i][n], S.upc_h[i][n])                        
+            self.wfs.kpt_comm.sum(qr_mm)
+            boundary_charge.append(np.real(np.trace(qr_mm)))
             if i != 0:
                 print_info += '******'
             print_info += str(boundary_charge[i])
