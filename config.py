@@ -405,7 +405,7 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
 
     define_macros.append(('PARALLEL', '1'))
     define_macros.append(('GPAW_INTERPRETER', '1'))
-    macros = ' '.join(['-D%s=%s' % x for x in define_macros])
+    macros = ' '.join(['-D%s=%s' % x for x in define_macros if x[0].strip()])
 
     include_dirs.append(cfgDict['INCLUDEPY'])
     include_dirs.append(cfgDict['CONFINCLUDEPY'])
@@ -414,7 +414,7 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
     library_dirs.append(cfgDict['LIBPL'])
     lib_dirs = ' '.join(['-L' + lib for lib in library_dirs])
 
-    libs = ' '.join(['-l' + lib for lib in libraries])
+    libs = ' '.join(['-l' + lib for lib in libraries if lib.strip()])
     libs += ' -lpython%s' % cfgDict['VERSION']
     libs = ' '.join([libs, cfgDict['LIBS'], cfgDict['LIBM']])
 
