@@ -2,7 +2,7 @@
 # Please see the accompanying LICENSE file for further information.
 
 """
-Ref. to Kresse-paper ... XXX
+See Kresse, Phys. Rev. B 54, 11169 (1996)
 """
 
 import numpy as np
