@@ -72,7 +72,7 @@ class Transport(GPAW):
                        'plot_eta', 'vaccs',
                        'lead_atoms', 'nleadlayers', 'mol_atoms', 'la_index',
                        
-                       'LR_leads', 'gate', 'gate_mode', 'gate_atoms',                   
+                       'LR_leads', 'gate', 'gate_mode', 'gate_atoms', 'gate_fun',                 
                        'recal_path', 'min_energy',
                        'use_qzk_boundary',
                        'scat_restart', 'save_file', 'restart_file',
@@ -119,6 +119,7 @@ class Transport(GPAW):
         self.LR_leads = p['LR_leads']            
         self.gate = p['gate']
         self.gate_mode = p['gate_mode']
+        self.gate_fun = p['gate_fun']
         self.gate_atoms = p['gate_atoms']
         self.recal_path = p['recal_path']
         self.plot_eta = p['plot_eta']
@@ -213,6 +214,7 @@ class Transport(GPAW):
         p['LR_leads'] = True
         p['gate'] = 0
         p['gate_mode'] = 'VG'
+        p['gate_fun'] = None
         p['gate_atoms'] = None
         p['recal_path'] = False
         p['min_energy'] = -700
@@ -1612,6 +1614,7 @@ class Transport(GPAW):
                 calc.density.reset()
                 calc.set_positions(atoms)
                 self.F_av = calc.get_forces(atoms)
+            self.extended_calc.hamiltonian = calc.hamiltonian
             self.analysor.save_bias_step()    
             self.analysor.save_ion_step()                
             return self.F_av
@@ -1812,8 +1815,8 @@ class Transport(GPAW):
 
         actual_charge = self.finegd.integrate(density.rhot_g)
         self.text('actual_charge' + str(actual_charge))
-        if self.fixed and self.gate_mode == 'VG':
-            density.rhot_g += self.surround.gate_rhot_g
+        #if self.fixed and self.gate_mode == 'VG':
+            #density.rhot_g += self.surround.gate_rhot_g
 
         if self.fixed and self.gate_mode == 'SN':
             density.rhot_g += self.gate_rhot_g
@@ -1821,6 +1824,24 @@ class Transport(GPAW):
         ham.npoisson = self.inner_poisson.solve(self.hamiltonian.vHt_g,
                                                   density.rhot_g,
                                                   charge=-density.charge)
+        if self.fixed and self.gate_mode == 'VG':
+            if self.gate_fun is None:
+                self.hamiltonian.vHt_g += self.gate
+            else:
+                from scipy import interpolate                
+                gate_vg = self.finegd.zeros(global_array=True)
+                nz = self.gate_fun.shape[0]
+                nzz = gate_vg.shape[2]
+                xxx = np.linspace(0, 1, nzz)
+                xx = np.linspace(0, 1, nz)
+                f = interpolate.interp1d(xx, self.gate_fun)
+                yyy = f(xxx)
+                for i in range(nzz):
+                    gate_vg[:, :, i] = yyy[i]
+                local_gate_vg = self.finegd.zeros()
+                self.finegd.distribute(gate_vg, local_gate_vg)
+                self.hamiltonian.vHt_g += self.gate * local_gate_vg
+               
         self.surround.combine_vHt_g(self.hamiltonian.vHt_g)
         self.text('poisson interations :' + str(ham.npoisson))
         self.timer.stop('Poisson')
