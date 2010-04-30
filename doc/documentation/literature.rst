@@ -456,3 +456,14 @@ Publications using the gpaw code
    __ http://dx.doi.org/10.1038/nchem.589
 
    .. 24 March 2010
+
+#) Mikkel Strange, Olga Lopez-Acevedo, and Hannu Häkkinen
+
+   `Oligomeric Gold−Thiolate Units Define the Properties of the 
+   Molecular Junction between Gold and Benzene Dithiols`__
+   
+   Journal of Physical Chemistry Letters **1**, 1528 (2010)
+ 
+   __ http://pubs.acs.org/doi/abs/10.1021/jz1002988
+  
+   .. 28 April 2010
