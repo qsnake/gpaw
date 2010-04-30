@@ -69,7 +69,7 @@ class Transport(GPAW):
                        'pl_atoms', 'pl_cells', 'pl_kpts', 'leads',
                        'use_buffer', 'buffer_atoms', 'edge_atoms', 'bias',
                        'lead_restart', 'use_guess_file', 'special_datas',
-                       'plot_eta', 'vaccs',
+                       'plot_eta', 'vaccs', 'lead_guess', 'neutral',
                        'lead_atoms', 'nleadlayers', 'mol_atoms', 'la_index',
                        
                        'LR_leads', 'gate', 'gate_mode', 'gate_atoms', 'gate_fun',                 
@@ -135,6 +135,8 @@ class Transport(GPAW):
         self.neintstep = p['neintstep']
         self.fixed = p['fixed_boundary']
         self.vaccs = p['vaccs']
+        self.lead_guess = p['lead_guess']
+        self.neutral = p['neutral']
         self.non_sc = p['non_sc']
         self.data_file = p['data_file']
         self.special_datas = p['special_datas']
@@ -197,7 +199,6 @@ class Transport(GPAW):
         p['lead_atoms'] = None
         p['nleadlayers'] = [1, 1]
         p['la_index'] = None
-
         p['data_file'] = None
         p['analysis_data_list'] = []
         p['special_datas'] = []
@@ -212,6 +213,8 @@ class Transport(GPAW):
         p['plot_eta'] = 1e-4
         p['vaccs'] = None
         p['LR_leads'] = True
+        p['lead_guess'] = False
+        p['neutral'] = True
         p['gate'] = 0
         p['gate_mode'] = 'VG'
         p['gate_fun'] = None
@@ -374,7 +377,7 @@ class Transport(GPAW):
             #self.wfs = self.extended_calc.wfs
         self.initialize_gate() 
         self.initialized_transport = True
-        self.neutral = True
+        #self.neutral = True
         self.matrix_mode = 'sparse'
         if not hasattr(self, 'plot_option'):
             self.plot_option = None
@@ -756,7 +759,8 @@ class Transport(GPAW):
         #    self.recover_kpts(self)
         if not self.optimize and not self.use_guess_file:
             self.append_buffer_hsd()
-        #self.fill_guess_with_leads()           
+        if self.lead_guess:
+            self.fill_guess_with_leads('H')           
         self.scat_restart = False
 
     def get_hs(self, calc):
