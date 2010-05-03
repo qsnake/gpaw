@@ -507,7 +507,6 @@ class FFTVDWFunctional(VDWFunctional):
         size: 3-tuple
             Size of FFT-grid.
         """
-        
         VDWFunctional.__init__(self, nspins, **kwargs)
         self.Nalpha = Nalpha
         self.lambd = lambd
@@ -518,9 +517,19 @@ class FFTVDWFunctional(VDWFunctional):
         self.C_aip = None
         self.phi_aajp = None
 
-        self.alphas = [a for a in range(self.Nalpha)
-                       if (a * self.world.size // self.Nalpha ==
-                           self.world.rank)]
+        if Nalpha < self.world.size:
+            rstride = self.world.size // Nalpha
+            newranks = range(0, self.world.size, rstride)[:Nalpha]
+            self.vdwcomm = self.world.new_communicator(newranks)
+        else:
+            self.vdwcomm = self.world
+
+        if self.vdwcomm:
+            self.alphas = [a for a in range(self.Nalpha)
+                           if (a * self.vdwcomm.size // self.Nalpha ==
+                               self.vdwcomm.rank)]
+        else:
+            self.alphas = []
         
     def construct_cubic_splines(self):
         """Construc interpolating splines for q0.
@@ -646,6 +655,7 @@ class FFTVDWFunctional(VDWFunctional):
         N = self.Nalpha
 
         world = self.world
+        vdwcomm = self.vdwcomm
 
         if self.alphas:
             self.timer.start('hmm1')
@@ -695,21 +705,23 @@ class FFTVDWFunctional(VDWFunctional):
         dj_k = self.dj_k
         energy = 0.0
         for a in range(N):
-            ranka = a * world.size // N
-            F_k = np.zeros((self.shape[0],
-                            self.shape[1],
-                            self.shape[2] // 2 + 1), complex)
+            if vdwcomm is not None:
+                vdw_ranka = a * vdwcomm.size // N
+                F_k = np.zeros((self.shape[0],
+                                self.shape[1],
+                                self.shape[2] // 2 + 1), complex)
+            self.timer.start('Convolution')
             for b in self.alphas:
-                self.timer.start('Convolution')
                 _gpaw.vdw2(self.phi_aajp[a, b], self.j_k, dj_k,
                            theta_ak[b], F_k)
-                self.timer.stop()
+            self.timer.stop()
+            
+            if vdwcomm is not None:
+                self.timer.start('gather')
+                vdwcomm.sum(F_k, vdw_ranka)
+                self.timer.stop('gather')
 
-            self.timer.start('gather')
-            self.world.sum(F_k, ranka)
-            self.timer.stop('gather')
-
-            if world.rank == ranka:
+            if vdwcomm is not None and vdwcomm.rank == vdw_ranka:
                 if not self.energy_only:
                     F_ak[a] = F_k
                 energy += np.vdot(theta_ak[a][:, :, 0], F_k[:, :, 0]).real
@@ -733,6 +745,7 @@ class FFTVDWFunctional(VDWFunctional):
                 self.timer.start('iFFT')
                 F_ag[a] = irfftn(F_ak[a]).real[:n1, :n2, :n3].copy()
                 self.timer.stop()
+            del F_ak
 
             self.timer.start('potential')
             self.calculate_potential(n_g, a2_g, i_g, dq0_g, p_ag, F_ag,
@@ -770,10 +783,12 @@ class FFTVDWFunctional(VDWFunctional):
             C_pg = self.C_aip[a, i_g].transpose((3, 0, 1, 2))
             dpadq0_g = C_pg[1] + dq0_g * (2 * C_pg[2] + 3 * dq0_g * C_pg[3])
             del C_pg
-            dthetaadn_g = p_ag[a] + n_g * dpadq0_g * dq0dn_g * self.dhdx_g
+            dthetatmp_g = n_g * dpadq0_g * self.dhdx_g
+            dthetaadn_g = p_ag[a] + dq0dn_g * dthetatmp_g
             v0_g += dthetaadn_g * F_ag[a]
             del dthetaadn_g
-            dthetaada2_g = n_g * dpadq0_g * dq0da2_g * self.dhdx_g
+            dthetaada2_g = dq0da2_g * dthetatmp_g
+            del dthetatmp_g
             deda20_g += dthetaada2_g * F_ag[a]
             del dthetaada2_g
             self.timer.stop('p2')
