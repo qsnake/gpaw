@@ -521,10 +521,11 @@ class FFTVDWFunctional(VDWFunctional):
             rstride = self.world.size // Nalpha
             newranks = range(0, self.world.size, rstride)[:Nalpha]
             self.vdwcomm = self.world.new_communicator(newranks)
+            # self.vdwcomm will be None for those ranks not in the communicator
         else:
             self.vdwcomm = self.world
 
-        if self.vdwcomm:
+        if self.vdwcomm is not None:
             self.alphas = [a for a in range(self.Nalpha)
                            if (a * self.vdwcomm.size // self.Nalpha ==
                                self.vdwcomm.rank)]
