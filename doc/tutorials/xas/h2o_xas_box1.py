@@ -1,25 +1,20 @@
-from ase import *
+import numpy as np
+from ase.data.molecules import molecule
 from gpaw import GPAW
 
-atoms =molecule('H2O')
-atoms.pbc = False
+atoms = molecule('H2O')
 
-h=0.2
-l=h*8
-cells = [4*l, l*6 , l*8, l*10, l*12]
+h = 0.2
 
-for cell in cells:
-    atoms.set_cell((cell,cell,cell))
+for L in np.arange(4, 14, 2) * 8 * h:
+    atoms.set_cell((L, L, L))
     atoms.center()
-
     calc = GPAW(xc='PBE',
                 h=h,
                 nbands=-40,
                 eigensolver='cg',
-                setups={'O': 'hch1s'},
-                stencils=(3,3) )
-
+                setups={'O': 'hch1s'})
     atoms.set_calculator(calc)
     e1 = atoms.get_potential_energy()
-    calc.write('h2o_hch_%s.gpw'%(cell))
+    calc.write('h2o_hch_%.1f.gpw' % L)
 
