@@ -69,7 +69,7 @@ class Transport(GPAW):
                        'pl_atoms', 'pl_cells', 'pl_kpts', 'leads',
                        'use_buffer', 'buffer_atoms', 'edge_atoms', 'bias',
                        'lead_restart', 'use_guess_file', 'special_datas',
-                       'plot_eta', 'vaccs', 'lead_guess', 'neutral',
+                       'plot_eta', 'vaccs', 'lead_guess', 'neutral','buffer_guess',
                        'lead_atoms', 'nleadlayers', 'mol_atoms', 'la_index',
                        
                        'LR_leads', 'gate', 'gate_mode', 'gate_atoms', 'gate_fun',                 
@@ -136,6 +136,7 @@ class Transport(GPAW):
         self.fixed = p['fixed_boundary']
         self.vaccs = p['vaccs']
         self.lead_guess = p['lead_guess']
+        self.buffer_guess = p['buffer_guess']
         self.neutral = p['neutral']
         self.non_sc = p['non_sc']
         self.data_file = p['data_file']
@@ -214,6 +215,7 @@ class Transport(GPAW):
         p['vaccs'] = None
         p['LR_leads'] = True
         p['lead_guess'] = False
+        p['buffer_guess'] = False
         p['neutral'] = True
         p['gate'] = 0
         p['gate_mode'] = 'VG'
@@ -369,8 +371,10 @@ class Transport(GPAW):
                 fd = file('eq_hsd', 'r')
                 self.hsd = cPickle.load(fd)
                 fd.close()
+            elif self.buffer_guess:
+                self.get_hamiltonian_initial_guess2()
             else:
-                self.get_hamiltonian_initial_guess()
+                self.get_hamiltonian_initial_guess()                
         
         #if self.analysis_mode > -3:
             #del self.wfs
@@ -438,7 +442,48 @@ class Transport(GPAW):
         elif self.gate_mode == 'AN':
             setups = self.wfs.setups
             self.gate_basis_index = get_atom_indices(self.gate_atoms, setups)
-     
+
+    def get_hamiltonian_initial_guess2(self):
+        atoms = self.extended_atoms.copy()
+        cell = np.diag(atoms.cell)
+        cell[2] += 10.0
+        atoms.set_cell(cell)
+        atoms.center()
+        #atoms.pbc[self.d] = True
+        kwargs = self.gpw_kwargs.copy()
+        kwargs['poissonsolver'] = PoissonSolver(nn=2)
+        kpts = kwargs['kpts']
+        kpts = kpts[:2] + (1,)
+        kwargs['kpts'] = kpts
+        if self.spinpol:
+            kwargs['mixer'] = MixerDif(0.1, 5, weight=100.0)
+        else:
+            kwargs['mixer'] = Mixer(0.1, 5, weight=100.0)
+        if 'txt' in kwargs and kwargs['txt'] != '-':
+            kwargs['txt'] = 'guess_' + kwargs['txt']            
+        atoms.set_calculator(gpaw.GPAW(**kwargs))
+        calc = atoms.calc
+        calc.initialize(atoms)
+        calc.set_positions(atoms)
+        
+        wfs = calc.wfs
+        hamiltonian = calc.hamiltonian
+        occupations = calc.occupations
+        density = calc.density
+        scf = calc.scf
+        
+        for iter in range(self.guess_steps):
+            wfs.eigensolver.iterate(hamiltonian, wfs)
+            occupations.calculate(wfs)
+            energy = hamiltonian.get_energy(occupations)
+            scf.energies.append(energy)
+            scf.check_convergence(density, wfs.eigensolver)
+            density.update(wfs)
+            hamiltonian.update(density)
+            calc.print_iteration(iter)
+        self.initialize_hamiltonian_matrix2(calc)      
+        del calc
+            
     def get_hamiltonian_initial_guess(self):
         atoms = self.atoms.copy()
         #atoms.pbc[self.d] = True
@@ -501,7 +546,32 @@ class Transport(GPAW):
         if not (self.non_sc and self.scat_restart):
             del calc
         #atoms.get_potential_energy()
-        
+
+    def initialize_hamiltonian_matrix2(self, calc):    
+        h_skmm, s_kmm =  self.get_hs(calc)
+        d_skmm = get_lcao_density_matrix(calc)
+        ntk = 1
+        kpts = calc.wfs.ibzk_qc
+        h_spkmm = substract_pk(self.d, self.my_npk, ntk, kpts, h_skmm, 'h')
+        s_pkmm = substract_pk(self.d, self.my_npk, ntk, kpts, s_kmm)
+        d_spkmm = substract_pk(self.d, self.my_npk, ntk, kpts, d_skmm, 'h')
+        h00 = self.lead_hsd[0].H[0][0].recover()[0,0]
+        h01 = h_spkmm[0,0,0,0]
+        s00 = self.lead_hsd[0].S[0].recover()[0,0]
+        e_shift = (h00 - h01) / s00
+        h_spkmm += e_shift * s_pkmm
+   
+        if self.wfs.dtype == float:
+            h_spkmm = np.real(h_spkmm).copy()
+            s_pkmm = np.real(s_pkmm).copy()
+            d_spkmm = np.real(d_spkmm).copy()
+        nbl = self.nblead[0] + self.nblead[1]
+        for q in range(self.my_npk):
+            self.hsd.reset(0, q, s_pkmm[q, :-nbl, :-nbl], 'S', True)
+            for s in range(self.my_nspins):
+                self.hsd.reset(s, q, h_spkmm[s, q, :-nbl, :-nbl], 'H', True)            
+                self.hsd.reset(s, q, d_spkmm[s, q, :-nbl, :-nbl] * ntk, 'D', True)
+                
     def initialize_hamiltonian_matrix(self, calc):    
         h_skmm, s_kmm =  self.get_hs(calc)
         d_skmm = get_lcao_density_matrix(calc)
