@@ -306,7 +306,7 @@ class GridDescriptor(Domain):
 
         return boxes
 
-    def get_nearest_grid_point(self, spos_c=None, force_to_this_domain=False):
+    def get_nearest_grid_point(self, spos_c, force_to_this_domain=False):
         """Return index of nearest grid point.
         
         The nearest grid point can be on a different CPU than the one the
@@ -315,8 +315,6 @@ class GridDescriptor(Domain):
         The point can be forced to the grid descriptors domain to be
         consistent with self.get_rank_from_position(spos_c).
         """
-        if spos_c is None:
-            raise RuntimeError('Expecting a scaled position')
         g_c = np.around(self.N_c * spos_c).astype(int)
         if force_to_this_domain:
             for c in range(3):
