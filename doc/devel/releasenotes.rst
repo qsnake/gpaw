@@ -9,7 +9,9 @@ Version 0.8 (development version in trunk)
 
 :trac:`trunk <>`.
 
-Nothing new - yet.
+* For version 0.7, the default Poisson solver was changed to
+  ``PoissonSolver(nn=3)``.  Now, also the Poisson solver's default
+  value for ``nn`` has been changed from ``'M'`` to ``3``.
 
 
 Version 0.7

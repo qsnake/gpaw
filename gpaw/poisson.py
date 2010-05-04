@@ -16,7 +16,7 @@ import gpaw.mpi as mpi
 import _gpaw
 
 class PoissonSolver:
-    def __init__(self, nn='M', relax='J', eps=2e-10):
+    def __init__(self, nn=3, relax='J', eps=2e-10):
         self.relax = relax
         self.nn = nn
         self.eps = eps
