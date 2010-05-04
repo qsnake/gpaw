@@ -10,7 +10,7 @@ for L in np.arange(4, 14, 2) * 8 * h:
     calc = GPAW('h2o_hch_%.1f.gpw' % L)
     xas = XAS(calc)
     x, y = xas.get_spectra(fwhm=0.4)
-    plt.plot(x,sum(y) + offset, label=str(cell))
+    plt.plot(x,sum(y) + offset, label=str(L))
     offset += 0.005
 
 plt.legend()
