@@ -8,7 +8,7 @@
    coverage
    testing
    testsuite
-   ase_optimize
+   ase_optimize/ase_optimize
    bugs
    newrelease
    updating_libxc

@@ -121,20 +121,14 @@ def setup(app):
     # every weekend:
     from gpaw.test.big.agts import AGTSQueue
     queue = AGTSQueue()
-    queue.collect('..')
+    queue.collect()
     names = set()
     for job in queue.jobs:
         if job.creates:
             for name in job.creates:
                 assert name not in names, "Name '%s' clashes!" % name
                 names.add(name)
-                if job.dir.startswith('../doc'):
-                    dir = job.dir
-                else:
-                    # This file was created by a test from the
-                    # gpaw/test/big folder:
-                    dir = '_static'
-                get('gpaw-files', [name], dir, source=jjwww)
+                get('gpaw-files', [name], job.dir, source=jjwww)
 
     # Get files that we can't generate:
     for dir, file in [
