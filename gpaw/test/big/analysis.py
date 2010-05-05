@@ -201,13 +201,17 @@ class MailGenerator:
         subject += '%i improvements.' % len(self.better)
         return subject
 
-    def send_mail(self, address):
+    def send_mail(self, address, attachment=None):
         fullpath = tempfile.mktemp()
         f = open(fullpath, 'w')
         f.write(self.generate_mail())
         f.close()
-        os.system('mail -s "%s" %s < %s' % \
-                  (self.generate_subject(), address, fullpath))
+        if attachment is None:
+            os.system('mail -s "%s" %s < %s' % \
+                      (self.generate_subject(), address, fullpath))
+        else:
+            os.system('mail -s "%s" %s -a %s < %s' % \
+                      (self.generate_subject(), address, attachment, fullpath))
 
 #def csv2database(infile, outfile):
 #    """Use this file once to import the old data from csv"""
@@ -221,7 +225,8 @@ class MailGenerator:
 #            db.add_data(name, 0, runtime, info)
 #    db.write()
 
-def analyse(queue, dbpath, outputdir=None, rev=None, mailto=None):
+def analyse(queue, dbpath, outputdir=None, rev=None,
+            mailto=None, attachment=None):
     """Analyse runtimes from testsuite
 
     Parameters:
@@ -260,7 +265,7 @@ def analyse(queue, dbpath, outputdir=None, rev=None, mailto=None):
             mg.add_timeout(name)
 
     if mailto is not None:
-        mg.send_mail(mailto)
+        mg.send_mail(mailto, attachment)
     else:
         print mg.generate_subject()
         print mg.generate_mail()
