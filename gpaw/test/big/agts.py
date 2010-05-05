@@ -108,7 +108,7 @@ class Cluster:
 
 class TestCluster(Cluster):
     def submit(self, job):
-        if random.random() < 0.3:
+        if random.random() < 0.2:
             # randomly fail some of the jobs
             exitcode = 1
         else:
@@ -117,7 +117,7 @@ class TestCluster(Cluster):
         wait = random.randint(1, 12)
         cmd = 'sleep %s; touch %s.start; ' % (wait, job.absname)
 
-        if random.random() < 0.3:
+        if random.random() < 0.1:
             # randomly time out some of the jobs
             pass
         else:
@@ -168,15 +168,15 @@ class AGTSQueue:
         self.jobs.append(job)
         return job
 
-    def locate_tests(self, dir):
-        for root, dirs, files in os.walk(dir):
+    def locate_tests(self):
+        for root, dirs, files in os.walk('.'):
             for fname in files:
                 if fname.endswith('.agts.py'):
                     yield root, fname
 
-    def collect(self, dir='.'):
+    def collect(self):
         """Find agts.py files and collect jobs."""
-        for dir, agtsfile in self.locate_tests(dir):
+        for dir, agtsfile in self.locate_tests():
             _global = {}
             execfile(os.path.join(dir, agtsfile), _global)
             self._dir = dir
@@ -235,7 +235,7 @@ class AGTSQueue:
         return len([None for job in self.jobs if job != 'success'])
     
     def status(self):
-        fd = open('status.txt', 'w')
+        fd = open('status.log', 'w')
         fd.write('# job                                              ' +
                  'status      time  tmax ncpus  deps files id\n')
         for job in self.jobs:
@@ -278,6 +278,14 @@ class AGTSQueue:
                         os.system('cp %s %s' %
                                   (path, os.path.join(dir, filename)))
 
+    def get_cpu_time(self):
+        """Calculate CPU time in seconds."""
+        t = 0
+        for job in self.jobs:
+            if job.tstop is not None:
+                t += job.ncpus * (job.tstop - job.tstart)
+        return t
+
 
 if __name__ == '__main__':
     # Quick test using dummy cluster and timeout after only 10 seconds:
@@ -290,11 +298,13 @@ if __name__ == '__main__':
     queue.run(c)
     queue.copy_created_files('.')
 
+    print 'CPU seconds:', queue.get_cpu_time()
+    
     # Analysis:
     from gpaw.test.big.analysis import analyse
     mailto = None # None => print to stdout, or email address
     analyse(queue,
-            os.getenv('HOME') + '/analyse.pickle',  # file keeping history
-            os.getenv('HOME') + '/tmp/out',         # Where to dump figures!
-            rev=None,                               # gpaw revision
+            'analyse.pickle',  # file keeping history
+            '/tmp',            # Where to dump figures!
+            rev=None,          # gpaw revision
             mailto=mailto)

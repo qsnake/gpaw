@@ -99,14 +99,9 @@ if __name__ == '__main__':
     queue = AGTSQueue()
     queue.collect()
 
-    if 0:
-        queue.jobs = [j for j in queue.jobs if j.walltime < 3*60]
+    if 0: queue.jobs = [j for j in queue.jobs if j.walltime < 3*60]
+    if 0: queue.jobs = [j for j in queue.jobs if j.dir.startswith('doc')]
 
-    if 0:
-        queue.jobs = [j for j in queue.jobs if j.dir.startswith('doc')]
-
-    #queue.status();dasfg
-    
     nfailed = queue.run(niflheim)
 
     queue.copy_created_files('/home/camp2/jensj/WWW/gpaw-files')
@@ -118,7 +113,8 @@ if __name__ == '__main__':
             '../analysis/analyse.pickle',  # file keeping history
             '../analysis',                 # Where to dump figures
             rev=niflheim.revision,
-            mailto=user)
+            mailto=user,
+            attachment='status.log')
 
     if nfailed == 0:
         tag = 'success'
