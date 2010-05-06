@@ -23,8 +23,10 @@ and start a then a new calculation with more vacuum and unoccupied states::
   calc.set(nbands=20, ...)
   ...
 
-Once the ground state calculation with unoccupied states is finished, a linear response TDDFT calculation is performed:
+Once the ground state calculation with unoccupied states is finished, a linear response TDDFT calculation is performed::
 
+  lr = LrTDDFT(calc, xc='LDA')
+  lr.write('Omega_Na2.gz')
 
 As the construction of the Omega matrix is computationally the most intensive part it is sometimes convenient to
 perform diagonalisation and construction of spectrum in separate calculations::
