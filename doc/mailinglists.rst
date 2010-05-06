@@ -41,7 +41,7 @@ Internet Relay Chat
 We have the IRC channel ``#gpaw`` on FreeNode.  Please join us if you
 have any questions. For easy access, you can use this webclient_.
 
-.. _webclient: http://webchat.freenode.net/?randomnick=1&channels=gpaw
+.. _webclient: http://webchat.freenode.net/?randomnick=0&channels=gpaw
 
 Logs from the IRC channel:
 
