@@ -232,6 +232,10 @@ class AGTSQueue:
                     if newstatus in ['TIMEOUT', 'FAILED']:
                         self.fail(job)
 
+        t = self.get_cpu_time()
+        self.fd.write('CPU time: %d:%02d:%02d\n' %
+                      (t // 3600, t // 60 % 60, t % 60))
+    
         return len([None for job in self.jobs if job != 'success'])
     
     def status(self):
@@ -298,8 +302,6 @@ if __name__ == '__main__':
     queue.run(c)
     queue.copy_created_files('.')
 
-    print 'CPU seconds:', queue.get_cpu_time()
-    
     # Analysis:
     from gpaw.test.big.analysis import analyse
     mailto = None # None => print to stdout, or email address
