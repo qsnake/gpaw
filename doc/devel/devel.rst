@@ -12,6 +12,7 @@ The primary source of information is still the :ref:`manual` and
 information which can be found here. For example the :ref:`code_overview`.
 
 As a developer, you should subscribe to all GPAW related :ref:`mailing_lists`.
+We would also like to encourage you to join our channel for :ref:`irc`.
 
 Now you are ready to to perfom a :ref:`developer_installation` and
 start development!

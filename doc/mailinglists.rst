@@ -32,11 +32,16 @@ The mailing lists below are of interest for active GPAW developers only:
 For topics before Oct 20 2009 browse gridpaw-developer_.
 The list is inactive and serves as an archive only.
 
+
+.. _irc:
+
 Internet Relay Chat
 ===================
 
-We have an IRC channel (``#gpaw``) on FreeNode.  Please join us if you
-have any questions.  
+We have the IRC channel ``#gpaw`` on FreeNode.  Please join us if you
+have any questions. For easy access, you can use this webclient_.
+
+.. _webclient: http://webchat.freenode.net/?randomnick=1&channels=gpaw
 
 Logs from the IRC channel:
 
