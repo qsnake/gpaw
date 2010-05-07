@@ -133,7 +133,7 @@ class AllElectron:
         dr = self.dr
         # Initialize with Slater function:
         for l, e, u in zip(self.l_j, self.e_j, self.u_j):
-            if self.symbol in ['Ta', 'W', 'Re', 'Os', 'Ir', 'Pt', 'Au']:
+            if self.symbol in ['Hf', 'Ta', 'W', 'Re', 'Os', 'Ir', 'Pt', 'Au']:
                 # For some reason this works better for these atoms:
                 a = sqrt(-4.0 * e)
             else:
