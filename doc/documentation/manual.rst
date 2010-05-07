@@ -123,10 +123,14 @@ keyword            type       default value        description
                                                    <manual_hund>`
 ``external``       Object                          XXX Missing doc
 ``verbose``        ``int``    ``0``                XXX Missing doc
-``poissonsolver``  Object                          XXX Missing doc
+``poissonsolver``  Object                          Specification of
+                                                   :ref:`manual_poissonsolver`
 ``communicator``   Object                          XXX Missing doc
-``idiotproof``     ``bool``   ``True``             XXX Missing doc
-``notify``         Object                          XXX Missing doc
+``idiotproof``     ``bool``   ``True``             Set to ``False`` to ignore 
+                                                   setup fingerprint mismatch
+                                                   (allows restart when the
+                                                   original setup files are
+                                                   not available)
 =================  =========  ===================  ============================
 
 *seq*: A sequence of three ``int``'s.
@@ -575,6 +579,35 @@ seems to perform better in general.
 LCAO mode has its own eigensolver, which directly diagonalizes the
 Hamiltonian matrix instead of using an iterative method.
 
+
+.. _manual_poissonsolver:
+
+Poisson solver
+--------------
+
+The default Poisson solver uses a multigrid Jacobian method.  Use this
+keyword to specify a different method.  This example corresponds to
+the default Poisson solver::
+
+  from gpaw import GPAW, PoissonSolver
+  calc = GPAW(poissonsolver=PoissonSolver(nn=3, relax='J', eps=2e-10))
+
+The first argument is the stencil, see :ref:`manual_stencils`.  Second
+argument is the method, either ``'J'`` (Jacobian) or ``'GS'``
+(Gauss-Seidel).  The Gauss-Seidel method requires half as many
+iterations to solve the Poisson equation, but involves more
+communication.  The Gauss-Seidel implementation also depends slightly
+on the domain decomposition used.
+
+The last argument, ``eps``, is the convergence criterion.
+
+.. note:: 
+
+  The Poisson solver is rarely a performance bottleneck, but it can
+  sometimes perform poorly depending on the grid layout.  This is mostly 
+  important in LCAO calculations, but can be good to know in general.
+  See the LCAO notes on
+  :ref:`Poisson performance <poisson_performance>`.
 
 .. _manual_stencils:
 

@@ -186,6 +186,7 @@ atoms are ghosts::
            mode='lcao',
            ...)
 
+.. _poisson_performance:
 
 Notes on performance
 --------------------
@@ -209,7 +210,8 @@ not divisible by 8.
 
 By default, the Poisson solver uses the *Jacobi method*.  To increase
 performance further use the *Gauss-Seidel* method instead, which
-usually reduces the Poisson iteration count by around 40%.
+usually reduces the Poisson iteration count by around 40% (ideally
+50%).
 
 The convergence criterion of the Poisson solver in FD mode,
 ``eps=2e-10``, is very strict.  A value of around ``eps=1e-7`` can
