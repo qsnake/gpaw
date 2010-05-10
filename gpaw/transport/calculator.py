@@ -71,7 +71,7 @@ class Transport(GPAW):
                        'lead_restart', 'use_guess_file', 'special_datas',
                        'plot_eta', 'vaccs', 'lead_guess', 'neutral','buffer_guess',
                        'lead_atoms', 'nleadlayers', 'mol_atoms', 'la_index',
-                       
+                       'total_charge',
                        'LR_leads', 'gate', 'gate_mode', 'gate_atoms', 'gate_fun',                 
                        'recal_path', 'min_energy',
                        'use_qzk_boundary',
@@ -138,6 +138,7 @@ class Transport(GPAW):
         self.lead_guess = p['lead_guess']
         self.buffer_guess = p['buffer_guess']
         self.neutral = p['neutral']
+        self.total_charge = p['total_charge']
         self.non_sc = p['non_sc']
         self.data_file = p['data_file']
         self.special_datas = p['special_datas']
@@ -201,7 +202,7 @@ class Transport(GPAW):
         p['nleadlayers'] = [1, 1]
         p['la_index'] = None
         p['data_file'] = None
-        p['analysis_data_list'] = []
+        p['analysis_data_list'] = ['tc']
         p['special_datas'] = []
         p['save_bias_data'] = True
         p['analysis_mode'] = 0
@@ -217,6 +218,7 @@ class Transport(GPAW):
         p['lead_guess'] = False
         p['buffer_guess'] = False
         p['neutral'] = True
+        p['total_charge'] = 0
         p['gate'] = 0
         p['gate_mode'] = 'VG'
         p['gate_fun'] = None
@@ -396,6 +398,7 @@ class Transport(GPAW):
     def leads_fermi_lineup(self):
         for i in range(1, self.lead_num):
             shift = self.lead_fermi[0] - self.lead_fermi[i]
+            self.lead_fermi[i] = self.lead_fermi[0]
             self.atoms_l[i].calc.hamiltonian.vt_sG += shift / Hartree
             self.atoms_l[i].calc.hamiltonian.vHt_g += shift / Hartree
             for pk in range(self.my_npk):
@@ -444,9 +447,9 @@ class Transport(GPAW):
             self.gate_basis_index = get_atom_indices(self.gate_atoms, setups)
 
     def get_hamiltonian_initial_guess2(self):
-        atoms = self.extended_atoms.copy()
+        atoms = self.atoms.copy()
         cell = np.diag(atoms.cell)
-        cell[2] += 10.0
+        cell[2] += 15.0
         atoms.set_cell(cell)
         atoms.center()
         #atoms.pbc[self.d] = True
@@ -456,9 +459,9 @@ class Transport(GPAW):
         kpts = kpts[:2] + (1,)
         kwargs['kpts'] = kpts
         if self.spinpol:
-            kwargs['mixer'] = MixerDif(0.1, 5, weight=100.0)
+            kwargs['mixer'] = MixerDif(0.02, 5, weight=100.0)
         else:
-            kwargs['mixer'] = Mixer(0.1, 5, weight=100.0)
+            kwargs['mixer'] = Mixer(0.02, 5, weight=100.0)
         if 'txt' in kwargs and kwargs['txt'] != '-':
             kwargs['txt'] = 'guess_' + kwargs['txt']            
         atoms.set_calculator(gpaw.GPAW(**kwargs))
@@ -481,7 +484,7 @@ class Transport(GPAW):
             density.update(wfs)
             hamiltonian.update(density)
             calc.print_iteration(iter)
-        self.initialize_hamiltonian_matrix2(calc)      
+        self.initialize_hamiltonian_matrix(calc)      
         del calc
             
     def get_hamiltonian_initial_guess(self):
@@ -584,7 +587,8 @@ class Transport(GPAW):
         h01 = h_spkmm[0,0,0,0]
         s00 = self.lead_hsd[0].S[0].recover()[0,0]
         e_shift = (h00 - h01) / s00
-        h_spkmm += e_shift * s_pkmm
+        if not self.buffer_guess:
+            h_spkmm += e_shift * s_pkmm
    
         if self.wfs.dtype == float:
             h_spkmm = np.real(h_spkmm).copy()
@@ -907,7 +911,7 @@ class Transport(GPAW):
         level_in_scat = self.hsd.H[0][0].recover()[ind, ind]
         overlap_on_site = self.hsd.S[0].recover()[ind, ind]
         shift = (level_in_scat - level_in_lead) / overlap_on_site
-        if abs(shift) > tol:
+        if not self.buffer_guess and abs(shift) > tol:
             for s in range(self.my_nspins):
                 for pk in range(self.my_npk):
                     self.hsd.H[s][pk].reset_from_others(self.hsd.H[s][pk],
@@ -1670,9 +1674,9 @@ class Transport(GPAW):
                 kpts = kpts[:2] + (1,)
                 kwargs['kpts'] = kpts
                 if self.spinpol:
-                    kwargs['mixer'] = MixerDif(0.1, 5, weight=100.0)
+                    kwargs['mixer'] = MixerDif(0.02, 5, weight=100.0)
                 else:
-                    kwargs['mixer'] = Mixer(0.1, 5, weight=100.0)
+                    kwargs['mixer'] = Mixer(0.02, 5, weight=100.0)
                 if 'txt' in kwargs and kwargs['txt'] != '-':
                     kwargs['txt'] = 'guess_' + kwargs['txt']            
                 self.equivalent_atoms.set_calculator(gpaw.GPAW(**kwargs))
@@ -1688,6 +1692,8 @@ class Transport(GPAW):
                 calc.density.reset()
                 calc.set_positions(atoms)
                 self.F_av = calc.get_forces(atoms)
+            else:
+                calc = self.equivalent_atoms.calc                
             self.extended_calc.hamiltonian = calc.hamiltonian
             self.analysor.save_bias_step()    
             self.analysor.save_ion_step()                
@@ -1787,7 +1793,8 @@ class Transport(GPAW):
         self.negf_prepare() 
         for i in range(num_v):
             self.gate = gate[i]
-            self.get_selfconsistent_hamiltonian()          
+            self.get_selfconsistent_hamiltonian()
+            self.ground = True
         
     def get_potential_energy(self, atoms=None, force_consistent=False):
         if self.non_sc:
@@ -1897,7 +1904,8 @@ class Transport(GPAW):
 
         ham.npoisson = self.inner_poisson.solve(self.hamiltonian.vHt_g,
                                                   density.rhot_g,
-                                                  charge=-density.charge)
+                                                  charge = -self.total_charge)
+                                                  #charge=-density.charge)
         if self.fixed and self.gate_mode == 'VG':
             if self.gate_fun is None:
                 self.hamiltonian.vHt_g += self.gate
@@ -1914,7 +1922,7 @@ class Transport(GPAW):
                     gate_vg[:, :, i] = yyy[i]
                 local_gate_vg = self.finegd.zeros()
                 self.finegd.distribute(gate_vg, local_gate_vg)
-                self.hamiltonian.vHt_g += self.gate * local_gate_vg
+                self.hamiltonian.vHt_g += self.gate * local_gate_vg / Hartree
                
         self.surround.combine_vHt_g(self.hamiltonian.vHt_g)
         self.text('poisson interations :' + str(ham.npoisson))
