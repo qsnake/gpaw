@@ -241,7 +241,7 @@ class AGTSQueue:
     def status(self):
         fd = open('status.log', 'w')
         fd.write('# job                                              ' +
-                 'status      time  tmax ncpus  deps files id\n')
+                 'status      time   tmax ncpus  deps files id\n')
         for job in self.jobs:
             if job.tstop is not None:
                 t = '%5d' % round(job.tstop - job.tstart)
@@ -256,7 +256,7 @@ class AGTSQueue:
                 id = job.pbsid
             else:
                 id = ''
-            fd.write('%-50s %-10s %s %5d %5d %5d %5d %s\n' %
+            fd.write('%-50s %-10s %s %6d %5d %5d %5d %s\n' %
                      (job.absname, job.status, t, job.walltime,
                       job.ncpus, len(job.deps), c, id))
         fd.close()
