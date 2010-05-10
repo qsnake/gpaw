@@ -51,6 +51,7 @@ def wrap_pylab(names=[]):
 
 tests = [
     'ase3k_version.py',
+    'numpy_core_multiarray_dot.py',
     'lapack.py',
     'mpicomm.py',
     'eigh.py',
