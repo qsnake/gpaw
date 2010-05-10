@@ -1099,13 +1099,22 @@ class Transport_Plotter:
         bias = np.array(bias)
         return bias, current
 
-    def diamond(self, bias_step, ionic_step=0):
+    def diamond(self, bias_step, ionic_step=0, dense_level=1):
         tc = self.tc(bias_step, ionic_step)
-        currents = np.zeros([20, 160])
-        for i in range(160):
-            for j in range(20):
-                begin = i + 20 - j
-                end = i + 20 + j
+        if dense_level > 1:
+            from scipy import interpolate
+            ee = np.linspace(-5, 5, 201)
+            new_ee = np.linspace(-5, 5, dense_level * 201)
+            tck = interpolate.splrep(ee, tc, s=0)
+            new_tc = interpolate.splev(new_ee, tck, der=0)
+            tc = new_tc
+        nb = 20 * dense_level
+        ng = 160 * dense_level
+        currents = np.zeros([nb, ng])
+        for i in range(ng):
+            for j in range(nb):
+                begin = i + nb - j
+                end = i + nb + j
                 currents[j, i] = np.sum(tc[begin:end])
         return currents
     
