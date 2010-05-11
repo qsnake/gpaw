@@ -313,8 +313,9 @@ else:
         customload = 'source /home/camp/modulefiles.sh; ' \
                      'module load NUMPY; ' \
                      'module load openmpi/1.3.3-1.el5.fys.gfortran43.4.3.2; '
-        flags = '--remove-default-flags ' \
-                '--customize=doc/install/Linux/Niflheim/customize-thul-acml.py'
+        flags = ('--remove-default-flags ' +
+                '--customize=' +
+                 'doc/install/Linux/Niflheim/el5-xeon-gcc43-acml-4.3.0.py')
         pydir = 'lib64/python'
     elif hostname.endswith('.fysik.dtu.dk'):
         customload = ''

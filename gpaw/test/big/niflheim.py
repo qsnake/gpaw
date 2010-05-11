@@ -26,7 +26,7 @@ class Niflheim(Cluster):
                      'module load NUMPY&& '+
                      'python setup.py --remove-default-flags ' +
                      '--customize=doc/install/Linux/Niflheim/' +
-                     'customize-thul-acml.py ' +
+                     'el5-xeon-gcc43-acml-4.3.0.py ' +
                      'install --home=..') != 0:
             raise RuntimeError('Installation of GPAW failed!')
 

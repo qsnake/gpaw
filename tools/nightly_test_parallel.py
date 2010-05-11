@@ -32,7 +32,8 @@ os.chdir('gpaw')
 if os.system('source /home/camp/modulefiles.sh&& ' +
              'module load NUMPY&& ' +
              'python setup.py --remove-default-flags ' +
-             '--customize=doc/install/Linux/Niflheim/customize-thul-acml.py ' +
+             '--customize=' +
+             'doc/install/Linux/Niflheim/el5-xeon-gcc43-acml-4.3.0.py ' +
              'install --home=%s 2>&1 | ' % tmpdir +
              'grep -v "c/libxc/src"') != 0:
     fail('Installation failed!')
