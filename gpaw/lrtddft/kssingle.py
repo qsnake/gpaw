@@ -339,8 +339,8 @@ class KSSingle(Excitation, PairDensity):
                                                       G_LLL[L1, L2, 1],
                                                       G_LLL[L1, L2, 2]])
                     v2 = ylnyl[L1, L2, :]
-                    ma1 += pij * (v1 * setup.Delta1_jj[j1, j2] +
-                                  v2 * setup.Delta_pL[p, 0]      )
+                    ma1 += pi1i2 * (v1 * setup.Delta1_jj[j1, j2] +
+                                    v2 * setup.Delta_pL[p, 0]      )
             ma += ma1
 #        print 'v: me, ma=', me, ma
 
