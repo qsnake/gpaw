@@ -860,7 +860,6 @@ class XC3DGrid(XCGrid):
                                                 nb_g, vb_g)
         return e_g.sum() * self.dv
 
-    #def add_non_local_terms(self, psit_nG, Htpsit_nG, s):
     def add_non_local_terms(self, psit_nG, Htpsit_nG, kpt):
         s= kpt.s
         if self.xcfunc.mgga:
@@ -872,9 +871,9 @@ class XC3DGrid(XCGrid):
                         self.ddrG[c](self.dedtau_G * self.dpsidr_G, self.tmp_G)
                         axpy(-1.0/2., self.tmp_G, Htpsit_G)
             else:
-                for psit_G, Htpsit_G in zip(kpt.psit_nG, Htpsit_nG):
+                for psit_G, Htpsit_G in zip(psit_nG, Htpsit_nG):
                     for c in range(3):
-                        self.ddrG[c](psit_G, self.dpsidr_G, kpt.phase_cd)  #immaginary 
+                        self.ddrG[c](psit_G, self.dpsidr_G, kpt.phase_cd)
                         self.ddrG[c](self.dedtau_G * self.dpsidr_G, self.tmp_G, kpt.phase_cd)
                         axpy(-1.0/2., self.tmp_G, Htpsit_G)
         if self.xcfunc.xcname.endswith('-SIC'):
