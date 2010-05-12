@@ -959,6 +959,7 @@ class Transport(GPAW):
                 fd.close()
                 
         self.ground = False
+        self.total_charge = 0
         self.linear_mm = None
         if not self.scf.converged:
             raise RuntimeError('Transport do not converge in %d steps' %
@@ -1904,7 +1905,7 @@ class Transport(GPAW):
 
         ham.npoisson = self.inner_poisson.solve(self.hamiltonian.vHt_g,
                                                   density.rhot_g,
-                                                  charge = -self.total_charge)
+                                                  charge = self.total_charge)
                                                   #charge=-density.charge)
         if self.fixed and self.gate_mode == 'VG':
             if self.gate_fun is None:
