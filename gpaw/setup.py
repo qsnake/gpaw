@@ -299,7 +299,7 @@ class BaseSetup:
                 j_i.append(j)
         ni = len(L_i)
         # j_i is the list of j values
-        # L_i is the list of L (=l**2+m for 0<=m<l) values
+        # L_i is the list of L (=l**2+m for 0<=m<2*l+1) values
         # https://wiki.fysik.dtu.dk/gpaw/devel/overview.html
 
         # calculate the integrals
@@ -880,7 +880,6 @@ class Setup(BaseSetup):
         pnp_jjg = np.zeros((self.nj, self.nj, self.gcut2))
         pnpt_jjg = np.zeros((self.nj, self.nj, self.gcut2))
 
-        q = 0 # q: common index for j1, j2
         for j1 in range(self.nj):
             for j2 in range(self.nj):
                 pnp_jjg[j1, j2] = phi_jg[j1] * dphi_jg[j2]
