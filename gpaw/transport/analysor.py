@@ -1085,7 +1085,7 @@ class Transport_Plotter:
         charge = np.sum(charge_array * atom_index * orbital_index)
         return charge
        
-    def iv(self, nsteps=16, spinpol=True):
+    def iv(self, nsteps=16, spinpol=False):
         current = []
         bias = []
         for i in range(nsteps):
@@ -1099,7 +1099,7 @@ class Transport_Plotter:
         bias = np.array(bias)
         return bias, current
 
-    def diamond(self, bias_step, ionic_step=0, dense_level=1):
+    def diamond(self, bias_step, ionic_step=0, dense_level=1, spinpol=False):
         tc = self.tc(bias_step, ionic_step)
         if dense_level > 1:
             from scipy import interpolate
@@ -1108,14 +1108,19 @@ class Transport_Plotter:
             tck = interpolate.splrep(ee, tc, s=0)
             new_tc = interpolate.splev(new_ee, tck, der=0)
             tc = new_tc
-        nb = 20 * dense_level
-        ng = 160 * dense_level
+        de = 0.05 / dense_level
+        nb = 30 * dense_level
+        ng = 140 * dense_level
         currents = np.zeros([nb, ng])
         for i in range(ng):
             for j in range(nb):
                 begin = i + nb - j
                 end = i + nb + j
                 currents[j, i] = np.sum(tc[begin:end])
+        unit = 6.624 * 1e3 
+        currents = np.array(currents) * de * unit / (Hartree * 2 * np.pi)
+        if not spinpol:
+            currents *= 2
         return currents
     
     def tvs(self, nsteps=16, spinpol=True):
