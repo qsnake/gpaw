@@ -4,7 +4,7 @@ from gpaw.transport.tools import fermidistribution, gather_ndarray_dict
 
 #---------------------------------------------------------------------------#
 # This class is used to get the integral contour parallelly and control
-# the necesarry parameters.
+# the necessary parameters.
 
 # To get a Keldysh Green Function, one need to to the integral like this:
 #
@@ -38,14 +38,12 @@ from gpaw.transport.tools import fermidistribution, gather_ndarray_dict
 #      With it you can get the corresponding energy and weight.
 
 
-
 class Path:
     poles_num = 4
     int_step = 0.02
     bias_step = 0.1
-    bias_window_begin = -3
-    bias_window_end = 3
-    zone_sample = np.array([0, 0.55278640450004, 1.44721359549996, 2.0, 0.0]) / 2.
+    zone_sample = np.array([0, 0.55278640450004, 1.44721359549996, 2.0,
+                            0.0]) / 2.
     zone_length = np.array([2., 0.55278640450004, 0.89442719099992007,
                                                      0.55278640450004]) / 2.0
     sample = np.array([0, 0.18350341907227,   0.55278640450004,   1.0,
@@ -58,8 +56,12 @@ class Path:
                           432.0, 77.0]) / 1470.
     weights2 = [3.0 / 8, 7.0 / 6, 23.0 / 24] 
     weights3 = [23.0 / 24, 7.0 / 6, 3.0 / 8]
-
-    def __init__(self, begin, end, index, maxdepth=7, type='Gaussian', kt=0.1):
+    #these two parameters used to build selfenergy database are obselete
+    bias_window_begin = -3
+    bias_window_end = 3
+    #------------
+    def __init__(self, begin, end, index, maxdepth=7, type='Gaussian',
+                 kt=0.1):
         self.begin = begin
         self.end = end
         self.type = type
@@ -80,10 +82,10 @@ class Path:
                                                   / self.int_step)) + 1, 6))
             self.int_step = np.abs(self.end - self.begin) / (self.ne - 1)
         
-    def get_poles_index(self, real_energy):
-        if self.type == 'poles':
-            return int((real_energy - self.bias_window_begin) //
-                                              self.bias_step)
+    #def get_poles_index(self, real_energy):
+    #    if self.type == 'poles':
+    #        return int((real_energy - self.bias_window_begin) //
+    #                                          self.bias_step)
 
     def get_flags(self, num, path_flag=False):
         flags = []
@@ -228,10 +230,11 @@ class Path:
                 tens = np.arange(len(flags[:-1]) - 1, -1) ** 10
                 line_index = np.sum(flags[:-1] * tens)
                 energy = real_energies[line_index] + (2 * flags[-1] -
-                                                       1) * np.pi * self.kt * 1.j
+                                                 1) * np.pi * self.kt * 1.j
             else:
                 lines = [self.begin, self.end]
-                energy = lines[flags[0] - 1] + (2 * flags[-1] - 1) * np.pi * self.kt * 1.j
+                energy = lines[flags[0] - 1] + (2 * flags[-1] -
+                                                 1) * np.pi * self.kt * 1.j
         return energy
     
     def get_weight(self, flags):
@@ -263,12 +266,12 @@ class Contour:
     ne_err = 1e-4
     eta = 1e-2
     #kt = 0.1
-    nkt = 0.8
-    dkt = 0.8 * np.pi
     calcutype = ['eqInt', 'eqInt', 'eqInt', 'resInt', 'neInt', 'locInt']
     def __init__(self, kt, fermi, bias, maxdepth=7, comm=None, neint='linear',
                   tp=None, plot_eta=1e-4):
         self.kt = kt
+        self.nkt = 8 * self.kt 
+        self.dkt = 8 * np.pi * self.kt       
         self.fermi = fermi[0]
         self.bias = bias
         self.tp = tp
@@ -294,14 +297,14 @@ class Contour:
         self.paths = []
         depth = self.maxdepth
         self.paths.append(Path(-700., -700. + 20. * 1.j, 1, 1,
-                               type='Gaussian'))
+                               type='Gaussian', kt=self.kt))
         self.paths.append(Path(-700. + 20. * 1.j,  -4. + np.pi * 1.j,
-                               2, 3, type='Gaussian'))
+                               2, 3, type='Gaussian', kt=self.kt))
         self.paths.append(Path(-4. + np.pi * 1.j, 4. + np.pi * 1.j, 3, depth,
-                              type='linear'))
+                              type='linear', kt=self.kt))
         self.paths.append(Path(-3., 3., 4, depth, type='poles', kt=self.kt))
         self.paths.append(Path(-5. + self.eta * 1.j, 5. + self.eta * 1.j, 5,
-                              depth, type='linear')) 
+                              depth, type='linear', kt=self.kt)) 
         for i in range(5):
             self.paths[i].get_full_nids()
 
@@ -312,17 +315,17 @@ class Contour:
         self.paths.append(Path(-700. + self.minfermi,
                                -700. + self.minfermi + (10. + self.dkt) * 1.j,
                                 1, depth,
-                               type='Gaussian'))
+                               type='Gaussian', kt=self.kt))
         
         self.paths.append(Path(-700. + self.minfermi + (10 + self.dkt) * 1.j,
                                 self.minfermi - self.nkt + self.dkt * 1.j,
                                 2, depth,
-                                type='Gaussian'))
+                                type='Gaussian', kt=self.kt))
         
         self.paths.append(Path(self.minfermi - self.nkt + self.dkt * 1.j,
                               self.minfermi + self.nkt + self.dkt * 1.j,
                               3, depth,
-                              type='Gaussian'))
+                              type='Gaussian', kt=self.kt))
         
         self.paths.append(Path(self.minfermi,
                                self.maxfermi,
@@ -332,12 +335,12 @@ class Contour:
         self.paths.append(Path(self.minfermi - self.nkt + self.eta * 1.j,
                               self.maxfermi + self.nkt + self.eta * 1.j,
                                5, depth,
-                               type=self.neint))
+                               type=self.neint, kt=self.kt))
         
         self.paths.append(Path(self.minfermi - self.nkt + self.dkt * 1.j,
                               self.maxfermi + self.nkt + self.dkt * 1.j,
                                6, depth,
-                               type='Gaussian'))
+                               type='Gaussian', kt=self.kt))
         zones = np.arange(1, 7)
         depth = 0
         converge = False
@@ -361,7 +364,7 @@ class Contour:
             self.plot_path = Path(-limit + self.fermi + self.plot_eta * 1.j,
                               limit + self.fermi + self.plot_eta * 1.j,
                                7, 1,
-                               type='linear')
+                               type='linear', kt=self.kt)
             path = self.plot_path  
             if ex:
                 path.ne = 261
@@ -415,8 +418,10 @@ class Contour:
             if self.tp.recal_path or (not self.tp.recal_path and
                                       path_index in [0, 1, 2, 5]) :
                 calcutype = self.calcutype[path_index]
-                green_function, se = self.tp.calgfunc(energy, calcutype, 'new')
-                self.paths[path_index].functions.append(np.diag(green_function[0]))
+                green_function, se = self.tp.calgfunc(energy, calcutype,
+                                                      'new')
+                self.paths[path_index].functions.append(np.diag(
+                                                          green_function[0]))
                 self.paths[path_index].energies.append(energy)
                 self.paths[path_index].ses.append(se)
                 self.paths[path_index].nids.append(nid)
@@ -670,7 +675,8 @@ class Contour:
             weights = np.append(weights0, weights1)
         
         loc_nids = np.array_split(nids, self.comm.size)[self.comm.rank]
-        loc_energies = np.array_split(energies, self.comm.size)[self.comm.rank]
+        loc_energies = np.array_split(energies,
+                                         self.comm.size)[self.comm.rank]
         loc_weights = np.array_split(weights, self.comm.size)[self.comm.rank]
         return loc_nids, loc_energies, loc_weights
 
