@@ -130,18 +130,49 @@ Please perform the following steps:
     export STARTCORES=${NCORES}
     cd $MACHINE; nohup sh ../run_numactl.sh 2>&1 | tee $MACHINE.log&
 
-.. _opteron_285:
-
 Benchmarked systems
 -------------------
+
+.. _best_performance:
+
+Best performance
+++++++++++++++++
+
+The best performance estimate has been obtained on the following systems
+with the following configuration of GPAW tested on **production runs**:
+compiler:blas/lapack/(numpy:dotblas/lapack):
+
+- GPAW **0.7.6383** (28 SCF steps):
+
+  - Xeon_X5570_: 329.0 s (11.8 s/step) - gcc43:goto2-1.13/acml-4.4.0/(numpy:default/acml-4.0.1),
+    date: May 08 2010, kernel 2.6.18-128.7.1.el5, BIOS HP O33 02/04/2010.
+
+  - opteron_285_: 659.9 s (23.6 s/step) - gcc43:goto-1.26/acml-4.4.0/(numpy:default/acml-4.0.1)*,
+    date: May 08 2010, kernel 2.6.18-164.el5, BIOS IBM 1.35 07/18/2007.
+
+- GPAW **0.6.5147** (30 SCF steps):
+
+  - Xeon_X5570_: 345.1 s (11.5 s/step) - gcc43:goto2-1.13/acml-4.4.0/(numpy:default/acml-4.0.1),
+    date: May 08 2010, kernel 2.6.18-128.7.1.el5, BIOS HP O33 02/04/2010.
+
+  - Xeon_X5667_: 509.8 s (17.0 s/step) - gcc43:acml-4.3.0/acml-4.3.0/(numpy:default/acml-4.0.1),
+    date: May 08 2010, kernel 2.6.18-164.15.1.el5, BIOS HP 0.34 03/31/2010.
+
+  - opteron_285_: 674.9 s (22.5 s/step) - gcc43:goto-1.26/acml-4.3.0/(numpy:default/acml-4.0.1)*,
+    date: May 08 2010, kernel 2.6.18-164.el5, BIOS IBM 1.35 07/18/2007.
+
+See the above links for the detailed results.
+
+.. _opteron_285:
 
 Dual-socket dual Core AMD Opteron(tm) Processor 285/2.6 GHz/2 GB RAM per core EL5
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - memory bandwidth:
 
-  - performed with gcc43/acml-4.3.0/acml-4.3.0, GPAW **0.6.5147**,
-    numpy *1.3.0* compiled with gcc/blas-3.0-37/lapack-3.0-37:
+  - date: May 08 2010, kernel 2.6.18-164.el5, BIOS IBM 1.35 07/18/2007.
+    Performed with gcc43/goto-1.26/acml-4.4.0, GPAW **0.7.6383** (28 SCF steps),
+    numpy *1.3.0* compiled with gcc/default(no dotblas)/acml-4.0.1:
 
     - run with assumed numactl mapping for a dual-socket dual-core machine::
 
@@ -153,9 +184,30 @@ Dual-socket dual Core AMD Opteron(tm) Processor 285/2.6 GHz/2 GB RAM per core EL
 
      results in::
 
-       TODO
+       No. of processes 1: time [sec]: avg 564.4, stddev 0.6, min 563.4, max 565.1
+       No. of processes 2: time [sec]: avg 658.0, stddev 3.6, min 653.0, max 662.9
+       No. of processes 4: time [sec]: avg 659.9, stddev 3.8, min 654.4, max 666.1
 
-  - performed with gcc43/goto-1.26/acml-4.2.0, GPAW **0.6.3862**,
+  - date: May 08 2010, kernel 2.6.18-164.el5, BIOS IBM 1.35 07/18/2007.
+    Performed with gcc43/goto-1.26/acml-4.3.0, GPAW **0.6.5147** (30 SCF steps),
+    numpy *1.3.0* compiled with gcc/default(no dotblas)/acml-4.0.1:
+
+    - run with assumed numactl mapping for a dual-socket dual-core machine::
+
+       export NCORES=4
+       export CORES_PER_SOCKET=4
+       export MACHINE=gcc43.numactl
+       export STARTCORES=${NCORES}
+       cd $MACHINE; nohup sh ../run_numactl.sh 2>&1 | tee $MACHINE.log&
+
+     results in::
+
+       No. of processes 1: time [sec]: avg 586.6, stddev 0.7, min 585.7, max 587.7
+       No. of processes 2: time [sec]: avg 673.9, stddev 3.4, min 669.4, max 678.5
+       No. of processes 4: time [sec]: avg 674.9, stddev 3.2, min 671.1, max 681.9
+
+  - date: ??, kernel ??, BIOS IBM ??.
+    Performed with gcc43/goto-1.26/acml-4.2.0, GPAW **0.6.3862** (35 SCF steps),
     numpy *1.3.0* compiled with gcc/blas-3.0-37/lapack-3.0-37:
 
     - run with default numa::
@@ -192,26 +244,33 @@ Dual-socket dual Core AMD Opteron(tm) Processor 285/2.6 GHz/2 GB RAM per core EL
 
 - performance estimate (average time of the memory_bandwidth_ benchmark on the maximal number of cores):
 
-  - GPAW **0.6.5147** was used.
+  - GPAW **0.6.5147** (30 SCF steps) was used.
     Standard deviations are found below 15 sec. "**N/A**" denotes the fact that libraries are not available,
     "**-**" that tests were not performed.
 
-    =================================================== ========= ========= =========
-    blas/lapack/(numpy:dotblas/lapack): compiler        gcc       gcc43     icc    
-    =================================================== ========= ========= =========
-    acml-4.4.0/acml-4.4.0/(default/acml-4.0.1)*         N/A        716.4    --
-    acml-4.3.0/acml-4.3.0/(default/acml-4.0.1)*         N/A        713.5    --
-    acml-4.0.1/acml-4.0.1/(default/acml-4.0.1)*          715.4    N/A       --     
-    blas-3.0-37/lapack-3.0-37/(default/acml-4.0.1)*     ??        ??        --     
-    goto-1.26/acml-4.3.0/(default/acml-4.0.1)*          N/A        674.9    --
-    atlas-3.8.3/atlas-3.8.3/(default/acml-4.0.1)*       --        FAIL      --     
-    =================================================== ========= ========= =========
+    =================================================== ========= ========= ========= ============
+    blas/lapack/(numpy:dotblas/lapack): compiler        gcc       gcc43     icc 11.0  open64 4.2.3
+    =================================================== ========= ========= ========= ============
+    acml-4.4.0/acml-4.4.0/(default/acml-4.0.1)*         N/A        716.4    --         689.3
+    acml-4.4.0/acml-4.4.0/(blas-3.0-37/lapack-3.0-37)   N/A        --       --         669.0
+    acml-4.3.0/acml-4.3.0/(default/acml-4.0.1)*         N/A        713.5    --        --
+    acml-4.3.0/acml-4.3.0/(blas-3.0-37/lapack-3.0-37)   N/A        699.7    --        --
+    acml-4.0.1/acml-4.0.1/(default/acml-4.0.1)*          715.4    N/A       --        --
+    blas-3.0-37/lapack-3.0-37/(default/acml-4.0.1)*     1151.6 F  1146.3 F  --        --
+    goto2-1.13/acml-4.4.0/(default/acml-4.0.1)*         N/A        680.4        --     652.9
+    goto2-1.13/acml-4.4.0/(blas-3.0-37/lapack-3.0-37)   N/A        699.6        --     669.0
+    goto-1.26/acml-4.4.0/(default/acml-4.0.1)*          N/A        680.4        --     651.1
+    goto-1.26/acml-4.3.0/(default/acml-4.0.1)*          N/A        674.9    --        --
+    goto-1.26/acml-4.3.0/(blas-3.0-37/lapack-3.0-37)    N/A        693.2    --        --
+    atlas-3.8.3/atlas-3.8.3/(default/acml-4.0.1)*       --        FAIL      --        --
+    =================================================== ========= ========= ========= ============
 
     **Note**: the numpy version marked by \* (star) denotes that the ``_dotblas.so``
     module was **NOT** built and the given lapack used.
 
     **Warning**: fields marked by **F** denote a failure in the GPAW's test suite.
     Fields marked by **FAIL** denote a failure in the memory_bandwidth_ benchmark.
+    Errors were reported when using different blas/lapack in GPAW and NUMPY!
 
     ============================== =============================================
     compiler                       options                     
@@ -219,9 +278,10 @@ Dual-socket dual Core AMD Opteron(tm) Processor 285/2.6 GHz/2 GB RAM per core EL
     gcc 4.1.2 20080704             -O3 -funroll-all-loops -std=c99
     gcc43 4.3.2 20081007           -O3 -funroll-all-loops -std=c99
     icc 11.0 083                   -xHOST -O3 -ipo -no-prec-div -static -std=c99
+    open64 4.2.3                   -O3 -std=c99 -fPIC
     ============================== =============================================
 
-  - GPAW **0.6.3862** was used, numpy *1.3.0* compiled with gcc/goto-1.26/acml-4.0.1.
+  - GPAW **0.6.3862** (35 SCF steps) was used, numpy *1.3.0* compiled with gcc/goto-1.26/acml-4.0.1.
     Standard deviations are found below 15 sec. "**N/A**" denotes the fact that libraries are not available,
     "**-**" that tests were not performed.
 
@@ -243,6 +303,7 @@ Dual-socket dual Core AMD Opteron(tm) Processor 285/2.6 GHz/2 GB RAM per core EL
     **Note**: the PGO entry refers to :ref:`PGO` driven using the benchmark.
 
     **Warning**: fields marked by **FAIL** denote a failure in the memory_bandwidth_ benchmark.
+    Errors were reported when using different blas/lapack in GPAW and NUMPY!
 
     ============================== =============================================
     compiler                       options                     
@@ -274,13 +335,16 @@ Dual-socket dual Core AMD Opteron(tm) Processor 285/2.6 GHz/2 GB RAM per core EL
     for ranks 0, 1, 2, 3, respectively.
     In this case **A** the **default** numa policy does not result in performance degradation.
 
+.. _Xeon_X5570:
+
 Dual-socket quad Core 64-bit Intel Nehalem Xeon X5570 quad-core 2.93 GHz/3 GB RAM per core EL5
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - memory bandwidth:
 
-  - performed with gcc43/acml-4.3.0/acml-4.3.0, GPAW **0.6.5147**,
-    numpy *1.3.0* compiled with gcc/blas-3.0-37/lapack-3.0-37:
+  - date: May 08 2010, kernel 2.6.18-128.7.1.el5, BIOS HP O33 02/04/2010.
+    Performed with gcc43/goto2-1.13/acml-4.4.0, GPAW **0.7.6383** (28 SCF steps),
+    numpy *1.3.0* compiled with gcc/default(no dotblas)/acml-4.0.1:
 
     - run with assumed numactl mapping for a dual-socket quad-core machine::
 
@@ -292,38 +356,63 @@ Dual-socket quad Core 64-bit Intel Nehalem Xeon X5570 quad-core 2.93 GHz/3 GB RA
 
      results in::
 
-      No. of processes 1: time [sec]: avg 331.1, stddev 0.2, min 330.9, max 331.3
-      No. of processes 2: time [sec]: avg 341.0, stddev 1.0, min 339.5, max 342.5
-      No. of processes 4: time [sec]: avg 362.3, stddev 1.3, min 360.3, max 364.9
-      No. of processes 6: time [sec]: avg 356.8, stddev 9.7, min 342.7, max 366.3
-      No. of processes 8: time [sec]: avg 364.8, stddev 1.1, min 363.1, max 367.4
+      No. of processes 1: time [sec]: avg 297.4, stddev 0.3, min 296.8, max 297.7
+      No. of processes 2: time [sec]: avg 307.0, stddev 0.9, min 305.8, max 308.6
+      No. of processes 4: time [sec]: avg 327.9, stddev 0.9, min 326.5, max 329.6
+      No. of processes 6: time [sec]: avg 321.7, stddev 10.3, min 306.3, max 330.7
+      No. of processes 8: time [sec]: avg 329.0, stddev 1.5, min 326.9, max 332.5
+
+  - date: May 08 2010, kernel 2.6.18-128.7.1.el5, BIOS HP O33 02/04/2010.
+    Performed with gcc43/goto2-1.13/acml-4.4.0, GPAW **0.6.5147** (30 SCF steps),
+    numpy *1.3.0* compiled with gcc/default(no dotblas)/acml-4.0.1:
+
+    - run with assumed numactl mapping for a dual-socket quad-core machine::
+
+       export NCORES=8
+       export CORES_PER_SOCKET=4
+       export MACHINE=gcc43.numactl
+       export STARTCORES=${NCORES}
+       cd $MACHINE; nohup sh ../run_numactl.sh 2>&1 | tee $MACHINE.log&
+
+     results in::
+
+      No. of processes 1: time [sec]: avg 313.2, stddev 0.2, min 313.0, max 313.6
+      No. of processes 2: time [sec]: avg 322.9, stddev 1.2, min 321.5, max 324.9
+      No. of processes 4: time [sec]: avg 344.1, stddev 0.8, min 342.5, max 345.7
+      No. of processes 6: time [sec]: avg 337.5, stddev 10.1, min 322.8, max 347.8
+      No. of processes 8: time [sec]: avg 345.1, stddev 1.5, min 343.1, max 348.9
 
 - performance estimate (average time of the memory_bandwidth_ benchmark on the maximal number of cores):
 
-  - GPAW **0.6.5147** was used.
+  - GPAW **0.6.5147** (30 SCF steps) was used.
     Standard deviations are found below 15 sec. "**N/A**" denotes the fact that libraries are not available,
     "**-**" that tests were not performed.
 
-    ============================================================= ========= ========= =========
-    blas/lapack/(numpy:dotblas/lapack): compiler                  gcc       gcc43     icc    
-    ============================================================= ========= ========= =========
-    acml-4.4.0/acml-4.4.0/(default/acml-4.0.1)*                   N/A        436.6    --
-    acml-4.3.0/acml-4.3.0/(default/acml-4.0.1)*                   N/A        435.9    --
-    acml-4.3.0/acml-4.3.0/(blas-3.0-37/lapack-3.0-37)             N/A        364.8    --
-    acml-4.3.0/acml-4.3.0/(mkl-10.1.3.027/mkl-10.1.3.027)         N/A        363.4    --
-    acml-4.0.1/acml-4.0.1/(default/acml-4.0.1)*                    443.5    N/A       --     
-    blas-3.0-37/lapack-3.0-37/(default/acml-4.0.1)*               ??     F   531.2 F  --     
-    goto-1.26/acml-4.3.0/(default/acml-4.0.1)*                    N/A       N/A       N/A
-    atlas-3.8.3/atlas-3.8.3/(default/acml-4.0.1)*                 --         380.0 F  --     
-    mkl-10.1.3.027/mkl-10.1.3.027/(default/acml-4.0.1)*           --        --        --
-    mkl-10.1.3.027/mkl-10.1.3.027/(mkl-10.1.3.027/mkl-10.1.3.027) --         382.9     332.4 F
-    ============================================================= ========= ========= =========
+    ============================================================= ========= ========= ========= ========= ============
+    blas/lapack/(numpy:dotblas/lapack): compiler                  gcc       gcc43     icc 11.0  icc 11.1  open64 4.2.3 
+    ============================================================= ========= ========= ========= ========= ============
+    acml-4.4.0/acml-4.4.0/(default/acml-4.0.1)*                   N/A        436.6     399.2 F   400.0 F   418.5
+    acml-4.4.0/acml-4.4.0/(blas-3.0-37/lapack-3.0-37)             N/A        355.5     326.7 F   326.0 F   347.4
+    acml-4.3.0/acml-4.3.0/(default/acml-4.0.1)*                   N/A        435.9    --        --        --
+    acml-4.3.0/acml-4.3.0/(blas-3.0-37/lapack-3.0-37)             N/A        364.8    --        --        --
+    acml-4.3.0/acml-4.3.0/(mkl-10.1.3.027/mkl-10.1.3.027)         N/A        363.4    --        --        --
+    acml-4.0.1/acml-4.0.1/(default/acml-4.0.1)*                    443.5    N/A       --        --        --
+    blas-3.0-37/lapack-3.0-37/(default/acml-4.0.1)*                529.7  F  531.2 F  --        --        --
+    goto2-1.13/acml-4.4.0/(default/acml-4.0.1)*                   N/A        345.1        --        --     326.6
+    goto2-1.13/acml-4.4.0/(blas-3.0-37/lapack-3.0-37)             N/A        351.1        --        --     333.3
+    goto-1.26/acml-4.3.0/(default/acml-4.0.1)*                    N/A       N/A       N/A       N/A       N/A
+    atlas-3.8.3/atlas-3.8.3/(default/acml-4.0.1)*                 --         380.0 F  --        --        --
+    mkl-10.1.3.027/mkl-10.1.3.027/(default/acml-4.0.1)*           --         352.3     318.4 F  --        --
+    mkl-10.1.3.027/mkl-10.1.3.027/(mkl-10.1.3.027/mkl-10.1.3.027) --         382.9     332.4 F  --        --
+    mkl-10.1.3.027/mkl-10.1.3.027/(blas-3.0-37/lapack-3.0-37)     --         358.0     326.5 F  --        --
+    ============================================================= ========= ========= ========= ========= ============
 
     **Note**: the numpy version marked by \* (star) denotes that the ``_dotblas.so``
     module was **NOT** built and the given lapack used.
 
     **Warning**: fields marked by **F** denote a failure in the GPAW's test suite.
     Fields marked by **FAIL** denote a failure in the memory_bandwidth_ benchmark.
+    Errors were reported when using different blas/lapack in GPAW and NUMPY!
 
     ============================== =============================================
     compiler                       options                     
@@ -331,7 +420,11 @@ Dual-socket quad Core 64-bit Intel Nehalem Xeon X5570 quad-core 2.93 GHz/3 GB RA
     gcc 4.1.2 20080704             -O3 -funroll-all-loops -std=c99
     gcc43 4.3.2 20081007           -O3 -funroll-all-loops -std=c99
     icc 11.0 083                   -xHOST -O3 -ipo -no-prec-div -static -std=c99
+    icc 11.1 072                   -xHOST -O3 -ipo -no-prec-div -static -std=c99
+    open64 4.2.3                   -O3 -std=c99 -fPIC
     ============================== =============================================
+
+.. _Xeon_X5667:
 
 Dual-socket quad Core 64-bit Intel Westmere Xeon X5667 quad-core 3.07 GHz/3 GB RAM per core EL5
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -341,8 +434,9 @@ The performance numbers may not reflect the future production systems.
 
 - memory bandwidth:
 
-  - performed with gcc43/acml-4.3.0/acml-4.3.0, GPAW **0.6.5147**,
-    numpy *1.3.0* compiled with gcc/blas-3.0-37/lapack-3.0-37:
+  - date: May 08 2010, kernel 2.6.18-164.15.1.el5, BIOS HP 0.34 03/31/2010.
+    Performed with gcc43/acml-4.3.0/acml-4.3.0, GPAW **0.6.5147** (30 SCF steps),
+    numpy *1.3.0* compiled with gcc/default(no dotblas)/acml-4.0.1:
 
     - run with assumed numactl mapping for a dual-socket quad-core machine::
 
@@ -354,42 +448,52 @@ The performance numbers may not reflect the future production systems.
 
      results in::
 
-       TODO
+       No. of processes 1: time [sec]: avg 423.3, stddev 0.9, min 422.2, max 424.8
+       No. of processes 2: time [sec]: avg 452.7, stddev 0.5, min 451.9, max 453.5
+       No. of processes 4: time [sec]: avg 481.0, stddev 1.7, min 479.0, max 484.5
+       No. of processes 6: time [sec]: avg 483.1, stddev 13.6, min 462.3, max 497.3
+       No. of processes 8: time [sec]: avg 509.8, stddev 2.5, min 506.7, max 517.1
 
 - performance estimate (average time of the memory_bandwidth_ benchmark on the maximal number of cores):
 
-  - GPAW **0.6.5147** was used.
+  - GPAW **0.6.5147** (30 SCF steps) was used.
     Standard deviations are found below 15 sec. "**N/A**" denotes the fact that libraries are not available,
     "**-**" that tests were not performed.
 
-    ============================================================= ========= ========= =========
-    blas/lapack/(numpy:dotblas/lapack): compiler                  gcc       gcc43     icc    
-    ============================================================= ========= ========= =========
-    acml-4.4.0/acml-4.4.0/(default/acml-4.0.1)*                   N/A       --        --
-    acml-4.3.0/acml-4.3.0/(default/acml-4.0.1)*                   N/A       ??        --
-    acml-4.3.0/acml-4.3.0/(blas-3.0-37/lapack-3.0-37)             N/A       ??        --
-    acml-4.3.0/acml-4.3.0/(mkl-10.1.3.027/mkl-10.1.3.027)         N/A        452.9    --
-    acml-4.0.1/acml-4.0.1/(default/acml-4.0.1)*                    508.6    N/A       --     
-    blas-3.0-37/lapack-3.0-37/(default/acml-4.0.1)*               --        --        --     
-    goto-1.26/acml-4.3.0/(default/acml-4.0.1)*                    N/A       N/A       N/A 
-    atlas-3.8.3/atlas-3.8.3/(default/acml-4.0.1)*                 --        --        --     
-    mkl-10.1.3.027/mkl-10.1.3.027/(default/acml-4.0.1)*           --        --        --
-    mkl-10.1.3.027/mkl-10.1.3.027/(mkl-10.1.3.027/mkl-10.1.3.027) --         440.9    ??
-    mkl-10.2.1.017/mkl-10.2.1.017/(mkl-10.1.3.027/mkl-10.1.3.027) --         439.6    --
-    ============================================================= ========= ========= =========
+    ============================================================= ========= ========= ========= ========= =========
+    blas/lapack/(numpy:dotblas/lapack): compiler                  gcc       gcc43     gcc44     icc 11.0  icc 11.1
+    ============================================================= ========= ========= ========= ========= =========
+    acml-4.4.0/acml-4.4.0/(default/acml-4.0.1)*                   N/A       --         511.0     469.4 F   469.8 F
+    acml-4.4.0/acml-4.4.0/(blas-3.0-37/lapack-3.0-37)             N/A        454.2     --        418.6 F   419.0 F
+    acml-4.3.0/acml-4.3.0/(default/acml-4.0.1)*                   N/A        509.8     510.8    --        --
+    acml-4.3.0/acml-4.3.0/(blas-3.0-37/lapack-3.0-37)             N/A        454.3     453.3    --        --
+    acml-4.3.0/acml-4.3.0/(mkl-10.1.3.027/mkl-10.1.3.027)         N/A        452.9    --        --        --
+    acml-4.0.1/acml-4.0.1/(default/acml-4.0.1)*                    508.6    N/A       N/A       --        --
+    blas-3.0-37/lapack-3.0-37/(default/acml-4.0.1)*               --        --        --        --        --
+    goto-1.26/acml-4.3.0/(default/acml-4.0.1)*                    N/A       N/A       N/A       N/A       N/A
+    atlas-3.8.3/atlas-3.8.3/(default/acml-4.0.1)*                 --        --        --        --        --
+    mkl-10.1.3.027/mkl-10.1.3.027/(default/acml-4.0.1)*           --         429.3    --        --        --
+    mkl-10.1.3.027/mkl-10.1.3.027/(mkl-10.1.3.027/mkl-10.1.3.027) --         440.9    --         405.6 F  --
+    mkl-10.2.1.017/mkl-10.2.1.017/(mkl-10.1.3.027/mkl-10.1.3.027) --         439.6 F  --        --        --
+    mkl-10.2.4.032/mkl-10.2.4.032/(mkl-10.1.3.027/mkl-10.1.3.027) --         442.5 F   438.3 F  --        --
+    mkl-10.1.3.027/mkl-10.1.3.027/(blas-3.0-37/lapack-3.0-37)     --         440.4    --        --        --
+    ============================================================= ========= ========= ========= ========= =========
 
     **Note**: the numpy version marked by \* (star) denotes that the ``_dotblas.so``
     module was **NOT** built and the given lapack used.
 
     **Warning**: fields marked by **F** denote a failure in the GPAW's test suite.
     Fields marked by **FAIL** denote a failure in the memory_bandwidth_ benchmark.
+    Errors were reported when using different blas/lapack in GPAW and NUMPY!
 
     ============================== =============================================
     compiler                       options                     
     ============================== =============================================
     gcc 4.1.2 20080704             -O3 -funroll-all-loops -std=c99
     gcc43 4.3.2 20081007           -O3 -funroll-all-loops -std=c99
+    gcc44 4.4.0 20090514           -O3 -funroll-all-loops -std=c99
     icc 11.0 083                   -xHOST -O3 -ipo -no-prec-div -static -std=c99
+    icc 11.1 072                   -xHOST -O3 -ipo -no-prec-div -static -std=c99
     ============================== =============================================
 
 Strong scaling benchmarks
