@@ -5,8 +5,8 @@ import numpy as np
 import cPickle
 
 class LeadSelfEnergy:
+    #This object use the sparse_matrix object Banded_Sparse_HSD
     conv = 1e-8 # Convergence criteria for surface Green function
-    
     def __init__(self, hsd_ii, hsd_ij, data_path=None, direction='left'):
         self.hsd_ii = hsd_ii
         self.hsd_ij = hsd_ij
@@ -30,7 +30,6 @@ class LeadSelfEnergy:
             data = cPickle.load(fd)
             return data
         else:
-            #self.energy = None
             if self.energy is None or abs(energy - self.energy) > self.tol:
                 self.energy = energy
                 z = energy - self.bias         
