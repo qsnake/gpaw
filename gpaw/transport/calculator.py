@@ -459,9 +459,9 @@ class Transport(GPAW):
         kpts = kpts[:2] + (1,)
         kwargs['kpts'] = kpts
         if self.spinpol:
-            kwargs['mixer'] = MixerDif(0.02, 5, weight=100.0)
+            kwargs['mixer'] = MixerDif(self.density.mixer.beta, 5, weight=100.0)
         else:
-            kwargs['mixer'] = Mixer(0.02, 5, weight=100.0)
+            kwargs['mixer'] = Mixer(self.density.mixer.beta, 5, weight=100.0)
         if 'txt' in kwargs and kwargs['txt'] != '-':
             kwargs['txt'] = 'guess_' + kwargs['txt']            
         atoms.set_calculator(gpaw.GPAW(**kwargs))
@@ -496,9 +496,9 @@ class Transport(GPAW):
         kpts = kpts[:2] + (1,)
         kwargs['kpts'] = kpts
         if self.spinpol:
-            kwargs['mixer'] = MixerDif(0.1, 5, weight=100.0)
+            kwargs['mixer'] = MixerDif(self.density.mixer.beta, 5, weight=100.0)
         else:
-            kwargs['mixer'] = Mixer(0.1, 5, weight=100.0)
+            kwargs['mixer'] = Mixer(self.density.mixer.beta, 5, weight=100.0)
         if 'txt' in kwargs and kwargs['txt'] != '-':
             kwargs['txt'] = 'guess_' + kwargs['txt']            
         atoms.set_calculator(gpaw.GPAW(**kwargs))
@@ -550,30 +550,6 @@ class Transport(GPAW):
             del calc
         #atoms.get_potential_energy()
 
-    def initialize_hamiltonian_matrix2(self, calc):    
-        h_skmm, s_kmm =  self.get_hs(calc)
-        d_skmm = get_lcao_density_matrix(calc)
-        ntk = 1
-        kpts = calc.wfs.ibzk_qc
-        h_spkmm = substract_pk(self.d, self.my_npk, ntk, kpts, h_skmm, 'h')
-        s_pkmm = substract_pk(self.d, self.my_npk, ntk, kpts, s_kmm)
-        d_spkmm = substract_pk(self.d, self.my_npk, ntk, kpts, d_skmm, 'h')
-        h00 = self.lead_hsd[0].H[0][0].recover()[0,0]
-        h01 = h_spkmm[0,0,0,0]
-        s00 = self.lead_hsd[0].S[0].recover()[0,0]
-        e_shift = (h00 - h01) / s00
-        h_spkmm += e_shift * s_pkmm
-   
-        if self.wfs.dtype == float:
-            h_spkmm = np.real(h_spkmm).copy()
-            s_pkmm = np.real(s_pkmm).copy()
-            d_spkmm = np.real(d_spkmm).copy()
-        nbl = self.nblead[0] + self.nblead[1]
-        for q in range(self.my_npk):
-            self.hsd.reset(0, q, s_pkmm[q, :-nbl, :-nbl], 'S', True)
-            for s in range(self.my_nspins):
-                self.hsd.reset(s, q, h_spkmm[s, q, :-nbl, :-nbl], 'H', True)            
-                self.hsd.reset(s, q, d_spkmm[s, q, :-nbl, :-nbl] * ntk, 'D', True)
                 
     def initialize_hamiltonian_matrix(self, calc):    
         h_skmm, s_kmm =  self.get_hs(calc)
@@ -584,11 +560,14 @@ class Transport(GPAW):
         s_pkmm = substract_pk(self.d, self.my_npk, ntk, kpts, s_kmm)
         d_spkmm = substract_pk(self.d, self.my_npk, ntk, kpts, d_skmm, 'h')
         h00 = self.lead_hsd[0].H[0][0].recover()[0,0]
-        h01 = h_spkmm[0,0,0,0]
+        if not self.buffer_guess:
+            h01 = h_spkmm[0,0,0,0]
+        else:
+            nb = self.nblead[0]
+            h01 = h_spkmm[0,0,nb,nb]            
         s00 = self.lead_hsd[0].S[0].recover()[0,0]
         e_shift = (h00 - h01) / s00
-        if not self.buffer_guess:
-            h_spkmm += e_shift * s_pkmm
+        h_spkmm += e_shift * s_pkmm
    
         if self.wfs.dtype == float:
             h_spkmm = np.real(h_spkmm).copy()
@@ -1076,7 +1055,10 @@ class Transport(GPAW):
         
         self.contour = Contour(self.occupations.width * Hartree,
                                self.lead_fermi, self.bias, comm=self.gd.comm,
-                               tp=self, plot_eta=self.plot_eta)
+                               tp=self, plot_eta=self.plot_eta,
+                               neintstep=self.neintstep,
+                               eqinttol=self.eqinttol,
+                               min_energy=self.min_energy)
         if not self.use_qzk_boundary:
             self.surround.reset_bias(self.bias)
         else:
@@ -1675,9 +1657,9 @@ class Transport(GPAW):
                 kpts = kpts[:2] + (1,)
                 kwargs['kpts'] = kpts
                 if self.spinpol:
-                    kwargs['mixer'] = MixerDif(0.02, 5, weight=100.0)
+                    kwargs['mixer'] = MixerDif(self.density.mixer.beta, 5, weight=100.0)
                 else:
-                    kwargs['mixer'] = Mixer(0.02, 5, weight=100.0)
+                    kwargs['mixer'] = Mixer(self.density.mixer.beta, 5, weight=100.0)
                 if 'txt' in kwargs and kwargs['txt'] != '-':
                     kwargs['txt'] = 'guess_' + kwargs['txt']            
                 self.equivalent_atoms.set_calculator(gpaw.GPAW(**kwargs))
@@ -2189,9 +2171,9 @@ class Transport(GPAW):
             p['gpts'] = N_c
             if 'mixer' in p:
                 if not self.spinpol:
-                    p['mixer'] = Mixer(0.1, 5, weight=100.0)
+                    p['mixer'] = Mixer(self.density.mixer.beta, 5, weight=100.0)
                 else:
-                    p['mixer'] = MixerDif(0.1, 5, weight=100.0)
+                    p['mixer'] = MixerDif(self.density.mixer.beta, 5, weight=100.0)
             p['poissonsolver'] = PoissonSolver(nn=2)        
             if type(p['basis']) is dict and len(p['basis']) == len(self.atoms):
                 basis = {}
