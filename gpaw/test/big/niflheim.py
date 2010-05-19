@@ -101,12 +101,16 @@ if __name__ == '__main__':
 
     if 0: queue.jobs = [j for j in queue.jobs if j.walltime < 3*60]
     if 0: queue.jobs = [j for j in queue.jobs if j.dir.startswith('doc')]
+    if 0: queue.jobs = [j for j in queue.jobs
+                        if j.dir.startswith('gpaw/test/big/bader_water')]
 
     nfailed = queue.run(niflheim)
 
     queue.copy_created_files('/home/camp2/jensj/WWW/gpaw-files')
     
     # Analysis:
+    import matplotlib
+    matplotlib.use('Agg')
     from gpaw.test.big.analysis import analyse
     user = os.environ['USER']
     analyse(queue,
@@ -114,6 +118,7 @@ if __name__ == '__main__':
             '../analysis',                 # Where to dump figures
             rev=niflheim.revision,
             mailto=user,
+            mailserver='servfys.fysik.dtu.dk',
             attachment='status.log')
 
     if nfailed == 0:

@@ -4,6 +4,14 @@ import cPickle as pickle
 import numpy as np
 import matplotlib.pyplot as pl
 import tempfile
+import smtplib
+
+try:
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+except ImportError:
+    from email.MIMEMultipart import MIMEMultipart
+    from email.MIMEText import MIMEText
 
 """Database structure:
 dict(testname: [(rev, runtime, info), (rev, runtime, info), ...])
@@ -201,17 +209,24 @@ class MailGenerator:
         subject += '%i improvements.' % len(self.better)
         return subject
 
-    def send_mail(self, address, attachment=None):
-        fullpath = tempfile.mktemp()
-        f = open(fullpath, 'w')
-        f.write(self.generate_mail())
-        f.close()
-        if attachment is None:
-            os.system('mail -s "%s" %s < %s' % \
-                      (self.generate_subject(), address, fullpath))
-        else:
-            os.system('mail -s "%s" %s -a %s < %s' % \
-                      (self.generate_subject(), address, attachment, fullpath))
+    def send_mail(self, address, server, attachment=None):
+        msg = MIMEMultipart()
+        msg['Subject'] = self.generate_subject()
+        me = 'agts@' + server
+        msg['From'] = me
+        msg['To'] = address
+        msg.attach(MIMEText(self.generate_mail()))
+
+        if attachment:
+            a = MIMEText(open(attachment).read())
+            a.add_header('Content-Disposition', 'attachment',
+                         filename='status.log')
+            msg.attach(a)
+        
+        s = smtplib.SMTP(server)
+        s.sendmail(me, [address], msg.as_string())
+        s.quit()
+
 
 #def csv2database(infile, outfile):
 #    """Use this file once to import the old data from csv"""
@@ -226,7 +241,7 @@ class MailGenerator:
 #    db.write()
 
 def analyse(queue, dbpath, outputdir=None, rev=None,
-            mailto=None, attachment=None):
+            mailto=None, mailserver=None, attachment=None):
     """Analyse runtimes from testsuite
 
     Parameters:
@@ -265,7 +280,7 @@ def analyse(queue, dbpath, outputdir=None, rev=None,
             mg.add_timeout(name)
 
     if mailto is not None:
-        mg.send_mail(mailto, attachment)
+        mg.send_mail(mailto, mailserver, attachment)
     else:
         print mg.generate_subject()
         print mg.generate_mail()
