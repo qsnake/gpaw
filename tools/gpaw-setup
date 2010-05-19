@@ -2,6 +2,8 @@
 
 # Emacs: treat this as -*- python -*-
 
+import gpaw
+
 from optparse import OptionParser
 
 
@@ -61,6 +63,9 @@ parser.add_option('-p', '--plot', action='store_true',
                   help='Show plot and generate reStructuredText.')
 parser.add_option('-g', '--points-per-node', metavar='<gpernode>', type='int',
                   default=150, help='Number of radial grid points per node.')
+parser.add_option('--empty-states', type='string', default='',
+                  help='Add empty state(s).  Example: 5p.',
+                  metavar='<states>')
 
 opt, args = parser.parse_args()
 
@@ -140,7 +145,8 @@ for symbol in atoms:
     try:
         g.run(logderiv=opt.logarithmic_derivatives,
               exx=opt.exact_exchange, name=opt.name,
-              use_restart_file=opt.use_restart_file, **p)
+              use_restart_file=opt.use_restart_file,
+              empty_states=opt.empty_states, **p)
     except ConvergenceError:
         print >> sys.stderr, bad_density_warning
     except RuntimeError, m:

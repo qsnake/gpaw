@@ -123,7 +123,8 @@ class Generator(AllElectron):
     def run(self, core='', rcut=1.0, extra=None,
             logderiv=False, vbar=None, exx=False, name=None,
             normconserving='', filter=(0.4, 1.75), rcutcomp=None,
-            write_xml=True, use_restart_file=True):
+            write_xml=True, use_restart_file=True,
+            empty_states=''):
 
         self.name = name
 
@@ -169,11 +170,23 @@ class Generator(AllElectron):
                 assert f_j[j] == 2 * (2 * l_j[j] + 1)
             j += 1
             core = core[2:]
+
         njcore = j
         self.njcore = njcore
 
         lmaxocc = max(l_j[njcore:])
 
+        while empty_states != '':
+            n = int(empty_states[0])
+            l = 'spdf'.find(empty_states[1])
+            print l_j
+            assert n == 1 + l + l_j.count(l)
+            n_j.append(n)
+            l_j.append(l)
+            f_j.append(0.0)
+            e_j.append(-0.01)
+            empty_states = empty_states[2:]
+            
         if 2 in l_j[njcore:]:
             # We have a bound valence d-state.  Add bound s- and
             # p-states if not already there:
