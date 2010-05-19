@@ -164,7 +164,8 @@ class AGTSQueue:
         
         if dir is None:
             dir = self._dir
-        job = AGTSJob(dir, script, ncpus, walltime * 60, deps, creates, show)
+        job = AGTSJob(dir, script, ncpus, walltime * 60 + self.sleeptime,
+                      deps, creates, show)
         self.jobs.append(job)
         return job
 
