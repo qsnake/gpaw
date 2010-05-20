@@ -1040,9 +1040,15 @@ class CHI:
             Energy (eV).
         """
 
-        w /= Hartree 
-#        iw = int(np.round(w / self.dw))
-        iw = 0
+	if type(w) is int:
+	    iw = w
+            w = self.wlist[iw] / Hartree
+	elif type(w) is float:
+            w /= Hartree 
+            iw = int(np.round(w / self.dw))
+	else:
+            raise ValueError('Frequency not correct !')
+
         print >> self.txt, 'Calculating Induced density at q, w (iw)'
         print >> self.txt, q, w*Hartree, iw
 
