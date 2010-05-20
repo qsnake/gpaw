@@ -33,7 +33,7 @@ class CHI:
 
 
     def initialize(self, c, q, wmax, dw, eta=0.2, Ecut=100.,
-                   sigma=1e-5, HilbertTrans = True): # eV
+                   sigma=1e-5, HilbertTrans=True, wlist=None): # eV
 
         print  >> self.txt
         print  >> self.txt, 'Response function calculation started at:'
@@ -120,6 +120,12 @@ class CHI:
         self.eta = eta / Hartree
         self.Ecut = Ecut / Hartree
         self.sigma = sigma
+
+        self.HilbertTrans = HilbertTrans
+        if not self.HilbertTrans:
+            self.Nw = len(wlist)
+            assert wlist is not None
+            self.wlist = wlist
         
         self.set_Gvectors()
 
@@ -130,8 +136,6 @@ class CHI:
         self.eRPA_wGG = np.zeros((self.Nw, self.npw, self.npw), dtype = complex)
         self.eMRPA_GG = np.zeros((self.npw, self.npw), dtype = complex)
         self.epsilonM = 0.
-
-        self.HilbertTrans = HilbertTrans
 
         self.print_stuff()
 
@@ -389,8 +393,6 @@ class CHI:
         kq = self.find_kq(bzkpt_kG, q)
         bcell = self.bcell
         
-        chi0_wGG = np.zeros((self.Nw, self.npw, self.npw), dtype = complex)
-        specfunc_wGG = np.zeros((self.NwS, self.npw, self.npw), dtype = complex)
         
         # calculate <phi_i | e**(-iq.r) | phi_j>
         phi_Gp = {}
@@ -410,6 +412,10 @@ class CHI:
         pt = LFC(gd, [setup.pt_j for setup in setups],
                  calc.wfs.kpt_comm, dtype=calc.wfs.dtype, forces=True)
         spos_ac = calc.atoms.get_scaled_positions()
+        for ia in range(spos_ac.shape[0]):
+            for idim in range(3):
+                if spos_ac[ia,idim] == 1.:
+                    spos_ac[ia,idim] -= 1.
         pt.set_k_points(calc.get_bz_k_points())
         pt.set_positions(spos_ac)
 
@@ -421,6 +427,12 @@ class CHI:
         else:
             op = calc.wfs.symmetry.op_scc
 
+        if self.HilbertTrans:
+            chi0_wGG = np.zeros((self.Nw, self.npw, self.npw), dtype = complex)
+            specfunc_wGG = np.zeros((self.NwS, self.npw, self.npw), dtype = complex)
+        else:
+            # rewrite self.Nw
+            chi0_wGG = np.zeros((self.Nw, self.npw, self.npw), dtype = complex)
             
         # calculate chi0
         for k in range(self.kstart, self.kend):
@@ -473,7 +485,7 @@ class CHI:
                 # construct (f_nk - f_n'k+q) / (w + e_nk - e_n'k+q + ieta )
                 C_nn = np.zeros((self.nband, self.nband), dtype=complex)
                 for iw in range(self.Nw):
-                    w = iw * self.dw
+                    w = self.wlist[iw] / Hartree 
                     for n in range(self.nband):
                         for m in range(self.nband):
                             if  np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > 1e-8:
@@ -485,7 +497,8 @@ class CHI:
                         for jG in range(self.npw):
                             chi0_wGG[iw,iG,jG] += (rho_Gnn[iG] * C_nn * rho_Gnn[jG].conj()).sum()
             else:
-            # calculate spectral function
+                                
+                # calculate spectral function
                 for n in range(self.nband):
                     for m in range(self.nband):
                         focc = f_kn[ibzkpt1,n] - f_kn[ibzkpt2,m]
@@ -1028,7 +1041,8 @@ class CHI:
         """
 
         w /= Hartree 
-        iw = int(np.round(w / self.dw))
+#        iw = int(np.round(w / self.dw))
+        iw = 0
         print >> self.txt, 'Calculating Induced density at q, w (iw)'
         print >> self.txt, q, w*Hartree, iw
 
@@ -1086,6 +1100,38 @@ class CHI:
             drho_z[iz] = drho_R[:,:,iz].sum()
             
         return drho_z
+
+
+    def project_chi_to_LCAO_pair_orbital(self, orb_MG):
+
+        nLCAO = orb_MG.shape[0]
+        N = np.zeros((self.Nw, nLCAO, nLCAO), dtype=complex)
+
+        kcoulinv_GG = np.zeros((self.npw, self.npw))
+        for iG in range(self.npw):
+            qG = np.array([np.inner(self.q + self.Gvec[iG],
+                            self.bcell[:,i]) for i in range(3)])
+            kcoulinv_GG[iG, iG] = np.inner(qG, qG)
+            
+        kcoulinv_GG /= 4.*pi
+        
+        for mu in range(nLCAO):
+            for nu in range(nLCAO):
+                pairorb_R = orb_MG[mu] * orb_MG[nu]
+                if not (pairorb_R * pairorb_R.conj() < 1e-10).all():
+                    tmp_G = np.fft.fftn(pairorb_R) * self.vol / self.nG0
+
+                    pairorb_G = np.zeros(self.npw, dtype=complex)
+                    for iG in range(self.npw):
+                        index = self.Gindex[iG]
+                        pairorb_G[iG] = tmp_G[index[0], index[1], index[2]]
+                
+                    for iw in range(self.Nw):
+                        chi_GG = (self.eRPA_wGG[iw] - np.eye(self.npw)) * kcoulinv_GG
+                        N[iw, mu, nu] = (np.outer(pairorb_G.conj(), pairorb_G) * chi_GG).sum()
+#                        N[iw, mu, nu] = np.inner(pairorb_G.conj(),np.inner(pairorb_G, chi_GG))
+ 
+        return N
 
 
     def set_Gvectors(self):
