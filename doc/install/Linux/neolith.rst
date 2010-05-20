@@ -127,13 +127,14 @@ The installation of user's packages on neolith described below uses
    module load openmpi/1.2.7-i101017
    python setup.py build_ext --remove-default-flags
 
-- test gpaw installation::
+- test gpaw installation by loading the modules::
 
    module load campos-ase3
    module load campos-gpaw-setups
    module load campos-gpaw
    export OMP_NUM_THREADS=1
-   gpaw-test 2>&1 | tee test.log
+
+  and :ref:`running_tests`.
 
 - **logout**, and login again.
 

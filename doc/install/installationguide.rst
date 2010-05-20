@@ -109,15 +109,18 @@ Run the tests
 
 Make sure that everything works by running the test suite (using bash)::
 
-  [gpaw]$ gpaw-test 2>&1 | tee test.log
+  [gpaw]$ gpaw-python `which gpaw-test` 2>&1 | tee test.log
 
 This will take around 40 minutes.  If you have a multicore CPU, you
 can speed up the test by using ``gpaw-test -j <number-of-cores>``.
+This will run tests simultaneously (**not** employing MPI parallelization)
+on the requested `<number-of-cores>`.
 Please report errors to the ``gridpaw-developer`` mailing list (see
 :ref:`mailing_lists`) Send us :file:`test.log`, as well as the
 information about your environment (processor architecture, versions
 of python and numpy, C-compiler, BLAS and LAPACK libraries, MPI
-library), and (only when requested) :file:`install.log`.
+library), and (only when requested) :file:`build_ext.log`
+(or :file:`install.log`).
 
 If tests pass, and the parallel version is built, test the parallel code::
 
