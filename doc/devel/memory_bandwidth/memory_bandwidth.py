@@ -164,7 +164,7 @@ def analyse_benchmark(ncores=8, startcores=1, machine='TEST', runs=7):
         try:
             f = open(file, 'r')
             #
-            print 'Analysing '+file
+            print 'Analysing '+file,
             #
             lines = f.readlines()
         except: pass
@@ -197,6 +197,7 @@ def analyse_benchmark(ncores=8, startcores=1, machine='TEST', runs=7):
                 ref_SCF = ref_SCF_3300
         gpaw_versions.append(gpaw_version)
         # search for timings
+        print 'gpaw version %d' % gpaw_version
         for entry in selected_entries:
             h = []
             ref = []
@@ -292,7 +293,7 @@ def analyse_benchmark(ncores=8, startcores=1, machine='TEST', runs=7):
         print 'No. of processes '+str(int(parameters[0]))+': time [sec]: avg '+str(round(results[p][-1][0],1))+', stddev '+str(round(results[p][-1][1],1))+', min '+str(round(results[p][-1][2],1))+', max '+str(round(results[p][-1][3],1))
         plot(
             parameters, avg, std,
-            systems_string,
+            systems_string+' version '+str(gpaw_version),
             'processes per node',
             'time [s]',
             'gpaw',

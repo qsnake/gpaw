@@ -22,6 +22,11 @@ export script=../../H2Al110.py
 
 ## CONFIGURE one of the following:
 
+if [ -f /home/camp/modulefiles.sh ]; then
+    . /home/camp/modulefiles.sh
+    module load openmpi
+fi
+
 # Using the GCC compiler and the AMD ACML library
 #. /usr/local/openmpi-1.2.5-gfortran/bin/mpivars-1.2.5.sh
 #export LD_LIBRARY_PATH=/opt/acml-4.0.1/gfortran64/lib:${LD_LIBRARY_PATH}
