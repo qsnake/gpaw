@@ -119,14 +119,15 @@ if __name__ == '__main__':
 
     selected_queue_jobs = []
     # examples of selecting jobs
-    if 0: [selected_queue_jobs.append(j) for j in queue.jobs
-           if j.walltime < 3*60]
-    if 0: [selected_queue_jobs.append(j) for j in queue.jobs
-           if j.dir.startswith('doc')]
-    if 0: [selected_queue_jobs.append(j) for j in queue.jobs
-           if j.dir.startswith('gpaw/test/big/bader_water')]
-    if 0: [selected_queue_jobs.append(j) for j in queue.jobs
-           if j.dir.startswith('doc/devel/memory_bandwidth')]
+    if 0:
+        for j in queue.jobs:
+            if (
+                j.walltime < 3*60 or
+                j.dir.startswith('doc') or
+                j.dir.startswith('gpaw/test/big/bader_water') or
+                j.dir.startswith('doc/devel/memory_bandwidth')
+                ):
+                selected_queue_jobs.append(j)
 
     if len(selected_queue_jobs) > 0: queue.jobs = selected_queue_jobs
 
