@@ -5,7 +5,7 @@ import random
 
 
 class AGTSJob:
-    def __init__(self, dir, script,
+    def __init__(self, dir, script, queueopts=None,
                  ncpus=1, walltime=10 * 60, deps=None, creates=None,
                  show=None):
         """Advaced GPAW test system job.
@@ -24,7 +24,7 @@ class AGTSJob:
         >>> job.absname
         'doc/tutorial/xas/run.py_--setups=.'
         """
-        
+
         if ' ' in script:
             script, self.args = script.split(' ', 1)
         else:
@@ -37,6 +37,9 @@ class AGTSJob:
         if self.args:
             self.absname += '_' + self.args.replace(' ', '_')
         dir, self.name = os.path.split(self.absname)
+        # any string valid for the batch system submit script, e.g.:
+        # '-l nodes=2:ppn=4:opteron285'
+        self.queueopts = queueopts
         self.ncpus = ncpus
         self.walltime = walltime
         if deps:
@@ -49,13 +52,13 @@ class AGTSJob:
         if not show:
             show = []
         self.show = show
-        
+
         self.status = 'waiting'
         self.tstart = None
         self.tstop = None
         self.exitcode = None
         self.pbsid = None
-        
+
 
 class Cluster:
     def check_status(self, job):
@@ -113,7 +116,7 @@ class TestCluster(Cluster):
             exitcode = 1
         else:
             exitcode = 0
-        
+
         wait = random.randint(1, 12)
         cmd = 'sleep %s; touch %s.start; ' % (wait, job.absname)
 
@@ -155,16 +158,17 @@ class AGTSQueue:
                        job.absname, job.status))
         self.fd.flush()
         self.status()
-        
-    def add(self, script, dir=None, ncpus=1, walltime=15,
+
+    def add(self, script, dir=None, queueopts=None, ncpus=1, walltime=15,
             deps=None, creates=None, show=None):
         """Add job.
 
         XXX move docs from doc/devel/testing to here and use Sphinx autodoc."""
-        
+
         if dir is None:
             dir = self._dir
-        job = AGTSJob(dir, script, ncpus, walltime * 60 + self.sleeptime,
+        job = AGTSJob(dir, script, queueopts, ncpus,
+                      walltime * 60 + self.sleeptime,
                       deps, creates, show)
         self.jobs.append(job)
         return job
@@ -198,7 +202,7 @@ class AGTSQueue:
             if job.absname == absname:
                 return job
         raise ValueError
-    
+
     def run(self, cluster):
         """Run jobs and return the number of unsuccessful jobs."""
         self.clean(cluster)
@@ -236,9 +240,9 @@ class AGTSQueue:
         t = self.get_cpu_time()
         self.fd.write('CPU time: %d:%02d:%02d\n' %
                       (t // 3600, t // 60 % 60, t % 60))
-    
+
         return len([None for job in self.jobs if job != 'success'])
-    
+
     def status(self):
         fd = open('status.log', 'w')
         fd.write('# job                                              ' +

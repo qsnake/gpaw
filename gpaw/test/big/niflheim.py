@@ -20,7 +20,7 @@ class Niflheim(Cluster):
 
         p = subprocess.Popen(['svnversion', 'gpaw'], stdout=subprocess.PIPE)
         self.revision = int(p.stdout.read())
-        
+
         if os.system('cd gpaw&& ' +
                      'source /home/camp/modulefiles.sh&& ' +
                      'module load NUMPY&& '+
@@ -50,21 +50,42 @@ class Niflheim(Cluster):
         os.chdir(job.dir)
 
         self.write_pylab_wrapper(job)
-        
+
         gpaw_python = os.path.join(self.dir, 'bin/gpaw-python')
 
+        submit_pythonpath = 'PYTHONPATH=%s/lib/python:%s/lib64/python:$PYTHONPATH ' % (self.dir, self.dir)
+        submit_gpaw_setup_path = 'GPAW_SETUP_PATH=%s/gpaw-setups ' % self.dir
+
+        run_command = '. /home/camp/modulefiles.sh&& '
+        run_command += 'module load MATPLOTLIB&& ' # loads numpy, matplotlib, ...
+
         if job.ncpus == 1:
-            ppn = 1
-            nodes = 1
+            # don't use mpi here,
+            # this allows one to start mpi inside the *.agts.py script
+            run_command += ' ' + submit_pythonpath
+            run_command += ' ' + submit_gpaw_setup_path
         else:
-            assert job.ncpus % 8 == 0
-            ppn = 8
-            nodes = job.ncpus // 8
+            run_command += 'module load openmpi/1.3.3-1.el5.fys.gfortran43.4.3.2&& '
+            run_command += 'mpiexec --mca mpi_paffinity_alone 1 '
+            run_command += '-x ' + submit_pythonpath
+            run_command += '-x ' + submit_gpaw_setup_path
+
+        if job.queueopts is None:
+            if job.ncpus == 1:
+                ppn = '8:xeon5570'
+                nodes = 1
+            else:
+                assert job.ncpus % 8 == 0
+                ppn = '8:xeon5570'
+                nodes = job.ncpus // 8
+            queueopts = '-l nodes=%d:ppn=%s' % (nodes, ppn)
+        else:
+            queueopts = job.queueopts
 
         p = subprocess.Popen(
             ['/usr/local/bin/qsub',
-             '-l',
-             'nodes=%d:ppn=%d:xeon5570' % (nodes, ppn),
+             '-V',
+             '%s' % queueopts,
              '-l',
              'walltime=%d:%02d:00' %
              (job.walltime // 3600, job.walltime % 3600 // 60),
@@ -73,10 +94,7 @@ class Niflheim(Cluster):
             stdin=subprocess.PIPE, stdout=subprocess.PIPE)
         p.stdin.write(
             'touch %s.start\n' % job.name +
-            'mpiexec --mca mpi_paffinity_alone 1 ' +
-            '-x PYTHONPATH=%s/lib/python:%s/lib64/python:$PYTHONPATH ' %
-            (self.dir, self.dir) +
-            '-x GPAW_SETUP_PATH=%s/gpaw-setups ' % self.dir +
+            run_command +
             '%s %s.py %s > %s.output\n' %
             (gpaw_python, job.script, job.args, job.name) +
             'echo $? > %s.done\n' % job.name)
@@ -88,7 +106,7 @@ class Niflheim(Cluster):
 
 if __name__ == '__main__':
     from gpaw.test.big.agts import AGTSQueue
-    
+
     os.chdir(os.path.join(os.environ['HOME'], 'weekend-tests'))
 
     niflheim = Niflheim()
@@ -99,15 +117,23 @@ if __name__ == '__main__':
     queue = AGTSQueue()
     queue.collect()
 
-    if 0: queue.jobs = [j for j in queue.jobs if j.walltime < 3*60]
-    if 0: queue.jobs = [j for j in queue.jobs if j.dir.startswith('doc')]
-    if 0: queue.jobs = [j for j in queue.jobs
-                        if j.dir.startswith('gpaw/test/big/bader_water')]
+    selected_queue_jobs = []
+    # examples of selecting jobs
+    if 0: [selected_queue_jobs.append(j) for j in queue.jobs
+           if j.walltime < 3*60]
+    if 0: [selected_queue_jobs.append(j) for j in queue.jobs
+           if j.dir.startswith('doc')]
+    if 0: [selected_queue_jobs.append(j) for j in queue.jobs
+           if j.dir.startswith('gpaw/test/big/bader_water')]
+    if 0: [selected_queue_jobs.append(j) for j in queue.jobs
+           if j.dir.startswith('doc/devel/memory_bandwidth')]
+
+    if len(selected_queue_jobs) > 0: queue.jobs = selected_queue_jobs
 
     nfailed = queue.run(niflheim)
 
     queue.copy_created_files('/home/camp2/jensj/WWW/gpaw-files')
-    
+
     # Analysis:
     import matplotlib
     matplotlib.use('Agg')
