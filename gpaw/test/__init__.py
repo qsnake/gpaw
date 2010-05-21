@@ -77,6 +77,7 @@ tests = [
     'second_derivative.py',
     'integral4.py',
     'transformations.py',
+    'nabla.py',
     'pbc.py',
     'poisson.py',
     'XC2.py',

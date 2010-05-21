@@ -879,14 +879,14 @@ class Setup(BaseSetup):
             for j2 in range(self.nj):
                 l2 = self.l_j[j2]
                 nm2 = 2 * l2 + 1
-                f1f2or = np.dot(phi_jg[j1] * phi_jg[2] -
-                                phit_jg[j1] * phit_jg[2], r_g * dr_g)
+                f1f2or = np.dot(phi_jg[j1] * phi_jg[j2] -
+                                phit_jg[j1] * phit_jg[j2], r_g * dr_g)
                 dphidr_g = np.empty_like(phi_jg[j2])
                 rgd.derivative(phi_jg[j2], dphidr_g)
                 dphitdr_g = np.empty_like(phit_jg[j2])
                 rgd.derivative(phit_jg[j2], dphitdr_g)
                 f1df2dr = np.dot(phi_jg[j1] * dphidr_g -
-                                 phit_jg[j1] * dphitdr_g, r_g * dr_g)
+                                 phit_jg[j1] * dphitdr_g, r_g**2 * dr_g)
                 for v in range(3):
                     Lv = 1 + (v + 2) % 3
                     nabla_iiv[i1:i1 + nm1, i2:i2 + nm2, v] = (
