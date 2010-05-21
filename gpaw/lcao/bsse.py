@@ -75,7 +75,7 @@ class GhostSetup(BaseSetup):
         self.rcutfilter = None
         self.rcore = None
         self.N0_p = np.zeros(1)
-        self.Delta1_jj = None
+        self.nabla_iiv = None
         self.phicorehole_g = None
         self.beta = None
         self.rcut_j = [0.5]

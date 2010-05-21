@@ -94,6 +94,7 @@ class Excitation:
             # length form
             me = self.me
         elif form == 'v':
+            raise NotImplemented
             # velocity form
             me = self.muv
 

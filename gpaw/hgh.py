@@ -92,7 +92,7 @@ class HGHSetup(BaseSetup):
         self.rcore = None
 
         self.N0_p = np.zeros(_np) # not really implemented
-        self.Delta1_jj = None
+        self.nabla_iiv = None
         self.phicorehole_g = None
         self.beta = None
         self.rcut_j = data.rcut_j

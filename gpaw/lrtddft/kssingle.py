@@ -13,7 +13,7 @@ from gpaw.localized_functions import create_localized_functions
 from gpaw.pair_density import PairDensity
 from gpaw.fd_operators import Gradient
 from gpaw.gaunt import gaunt as G_LLL
-from gpaw.gaunt import ylnyl
+
 
 class KSSingles(ExcitationList):
     """Kohn-Sham single particle excitations
@@ -291,71 +291,72 @@ class KSSingle(Excitation, PairDensity):
 ##        print '<KSSingle> mur=',self.mur,-self.fij *me
 
         # velocity form .............................
+        self.muv = np.zeros(me.shape)  # does not work XXX
 
-        # smooth contribution
-        dtype = self.wfj.dtype
-        dwfdr_G = gd.empty(dtype=dtype)
-        if not hasattr(gd, 'ddr'):
-            gd.ddr = [Gradient(gd, c, dtype=dtype).apply for c in range(3)]
-        for c in range(3):
-            gd.ddr[c](self.wfj, dwfdr_G, kpt.phase_cd)
-            me[c] = gd.integrate(self.wfi * dwfdr_G)
-            
-        # XXXX local corrections are missing here
-        # augmentation contributions
-        ma = np.zeros(me.shape)
-        for a, P_ni in kpt.P_ani.items():
-            setup = paw.wfs.setups[a]
-#            print setup.Delta1_jj
-#            print "l_j", setup.l_j, setup.n_j
+##         # smooth contribution
+##         dtype = self.wfj.dtype
+##         dwfdr_G = gd.empty(dtype=dtype)
+##         if not hasattr(gd, 'ddr'):
+##             gd.ddr = [Gradient(gd, c, dtype=dtype).apply for c in range(3)]
+##         for c in range(3):
+##             gd.ddr[c](self.wfj, dwfdr_G, kpt.phase_cd)
+##             me[c] = gd.integrate(self.wfi * dwfdr_G)
 
-            if not (hasattr(setup, 'j_i') and hasattr(setup, 'l_i')):
-                l_i = [] # map i -> l
-                j_i = [] # map i -> j
-                for j, l in enumerate(setup.l_j):
-                    for m in range(2 * l + 1):
-                        l_i.append(l)
-                        j_i.append(j)
+##         # XXXX local corrections are missing here
+##         # augmentation contributions
+##         ma = np.zeros(me.shape)
+##         for a, P_ni in kpt.P_ani.items():
+##             setup = paw.wfs.setups[a]
+## #            print setup.Delta1_jj
+## #            print "l_j", setup.l_j, setup.n_j
+
+##             if not (hasattr(setup, 'j_i') and hasattr(setup, 'l_i')):
+##                 l_i = [] # map i -> l
+##                 j_i = [] # map i -> j
+##                 for j, l in enumerate(setup.l_j):
+##                     for m in range(2 * l + 1):
+##                         l_i.append(l)
+##                         j_i.append(j)
                         
-                setup.l_i = l_i
-                setup.j_i = j_i
+##                 setup.l_i = l_i
+##                 setup.j_i = j_i
 
-            Pi_i = P_ni[self.i]
-            Pj_i = P_ni[self.j]
-            ni = len(Pi_i)
+##             Pi_i = P_ni[self.i]
+##             Pj_i = P_ni[self.j]
+##             ni = len(Pi_i)
             
-            ma1 = np.zeros(me.shape)
-            for i1 in range(ni):
-                L1 = setup.l_i[i1]
-                j1 = setup.j_i[i1]
-                for i2 in range(ni):
-                    L2 = setup.l_i[i2]
-                    j2 = setup.j_i[i2]
+##             ma1 = np.zeros(me.shape)
+##             for i1 in range(ni):
+##                 L1 = setup.l_i[i1]
+##                 j1 = setup.j_i[i1]
+##                 for i2 in range(ni):
+##                     L2 = setup.l_i[i2]
+##                     j2 = setup.j_i[i2]
  
-                    pi1i2 = Pi_i[i1] * Pj_i[i2]
-                    p = packed_index(i1, i2, ni)
+##                     pi1i2 = Pi_i[i1] * Pj_i[i2]
+##                     p = packed_index(i1, i2, ni)
                     
-                    v1 = sqrt(4 * pi / 3) * np.array([G_LLL[L1, L2, 3],
-                                                      G_LLL[L1, L2, 1],
-                                                      G_LLL[L1, L2, 2]])
-                    v2 = ylnyl[L1, L2, :]
-                    ma1 += pi1i2 * (v1 * setup.Delta1_jj[j1, j2] +
-                                    v2 * setup.Delta_pL[p, 0]      )
-            ma += ma1
-#        print 'v: me, ma=', me, ma
+##                     v1 = sqrt(4 * pi / 3) * np.array([G_LLL[L1, L2, 3],
+##                                                       G_LLL[L1, L2, 1],
+##                                                       G_LLL[L1, L2, 2]])
+##                     v2 = ylnyl[L1, L2, :]
+##                     ma1 += pi1i2 * (v1 * setup.Delta1_jj[j1, j2] +
+##                                     v2 * setup.Delta_pL[p, 0]      )
+##             ma += ma1
+## #        print 'v: me, ma=', me, ma
 
-        # XXXX the weight fij is missing here
-        self.muv = (me + ma) / self.energy
-#        print '<KSSingle> muv=', self.muv
+##         # XXXX the weight fij is missing here
+##         self.muv = (me + ma) / self.energy
+## #        print '<KSSingle> muv=', self.muv
 
-        # magnetic transition dipole ................
+##         # magnetic transition dipole ................
         
-        # m depends on how the origin is set, so we need the centre of mass
-        # of the structure
-#        cm = wfs
+##         # m depends on how the origin is set, so we need the centre of mass
+##         # of the structure
+## #        cm = wfs
 
-#        for i in range(3):
-#            me[i] = gd.integrate(self.wfi*dwfdr_cg[i])
+## #        for i in range(3):
+## #            me[i] = gd.integrate(self.wfi*dwfdr_cg[i])
         
     def __add__(self, other):
         """Add two KSSingles"""

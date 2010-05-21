@@ -21,7 +21,7 @@ from ase.units import Bohr, Hartree
 
 from gpaw.setup_data import SetupData
 from gpaw.basis_data import Basis
-from gpaw.gaunt import gaunt as G_LLL
+from gpaw.gaunt import gaunt as G_LLL, Y_LLv
 from gpaw.spline import Spline
 from gpaw.grid_descriptor import RadialGridDescriptor
 from gpaw.utilities import unpack, pack, fac, hartree, divrl
@@ -406,7 +406,7 @@ class LeanSetup(BaseSetup):
         # Can also get rid of the phit_j splines if need be
 
         self.N0_p = s.N0_p # req. by estimate_magnetic_moments
-        self.Delta1_jj = s.Delta1_jj # req. by lrtddft
+        self.nabla_iiv = s.nabla_iiv  # req. by lrtddft
 
         # XAS stuff
         self.phicorehole_g = s.phicorehole_g # should be optional
@@ -642,8 +642,6 @@ class Setup(BaseSetup):
                                                     phit_jg, _np, T_Lqp)
         self.Delta0 = Delta0
         self.g_lg = g_lg
-        self.Delta1_jj = self.get_derivative_integrals(r_g, dr_g, 
-                                                       phi_jg, phit_jg)
 
         # Solves the radial poisson equation for density n_g
         def H(n_g, l):
@@ -732,6 +730,7 @@ class Setup(BaseSetup):
         
         rgd = RadialGridDescriptor(r_g, dr_g)
         self.xc_correction = data.get_xc_correction(rgd, xcfunc, gcut2, lcut)
+        self.nabla_iiv = self.get_derivative_integrals(rgd, phi_jg, phit_jg)
 
     def calculate_coulomb_corrections(self, lcut, n_qg, wn_lqg,
                                       lmax, Delta_lq, wnt_lqg,
@@ -858,35 +857,46 @@ class Setup(BaseSetup):
 
         return g_lg, n_qg, nt_qg, Delta_lq, Lmax, Delta_pL, Delta0, N0_p
 
-    def get_derivative_integrals(self, r_g, dr_g, phi_jg, phit_jg):
-        """Calculate the integrals
+    def get_derivative_integrals(self, rgd, phi_jg, phit_jg):
+        """Calculate PAW-correction matrix elements of nabla.
 
         ::
-
-          /
-          | dr r^2 [ phi_j1 d/dr phi_j2 - phit_j1 d/dr phit_j2 ]
-          /
-        """
-        # calculate radial derivatives
-        dphi_jg = np.zeros((self.nj, self.gcut2))
-        dphit_jg = np.zeros((self.nj, self.gcut2))
-        for j in range(self.nj):
-            for g in range(self.gcut2 - 1):
-                dphi_jg[j, g] = ((phi_jg[j, g + 1] - phi_jg[j, g]) /
-                                 dr_g[g])
-                dphit_jg[j, g] = ((phit_jg[j, g + 1] - phit_jg[j, g]) /
-                                  dr_g[g])
         
-        pnp_jjg = np.zeros((self.nj, self.nj, self.gcut2))
-        pnpt_jjg = np.zeros((self.nj, self.nj, self.gcut2))
+          /  _       _  d       _     ~   _  d   ~   _
+          | dr [phi (r) -- phi (r) - phi (r) -- phi (r)]
+          /        1    dx    2         1    dx    2
 
+        and similar for y and z."""
+
+        r_g = rgd.r_g
+        dr_g = rgd.dr_g
+        nabla_iiv = np.empty((self.ni, self.ni, 3))
+        i1 = 0
         for j1 in range(self.nj):
+            l1 = self.l_j[j1]
+            nm1 = 2 * l1 + 1
+            i2 = 0
             for j2 in range(self.nj):
-                pnp_jjg[j1, j2] = phi_jg[j1] * dphi_jg[j2]
-                pnpt_jjg[j1, j2] = phit_jg[j1] * dphit_jg[j2]
-
-        Delta1_jj = np.dot(pnp_jjg - pnpt_jjg, r_g**2 * dr_g)
-        return Delta1_jj
+                l2 = self.l_j[j2]
+                nm2 = 2 * l2 + 1
+                f1f2or = np.dot(phi_jg[j1] * phi_jg[2] -
+                                phit_jg[j1] * phit_jg[2], r_g * dr_g)
+                dphidr_g = np.empty_like(phi_jg[j2])
+                rgd.derivative(phi_jg[j2], dphidr_g)
+                dphitdr_g = np.empty_like(phit_jg[j2])
+                rgd.derivative(phit_jg[j2], dphitdr_g)
+                f1df2dr = np.dot(phi_jg[j1] * dphidr_g -
+                                 phit_jg[j1] * dphitdr_g, r_g * dr_g)
+                for v in range(3):
+                    nabla_iiv[i1:i1 + nm1, i2:i2 + nm2, v] = (
+                        (0.75 * pi)**0.5 * f1f2or *
+                        G_LLL[1 + (v + 2) % 3,
+                              l2**2:l2**2 + nm2, l1**2:l1**2 + nm1].T +
+                        (f1df2dr - l2 * f1f2or) *
+                        Y_LLv[l1**2:l1**2 + nm1, l2**2:l2**2 + nm2, v])
+                i2 += nm2
+            i1 += nm1
+        return nabla_iiv
 
     def construct_core_densities(self, r_g, dr_g, beta, setupdata):
         rcore = self.data.find_core_density_cutoff(r_g, dr_g, setupdata.nc_g)
