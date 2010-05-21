@@ -17,10 +17,12 @@ splines = [Spline(l=l, rmax=rc, f_g=g) for l in range(lmax + 1)]
 c = LFC(gd, [splines])
 c.set_positions([(0, 0, 0)])
 psi = gd.zeros(m)
-c.add(psi, {0: np.identity(m)})
+d0 = c.dict(m)
+if 0 in d0:
+    d0[0] = np.identity(m)
+c.add(psi, d0)
 d1 = c.dict(m, derivative=True)
 c.derivative(psi, d1)
-d1 = d1[0]
 class TestSetup(Setup):
     l_j = range(lmax + 1)
     nj = lmax + 1
@@ -30,7 +32,9 @@ class TestSetup(Setup):
 rgd = RadialGridDescriptor(r, np.ones_like(r) * r[1])
 g = [np.exp(-(r / rc * b)**2) * r**l for l in range(lmax + 1)]
 d2 = TestSetup().get_derivative_integrals(rgd, g, np.zeros_like(g))
-assert abs(d1 - d2).max() < 2e-6
+if 0 in d1:
+    print abs(d1[0] - d2).max()
+    assert abs(d1[0] - d2).max() < 2e-6
 
 
 
