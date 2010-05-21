@@ -890,9 +890,9 @@ class Setup(BaseSetup):
                 for v in range(3):
                     Lv = 1 + (v + 2) % 3
                     nabla_iiv[i1:i1 + nm1, i2:i2 + nm2, v] = (
-                        (4 * pi / 3)**0.5 * f1f2or *
+                        (4 * pi / 3)**0.5 * (f1df2dr - l2 * f1f2or) *
                         G_LLL[Lv, l2**2:l2**2 + nm2, l1**2:l1**2 + nm1].T +
-                        (f1df2dr - l2 * f1f2or) *
+                        f1f2or *
                         Y_LLv[l1**2:l1**2 + nm1, l2**2:l2**2 + nm2, v])
                 i2 += nm2
             i1 += nm1
