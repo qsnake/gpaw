@@ -888,10 +888,10 @@ class Setup(BaseSetup):
                 f1df2dr = np.dot(phi_jg[j1] * dphidr_g -
                                  phit_jg[j1] * dphitdr_g, r_g * dr_g)
                 for v in range(3):
+                    Lv = 1 + (v + 2) % 3
                     nabla_iiv[i1:i1 + nm1, i2:i2 + nm2, v] = (
-                        (0.75 * pi)**0.5 * f1f2or *
-                        G_LLL[1 + (v + 2) % 3,
-                              l2**2:l2**2 + nm2, l1**2:l1**2 + nm1].T +
+                        (4 * pi / 3)**0.5 * f1f2or *
+                        G_LLL[Lv, l2**2:l2**2 + nm2, l1**2:l1**2 + nm1].T +
                         (f1df2dr - l2 * f1f2or) *
                         Y_LLv[l1**2:l1**2 + nm1, l2**2:l2**2 + nm2, v])
                 i2 += nm2
