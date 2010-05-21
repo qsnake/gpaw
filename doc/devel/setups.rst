@@ -33,14 +33,14 @@ Since we use real-valued spherical harmonics, we have:
 
   \frac{\partial r}{\partial \mathbf r}=
   \hat{\mathbf r}=(x/r,y/r,z/r)=
-  \sqrt{\frac{3}{4\pi}}(Y_{1m_x},Y_{1m_y},Y_{1m_z}).
+  \sqrt{\frac{4\pi}{3}}(Y_{1m_x},Y_{1m_y},Y_{1m_z}).
 
 Splitting the integral in radial and angular parts, we get:
 
 .. math::
 
   \langle\phi_i|\frac{\partial}{\partial x}|\phi_{i'}\rangle =
-  \sqrt{\frac{3}{4\pi}}
+  \sqrt{\frac{4\pi}{3}}
   \int r^2dr
   \phi_j\frac{\partial}{\partial r}(\phi_{j'}/r^{\ell'})r^{\ell'}
   G_{1m_x,\ell'm'}^{\ell m} +
