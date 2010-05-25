@@ -221,5 +221,72 @@ found at the :ref:`parallel_runs` page.
 Running from ramdisk
 ======================
 
-Running GPAW from ramdisk is recommended for jobs larger than 4096
-nodes. Please contact ALCF support for further information.
+There are two I/O bottlenecks present when running GPAW at scale: 1)
+loading *.py(c) and 2) loading *.so. For jobs requiring 8192 vn nodes
+or larger, the initialization time was measured at 40+ minutes.
+
+A work-around developed for the BlueGene/P system at Argonne National 
+Laboratory was to install GPAW and all supporting libraries on a
+ramdisk. The supporting libraries include::
+
+   Python 2.6 
+   NumPy 1.3.0
+   ASE
+   GPAW
+   <other system shared libraries>
+
+The ramdisk utility provided IBM has some weird quirks that one 
+should be aware of: 1) files cannot be installed in the root
+of the ramdisk, everything should go in a directory like ``/gpaw``
+2) empty directories and their child directores are not recognized
+properly;  the solution is to create a zero-size file, e.g. ``touch README``, in each empty directory.
+
+The top-level directory/file structure should look something like this::
+
+  $HOME/bgpramdisk/Makefile <file>
+  $HOME/bgpramdisk/fs
+  $HOME/bgpramdisk/fs/gpaw
+  $HOME/bgpramdisk/fs/gpaw/README <file>
+  $HOME/bgpramdisk/fs/gpaw/lib
+  $HOME/bgpramdisk/fs/gpaw/V1R4M1
+
+An example Makefile is provided :svn:`~doc/install/BGP/Makefile.ramdisk`, note that
+BGP_LINUX_OS_PATH version will be a function of the OS driver. The
+group and installation directory will be provided by the BlueGene/P sys admin.
+
+Copy all the supporting libraries unto the ramdisk. For
+simplicity, we install the Python packages into the site-packages
+directory which is automatically searched by the Python Intrepreter::
+
+  cp -r /bgsys/driver/ppcfloor/gnu/linux/lib/python2.6 $HOME/bgpramdisk/fs/gpaw/lib/
+  cp -r /soft/apps/python/python-2.6-cnk-gcc/numpy-1.3.0/lib/site-packages/numpy $HOME/bgpramdisk/fs/gpaw/lib/python2.6/site-packages/
+  cp -r $HOME/gpaw-<version>/gpaw  $HOME/bgpramdisk/fs/gpaw/lib/python2.6/site-packages/
+  cp -r $HOME/ase-<version>/ase  $HOME/bgpramdisk/fs/gpaw/python2.6/lib/site-packages/
+
+Make sure that all these libraries are byte compiled. Python 2.6 and
+NumPy 1.3.0 should already be byte compiled, but it is likely that ASE
+and GPAW won't be. ``cd`` into their respective directories on the
+ramdisk and type::
+
+   /bgsys/drivers/ppcfloor/gnu-linux/bin/python -m compileall .
+
+In order to save space on the ramdisk, delete the ``*.py``,  but keep the ``*.pyc.``::
+  
+   find -name "*.py" -exec rm -rf {} \;
+
+The MPI shared libraries can also installed on the ramdisk so they will
+seamlessly work with the TAU Performance System, but static libraries 
+can be used instead::
+  
+  cp /bgsys/drivers/ppcfloor/comm/default/lib/libmpich.cnk.so.1.1 $HOME/bgpramdisk/fs/gpaw/V1R4M1
+  cp /bgsys/drivers/ppcfloor/comm/sys/lib/libdcmfcoll.cnk.so $HOME/bgpramdisk/fs/gpaw/V1R4M1
+  cp /bgsys/drivers/ppcfloor/comm/sys/lib/libdcmf.cnk.so $HOME/bgpramdisk/fs/gpaw/V1R4M1
+  cp /bgsys/drivers/ppcfloor/runtime/SPI/libSPI.cna.so  $HOME/bgpramdisk/fs/gpaw/V1R4M1
+
+Lastly, there will be some changes to the environment variables in your submission script::
+
+  PYTHONHOME=/gpaw
+  LD_LIBRARY_PATH=/lib:/gpaw/V1R4M1
+
+PYTHONPATH should be empty unless you have installed another software
+package on the ramdisk. In any case, it should not point to any physical diskspace

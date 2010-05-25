@@ -12,8 +12,11 @@ We currently do not know how to build NumPy with xlc on BG/P.
 GPAW
 ====
 
-A performance improvement of 25% has been observed using xlc and gcc.
-Extensive validation has not been performed.
+A performance improvement of 25% has been observed using xlc over gcc
+for medium-size systems where DGEMM does not dominate the wall-clock
+time. For large-systems, NBANDS > 5000, there is is little performance 
+improvement since DGEMM makes up a large fraction of the wall-clock
+time.
 
 Proceed as in the :ref:`building_with_gcc_on_surveyor`,
 but use the following :svn:`~doc/install/BGP/bgp_xlc.py` file:
