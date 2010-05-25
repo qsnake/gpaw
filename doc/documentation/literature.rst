@@ -434,6 +434,19 @@ Publications using the gpaw code
 
    .. 4 February 2010
 
+#) \M. Leetmaa, M. P. Ljungberg, A. Lyubartsev, A. Nilsson and
+   L. G. M. Pettersson
+
+   `Theoretical approximations to X-ray absorption spectroscopy of
+   liquid water and ice`__
+
+   Journal of Electron Spectroscopy and Related Phenomena,
+   Vol. **177**, 135-157, (2010)
+
+   __ http://dx.doi.org/10.1016/j.elspec.2010.02.004
+
+   .. 16 February 2010
+
 #) Thomas Olsen and Jakob Schiøtz
 
    `Vibrationally mediated control of single-electron transmission in
@@ -467,3 +480,18 @@ Publications using the gpaw code
    __ http://pubs.acs.org/doi/abs/10.1021/jz1002988
   
    .. 28 April 2010
+
+#) Toyli Anniyev, Hirohito Ogasawara, Mathias P. Ljungberg, Kjartan
+   T. Wikfeldt, Janay B. MacNaughton, Lars-Åke Näslund, Uwe Bergmann,
+   Shirlaine Koh, Peter Strasser, Lars G. M. Pettersson and Anders
+   Nilsson
+
+   `Complementarity between high-energy photoelectron and L-edge
+   spectroscopy for probing the electronic structure of 5d transition
+   metal catalysts`__
+
+   Phys. Chem. Chem. Phys., **12**, 5694 - 5700, (2010)
+
+   __ http://dx.doi.org/10.1039/b926414k
+
+   .. 4 May 2010
