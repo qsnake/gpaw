@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from sys import argv
 from ase import *
 from gpaw import *
@@ -17,7 +16,7 @@ c = stm.get_averaged_current(z)
 # Get 2d array of constant current heights:
 h = stm.scan(c)
 
-print u'Min: %.2f Å, Max: %.2f Å' % (h.min(), h.max())
+print u'Min: %.2f Ang, Max: %.2f Ang' % (h.min(), h.max())
 
 import pylab as p
 p.contourf(h, 40)
