@@ -69,7 +69,7 @@ class Transport(GPAW):
                        'total_charge', 'alpha', 'beta_guess','theta',
                        'LR_leads', 'gate', 'gate_mode', 'gate_atoms', 'gate_fun',                 
                        'recal_path', 'min_energy',
-                       'use_qzk_boundary',
+                       'use_qzk_boundary','n_bias_step', 'n_ion_step',
                        'scat_restart', 'save_file', 'restart_file',
                        'non_sc', 'fixed_boundary', 'guess_steps', 'foot_print',
                        'data_file',
@@ -130,6 +130,8 @@ class Transport(GPAW):
         self.restart_file = p['restart_file']
         self.neintmethod = p['neintmethod']
         self.neintstep = p['neintstep']
+        self.n_bias_step = p['n_bias_step']
+        self.n_ion_step = p['n_ion_step']
         self.fixed = p['fixed_boundary']
         self.vaccs = p['vaccs']
         self.lead_guess = p['lead_guess']
@@ -208,6 +210,8 @@ class Transport(GPAW):
         p['se_data_path'] = None
         p['neintmethod'] = 0
         p['neintstep'] = 0.02
+        p['n_bias_step'] = 0
+        p['n_ion_step'] = 0
         p['eqinttol'] = 1e-4
         p['plot_eta'] = 1e-4
         p['alpha'] = 0
@@ -1775,13 +1779,12 @@ class Transport(GPAW):
     def calculate_to_bias(self, v_limit, num_v, gate=0, num_g=3, start=0):
         bias = np.linspace(0, v_limit, num_v)
         self.negf_prepare()
-        self.analysor.n_bias_step = start
         if abs(gate) > 0.001:
             gate = np.linspace(0, gate, num_g)
             for i in range(start, num_g):
                 self.gate = gate[i]
                 self.get_selfconsistent_hamiltonian()
-            start = 0    
+            start = 0
         for i in range(start, num_v):
             v = bias[i]
             self.bias = [v/2., -v /2.]
