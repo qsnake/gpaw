@@ -48,12 +48,7 @@ class Transport(GPAW):
     
     def __init__(self, **transport_kwargs):
         self.set_transport_kwargs(**transport_kwargs)
-        if self.scat_restart:
-            GPAW.__init__(self, self.restart_file + '.gpw', **self.gpw_kwargs)
-            self.set_positions()
-            self.recover_kpts(self)
-        else:
-            GPAW.__init__(self, **self.gpw_kwargs)
+        GPAW.__init__(self, **self.gpw_kwargs)
             
     def initialize(self, *args, **kwargs):
         GPAW.initialize(self, *args, **kwargs)
@@ -68,10 +63,10 @@ class Transport(GPAW):
             if key in ['use_lead', 'identical_leads',
                        'pl_atoms', 'pl_cells', 'pl_kpts', 'leads',
                        'use_buffer', 'buffer_atoms', 'edge_atoms', 'bias',
-                       'lead_restart', 'use_guess_file', 'special_datas',
+                       'lead_restart', 'special_datas',
                        'plot_eta', 'vaccs', 'lead_guess', 'neutral','buffer_guess',
                        'lead_atoms', 'nleadlayers', 'mol_atoms', 'la_index',
-                       'total_charge',
+                       'total_charge', 'alpha', 'beta_guess','theta',
                        'LR_leads', 'gate', 'gate_mode', 'gate_atoms', 'gate_fun',                 
                        'recal_path', 'min_energy',
                        'use_qzk_boundary',
@@ -123,11 +118,13 @@ class Transport(GPAW):
         self.gate_atoms = p['gate_atoms']
         self.recal_path = p['recal_path']
         self.plot_eta = p['plot_eta']
+        self.alpha = p['alpha']
+        self.beta_guess = p['beta_guess']
+        self.theta = p['theta']
         self.min_energy = p['min_energy']
         self.use_qzk_boundary = p['use_qzk_boundary']
         self.scat_restart = p['scat_restart']
         self.guess_steps = p['guess_steps']
-        self.use_guess_file = p['use_guess_file']
         self.foot_print = p['foot_print']
         self.save_file = p['save_file']
         self.restart_file = p['restart_file']
@@ -154,7 +151,7 @@ class Transport(GPAW):
         self.d = p['d']
        
         if self.scat_restart and self.restart_file == None:
-            self.restart_file = 'scat'
+            self.restart_file = 'bias_data1'
         
         self.master = (world.rank==0)
     
@@ -213,6 +210,9 @@ class Transport(GPAW):
         p['neintstep'] = 0.02
         p['eqinttol'] = 1e-4
         p['plot_eta'] = 1e-4
+        p['alpha'] = 0
+        p['beta_guess'] = 0.1
+        p['theta'] = 1
         p['vaccs'] = None
         p['LR_leads'] = True
         p['lead_guess'] = False
@@ -226,7 +226,6 @@ class Transport(GPAW):
         p['recal_path'] = False
         p['min_energy'] = -700
         p['guess_steps'] = 30
-        p['use_guess_file'] = False
         p['foot_print'] = True
         p['use_qzk_boundary'] = False
         p['scat_restart'] = False
@@ -369,10 +368,8 @@ class Transport(GPAW):
             self.timer.stop('surround set_position')
         
         if self.analysis_mode >= 0:
-            if self.use_guess_file:
-                fd = file('eq_hsd', 'r')
-                self.hsd = cPickle.load(fd)
-                fd.close()
+            if self.scat_restart:
+                self.get_hamiltonian_initial_guess3()
             elif self.buffer_guess:
                 self.get_hamiltonian_initial_guess2()
             else:
@@ -459,9 +456,9 @@ class Transport(GPAW):
         kpts = kpts[:2] + (1,)
         kwargs['kpts'] = kpts
         if self.spinpol:
-            kwargs['mixer'] = MixerDif(self.density.mixer.beta, 5, weight=100.0)
+            kwargs['mixer'] = MixerDif(self.beta_guess, 5, weight=100.0)
         else:
-            kwargs['mixer'] = Mixer(self.density.mixer.beta, 5, weight=100.0)
+            kwargs['mixer'] = Mixer(self.beta_guess, 5, weight=100.0)
         if 'txt' in kwargs and kwargs['txt'] != '-':
             kwargs['txt'] = 'guess_' + kwargs['txt']            
         atoms.set_calculator(gpaw.GPAW(**kwargs))
@@ -496,9 +493,9 @@ class Transport(GPAW):
         kpts = kpts[:2] + (1,)
         kwargs['kpts'] = kpts
         if self.spinpol:
-            kwargs['mixer'] = MixerDif(self.density.mixer.beta, 5, weight=100.0)
+            kwargs['mixer'] = MixerDif(self.beta_guess, 5, weight=100.0)
         else:
-            kwargs['mixer'] = Mixer(self.density.mixer.beta, 5, weight=100.0)
+            kwargs['mixer'] = Mixer(self.beta_guess, 5, weight=100.0)
         if 'txt' in kwargs and kwargs['txt'] != '-':
             kwargs['txt'] = 'guess_' + kwargs['txt']            
         atoms.set_calculator(gpaw.GPAW(**kwargs))
@@ -550,6 +547,23 @@ class Transport(GPAW):
             del calc
         #atoms.get_potential_energy()
 
+    def get_hamiltonian_initial_guess3(self):
+        fd = file(self.restart_file, 'r')
+        self.bias, vt_sG, dH_asp = cPickle.load(fd)
+        fd.close()
+        self.surround.combine_dH_asp(dH_asp)
+        self.gd1.distribute(vt_sG, self.extended_calc.hamiltonian.vt_sG) 
+        h_spkmm, s_pkmm = self.get_hs(self.extended_calc)
+        if self.gate_mode == 'VM':
+            ind = get_matrix_index(self.gate_basis_index)
+            h_spkmm[:, :, ind.T, ind] += self.gate * s_pkmm[:, ind.T, ind]   
+        nb = s_pkmm.shape[-1]
+        dtype = s_pkmm.dtype
+        for q in range(self.my_npk):
+            self.hsd.reset(0, q, s_pkmm[q], 'S', True)                
+            for s in range(self.my_nspins):
+                self.hsd.reset(s, q, h_spkmm[s, q], 'H', True)
+                self.hsd.reset(s, q, np.zeros([nb, nb], dtype), 'D', True)
                 
     def initialize_hamiltonian_matrix(self, calc):    
         h_skmm, s_kmm =  self.get_hs(calc)
@@ -810,7 +824,7 @@ class Transport(GPAW):
                 
         #if self.scat_restart:
         #    self.recover_kpts(self)
-        if not self.optimize and not self.use_guess_file:
+        if not self.optimize:
             self.append_buffer_hsd()
         if self.lead_guess:
             self.fill_guess_with_leads('H')           
@@ -938,6 +952,7 @@ class Transport(GPAW):
                 fd.close()
                 
         self.ground = False
+        self.alpha = 0
         self.total_charge = 0
         self.linear_mm = None
         if not self.scf.converged:
@@ -1035,7 +1050,7 @@ class Transport(GPAW):
         if var == 'd':
             if self.step > 0:
                 self.diff_d = self.density.mixer.get_charge_sloshing()
-                tol =  self.scf.max_density_error
+                tol =  self.scf.max_density_error * self.theta
  
                 if self.master:
                     self.text('density: diff = %f  tol=%f' % (self.diff_d,
@@ -1757,16 +1772,17 @@ class Transport(GPAW):
         self.print_forces()
         return self.F_av[:len(self.atoms)]
 
-    def calculate_to_bias(self, v_limit, num_v, gate=0, num_g=3):
+    def calculate_to_bias(self, v_limit, num_v, gate=0, num_g=3, start=0):
         bias = np.linspace(0, v_limit, num_v)
         self.negf_prepare()
+        self.analysor.n_bias_step = start
         if abs(gate) > 0.001:
             gate = np.linspace(0, gate, num_g)
-            for i in range(num_g):
+            for i in range(start, num_g):
                 self.gate = gate[i]
                 self.get_selfconsistent_hamiltonian()
-                
-        for i in range(num_v):
+            start = 0    
+        for i in range(start, num_v):
             v = bias[i]
             self.bias = [v/2., -v /2.]
             self.get_selfconsistent_hamiltonian()        
@@ -1832,8 +1848,17 @@ class Transport(GPAW):
         self.timer.stop('atomic density')
         comp_charge = density.calculate_multipole_moments()
         if self.neutral:
-            density.normalize(comp_charge)
+            self.normalize(comp_charge)
         density.mix(comp_charge)
+
+    def normalize(self, comp_charge):
+        density = self.density
+        """Normalize pseudo density."""
+        pseudo_charge = density.gd.integrate(density.nt_sG).sum()
+        if pseudo_charge != 0:
+            x = -(density.charge + comp_charge) / pseudo_charge
+            density.nt_sG *= x + (x - 1) * self.alpha
+            self.text('density scaling', x)        
            
     def update_hamiltonian(self):
         # only used by fixed bc
@@ -2113,12 +2138,12 @@ class Transport(GPAW):
     
                 self.selfenergies[i].set_bias(self.bias[i])
  
-    def calculate_iv(self, v_limit=3, num_v=16):
-        self.calculate_to_bias(v_limit, num_v)
+    def calculate_iv(self, v_limit=3, num_v=16, start=0):
+        self.calculate_to_bias(v_limit, num_v, start=start)
         del self.analysor
         del self.surround
         del self.contour
-  
+        
     def recover_kpts(self, calc):
         wfs = calc.wfs
         wfs.eigensolver.iterate(calc.hamiltonian, wfs)
