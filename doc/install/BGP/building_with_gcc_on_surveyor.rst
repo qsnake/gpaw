@@ -222,7 +222,7 @@ Running from ramdisk
 ======================
 
 There are two I/O bottlenecks present when running GPAW at scale: 1)
-loading *.py(c) and 2) loading *.so. For jobs requiring 8192 vn nodes
+loading .py(c) and 2) loading .so. For jobs requiring 8192 vn nodes
 or larger, the initialization time was measured at 40+ minutes.
 
 A work-around developed for the BlueGene/P system at Argonne National 
