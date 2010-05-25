@@ -27,7 +27,7 @@ class ScipyPreconditioner:
         # For scipy's linear solver
         N = np.prod(gd.n_c)
         self.shape = (N,N)
-        self.dtype = float
+        self.dtype = dtype
         
     def matvec(self, x):
         """Matrix vector multiplication for scipy.sparse.linalg solvers.
@@ -40,7 +40,7 @@ class ScipyPreconditioner:
         """
 
         # Output array
-        y_G = self.gd.zeros()
+        y_G = self.gd.zeros(dtype=self.dtype)
         shape = y_G.shape
 
         size = x.size

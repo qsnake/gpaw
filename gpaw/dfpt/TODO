@@ -1,3 +1,5 @@
+2010-05-25
+ - Implement phases for the Transformer object for q != 0
 2010-04-08
  - Generalize Poisson solver to handle complex potentials with Bloch BC's
  - Generalize mixer to handle complex densities

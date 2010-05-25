@@ -20,7 +20,7 @@ from gpaw.dfpt.dynamicalmatrix import DynamicalMatrix
 class PhononCalculator:
     """This class defines the interface for phonon calculations."""
     
-    def __init__(self, atoms):
+    def __init__(self, atoms, **kwargs):
         """Inititialize class with a list of atoms."""
  
         # Store useful objects
@@ -64,44 +64,24 @@ class PhononCalculator:
 
                 self.perturbation.set_perturbation(a, v)
 
-                if use_dfpt:
-
-                    if load:
-                        assert filebase is not None
-                        file_av = "a_%.1i_v_%.1i.pckl" % (a,v)
-                        fname = "_".join([filebase, file_av])
-                        nt1_G, psit1_unG = pickle.load(open(fname))
-                        self.perturbation.calculate_derivative()
-                    else:
-                        nt1_G, psit1_unG = \
-                               self.response(tolerance_sc = tolerance_sc,
-                                             tolerance_sternheimer = tolerance_sternheimer)
-                        if save:
-                            assert filebase is not None
-                            file_av = "a_%.1i_v_%.1i.pckl" % (a, v)
-                            fname = "_".join([filebase, file_av])
-                            f = open(fname, 'w')
-                            pickle.dump([nt1_G, psit1_unG], f)
-                            f.close()
-                            
-                else: # load from file
+                if load:
                     assert filebase is not None
-                
                     file_av = "a_%.1i_v_%.1i.pckl" % (a,v)
                     fname = "_".join([filebase, file_av])
-                    dn, dpsi_n = pickle.load(open(fname))
-                    
-                    # Project out components from occupied orbitals
-                    self.response.initialize()
-                    s = self.response.sternheimer_operator
-                    for n in range(len(dpsi_n)):
-                        s.project(dpsi_n[n])
-                    nt1_G = dn.copy()
-                    psit1_unG = [dpsi_n.copy()]
-                    # Call this function to calculate derivatives of Vghat to be
-                    # used below (only when dn is loaded from file!!)
+                    nt1_G, psit1_unG = pickle.load(open(fname))
                     self.perturbation.calculate_derivative()
-
+                else:
+                    nt1_G, psit1_unG = \
+                           self.response(tolerance_sc = tolerance_sc,
+                                         tolerance_sternheimer = tolerance_sternheimer)
+                    if save:
+                        assert filebase is not None
+                        file_av = "a_%.1i_v_%.1i.pckl" % (a, v)
+                        fname = "_".join([filebase, file_av])
+                        f = open(fname, 'w')
+                        pickle.dump([nt1_G, psit1_unG], f)
+                        f.close()
+                            
                 vghat1_g = self.perturbation.vghat1_g
                 
                 self.D_matrix.update_row(a, v, nt1_G, psit1_unG[0],
