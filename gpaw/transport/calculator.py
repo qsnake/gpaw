@@ -388,7 +388,10 @@ class Transport(GPAW):
         self.matrix_mode = 'sparse'
         if not hasattr(self, 'plot_option'):
             self.plot_option = None
-        self.ground = True
+        if np.abs(self.bias[1] - self.bias[0]) < 0.001:
+            self.ground = True
+        else:
+            self.ground = False
         self.F_av = None
 
     def set_energies(self, energies):
