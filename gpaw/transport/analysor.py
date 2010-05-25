@@ -22,8 +22,8 @@ class Transport_Analysor:
         self.bias_steps = []
         self.ion_steps = []
         self.n_ele_step = 0
-        self.n_bias_step = 0
-        self.n_ion_step = 0
+        self.n_bias_step = self.tp.n_bias_step
+        self.n_ion_step = self.tp.n_ion_step
         self.matrix_foot_print = False
         self.reset = False
         self.scattering_states_initialized = False
