@@ -154,6 +154,7 @@ tests = [
     'relax.py',
     'muffintinpot.py',
     'fixmom.py',
+    'fermisplit.py',
     'be_nltd_ip.py',
     'lcao_bulk.py',
     'jstm.py',

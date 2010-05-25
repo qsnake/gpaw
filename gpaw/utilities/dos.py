@@ -283,6 +283,7 @@ class RawLDOS:
             return spd
 
         l_i = wfs.setups[atom].l_i
+
         for kpt in self.paw.wfs.kpt_u:
             if atom in kpt.P_ani:
                 for i, P_n in enumerate(kpt.P_ani[atom].T):
@@ -308,11 +309,16 @@ class RawLDOS:
     def by_element_to_file(self, 
                            filename='ldos_by_element.dat',
                            width=None,
-                           shift=True):
+                           shift=True,
+                           bound=False):
         """Write the LDOS by element to a file
 
         If a width is given, the LDOS will be Gaussian folded and shifted to set 
         Fermi energy to 0 eV. The latter can be avoided by setting shift=False. 
+
+        If you use fixmagmom=true, you will get two fermi-levels, one for each 
+        spin-setting. Normaly these will shifted individually to 0 eV. If you
+        want to shift them as pair to the higher energy use bound=True.
         """
         ldbe = self.by_element()
 
@@ -394,14 +400,18 @@ class RawLDOS:
 
             # Fermi energy
             try:
-                efermi = self.paw.get_fermi_level()
+                if self.paw.occupations.fixmagmom:
+                    efermi = self.paw.get_fermi_levels()
+                else:
+                    efermi = self.paw.get_fermi_level()
             except:
                 # set Fermi level half way between HOMO and LUMO
                 hl = self.paw.occupations.get_homo_lumo(wfs)
                 efermi = (hl[0] + hl[1]) * Hartree / 2
 
             eshift = 0.0
-            if shift:
+
+            if shift and not self.paw.occupations.fixmagmom:
                 eshift = -efermi
 
             # set de to sample 4 points in the width
@@ -411,6 +421,12 @@ class RawLDOS:
             string += append_weight_strings(ldbe, data)
 
             for s in range(wfs.nspins):
+                if self.paw.occupations.fixmagmom:
+                    if not bound:
+                        eshift = - efermi[s]
+                    else:
+                        eshift = - efermi.max()
+
                 print >> f, fmf.data(data),
 
                 print >> f, '# Gauss folded, width=%g [eV]' % width

@@ -222,11 +222,32 @@ class GPAW(PAW):
         return n_G / Bohr**3
 
     def get_fermi_level(self):
-        """Return the Fermi-level."""
+        """Return the Fermi-level(s)."""
         eFermi = self.occupations.get_fermi_level()
         if eFermi is not None:
             eFermi *= Hartree
         return eFermi
+
+    def get_fermi_levels(self):
+        """Return the Fermi-levels in case of fixed-magmom."""
+        eFermi_np_array = self.occupations.get_fermi_levels()
+        if eFermi_np_array is not None:
+            eFermi_np_array *= Hartree
+        return eFermi_np_array
+
+    def get_fermi_levels_mean(self):
+        """Return the mean of th Fermi-levels in case of fixed-magmom."""
+        eFermi_mean = self.occupations.get_fermi_levels_mean()
+        if eFermi_mean is not None:
+            eFermi_mean *= Hartree
+        return eFermi_mean
+
+    def get_fermi_splitting(self):
+        """Return the Fermi-level-splitting in case of fixed-magmom."""
+        eFermi_splitting = self.occupations.get_fermi_splitting()
+        if eFermi_splitting is not None:
+            eFermi_splitting *= Hartree
+        return eFermi_splitting
 
     def get_wigner_seitz_densities(self, spin):
         """Get the weight of the spin-density in Wigner-Seitz cells

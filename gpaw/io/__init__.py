@@ -175,7 +175,11 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
         w['Exc'] = hamiltonian.Exc
         w['S'] = hamiltonian.S
         try:
-            w['FermiLevel'] = paw.occupations.get_fermi_level()
+            if paw.occupations.fixmagmom:
+                w['FermiLevel'] = paw.occupations.get_fermi_levels_mean()
+                w['FermiSplit'] = paw.occupations.get_fermi_splitting()
+            else:
+                w['FermiLevel'] = paw.occupations.get_fermi_level()
         except ValueError:
             # Zero temperature calculation - don't write Fermi level:
             pass
@@ -529,9 +533,20 @@ def read(paw, reader):
             paw.scf.energies = [Etot, Etot + energy_error, Etot]
     else:
         paw.scf.converged = True
-        
-    if not paw.input_parameters.fixmom and 'FermiLevel' in r.get_parameters():
-        paw.occupations.set_fermi_level(r['FermiLevel'])
+
+    if version > 0.6:
+        if paw.occupations.fixmagmom:
+            if 'FermiLevel' in r.get_parameters():
+                paw.occupations.set_fermi_levels_mean(r['FermiLevel'])
+            if 'FermiSplit' in r.get_parameters():
+                paw.occupations.set_fermi_splitting(r['FermiSplit'])
+        else:
+            if 'FermiLevel' in r.get_parameters():
+                paw.occupations.set_fermi_level(r['FermiLevel'])
+    else:
+        if not paw.input_parameters.fixmom and 'FermiLevel' in r.get_parameters():
+            paw.occupations.set_fermi_level(r['FermiLevel'])
+
 
     #paw.occupations.magmom = paw.atoms.get_initial_magnetic_moments().sum()
     
