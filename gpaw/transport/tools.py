@@ -370,6 +370,23 @@ def get_lcao_density_matrix(calc):
             wfs.calculate_density_matrix(kpt.f_n, kpt.C_nM, d_skmm[kpt.s, kpt.q])            
     return d_skmm
 
+def collect_atomic_matrices(asp, setups, ns, comm, rank_a):
+    all_asp = []
+    for a, setup in enumerate(setups):
+        sp = asp.get(a)
+        if sp is None:
+            ni = setup.ni
+            sp = np.empty((ns, ni * (ni + 1) // 2))
+        if comm.size > 1:
+            comm.broadcast(sp, rank_a[a])
+        all_asp.append(sp)      
+    return all_asp
+
+def distribute_atomic_matrices(all_asp, asp, setups):
+    for a in range(len(setups)):
+        if asp.get(a) is not None:
+            asp[a] = all_asp[a]    
+
 def generate_selfenergy_database(atoms, ntk, filename, direction=0, kt=0.1,
                                  bias=[-3,3], depth=3, comm=None):
     from gpaw.transport.sparse_matrix import Banded_Sparse_HSD, CP_Sparse_HSD, Se_Sparse_Matrix
