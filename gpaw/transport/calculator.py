@@ -14,15 +14,15 @@ from gpaw.utilities.memory import maxrss
 
 from gpaw.transport.tools import tri2full, dot, \
           get_atom_indices, substract_pk, get_lcao_density_matrix, \
-          get_pk_hsd, get_matrix_index, aa1d, aa2d
+          get_pk_hsd, get_matrix_index, aa1d, aa2d, collect_atomic_matrices,\
+          distribute_atomic_matrices
 
 from gpaw.transport.sparse_matrix import Tp_Sparse_HSD, Banded_Sparse_HSD, \
                                   CP_Sparse_HSD, Se_Sparse_Matrix
 
 from gpaw.transport.intctrl import IntCtrl, PathInfo
 from gpaw.transport.contour import Contour
-from gpaw.transport.surrounding import Surrounding, collect_D_asp2, \
-                                              collect_D_asp3, distribute_D_asp
+from gpaw.transport.surrounding import Surrounding
 from gpaw.transport.selfenergy import LeadSelfEnergy
 from gpaw.transport.analysor import Transport_Analysor, Transport_Plotter
 
@@ -937,22 +937,13 @@ class Transport(GPAW):
             self.analysor.save_bias_step()
         
         self.scf.converged = self.cvgflag
-        #if self.fixed and self.scf.converged and self.normalize_density:
-        #    self.normalize_density = False
    
-        ## these temperary lines is for storage the transport object
-        #for kpt in self.wfs.kpt_u:
-        #    kpt.rho_MM = None
-        #    kpt.eps_n = np.zeros((self.nbmol))
-        #    kpt.f_n = np.zeros((self.nbmol))
-        ##
         if self.save_bias_data:
-            for kpt in self.wfs.kpt_u:
-                kpt.rho_MM = None
-                kpt.eps_n = None
-                kpt.f_n = None
             vt_sG = self.gd1.collect(self.extended_calc.hamiltonian.vt_sG)
-            dH_asp = collect_D_asp3(self.hamiltonian, self.density.rank_a)
+            ham = self.hamiltonian
+            dH_asp = collect_atomic_matrices(ham.dH_asp, ham.setups,
+                                             ham.nspins, ham.gd.comm,
+                                             self.density.rank_a)
             if self.master:
                 fd = file('bias_data' + str(self.analysor.n_bias_step), 'wb')
                 cPickle.dump((self.bias, vt_sG, dH_asp), fd, 2)
@@ -1845,11 +1836,15 @@ class Transport(GPAW):
 
         D_asp = self.extended_D_asp
         self.extended_calc.wfs.calculate_atomic_density_matrices(D_asp)
-        all_D_asp = collect_D_asp2(D_asp, self.extended_calc.wfs.setups, self.nspins,
-                            self.gd.comm, self.extended_calc.wfs.rank_a)
+        #all_D_asp = collect_D_asp2(D_asp, self.extended_calc.wfs.setups, self.nspins,
+        #                    self.gd.comm, self.extended_calc.wfs.rank_a)
+        wfs = self.extended_calc.wfs
+        all_D_asp = collect_atomic_matrices(D_asp, wfs.setups, self.nspins,
+                                            self.gd.comm, wfs.rank_a)
             
         D_asp = all_D_asp[:len(self.atoms)]
-        distribute_D_asp(D_asp, density)
+        #distribute_D_asp(D_asp, density)
+        distribute_atomic_matrices(D_asp, density.D_asp, density.setups)
 
         self.timer.stop('atomic density')
         comp_charge = density.calculate_multipole_moments()
@@ -2013,7 +2008,9 @@ class Transport(GPAW):
         ham.Exc += ham.Enlxc
         ham.Ekin0 += ham.Enlkin
 
-        dH_asp = collect_D_asp3(ham, self.density.rank_a)
+        #dH_asp = collect_D_asp3(ham, self.density.rank_a)
+        dH_asp = collect_atomic_matrices(ham.dH_asp, ham.setups, ham.nspins,
+                                         ham.gd.comm, self.density.rank_a)
         self.surround.combine_dH_asp(dH_asp)
         self.timer.stop('Hamiltonian')      
 
@@ -2310,7 +2307,9 @@ class Transport(GPAW):
                     all_D_asp.append(D_sp)      
                 
                 D_asp = all_D_asp[:len(self.atoms)]
-                distribute_D_asp(D_asp, density)
+                #distribute_D_asp(D_asp, density)
+                distribute_atomic_matrices(D_asp, density.D_asp,
+                                           density.setups)
 
                 nt_sG = gd1.zeros(self.nspins)
                 wfs.basis_functions.add_to_density(nt_sG, f_asi)
