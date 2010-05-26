@@ -67,6 +67,7 @@ def make_nabla(lmax=2):
 from gpaw import extra_parameters
 if extra_parameters.get('fprojectors'):
     gaunt = make_gaunt(3)
+    Y_LLv = make_nabla(3)
 
 if __name__ == '__main__':
     # XXX
