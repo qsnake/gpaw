@@ -1,54 +1,7 @@
 from ase import Hartree
 import numpy as np
-from gpaw.transport.tools import aa1d, interpolate_array
-
-def collect_D_asp(density):
-    all_D_asp = []
-    for a, setup in enumerate(density.setups):
-        D_sp = density.D_asp.get(a)
-        if D_sp is None:
-            ni = setup.ni
-            D_sp = np.empty((density.nspins, ni * (ni + 1) // 2))
-        if density.gd.comm.size > 1:
-            density.gd.comm.broadcast(D_sp, density.rank_a[a])
-        all_D_asp.append(D_sp)      
-    return all_D_asp
-
-def collect_D_asp2(D_asp, setups, ns, comm, rank_a):
-    all_D_asp = []
-    for a, setup in enumerate(setups):
-        D_sp = D_asp.get(a)
-        if D_sp is None:
-            ni = setup.ni
-            D_sp = np.empty((ns, ni * (ni + 1) // 2))
-        if comm.size > 1:
-            comm.broadcast(D_sp, rank_a[a])
-        all_D_asp.append(D_sp)      
-    return all_D_asp
-
-def collect_D_asp3(ham, rank_a=None):
-    all_D_asp = []
-    if rank_a == None:
-        rank_a = ham.rank_a
-    for a, setup in enumerate(ham.setups):
-        D_sp = ham.dH_asp.get(a)
-        if D_sp is None:
-            ni = setup.ni
-            D_sp = np.empty((ham.nspins, ni * (ni + 1) // 2))
-        if ham.gd.comm.size > 1:
-            ham.gd.comm.broadcast(D_sp, rank_a[a])
-        all_D_asp.append(D_sp)      
-    return all_D_asp
-
-def distribute_D_asp(D_asp, density):
-    for a in range(len(density.setups)):
-        if density.D_asp.get(a) is not None:
-            density.D_asp[a] = D_asp[a]
-
-def distribute_D_asp2(dH_asp, hamiltonian):
-    for a in range(len(hamiltonian.setups)):
-        if hamiltonian.dH_asp.get(a) is not None:
-            hamiltonian.dH_asp[a] = dH_asp[a]
+from gpaw.transport.tools import aa1d, interpolate_array, \
+                          collect_atomic_matrices, distribute_atomic_matrices
    
 class Side:
     def __init__(self, type, atoms, direction, h=None):
@@ -115,8 +68,15 @@ class Side:
             self.boundary_vt_sG = interpolate_array(self.boundary_vt_sG, gd, h, self.direction)            
             self.boundary_nt_sG = interpolate_array(self.boundary_nt_sG, gd, h, self.direction)            
         
-        self.D_asp = collect_D_asp(calc.density)
-        self.dH_asp = collect_D_asp3(calc.hamiltonian)
+        den, ham = calc.density, calc.hamiltonian
+        self.D_asp = collect_atomic_matrices(den.D_asp, den.setups,
+                                             den.nspins, den.gd.comm,
+                                             den.rank_a)
+        self.dH_asp = collect_atomic_matrices(ham.dH_asp, ham.setups,
+                                              ham.nspins, ham.gd.comm,
+                                              ham.rank_a)
+        #self.D_asp = collect_D_asp(calc.density)
+        #self.dH_asp = collect_D_asp3(calc.hamiltonian)
        
         del self.atoms
         
@@ -321,7 +281,8 @@ class Surrounding:
         ham.dH_asp = {}
         for a, D_sp in self.tp.extended_D_asp.items():
             ham.dH_asp[a] = np.zeros_like(D_sp)
-        distribute_D_asp2(all_dH_asp, ham)
+        #distribute_D_asp2(all_dH_asp, ham)
+        distribute_atomic_matrices(all_dH_asp, ham.dH_asp, ham.setups)
         
     def refresh_vt_sG(self):
         nn = self.nn
