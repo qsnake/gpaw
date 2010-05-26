@@ -5,9 +5,7 @@
 
 from ase.units import Hartree
 import numpy as np
-
-# This import is used for sending an warning messaged
-import sys
+import warnings
 
 class OccupationNumbers:
     """Base class for all occupation number objects."""
@@ -79,9 +77,11 @@ class OccupationNumbers:
         raise ValueError('Can not calculate Fermi level!')
 
     def set_fermi_level(self, fermilevel):
-        """This method sets the fermi-level. However, since you
-        get two fermi-levels when doing calculations with fixed 
-        magmom, you should be able to set two fermi-levels.
+        """This method sets the fermi-level.
+        
+        However, since you get two fermi-levels when doing
+        calculations with fixed magmom, you should be able
+        to set two fermi-levels.
 
         So set_fermi_level will give an warning if you supply
         one fermi-level to an fixed-magmom calculation and will
@@ -102,25 +102,27 @@ class OccupationNumbers:
         magmom calculations.
             
         """
-        if (self.fixmagmom):
+        if self.fixmagmom:
             fermilevels = np.array(fermilevel)
             if fermilevels.size == 2:
                 self.fermilevel = fermilevels.mean()
                 self.split = fermilevels[0] - fermilevels[1]
             else:
-                sys.stderr.write('Please use set_fermi_levels when ' +
-                                    'using fixmagmom')
+                warnings.warn('Please use set_fermi_levels when ' +
+                        'using fixmagmom', DeprecationWarning)
                 self.fermilevel = fermilevel
         else:
             self.fermilevel = fermilevel
 
     def set_fermi_levels(self, fermilevels):
-        """This method takes two fermi-levels as argument and
-        sets the fermi-levels in a fixed-magmom calculation
-        according to the supplied levels.
+        """This method sets two fermi levels.
+        
+        It takes two fermi-levels as argument and sets the
+        fermi-levels in a fixed-magmom calculation according
+        to the supplied levels.
         
         """
-        if (self.fixmagmom):
+        if self.fixmagmom:
             fermilevels = np.array(fermilevel)
             if fermilevels.size == 2:
                 self.fermilevel = fermilevels.mean()
@@ -132,13 +134,15 @@ class OccupationNumbers:
                                 'fixmagmom!')
             
     def set_fermi_levels_mean(self, fermilevel):
-        """This method is mostly used for storage/historical reasons.
+        """This method sets the mean of two fermi level.
+        
+        It is mostly used for storage/historical reasons.
         With the combination of this method and "set_fermi_splitting",
         you're able to set the corresponding values direct.
         
         """
-        if (self.fixmagmom):
-            if (isinstance(fermilevel, float)):
+        if self.fixmagmom:
+            if isinstance(fermilevel, float):
                 self.fermilevel = fermilevel
             else:
                 raise ValueError('Please use float for supplying mean ' +
@@ -149,8 +153,9 @@ class OccupationNumbers:
             
 
     def set_fermi_splitting(self, fermisplit):
-        """Set the splitting of the fermi-level (in Ht). This method
-        is used in fixed-magmom calculations.
+        """Set the splitting of the fermi-level (in Ht).
+        
+        This method is used in fixed-magmom calculations.
         
         """
         self.split = fermisplit
@@ -202,6 +207,7 @@ class ZeroKelvin(OccupationNumbers):
 
     def get_fermi_level(self):
         """This function returns the calculated fermi-level.
+
         Care: you get two distinct fermi-levels is you do
         fixed-magmom calculations. Therefor you should use
         "get_fermi_levels" or "get_fermi_levels_mean" in
@@ -213,7 +219,7 @@ class ZeroKelvin(OccupationNumbers):
         if self.fermilevel is None or not np.isfinite(self.fermilevel):
             OccupationNumbers.get_fermi_level(self)  # fail
         else:
-            if (self.fixmagmom):
+            if self.fixmagmom:
                 sys.stderr.write('Please use get_fermi_levels when '+
                                     'using fixmagmom')
                 fermilevels = np.empty(2)
@@ -228,7 +234,7 @@ class ZeroKelvin(OccupationNumbers):
         if self.fermilevel is None or not np.isfinite(self.fermilevel):
             OccupationNumbers.get_fermi_level(self)  # fail
         else:
-            if (self.fixmagmom):
+            if self.fixmagmom:
                 fermilevels = np.empty(2)
                 fermilevels[0] = self.fermilevel + 0.5 * self.split
                 fermilevels[1] = self.fermilevel - 0.5 * self.split
@@ -244,8 +250,7 @@ class ZeroKelvin(OccupationNumbers):
             return self.fermilevel
 
     def get_fermi_splitting(self):
-        """Return the splitting of the fermi level in hartree 
-        (the fermi level also is returned in Ht's).
+        """Return the splitting of the fermi level in hartree.
             
         Returns 0.0 if calculation is not done using 
         fixmagmom.
