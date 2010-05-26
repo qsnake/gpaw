@@ -26,6 +26,7 @@ from gpaw.spline import Spline
 from gpaw.grid_descriptor import RadialGridDescriptor
 from gpaw.utilities import unpack, pack, fac, hartree, divrl
 from gpaw.rotation import rotation
+from gpaw import extra_parameters
 
 
 def create_setup(symbol, xcfunc, lmax=0, nspins=1,
@@ -379,7 +380,11 @@ class LeanSetup(BaseSetup):
         self.M = s.M
         self.M_p = s.M_p
         self.M_pp = s.M_pp
-        self.K_p = s.K_p
+        #
+	if extra_parameters.get('sic'):
+            self.M0_pp = s.M0_pp
+	#
+	self.K_p = s.K_p
         self.MB = s.MB
         self.MB_p = s.MB_p
 
@@ -693,6 +698,18 @@ class Setup(BaseSetup):
                                                        wmct_g)
         self.M_p = M_p
         self.M_pp = M_pp
+        #
+        # orbital coulomb correction without nuclear charge
+        # (only in case of ODD-functionals)
+        if extra_parameters.get('sic'):
+            M0_p, M0_pp = self.calculate_coulomb_corrections(lcut, n_qg, wn_lqg,
+                                                             -1, Delta_lq,
+                                                             wnt_lqg, g_lg,
+                                                             wg_lg, nt_qg,
+                                                             _np, T_Lqp, nc_g,
+                                                             wnc_g, rdr_g, mct_g,
+                                                             wmct_g)
+            self.M0_pp = M0_pp
 
         if xcfunc.is_gllb():
             if self.extra_xc_data.has_key('core_f'):

@@ -11,6 +11,7 @@ from gpaw.grid_descriptor import EquidistantRadialGridDescriptor
 from gpaw.atom.atompaw import AtomPAW
 from gpaw.atom.configurations import configurations
 from gpaw.basis_data import Basis, BasisFunction
+from gpaw import extra_parameters
 
 setups = {} # Filled out during parsing below
 sc_setups = {} # Semicore
@@ -77,7 +78,10 @@ class HGHSetup(BaseSetup):
         self.M = 0.0
         self.M_p = np.zeros(_np)
         self.M_pp = np.zeros((_np, _np))
-        self.K_p = data.expand_hamiltonian_matrix()
+        if extra_parameters.get('sic'):
+            self.M0_pp = np.zeros((_np, _np))
+
+	self.K_p = data.expand_hamiltonian_matrix()
         self.MB = 0.0
         self.MB_p = np.zeros(_np)
         self.dO_ii = np.zeros((self.ni, self.ni))
