@@ -27,19 +27,26 @@ class Niflheim(Cluster):
                      'python setup.py --remove-default-flags ' +
                      '--customize=doc/install/Linux/Niflheim/' +
                      'el5-xeon-gcc43-acml-4.3.0.py ' +
-                     'install --home=..') != 0:
-            raise RuntimeError('Installation of GPAW failed!')
-
+                     'build_ext') != 0:
+            raise RuntimeError('Installation of GPAW (Xeon) failed!')
+        if os.system('ssh fjorm "cd weekend-tests/gpaw&& ' +
+                     'source /home/camp/modulefiles.sh&& ' +
+                     'module load NUMPY&& '+
+                     'python setup.py --remove-default-flags ' +
+                     '--customize=doc/install/Linux/Niflheim/' +
+                     'el5-opteron-gcc43-goto-1.26-acml-4.3.0.py ' +
+                     'build_ext"') != 0:
+            raise RuntimeError('Installation of GPAW (Opteron) failed!')
+        
         os.system('wget --no-check-certificate --quiet ' +
                   'http://wiki.fysik.dtu.dk/stuff/gpaw-setups-latest.tar.gz')
         os.system('tar xzf gpaw-setups-latest.tar.gz')
-        os.system('mv gpaw-setups-[0-9]* gpaw-setups')
+        os.system('rm gpaw-setups-latest.tar.gz')
+        os.system('mv gpaw-setups-[0-9]* gpaw/gpaw-setups')
 
     def install_ase(self):
         if os.system('svn checkout %s ase' % self.aserepo) != 0:
             raise RuntimeError('Checkout of ASE failed!')
-        if os.system('cd ase; python setup.py install --home=..'):
-            raise RuntimeError('Installation of ASE failed!')
 
     def install(self):
         self.install_gpaw()
@@ -51,41 +58,53 @@ class Niflheim(Cluster):
 
         self.write_pylab_wrapper(job)
 
-        gpaw_python = os.path.join(self.dir, 'bin/gpaw-python')
+        if job.queueopts is None:
+            if job.ncpus == 1:
+                ppn = '1:opteron:ethernet'
+                nodes = 1
+                arch = 'linux-x86_64-opteron-2.4'
+            elif job.ncpus % 8 == 0:
+                ppn = '8:xeon5570'
+                nodes = job.ncpus // 8
+                arch = 'linux-x86_64-xeon-2.4'
+            else:
+                assert job.ncpus % 4 == 0
+                ppn = '4:opteron:ethernet'
+                nodes = job.ncpus // 4
+                arch = 'linux-x86_64-opteron-2.4'
+            queueopts = '-l nodes=%d:ppn=%s' % (nodes, ppn)
+        else:
+            queueopts = job.queueopts
+            arch = 'linux-x86_64-xeon-2.4'
+            
+        gpaw_python = os.path.join(self.dir, 'gpaw', 'build',
+                                   'bin.' + arch, 'gpaw-python')
 
-        submit_pythonpath = 'PYTHONPATH=%s/lib/python:%s/lib64/python:$PYTHONPATH ' % (self.dir, self.dir)
-        submit_gpaw_setup_path = 'GPAW_SETUP_PATH=%s/gpaw-setups ' % self.dir
+        submit_pythonpath = ':'.join([
+            '%s/ase' % self.dir,
+            '%s/gpaw/build/lib.%s' % (self.dir, arch),
+            '$PYTHONPATH'])
+        submit_gpaw_setup_path = '%s/gpaw/gpaw-setups' % self.dir
 
         run_command = '. /home/camp/modulefiles.sh&& '
-        run_command += 'module load MATPLOTLIB&& ' # loads numpy, matplotlib, ...
+        run_command += 'module load MATPLOTLIB&& ' # loads numpy, mpl, ...
 
         if job.ncpus == 1:
             # don't use mpi here,
             # this allows one to start mpi inside the *.agts.py script
-            run_command += ' ' + submit_pythonpath
-            run_command += ' ' + submit_gpaw_setup_path
+            run_command += ' PYTHONPATH=' + submit_pythonpath
+            run_command += ' GPAW_SETUP_PATH=' + submit_gpaw_setup_path
         else:
-            run_command += 'module load openmpi/1.3.3-1.el5.fys.gfortran43.4.3.2&& '
+            run_command += 'module load '
+            run_command += 'openmpi/1.3.3-1.el5.fys.gfortran43.4.3.2&& '
             run_command += 'mpiexec --mca mpi_paffinity_alone 1 '
-            run_command += '-x ' + submit_pythonpath
-            run_command += '-x ' + submit_gpaw_setup_path
-
-        if job.queueopts is None:
-            if job.ncpus == 1:
-                ppn = '8:xeon5570'
-                nodes = 1
-            else:
-                assert job.ncpus % 8 == 0
-                ppn = '8:xeon5570'
-                nodes = job.ncpus // 8
-            queueopts = '-l nodes=%d:ppn=%s' % (nodes, ppn)
-        else:
-            queueopts = job.queueopts
+            run_command += '-x PYTHONPATH=' + submit_pythonpath
+            run_command += ' -x GPAW_SETUP_PATH=' + submit_gpaw_setup_path
 
         p = subprocess.Popen(
             ['/usr/local/bin/qsub',
              '-V',
-             '%s' % queueopts,
+             queueopts,
              '-l',
              'walltime=%d:%02d:00' %
              (job.walltime // 3600, job.walltime % 3600 // 60),
@@ -95,7 +114,7 @@ class Niflheim(Cluster):
         p.stdin.write(
             'touch %s.start\n' % job.name +
             run_command +
-            '%s %s.py %s > %s.output\n' %
+            ' %s %s.py %s > %s.output\n' %
             (gpaw_python, job.script, job.args, job.name) +
             'echo $? > %s.done\n' % job.name)
         p.stdin.close()
@@ -110,26 +129,19 @@ if __name__ == '__main__':
     os.chdir(os.path.join(os.environ['HOME'], 'weekend-tests'))
 
     niflheim = Niflheim()
-    if not os.path.isfile('bin/gpaw-python'):
+    if 1:
         niflheim.install()
 
     os.chdir('gpaw')
     queue = AGTSQueue()
     queue.collect()
 
-    selected_queue_jobs = []
     # examples of selecting jobs
-    if 0:
-        for j in queue.jobs:
-            if (
-                j.walltime < 3*60 or
-                j.dir.startswith('doc') or
-                j.dir.startswith('gpaw/test/big/bader_water') or
-                j.dir.startswith('doc/devel/memory_bandwidth')
-                ):
-                selected_queue_jobs.append(j)
-
-    if len(selected_queue_jobs) > 0: queue.jobs = selected_queue_jobs
+    #queue.jobs = [j for j in queue.jobs if j.dir.startswith('doc')]
+    #queue.jobs = [j for j in queue.jobs
+    #              if j.dir.startswith('gpaw/test/big/bader_water')]
+    #queue.jobs = [j for j in queue.jobs
+    #              if j.dir.startswith('doc/devel/memory_bandwidth')]
 
     nfailed = queue.run(niflheim)
 
