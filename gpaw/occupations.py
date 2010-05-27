@@ -3,9 +3,9 @@
 
 """Occpation number objects."""
 
-from ase.units import Hartree
-import numpy as np
 import warnings
+import numpy as np
+from ase.units import Hartree
 
 class OccupationNumbers:
     """Base class for all occupation number objects."""
@@ -220,8 +220,8 @@ class ZeroKelvin(OccupationNumbers):
             OccupationNumbers.get_fermi_level(self)  # fail
         else:
             if self.fixmagmom:
-                sys.stderr.write('Please use get_fermi_levels when '+
-                                    'using fixmagmom')
+                warnings.warn('Please use get_fermi_levels when '+
+                              'using fixmagmom', DeprecationWarning)
                 fermilevels = np.empty(2)
                 fermilevels[0] = self.fermilevel + 0.5 * self.split
                 fermilevels[1] = self.fermilevel - 0.5 * self.split
