@@ -68,7 +68,7 @@ class Transport(GPAW):
                        'lead_atoms', 'nleadlayers', 'mol_atoms', 'la_index',
                        'total_charge', 'alpha', 'beta_guess','theta',
                        'LR_leads', 'gate', 'gate_mode', 'gate_atoms', 'gate_fun',                 
-                       'recal_path', 'min_energy',
+                       'recal_path', 'min_energy', 'fix_contour',
                        'use_qzk_boundary','n_bias_step', 'n_ion_step',
                        'scat_restart', 'save_file', 'restart_file',
                        'non_sc', 'fixed_boundary', 'guess_steps', 'foot_print',
@@ -133,6 +133,7 @@ class Transport(GPAW):
         self.n_bias_step = p['n_bias_step']
         self.n_ion_step = p['n_ion_step']
         self.fixed = p['fixed_boundary']
+        self.fix_contour = p['fix_contour']
         self.vaccs = p['vaccs']
         self.lead_guess = p['lead_guess']
         self.buffer_guess = p['buffer_guess']
@@ -236,6 +237,7 @@ class Transport(GPAW):
         p['save_file'] = False
         p['restart_file'] = None
         p['fixed_boundary'] = True
+        p['fix_contour'] = False
         p['non_sc'] = False
         p['spinpol'] = False
         p['verbose'] = False
@@ -920,7 +922,10 @@ class Transport(GPAW):
        
     def get_selfconsistent_hamiltonian(self):
         self.timer.start('init scf')
-        self.initialize_scf()
+        if not self.fix_contour or not self.optimize:
+            self.initialize_scf()
+        else:
+            self.initialize_scf_flags()
         self.timer.stop('init scf')
         
         ##temperary lines
@@ -1096,6 +1101,9 @@ class Transport(GPAW):
             self.get_linear_hartree_potential()
         #------for check convergence------
         #self.ham_vt_old = np.empty(self.hamiltonian.vt_sG.shape)
+        self.initialize_scf_flags()
+
+    def initialize_scf_flags(self): 
         self.ham_vt_diff = None
         self.ham_vt_tol = 1e-2
         self.diag_ham_tol = 5e-3
@@ -1638,7 +1646,7 @@ class Transport(GPAW):
         
         self.timer.start('project hamiltonian')
         h_spkmm, s_pkmm = self.get_hs(self.extended_calc)
-        
+
         if self.gate_mode == 'VM':
             ind = get_matrix_index(self.gate_basis_index)
             h_spkmm[:, :, ind.T, ind] += self.gate * s_pkmm[:, ind.T, ind]        
@@ -1858,7 +1866,7 @@ class Transport(GPAW):
         pseudo_charge = density.gd.integrate(density.nt_sG).sum()
         if pseudo_charge != 0:
             x = -(density.charge + comp_charge) / pseudo_charge
-            density.nt_sG *= x + (x - 1) * self.alpha
+            density.nt_sG *= x - (x - 1) * self.alpha
             self.text('density scaling', x)        
            
     def update_hamiltonian(self):
