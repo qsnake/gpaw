@@ -1,7 +1,37 @@
+from gpaw.mpi import world, serial_comm, rank, size
 import numpy as np
 
-def parallel_partition(N, commrank, commsize, reshape=True):
+def set_communicator(kcommsize=None):
+    """Communicator inilialized."""
+    # wcomm is always set to world
 
+    wcomm = world
+    
+    if kcommsize is None or kcommsize == size or size == 1:
+        # By default, only use parallization in kpoints
+        # then kcomm is set to world communicator
+        # and wS is not parallelized
+        kcomm = world
+        wScomm = serial_comm
+        
+    else:
+        # If use wS parallization for storage of spectral function
+        # then new kpoint and wS communicator are generated
+        assert kcommsize != size
+        r0 = (rank // kcommsize) * kcommsize
+        ranks = np.arange(r0, r0 + kcommsize)
+        kcomm = world.new_communicator(ranks)
+
+        # wS comm generated
+        r0 = rank % kcommsize
+        ranks = np.arange(r0, r0+size, kcommsize)
+        wScomm = world.new_communicator(ranks)
+
+    return kcomm, wScomm, wcomm
+
+
+def parallel_partition(N, commrank, commsize, reshape=True):
+    
     if reshape is True:
         if N % commsize != 0:
             N -= N % commsize

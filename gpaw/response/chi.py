@@ -11,8 +11,8 @@ from gpaw.response.cell import get_primitive_cell, set_Gvectors
 from gpaw.response.symmetrize import find_kq, find_ibzkpt, symmetrize_wavefunction
 from gpaw.response.math_func import delta_function, hilbert_transform, \
      two_phi_planewave_integrals
-from gpaw.response.parallel import parallel_partition, SliceAlongFrequency, \
-     SliceAlongOrbitals
+from gpaw.response.parallel import set_communicator, parallel_partition, \
+     SliceAlongFrequency, SliceAlongOrbitals
 
 class CHI:
     """This class is a calculator for the linear density response function.
@@ -177,10 +177,7 @@ class CHI:
 #        self.Kxc_GG = self.calculate_Kxc(calc.wfs.gd, nt_G)          # G here is the number of plane waves
 
         # Parallelization initialize
-        wcommsize = int(self.NwS * self.npw**2 * 8. / 1024**2) // 1500 # megabyte
-        if wcommsize > 0: # if matrix too large, overwrite kcommsize and distribute matrix
-            self.kcommsize = size // (wcommsize + 1)
-        self.parallel_init(self.kcommsize)
+        self.parallel_init()
 
         # Printing calculation information
         self.print_stuff()
@@ -235,8 +232,6 @@ class CHI:
         chi0_wGG = np.zeros((self.Nw_local, self.npw, self.npw), dtype=complex)
         if self.HilbertTrans:
             specfunc_wGG = np.zeros((self.NwS_local, self.npw, self.npw), dtype = complex)
-        else:
-            assert self.Nw == self.Nw_local
 
         if self.OpticalLimit:
             d_c = [Gradient(gd, i, dtype=complex).apply for i in range(3)]
@@ -301,8 +296,8 @@ class CHI:
             if not self.HilbertTrans:
                 # construct (f_nk - f_n'k+q) / (w + e_nk - e_n'k+q + ieta )
                 C_nn = np.zeros((self.nband, self.nband), dtype=complex)
-                for iw in range(self.Nw):
-                    w = self.wlist[iw] / Hartree 
+                for iw in range(self.Nw_local):
+                    w = self.wlist[iw + self.wstart] / Hartree 
                     for n in range(self.nband):
                         for m in range(self.nband):
                             if  np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > 1e-8:
@@ -362,6 +357,9 @@ class CHI:
             
             chi0_wGG = SliceAlongOrbitals(chi0_Wg, coords, self.wScomm)[Nwtmp1:Nwtmp2]
 
+            self.comm.barrier()
+            del chi0_Wg
+            
         self.chi0_wGG = chi0_wGG / self.vol
         
         return 
@@ -375,8 +373,8 @@ class CHI:
             self.txt = devnull    
 
 
-    def parallel_init(self, kcommsize=None):
-        """Communicator inilialized. By default, only use kcomm and wcomm.
+    def parallel_init(self):
+        """Parallel initialization. By default, only use kcomm and wcomm.
 
         Parameters:
 
@@ -387,47 +385,34 @@ class CHI:
             wcomm:
                  frequency communicator
         """
-        # wcomm is always set to world
-        if self.HilbertTrans:
-            wcomm = world
-        else:
-            wcomm = serial_comm
-        
-        if kcommsize is None or kcommsize == size:
-            # By default, only use parallization in kpoints
-            # then kcomm is set to world communicator
-            # and w is not parallelized
-            kcomm = world
-            wScomm = serial_comm
-            
-        else:
-            # If use w parallization for storage of spectral function
-            # then new kpoint and w communicator are generated
-            assert kcommsize != size
-            r0 = (rank // kcommsize) * kcommsize
-            ranks = np.arange(r0, r0 + kcommsize)
-            kcomm = world.new_communicator(ranks)
 
-            # w comm generated
-            r0 = rank % kcommsize
-            ranks = np.arange(r0, r0+size, kcommsize)
-            wScomm = world.new_communicator(ranks)
+        wcommsize = int(self.NwS * self.npw**2 * 8. / 1024**2) // 1500 # megabyte
+        if wcommsize > 0: # if matrix too large, overwrite kcommsize and distribute matrix
+            self.kcommsize = size // (wcommsize + 1)
 
+        self.kcomm, self.wScomm, self.wcomm = set_communicator(self.kcommsize)
 
         self.nkpt, self.nkpt_local, self.kstart, self.kend = parallel_partition(
-                                          self.nkpt, kcomm.rank, kcomm.size, reshape=False)
+                               self.nkpt, self.kcomm.rank, self.kcomm.size, reshape=False)
         
         self.NwS, self.NwS_local, self.wS1, self.wS2 = parallel_partition(
-                                          self.NwS, wScomm.rank, wScomm.size)
+                               self.NwS, self.wScomm.rank, self.wScomm.size)
 
-        self.Nw, self.Nw_local, self.wstart, self.wend =  parallel_partition(
-                                          self.Nw, wcomm.rank, wcomm.size)
-
-        self.kcomm = kcomm
-        self.wcomm = wcomm
-        self.wScomm = wScomm
+        if self.HilbertTrans:
+            self.Nw, self.Nw_local, self.wstart, self.wend =  parallel_partition(
+                               self.Nw, self.wcomm.rank, self.wcomm.size)
+        else:
+            if self.Nw // size > 1:
+                self.Nw, self.Nw_local, self.wstart, self.wend =  parallel_partition(
+                               self.Nw, self.wcomm.rank, self.wcomm.size, reshape=False)
+            else:
+                # if frequency point is too few, then dont parallelize
+                self.wcomm = serial_comm
+                self.wstart = 0
+                self.wend = self.Nw
+                self.Nw_local = self.Nw
+            
         return
-
 
     
     def printtxt(self, text):
