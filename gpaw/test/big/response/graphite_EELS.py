@@ -2,13 +2,15 @@
 # Refer to A. Rubio and V. Olevano, et.al, Physical Review B 69, 245419 (2004)
 # for comparision of results
 
-import numpy as np
+import os
 import sys
-
 from math import sqrt
+
+import numpy as np
 from ase import Atoms
 from ase.units import Bohr
 from ase.parallel import paropen
+
 from gpaw.atom.basis import BasisMaker
 from gpaw import GPAW
 from gpaw.response.grid_chi import CHI
@@ -63,7 +65,7 @@ if GS:
 
 if EELS:
 
-    calc = GPAW('graphite.gpw',communicator=serial_comm)
+    calc = GPAW('graphite.gpw', communicator=serial_comm)
                 
     dw = 0.1  
     wmax = 40.
@@ -82,6 +84,9 @@ if EELS:
         chi.check_sum_rule()
         
         print >> f, sqrt(np.inner(chi.qq / Bohr, chi.qq / Bohr))
-    
+
+    if rank == 0:
+        os.remove('graphite.gpw')
+
 
 
