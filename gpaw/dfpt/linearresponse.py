@@ -6,7 +6,9 @@ import numpy as np
 
 from gpaw.transformers import Transformer
 from gpaw.poisson import PoissonSolver, FFTPoissonSolver
-from gpaw.mixer import BaseMixer
+# from gpaw.mixer import BaseMixer
+
+from gpaw.dfpt.mixer import BaseMixer
 
 from gpaw.dfpt.sternheimeroperator import SternheimerOperator
 # from gpaw.dfpt.linearsolver import LinearSolver
@@ -96,7 +98,8 @@ class LinearResponse:
         self.interpolator.allocate()
         
         # Initialize mixer
-        self.mixer = BaseMixer(beta=0.4, nmaxold=5, weight=10)
+        # weight = 1 -> no metric is used
+        self.mixer = BaseMixer(beta=0.4, nmaxold=5, weight=1)
         self.mixer.initialize(self.calc.density)
         
         # Linear operator in the Sternheimer equation
@@ -105,12 +108,13 @@ class LinearResponse:
         
         # Preconditioner for the Sternheimer equation
         if use_pc:
-            pc = ScipyPreconditioner(self.gd, wfs.kin,
+            pc = ScipyPreconditioner(self.gd,
                                      self.sternheimer_operator.project,
                                      dtype=self.dtype)
         else:
             pc = None
-        
+
+        self.pc = pc
         # Linear solver for the solution of Sternheimer equation            
         self.linear_solver = ScipyLinearSolver(tolerance=tolerance_sternheimer,
                                                preconditioner=pc)
@@ -141,9 +145,15 @@ class LinearResponse:
         assert self.initialized, ("Linear response calculator "
                                   "not initizalized.")
 
+        # Pass the phases to the preconditioner
+        if not self.perturbation.gamma and self.pc is not None:
+            phase_cd = self.perturbation.get_phases()
+            self.pc.set_phases(phase_cd)
+            
         # Reset mixer
         self.mixer.reset()
-        # List for storing the variations in the wave-functions
+        
+        # List the variations of the wave-functions
         self.psit1_unG = [self.gd.zeros(n=self.nbands, dtype=self.dtype)
                           for kpt in self.kpt_u]
 
@@ -163,12 +173,13 @@ class LinearResponse:
         
         for iter in range(max_iter):
             print     "iter:%3i\t" % iter,
-            print     "calculating wave function variations"            
+            print     "Calculating wave function variations"            
             if iter == 0:
                 self.first_iteration()
             else:
                 norm = self.iteration(iter)
                 print "abs-norm: %6.3e\t" % norm,
+                # The density is complex !!!!!!
                 print "integrated density response: %5.2e" % \
                       self.gd.integrate(self.nt1_G)
         
@@ -219,18 +230,18 @@ class LinearResponse:
         phase_cd = self.perturbation.phase_cd
         
         # Calculate new effective potential
-        nt1_g = self.finegd.zeros()
+        nt1_g = self.finegd.zeros(dtype=self.dtype)
         self.interpolator.apply(self.nt1_G, nt1_g, phase_cd)
 
         # Hartree part -- correct boundary conditions etc ??
-        vHXC1_g = self.finegd.zeros()
+        vHXC1_g = self.finegd.zeros(dtype=self.dtype)
         self.perturbation.solve_poisson(vHXC1_g, nt1_g)
         # self.poisson.solve_neutral(vHXC1_g, nt1_g)
 
         # XC part
         density = self.calc.density
         nt_g_ = density.nt_g.ravel()
-        vXC1_g = self.finegd.zeros()
+        vXC1_g = self.finegd.zeros(dtype=self.dtype)
         vXC1_g.shape = nt_g_.shape
         hamiltonian = self.calc.hamiltonian
         hamiltonian.xcfunc.calculate_fxc_spinpaired(nt_g_, vXC1_g)
@@ -238,7 +249,7 @@ class LinearResponse:
         vHXC1_g += vXC1_g * nt1_g
 
         # Transfer to coarse grid
-        v1_G = self.gd.zeros(self.dtype)
+        v1_G = self.gd.zeros(dtype=self.dtype)
         self.perturbation.restrictor.apply(vHXC1_g, v1_G, phase_cd)
         
         # Add pseudo-potential part
@@ -261,6 +272,7 @@ class LinearResponse:
         for kpt in self.kpt_u:
 
             k = kpt.k
+            print "\t\tk-point %2.1i" % k,
             psit_nG = kpt.psit_nG[:self.nbands]
             psit1_nG = self.psit1_unG[k]
             
@@ -280,11 +292,11 @@ class LinearResponse:
                 # rhs_G -= self.vnl1_nG[n]
 
                 self.sternheimer_operator.project(rhs_G)
-                print "We segfault here."
-                print "\t\tBand %2.1i -" % n,
+                # print "Before linear solver."
+                print "\tBand %2.1i -" % n,
                 iter, info = self.linear_solver.solve(self.sternheimer_operator,
                                                       psit1_G, rhs_G)
-                print "We segfault here."
+                # print "After linear solver."
                 
                 if info == 0:
                     print "linear solver converged in %i iterations" % iter
@@ -299,7 +311,8 @@ class LinearResponse:
         """Calculate density response from variation in the wave-functions."""
 
         # Note - complex density
-        nt1_G = self.gd.zeros(self.dtype)
+        nt1_G = self.gd.zeros(dtype=self.dtype)
+        print nt1_G.dtype, self.dtype
         
         for kpt in self.kpt_u:
 
