@@ -212,7 +212,7 @@ class MailGenerator:
     def send_mail(self, address, server, attachment=None):
         msg = MIMEMultipart()
         msg['Subject'] = self.generate_subject()
-        me = 'agts@' + server
+        me = os.environ['USER'] + '@' + server
         msg['From'] = me
         msg['To'] = address
         msg.attach(MIMEText(self.generate_mail()))
@@ -270,7 +270,7 @@ def analyse(queue, dbpath, outputdir=None, rev=None,
         if job.status == 'success':
             revs, runtimes = db.get_data(name)
             ta = TestAnalyzer(name, revs, runtimes)
-            ta.analyze(abstol=0)
+            ta.analyze(abstol=25, reltol=0.04)
             if ta.status:
                 mg.add_test(name, ta.abschange, ta.relchange)
             ta.plot(outputdir)
