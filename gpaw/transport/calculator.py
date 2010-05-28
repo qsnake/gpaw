@@ -215,9 +215,9 @@ class Transport(GPAW):
         p['n_ion_step'] = 0
         p['eqinttol'] = 1e-4
         p['plot_eta'] = 1e-4
-        p['alpha'] = 0
+        p['alpha'] = 0.6
         p['beta_guess'] = 0.1
-        p['theta'] = 1
+        p['theta'] = 50
         p['vaccs'] = None
         p['LR_leads'] = True
         p['lead_guess'] = False
