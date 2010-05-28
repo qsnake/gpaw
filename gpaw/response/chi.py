@@ -4,13 +4,15 @@ import numpy as np
 from math import sqrt, pi
 from ase.units import Hartree, Bohr
 from gpaw.utilities import unpack, devnull
-from gpaw.mpi import world, rank, size
+from gpaw.mpi import world, rank, size, serial_comm
 from gpaw.lfc import LocalizedFunctionsCollection as LFC
 from gpaw.fd_operators import Gradient
 from gpaw.response.cell import get_primitive_cell, set_Gvectors
 from gpaw.response.symmetrize import find_kq, find_ibzkpt, symmetrize_wavefunction
 from gpaw.response.math_func import delta_function, hilbert_transform, \
      two_phi_planewave_integrals
+from gpaw.response.parallel import parallel_partition, SliceAlongFrequency, \
+     SliceAlongOrbitals
 
 class CHI:
     """This class is a calculator for the linear density response function.
@@ -46,12 +48,12 @@ class CHI:
                  eta=0.2,
                  sigma=1e-5,
                  HilbertTrans=True,
-                 OpticalLimit=False):
+                 OpticalLimit=False,
+                 kcommsize=None):
         
         self.xc = 'LDA'
         self.nspin = 1
         
-        self.comm = world
         self.output_init()
 
         self.calc = calc
@@ -67,6 +69,8 @@ class CHI:
         self.Ecut = Ecut
         self.HilbertTrans = HilbertTrans
         self.OpticalLimit = OpticalLimit
+        self.kcommsize = kcommsize
+        self.comm = world
         if wlist is not None:
             self.HilbertTrans = False
 
@@ -100,14 +104,6 @@ class CHI:
         self.bzkpt_kG = calc.get_bz_k_points()
         self.Ibzkpt_kG = calc.get_ibz_k_points()
         self.nkpt = self.bzkpt_kG.shape[0]
-
-        # parallize in kpoints
-        self.nkpt_local = int(self.nkpt / size)
-
-        self.kstart = rank * self.nkpt_local
-        self.kend = (rank + 1) * self.nkpt_local
-        if rank == size - 1:
-            self.kend = self.nkpt                
 
         # band init
         if self.nband is None:    
@@ -180,6 +176,12 @@ class CHI:
 #        nt_G = calc.density.nt_sG[0] # G is the number of grid points
 #        self.Kxc_GG = self.calculate_Kxc(calc.wfs.gd, nt_G)          # G here is the number of plane waves
 
+        # Parallelization initialize
+        wcommsize = int(self.NwS * self.npw**2 * 8. / 1024**2) // 1500 # megabyte
+        if wcommsize > 0: # if matrix too large, overwrite kcommsize and distribute matrix
+            self.kcommsize = size // (wcommsize + 1)
+        self.parallel_init(self.kcommsize)
+
         # Printing calculation information
         self.print_stuff()
 
@@ -230,9 +232,11 @@ class CHI:
         e_kn = self.e_kn
 
         # Matrix init
-        chi0_wGG = np.zeros((self.Nw, self.npw, self.npw), dtype = complex)
+        chi0_wGG = np.zeros((self.Nw_local, self.npw, self.npw), dtype=complex)
         if self.HilbertTrans:
-            specfunc_wGG = np.zeros((self.NwS, self.npw, self.npw), dtype = complex)
+            specfunc_wGG = np.zeros((self.NwS_local, self.npw, self.npw), dtype = complex)
+        else:
+            assert self.Nw == self.Nw_local
 
         if self.OpticalLimit:
             d_c = [Gradient(gd, i, dtype=complex).apply for i in range(3)]
@@ -323,24 +327,40 @@ class CHI:
                 
                             # calculate delta function
                             deltaw = delta_function(w0, self.dw, self.NwS, self.sigma)
-                            for wi in range(self.NwS):
-                                if deltaw[wi] > 1e-8:
-                                    specfunc_wGG[wi] += tmp_GG * deltaw[wi]
+                            for wi in range(self.NwS_local):
+                                if deltaw[wi + self.wS1] > 1e-8:
+                                    specfunc_wGG[wi] += tmp_GG * deltaw[wi + self.wS1]
 
             t4 = time()
             #print  >> self.txt,'Time for spectral function loop:', t4 - t2, 'seconds'
             
             print >> self.txt, 'finished k', k
 
-        comm = self.comm
- 
         # Hilbert Transform
         if not self.HilbertTrans:
-            comm.sum(chi0_wGG)
+            self.kcomm.sum(chi0_wGG)
         else:
-            comm.sum(specfunc_wGG)
-            chi0_wGG = hilbert_transform(specfunc_wGG, self.Nw, self.dw, self.eta)
-            del specfunc_wGG
+            self.kcomm.sum(specfunc_wGG)
+
+            coords = np.zeros(self.wScomm.size, dtype=int)
+            nG_local = int(self.npw**2 / self.wScomm.size)
+            if self.wScomm.rank == self.wScomm.size - 1:
+                nG_local = self.npw**2 - (self.wScomm.size - 1) * nG_local
+            self.wScomm.all_gather(np.array([nG_local]), coords)
+
+            specfunc_Wg = SliceAlongFrequency(specfunc_wGG, coords, self.wScomm)
+
+            chi0_Wg = hilbert_transform(specfunc_Wg, self.Nw, self.dw, self.eta)[:self.Nw]
+
+            self.comm.barrier()
+            del specfunc_wGG, specfunc_Wg
+
+            # redistribute chi0_wGG
+            assert self.kcomm.size == size // self.wScomm.size
+            Nwtmp1 = (rank % self.kcomm.size ) * self.Nw_local
+            Nwtmp2 = (rank % self.kcomm.size + 1) * self.Nw_local
+            
+            chi0_wGG = SliceAlongOrbitals(chi0_Wg, coords, self.wScomm)[Nwtmp1:Nwtmp2]
 
         self.chi0_wGG = chi0_wGG / self.vol
         
@@ -354,10 +374,61 @@ class CHI:
             sys.stdout = devnull
             self.txt = devnull    
 
-    def parallel_init(self):
+
+    def parallel_init(self, kcommsize=None):
+        """Communicator inilialized. By default, only use kcomm and wcomm.
+
+        Parameters:
+
+            kcomm:
+                 kpoint communicator
+            wScomm:
+                 spectral function communicator
+            wcomm:
+                 frequency communicator
+        """
+        # wcomm is always set to world
+        if self.HilbertTrans:
+            wcomm = world
+        else:
+            wcomm = serial_comm
         
-        pass
+        if kcommsize is None or kcommsize == size:
+            # By default, only use parallization in kpoints
+            # then kcomm is set to world communicator
+            # and w is not parallelized
+            kcomm = world
+            wScomm = serial_comm
+            
+        else:
+            # If use w parallization for storage of spectral function
+            # then new kpoint and w communicator are generated
+            assert kcommsize != size
+            r0 = (rank // kcommsize) * kcommsize
+            ranks = np.arange(r0, r0 + kcommsize)
+            kcomm = world.new_communicator(ranks)
+
+            # w comm generated
+            r0 = rank % kcommsize
+            ranks = np.arange(r0, r0+size, kcommsize)
+            wScomm = world.new_communicator(ranks)
+
+
+        self.nkpt, self.nkpt_local, self.kstart, self.kend = parallel_partition(
+                                          self.nkpt, kcomm.rank, kcomm.size, reshape=False)
         
+        self.NwS, self.NwS_local, self.wS1, self.wS2 = parallel_partition(
+                                          self.NwS, wScomm.rank, wScomm.size)
+
+        self.Nw, self.Nw_local, self.wstart, self.wend =  parallel_partition(
+                                          self.Nw, wcomm.rank, wcomm.size)
+
+        self.kcomm = kcomm
+        self.wcomm = wcomm
+        self.wScomm = wScomm
+        return
+
+
     
     def printtxt(self, text):
         print >> self.txt, text
@@ -397,8 +468,16 @@ class CHI:
         printtxt('')
         printtxt('Use Hilbert Transform: %s' %(self.HilbertTrans) )
         printtxt('')
+        printtxt('Parallelization scheme:')
+        printtxt('     Total cpus      : %d' %(size) )
+        printtxt('     kpoint parsize  : %d' %(self.kcomm.size))
+        printtxt('     specfunc parsize: %d' %(self.wScomm.size))
+        printtxt('     w parsize       : %d' %(self.wcomm.size))
         printtxt('Memory usage estimation:')
-        printtxt('     eRPA_wGG    : %f M' %(self.Nw * self.npw**2 * 8. / 1024**2) )
-        printtxt('     chi0_wGG    : %f M' %(self.Nw * self.npw**2 * 8. / 1024**2) )
-        printtxt('     specfunc_wGG: %f M' %(self.NwS *self.npw**2 * 8. / 1024**2) )
+        printtxt('     chi0_wGG    : %f M' %(self.Nw_local * self.npw**2 * 8. / 1024**2) )
+        if self.HilbertTrans:
+            printtxt('     specfunc_wGG: %f M' %(self.NwS_local *self.npw**2 * 8. / 1024**2) )
+        
+
+        
         

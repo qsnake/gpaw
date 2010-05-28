@@ -1,5 +1,22 @@
 import numpy as np
 
+def parallel_partition(N, commrank, commsize, reshape=True):
+
+    if reshape is True:
+        if N % commsize != 0:
+            N -= N % commsize
+        assert N % commsize == 0
+
+    N_local = N // commsize
+    N_start = commrank * N_local
+    N_end = (commrank + 1) * N_local
+
+    if commrank == commsize - 1:
+        N_end = N
+
+    return N, N_local, N_start, N_end
+
+
 def collect_orbitals(a_xo, coords, comm, root=0):
     """Collect array distributed over orbitals to root-CPU.
 
@@ -79,6 +96,7 @@ def SliceAlongFrequency(a_eO, coords, comm):
         if rank == comm.rank:
             a_Eo = tmp
         o += norb
+
     return a_Eo
 
 
@@ -93,6 +111,7 @@ def SliceAlongOrbitals(a_Eo, coords, comm):
     Norb = np.sqrt(sum(coords)).astype(int)
     nenergies = len(a_Eo) // comm.size # energy points per processor.
     a_Eo = np.ascontiguousarray(a_Eo)
+
     if comm.size == 1:
         return a_Eo.reshape(nenergies, Norb, Norb)
 
