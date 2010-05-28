@@ -206,7 +206,7 @@ class Transport(GPAW):
         p['special_datas'] = []
         p['save_bias_data'] = True
         p['analysis_mode'] = 0
-        p['normalize_density'] = True
+        p['normalize_density'] = False
         p['extra_density'] = False
         p['se_data_path'] = None
         p['neintmethod'] = 0
@@ -217,7 +217,7 @@ class Transport(GPAW):
         p['plot_eta'] = 1e-4
         p['alpha'] = 0.6
         p['beta_guess'] = 0.1
-        p['theta'] = 50
+        p['theta'] = 80
         p['vaccs'] = None
         p['LR_leads'] = True
         p['lead_guess'] = False
