@@ -455,6 +455,9 @@ static MPI_Datatype get_mpi_datatype(PyObject *a)
 static PyObject * mpi_reduce(MPIObject *self, PyObject *args, PyObject *kwargs,
 			     MPI_Op operation, int allowcomplex)
 {
+#ifdef GPAW_MPI_DEBUG
+  MPI_Barrier(self->comm);
+#endif
   PyObject* obj;
   int root = -1;
   int ret;
@@ -711,6 +714,9 @@ static PyObject * mpi_gather(MPIObject *self, PyObject *args)
 
 static PyObject * mpi_broadcast(MPIObject *self, PyObject *args)
 {
+#ifdef GPAW_MPI_DEBUG
+  MPI_Barrier(self->comm);
+#endif
   PyObject* buf;
   int root;
   if (!PyArg_ParseTuple(args, "Oi:broadcast", &buf, &root))
