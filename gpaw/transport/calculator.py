@@ -217,7 +217,7 @@ class Transport(GPAW):
         p['plot_eta'] = 1e-4
         p['alpha'] = 0.6
         p['beta_guess'] = 0.1
-        p['theta'] = 80
+        p['theta'] = 200
         p['vaccs'] = None
         p['LR_leads'] = True
         p['lead_guess'] = False
@@ -563,9 +563,6 @@ class Transport(GPAW):
         self.surround.combine_dH_asp(dH_asp)
         self.gd1.distribute(vt_sG, self.extended_calc.hamiltonian.vt_sG) 
         h_spkmm, s_pkmm = self.get_hs(self.extended_calc)
-        if self.gate_mode == 'VM':
-            ind = get_matrix_index(self.gate_basis_index)
-            h_spkmm[:, :, ind.T, ind] += self.gate * s_pkmm[:, ind.T, ind]   
         nb = s_pkmm.shape[-1]
         dtype = s_pkmm.dtype
         for q in range(self.my_npk):
@@ -586,7 +583,8 @@ class Transport(GPAW):
         if not self.buffer_guess:
             h01 = h_spkmm[0,0,0,0]
         else:
-            nb = self.nblead[0]
+            #nb = self.nblead[0]
+            nb =0
             h01 = h_spkmm[0,0,nb,nb]            
         s00 = self.lead_hsd[0].S[0].recover()[0,0]
         e_shift = (h00 - h01) / s00
@@ -1053,15 +1051,15 @@ class Transport(GPAW):
         if var == 'd':
             if self.step > 0:
                 self.diff_d = self.density.mixer.get_charge_sloshing()
-                tol =  self.scf.max_density_error * self.theta
+                tol =  self.scf.max_density_error
  
                 if self.master:
                     self.text('density: diff = %f  tol=%f' % (self.diff_d,
                                             tol))
-                if self.diff_d < tol:
+                if self.diff_d < tol * self.theta:
                     if self.fixed and not self.normalize_density and self.neutral:
                         self.neutral = False
-                    else:
+                    elif self.diff_d < tol:
                         cvg = True
         return cvg
  
@@ -1106,7 +1104,8 @@ class Transport(GPAW):
     def initialize_scf_flags(self): 
         self.ham_vt_diff = None
         self.ham_vt_tol = 1e-2
-        self.diag_ham_tol = 5e-3
+        #self.diag_ham_tol = 5e-3
+        self.diag_ham_tol = self.scf.max_energy_error * Hartree / len(self.atoms) * 5
         self.step = 0
         self.cvgflag = False
         self.spin_coff = 3. - self.nspins
@@ -1829,8 +1828,7 @@ class Transport(GPAW):
         density = self.density
         self.timer.start('construct density')
 
-        if not self.neutral:
-            density.charge_eps = 1000
+        density.charge_eps = 1000
             
         nt_sG = self.gd1.zeros(self.nspins)
         self.extended_calc.wfs.calculate_density_contribution(nt_sG)
