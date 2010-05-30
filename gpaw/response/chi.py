@@ -95,6 +95,7 @@ class CHI:
 
         if not self.HilbertTrans:
             self.Nw = len(self.wlist)
+            self.NwS = 0
             assert self.wlist is not None
 
         calc = self.calc
@@ -321,10 +322,18 @@ class CHI:
                             tmp_GG = focc * np.outer(rho_Gnn[:,n,m], rho_Gnn[:,n,m].conj())
                 
                             # calculate delta function
-                            deltaw = delta_function(w0, self.dw, self.NwS, self.sigma)
-                            for wi in range(self.NwS_local):
-                                if deltaw[wi + self.wS1] > 1e-8:
-                                    specfunc_wGG[wi] += tmp_GG * deltaw[wi + self.wS1]
+                            w0_id = int(w0 / self.dw)
+                            if w0_id + 1 < self.NwS:
+                                # rely on the self.wS_local is equal in each node!
+                                if self.wScomm.rank == w0_id // self.NwS_local:
+                                    specfunc_wGG[w0_id % self.NwS_local] += tmp_GG * (w0_id + 1 - w0/self.dw) / self.dw
+                                if self.wScomm.rank == (w0_id+1) // self.NwS_local:
+                                    specfunc_wGG[(w0_id+1) % self.NwS_local] += tmp_GG * (w0 / self.dw - w0_id) / self.dw
+                                    
+#                            deltaw = delta_function(w0, self.dw, self.NwS, self.sigma)                            
+#                            for wi in range(self.NwS_local):
+#                                if deltaw[wi + self.wS1] > 1e-8:
+#                                    specfunc_wGG[wi] += tmp_GG * deltaw[wi + self.wS1]
 
             t4 = time()
             #print  >> self.txt,'Time for spectral function loop:', t4 - t2, 'seconds'

@@ -19,20 +19,19 @@ class DF(CHI):
                  eta=0.2,
                  sigma=1e-5,
                  HilbertTrans=True,
-                 OpticalLimit=False):
+                 OpticalLimit=False,
+                 kcommsize=None):
 
         CHI.__init__(self, calc, nband, wmax, dw, wlist, q, Ecut,
-                     eta, sigma, HilbertTrans, OpticalLimit)
-
-
+                     eta, sigma, HilbertTrans, OpticalLimit, kcommsize)
 
 
     def get_RPA_dielectric_matrix(self):
 
         tmp = np.eye(self.npw, self.npw)
-        dm_wGG = np.zeros((self.Nw, self.npw, self.npw), dtype = complex)
+        dm_wGG = np.zeros((self.Nw_local, self.npw, self.npw), dtype = complex)
         
-        for iw in range(self.Nw):
+        for iw in range(self.Nw_local):
             for iG in range(self.npw):
                 qG = np.array([np.inner(self.q + self.Gvec[iG],
                                        self.bcell[:,i]) for i in range(3)])
@@ -45,16 +44,21 @@ class DF(CHI):
 
         dm_wGG = self.get_RPA_dielectric_matrix()
 
-        Nw = dm_wGG.shape[0]
-        dfNLF_w = np.zeros(Nw, dtype = complex)
-        dfLFC_w = np.zeros(Nw, dtype = complex)
+        Nw_local = dm_wGG.shape[0]
+        dfNLF_w = np.zeros(Nw_local, dtype = complex)
+        dfLFC_w = np.zeros(Nw_local, dtype = complex)
+        df1_w = np.zeros(self.Nw, dtype = complex)
+        df2_w = np.zeros(self.Nw, dtype = complex)
 
-        for iw in range(Nw):
+        for iw in range(Nw_local):
             tmp = dm_wGG[iw]
             dfLFC_w[iw] = 1. / np.linalg.inv(tmp)[0, 0]
             dfNLF_w[iw] = tmp[0, 0]  
 
-        return dfNLF_w, dfLFC_w
+        self.wcomm.all_gather(dfNLF_w, df1_w)
+        self.wcomm.all_gather(dfLFC_w, df2_w)
+
+        return df1_w, df2_w
 
 
     def check_sum_rule(self, df1_w, df2_w):

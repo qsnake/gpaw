@@ -2,6 +2,24 @@ import numpy as np
 from scipy.optimize import leastsq
 import pylab as pl
 
+
+def get_orbitals(calc):
+    """Get LCAO orbitals on 3D grid by lcao_to_grid method."""
+
+    bfs_a = [setup.phit_j for setup in calc.wfs.setups]
+    
+    from gpaw.lfc import BasisFunctions
+    bfs = BasisFunctions(calc.wfs.gd, bfs_a, calc.wfs.kpt_comm, cut=True)
+    spos_ac = calc.atoms.get_scaled_positions()
+    bfs.set_positions(spos_ac)
+
+    nLCAO = calc.get_number_of_bands()
+    orb_MG = calc.wfs.gd.zeros(nLCAO)
+    C_M = np.identity(nLCAO)
+    bfs.lcao_to_grid(C_M, orb_MG,q=-1)
+    
+    return orb_MG
+
 def find_peaks(x,y,threshold = None):
     """ Find peaks for a certain curve.
 
