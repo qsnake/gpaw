@@ -30,7 +30,7 @@ class PhononPerturbation(Perturbation):
         
         # Use same q-point grid as the k-point grid of the ground-state
         # calculation 
-        # self.qpts_u = self.calc.wfs.kpt_u
+        self.qpts_u = self.calc.wfs.kpt_u
         
         # Boundary conditions
         pbc_c = calc.atoms.get_pbc()
@@ -43,36 +43,41 @@ class PhononPerturbation(Perturbation):
             self.poisson = PoissonSolver()
         else:
             # For now do Gamma calculation (wrt q-vector!)
-            if True: #len(self.qpts_u) == 1:
+            if False: #len(self.qpts_u) == 1:
                 self.gamma = True
-                # Modified to test the implementation with complex quantities
-                self.dtype = complex
-                self.gamma = False
-                self.ibzk_qc = np.array(((0, 0, 0)), dtype=float)
+                self.dtype = float
                 # Phase factors for the transformation between fine and coarse grids
-                # Look in wavefunction.py for q != 0
                 self.phase_cd = np.ones((3, 2), dtype=complex)        
             else:
                 self.gamma = False
                 self.dtype = complex
                 # Get k-points -- only temp, I need q-vectors; maybe the same ???
                 self.ibzk_qc = self.calc.get_ibz_k_points()
+
+                # Simulate Gamma point calculation
+                self.ibzk_qc = np.array(((0, 0, 0),), dtype=float)
+                # Look in wavefunction.py for q != 0
+                self.phase_cd = None
+                self.phase_cd = np.ones((3, 2), dtype=complex)
                 
             # FFT Poisson solver
             self.poisson = FFTPoissonSolver(dtype=self.dtype)
 
-        # Use existing ghat and vbar instances -- in case of periodic BC's
-        # set the k-points and update (see ``initialize`` member function)
-        self.ghat = calc.density.ghat
-        self.vbar = calc.hamiltonian.vbar
-
-        # Projectors on the atoms
-        self.pt = self.calc.wfs.pt
-        
         # Store grid-descriptors
         self.gd = calc.density.gd
         self.finegd = calc.density.finegd
+
+        # Steal setups
+        setups = calc.wfs.setups
         
+        # Localized functions
+        self.pt = LFC(self.gd, [setup.pt_j for setup in setups])
+        self.nct = LFC(self.gd, [[setup.nct] for setup in setups],
+                       integral=[setup.Nct for setup in setups])
+        self.ghat = LFC(self.finegd, [setup.ghat_l for setup in setups],
+                        integral=sqrt(4 * pi))
+        self.vbar = LFC(self.finegd, [[setup.vbar] for setup in setups])
+
         # Grid transformer -- convert array from fine to coarse grid
         self.restrictor = Transformer(self.finegd, self.gd, nn=3,
                                       dtype=self.dtype, allocate=False)
@@ -86,7 +91,7 @@ class PhononPerturbation(Perturbation):
             self.q = -1
         else:
             # Modified to test the implementation with complex quantities
-            self.q = 0 #None
+            self.q = None
 
         # Coefficients needed for the non-local part of the perturbation
         self.P_ani = None
@@ -95,17 +100,26 @@ class PhononPerturbation(Perturbation):
     def initialize(self):
         """Prepare the various attributes for a calculation."""
 
-        if not self.gamma:
+        # Get scaled atomic positions
+        spos_ac = self.calc.atoms.get_scaled_positions()
 
-            # Get scaled atomic positions
-            spos_ac = self.calc.atoms.get_scaled_positions()
-            
-            # Set q-vectors and update 
+        # Set positions on LFC's
+        self.pt.set_positions(spos_ac)
+        self.nct.set_positions(spos_ac)
+        self.ghat.set_positions(spos_ac)
+        self.vbar.set_positions(spos_ac)
+        
+        if not self.gamma:
+          
+            # Set q-vectors and update
             self.ghat.set_k_points(self.ibzk_qc)
             self.ghat._update(spos_ac)
             # Set q-vectors and update 
             self.vbar.set_k_points(self.ibzk_qc)
             self.vbar._update(spos_ac)
+            # Set q-vectors and update
+            self.pt.set_k_points(self.ibzk_qc)
+            self.pt._update(spos_ac)
 
             # Phase factor exp(i*q*r) needed to obtian the periodic part of lfc
             coor_vg = self.finegd.get_grid_point_coordinates()
@@ -124,12 +138,18 @@ class PhononPerturbation(Perturbation):
         # Grid transformer
         self.restrictor.allocate()
         # Calculate coefficients needed for the non-local part of the PP
-        self.calculate_dP_aniv()
+
+        # self.calculate_dP_aniv()
 
     def get_dtype(self):
         """Return dtype for the phonon perturbation."""
 
         return self.dtype
+
+    def get_phases(self):
+        """Return phases for ``Transformer`` objects."""
+
+        return self.phase_cd
     
     def set_perturbation(self, a, v):
         """Set atom and cartesian coordinate of the perturbation.
@@ -168,8 +188,8 @@ class PhononPerturbation(Perturbation):
 
         """
 
-        assert phi_g.shape == rho_g.shape == self.phase_qg.shape[-3:], \
-               ("Arrays have incompatible shapes.")
+        #assert phi_g.shape == rho_g.shape == self.phase_qg.shape[-3:], \
+        #       ("Arrays have incompatible shapes.")
         assert self.q is not None, ("q-vector not set")
         
         # Solve Poisson's eq. for the potential from the periodic part of the
@@ -177,7 +197,7 @@ class PhononPerturbation(Perturbation):
 
         if self.gamma: # Gamma point calculation wrt the q-vector
             # NOTICE: solve_neutral
-            self.poisson.solve_neutral(v1_g, ghat1_g)  
+            self.poisson.solve_neutral(phi_g, rho_g)  
         else:
             # Divide out the phase factor to get the periodic part 
             rho_g /= self.phase_qg[self.q]

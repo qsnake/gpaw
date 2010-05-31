@@ -2,7 +2,7 @@ import numpy as np
 import scipy.sparse.linalg as sla
 
 class ScipyLinearSolver:
-    """Wrapper class for the linear solvers in scipy.sparse.linalg.
+    """Wrapper class for the linear solvers in ``scipy.sparse.linalg``.
 
     Solve the linear system of equations
 
@@ -16,25 +16,28 @@ class ScipyLinearSolver:
     """
     
     # Supported solvers
-    solvers = {'cg': sla.cg,             # symmetric positive definite 
-               'minres': sla.minres,     # symmetric indefinite
-               'gmres': sla.gmres,       # non-symmetric
-               'bicg': sla.bicg,         # non-symmetric
-               'cgs': sla.cgs,           # similar to bicg
+    solvers = {'cg':       sla.cg,       # symmetric positive definite 
+               'minres':   sla.minres,   # symmetric indefinite
+               'gmres':    sla.gmres,    # non-symmetric
+               'bicg':     sla.bicg,     # non-symmetric
+               'cgs':      sla.cgs,      # similar to bicg
                'bicgstab': sla.bicgstab, # 
-               'qmr': sla.qmr
+               'qmr':      sla.qmr,      #
+               # 'lgmres': sla.lgmres, # scipy v. 0.8.0
                }
-    # 'lgmres': sla.lgmres # scipy v. 0.8.0
     
     def __init__(self, method='cg', preconditioner=None, tolerance=1e-5,
                  max_iter=1000):
         """Initialize the linear solver.
 
+        Parameters
+        ----------
         method: str
             One of the supported linear solvers in scipy.
         preconditioner: LinearOperator
-            Instance of class ``LinearOperator`` from the
-            ``scipy.sparse.linalg`` package.
+            Instance of 1) class ``LinearOperator`` from the
+            ``scipy.sparse.linalg`` package, or 2) user defined class with
+            required attributes.
 
         """
 
@@ -50,28 +53,42 @@ class ScipyLinearSolver:
         # Iteration counter
         self.i = None
         
-    def solve(self, A, x_G, b_G):
-        """Solve linear system Ax = b."""
+    def solve(self, A, x_nG, b_nG):
+        """Solve linear system Ax = b.
+
+        Parameters
+        ----------
+        A: LinearOperator
+            Instance of 1) class ``LinearOperator`` from the
+            ``scipy.sparse.linalg`` package, or 2) user defined class with
+            required attributes.
+        x_nG: ndarray
+            Vector to be solved for (must contain initial starting vector on
+            input).
+        b_nG: ndarray
+            Vector with the right-hand side of the linear equation.
+            
+        """
+
+        shape = x_nG.shape
+        assert shape == b_nG.shape
 
         # Initialize iteration counter
         self.i = 0
-
-        size = x_G.size
-        shape = x_G.shape
-        assert size == np.prod(shape)
-
+        
         # Reshape arrays for scipy
-        x_0 = x_G.ravel()
-        b = b_G.ravel()
-        print "We segfault here 1.", A.dtype, x_G.dtype, b_G.dtype                
+        x_0 = x_nG.ravel()
+        b = b_nG.ravel()
+
         x, info = self.solver(A, b, x0=x_0, maxiter=self.max_iter, M=self.pc,
                               tol=self.tolerance, callback=self.iteration)
-        print "We segfault here 2."        
-        x_G[:] = x.reshape(shape)
+
+        x_nG[:] = x.reshape(shape)
         
         return self.i, info
             
     def iteration(self, x_i):
         """Passed as callback function to the scipy-routine."""
 
+        # Increment iterator counter
         self.i += 1

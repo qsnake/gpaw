@@ -12,7 +12,7 @@ import ase.units as units
 # Temp modules
 from gpaw.utilities import unpack, unpack2
 
-from gpaw.dfpt.linearresponse import LinearResponse
+from gpaw.dfpt.responsecalculator import ResponseCalculator
 from gpaw.dfpt.phononperturbation import PhononPerturbation
 from gpaw.dfpt.dynamicalmatrix import DynamicalMatrix
 
@@ -26,22 +26,35 @@ class PhononCalculator:
         # Store useful objects
         self.atoms = atoms
         self.calc = atoms.get_calculator()
+        
         # Make sure localized functions are initialized
         self.calc.set_positions()
         # Note that this under some circumstances (e.g. when called twice)
         # allocates a new array for the P_ani coefficients !!
 
+        # Include all atoms per default
         self.atoms_a = [atom.index for atom in atoms]
         
         # Phonon perturbation
         self.perturbation = PhononPerturbation(self.calc)
         # Linear response calculator
-        self.response = LinearResponse(self.calc, self.perturbation)
+        self.response = ResponseCalculator(self.calc, self.perturbation)
 
         # Dynamical matrix object
         self.D_matrix = DynamicalMatrix(atoms)
         self.D = None
 
+        # Initialize flag
+        self.initialized = False
+        
+    def initialize(self):
+        """Initialize response calculator and perturbation."""
+        
+        self.response.initialize()
+        self.perturbation.initialize()
+
+        self.initialized = True
+        
     def set_atoms(self, atoms_a):
         """Set indices of atoms to include in the calculation."""
 
@@ -52,12 +65,12 @@ class PhononCalculator:
                  save=False, load=False, filebase=None):
         """Run calculation for atomic displacements and update matrix."""
 
-        self.response.initialize()
-        self.perturbation.initialize()
-
+        if not self.initialized:
+            self.initialize()
+            
         dP_aniv = self.perturbation.dP_aniv
-        # Calculate linear response wrt displacements of all atoms
-        # for atom in self.atoms:
+        
+        # Calculate linear response wrt displacements of specified atoms
         for a in self.atoms_a:
             
             for v in [0, 1, 2]:
@@ -84,8 +97,8 @@ class PhononCalculator:
                             
                 vghat1_g = self.perturbation.vghat1_g
                 
-                self.D_matrix.update_row(a, v, nt1_G, psit1_unG[0],
-                                         vghat1_g, dP_aniv)
+                self.D_matrix.update_row(
+                    a, v, nt1_G, psit1_unG[0], vghat1_g, dP_aniv)
                 
         self.D_matrix.ground_state_local()
         self.D_matrix.ground_state_nonlocal(dP_aniv)

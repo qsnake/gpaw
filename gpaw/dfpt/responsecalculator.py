@@ -1,4 +1,4 @@
-"""This module provides a class for linear density response calculations."""
+"""This module implements a linear response calculator class."""
 
 __all__ = ["ResponseCalculator"]
 
@@ -7,7 +7,6 @@ import numpy as np
 from gpaw.transformers import Transformer
 from gpaw.poisson import PoissonSolver, FFTPoissonSolver
 # from gpaw.mixer import BaseMixer
-
 from gpaw.dfpt.mixer import BaseMixer
 
 from gpaw.dfpt.sternheimeroperator import SternheimerOperator
@@ -106,6 +105,14 @@ class ResponseCalculator:
         self.sternheimer_operator = \
             SternheimerOperator(hamiltonian, wfs, self.gd, dtype=self.dtype)
         
+        # Temp hack for complex gamma point calculation
+        if self.dtype == complex:
+            spos_ac = self.calc.atoms.get_scaled_positions()
+            ibzk_qc = np.array(((0, 0, 0),), dtype=float)
+            self.sternheimer_operator.pt.set_k_points(ibzk_qc)
+            self.sternheimer_operator.pt._update(spos_ac)
+            
+            
         # Preconditioner for the Sternheimer equation
         if use_pc:
             pc = ScipyPreconditioner(self.gd,
@@ -121,7 +128,7 @@ class ResponseCalculator:
 
         self.initialized = True
         
-    def __call__(self, max_iter=1000, tolerance_sc=1.0e-4,
+    def __call__(self, maxiter=1000, tolerance_sc=1.0e-4,
                  tolerance_sternheimer=1e-5):
         """Calculate linear density response.
 
@@ -129,7 +136,7 @@ class ResponseCalculator:
 
         Parameters
         ----------
-        max_iter: int
+        maxiter: int
             Maximum number of iterations in the self-consistent evaluation of
             the density variation
         tolerance_sc: float
@@ -171,13 +178,13 @@ class ResponseCalculator:
         print "Atomic symbol: %s" % symbols[self.perturbation.a]
         print "Component: %s" % components[self.perturbation.v]
         
-        for iter in range(max_iter):
+        for iter in range(maxiter):
             print     "iter:%3i\t" % iter,
             print     "Calculating wave function variations"            
             if iter == 0:
                 self.first_iteration()
             else:
-                norm = self.iteration(iter)
+                norm = self.iteration()
                 print "abs-norm: %6.3e\t" % norm,
                 # The density is complex !!!!!!
                 print "integrated density response: %5.2e" % \
@@ -188,7 +195,7 @@ class ResponseCalculator:
                            % iter)
                     break
                 
-            if iter == max_iter-1:
+            if iter == maxiter-1:
                 print     ("self-consistent loop did not converge in %i "
                            "iterations" % iter)
                 
@@ -201,18 +208,13 @@ class ResponseCalculator:
         self.nt1_G = self.density_response()
         self.mixer.mix(self.nt1_G, [])
 
-    def iteration(self, iter):
-        """Perform iteration.
-
-        Parameters
-        ----------
-        iter: int
-            Iteration number
-
-        """
+    def iteration(self):
+        """Perform iteration."""
 
         # Update variation in the effective potential
         v1_G = self.effective_potential_variation()
+        # Temp attribute
+        self.v1_G = v1_G
         # Update wave function variations
         self.wave_function_variations(v1_G)
         # Update density
@@ -238,10 +240,10 @@ class ResponseCalculator:
         self.perturbation.solve_poisson(vHXC1_g, nt1_g)
         # self.poisson.solve_neutral(vHXC1_g, nt1_g)
 
-        # XC part
+        # XC part - fix this in the xc_functional.py file !!!!
         density = self.calc.density
         nt_g_ = density.nt_g.ravel()
-        vXC1_g = self.finegd.zeros(dtype=self.dtype)
+        vXC1_g = self.finegd.zeros(dtype=float)
         vXC1_g.shape = nt_g_.shape
         hamiltonian = self.calc.hamiltonian
         hamiltonian.xcfunc.calculate_fxc_spinpaired(nt_g_, vXC1_g)
@@ -310,9 +312,8 @@ class ResponseCalculator:
     def density_response(self):
         """Calculate density response from variation in the wave-functions."""
 
-        # Note - complex density
+        # Note - density might be complex
         nt1_G = self.gd.zeros(dtype=self.dtype)
-        print nt1_G.dtype, self.dtype
         
         for kpt in self.kpt_u:
 
