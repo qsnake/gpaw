@@ -43,17 +43,17 @@ class SIC:
         #   
         self.old_coul  = True
         self.inistep   = 0.45    # trial step length in unitary optimization
-        self.uomaxres  = 5E-4    # target accuracy for unitary optimization
-        self.uominres  = 1E+4    # minimum accuracy before unitary opt. starts
+        self.uomaxres  = 5E-3    # target accuracy for unitary optimization
+        self.uominres  = 1E-1    # minimum accuracy before unitary opt. starts
         self.uorelres  = 1E-2    # same, but relative to basis residual
         self.maxuoiter = 20      # maximum number of unitary opt. iterations
         self.maxlsiter = 30      # maximum number of line-search steps
         self.maxcgiter = 0       # maximum number of CG-iterations
-        self.lsinterp  = True    # interpolate for minimum during line search
+        self.lsinterp  = False    # interpolate for minimum during line search
         #
         # debugging parameters
         self.units     = 27.21   # output units 1: in Hartree, 27.21: in eV
-        self.test      = 4       # debug level        
+        self.test      = 3       # debug level        
         self.act_SIC   = True    # self-consistent SIC 
         self.use_paw   = False    # apply PAW corrections
         self.paw_matrix= False    # True
@@ -115,8 +115,11 @@ class SIC:
         # check for periodicity in any dimension
         pbc = self.atoms.get_pbc()
         if pbc[0] or pbc[1] or pbc[2]:
+            self.pbc      = pbc
             self.periodic = True
+            self.old_coul = False
         else:
+            self.pbc      = pbc
             self.periodic = False
         #
         # SIC always requires the spin-polarized variant of the
@@ -327,7 +330,7 @@ class SIC:
         if n_g.ndim == 3:
             #
             self.calculate_sic_potentials()
-            self.unitary_optimization2()
+            self.unitary_optimization()
             #
             # only node 0 of grid communicator writes the total SIC to
             # the grid-point (0,0,0)
@@ -346,7 +349,7 @@ class SIC:
         if na_g.ndim == 3:
             #
             self.calculate_sic_potentials()
-            self.unitary_optimization2()
+            self.unitary_optimization()
             #
             # only one single node writes the total SIC to
             # the grid-point (0,0,0)
@@ -365,7 +368,8 @@ class SIC:
         #
         # check if ODD-functional is active
         if self.wfs.eigensolver.error > self.uominres:
-            return 0.0
+            if not self.active_SIC:
+                return 0.0
         else:
             self.active_SIC = True
         #
@@ -510,176 +514,8 @@ class SIC:
                 dV_nn[:,n] = np.dot(P_ni, np.dot(dH_ii, P_i))
         return dV_nn
 
-        
+
     def unitary_optimization(self):
-        #
-        test    =self.test
-        myblocks=self.myblocks
-        #
-        # skip unitary optimization if initialization is not finished
-        if self.init_SIC:
-            return
-        #
-        # get the basis error from the eigensolver
-        basiserror=self.wfs.eigensolver.error
-        #
-        # allocate temporary arrays
-        U_nn  = np.zeros((self.nbands,self.nbands),dtype=self.W_unn.dtype)
-        O_nn  = np.zeros((self.nbands,self.nbands),dtype=self.W_unn.dtype)
-        localerror=0.0
-        #
-        # prepare logging
-        if test>3 and mpi.rank==0:
-            print ("================  unitary optimization  ===================")
-        #
-        # loop all blocks
-        for u in myblocks:
-            #
-            # get the local index of the block u 
-            q=self.myblocks.index(u)
-            #
-            # logging
-            if test>3:
-                print 'CPU ',mpi.rank,' optimizing block ',u,' (local index ',q,')'
-            #
-            # skip blocks with 1 or 0 particles
-            if self.npart_u[q]<=1:
-                continue
-            #
-            # set initial step-width
-            step=self.step_u[q]
-            #
-            # the unitary optimization iteration
-            for iter in range(self.maxuoiter):
-                #
-                # create a copy of the initial unitary transformation
-                # and orbital dependent energies
-                W_old    = self.W_unn[q].copy()
-                W_min    = self.W_unn[q].copy()
-                #
-#                self.update_optimal_states([u],rotate_only=True)
-                self.update_optimal_states(rotate_only=True)
-                ESI_old  = self.update_potentials([u])
-                ESI_old2 = ESI_old
-                #print ESI_old,u
-                #
-                ESI_min  = ESI_old        # minimum energy found along the line search
-                step_min = self.step_u[q] # step length where the min. was found
-                descent  = False          # have we achived an energy descent?
-                iterV    = 0              # orb. dep. potentials last eval. in iter #
-                iterE    = 0              # energies last evaluated in iter #
-                K        = 0.0
-                #
-                # perform a line-search
-                for lsiter in range(self.maxlsiter):
-                    #
-                    dN=0.0
-                    #
-
-                    self.W_unn[q] = ortho(self.W_unn[q])
-
-                    # apply unitary transformation to matrix W
-                    #print self.K_unn
-                    matrix_exponential(self.K_unn[q],U_nn,step)
-                    matrix_multiply(U_nn,W_old.copy(),self.W_unn[q])
-                    #print U_nn
-                    #
-                    # check change in norm
-                    matrix_multiply(self.W_unn[q],self.W_unn[q].T.conj(),O_nn)
-                    O_nn=O_nn-np.eye(self.nbands)
-                    dN=dN+sqrt(np.sum(O_nn*O_nn.conj()))
-                    #
-                    # compute the orbital dependent energy
-                    self.update_optimal_states([u],rotate_only=True)
-#                    self.update_optimal_states(rotate_only=True)
-                    ESI   = self.update_potentials([u])
-                    iterV = lsiter
-                    #
-                    #step = step + step*(1.0/(ESI-ESI_old))
-                    #print u,q,ESI,ESI_min
-                    if ESI<ESI_min:
-                        #
-                        # increase steplength
-                        step    = step*(1.0 + 1.0/self.nstep)
-                        step_min= step
-                        ESI_min = ESI
-                        iterE   = lsiter
-                        W_min   = self.W_unn[q].copy()
-                        descent  = True
-                    else:
-                        #
-                        if not descent:
-                            #
-                            # decrease steplength
-                            step=step*pow(1.0 + 1.0/self.nstep,-self.mstep)
-                            descent=False
-                        else:
-                            #
-                            # we already found a minimum, so we can exit...
-                            break
-                    #
-                    if test>4:
-                        if self.finegd.comm.rank == 0:
-                            print 'lsiter :',lsiter,ESI,step,descent
-                    #
-                    self.UOsteps=self.UOsteps+1
-                #
-                # bad luck: line search did not find any lower energy for
-                # the tested step-sizes.
-                # --> just revert to the initial unitary transformation, exit
-                # unitary optimization and hope that the changes due to the
-                # optimization of the basis will cure the problem within the
-                # next iteration cycle. Still if this is not the case the
-                # step-size will be reduced within each unsuccessful call
-                # which should finally yield an energy gain in the limit step->0
-                if not descent:
-                    self.W_unn[q] = W_old.copy()
-                    ESI=ESI_old
-                    break
-                #
-                # select the optimal step-size
-                step          = step_min
-                ESI           = ESI_min
-                self.W_unn[q] = W_min.copy()
-                #
-                # if the potentials belong to a different step-length -> update
-                if iterV != iterE:
-#                    self.update_optimal_states([u],rotate_only=True)
-                    self.update_optimal_states(rotate_only=True)                    
-                    ESI   = self.update_potentials([u])
-                #
-                # update the matrixelements of V and Kappa
-                # and accumulate total residual of unitary optimization
-                self.calculate_sic_matrixelements([u])
-                self.RSI_u[q]=self.normK_u[q]
-                #
-                # logging
-                if test>1:
-                    dE=max(abs(ESI-ESI_old),1.0E-16)
-                    dN=max(abs(dN),1.0E-16)
-                    K =sqrt(max(self.RSI_u[q],1.0E-16))
-                    if self.finegd.comm.rank == 0:
-                        print(" UO-iter %3i : %10.5f  %5.1f %5.1f %5.1f %12.4f %3i" %
-                              (iter+1,ESI*self.units,log10(dE),log10(K),
-                               log10(abs(dN)),step,lsiter))
-            
-                if K<basiserror*self.uorelres or K<self.uomaxres:
-                    localerror = localerror + K**2
-                    break
-            #
-            # save step for next run
-            self.step_u[q]  = step
-            
-        if test>3 and mpi.rank==0:
-            print ("============  finished unitary optimization  ==============")
-        #print self.UOsteps
-        #
-        # add residual of unitary optimization to basis error to
-        # avoid premature exit of basis optimization
-        if self.adderror:
-            self.wfs.eigensolver.error = sqrt(0.5*(basiserror**2 + localerror))
-
-    def unitary_optimization2(self):
         #
         test    =self.test
         myblocks=self.myblocks
@@ -711,8 +547,9 @@ class SIC:
             q=self.myblocks.index(u)
             #
             # logging
-            if test>3:
-                print 'CPU ',mpi.rank,' optimizing block ',u,' (local index ',q,')'
+            if test>6:
+                print 'CPU ',mpi.rank,' optimizing block ',u,\
+                ' (local index ',q,')'
             #
             # skip blocks with 1 or 0 particles
             if self.npart_u[q]<=1:
@@ -720,16 +557,16 @@ class SIC:
             #
             # the unitary optimization iteration
             #
-            epsstep  = 0.001
-            dltstep  = 0.1
+            epsstep  = 0.005  # 0.005
+            dltstep  = 0.1   # 0.1
             #
             # the search direction (initially the gradient)
             D_nn  = self.W_unn[q].copy()
             D_old = 0.0*self.W_unn[q].copy()
             #
             # save the last energy
-            matrix_exponential(self.K_unn[q],U_nn,0.0)
-            matrix_multiply(U_nn,self.W_unn[q].copy(),self.W_unn[q])
+            #matrix_exponential(self.K_unn[q],U_nn,0.0)
+            #matrix_multiply(U_nn,self.W_unn[q].copy(),self.W_unn[q]) 
             self.update_optimal_states([u],rotate_only=True)
             E0=self.update_potentials([u])
             self.calculate_sic_matrixelements([u])
@@ -765,6 +602,7 @@ class SIC:
                 #
                 updated  = False
                 minimum  = False
+                failed   = True
                 #
                 # the "infinitesimal" trial step
                 if (epsstep!=0.0):
@@ -793,29 +631,32 @@ class SIC:
                         matrix_multiply(U_nn,W_old.copy(),self.W_unn[q])
                         self.update_optimal_states([u],rotate_only=True)
                         E1=self.update_potentials([u])
-                        self.calculate_sic_matrixelements([u])
-                        lsiter   = 0
-                        lsmethod = 'convex'
-                        updated  = True
-                        minimum  = True
-                        ESI      = E1
+                        if (E1<ESI_old or True):
+                            self.calculate_sic_matrixelements([u])
+                            lsiter   = 0
+                            lsmethod = 'convex'
+                            updated  = True
+                            minimum  = True
+                            failed   = False
+                            ESI      = E1
+                        else:
+                            optstep  = 0.0
+                            self.K_unn[q][:]=K_old[:]
                     else:
                         optstep  = 0.0
-                        self.K_unn[q][:,:]=K_old[:,:]
+                        self.K_unn[q][:]=K_old[:]
                     #
                 if (optstep==0.0):
                     #
                     # we are in the concave region, just follow the gradient
                     lsmethod='concave'
                     #
-                    # if extrap is disabled, compute energy at step
-                    # else this was done before
-                    #matrix_exponential(self.K_unn[q],U_nn,0.0)
-                    matrix_exponential(D_nn,U_nn,0.0)
-                    matrix_multiply(U_nn,W_old.copy(),self.W_unn[q])
-                    self.update_optimal_states([u],rotate_only=True)
-                    E0=self.update_potentials([u])
-                    step0   = 0.0
+                    ###matrix_exponential(self.K_unn[q],U_nn,0.0)
+                    ##matrix_exponential(D_nn,U_nn,0.0)
+                    ##matrix_multiply(U_nn,W_old.copy(),self.W_unn[q])
+                    #self.W_unn[q,:]=W_old[:]
+                    #self.update_optimal_states([u],rotate_only=True)
+                    #E0=self.update_potentials([u])
                     #
                     step    = dltstep/epsstep*step
                     #while (1==1):
@@ -835,11 +676,24 @@ class SIC:
                     matrix_multiply(U_nn,W_old.copy(),self.W_unn[q])
                     self.update_optimal_states([u],rotate_only=True)
                     E1 = self.update_potentials([u])
+                    #
+                    #
+                    if (E1>E0 and False):
+                        optstep   = 0.0#epsstep
+                        updated   = False
+                        minimum   = False
+                        failed    = False
+                        lsmethod  = 'failed'
+                        maxlsiter = -1
+                    else:
+                        maxlsiter = self.maxlsiter
+                        
                     G       = (E1-E0)/step
+                    step0   = 0.0
                     step1   = step
                     step2   = 2*step
                     #
-                    for lsiter in range(self.maxlsiter):
+                    for lsiter in range(maxlsiter):
                         #
                         # energy at the new position
                         #matrix_exponential(K_old,U_nn,step2)
@@ -849,7 +703,7 @@ class SIC:
                         E2=self.update_potentials([u])
                         G  = (E2-E1)/(step2-step1)
                         #
-                        # print lsiter,G,step2,step
+                        #print lsiter,E2,G,step2,step
                         #
                         if (G>0.0):
                             if self.lsinterp:
@@ -892,11 +746,21 @@ class SIC:
                 # and accumulate total residual of unitary optimization
                 if (not updated):
                     #matrix_exponential(K_old,U_nn,optstep)
-                    matrix_exponential(D_nn,U_nn,optstep)
-                    matrix_multiply(U_nn,W_old.copy(),self.W_unn[q])
-                    self.update_optimal_states([u],rotate_only=True)
-                    ESI=self.update_potentials([u])
-                    self.calculate_sic_matrixelements([u])
+                    if (optstep==0.0):
+                        self.W_unn[q,:] =W_old[:] 
+                        #matrix_exponential(D_nn,U_nn,optstep)
+                        #matrix_multiply(U_nn,W_old.copy(),self.W_unn[q])
+                        self.update_optimal_states([u],rotate_only=True)
+                        self.calculate_sic_matrixelements([u])
+                        failed = True
+                        ESI=E0
+                    else:
+                        matrix_exponential(D_nn,U_nn,optstep)
+                        matrix_multiply(U_nn,W_old.copy(),self.W_unn[q])
+                        self.update_optimal_states([u],rotate_only=True)
+                        ESI=self.update_potentials([u])
+                        self.calculate_sic_matrixelements([u])
+                        failed = False
 
                 E0=ESI
                 #
@@ -906,18 +770,17 @@ class SIC:
                 # 
                 self.RSI_u[q]=self.normK_u[q]
                 #
-                #
-                #
                 # logging
+                dE2=max(abs(ESI-ESI_old),1.0E-16)
+                dE =max(abs(ESI-ESI_init),1.0E-16)
+                K =sqrt(max(self.RSI_u[q],1.0E-16))
                 if test>2:
-                    dE2=max(abs(ESI-ESI_old),1.0E-16)
-                    K =sqrt(max(self.RSI_u[q],1.0E-16))
                     if self.finegd.comm.rank == 0:
                         print(" UO-iter %3i : %10.5f  %5.1f %5.1f %6.3f %3i %s" %
                               (iter+1,ESI*self.units,log10(dE2),log10(K),
                                optstep,lsiter+1,lsmethod))
             
-                if K<basiserror*self.uorelres or K<self.uomaxres:
+                if K<basiserror*self.uorelres or K<self.uomaxres or failed :
                     localerror = localerror + K**2
                     break
             
@@ -927,7 +790,7 @@ class SIC:
             print (" initial ODD-energy : %10.5f" %
                   ( ESI_init*self.units))
             print (" final   ODD-energy : %10.5f %5.1f %5.1f" %
-                  (  ESI*self.units,log10(abs(ESI-ESI_init)),log10(K)))
+                  (  ESI*self.units,log10(dE),log10(K)))
         #
         # add residual of unitary optimization to basis error to
         # avoid premature exit of basis optimization
@@ -1288,12 +1151,6 @@ class SIC:
                     nt_g[:] = nt_G[:] 
                 self.timer.stop('rho')
                 #
-                # calculate positions of the orbitals
-                # ------------------------------------------------------------
-		self.timer.start('pos')
-                self.pos_un[:,u,n] = self.update_position(nt_G)
-		self.timer.stop('pos')
-                #
                 # compute the masked density and its effect on the
                 # norm of density
                 # ------------------------------------------------------------
@@ -1302,11 +1159,14 @@ class SIC:
 		    self.timer.start('localization masks')
 		    #
                     if (self.gauss==None):
-                        self.gauss     = Gaussian(self.finegd,self.cell)
+                        self.gauss     = Gaussian(self.finegd,self.cell,self.pbc)
                         self.rho_gauss = np.ndarray(nt_g.shape,dtype=float)
                         self.phi_gauss = np.ndarray(nt_g.shape,dtype=float)
                         self.mask      = np.ndarray(nt_g.shape,dtype=float)
                     #
+                    # calculate positions of the orbitals
+                    # --------------------------------------------------------
+                    self.pos_un[:,u,n]=self.gauss.get_positions(nt_g)
                     self.gauss.get_fields(self.pos_un[:,u,n],self.rho_gauss,
                                           self.phi_gauss,self.mask)
                     if (self.periodic):
@@ -1703,7 +1563,7 @@ def matrix_exponential(G_nn,U_nn,dlt):
         V_nn =  1j*G_nn.real 
 
     diagonalize(V_nn,w_n)
-        
+    #
     for n in range(ndim):
         for m in range(ndim):
             U_nn[n,m] = 0.0
