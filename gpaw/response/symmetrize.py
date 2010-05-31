@@ -39,30 +39,26 @@ def find_ibzkpt(symrel, kpt_IBZkG, kptBZ):
     iop = 0
     timerev = False
 
-    for ioptmp in range(len(symrel)):
-        for i in range(kpt_IBZkG.shape[0]):
-            tmp = np.inner(symrel[ioptmp], kpt_IBZkG[i])
-            if (np.abs(tmp - kptBZ) < 1e-8).all():
+    for ioptmp, op in enumerate(symrel):
+        for i, ibzk in enumerate(kpt_IBZkG):
+            diff_c = np.dot(ibzk, op.T) - kptBZ
+            if (np.abs(diff_c - diff_c.round()) < 1e-8).all():
                 ibzkpt = i
                 iop = ioptmp
                 find = True
                 break
-        if find == True:
-            break
-    
-    if find == False:
-        for ioptmp in range(len(symrel)):
-            for i in range(kpt_IBZkG.shape[0]):
-                tmp = np.inner(symrel[ioptmp], kpt_IBZkG[i])
-                if (np.abs(tmp + kptBZ) < 1e-8).all():
-                    ibzkpt = i
-                    iop = ioptmp
-                    find = True
-                    timerev = True
-                    break
-            if find == True:
+
+            diff_c = np.dot(ibzk, op.T) + kptBZ
+            if (np.abs(diff_c - diff_c.round()) < 1e-8).all():
+                ibzkpt = i
+                iop = ioptmp
+                find = True
+                timerev = True
                 break
             
+        if find == True:
+            break
+        
     if find == False:        
         print kptBZ
         print kpt_IBZkG
