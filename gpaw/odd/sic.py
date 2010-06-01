@@ -13,7 +13,7 @@ from gpaw.utilities.lapack import diagonalize
 from gpaw.xc_functional import XCFunctional
 from gpaw.utilities.timing import Timer
 from gpaw.poisson import PoissonSolver
-from gpaw.sic_gauss import Gaussian
+from gpaw.odd.sic_gauss import Gaussian
 from gpaw.atom.generator import Generator, parameters
 from gpaw.utilities import hartree
 from gpaw.lfc import LFC
