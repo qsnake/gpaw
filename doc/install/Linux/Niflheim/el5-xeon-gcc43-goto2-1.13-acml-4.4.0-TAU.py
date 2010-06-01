@@ -4,7 +4,7 @@ libraries = [
     'gfortran',
     'scalapack', 'mpiblacsF77init', 'mpiblacs', 'scalapack',
     'goto2', 'acml', 'acml_mv',
-    'mpi','mpi_f77'
+    # must not link to mpi explicitly: -export-dynamic must be used instead
     ]
 library_dirs =[
     '/opt/openmpi/1.3.3-1.el5.fys.gfortran43.4.3.2/lib64',
@@ -15,7 +15,7 @@ library_dirs =[
     ]
 include_dirs +=['/opt/openmpi/1.3.3-1.el5.fys.gfortran43.4.3.2/include']
 extra_link_args =[
-    '-Wl,-rpath=/opt/openmpi/1.3.3-1.el5.fys.gfortran43.4.3.2/lib64,'
+    '-export-dynamic -Wl,-rpath=/opt/openmpi/1.3.3-1.el5.fys.gfortran43.4.3.2/lib64,'
     '-rpath=/opt/goto2/2.1.13/1.el5.fys.gfortran43.4.3.2.smp/lib64,'
     '-rpath=/opt/acml/4.4.0/gfortran4364/lib,'
     '-rpath=/opt/blacs/1.1/24.el5.fys.gfortran43.4.3.2.openmpi.1.3.3/lib64,'

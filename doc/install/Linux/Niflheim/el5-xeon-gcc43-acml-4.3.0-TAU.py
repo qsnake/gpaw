@@ -3,6 +3,7 @@ compiler = 'gcc43'
 libraries = [
     'gfortran', 'scalapack', 'mpiblacsF77init', 'mpiblacs', 'scalapack',
     'acml',
+    # must not link to mpi explicitly: -export-dynamic must be used instead
     ]
 library_dirs = [
     '/opt/openmpi/1.3.3-1.el5.fys.gfortran43.4.3.2/lib64',
