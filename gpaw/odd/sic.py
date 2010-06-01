@@ -1,9 +1,11 @@
 """SIC stuff - work in progress!"""
 
+from math import pi,cos,sin,log10,exp,atan2
+
 import numpy as np
 import ase.units as units
-import gpaw.mpi as mpi
 
+import gpaw.mpi as mpi
 from ase import *
 from gpaw.utilities import pack, unpack
 from gpaw.utilities.blas import axpy, gemm
@@ -12,13 +14,15 @@ from gpaw.xc_functional import XCFunctional
 from gpaw.utilities.timing import Timer
 from gpaw.poisson import PoissonSolver
 from gpaw.sic_gauss import Gaussian
-
 from gpaw.atom.generator import Generator, parameters
 from gpaw.utilities import hartree
-from math import pi,cos,sin,log10,exp,atan2
+from gpaw.lfc import LFC
+from gpaw.odd import SICXCCorrection
+from gpaw.hgh import NullXCCorrection
 
 class SIC:
-    def __init__(self, xcname='LDA',finegrid=False,coufac=1.0, excfac=1.0):
+    def __init__(self, xcname='LDA', finegrid=False, coufac=1.0, excfac=1.0,
+                 nspins=1, test=0):
         """Self-Interaction Corrected (SIC) Functionals.
 
         nspins: int
@@ -35,7 +39,7 @@ class SIC:
         self.coufac    = coufac   # coulomb coupling constant
         self.excfac    = excfac   # scaling factor for xc functional.
         self.optcmplx  = False    # complex optimization
-        self.FineGrid  = finegrid # use fine-grid for coulomb/xc evaluation
+        self.finegrid  = finegrid # use fine-grid for coulomb/xc evaluation
         self.adderror  = False    # add unit-opt. residual to basis-residual
         self.init_rattle = 0.1    # perturbation to the canonic states
         self.virt_SIC  = False    # evaluate SIC for virtual orbitals
@@ -53,7 +57,7 @@ class SIC:
         #
         # debugging parameters
         self.units     = 27.21   # output units 1: in Hartree, 27.21: in eV
-        self.test      = 3       # debug level        
+        self.test = test         # debug level        
         self.act_SIC   = True    # self-consistent SIC 
         self.use_paw   = False    # apply PAW corrections
         self.paw_matrix= False    # True
@@ -65,7 +69,7 @@ class SIC:
         self.nblocks   = None    # total number of blocks
         self.mybands   = None    # list of bands of node's responsibility
         self.myblocks  = None    # list of blocks of node's responsibility
-        self.nspins    = None    # number of spins
+        self.nspins    = nspins  # number of spins
         self.init_SIC  = True    # SIC functional has to be initialized?
         self.init_cou  = True    # coulomb solver has to be initialized?
         self.active_SIC= False   # SIC is activated
@@ -75,7 +79,7 @@ class SIC:
         #
         self.xcbasisname = xcname
         self.xcname      = xcname + '-SIC'
-        self.xcbasis     = XCFunctional(self.xcbasisname, 2)
+        self.xcbasis     = XCFunctional(self.xcbasisname, nspins)
         self.gga         = self.xcbasis.gga
         self.mgga        = not True
         self.orbital_dependent = True
@@ -125,12 +129,17 @@ class SIC:
         # SIC always requires the spin-polarized variant of the
         # functional
         if nspins==1:
-            self.xcbasis     = XCFunctional(self.xcbasisname, 1)
             self.xcsic       = XCFunctional(self.xcbasisname, 2)
         else:
-            self.xcbasis     = XCFunctional(self.xcbasisname, 2)
             self.xcsic       = self.xcbasis
-        #
+        
+        for setup in wfs.setups.setups.values():
+            if isinstance(setup.xc_correction, NullXCCorrection):
+                setup.xc_correction_sic = setup.xc_correction
+            else:
+                setup.xc_correction_sic = SICXCCorrection(setup.xc_correction,
+                                                          self.xcsic)
+            
         # check if complex optimization is toggled on
         if (self.optcmplx):
             self.dtype=complex
@@ -139,7 +148,7 @@ class SIC:
         #
         # evaluate ODD-functional on coarse grid or on fine grid
         self.gd          = density.gd
-        if self.FineGrid:
+        if self.finegrid:
             self.finegd  = density.finegd
         else:
             self.finegd  = density.gd
@@ -147,7 +156,7 @@ class SIC:
         # summarize
         if mpi.rank==0:
             print 'SIC: complex optimization   :',self.optcmplx
-            print 'SIC: fine-grid integrations :',self.FineGrid
+            print 'SIC: fine-grid integrations :',self.finegrid
             print 'SIC: periodic boundaries    :',self.periodic
             
         if self.parlayout==1:
@@ -231,11 +240,17 @@ class SIC:
         self.phit_unG    = self.gd.empty((mynblocks,nbands))
         self.Htphit_unG  = self.gd.empty((mynblocks,nbands))
         self.nt_G        = self.gd.empty()
+
+        if not self.finegrid:
+            self.ghat = LFC(density.gd,
+                            [setup.ghat_l
+                             for setup in density.setups],
+                            integral=sqrt(4 * pi))
+            self.ghat.set_positions(atoms.get_scaled_positions() % 1.0)
         
         # Projectors
         self.natoms = atoms.get_number_of_atoms()
-        self.P_uani = [[0 for i in range(self.natoms)] \
-                          for j in range(self.mynblocks)]
+        self.P_uani = [None] * self.mynblocks
         #
         # utility fields on the fine grid
         # (unless coarse grid integrations are forces)
@@ -358,7 +373,6 @@ class SIC:
                 if e_g.ndim == 3:
                     e_g[0, 0, 0] += self.Stot / self.finegd.dv
 
-
     def calculate_sic_potentials(self,blocks=[]):
         #
         # check if wavefunctions have already been initialized
@@ -467,8 +481,15 @@ class SIC:
             self.gd.comm.sum(self.V_unn[q])
             #
             # add PAW corrections
-            if self.paw_matrix:
-                self.V_unn[q] -= self.paw_sic_matrix(q)
+
+            
+	    for n in range(self.nbands):
+	        for a, dH_p in self.dH_unap[u][n].items():
+		    dH_ii = unpack(dH_p)
+		    P_ni = self.P_uani[u][a]
+		    P_i = P_ni[n]
+		    self.V_unn[q, :, n] += np.dot(P_ni, np.dot(dH_ii, P_i))
+
 
             # apply subspace mask
             for n in range(self.nbands):
@@ -477,11 +498,12 @@ class SIC:
                         (n>=self.npart_u[q]  and m<self.npart_u[q])):
                         self.V_unn[q,n,m]=0.0
             #
-            # symmetrization of V and kappa-Matrix
+            print self.V_unn[q]
+	    # symmetrization of V and kappa-Matrix
             self.K_unn[q] = 0.5*(self.V_unn[q] - self.V_unn[q].T.conj())
             self.V_unn[q] = 0.5*(self.V_unn[q] + self.V_unn[q].T.conj())
             #print 'SIC-potential matrix <Phi_i|V_j|Phi_j> of block ',q,' on CPU',mpi.rank
-            #print self.K_unn[q]
+            print self.K_unn[q]
             #
             # total norm of kappa-matrix
             self.normK_u[q] = np.sum(self.K_unn[q]*self.K_unn[q].conj())
@@ -519,6 +541,10 @@ class SIC:
         #
         test    =self.test
         myblocks=self.myblocks
+        ESI_init = 0.0
+        ESI = 0.0
+        dE = 1e-16
+        K = 1e-16
         #
         # skip unitary optimization if initialization is not finished
         if self.init_SIC:
@@ -552,7 +578,7 @@ class SIC:
                 ' (local index ',q,')'
             #
             # skip blocks with 1 or 0 particles
-            if self.npart_u[q]<=1:
+            if self.npart_u[q] <= 1:
                 continue
             #
             # the unitary optimization iteration
@@ -1107,9 +1133,13 @@ class SIC:
         Sxc_un[:,:]  = 0.0
         Stot_un[:,:] = 0.0
         nocc_u[:]    = 0.0
+
+        self.dH_unap = []
         #
         # loop specified blocks and bands
         for u in myblocks:
+            dH_nap = []
+            self.dH_unap.append(dH_nap)
             #
             # get the local index of the block u (which is
             q=self.myblocks.index(u)
@@ -1138,17 +1168,34 @@ class SIC:
                 # compose orbital density
                 # ------------------------------------------------------------
                 self.timer.start('rho')
-                nt_G     = np.abs(self.phit_unG[q,n])**2  
-                #
+                nt_G     = np.abs(self.phit_unG[q,n])**2
+
+                # compose atomic density matrix
+    	        Q_aL = {}
+                D_ap = {}
+                dH_ap = {}
+                dH_nap.append(dH_ap)
+                for a, P_ni in self.P_uani[q].items():
+    	            P_i = P_ni[n]
+    	            D_ii = np.outer(P_i, P_i)
+    	            D_p = pack(D_ii)
+                    D_ap[a] = D_p
+                    
+    	            # corrections to the orbital density
+    	            Q_aL[a] = np.dot(D_p, setups[a].Delta_pL)
+
                 # interpolate density on the fine grid
                 # ------------------------------------------------------------
-                if self.FineGrid:
+                if self.finegrid:
                     Nt = self.gd.integrate(nt_G)
                     density.interpolator.apply(nt_G, nt_g)
                     Ntfine = self.finegd.integrate(nt_g)
                     nt_g  *= Nt / Ntfine
+                    density.ghat.add(nt_g, Q_aL)
                 else:
                     nt_g[:] = nt_G[:] 
+                    self.ghat.add(nt_g, Q_aL)
+
                 self.timer.stop('rho')
                 #
                 # compute the masked density and its effect on the
@@ -1193,7 +1240,19 @@ class SIC:
                     self.xcsic.calculate_spinpolarized(e_g, nt_g, v_g, nt_g0, v_g0)
                     Sxc_un[u,n] = -self.excfac*self.finegd.integrate(e_g)
                     v_g[:]     *= -self.excfac
-                #
+
+                    dSxc = 0.0
+                    for a, D_p in D_ap.items():
+                        D_sp = np.array([D_p, np.zeros_like(D_p)])
+                        dH_sp = np.zeros_like(D_sp)
+                        xccorr = setups[a].xc_correction_sic
+                        dSxc += xccorr.calculate_energy_and_derivatives(
+                            D_sp, dH_sp, a)
+                        dH_ap[a] = -self.excfac * dH_sp[0]
+
+                    print u,n,dSxc,Sxc_un[u, n]
+                    Sxc_un[u, n] -= self.excfac * dSxc
+
                 self.timer.stop('Exc')
                 #
                 # self-interaction correction for U_Hartree
@@ -1205,7 +1264,7 @@ class SIC:
                     #
                     # use the last coulomb potential as initial guess
                     # for the coulomb solver and transform to the fine grid
-                    if self.FineGrid:
+                    if self.finegrid:
                         density.interpolator.apply(v_cou_unG[q,n], v_cou_g)
                     else:
                         v_cou_g[:]=v_cou_unG[q,n][:]
@@ -1232,7 +1291,10 @@ class SIC:
                     v_g[:]      = v_g[:] - self.coufac * v_cou_g[:]
                     #
                     # add PAW corrections to the self-Hartree-Energy
-                    Sha_un[u,n] -= self.coufac*self.paw_sic_hartree_energy(u,n)
+                    Sha_un[u, n] += self.paw_sic_hartree_energy(D_ap, dH_ap)
+
+                    # We need to sum contributions over domain:
+                    assert self.gd.comm.size == 1
                 #
                 self.timer.stop('Hartree')
                 #
@@ -1244,7 +1306,7 @@ class SIC:
                 #
                 # restrict to the coarse-grid
                 # -------------------------------------------------------------
-                if self.FineGrid:
+                if self.finegrid:
                     hamiltonian.restrictor.apply(v_g    , v_unG[q,n])
                     hamiltonian.restrictor.apply(v_cou_g, v_cou_unG[q,n])
                 else:
@@ -1280,24 +1342,23 @@ class SIC:
         # updated states
         return (Stot_un*self.f_un).sum()
 
-    def paw_sic_hartree_energy(self, u, n):
-        """Calculates the PAW corrections for the SIC Hartree energy for band n"""
+    def paw_sic_hartree_energy(self, D_ap, dH_ap):
+        """Calculates the PAW corrections for the SIC Hartree energy.
+
+        returns the PAW correction to the SIC energy and adds corrections
+        to the derivatives dH_ap."""
 
         if not self.use_paw:
             return 0
 
-        natoms = self.natoms
-        wfs         = self.wfs
         setups      = self.wfs.setups
-        dE_a = np.zeros(natoms)
-        for a in range(natoms):
-            P_i = self.P_uani[u][a][n]
-            D_ii = np.outer(P_i, P_i)
-            M0_pp = setups[a].M0_pp
-            D_p = pack(D_ii)
-            dE_a[a] = np.dot(D_p, np.dot(M0_pp, D_p))
+        dE = 0.0
+        for a, D_p in D_ap.items():
+            M_pp = setups[a].M_pp
+            dE += np.dot(D_p, np.dot(M_pp, D_p))
+            dH_ap[a] -= 2 * self.coufac * np.dot(M_pp, D_p)
 
-        return dE_a.sum()
+        return -self.coufac * dE
 
         
         
@@ -1327,17 +1388,16 @@ class SIC:
             if self.optcmplx:
                 gemm(1.0,(self.wfs.kpt_u[q].psit_nG+0j).copy(),self.W_unn[q],0.0,self.phit_unG[q])
             else:
+                self.phit_unG[q] = 0.0
                 gemm(1.0,self.wfs.kpt_u[q].psit_nG,self.W_unn[q],0.0,self.phit_unG[q])
             #
             # apply W to projectors
-            natoms = self.natoms
-            if self.use_paw:
-                P_ani = self.wfs.kpt_u[q].P_ani
-                if self.paw_proj:            
-                    for a in range(natoms):
-                        self.P_uani[q][a] = np.zeros(P_ani[a].shape)
-                        gemm(1.0,P_ani[a].copy(),self.W_unn[q],0.0,self.P_uani[q][a])
-            
+            P_ani = self.wfs.kpt_u[q].P_ani
+            self.P_uani[q] = self.wfs.pt.dict(self.mynbands, zero=True)
+            for a, P_ni in P_ani.items():
+                gemm(1.0, P_ni, self.W_unn[q], 0.0,
+                     self.P_uani[q][a])
+
             # check overlap matrix of orbitals |Phi>
             if test>5:
                 gemm(self.gd.dv,self.phit_unG[q],self.phit_unG[q],0.0,self.O_unn[q],'c')
