@@ -47,6 +47,7 @@ class CHI:
                  Ecut=100.,
                  eta=0.2,
                  sigma=1e-5,
+                 txt=None,
                  HilbertTrans=True,
                  OpticalLimit=False,
                  kcommsize=None):
@@ -54,6 +55,7 @@ class CHI:
         self.xc = 'LDA'
         self.nspin = 1
         
+        self.txtname = txt
         self.output_init()
 
         self.calc = calc
@@ -377,11 +379,19 @@ class CHI:
 
 
     def output_init(self):
-        if rank == 0:
-            self.txt = sys.stdout #open('out.txt','w')
+
+
+	if self.txtname is None:
+            if rank == 0:
+                self.txt = sys.stdout
+            else:
+                sys.stdout = devnull
+                self.txt = devnull
+        
         else:
-            sys.stdout = devnull
-            self.txt = devnull    
+            assert type(self.txtname) is str
+            from ase.parallel import paropen
+            self.txt = paropen(self.txtname,'w')
 
 
     def parallel_init(self):
