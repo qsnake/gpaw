@@ -336,10 +336,11 @@ class CHI:
 #                                if deltaw[wi + self.wS1] > 1e-8:
 #                                    specfunc_wGG[wi] += tmp_GG * deltaw[wi + self.wS1]
 
-
             if rank == 0 and k % (self.nkpt_local // 5) == 0:
+                if k == 0:
+                    totaltime = (time() - t0) * self.nkpt_local
                 dt =  time() - t0
-                self.printtxt('Finished k %d in %f seconds, estimated %f seconds left.  '%(k, dt, (self.nkpt_local-k+1) *dt) )
+                self.printtxt('Finished k %d in %f seconds, estimated %f seconds left.  '%(k, dt, totaltime - dt) )
 
         # Hilbert Transform
         if not self.HilbertTrans:
