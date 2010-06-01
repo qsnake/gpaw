@@ -285,7 +285,7 @@ class CHI:
                                 for ix in range(3):
                                     d_c[ix](psit2_G, dpsit_G, phase_cd)
                                     tmp[ix] = gd.integrate(psit1_G * dpsit_G)
-                                    rho_Gnn[0, n, m] = -1j * np.inner(self.qq, tmp) 
+                                rho_Gnn[0, n, m] = -1j * np.inner(self.qq, tmp) 
 
                             # PAW correction
                             for a, id in enumerate(calc.wfs.setups.id_a):                            
