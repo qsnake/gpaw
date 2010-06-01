@@ -214,7 +214,7 @@ class Transport(GPAW):
         p['n_bias_step'] = 0
         p['n_ion_step'] = 0
         p['eqinttol'] = 1e-4
-        p['plot_eta'] = 1e-4
+        p['plot_eta'] = 0.05
         p['alpha'] = 0.6
         p['beta_guess'] = 0.1
         p['theta'] = 200
@@ -492,6 +492,7 @@ class Transport(GPAW):
             calc.print_iteration(iter)
         self.initialize_hamiltonian_matrix(calc)      
         del calc
+        self.boundary_align_up()        
             
     def get_hamiltonian_initial_guess(self):
         atoms = self.atoms.copy()
