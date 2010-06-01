@@ -70,11 +70,12 @@ class DF(CHI):
             N2 += np.imag(df2_w[iw]) * w
         N1 *= self.dw * self.vol / (2 * pi**2)
         N2 *= self.dw * self.vol / (2 * pi**2)
-        
-        print >> self.txt, 'sum rule:'
+
+        self.printtxt('')
+        self.printtxt('Sum rule:')
         nv = self.nvalence
-        print >> self.txt, 'Without local field correction, N1 = ', N1, (N1 - nv) / nv * 100, '% error'
-        print >> self.txt, 'Include local field correction, N2 = ', N2, (N2 - nv) / nv * 100, '% error'
+        self.printtxt('Without local field: N1 = %f, %f  %% error' %(N1, (N1 - nv) / nv * 100) )
+        self.printtxt('Include local field: N2 = %f, %f  %% error' %(N2, (N2 - nv) / nv * 100) )
 
 
     def get_macroscopic_dielectric_constant(self, df1=None, df2=None):

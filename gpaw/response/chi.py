@@ -64,7 +64,7 @@ class CHI:
         self.wmax = wmax
         self.dw = dw
         self.wlist = wlist
-        self.eta = eta 
+        self.eta = eta
         self.sigma = sigma
         self.Ecut = Ecut
         self.HilbertTrans = HilbertTrans
@@ -102,9 +102,9 @@ class CHI:
         gd = calc.wfs.gd
 
         # kpoint init
-        self.bzkpt_kG = calc.get_bz_k_points()
-        self.Ibzkpt_kG = calc.get_ibz_k_points()
-        self.nkpt = self.bzkpt_kG.shape[0]
+        self.bzk_kv = calc.get_bz_k_points()
+        self.ibzk_kv = calc.get_ibz_k_points()
+        self.nkpt = self.bzk_kv.shape[0]
 
         # band init
         if self.nband is None:    
@@ -123,11 +123,11 @@ class CHI:
         self.h_c = gd.h_cv
 
         # obtain eigenvalues, occupations
-        nibzkpt = self.Ibzkpt_kG.shape[0]
+        nibzkpt = self.ibzk_kv.shape[0]
         kweight = calc.get_k_point_weights()
 
-        self.e_kn = np.array([calc.get_eigenvalues(kpt=k)
-                    for k in range(nibzkpt)]) / Hartree
+        self.e_kn = ( np.array([calc.get_eigenvalues(kpt=k)
+                    for k in range(nibzkpt)]) - calc.get_fermi_level() ) / Hartree
         self.f_kn = np.array([calc.get_occupation_numbers(kpt=k) / kweight[k]
                     for k in range(nibzkpt)]) / self.nkpt
 
@@ -143,12 +143,11 @@ class CHI:
             qr = np.inner(self.qq, r.T).T
             self.expqr_G = np.exp(-1j * qr)
             del r, qr
-            kq = find_kq(self.bzkpt_kG, self.q)
+            kq = find_kq(self.bzk_kv, self.q)
         self.kq = kq
 
         # Plane wave init
         self.npw, self.Gvec, self.Gindex = set_Gvectors(self.acell, self.bcell, self.nG, self.Ecut)
-
 
         # Projectors init
         setups = calc.wfs.setups
@@ -159,7 +158,7 @@ class CHI:
             for idim in range(3):
                 if spos_ac[ia,idim] == 1.:
                     spos_ac[ia,idim] -= 1.
-        pt.set_k_points(self.bzkpt_kG)
+        pt.set_k_points(self.bzk_kv)
         pt.set_positions(spos_ac)
         self.pt = pt
 
@@ -175,7 +174,7 @@ class CHI:
         
 
 #        nt_G = calc.density.nt_sG[0] # G is the number of grid points
-#        self.Kxc_GG = self.calculate_Kxc(calc.wfs.gd, nt_G)          # G here is the number of plane waves
+#        self.Kxc_GG = self.calculate_Kxc(calc.wfs.gd, nt_G)
 
         # Parallelization initialize
         self.parallel_init()
@@ -203,27 +202,28 @@ class CHI:
             for iG in range(self.npw):
                 phi_aGp[a][iG] *= np.exp(-1j * np.inner(kk_Gv[iG], R_a[a]))
 
+        # For optical limit, G == 0 part should change
         if self.OpticalLimit:
             for a, id in enumerate(setups.id_a):
-                # G == 0 part
                 nabla_iiv = setups[a].nabla_iiv
                 phi_aGp[a][0] = -1j * (np.dot(nabla_iiv, self.qq)).ravel()
             
         self.phi_aGp = phi_aGp
         self.printtxt('')
         self.printtxt('Finished phi_Gp !')
-            
+        self.printtxt('')    
         
         return
 
 
     def calculate(self):
+        """Calculate the non-interacting density response function. """
 
         calc = self.calc
         gd = calc.wfs.gd
         sdisp_cd = gd.sdisp_cd
-        IBZkpt_kG = self.Ibzkpt_kG
-        bzkpt_kG = self.bzkpt_kG
+        ibzk_kv = self.ibzk_kv
+        bzk_kv = self.bzk_kv
         kq = self.kq
         pt = self.pt
         f_kn = self.f_kn
@@ -234,65 +234,67 @@ class CHI:
         if self.HilbertTrans:
             specfunc_wGG = np.zeros((self.NwS_local, self.npw, self.npw), dtype = complex)
 
+        # Prepare for the derivative of pseudo-wavefunction
         if self.OpticalLimit:
             d_c = [Gradient(gd, i, dtype=complex).apply for i in range(3)]
             dpsit_G = gd.empty(dtype=complex)
             tmp = np.zeros((3), dtype=complex)
 
+        t0 = time()        
         for k in range(self.kstart, self.kend):
-            ibzkpt1, iop1, timerev1 = find_ibzkpt(self.op, IBZkpt_kG, bzkpt_kG[k])
+
+            # Find corresponding kpoint in IBZ
+            ibzkpt1, iop1, timerev1 = find_ibzkpt(self.op, ibzk_kv, bzk_kv[k])
             if self.OpticalLimit:
                 ibzkpt2, iop2, timerev2 = ibzkpt1, iop1, timerev1
             else:
-                ibzkpt2, iop2, timerev2 = find_ibzkpt(self.op, IBZkpt_kG, bzkpt_kG[kq[k]])
+                ibzkpt2, iop2, timerev2 = find_ibzkpt(self.op, ibzk_kv, bzk_kv[kq[k]])
             
             rho_Gnn = np.zeros((self.npw, self.nband, self.nband), dtype=complex)
             for n in range(self.nband):
-
-                psitold_G =  calc.wfs.kpt_u[ibzkpt1].psit_nG[n]
-                psit1new_G = symmetrize_wavefunction(psitold_G, self.op[iop1], IBZkpt_kG[ibzkpt1],
-                                                          bzkpt_kG[k], timerev1)        
+                # loop over occupied states
+                if self.e_kn[ibzkpt1, n] <= 0.:  
+                    psitold_G =  calc.wfs.kpt_u[ibzkpt1].psit_nG[n]
+                    psit1new_G = symmetrize_wavefunction(psitold_G, self.op[iop1], ibzk_kv[ibzkpt1],
+                                                          bzk_kv[k], timerev1)        
                      
-                P1_ai = pt.dict()
-                pt.integrate(psit1new_G, P1_ai, k)
+                    P1_ai = pt.dict()
+                    pt.integrate(psit1new_G, P1_ai, k)
                 
-                psit1_G = psit1new_G.conj() * self.expqr_G
+                    psit1_G = psit1new_G.conj() * self.expqr_G
                 
-                for m in range(self.nband):
-                    if  np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > 1e-8:
-
-                        psitold_G =  calc.wfs.kpt_u[ibzkpt2].psit_nG[m]
-                        psit2_G = symmetrize_wavefunction(psitold_G, self.op[iop2], IBZkpt_kG[ibzkpt2],
-                                                               bzkpt_kG[kq[k]], timerev2)
+                    for m in range(self.nband):
+                        # loop over unoccupied states
+                        if self.e_kn[ibzkpt2, m] > 0.:
+                            psitold_G =  calc.wfs.kpt_u[ibzkpt2].psit_nG[m]
+                            psit2_G = symmetrize_wavefunction(psitold_G, self.op[iop2], ibzk_kv[ibzkpt2],
+                                                               bzk_kv[kq[k]], timerev2)
                         
-                        P2_ai = pt.dict()
-                        pt.integrate(psit2_G, P2_ai, kq[k])
+                            P2_ai = pt.dict()
+                            pt.integrate(psit2_G, P2_ai, kq[k])
                         
-                        # fft
-                        tmp_G = np.fft.fftn(psit2_G*psit1_G) * self.vol / self.nG0
+                            # fft
+                            tmp_G = np.fft.fftn(psit2_G*psit1_G) * self.vol / self.nG0
 
-                        for iG in range(self.npw):
-                            index = self.Gindex[iG]
-                            rho_Gnn[iG, n, m] = tmp_G[index[0], index[1], index[2]]
+                            for iG in range(self.npw):
+                                index = self.Gindex[iG]
+                                rho_Gnn[iG, n, m] = tmp_G[index[0], index[1], index[2]]
 
-                        if self.OpticalLimit:
-                            phase_cd = np.exp(2j * pi * sdisp_cd * bzkpt_kG[kq[k], :, np.newaxis])
-                            for ix in range(3):
-                                d_c[ix](psit2_G, dpsit_G, phase_cd)
-                                tmp[ix] = gd.integrate(psit1_G * dpsit_G)
-                            rho_Gnn[0, n, m] = -1j * np.inner(self.qq, tmp) 
+                            if self.OpticalLimit:
+                                phase_cd = np.exp(2j * pi * sdisp_cd * bzk_kv[kq[k], :, np.newaxis])
+                                for ix in range(3):
+                                    d_c[ix](psit2_G, dpsit_G, phase_cd)
+                                    tmp[ix] = gd.integrate(psit1_G * dpsit_G)
+                                    rho_Gnn[0, n, m] = -1j * np.inner(self.qq, tmp) 
 
-                        # PAW correction
-                        for a, id in enumerate(calc.wfs.setups.id_a):                            
-                            P_p = np.outer(P1_ai[a].conj(), P2_ai[a]).ravel()
-                            rho_Gnn[:, n, m] += np.dot(self.phi_aGp[a], P_p)
+                            # PAW correction
+                            for a, id in enumerate(calc.wfs.setups.id_a):                            
+                                P_p = np.outer(P1_ai[a].conj(), P2_ai[a]).ravel()
+                                rho_Gnn[:, n, m] += np.dot(self.phi_aGp[a], P_p)
 
-                        if self.OpticalLimit:
-                            rho_Gnn[0, n, m] /= e_kn[ibzkpt2, m] - e_kn[ibzkpt1, n]
+                            if self.OpticalLimit:
+                                rho_Gnn[0, n, m] /= e_kn[ibzkpt2, m] - e_kn[ibzkpt1, n]
                             
-            t2 = time()
-            #print  >> self.txt,'Time for density matrix:', t2 - t1, 'seconds'
-
 
             if not self.HilbertTrans:
                 # construct (f_nk - f_n'k+q) / (w + e_nk - e_n'k+q + ieta )
@@ -301,8 +303,8 @@ class CHI:
                     w = self.wlist[iw + self.wstart] / Hartree 
                     for n in range(self.nband):
                         for m in range(self.nband):
-                            if  np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > 1e-8:
-                                C_nn[n, m] = (f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) / (
+                            if  e_kn[ibzkpt1, n] <= 0. and e_kn[ibzkpt2, m] > 0. :
+                                C_nn[n, m] = 2 * (f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) / (
                                  w + e_kn[ibzkpt1, n] - e_kn[ibzkpt2, m] + 1j * self.eta)
                 
                     # get chi0(G=0,G'=0,w)
@@ -314,9 +316,8 @@ class CHI:
                 # calculate spectral function
                 for n in range(self.nband):
                     for m in range(self.nband):
-                        focc = f_kn[ibzkpt1,n] - f_kn[ibzkpt2,m]
-
-                        if focc > 1e-8:
+                        if e_kn[ibzkpt1, n] <= 0. and e_kn[ibzkpt2, m] > 0.:
+                            focc = f_kn[ibzkpt1,n] - f_kn[ibzkpt2,m]
                             w0 = e_kn[ibzkpt2,m] - e_kn[ibzkpt1,n]
  
                             tmp_GG = focc * np.outer(rho_Gnn[:,n,m], rho_Gnn[:,n,m].conj())
@@ -324,7 +325,7 @@ class CHI:
                             # calculate delta function
                             w0_id = int(w0 / self.dw)
                             if w0_id + 1 < self.NwS:
-                                # rely on the self.wS_local is equal in each node!
+                                # rely on the self.NwS_local is equal in each node!
                                 if self.wScomm.rank == w0_id // self.NwS_local:
                                     specfunc_wGG[w0_id % self.NwS_local] += tmp_GG * (w0_id + 1 - w0/self.dw) / self.dw
                                 if self.wScomm.rank == (w0_id+1) // self.NwS_local:
@@ -335,10 +336,10 @@ class CHI:
 #                                if deltaw[wi + self.wS1] > 1e-8:
 #                                    specfunc_wGG[wi] += tmp_GG * deltaw[wi + self.wS1]
 
-            t4 = time()
-            #print  >> self.txt,'Time for spectral function loop:', t4 - t2, 'seconds'
-            
-            print >> self.txt, 'finished k', k
+
+            if rank == 0 and k % (self.nkpt_local // 5) == 0:
+                dt =  time() - t0
+                self.printtxt('Finished k %d in %f seconds, estimated %f seconds left.  '%(k, dt, (self.nkpt_local-k+1) *dt) )
 
         # Hilbert Transform
         if not self.HilbertTrans:
@@ -347,7 +348,7 @@ class CHI:
             self.kcomm.sum(specfunc_wGG)
 
             coords = np.zeros(self.wScomm.size, dtype=int)
-            nG_local = int(self.npw**2 / self.wScomm.size)
+            nG_local = self.npw**2 // self.wScomm.size
             if self.wScomm.rank == self.wScomm.size - 1:
                 nG_local = self.npw**2 - (self.wScomm.size - 1) * nG_local
             self.wScomm.all_gather(np.array([nG_local]), coords)
@@ -398,18 +399,20 @@ class CHI:
         wcommsize = int(self.NwS * self.npw**2 * 8. / 1024**2) // 1500 # megabyte
         if wcommsize > 0: # if matrix too large, overwrite kcommsize and distribute matrix
             self.kcommsize = size // (wcommsize + 1)
-
+            if self.kcommsize < 1:
+                raise ValueError('Number of cpus are not enough ! ')
+            
         self.kcomm, self.wScomm, self.wcomm = set_communicator(self.kcommsize)
 
         self.nkpt, self.nkpt_local, self.kstart, self.kend = parallel_partition(
                                self.nkpt, self.kcomm.rank, self.kcomm.size, reshape=False)
         
         self.NwS, self.NwS_local, self.wS1, self.wS2 = parallel_partition(
-                               self.NwS, self.wScomm.rank, self.wScomm.size)
+                               self.NwS, self.wScomm.rank, self.wScomm.size, reshape=True)
 
         if self.HilbertTrans:
             self.Nw, self.Nw_local, self.wstart, self.wend =  parallel_partition(
-                               self.Nw, self.wcomm.rank, self.wcomm.size)
+                               self.Nw, self.wcomm.rank, self.wcomm.size, reshape=True)
         else:
             if self.Nw // size > 1:
                 self.Nw, self.Nw_local, self.wstart, self.wend =  parallel_partition(
@@ -434,20 +437,23 @@ class CHI:
         printtxt('')
         printtxt('Parameters used:')
         printtxt('')
-        printtxt('Number of bands: %d' %(self.nband) )
-        printtxt('Number of kpoints: %d' %(self.nkpt) )
         printtxt('Unit cell (a.u.):')
         printtxt(self.acell)
         printtxt('Reciprocal cell (1/a.u.)')
         printtxt(self.bcell)
+        printtxt('Grid spacing (a.u.):')
+        printtxt(self.h_c)
+        printtxt('Number of Grid points / G-vectors, and in total: (%d %d %d), %d'
+                  %(self.nG[0], self.nG[1], self.nG[2], self.nG0))
         printtxt('Volome of cell (a.u.**3): %f' %(self.vol) )
         printtxt('BZ volume (1/a.u.**3): %f' %(self.BZvol) )
         printtxt('')
+        printtxt('Number of bands: %d' %(self.nband) )
+        printtxt('Number of kpoints: %d' %(self.nkpt) )
+        printtxt('Planewave cutoff energy (eV): %f' %(self.Ecut * Hartree) )
+        printtxt('Number of planewave used: %d' %(self.npw) )
+        printtxt('Broadening (eta): %f' %(self.eta * Hartree))
         printtxt('Number of frequency points: %d' %(self.Nw) )
-        printtxt('Number of Grid points / G-vectors, and in total: (%d %d %d), %d'
-                  %(self.nG[0], self.nG[1], self.nG[2], self.nG0))
-        printtxt('Grid spacing (a.u.):')
-        printtxt(self.h_c)
         printtxt('')
         if self.OpticalLimit:
             printtxt('Optical limit calculation ! (q=0.00001)')
@@ -456,9 +462,6 @@ class CHI:
             printtxt('q in cartesian coordinate (1/A): (%f %f %f) '
                   %(self.qq[0] / Bohr, self.qq[1] / Bohr, self.qq[2] / Bohr) )
             printtxt('|q| (1/A): %f' %(sqrt(np.inner(self.qq / Bohr, self.qq / Bohr))) )
-        printtxt('')
-        printtxt('Planewave cutoff energy (eV): %f' %(self.Ecut * Hartree) )
-        printtxt('Number of planewave used: %d' %(self.npw) )
         printtxt('')
         printtxt('Use Hilbert Transform: %s' %(self.HilbertTrans) )
         printtxt('')

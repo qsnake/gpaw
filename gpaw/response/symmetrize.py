@@ -1,19 +1,19 @@
 import numpy as np
 from ase.dft.kpoints import get_monkhorst_shape
 
-def find_kq(bzkpt_kG, q):
+def find_kq(bzk_kv, q):
     """Find the index of k+q for all kpoints in BZ."""
 
-    nkpt = bzkpt_kG.shape[0]
+    nkpt = bzk_kv.shape[0]
     kq = np.zeros(nkpt, dtype=int)
-    nkptxyz = get_monkhorst_shape(bzkpt_kG)
+    nkptxyz = get_monkhorst_shape(bzk_kv)
         
     dk = 1. / nkptxyz 
     kmax = (nkptxyz - 1) * dk / 2.
     N = np.zeros(3, dtype=int)
 
     for k in range(nkpt):
-        kplusq = bzkpt_kG[k] + q
+        kplusq = bzk_kv[k] + q
         for dim in range(3):
             if kplusq[dim] > 0.5: # 
                 kplusq[dim] -= 1.
@@ -24,7 +24,7 @@ def find_kq(bzkpt_kG, q):
 
         kq[k] = N[2] + N[1] * nkptxyz[2] + N[0] * nkptxyz[2]* nkptxyz[1]
 
-        tmp = bzkpt_kG[kq[k]]
+        tmp = bzk_kv[kq[k]]
         if (abs(kplusq - tmp)).sum() > 1e-8:
             print k, kplusq, tmp
             raise ValueError('k+q index not correct!')
@@ -32,23 +32,23 @@ def find_kq(bzkpt_kG, q):
     return kq
 
 
-def find_ibzkpt(symrel, kpt_IBZkG, kptBZ):
-
+def find_ibzkpt(symrel, ibzk_kv, bzk_v):
+    """Given a certain kpoint, find its index in IBZ and related symmetry operations."""
     find = False
     ibzkpt = 0
     iop = 0
     timerev = False
 
     for ioptmp, op in enumerate(symrel):
-        for i, ibzk in enumerate(kpt_IBZkG):
-            diff_c = np.dot(ibzk, op.T) - kptBZ
+        for i, ibzk in enumerate(ibzk_kv):
+            diff_c = np.dot(ibzk, op.T) - bzk_v
             if (np.abs(diff_c - diff_c.round()) < 1e-8).all():
                 ibzkpt = i
                 iop = ioptmp
                 find = True
                 break
 
-            diff_c = np.dot(ibzk, op.T) + kptBZ
+            diff_c = np.dot(ibzk, op.T) + bzk_v
             if (np.abs(diff_c - diff_c.round()) < 1e-8).all():
                 ibzkpt = i
                 iop = ioptmp
@@ -60,8 +60,8 @@ def find_ibzkpt(symrel, kpt_IBZkG, kptBZ):
             break
         
     if find == False:        
-        print kptBZ
-        print kpt_IBZkG
+        print bzk_v
+        print ibzk_kv
         raise ValueError('Cant find corresponding IBZ kpoint!')
 
     return ibzkpt, iop, timerev
