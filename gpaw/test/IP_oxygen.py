@@ -10,9 +10,7 @@ O = Atoms([Atom('O', (a/2, a/2 + 0.5, a/2), magmom=2)],
 e0 = O.get_potential_energy()
 niter0 = calc.get_number_of_iterations()
 
-# calc.set(charge=1) # XXX For some reason changing charge doesn't reset WF
-calc = GPAW(gpts=(32, 36, 32), nbands=4, charge=1)
-O.set_calculator(calc) # XXX should not be needed
+calc.set(charge=1)
 
 e1 = O.get_potential_energy()
 niter1 = calc.get_number_of_iterations()
