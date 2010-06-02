@@ -109,7 +109,7 @@ class CHI:
         self.bzk_kv = calc.get_bz_k_points()
         self.ibzk_kv = calc.get_ibz_k_points()
         self.nkpt = self.bzk_kv.shape[0]
-        self.ftol /= nkpt
+        self.ftol /= self.nkpt
 
         # band init
         if self.nband is None:    
