@@ -47,6 +47,7 @@ class CHI:
                  Ecut=100.,
                  eta=0.2,
                  sigma=1e-5,
+                 ftol=1e-7,
                  txt=None,
                  HilbertTrans=True,
                  OpticalLimit=False,
@@ -68,6 +69,7 @@ class CHI:
         self.wlist = wlist
         self.eta = eta
         self.sigma = sigma
+        self.ftol = ftol
         self.Ecut = Ecut
         self.HilbertTrans = HilbertTrans
         self.OpticalLimit = OpticalLimit
@@ -107,6 +109,7 @@ class CHI:
         self.bzk_kv = calc.get_bz_k_points()
         self.ibzk_kv = calc.get_ibz_k_points()
         self.nkpt = self.bzk_kv.shape[0]
+        self.ftol /= nkpt
 
         # band init
         if self.nband is None:    
@@ -128,8 +131,8 @@ class CHI:
         nibzkpt = self.ibzk_kv.shape[0]
         kweight = calc.get_k_point_weights()
 
-        self.e_kn = ( np.array([calc.get_eigenvalues(kpt=k)
-                    for k in range(nibzkpt)]) - calc.get_fermi_level() ) / Hartree
+        self.e_kn = np.array([calc.get_eigenvalues(kpt=k)
+                    for k in range(nibzkpt)]) / Hartree
         self.f_kn = np.array([calc.get_occupation_numbers(kpt=k) / kweight[k]
                     for k in range(nibzkpt)]) / self.nkpt
 
@@ -254,48 +257,45 @@ class CHI:
             
             rho_Gnn = np.zeros((self.npw, self.nband, self.nband), dtype=complex)
             for n in range(self.nband):
-                # loop over occupied states
-                if self.e_kn[ibzkpt1, n] <= 0.:  
-                    psitold_G =  calc.wfs.kpt_u[ibzkpt1].psit_nG[n]
-                    psit1new_G = symmetrize_wavefunction(psitold_G, self.op[iop1], ibzk_kv[ibzkpt1],
-                                                          bzk_kv[k], timerev1)        
-                     
-                    P1_ai = pt.dict()
-                    pt.integrate(psit1new_G, P1_ai, k)
+                psitold_G =  calc.wfs.kpt_u[ibzkpt1].psit_nG[n]
+                psit1new_G = symmetrize_wavefunction(psitold_G, self.op[iop1], ibzk_kv[ibzkpt1],
+                                                      bzk_kv[k], timerev1)        
+                 
+                P1_ai = pt.dict()
+                pt.integrate(psit1new_G, P1_ai, k)
                 
-                    psit1_G = psit1new_G.conj() * self.expqr_G
+                psit1_G = psit1new_G.conj() * self.expqr_G
                 
-                    for m in range(self.nband):
-                        # loop over unoccupied states
-                        if self.e_kn[ibzkpt2, m] > 0.:
-                            psitold_G =  calc.wfs.kpt_u[ibzkpt2].psit_nG[m]
-                            psit2_G = symmetrize_wavefunction(psitold_G, self.op[iop2], ibzk_kv[ibzkpt2],
-                                                               bzk_kv[kq[k]], timerev2)
-                        
-                            P2_ai = pt.dict()
-                            pt.integrate(psit2_G, P2_ai, kq[k])
-                        
-                            # fft
-                            tmp_G = np.fft.fftn(psit2_G*psit1_G) * self.vol / self.nG0
+                for m in range(self.nband):
+                    if np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > self.ftol:
+                        psitold_G =  calc.wfs.kpt_u[ibzkpt2].psit_nG[m]
+                        psit2_G = symmetrize_wavefunction(psitold_G, self.op[iop2], ibzk_kv[ibzkpt2],
+                                                           bzk_kv[kq[k]], timerev2)
+                    
+                        P2_ai = pt.dict()
+                        pt.integrate(psit2_G, P2_ai, kq[k])
+                    
+                        # fft
+                        tmp_G = np.fft.fftn(psit2_G*psit1_G) * self.vol / self.nG0
 
-                            for iG in range(self.npw):
-                                index = self.Gindex[iG]
-                                rho_Gnn[iG, n, m] = tmp_G[index[0], index[1], index[2]]
+                        for iG in range(self.npw):
+                            index = self.Gindex[iG]
+                            rho_Gnn[iG, n, m] = tmp_G[index[0], index[1], index[2]]
 
-                            if self.OpticalLimit:
-                                phase_cd = np.exp(2j * pi * sdisp_cd * bzk_kv[kq[k], :, np.newaxis])
-                                for ix in range(3):
-                                    d_c[ix](psit2_G, dpsit_G, phase_cd)
-                                    tmp[ix] = gd.integrate(psit1_G * dpsit_G)
-                                rho_Gnn[0, n, m] = -1j * np.inner(self.qq, tmp) 
+                        if self.OpticalLimit:
+                            phase_cd = np.exp(2j * pi * sdisp_cd * bzk_kv[kq[k], :, np.newaxis])
+                            for ix in range(3):
+                                d_c[ix](psit2_G, dpsit_G, phase_cd)
+                                tmp[ix] = gd.integrate(psit1_G * dpsit_G)
+                            rho_Gnn[0, n, m] = -1j * np.inner(self.qq, tmp) 
 
-                            # PAW correction
-                            for a, id in enumerate(calc.wfs.setups.id_a):                            
-                                P_p = np.outer(P1_ai[a].conj(), P2_ai[a]).ravel()
-                                rho_Gnn[:, n, m] += np.dot(self.phi_aGp[a], P_p)
+                        # PAW correction
+                        for a, id in enumerate(calc.wfs.setups.id_a):                            
+                            P_p = np.outer(P1_ai[a].conj(), P2_ai[a]).ravel()
+                            rho_Gnn[:, n, m] += np.dot(self.phi_aGp[a], P_p)
 
-                            if self.OpticalLimit:
-                                rho_Gnn[0, n, m] /= e_kn[ibzkpt2, m] - e_kn[ibzkpt1, n]
+                        if self.OpticalLimit:
+                            rho_Gnn[0, n, m] /= e_kn[ibzkpt2, m] - e_kn[ibzkpt1, n]
                             
 
             if not self.HilbertTrans:
@@ -305,8 +305,8 @@ class CHI:
                     w = self.wlist[iw + self.wstart] / Hartree 
                     for n in range(self.nband):
                         for m in range(self.nband):
-                            if  e_kn[ibzkpt1, n] <= 0. and e_kn[ibzkpt2, m] > 0. :
-                                C_nn[n, m] = 2 * (f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) / (
+                             if np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > self.ftol:
+                                C_nn[n, m] = (f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) / (
                                  w + e_kn[ibzkpt1, n] - e_kn[ibzkpt2, m] + 1j * self.eta)
                 
                     # get chi0(G=0,G'=0,w)
@@ -318,10 +318,9 @@ class CHI:
                 # calculate spectral function
                 for n in range(self.nband):
                     for m in range(self.nband):
-                        if e_kn[ibzkpt1, n] <= 0. and e_kn[ibzkpt2, m] > 0.:
-                            focc = f_kn[ibzkpt1,n] - f_kn[ibzkpt2,m]
-                            w0 = e_kn[ibzkpt2,m] - e_kn[ibzkpt1,n]
- 
+                        focc = f_kn[ibzkpt1,n] - f_kn[ibzkpt2,m]
+                        if focc > self.ftol:
+                            w0 = e_kn[ibzkpt2,m] - e_kn[ibzkpt1,n] 
                             tmp_GG = focc * np.outer(rho_Gnn[:,n,m], rho_Gnn[:,n,m].conj())
                 
                             # calculate delta function

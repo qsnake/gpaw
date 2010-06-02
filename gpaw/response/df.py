@@ -18,13 +18,14 @@ class DF(CHI):
                  Ecut=100.,
                  eta=0.2,
                  sigma=1e-5,
+                 ftol=1e-7,
                  txt=None,
                  HilbertTrans=True,
                  OpticalLimit=False,
                  kcommsize=None):
 
         CHI.__init__(self, calc, nband, wmax, dw, wlist, q, Ecut,
-                     eta, sigma, txt, HilbertTrans, OpticalLimit, kcommsize)
+                     eta, sigma, ftol, txt, HilbertTrans, OpticalLimit, kcommsize)
 
 
     def get_RPA_dielectric_matrix(self):
