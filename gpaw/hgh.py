@@ -46,7 +46,7 @@ class HGHSetup(BaseSetup):
         self.Z = data.Z
         self.Nv = data.Nv
         self.Nc = data.Nc
-        
+
         self.ni = sum([2 * l + 1 for l in data.l_j])
         self.pt_j = data.get_projectors()
         self.phit_j = basis.tosplines()
@@ -58,7 +58,7 @@ class HGHSetup(BaseSetup):
         self.nct = Spline(0, 0.5, [0., 0., 0.])
 
         self.lmax = 0
-        
+
         self.xc_correction = null_xc_correction
 
         r, g = data.get_compensation_charge_function()
@@ -71,14 +71,14 @@ class HGHSetup(BaseSetup):
         _np = self.ni * (self.ni + 1) // 2
         self.Delta0 = data.Delta0
         self.Delta_pL = np.zeros((_np, 1))
-        
+
         self.E = 0.0
         self.Kc = 0.0
         self.M = 0.0
         self.M_p = np.zeros(_np)
         self.M_pp = np.zeros((_np, _np))
 
-	self.K_p = data.expand_hamiltonian_matrix()
+        self.K_p = data.expand_hamiltonian_matrix()
         self.MB = 0.0
         self.MB_p = np.zeros(_np)
         self.dO_ii = np.zeros((self.ni, self.ni))
@@ -177,13 +177,13 @@ class HGHSetupData:
         self.type = hghdata.symbol
         self.name = 'LDA'
         self.initialize_setup_data()
-        
+
     def initialize_setup_data(self):
         hghdata = self.hghdata
         rgd = AERadialGridDescriptor(0.1, 450, default_spline_points=100)
         #rgd = EquidistantRadialGridDescriptor(0.001, 10000)
         self.rgd = rgd
-        
+
         self.Z = hghdata.Z
         self.Nc = hghdata.Z -  hghdata.Nv
         self.Nv = hghdata.Nv
@@ -200,7 +200,7 @@ class HGHSetupData:
             rcutvbar = 0.5
             gcutvbar = rgd.r2g_ceil(rcutvbar)
             self.vbar_g = np.zeros(gcutvbar)
-        
+
         nj = sum([v.nn for v in hghdata.v_l])
         if nj == 0:
             nj = 1 # Code assumes nj > 0 elsewhere, we fill out with zeroes
@@ -221,10 +221,10 @@ class HGHSetupData:
         self.nj = nj
         self.l_j = l_j
         self.n_j = n_j
-        
+
         self.rcut_j = []
         self.pt_jg = []
-        
+
         for n, l in zip(n_j, l_j):
             # Note: even pseudopotentials without projectors will get one
             # projector, but the coefficients h_ij should be zero so it
@@ -299,12 +299,12 @@ class HGHSetupData:
 
     def print_info(self, text, _setup):
         self.hghdata.print_info(text)
-        
+
     def plot(self):
         """Plot localized functions of HGH setup."""
         import pylab as pl
         rgd = self.rgd
-        
+
         pl.subplot(211) # vbar, compensation charge
         rloc = self.hghdata.rloc
         gloc = self.rgd.r2g_ceil(rloc)
@@ -312,7 +312,7 @@ class HGHSetupData:
         pl.plot(rgd.r_g[:gcutvbar], self.vbar_g, 'r', label='vloc',
                 linewidth=3)
         rcc, gcc = self.get_compensation_charge_function()
-        
+
         pl.plot(rcc, gcc * self.Delta0, 'b--', label='Comp charge [arb. unit]',
                 linewidth=3)
         pl.legend(loc='best')
@@ -336,7 +336,7 @@ class HGHSetupData:
             pt2_g = np.zeros(maxlen)
             pt2_g[:len(pt1_g)] = pt1_g
             pt_jg.append(pt2_g)
-        
+
         pt_j = [self.rgd.reducedspline(l, pt_g)
                 for l, pt_g, in zip(self.l_j, pt_jg)]
         return pt_j
@@ -412,7 +412,7 @@ def create_hgh_projector(r_g, l, n, r0):
     B = half_integer_gamma[l + (4 * n - 1) // 2]**.5
     pt_g = 2.**.5 / A / B * poly_g * gauss_g
     return pt_g
-    
+
 
 # Coefficients determining off-diagonal elements of h_nn for l = 0...2
 # given the diagonal elements
@@ -495,7 +495,7 @@ class HGHParameterSet:
         other = HGHParameterSet(self.symbol, self.Z, self.Nv, self.rloc,
                                 self.c_n, self.v_l)
         return other
-        
+
     def print_info(self, txt):
         txt(str(self))
         txt()
@@ -547,7 +547,7 @@ class HGHParameterSet:
         string2 = ' '.join(['%.10s' % c for c in self.c_n])
         nonlocal_strings = [v.serialize() for v in self.v_l]
         return '\n'.join([string1 + string2] + nonlocal_strings)
-        
+
 def parse_local_part(string):
     """Create HGHParameterSet object with local part initialized."""
     tokens = iter(string.split())
@@ -598,7 +598,7 @@ def str2hgh(string):
 
 def hgh2str(hgh):
     return hgh.serialize()
-    
+
 
 def parse_setups(lines):
     """Read HGH data from file."""

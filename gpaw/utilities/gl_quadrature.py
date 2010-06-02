@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # A. Pletzer Tue Mar 20 11:42:05 EST 2001
-# G. Genellina 2009-09-10: Minor syntax changes, 
+# G. Genellina 2009-09-10: Minor syntax changes,
 #   compatibility with Python 2.4 and above
 # downloaded from http://code.activestate.com/recipes/52292/
 # and slightly changed
@@ -374,84 +374,87 @@ def gauss(xmin, xmax, funct, ng=10):
     return 0.5*dx*sum(funct(x)*w for x,w in izip(xs,ws))
 
 def gaussLog(xmin, xmax, funct, ng=10):
-	"""
-	Gauss quadature with Log singularity at x=xmin:
-	xmin, xmax: boundaries of integration domain
-	funct: integrand function
-	ng: Gauss integration order
-	"""
-	ng = max(min(ng, _NGMAX), _NGMIN)
-	ns = _nodesLog[ng-1]
-	ws = _weightsLog[ng-1];
-	dx = xmax - xmin
-	xs = [(dx*y + xmin) for y in ns]
-	return dx*sum(funct(x)*w for x,w in izip(xs,ws))
+    """
+    Gauss quadature with Log singularity at x=xmin:
+    xmin, xmax: boundaries of integration domain
+    funct: integrand function
+    ng: Gauss integration order
+    """
+    ng = max(min(ng, _NGMAX), _NGMIN)
+    ns = _nodesLog[ng-1]
+    ws = _weightsLog[ng-1];
+    dx = xmax - xmin
+    xs = [(dx*y + xmin) for y in ns]
+    return dx*sum(funct(x)*w for x,w in izip(xs,ws))
 
 ####
 
 if __name__ == '__main__':
 
-	from math import *
+    from math import *
 
-	def f2(x):
-		return x**2
-	def f3(x):
-		return x**4
-	def f4(x):
-		return cos(2.*pi*(x-0.128726465))
-	def f5(x):
-		return 2.*cos(2.*pi*(x-0.128726465))**2
+    def f2(x):
+        return x**2
 
-	print '-'*80
-	print 'Gauss (weight function = 1)'
-	print '-'*80
+    def f3(x):
+        return x**4
 
-	# simple tests
-	print 'gauss(0., 1., f3, 1)=', gauss(0., 1., f3, 1)
-	print 'gauss(0., 1., f3, 2)=', gauss(0., 1., f3, 2)
-	print 'gauss(0., 1., f3, 3)=', gauss(0., 1., f3, 3)
-	print 'gauss(0., 1., f3   )=', gauss(0., 1., f3   )
+    def f4(x):
+        return cos(2.*pi*(x-0.128726465))
 
-	# convergence test 
-	ng = range(_NGMIN, _NGMAX+1)
+    def f5(x):
+        return 2.*cos(2.*pi*(x-0.128726465))**2
 
-	print """\n
-	Integrate[Cos[2.*Pi*(x-0.128726465)], {x, 0, 1}]
-	\n"""
+    print '-'*80
+    print 'Gauss (weight function = 1)'
+    print '-'*80
 
-	error = [gauss(0., 10.0, f4, n) for n in ng]
-	print '    n = ', '%8d'*len(ng) % tuple(ng)
-	print 'error = ', '%8.0e'*len(error) % tuple(error) 
-		
-	print """\n
-	Integrate[2.*Cos[2.*Pi*(x-0.128726465)]^2, {x, 0, 1}]
-	\n"""
+    # simple tests
+    print 'gauss(0., 1., f3, 1)=', gauss(0., 1., f3, 1)
+    print 'gauss(0., 1., f3, 2)=', gauss(0., 1., f3, 2)
+    print 'gauss(0., 1., f3, 3)=', gauss(0., 1., f3, 3)
+    print 'gauss(0., 1., f3   )=', gauss(0., 1., f3   )
 
-	error = [gauss(0., 1.0, f5, n)-1.0 for n in ng]
-	print '    n = ', '%8d'*len(ng) % tuple(ng)
-	print 'error = ', '%8.0e'*len(error) % tuple(error) 
+    # convergence test
+    ng = range(_NGMIN, _NGMAX+1)
+
+    print """\n
+    Integrate[Cos[2.*Pi*(x-0.128726465)], {x, 0, 1}]
+    \n"""
+
+    error = [gauss(0., 10.0, f4, n) for n in ng]
+    print '    n = ', '%8d'*len(ng) % tuple(ng)
+    print 'error = ', '%8.0e'*len(error) % tuple(error)
+
+    print """\n
+    Integrate[2.*Cos[2.*Pi*(x-0.128726465)]^2, {x, 0, 1}]
+    \n"""
+
+    error = [gauss(0., 1.0, f5, n)-1.0 for n in ng]
+    print '    n = ', '%8d'*len(ng) % tuple(ng)
+    print 'error = ', '%8.0e'*len(error) % tuple(error)
 
 
-	print '-'*80
-	print 'Gauss with Log singularity at left boundary'
-	print '-'*80
+    print '-'*80
+    print 'Gauss with Log singularity at left boundary'
+    print '-'*80
 
-	a, b = 0., 1.
+    a, b = 0., 1.
 
-	print """\n
-	Integrate[Log[x]*x^2, {x, 0, 1}]
-	\n"""
+    print """\n
+    Integrate[Log[x]*x^2, {x, 0, 1}]
+    \n"""
 
-	exact = -1./9.
-	error = [gaussLog(a, b, f2, n) - exact for n in ng]
-	print '    n = ', '%8d'*len(ng) % tuple(ng)
-	print 'error = ', '%8.0e'*len(error) % tuple(error) 
+    exact = -1./9.
+    error = [gaussLog(a, b, f2, n) - exact for n in ng]
+    print '    n = ', '%8d'*len(ng) % tuple(ng)
+    print 'error = ', '%8.0e'*len(error) % tuple(error)
 
-	print """\n
-	Integrate[Log[x]*2.*Cos[2.*Pi*(x-0.128726465)]^2, {x, 0, 1}]
-	\n"""
+    print """\n
+    Integrate[Log[x]*2.*Cos[2.*Pi*(x-0.128726465)]^2, {x, 0, 1}]
+    \n"""
 
-	exact = -1.242002481967963
-	error = [gaussLog(a, b, f5, n) - exact for n in ng]
-	print '    n = ', '%8d'*len(ng) % tuple(ng)
-	print 'error = ', '%8.0e'*len(error) % tuple(error) 
+    exact = -1.242002481967963
+    error = [gaussLog(a, b, f5, n) - exact for n in ng]
+    print '    n = ', '%8d'*len(ng) % tuple(ng)
+    print 'error = ', '%8.0e'*len(error) % tuple(error)

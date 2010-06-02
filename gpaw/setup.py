@@ -378,7 +378,7 @@ class LeanSetup(BaseSetup):
         self.M = s.M
         self.M_p = s.M_p
         self.M_pp = s.M_pp
-	self.K_p = s.K_p
+        self.K_p = s.K_p
         self.MB = s.MB
         self.MB_p = s.MB_p
 

@@ -26,7 +26,7 @@ class CHI:
         dw: float
             Frequency interval.
         wlist: tuple
-            Frequency points. 
+            Frequency points.
         q: ndarray
             Momentum transfer in reduced coordinate.
         Ecut: ndarray
@@ -34,9 +34,9 @@ class CHI:
         eta: float
             Spectrum broadening factor.
         sigma: float
-            Width for delta function. 
-    """    
-        
+            Width for delta function.
+    """
+
     def __init__(self,
                  calc=None,
                  nband=None,
@@ -52,17 +52,17 @@ class CHI:
                  HilbertTrans=True,
                  OpticalLimit=False,
                  kcommsize=None):
-        
+
         self.xc = 'LDA'
         self.nspin = 1
-        
+
         self.txtname = txt
         self.output_init()
 
         self.calc = calc
         self.nband = nband
         self.q = q
-        
+
         self.wmin = 0.
         self.wmax = wmax
         self.dw = dw
@@ -78,7 +78,7 @@ class CHI:
         if wlist is not None:
             self.HilbertTrans = False
 
-        
+
     def initialize(self):
 
         self.printtxt('')
@@ -112,7 +112,7 @@ class CHI:
         self.ftol /= self.nkpt
 
         # band init
-        if self.nband is None:    
+        if self.nband is None:
             self.nband = calc.wfs.nbands
         self.nvalence = calc.wfs.nvalence
 
@@ -139,10 +139,10 @@ class CHI:
         # k + q init
         assert self.q is not None
         self.qq = np.inner(self.bcell.T, self.q)
-        
+
         if self.OpticalLimit:
             kq = np.arange(self.nkpt)
-            self.expqr_G = 1. 
+            self.expqr_G = 1.
         else:
             r = gd.get_grid_point_coordinates() # (3, nG)
             qr = np.inner(self.qq, r.T).T
@@ -176,7 +176,7 @@ class CHI:
         else:
             op = calc.wfs.symmetry.op_scc
         self.op = op
-        
+
 
 #        nt_G = calc.density.nt_sG[0] # G is the number of grid points
 #        self.Kxc_GG = self.calculate_Kxc(calc.wfs.gd, nt_G)
@@ -212,12 +212,12 @@ class CHI:
             for a, id in enumerate(setups.id_a):
                 nabla_iiv = setups[a].nabla_iiv
                 phi_aGp[a][0] = -1j * (np.dot(nabla_iiv, self.qq)).ravel()
-            
+
         self.phi_aGp = phi_aGp
         self.printtxt('')
         self.printtxt('Finished phi_Gp !')
-        self.printtxt('')    
-        
+        self.printtxt('')
+
         return
 
 
@@ -245,7 +245,7 @@ class CHI:
             dpsit_G = gd.empty(dtype=complex)
             tmp = np.zeros((3), dtype=complex)
 
-        t0 = time()        
+        t0 = time()
         for k in range(self.kstart, self.kend):
 
             # Find corresponding kpoint in IBZ
@@ -254,27 +254,27 @@ class CHI:
                 ibzkpt2, iop2, timerev2 = ibzkpt1, iop1, timerev1
             else:
                 ibzkpt2, iop2, timerev2 = find_ibzkpt(self.op, ibzk_kv, bzk_kv[kq[k]])
-            
+
             rho_Gnn = np.zeros((self.npw, self.nband, self.nband), dtype=complex)
             for n in range(self.nband):
                 psitold_G =  calc.wfs.kpt_u[ibzkpt1].psit_nG[n]
                 psit1new_G = symmetrize_wavefunction(psitold_G, self.op[iop1], ibzk_kv[ibzkpt1],
-                                                      bzk_kv[k], timerev1)        
-                 
+                                                      bzk_kv[k], timerev1)
+
                 P1_ai = pt.dict()
                 pt.integrate(psit1new_G, P1_ai, k)
-                
+
                 psit1_G = psit1new_G.conj() * self.expqr_G
-                
+
                 for m in range(self.nband):
                     if np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > self.ftol:
                         psitold_G =  calc.wfs.kpt_u[ibzkpt2].psit_nG[m]
                         psit2_G = symmetrize_wavefunction(psitold_G, self.op[iop2], ibzk_kv[ibzkpt2],
                                                            bzk_kv[kq[k]], timerev2)
-                    
+
                         P2_ai = pt.dict()
                         pt.integrate(psit2_G, P2_ai, kq[k])
-                    
+
                         # fft
                         tmp_G = np.fft.fftn(psit2_G*psit1_G) * self.vol / self.nG0
 
@@ -287,42 +287,42 @@ class CHI:
                             for ix in range(3):
                                 d_c[ix](psit2_G, dpsit_G, phase_cd)
                                 tmp[ix] = gd.integrate(psit1_G * dpsit_G)
-                            rho_Gnn[0, n, m] = -1j * np.inner(self.qq, tmp) 
+                            rho_Gnn[0, n, m] = -1j * np.inner(self.qq, tmp)
 
                         # PAW correction
-                        for a, id in enumerate(calc.wfs.setups.id_a):                            
+                        for a, id in enumerate(calc.wfs.setups.id_a):
                             P_p = np.outer(P1_ai[a].conj(), P2_ai[a]).ravel()
                             rho_Gnn[:, n, m] += np.dot(self.phi_aGp[a], P_p)
 
                         if self.OpticalLimit:
                             rho_Gnn[0, n, m] /= e_kn[ibzkpt2, m] - e_kn[ibzkpt1, n]
-                            
+
 
             if not self.HilbertTrans:
                 # construct (f_nk - f_n'k+q) / (w + e_nk - e_n'k+q + ieta )
                 C_nn = np.zeros((self.nband, self.nband), dtype=complex)
                 for iw in range(self.Nw_local):
-                    w = self.wlist[iw + self.wstart] / Hartree 
+                    w = self.wlist[iw + self.wstart] / Hartree
                     for n in range(self.nband):
                         for m in range(self.nband):
                              if np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > self.ftol:
                                 C_nn[n, m] = (f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) / (
                                  w + e_kn[ibzkpt1, n] - e_kn[ibzkpt2, m] + 1j * self.eta)
-                
+
                     # get chi0(G=0,G'=0,w)
                     for iG in range(self.npw):
                         for jG in range(self.npw):
                             chi0_wGG[iw,iG,jG] += (rho_Gnn[iG] * C_nn * rho_Gnn[jG].conj()).sum()
             else:
-                                
+
                 # calculate spectral function
                 for n in range(self.nband):
                     for m in range(self.nband):
                         focc = f_kn[ibzkpt1,n] - f_kn[ibzkpt2,m]
                         if focc > self.ftol:
-                            w0 = e_kn[ibzkpt2,m] - e_kn[ibzkpt1,n] 
+                            w0 = e_kn[ibzkpt2,m] - e_kn[ibzkpt1,n]
                             tmp_GG = focc * np.outer(rho_Gnn[:,n,m], rho_Gnn[:,n,m].conj())
-                
+
                             # calculate delta function
                             w0_id = int(w0 / self.dw)
                             if w0_id + 1 < self.NwS:
@@ -331,8 +331,8 @@ class CHI:
                                     specfunc_wGG[w0_id % self.NwS_local] += tmp_GG * (w0_id + 1 - w0/self.dw) / self.dw
                                 if self.wScomm.rank == (w0_id+1) // self.NwS_local:
                                     specfunc_wGG[(w0_id+1) % self.NwS_local] += tmp_GG * (w0 / self.dw - w0_id) / self.dw
-                                    
-#                            deltaw = delta_function(w0, self.dw, self.NwS, self.sigma)                            
+
+#                            deltaw = delta_function(w0, self.dw, self.NwS, self.sigma)
 #                            for wi in range(self.NwS_local):
 #                                if deltaw[wi + self.wS1] > 1e-8:
 #                                    specfunc_wGG[wi] += tmp_GG * deltaw[wi + self.wS1]
@@ -366,27 +366,27 @@ class CHI:
             assert self.kcomm.size == size // self.wScomm.size
             Nwtmp1 = (rank % self.kcomm.size ) * self.Nw_local
             Nwtmp2 = (rank % self.kcomm.size + 1) * self.Nw_local
-            
+
             chi0_wGG = SliceAlongOrbitals(chi0_Wg, coords, self.wScomm)[Nwtmp1:Nwtmp2]
 
             self.comm.barrier()
             del chi0_Wg
-            
+
         self.chi0_wGG = chi0_wGG / self.vol
-        
-        return 
+
+        return
 
 
     def output_init(self):
 
 
-	if self.txtname is None:
+        if self.txtname is None:
             if rank == 0:
                 self.txt = sys.stdout
             else:
                 sys.stdout = devnull
                 self.txt = devnull
-        
+
         else:
             assert type(self.txtname) is str
             from ase.parallel import paropen
@@ -411,12 +411,12 @@ class CHI:
             self.kcommsize = size // (wcommsize + 1)
             if self.kcommsize < 1:
                 raise ValueError('Number of cpus are not enough ! ')
-            
+
         self.kcomm, self.wScomm, self.wcomm = set_communicator(self.kcommsize)
 
         self.nkpt, self.nkpt_local, self.kstart, self.kend = parallel_partition(
                                self.nkpt, self.kcomm.rank, self.kcomm.size, reshape=False)
-        
+
         self.NwS, self.NwS_local, self.wS1, self.wS2 = parallel_partition(
                                self.NwS, self.wScomm.rank, self.wScomm.size, reshape=True)
 
@@ -433,10 +433,10 @@ class CHI:
                 self.wstart = 0
                 self.wend = self.Nw
                 self.Nw_local = self.Nw
-            
+
         return
 
-    
+
     def printtxt(self, text):
         print >> self.txt, text
 
@@ -484,7 +484,7 @@ class CHI:
         printtxt('     chi0_wGG    : %f M' %(self.Nw_local * self.npw**2 * 8. / 1024**2) )
         if self.HilbertTrans:
             printtxt('     specfunc_wGG: %f M' %(self.NwS_local *self.npw**2 * 8. / 1024**2) )
-        
 
-        
-        
+
+
+

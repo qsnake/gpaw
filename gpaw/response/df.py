@@ -32,7 +32,7 @@ class DF(CHI):
 
         tmp = np.eye(self.npw, self.npw)
         dm_wGG = np.zeros((self.Nw_local, self.npw, self.npw), dtype = complex)
-        
+
         for iw in range(self.Nw_local):
             for iG in range(self.npw):
                 qG = np.array([np.inner(self.q + self.Gvec[iG],
@@ -55,7 +55,7 @@ class DF(CHI):
         for iw in range(Nw_local):
             tmp = dm_wGG[iw]
             dfLFC_w[iw] = 1. / np.linalg.inv(tmp)[0, 0]
-            dfNLF_w[iw] = tmp[0, 0]  
+            dfNLF_w[iw] = tmp[0, 0]
 
         self.wcomm.all_gather(dfNLF_w, df1_w)
         self.wcomm.all_gather(dfLFC_w, df2_w)
@@ -84,10 +84,10 @@ class DF(CHI):
 
         if df1 is None:
             df1, df2 = self.get_dielectric_function()
-            
+
         return np.real(df1[0]), np.real(df2[0])
 
-    
+
     def get_absorption_spectrum(self, df1=None, df2=None, filename='Absorption'):
 
         if df1 is None:
@@ -103,7 +103,7 @@ class DF(CHI):
             f.close()
 
         # Wait for I/O to finish
-        self.comm.barrier()    
+        self.comm.barrier()
 
 
     def get_EELS_spectrum(self, df1=None, df2=None, filename='EELS'):
@@ -111,7 +111,7 @@ class DF(CHI):
         if df1 is None:
             df1, df2 = self.get_dielectric_function()
         Nw = df1.shape[0]
-        
+
         if rank == 0:
             f = open(filename,'w')
             for iw in range(self.Nw):
@@ -145,7 +145,7 @@ class DF(CHI):
 
         return w, JDOS_w
 
-                    
+
     def calculate_induced_density(self, q, w):
         """ Evaluate induced density for a certain q and w.
 
@@ -157,13 +157,13 @@ class DF(CHI):
             Energy (eV).
         """
 
-	if type(w) is int:
-	    iw = w
+        if type(w) is int:
+            iw = w
             w = self.wlist[iw] / Hartree
-	elif type(w) is float:
-            w /= Hartree 
+        elif type(w) is float:
+            w /= Hartree
             iw = int(np.round(w / self.dw))
-	else:
+        else:
             raise ValueError('Frequency not correct !')
 
         self.printtxt('Calculating Induced density at q, w (iw)')
@@ -174,11 +174,11 @@ class DF(CHI):
         delta_G[0] = 1.
 
         # coef is (q+G)**2 / 4pi
-        coef_G = np.zeros(self.npw) 
+        coef_G = np.zeros(self.npw)
         for iG in range(self.npw):
             qG = np.array([np.inner(q + self.Gvec[iG],
                             self.bcell[:,i]) for i in range(3)])
-            
+
             coef_G[iG] = np.inner(qG, qG)
         coef_G /= 4 * pi
 
@@ -206,15 +206,15 @@ class DF(CHI):
 
     def get_induced_density_z(self, q, w):
         """Get induced density on z axis (summation over xy-plane). """
-        
+
         drho_R = self.calculate_induced_density(q, w)
 
         drho_z = np.zeros(self.nG[2],dtype=complex)
 #        dxdy = np.cross(self.h_c[0], self.h_c[1])
-        
+
         for iz in range(self.nG[2]):
             drho_z[iz] = drho_R[:,:,iz].sum()
-            
+
         return drho_z
 
 
@@ -228,11 +228,11 @@ class DF(CHI):
             qG = np.array([np.inner(self.q + self.Gvec[iG],
                             self.bcell[:,i]) for i in range(3)])
             kcoulinv_GG[iG, iG] = np.inner(qG, qG)
-            
+
         kcoulinv_GG /= 4.*pi
 
         dm_wGG = self.get_RPA_dielectric_matrix()
-        
+
         for mu in range(nLCAO):
             for nu in range(nLCAO):
                 pairorb_R = orb_MG[mu] * orb_MG[nu]
@@ -243,10 +243,10 @@ class DF(CHI):
                     for iG in range(self.npw):
                         index = self.Gindex[iG]
                         pairorb_G[iG] = tmp_G[index[0], index[1], index[2]]
-                
+
                     for iw in range(self.Nw):
                         chi_GG = (dm_wGG[iw] - np.eye(self.npw)) * kcoulinv_GG
                         N[iw, mu, nu] = (np.outer(pairorb_G.conj(), pairorb_G) * chi_GG).sum()
 #                        N[iw, mu, nu] = np.inner(pairorb_G.conj(),np.inner(pairorb_G, chi_GG))
- 
+
         return N

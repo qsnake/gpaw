@@ -43,7 +43,7 @@ def _elf(nt, nt_grad2, taut, ncut, spinpol, elf):
 
 class ELF:
     """ELF object for calculating the electronic localization function.
-    
+
     Arguments:
      =============== =====================================================
      ``paw``         Instance of ``GPAW`` class.
@@ -71,7 +71,7 @@ class ELF:
 
         self.tauct = LFC(self.gd,
                          [[setup.tauct] for setup in self.density.setups],
- 	                 forces=True, cut=True)
+                         forces=True, cut=True)
         spos_ac = paw.atoms.get_scaled_positions() % 1.0
         self.tauct.set_positions(spos_ac)
 
