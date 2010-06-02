@@ -44,7 +44,7 @@ class SIC:
         self.init_rattle = 0.1    # perturbation to the canonic states
         self.virt_SIC  = False    # evaluate SIC for virtual orbitals
         self.parlayout = 1        # parallelization layout
-        #   
+        #
         self.old_coul  = True
         self.inistep   = 0.45    # trial step length in unitary optimization
         self.uomaxres  = 5E-3    # target accuracy for unitary optimization
@@ -57,14 +57,14 @@ class SIC:
         #
         # debugging parameters
         self.units     = 27.21   # output units 1: in Hartree, 27.21: in eV
-        self.test = test         # debug level        
-        self.act_SIC   = True    # self-consistent SIC 
+        self.test = test         # debug level
+        self.act_SIC   = True    # self-consistent SIC
         self.use_paw   = False    # apply PAW corrections
         self.paw_matrix= False    # True
         self.paw_proj  = False
         #
         # initialization
-        self.dtype     = None    # complex/float 
+        self.dtype     = None    # complex/float
         self.nbands    = None    # total number of bands/orbitals
         self.nblocks   = None    # total number of blocks
         self.mybands   = None    # list of bands of node's responsibility
@@ -85,11 +85,11 @@ class SIC:
         self.orbital_dependent = True
         self.hybrid      = 0.0
         self.uses_libxc  = self.xcbasis.uses_libxc
-        self.gllb        = False 
-        
+        self.gllb        = False
+
     def set_non_local_things(self, density, hamiltonian, wfs, atoms,
                              energy_only=False):
- 
+
         self.wfs         = wfs
         self.density     = density
         self.hamiltonian = hamiltonian
@@ -103,7 +103,7 @@ class SIC:
         #
         self.nbands      = nbands
         self.nspins      = nspins
-        self.nblocks     = nblocks 
+        self.nblocks     = nblocks
         #
         # make sure that we are doing a gamma-point only
         # or finite system calculation
@@ -132,14 +132,14 @@ class SIC:
             self.xcsic       = XCFunctional(self.xcbasisname, 2)
         else:
             self.xcsic       = self.xcbasis
-        
+
         for setup in wfs.setups.setups.values():
             if isinstance(setup.xc_correction, NullXCCorrection):
                 setup.xc_correction_sic = setup.xc_correction
             else:
                 setup.xc_correction_sic = SICXCCorrection(setup.xc_correction,
                                                           self.xcsic)
-            
+
         # check if complex optimization is toggled on
         if (self.optcmplx):
             self.dtype=complex
@@ -158,7 +158,7 @@ class SIC:
             print 'SIC: complex optimization   :',self.optcmplx
             print 'SIC: fine-grid integrations :',self.finegrid
             print 'SIC: periodic boundaries    :',self.periodic
-            
+
         if self.parlayout==1:
             if mpi.rank==0:
                 print 'SIC: parallelization layout : blocks + space-partition'
@@ -171,7 +171,7 @@ class SIC:
             #
             # full list of bands
             self.mybands     = range(self.nbands)
-            
+
         elif self.parlayout==2:
             if mpi.rank==0:
                 print 'SIC: parallelization layout : blocks + states'
@@ -216,7 +216,7 @@ class SIC:
         mynbands         = len(self.mybands)
         mynblocks        = len(self.myblocks)
         #
-        self.mynbands    = mynbands      
+        self.mynbands    = mynbands
         self.mynblocks   = mynblocks
         #
         # list of nodes containing the real-space partitioning for the
@@ -247,7 +247,7 @@ class SIC:
                              for setup in density.setups],
                             integral=sqrt(4 * pi))
             self.ghat.set_positions(atoms.get_scaled_positions() % 1.0)
-        
+
         # Projectors
         self.natoms = atoms.get_number_of_atoms()
         self.P_uani = [None] * self.mynblocks
@@ -310,7 +310,7 @@ class SIC:
             self.rho_n       = self.finegd.empty()
         else:
             self.masked_nt_g = self.nt_g
-        
+
     def is_gllb(self):
         return False
 
@@ -331,11 +331,11 @@ class SIC:
 
     def get_non_local_force(self, kpt):
         return 0.0
-    
+
     def get_non_local_energy(self, n_g=None, a2_g=None, e_LDAc_g=None,
                              v_LDAc_g=None, v_g=None, deda2_g=None):
         return 0.0
-    
+
     def calculate_spinpaired(self, e_g, n_g, v_g, a2_g=None, deda2_g=None):
         #
         # the LDA/GGA part of the functional
@@ -353,7 +353,7 @@ class SIC:
                 #assert e_g.ndim == 3
                 if e_g.ndim == 3:
                     e_g[0, 0, 0] += self.Stot / self.finegd.dv
-        
+
 
     def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g,
                                 a2_g=None,  aa2_g=None, ab2_g=None,
@@ -433,7 +433,7 @@ class SIC:
         #
         return self.Stot
 
-    def calculate_sic_matrixelements(self,blocks=[]):        
+    def calculate_sic_matrixelements(self,blocks=[]):
         #
         # check if wavefunctions have already been initialized
         if self.wfs.kpt_u[0].psit_nG is None:
@@ -451,7 +451,7 @@ class SIC:
             myblocks    = self.myblocks
         else:
             myblocks    = self.myblocks and blocks
-            
+
         mybands     = self.mybands
         #
         # some references to lengthy variable names
@@ -470,10 +470,10 @@ class SIC:
         # action of the SIC potentials
         self.Htphit_unG   = self.v_unG*self.phit_unG
         #
-        # evaluate symmetrized V_ij and Kappa_ij 
+        # evaluate symmetrized V_ij and Kappa_ij
         for u in myblocks:
             #
-            # get the local index of the block u 
+            # get the local index of the block u
             q=self.myblocks.index(u)
             #
             # calculate SIC matrix <Phi_i|V_j|Phi_j>
@@ -482,13 +482,13 @@ class SIC:
             #
             # add PAW corrections
 
-            
-	    for n in range(self.nbands):
-	        for a, dH_p in self.dH_unap[u][n].items():
-		    dH_ii = unpack(dH_p)
-		    P_ni = self.P_uani[u][a]
-		    P_i = P_ni[n]
-		    self.V_unn[q, :, n] += np.dot(P_ni, np.dot(dH_ii, P_i))
+
+            for n in range(self.nbands):
+                for a, dH_p in self.dH_unap[u][n].items():
+                    dH_ii = unpack(dH_p)
+                    P_ni = self.P_uani[u][a]
+                    P_i = P_ni[n]
+                    self.V_unn[q, :, n] += np.dot(P_ni, np.dot(dH_ii, P_i))
 
 
             # apply subspace mask
@@ -499,7 +499,7 @@ class SIC:
                         self.V_unn[q,n,m]=0.0
             #
             print self.V_unn[q]
-	    # symmetrization of V and kappa-Matrix
+            # symmetrization of V and kappa-Matrix
             self.K_unn[q] = 0.5*(self.V_unn[q] - self.V_unn[q].T.conj())
             self.V_unn[q] = 0.5*(self.V_unn[q] + self.V_unn[q].T.conj())
             #print 'SIC-potential matrix <Phi_i|V_j|Phi_j> of block ',q,' on CPU',mpi.rank
@@ -512,18 +512,18 @@ class SIC:
         self.timer.stop('SIC - matrixelements')
 
     def paw_sic_matrix(self, u):
-        """Calculates the PAW correction for the 
+        """Calculates the PAW correction for the
         <Phi_n1 | V_n2 | Phi_n2> Hartree term"""
-        
+
         if not self.use_paw:
             return 0
-            
+
         wfs     = self.wfs
         natoms = self.natoms
         nbands  = wfs.nbands
         setups  = wfs.setups
         dV_nn = np.zeros((nbands,nbands))
-    
+
         for a in range(natoms):
             P_ni = self.P_uani[u][a]
             M0_pp = setups[a].M0_pp
@@ -569,7 +569,7 @@ class SIC:
         # loop all blocks
         for u in myblocks:
             #
-            # get the local index of the block u 
+            # get the local index of the block u
             q=self.myblocks.index(u)
             #
             # logging
@@ -592,7 +592,7 @@ class SIC:
             #
             # save the last energy
             #matrix_exponential(self.K_unn[q],U_nn,0.0)
-            #matrix_multiply(U_nn,self.W_unn[q].copy(),self.W_unn[q]) 
+            #matrix_multiply(U_nn,self.W_unn[q].copy(),self.W_unn[q])
             self.update_optimal_states([u],rotate_only=True)
             E0=self.update_potentials([u])
             self.calculate_sic_matrixelements([u])
@@ -633,7 +633,7 @@ class SIC:
                 # the "infinitesimal" trial step
                 if (epsstep!=0.0):
                     #
-                    # infinitesimal steepest descent 
+                    # infinitesimal steepest descent
                     #matrix_exponential(self.K_unn[q],U_nn,step)
                     matrix_exponential(D_nn,U_nn,step)
                     matrix_multiply(U_nn,W_old.copy(),self.W_unn[q])
@@ -713,7 +713,7 @@ class SIC:
                         maxlsiter = -1
                     else:
                         maxlsiter = self.maxlsiter
-                        
+
                     G       = (E1-E0)/step
                     step0   = 0.0
                     step1   = step
@@ -773,7 +773,7 @@ class SIC:
                 if (not updated):
                     #matrix_exponential(K_old,U_nn,optstep)
                     if (optstep==0.0):
-                        self.W_unn[q,:] =W_old[:] 
+                        self.W_unn[q,:] =W_old[:]
                         #matrix_exponential(D_nn,U_nn,optstep)
                         #matrix_multiply(U_nn,W_old.copy(),self.W_unn[q])
                         self.update_optimal_states([u],rotate_only=True)
@@ -793,7 +793,7 @@ class SIC:
                 # orthonormalize the energy optimal orbitals
                 self.W_unn[q] = ortho(self.W_unn[q])
                 #
-                # 
+                #
                 self.RSI_u[q]=self.normK_u[q]
                 #
                 # logging
@@ -805,11 +805,11 @@ class SIC:
                         print(" UO-iter %3i : %10.5f  %5.1f %5.1f %6.3f %3i %s" %
                               (iter+1,ESI*self.units,log10(dE2),log10(K),
                                optstep,lsiter+1,lsmethod))
-            
+
                 if K<basiserror*self.uorelres or K<self.uomaxres or failed :
                     localerror = localerror + K**2
                     break
-            
+
         if test>2 and mpi.rank==0:
             print ("============  finished unitary optimization  ==============")
         if test>1 and mpi.rank==0:
@@ -822,11 +822,11 @@ class SIC:
         # avoid premature exit of basis optimization
         if self.adderror:
             self.wfs.eigensolver.error = sqrt(0.5*(basiserror**2 + localerror))
-                
+
     def add_non_local_terms(self, psit_nG, Htpsit_nG, u):
         #
         if self.init_SIC:
-            return 
+            return
         #
         if not self.act_SIC:
             return
@@ -885,7 +885,7 @@ class SIC:
                     #
                     if u in myblocks and n in mybands:
                         #
-                        # get the local index of the block u 
+                        # get the local index of the block u
                         q=self.myblocks.index(u)
                         #
                         if canonic:
@@ -898,7 +898,7 @@ class SIC:
                             phi_G=self.hamiltonian.xcfunc.phit_unG[q,n]
                             #
                             write(filename+'-opt-%d-%d.cube' % (u,n),
-                                      atoms, data=np.abs(phi_G)**2)         
+                                      atoms, data=np.abs(phi_G)**2)
         #
         # no spin polarization
         else:
@@ -908,7 +908,7 @@ class SIC:
                     if u in myblocks and n in mybands:
                         #
                         #
-                        # get the local index of the block u 
+                        # get the local index of the block u
                         q=self.myblocks.index(u)
                         #
                         if canonic:
@@ -921,8 +921,8 @@ class SIC:
                             phi_G=self.hamiltonian.xcfunc.phit_unG[q,n]
                             #
                             write(filename+'-opt-sat-%d.cube' % (n),
-                                      atoms, data=np.abs(phi_G)**2)    
-            
+                                      atoms, data=np.abs(phi_G)**2)
+
 
     def distribute_energies(self):
         #
@@ -933,7 +933,7 @@ class SIC:
         Sxc_un  = self.Sxc_un
         Stot_un = self.Stot_un
         #
-        # accumulate orbital dependent energies 
+        # accumulate orbital dependent energies
         self.wfs.kpt_comm.sum(f_un)
         self.wfs.kpt_comm.sum(eps_un)
         self.wfs.kpt_comm.sum(Sha_un)
@@ -966,7 +966,7 @@ class SIC:
         # write the header
         if (mpi.rank==0):
             print ("=============  self-interaction corrections ===============")
-            print (" blk orb   eps occ :      S_cou        S_xc      S_tot     ") 
+            print (" blk orb   eps occ :      S_cou        S_xc      S_tot     ")
             print ("-----------------------------------------------------------")
             #
             # loop all states
@@ -1000,7 +1000,7 @@ class SIC:
             self.Rphase = np.zeros(np.shape(self.Rgrid),dtype=complex)
             R = self.Rgrid
             P = self.Rphase
-        
+
             for i in range(3):
                 if (self.atoms.pbc[i]):
                     #
@@ -1011,7 +1011,7 @@ class SIC:
                         self.rcell[i,2]*self.Rgrid[2,:]))
                 else:
                     #
-                    # finite dimension 
+                    # finite dimension
                     self.Rphase[i,:] = \
                         self.rcell[i,0]*self.Rgrid[0,:] +\
                         self.rcell[i,1]*self.Rgrid[1,:] +\
@@ -1043,7 +1043,7 @@ class SIC:
         # calculate the positions of the orbitals
         # return np.dot(self.cell.T,rpos)
         #
-        
+
     def update_masked_density(self,dens,mdens,pos):
         #
         fac = -0.5/self.maskwidth**2
@@ -1064,14 +1064,14 @@ class SIC:
                 dlt = min(min(abs(x-pos[0]),abs(x-pos[0]+1)),abs(x-pos[0]-1))
                 if (dlt > 0.25):
                     maskx[ix] = exp(fac*dlt**2)
-        
+
         if (self.atoms.pbc[1]):
             for ix in range(ny):
                 x   = ix*dy
                 dlt = min(min(abs(x-pos[1]),abs(x-pos[1]+1)),abs(x-pos[1]-1))
                 if (dlt > 0.25):
                     masky[ix] = exp(fac*dlt**2)
-                
+
         if (self.atoms.pbc[2]):
             for ix in range(nz):
                 x   = ix*dz
@@ -1085,7 +1085,7 @@ class SIC:
                     mdens[ix,iy,iz] = dens[ix,iy,iz]*\
                                       maskx[ix]*masky[iy]*maskz[iz]
         #
-        
+
     def update_potentials(self,blocks=[],bands=[]):
         #
         #
@@ -1093,7 +1093,7 @@ class SIC:
         # -> else exit with E_SI=0
         if self.wfs.kpt_u[0].psit_nG is None:
             return 0.0
-        
+
         self.timer.start('SIC - potentials')
         #
         # some references to lengthy variable names
@@ -1103,7 +1103,7 @@ class SIC:
         hamiltonian = self.hamiltonian
         psolver     = self.psolver
         nt_g        = self.nt_g
-        nt_g0       = self.nt_g0    
+        nt_g0       = self.nt_g0
         v_g0        = self.v_g0
         nt_G        = self.nt_G
         v_cou_unG   = self.v_cou_unG
@@ -1171,18 +1171,18 @@ class SIC:
                 nt_G     = np.abs(self.phit_unG[q,n])**2
 
                 # compose atomic density matrix
-    	        Q_aL = {}
+                Q_aL = {}
                 D_ap = {}
                 dH_ap = {}
                 dH_nap.append(dH_ap)
                 for a, P_ni in self.P_uani[q].items():
-    	            P_i = P_ni[n]
-    	            D_ii = np.outer(P_i, P_i)
-    	            D_p = pack(D_ii)
+                    P_i = P_ni[n]
+                    D_ii = np.outer(P_i, P_i)
+                    D_p = pack(D_ii)
                     D_ap[a] = D_p
-                    
-    	            # corrections to the orbital density
-    	            Q_aL[a] = np.dot(D_p, setups[a].Delta_pL)
+
+                    # corrections to the orbital density
+                    Q_aL[a] = np.dot(D_p, setups[a].Delta_pL)
 
                 # interpolate density on the fine grid
                 # ------------------------------------------------------------
@@ -1193,7 +1193,7 @@ class SIC:
                     nt_g  *= Nt / Ntfine
                     density.ghat.add(nt_g, Q_aL)
                 else:
-                    nt_g[:] = nt_G[:] 
+                    nt_g[:] = nt_G[:]
                     self.ghat.add(nt_g, Q_aL)
 
                 self.timer.stop('rho')
@@ -1201,10 +1201,10 @@ class SIC:
                 # compute the masked density and its effect on the
                 # norm of density
                 # ------------------------------------------------------------
-		if (self.periodic or not self.old_coul):
+                if (self.periodic or not self.old_coul):
                     #
-		    self.timer.start('localization masks')
-		    #
+                    self.timer.start('localization masks')
+                    #
                     if (self.gauss==None):
                         self.gauss     = Gaussian(self.finegd,self.cell,self.pbc)
                         self.rho_gauss = np.ndarray(nt_g.shape,dtype=float)
@@ -1221,11 +1221,11 @@ class SIC:
                         # apply the localization mask to the density
                         m_nt_g = nt_g*self.mask
                         #
-                        # ... and compute effect of mask on total norm 
+                        # ... and compute effect of mask on total norm
                         self.loc_un[u,n] = self.finegd.integrate(m_nt_g)
                     else:
                         self.loc_un[u,n] = 1.0
-		    self.timer.stop('localization masks')
+                    self.timer.stop('localization masks')
                 else:
                     #
                     # no mask needed for finite systems
@@ -1331,7 +1331,7 @@ class SIC:
         #    self.m_un=np.where(Stot_un>0.0, 0.0, 1.0)
         #    Stot_un  =np.where(Stot_un>0.0, 0.0, Stot_un)
         #    #
-        #    for u in myblocks:  
+        #    for u in myblocks:
         #        q=self.myblocks.index(u)
         #        for n in mybands:
         #            v_unG[q,n][:]     = self.m_un[u,n]*v_unG[q,n,:]
@@ -1360,14 +1360,14 @@ class SIC:
 
         return -self.coufac * dE
 
-        
-        
+
+
     def update_optimal_states(self,blocks=[],rotate_only=False):
         #
         test    = self.test
         nbands  = self.nbands
         nblocks = self.nblocks
-        
+
         #
         self.timer.start('SIC - state update')
         #
@@ -1375,11 +1375,11 @@ class SIC:
         # of the energy optimal orbitals
         for u in blocks:
             #
-            # get the local index of the block u 
+            # get the local index of the block u
             q=self.myblocks.index(u)
             #print 'updating states ',q
             #
-            # write transformation matrix W 
+            # write transformation matrix W
             if test>4:
                 print 'Transformation matrix W for block ',u
                 print self.W_unn[q]
@@ -1404,7 +1404,7 @@ class SIC:
                 self.gd.comm.sum(self.O_unn[q])
                 print 'Overlap matrix <Phi_i|Phi_j> for block ',q
                 print self.O_unn[q]
-                
+
         if rotate_only:
             self.timer.stop('SIC - state update')
             return
@@ -1420,13 +1420,13 @@ class SIC:
                 self.eps_un[u]=self.wfs.kpt_u[q].eps_n
         #
         if type(self.wfs.kpt_u[0].f_n)==None:
-            self.f_un = np.ones((nblocks,nbands),dtype=float)  
+            self.f_un = np.ones((nblocks,nbands),dtype=float)
         else:
             self.f_un = np.zeros((nblocks,nbands),dtype=float)
             for u in blocks:
                 q=self.myblocks.index(u)
                 self.f_un[u] = self.wfs.kpt_u[q].f_n
-                
+
         self.timer.stop('SIC - state update')
 
 
@@ -1487,7 +1487,7 @@ class SIC:
         nbands =self.nbands
         #
         # if rattle<=0: use a non-random perturbation
-        if rattle<=0: 
+        if rattle<=0:
             #
             # debug output
             if test>5:
@@ -1546,7 +1546,7 @@ class SIC:
                     self.W_unn[q,:,:] = 0.0
 
                 self.blk_comm.broadcast(self.W_unn[q], 0)
-           
+
                 if test>5:
                     print 'Initial transformation matrix W for block ',u
                     print self.W_unn[q]
@@ -1600,7 +1600,7 @@ class SIC:
                     self.W_unn[q,:,:] = 0.0
 
                 self.blk_comm.broadcast(self.W_unn[q], 0)
-           
+
                 if test>5:
                     print 'Initial transformation matrix W for block ',u
                     print self.W_unn[q]
@@ -1615,12 +1615,12 @@ def matrix_exponential(G_nn,U_nn,dlt):
     """
     ndim = G_nn.shape[1]
     w_n  = np.zeros((ndim),dtype=float)
-    
+
     V_nn = np.zeros((ndim,ndim),dtype=complex)
     if G_nn.dtype==complex:
         V_nn =  1j*G_nn.real - G_nn.imag
     else:
-        V_nn =  1j*G_nn.real 
+        V_nn =  1j*G_nn.real
 
     diagonalize(V_nn,w_n)
     #
@@ -1641,7 +1641,7 @@ def matrix_multiply(A_nn,B_nn,C_nn):
 
     """
     ndim = A_nn.shape[1]
-            
+
     for n in range(ndim):
         for m in range(ndim):
             C_nn[n,m] = 0.0
