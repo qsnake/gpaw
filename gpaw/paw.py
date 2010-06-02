@@ -182,6 +182,8 @@ class PAW(PAWTextOutput):
             elif key in ['charge']:
                 self.hamiltonian = None
                 self.density = None
+                self.wfs = EmptyWaveFunctions()
+                self.occupations = None
             elif key in ['kpts', 'nbands']:
                 self.wfs = EmptyWaveFunctions()
                 self.occupations = None
