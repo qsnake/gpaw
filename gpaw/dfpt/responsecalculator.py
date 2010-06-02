@@ -10,7 +10,6 @@ from gpaw.poisson import PoissonSolver, FFTPoissonSolver
 from gpaw.dfpt.mixer import BaseMixer
 
 from gpaw.dfpt.sternheimeroperator import SternheimerOperator
-# from gpaw.dfpt.linearsolver import LinearSolver
 from gpaw.dfpt.scipylinearsolver import ScipyLinearSolver
 from gpaw.dfpt.preconditioner import ScipyPreconditioner
 
@@ -34,12 +33,18 @@ class ResponseCalculator:
         """
         
         # Make sure that localized functions are initialized
-        # calc.set_positions()
-        # atoms = calc.get_atoms()
+        calc.set_positions()
+        atoms = calc.get_atoms()
         
         self.calc = calc
+        self.perturbation = perturbation
 
+        # Get list of k-points
         self.kpt_u = self.calc.wfs.kpt_u
+
+        # Store grid-descriptors
+        self.gd = calc.density.gd
+        self.finegd = calc.density.finegd
         
         ## Boundary conditions
         ## pbc_c = atoms.get_pbc()
@@ -62,26 +67,22 @@ class ResponseCalculator:
 
         # The perturbation determines the dtype of the wavefunction grids etc
         self.dtype = perturbation.get_dtype()
-        
-        # Store grid-descriptors
-        self.gd = calc.density.gd
-        self.finegd = calc.density.finegd
+       
         # Grid transformer -- convert array from coarse to fine grid
         self.interpolator = Transformer(self.gd, self.finegd, nn=3,
                                         dtype=self.dtype, allocate=False)
 
         # Wave-function derivative
         self.psit1_unG = None
+        # Sternheimer operator
         self.sternheimer_operator = None
+        # Krylov solver
         self.linear_solver = None
 
+        # Number of occupied bands
         self.nbands = max(1, self.calc.wfs.nvalence/2)
-
-        # 1) phonon
-        # 2) constant E-field
-        # 3) etc
-        self.perturbation = perturbation
-
+        assert self.nbands <= self.wfs.nbands
+                                  
         self.initialized = False
         
     def initialize(self, tolerance_sternheimer=1.0e-5, use_pc=False):
@@ -94,24 +95,25 @@ class ResponseCalculator:
         # self.poisson.set_grid_descriptor(self.finegd)
         # self.poisson.initialize()
 
+        # Initialize interpolator
         self.interpolator.allocate()
         
         # Initialize mixer
         # weight = 1 -> no metric is used
         self.mixer = BaseMixer(beta=0.4, nmaxold=5, weight=1)
-        self.mixer.initialize(self.calc.density)
+        self.mixer.initialize_mectric(self.gd)
         
         # Linear operator in the Sternheimer equation
         self.sternheimer_operator = \
             SternheimerOperator(hamiltonian, wfs, self.gd, dtype=self.dtype)
         
         # Temp hack for complex gamma point calculation
-        if self.dtype == complex:
+        if self.dtype == complex and self.calc.wfs.gamma:
+            
             spos_ac = self.calc.atoms.get_scaled_positions()
             ibzk_qc = np.array(((0, 0, 0),), dtype=float)
             self.sternheimer_operator.pt.set_k_points(ibzk_qc)
             self.sternheimer_operator.pt._update(spos_ac)
-            
             
         # Preconditioner for the Sternheimer equation
         if use_pc:
@@ -121,6 +123,7 @@ class ResponseCalculator:
         else:
             pc = None
 
+        # Temp ??
         self.pc = pc
         # Linear solver for the solution of Sternheimer equation            
         self.linear_solver = ScipyLinearSolver(tolerance=tolerance_sternheimer,
@@ -131,8 +134,6 @@ class ResponseCalculator:
     def __call__(self, maxiter=1000, tolerance_sc=1.0e-4,
                  tolerance_sternheimer=1e-5):
         """Calculate linear density response.
-
-        Implementation of q != 0 to be done!
 
         Parameters
         ----------
@@ -153,6 +154,7 @@ class ResponseCalculator:
                                   "not initizalized.")
 
         # Pass the phases to the preconditioner
+        # is this the correct phase ????????
         if not self.perturbation.gamma and self.pc is not None:
             phase_cd = self.perturbation.get_phases()
             self.pc.set_phases(phase_cd)
@@ -164,13 +166,6 @@ class ResponseCalculator:
         self.psit1_unG = [self.gd.zeros(n=self.nbands, dtype=self.dtype)
                           for kpt in self.kpt_u]
 
-        # SORT OUT THIS MESS HERE
-        # Variation of the pseudo-potential
-        self.vloc1_G = self.perturbation.calculate_derivative()
-        # This one must be calculated for each k-point - sort out when H-chain
-        # is done
-        # self.vnl1_nG = self.perturbation.calculate_nonlocal_derivative(kpt)
-        
         components = ['x','y','z']
         atoms = self.calc.get_atoms()
         symbols = atoms.get_chemical_symbols()
@@ -197,14 +192,14 @@ class ResponseCalculator:
                 
             if iter == maxiter-1:
                 print     ("self-consistent loop did not converge in %i "
-                           "iterations" % iter)
+                           "iterations" % (iter+1))
                 
         return self.nt1_G.copy(), self.psit1_unG
     
     def first_iteration(self):
         """Perform first iteration of sc-loop."""
 
-        self.wave_function_variations(self.vloc1_G)
+        self.wave_function_variations()
         self.nt1_G = self.density_response()
         self.mixer.mix(self.nt1_G, [])
 
@@ -213,8 +208,6 @@ class ResponseCalculator:
 
         # Update variation in the effective potential
         v1_G = self.effective_potential_variation()
-        # Temp attribute
-        self.v1_G = v1_G
         # Update wave function variations
         self.wave_function_variations(v1_G)
         # Update density
@@ -235,10 +228,9 @@ class ResponseCalculator:
         nt1_g = self.finegd.zeros(dtype=self.dtype)
         self.interpolator.apply(self.nt1_G, nt1_g, phase_cd)
 
-        # Hartree part -- correct boundary conditions etc ??
+        # Hartree part
         vHXC1_g = self.finegd.zeros(dtype=self.dtype)
         self.perturbation.solve_poisson(vHXC1_g, nt1_g)
-        # self.poisson.solve_neutral(vHXC1_g, nt1_g)
 
         # XC part - fix this in the xc_functional.py file !!!!
         density = self.calc.density
@@ -254,19 +246,15 @@ class ResponseCalculator:
         v1_G = self.gd.zeros(dtype=self.dtype)
         self.perturbation.restrictor.apply(vHXC1_g, v1_G, phase_cd)
         
-        # Add pseudo-potential part
-        v1_G += self.vloc1_G
-
         return v1_G
     
-    def wave_function_variations(self, v1_G):
+    def wave_function_variations(self, v1_G=None):
         """Calculate variation in the wave-functions.
 
         Parameters
         ----------
         v1_G: ndarray
-            Variation of the local part of the effective potential
-            (PS + Hartree + XC)
+            Derivative of the local effective potential (Hartree + XC)
 
         """
 
@@ -274,9 +262,18 @@ class ResponseCalculator:
         for kpt in self.kpt_u:
 
             k = kpt.k
-            print "\t\tk-point %2.1i" % k,
+            print "k-point %2.1i" % k
             psit_nG = kpt.psit_nG[:self.nbands]
             psit1_nG = self.psit1_unG[k]
+
+            # This one must be calculated for each k-point 
+            # self.vnl1_nG = self.perturbation.calculate_nonlocal_derivative()
+            # Add pseudo-potential part
+            # v1_G += self.vloc1_G
+            
+            # Right-hand side of Sternheimer equation
+            rhs_nG = self.gd.zeros(n=self.nbands, dtype=self.dtype)
+            self.perturbation.apply(psit_nG, rhs_nG, kpt=kpt)
             
             # Loop over all valence-bands
             for n in range(self.nbands):
@@ -284,21 +281,25 @@ class ResponseCalculator:
                 # Get view of the Bloch function and its variation
                 psit_G = psit_nG[n]
                 psit1_G = psit1_nG[n]
-
+                rhs_G = -1 * rhs_nG[n]
+                
                 # Update k-point and band index in SternheimerOperator
                 self.sternheimer_operator.set_blochstate(n, k)
 
-                # rhs of Sternheimer equation
-                rhs_G = -1. * v1_G * psit_G
-                # Add non-local part
-                # rhs_G -= self.vnl1_nG[n]
-
+                # Rhs of Sternheimer equation
+                if v1_G is not None:
+                    rhs_G -= v1_G * psit_G
+                
                 self.sternheimer_operator.project(rhs_G)
-                # print "Before linear solver."
+
+                # rhs of Sternheimer equation
+                #rhs_G = -1. * v1_G * psit_G
+                # Add non-local part
+                #rhs_G -= self.vnl1_nG[n]
+                
                 print "\tBand %2.1i -" % n,
                 iter, info = self.linear_solver.solve(self.sternheimer_operator,
                                                       psit1_G, rhs_G)
-                # print "After linear solver."
                 
                 if info == 0:
                     print "linear solver converged in %i iterations" % iter
@@ -308,7 +309,7 @@ class ResponseCalculator:
                                        % iter)
                 else:
                     assert info == 0, ("linear solver failed to converge")
-                    
+                
     def density_response(self):
         """Calculate density response from variation in the wave-functions."""
 
@@ -317,12 +318,13 @@ class ResponseCalculator:
         
         for kpt in self.kpt_u:
 
+            # The occupations includes the weight of the k-points
             f_n = kpt.f_n[:self.nbands]
             psit_nG = kpt.psit_nG[:self.nbands]
             psit1_nG = self.psit1_unG[kpt.k]
 
             for n, f in enumerate(f_n):
-                
+                # Factor 2 for time-reversal symmetry
                 nt1_G += 2 * f * (psit_nG[n].conjugate() * psit1_nG[n])
 
         return nt1_G

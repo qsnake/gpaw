@@ -53,7 +53,7 @@ class SternheimerOperator:
 
         # For scipy's linear solver
         N = np.prod(gd.n_c)
-        self.shape = (N,N)
+        self.shape = (N, N)
         self.dtype = dtype
 
     def set_blochstate(self, n=None, k=None):
@@ -99,7 +99,7 @@ class SternheimerOperator:
             
         """
 
-        assert len(x_nG.shape) in (3, 4)
+        assert x_nG.ndim in (3, 4)
         assert x_nG.shape == y_nG.shape
         assert tuple(self.gd.n_c) == x_nG.shape[-3:]
         assert self.k is not None
@@ -147,10 +147,10 @@ class SternheimerOperator:
 
         ::
 
-                   --                    --             
-          P      = >  |Psi ><Psi | = 1 - >  |Psi ><Psi |
-           c,k+q   --     c     c        --     v     v 
-                    c    k+q   k+q        v    k+q   k+q
+                      --                    --             
+             P      = >  |Psi ><Psi | = 1 - >  |Psi ><Psi |
+              c,k+q   --     c     c        --     v     v 
+                       c    k+q   k+q        v    k+q   k+q
         
         """
 

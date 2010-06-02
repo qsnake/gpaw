@@ -16,7 +16,14 @@ from gpaw.dfpt.perturbation import Perturbation
 
 
 class PhononPerturbation(Perturbation):
-    """Implementation of phonon-related terms for the Sternheimer equation."""
+    """Implementation of a phonon perturbation.
+
+    This class implements the change in the effective potential due to a
+    displacement of an atom ``a`` in direction ``v`` with wave-vector ``q``.
+    The action of the perturbing potential on a state vector is implemented in
+    the ``apply`` member function.
+    
+    """
     
     def __init__(self, calc, **kwargs):
         """Store useful objects, e.g. lfc's for the various atomic functions.
@@ -47,15 +54,16 @@ class PhononPerturbation(Perturbation):
                 self.gamma = True
                 self.dtype = float
                 # Phase factors for the transformation between fine and coarse grids
-                self.phase_cd = np.ones((3, 2), dtype=complex)        
+                self.phase_cd = np.ones((3, 2), dtype=complex)
             else:
                 self.gamma = False
                 self.dtype = complex
                 # Get k-points -- only temp, I need q-vectors; maybe the same ???
                 self.ibzk_qc = self.calc.get_ibz_k_points()
-
+                # self.bzk_kc = self.calc.get_bz_k_points()
+                
                 # Simulate Gamma point calculation
-                self.ibzk_qc = np.array(((0, 0, 0),), dtype=float)
+                # self.ibzk_qc = np.array(((0, 0, 0),), dtype=float)
                 # Look in wavefunction.py for q != 0
                 self.phase_cd = None
                 self.phase_cd = np.ones((3, 2), dtype=complex)
@@ -70,14 +78,21 @@ class PhononPerturbation(Perturbation):
         # Steal setups
         setups = calc.wfs.setups
         
-        # Localized functions
+        # Localized functions:
+        # projectors
         self.pt = LFC(self.gd, [setup.pt_j for setup in setups])
+        # core corections
         self.nct = LFC(self.gd, [[setup.nct] for setup in setups],
                        integral=[setup.Nct for setup in setups])
+        # compensation charges
         self.ghat = LFC(self.finegd, [setup.ghat_l for setup in setups],
                         integral=sqrt(4 * pi))
+        # vbar potential
         self.vbar = LFC(self.finegd, [[setup.vbar] for setup in setups])
 
+        # Expansion coefficients for the compensation charges
+        self.Q_aL = calc.density.Q_aL.copy()
+        
         # Grid transformer -- convert array from fine to coarse grid
         self.restrictor = Transformer(self.finegd, self.gd, nn=3,
                                       dtype=self.dtype, allocate=False)
@@ -90,7 +105,6 @@ class PhononPerturbation(Perturbation):
         if self.gamma:
             self.q = -1
         else:
-            # Modified to test the implementation with complex quantities
             self.q = None
 
         # Coefficients needed for the non-local part of the perturbation
@@ -114,7 +128,7 @@ class PhononPerturbation(Perturbation):
             # Set q-vectors and update
             self.ghat.set_k_points(self.ibzk_qc)
             self.ghat._update(spos_ac)
-            # Set q-vectors and update 
+            # Set q-vectors and update
             self.vbar.set_k_points(self.ibzk_qc)
             self.vbar._update(spos_ac)
             # Set q-vectors and update
@@ -137,9 +151,6 @@ class PhononPerturbation(Perturbation):
         self.poisson.initialize()
         # Grid transformer
         self.restrictor.allocate()
-        # Calculate coefficients needed for the non-local part of the PP
-
-        # self.calculate_dP_aniv()
 
     def get_dtype(self):
         """Return dtype for the phonon perturbation."""
@@ -166,11 +177,14 @@ class PhononPerturbation(Perturbation):
         self.a = a
         self.v = v
         # Invalidate calculated quantities
+        # - local part of perturbing potential
+        self.v1_G = None
 
     def set_q(self, q):
         """Set the index of the q-vector of the perturbation."""
 
         self.q = q
+        self.calculate_local_potential()
         # Check that the index is in allowed range
         # Update self.phase_cd attribute
         
@@ -207,14 +221,78 @@ class PhononPerturbation(Perturbation):
             # Return to Bloch form
             phi_g *= self.phase_qg[self.q]
             
-    def calculate_dP_aniv(self, kpt=None):
+    def apply(self, x_nG, y_nG, kpt=None):
+        """Apply the perturbation to a vector."""
+
+        assert x_nG.ndim in (3, 4)
+        assert tuple(self.gd.n_c) == x_nG.shape[-3:]
+
+        if self.v1_G is None:
+            self.calculate_local_potential()
+        
+        if x_nG.ndim == 3:
+            y_nG += x_nG * self.v1_G
+        else:
+            for x_G, y_G in zip(x_nG, y_nG):
+                y_G += x_G * self.v1_G
+
+        self.apply_nonlocal_potential(x_nG, y_nG, kpt=kpt)
+
+    def calculate_local_potential(self):
+        """Derivate of the local potential wrt an atomic displacements.
+
+        The local part of the PAW potential has contributions from the
+        compensation charges (``ghat``) and a spherical symmetric atomic
+        potential (``vbar``).
+        
+        """
+
+        assert self.a is not None
+        assert self.v is not None
+        assert self.q is not None
+        
+        a = self.a
+        v = self.v
+        
+        # Expansion coefficients for the ghat functions
+        Q_aL = self.ghat.dict(zero=True)
+        # Remember sign convention for add_derivative method
+        Q_aL[a] = -1 * self.Q_aL[a]
+
+        # Grid for derivative of compensation charges
+        ghat1_g = self.finegd.zeros(dtype=self.dtype)
+        self.ghat.add_derivative(a, v, ghat1_g, Q_aL, q=self.q)
+    
+        # Solve Poisson's eq. for the potential from the periodic part of the
+        # compensation charge derivative
+        v1_g = self.finegd.zeros(dtype=self.dtype)
+        self.solve_poisson(v1_g, ghat1_g)
+        
+        # Store potential from the compensation charge
+        self.vghat1_g = v1_g.copy()
+        
+        # Add derivative of vbar - sign convention in add_derivative method
+        c_ai = self.vbar.dict(zero=True)
+        c_ai[a][0] = -1.
+        self.vbar.add_derivative(a, v, v1_g, c_axi=c_ai, q=self.q)
+
+        # Store potential for the evaluation of the energy derivative
+        self.v1_g = v1_g.copy()
+
+        # Transfer to coarse grid
+        v1_G = self.gd.zeros(dtype=self.dtype)
+        self.restrictor.apply(v1_g, v1_G, self.phase_cd)
+
+        self.v1_G = v1_G
+        
+    def calculate_projector_coef(self, x_nG, kpt=None):
         """Coefficients for the derivative of the non-local part of the PP.
 
         Parameters
         ----------
         kpt: k-point
             K-point of the Bloch state on which the non-local potential acts
-            upon
+            on
 
         The calculated coefficients are the following (except for an overall
         sign of -1; see ``derivative`` method of the ``lfc`` class)::
@@ -232,268 +310,75 @@ class PhononPerturbation(Perturbation):
 
         """
 
-        # Projectors on the atoms
-        pt = self.pt
-        nbands = self.calc.wfs.nvalence/2
-        # Integration dict
-        dP_aniv = pt.dict(nbands, derivative=True)
-        # Wave functions
-        psit_nG = self.calc.wfs.kpt_u[0].psit_nG[:nbands]
-        # Integrate with derivative of projectors
-        pt.derivative(psit_nG, dP_aniv)
-        # Store the coefficients
+        if x_nG.ndim == 3:
+            n = 1
+        else:
+            n = x_nG.shape[0]
+            
+        # Integration dicts
+        P_ani   = self.pt.dict(shape=n)
+        dP_aniv = self.pt.dict(shape=n, derivative=True)
+
+        # Temporary for complex gamma-point calculations
+        if not self.gamma and x_nG.dtype == float:
+            x_nG = np.array(x_nG, dtype=complex)
+            
+        # 1) Integrate with projectors
+        self.pt.integrate(x_nG, P_ani, q=kpt.q)
+        self.P_ani = P_ani
+
+        # 2) Integrate with derivative of projectors
+        self.pt.derivative(x_nG, dP_aniv, q=kpt.q)
         self.dP_aniv = dP_aniv
-
-    def calculate_derivative(self):
-        """Derivate of the local PAW potential wrt an atomic displacements.
-
-        The local part of the PAW potential has contributions from the
-        compensation charges (``ghat``) and a spherical symmetric atomic
-        potential (``vbar``).
         
-        """
-
-        assert self.a is not None
-        assert self.v is not None
-        assert self.q is not None
-        
-        a = self.a
-        v = self.v
-        
-        # LFC's
-        ghat = self.ghat
-        vbar = self.vbar
-        # Expansion coefficients for the ghat functions
-        Q_aL = ghat.dict(zero=True)
-        # Remember sign convention for add_derivative method
-        Q_aL[a] = -1 * self.calc.density.Q_aL[a]
-
-        # Grid for derivative of compensation charges
-        ghat1_g = self.finegd.zeros(dtype=self.dtype)
-        ghat.add_derivative(a, v, ghat1_g, Q_aL, q=self.q)
-        # ghat.add(ghat1_g, Q_aL, q=self.q)
-    
-        # Solve Poisson's eq. for the potential from the periodic part of the
-        # compensation charge derivative
-        v1_g = self.finegd.zeros(dtype=self.dtype)
-        self.solve_poisson(v1_g, ghat1_g)
-        
-        # Store potential from the compensation charge
-        self.vghat1_g = v1_g.copy()
-        
-        # Add derivative of vbar - sign convention in add_derivative method
-        c_ai = vbar.dict(zero=True)
-        c_ai[a][0] = -1.
-        vbar.add_derivative(a, v, v1_g, c_axi=c_ai, q=self.q)
-
-        # Store potential for the evaluation of the energy derivative
-        self.v1_g = v1_g.copy()
-
-        # Transfer to coarse grid
-        v1_G = self.gd.zeros(dtype=self.dtype)
-        self.restrictor.apply(v1_g, v1_G, self.phase_cd)
-
-        # This is a phase factor exp(iq*r) times a lattice periodic function
-        return v1_G
-  
-    def calculate_nonlocal_derivative(self, kpt):
+    def apply_nonlocal_potential(self, x_nG, y_nG, kpt=None):
         """Derivate of the non-local PAW potential wrt an atomic displacement.
 
         Parameters
         ----------
         kpt: KPoint
             k-point of the Bloch function being operated on.
-
-        Remember to generalize this to the case of complex wave-functions !!!!!
         
         """
 
         assert self.a is not None
         assert self.v is not None
-        assert self.dP_aniv is not None
+        assert x_nG.ndim in (3,4)
+        assert tuple(self.gd.n_c) == x_nG.shape[-3:]
         
+        if x_nG.ndim == 3:
+            n = 1
+        else:
+            n = x_nG.shape[0]
+            
         a = self.a
         v = self.v
         
-        # Projectors on the atoms
-        pt = self.pt
-        
-        nbands = self.calc.wfs.nvalence/2
+        # Calculate coefficients needed for the non-local part of the PP
+        self.calculate_projector_coef(x_nG, kpt)
+
         hamiltonian = self.calc.hamiltonian
 
         # <p_a^i | psi_n >
-        P_ni = self.calc.wfs.kpt_u[kpt.k].P_ani[a][:nbands]
+        P_ni = self.P_ani[a]
         # <dp_av^i | psi_n > - remember the sign convention of the calculated
         # derivatives 
         dP_ni = -1 * self.dP_aniv[a][...,v]
 
-        # Array for the derivative of the non-local part of the PAW potential
-        vnl1_nG = self.gd.zeros(n=nbands, dtype=self.dtype)
-        
         # Expansion coefficients for the projectors on atom a
         dH_ii = unpack(hamiltonian.dH_asp[a][0])
 
         # The derivative of the non-local PAW potential has two contributions
         # 1) Sum over projectors
         c_ni = np.dot(dP_ni, dH_ii)
-        c_ani = pt.dict(shape=nbands, zero=True)
+        c_ani = self.pt.dict(shape=n, zero=True)
         c_ani[a] = c_ni
-        pt.add(vnl1_nG, c_ani)
+        self.pt.add(y_nG, c_ani, q=self.q)
 
         # 2) Sum over derivatives of the projectors
         dc_ni = np.dot(P_ni, dH_ii)
-        dc_ani = pt.dict(shape=nbands, zero=True)
+        dc_ani = self.pt.dict(shape=n, zero=True)
         # Take care of sign of derivative in the coefficients
         dc_ani[a] = -1 * dc_ni
 
-        pt.add_derivative(a, v, vnl1_nG, dc_ani)
-     
-        return vnl1_nG
-
-    def calculate_derivative_old(self):
-        """Derivate of the local PAW potential wrt an atomic displacement."""
-
-        assert self.a is not None
-        assert self.v is not None
-
-        eps = 1e-5/units.Bohr
-        
-        a = self.a
-        v = self.v
-        # Array for the derivative of the local part of the PAW potential
-        v1_g = self.finegd.zeros()
-        
-        # Contributions from compensation charges (ghat) and local potential
-        # (vbar)
-        ghat = self.ghat
-        vbar = self.vbar
-
-        # Atomic displacements in scaled coordinates
-        eps_s = eps/self.gd.cell_cv[v,v]
-        
-        # grid for derivative of compensation charges
-        ghat1_g = self.finegd.zeros()
-
-        # Calculate finite-difference derivatives
-        spos_ac = self.calc.atoms.get_scaled_positions()
-        
-        dict_ghat = ghat.dict(zero=True)
-        dict_vbar = vbar.dict(zero=True)
-
-        dict_ghat[a] = -1 * self.calc.density.Q_aL[a]
-        dict_vbar[a] -= 1.
-
-        spos_ac[a, v] -= eps_s
-        ghat.set_positions(spos_ac)
-        ghat.add(ghat1_g, dict_ghat)
-        vbar.set_positions(spos_ac)
-        vbar.add(v1_g, dict_vbar)
-
-        dict_ghat[a] *= -1
-        dict_vbar[a] *= -1
-            
-        spos_ac[a, v] += 2 * eps_s
-        ghat.set_positions(spos_ac)
-        ghat.add(ghat1_g, dict_ghat)
-        vbar.set_positions(spos_ac)
-        vbar.add(v1_g, dict_vbar)
-
-        # Return to initial positions
-        spos_ac[a, v] -= eps_s
-        ghat.set_positions(spos_ac)
-        vbar.set_positions(spos_ac)
-
-        # Convert changes to a derivatives
-        d = 2 * eps
-        v1_g /= d
-        ghat1_g /= d
-
-        # Solve Poisson's eq. for the potential from the compensation charges
-        hamiltonian = self.calc.hamiltonian
-        ps = hamiltonian.poisson
-        vghat1_g = self.finegd.zeros()
-        ps.solve(vghat1_g, ghat1_g)
-
-        v1_g += vghat1_g
-       
-        # Transfer to coarse grid
-        v1_G = self.gd.zeros()
-        hamiltonian.restrictor.apply(v1_g, v1_G)
-
-        # Store potentials for the evaluation of the energy derivative
-        self.v1_g = v1_g.copy()
-        self.vghat1_g = vghat1_g.copy()
-        
-        return v1_G
-    
-    def calculate_nonlocal_derivative_old(self, kpt):
-        """Derivate of the non-local PAW potential wrt an atomic displacement.
-
-        Remember to generalize this to the case of complex wave-functions !!!!!
-        
-        """
-
-        assert self.a is not None
-        assert self.v is not None
-        assert self.dP_aniv is not None
-        
-        a = self.a
-        v = self.v
-        
-        # Projectors on the atoms
-        pt = self.pt
-        
-        nbands = self.calc.wfs.nvalence/2
-        hamiltonian = self.calc.hamiltonian
-
-        # <p_a^i | psi_n >
-        P_ni = self.calc.wfs.kpt_u[0].P_ani[a][:nbands]
-        # <dp_av^i | psi_n > - remember the sign convention of the calculated
-        # derivatives 
-        dP_ni = -1 * self.dP_aniv[a][...,v]
-
-        # Array for the derivative of the non-local part of the PAW potential
-        vnl1_nG = self.gd.zeros(n=nbands)
-        
-        # Expansion coefficients for the projectors on atom a
-        dH_ii = unpack(hamiltonian.dH_asp[a][0])
-
-        # The derivative of the non-local PAW potential has two contributions
-        # 1) Sum over projectors
-        c_ni = np.dot(dP_ni, dH_ii)
-        c_ani = pt.dict(shape=nbands, zero=True)
-        c_ani[a] = c_ni
-        pt.add(vnl1_nG, c_ani)
-
-        # 2) Sum over derivatives of the projectors
-        vnl1_temp_nG = self.gd.zeros(n=nbands)
-        dc_ni = np.dot(P_ni, dH_ii)
-        dc_ani = pt.dict(shape=nbands, zero=True)
-        dc_ani[a] = dc_ni
-
-        # Finite-difference derivative: dp = (p(+eps) - p(-eps)) / 2*eps
-        # Atomic displacements in scaled coordinates
-        eps = 1e-5/units.Bohr
-        eps_s = eps/self.gd.cell_cv[v,v]
-        spos_ac = self.calc.atoms.get_scaled_positions()
-        
-        dc_ani[a] *= -1
-        spos_ac[a, v] -= eps_s
-        pt.set_positions(spos_ac)
-        pt.add(vnl1_temp_nG, dc_ani)
-
-        dc_ani[a] *= -1
-        spos_ac[a, v] += 2 * eps_s
-        pt.set_positions(spos_ac)
-        pt.add(vnl1_temp_nG, dc_ani)
-    
-        # Return to initial positions
-        spos_ac[a, v] -= eps_s
-        pt.set_positions(spos_ac)
-        
-        # Convert change to a derivative
-        d = 2 * eps
-        vnl1_temp_nG /= d
-        vnl1_nG += vnl1_temp_nG
-        
-        return vnl1_nG
+        self.pt.add_derivative(a, v, y_nG, dc_ani, self.q)
