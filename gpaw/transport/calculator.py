@@ -215,7 +215,7 @@ class Transport(GPAW):
         p['n_ion_step'] = 0
         p['eqinttol'] = 1e-4
         p['plot_eta'] = 0.05
-        p['alpha'] = 0.6
+        p['alpha'] = 0.0
         p['beta_guess'] = 0.1
         p['theta'] = 200
         p['vaccs'] = None
@@ -443,7 +443,7 @@ class Transport(GPAW):
     def initialize_gate(self):
         if self.gate_mode == 'SN':
             assert self.gate_atoms is not None
-            #self.gate_rhot_g = 
+
         elif self.gate_mode == 'VM':
             setups = self.wfs.setups
             self.gate_basis_index = get_atom_indices(self.gate_atoms, setups)
@@ -1912,11 +1912,6 @@ class Transport(GPAW):
 
         actual_charge = self.finegd.integrate(density.rhot_g)
         self.text('actual_charge' + str(actual_charge))
-        #if self.fixed and self.gate_mode == 'VG':
-            #density.rhot_g += self.surround.gate_rhot_g
-
-        if self.fixed and self.gate_mode == 'SN':
-            density.rhot_g += self.gate_rhot_g
 
         ham.npoisson = self.inner_poisson.solve(self.hamiltonian.vHt_g,
                                                   density.rhot_g,
