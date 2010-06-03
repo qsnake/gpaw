@@ -88,7 +88,6 @@ class PAW(PAWTextOutput):
             kwargs = parameters
             filename = None # XXX
 
-
         if filename is not None:
             reader = gpaw.io.open(filename, 'r')
             self.atoms = gpaw.io.read_atoms(reader)
@@ -102,7 +101,7 @@ class PAW(PAWTextOutput):
             # *from* files in the first place
             if par.setups is None:
                 if par.idiotproof:
-                    raise RuntimeError('Setups not specified in file.  Use '
+                    raise RuntimeError('Setups not specified in file. Use '
                                        'idiotproof=False to proceed anyway.')
                 else:
                     par.setups = {None : 'paw'}
@@ -112,7 +111,7 @@ class PAW(PAWTextOutput):
                                        'idiotproof=False to proceed anyway.')
                 else:
                     par.basis = {}
-            
+
             self.initialize()
             self.read(reader)
 
@@ -121,9 +120,9 @@ class PAW(PAWTextOutput):
             # overwritten by self.initialize()                 ###
             if self.hamiltonian.xcfunc.gllb:                   ###
                 self.hamiltonian.xcfunc.xc.read(reader)        ###
-                            
+
             self.print_cell_and_parameters()
-                
+
         self.observers = []
 
     def read(self, reader):
@@ -162,16 +161,16 @@ class PAW(PAWTextOutput):
         for key in kwargs:
             if key == 'basis' and  p['mode'] == 'fd':
                 continue
-            
+
             if key in ['fixmom', 'mixer',
                        'verbose', 'txt', 'hund', 'random',
                        'eigensolver', 'poissonsolver', 'idiotproof', 'notify']:
                 continue
-                
+
             if key in ['convergence', 'fixdensity', 'maxiter']:
                 self.scf = None
                 continue
-                
+
             # More drastic changes:
             self.scf = None
             self.wfs.set_orthonormalized(False)
@@ -203,7 +202,7 @@ class PAW(PAWTextOutput):
                     "to the 'parallel' dictionary keyword under '%s'." % name)
             else:
                 raise TypeError("Unknown keyword argument: '%s'" % key)
-         
+
         p.update(kwargs)
 
     def calculate(self, atoms=None, converge=False,
@@ -246,7 +245,7 @@ class PAW(PAWTextOutput):
             self.set_positions(atoms)
         elif force_call_to_set_positions:
             self.set_positions(atoms)
-            
+
         self.timer.stop('Initialization')
 
         if self.scf.converged:
@@ -261,7 +260,7 @@ class PAW(PAWTextOutput):
             self.print_iteration(iter)
             self.iter = iter
         self.timer.stop('SCF-cycle')
-            
+
         if self.scf.converged:
             self.call_observers(iter, final=True)
             self.print_converged(iter)
@@ -270,7 +269,7 @@ class PAW(PAWTextOutput):
         elif converge:
             if 'crashed' in hooks:
                 hooks['crashed'](self)
-            raise KohnShamConvergenceError('Did not converge!')        
+            raise KohnShamConvergenceError('Did not converge!')
 
     def initialize_positions(self, atoms=None):
         """Update the positions of the atoms."""
@@ -281,7 +280,7 @@ class PAW(PAWTextOutput):
             self.atoms = atoms.copy()
 
         self.check_atoms()
-        
+
         spos_ac = atoms.get_scaled_positions() % 1.0
 
         self.wfs.set_positions(spos_ac)
@@ -289,7 +288,7 @@ class PAW(PAWTextOutput):
         self.hamiltonian.set_positions(spos_ac, self.wfs.rank_a)
 
         return spos_ac
-    
+
     def set_positions(self, atoms=None):
         """Update the positions of the atoms and initialize wave functions."""
         spos_ac = self.initialize_positions(atoms)
@@ -306,9 +305,9 @@ class PAW(PAWTextOutput):
         else:
             # Save the state of the atoms:
             self.atoms = atoms.copy()
-            
+
         par = self.input_parameters
-        
+
         world = par.communicator
         if world is None:
             world = mpi.world
@@ -322,7 +321,7 @@ class PAW(PAWTextOutput):
             # world should be a list of ranks:
             world = mpi.world.new_communicator(np.asarray(world))
         self.wfs.world = world
-        
+
         self.set_text(par.txt, par.verbose)
 
         natoms = len(atoms)
@@ -332,10 +331,10 @@ class PAW(PAWTextOutput):
         pbc_c = atoms.get_pbc()
         Z_a = atoms.get_atomic_numbers()
         magmom_a = atoms.get_initial_magnetic_moments()
-        
+
         # Set the scaled k-points:
         bzk_kc = kpts2ndarray(par.kpts)
-        
+
         # Is this a gamma-point calculation?
         gamma = len(bzk_kc) == 1 and not bzk_kc[0].any()
 
@@ -347,7 +346,7 @@ class PAW(PAWTextOutput):
                 width = 0.1  # eV
         else:
             assert par.occupations is None
-            
+
         magnetic = magmom_a.any()
 
         spinpol = par.spinpol
@@ -373,7 +372,7 @@ class PAW(PAWTextOutput):
             else:
                 h = par.h / Bohr
             N_c = h2gpts(h, cell_cv)
-                       
+
         if hasattr(self, 'time'):
             dtype = complex
         else:
@@ -403,7 +402,7 @@ class PAW(PAWTextOutput):
 
         nao = setups.nao
         nvalence = setups.nvalence - par.charge
-        
+
         nbands = par.nbands
         if nbands is None:
             nbands = nao
@@ -411,7 +410,7 @@ class PAW(PAWTextOutput):
             raise ValueError('Too many bands for LCAO calculation: ' +
                              '%d bands and only %d atomic orbitals!' %
                              (nbands, nao))
-        
+
         if nvalence < 0:
             raise ValueError(
                 'Charge %f is not possible - not enough valence electrons' %
@@ -430,7 +429,7 @@ class PAW(PAWTextOutput):
 
         if nbands <= 0:
             nbands = int(nvalence + M + 0.5) // 2 + (-nbands)
-        
+
         if nvalence > 2 * nbands:
             raise ValueError('Too few bands!  Electrons: %d, bands: %d'
                              % (nvalence, nbands))
@@ -459,7 +458,7 @@ class PAW(PAWTextOutput):
             niter_fixdensity = None
 
         if self.scf is None:
-            self.scf = self.scf_loop_class(cc['eigenstates'] * nvalence, 
+            self.scf = self.scf_loop_class(cc['eigenstates'] * nvalence,
                                            cc['energy'] / Hartree * natoms,
                                            cc['density'] * nvalence,
                                            par.maxiter, par.fixdensity,
@@ -595,7 +594,7 @@ class PAW(PAWTextOutput):
 
         if dry_run:
             self.dry_run()
-            
+
         self.initialized = True
 
     def dry_run(self):
@@ -636,7 +635,7 @@ class PAW(PAWTextOutput):
                 # function is a bound method of self.  Store the name
                 # of the method and avoid circular reference:
                 function = function.im_func.func_name
-                
+
         self.observers.append((function, n, args, kwargs))
 
     def call_observers(self, iter, final=False):
@@ -649,7 +648,7 @@ class PAW(PAWTextOutput):
 
     def get_reference_energy(self):
         return self.wfs.setups.Eref * Hartree
-    
+
     def write(self, filename, mode='', cmr_params={}, **kwargs):
         """Write state to file.
 
@@ -657,7 +656,7 @@ class PAW(PAWTextOutput):
         dictionary that allows you to specify parameters for CMR
         (Computational Materials Repository).
         """
-        
+
         self.timer.start('IO')
         gpaw.io.write(self, filename, mode, cmr_params=cmr_params, **kwargs)
         self.timer.stop('IO')
@@ -669,7 +668,7 @@ class PAW(PAWTextOutput):
             if self.wfs.kpt_u[u].k == k and self.wfs.kpt_u[u].s == s:
                 return u
         return None
-            
+
     def get_homo_lumo(self):
         """Return HOMO and LUMO eigenvalues."""
         return self.occupations.get_homo_lumo(self.wfs) * Hartree
