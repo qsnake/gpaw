@@ -42,7 +42,7 @@ if GS:
 
 if ABS:
 
-    calc = GPAW('/home/camp/juya/download/Si_gs/Si_kpt_4.gpw',communicator=serial_comm)
+    calc = GPAW('si.gpw',communicator=serial_comm)
             
     dw = 0.05
     wmax = 24.
