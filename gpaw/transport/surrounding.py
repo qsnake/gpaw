@@ -49,24 +49,26 @@ class Side:
             b_vHt_g0 = self.boundary_vHt_g.copy()
             b_vHt_g1 = self.boundary_vHt_g.copy()
 
-            self.boundary_vHt_g = interpolate_array(b_vHt_g0, finegd, h, self.direction)
-            self.boundary_vHt_g1 = interpolate_array(b_vHt_g1, finegd, h, other_direction)            
+            self.boundary_vHt_g = interpolate_array(b_vHt_g0,
+                                                    finegd, h, self.direction)
+            self.boundary_vHt_g1 = interpolate_array(b_vHt_g1,
+                                                   finegd, h, other_direction)            
             
             vt_sg = interpolate_array(vt_sg, finegd, h, self.direction)
             self.boundary_vt_sg_line =  aa1d(vt_sg)            
-            #self.boundary_vt_sg_line = interpolate_array(
-            #                                    self.boundary_vt_sg_line, finegd, h)            
-            self.boundary_nt_sg = interpolate_array(self.boundary_nt_sg, finegd, h, self.direction)
+            self.boundary_nt_sg = interpolate_array(self.boundary_nt_sg,
+                                                    finegd, h, self.direction)
             rhot_g = interpolate_array(rhot_g, finegd, h, self.direction)
             self.boundary_rhot_g_line = aa1d(rhot_g)
-            #self.boundary_rhot_g_line = interpolate_array(
-            #                                    self.boundary_rhot_g_line, finegd,  h)            
+
             nn /= 2
             h *= 2
             self.boundary_vt_sG = self.slice(nn, vt_sG)
             self.boundary_nt_sG = self.slice(nn, nt_sG)
-            self.boundary_vt_sG = interpolate_array(self.boundary_vt_sG, gd, h, self.direction)            
-            self.boundary_nt_sG = interpolate_array(self.boundary_nt_sG, gd, h, self.direction)            
+            self.boundary_vt_sG = interpolate_array(self.boundary_vt_sG,
+                                                    gd, h, self.direction)            
+            self.boundary_nt_sG = interpolate_array(self.boundary_nt_sG,
+                                                    gd, h, self.direction)            
         
         den, ham = calc.density, calc.hamiltonian
         self.D_asp = collect_atomic_matrices(den.D_asp, den.setups,
@@ -75,14 +77,11 @@ class Side:
         self.dH_asp = collect_atomic_matrices(ham.dH_asp, ham.setups,
                                               ham.nspins, ham.gd.comm,
                                               ham.rank_a)
-        #self.D_asp = collect_D_asp(calc.density)
-        #self.dH_asp = collect_D_asp3(calc.hamiltonian)
        
         del self.atoms
         
     def slice(self, nn, in_array):
         if self.type == 'LR':
-            #seq1 = np.arange(-nn + 1, 1)
             seq1 = np.arange(nn)            
             seq2 = np.arange(nn)
             di = len(in_array.shape) - 1
@@ -115,8 +114,8 @@ class Surrounding:
                 self.side_basis_index[direction] = self.tp.lead_index[i]                
                 self.nn.append(side.N_c[2])
             self.nn = np.array(self.nn)
-            self.operator = self.tp.extended_calc.hamiltonian.poisson.operators[0]
-            
+            self.operator = \
+                        self.tp.extended_calc.hamiltonian.poisson.operators[0]
         elif self.type == 'all':
             raise NotImplementError()
         self.calculate_sides()
@@ -197,12 +196,14 @@ class Surrounding:
 
             bias_shift0 = self.bias_index['-'] / Hartree
             bias_shift1 = self.bias_index['+'] / Hartree
-
+            b_vHt_g0 = self.sides['-'].boundary_vHt_g
+            b_vHt_g1 = self.sides['+'].boundary_vHt_g
+            b_vHt_g01 = self.sides['-'].boundary_vHt_g1
+            b_vHt_g11 = self.sides['+'].boundary_vHt_g1           
             if self.tp.fixed:
                 if self.tp.gd.comm.rank == 0:
-                    self.tp.inner_poisson.initialize(
-                            self.sides['-'].boundary_vHt_g + bias_shift0,
-                            self.sides['+'].boundary_vHt_g + bias_shift1)
+                    self.tp.inner_poisson.initialize(b_vHt_g0 + bias_shift0,
+                                                    b_vHt_g1 + bias_shift1)
                 else:
                     self.tp.inner_poisson.initialize(None, None)                    
             
@@ -212,23 +213,18 @@ class Surrounding:
                 nt_sg = ham.finegd.zeros(self.tp.nspins, global_array=True)
                 nt_sG = ham.gd.zeros(self.tp.nspins, global_array=True)
                     
-                vHt_g[:, :, :nn[0]] = self.sides['-'].boundary_vHt_g + \
-                                                                  bias_shift0
-                vHt_g[:, :, -nn[1]:] = self.sides['+'].boundary_vHt_g + \
-                                                                  bias_shift1
+                vHt_g[:, :, :nn[0]] = b_vHt_g0 + bias_shift0
+                vHt_g[:, :, -nn[1]:] = b_vHt_g1 + bias_shift1
                 
                 mnn = np.min(nn)
                 extra_vHt_g[:, :, nn[0]-mnn:nn[0]] = bias_shift0 + \
-                                 self.sides['-'].boundary_vHt_g[:,:,-mnn:] -\
-                                 self.sides['+'].boundary_vHt_g1[:,:,-mnn:]
+                                 b_vHt_g0[:,:,-mnn:] - b_vHt_g11[:,:,-mnn:]
                 if nn[1] != mnn:
                     extra_vHt_g[:, :, -nn[1]:-nn[1]+mnn] = bias_shift1 + \
-                                             self.sides['+'].boundary_vHt_g[:,:,:mnn] -\
-                                             self.sides['-'].boundary_vHt_g1[:,:,:mnn]            
+                                 b_vHt_g1[:,:,:mnn] - b_vHt_g01[:,:,:mnn]            
                 else:
                     extra_vHt_g[:, :, -nn[1]:] = bias_shift1 + \
-                                             self.sides['+'].boundary_vHt_g[:,:,:mnn] -\
-                                             self.sides['-'].boundary_vHt_g1[:,:,:mnn]                    
+                                 b_vHt_g1[:,:,:mnn] - b_vHt_g01[:,:,:mnn]                    
                    
                 nt_sg[:, :, :, :nn[0]] = self.sides['-'].boundary_nt_sg
                 nt_sg[:, :, :, -nn[1]:] = self.sides['+'].boundary_nt_sg
@@ -251,18 +247,12 @@ class Surrounding:
             ham.finegd.distribute(vHt_g, ham.vHt_g)
             ham.finegd.distribute(extra_vHt_g, loc_extra_vHt_g)
             self.get_extra_density(loc_extra_vHt_g)
-            
-            #self.get_extra_density(ham.vHt_g)
-            #self.calculate_extra_hartree_potential()
-            self.get_gate_extra_density()
 
     def combine_vHt_g(self, vHt_g):
         nn = self.nn * 2
         extended_vHt_g = self.tp.extended_calc.hamiltonian.vHt_g
-        self.tp.extended_calc.hamiltonian.vHt_g = self.capsule(nn, vHt_g,
-                                                               extended_vHt_g,
-                                                              self.tp.finegd1,
-                                                              self.tp.finegd)
+        extended_vHt_g = self.capsule(nn, vHt_g, extended_vHt_g,
+                                    self.tp.finegd1, self.tp.finegd)
         
     def combine_nt_sG(self, nt_sG):
         nn = self.nn
@@ -281,7 +271,6 @@ class Surrounding:
         ham.dH_asp = {}
         for a, D_sp in self.tp.extended_D_asp.items():
             ham.dH_asp[a] = np.zeros_like(D_sp)
-        #distribute_D_asp2(all_dH_asp, ham)
         distribute_atomic_matrices(all_dH_asp, ham.dH_asp, ham.setups)
         
     def refresh_vt_sG(self):
@@ -291,25 +280,11 @@ class Surrounding:
         bias_shift1 = self.bias_index['+'] / Hartree        
         vt_sG = gd.collect(self.tp.extended_calc.hamiltonian.vt_sG)
         if gd.comm.rank == 0:
-            vt_sG[:, :, :, :nn[0]] = self.sides['-'].boundary_vt_sG + bias_shift0
+            vt_sG[:, :, :, :nn[0]] = self.sides['-'].boundary_vt_sG + \
+                                                                   bias_shift0
             vt_sG[:, :, :, -nn[1]:] = self.sides['+'].boundary_vt_sG + \
                                                                    bias_shift1
         gd.distribute(vt_sG, self.tp.extended_calc.hamiltonian.vt_sG)
-       
-    def get_gate_extra_density(self):
-        gd = self.tp.finegd
-        if not hasattr(self, 'gate_vHt_g'):
-            self.gate_rhot_g = gd.zeros()
-        nn = self.nn * 2
-        
-        gd1 = self.tp.finegd1
-        global_gate_vHt_g = gd1.zeros(global_array=True)
-        global_gate_vHt_g[:, :, :nn[0]] = -self.tp.gate / Hartree
-        global_gate_vHt_g[:, :, -nn[1]:] = -self.tp.gate / Hartree
-        gate_vHt_g = gd1.zeros()
-       
-        gd1.distribute(global_gate_vHt_g, gate_vHt_g)
-        rhot_g = gd1.zeros()
-        self.operator.apply(gate_vHt_g, rhot_g)
-        self.gate_rhot_g = self.uncapsule(nn, rhot_g, gd1, gd)       
+      
+      
        
