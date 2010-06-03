@@ -263,13 +263,22 @@ class CHI:
 
         # calculate <phi_i | e**(-iq.r) | phi_j>
         phi_Gp = {}
+        phi_aGp = []
         R_a = c[0].atoms.positions / Bohr
+
+        kk_Gv = np.zeros((self.npw, 3))
+        for iG in range(self.npw):
+            kk_Gv[iG] = np.inner(self.bcell.T, self.q + self.Gvec[iG])
 
         for a, id in enumerate(setups.id_a):
             Z, type, basis = id
             if not phi_Gp.has_key(Z):
-                phi_Gp[Z] = ( self.two_phi_planewave_integrals(Z)
-                                  * np.exp(-1j * np.inner(qq, R_a[a])) )
+                phi_Gp[Z] = self.two_phi_planewave_integrals(Z)
+            phi_aGp.append(phi_Gp[Z])
+
+            for iG in range(self.npw):
+                phi_aGp[a][iG] *= np.exp(-1j * np.inner(kk_Gv[iG], R_a[a]))
+        
         print >> self.txt, 'phi_Gii obtained!'
 
         expqr_G = np.exp(-1j * self.qr)
@@ -301,7 +310,7 @@ class CHI:
                         for a, id in enumerate(setups.id_a):
                             Z, type, basis = id
                             P_p = np.outer(P1_ani[a][n].conj(), P2_ani[a][m]).ravel()
-                            rho_Gnn[:, n, m] += np.dot(phi_Gp[Z], P_p)
+                            rho_Gnn[:, n, m] += np.dot(phi_aGp[a], P_p)
 
             del psit1_G, psit2_G
             t2 = time()
@@ -801,7 +810,7 @@ class CHI:
                             j2 = j_i[i2]
                             R_ii[i1, i2] =  G_LLL[L1, L2, li**2+mi]  * R_jj[j1, j2]
 
-                    phi_Gii[iG] += R_ii * Y(li**2 + mi, kk[0], kk[1], kk[2]) * (-1j)**li
+                    phi_Gii[iG] += R_ii * Y(li**2 + mi, kk[0]/k, kk[1]/k, kk[2]/k) * (-1j)**li
 
         phi_Gii *= 4 * pi
 
