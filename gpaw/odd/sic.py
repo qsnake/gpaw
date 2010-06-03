@@ -53,7 +53,7 @@ class SIC:
         self.maxuoiter = 20      # maximum number of unitary opt. iterations
         self.maxlsiter = 30      # maximum number of line-search steps
         self.maxcgiter = 0       # maximum number of CG-iterations
-        self.lsinterp  = False    # interpolate for minimum during line search
+        self.lsinterp  = not False    # interpolate for minimum during line search
         #
         # debugging parameters
         self.units     = 27.21   # output units 1: in Hartree, 27.21: in eV
@@ -844,11 +844,20 @@ class SIC:
         U_nn = np.zeros((nbands,self.nbands),dtype=self.dtype)
         #V_nn = np.zeros((nbands,self.nbands),dtype=psit_nG.dtype)
         #
+        P_ani = self.wfs.pt.dict(nbands)
+        self.wfs.pt.integrate(psit_nG, P_ani)
+
+        
         # project psit_nG to the energy optimal states
         gemm(self.gd.dv,self.phit_unG[q],psit_nG,0.0,U_nn,'c')
         #print U_nn
-        #gemm(self.wfs.gd.dv,psit_nG,self.phit_unG[q],0.0,U_nn,'c')
-        #OLD:self.density.gd.comm.sum(U_nn)
+
+        
+        for a, P_ni in P_ani.items():
+            dS_ii = self.wfs.setups[a].dO_ii
+            Q_ni = self.P_uani[u][a]
+            U_nn += np.dot(P_ni, np.dot(dS_ii, Q_ni.T))
+    
         self.gd.comm.sum(U_nn)
         #
         # NEW:
@@ -1250,7 +1259,6 @@ class SIC:
                             D_sp, dH_sp, a)
                         dH_ap[a] = -self.excfac * dH_sp[0]
 
-                    print u,n,dSxc,Sxc_un[u, n]
                     Sxc_un[u, n] -= self.excfac * dSxc
 
                 self.timer.stop('Exc')
