@@ -1,5 +1,6 @@
 import numpy as np
 from math import sqrt, pi
+import pickle
 from ase.units import Hartree, Bohr
 from gpaw.mpi import rank
 from gpaw.response.math_func import delta_function
@@ -30,6 +31,7 @@ class DF(CHI):
 
     def get_RPA_dielectric_matrix(self):
 
+            
         tmp = np.eye(self.npw, self.npw)
         dm_wGG = np.zeros((self.Nw_local, self.npw, self.npw), dtype = complex)
 
@@ -59,6 +61,9 @@ class DF(CHI):
 
         self.wcomm.all_gather(dfNLF_w, df1_w)
         self.wcomm.all_gather(dfLFC_w, df2_w)
+
+        self.df1_w = df1_w
+        self.df2_w = df2_w
 
         return df1_w, df2_w
 
@@ -255,3 +260,85 @@ class DF(CHI):
 #                        N[iw, mu, nu] = np.inner(pairorb_G.conj(),np.inner(pairorb_G, chi_GG))
 
         return N
+
+
+    def write(self, filename, all=False):
+        """Dump essential data"""
+
+        data = {'nband': self.nband,
+                'acell': self.acell * Bohr,
+                'bcell': self.bcell / Bohr,
+                'h_cv' : self.h_c * Bohr,
+                'nG'   : self.nG,
+                'nG0'  : self.nG0,
+                'vol'  : self.vol * Bohr**3,
+                'BZvol': self.BZvol / Bohr**3,
+                'nkpt' : self.nkpt,
+                'Ecut' : self.Ecut * Hartree,
+                'npw'  : self.npw,
+                'eta'  : self.eta * Hartree,
+                'ftol' : self.ftol * self.nkpt,
+                'Nw'   : self.Nw,
+                'NwS'  : self.NwS,
+                'q_red': self.q,
+                'q_car': self.qq / Bohr,
+                'qmod' : np.inner(self.qq / Bohr, self.qq / Bohr),
+                'HilbertTrans' : self.HilbertTrans,
+                'OpticalLimit' : self.OpticalLimit,
+                'e_kn'         : self.e_kn * Hartree,
+                'f_kn'         : self.f_kn * self.nkpt,
+                'bzk_kv'       : self.bzk_kv,
+                'ibzk_kv'      : self.ibzk_kv,
+                'kq_k'         : self.kq,
+                'op_scc'       : self.op,
+                'Gvec'         : self.Gvec,
+                'dfNLF_w'      : self.df1_w,
+                'dfLFC_w'      : self.df2_w}
+
+        if all == True:
+            data += {'chi0_wGG' : self.chi0_wGG}
+        
+        if rank == 0:
+            pickle.dump(data, open(filename, 'w'), -1)
+
+        self.comm.barrier()
+
+
+    def read(self, filename):
+        """Read data from pickle file"""
+
+        if rank == 0:
+            data = pickle.load(open(filename))
+        self.comm.barrier()
+        
+        self.nband = data['nband']
+        self.acell = data['acell']
+        self.bcell = data['bcell']
+        self.h_c   = data['h_cv']
+        self.nG    = data['nG']
+        self.nG0   = data['nG0']
+        self.vol   = data['vol']
+        self.BZvol = data['BZvol']
+        self.nkpt  = data['nkpt']
+        self.Ecut  = data['Ecut']
+        self.npw   = data['npw']
+        self.eta   = data['eta']
+        self.ftol  = data['ftol']
+        self.Nw    = data['Nw']
+        self.NwS   = data['NwS']
+        self.q     = data['q_red']
+        self.qq    = data['q_car']
+        self.qmod  = data['qmod']
+        self.HilbertTrans = data['HilbertTrans']
+        self.OpticalLimit = data['OpticalLimit']
+        self.e_kn  = data['e_kn']
+        self.f_kn  = data['f_kn']
+        self.bzk_kv  = data['bzk_kv']
+        self.ibzk_kv = data['ibzk_kv']
+        self.kq      = data['kq_k']
+        self.op      = data['op_scc']
+        self.Gvec    = data['Gvec']
+        self.df1_w   = data['dfNLF_w']
+        self.df2_w   = data['dfLFC_w']
+
+        self.printtxt('Read succesfully !')

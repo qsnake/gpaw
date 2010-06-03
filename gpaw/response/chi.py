@@ -12,8 +12,8 @@ from gpaw.response.cell import get_primitive_cell, set_Gvectors
 from gpaw.response.symmetrize import find_kq, find_ibzkpt, symmetrize_wavefunction
 from gpaw.response.math_func import delta_function, hilbert_transform, \
      two_phi_planewave_integrals
-from gpaw.response.parallel import set_communicator, parallel_partition, \
-     SliceAlongFrequency, SliceAlongOrbitals
+from gpaw.response.parallel import set_communicator, \
+     parallel_partition, SliceAlongFrequency, SliceAlongOrbitals
 
 class CHI:
     """This class is a calculator for the linear density response function.
@@ -347,7 +347,7 @@ class CHI:
                 totaltime = dt * self.nkpt_local
                 self.printtxt('Finished k 0 in %f seconds, estimatied %f seconds left.' %(dt, totaltime))
                 
-            if self.nkpt_local // 5 > 0:            
+            if rank == 0 and self.nkpt_local // 5 > 0:            
                 if k % (self.nkpt_local // 5) == 0:
                     dt =  time() - t0
                     self.printtxt('Finished k %d in %f seconds, estimated %f seconds left.  '%(k, dt, totaltime - dt) )
@@ -416,7 +416,14 @@ class CHI:
         """
 
         if extra_parameters.get('df_dry_run'):
-            world, rank, size = self.dry_run()
+            size = extra_parameters['df_dry_run']
+            from gpaw.mpi import DryRunCommunicator
+            size = extra_parameters['df_dry_run']
+            world = DryRunCommunicator(size)
+            rank = world.rank
+            self.comm = world
+        else:
+            from gpaw.mpi import world, rank, size
 
         wcommsize = int(self.NwS * self.npw**2 * 8. / 1024**2) // 1500 # megabyte
         wcommsize += 1
@@ -503,18 +510,5 @@ class CHI:
 
 
 
-    def dry_run(self):
-        
-        from gpaw.mpi import DryRunCommunicator
-                                                   
-        # rewrite size
-        dryrun_size = extra_parameters['df_dry_run']
-        if type(dryrun_size) is int:
-            size = dryrun_size
-            world = DryRunCommunicator(size)
-            rank = world.rank
-            self.comm = world
-
-            return world, rank, size
 
 

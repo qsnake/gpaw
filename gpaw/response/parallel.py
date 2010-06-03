@@ -1,5 +1,5 @@
-from gpaw.mpi import serial_comm
 import numpy as np
+from gpaw.mpi import serial_comm
 
 def set_communicator(world, rank, size, kcommsize=None):
     """Communicator inilialized."""
