@@ -80,7 +80,7 @@ class CHI:
             self.HilbertTrans = False
         self.chi0_wGG = None
 
-        
+
     def initialize(self):
 
         self.printtxt('')
@@ -189,7 +189,7 @@ class CHI:
         # Printing calculation information
         self.print_stuff()
 
-        if extra_parameters.get('df-dry-run'):
+        if extra_parameters.get('df_dry_run'):
             raise SystemExit
 
         # PAW part init
@@ -415,17 +415,20 @@ class CHI:
                  frequency communicator
         """
 
+        if extra_parameters.get('df_dry_run'):
+            world, rank, size = self.dry_run()
+
         wcommsize = int(self.NwS * self.npw**2 * 8. / 1024**2) // 1500 # megabyte
         wcommsize += 1
         if wcommsize > 1: # if matrix too large, overwrite kcommsize and distribute matrix
             while size % wcommsize != 0:
                 wcommsize += 1
             self.kcommsize = size // wcommsize
-            assert self.kcommsize * wcommsize = size
+            assert self.kcommsize * wcommsize == size
             if self.kcommsize < 1:
                 raise ValueError('Number of cpus are not enough ! ')
 
-        self.kcomm, self.wScomm, self.wcomm = set_communicator(self.kcommsize)
+        self.kcomm, self.wScomm, self.wcomm = set_communicator(world, rank, size, self.kcommsize)
 
         self.nkpt, self.nkpt_local, self.kstart, self.kend = parallel_partition(
                                self.nkpt, self.kcomm.rank, self.kcomm.size, reshape=False)
@@ -489,7 +492,7 @@ class CHI:
         printtxt('Use Hilbert Transform: %s' %(self.HilbertTrans) )
         printtxt('')
         printtxt('Parallelization scheme:')
-        printtxt('     Total cpus      : %d' %(size) )
+        printtxt('     Total cpus      : %d' %(self.comm.size))
         printtxt('     kpoint parsize  : %d' %(self.kcomm.size))
         printtxt('     specfunc parsize: %d' %(self.wScomm.size))
         printtxt('     w parsize       : %d' %(self.wcomm.size))
@@ -499,5 +502,19 @@ class CHI:
             printtxt('     specfunc_wGG: %f M / cpu' %(self.NwS_local *self.npw**2 * 8. / 1024**2) )
 
 
+
+    def dry_run(self):
+        
+        from gpaw.mpi import DryRunCommunicator
+                                                   
+        # rewrite size
+        dryrun_size = extra_parameters['df_dry_run']
+        if type(dryrun_size) is int:
+            size = dryrun_size
+            world = DryRunCommunicator(size)
+            rank = world.rank
+            self.comm = world
+
+            return world, rank, size
 
 

@@ -1,7 +1,7 @@
-from gpaw.mpi import world, serial_comm, rank, size
+from gpaw.mpi import serial_comm
 import numpy as np
 
-def set_communicator(kcommsize=None):
+def set_communicator(world, rank, size, kcommsize=None):
     """Communicator inilialized."""
     # wcomm is always set to world
 
