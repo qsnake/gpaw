@@ -27,7 +27,7 @@ class ScipyLinearSolver:
                }
     
     def __init__(self, method='cg', preconditioner=None, tolerance=1e-5,
-                 max_iter=1000):
+                 maxiter=1000):
         """Initialize the linear solver.
 
         Parameters
@@ -48,7 +48,7 @@ class ScipyLinearSolver:
         self.pc = preconditioner
 
         self.tolerance = tolerance
-        self.max_iter = max_iter
+        self.maxiter = maxiter
 
         # Iteration counter
         self.i = None
@@ -80,7 +80,7 @@ class ScipyLinearSolver:
         x_0 = x_nG.ravel()
         b = b_nG.ravel()
 
-        x, info = self.solver(A, b, x0=x_0, maxiter=self.max_iter, M=self.pc,
+        x, info = self.solver(A, b, x0=x_0, maxiter=self.maxiter, M=self.pc,
                               tol=self.tolerance, callback=self.iteration)
 
         x_nG[:] = x.reshape(shape)

@@ -25,7 +25,7 @@ class PhononPerturbation(Perturbation):
     
     """
     
-    def __init__(self, calc, **kwargs):
+    def __init__(self, calc, gamma, ibzq_qc=None, poisson_solver=None, **kwargs):
         """Store useful objects, e.g. lfc's for the various atomic functions.
             
         Depending on whether the system is periodic or finite, Poisson's equation
@@ -33,44 +33,38 @@ class PhononPerturbation(Perturbation):
        
         """
 
+        Perturbation.__init__(self)
+        
         self.calc = calc
+        self.gamma = gamma
+        self.ibzq_qc = ibzq_qc
+        self.poisson = poisson_solver
         
-        # Use same q-point grid as the k-point grid of the ground-state
-        # calculation 
-        self.qpts_u = self.calc.wfs.kpt_u
-        
-        # Boundary conditions
-        pbc_c = calc.atoms.get_pbc()
-        
-        if np.all(pbc_c == False):
-            self.gamma = True
+        if gamma:
             self.dtype = float
-            self.phase_cd = None            
-            # Multigrid Poisson solver
-            self.poisson = PoissonSolver()
+            self.phase_cd = None #np.ones((3, 2), dtype=complex)
         else:
-            # For now do Gamma calculation (wrt q-vector!)
-            if False: #len(self.qpts_u) == 1:
-                self.gamma = True
-                self.dtype = float
-                # Phase factors for the transformation between fine and coarse grids
-                self.phase_cd = np.ones((3, 2), dtype=complex)
-            else:
-                self.gamma = False
-                self.dtype = complex
-                # Get k-points -- only temp, I need q-vectors; maybe the same ???
-                self.ibzk_qc = self.calc.get_ibz_k_points()
-                # self.bzk_kc = self.calc.get_bz_k_points()
-                
-                # Simulate Gamma point calculation
-                # self.ibzk_qc = np.array(((0, 0, 0),), dtype=float)
-                # Look in wavefunction.py for q != 0
-                self.phase_cd = None
-                self.phase_cd = np.ones((3, 2), dtype=complex)
-                
-            # FFT Poisson solver
-            self.poisson = FFTPoissonSolver(dtype=self.dtype)
+            self.dtype = complex
+            self.phase_qcd = [kpt.phase_cd for kpt in calc.wfs.kpt_u]
+            
+        # dtype for ground-state wave-functions (used for the projectors)
+        self.gs_gamma = calc.wfs.gamma
+        self.ibzk_qc = calc.get_ibz_k_points()
 
+        # Temp solution
+        if poisson_solver is None:
+            
+            # Boundary conditions
+            pbc_c = calc.atoms.get_pbc()
+
+            if np.all(pbc_c == False):
+                # Multigrid Poisson solver
+                self.poisson = PoissonSolver()
+            else:
+                # FFT Poisson solver
+                self.poisson = FFTPoissonSolver(dtype=self.dtype)
+      
+            
         # Store grid-descriptors
         self.gd = calc.density.gd
         self.finegd = calc.density.finegd
@@ -107,7 +101,7 @@ class PhononPerturbation(Perturbation):
         else:
             self.q = None
 
-        # Coefficients needed for the non-local part of the perturbation
+        # Coefficients for the non-local part of the perturbation
         self.P_ani = None
         self.dP_aniv = None
 
@@ -122,18 +116,20 @@ class PhononPerturbation(Perturbation):
         self.nct.set_positions(spos_ac)
         self.ghat.set_positions(spos_ac)
         self.vbar.set_positions(spos_ac)
-        
-        if not self.gamma:
-          
-            # Set q-vectors and update
-            self.ghat.set_k_points(self.ibzk_qc)
-            self.ghat._update(spos_ac)
-            # Set q-vectors and update
-            self.vbar.set_k_points(self.ibzk_qc)
-            self.vbar._update(spos_ac)
-            # Set q-vectors and update
+
+        if not self.gs_gamma:
+            # Set k-vectors and update
             self.pt.set_k_points(self.ibzk_qc)
             self.pt._update(spos_ac)
+            
+        if not self.gamma:
+            
+            # Set q-vectors and update
+            self.ghat.set_k_points(self.ibzq_qc)
+            self.ghat._update(spos_ac)
+            # Set q-vectors and update
+            self.vbar.set_k_points(self.ibzq_qc)
+            self.vbar._update(spos_ac)
 
             # Phase factor exp(i*q*r) needed to obtian the periodic part of lfc
             coor_vg = self.finegd.get_grid_point_coordinates()
@@ -143,25 +139,17 @@ class PhononPerturbation(Perturbation):
             scoor_cg = scoor_cg.swapaxes(1,-2)
             # Phase factor
             phase_qg = np.exp(2j * pi *
-                              np.dot(self.ibzk_qc, scoor_cg.swapaxes(0,-2)))
+                              np.dot(self.ibzq_qc, scoor_cg.swapaxes(0,-2)))
             self.phase_qg = phase_qg.swapaxes(1, -2)
-            
+
+        # To be removed from this class !!
         # Setup the Poisson solver -- to be used on the fine grid
         self.poisson.set_grid_descriptor(self.finegd)
         self.poisson.initialize()
+
         # Grid transformer
         self.restrictor.allocate()
 
-    def get_dtype(self):
-        """Return dtype for the phonon perturbation."""
-
-        return self.dtype
-
-    def get_phases(self):
-        """Return phases for ``Transformer`` objects."""
-
-        return self.phase_cd
-    
     def set_perturbation(self, a, v):
         """Set atom and cartesian coordinate of the perturbation.
 
@@ -174,19 +162,23 @@ class PhononPerturbation(Perturbation):
             
         """
 
+        assert self.q is not None
+        
         self.a = a
         self.v = v
-        # Invalidate calculated quantities
-        # - local part of perturbing potential
-        self.v1_G = None
+
+        self.calculate_local_potential()
 
     def set_q(self, q):
         """Set the index of the q-vector of the perturbation."""
 
+        assert not self.gamma, "Gamma-point calculation"
+        
         self.q = q
-        self.calculate_local_potential()
-        # Check that the index is in allowed range
-        # Update self.phase_cd attribute
+        self.phase_cd = self.phase_qcd[q]
+        # Invalidate calculated quantities
+        # - local part of perturbing potential        
+        self.v1_G = None
         
     def solve_poisson(self, phi_g, rho_g):
         """Solve Poisson's equation for a Bloch-type charge distribution.
@@ -209,7 +201,8 @@ class PhononPerturbation(Perturbation):
         # Solve Poisson's eq. for the potential from the periodic part of the
         # compensation charge derivative
 
-        if self.gamma: # Gamma point calculation wrt the q-vector
+        # Gamma point calculation wrt the q-vector
+        if self.gamma: 
             # NOTICE: solve_neutral
             self.poisson.solve_neutral(phi_g, rho_g)  
         else:
@@ -221,14 +214,14 @@ class PhononPerturbation(Perturbation):
             # Return to Bloch form
             phi_g *= self.phase_qg[self.q]
             
-    def apply(self, x_nG, y_nG, kpt=None):
+    def apply(self, x_nG, y_nG, kpt):
         """Apply the perturbation to a vector."""
 
         assert x_nG.ndim in (3, 4)
         assert tuple(self.gd.n_c) == x_nG.shape[-3:]
 
-        if self.v1_G is None:
-            self.calculate_local_potential()
+        # if self.v1_G is None:
+        self.calculate_local_potential()
         
         if x_nG.ndim == 3:
             y_nG += x_nG * self.v1_G
@@ -236,7 +229,7 @@ class PhononPerturbation(Perturbation):
             for x_G, y_G in zip(x_nG, y_nG):
                 y_G += x_G * self.v1_G
 
-        self.apply_nonlocal_potential(x_nG, y_nG, kpt=kpt)
+        self.apply_nonlocal_potential(x_nG, y_nG, kpt)
 
     def calculate_local_potential(self):
         """Derivate of the local potential wrt an atomic displacements.
@@ -262,7 +255,7 @@ class PhononPerturbation(Perturbation):
         # Grid for derivative of compensation charges
         ghat1_g = self.finegd.zeros(dtype=self.dtype)
         self.ghat.add_derivative(a, v, ghat1_g, Q_aL, q=self.q)
-    
+            
         # Solve Poisson's eq. for the potential from the periodic part of the
         # compensation charge derivative
         v1_g = self.finegd.zeros(dtype=self.dtype)
@@ -281,11 +274,11 @@ class PhononPerturbation(Perturbation):
 
         # Transfer to coarse grid
         v1_G = self.gd.zeros(dtype=self.dtype)
-        self.restrictor.apply(v1_g, v1_G, self.phase_cd)
+        self.restrictor.apply(v1_g, v1_G, phases=self.phase_cd)
 
         self.v1_G = v1_G
         
-    def calculate_projector_coef(self, x_nG, kpt=None):
+    def calculate_projector_coef(self, x_nG, kpt):
         """Coefficients for the derivative of the non-local part of the PP.
 
         Parameters
@@ -324,14 +317,16 @@ class PhononPerturbation(Perturbation):
             x_nG = np.array(x_nG, dtype=complex)
             
         # 1) Integrate with projectors
+        # k
         self.pt.integrate(x_nG, P_ani, q=kpt.q)
         self.P_ani = P_ani
 
         # 2) Integrate with derivative of projectors
+        # k
         self.pt.derivative(x_nG, dP_aniv, q=kpt.q)
         self.dP_aniv = dP_aniv
         
-    def apply_nonlocal_potential(self, x_nG, y_nG, kpt=None):
+    def apply_nonlocal_potential(self, x_nG, y_nG, kpt):
         """Derivate of the non-local PAW potential wrt an atomic displacement.
 
         Parameters
@@ -361,8 +356,7 @@ class PhononPerturbation(Perturbation):
 
         # <p_a^i | psi_n >
         P_ni = self.P_ani[a]
-        # <dp_av^i | psi_n > - remember the sign convention of the calculated
-        # derivatives 
+        # <dp_av^i | psi_n > - remember the sign convention of the derivative
         dP_ni = -1 * self.dP_aniv[a][...,v]
 
         # Expansion coefficients for the projectors on atom a
@@ -373,12 +367,13 @@ class PhononPerturbation(Perturbation):
         c_ni = np.dot(dP_ni, dH_ii)
         c_ani = self.pt.dict(shape=n, zero=True)
         c_ani[a] = c_ni
-        self.pt.add(y_nG, c_ani, q=self.q)
+        # k+q !!
+        self.pt.add(y_nG, c_ani, q=kpt.q)
 
         # 2) Sum over derivatives of the projectors
         dc_ni = np.dot(P_ni, dH_ii)
         dc_ani = self.pt.dict(shape=n, zero=True)
         # Take care of sign of derivative in the coefficients
         dc_ani[a] = -1 * dc_ni
-
-        self.pt.add_derivative(a, v, y_nG, dc_ani, self.q)
+        # k+q !!
+        self.pt.add_derivative(a, v, y_nG, dc_ani, kpt.q)

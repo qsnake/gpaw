@@ -20,7 +20,7 @@ from gpaw.dfpt.dynamicalmatrix import DynamicalMatrix
 class PhononCalculator:
     """This class defines the interface for phonon calculations."""
     
-    def __init__(self, atoms, **kwargs):
+    def __init__(self, atoms, gamma=True, **kwargs):
         """Inititialize class with a list of atoms."""
  
         # Store useful objects
@@ -32,11 +32,38 @@ class PhononCalculator:
         # Note that this under some circumstances (e.g. when called twice)
         # allocates a new array for the P_ani coefficients !!
 
+        # Boundary conditions
+        pbc_c = calc.atoms.get_pbc()
+        
+        if np.all(pbc_c == False):
+            self.gamma = True
+            self.dtype = float
+            self.ibzq_qc = np.array((0, 0, 0), dtype=float)
+            # Multigrid Poisson solver
+            poisson = PoissonSolver()
+        else:
+            if gamma:
+                self.gamma = True
+                self.dtype = float
+                self.ibzq_qc = np.array(((0, 0, 0),), dtype=float)
+            else:
+                self.gamma = False
+                self.dtype = complex
+                # Get k-points -- only temp, I need q-vectors; maybe the same ???
+                self.ibzq_qc = self.calc.get_ibz_k_points()
+                phase_qcd = [kpt.phase_cd for kpt in calc.wfs.kpt_u]
+                
+            # FFT Poisson solver
+            poisson = FFTPoissonSolver(dtype=self.dtype)
+            
         # Include all atoms per default
         self.atoms_a = [atom.index for atom in atoms]
         
         # Phonon perturbation
-        self.perturbation = PhononPerturbation(self.calc)
+        self.perturbation = PhononPerturbation(self.calc, self.gamma,
+                                               ibzq_qc=self.ibzq_qc,
+                                               poisson_solver=poisson)
+        
         # Linear response calculator
         self.response = ResponseCalculator(self.calc, self.perturbation)
 
@@ -71,37 +98,48 @@ class PhononCalculator:
         dP_aniv = self.perturbation.dP_aniv
         
         # Calculate linear response wrt displacements of specified atoms
-        for a in self.atoms_a:
-            
-            for v in [0, 1, 2]:
+        for q, q_c in enumerate(self.ibzq_qc):
 
-                self.perturbation.set_perturbation(a, v)
+            self.perturbation.set_q(q)
 
-                if load:
-                    assert filebase is not None
-                    file_av = "a_%.1i_v_%.1i.pckl" % (a,v)
-                    fname = "_".join([filebase, file_av])
-                    nt1_G, psit1_unG = pickle.load(open(fname))
-                    self.perturbation.calculate_derivative()
-                else:
-                    nt1_G, psit1_unG = \
-                           self.response(tolerance_sc = tolerance_sc,
-                                         tolerance_sternheimer = tolerance_sternheimer)
-                    if save:
+            for a in self.atoms_a:
+                
+                for v in [0, 1, 2]:
+
+                    components = ['x','y','z']
+                    atoms = self.calc.get_atoms()
+                    symbols = atoms.get_chemical_symbols()
+                    print "Atom index: %i" % a
+                    print "Atomic symbol: %s" % symbols[a]
+                    print "Component: %s" % components[v]
+                    
+                    self.perturbation.set_perturbation(a, v)
+    
+                    if load:
                         assert filebase is not None
-                        file_av = "a_%.1i_v_%.1i.pckl" % (a, v)
+                        file_av = "a_%.1i_v_%.1i.pckl" % (a,v)
                         fname = "_".join([filebase, file_av])
-                        f = open(fname, 'w')
-                        pickle.dump([nt1_G, psit1_unG], f)
-                        f.close()
-                            
-                vghat1_g = self.perturbation.vghat1_g
-                
-                self.D_matrix.update_row(
-                    a, v, nt1_G, psit1_unG[0], vghat1_g, dP_aniv)
-                
-        self.D_matrix.ground_state_local()
-        self.D_matrix.ground_state_nonlocal(dP_aniv)
+                        nt1_G, psit1_unG = pickle.load(open(fname))
+                        self.perturbation.calculate_derivative()
+                    else:
+                        nt1_G, psit1_unG = \
+                               self.response(tolerance_sc = tolerance_sc,
+                                             tolerance_sternheimer = tolerance_sternheimer)
+                        if save:
+                            assert filebase is not None
+                            file_av = "a_%.1i_v_%.1i.pckl" % (a, v)
+                            fname = "_".join([filebase, file_av])
+                            f = open(fname, 'w')
+                            pickle.dump([nt1_G, psit1_unG], f)
+                            f.close()
+                                
+                    vghat1_g = self.perturbation.vghat1_g
+                    
+                    self.D_matrix.update_row(
+                        a, v, nt1_G, psit1_unG[0], vghat1_g, dP_aniv)
+                    
+            self.D_matrix.ground_state_local()
+            self.D_matrix.ground_state_nonlocal(dP_aniv)
 
     def get_dynamical_matrix(self):
         """Assemble and return the dynamical matrix as an ndarray."""

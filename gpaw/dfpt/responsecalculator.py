@@ -22,13 +22,17 @@ class ResponseCalculator:
     
     """
     
-    def __init__(self, calc, perturbation, **kwargs):
+    def __init__(self, calc, perturbation, poisson_solver=None, **kwargs):
         """Store calculator etc.
 
         Parameters
         ----------
         calc: Calculator
             Calculator instance containing a ground-state calculation.
+        perturbation: Perturbation
+            Class implementing the perturbing potential. Must provide an
+            ``apply`` member function that knows how to apply the perturbation
+            to a (set of) state vector(s).
             
         """
         
@@ -39,38 +43,32 @@ class ResponseCalculator:
         self.calc = calc
         self.perturbation = perturbation
 
+        if hasattr(perturbation, 'solve_poisson'):
+            self.solve_poisson = perturbation.solve_poisson
+        else:
+            assert poisson_solver is not None, "No Poisson solver given"
+
+            self.poisson = poisson_solver
+            self.solve_poisson = self.poisson.solve_neutral
+            
         # Get list of k-points
         self.kpt_u = self.calc.wfs.kpt_u
 
         # Store grid-descriptors
         self.gd = calc.density.gd
         self.finegd = calc.density.finegd
-        
-        ## Boundary conditions
-        ## pbc_c = atoms.get_pbc()
-        ## if np.all(pbc_c == False):
-        ##     self.gamma = True
-        ##     # self.dtype = float
-        ##     # Remove Poisson solver from this class -- provided by the
-        ##     # perturbation instead
-        ##     # self.poisson = PoissonSolver()
-        ## else:
-        ##     if len(self.kpt_u) == 1:
-        ##         self.gamma = True
-        ##         # self.dtype = float
-        ##     else:
-        ##         self.gamma = False
-        ##         # self.dtype = complex
-        ##         
-        ##     # Use FFT Poisson solver -- density derivative always real
-        ##     # self.poisson = FFTPoissonSolver(dtype=self.dtype)
 
-        # The perturbation determines the dtype of the wavefunction grids etc
-        self.dtype = perturbation.get_dtype()
-       
+        # dtype for ground-state wave-functions
+        self.gs_dtype = calc.wfs.dtype
+        # dtype for the perturbing potential
+        self.dtype = perturbation.dtype
+        
         # Grid transformer -- convert array from coarse to fine grid
         self.interpolator = Transformer(self.gd, self.finegd, nn=3,
                                         dtype=self.dtype, allocate=False)
+        # Grid transformer -- convert array from fine to coarse grid
+        self.restrictor = Transformer(self.finegd, self.gd, nn=3,
+                                      dtype=self.dtype, allocate=False)
 
         # Wave-function derivative
         self.psit1_unG = None
@@ -81,7 +79,7 @@ class ResponseCalculator:
 
         # Number of occupied bands
         self.nbands = max(1, self.calc.wfs.nvalence/2)
-        assert self.nbands <= self.wfs.nbands
+        assert self.nbands <= calc.wfs.nbands
                                   
         self.initialized = False
         
@@ -91,35 +89,24 @@ class ResponseCalculator:
         hamiltonian = self.calc.hamiltonian
         wfs = self.calc.wfs
 
-        # Poisson solver is being removed from this class
-        # self.poisson.set_grid_descriptor(self.finegd)
-        # self.poisson.initialize()
-
-        # Initialize interpolator
+        # Initialize interpolator and restrictor
         self.interpolator.allocate()
+        self.restrictor.allocate()
         
         # Initialize mixer
         # weight = 1 -> no metric is used
         self.mixer = BaseMixer(beta=0.4, nmaxold=5, weight=1)
-        self.mixer.initialize_mectric(self.gd)
+        self.mixer.initialize_metric(self.gd)
         
         # Linear operator in the Sternheimer equation
         self.sternheimer_operator = \
-            SternheimerOperator(hamiltonian, wfs, self.gd, dtype=self.dtype)
-        
-        # Temp hack for complex gamma point calculation
-        if self.dtype == complex and self.calc.wfs.gamma:
-            
-            spos_ac = self.calc.atoms.get_scaled_positions()
-            ibzk_qc = np.array(((0, 0, 0),), dtype=float)
-            self.sternheimer_operator.pt.set_k_points(ibzk_qc)
-            self.sternheimer_operator.pt._update(spos_ac)
-            
+            SternheimerOperator(hamiltonian, wfs, self.gd, dtype=self.gs_dtype)
+
         # Preconditioner for the Sternheimer equation
         if use_pc:
             pc = ScipyPreconditioner(self.gd,
                                      self.sternheimer_operator.project,
-                                     dtype=self.dtype)
+                                     dtype=self.gs_dtype)
         else:
             pc = None
 
@@ -153,25 +140,22 @@ class ResponseCalculator:
         assert self.initialized, ("Linear response calculator "
                                   "not initizalized.")
 
-        # Pass the phases to the preconditioner
-        # is this the correct phase ????????
-        if not self.perturbation.gamma and self.pc is not None:
-            phase_cd = self.perturbation.get_phases()
-            self.pc.set_phases(phase_cd)
             
         # Reset mixer
         self.mixer.reset()
         
         # List the variations of the wave-functions
-        self.psit1_unG = [self.gd.zeros(n=self.nbands, dtype=self.dtype)
+        self.psit1_unG = [self.gd.zeros(n=self.nbands, dtype=self.gs_dtype)
                           for kpt in self.kpt_u]
 
+        ############## Remove this when time comes ###########################
         components = ['x','y','z']
         atoms = self.calc.get_atoms()
         symbols = atoms.get_chemical_symbols()
         print "Atom index: %i" % self.perturbation.a
         print "Atomic symbol: %s" % symbols[self.perturbation.a]
         print "Component: %s" % components[self.perturbation.v]
+        ######################################################################
         
         for iter in range(maxiter):
             print     "iter:%3i\t" % iter,
@@ -226,11 +210,11 @@ class ResponseCalculator:
         
         # Calculate new effective potential
         nt1_g = self.finegd.zeros(dtype=self.dtype)
-        self.interpolator.apply(self.nt1_G, nt1_g, phase_cd)
+        self.interpolator.apply(self.nt1_G, nt1_g, phases=phase_cd)
 
         # Hartree part
         vHXC1_g = self.finegd.zeros(dtype=self.dtype)
-        self.perturbation.solve_poisson(vHXC1_g, nt1_g)
+        self.solve_poisson(vHXC1_g, nt1_g)
 
         # XC part - fix this in the xc_functional.py file !!!!
         density = self.calc.density
@@ -244,7 +228,7 @@ class ResponseCalculator:
 
         # Transfer to coarse grid
         v1_G = self.gd.zeros(dtype=self.dtype)
-        self.perturbation.restrictor.apply(vHXC1_g, v1_G, phase_cd)
+        self.restrictor.apply(vHXC1_g, v1_G, phases=phase_cd)
         
         return v1_G
     
@@ -254,7 +238,7 @@ class ResponseCalculator:
         Parameters
         ----------
         v1_G: ndarray
-            Derivative of the local effective potential (Hartree + XC)
+            Variation of the local effective potential (Hartree + XC)
 
         """
 
@@ -266,15 +250,15 @@ class ResponseCalculator:
             psit_nG = kpt.psit_nG[:self.nbands]
             psit1_nG = self.psit1_unG[k]
 
-            # This one must be calculated for each k-point 
-            # self.vnl1_nG = self.perturbation.calculate_nonlocal_derivative()
-            # Add pseudo-potential part
-            # v1_G += self.vloc1_G
-            
             # Right-hand side of Sternheimer equation
-            rhs_nG = self.gd.zeros(n=self.nbands, dtype=self.dtype)
+            rhs_nG = self.gd.zeros(n=self.nbands, dtype=self.gs_dtype)
+            # k
             self.perturbation.apply(psit_nG, rhs_nG, kpt=kpt)
-            
+
+            if self.pc is not None:
+                # k+q
+                self.pc.set_phases(kpt.phase_cd)
+                
             # Loop over all valence-bands
             for n in range(self.nbands):
 
@@ -292,15 +276,10 @@ class ResponseCalculator:
                 
                 self.sternheimer_operator.project(rhs_G)
 
-                # rhs of Sternheimer equation
-                #rhs_G = -1. * v1_G * psit_G
-                # Add non-local part
-                #rhs_G -= self.vnl1_nG[n]
-                
                 print "\tBand %2.1i -" % n,
                 iter, info = self.linear_solver.solve(self.sternheimer_operator,
                                                       psit1_G, rhs_G)
-                
+
                 if info == 0:
                     print "linear solver converged in %i iterations" % iter
                 elif info > 0:
@@ -324,6 +303,8 @@ class ResponseCalculator:
             psit1_nG = self.psit1_unG[kpt.k]
 
             for n, f in enumerate(f_n):
+                # NOTICE: this relies on the automatic down-cast of the complex
+                # array on the rhs to a real array when the lhs is real !!
                 # Factor 2 for time-reversal symmetry
                 nt1_G += 2 * f * (psit_nG[n].conjugate() * psit1_nG[n])
 

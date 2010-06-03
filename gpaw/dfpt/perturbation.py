@@ -9,14 +9,12 @@ class Perturbation:
     """
     
     def __init__(self):
-        pass
+        """Init required attributes."""
 
-    def apply(self, x_nG, y_nG, kpt=None):
+        # 
+        self.phase_cd = None
+
+    def apply(self, x_nG, y_nG, kpt):
         """Multiply the perturbing potential to a (set of) wave-function(s)."""
-        
-        raise NotImplementedError, ("Implement in derived classes")
-    
-    def get_dtype(self):
-        """Return dtype for the perturbation."""
         
         raise NotImplementedError, ("Implement in derived classes")

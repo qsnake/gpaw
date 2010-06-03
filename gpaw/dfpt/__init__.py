@@ -6,9 +6,10 @@ DFPT
 In DFPT the first-order variation in the density due to a static perturbation
 in the external potential is calculated self-consistently from a set of coupled
 equations for
-  1. the variation of the effective potential,
-  2. variation of the wave functions, and
-  3. the resulting variation of the density.
+
+    1. the variation of the effective potential,
+    2. variation of the wave functions, and
+    3. the resulting variation of the density.
 
 The variation of the wave-functions can be determined from a set of linear
 equations, the so-called Sternheimer equation. Since only their projection onto
@@ -33,15 +34,21 @@ system. This package includes calculators for:
 
 References
 ----------
-  - Louie et al., Phys. Rev. B 76, 165108 (2007)
-  - Baroni et al., Rev. Mod. Phys. 73, 515 (2001)
-  - Gonze, Phys. Rev. B 55, 10337 (1997)
-  - Gonze et al., Phys. Rev. B 55, 10355 (1997)
-  - Savrasov, Phys. Rev. B 54, 16470 (1996)
-  - Savrasov et al., Phys. Rev. B 54, 16487 (1996)
+
+Publications from various groups giving a good overview of DFPT:
+
+    - Louie et al., Phys. Rev. B 76, 165108 (2007)
+    - Vanderbilt et al., Phys. Rev. B 74, 054304 (2006)
+    - Clark et al., Phys. Rev. B 73, 155114 (2006)
+    - Baroni et al., Rev. Mod. Phys. 73, 515 (2001)
+    - Gonze, Phys. Rev. B 55, 10337 (1997)
+    - Gonze et al., Phys. Rev. B 55, 10355 (1997)
+    - Savrasov, Phys. Rev. B 54, 16470 (1996)
+    - Savrasov et al., Phys. Rev. B 54, 16487 (1996)
 
 Implementaion notes
 ===================
+
 1. When using the ``derivative`` method of the ``lfc`` class to calculate
    integrals between derivatives of localized functions wrt atomic
    displacements and functions defined on the grid, the signs of the calculated

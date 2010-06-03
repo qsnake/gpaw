@@ -32,7 +32,9 @@ class DynamicalMatrix:
         self.C_aavv = dict([(atom.index,
                       dict([(atom_.index,np.zeros((3,3)))
                             for atom_ in atoms])) for atom in atoms])
-        # Dynamical matrix -- 3Nx3N ndarray
+        
+        # Dynamical matrix -- 3Nx3N ndarray (vs q)
+        self.D_u = []
         self.D = None
 
     def assemble(self):
