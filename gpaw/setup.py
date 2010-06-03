@@ -27,6 +27,7 @@ from gpaw.grid_descriptor import RadialGridDescriptor
 from gpaw.utilities import unpack, pack, fac, hartree, divrl
 from gpaw.rotation import rotation
 
+
 def create_setup(symbol, xcfunc, lmax=0, nspins=1,
                  type='paw', basis=None, setupdata=None, world=None):
     if setupdata is None:
@@ -39,6 +40,11 @@ def create_setup(symbol, xcfunc, lmax=0, nspins=1,
                 table = setups
             parameters = table[symbol]
             setupdata = HGHSetupData(parameters)
+        elif type == 'ah':
+            from gpaw.ah import AppelbaumHamann
+            ah = AppelbaumHamann()
+            ah.build(nspins, basis)
+            return ah
         elif type == 'ghost':
             from gpaw.lcao.bsse import GhostSetupData
             setupdata = GhostSetupData(symbol)

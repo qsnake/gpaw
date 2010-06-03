@@ -93,6 +93,7 @@ tests = [
     'timing.py',
     'lcao_density.py',
     'gauss_func.py',
+    'ah.py',
     'ylexpand.py',
     'wfs_io.py',
     'wfs_auto.py',
