@@ -4,6 +4,7 @@ from gpaw.transport.tools import aa1d, interpolate_array, \
                           collect_atomic_matrices, distribute_atomic_matrices
    
 class Side:
+    #Describe the electrode boundary
     def __init__(self, type, atoms, direction, h=None):
         self.type = type
         self.atoms = atoms
@@ -32,6 +33,7 @@ class Side:
         nt_sG = gd.collect(calc.density.nt_sG)
 
         self.boundary_vHt_g = None
+        self.boundary_vHt_g1 = None        
         self.boundary_vt_sg_line = None
         self.boundary_nt_sg = None
         self.boundary_rhot_g_line = None
@@ -77,7 +79,6 @@ class Side:
         self.dH_asp = collect_atomic_matrices(ham.dH_asp, ham.setups,
                                               ham.nspins, ham.gd.comm,
                                               ham.rank_a)
-       
         del self.atoms
         
     def slice(self, nn, in_array):
@@ -92,6 +93,7 @@ class Side:
         return slice_array
 
 class Surrounding:
+    #The potential and density enviroment of the scattering region
     def __init__(self, tp, type='LR'):
         self.tp = tp
         self.type = type
@@ -136,6 +138,7 @@ class Surrounding:
             raise NotImplementError('type all not yet')
             
     def get_extra_density(self, vHt_g):
+        #help to solve poisson euqation for different left and right electrode
         if self.type == 'LR':
             rhot_g = self.tp.finegd1.zeros()
             self.operator.apply(vHt_g, rhot_g)
@@ -251,8 +254,10 @@ class Surrounding:
     def combine_vHt_g(self, vHt_g):
         nn = self.nn * 2
         extended_vHt_g = self.tp.extended_calc.hamiltonian.vHt_g
-        extended_vHt_g = self.capsule(nn, vHt_g, extended_vHt_g,
-                                    self.tp.finegd1, self.tp.finegd)
+        self.tp.extended_calc.hamiltonian.vHt_g = self.capsule(nn, vHt_g,
+                                                            extended_vHt_g,
+                                                            self.tp.finegd1,
+                                                            self.tp.finegd)
         
     def combine_nt_sG(self, nt_sG):
         nn = self.nn
