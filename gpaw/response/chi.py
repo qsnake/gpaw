@@ -3,6 +3,7 @@ from time import time, ctime
 import numpy as np
 from math import sqrt, pi
 from ase.units import Hartree, Bohr
+from gpaw import extra_parameters
 from gpaw.utilities import unpack, devnull
 from gpaw.mpi import world, rank, size, serial_comm
 from gpaw.lfc import LocalizedFunctionsCollection as LFC
@@ -77,8 +78,9 @@ class CHI:
         self.comm = world
         if wlist is not None:
             self.HilbertTrans = False
+        self.chi0_wGG = None
 
-
+        
     def initialize(self):
 
         self.printtxt('')
@@ -187,6 +189,9 @@ class CHI:
         # Printing calculation information
         self.print_stuff()
 
+        if extra_parameters.get('df-dry-run'):
+            raise SystemExit
+
         # PAW part init
         # calculate <phi_i | e**(-i(q+G).r) | phi_j>
         # G != 0 part
@@ -241,7 +246,7 @@ class CHI:
 
         # Prepare for the derivative of pseudo-wavefunction
         if self.OpticalLimit:
-            d_c = [Gradient(gd, i, dtype=complex).apply for i in range(3)]
+            d_c = [Gradient(gd, i, n=4, dtype=complex).apply for i in range(3)]
             dpsit_G = gd.empty(dtype=complex)
             tmp = np.zeros((3), dtype=complex)
 
@@ -337,11 +342,15 @@ class CHI:
 #                                if deltaw[wi + self.wS1] > 1e-8:
 #                                    specfunc_wGG[wi] += tmp_GG * deltaw[wi + self.wS1]
 
-            if rank == 0 and k % (self.nkpt_local // 5) == 0:
-                if k == 0:
-                    totaltime = (time() - t0) * self.nkpt_local
-                dt =  time() - t0
-                self.printtxt('Finished k %d in %f seconds, estimated %f seconds left.  '%(k, dt, totaltime - dt) )
+            if k == 0:
+                dt = time() - t0
+                totaltime = dt * self.nkpt_local
+                self.printtxt('Finished k 0 in %f seconds, estimatied %f seconds left.' %(dt, totaltime))
+                
+            if self.nkpt_local // 5 > 0:            
+                if k % (self.nkpt_local // 5) == 0:
+                    dt =  time() - t0
+                    self.printtxt('Finished k %d in %f seconds, estimated %f seconds left.  '%(k, dt, totaltime - dt) )
 
         # Hilbert Transform
         if not self.HilbertTrans:
@@ -407,8 +416,12 @@ class CHI:
         """
 
         wcommsize = int(self.NwS * self.npw**2 * 8. / 1024**2) // 1500 # megabyte
-        if wcommsize > 0: # if matrix too large, overwrite kcommsize and distribute matrix
-            self.kcommsize = size // (wcommsize + 1)
+        wcommsize += 1
+        if wcommsize > 1: # if matrix too large, overwrite kcommsize and distribute matrix
+            while size % wcommsize != 0:
+                wcommsize += 1
+            self.kcommsize = size // wcommsize
+            assert self.kcommsize * wcommsize = size
             if self.kcommsize < 1:
                 raise ValueError('Number of cpus are not enough ! ')
 
@@ -481,9 +494,9 @@ class CHI:
         printtxt('     specfunc parsize: %d' %(self.wScomm.size))
         printtxt('     w parsize       : %d' %(self.wcomm.size))
         printtxt('Memory usage estimation:')
-        printtxt('     chi0_wGG    : %f M' %(self.Nw_local * self.npw**2 * 8. / 1024**2) )
+        printtxt('     chi0_wGG    : %f M / cpu' %(self.Nw_local * self.npw**2 * 8. / 1024**2) )
         if self.HilbertTrans:
-            printtxt('     specfunc_wGG: %f M' %(self.NwS_local *self.npw**2 * 8. / 1024**2) )
+            printtxt('     specfunc_wGG: %f M / cpu' %(self.NwS_local *self.npw**2 * 8. / 1024**2) )
 
 
 

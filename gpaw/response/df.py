@@ -84,8 +84,13 @@ class DF(CHI):
 
         if df1 is None:
             df1, df2 = self.get_dielectric_function()
-
-        return np.real(df1[0]), np.real(df2[0])
+        eM1, eM2 = np.real(df1[0]), np.real(df2[0])
+        
+        self.printtxt('Macroscopic dielectric constant:')
+        self.printtxt('    Without local field : %f' %(eM1) )
+        self.printtxt('    Include local field : %f' %(eM2) )        
+            
+        return eM1, eM2
 
 
     def get_absorption_spectrum(self, df1=None, df2=None, filename='Absorption'):
