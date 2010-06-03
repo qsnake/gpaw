@@ -31,7 +31,12 @@ class DF(CHI):
 
     def get_RPA_dielectric_matrix(self):
 
-            
+	if self.chi0_wGG is None:
+            self.initialize()
+            self.calculate()
+        else:
+            pass # read from file and re-initializing .... need to be implemented
+                       
         tmp = np.eye(self.npw, self.npw)
         dm_wGG = np.zeros((self.Nw_local, self.npw, self.npw), dtype = complex)
 
