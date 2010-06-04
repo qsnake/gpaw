@@ -5,6 +5,7 @@ from math import sqrt, pi
 from ase.units import Hartree, Bohr
 from gpaw import extra_parameters
 from gpaw.utilities import unpack, devnull
+from gpaw.utilities.blas import gemmdot, scal, axpy
 from gpaw.mpi import world, rank, size, serial_comm
 from gpaw.lfc import LocalizedFunctionsCollection as LFC
 from gpaw.fd_operators import Gradient
@@ -90,19 +91,20 @@ class CHI:
         self.printtxt(ctime())
 
         # Frequency init
-        self.wmin = 0
-        self.wmax  /= Hartree
-        self.wcut = self.wmax + 5. / Hartree
-        self.dw /= Hartree
-        self.Nw = int((self.wmax - self.wmin) / self.dw) + 1
-        self.NwS = int((self.wcut - self.wmin) / self.dw) + 1
-        self.eta /= Hartree
-        self.Ecut /= Hartree
-
-        if not self.HilbertTrans:
+        if self.HilbertTrans:
+            self.wmin = 0
+            self.wmax  /= Hartree
+            self.wcut = self.wmax + 5. / Hartree
+            self.dw /= Hartree
+            self.Nw = int((self.wmax - self.wmin) / self.dw) + 1
+            self.NwS = int((self.wcut - self.wmin) / self.dw) + 1
+        else:
             self.Nw = len(self.wlist)
             self.NwS = 0
             assert self.wlist is not None
+            
+        self.eta /= Hartree
+        self.Ecut /= Hartree
 
         calc = self.calc
         gd = calc.wfs.gd
@@ -147,7 +149,7 @@ class CHI:
             self.expqr_G = 1.
         else:
             r = gd.get_grid_point_coordinates() # (3, nG)
-            qr = np.inner(self.qq, r.T).T
+            qr = gemmdot(self.qq, r, beta=0.0)
             self.expqr_G = np.exp(-1j * qr)
             del r, qr
             kq = find_kq(self.bzk_kv, self.q)
@@ -199,10 +201,7 @@ class CHI:
         phi_aGp = []
         R_a = calc.atoms.positions / Bohr
 
-        kk_Gv = np.zeros((self.npw, 3))
-        for iG in range(self.npw):
-            kk_Gv[iG] = np.inner(self.bcell.T, self.q + self.Gvec[iG])
-
+        kk_Gv = gemmdot(self.q + self.Gvec, self.bcell.T, beta=0.0)
         for a, id in enumerate(setups.id_a):
             Z, type, basis = id
             if not phi_Gp.has_key(Z):
@@ -301,7 +300,10 @@ class CHI:
                         # PAW correction
                         for a, id in enumerate(calc.wfs.setups.id_a):
                             P_p = np.outer(P1_ai[a].conj(), P2_ai[a]).ravel()
-                            rho_Gnn[:, n, m] += np.dot(self.phi_aGp[a], P_p)
+                            #P_p = gemmdot(P1_ai[a][:,np.newaxis].conj(),
+                            #              P2_ai[a][np.newaxis,:].copy(), beta=0.0).ravel()
+                            
+                            rho_Gnn[:, n, m] += gemmdot(self.phi_aGp[a], P_p, beta=0.0)
 
                         if self.OpticalLimit:
                             rho_Gnn[0, n, m] /= e_kn[ibzkpt2, m] - e_kn[ibzkpt1, n]
@@ -330,16 +332,22 @@ class CHI:
                         focc = f_kn[ibzkpt1,n] - f_kn[ibzkpt2,m]
                         if focc > self.ftol:
                             w0 = e_kn[ibzkpt2,m] - e_kn[ibzkpt1,n]
-                            tmp_GG = focc * np.outer(rho_Gnn[:,n,m], rho_Gnn[:,n,m].conj())
+                            tmp_GG = np.outer(rho_Gnn[:,n,m], rho_Gnn[:,n,m].conj())
+                            #tmp_GG = gemmdot(rho_Gnn[:,n,m,np.newaxis].copy(),
+                            #                        rho_Gnn[np.newaxis,:,n,m].conj(),beta=0.0)
+                            scal(focc, tmp_GG)
 
                             # calculate delta function
                             w0_id = int(w0 / self.dw)
                             if w0_id + 1 < self.NwS:
                                 # rely on the self.NwS_local is equal in each node!
                                 if self.wScomm.rank == w0_id // self.NwS_local:
-                                    specfunc_wGG[w0_id % self.NwS_local] += tmp_GG * (w0_id + 1 - w0/self.dw) / self.dw
+                                    alpha = (w0_id + 1 - w0/self.dw) / self.dw
+                                    axpy(alpha, tmp_GG, specfunc_wGG[w0_id % self.NwS_local] )
+
                                 if self.wScomm.rank == (w0_id+1) // self.NwS_local:
-                                    specfunc_wGG[(w0_id+1) % self.NwS_local] += tmp_GG * (w0 / self.dw - w0_id) / self.dw
+                                    alpha =  (w0 / self.dw - w0_id) / self.dw
+                                    axpy(alpha, tmp_GG, specfunc_wGG[(w0_id+1) % self.NwS_local] )
 
 #                            deltaw = delta_function(w0, self.dw, self.NwS, self.sigma)
 #                            for wi in range(self.NwS_local):
