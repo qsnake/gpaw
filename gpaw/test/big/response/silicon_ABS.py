@@ -1,3 +1,7 @@
+### Refer to G. Kresse, Phys. Rev. B 73, 045112 (2006)
+### for comparison of macroscopic and microscopic dielectric constant 
+### and absorption peaks. 
+
 import os
 import sys
 import numpy as np
