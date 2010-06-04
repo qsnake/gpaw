@@ -1,6 +1,6 @@
 import numpy as np
-#from gpaw.test import wrap_pylab
-#wrap_pylab()
+from gpaw.test import wrap_pylab
+wrap_pylab()
 import pylab as pl
 
 def plot_EELS(head):
@@ -48,7 +48,7 @@ def plot_ABS(head):
     pl.ylabel('$\epsilon$', fontsize=fsize)
     pl.xlim(0,10)
     
-#plot_EELS('graphite')
+plot_EELS('graphite')
 plot_ABS('si')
 
 
