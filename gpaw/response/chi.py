@@ -272,7 +272,11 @@ class CHI:
                 psit1_G = psit1new_G.conj() * self.expqr_G
 
                 for m in range(self.nband):
-                    if np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > self.ftol:
+		    if self.HilbertTrans:
+			check_focc = (f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > self.ftol
+                    else:
+                        check_focc = np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > self.ftol 
+                    if check_focc:
                         psitold_G =  calc.wfs.kpt_u[ibzkpt2].psit_nG[m]
                         psit2_G = symmetrize_wavefunction(psitold_G, self.op[iop2], ibzk_kv[ibzkpt2],
                                                            bzk_kv[kq[k]], timerev2)
@@ -348,7 +352,7 @@ class CHI:
                 self.printtxt('Finished k 0 in %f seconds, estimatied %f seconds left.' %(dt, totaltime))
                 
             if rank == 0 and self.nkpt_local // 5 > 0:            
-                if k % (self.nkpt_local // 5) == 0:
+                if k > 0 and k % (self.nkpt_local // 5) == 0:
                     dt =  time() - t0
                     self.printtxt('Finished k %d in %f seconds, estimated %f seconds left.  '%(k, dt, totaltime - dt) )
 
