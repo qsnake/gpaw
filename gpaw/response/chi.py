@@ -437,7 +437,7 @@ class CHI:
         else:
             from gpaw.mpi import world, rank, size
 
-        wcommsize = int(self.NwS * self.npw**2 * 8. / 1024**2) // 1500 # megabyte
+        wcommsize = int(self.NwS * self.npw**2 * 16. / 1024**2) // 1500 # megabyte
         wcommsize += 1
         if wcommsize > 1: # if matrix too large, overwrite kcommsize and distribute matrix
             while size % wcommsize != 0:
@@ -516,9 +516,9 @@ class CHI:
         printtxt('     specfunc parsize: %d' %(self.wScomm.size))
         printtxt('     w parsize       : %d' %(self.wcomm.size))
         printtxt('Memory usage estimation:')
-        printtxt('     chi0_wGG    : %f M / cpu' %(self.Nw_local * self.npw**2 * 8. / 1024**2) )
+        printtxt('     chi0_wGG    : %f M / cpu' %(self.Nw_local * self.npw**2 * 16. / 1024**2) )
         if self.HilbertTrans:
-            printtxt('     specfunc_wGG: %f M / cpu' %(self.NwS_local *self.npw**2 * 8. / 1024**2) )
+            printtxt('     specfunc_wGG: %f M / cpu' %(self.NwS_local *self.npw**2 * 16. / 1024**2) )
 
 
 
