@@ -250,6 +250,7 @@ class CHI:
             tmp = np.zeros((3), dtype=complex)
 
         t0 = time()
+        rho_G = np.zeros(self.npw, dtype=complex)
         for k in range(self.kstart, self.kend):
 
             # Find corresponding kpoint in IBZ
@@ -259,7 +260,8 @@ class CHI:
             else:
                 ibzkpt2, iop2, timerev2 = find_ibzkpt(self.op, ibzk_kv, bzk_kv[kq[k]])
 
-            rho_Gnn = np.zeros((self.npw, self.nband, self.nband), dtype=complex)
+#            rho_G = np.zeros((self.npw, self.nband, self.nband), dtype=complex)
+            
             for n in range(self.nband):
                 psitold_G =  calc.wfs.kpt_u[ibzkpt1].psit_nG[n]
                 psit1new_G = symmetrize_wavefunction(psitold_G, self.op[iop1], ibzk_kv[ibzkpt1],
@@ -288,54 +290,37 @@ class CHI:
 
                         for iG in range(self.npw):
                             index = self.Gindex[iG]
-                            rho_Gnn[iG, n, m] = tmp_G[index[0], index[1], index[2]]
+                            rho_G[iG] = tmp_G[index[0], index[1], index[2]]
 
                         if self.OpticalLimit:
                             phase_cd = np.exp(2j * pi * sdisp_cd * bzk_kv[kq[k], :, np.newaxis])
                             for ix in range(3):
                                 d_c[ix](psit2_G, dpsit_G, phase_cd)
                                 tmp[ix] = gd.integrate(psit1_G * dpsit_G)
-                            rho_Gnn[0, n, m] = -1j * np.inner(self.qq, tmp)
+                            rho_G[0] = -1j * np.inner(self.qq, tmp)
 
                         # PAW correction
                         for a, id in enumerate(calc.wfs.setups.id_a):
                             P_p = np.outer(P1_ai[a].conj(), P2_ai[a]).ravel()
-                            #P_p = gemmdot(P1_ai[a][:,np.newaxis].conj(),
-                            #              P2_ai[a][np.newaxis,:].copy(), beta=0.0).ravel()
                             
-                            rho_Gnn[:, n, m] += gemmdot(self.phi_aGp[a], P_p, beta=0.0)
+                            rho_G += gemmdot(self.phi_aGp[a], P_p, beta=0.0)
 
                         if self.OpticalLimit:
-                            rho_Gnn[0, n, m] /= e_kn[ibzkpt2, m] - e_kn[ibzkpt1, n]
+                            rho_G[0] /= e_kn[ibzkpt2, m] - e_kn[ibzkpt1, n]
 
+                        rho_GG = np.outer(rho_G, rho_G.conj())
+                        
+                        if not self.HilbertTrans:
+                            for iw in range(self.Nw_local):
+                                w = self.wlist[iw + self.wstart] / Hartree
+                                C =  (f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) / (
+                                     w + e_kn[ibzkpt1, n] - e_kn[ibzkpt2, m] + 1j * self.eta)
 
-            if not self.HilbertTrans:
-                # construct (f_nk - f_n'k+q) / (w + e_nk - e_n'k+q + ieta )
-                C_nn = np.zeros((self.nband, self.nband), dtype=complex)
-                for iw in range(self.Nw_local):
-                    w = self.wlist[iw + self.wstart] / Hartree
-                    for n in range(self.nband):
-                        for m in range(self.nband):
-                             if np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > self.ftol:
-                                C_nn[n, m] = (f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) / (
-                                 w + e_kn[ibzkpt1, n] - e_kn[ibzkpt2, m] + 1j * self.eta)
-
-                    # get chi0(G=0,G'=0,w)
-                    for iG in range(self.npw):
-                        for jG in range(self.npw):
-                            chi0_wGG[iw,iG,jG] += (rho_Gnn[iG] * C_nn * rho_Gnn[jG].conj()).sum()
-            else:
-
-                # calculate spectral function
-                for n in range(self.nband):
-                    for m in range(self.nband):
-                        focc = f_kn[ibzkpt1,n] - f_kn[ibzkpt2,m]
-                        if focc > self.ftol:
+                                axpy(C, rho_GG, chi0_wGG[iw])
+                        else:
+                            focc = f_kn[ibzkpt1,n] - f_kn[ibzkpt2,m]
                             w0 = e_kn[ibzkpt2,m] - e_kn[ibzkpt1,n]
-                            tmp_GG = np.outer(rho_Gnn[:,n,m], rho_Gnn[:,n,m].conj())
-                            #tmp_GG = gemmdot(rho_Gnn[:,n,m,np.newaxis].copy(),
-                            #                        rho_Gnn[np.newaxis,:,n,m].conj(),beta=0.0)
-                            scal(focc, tmp_GG)
+                            scal(focc, rho_GG)
 
                             # calculate delta function
                             w0_id = int(w0 / self.dw)
@@ -343,11 +328,11 @@ class CHI:
                                 # rely on the self.NwS_local is equal in each node!
                                 if self.wScomm.rank == w0_id // self.NwS_local:
                                     alpha = (w0_id + 1 - w0/self.dw) / self.dw
-                                    axpy(alpha, tmp_GG, specfunc_wGG[w0_id % self.NwS_local] )
+                                    axpy(alpha, rho_GG, specfunc_wGG[w0_id % self.NwS_local] )
 
                                 if self.wScomm.rank == (w0_id+1) // self.NwS_local:
                                     alpha =  (w0 / self.dw - w0_id) / self.dw
-                                    axpy(alpha, tmp_GG, specfunc_wGG[(w0_id+1) % self.NwS_local] )
+                                    axpy(alpha, rho_GG, specfunc_wGG[(w0_id+1) % self.NwS_local] )
 
 #                            deltaw = delta_function(w0, self.dw, self.NwS, self.sigma)
 #                            for wi in range(self.NwS_local):
@@ -364,6 +349,7 @@ class CHI:
                     dt =  time() - t0
                     self.printtxt('Finished k %d in %f seconds, estimated %f seconds left.  '%(k, dt, totaltime - dt) )
 
+        del rho_GG
         # Hilbert Transform
         if not self.HilbertTrans:
             self.kcomm.sum(chi0_wGG)
@@ -490,23 +476,25 @@ class CHI:
         printtxt(self.h_c)
         printtxt('Number of Grid points / G-vectors, and in total: (%d %d %d), %d'
                   %(self.nG[0], self.nG[1], self.nG[2], self.nG0))
-        printtxt('Volome of cell (a.u.**3): %f' %(self.vol) )
-        printtxt('BZ volume (1/a.u.**3): %f' %(self.BZvol) )
-        printtxt('')
-        printtxt('Number of bands: %d' %(self.nband) )
-        printtxt('Number of kpoints: %d' %(self.nkpt) )
-        printtxt('Planewave cutoff energy (eV): %f' %(self.Ecut * Hartree) )
-        printtxt('Number of planewave used: %d' %(self.npw) )
-        printtxt('Broadening (eta): %f' %(self.eta * Hartree))
-        printtxt('Number of frequency points: %d' %(self.Nw) )
+        printtxt('Volome of cell (a.u.**3)     : %f' %(self.vol) )
+        printtxt('BZ volume (1/a.u.**3)        : %f' %(self.BZvol) )
+        printtxt('')                         
+        printtxt('Number of bands              : %d' %(self.nband) )
+        printtxt('Number of kpoints            : %d' %(self.nkpt) )
+        printtxt('Planewave Ecut (eV)          : %f' %(self.Ecut * Hartree) )
+        printtxt('Number of planewave used     : %d' %(self.npw) )
+        printtxt('Broadening (eta)             : %f' %(self.eta * Hartree))
+        printtxt('Number of frequency points   : %d' %(self.Nw) )
+        if self.HilbertTrans:
+            printtxt('Number of specfunc points    : %d' % (self.NwS))
         printtxt('')
         if self.OpticalLimit:
             printtxt('Optical limit calculation ! (q=0.00001)')
         else:
-            printtxt('q in reduced coordinate: (%f %f %f)' %(self.q[0], self.q[1], self.q[2]) )
+            printtxt('q in reduced coordinate        : (%f %f %f)' %(self.q[0], self.q[1], self.q[2]) )
             printtxt('q in cartesian coordinate (1/A): (%f %f %f) '
                   %(self.qq[0] / Bohr, self.qq[1] / Bohr, self.qq[2] / Bohr) )
-            printtxt('|q| (1/A): %f' %(sqrt(np.inner(self.qq / Bohr, self.qq / Bohr))) )
+            printtxt('|q| (1/A)                      : %f' %(sqrt(np.inner(self.qq / Bohr, self.qq / Bohr))) )
         printtxt('')
         printtxt('Use Hilbert Transform: %s' %(self.HilbertTrans) )
         printtxt('')
@@ -515,10 +503,11 @@ class CHI:
         printtxt('     kpoint parsize  : %d' %(self.kcomm.size))
         printtxt('     specfunc parsize: %d' %(self.wScomm.size))
         printtxt('     w parsize       : %d' %(self.wcomm.size))
+        printtxt('')
         printtxt('Memory usage estimation:')
-        printtxt('     chi0_wGG    : %f M / cpu' %(self.Nw_local * self.npw**2 * 16. / 1024**2) )
+        printtxt('     chi0_wGG        : %f M / cpu' %(self.Nw_local * self.npw**2 * 16. / 1024**2) )
         if self.HilbertTrans:
-            printtxt('     specfunc_wGG: %f M / cpu' %(self.NwS_local *self.npw**2 * 16. / 1024**2) )
+            printtxt('     specfunc_wGG    : %f M / cpu' %(self.NwS_local *self.npw**2 * 16. / 1024**2) )
 
 
 
