@@ -13,7 +13,7 @@ from ase.parallel import paropen
 
 from gpaw.atom.basis import BasisMaker
 from gpaw import GPAW
-from gpaw.response.grid_chi import CHI
+from gpaw.response.df import DF
 from gpaw.mpi import serial_comm, rank
 from gpaw.utilities import devnull
 
@@ -71,19 +71,22 @@ if EELS:
     wmax = 40.
 
     f = paropen('graphite_q_list', 'w')
+
     for i in range(1,8):
        
         q = np.array([i/20., 0., 0.]) # Gamma-M excitation
         #q = np.array([i/20., -i/20., 0.]) # Gamma-K excitation
-        chi = CHI()
-        chi.nband = nband
-        chi.initialize((calc,), q, wmax, dw, eta=0.2, Ecut = 40 + (i-1)*10)
-        chi.periodic()
-        
-        chi.get_EELS_spectrum('graphite_EELS_' + str(i))
-        chi.check_sum_rule()
-        
-        print >> f, sqrt(np.inner(chi.qq / Bohr, chi.qq / Bohr))
+
+        Ecut = 40 + (i-1)*10
+        df = DF(calc=calc, nband=nband, q=q, wmax=wmax,
+                dw=dw, eta=0.2,Ecut=Ecut)
+
+        df1, df2 = df.get_dielectric_function()
+
+        df.get_EELS_spectrum(df1, df2,filename='graphite_EELS_' + str(i))
+        df.check_sum_rule(df1, df2)
+
+        print >> f, sqrt(np.inner(df.qq / Bohr, df.qq / Bohr)), Ecut
 
     if rank == 0:
         os.remove('graphite.gpw')

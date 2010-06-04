@@ -27,7 +27,7 @@ if GS:
     basis = BasisMaker('Si').generate(2, 1) # dzp
 
     calc = GPAW(h=0.20,
-            kpts=(8,8,8),
+            kpts=(12,12,12),
             xc='LDA',
             basis='dzp',
             txt='si_gs.txt',
@@ -58,12 +58,16 @@ if ABS:
 
     df.write('df_1.pckl')
 
+    if np.abs(eM1 - 13.992323) > 1e-5 or np.abs(eM2 - 12.544340) > 1e-5:
+        print eM1, eM2
+        raise ValueError('Pls check dielectric constant !')
+
     #getting absorption spectrum
     df = DF(calc=calc, q=q, wmax=wmax, dw=dw, eta=0.2,
         Ecut=150, OpticalLimit=True, txt='df_2.out')
 
     df1, df2 = df.get_dielectric_function()
-    df.get_absorption_spectrum(df1, df2, filename='Absorption')
+    df.get_absorption_spectrum(df1, df2, filename='si_abs')
     df.check_sum_rule(df1, df2)
     
     df.write('df_2.pckl')
