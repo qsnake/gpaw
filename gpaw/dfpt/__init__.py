@@ -5,7 +5,7 @@ DFPT
 
 In DFPT the first-order variation in the density due to a static perturbation
 in the external potential is calculated self-consistently from a set of coupled
-equations for
+equations for:
 
     1. the variation of the effective potential,
     2. variation of the wave functions, and

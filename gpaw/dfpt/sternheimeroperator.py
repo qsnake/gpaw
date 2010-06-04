@@ -9,9 +9,11 @@ class SternheimerOperator:
     """Class implementing the linear operator in the Sternheimer equation.
 
     Sternheimer equation::
-    
-         (H - eps_nk) P_c |\delta\Psi_nk> = - P_c * \delta V_q * |\Psi_nk>
 
+           /           \             q
+           | H - eps   | P      |dPsi  > = - P      dV  |Psi  >
+           \        nk /  c,k+q      nk       c,k+q   q     nk
+       
     where P_c is the projection operator onto the unoccupied states. For a
     perturbation with a specific q-vector, only projections onto states at k+q
     will be different from zero.
@@ -43,10 +45,11 @@ class SternheimerOperator:
         self.kpt_u = wfs.kpt_u
         self.pt = wfs.pt
         self.gd = gd
-        
-        # Number of valence electrons (used in the projection member function)
-        self.nvalence = wfs.nvalence
-        
+
+        # Occupied bands
+        nvalence = wfs.nvalence
+        self.nbands = max(1, nvalence/2 + nvalence%2)
+
         # Variables for k-point and band index
         self.k = None
         self.n = None
@@ -158,15 +161,14 @@ class SternheimerOperator:
 
         assert self.k is not None
 
-        # This should be the k+q vector !!!!
+        # k+q vector !!!!
         kpt = self.kpt_u[self.k]
         
         # Occupied wave function
-        nbands = max(1, self.nvalence/2)
-        psit_nG = kpt.psit_nG[:nbands]
+        psit_nG = kpt.psit_nG[:self.nbands]
         
         # Project out one orbital at a time
-        for n in range(nbands):
+        for n in range(self.nbands):
             proj_n = self.gd.integrate(psit_nG[n].conjugate() * x_nG)
             x_nG -= proj_n * psit_nG[n]
 

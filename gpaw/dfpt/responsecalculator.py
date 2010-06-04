@@ -78,7 +78,8 @@ class ResponseCalculator:
         self.linear_solver = None
 
         # Number of occupied bands
-        self.nbands = max(1, self.calc.wfs.nvalence/2)
+        nvalence = self.calc.wfs.nvalence
+        self.nbands = nvalence/2 + nvalence%2
         assert self.nbands <= calc.wfs.nbands
                                   
         self.initialized = False
@@ -95,7 +96,7 @@ class ResponseCalculator:
         
         # Initialize mixer
         # weight = 1 -> no metric is used
-        self.mixer = BaseMixer(beta=0.4, nmaxold=5, weight=1)
+        self.mixer = BaseMixer(beta=0.4, nmaxold=3, weight=50)
         self.mixer.initialize_metric(self.gd)
         
         # Linear operator in the Sternheimer equation

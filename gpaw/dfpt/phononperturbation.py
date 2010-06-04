@@ -313,8 +313,8 @@ class PhononPerturbation(Perturbation):
         dP_aniv = self.pt.dict(shape=n, derivative=True)
 
         # Temporary for complex gamma-point calculations
-        if not self.gamma and x_nG.dtype == float:
-            x_nG = np.array(x_nG, dtype=complex)
+        # if not self.gamma and x_nG.dtype == float:
+        #     x_nG = np.array(x_nG, dtype=complex)
             
         # 1) Integrate with projectors
         # k
