@@ -81,7 +81,7 @@ def two_phi_planewave_integrals(k_Gv, setup=None, rgd=None, phi_jg=None, phit_jg
     lmax = max(l_j) * 2 + 1
 
     if setup is not None:
-        assert ni == setup.ni and nj == setup.nj and max(l_j) == setup.lmax
+        assert ni == setup.ni and nj == setup.nj
 
     # Initialize
     npw = k_Gv.shape[0]
