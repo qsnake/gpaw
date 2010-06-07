@@ -9,8 +9,10 @@ import numpy.linalg as la
 
 from gpaw.utilities import unpack, unpack2
 from gpaw.transformers import Transformer
-from gpaw.poisson import PoissonSolver, FFTPoissonSolver
 from gpaw.lfc import LocalizedFunctionsCollection as LFC
+
+# To be removed
+from gpaw.dfpt.poisson import PoissonSolver, FFTPoissonSolver
 
 from gpaw.dfpt.perturbation import Perturbation
 

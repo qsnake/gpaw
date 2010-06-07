@@ -5,7 +5,6 @@ __all__ = ["ResponseCalculator"]
 import numpy as np
 
 from gpaw.transformers import Transformer
-from gpaw.poisson import PoissonSolver, FFTPoissonSolver
 # from gpaw.mixer import BaseMixer
 from gpaw.dfpt.mixer import BaseMixer
 
@@ -31,8 +30,8 @@ class ResponseCalculator:
             Calculator instance containing a ground-state calculation.
         perturbation: Perturbation
             Class implementing the perturbing potential. Must provide an
-            ``apply`` member function that knows how to apply the perturbation
-            to a (set of) state vector(s).
+            ``apply`` member function that knows how to operate the
+            perturbation to a (set of) state vector(s).
             
         """
         

@@ -12,6 +12,7 @@ import ase.units as units
 # Temp modules
 from gpaw.utilities import unpack, unpack2
 
+from gpaw.dfpt.poisson import PoissonSolver, FFTPoissonSolver
 from gpaw.dfpt.responsecalculator import ResponseCalculator
 from gpaw.dfpt.phononperturbation import PhononPerturbation
 from gpaw.dfpt.dynamicalmatrix import DynamicalMatrix
