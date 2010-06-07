@@ -28,6 +28,9 @@ class DF(CHI):
         CHI.__init__(self, calc, nband, wmax, dw, wlist, q, Ecut,
                      eta, sigma, ftol, txt, HilbertTrans, OpticalLimit, kcommsize)
 
+        self.df1_w = None
+        self.df2_w = None
+
 
     def get_RPA_dielectric_matrix(self):
 
@@ -51,26 +54,27 @@ class DF(CHI):
 
     def get_dielectric_function(self):
 
-        dm_wGG = self.get_RPA_dielectric_matrix()
+        if self.df1_w is None:
+            dm_wGG = self.get_RPA_dielectric_matrix()
 
-        Nw_local = dm_wGG.shape[0]
-        dfNLF_w = np.zeros(Nw_local, dtype = complex)
-        dfLFC_w = np.zeros(Nw_local, dtype = complex)
-        df1_w = np.zeros(self.Nw, dtype = complex)
-        df2_w = np.zeros(self.Nw, dtype = complex)
+            Nw_local = dm_wGG.shape[0]
+            dfNLF_w = np.zeros(Nw_local, dtype = complex)
+            dfLFC_w = np.zeros(Nw_local, dtype = complex)
+            df1_w = np.zeros(self.Nw, dtype = complex)
+            df2_w = np.zeros(self.Nw, dtype = complex)
 
-        for iw in range(Nw_local):
-            tmp = dm_wGG[iw]
-            dfLFC_w[iw] = 1. / np.linalg.inv(tmp)[0, 0]
-            dfNLF_w[iw] = tmp[0, 0]
+            for iw in range(Nw_local):
+                tmp = dm_wGG[iw]
+                dfLFC_w[iw] = 1. / np.linalg.inv(tmp)[0, 0]
+                dfNLF_w[iw] = tmp[0, 0]
 
-        self.wcomm.all_gather(dfNLF_w, df1_w)
-        self.wcomm.all_gather(dfLFC_w, df2_w)
+            self.wcomm.all_gather(dfNLF_w, df1_w)
+            self.wcomm.all_gather(dfLFC_w, df2_w)
 
-        self.df1_w = df1_w
-        self.df2_w = df2_w
+            self.df1_w = df1_w
+            self.df2_w = df2_w
 
-        return df1_w, df2_w
+        return self.df1_w, self.df2_w
 
 
     def check_sum_rule(self, df1_w, df2_w):
@@ -271,27 +275,29 @@ class DF(CHI):
         """Dump essential data"""
 
         data = {'nband': self.nband,
-                'acell': self.acell * Bohr,
-                'bcell': self.bcell / Bohr,
-                'h_cv' : self.h_c * Bohr,
+                'acell': self.acell, #* Bohr,
+                'bcell': self.bcell, #/ Bohr,
+                'h_cv' : self.h_c,   #* Bohr,
                 'nG'   : self.nG,
                 'nG0'  : self.nG0,
-                'vol'  : self.vol * Bohr**3,
-                'BZvol': self.BZvol / Bohr**3,
+                'vol'  : self.vol,   #* Bohr**3,
+                'BZvol': self.BZvol, #/ Bohr**3,
                 'nkpt' : self.nkpt,
-                'Ecut' : self.Ecut * Hartree,
+                'Ecut' : self.Ecut,  #* Hartree,
                 'npw'  : self.npw,
-                'eta'  : self.eta * Hartree,
-                'ftol' : self.ftol * self.nkpt,
+                'eta'  : self.eta,   #* Hartree,
+                'ftol' : self.ftol,  #* self.nkpt,
                 'Nw'   : self.Nw,
                 'NwS'  : self.NwS,
+                'dw'   : self.dw,    # * Hartree,
                 'q_red': self.q,
-                'q_car': self.qq / Bohr,
-                'qmod' : np.inner(self.qq / Bohr, self.qq / Bohr),
+                'q_car': self.qq,    # / Bohr,
+                'qmod' : np.inner(self.qq, self.qq), # / Bohr
+                'nvalence'     : self.nvalence,                
                 'HilbertTrans' : self.HilbertTrans,
                 'OpticalLimit' : self.OpticalLimit,
-                'e_kn'         : self.e_kn * Hartree,
-                'f_kn'         : self.f_kn * self.nkpt,
+                'e_kn'         : self.e_kn,          # * Hartree,
+                'f_kn'         : self.f_kn,          # * self.nkpt,
                 'bzk_kv'       : self.bzk_kv,
                 'ibzk_kv'      : self.ibzk_kv,
                 'kq_k'         : self.kq,
@@ -331,13 +337,16 @@ class DF(CHI):
         self.ftol  = data['ftol']
         self.Nw    = data['Nw']
         self.NwS   = data['NwS']
+        self.dw    = data['dw']
         self.q     = data['q_red']
         self.qq    = data['q_car']
         self.qmod  = data['qmod']
+        
         self.HilbertTrans = data['HilbertTrans']
         self.OpticalLimit = data['OpticalLimit']
         self.e_kn  = data['e_kn']
         self.f_kn  = data['f_kn']
+        self.nvalence= data['nvalence']
         self.bzk_kv  = data['bzk_kv']
         self.ibzk_kv = data['ibzk_kv']
         self.kq      = data['kq_k']

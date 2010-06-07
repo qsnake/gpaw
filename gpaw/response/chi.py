@@ -249,8 +249,9 @@ class CHI:
             dpsit_G = gd.empty(dtype=complex)
             tmp = np.zeros((3), dtype=complex)
 
-        t0 = time()
         rho_G = np.zeros(self.npw, dtype=complex)
+        t0 = time()
+
         for k in range(self.kstart, self.kend):
 
             # Find corresponding kpoint in IBZ
@@ -260,8 +261,6 @@ class CHI:
             else:
                 ibzkpt2, iop2, timerev2 = find_ibzkpt(self.op, ibzk_kv, bzk_kv[kq[k]])
 
-#            rho_G = np.zeros((self.npw, self.nband, self.nband), dtype=complex)
-            
             for n in range(self.nband):
                 psitold_G =  calc.wfs.kpt_u[ibzkpt1].psit_nG[n]
                 psit1new_G = symmetrize_wavefunction(psitold_G, self.op[iop1], ibzk_kv[ibzkpt1],
@@ -277,6 +276,7 @@ class CHI:
 			check_focc = (f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > self.ftol
                     else:
                         check_focc = np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > self.ftol 
+
                     if check_focc:
                         psitold_G =  calc.wfs.kpt_u[ibzkpt2].psit_nG[m]
                         psit2_G = symmetrize_wavefunction(psitold_G, self.op[iop2], ibzk_kv[ibzkpt2],
@@ -301,8 +301,7 @@ class CHI:
 
                         # PAW correction
                         for a, id in enumerate(calc.wfs.setups.id_a):
-                            P_p = np.outer(P1_ai[a].conj(), P2_ai[a]).ravel()
-                            
+                            P_p = np.outer(P1_ai[a].conj(), P2_ai[a]).ravel()                            
                             rho_G += gemmdot(self.phi_aGp[a], P_p, beta=0.0)
 
                         if self.OpticalLimit:
@@ -315,7 +314,6 @@ class CHI:
                                 w = self.wlist[iw + self.wstart] / Hartree
                                 C =  (f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) / (
                                      w + e_kn[ibzkpt1, n] - e_kn[ibzkpt2, m] + 1j * self.eta)
-
                                 axpy(C, rho_GG, chi0_wGG[iw])
                         else:
                             focc = f_kn[ibzkpt1,n] - f_kn[ibzkpt2,m]
@@ -349,7 +347,7 @@ class CHI:
                     dt =  time() - t0
                     self.printtxt('Finished k %d in %f seconds, estimated %f seconds left.  '%(k, dt, totaltime - dt) )
 
-        del rho_GG
+        del rho_GG, rho_G
         # Hilbert Transform
         if not self.HilbertTrans:
             self.kcomm.sum(chi0_wGG)
