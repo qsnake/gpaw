@@ -59,23 +59,26 @@ class SimpleStm:
         else:
             # energy bias
             try:
-                efermi = self.calc.get_fermi_level()
+                if self.calc.occupations.fixmagmom is True:
+                    efermi_s = self.calc.get_fermi_levels()
+                else:
+                    efermi_s = np.array([self.calc.get_fermi_level()] * 2)
             except:
-                efermi = self.calc.get_homo_lumo().mean()
+                efermi_s = np.array([self.calc.get_homo_lumo().mean()] * 2)
                 
             if isinstance(bias, (int, long, float)):
                 # bias given
                 if bias > 0:
                     # positive bias = negative tip
                     # -> probe unoccupied states
-                    emin_s = efermi
-                    emax_s = efermi + bias
+                    emin_s = efermi_s
+                    emax_s = efermi_s + bias
                     occupied = False
                 else:
                     # negative bias = positive tip
                     # -> probe occupied states
-                    emin_s = efermi + bias
-                    emax_s = efermi
+                    emin_s = efermi_s + bias
+                    emax_s = efermi_s
                     occupied = True
             else:
                 # emin and emax given
@@ -84,14 +87,11 @@ class SimpleStm:
                     occupied = True
                 else:
                     occupied = False
-                emin_s = emin + efermi
-                emax_s = emin + efermi
+                emin_s = np.array([emin + efermi] * 2)
+                emax_s = np.array([emin + efermi] * 2)
 
             emin_s /= Hartree
             emax_s /= Hartree
-            if isinstance(emin_s, (int, long, float)):
-                emin_s = [emin_s, emin_s]
-                emax_s = [emax_s, emax_s]
                 
             for u in range(len(self.calc.wfs.kpt_u)):
                 kpt = self.calc.wfs.kpt_u[u]
