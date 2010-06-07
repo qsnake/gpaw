@@ -256,8 +256,7 @@ class AGTSQueue:
                 c = len(job.creates)
             else:
                 c = 0
-            if (job.pbsid is not None and
-                job.status in ['submitted', 'running']):
+            if job.pbsid is not None:
                 id = job.pbsid
             else:
                 id = ''
