@@ -470,6 +470,31 @@ Publications using the gpaw code
 
    .. 24 March 2010
 
+#) \J. F. Parker, K. A. Kacprzak, O. Lopez-Acevedo, H. Häkkinen,
+   R. W. Murray
+
+   `An experimental and density-functional theory analysis of serial
+   introductions of electron-withdrawing ligands into the ligand shell
+   of a thiolate-protected Au25 nanoparticle`__
+
+   J. Phys. Chem. C 114, 8276 (2010)
+
+   __ http://dx.doi.org/10.1021/jp101265v
+
+   .. 13 April 2010
+
+#) \J. Akola, K. A. Kacprzak, O. Lopez-Acevedo, M. Walter, H. Grönbeck and 
+   H. Häkkinen
+
+   `Materials from thiolate-protected Au25 superatoms: Dimers and 
+   crystals`__
+
+   J. Phys. Chem C ASAP
+
+   __ http://dx.doi.org/10.1021/jp1015438
+
+   .. 27 April 2010
+
 #) Mikkel Strange, Olga Lopez-Acevedo, and Hannu Häkkinen
 
    `Oligomeric Gold−Thiolate Units Define the Properties of the 
@@ -495,3 +520,16 @@ Publications using the gpaw code
    __ http://dx.doi.org/10.1039/b926414k
 
    .. 4 May 2010
+
+#) Olga Lopez-Acevedo, H. Tsunoyama, T. Tsukuda, H. Häkkinen and
+   C. M. Aikens
+
+   `Chirality and electronic structure of the thiolate-protected Au38 
+   nanocluster`__
+
+   J. Am. Chem. Soc. ASAP article
+
+   __ http://dx.doi.org/10.1021/ja102934q
+
+   .. 25 May 2010
+
