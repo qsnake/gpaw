@@ -5,7 +5,7 @@ from math import sqrt, pi
 from ase.units import Hartree, Bohr
 from gpaw import extra_parameters
 from gpaw.utilities import unpack, devnull
-from gpaw.utilities.blas import gemmdot, scal, axpy
+from gpaw.utilities.blas import gemmdot, gemv, scal, axpy
 from gpaw.mpi import world, rank, size, serial_comm
 from gpaw.lfc import LocalizedFunctionsCollection as LFC
 from gpaw.fd_operators import Gradient
@@ -301,8 +301,8 @@ class CHI:
 
                         # PAW correction
                         for a, id in enumerate(calc.wfs.setups.id_a):
-                            P_p = np.outer(P1_ai[a].conj(), P2_ai[a]).ravel()                            
-                            rho_G += gemmdot(self.phi_aGp[a], P_p, beta=0.0)
+                            P_p = np.outer(P1_ai[a].conj(), P2_ai[a]).ravel()
+                            gemv(1.0, self.phi_aGp[a], P_p, 1.0, rho_G)
 
                         if self.OpticalLimit:
                             rho_G[0] /= e_kn[ibzkpt2, m] - e_kn[ibzkpt1, n]
