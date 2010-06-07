@@ -137,6 +137,7 @@ if __name__ == '__main__':
     queue.collect()
 
     # examples of selecting jobs
+    #queue.jobs = [j for j in queue.jobs if j.script == 'neb.agts.py']
     #queue.jobs = [j for j in queue.jobs if j.dir.startswith('doc')]
     #queue.jobs = [j for j in queue.jobs
     #              if j.dir.startswith('gpaw/test/big/bader_water')]
@@ -156,7 +157,7 @@ if __name__ == '__main__':
             '../analysis/analyse.pickle',  # file keeping history
             '../analysis',                 # Where to dump figures
             rev=niflheim.revision,
-            mailto=user,
+            mailto='gpaw-developers@listserv.fysik.dtu.dk',
             mailserver='servfys.fysik.dtu.dk',
             attachment='status.log')
 
@@ -169,4 +170,4 @@ if __name__ == '__main__':
     dir = os.path.join('/scratch', user, 'gpaw-' + tag)
     os.system('rm -rf %s-old' % dir)
     os.system('mv %s %s-old' % (dir, dir))
-    #os.system('mv gpaw %s' % dir)
+    os.system('mv gpaw %s' % dir)
