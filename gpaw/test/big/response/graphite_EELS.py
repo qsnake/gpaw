@@ -79,7 +79,7 @@ if EELS:
         df.get_EELS_spectrum(df1, df2,filename='graphite_EELS_' + str(i))
         df.check_sum_rule(df1, df2)
 
-        print >> f, sqrt(np.inner(df.qq / Bohr, df.qq / Bohr)), ecut
+        print >> f, sqrt(np.inner(df.qq_v / Bohr, df.qq_v / Bohr)), ecut
 
     if rank == 0:
         os.remove('graphite.gpw')
