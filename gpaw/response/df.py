@@ -11,22 +11,19 @@ class DF(CHI):
 
     def __init__(self,
                  calc=None,
-                 nband=None,
-                 wmax=None,
-                 dw=None,
-                 wlist=None,
+                 nbands=None,
+                 w=None,
                  q=None,
-                 Ecut=10.,
+                 ecut=10.,
                  eta=0.2,
-                 sigma=1e-5,
                  ftol=1e-7,
                  txt=None,
-                 HilbertTrans=True,
-                 OpticalLimit=False,
+                 hilbert_trans=True,
+                 optical_limit=False,
                  kcommsize=None):
 
-        CHI.__init__(self, calc, nband, wmax, dw, wlist, q, Ecut,
-                     eta, sigma, ftol, txt, HilbertTrans, OpticalLimit, kcommsize)
+        CHI.__init__(self, calc, nbands, w, q, ecut,
+                     eta, ftol, txt, hilbert_trans, optical_limit, kcommsize)
 
         self.df1_w = None
         self.df2_w = None
@@ -40,14 +37,14 @@ class DF(CHI):
         else:
             pass # read from file and re-initializing .... need to be implemented
                        
-        tmp = np.eye(self.npw, self.npw)
+        tmp_GG = np.eye(self.npw, self.npw)
         dm_wGG = np.zeros((self.Nw_local, self.npw, self.npw), dtype = complex)
 
         for iw in range(self.Nw_local):
             for iG in range(self.npw):
-                qG = np.array([np.inner(self.q + self.Gvec[iG],
-                                       self.bcell[:,i]) for i in range(3)])
-                dm_wGG[iw,iG] =  tmp[iG] - 4 * pi / np.inner(qG, qG) * self.chi0_wGG[iw,iG]
+                qG = np.array([np.inner(self.q_c + self.Gvec_Gc[iG],
+                                       self.bcell_cv[:,i]) for i in range(3)])
+                dm_wGG[iw,iG] =  tmp_GG[iG] - 4 * pi / np.inner(qG, qG) * self.chi0_wGG[iw,iG]
 
         return dm_wGG
 
@@ -64,9 +61,9 @@ class DF(CHI):
             df2_w = np.zeros(self.Nw, dtype = complex)
 
             for iw in range(Nw_local):
-                tmp = dm_wGG[iw]
-                dfLFC_w[iw] = 1. / np.linalg.inv(tmp)[0, 0]
-                dfNLF_w[iw] = tmp[0, 0]
+                tmp_GG = dm_wGG[iw]
+                dfLFC_w[iw] = 1. / np.linalg.inv(tmp_GG)[0, 0]
+                dfNLF_w[iw] = tmp_GG[0, 0]
 
             self.wcomm.all_gather(dfNLF_w, df1_w)
             self.wcomm.all_gather(dfLFC_w, df2_w)
@@ -99,7 +96,8 @@ class DF(CHI):
         if df1 is None:
             df1, df2 = self.get_dielectric_function()
         eM1, eM2 = np.real(df1[0]), np.real(df2[0])
-        
+
+        self.printtxt('')
         self.printtxt('Macroscopic dielectric constant:')
         self.printtxt('    Without local field : %f' %(eM1) )
         self.printtxt('    Include local field : %f' %(eM2) )        
@@ -107,7 +105,7 @@ class DF(CHI):
         return eM1, eM2
 
 
-    def get_absorption_spectrum(self, df1=None, df2=None, filename='Absorption'):
+    def get_absorption_spectrum(self, df1=None, df2=None, filename='Absorption.dat'):
 
         if df1 is None:
             df1, df2 = self.get_dielectric_function()
@@ -125,7 +123,7 @@ class DF(CHI):
         self.comm.barrier()
 
 
-    def get_EELS_spectrum(self, df1=None, df2=None, filename='EELS'):
+    def get_EELS_spectrum(self, df1=None, df2=None, filename='EELS.dat'):
 
         if df1 is None:
             df1, df2 = self.get_dielectric_function()
@@ -147,11 +145,11 @@ class DF(CHI):
 
         JDOS_w = np.zeros(Nw)
         nkpt = f_kn.shape[0]
-        nband = f_kn.shape[1]
+        nbands = f_kn.shape[1]
 
         for k in range(nkpt):
-            for n in range(nband):
-                for m in range(nband):
+            for n in range(nbands):
+                for m in range(nbands):
                     focc = f_kn[k, n] - f_kn[kq[k], m]
                     w0 = e_kn[kq[k], m] - e_kn[k, n]
                     if focc > 0 and w0 >= 0:
@@ -195,17 +193,17 @@ class DF(CHI):
         # coef is (q+G)**2 / 4pi
         coef_G = np.zeros(self.npw)
         for iG in range(self.npw):
-            qG = np.array([np.inner(q + self.Gvec[iG],
-                            self.bcell[:,i]) for i in range(3)])
+            qG = np.array([np.inner(q + self.Gvec_Gc[iG],
+                            self.bcell_cv[:,i]) for i in range(3)])
 
             coef_G[iG] = np.inner(qG, qG)
         coef_G /= 4 * pi
 
         # obtain chi_G0(q,w)
         dm_wGG = self.get_RPA_dielectric_matrix()
-        tmp = dm_wGG[iw]
+        tmp_GG = dm_wGG[iw]
         del dm_wGG
-        chi_G = (np.linalg.inv(tmp)[:, 0] - delta_G) * coef_G
+        chi_G = (np.linalg.inv(tmp_GG)[:, 0] - delta_G) * coef_G
 
         gd = self.calc.wfs.gd
         r = gd.get_grid_point_coordinates()
@@ -213,8 +211,8 @@ class DF(CHI):
         # calculate dn(r,q,w)
         drho_R = gd.zeros(dtype=complex)
         for iG in range(self.npw):
-            qG = np.array([np.inner(self.Gvec[iG],
-                            self.bcell[:,i]) for i in range(3)])
+            qG = np.array([np.inner(self.Gvec_Gc[iG],
+                            self.bcell_cv[:,i]) for i in range(3)])
             qGr_R = np.inner(qG, r.T).T
             drho_R += chi_G[iG] * np.exp(1j * qGr_R)
 
@@ -244,8 +242,8 @@ class DF(CHI):
 
         kcoulinv_GG = np.zeros((self.npw, self.npw))
         for iG in range(self.npw):
-            qG = np.array([np.inner(self.q + self.Gvec[iG],
-                            self.bcell[:,i]) for i in range(3)])
+            qG = np.array([np.inner(self.q_c + self.Gvec_Gc[iG],
+                            self.bcell_cv[:,i]) for i in range(3)])
             kcoulinv_GG[iG, iG] = np.inner(qG, qG)
 
         kcoulinv_GG /= 4.*pi
@@ -274,35 +272,35 @@ class DF(CHI):
     def write(self, filename, all=False):
         """Dump essential data"""
 
-        data = {'nband': self.nband,
-                'acell': self.acell, #* Bohr,
-                'bcell': self.bcell, #/ Bohr,
-                'h_cv' : self.h_c,   #* Bohr,
+        data = {'nbands': self.nbands,
+                'acell': self.acell_cv, #* Bohr,
+                'bcell': self.bcell_cv, #/ Bohr,
+                'h_cv' : self.h_cv,   #* Bohr,
                 'nG'   : self.nG,
                 'nG0'  : self.nG0,
                 'vol'  : self.vol,   #* Bohr**3,
                 'BZvol': self.BZvol, #/ Bohr**3,
                 'nkpt' : self.nkpt,
-                'Ecut' : self.Ecut,  #* Hartree,
+                'ecut' : self.ecut,  #* Hartree,
                 'npw'  : self.npw,
                 'eta'  : self.eta,   #* Hartree,
                 'ftol' : self.ftol,  #* self.nkpt,
                 'Nw'   : self.Nw,
                 'NwS'  : self.NwS,
                 'dw'   : self.dw,    # * Hartree,
-                'q_red': self.q,
-                'q_car': self.qq,    # / Bohr,
-                'qmod' : np.inner(self.qq, self.qq), # / Bohr
+                'q_red': self.q_c,
+                'q_car': self.qq_v,    # / Bohr,
+                'qmod' : np.inner(self.qq_v, self.qq_v), # / Bohr
                 'nvalence'     : self.nvalence,                
-                'HilbertTrans' : self.HilbertTrans,
-                'OpticalLimit' : self.OpticalLimit,
+                'hilbert_trans' : self.hilbert_trans,
+                'optical_limit' : self.optical_limit,
                 'e_kn'         : self.e_kn,          # * Hartree,
                 'f_kn'         : self.f_kn,          # * self.nkpt,
-                'bzk_kv'       : self.bzk_kv,
-                'ibzk_kv'      : self.ibzk_kv,
-                'kq_k'         : self.kq,
-                'op_scc'       : self.op,
-                'Gvec'         : self.Gvec,
+                'bzk_kc'       : self.bzk_kc,
+                'ibzk_kc'      : self.ibzk_kc,
+                'kq_k'         : self.kq_k,
+                'op_scc'       : self.op_scc,
+                'Gvec_Gc'       : self.Gvec_Gc,
                 'dfNLF_w'      : self.df1_w,
                 'dfLFC_w'      : self.df2_w}
 
@@ -322,36 +320,36 @@ class DF(CHI):
             data = pickle.load(open(filename))
         self.comm.barrier()
         
-        self.nband = data['nband']
-        self.acell = data['acell']
-        self.bcell = data['bcell']
-        self.h_c   = data['h_cv']
+        self.nbands = data['nbands']
+        self.acell_cv = data['acell']
+        self.bcell_cv = data['bcell']
+        self.h_cv   = data['h_cv']
         self.nG    = data['nG']
         self.nG0   = data['nG0']
         self.vol   = data['vol']
         self.BZvol = data['BZvol']
         self.nkpt  = data['nkpt']
-        self.Ecut  = data['Ecut']
+        self.ecut  = data['ecut']
         self.npw   = data['npw']
         self.eta   = data['eta']
         self.ftol  = data['ftol']
         self.Nw    = data['Nw']
         self.NwS   = data['NwS']
         self.dw    = data['dw']
-        self.q     = data['q_red']
-        self.qq    = data['q_car']
+        self.q_c   = data['q_red']
+        self.qq_v  = data['q_car']
         self.qmod  = data['qmod']
         
-        self.HilbertTrans = data['HilbertTrans']
-        self.OpticalLimit = data['OpticalLimit']
+        self.hilbert_trans = data['hilbert_trans']
+        self.optical_limit = data['optical_limit']
         self.e_kn  = data['e_kn']
         self.f_kn  = data['f_kn']
         self.nvalence= data['nvalence']
-        self.bzk_kv  = data['bzk_kv']
-        self.ibzk_kv = data['ibzk_kv']
-        self.kq      = data['kq_k']
-        self.op      = data['op_scc']
-        self.Gvec    = data['Gvec']
+        self.bzk_kc  = data['bzk_kc']
+        self.ibzk_kc = data['ibzk_kc']
+        self.kq_k    = data['kq_k']
+        self.op_scc  = data['op_scc']
+        self.Gvec_Gc  = data['Gvec_Gc']
         self.df1_w   = data['dfNLF_w']
         self.df2_w   = data['dfLFC_w']
 
