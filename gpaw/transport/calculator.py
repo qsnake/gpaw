@@ -217,7 +217,7 @@ class Transport(GPAW):
         p['plot_eta'] = 0.05
         p['alpha'] = 0.0
         p['beta_guess'] = 0.1
-        p['theta'] = 200
+        p['theta'] = 1.
         p['vaccs'] = None
         p['LR_leads'] = True
         p['lead_guess'] = False
