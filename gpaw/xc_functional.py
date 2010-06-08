@@ -176,6 +176,16 @@ class XCFunctional:
             self.hybrid = 0.25
             if self.setupname is None:
                 self.setupname = 'PBE'
+        elif xcname == 'PW1PW':
+            # T. Bredow and A.R. Gerson, Phys. Rev. B 61 (2000), p. 5194
+            assert (nspins is not None)
+            code = 'lxc' # libxc
+            self.uses_libxc = True
+            xcname = 'X_PW91-C_PW91'
+            self.orbital_dependent = True
+            self.hybrid = 0.20
+            if self.setupname is None:
+                self.setupname = 'PW91'
         elif xcname == 'PBEH':
             assert (nspins is not None)
             code = 'lxc' # libxc
