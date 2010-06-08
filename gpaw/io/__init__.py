@@ -327,8 +327,10 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
 
     for s in range(wfs.nspins):
         if hdf5:
+            do_write = (kpt_comm.rank == 0)
             indices = [s,] +  wfs.gd.get_slice()
-            w.fill(density.nt_sG[s], parallel=True, *indices)
+            w.fill(density.nt_sG[s], parallel=True, write=do_write,
+                   *indices)
         elif kpt_comm.rank == 0:
             nt_sG = wfs.gd.collect(density.nt_sG[s])
             if master:
@@ -341,8 +343,10 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
 
     for s in range(wfs.nspins):
         if hdf5:
+            do_write = (kpt_comm.rank == 0)
             indices = [s,] + wfs.gd.get_slice()
-            w.fill(hamiltonian.vt_sG[s], parallel=True, *indices)
+            w.fill(hamiltonian.vt_sG[s], parallel=True, write=do_write, 
+                   *indices)
         elif kpt_comm.rank == 0:
             vt_sG = wfs.gd.collect(hamiltonian.vt_sG[s])
             if master:

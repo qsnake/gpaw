@@ -89,6 +89,11 @@ class Writer:
         except KeyError:
             parallel = False
 
+        try:
+            write = kwargs['write']
+        except KeyError:
+            write = True
+
         if parallel:
             # Create H5P_DATASET_XFER property list
             plist = h5py.h5p.create(h5py.h5p.DATASET_XFER)
@@ -108,6 +113,8 @@ class Writer:
             mshape_pad = mshape
         mspace = h5py.h5s.create_simple(mshape_pad,
                                    (h5py.h5s.UNLIMITED,)*len(mshape_pad))
+        if write == False:
+            h5py.h5s.select_none(mspace)
         
         if indices is None:
             fspace = h5py.h5s.create_simple(fshape, (h5py.h5s.UNLIMITED,)*len(fshape))
@@ -115,6 +122,8 @@ class Writer:
         else:
             selection = sel.select(fshape, indices)
             for fspace in selection.broadcast(mshape):
+                if write == False:
+                    h5py.h5s.select_none(fspace)
                 self.dset.id.write(mspace, fspace, array, mtype, plist)
 
     def get_data_type(self, array=None, dtype=None):
