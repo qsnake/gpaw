@@ -206,7 +206,7 @@ class Transport(GPAW):
         p['special_datas'] = []
         p['save_bias_data'] = True
         p['analysis_mode'] = 0
-        p['normalize_density'] = False
+        p['normalize_density'] = True
         p['extra_density'] = False
         p['se_data_path'] = None
         p['neintmethod'] = 0
