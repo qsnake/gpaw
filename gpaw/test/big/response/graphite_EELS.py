@@ -11,10 +11,9 @@ from ase import Atoms
 from ase.units import Bohr
 from ase.parallel import paropen
 
-from gpaw.atom.basis import BasisMaker
 from gpaw import GPAW
+from gpaw.mpi import rank
 from gpaw.response.df import DF
-from gpaw.mpi import serial_comm, rank
 from gpaw.utilities import devnull
 
 
@@ -27,8 +26,6 @@ EELS = 1
 nband = 60
 
 if GS:
-
-    basis = BasisMaker('C').generate(2, 1) # dzp
 
     kpts = (20,20,7)
     a=1.42
@@ -64,12 +61,8 @@ if GS:
 
 
 if EELS:
-
-    calc = GPAW('graphite.gpw', communicator=serial_comm)
                 
-    dw = 0.1  
-    wmax = 40.
-
+    w = np.linspace(0, 40, 401)
     f = paropen('graphite_q_list', 'w')
 
     for i in range(1,8):
@@ -77,16 +70,16 @@ if EELS:
         q = np.array([i/20., 0., 0.]) # Gamma-M excitation
         #q = np.array([i/20., -i/20., 0.]) # Gamma-K excitation
 
-        Ecut = 40 + (i-1)*10
-        df = DF(calc=calc, nband=nband, q=q, wmax=wmax,
-                dw=dw, eta=0.2,Ecut=Ecut)
+        ecut = 40 + (i-1)*10
+        df = DF(calc='graphite.gpw', nbands=nband, q=q, w=w,
+                eta=0.2,ecut=ecut)
 
         df1, df2 = df.get_dielectric_function()
 
         df.get_EELS_spectrum(df1, df2,filename='graphite_EELS_' + str(i))
         df.check_sum_rule(df1, df2)
 
-        print >> f, sqrt(np.inner(df.qq / Bohr, df.qq / Bohr)), Ecut
+        print >> f, sqrt(np.inner(df.qq / Bohr, df.qq / Bohr)), ecut
 
     if rank == 0:
         os.remove('graphite.gpw')

@@ -28,14 +28,11 @@ calc.write('C_gs.gpw','all')
 
 
 # Macroscopic dielectric constant calculation
-calc = GPAW('C_gs.gpw',communicator=serial_comm)
-            
-dw = 0.1  
-wmax = 24.
 q = np.array([0.0, 0.00001, 0.])
+w = np.linspace(0, 24., 241)
 
-df = DF(calc=calc, q=q, wlist=(0.,), eta=0.001,
-        Ecut=50, HilbertTrans=False, OpticalLimit=True)
+df = DF(calc='C_gs.gpw', q=q, w=(0.,), eta=0.001,
+        ecut=50, hilbert_trans=False, optical_limit=True)
 df1, df2 = df.get_dielectric_function()
 eM1, eM2 = df.get_macroscopic_dielectric_constant(df1, df2)
 
@@ -49,9 +46,9 @@ if (np.abs(eM1 - eM1_) > 1e-5 or
 
 
 # Absorption spectrum calculation
-#df = DF(calc=calc, q=q, wmax=wmax, dw=dw, eta=0.25,
-#        Ecut=50, OpticalLimit=True)
-#df1, df2 = df.get_dielectric_function()
-#df.get_absorption_spectrum(df1, df2)
-#df.check_sum_rule(df1, df2)
+df = DF(calc='C_gs.gpw', q=q, w=w, eta=0.25,
+        ecut=50, optical_limit=True)
+df1, df2 = df.get_dielectric_function()
+df.get_absorption_spectrum(df1, df2)
+df.check_sum_rule(df1, df2)
 

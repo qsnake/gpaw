@@ -45,17 +45,14 @@ if GS:
 
 
 if ABS:
-
-    calc = GPAW('si.gpw',communicator=serial_comm)
             
-    dw = 0.05
-    wmax = 24.
+    w = np.linspace(0, 24, 481)
     q = np.array([0.0, 0.00001, 0.])
 
     # getting macroscopic constant
-    df = DF(calc=calc, q=q, wmax=wmax, dw=dw, eta=0.0001, 
-        wlist=(0.,), HilbertTrans=False, txt='df_1.out',
-        Ecut=150, OpticalLimit=True)
+    df = DF(calc='si.gpw', q=q, w=w, eta=0.0001, 
+        hilbert_trans=False, txt='df_1.out',
+        ecut=150, optical_limit=True)
 
     df1, df2 = df.get_dielectric_function()
     eM1, eM2 = df.get_macroscopic_dielectric_constant(df1, df2)
@@ -67,8 +64,8 @@ if ABS:
         raise ValueError('Pls check dielectric constant !')
 
     #getting absorption spectrum
-    df = DF(calc=calc, q=q, wmax=wmax, dw=dw, eta=0.2,
-        Ecut=150, OpticalLimit=True, txt='df_2.out')
+    df = DF(calc='si.gpw', q=q, w=w, eta=0.2,
+        ecut=150, optical_limit=True, txt='df_2.out')
 
     df1, df2 = df.get_dielectric_function()
     df.get_absorption_spectrum(df1, df2, filename='si_abs')

@@ -33,23 +33,17 @@ calc.write('Al.gpw','all')
 
 t2 = time.time()
 
-
-
 # Excited state calculation
-calc = GPAW('Al.gpw',communicator=serial_comm)
-            
-dw = 0.1  
-wmax = 24.
 q = np.array([1./4.,0.,0.])
+w = np.linspace(0, 24, 241)
 
-df = DF(calc=calc, q=q, wmax=wmax, dw=dw, eta=0.2,Ecut=50)
+df = DF(calc='Al.gpw', q=q, w=w, eta=0.2, ecut=50)
 df1, df2 = df.get_dielectric_function()
 #df.write('Al.pckl')
 df.get_EELS_spectrum(df1, df2,filename='EELS_Al')
 df.check_sum_rule(df1, df2)
 
 t3 = time.time()
-
 
 print 'For ground  state calc, it took', (t2 - t1) / 60, 'minutes'
 print 'For excited state calc, it took', (t3 - t2) / 60, 'minutes'
