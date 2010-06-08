@@ -46,7 +46,7 @@ class CHI:
                  dw=None,
                  wlist=None,
                  q=None,
-                 Ecut=100.,
+                 Ecut=10.,
                  eta=0.2,
                  sigma=1e-5,
                  ftol=1e-7,
@@ -201,7 +201,7 @@ class CHI:
         phi_aGp = []
         R_a = calc.atoms.positions / Bohr
 
-        kk_Gv = gemmdot(self.q + self.Gvec, self.bcell.T, beta=0.0)
+        kk_Gv = gemmdot(self.q + self.Gvec, self.bcell.copy(), beta=0.0)
         for a, id in enumerate(setups.id_a):
             Z, type, basis = id
             if not phi_Gp.has_key(Z):
@@ -423,6 +423,8 @@ class CHI:
 
         wcommsize = int(self.NwS * self.npw**2 * 16. / 1024**2) // 1500 # megabyte
         wcommsize += 1
+        if size < wcommsize:
+            raise ValueError('Number of cpus are not enough ! ')
         if wcommsize > 1: # if matrix too large, overwrite kcommsize and distribute matrix
             while size % wcommsize != 0:
                 wcommsize += 1

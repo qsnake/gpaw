@@ -16,7 +16,7 @@ class DF(CHI):
                  dw=None,
                  wlist=None,
                  q=None,
-                 Ecut=100.,
+                 Ecut=10.,
                  eta=0.2,
                  sigma=1e-5,
                  ftol=1e-7,
