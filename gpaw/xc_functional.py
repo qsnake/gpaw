@@ -187,6 +187,7 @@ class XCFunctional:
             if self.setupname is None:
                 self.setupname = 'PW91'
         elif xcname == 'PBEH':
+            # preferred, direct implementation of PBE0 in libxc
             assert (nspins is not None)
             code = 'lxc' # libxc
             self.uses_libxc = True

@@ -193,9 +193,12 @@ unoccupied bands will improve convergence.
 Exchange-Correlation functional
 -------------------------------
 
-The exchange-correlation functional can be one of (only the most
-common are listed here, for the complete list see
-:trac:`~gpaw/libxc_functionals.py`):
+The most commonly used exchange-correlation functionals are listed below.
+For the list of all commonly used functionals defined in GPAW
+see :trac:`~gpaw/xc_functional.py`
+(use :command:`grep "xcname ==" gpaw/xc_functional.py` for an overview),
+and for the complete list of functionals
+see :trac:`~gpaw/libxc_functionals.py`:
 
 ============  =================== ===========================  ==========
 ``xc``        libxc_ keyword      description                  reference 
@@ -204,18 +207,33 @@ common are listed here, for the complete list see
 ``'PBE'``     ``'X_PBE-C_PBE'``   Perdew, Burke, Ernzerhof     [#PBE]_
 ``'revPBE'``  ``'X_PBE_R-C_PBE'`` revised PBE                  [#revPBE]_
 ``'RPBE'``    ``'X_RPBE-C_PBE'``  revised revPBE               [#RPBE]_
+``'PBEH'``    N/A as keyword      Known as PBE0                [#PBE0]_
+``'B3LYP'``   N/A as keyword      B3LYP (as in Gaussian Inc.)  [#B3LYP]_
 ============  =================== ===========================  ==========
 
-``'LDA'`` is the default value.  The three last ones are of
-generalized gradient approximation (GGA) type.
+``'LDA'`` is the default value.  The next three ones are of
+generalized gradient approximation (GGA) type, and the last two are
+`hybrid functionals <http://en.wikipedia.org/wiki/Hybrid_functional>`_.
 
-The functionals from libxc_ are used by default - keywords are based
-on the :file:`gpaw/libxc_functionals.py` file.  Custom combinations of
-exchange and correlation functionals are allowed, the exchange and
+GPAW uses the functionals from libxc_ by default.
+Keywords are based on the :file:`gpaw/libxc_functionals.py` file.
+Custom combinations of exchange and correlation functionals are allowed.
+To form a valid libxc keyword the exchange and
 correlation strings from the :file:`gpaw/libxc_functionals.py` file need
 to be stripped off the ``'XC_LDA'`` or ``'XC_GGA'`` prefix and
 combined using the dash (-); e.g. to use "the" LDA approximation (most
 common) in chemistry specify ``'X-C_VWN'``.
+
+Hybdrid functionals (features implemented in GPAW are described  at :ref:`exx`)
+require the corresponding
+setups containing exx information (use :command:`gpaw-setup --exact-exchange`
+to generate such a setup) to be present in :envvar:`GPAW_SETUP_PATH`
+(see :ref:`manual_setups`).
+The setup type coresponding to a hybrid functional is to be found in
+:trac:`~gpaw/xc_functional.py`. For example, for ``'B3LYP'``
+the ``'BLYP'`` is listed as ``'self.setupname'``, so one would
+use the command :command:`gpaw-setup --exact-exchange -f BLYP H O`
+to generate hydrogen and oxygen setups for calculations using ``'B3LYP'``.
 
 **For developers only**: It is still possible to use the "old" functionals
 by prefixing the keyword with ``'old'``, e.g. ``'oldrevPBEx'``.
@@ -788,5 +806,13 @@ faster.
              Improved adsorption energetics within density-functional
              theory using revised Perdew-Burke-Ernzerhof functionals,
              *Phys. Rev. B* **59**, 7413 (1999)
+.. [#PBE0]   C. Adamo and V. Barone,
+             *J. Chem. Phys.* **110** 6158-6170 (1999)
+             Toward reliable density functional methods without adjustable
+             parameters: The PBE0 model
+.. [#B3LYP]  P. J. Stephens, F. J. Devlin, C. F. Chabalowski, and M.J. Frisch,
+             *J. Phys. Chem.* **98** 11623-11627 (1994)
+             Ab-Initio Calculation of Vibrational Absorption and Circular-Dichroism
+             Spectra Using Density-Functional Force-Fields
 
 .. default-role::
