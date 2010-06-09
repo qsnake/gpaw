@@ -44,8 +44,8 @@ class DynamicalMatrix:
 
         """
 
-        # Dynamical matrix
-        D = np.zeros((3 * self.N, 3 * self.N))
+        # Dynamical matrix - need a dtype here
+        D = np.zeros((3*self.N, 3*self.N))
 
         for atom in self.atoms:
 
@@ -56,10 +56,14 @@ class DynamicalMatrix:
 
                 a_ = atom_.index
                 m_a_ = self.masses[a_]
-                
+
                 # Mass prefactor
                 c = (m_a * m_a_)**(-.5)
+
                 D[3*a : 3*a + 3, 3*a_ : 3*a_ + 3] += c * self.C_aavv[a][a_]
+                
+                # Acoustic sum-rule
+                D[3*a : 3*a + 3, 3*a : 3*a + 3] -= c * self.C_aavv[a][a_]
                 
         # Symmetrize
         self.D_ = D.copy()
