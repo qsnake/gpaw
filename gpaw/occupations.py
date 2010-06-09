@@ -42,7 +42,7 @@ class OccupationNumbers:
         # Allow subclasses to adjust nvalence:
         self.set_number_of_electrons(wfs)
 
-        # Let the master domaindo the work and broadcast results:
+        # Let the master domain do the work and broadcast results:
         data = np.empty(7)
         if wfs.gd.comm.rank == 0:
             self.calculate_occupation_numbers(wfs)
