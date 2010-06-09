@@ -20,7 +20,8 @@ from gpaw.blacs import BandLayouts
 from gpaw.parameters import InputParameters
 from gpaw.xc_functional import XCFunctional
 from gpaw.setup import Setups
-from gpaw.wavefunctions import GridWaveFunctions, WaveFunctions
+from gpaw.wavefunctions.base import WaveFunctions
+from gpaw.wavefunctions.fd import GridWaveFunctions
 from gpaw.fd_operators import Laplace # required but not really used
 from gpaw.pair_overlap import GridPairOverlap, ProjectorPairOverlap
 

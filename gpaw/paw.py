@@ -24,8 +24,9 @@ from gpaw.hamiltonian import Hamiltonian
 from gpaw.utilities.timing import Timer
 from gpaw.xc_functional import XCFunctional
 from gpaw.brillouin import reduce_kpoints
-from gpaw.wavefunctions import GridWaveFunctions, LCAOWaveFunctions
-from gpaw.wavefunctions import EmptyWaveFunctions
+from gpaw.wavefunctions.base import EmptyWaveFunctions
+from gpaw.wavefunctions.fd import GridWaveFunctions
+from gpaw.wavefunctions.lcao import LCAOWaveFunctions
 from gpaw.utilities.memory import MemNode, maxrss
 from gpaw.parameters import InputParameters
 from gpaw.setup import Setups

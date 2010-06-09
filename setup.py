@@ -68,8 +68,8 @@ packages = ['gpaw',
             'gpaw.test.vdw',
             'gpaw.testing',
             'gpaw.transport',
-            'gpaw.utilities'
-            ]
+            'gpaw.utilities',
+            'gpaw.wavefunctions']
 
 include_ase = False
 if '--include-ase' in sys.argv:

@@ -91,7 +91,7 @@ This will trigger:
    set up the objects needed for a calculation:
    :class:`~gpaw.density.Density`,
    :class:`~gpaw.hamiltonian.Hamiltonian`,
-   :class:`~gpaw.wavefunctions.WaveFunctions`,
+   :class:`~gpaw.wavefunctions.base.WaveFunctions`,
    :class:`~gpaw.setup.Setups` and a few more (see figure above).
 
 2) A call to the :meth:`~gpaw.paw.PAW.set_positions` method, which will
@@ -139,9 +139,9 @@ WaveFunctions
 We currently have two representations for the wave functions: uniform
 3-d grids and expansions in atom centered basis functions as
 implemented in the two classes
-:class:`~gpaw.wavefunctions.GridWaveFunctions` and
-:class:`~gpaw.wavefunctions.LCAOWaveFunctions`.  Both inherit from the
-:class:`~gpaw.wavefunctions.WaveFunctions` class, so the wave
+:class:`~gpaw.wavefunctions.fd.GridWaveFunctions` and
+:class:`~gpaw.wavefunctions.lcao.LCAOWaveFunctions`.  Both inherit from the
+:class:`~gpaw.wavefunctions.base.WaveFunctions` class, so the wave
 functions object will always have a
 :class:`~gpaw.grid_descriptor.GridDescriptor`, an
 :class:`~gpaw.eigensolvers.eigensolver.Eigensolver`, a

@@ -4,7 +4,7 @@ import numpy as np
 from ase.atoms import Atoms
 
 from gpaw.aseinterface import GPAW
-from gpaw.wavefunctions import WaveFunctions
+from gpaw.wavefunctions.base import WaveFunctions
 from gpaw.grid_descriptor import EquidistantRadialGridDescriptor
 from gpaw.utilities import unpack
 from gpaw.utilities.lapack import general_diagonalize

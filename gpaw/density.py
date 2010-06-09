@@ -12,7 +12,7 @@ from gpaw import debug, extra_parameters
 from gpaw.mixer import BaseMixer, Mixer, MixerSum
 from gpaw.transformers import Transformer
 from gpaw.lfc import LFC, BasisFunctions
-from gpaw.wavefunctions import LCAOWaveFunctions
+from gpaw.wavefunctions.lcao import LCAOWaveFunctions
 from gpaw.utilities import unpack2
 from gpaw.utilities.timing import nulltimer
 
