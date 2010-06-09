@@ -91,7 +91,6 @@ get('exercises/lrtddft', ['spectrum.png'])
 get('documentation/xc', 'g2test_pbe0.png  g2test_pbe.png  results.png'.split())
 get('performance', 'dacapoperf.png  goldwire.png  gridperf.png'.split(),
     '_static')
-get('documentation/xc', ['phi.dat', 'makephi.tar.gz'], '_static')
 
 get('tutorials/negfstm', ['fullscan.png', 'linescan.png'])
 
