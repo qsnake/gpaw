@@ -14,7 +14,7 @@ The steps described below require root access and assume bash shell:
 
 - `configure fys yum repository <https://wiki.fysik.dtu.dk/niflheim/Cluster_software_-_RPMS#configure-fys-yum-repository>`_
 
-- on Fedora 12 i386 or x86_64, as root:
+- on Fedora 12, 13 i386 or x86_64, as root:
 
   - install gpaw and dependencies::
 
