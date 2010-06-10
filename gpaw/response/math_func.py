@@ -1,13 +1,15 @@
-import numpy as np
-from scipy.special import sph_jn
 from math import sqrt, pi
+
+import numpy as np
 from ase.data import chemical_symbols
+
 from gpaw.utilities.blas import gemmdot
 from gpaw.gaunt import gaunt as G_LLL
 from gpaw.spherical_harmonics import Y
 from gpaw.setup_data import SetupData
 from gpaw.setup import Setup
 from gpaw.xc_functional import XCFunctional
+
 
 def delta_function(x0, dx, Nx, sigma):
 
@@ -33,7 +35,8 @@ def hilbert_transform(specfunc_wGG, Nw, dw, eta):
     return chi0_wGG * dw
 
                 
-def two_phi_planewave_integrals(k_Gv, setup=None, rgd=None, phi_jg=None, phit_jg=None,l_j=None):
+def two_phi_planewave_integrals(k_Gv, setup=None, rgd=None, phi_jg=None,
+                                phit_jg=None,l_j=None):
     """Calculate PAW-correction matrix elements with planewaves.
 
     ::
@@ -51,6 +54,8 @@ def two_phi_planewave_integrals(k_Gv, setup=None, rgd=None, phi_jg=None, phit_jg
           /          l1m1  l2m2  lm
           
     """
+
+    from scipy.special import sph_jn
 
     if setup is not None:
         ng = setup.ng
@@ -94,7 +99,8 @@ def two_phi_planewave_integrals(k_Gv, setup=None, rgd=None, phi_jg=None, phit_jg
     tmp_jjg = np.zeros((nj, nj, ng))
     for j1 in range(nj):
         for j2 in range(nj):
-            tmp_jjg[j1, j2] = phi_jg[j1] * phi_jg[j2] - phit_jg[j1] * phit_jg[j2]
+            tmp_jjg[j1, j2] = (phi_jg[j1] * phi_jg[j2] -
+                               phit_jg[j1] * phit_jg[j2])
 
     # Loop over G vectors
     for iG in range(npw):
@@ -109,7 +115,8 @@ def two_phi_planewave_integrals(k_Gv, setup=None, rgd=None, phi_jg=None, phit_jg
             # Radial part 
             for j1 in range(nj):
                 for j2 in range(nj): 
-                    R_jj[j1, j2] = np.dot(r_g**2*dr_g, tmp_jjg[j1, j2] * j_lg[li])
+                    R_jj[j1, j2] = np.dot(r_g**2*dr_g,
+                                          tmp_jjg[j1, j2] * j_lg[li])
 
             for mi in range(2 * li + 1):
                 # Angular part
@@ -121,7 +128,8 @@ def two_phi_planewave_integrals(k_Gv, setup=None, rgd=None, phi_jg=None, phit_jg
                         j2 = j_i[i2]
                         R_ii[i1, i2] = G_LLL[L1, L2, li**2+mi]  * R_jj[j1, j2]
 
-                phi_Gii[iG] += R_ii * Y(li**2 + mi, kk[0]/k, kk[1]/k, kk[2]/k) * (-1j)**li
+                phi_Gii[iG] += R_ii * Y(li**2 + mi,
+                                        kk[0]/k, kk[1]/k, kk[2]/k) * (-1j)**li
 
     
     phi_Gii *= 4 * pi

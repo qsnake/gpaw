@@ -1,7 +1,7 @@
 import sys
 from time import time, ctime
 from math import pi, sqrt
-from scipy.special import sph_jn
+
 import numpy as np
 from ase.units import Hartree, Bohr
 from ase.data import chemical_symbols
@@ -11,13 +11,13 @@ from gpaw.xc_functional import XCFunctional
 from gpaw.utilities.blas import gemmdot
 from gpaw.utilities import unpack, devnull
 from gpaw.utilities.memory import maxrss
-
 from gpaw.gaunt import gaunt as G_LLL
 from gpaw.spherical_harmonics import Y
 from gpaw.setup_data import SetupData
 from gpaw.setup import Setup
 from gpaw.fd_operators import Gradient
 from gpaw.mpi import _Communicator, world, rank, size
+
 
 class CHI:
     def __init__(self):
@@ -84,13 +84,15 @@ class CHI:
             # obtain eigenvalues, occupations
             self.e_kn = np.array([calc.get_eigenvalues(kpt=k)
                         for k in range(self.nibzkpt)]) / Hartree
-            self.f_kn = np.array([calc.get_occupation_numbers(kpt=k) / kweight[k]
-                        for k in range(self.nibzkpt)]) / self.nkpt
+            self.f_kn = np.array([calc.get_occupation_numbers(kpt=k) /
+                                  kweight[k]
+                                  for k in range(self.nibzkpt)]) / self.nkpt
 
         else:
 
             assert self.ncalc == 2
-            assert calc.get_bz_k_points().shape == calc.get_ibz_k_points().shape
+            assert (calc.get_bz_k_points().shape ==
+                    calc.get_ibz_k_points().shape)
 
             # obtain eigenvalues, occupations
             self.e1_kn = np.array([c[0].get_eigenvalues(kpt=k)
@@ -107,7 +109,8 @@ class CHI:
         r = calc.wfs.gd.get_grid_point_coordinates() # (3, nG[0], nG[1], nG[2])
         h_c = self.h_c # 3 * 3 matrix
         self.q = q
-        self.qq = qq = np.array([np.inner(self.q, self.bcell[:,i]) for i in range(3)])
+        self.qq = qq = np.array([np.inner(self.q, self.bcell[:,i])
+                                 for i in range(3)])
         self.qr = np.inner(self.qq, r.T).T
 
         # unit conversion
@@ -133,14 +136,11 @@ class CHI:
 #        self.Kxc_GG = self.calculate_Kxc(calc.wfs.gd, nt_G)          # G here is the number of plane waves
 
         # dielectric function and macroscopic dielectric function
-        self.eRPA_wGG = np.zeros((self.Nw, self.npw, self.npw), dtype = complex)
-        self.eMRPA_GG = np.zeros((self.npw, self.npw), dtype = complex)
+        self.eRPA_wGG = np.zeros((self.Nw, self.npw, self.npw), dtype=complex)
+        self.eMRPA_GG = np.zeros((self.npw, self.npw), dtype=complex)
         self.epsilonM = 0.
 
         self.print_stuff()
-
-        return
-
 
     def periodic(self):
 
@@ -162,7 +162,6 @@ class CHI:
         dt = (endtime - self.starttime) / 60
         print  >> self.txt, 'For excited states calc, it  took',dt, 'minutes'
         print  >> self.txt, '    and use memory', maxrss() / 1024**2, 'M'
-
 
     def OpticalLimit(self):
 
@@ -203,7 +202,7 @@ class CHI:
                     if np.abs(e_kn[k, m] - e_kn[k, n]) > 1e-8:
                         for ix in range(3):
                             d_c[ix](psit_nG[m], dpsit_G, kpt.phase_cd)
-                            tmp[ix] = gd.integrate( psit_nG[n].conj() * dpsit_G)
+                            tmp[ix] = gd.integrate(psit_nG[n].conj() * dpsit_G)
                         rho_nn[n, m] = -1j * np.inner(qq, tmp)
 
                         # PAW correction
@@ -239,7 +238,8 @@ class CHI:
             print >> self.txt, 'finished kpoint', k
 
         for iw in range(self.Nw):
-            self.epsilonRPA[iw] =  1 - 4 * pi / np.inner(qq, qq) * chi0_w[iw] / self.vol
+            self.epsilonRPA[iw] =  (1 - 4 * pi / np.inner(qq, qq) *
+                                    chi0_w[iw] / self.vol)
 
 
     def ShiftKpoint(self):
@@ -734,6 +734,7 @@ class CHI:
 
 
     def two_phi_planewave_integrals(self, Z):
+        from scipy.special import sph_jn
 
         xcfunc = XCFunctional('LDA',nspins=1)
         symbol = chemical_symbols[Z]
