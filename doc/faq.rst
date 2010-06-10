@@ -10,13 +10,22 @@ General
 Citation: how should I cite GPAW?
 ---------------------------------
 
-If you find GPAW useful in your research please cite:
+If you find GPAW useful in your research please cite the original reference:
 
    | J. J. Mortensen, L. B. Hansen , and K. W. Jacobsen
    | `Real-space grid implementation of the projector augmented wave method`__
    | Physical Review B, Vol. **71**, 035109, 2005
   
    __ http://dx.doi.org/10.1103/PhysRevB.71.035109
+
+and the major GPAW review:
+
+   | J. Enkovaara, C. Rostgaard, J. J. Mortensen et al.
+   | `Electronic structure calculations with GPAW: a real-space implementation of the projector augmented-wave method`__ 
+   | J. Phys.: Condens. Matter **22**, 253202 (2010)
+
+   __ http://stacks.iop.org/0953-8984/22/253202
+
 
 together with :ase:`ASE <>` citation
 (see :ase:`Citation: how should I cite ASE?<faq.html>`).

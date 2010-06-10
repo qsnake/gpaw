@@ -533,3 +533,20 @@ Publications using the gpaw code
 
    .. 25 May 2010
 
+#) J. Enkovaara, C. Rostgaard, J. J. Mortensen, J. Chen, M. Dulak,
+   L. Ferrighi, J. Gavnholt, C. Glinsvad, V. Haikola, H. A. Hansen,
+   H. H. Kristoffersen, M. Kuisma, A. H. Larsen, L. Lehtovaara,
+   M. Ljungberg, O. Lopez-Acevedo, P. G. Moses, J. Ojanen, T. Olsen,
+   V. Petzold, N. A. Romero, J. Stausholm, M. Strange, G. A. Tritsaris,
+   M. Vanin, M. Walter, B. Hammer, H. Häkkinen, G. K. H. Madsen,
+   R. M. Nieminen, J. K. Nørskov, M. Puska, T. T. Rantala,
+   J. Schiøtz, K. S. Thygesen, and K. W. Jacobsen   
+
+   `Electronic structure calculations with GPAW: a real-space
+   implementation of the projector augmented-wave method`__ 
+
+   J. Phys.: Condens. Matter **22**, 253202 (2010)
+
+   __ http://stacks.iop.org/0953-8984/22/253202
+
+   .. 8 June 2010
