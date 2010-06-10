@@ -139,7 +139,12 @@ It takes 40 minutes with 16 cpus on Intel Xeon X5570 2.93GHz.
 .. image:: silicon_ABS.png
 	   :height: 300 px
 
-The red dots are extracted from \ [#Kresse]_.
+The red dots are extracted from \ [#Kresse]_. 
+
+The obtained macroscopic dielectric function is 13.99 (without local field) 
+and 12.54 (with local field). They compare good with 14.08 and 12.66 from \ [#Kresse]_, respectively. 
+Experimental value is 11.90. The larger theoretical value results from the fact that the ground state LDA (even GGA..) 
+calculation underestimates the bandgap. 
 
 
 
