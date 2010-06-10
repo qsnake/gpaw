@@ -23,6 +23,7 @@ perform some of the most common tasks:
    xas/xas
    negfstm/negfstm
    ensembles/ensembles
+   dielectric_response/dielectric_response
 
 
 =========
