@@ -46,9 +46,9 @@ if (np.abs(eM1 - eM1_) > 1e-5 or
 
 
 # Absorption spectrum calculation
-#df = DF(calc='C_gs.gpw', q=q, w=w, eta=0.25,
-#        ecut=50, optical_limit=True)
-#df1, df2 = df.get_dielectric_function()
-#df.get_absorption_spectrum(df1, df2)
-#df.check_sum_rule(df1, df2)
-
+df = DF(calc='C_gs.gpw', q=q, w=w, eta=0.25,
+        ecut=50, optical_limit=True, txt='C_df.out')
+df1, df2 = df.get_dielectric_function()
+df.get_absorption_spectrum(df1, df2)
+df.check_sum_rule(df1, df2)
+df.write('C_df.pckl')
