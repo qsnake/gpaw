@@ -57,7 +57,7 @@ if ABS:
     df.write('df_1.pckl')
 
     #getting absorption spectrum
-    df = DF(calc='si.gpw', q=q, w=w, eta=0.2,
+    df = DF(calc='si.gpw', q=q, w=w, eta=0.1,
         ecut=150, optical_limit=True, txt='df_2.out')
 
     df1, df2 = df.get_dielectric_function()

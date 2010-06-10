@@ -8,7 +8,7 @@ q = np.array([0.0, 0.00001, 0.])
 df = DF(calc='si.gpw',
         q=q,
         w=w,
-        eta=0.2,           # Broadening parameter 
+        eta=0.1,           # Broadening parameter 
         ecut=150,          # Energy cutoff for planewaves
         optical_limit=True,
         txt='df_2.out')    # Output text

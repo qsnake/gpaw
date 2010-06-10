@@ -48,8 +48,9 @@ for i in range(1,8):                    # Loop over different q.
             ecut=40+(i-1)*10,           # In general, larger q requires larger planewave cutoff energy.       # 
             txt='out_df_%d.txt' %(i))   # Write differnt output for different q.
 
-    df.get_EELS_spectrum(filename='graphite_EELS_%d' %(i)) # Use different filenames for different q
-    df.check_sum_rule()                                    # Check f-sum rule.
+    df1, df2 = df.get_dielectric_function()
+    df.get_EELS_spectrum(df1, df2, filename='graphite_EELS_%d' %(i)) # Use different filenames for different q
+    df.check_sum_rule(df1, df2)         # Check f-sum rule.
 
     print >> f, sqrt(np.inner(df.qq_v / Bohr, df.qq_v / Bohr))
 
