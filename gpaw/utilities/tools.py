@@ -246,22 +246,6 @@ def gridspacing2cutoff(h):
     return 0.5 * (np.pi * Bohr / h)**2 * Hartree
 
 
-def geth(cell, h=.2, nodes=None):
-    """Convert suggested gridspacing to the actual gridspacing used by gpaw.
-
-    Given a number of nodes, the domian decomposition will also be printed.
-    This does not take into account spin-kpoint parallelization, which will
-    usually be done first.
-    """
-    L_c = [np.linalg.norm(axis) for axis in cell]
-    N_c = [max(4, int(.25 * L / h + .5) * 4) for L in L_c]
-    print 'Grid points:', N_c
-    print 'Grid spacing:', np.divide(L_c, N_c)
-    if nodes is not None:
-        from gpaw.domain import decompose_domain
-        print 'Domain decomposition:', decompose_domain(N_c, nodes)
-
-
 def tridiag(a, b, c, r, u):
     """Solve linear system with tridiagonal coefficient matrix.
 
