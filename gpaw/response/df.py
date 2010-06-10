@@ -52,7 +52,7 @@ class DF(CHI):
     def get_dielectric_function(self):
         """Calculate the dielectric function. Returns df1_w and df2_w.
 
-        Parameters::
+        Parameters:
 
         df1_w: ndarray
             Dielectric function without local field correction.
@@ -106,7 +106,7 @@ class DF(CHI):
 
         Macroscopic dielectric constant is defined as the real part of dielectric function at w=0.
         
-        Parameters::
+        Parameters:
 
         eM1: float
             Dielectric constant without local field correction.
