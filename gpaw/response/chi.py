@@ -103,6 +103,7 @@ class CHI:
         else:
             self.Nw = len(self.w_w)
             self.NwS = 0
+            self.dw = None
             
         self.eta /= Hartree
         self.ecut /= Hartree

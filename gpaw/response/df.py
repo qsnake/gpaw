@@ -50,6 +50,15 @@ class DF(CHI):
 
 
     def get_dielectric_function(self):
+        """Calculate the dielectric function. Returns df1_w and df2_w.
+
+        Parameters::
+
+        df1_w: ndarray
+            Dielectric function without local field correction.
+        df2_w: ndarray
+            Dielectric function with local field correction.
+        """
 
         if self.df1_w is None:
             dm_wGG = self.get_RPA_dielectric_matrix()
@@ -75,6 +84,7 @@ class DF(CHI):
 
 
     def check_sum_rule(self, df1_w, df2_w):
+        """Check f-sum rule."""
 
         N1 = N2 = 0
         for iw in range(self.Nw):
@@ -92,6 +102,18 @@ class DF(CHI):
 
 
     def get_macroscopic_dielectric_constant(self, df1=None, df2=None):
+        """Calculate macroscopic dielectric constant. Returns eM1 and eM2
+
+        Macroscopic dielectric constant is defined as the real part of dielectric function at w=0.
+        
+        Parameters::
+
+        eM1: float
+            Dielectric constant without local field correction.
+        eM2: float
+            Dielectric constant with local field correction.
+
+        """
 
         if df1 is None:
             df1, df2 = self.get_dielectric_function()
@@ -106,6 +128,10 @@ class DF(CHI):
 
 
     def get_absorption_spectrum(self, df1=None, df2=None, filename='Absorption.dat'):
+        """Calculate optical absorption spectrum. By default, generate a file 'Absorption.dat'.
+
+        Optical absorption spectrum is obtained from the imaginary part of dielectric function.
+        """
 
         if df1 is None:
             df1, df2 = self.get_dielectric_function()
@@ -124,6 +150,10 @@ class DF(CHI):
 
 
     def get_EELS_spectrum(self, df1=None, df2=None, filename='EELS.dat'):
+        """Calculate EELS spectrum. By default, generate a file 'EELS.dat'.
+
+        EELS spectrum is obtained from the imaginary part of the inverse of dielectric function.
+        """
 
         if df1 is None:
             df1, df2 = self.get_dielectric_function()
