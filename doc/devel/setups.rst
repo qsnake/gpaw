@@ -3,6 +3,8 @@ Atomic PAW setups
 
 .. default-role:: math
 
+.. _setup_matrix_elements_nabla:
+
 Calculating matrix elements of nabla
 ------------------------------------
 

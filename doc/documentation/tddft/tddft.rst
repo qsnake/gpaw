@@ -9,4 +9,5 @@ Currently two different approaches are available:
 
    timepropagation
    linear_response
+   dielectric_response
 
