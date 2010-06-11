@@ -29,18 +29,6 @@ def check_packages(packages, msg, include_ase, import_numpy):
     else:
         msg += ['* numpy is not installed.',
                 '  "include_dirs" in your customize.py must point to "numpy/core/include".']
-    try:
-        import Scientific.IO.NetCDF
-    except ImportError:
-        try:
-            import Scientific
-        except ImportError:
-            msg += ['* Scientific is not installed.']
-        else:
-            msg += ['* Scientific.IO.NetCDF is not installed (the NetCDF',
-                    '  C-library is probably missing).']
-        msg += ['  You will not be able to write and read wave functions',
-                '  in the netCDF format.']
 
     if not include_ase:
         if import_numpy:
