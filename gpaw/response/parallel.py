@@ -1,3 +1,5 @@
+# The parallel code is from Carsten Rostgaard # 
+
 import numpy as np
 from gpaw.mpi import serial_comm
 
