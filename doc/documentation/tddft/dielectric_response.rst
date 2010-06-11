@@ -373,8 +373,8 @@ For optical limit calculation, the dipole matrix related is
 
 .. math::
 
-     \langle \phi_i^a | \nabla | \phi_j^a \rangle
-     = \langle \tilde{\phi}_i^a | \nabla | \tilde{\phi}_j^a \rangle
+     \langle \psi_{n \mathbf{k}} | \nabla | \psi_{n^{\prime} \mathbf{k}} \rangle
+     = \langle \tilde{\psi}_{n \mathbf{k}} | \nabla | \tilde{\psi}_{n^{\prime} \mathbf{k}} \rangle
        +  \sum_{a,ij} 
    \langle  \tilde{\psi}_{n \mathbf k} | \tilde{p}_i^a  \rangle
    \langle \tilde{\psi}_{n^{\prime} \mathbf k + \mathbf q} | \tilde{p}_j^a   \rangle
