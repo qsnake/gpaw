@@ -42,9 +42,8 @@ class DF(CHI):
 
         for iw in range(self.Nw_local):
             for iG in range(self.npw):
-                qG = np.array([np.inner(self.q_c + self.Gvec_Gc[iG],
-                                       self.bcell_cv[:,i]) for i in range(3)])
-                dm_wGG[iw,iG] =  tmp_GG[iG] - 4 * pi / np.inner(qG, qG) * self.chi0_wGG[iw,iG]
+                qG = np.dot(self.q_c + self.Gvec_Gc[iG], self.bcell_cv)
+                dm_wGG[iw,iG] =  tmp_GG[iG] - 4 * pi / np.dot(qG, qG) * self.chi0_wGG[iw,iG]
 
         return dm_wGG
 
@@ -223,10 +222,8 @@ class DF(CHI):
         # coef is (q+G)**2 / 4pi
         coef_G = np.zeros(self.npw)
         for iG in range(self.npw):
-            qG = np.array([np.inner(q + self.Gvec_Gc[iG],
-                            self.bcell_cv[:,i]) for i in range(3)])
-
-            coef_G[iG] = np.inner(qG, qG)
+            qG = np.dot(q + self.Gvec_Gc[iG], self.bcell_cv)
+            coef_G[iG] = np.dot(qG, qG)
         coef_G /= 4 * pi
 
         # obtain chi_G0(q,w)
@@ -241,9 +238,8 @@ class DF(CHI):
         # calculate dn(r,q,w)
         drho_R = gd.zeros(dtype=complex)
         for iG in range(self.npw):
-            qG = np.array([np.inner(self.Gvec_Gc[iG],
-                            self.bcell_cv[:,i]) for i in range(3)])
-            qGr_R = np.inner(qG, r.T).T
+            qG = np.dot(q + self.Gvec[iG], self.bcell_cv)
+            qGr_R = np.dot(qG, r.T).T
             drho_R += chi_G[iG] * np.exp(1j * qGr_R)
 
         # phase = sum exp(iq.R_i)
@@ -272,9 +268,8 @@ class DF(CHI):
 
         kcoulinv_GG = np.zeros((self.npw, self.npw))
         for iG in range(self.npw):
-            qG = np.array([np.inner(self.q_c + self.Gvec_Gc[iG],
-                            self.bcell_cv[:,i]) for i in range(3)])
-            kcoulinv_GG[iG, iG] = np.inner(qG, qG)
+            qG = np.dot(self.q_c + self.Gvec_Gc[iG], self.bcell_cv)
+            kcoulinv_GG[iG, iG] = np.dot(qG, qG)
 
         kcoulinv_GG /= 4.*pi
 
@@ -320,7 +315,7 @@ class DF(CHI):
                 'dw'   : self.dw,    # * Hartree,
                 'q_red': self.q_c,
                 'q_car': self.qq_v,    # / Bohr,
-                'qmod' : np.inner(self.qq_v, self.qq_v), # / Bohr
+                'qmod' : np.dot(self.qq_v, self.qq_v), # / Bohr
                 'nvalence'     : self.nvalence,                
                 'hilbert_trans' : self.hilbert_trans,
                 'optical_limit' : self.optical_limit,

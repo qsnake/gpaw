@@ -104,8 +104,8 @@ def two_phi_planewave_integrals(k_Gv, setup=None, rgd=None, phi_jg=None,
 
     # Loop over G vectors
     for iG in range(npw):
-        kk = k_Gv[iG] #np.inner(bcell.T, q + Gvec[iG])
-        k = np.sqrt(np.inner(kk, kk)) # calculate length of q+G
+        kk = k_Gv[iG] 
+        k = np.sqrt(np.dot(kk, kk)) # calculate length of q+G
         
         # Calculating spherical bessel function
         for ri in range(ng):

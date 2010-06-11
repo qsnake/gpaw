@@ -144,7 +144,7 @@ class CHI:
 
         # k + q init
         assert self.q_c is not None
-        self.qq_v = np.inner(self.q_c, self.bcell_cv)
+        self.qq_v = np.dot(self.q_c, self.bcell_cv)
 
         if self.optical_limit:
             kq_k = np.arange(self.nkpt)
@@ -211,7 +211,7 @@ class CHI:
             phi_aGp.append(phi_Gp[Z])
 
             for iG in range(self.npw):
-                phi_aGp[a][iG] *= np.exp(-1j * np.inner(kk_Gv[iG], R_a[a]))
+                phi_aGp[a][iG] *= np.exp(-1j * np.dot(kk_Gv[iG], R_a[a]))
 
         # For optical limit, G == 0 part should change
         if self.optical_limit:
@@ -299,7 +299,7 @@ class CHI:
                             for ix in range(3):
                                 d_c[ix](psit2_g, dpsit_g, phase_cd)
                                 tmp[ix] = gd.integrate(psit1_g * dpsit_g)
-                            rho_G[0] = -1j * np.inner(self.qq_v, tmp)
+                            rho_G[0] = -1j * np.dot(self.qq_v, tmp)
 
                         # PAW correction
                         for a, id in enumerate(calc.wfs.setups.id_a):
@@ -496,7 +496,7 @@ class CHI:
             printtxt('q in reduced coordinate        : (%f %f %f)' %(self.q_c[0], self.q_c[1], self.q_c[2]) )
             printtxt('q in cartesian coordinate (1/A): (%f %f %f) '
                   %(self.qq_v[0] / Bohr, self.qq_v[1] / Bohr, self.qq_v[2] / Bohr) )
-            printtxt('|q| (1/A)                      : %f' %(sqrt(np.inner(self.qq_v / Bohr, self.qq_v / Bohr))) )
+            printtxt('|q| (1/A)                      : %f' %(sqrt(np.dot(self.qq_v / Bohr, self.qq_v / Bohr))) )
         printtxt('')
         printtxt('Use Hilbert Transform: %s' %(self.hilbert_trans) )
         printtxt('')

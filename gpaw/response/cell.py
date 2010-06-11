@@ -42,7 +42,7 @@ def set_Gvectors(acell, bcell, nG, Ecut):
         for j in range(Nmax[1]):
             for k in range(Nmax[2]):
                 tmp = np.array([m[0][i], m[1][j], m[2][k]])
-                tmpG = np.array([np.inner(tmp, bcell[:,ii]) for ii in range(3)])
+                tmpG = np.dot(tmp, bcell)
                 Gmod = sqrt(tmpG[0]**2 + tmpG[1]**2 + tmpG[2]**2)
                 if Gmod < Gcut:
                     G[n] = tmp
