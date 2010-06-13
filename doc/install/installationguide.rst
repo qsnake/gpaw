@@ -21,7 +21,7 @@ Requirements
 
    In order to use the code, you need also the setups for all your atoms (:ref:`setups`).
 
-.. _NumPy: http://www.scipy.org/NumPy
+.. _NumPy: http://numpy.scipy.org/
 
 Installation from the fys package repository
 ============================================

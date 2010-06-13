@@ -97,7 +97,7 @@ News
 
 * Work on atomic basis-sets begun (Sep 25 2007)
 
-.. _numpy: http://www.scipy.org/NumPy
+.. _numpy: http://numpy.scipy.org/
 .. _CSC: http://www.csc.fi
 .. _GPAW course: http://www.csc.fi/english/csc/courses/archive/gpaw-2008-01
 .. _Trac: https://trac.fysik.dtu.dk/projects/gpaw
