@@ -3,6 +3,8 @@
 from ase import *
 from gpaw import GPAW, FermiDirac
 from ase.data.molecules import molecule
+import numpy as np
+from gpaw.test import equal
 
 #----------------------------------
 # Initialization
@@ -16,7 +18,10 @@ xc = 'vdW-DF'
 # relaxation of the benzene molecule
 benz = molecule('C6H6')
 benz.set_pbc(False)
+tags = np.zeros_like(benz)
+benz.set_tags(tags)
 benz.center(vacuum=4.0)
+cell = benz.get_cell()
 
 calc = GPAW(nbands=-1,
             h=h,
@@ -37,69 +42,56 @@ e_mol = benz.get_potential_energy()
 del calc
 
 #-------------------------------------
-# relaxation of benzene dimer (T-shaped) intermolecular distance
-dimer = benz.copy()
-benz.rotate('x', pi/2.,center='COM')
-benz.translate([0,0,6.])
-dimer.extend(benz)
-dimer.center(vacuum=4.0) 
+# mapping out the benzene dimer (T-shaped) intermolecular distance
 
-calc = GPAW(nbands=-2,
-            h=h,
-            xc=xc,
-            occupations=FermiDirac(0.0),
-            txt=dimername+'_relax.txt')
-dimer.set_calculator(calc)
+e_array = np.zeros(20)
+d_array = np.zeros(20)
 
-# qn constraint
-for i in range(6):
-        fix = FixBondLength(i, i+6)
-        dimer.set_constraint(fix)
-for i in range(6):
-        fix = FixBondLength(i+12, i+18)
-        dimer.set_constraint(fix)
+k = 0
+for i in np.linspace(-6,6,20):
+	k_str = str(k)
+	z = 6.0 + i*0.3
+	BENZ = benz.copy()
+	dimer = BENZ.copy()
+	tags = np.ones_like(dimer)
+	dimer.set_tags(tags)
+	BENZ.rotate('x', pi/2.,center='COM')
+	BENZ.translate([0.,0.,z])
+	dimer.extend(BENZ)
+	dimer.set_cell([cell[0,0],cell[1,1],cell[2,2]+8.])
+	dimer.center()
+	dimer.set_pbc(False)
+	pos = dimer.get_positions()
+	d = pos[21,2] - pos[0,2]
 
-qn = QuasiNewton(dimer,logfile=dimername+'_relax.log',trajectory=dimername+'_relax.traj')
-qn.run(fmax=0.01)
+	calc = GPAW(nbands=-2,
+        	    h=h,
+	            xc=xc,
+        	    occupations=FermiDirac(0.0),
+	            txt=dimername+'_'+k_str+'.txt')
+	dimer.set_calculator(calc)
+	e_dimer = dimer.get_potential_energy()
+	del calc
 
-calc.write(dimername+'_relax.gpw')
-e_dimer = dimer.get_potential_energy()
-del calc
+	# interaction energy
+	e_int = e_dimer - 2*e_mol
+	e_array[k] = e_int
+	d_array[k] = d
 
-#----------------------------------
-# Eliminating eggbox-effect in the interaction energy 
-# by considering each benzene molecule individually
-benz_1 = dimer.copy()
-benz_1.set_constraint()
-for i in range(12):
-        benz_1.pop(0)
- 
-calc = GPAW(nbands=-1,
-            h=h,
-            xc=xc,
-            occupations=FermiDirac(0.0),
-            txt='benz1.txt')
-benz1.set_calculator(calc)
-e_benz1 = benz1.get_potential_energy()
-calc.write(benzname+'-1.gpw')
-del calc
+	print >> f, str(round(d,3)), e_int
+	f.flush()
+	k += 1
 
-benz_2 = dimer.copy()
-benz_2.set_constraint()
-for i in range(12):
-        benz_2.pop(-1)
- 
-calc = GPAW(nbands=-1,
-            h=h,
-            xc=xc,
-            occupations=FermiDirac(0.0),
-            txt='benz2.txt')
-benz2.set_calculator(calc)
-e_benz2 = benz2.get_potential_energy()
-calc.write(benzname+'-2.gpw')
-del calc
+# E_int-curve minimum
+e_0 = 100.
+d_0 = 0.
+for i in range(len(e_array)):
+	if e_array[i] < e_0:
+		e_0 = e_array[i]
+		d_0 = d_array[i]
+print >> f, '****************'
+print >> f, 'Minimum (E_int,d):', e_0, d_0 
+f.close()
 
-# interaction energy
-e_int = e_dimer - (e_benz1 + e_benz2)
-
-print >> f, e_int, e_dimer, e_benz1, e_benz2
+equal(e_0 , -0.11, 0.01)
+equal(d_0 , 2.68, 0.05)
