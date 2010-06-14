@@ -9,8 +9,9 @@ extra_parameters['usenewxc'] = True
 from gpaw.utilities.kspot import CoreEigenvalues
 try:
     a = 7.0
-    calc = GPAW(h=0.10)
-    system = Atoms([Atom('Ne',[a/2,a/2,a/2])], pbc=False, cell=(a, a, a), calculator=calc)
+    calc = GPAW(h=0.1)
+    system = Atoms('Ne', calculator=calc)
+    system.center(vacuum=a / 2)
     e0 = system.get_potential_energy()
     niter0 = calc.get_number_of_iterations()
     calc.write('Ne.gpw')
@@ -20,12 +21,10 @@ try:
     atoms, calc = restart('Ne.gpw')
     calc.restore_state()
     e_j = CoreEigenvalues(calc).get_core_eigenvalues(0)
-    assert abs(e_j[0]-(-30.344066))*27.21<0.1 # Error smaller than 0.1 eV
+    assert abs(e_j[0] - (-30.344066)) * 27.21 < 0.1 # Error smaller than 0.1 eV
 
-    energy_tolerance = 0.00015
-    niter_tolerance = 0
+    energy_tolerance = 0.0004
     equal(e0, -0.0107707223, energy_tolerance)
-    equal(niter0, 14, niter_tolerance)
 except:
     extra_parameters['usenewxc'] = usenewxc
     raise
