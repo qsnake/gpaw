@@ -543,29 +543,19 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
   PyArrayObject* b; // destination matrix
   PyArrayObject* desca; // source descriptor
   PyArrayObject* descb; // destination descriptor
-  PyObject* comm_obj = Py_None; // intermediate communicator, must
-                                // encompass adesc + bdesc
-  char order='R';
+
   char uplo;
   char diag='N'; // copy the diagonal
-  int nprocs;
-  int iam;
   int c_ConTxt;
   int isreal;
   int m;
   int n;
   int one = 1;
 
-  if (!PyArg_ParseTuple(args, "OOOOOiiic", &desca, &descb, &a, &b,
-                        &comm_obj, &m, &n, &isreal, &uplo))
+  if (!PyArg_ParseTuple(args, "OOOOiiiic", &desca, &descb, &a, &b,
+                        &c_ConTxt, &m, &n, &isreal, &uplo))
     return NULL;
 
-  // Create intermediate blacs grid on this communicator
-  MPI_Comm comm = ((MPIObject*)comm_obj)->comm;
-  Cblacs_pinfo_(&iam, &nprocs);
-  MPI_Comm_size(comm, &nprocs);
-  c_ConTxt = Csys2blacs_handle(comm);
-  Cblacs_gridinit(&c_ConTxt, &order, 1, nprocs);
   if (uplo == 'G') // General matrix
     {
       if(isreal)
@@ -585,7 +575,6 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
 		   (void*)COMPLEXP(b), one, one, INTP(descb), c_ConTxt);      
     }
     
-  Cblacs_gridexit(c_ConTxt);
   Py_RETURN_NONE;
 }
 

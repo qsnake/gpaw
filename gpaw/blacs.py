@@ -431,6 +431,7 @@ class Redistributor:
         triangular and L for lower triangular. The latter two are useful
         for symmetric matrices."""
         self.supercomm = supercomm
+        self.supercomm_bg = BlacsGrid(self.supercomm, self.supercomm.size, 1)
         self.srcdescriptor = srcdescriptor
         self.dstdescriptor = dstdescriptor
         assert uplo in ['G', 'U', 'L'] 
@@ -467,7 +468,7 @@ class Redistributor:
         _gpaw.scalapack_redist(srcdescriptor.asarray(), 
                                dstdescriptor.asarray(),
                                src_mn, dst_mn,
-                               self.supercomm.get_c_object(),
+                               self.supercomm_bg.context,
                                subN, subM, isreal, uplo)
     
     def redistribute(self, src_mn, dst_mn):
