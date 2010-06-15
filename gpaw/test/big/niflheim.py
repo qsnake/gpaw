@@ -24,17 +24,19 @@ class Niflheim(Cluster):
         if os.system('cd gpaw&& ' +
                      'source /home/camp/modulefiles.sh&& ' +
                      'module load NUMPY&& '+
+                     'module load open64/4.2.3-0 && ' +
                      'python setup.py --remove-default-flags ' +
                      '--customize=doc/install/Linux/Niflheim/' +
-                     'el5-xeon-gcc43-acml-4.3.0.py ' +
+                     'el5-xeon-open64-goto2-1.13-acml-4.4.0.py ' +
                      'build_ext') != 0:
             raise RuntimeError('Installation of GPAW (Xeon) failed!')
         if os.system('ssh fjorm "cd weekend-tests/gpaw&& ' +
                      'source /home/camp/modulefiles.sh&& ' +
                      'module load NUMPY&& '+
+                     'module load open64/4.2.3-0 && ' +
                      'python setup.py --remove-default-flags ' +
                      '--customize=doc/install/Linux/Niflheim/' +
-                     'el5-opteron-gcc43-goto-1.26-acml-4.3.0.py ' +
+                     'el5-opteron-open64-goto2-1.13-acml-4.4.0.py ' +
                      'build_ext"') != 0:
             raise RuntimeError('Installation of GPAW (Opteron) failed!')
         
@@ -100,6 +102,7 @@ class Niflheim(Cluster):
             run_command += 'mpiexec --mca mpi_paffinity_alone 1 '
             run_command += '-x PYTHONPATH=' + submit_pythonpath
             run_command += ' -x GPAW_SETUP_PATH=' + submit_gpaw_setup_path
+            run_command += ' -x OMP_NUM_THREADS=1'
 
         p = subprocess.Popen(
             ['/usr/local/bin/qsub',
