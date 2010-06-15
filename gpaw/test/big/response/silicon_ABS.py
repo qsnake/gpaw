@@ -11,7 +11,6 @@ from ase.structure import bulk
 from ase.parallel import paropen
 from gpaw.atom.basis import BasisMaker
 from gpaw import GPAW, FermiDirac
-from gpaw.atom.basis import BasisMaker
 from gpaw.mpi import serial_comm, rank, size
 from gpaw.utilities import devnull
 from gpaw.response.df import DF
@@ -28,7 +27,6 @@ if GS:
     # Ground state calculation
     a = 5.431 #10.16 * Bohr 
     atoms = bulk('Si', 'diamond', a=a)
-    basis = BasisMaker('Si').generate(2, 1) # dzp
 
     calc = GPAW(h=0.20,
             kpts=(12,12,12),
@@ -50,7 +48,7 @@ if ABS:
     q = np.array([0.0, 0.00001, 0.])
 
     # getting macroscopic constant
-    df = DF(calc='si.gpw', q=q, w=w, eta=0.0001, 
+    df = DF(calc='si.gpw', q=q, w=(0.,), eta=0.0001, 
         hilbert_trans=False, txt='df_1.out',
         ecut=150, optical_limit=True)
 
@@ -64,7 +62,7 @@ if ABS:
         raise ValueError('Pls check dielectric constant !')
 
     #getting absorption spectrum
-    df = DF(calc='si.gpw', q=q, w=w, eta=0.2,
+    df = DF(calc='si.gpw', q=q, w=w, eta=0.1,
         ecut=150, optical_limit=True, txt='df_2.out')
 
     df1, df2 = df.get_dielectric_function()
