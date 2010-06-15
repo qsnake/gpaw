@@ -144,17 +144,19 @@ class MailGenerator:
         self.FAILED = []
         self.TIMEOUT = []
 
-    def add_test(self, name, abschange, relchange):
-        if abschange < 0.0:
-            self.add_better(name, abschange, relchange)
+    def add_test(self, ta):
+        if ta.abschange < 0.0:
+            self.add_better(ta)
         else:
-            self.add_worse(name, abschange, relchange)
+            self.add_worse(ta)
 
-    def add_better(self, name, abschange, relchange):
-        self.better.append((name, abschange, relchange))
+    def add_better(self, ta):
+        self.better.append((ta.name, ta.runtimes[-1],
+                            ta.abschange, ta.relchange))
 
-    def add_worse(self, name, abschange, relchange):
-        self.worse.append((name, abschange, relchange))
+    def add_worse(self, ta):
+        self.worse.append((ta.name, ta.runtimes[-1],
+                            ta.abschange, ta.relchange))
 
     def add_failed(self, name):
         self.FAILED.append(name)
@@ -184,16 +186,16 @@ class MailGenerator:
         if len(self.better):
             mail += 'The following %i tests improved:\n' % len(self.better)
             for test in self.better:
-                mail += '%-40s %7.2f s (%7.2f%%)\n' % test
+                mail += '%-55s %7.1fs:%+8.1fs (%+7.2f%%)\n' % test
         else:
             mail += 'No tests improved!\n'
 
         mail += '\n'
 
         if len(self.worse):
-            mail += 'The following tests %i regressed:\n' % len(self.worse)
+            mail += 'The following %i tests regressed:\n' % len(self.worse)
             for test in self.worse:
-                mail += '%-40s +%6.2f s (+%6.2f%%)\n' % test
+                mail += '%-55s %7.1fs:%+8.1fs (%+7.2f%%)\n' % test
         else:
             mail += 'No tests regressed!\n'
 
@@ -272,7 +274,7 @@ def analyse(queue, dbpath, outputdir=None, rev=None,
             ta = TestAnalyzer(name, revs, runtimes)
             ta.analyze(abstol=25, reltol=0.04)
             if ta.status:
-                mg.add_test(name, ta.abschange, ta.relchange)
+                mg.add_test(ta)
             ta.plot(outputdir)
         elif job.status == 'FAILED':
             mg.add_failed(name)
