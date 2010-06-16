@@ -172,7 +172,7 @@ class Transport_Analysor:
     def calculate_transmission(self, s, k, energy, nid_flag=None):
         self.reset_selfenergy(s, k)
         self.reset_green_function(s, k)
-        sigma = self.calculate_sigma(s, k, energy + 0.1*1.j, nid_flag)
+        sigma = self.calculate_sigma(s, k, energy, nid_flag)
         gamma = self.get_gamma(sigma)    
         trans_coff = []
         for i, lead_pair in enumerate(self.lead_pairs):
@@ -192,7 +192,7 @@ class Transport_Analysor:
     def calculate_dos(self, s, k, energy, nid_flag=None):
         self.reset_selfenergy(s, k)
         self.reset_green_function(s, k)
-        sigma = self.calculate_sigma(s, k, energy + 0.1*1.j, nid_flag)
+        sigma = self.calculate_sigma(s, k, energy, nid_flag)
         gr = self.calculate_green_function_of_k_point(s, k, energy, sigma)        
         dos = - np.imag(np.diag(dot(gr, self.tp.hsd.S[k].recover()))) / np.pi         
         return dos
