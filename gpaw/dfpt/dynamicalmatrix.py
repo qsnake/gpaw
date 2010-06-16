@@ -60,10 +60,12 @@ class DynamicalMatrix:
                 # Mass prefactor
                 c = (m_a * m_a_)**(-.5)
 
-                D[3*a : 3*a + 3, 3*a_ : 3*a_ + 3] += c * self.C_aavv[a][a_]
+                if a != a_:
+                    
+                    D[3*a : 3*a + 3, 3*a_ : 3*a_ + 3] += c * self.C_aavv[a][a_]
                 
-                # Acoustic sum-rule
-                D[3*a : 3*a + 3, 3*a : 3*a + 3] -= c * self.C_aavv[a][a_]
+                    # Acoustic sum-rule
+                    D[3*a : 3*a + 3, 3*a : 3*a + 3] -= 1/m_a * self.C_aavv[a][a_]
                 
         # Symmetrize
         self.D_ = D.copy()

@@ -336,7 +336,7 @@ class FFTPoissonSolver(PoissonSolver):
     nn = 999
 
     def __init__(self, eps=2e-10, dtype=float):
-        """Set the `dtype` of the source term array."""
+        """Set the ``dtype`` of the source term array."""
         
         self.charged_periodic_correction = None
         self.eps = eps
@@ -354,7 +354,7 @@ class FFTPoissonSolver(PoissonSolver):
         if self.gd.comm.rank == 0:
             self.k2_Q, self.N3 = construct_reciprocal(self.gd)
 
-    def solve_neutral(self, phi_g, rho_g, eps=None):
+    def solve_neutral(self, phi_g, rho_g, eps=None, q_c=None):
         """Solve Poissons equation assuming a neutral input charge density."""
 
         assert phi_g.dtype == self.dtype
@@ -363,7 +363,7 @@ class FFTPoissonSolver(PoissonSolver):
         if self.gd.comm.size == 1:
             # Note, implicit downcast from complex to float if
             # phi_g.dtype == float
-            phi_g[:] = ifftn(fftn(rho_g) * 4.0 * pi / self.k2_Q)
+            phi_g[:] = ifftn(fftn(rho_g) * 4.0 * pi / (self.k2_Q))
         else:
             rho_g = self.gd.collect(rho_g)
             if self.gd.comm.rank == 0:

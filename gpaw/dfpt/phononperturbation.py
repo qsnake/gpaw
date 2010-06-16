@@ -35,8 +35,6 @@ class PhononPerturbation(Perturbation):
        
         """
 
-        Perturbation.__init__(self)
-        
         self.calc = calc
         self.gamma = gamma
         self.ibzq_qc = ibzq_qc
@@ -53,7 +51,7 @@ class PhononPerturbation(Perturbation):
         self.gs_gamma = calc.wfs.gamma
         self.ibzk_qc = calc.get_ibz_k_points()
 
-        # Temp solution
+        # Temp solution - should be given as argument to the init method
         if poisson_solver is None:
             
             # Boundary conditions
@@ -97,7 +95,7 @@ class PhononPerturbation(Perturbation):
         self.a = None
         self.v = None
         
-        # Gamma-point calculation
+        # q-vector of the perturbation
         if self.gamma:
             self.q = -1
         else:
@@ -216,8 +214,21 @@ class PhononPerturbation(Perturbation):
             # Return to Bloch form
             phi_g *= self.phase_qg[self.q]
             
-    def apply(self, x_nG, y_nG, kpt):
-        """Apply the perturbation to a vector."""
+    def apply(self, x_nG, y_nG, k, kplusq):
+        """Apply the perturbation to a vector.
+
+        Parameters
+        ----------
+        x_nG: ndarray
+            Set of grid vectors to which the perturbation is applied.
+        y_nG: ndarray
+            Output vectors.
+        k: int
+            Index of the k-point for the vectors.
+        kplusq: int
+            Index of the k+q vector.
+            
+        """
 
         assert x_nG.ndim in (3, 4)
         assert tuple(self.gd.n_c) == x_nG.shape[-3:]
@@ -231,7 +242,7 @@ class PhononPerturbation(Perturbation):
             for x_G, y_G in zip(x_nG, y_nG):
                 y_G += x_G * self.v1_G
 
-        self.apply_nonlocal_potential(x_nG, y_nG, kpt)
+        self.apply_nonlocal_potential(x_nG, y_nG, k, kplusq)
 
     def calculate_local_potential(self):
         """Derivate of the local potential wrt an atomic displacements.
@@ -279,15 +290,71 @@ class PhononPerturbation(Perturbation):
         self.restrictor.apply(v1_g, v1_G, phases=self.phase_cd)
 
         self.v1_G = v1_G
+
+    def apply_nonlocal_potential(self, x_nG, y_nG, k, kplusq):
+        """Derivate of the non-local PAW potential wrt an atomic displacement.
+
+        Parameters
+        ----------
+        k: int
+            Index of the k-point being operated on.
+        kplusq: int
+            Index of the k+q vector.
+            
+        """
+
+        assert self.a is not None
+        assert self.v is not None
+        assert x_nG.ndim in (3,4)
+        assert tuple(self.gd.n_c) == x_nG.shape[-3:]
         
-    def calculate_projector_coef(self, x_nG, kpt):
+        if x_nG.ndim == 3:
+            n = 1
+        else:
+            n = x_nG.shape[0]
+            
+        a = self.a
+        v = self.v
+        
+        # Calculate coefficients needed for the non-local part of the PP
+        self.calculate_projector_coef(x_nG, k)
+
+        hamiltonian = self.calc.hamiltonian
+
+        # <p_a^i | psi_n >
+        P_ni = self.P_ani[a]
+        # <dp_av^i | psi_n > - remember the sign convention of the derivative
+        dP_ni = -1 * self.dP_aniv[a][...,v]
+
+        # Expansion coefficients for the projectors on atom a
+        dH_ii = unpack(hamiltonian.dH_asp[a][0])
+
+       
+        # The derivative of the non-local PAW potential has two contributions
+        # 1) Sum over projectors
+        c_ni = np.dot(dP_ni, dH_ii)
+        c_ani = self.pt.dict(shape=n, zero=True)
+        c_ani[a] = c_ni
+        # k+q !!
+        self.pt.add(y_nG, c_ani, q=kplusq)
+
+        # 2) Sum over derivatives of the projectors
+        dc_ni = np.dot(P_ni, dH_ii)
+        dc_ani = self.pt.dict(shape=n, zero=True)
+        # Take care of sign of derivative in the coefficients
+        dc_ani[a] = -1 * dc_ni
+        # k+q !!
+        self.pt.add_derivative(a, v, y_nG, dc_ani, q=kplusq)
+
+        
+    def calculate_projector_coef(self, x_nG, k):
         """Coefficients for the derivative of the non-local part of the PP.
 
         Parameters
         ----------
-        kpt: k-point
-            K-point of the Bloch state on which the non-local potential acts
-            on
+        k: int
+            Index of the k-point of the Bloch state on which the non-local
+            potential operates on.
 
         The calculated coefficients are the following (except for an overall
         sign of -1; see ``derivative`` method of the ``lfc`` class)::
@@ -314,68 +381,12 @@ class PhononPerturbation(Perturbation):
         P_ani   = self.pt.dict(shape=n)
         dP_aniv = self.pt.dict(shape=n, derivative=True)
 
-        # Temporary for complex gamma-point calculations
-        # if not self.gamma and x_nG.dtype == float:
-        #     x_nG = np.array(x_nG, dtype=complex)
-            
         # 1) Integrate with projectors
         # k
-        self.pt.integrate(x_nG, P_ani, q=kpt.q)
+        self.pt.integrate(x_nG, P_ani, q=k)
         self.P_ani = P_ani
 
         # 2) Integrate with derivative of projectors
         # k
-        self.pt.derivative(x_nG, dP_aniv, q=kpt.q)
+        self.pt.derivative(x_nG, dP_aniv, q=k)
         self.dP_aniv = dP_aniv
-        
-    def apply_nonlocal_potential(self, x_nG, y_nG, kpt):
-        """Derivate of the non-local PAW potential wrt an atomic displacement.
-
-        Parameters
-        ----------
-        kpt: KPoint
-            k-point of the Bloch function being operated on.
-        
-        """
-
-        assert self.a is not None
-        assert self.v is not None
-        assert x_nG.ndim in (3,4)
-        assert tuple(self.gd.n_c) == x_nG.shape[-3:]
-        
-        if x_nG.ndim == 3:
-            n = 1
-        else:
-            n = x_nG.shape[0]
-            
-        a = self.a
-        v = self.v
-        
-        # Calculate coefficients needed for the non-local part of the PP
-        self.calculate_projector_coef(x_nG, kpt)
-
-        hamiltonian = self.calc.hamiltonian
-
-        # <p_a^i | psi_n >
-        P_ni = self.P_ani[a]
-        # <dp_av^i | psi_n > - remember the sign convention of the derivative
-        dP_ni = -1 * self.dP_aniv[a][...,v]
-
-        # Expansion coefficients for the projectors on atom a
-        dH_ii = unpack(hamiltonian.dH_asp[a][0])
-
-        # The derivative of the non-local PAW potential has two contributions
-        # 1) Sum over projectors
-        c_ni = np.dot(dP_ni, dH_ii)
-        c_ani = self.pt.dict(shape=n, zero=True)
-        c_ani[a] = c_ni
-        # k+q !!
-        self.pt.add(y_nG, c_ani, q=kpt.q)
-
-        # 2) Sum over derivatives of the projectors
-        dc_ni = np.dot(P_ni, dH_ii)
-        dc_ani = self.pt.dict(shape=n, zero=True)
-        # Take care of sign of derivative in the coefficients
-        dc_ani[a] = -1 * dc_ni
-        # k+q !!
-        self.pt.add_derivative(a, v, y_nG, dc_ani, kpt.q)

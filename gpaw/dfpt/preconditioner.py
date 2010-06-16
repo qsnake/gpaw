@@ -37,7 +37,7 @@ class ScipyPreconditioner:
         self.phase_cd = phase_cd
         
     def matvec(self, x):
-        """Matrix vector multiplication for scipy.sparse.linalg solvers.
+        """Matrix vector multiplication for ``scipy.sparse.linalg`` solvers.
 
         Parameters
         ----------

@@ -39,7 +39,7 @@ class PhononCalculator:
         if np.all(pbc_c == False):
             self.gamma = True
             self.dtype = float
-            self.ibzq_qc = np.array((0, 0, 0), dtype=float)
+            self.ibzq_qc = None # np.array((0, 0, 0), dtype=float)
             # Multigrid Poisson solver
             poisson = PoissonSolver()
         else:

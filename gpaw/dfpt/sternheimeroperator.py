@@ -15,8 +15,8 @@ class SternheimerOperator:
            \        nk /  c,k+q      nk       c,k+q   q     nk
        
     where P_c is the projection operator onto the unoccupied states. For a
-    perturbation with a specific q-vector, only projections onto states at k+q
-    will be different from zero.
+    perturbation with a specific q-vector, only the projections onto states at
+    k+q are needed.
     
     The main purpose of this class is to implement the multiplication with a
     vector in the ``apply`` member function. An additional ``matvec`` member
@@ -53,13 +53,14 @@ class SternheimerOperator:
         # Variables for k-point and band index
         self.k = None
         self.n = None
-
+        self.kplusq = None
+        
         # For scipy's linear solver
         N = np.prod(gd.n_c)
         self.shape = (N, N)
         self.dtype = dtype
 
-    def set_blochstate(self, n=None, k=None):
+    def set_blochstate(self, n, k):
         """Set k-vector and band index for the Bloch-state in consideration.
 
         Parameters
@@ -74,18 +75,18 @@ class SternheimerOperator:
         self.n = n
         self.k = k
 
-    def set_qvector(self, q=None):
+    def set_kplusq(self, kplusq):
         """Set q-vector of the perturbing potential.
 
         Parameters
         ----------
-        q: int
-           q-point index
+        kplusq: int
+           Index of the k+q vector
 
         """
 
-        self.q = q
-        
+        self.kplusq = kplusq
+
     def apply(self, x_nG, y_nG):
         """Apply the Sternheimer operator to a vector.
 
@@ -107,12 +108,14 @@ class SternheimerOperator:
         assert tuple(self.gd.n_c) == x_nG.shape[-3:]
         assert self.k is not None
 
-        # k or k+q ?? See doc string
+        # k
         kpt = self.kpt_u[self.k]
-
+        # k+q
+        kplusqpt = self.kpt_u[self.kplusq]
+        
         # Kintetic energy
         # k+q
-        self.kin.apply(x_nG, y_nG, kpt.phase_cd)
+        self.kin.apply(x_nG, y_nG, kplusqpt.phase_cd)
 
         # Local part of effective potential - no phase !!
         self.hamiltonian.apply_local_potential(x_nG, y_nG, kpt.s)
@@ -120,14 +123,14 @@ class SternheimerOperator:
         # Non-local part from projectors
         shape = x_nG.shape[:-3]
         P_ani = self.pt.dict(shape)
-        # k+q
-        self.pt.integrate(x_nG, P_ani, kpt.q)
+        # k
+        self.pt.integrate(x_nG, P_ani, q=kpt.q)
             
         for a, P_ni in P_ani.items():
             dH_ii = unpack(self.hamiltonian.dH_asp[a][kpt.s])
             P_ani[a] = np.dot(P_ni, dH_ii)
         # k+q
-        self.pt.add(y_nG, P_ani, kpt.q)
+        self.pt.add(y_nG, P_ani, q=kplusqpt.q)
 
         # Eigenvalue term
         if len(x_nG.shape) == 3:
@@ -159,10 +162,10 @@ class SternheimerOperator:
 
         # It might be a good idea to move this functionality to its own class
 
-        assert self.k is not None
+        assert self.kplusq is not None
 
-        # k+q vector !!!!
-        kpt = self.kpt_u[self.k]
+        # k+q
+        kpt = self.kpt_u[self.kplusq]
         
         # Occupied wave function
         psit_nG = kpt.psit_nG[:self.nbands]

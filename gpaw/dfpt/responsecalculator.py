@@ -18,8 +18,36 @@ class ResponseCalculator:
 
     From the given perturbation, the set of coupled equations for the
     first-order density response is solved self-consistently.
-    
+
+    Parameters
+    ----------
+    maxiter: int
+        Maximum number of iterations in the self-consistent evaluation of
+        the density variation
+    tolerance_sc: float
+        Tolerance for the self-consistent loop measured in terms of
+        integrated absolute change of the density derivative between two
+        iterations
+    tolerance_sternheimer: float
+        Tolerance for the solution of the Sternheimer equation -- passed to
+        the ``LinearSolver``
+    beta: float (0 < beta < 1)
+        Mixing coefficient
+    nmaxold: int
+        Length of history for the mixer.
+    weight: int
+        Weight for the mixer metric (=1 -> no metric used).
+        
     """
+
+    parameters = {'maxiter':               1000,
+                  'tolerance_sc':          1.0e-4,
+                  'tolerance_sternheimer': 1e-5,
+                  'use_pc':                True,
+                  'beta':                  0.4,
+                  'nmaxold':               3,
+                  'weight':                50
+                  }
     
     def __init__(self, calc, perturbation, poisson_solver=None, **kwargs):
         """Store calculator etc.
@@ -59,7 +87,7 @@ class ResponseCalculator:
 
         # dtype for ground-state wave-functions
         self.gs_dtype = calc.wfs.dtype
-        # dtype for the perturbing potential
+        # dtype for the perturbing potential and density
         self.dtype = perturbation.dtype
         
         # Grid transformer -- convert array from coarse to fine grid
@@ -82,10 +110,38 @@ class ResponseCalculator:
         assert self.nbands <= calc.wfs.nbands
                                   
         self.initialized = False
+
+        self.parameters = {}
+        self.set(**kwargs)
         
-    def initialize(self, tolerance_sternheimer=1.0e-5, use_pc=False):
+    def set(self, **kwargs):
+        """Set parameters for calculation."""
+
+        # Check for legal input parameters
+        for key, value in kwargs.items():
+
+            if not key in ResponseCalculator.parameters:
+                raise TypeError("Unknown keyword argument: '%s'" % key)
+
+        # Insert default values if not given
+        for key, value in ResponseCalculator.parameters.items():
+
+            if key not in kwargs:
+                kwargs[key] = value
+
+        self.parameters.update(kwargs)
+            
+    def initialize(self):
         """Make the object ready for a calculation."""
 
+        # Parameters
+        p = self.parameters
+        beta = p['beta']
+        nmaxold = p['nmaxold']
+        weight = p['weight']
+        use_pc = p['use_pc']
+        tolerance_sternheimer = p['tolerance_sternheimer']
+        
         hamiltonian = self.calc.hamiltonian
         wfs = self.calc.wfs
 
@@ -95,7 +151,8 @@ class ResponseCalculator:
         
         # Initialize mixer
         # weight = 1 -> no metric is used
-        self.mixer = BaseMixer(beta=0.4, nmaxold=3, weight=50)
+        self.mixer = BaseMixer(beta=beta, nmaxold=nmaxold,
+                               weight=weight, dtype=self.dtype)
         self.mixer.initialize_metric(self.gd)
         
         # Linear operator in the Sternheimer equation
@@ -103,7 +160,7 @@ class ResponseCalculator:
             SternheimerOperator(hamiltonian, wfs, self.gd, dtype=self.gs_dtype)
 
         # Preconditioner for the Sternheimer equation
-        if use_pc:
+        if p['use_pc']:
             pc = ScipyPreconditioner(self.gd,
                                      self.sternheimer_operator.project,
                                      dtype=self.gs_dtype)
@@ -118,45 +175,31 @@ class ResponseCalculator:
 
         self.initialized = True
         
-    def __call__(self, maxiter=1000, tolerance_sc=1.0e-4,
-                 tolerance_sternheimer=1e-5):
+    def __call__(self, kplusq_k=None):
         """Calculate linear density response.
 
         Parameters
         ----------
-        maxiter: int
-            Maximum number of iterations in the self-consistent evaluation of
-            the density variation
-        tolerance_sc: float
-            Tolerance for the self-consistent loop measured in terms of
-            integrated absolute change of the density derivative between two
-            iterations
-        tolerance_sternheimer: float
-            Tolerance for the solution of the Sternheimer equation -- passed to
-            the ``LinearSolver``
+        kplusq: list
+            Indices of the k+q vectors.
             
         """
 
         assert self.initialized, ("Linear response calculator "
                                   "not initizalized.")
 
-            
+        # Parameters
+        p = self.parameters
+        maxiter = p['maxiter']
+        tolerance = p['tolerance_sc']
+        
         # Reset mixer
         self.mixer.reset()
         
         # List the variations of the wave-functions
         self.psit1_unG = [self.gd.zeros(n=self.nbands, dtype=self.gs_dtype)
                           for kpt in self.kpt_u]
-
-        ############## Remove this when time comes ###########################
-        components = ['x','y','z']
-        atoms = self.calc.get_atoms()
-        symbols = atoms.get_chemical_symbols()
-        print "Atom index: %i" % self.perturbation.a
-        print "Atomic symbol: %s" % symbols[self.perturbation.a]
-        print "Component: %s" % components[self.perturbation.v]
-        ######################################################################
-        
+      
         for iter in range(maxiter):
             print     "iter:%3i\t" % iter,
             print     "Calculating wave function variations"            
@@ -169,7 +212,7 @@ class ResponseCalculator:
                 print "integrated density response: %5.2e" % \
                       self.gd.integrate(self.nt1_G)
         
-                if norm < tolerance_sc:
+                if norm < tolerance:
                     print ("self-consistent loop converged in %i iterations"
                            % iter)
                     break
@@ -196,7 +239,7 @@ class ResponseCalculator:
         self.wave_function_variations(v1_G)
         # Update density
         self.nt1_G = self.density_response()
-        # Mix
+        # Mix - supply phase_cd here for metric inside the mixer
         self.mixer.mix(self.nt1_G, [])
         norm = self.mixer.get_charge_sloshing()
 
@@ -232,13 +275,13 @@ class ResponseCalculator:
         
         return v1_G
     
-    def wave_function_variations(self, v1_G=None):
+    def wave_function_variations(self, v1_G=None, kplusq_k=None):
         """Calculate variation in the wave-functions.
 
         Parameters
         ----------
         v1_G: ndarray
-            Variation of the local effective potential (Hartree + XC)
+            Variation of the local effective potential (Hartree + XC).
 
         """
 
@@ -247,17 +290,28 @@ class ResponseCalculator:
 
             k = kpt.k
             print "k-point %2.1i" % k
+            
             psit_nG = kpt.psit_nG[:self.nbands]
             psit1_nG = self.psit1_unG[k]
 
+            # Index of k+q vector
+            if kplusq_k == None:
+                kplusq = k
+                kplusqpt = kpt
+                self.sternheimer_operator.set_kplusq(k)
+            else:
+                kplusq = kplusq_k[k]
+                kplusqpt = kpt_u[kplusq]
+                self.sternheimer_operator.set_kplusq(kplusq)
+            
             # Right-hand side of Sternheimer equation
             rhs_nG = self.gd.zeros(n=self.nbands, dtype=self.gs_dtype)
-            # k
-            self.perturbation.apply(psit_nG, rhs_nG, kpt=kpt)
+            # k and k+q
+            self.perturbation.apply(psit_nG, rhs_nG, k, kplusq)
 
             if self.pc is not None:
                 # k+q
-                self.pc.set_phases(kpt.phase_cd)
+                self.pc.set_phases(kplusqpt.phase_cd)
                 
             # Loop over all valence-bands
             for n in range(self.nbands):
@@ -267,7 +321,7 @@ class ResponseCalculator:
                 psit1_G = psit1_nG[n]
                 rhs_G = -1 * rhs_nG[n]
                 
-                # Update k-point and band index in SternheimerOperator
+                # Update k-point index and band index in SternheimerOperator
                 self.sternheimer_operator.set_blochstate(n, k)
 
                 # Rhs of Sternheimer equation
@@ -292,7 +346,7 @@ class ResponseCalculator:
     def density_response(self):
         """Calculate density response from variation in the wave-functions."""
 
-        # Note - density might be complex
+        # Note, density might be complex
         nt1_G = self.gd.zeros(dtype=self.dtype)
         
         for kpt in self.kpt_u:
