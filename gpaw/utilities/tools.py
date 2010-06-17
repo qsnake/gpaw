@@ -61,22 +61,53 @@ def split_formula(formula):
     return res
 
 
-def construct_reciprocal(gd):
-    """Construct the reciprocal lattice vectors correspoding to the
-       grid defined in input grid-descriptor 'gd'.
+def construct_reciprocal(gd, q_c=None):
+    """Construct the reciprocal lattice from ``GridDescriptor`` instance.
+
+    The generated reciprocal lattice has lattice vectors correspoding to the
+    real-space lattice defined in the input grid. Note that it is the squared
+    length of the reciprocal lattice vectors that are returned.
+
+    The ordering of the reciprocal lattice agrees with the one typically used
+    in fft algorithms, i.e. positive k-values followed by negative.
+    
+    Parameters
+    ----------
+    q_c: ndarray
+        Offset for the reciprocal lattice vectors (in scaled coordinates of the
+        reciprocal lattice vectors, i.e. array with index ``c``). When
+        specified, the returned array contains the values of (q+G)^2 where G
+        denotes the reciprocal lattice vectors.
+    
     """
+    
     assert gd.pbc_c.all(), 'Works only with periodic boundary conditions!'
+
+    # Check q_c
+    if q_c is not None:
+        assert q_c.shape in [(3,), (3,1)]
+        q_c = q_c.reshape((3,1))
+        
     # Calculate reciprocal lattice vectors
     N_c1 = gd.N_c[:, np.newaxis]
     i_cq = np.indices(gd.N_c).reshape((3, -1))
     i_cq += N_c1 // 2
     i_cq %= N_c1
     i_cq -= N_c1 // 2
+
+    if q_c is not None:
+        i_cq = np.array(i_cq, dtype=float)
+        i_cq += q_c
+
+    # Convert from scaled to absolute coordinates
     B_vc = 2.0 * np.pi * gd.icell_cv.T
     k_vq = np.dot(B_vc, i_cq)
+
     k_vq *= k_vq
     k2_Q = k_vq.sum(axis=0).reshape(gd.N_c)
-    k2_Q[0, 0, 0] = 1.0
+
+    if q_c is None:
+        k2_Q[0, 0, 0] = 1.0
 
     # Determine N^3
     N3 = gd.n_c[0] * gd.n_c[1] * gd.n_c[2]
