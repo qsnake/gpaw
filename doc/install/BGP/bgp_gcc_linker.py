@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 """bgp_gcc.py is a wrapper for the BGP gcc compiler,
    converting/removing incompatible gcc args.   """
 

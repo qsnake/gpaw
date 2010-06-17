@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 """bgp_xlc.py is a wrapper for the BGP xlc compiler,
    converting/removing incompatible gcc args.   """
 
