@@ -51,7 +51,7 @@ def build():
         fd = open('epydoc.errors', 'w')
         fd.write(''.join(errors))
         fd.close()
-        email = 'gpaw-developers@fysik.dtu.dk'
+        email = 'gpaw-developers@listserv.fysik.dtu.dk'
         x = os.system('mail -s "EpyDoc errors" %s < epydoc.errors' % email)
         assert x == 0
 

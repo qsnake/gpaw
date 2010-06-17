@@ -6,8 +6,9 @@ import glob
 import tempfile
 
 def fail(subject, filename='/dev/null'):
-    assert os.system('mail -s "%s" gpaw-developers@fysik.dtu.dk < %s' %
-                     (subject, filename)) == 0
+    assert os.system(
+        'mail -s "%s" gpaw-developers@listserv.fysik.dtu.dk < %s' %
+        (subject, filename)) == 0
     raise SystemExit
 
 if '--dir' in sys.argv:
