@@ -175,7 +175,11 @@ class PhononPerturbation(Perturbation):
         assert not self.gamma, "Gamma-point calculation"
         
         self.q = q
+
+        # Update phases and Poisson solver
         self.phase_cd = self.phase_qcd[q]
+        self.poisson.set_q(self.ibzq_qc[q])
+
         # Invalidate calculated quantities
         # - local part of perturbing potential        
         self.v1_G = None
@@ -210,7 +214,7 @@ class PhononPerturbation(Perturbation):
             rho_g /= self.phase_qg[self.q]
             # Solve Poisson's equation for the periodic part of the potential
             # NOTICE: solve_neutral
-            self.poisson.solve_neutral(phi_g, rho_g)  
+            self.poisson.solve_neutral(phi_g, rho_g)
             # Return to Bloch form
             phi_g *= self.phase_qg[self.q]
             

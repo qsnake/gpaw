@@ -328,7 +328,15 @@ class PoissonFFTSolver(PoissonSolver):
 class FFTPoissonSolver(PoissonSolver):
     """FFT poisson-solver for general unit cells.
 
-    The poisson-solver handles both real and complex source terms.
+    The poisson-solver handles both real and complex source terms. For
+    Bloch-type charge distributions of the form:: 
+            
+                         iq.r ~
+                 n(r) = e     n(r)
+
+    where the tilde denotes a lattice-periodic function, the factor of G^2
+    in Poisson equation is replaced by (q+G)^2. In this case, use the ``set_q``
+    member function to set the vector and update the ``k2_Q`` attribute.
 
     """
     
@@ -337,10 +345,10 @@ class FFTPoissonSolver(PoissonSolver):
 
     def __init__(self, eps=2e-10, dtype=float):
         """Set the ``dtype`` of the source term array."""
-        
+
+        self.dtype = dtype
         self.charged_periodic_correction = None
         self.eps = eps
-        self.dtype = dtype
         
     def set_grid_descriptor(self, gd):
         """Check for periodicity and set the `gd` attribute."""
@@ -354,22 +362,45 @@ class FFTPoissonSolver(PoissonSolver):
         if self.gd.comm.rank == 0:
             self.k2_Q, self.N3 = construct_reciprocal(self.gd)
 
-    def solve_neutral(self, phi_g, rho_g, eps=None, q_c=None):
-        """Solve Poissons equation assuming a neutral input charge density."""
+    def set_q(self, q_c):
+        """Set q-vector in case of Bloch-type charge distribution.
+
+        Parameters
+        ----------
+        q_c: ndarray
+            q-vector in scaled coordinates of the reciprocal lattice vectors.
+
+        """
+        
+        if self.gd.comm.rank == 0:
+            self.k2_Q, self.N3 = construct_reciprocal(self.gd, q_c=q_c)
+            
+    def solve_neutral(self, phi_g, rho_g, eps=None):
+        """Solve Poissons equation for a neutral and periodic charge density.
+
+        Parameters
+        ----------
+        phi_g: ndarray
+            Potential (output array).
+        rho_g: ndarray
+            Charge distribution (in units of -e).
+
+        """
 
         assert phi_g.dtype == self.dtype
         assert rho_g.dtype == self.dtype
         
         if self.gd.comm.size == 1:
-            # Note, implicit downcast from complex to float if
-            # phi_g.dtype == float
-            phi_g[:] = ifftn(fftn(rho_g) * 4.0 * pi / (self.k2_Q))
+            # Note, implicit downcast from complex to float when the dtype of
+            # phi_g is float
+            phi_g[:] = ifftn(fftn(rho_g) * 4.0 * pi / self.k2_Q)
         else:
             rho_g = self.gd.collect(rho_g)
             if self.gd.comm.rank == 0:
-                globalphi_g = ifftn(fftn(rho_g) * 4.0*pi / self.k2_Q).real
+                globalphi_g = ifftn(fftn(rho_g) * 4.0 * pi / self.k2_Q)
             else:
                 globalphi_g = None
+            # What happens here if globalphi is complex and phi is real ??????
             self.gd.distribute(globalphi_g, phi_g)
             
         return 1

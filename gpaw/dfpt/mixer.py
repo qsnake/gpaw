@@ -99,7 +99,7 @@ class BaseMixer:
     def set_charge_sloshing(self, dNt):
         self.dNt = dNt
         
-    def mix(self, nt_G, D_ap):
+    def mix(self, nt_G, D_ap, phase_cd=None):
         iold = len(self.nt_iG)
         if iold > 0:
             if iold > self.nmaxold:
@@ -131,7 +131,7 @@ class BaseMixer:
                 mR_G = R_G
             else:
                 mR_G = self.mR_G
-                self.metric(R_G, mR_G)
+                self.metric(R_G, mR_G, phase_cd=phase_cd)
                 
             for R_1G in self.R_iG:
                 # Inner product between new and old residues

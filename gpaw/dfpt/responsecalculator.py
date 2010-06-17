@@ -240,7 +240,8 @@ class ResponseCalculator:
         # Update density
         self.nt1_G = self.density_response()
         # Mix - supply phase_cd here for metric inside the mixer
-        self.mixer.mix(self.nt1_G, [])
+        phase_cd = self.perturbation.phase_cd
+        self.mixer.mix(self.nt1_G, [], phase_cd=phase_cd)
         norm = self.mixer.get_charge_sloshing()
 
         return norm
