@@ -16,6 +16,7 @@ from gpaw.dfpt.poisson import PoissonSolver, FFTPoissonSolver
 
 from gpaw.dfpt.perturbation import Perturbation
 
+from pylab import *
 
 class PhononPerturbation(Perturbation):
     """Implementation of a phonon perturbation.
@@ -131,7 +132,7 @@ class PhononPerturbation(Perturbation):
             self.vbar.set_k_points(self.ibzq_qc)
             self.vbar._update(spos_ac)
 
-            # Phase factor exp(i*q*r) needed to obtian the periodic part of lfc
+            # Phase factor exp(iq.r) needed to obtian the periodic part of lfcs
             coor_vg = self.finegd.get_grid_point_coordinates()
             cell_cv = self.finegd.cell_cv
             # Convert to scaled coordinates
@@ -212,12 +213,14 @@ class PhononPerturbation(Perturbation):
         else:
             # Divide out the phase factor to get the periodic part 
             rho_g /= self.phase_qg[self.q]
+
             # Solve Poisson's equation for the periodic part of the potential
             # NOTICE: solve_neutral
             self.poisson.solve_neutral(phi_g, rho_g)
+
             # Return to Bloch form
             phi_g *= self.phase_qg[self.q]
-            
+
     def apply(self, x_nG, y_nG, k, kplusq):
         """Apply the perturbation to a vector.
 
@@ -237,8 +240,8 @@ class PhononPerturbation(Perturbation):
         assert x_nG.ndim in (3, 4)
         assert tuple(self.gd.n_c) == x_nG.shape[-3:]
 
-        # if self.v1_G is None:
-        self.calculate_local_potential()
+        if self.v1_G is None:
+            self.calculate_local_potential()
         
         if x_nG.ndim == 3:
             y_nG += x_nG * self.v1_G
@@ -349,7 +352,6 @@ class PhononPerturbation(Perturbation):
         dc_ani[a] = -1 * dc_ni
         # k+q !!
         self.pt.add_derivative(a, v, y_nG, dc_ani, q=kplusq)
-
         
     def calculate_projector_coef(self, x_nG, k):
         """Coefficients for the derivative of the non-local part of the PP.

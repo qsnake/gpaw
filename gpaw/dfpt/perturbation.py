@@ -8,10 +8,14 @@ class Perturbation:
 
     """
     
-    def __init__(self):
-        """Init required attributes."""
+    def get_phase_cd(self):
+        """Return phase for instances of class ``Transformer``.
 
-        pass
+        Only relevant for q-specific perturbations.
+
+        """
+        
+        return None
     
     def apply(self, x_nG, y_nG, k, kplusq=None):
         """Multiply the perturbing potential to a (set of) wave-function(s)."""

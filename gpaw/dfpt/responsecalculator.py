@@ -40,7 +40,8 @@ class ResponseCalculator:
         
     """
 
-    parameters = {'maxiter':               1000,
+    parameters = {'verbose':               False,
+                  'maxiter':               1000,
                   'tolerance_sc':          1.0e-4,
                   'tolerance_sternheimer': 1e-5,
                   'use_pc':                True,
@@ -180,7 +181,7 @@ class ResponseCalculator:
 
         Parameters
         ----------
-        kplusq: list
+        kplusq_k: list
             Indices of the k+q vectors.
             
         """
@@ -202,16 +203,16 @@ class ResponseCalculator:
       
         for iter in range(maxiter):
             print     "iter:%3i\t" % iter,
-            print     "Calculating wave function variations"            
             if iter == 0:
-                self.first_iteration()
+                self.first_iteration(kplusq_k)
+                print "\n"
             else:
-                norm = self.iteration()
+                norm = self.iteration(kplusq_k)
                 print "abs-norm: %6.3e\t" % norm,
                 # The density is complex !!!!!!
                 print "integrated density response: %5.2e" % \
                       self.gd.integrate(self.nt1_G)
-        
+                
                 if norm < tolerance:
                     print ("self-consistent loop converged in %i iterations"
                            % iter)
@@ -223,20 +224,20 @@ class ResponseCalculator:
                 
         return self.nt1_G.copy(), self.psit1_unG
     
-    def first_iteration(self):
+    def first_iteration(self, kplusq_k):
         """Perform first iteration of sc-loop."""
 
-        self.wave_function_variations()
+        self.wave_function_variations(kplusq_k=kplusq_k)
         self.nt1_G = self.density_response()
         self.mixer.mix(self.nt1_G, [])
 
-    def iteration(self):
+    def iteration(self, kplusq_k):
         """Perform iteration."""
 
         # Update variation in the effective potential
         v1_G = self.effective_potential_variation()
         # Update wave function variations
-        self.wave_function_variations(v1_G)
+        self.wave_function_variations(v1_G=v1_G, kplusq_k=kplusq_k)
         # Update density
         self.nt1_G = self.density_response()
         # Mix - supply phase_cd here for metric inside the mixer
@@ -286,24 +287,30 @@ class ResponseCalculator:
 
         """
 
+        verbose = self.parameters['verbose']
+
+        if verbose:
+            print "Calculating wave function variations"
+            
         # Calculate wave-function variations for all k-points.
         for kpt in self.kpt_u:
 
             k = kpt.k
-            print "k-point %2.1i" % k
+            if verbose:
+                print "k-point %2.1i" % k
             
             psit_nG = kpt.psit_nG[:self.nbands]
             psit1_nG = self.psit1_unG[k]
 
             # Index of k+q vector
-            if kplusq_k == None:
+            if kplusq_k is None:
                 kplusq = k
                 kplusqpt = kpt
-                self.sternheimer_operator.set_kplusq(k)
             else:
                 kplusq = kplusq_k[k]
-                kplusqpt = kpt_u[kplusq]
-                self.sternheimer_operator.set_kplusq(kplusq)
+                kplusqpt = self.kpt_u[kplusq]
+
+            self.sternheimer_operator.set_kplusq(kplusq)
             
             # Right-hand side of Sternheimer equation
             rhs_nG = self.gd.zeros(n=self.nbands, dtype=self.gs_dtype)
@@ -331,12 +338,15 @@ class ResponseCalculator:
                 
                 self.sternheimer_operator.project(rhs_G)
 
-                print "\tBand %2.1i -" % n,
+                if verbose:
+                    print "\tBand %2.1i -" % n,
+                    
                 iter, info = self.linear_solver.solve(self.sternheimer_operator,
                                                       psit1_G, rhs_G)
 
                 if info == 0:
-                    print "linear solver converged in %i iterations" % iter
+                    if verbose: 
+                        print "linear solver converged in %i iterations" % iter
                 elif info > 0:
                     assert info == 0, ("linear solver did not converge in "
                                        "maximum number (=%i) of iterations"

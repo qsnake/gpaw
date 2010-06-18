@@ -115,7 +115,7 @@ class SternheimerOperator:
         
         # Kintetic energy
         # k+q
-        self.kin.apply(x_nG, y_nG, kplusqpt.phase_cd)
+        self.kin.apply(x_nG, y_nG, phase_cd=kplusqpt.phase_cd)
 
         # Local part of effective potential - no phase !!
         self.hamiltonian.apply_local_potential(x_nG, y_nG, kpt.s)
@@ -123,8 +123,8 @@ class SternheimerOperator:
         # Non-local part from projectors
         shape = x_nG.shape[:-3]
         P_ani = self.pt.dict(shape)
-        # k
-        self.pt.integrate(x_nG, P_ani, q=kpt.q)
+        # k+q 
+        self.pt.integrate(x_nG, P_ani, q=kplusqpt.q)
             
         for a, P_ni in P_ani.items():
             dH_ii = unpack(self.hamiltonian.dH_asp[a][kpt.s])
@@ -166,12 +166,13 @@ class SternheimerOperator:
 
         # k+q
         kpt = self.kpt_u[self.kplusq]
-        
+
         # Occupied wave function
         psit_nG = kpt.psit_nG[:self.nbands]
         
         # Project out one orbital at a time
         for n in range(self.nbands):
+
             proj_n = self.gd.integrate(psit_nG[n].conjugate() * x_nG)
             x_nG -= proj_n * psit_nG[n]
 
