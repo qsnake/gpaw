@@ -40,6 +40,8 @@ class MatrixOperator:
         if hermitian is not None:
             self.hermitian = hermitian
         self.bmd = ksl.new_descriptor() #XXX take hermitian as argument?
+        self.M = None
+        self.Q = None
 
     def allocate_work_arrays(self, dtype):
         """This is a little complicated, but let's look at the facts.
@@ -78,17 +80,19 @@ class MatrixOperator:
             self.work1_xG = self.gd.zeros(mynbands, dtype)
         else:
             assert mynbands % self.nblocks == 0
-            X = mynbands // self.nblocks
+            M = mynbands // self.nblocks
+            self.M = M
+            X = M
             if self.gd.n_c.prod() % self.nblocks != 0:
                 X += int(np.ceil(mynbands/self.gd.n_c.prod()))
             self.work1_xG = self.gd.zeros(X, dtype)
             self.work2_xG = self.gd.zeros(X, dtype)
             if ngroups > 1:
                 if self.hermitian:
-                    Q = ngroups // 2 + 1
+                    self.Q = ngroups // 2 + 1
                 else:
-                    Q = ngroups
-                self.A_qnn = np.zeros((Q, mynbands, mynbands), dtype)
+                    self.Q = ngroups
+                self.A_qnn = np.zeros((self.Q, mynbands, mynbands), dtype)
         self.A_nn = self.bmd.zeros(dtype=dtype)
 
     def estimate_memory(self, mem, dtype):
@@ -264,7 +268,7 @@ class MatrixOperator:
             return self.work1_xG
         else:
             assert N % J == 0, "Can't divide %d bands in %d blocks." % (N,J)
-            M = N // J
+            M = self.M
             return self.work1_xG[:M]
 
     def calculate_matrix_elements(self, psit_nG, P_ani, A, dA):
@@ -330,12 +334,8 @@ class MatrixOperator:
         
         # Now it gets nasty! We parallelize over B groups of bands and
         # each band group is blocked in J smaller slices (less memory).
-
-        if self.hermitian:
-            Q = B // 2 + 1
-        else:
-            Q = B
-        M = N // J
+        Q = self.Q
+        M = self.M
 
         # Buffer for storage of blocks of calculated matrix elements.
         if B == 1:
