@@ -99,6 +99,7 @@ class Transport(GPAW):
             self.use_buffer = p['use_buffer']
             self.buffer_atoms = p['buffer_atoms']
             self.edge_atoms = p['edge_atoms']
+
             assert self.lead_num == len(self.pl_cells)
             #assert self.lead_num == len(self.buffer_atoms)
             #assert self.lead_num == len(self.edge_atoms[0])
@@ -193,6 +194,7 @@ class Transport(GPAW):
         p['use_buffer'] = False
         p['buffer_atoms'] = None
         p['edge_atoms'] = None
+        p['mol_atoms'] = None
         p['leads'] = None
         p['bias'] = [0, 0]
         p['d'] = 2
@@ -205,7 +207,7 @@ class Transport(GPAW):
         p['analysis_data_list'] = ['tc']
         p['special_datas'] = []
         p['save_bias_data'] = True
-        p['analysis_mode'] = 0
+        p['analysis_mode'] = False
         p['normalize_density'] = True
         p['extra_density'] = False
         p['se_data_path'] = None
@@ -214,7 +216,7 @@ class Transport(GPAW):
         p['n_bias_step'] = 0
         p['n_ion_step'] = 0
         p['eqinttol'] = 1e-4
-        p['plot_eta'] = 0.05
+        p['plot_eta'] = 0.005
         p['alpha'] = 0.0
         p['beta_guess'] = 0.1
         p['theta'] = 1.
@@ -246,6 +248,14 @@ class Transport(GPAW):
     def set_atoms(self, atoms):
         self.adjust_atom_positions(atoms)
         self.atoms = atoms.copy()
+        if self.edge_atoms is None:
+            self.edge_atoms = [[0, len(self.pl_atoms[0]) - 1],
+                                [0, len(self.atoms) -1]]
+        if self.mol_atoms is None:
+            self.mol_atoms = range(len(self.atoms))
+            for i in range(self.lead_num):
+                for ind in self.pl_atoms[i]:
+                    self.mol_atoms.remove(ind)            
 
     def adjust_atom_positions(self, atoms):
         if self.identical_leads or self.vaccs is None:
@@ -274,7 +284,7 @@ class Transport(GPAW):
             atoms = self.atoms_l[i]
             if not calc.initialized:
                 calc.initialize(atoms)
-                if not dry_run and self.analysis_mode != -3:
+                if not dry_run:
                     calc.set_positions(atoms)
             self.nblead.append(calc.wfs.setups.nao)
             self.bnc.append(calc.gd.N_c[2])
@@ -332,30 +342,26 @@ class Transport(GPAW):
         self.current = 0
         self.linear_mm = None
 
-        if self.analysis_mode == -3:
-            pass
-        else:
-            for i in range(self.lead_num):
-                if self.identical_leads and i > 0:
-                    self.update_lead_hamiltonian(i, 'lead0')    
-                else:
-                    self.update_lead_hamiltonian(i)
+        for i in range(self.lead_num):
+            if self.identical_leads and i > 0:
+                self.update_lead_hamiltonian(i, 'lead0')    
+            else:
+                self.update_lead_hamiltonian(i)
 
         self.fermi = self.lead_fermi[0]
         self.leads_fermi_lineup()
         world.barrier()
         
-        if self.analysis_mode != -3:
-            self.timer.start('init surround')            
-            self.surround = Surrounding(self)  
-            self.timer.stop('init surround')
+        self.timer.start('init surround')            
+        self.surround = Surrounding(self)  
+        self.timer.stop('init surround')
         
         # save memory
         del self.atoms_l
 
         self.get_inner_setups()
         self.extended_D_asp = None        
-        if not self.non_sc and self.analysis_mode > -3:
+        if not self.non_sc:
             self.timer.start('surround set_position')
             if not self.fixed:
                 self.inner_poisson = PoissonSolver(nn=self.hamiltonian.poisson.nn)
@@ -373,7 +379,7 @@ class Transport(GPAW):
                 self.set_extended_positions()
             self.timer.stop('surround set_position')
         
-        if self.analysis_mode >= 0:
+        if not self.analysis_mode:
             if self.scat_restart:
                 self.get_hamiltonian_initial_guess3()
             elif self.buffer_guess:
@@ -899,9 +905,9 @@ class Transport(GPAW):
     def negf_prepare(self, atoms=None):
         if not self.initialized_transport:
             self.initialize_transport()
-        if self.analysis_mode >= 0:    
+        if not self.analysis_mode:    
             self.update_scat_hamiltonian(atoms)
-        if self.ground and self.analysis_mode > 0:
+        if self.ground and not self.analysis_mode:
             self.boundary_align_up()
 
     def boundary_align_up(self):
@@ -2144,10 +2150,14 @@ class Transport(GPAW):
                 self.selfenergies[i].set_bias(self.bias[i])
  
     def calculate_iv(self, v_limit=3, num_v=16, start=0):
-        self.calculate_to_bias(v_limit, num_v, start=start)
-        del self.analysor
-        del self.surround
-        del self.contour
+        if self.non_sc:
+            self.negf_prepare()
+            self.non_sc_analysis()
+        else:
+            self.calculate_to_bias(v_limit, num_v, start=start)
+            del self.analysor
+            del self.surround
+            del self.contour
         
     def recover_kpts(self, calc):
         wfs = calc.wfs
