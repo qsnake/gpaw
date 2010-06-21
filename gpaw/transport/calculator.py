@@ -64,7 +64,8 @@ class Transport(GPAW):
                        'pl_atoms', 'pl_cells', 'pl_kpts', 'leads',
                        'use_buffer', 'buffer_atoms', 'edge_atoms', 'bias',
                        'lead_restart', 'special_datas',
-                       'plot_eta', 'vaccs', 'lead_guess', 'neutral','buffer_guess',
+                       'plot_eta', 'plot_energy_range', 'plot_energy_point_num',
+                       'vaccs', 'lead_guess', 'neutral','buffer_guess',
                        'lead_atoms', 'nleadlayers', 'mol_atoms', 'la_index',
                        'total_charge', 'alpha', 'beta_guess','theta',
                        'LR_leads', 'gate', 'gate_mode', 'gate_atoms', 'gate_fun',                 
@@ -119,6 +120,8 @@ class Transport(GPAW):
         self.gate_atoms = p['gate_atoms']
         self.recal_path = p['recal_path']
         self.plot_eta = p['plot_eta']
+        self.plot_energy_range = p['plot_energy_range']
+        self.plot_energy_point_num = p['plot_energy_point_num']
         self.alpha = p['alpha']
         self.beta_guess = p['beta_guess']
         self.theta = p['theta']
@@ -173,6 +176,13 @@ class Transport(GPAW):
             self.gpw_kwargs['usesymm'] = None
         else:
             self.gpw_kwargs['usesymm'] = False
+        self.scat_ntk = 1
+        if kpts[2] != 1:
+            if self.non_sc:
+                self.scat_ntk = kpts[2]
+            else:
+                self.scat_ntk = 1
+        self.gpw_kwargs['kpts'] = kpts[:2] + (1,)
 
     def set_analysis_parameters(self, **analysis_kwargs):
         self.analysis_parameters = analysis_kwargs
@@ -217,6 +227,8 @@ class Transport(GPAW):
         p['n_ion_step'] = 0
         p['eqinttol'] = 1e-4
         p['plot_eta'] = 0.005
+        p['plot_energy_range'] = [-5,5]
+        p['plot_energy_point_num'] = 201
         p['alpha'] = 0.0
         p['beta_guess'] = 0.1
         p['theta'] = 1.
@@ -506,8 +518,10 @@ class Transport(GPAW):
         kwargs = self.gpw_kwargs.copy()
         kwargs['poissonsolver'] = PoissonSolver(nn=2)
         kpts = kwargs['kpts']
-        kpts = kpts[:2] + (1,)
-        kwargs['kpts'] = kpts
+        #kpts = kpts[:2] + (1,)
+        #kwargs['kpts'] = kpts
+        if self.non_sc:
+            kwargs['kpts'] = kpts[:2] + (self.scat_ntk,)
         if self.spinpol:
             kwargs['mixer'] = MixerDif(self.beta_guess, 5, weight=100.0)
         else:
@@ -581,7 +595,7 @@ class Transport(GPAW):
     def initialize_hamiltonian_matrix(self, calc):    
         h_skmm, s_kmm =  self.get_hs(calc)
         d_skmm = get_lcao_density_matrix(calc)
-        ntk = 1
+        ntk = self.scat_ntk
         kpts = calc.wfs.ibzk_qc
         h_spkmm = substract_pk(self.d, self.my_npk, ntk, kpts, h_skmm, 'h')
         s_pkmm = substract_pk(self.d, self.my_npk, ntk, kpts, s_kmm)
@@ -971,7 +985,9 @@ class Transport(GPAW):
         if not hasattr(self, 'contour'):
             self.contour = Contour(0.1,
                                self.lead_fermi, self.bias, comm=self.gd.comm,
-                                tp=self, plot_eta=self.plot_eta)
+                                tp=self, plot_eta=self.plot_eta,
+                                plot_energy_range=self.plot_energy_range,
+                             plot_energy_point_num=self.plot_energy_point_num)
             
         if not hasattr(self, 'analysor'):
             self.analysor = Transport_Analysor(self, True)
@@ -1081,7 +1097,9 @@ class Transport(GPAW):
                                tp=self, plot_eta=self.plot_eta,
                                neintstep=self.neintstep,
                                eqinttol=self.eqinttol,
-                               min_energy=self.min_energy)
+                               min_energy=self.min_energy,
+                               plot_energy_range=self.plot_energy_range,
+                             plot_energy_point_num=self.plot_energy_point_num)
         if not self.use_qzk_boundary:
             self.surround.reset_bias(self.bias)
         else:
@@ -1673,7 +1691,9 @@ class Transport(GPAW):
             if not hasattr(self, 'contour'):
                 self.contour = Contour(self.occupations.width * Hartree,
                             self.lead_fermi, self.bias, comm=self.wfs.gd.comm,
-                             tp=self, plot_eta=self.plot_eta)            
+                             tp=self, plot_eta=self.plot_eta,
+                             plot_energy_range=self.plot_energy_range,
+                             plot_energy_point_num=self.plot_energy_point_num)            
             if not hasattr(self, 'analysor'):
                 self.analysor = Transport_Analysor(self, True)            
             if self.F_av is None:
@@ -2351,7 +2371,9 @@ class Transport(GPAW):
         flag = True
         self.contour = Contour(self.occupations.width * Hartree,
                             self.lead_fermi, self.bias, comm=self.wfs.gd.comm,
-                             tp=self, plot_eta=self.plot_eta)
+                             tp=self, plot_eta=self.plot_eta,
+                             plot_energy_range=self.plot_energy_range,
+                             plot_energy_point_num=self.plot_energy_point_num)
         if not hasattr(self, 'analysor'):
             self.analysor = Transport_Analysor(self, True)
             
@@ -2413,7 +2435,9 @@ class Transport(GPAW):
         self.contour = Contour(self.occupations.width * Hartree,
                                self.lead_fermi, self.bias,
                                comm=self.wfs.gd.comm,
-                               tp=self, plot_eta=self.plot_eta)
+                               tp=self, plot_eta=self.plot_eta,
+                               plot_energy_range=self.plot_energy_range,
+                             plot_energy_point_num=self.plot_energy_point_num)
         
         for j in range(self.lead_num):
                 self.analysor.selfenergies[j].set_bias(self.bias[j])
