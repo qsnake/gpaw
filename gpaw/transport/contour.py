@@ -260,7 +260,8 @@ class Contour:
     calcutype = ['eqInt', 'eqInt', 'eqInt', 'resInt', 'neInt', 'locInt']
     def __init__(self, kt, fermi, bias, maxdepth=7, comm=None, neint='linear',
                   tp=None, plot_eta=1e-4, neintstep=0.02, eqinttol=1e-4,
-                  min_energy=-700):
+                  min_energy=-700, plot_energy_range=[-5,5],
+                  plot_energy_point_num=201):
         self.kt = kt
         self.nkt = 8 * self.kt 
         self.dkt = 8 * np.pi * self.kt       
@@ -287,6 +288,8 @@ class Contour:
         self.eqinttol = eqinttol
         self.min_energy = min_energy
         self.eq_err = eqinttol
+        self.plot_energy_range = plot_energy_range
+        self.plot_energy_point_num = plot_energy_point_num
         
     def get_dense_contour(self):
         self.paths = []
@@ -357,19 +360,20 @@ class Contour:
         if ex:
             limit = 6.5
         else:    
-            limit = 5.
+            limits = self.plot_energy_range
         
         if self.plot_path is None:
-            self.plot_path = Path(-limit + self.fermi + self.plot_eta * 1.j,
-                              limit + self.fermi + self.plot_eta * 1.j,
+            self.plot_path = Path(limits[0] + self.fermi + self.plot_eta * 1.j,
+                              limits[1] + self.fermi + self.plot_eta * 1.j,
                                7, 1,
                                type='linear', kt=self.kt)
             path = self.plot_path  
             if ex:
                 path.ne = 261
             else:    
-                path.ne = 201
-            path.int_step = 10. / 200
+                path.ne = self.plot_energy_point_num
+            path.int_step = (limits[1] - limits[0]) / (
+                                               self.plot_energy_point_num - 1)
            
             digits = int(np.ceil(np.log10(path.ne)))
             base = path.index * 10 ** digits
