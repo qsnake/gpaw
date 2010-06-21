@@ -40,8 +40,8 @@ class MatrixOperator:
         if hermitian is not None:
             self.hermitian = hermitian
         self.bmd = ksl.new_descriptor() #XXX take hermitian as argument?
-        self.M = None
-        self.Q = None
+        self.M = 1
+        self.Q = bd.comm.size
 
     def allocate_work_arrays(self, dtype):
         """This is a little complicated, but let's look at the facts.
