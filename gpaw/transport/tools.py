@@ -533,6 +533,36 @@ def path_selfenergy(atoms, ntk, filename, begin, end, num= 257, direction=0):
     cPickle.dump((se, ee), fd, 2)
     fd.close()
 
+def sort_atoms(atoms):
+    pos = atoms.positions.copy()
+    ind2 = fuzzy_sort(pos[:,2])
+    ind1 = fuzzy_sort(pos[:,1])
+    ind0 = fuzzy_sort(pos[:,0])
+    tmp = ind2 * 1e12 + ind1 * 1e6 + ind0
+    indices = np.argsort(tmp)
+    atoms.positions = atoms.positions[indices]
+    atoms.numbers = atoms.numbers[indices]
+    if 'magmoms' in atoms.arrays:
+        atoms.arrays['magmoms'] = atoms.arrays['magmoms'][indices]
+
+def fuzzy_sort(seq0, tol=1e-6):
+    seq = seq0.copy()
+    ind0 = np.zeros_like(seq)
+    ind1 = []
+    n = 0
+    while len(ind1) < len(seq):
+        ind = []
+        am = np.argmin(seq)
+        tmp = seq - seq[am]        
+        for j, i in enumerate(tmp):
+            if abs(i) < tol:
+                ind.append(j)
+        seq[ind] = 1e19
+        ind0[ind] = n
+        ind1 += ind
+        n += 1
+    return ind0
+
 class P_info:
     def __init__(self):
         P.x = 0
