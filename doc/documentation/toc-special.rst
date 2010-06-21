@@ -9,7 +9,7 @@
    orthogonalization
    xc/xc
    xc/exx
-   negftransport
+   transport/negftransport
    tddft/tddft
    dscf/dscf
    pdos/pdos
