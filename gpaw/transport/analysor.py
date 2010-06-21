@@ -770,7 +770,7 @@ class Transport_Analysor:
         if world.rank == 0 :           
             for name in ['nt', 'vt', 'ntx', 'vtx', 'nty', 'vty']:
                 self.data[name] = eval(name)
-        if tp.non_sc or self.tp.analysis_mode < 0:
+        if tp.non_sc or self.tp.analysis_mode:
             force = None
             contour = None
         else:       
@@ -796,7 +796,7 @@ class Transport_Analysor:
                 self.data[name] = eval(obj)
        
         if world.rank == 0:
-            if self.tp.analysis_mode == -2:
+            if self.tp.analysis_mode:
                 filename = '/abias_step_' + str(self.n_bias_step)
             else:
                 filename = '/bias_step_' + str(self.n_bias_step)
