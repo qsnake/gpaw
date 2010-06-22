@@ -5,7 +5,7 @@
 # difference check.
 
 import numpy as np
-from ase import *
+from ase import Atoms
 from gpaw import GPAW
 from gpaw.atom.basis import BasisMaker
 from gpaw.test import equal

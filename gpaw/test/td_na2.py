@@ -1,5 +1,5 @@
 from ase import Atoms
-from ase.units import bohr
+from ase.units import Bohr
 from gpaw import GPAW
 from gpaw.tddft import TDDFT, photoabsorption_spectrum, \
      LinearAbsorbingBoundary, P4AbsorbingBoundary, PML

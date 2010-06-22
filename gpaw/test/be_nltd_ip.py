@@ -1,7 +1,7 @@
-from gpaw import *
-from ase import *
-from gpaw.tddft import *
-from gpaw.tddft.abc import *
+from ase import Atoms
+from gpaw import GPAW
+from gpaw.tddft import TDDFT
+from gpaw.tddft.abc import LinearAbsorbingBoundary
 from gpaw.tddft.laser import CWField
 
 atoms = Atoms('Be',[(0,0,0)], pbc=False)
