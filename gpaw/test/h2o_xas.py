@@ -1,4 +1,5 @@
 import os
+import numpy as np
 from math import pi, cos, sin
 from ase import Atom, Atoms
 from ase.parallel import rank, barrier
