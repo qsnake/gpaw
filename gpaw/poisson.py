@@ -278,7 +278,7 @@ class PoissonSolver:
         nbytes = -gdbytes # No phi on finest grid, compensate ahead
         for level in range(self.levels):
             nbytes += 3 * gdbytes # Arrays: rho, phi, residual
-            gdbytes /= 8
+            gdbytes //= 8
         mem.subnode('rho, phi, residual [%d levels]' % self.levels, nbytes)
 
         for i, obj in enumerate(self.restrictors + self.interpolators):
