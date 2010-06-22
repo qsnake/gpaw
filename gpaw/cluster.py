@@ -3,7 +3,8 @@
 """
 import numpy as np
 
-from ase import Atoms, read, write
+from ase import Atoms
+from ase.io import read, write
 from ase.data import covalent_radii
 from ase.calculators.neighborlist import NeighborList
 
