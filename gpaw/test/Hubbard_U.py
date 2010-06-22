@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-from ase.units import Hartree
-from ase import *
-from gpaw import *
-from gpaw.test import equal
 import numpy as np
+from math import sqrt
+from ase.units import Hartree
+from ase import Atoms
+from gpaw import GPAW, FermiDirac, PoissonSolver
+from gpaw.test import equal
 
 ##############################################################################
 ## Define a function that returns the band gab

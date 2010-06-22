@@ -1,6 +1,6 @@
-from ase import *
+from ase.data.molecules import molecule
 from ase.parallel import paropen
-from gpaw import *
+from gpaw import GPAW
 from gpaw.utilities.tools import split_formula
 from gpaw.test import equal
 
