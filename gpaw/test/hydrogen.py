@@ -1,5 +1,5 @@
 from math import log
-from ase import *
+from ase import Atom, Atoms
 from gpaw import GPAW, FermiDirac
 from gpaw.test import equal
 
