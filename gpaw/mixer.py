@@ -383,7 +383,7 @@ class MixerRho2(BaseMixer):
         BaseMixer.mix(self, rhot_g, density.D_asp.values())
 
 
-class BaseMixer_Broydn:
+class Broyden_BaseMixer:
     def __init__(self, beta=0.1, nmaxold=6):
         self.verbose = False
         self.beta = beta
@@ -421,7 +421,7 @@ class BaseMixer_Broydn:
             fmin_G = self.gd.integrate(self.d_nt_G[-1] * self.d_nt_G[-1])
             self.dNt = self.gd.integrate(np.fabs(self.d_nt_G[-1]))
             if self.verbose:
-                print 'Mixer: broydn: fmin_G = %f fmin_D = %f'% fmin_G
+                print 'Mixer: broyden: fmin_G = %f fmin_D = %f'% fmin_G
         if self.step == 0:
             self.eta_G = np.empty(nt_G.shape)
             self.eta_D = []
@@ -481,13 +481,13 @@ class BaseMixer_Broydn:
         self.step += 1
 
         
-class Mixer_Broydn(BaseMixer_Broydn):
+class Broyden_Mixer(Broyden_BaseMixer):
     """Mix spin up and down densities separately"""
 
     def initialize(self, density):
         self.mixers = []
         for s in range(density.nspins):
-            mixer = BaseMixer_Broydn()
+            mixer = Broyden_BaseMixer()
             mixer.initialize(density)
             #mixer.initialize_metric(density.gd)
             self.mixers.append(mixer)
@@ -522,14 +522,14 @@ class Mixer_Broydn(BaseMixer_Broydn):
             mixer.set_charge_sloshing(dNt / len(self.mixers))
 
 
-class MixerSum_Broydn(BaseMixer_Broydn):
+class Broyden_MixerSum(Broyden_BaseMixer):
     def mix(self, density):
         nt_sG = density.nt_sG
         D_asp = density.D_asp.values()
 
         # Mix density
         nt_G = density.nt_sG.sum(0)
-        BaseMixer_Broydn.mix(self, nt_G, D_asp)
+        Broyden_BaseMixer.mix(self, nt_G, D_asp)
 
         # Only new magnetization for spin density
         dnt_G = nt_sG[0] - nt_sG[1]
