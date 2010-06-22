@@ -17,12 +17,13 @@ from gpaw.wavefunctions.lcao import LCAOWaveFunctions
 
 
 class GridWaveFunctions(WaveFunctions):
-    def __init__(self, stencil, diagksl, orthoksl, *args, **kwargs):
+    def __init__(self, stencil, diagksl, orthoksl, initksl, *args, **kwargs):
         WaveFunctions.__init__(self, *args, **kwargs)
         # Kinetic energy operator:
         self.kin = Laplace(self.gd, -0.5, stencil, self.dtype, allocate=False)
         self.diagksl = diagksl
         self.orthoksl = orthoksl
+        self.initksl = initksl
         self.set_orthonormalized(False)
         self.overlap = Overlap(self) # Object needed by memory estimate
         # (it has to be overwritten on each initialize() anyway, because of
@@ -93,24 +94,8 @@ class GridWaveFunctions(WaveFunctions):
             self.timer.stop('Random wavefunction initialization')
             return
 
-        nao = self.setups.nao
         self.timer.start('LCAO initialization')
-        if self.nbands <= nao:
-            lcaonbands = self.nbands
-            lcaomynbands = self.mynbands
-        else:
-            lcaonbands = nao
-            lcaomynbands = nao
-            assert self.band_comm.size == 1
-
-        lcaobd = BandDescriptor(lcaonbands, self.band_comm, self.bd.strided)
-        assert lcaobd.mynbands == lcaomynbands #XXX
-
-        from gpaw.blacs import get_kohn_sham_layouts
-        sl_lcao = None #XXX how do we get sl_lcao from PAW.input_parameters?
-        use_blacs = False #XXX ksl.using_blacs
-        lcaoksl = get_kohn_sham_layouts(sl_lcao, 'lcao', use_blacs, self.gd,
-                                        lcaobd, nao=nao) # **ksl.get_keywords()
+        lcaoksl, lcaobd = self.initksl, self.initksl.bd
         lcaowfs = LCAOWaveFunctions(lcaoksl, self.gd, self.nspins,
                                     self.nvalence, self.setups, lcaobd,
                                     self.dtype, self.world, self.kpt_comm,
@@ -121,12 +106,10 @@ class GridWaveFunctions(WaveFunctions):
         self.timer.start('Set positions (LCAO WFS)')
         lcaowfs.set_positions(spos_ac)
         self.timer.stop('Set positions (LCAO WFS)')
-        eigensolver = get_eigensolver('lcao', 'lcao')
 
-        eigensolver.initialize(self.gd,
-                               self.dtype,
-                               self.setups.nao,
-                               lcaoksl)
+        eigensolver = get_eigensolver('lcao', 'lcao')
+        eigensolver.initialize(self.gd, self.dtype, self.setups.nao, lcaoksl)
+
         # XXX when density matrix is properly distributed, be sure to
         # update the density here also
         eigensolver.iterate(hamiltonian, lcaowfs)
@@ -145,15 +128,15 @@ class GridWaveFunctions(WaveFunctions):
                 kpt.W_nn = np.zeros((self.nbands, self.nbands),
                                     dtype=self.dtype)
             basis_functions.lcao_to_grid(kpt.C_nM, 
-                                         kpt.psit_nG[:lcaomynbands], kpt.q)
+                                         kpt.psit_nG[:lcaobd.mynbands], kpt.q)
             kpt.C_nM = None
         self.timer.stop('LCAO to grid')
 
-        if self.mynbands > lcaomynbands:
+        if self.mynbands > lcaobd.mynbands:
             # Add extra states.  If the number of atomic orbitals is
             # less than the desired number of bands, then extra random
             # wave functions are added.
-            self.random_wave_functions(lcaomynbands)
+            self.random_wave_functions(lcaobd.mynbands)
         self.timer.stop('LCAO initialization')
 
     def initialize_wave_functions_from_restart_file(self):

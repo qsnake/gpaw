@@ -517,27 +517,44 @@ class PAW(PAWTextOutput):
                 sl_lcao = par.parallel['sl_lcao']
                 if sl_lcao is None:
                     sl_lcao = par.parallel['sl_default']
-                lcaoksl = get_kohn_sham_layouts(sl_lcao, par.mode, use_blacs,
+                lcaoksl = get_kohn_sham_layouts(sl_lcao, 'lcao', use_blacs,
                                                 gd, self.bd, nao=nao,
                                                 timer=self.timer)
+
                 self.wfs = LCAOWaveFunctions(lcaoksl, *args)
             elif par.mode == 'fd':
                 # Layouts used for diagonalizer
                 sl_diagonalize = par.parallel['sl_diagonalize']
                 if sl_diagonalize is None:
                     sl_diagonalize = par.parallel['sl_default']
-                diagksl = get_kohn_sham_layouts(sl_diagonalize, par.mode,
+                diagksl = get_kohn_sham_layouts(sl_diagonalize, 'fd',
                                                 use_blacs, gd, self.bd,
                                                 timer=self.timer)
+
                 # Layouts used for orthonormalizer
                 sl_inverse_cholesky = par.parallel['sl_inverse_cholesky']
                 if sl_inverse_cholesky is None:
                     sl_inverse_cholesky = par.parallel['sl_default']
-                orthoksl = get_kohn_sham_layouts(sl_inverse_cholesky, par.mode,
+                orthoksl = get_kohn_sham_layouts(sl_inverse_cholesky, 'fd',
                                                  use_blacs, gd, self.bd,
                                                  timer=self.timer)
+
+                # Use (at most) all available LCAO for initialization
+                lcaonbands = min(nbands, nao)
+                lcaobd = BandDescriptor(lcaonbands, band_comm, parstride_bands)
+                assert nbands <= nao or self.bd.comm.size == 1
+                assert lcaobd.mynbands == min(self.bd.mynbands, nao) #XXX
+
+                # Layouts used for general diagonalizer (LCAO initialization)
+                sl_lcao = par.parallel['sl_lcao']
+                if sl_lcao is None:
+                    sl_lcao = par.parallel['sl_default']
+                initksl = get_kohn_sham_layouts(sl_lcao, 'lcao', use_blacs,
+                                                gd, lcaobd, nao=nao,
+                                                timer=self.timer)
+
                 self.wfs = GridWaveFunctions(par.stencils[0], diagksl,
-                                             orthoksl, *args)
+                                             orthoksl, initksl, *args)
             else:
                 self.wfs = par.mode(self, *args)
         else:

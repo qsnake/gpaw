@@ -113,6 +113,7 @@ class GDWFS(GridWaveFunctions):
         self.kin = Laplace(gd, -0.5, dtype=dtype, allocate=False)
         self.diagksl = None
         self.orthoksl = BandLayouts(gd, bd)
+        self.initksl = None
         self.overlap = None
         self.rank_a = None
 
