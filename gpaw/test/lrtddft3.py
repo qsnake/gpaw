@@ -6,7 +6,7 @@ import re
 import numpy as np
 
 from ase.visualize import view
-from ase.data import molecule
+from ase.data.molecules import molecule
 from ase.units import Hartree
 from gpaw import GPAW
 from gpaw.mpi import rank, world
