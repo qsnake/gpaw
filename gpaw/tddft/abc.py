@@ -18,7 +18,7 @@ class PML uses the perfectly matched layer approach.
 
 import numpy as np
 
-from ase import Bohr
+from ase.units import Bohr
 
 class DummyAbsorbingBoundary:
     """ Virtual and not usable class for abosrbing boundaries."""
