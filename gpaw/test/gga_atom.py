@@ -38,7 +38,7 @@ for name in ['LDA', 'PBE']:
     psit_ig = np.zeros((niAO, n, n, n))
     pr.add(psit_ig, coefs)
 
-    nii = ni * (ni + 1) / 2
+    nii = ni * (ni + 1) // 2
     D_p = np.zeros(nii)
     H_p = np.zeros(nii)
 
