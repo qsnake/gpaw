@@ -2179,6 +2179,10 @@ class Transport(GPAW):
             del self.analysor
             del self.surround
             del self.contour
+
+    def calculate_transmission(self):
+        self.negf_prepare()
+        self.non_sc_analysis()          
         
     def recover_kpts(self, calc):
         wfs = calc.wfs
