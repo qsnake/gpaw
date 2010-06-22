@@ -360,7 +360,7 @@ class C_Response(Contribution):
         nadm = 0
         for setup in wfs.setups:
             ni = setup.ni
-            nadm += ni * (ni + 1) / 2
+            nadm += ni * (ni + 1) // 2
 
         # Not yet tested for parallerization
         #assert world.size == 1
@@ -396,7 +396,7 @@ class C_Response(Contribution):
             p1 = 0
             for a in range(natoms):
                 ni = wfs.setups[a].ni
-                nii = ni * (ni + 1) / 2
+                nii = ni * (ni + 1) // 2
                 if a in self.D_asp:
                     D_sp = self.D_asp[a]
                     Dresp_sp = self.Dresp_asp[a]
