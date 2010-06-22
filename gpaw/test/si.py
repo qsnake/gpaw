@@ -1,7 +1,8 @@
 from gpaw import GPAW, restart, FermiDirac
-from ase import *
+from ase import Atoms
 from ase.calculators import numeric_force
 from gpaw.test import equal
+import numpy as np
 
 a = 5.404
 bulk = Atoms(symbols='Si8',
