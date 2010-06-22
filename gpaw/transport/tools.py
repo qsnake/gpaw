@@ -178,13 +178,13 @@ def substract_pk(d, npk, ntk, kpts, k_mm, hors='s', position=[0, 0, 0]):
         raise KeyError('hors should be h or s!')
     if hors == 'h':
         dim = k_mm.shape[:]
-        dim = (dim[0],) + (dim[1] / ntk,) + dim[2:]
+        dim = (dim[0],) + (dim[1] // ntk,) + dim[2:]
         pk_mm = np.empty(dim, k_mm.dtype)
         dim = (dim[0],) + (ntk,) + dim[2:]
         tk_mm = np.empty(dim, k_mm.dtype)
     elif hors == 's':
         dim = k_mm.shape[:]
-        dim = (dim[0] / ntk,) + dim[1:]
+        dim = (dim[0] // ntk,) + dim[1:]
         pk_mm = np.empty(dim, k_mm.dtype)
         dim = (ntk,) + dim[1:]
         tk_mm = np.empty(dim, k_mm.dtype)
@@ -317,7 +317,7 @@ def diag_cell(cell):
     
 def get_pk_hsd(d, ntk, kpts, hl_skmm, sl_kmm, dl_skmm, txt=None,
                                                   dtype=complex, direction=0):
-    npk = len(kpts) / ntk
+    npk = len(kpts) // ntk
     position = [0, 0, 0]
     hl_spkmm = substract_pk(d, npk, ntk, kpts, hl_skmm, hors='h')
     dl_spkmm = substract_pk(d, npk, ntk, kpts, dl_skmm, hors='h')
@@ -358,7 +358,7 @@ def get_lcao_density_matrix(calc):
     wfs = calc.wfs
     kpts = wfs.ibzk_qc
     nq = len(kpts)
-    my_ns = len(wfs.kpt_u) / nq
+    my_ns = len(wfs.kpt_u) // nq
     nao = wfs.setups.nao
     
     # calculate_density_matrix involves gemm and doesn't work well with empty()
