@@ -1,4 +1,5 @@
-from ase import *
+import numpy as np
+from ase import Atom, Atoms
 from gpaw import GPAW, Mixer
 from gpaw.test import equal
 

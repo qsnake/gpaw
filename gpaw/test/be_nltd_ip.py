@@ -1,3 +1,4 @@
+import numpy as np
 from ase import Atoms
 from gpaw import GPAW
 from gpaw.tddft import TDDFT
