@@ -1,5 +1,4 @@
 from gpaw.transformers import Transformer
-import numpy as np
 import numpy.random as ra
 from gpaw.grid_descriptor import GridDescriptor
 
