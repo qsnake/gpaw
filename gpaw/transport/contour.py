@@ -110,7 +110,7 @@ class Path:
 
         for i in range(digits):
             unit = 10 ** (digits - i)
-            digit = (num - (num // unit) * unit) // (unit / 10)
+            digit = (num - (num // unit) * unit) // (unit // 10)
             flags.append(digit)            
         return np.array(flags)
         
@@ -372,7 +372,7 @@ class Contour:
                 path.ne = 261
             else:    
                 path.ne = self.plot_energy_point_num
-            path.int_step = (limits[1] - limits[0]) / (
+            path.int_step = (limits[1] - limits[0]) // (
                                                self.plot_energy_point_num - 1)
            
             digits = int(np.ceil(np.log10(path.ne)))
