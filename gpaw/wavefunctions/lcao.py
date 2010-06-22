@@ -455,7 +455,7 @@ class LCAOWaveFunctions(WaveFunctions):
         mem.subnode('C [qnM]', nq * self.mynbands * nao * itemsize)
         nM1, nM2 = self.ksl.get_overlap_matrix_shape()
         mem.subnode('S, T [2 x qmm]', 2 * nq * nM1 * nM2 * itemsize)
-        mem.subnode('P [aqMi]', nq * nao * ni_total / self.gd.comm.size)
+        mem.subnode('P [aqMi]', nq * nao * ni_total // self.gd.comm.size)
         self.tci.estimate_memory(mem.subnode('TCI'))
         self.basis_functions.estimate_memory(mem.subnode('BasisFunctions'))
         self.eigensolver.estimate_memory(mem.subnode('Eigensolver'),
