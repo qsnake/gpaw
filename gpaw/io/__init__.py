@@ -421,7 +421,7 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
     if filename.endswith(".db"):
         if master:
             w.write_additional_db_params(cmr_params=cmr_params)
-    elif cmr_params is not None and cmr_params.has_key("db"):
+    elif cmr_params is not None and "db" in cmr_params:
         db = cmr_params["db"]
 
     if master or hdf5:
