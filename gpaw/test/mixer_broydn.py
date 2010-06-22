@@ -1,5 +1,5 @@
-from ase import *
-from gpaw import *
+from ase import Atom, Atoms
+from gpaw import GPAW
 from gpaw.mixer import Mixer_Broydn
 from gpaw.test import equal
 
