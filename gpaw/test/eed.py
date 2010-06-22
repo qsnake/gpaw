@@ -1,8 +1,8 @@
 import os
 
-from ase import *
+from ase import Atom 
 from gpaw import GPAW
-from gpaw.cluster import *
+from gpaw.cluster import Cluster
 from gpaw.test import equal
 from gpaw.analyse.eed import ExteriorElectronDensity
 
