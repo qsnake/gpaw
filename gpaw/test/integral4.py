@@ -10,7 +10,7 @@ nspins = 1
 xcfunc = XCFunctional('LDA', nspins)
 s = create_setup('H', xcfunc)
 ni = s.ni
-nii = ni * (ni + 1) / 2
+nii = ni * (ni + 1) // 2
 D_p = 0.1 * ra.random((1, nii)) + 0.2
 H_p = np.zeros(nii)
 
