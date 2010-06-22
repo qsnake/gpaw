@@ -1,6 +1,6 @@
 from ase import Atom, Atoms
 from ase.io import read
-from gpaw import *
+from gpaw import GPAW
 from gpaw.test import equal
 a = 2.0
 calc = GPAW(gpts=(12, 12, 12), txt='H.txt')
