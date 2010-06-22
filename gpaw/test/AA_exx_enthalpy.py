@@ -1,5 +1,7 @@
-from ase import *
+from ase import Atoms, Atom
+from ase.data.molecules import molecule
 from ase.parallel import barrier
+from ase.units import Hartree, mol, kcal
 from gpaw import GPAW, setup_paths
 from gpaw.mixer import Mixer, MixerSum
 from gpaw.occupations import FermiDirac
@@ -28,10 +30,10 @@ data['N'] = { # intermolecular distance (A), formation enthalpy(298) (kcal/mol) 
     'magmom': 3.0,
     # tables.pdf: http://ftp.aip.org/epaps/journ_chem_phys/E-JCPSA6-119-302348/tables.pdf
     'R_AA_B3LYP': 1.092, # (from tables.pdf of 10.1063/1.1626543) (Angstom)
-    'ZPE_AA_B3LYP': 0.005457*Hartree, # (from benchmarks.txt of 10.1063/1.1626543) (eV)
-    'H_298_H_0_AA_B3LYP': 0.003304*Hartree, # (from benchmarks.txt of 10.1063/1.1626543) (eV)
-    'H_298_H_0_A': 1.04/(mol/kcal), # (from 10.1063/1.473182) (eV)
-    'dHf_0_A': 112.53/(mol/kcal), # (from 10.1063/1.473182) (eV)
+    'ZPE_AA_B3LYP': 0.005457 * Hartree, # (from benchmarks.txt of 10.1063/1.1626543) (eV)
+    'H_298_H_0_AA_B3LYP': 0.003304 * Hartree, # (from benchmarks.txt of 10.1063/1.1626543) (eV)
+    'H_298_H_0_A': 1.04 / (mol / kcal), # (from 10.1063/1.473182) (eV)
+    'dHf_0_A': 112.53 / (mol / kcal), # (from 10.1063/1.473182) (eV)
     }
 
 data['O'] = { # intermolecular distance (A), formation enthalpy(298) (kcal/mol) on B3LYP geometry
@@ -48,10 +50,10 @@ data['O'] = { # intermolecular distance (A), formation enthalpy(298) (kcal/mol) 
     'magmom': 2.0,
     # tables.pdf: http://ftp.aip.org/epaps/journ_chem_phys/E-JCPSA6-119-302348/tables.pdf
     'R_AA_B3LYP': 1.204, # (from tables.pdf of 10.1063/1.1626543) (Angstom)
-    'ZPE_AA_B3LYP': 0.003736*Hartree, # (from benchmarks.txt of 10.1063/1.1626543) (eV)
+    'ZPE_AA_B3LYP': 0.003736 * Hartree, # (from benchmarks.txt of 10.1063/1.1626543) (eV)
     'H_298_H_0_AA_B3LYP': 0.003307*Hartree, # (from benchmarks.txt of 10.1063/1.1626543) (eV)
-    'H_298_H_0_A': 1.04/(mol/kcal), # (from 10.1063/1.473182) (eV)
-    'dHf_0_A': 58.99/(mol/kcal), # (from 10.1063/1.473182) (eV)
+    'H_298_H_0_A': 1.04 / (mol / kcal), # (from 10.1063/1.473182) (eV)
+    'dHf_0_A': 58.99 / (mol / kcal), # (from 10.1063/1.473182) (eV)
     }
 
 data['H'] = { # intermolecular distance (A), formation enthalpy(298) (kcal/mol) on B3LYP geometry
@@ -68,10 +70,10 @@ data['H'] = { # intermolecular distance (A), formation enthalpy(298) (kcal/mol) 
     'magmom': 1.0,
     # tables.pdf: http://ftp.aip.org/epaps/journ_chem_phys/E-JCPSA6-119-302348/tables.pdf
     'R_AA_B3LYP': 0.742, # (from tables.pdf of 10.1063/1.1626543) (Angstom)
-    'ZPE_AA_B3LYP': 0.010025*Hartree, # (from benchmarks.txt of 10.1063/1.1626543) (eV)
-    'H_298_H_0_AA_B3LYP': 0.003305*Hartree, # (from benchmarks.txt of 10.1063/1.1626543) (eV)
-    'H_298_H_0_A': 1.01/(mol/kcal), # (from 10.1063/1.473182) (eV)
-    'dHf_0_A': 51.63/(mol/kcal), # (from 10.1063/1.473182) (eV)
+    'ZPE_AA_B3LYP': 0.010025 * Hartree, # (from benchmarks.txt of 10.1063/1.1626543) (eV)
+    'H_298_H_0_AA_B3LYP': 0.003305 * Hartree, # (from benchmarks.txt of 10.1063/1.1626543) (eV)
+    'H_298_H_0_A': 1.01 / (mol / kcal), # (from 10.1063/1.473182) (eV)
+    'dHf_0_A': 51.63 / (mol / kcal), # (from 10.1063/1.473182) (eV)
     }
 
 def calculate(element, h, vacuum, xc, magmom):
