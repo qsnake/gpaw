@@ -2,14 +2,12 @@ import glob
 
 import numpy as np
 from gpaw.test import equal
-from ase import *
 
 from gpaw.setup import Setup
 from gpaw.xc_functional import XCFunctional
 
 
 nspins = 1
-##for xcname in ['LDA', 'PBE', 'revPBE']:
 for xcname in ['LDA']:
     xcfunc = XCFunctional(xcname, nspins)
     for symbol in []:#'H']:#symbols:
