@@ -6,15 +6,18 @@ Diffusion of gold atom on Al(100) surface
 
 In this ASE-tutorial:
 
-* :ase:`Constraint <tutorials/constraints/diffusion.html>`
+* :ase:`Diffusion of gold atom on Al(100) surface
+  <tutorials/constraints/diffusion.html>`
+
 
 the energy barrier for diffusion of a gold atom on an Al(100) surface
 is calculated using a semi-empirical EMT potential.  In this
 exercise, we will try to use DFT and GPAW.
 
-* Run the script from the ASE-tutorial above and use the graphical representation 
-  to get good initial guesses for the height of the gold atom in the initial and
-  transition states (hollow and bridge sites).
+* Run the script from the ASE-tutorial above and use the graphical
+  representation to get good initial guesses for the height of the
+  gold atom in the initial and transition states (hollow and bridge
+  sites).
 
 The PAW setups for both Al and Au are quite smooth (see
 :ref:`Aluminium` and :ref:`Gold`), so we can try with a coarse
@@ -31,9 +34,9 @@ In order to speed up the calculation, use just a single frozen Al(100) layer.
   this script: :svn:`~doc/exercises/diffusion/initial.py`.
   Do we need to apply any constraint to the gold atom?
 
-* What is the PBE energy barrier? (Do not repeat the ASE-tutorial with GPAW, 
-  but simply relax the gold atom at the transition state and use the total energy 
-  differences)
+* What is the PBE energy barrier? (Do not repeat the ASE-tutorial with
+  GPAW, but simply relax the gold atom at the transition state and use
+  the total energy differences)
 
 * Can both initial and transition state calculations be done with only
   one **k**-point in the irreducible part of the Brillouin zone?
@@ -194,5 +197,3 @@ The :file:`xyz` format does not have a unit cell, so you must set that
 yourself::
 
   >>> atoms.set_cell((Lx,Ly,Lz), scale_atoms=False)
-
-

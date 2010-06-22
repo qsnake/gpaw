@@ -25,7 +25,7 @@ whereas (110) is most open. Here we'll focus on (100).
   an fcc(100) surface atom?  What is it for a bulk atom?  Start the
   Python interpreter and try this::
 
-    from ase import *
+    from ase.visualize import view
     from ase.lattice.surface import fcc100
     s = fcc100('Al', (1, 1, 5))
     view(s, repeat=(4, 4, 1))
