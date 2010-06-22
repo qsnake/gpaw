@@ -48,7 +48,7 @@ for xc in libxc_set:
     xcfunc = XCFunctional(xc, 1)
     s = create_setup('N', xcfunc)
     ni = s.ni
-    nii = ni * (ni + 1) / 2
+    nii = ni * (ni + 1) // 2
     D_p = 0.1 * ra.random(nii) + 0.4
     H_p = np.zeros(nii)
 
