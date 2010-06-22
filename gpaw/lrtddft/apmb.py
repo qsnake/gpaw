@@ -207,16 +207,16 @@ class ApmB(OmegaMatrix):
 
     def timestring(self,t):
         ti = int(t+.5)
-        td = int(ti/86400)
+        td = int(ti//86400)
         st=''
         if td>0:
             st+='%d'%td+'d'
             ti-=td*86400
-        th = int(ti/3600)
+        th = int(ti//3600)
         if th>0:
             st+='%d'%th+'h'
             ti-=th*3600
-        tm = int(ti/60)
+        tm = int(ti//60)
         if tm>0:
             st+='%d'%tm+'m'
             ti-=tm*60
