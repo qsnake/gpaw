@@ -1,23 +1,61 @@
-========================================
-Kohn-Sham wavefunctions of a CO molecule
-========================================
+============================================================
+Kohn-Sham wavefunctions of a the oxygen atom and CO molecule
+============================================================
 
-In this section, we will look at the Kohn-Sham wavefunctions of the CO
-molecule and compare them to results from molecular orbital theory.
+In this section, we will look at the Kohn-Sham wavefunctions of the O
+atom and CO molecule and compare them to results from molecular orbital theory.
 
+* The first script :svn:`~doc/exercises/wavefunctions/O.py` sets up an oxygen
+  atom in a cubic supercell with non-periodic boundary conditions and calculates
+  the total energy. A couple of unoccupied bands are included in the calculation:
+
+.. literalinclude:: O.py
+
+.. highlight:: bash
+
+
+* Towards the end, a :file:`.gpw` file is written with the Kohn-Sham wavefunctions
+  `{calc}.write('O.gpw', mode='all')`. At the very end we write the Kohn-Sham
+  wavefunctions to :file:`.cube` files for
+  handling with the :program:`VMD` program.
+
+* Run the script and check the output file. What is the occupation numbers
+  for the oxygen atom free in vacuum?
+
+* The orbitals are vislulizable in :program:`VMD`. 
+  Load all of the wavefunctions into :program:`VMD`
+  simultaneously, by running :samp:`vmd O{?}.cube`. In :program:`VMD` choose
+  :menuselection:`Graphics --> Representations`, click
+  :guilabel:`Create Rep`, then choose
+  :menuselection:`Drawing Method --> isosurface`.  In the
+  :guilabel:`Data Set` field, you can then
+  choose between all the saved wavefunctions.
+
+  Can you identify the highest occupied state and the lowest unoccupied state?
+
+  How does your wave functions compare to a molecular orbital picture?
+
+  
 * Make a script, where a CO molecule is placed in the center of a cubic
   unit cell with non-periodic boundary conditions, e.g. of 6 Å. For
   more accurate calculations, the cell should definitely be bigger,
-  but for reasons of speed, we use  this cell here. Which value for the
-  grid spacing would you use? Include a couple of unoccupied bands in the
-  calculation (what is the number of valence electrons in CO).
-  Guess reasonable positions from
-  the covalent radii of C and O. Then relax the CO molecule to its
-  minimum energy position. Write the relaxation to a trajectory file and
+  but for reasons of speed, we use this cell here. A grid spacing of 
+  around 0.20 Å will suffice. Include a couple of unoccupied bands in the
+  calculation (what is the number of valence electrons in CO?).
+  You can quickly create the Atoms object with the CO molecule by::
+  
+    $ from ase.data.molecules import molecule
+    $ CO = molecule('CO')
+  
+  This will create a CO molecule with an approximately correct bond length
+  and the correct magnetic moments on each atom.
+
+  Then relax the CO molecule to its minimum energy position. 
+  Write the relaxation to a trajectory file and
   the final results to a :file:`.gpw` file. The wavefunctions
-  are not written to the :file:`.gpw` file by default, but can be saved by
+  are not written to the :file:`.gpw` file by default, but can again be saved by
   writing :samp:`{calc}.write('CO.gpw', mode='all')`, where :samp:`{calc}` is
-  your calculator object. The trajectory can be viewed by::
+  the calculator object. The trajectory can be viewed by::
 
     $ ag CO.traj
 
@@ -25,13 +63,13 @@ molecule and compare them to results from molecular orbital theory.
 
 * As this is a calculation of a molecule, one should get integer
   occupation numbers - check this in the text output.  What electronic
-  temperature was used?
+  temperature was used and what is the significance of this?
 
 * Plot the Kohn-Sham wavefunctions of the different wave functions of the CO
-  molecule. The wavefunctions should be written to :file:`.cube` files for 
-  handling with :program:`VMD`. The following lines could be included in a
-  script or written directly from the python promt::
+  molecule by writing :file:`.cube` files for handling with :program:`VMD`.
 
+<<<<<<< .mine
+=======
     from ase.io import write
     from gpaw import restart
     CO, calc = restart('CO.gpw')
@@ -47,6 +85,7 @@ molecule and compare them to results from molecular orbital theory.
   :guilabel:`Data Set` field, you can then
   choose between all the saved wave functions.
 
+>>>>>>> .r6756
   What is the highest occupied state and the lowest unoccupied state?
 
   How does your wave functions compare to a molecular orbital picture?
