@@ -5,9 +5,27 @@ from gpaw.transport.tools import aa1d, interpolate_array, \
                           collect_atomic_matrices, distribute_atomic_matrices
 
 
+
+#       ---------------------------------------
+#      side    |                     |  side
+#          o  o| o  o  o  o  o  o  o |o  o
+#       -      |                     |     +
+#          o  o| o  o  o  o  o  o  o |o  o
+#              |                     |
+#       ---------------------------------------
+#         Left |                     |Right
+#         Lead | <-- Scattering -->  |Lead
+#              |       Region        |
+#
+# class Surrounding is used to deal with the projection close to the
+# boundary and combine the potential or density information of the
+# scattering region and leads.
+
+
 class Side:
     #Describe the electrode boundary
     def __init__(self, type, atoms, direction, h=None):
+    #direction: '-' for the left electrode, '+' for the right electrode
         self.type = type
         self.atoms = atoms
         self.direction = direction
@@ -17,6 +35,8 @@ class Side:
         self.h_cz = h
 
     def abstract_boundary(self):
+    #abtract the effective potential, hartree potential, and average density
+    #out from the electrode calculation.
         calc = self.atoms.calc
         gd = calc.gd
         finegd = calc.finegd
