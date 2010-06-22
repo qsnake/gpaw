@@ -1,6 +1,6 @@
 """Make sure we get an exception when an atom is too close to the boundary."""
-from ase import *
-from gpaw import *
+from ase import Atoms
+from gpaw import GPAW
 a = 4.0
 x = 0.1
 hydrogen = Atoms('H', [(x, x, x)],
