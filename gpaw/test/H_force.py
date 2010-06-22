@@ -1,4 +1,4 @@
-from ase import *
+from ase import Atom, Atoms
 from ase.calculators import numeric_force
 from gpaw import GPAW, Mixer
 from gpaw.test import equal
