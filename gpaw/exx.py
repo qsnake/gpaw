@@ -184,7 +184,7 @@ class EXX:
         # Initialize method-attributes
         psit_nG = kpt.psit_nG   # Wave functions
         Exx = Ekin = 0.0        # Energy of eXact eXchange and kinetic energy
-        deg = 2 / self.nspins   # Spin degeneracy
+        deg = 2 // self.nspins   # Spin degeneracy
         f_n = kpt.f_n           # Occupation number
         s   = kpt.s             # Global spin index
         pd  = self.pair_density # Class for handling pair densities
