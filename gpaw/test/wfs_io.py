@@ -4,7 +4,7 @@ import os
 import sys
 import time
 from gpaw import GPAW
-from ase import *
+from ase import Atom, Atoms
 from gpaw.test import equal
 from ase.parallel import rank, barrier, size
 
