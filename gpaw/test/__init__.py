@@ -52,7 +52,6 @@ def wrap_pylab(names=[]):
 tests = [
     'ase3k_version.py',
     'numpy_core_multiarray_dot.py',
-    'numpy_zdotc_graphite.py',
     'gemm_complex.py',
     'lapack.py',
     'mpicomm.py',
@@ -93,6 +92,7 @@ tests = [
     'coulomb.py',
     'timing.py',
     'lcao_density.py',
+    'numpy_zdotc_graphite.py',
     'gauss_func.py',
     'ah.py',
     'ylexpand.py',
