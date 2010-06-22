@@ -110,7 +110,7 @@ if 1: # CsCl
         print 'Madelung constant, CsCl (B2):', a_this, a_this-a_ref
     assert abs(a_this-a_ref) < 1e-13
     
-if 1: # Zinc Blende, cubic ZnS
+if 1: # Zincblende, cubic ZnS
     cell =  np.array([[.0,.5,.5],
                       [.5,.0,.5],
                       [.5,.5,.0]])
@@ -122,8 +122,8 @@ if 1: # Zinc Blende, cubic ZnS
     e = ewald.get_electrostatic_potential(r, basis, charges, excludefroml0=0)
     a_this = - 0.25 * np.sqrt(3) * e
     a_ref = 1.63805505338879
-    if verbose:
-        print 'Madelung constant, Zinc Blende (B3):', a_this, a_this-a_ref
+    if verbosie:
+        print 'Madelung constant, Zincblende (B3):', a_this, a_this-a_ref
     assert abs(a_this-a_ref) < 1e-13
 
 if 1: # Ideal Wurtzite, ZnS, (B4)
