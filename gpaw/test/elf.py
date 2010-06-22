@@ -1,5 +1,5 @@
-from ase import *
-from gpaw import *
+from ase.data.molecules import molecule
+from gpaw import GPAW
 from gpaw.elf import ELF
 from gpaw.test import equal
 from gpaw.mpi import rank
