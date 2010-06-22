@@ -16,8 +16,8 @@ load = False
 #load = True
 
 R=0.7 # approx. experimental bond length
-a = 4
-c = 4
+a = 4.
+c = 4.
 H2 = Cluster([Atom('H', (a/2,a/2,(c-R)/2)),
               Atom('H', (a/2,a/2,(c+R)/2))],
              cell=(a,a,c))
