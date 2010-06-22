@@ -122,7 +122,7 @@ if 1: # Zincblende, cubic ZnS
     e = ewald.get_electrostatic_potential(r, basis, charges, excludefroml0=0)
     a_this = - 0.25 * np.sqrt(3) * e
     a_ref = 1.63805505338879
-    if verbosie:
+    if verbose:
         print 'Madelung constant, Zincblende (B3):', a_this, a_this-a_ref
     assert abs(a_this-a_ref) < 1e-13
 
