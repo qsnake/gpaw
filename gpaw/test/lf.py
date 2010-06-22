@@ -1,4 +1,3 @@
-import numpy as np
 from gpaw.test import equal
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.spline import Spline
