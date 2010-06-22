@@ -1,5 +1,5 @@
 from gpaw import GPAW, FermiDirac
-from ase import *
+from ase import Atoms
 
 a = 4.23
 atoms = Atoms('Na2',

@@ -1,8 +1,9 @@
-from ase import *
-from gpaw import *
+from ase import Atoms
 from gpaw.transport.calculator import Transport 
 from gpaw.atom.basis import BasisMaker
+from gpaw.occupations import FermiDirac
 from gpaw.poisson import PoissonSolver
+from gpaw.mixer import Mixer
 import pickle
 
 a = 3.6
@@ -37,4 +38,3 @@ t = Transport(h=0.3,
               foot_print=False)
 atoms.set_calculator(t)
 t.calculate_iv(0.5, 2)
-

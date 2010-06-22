@@ -1,6 +1,6 @@
 """Module for building atomic structures"""
 
-from ase import *
+from ase import Atom, Atoms
 
 def bcc100(symbol, a, layers, L):
     """Build a bcc(100) surface
@@ -30,5 +30,5 @@ def bcc100(symbol, a, layers, L):
 
 if __name__ == '__main__':
     bcc = bcc100('Al', 4.0, 4, 15.0)
-    from ase import view
+    from ase.visualize import view
     view(bcc * (4, 4, 2))
