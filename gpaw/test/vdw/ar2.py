@@ -1,6 +1,9 @@
 import os
-from ase import *
+from math import sqrt
+
+from ase import Atoms
 from ase.parallel import rank, barrier
+
 from gpaw import GPAW
 from gpaw.test import equal, gen
 from gpaw.vdw import FFTVDWFunctional
