@@ -49,7 +49,7 @@ class Path:
     sample = np.array([0, 0.18350341907227,   0.55278640450004,   1.0,
          1.44721359549996,   1.81649658092773, 2.0]) / 2.
     zone_weight  = np.array([2., 0.55278640450004, 0.89442719099992007,
-                                                     0.55278640450004]) / 2.0    
+                                                     0.55278640450004]) / 2.0
     weights0 = np.array([6.0, 1.0, 0.0, 5.0, 0.0, 5.0, 0.0, 1.0]) / 6.0
     weights1 = np.array([1470., 77.0, 432.0, 625.0, 672.0, 625.0,
                           432.0, 77.0]) / 1470.
@@ -219,7 +219,7 @@ class Path:
                 num = int((self.bias_window_end - self.bias_window_begin) //
                                                       self.bias_step + 1)
                 real_energies = np.linspace(self.bias_window_begin,
-                                        self.bias_window_end, num)                
+                                        self.bias_window_end, num)
                 tens = np.arange(len(flags[:-1]) - 1, -1) ** 10
                 line_index = np.sum(flags[:-1] * tens)
                 energy = real_energies[line_index] + (2 * flags[-1] -
@@ -386,7 +386,7 @@ class Contour:
             loc_energies = np.array_split(energies,
                                           self.comm.size)[self.comm.rank]
             loc_weights = np.array_split(weights,
-                                         self.comm.size)[self.comm.rank]            
+                                         self.comm.size)[self.comm.rank]
             path.my_nids = loc_nids
             path.my_energies = loc_energies
             path.my_weights = loc_weights
@@ -489,7 +489,7 @@ class Contour:
             num += 1                
             
         info_dict = gather_ndarray_dict(my_info_dict, self.comm,
-                                                             broadcast=True)        
+                                        broadcast=True)
         for name in info_dict:
             name_flags.append(eval(name))
         name_flags = np.sort(name_flags)
@@ -505,7 +505,7 @@ class Contour:
                 function = path.functions[index]
                 energy = path.energies[index]
                 se = path.ses[index]
-                self.paths[path_index].add_node(nid, energy, function, se)                
+                self.paths[path_index].add_node(nid, energy, function, se)
             
     def get_rank(self, path_index, nid):
         info_array = np.zeros([self.comm.size], int)

@@ -4,7 +4,8 @@ import numpy as np
 
 from gpaw.utilities.blas import axpy, rk, gemm
 from gpaw.utilities.lapack import inverse_cholesky
-from gpaw.utilities import elementwise_multiply_add, utilities_vdot, utilities_vdot_self
+from gpaw.utilities import elementwise_multiply_add, utilities_vdot,\
+    utilities_vdot_self
 from gpaw.utilities import unpack
 from gpaw.eigensolvers.eigensolver import Eigensolver
 from gpaw.mpi import run

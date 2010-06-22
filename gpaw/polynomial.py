@@ -7,10 +7,11 @@ class Polynomial:
     def __init__(self, values, coords, order):
         """Construct a polynomial p(x,y,z)."""
         
-        if (order < 0):
-            raise "Error in Polynomial: Order of the polynomial is below zero."
-        if (order > 2):
-            raise "Error in Polynomial: Polynomials higher than quadratic (order =2) are not yet supported."
+        if order < 0:
+            raise 'Error in Polynomial: Order of the polynomial is below zero.'
+        if order > 2:
+            raise ('Error in Polynomial: Polynomials higher than quadratic '
+                   '(order =2) are not yet supported.')
         
         self.order = order
         if order == 0:
@@ -77,7 +78,8 @@ class Polynomial:
         elif self.order == 2:
             return 0.0
         
-        raise "Error in Polynomial: Polynomials higher than quadratic (order =2) are not yet supported."
+        raise ('Error in Polynomial: Polynomials higher than quadratic '
+               '(order =2) are not yet supported.')
 
     def value(self, x, y, z):
         if self.order == 0:
@@ -97,4 +99,5 @@ class Polynomial:
                 + self.c[2][4] * x*z \
                 + self.c[2][5] * y*z
         else:
-            raise "Error in Polynomial: Polynomials higher than quadratic (order =2) are not yet supported."
+            raise ('Error in Polynomial: Polynomials higher than '
+                   'quadratic (order =2) are not yet supported.')

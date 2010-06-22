@@ -5,7 +5,8 @@ from gpaw.utilities.tools import tri2full
 from gpaw.lcao.projected_wannier import dots
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.lfc import NewLocalizedFunctionsCollection as LFC
-from gpaw.lcao.tools import remove_pbc, get_lcao_hamiltonian, get_lead_lcao_hamiltonian
+from gpaw.lcao.tools import remove_pbc, get_lcao_hamiltonian, \
+    get_lead_lcao_hamiltonian
 from gpaw.mpi import world
 from gpaw.mpi import world as w
 from gpaw import mpi
@@ -73,7 +74,8 @@ class LocalizedFunctions:
                 a_iG1 *= self.vt_G[start_c[0]:stop_c[0],
                                    start_c[1]:stop_c[1],
                                    start_c[2]:stop_c[2]].reshape((-1,))
-            return self.gd.dv * np.inner(a_iG1, b_iG)  * self.phase * np.conj(other.phase)
+            return (self.gd.dv * np.inner(a_iG1, b_iG)  * self.phase *
+                    np.conj(other.phase))
         else:
             return None
         
@@ -142,11 +144,12 @@ class AtomCenteredFunctions(LocalizedFunctions):
         assert gd.orthogonal
         corner_c = np.ceil(spos_c * gd.N_c - pos * cell_c / h_c).astype(int)
         self.center = pos * cell_c / h_c - corner_c
-        size_c = np.ceil(spos_c * gd.N_c + \
+        size_c = np.ceil(spos_c * gd.N_c +
                          pos * cell_c / h_c).astype(int) - corner_c
 
         smallgd = GridDescriptor(N_c=size_c + 1,
-                                 cell_cv=(np.dot(A,np.diag(h_c * (size_c + 1))).T),
+                                 cell_cv=(np.dot(A, np.diag(h_c * 
+                                                            (size_c + 1))).T),
                                  pbc_c=False,
                                  comm=mpi.serial_comm)
 
@@ -644,19 +647,20 @@ class STM:
                 2. basis functions (bfs_comm)        
 
            Assume a processor grid of NxM CPU's. The first axis corresponds
-           to a parallelization over tip positions an the second axis corresponds
-           to a parallelization over basis functions:
+           to a parallelization over tip positions an the second axis 
+           corresponds to a parallelization over basis functions:
 
            1. The tip positions are distributed among the N rows
               of the cpu grid.
-           2. For each tip position the basis functions are distributed over the M
-              colums of the processor grid.
+           2. For each tip position the basis functions are distributed over
+              the M colums of the processor grid.
 
-           Primarily, the overlap Hamiltonian at each tip position is calculated.
-           Secondly the transmission function is evaluated for each tip-position.
-           Since the energy grid is distributed over all processors, the total transmission
-           has to be calculated in succesive steps by sending the Green's function matrices
-           along the N-axis of the processor grid. 
+           Primarily, the overlap Hamiltonian at each tip position is
+           calculated.  Secondly the transmission function is
+           evaluated for each tip-position.  Since the energy grid is
+           distributed over all processors, the total transmission has
+           to be calculated in succesive steps by sending the Green's
+           function matrices along the N-axis of the processor grid.
          """
 
         dtype = 'float'        
@@ -683,7 +687,8 @@ class STM:
             stop = l * (dcomm.rank + 1) + rest
 
         gpts_i = gpts_i[start:stop] # gridpoints on this cpu
-        V_g = np.zeros((len(gpts_i), self.nj, self.ni), dtype=dtype) # V_ij's on this cpu
+        V_g = np.zeros((len(gpts_i), self.nj, self.ni), 
+                       dtype=dtype) # V_ij's on this cpu
         
         for i, gpt in enumerate(gpts_i):
             x = gpt / N_c[1]
@@ -724,8 +729,8 @@ class STM:
         self.stm_calc.energies_req = self.stm_calc.energies.copy()
         for i in range(dcomm.size - 1): # parallel run over tip positions
             # send Green functions along the domain_comm axis
-            # tip and surface Green's functions have to be send separately, since
-            # in general they do not have the same shapes
+            # tip and surface Green's functions have to be send separately,
+            # since in general they do not have the same shapes
             rank_send = (dcomm.rank + 1) % dcomm.size
             rank_receive = (dcomm.rank - 1) % dcomm.size
 
@@ -773,7 +778,8 @@ class STM:
                 self.log.flush() 
 
             for j, V in enumerate(V_g):
-                T_pe[j, estart:estart + nepts] = self.stm_calc.get_transmission(V)
+                T_pe[j, estart:estart + nepts] = \
+                    self.stm_calc.get_transmission(V)
         
             T = time.localtime()
             if world.rank == 0:
@@ -818,7 +824,8 @@ class STM:
         if i2 < i1:
             step = -1
 
-        I_g = np.sign(bias)*np.trapz(x=energies[i1:i2:step], y=T_pe[:,i1:i2:step])
+        I_g = np.sign(bias) * np.trapz(x=energies[i1:i2:step], 
+                                       y=T_pe[:, i1:i2:step])
         bcomm.sum(I_g)
         I_g *= 77466.1509 # units are nA
 
@@ -994,7 +1001,8 @@ class STM:
         scan3d = pickle.load(open(filename))
         self.scans['scan3d'] = scan3d
 
-    def plot(self, repeat=(1, 1), vmin=None, vmax = None, show = True, label=None):
+    def plot(self, repeat=(1, 1), vmin=None, vmax = None, show = True,
+             label=None):
         import matplotlib
         import pylab
         from pylab import ogrid, imshow, cm, colorbar
@@ -1199,7 +1207,8 @@ class TipCell:
                 areas[i] = abs(area)
             area_min_index = np.where(areas == areas.min())[0].min()
             theta_min = thetas[area_min_index]
-            newcell_cv, origo_c = smallestbox(tip_cell_cv, srf_cell_cv, theta_min)
+            newcell_cv, origo_c = smallestbox(tip_cell_cv, srf_cell_cv, 
+                                              theta_min)
             tip_pos_av = np.dot(rotate(theta_min), tip_pos_av.T).T + origo_c
             newcell_c = np.array([la.norm(cell_cv[x]) for x in range(3)])
             newsize2_c = np.around(newcell_c / sgd.h_cv.diagonal()).astype(int)
@@ -1357,10 +1366,14 @@ class TipCell:
                         x0 = gpt_r[0] - C000[0]
                         y0 = gpt_r[1] - C000[1]
                         C = np.zeros((4,2))
-                        C1 = np.array([[vt_G0[tuple(C000%shape0)], vt_G0[tuple(C001 % shape0)]],
-                                      [ vt_G0[tuple(C010 % shape0)], vt_G0[tuple(C011 % shape0)]]])
-                        C2 = np.array([[vt_G0[tuple(C100 % shape0)], vt_G0[tuple(C101 % shape0)]],
-                                      [ vt_G0[tuple(C110 % shape0)], vt_G0[tuple(C111 % shape0)]]])
+                        C1 = np.array([[vt_G0[tuple(C000%shape0)], 
+                                        vt_G0[tuple(C001 % shape0)]],
+                                       [vt_G0[tuple(C010 % shape0)],
+                                        vt_G0[tuple(C011 % shape0)]]])
+                        C2 = np.array([[vt_G0[tuple(C100 % shape0)],
+                                        vt_G0[tuple(C101 % shape0)]],
+                                       [vt_G0[tuple(C110 % shape0)],
+                                        vt_G0[tuple(C111 % shape0)]]])
                         Z = np.array([1 - z00, z00])
                         X = np.array([1 - x0, x0])
                         Y = np.array([1 - y0, y0])
@@ -1413,11 +1426,14 @@ class SrfCell:
         srf_shape  = sgd.N_c[:2]
         extension1 = ext1_c / srf_shape.astype(float)
         extension2 = ext2_c / srf_shape.astype(float)
-        newsize_c = ext1_c + ext2_c + sgd.N_c[:2] # Size of the extended grid 
-                                                  # in the transverse directions.
+
+        # Size of the extended grid in the transverse directions.
+        newsize_c = ext1_c + ext2_c + sgd.N_c[:2]
         sizez = srf_vt_G.shape[2]
-        newsizez = sizez + 10.0 / Bohr / sgd.h_cv[2, 2] # New size of the extended grid
-                                                    # in the z direction.
+
+        # New size of the extended grid in the z direction.
+        newsizez = sizez + 10.0 / Bohr / sgd.h_cv[2, 2]
+        
         # The extended potential
         vt_G = np.zeros(tuple(newsize_c) + (newsizez,))
  
@@ -1450,7 +1466,9 @@ class SrfCell:
         self.vt_G = vt_G
         newsize_c = np.resize(newsize_c, 3)
         newsize_c[2] = sgd.N_c[2]
-        newcell_cv = (newsize_c + 1) * sgd.cell_cv.T / sgd.cell_cv.diagonal() * sgd.h_cv.diagonal()
+        newcell_cv = (newsize_c + 1) * (sgd.cell_cv.T /
+                                        sgd.cell_cv.diagonal() *
+                                        sgd.h_cv.diagonal())
         newgd = GridDescriptor(N_c=newsize_c + 1,
                                cell_cv=newcell_cv,
                                pbc_c=False,
@@ -1479,9 +1497,9 @@ class SrfCell:
         self.ext1 = ext1_c
 
         # Add an appropriate number of periodic images. The function values are 
-        # only saved in the memory, f_iGs, for those functions belonging to the original
-        # unit cell. In order to be included a periodic image has to have a finite overlap
-        # with the extended surface cell.
+        # only saved in the memory, f_iGs, for those functions belonging to 
+        # the original unit cell. In order to be included a periodic image has
+        # to have a finite overlap with the extended surface cell.
         origo = np.array([0, 0])
         list = []
         f_iGs = {}
@@ -1491,13 +1509,15 @@ class SrfCell:
             list.append(f)
             for n in range(-100, 100, 1):
                 for m in range(-100, 100, 1):
-                    R = np.array((n, m)) # Translation vector of the periodic image
+                    # Translation vector of the periodic image:
+                    R = np.array((n, m))
                     newcorner_c = f.corner_c[:2] +  R * sgd.N_c[:2]
                     start_c = np.maximum(newcorner_c, origo)
                     stop_c = np.minimum(newcorner_c + f.size_c[:2],
                                         newgd.n_c[:2])
                     
-                    # Check if the periodic image has an overlap with the extended surface cell.        
+                    # Check if the periodic image has an overlap with the 
+                    # extended surface cell.        
                     if (start_c < stop_c).all(): 
                         newcorner_c = np.resize(newcorner_c, 3)
                         newcorner_c[2] = f.corner_c[2]
