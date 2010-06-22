@@ -12,7 +12,8 @@
 # This test also ensures that lcao forces are tested with non-pbc.
 import numpy as np
 from numpy import array
-from ase import Atoms, Bohr
+from ase import Atoms
+from ase.units import Bohr
 from gpaw import GPAW
 from gpaw.atom.basis import BasisMaker
 
