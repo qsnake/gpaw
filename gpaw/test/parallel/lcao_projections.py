@@ -1,5 +1,7 @@
-from ase import *
-from gpaw import *
+import numpy as np
+from ase.data.molecules import molecule
+
+from gpaw import GPAW
 from gpaw.lcao.projected_wannier import get_lcao_projections_HSP
 
 atoms = molecule('C2H2')
