@@ -1,6 +1,6 @@
 # see changeset 4891
-from ase import *
-from gpaw import *
+from ase import Atoms
+from gpaw import GPAW
 from gpaw.mpi import world
 from gpaw.test import equal
 
