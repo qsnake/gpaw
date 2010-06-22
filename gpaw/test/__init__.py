@@ -107,7 +107,7 @@ tests = [
 #    'usesymm2.py',
     'eed.py',
     'mixer.py',
-    'mixer_broydn.py',
+    'broydenmixer.py',
     'restart.py',
     'mgga_restart.py',
     'gga_atom.py',
