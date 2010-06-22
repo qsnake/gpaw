@@ -1,4 +1,4 @@
 # Segmentation fault with acml's _dotblas.so
-import numpy
+import numpy as np
 from numpy.core.multiarray import dot
-b = numpy.ones(13, numpy.complex); dot(b, b)
+b = np.ones(13, np.complex); dot(b, b)
