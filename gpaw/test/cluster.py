@@ -1,10 +1,11 @@
 import numpy as np
 
-from ase import *
+from ase import Atoms, Atom
 from ase.parallel import barrier, rank, size
 from gpaw.cluster import Cluster
 from gpaw.test import equal
 from ase.data.molecules import molecule
+from math import pi, sqrt
 
 R = 2.0
 CO = Atoms([Atom('C', (1, 0, 0)), Atom('O', (1, 0, R))])
@@ -94,4 +95,3 @@ O 0 0 1. 6. 7. 8."""
     barrier()
 
     CO = Cluster(filename=fxyz)
-
