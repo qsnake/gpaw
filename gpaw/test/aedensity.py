@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import numpy as np
 
-from ase import *
+from ase import Atom, Atoms
 from ase.parallel import rank
 
 from gpaw import GPAW

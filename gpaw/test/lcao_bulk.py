@@ -1,4 +1,5 @@
-from ase import *
+import numpy as np
+from ase import Atoms
 from gpaw import GPAW
 from gpaw.atom.basis import BasisMaker
 from gpaw.test import equal
@@ -22,7 +23,6 @@ for a in A:
     e.append(bulk.get_potential_energy())
     niter.append(calc.get_number_of_iterations())
 
-import numpy as np
 a = np.roots(np.polyder(np.polyfit(A, e, 2), 1))[0]
 print 'a =', a
 equal(a, 2.65573, 0.0001)

@@ -1,5 +1,5 @@
 from gpaw import GPAW, restart, FermiDirac, PoissonSolver
-from ase import *
+from ase import Atoms
 from gpaw.test import equal, gen
 import os
 from gpaw.mpi import world

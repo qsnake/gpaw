@@ -1,5 +1,5 @@
-from ase import *
-from gpaw import *
+from ase import Atoms
+from gpaw import GPAW, FermiDirac
 from gpaw.test import equal
 
 a = 2.87

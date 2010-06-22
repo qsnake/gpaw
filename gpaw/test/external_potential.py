@@ -1,7 +1,7 @@
 import os
 import sys
 
-from ase import *
+from ase import Atom, Atoms
 from ase.units import Bohr, Hartree
 from ase.io.cube import write_cube
 from gpaw import GPAW

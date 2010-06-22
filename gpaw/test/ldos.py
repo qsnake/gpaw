@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from ase import *
+from ase import Atom, Atoms
 from gpaw import GPAW, FermiDirac
 from gpaw.utilities.dos import raw_orbital_LDOS, raw_wignerseitz_LDOS, RawLDOS
 from gpaw.test import equal

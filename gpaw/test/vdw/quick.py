@@ -1,5 +1,5 @@
 import os
-from ase import *
+from ase import Atoms
 from gpaw import GPAW
 from gpaw.vdw import FFTVDWFunctional
 

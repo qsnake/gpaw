@@ -1,5 +1,6 @@
 import os
-from ase import *
+from ase import Atoms
+from ase.units import Hartree
 from gpaw import GPAW
 from gpaw.test import equal, gen
 import gpaw.mpi as mpi

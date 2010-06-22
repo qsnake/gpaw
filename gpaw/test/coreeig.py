@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from ase import *
+from ase import Atoms
 from gpaw import GPAW, restart, extra_parameters
 from gpaw.test import equal
 

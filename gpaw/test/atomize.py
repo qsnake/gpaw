@@ -1,4 +1,4 @@
-from ase import *
+from ase import Atom, Atoms
 from gpaw import GPAW, PoissonSolver
 from gpaw.test import equal
 

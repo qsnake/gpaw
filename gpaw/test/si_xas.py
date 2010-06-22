@@ -1,6 +1,6 @@
 import os
 from math import pi, cos, sin
-from ase import *
+from ase import Atom, Atoms
 from ase.parallel import rank, barrier
 from gpaw import GPAW, FermiDirac
 from gpaw.test import equal, gen

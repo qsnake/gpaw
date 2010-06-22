@@ -1,4 +1,4 @@
-from ase import *
+from ase import Atom, Atoms
 from gpaw import GPAW, extra_parameters
 from gpaw.utilities.sic import NSCFSIC
 

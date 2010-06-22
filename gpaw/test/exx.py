@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import os
-from ase import *
-from gpaw import *
+from ase import Atom, Atoms
+from gpaw import GPAW, PoissonSolver
 from gpaw.test import equal
 
 loa = Atoms([Atom('Be', (0, 0, 0)), Atom('Be', (2.45, 0, 0))])

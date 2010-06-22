@@ -1,6 +1,6 @@
-from ase import *
-from gpaw import *
-from gpaw.tddft import *
+from ase import Atoms
+from gpaw import GPAW
+from gpaw.tddft import TDDFT
 from gpaw.tddft.ehrenfest import EhrenfestVelocityVerlet
 import sys
 

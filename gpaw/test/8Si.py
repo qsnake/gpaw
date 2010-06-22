@@ -1,4 +1,4 @@
-from ase import *
+from ase import Atoms
 from ase.calculators.test import numeric_force
 from gpaw import GPAW, FermiDirac, PoissonSolver
 from gpaw.test import equal

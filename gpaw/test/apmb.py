@@ -1,4 +1,4 @@
-from ase import *
+from ase import Atom, Atoms
 from gpaw.test import equal
 from gpaw import GPAW, mpi
 from gpaw.lrtddft import LrTDDFT

@@ -1,5 +1,5 @@
-from ase import *
-from gpaw import *
+from ase import Atoms
+from gpaw import FermiDirac, Mixer
 from gpaw.transport.calculator import Transport 
 from gpaw.atom.basis import BasisMaker
 from gpaw.poisson import PoissonSolver

@@ -1,9 +1,9 @@
 import os
 
-from ase import *
+from ase import Atom, Atoms
 from ase.parallel import size, rank
 
-from gpaw import *
+from gpaw import GPAW, FermiDirac
 from gpaw.analyse.simple_stm import SimpleStm
 from gpaw.test import equal
 
