@@ -2,7 +2,7 @@
 
 import os
 from gpaw import GPAW
-from ase import *
+from ase import Atom, Atoms
 from gpaw.test import equal
 
 ##endings = ['nc']
