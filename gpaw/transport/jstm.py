@@ -246,7 +246,7 @@ class STM:
         self.potential_shift = 0
        
         #initialize communicators
-        if kwargs.has_key('cpu_grid'):
+        if 'cpu_grid' in kwargs:
             self.input_parameters['cpu_grid'] = kwargs['cpu_grid']
         
         if self.input_parameters['cpu_grid'] == None: # parallelization over domains only
@@ -363,7 +363,7 @@ class STM:
         
         assert len(bfs_indices) >= bcomm.size
 
-        l = len(bfs_indices) / bcomm.size
+        l = len(bfs_indices) // bcomm.size
         rest = len(bfs_indices) % bcomm.size
 
         if bcomm.rank < rest:
@@ -462,7 +462,7 @@ class STM:
 
             # distribute energy grid over all cpu's
             self.energies = energies # global energy grid
-            l = len(energies) / world.size # minimum number of enpts per cpu
+            l = len(energies) // world.size # minimum number of enpts per cpu
             rest = len(energies) % world.size # first #rest cpus get +1 enpt
 
             if world.rank < rest:
@@ -673,7 +673,7 @@ class STM:
         dcomm = self.domain_comm
         N_c = self.srf.wfs.gd.N_c[:2]
         gpts_i = np.arange(N_c[0] * N_c[1])
-        l = len(gpts_i) / dcomm.size
+        l = len(gpts_i) // dcomm.size
         rest = len(gpts_i) % dcomm.size
         if dcomm.rank < rest:
             start = (l + 1) * dcomm.rank
@@ -691,7 +691,7 @@ class STM:
             V_g[i] =  self.get_V((x, y))
 
         #get the distribution of the energy grid over CPUs
-        el = len(self.energies) / world.size # minimum number of enpts per cpu
+        el = len(self.energies) // world.size # minimum number of enpts per cpu
         erest = len(self.energies) % world.size # first #rest cpus get +1 enpt
         if world.rank < erest:
             estart = (el + 1) * world.rank
@@ -787,7 +787,7 @@ class STM:
         # distribute energy grid over all cpu's
         bcomm = self.bfs_comm
         energies = self.energies # global energy grid
-        l = len(energies) / bcomm.size 
+        l = len(energies) // bcomm.size 
         rest = len(energies) % bcomm.size
 
         if bcomm.rank < rest:
@@ -927,7 +927,7 @@ class STM:
         self.scans['fullscan'] = (data, abs(scans[key]))
 
     def linescan(self, startstop=None):
-        if self.scans.has_key('fullscan'):
+        if 'fullscan' in self.scans:
             data, scan = self.scans['fullscan']
             cell_cv = data[3] #XXX
             cell_c = data[4] #XXX
@@ -965,7 +965,7 @@ class STM:
                 C[1,1] = C[0, 0] + np.array([1, 1])
                 xd = (grpt % 1)[0]
                 yd = (grpt % 1)[1]
-                if not self.scans.has_key('fullscan'):
+                if not 'fullscan' in self.scans:
                     I1 = self.get_current(C[0, 0]) * (1 - xd) \
                         + self.get_current(C[1, 0]) * xd
                     I2 = self.get_current(C[0, 1]) * (1 - xd) \
@@ -980,7 +980,7 @@ class STM:
                     I = I1 * (1 - yd) + I2 * yd
 
             else:
-                if not self.scans.has_key('fullscan'):
+                if not 'fullscan' in self.scans:
                     I = self.get_current(grpt.astype(int))
                 else:                
                     I = scan[tuple(grpt.astype(int))]
