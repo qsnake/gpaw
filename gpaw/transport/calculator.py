@@ -316,7 +316,7 @@ class Transport(GPAW):
         self.nspins = self.wfs.nspins
         self.npk = len(self.wfs.ibzk_kc)
         self.my_npk = len(self.wfs.ibzk_qc)
-        self.my_nspins = len(self.wfs.kpt_u) / self.my_npk
+        self.my_nspins = len(self.wfs.kpt_u) // self.my_npk
 
         self.ntklead = self.pl_kpts[self.d]
  
@@ -683,7 +683,7 @@ class Transport(GPAW):
         
         for i in range(self.lead_num):
             if self.la_index is None:
-                n_layer_atoms = len(self.lead_atoms[i]) / self.nleadlayers[i]
+                n_layer_atoms = len(self.lead_atoms[i]) // self.nleadlayers[i]
                 self.lead_layer_index[i][0] = get_atom_indices(self.mol_atoms, setups)
                 begin = 0
                 for j in range(1, self.nleadlayers[i] + 1):
@@ -2139,7 +2139,7 @@ class Transport(GPAW):
             sum += ns * npk * nb**2 * unit
             #print 'lead matrix memery  MB',  sum *1e-6
            
-            ntgt = 200 / self.wfs.gd.comm.size
+            ntgt = 200 // self.wfs.gd.comm.size
             tmp = self.lead_num * ns * npk * ntgt * nb**2 * unit_complex
             sum += tmp
             #print 'selfenergy memery  MB',  tmp *1e-6
