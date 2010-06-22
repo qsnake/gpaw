@@ -169,30 +169,42 @@ alias lines in .bashrc or cshrc.
 
 The syntax is 
 Transmission: 
+
 >>> tc X Y
+
 Density of States:
+
 >>> dos X Y
+
 X is the bias step index, Y is the ionic step index, the default for Y is 0
 
 Average Effective Potential or Pseudo Density(average x, y directions):
+
 >>> vt X Y
+
 Here X support a linking symbol -, i.e. vt 5-0 plot the potential difference
 for the bias step 5 and bias step 0, which can be used to judge the 
 screening effects. In this plot, x axis is the realspace position in transport
 direction, and the potential of one principle layer, which is from the 
 electrode calculation, will be attached outside.
+
 >>> nt X Y
+
 Similiar to vt X Y, it plot the pseudo density.
 
 more...
+
 >>> vtx X Y
 >>> vty X Y
 >>> ntx X Y
 >>> nty X Y
+
 These commands make 2-d color plots, the data is average in one direction(x or y).
 
 Partial Density of States:
+
 >>> pdos X Y ZZZ
+
 ZZZ is a description of the partial orbital,
 i.e., C=40_S plot the S orbital DOS of a C atom whose index is 40;
 or,   C]30[40_P plot the P orbital DOS of some C atoms whose index range from 30 to 40;
@@ -205,16 +217,22 @@ equalivalent to pdos X Y A_A. This command support multi inputparameters seperat
 space.
 
 IV Characteristic:
+
 >>> iv X
+
 It plot out the IV curve for the fisrt X bias points.
 
 Charge:
+
 >>> charge X Y ZZZ
+
 Usage is similiar to pdos, it plot the charge of the partial orbitals as a function 
 of bias.
 
 Force:
+
 >>> force X Y
+
 It plots the force of bias step X and ionic step Y, X here also supports linking symbol -,
 i.e., force 1-0 plot the force differnece for bias step 1 and bias step 0.
 
