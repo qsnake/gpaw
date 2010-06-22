@@ -1,4 +1,4 @@
-from ase import *
+from ase.data.molecules import molecule
 from gpaw import GPAW, mpi, extra_parameters, FermiDirac
 from gpaw.eigensolvers.rmm_diis import RMM_DIIS
 from gpaw.utilities import scalapack, gcd
