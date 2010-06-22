@@ -1,7 +1,9 @@
 import os
-from gpaw import *
-from ase import *
+from gpaw import GPAW, restart
+from ase import Atoms
 from gpaw.test import equal
+from math import sqrt
+import numpy as np
 
 modes = ['gpw']
 try:
