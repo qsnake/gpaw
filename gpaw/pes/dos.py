@@ -1,10 +1,10 @@
-"""Photoelectron spectra from the (shifted) DOS approach.
+"""Photoelectron spectra from the (shifted) DOS approach."""
 
-"""
 import numpy as np
+from ase.units import Hartree
 
-from ase import Hartree
 from gpaw.pes import BasePES
+
 
 class DOSPES(BasePES):
     """PES derived from density of states with shifted KS-energies.
@@ -26,9 +26,9 @@ class DOSPES(BasePES):
         for kpt in self.c_m.wfs.kpt_u:
             for e, f in zip(kpt.eps_n, kpt.f_n):
                 if f > f_min:
-                    self.be.append(- e * Hartree)
+                    self.be.append(-e * Hartree)
                     self.f.append(f)
-                    ex_m.append(- e * Hartree)
+                    ex_m.append(-e * Hartree)
         self.be = np.array(self.be)
 
         if self.shift is True:

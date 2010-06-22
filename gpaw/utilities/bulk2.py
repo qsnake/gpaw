@@ -13,7 +13,7 @@ import numpy as np
 from ase.atoms import Atoms, string2symbols
 from ase.utils.eos import EquationOfState
 from ase.calculators.emt import EMT
-from ase.calculators import SinglePointCalculator
+from ase.calculators.singlepoint import SinglePointCalculator
 from ase.io.trajectory import PickleTrajectory
 from ase.optimize.lbfgs import LBFGS
 from ase.constraints import FixAtoms

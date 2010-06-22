@@ -57,7 +57,7 @@ assert err < 3e-3
 fd = not not False
 
 if fd:
-    from ase.calculators import numeric_forces
+    from ase.calculators.test import numeric_forces
     F_ac_fd = numeric_forces(system)
     print 'Self-consistent forces'
     print F_ac

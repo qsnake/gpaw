@@ -57,7 +57,7 @@ print 'max force error', ferr
 fdcheck = False
 
 if fdcheck:
-    from ase.calculators import numeric_forces
+    from ase.calculators.test import numeric_forces
     F_ac_fd = numeric_forces(mol)
 
     print 'Self-consistent forces'

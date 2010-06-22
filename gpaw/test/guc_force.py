@@ -60,7 +60,7 @@ equal(err, 0, 1e-3)
 fd = False
 
 if fd:
-    from ase.calculators import numeric_forces
+    from ase.calculators.test import numeric_forces
     calc.set(usesymm=False)
     F_ac_fd = numeric_forces(system)
     print 'Self-consistent forces'

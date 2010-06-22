@@ -1,6 +1,6 @@
 from gpaw import GPAW, restart, FermiDirac
 from ase import Atoms
-from ase.calculators import numeric_force
+from ase.calculators.test import numeric_force
 from gpaw.test import equal
 import numpy as np
 

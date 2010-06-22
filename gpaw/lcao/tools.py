@@ -6,7 +6,7 @@ import numpy as np
 from gpaw.mpi import world, rank, MASTER
 from gpaw.basis_data import Basis
 from gpaw.setup import types2atomtypes
-from ase.calculators import SinglePointCalculator
+from ase.calculators.singlepoint import SinglePointCalculator
 
 
 def get_bf_centers(atoms, basis=None):

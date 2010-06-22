@@ -53,7 +53,7 @@ ref = array([[0.0, 0.0,  4.61734874],
              [0.0, 0.0, -4.61734856]])
 
 if fd:
-    from ase.calculators import numeric_forces
+    from ase.calculators.test import numeric_forces
     ref = numeric_forces(system, axes=[2], d=0.002)
     print 'Calced'
     print F_ac
