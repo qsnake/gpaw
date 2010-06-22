@@ -1,6 +1,6 @@
 import os
 from math import pi, cos, sin
-from ase import *
+from ase import Atom, Atoms
 from ase.parallel import rank, barrier
 from gpaw import GPAW
 from gpaw.xas import XAS
@@ -24,7 +24,7 @@ niter = calc.get_number_of_iterations()
 
 import gpaw.mpi as mpi
 
-if mpi.size == 1: # XXX
+if mpi.size == 1: #
     xas = XAS(calc)
     x, y = xas.get_spectra()
     e1_n = xas.eps_n
