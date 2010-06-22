@@ -1,5 +1,5 @@
-from ase import *
-from gpaw import *
+from ase import Atom, Atoms
+from gpaw import GPAW, Mixer
 from gpaw.test import equal
 
 a = 2.7
