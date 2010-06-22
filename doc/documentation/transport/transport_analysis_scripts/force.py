@@ -1,7 +1,7 @@
 from gpaw.transport.analysor import Transport_Plotter
 import numpy as np
 import sys
-from gpaw import *
+from gpaw import GPAW
 from pylab import *
 plotter=Transport_Plotter(0)
 plotter.read_overhead()
