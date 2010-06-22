@@ -2,7 +2,7 @@ import os
 import numpy as np
 #numpy.seterr(all='raise')
 
-from ase import *
+from ase import Atom
 from ase.io.plt import write_plt
 from gpaw.test import equal
 from gpaw import GPAW
