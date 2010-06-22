@@ -85,7 +85,7 @@ class IntCtrl:
                                dkt *1.j +nkt]
         self.eqdelta = dkt
         nRes = 8
-        if abs( nRes - (np.round((nRes - 1) / 2) * 2 + 1)) < 1e-3 :
+        if abs( nRes - (np.round((nRes - 1) // 2) * 2 + 1)) < 1e-3 :
             print 'Warning: Residue Point too close to IntPath!'
         self.eqresz = range(1, nRes, 2)
         for i in range(len(self.eqresz)):
