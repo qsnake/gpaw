@@ -1,5 +1,6 @@
 from ase.transport.tools import function_integral, fermidistribution
-from ase import Atoms, Atom, Hartree, Bohr
+from ase import Atoms, Atom
+from ase.units import Hartree, Bohr
 from gpaw import GPAW, debug, dry_run, Mixer, MixerDif, PoissonSolver
 from gpaw.poisson import FixedBoundaryPoissonSolver
 

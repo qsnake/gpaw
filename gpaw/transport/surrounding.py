@@ -1,6 +1,6 @@
 import numpy as np
 
-from ase import Hartree
+from ase.units import Hartree
 from gpaw.transport.tools import aa1d, interpolate_array, \
                           collect_atomic_matrices, distribute_atomic_matrices
 
