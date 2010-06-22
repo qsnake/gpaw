@@ -9,7 +9,7 @@ sys.stdout = sys.stderr = Out()
 
 try:
     from gpaw import GPAW, FermiDirac
-    from ase import *
+    from ase import Atom, Atoms
 
     a = 5.0
     h = 0.2
