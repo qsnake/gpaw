@@ -700,7 +700,7 @@ class Setup(BaseSetup):
         self.M_pp = M_pp
 
         if xcfunc.is_gllb():
-            if self.extra_xc_data.has_key('core_f'):
+            if 'core_f' in self.extra_xc_data:
                 self.wnt_lqg = wnt_lqg
                 self.wn_lqg = wn_lqg
                 self.fc_j = self.extra_xc_data['core_f']
