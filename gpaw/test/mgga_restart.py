@@ -1,12 +1,10 @@
 import os
 import sys
 
-from ase import *
-
+from ase import Atom
 from gpaw import GPAW
 from gpaw.cluster import Cluster
 from gpaw.test import equal
-
 
 fname='H2_PBE.gpw'
 fwfname='H2_wf_PBE.gpw'
