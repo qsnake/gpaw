@@ -206,7 +206,7 @@ class CHI:
         kk_Gv = gemmdot(self.q_c + self.Gvec_Gc, self.bcell_cv.copy(), beta=0.0)
         for a, id in enumerate(setups.id_a):
             Z, type, basis = id
-            if not phi_Gp.has_key(Z):
+            if not Z in phi_Gp:
                 phi_Gp[Z] = two_phi_planewave_integrals(kk_Gv, setups[a])
             phi_aGp.append(phi_Gp[Z])
 
