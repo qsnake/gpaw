@@ -12,7 +12,7 @@ Square root
 
 Square roots are calculated like this: ``2**0.5`` or ``sqrt(2)`` (the
 ``sqrt`` function must first be imported: ``from math import sqrt`` or
-``from ase import *``).
+``from numpy import sqrt``).
 
 
 Integer division

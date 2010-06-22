@@ -56,8 +56,8 @@ pseudowavefunction.
 
 Exciting the LUMO in CO::
 
-    from ase import *
-    from gpaw import *
+    from ase.data.molecules import molecule
+    from gpaw import GPAW
     from gpaw import dscf
 
     # Ground state calculation
@@ -78,7 +78,7 @@ Exciting the LUMO in CO::
     # Obtain the pseudowavefunctions and projector overlaps of the
     # state which is to be occupied. n=5,6 is the 2pix and 2piy orbitals
     n = 5
-    molecule = [0,1]
+    molecule = [0, 1]
     wf_u = [kpt.psit_nG[n] for kpt in calc.wfs.kpt_u]
     p_uai = [dict([(molecule[a], P_ni[n]) for a, P_ni in kpt.P_ani.items()])
              for kpt in calc.wfs.kpt_u]
@@ -94,7 +94,8 @@ Exciting the LUMO in CO::
 
     CO.set_calculator(calc_es)
     lumo = dscf.AEOrbital(calc_es, wf_u, p_uai)
-    #lumo = dscf.MolecularOrbital(calc, weights={0:[0,0,0,1], 1:[0,0,0,-1]})
+    #lumo = dscf.MolecularOrbital(calc, weights={0: [0, 0, 0,  1],
+                                                 1: [0, 0, 0, -1]})
     dscf.dscf_calculation(calc_es, [[1.0, lumo, 1]], CO)
 
     E_es = CO.get_potential_energy()

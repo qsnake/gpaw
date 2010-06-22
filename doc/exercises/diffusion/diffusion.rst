@@ -146,8 +146,8 @@ Plotting the atoms
 these can be integrated in a basic script or written afterwards from a
 :file:`.gpw` file. In the example above one can use
 
-  >>> from ase import * 
-  >>> from gpaw import *
+  >>> from ase.io import write
+  >>> from gpaw import restart
   >>> atoms, calc = restart('ontop.gpw')
   >>> n = calc.get_pseudo_density()
   >>> write('relax.cube', atoms, data=n)

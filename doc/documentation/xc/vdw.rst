@@ -48,8 +48,8 @@ ways.
 Self Consistent vdW-DF Calculation
 ----------------------------------
 
->>> from ase import *
->>> from gpaw import *
+>>> from ase.all import *
+>>> from gpaw import GPAW
 >>> from gpaw.vdw import FFTVDWFunctional
 >>> vdw = FFTVDWFunctional(nspins=1, verbose=True)
 >>> atoms = ...

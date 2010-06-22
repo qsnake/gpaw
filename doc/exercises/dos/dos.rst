@@ -14,8 +14,8 @@ the density of states (DOS) for the three Fe configurations (on the
   the non-magnetic phase - is it magnetic at all?!  Try to visualize
   the magnetization like this::
 
-    from ase import *
-    from gpaw import *
+    from ase.io import write
+    from gpaw import GPAW
     calc = GPAW('anti.gpw')
     atoms = calc.get_atoms()
     up = calc.get_pseudo_density(0)

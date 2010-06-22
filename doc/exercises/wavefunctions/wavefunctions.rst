@@ -32,8 +32,8 @@ molecule and compare them to results from molecular orbital theory.
   handling with :program:`VMD`. The following lines could be included in a
   script or written directly from the python promt::
 
-    from ase import *
-    from gpaw import *
+    from ase.io import write
+    from gpaw import restart
     CO, calc = restart('CO.gpw')
     for n in range(calc.get_number_of_bands()):
         wf = calc.get_pseudo_wave_function(band=n)

@@ -68,7 +68,7 @@ typing the following from the Python interpreter::
   >>> bulk = calc.get_atoms()
   >>> print bulk.get_potential_energy()
   >>> density = calc.get_pseudo_density()
-  >>> from ase import *
+  >>> from ase.io import write
   >>> write('Al.cube', bulk, data=density)
   >>> [hit CTRL-d]
   $ vmd Al.cube

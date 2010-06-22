@@ -21,8 +21,8 @@ method :meth:`get_all_electron_density` of the GPAW
 The :meth:`get_all_electron_density` method is used in the same way as
 you would normally use the :meth:`get_pseudo_density` method, i.e.:
 
->>> from gpaw import *
->>> from ase import *
+>>> from gpaw import GPAW
+>>> from ase.data.molecules import molecule
 >>> calc = GPAW()
 >>> mol = molecule('C6H6', calculator=calc)
 >>> mol.center(vacuum=5)

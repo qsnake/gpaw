@@ -8,8 +8,6 @@ compared to experimental output, e.g. from IR-spectroscopy, and they can be
 used to figure out how a molecule is bound to the surface. In this example we
 will calculate the vibrational frequencies for a water molecule.
 
-
-
 * For a simple molecule, like CO, there is only one stretching mode. How would
   you calculate the vibrational frequency of this mode?
 
@@ -22,7 +20,7 @@ will calculate the vibrational frequencies for a water molecule.
   :svn:`~doc/exercises/vibrations/h2o.py`.  An alternative is to
   use the MP2 structures from ASE's molecular database::
 
-    from ase import *
+    from ase.data.molecules import molecule
     h2o = molecule('H2O')
     h2o.center(vacuum=3.5)
 

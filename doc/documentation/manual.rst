@@ -296,7 +296,7 @@ have been provided by Briggs *et. al* PRB **54**, 14362 (1996).  The
 conversion can be done like this::
 
   >>> from gpaw.utilities.tools import cutoff2gridspacing, gridspacing2cutoff
-  >>> from ase import *
+  >>> from ase.units import Rydberg
   >>> h = cutoff2gridspacing(50 * Rydberg)
 
 

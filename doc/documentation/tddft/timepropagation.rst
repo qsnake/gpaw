@@ -33,13 +33,13 @@ in total.
 Ground state example::
 
   # Standard magic
-  from ase import *
-  from gpaw import *
+  from ase import Atoms
+  from gpaw import GPAW
   
   # Beryllium atom
-  atoms = Atoms( symbols = 'Be', 
-                 positions = [(0,0,0)],
-                 pbc = False )
+  atoms = Atoms(symbols='Be', 
+                positions=[(0, 0, 0)],
+                pbc=False)
   
   # Add 6.0 ang vacuum around the atom
   atoms.center(vacuum=6.0)
