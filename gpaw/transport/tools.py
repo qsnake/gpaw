@@ -1,5 +1,5 @@
 from gpaw.utilities import unpack
-from ase import Hartree
+from ase.units import Hartree
 import cPickle
 import numpy as np
 from gpaw.mpi import world, rank, send_string, receive_string, broadcast_string

@@ -47,7 +47,8 @@ initialTestLoader.testMethodPrefix = 'verify'
 import numpy as np
 
 from math import sin, cos
-from ase import Atoms, molecule
+from ase import Atoms
+from ase.data.molecules import molecule
 from ase.units import Bohr
 from gpaw.mpi import compare_atoms
 from gpaw.utilities.tools import md5_array
