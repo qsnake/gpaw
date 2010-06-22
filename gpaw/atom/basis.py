@@ -11,8 +11,8 @@ from ase.units import Hartree
 from gpaw.spline import Spline
 from gpaw.atom.all_electron import AllElectron, ConvergenceError
 from gpaw.atom.generator import Generator, parameters
-from gpaw.atom.polarization import PolarizationOrbitalGenerator, Reference,\
-     QuasiGaussian, default_rchar_rel, rchar_rels
+#from gpaw.atom.polarization import PolarizationOrbitalGenerator, Reference,\
+#     QuasiGaussian, default_rchar_rel, rchar_rels
 from gpaw.utilities import devnull, divrl
 from gpaw.basis_data import Basis, BasisFunction, parse_basis_name
 from gpaw.version import version
@@ -552,6 +552,10 @@ class BasisMaker:
             u, e, de, vconf, rc_fixed = self.rcut_by_energy(j, .3, 1e-2,
                                                             6., (12., .6))
 
+            default_rchar_rel = .25
+            # Defaults for each l.  Actually we don't care right now
+            rchar_rels = {}
+
             if rcharpol_rel is None:
                 rcharpol_rel = rchar_rels.get(l_pol, default_rchar_rel)
             rchar = rcharpol_rel * rc_fixed
@@ -679,3 +683,36 @@ class BasisMaker:
         if filename is not None:
             pylab.savefig(filename)
 
+
+class QuasiGaussian:
+    """Gaussian-like functions for expansion of orbitals.
+
+    Implements f(r) = A [G(r) - P(r)] where::
+
+      G(r) = exp{- alpha r^2}
+      P(r) = a - b r^2
+
+    with (a, b) such that f(rcut) == f'(rcut) == 0.
+    """
+    def __init__(self, alpha, rcut, A=1.):
+        self.alpha = alpha
+        self.rcut = rcut
+        expmar2 = np.exp(-alpha * rcut**2)
+        a = (1 + alpha * rcut**2) * expmar2
+        b = alpha * expmar2
+        self.a = a
+        self.b = b
+        self.A = A
+        
+    def __call__(self, r):
+        """Evaluate function values at r, which is a numpy array."""
+        condition = (r < self.rcut) & (self.alpha * r**2 < 700.)
+        r2 = np.where(condition, r**2., 0.) # prevent overflow
+        g = np.exp(-self.alpha * r2)
+        p = (self.a - self.b * r2)
+        y = np.where(condition, g - p, 0.)
+        return self.A * y
+
+    def renormalize(self, norm):
+        """Divide function by norm."""
+        self.A /= norm

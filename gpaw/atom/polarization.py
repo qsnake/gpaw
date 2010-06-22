@@ -18,36 +18,6 @@ from gpaw.atom.configurations import configurations
 from gpaw.testing.amoeba import Amoeba
 from gpaw.utilities import devnull
 
-class QuasiGaussian:
-    """Gaussian-like functions for expansion of orbitals.
-
-    Implements f(r) = A [G(r) - P(r)] where::
-
-      G(r) = exp{- alpha r^2}
-      P(r) = a - b r^2
-
-    with (a, b) such that f(rcut) == f'(rcut) == 0.
-    """
-    def __init__(self, alpha, rcut, A=1.):
-        self.alpha = alpha
-        self.rcut = rcut
-        a, b = get_polynomial_coefficients(alpha, rcut)
-        self.a = a
-        self.b = b
-        self.A = A
-        
-    def __call__(self, r):
-        """Evaluate function values at r, which is a numpy array."""
-        condition = (r < self.rcut) & (self.alpha * r**2 < 700.)
-        r2 = np.where(condition, r**2., 0.) # prevent overflow
-        g = np.exp(-self.alpha * r2)
-        p = (self.a - self.b * r2)
-        y = np.where(condition, g - p, 0.)
-        return self.A * y
-
-    def renormalize(self, norm):
-        """Divide function by norm."""
-        self.A /= norm
 
 class LinearCombination:
     """Represents a linear combination of 1D functions."""
@@ -63,17 +33,6 @@ class LinearCombination:
     def renormalize(self, norm):
         """Divide coefficients by norm."""
         self.coefs = [coef/norm for coef in self.coefs]
-
-def get_polynomial_coefficients(alpha, rcut):
-    """Determine polynomial used to truncate Gaussians.
-
-    Returns the coefficients (a, b) of the polynomial p(r) = a - b r^2,
-    such that the polynomial joins exp(-alpha r**2) differentiably at r=rcut.
-    """
-    expmar2 = math.exp(-alpha * rcut**2)
-    a = (1 + alpha * rcut**2) * expmar2
-    b = alpha * expmar2
-    return a, b
 
 def gramschmidt(gd, psit_k):
     """Orthonormalize functions on grid using the Gram-Schmidt method.
@@ -744,10 +703,6 @@ output_filename = 'ref.%s.txt'
 
 # XXX find a better way to do this
 # Default characteristic radii when using only one gaussian
-default_rchar_rel = .25
-# Defaults for each l.  Actually we don't care right now
-rchar_rels = {}#1: .3,
-              #2: .25}
 
 # Systems for non-dimer-forming or troublesome atoms
 # 'symbol' : (g2 key, index of desired atom)
