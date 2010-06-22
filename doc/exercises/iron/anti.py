@@ -1,11 +1,13 @@
-from ase import *
+from ase import Atoms
 from gpaw import GPAW
 from gpaw.mixer import MixerSum
 
 a = 2.87
 m = 2.2
+
 bulk = Atoms('Fe2',
-             positions=[(0,   0,   0), (a/2, a/2, a/2)],
+             positions=[(0, 0, 0),
+                        (a/2, a/2, a/2)],
              magmoms=[m, -m],
              cell=(a, a, a),
              pbc=True)

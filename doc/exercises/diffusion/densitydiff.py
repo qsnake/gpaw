@@ -1,4 +1,3 @@
-from ase import *
 from gpaw import restart
 
 slab, calc = restart('ontop.gpw', txt=None)

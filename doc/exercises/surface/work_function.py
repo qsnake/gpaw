@@ -1,4 +1,6 @@
-from ase import *
+import numpy as np
+import pylab as plt
+
 from gpaw import GPAW
 
 # Read in the 5-layer slab:
@@ -20,11 +22,10 @@ efermi = calc.get_fermi_level()
 vz = v.mean(axis=0).mean(axis=0)
 print 'Work function: %.2f eV' % (vz.max() - efermi)
 
-import pylab as p
-p.plot(z, vz, label='xy averaged effective potential')
-p.plot([0, L], [efermi, efermi], label='Fermi level')
-p.ylabel('Potential / V')
-p.xlabel('z / Angstrom')
-p.legend(loc=0)
-p.show()
+plt.plot(z, vz, label='xy averaged effective potential')
+plt.plot([0, L], [efermi, efermi], label='Fermi level')
+plt.ylabel('Potential / V')
+plt.xlabel('z / Angstrom')
+plt.legend(loc=0)
+plt.show()
 

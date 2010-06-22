@@ -1,14 +1,20 @@
-# creates: Al110slab.png
+"""Creates: Al110slab.png."""
 
-from ase import *
+from math import sqrt
+
+from ase import Atoms, Atom
+from ase.io import write
 from ase.data.colors import jmol_colors
 
 a = 4.0614
 b = a / sqrt(2)
 h = b / 2
-atoms = Atoms('Al2', pbc=(1, 1, 0), cell=(a, b, 2 * h),
-              positions=((0, 0, 0),
-                         (a / 2, b / 2, -h)))
+atoms = Atoms('Al2',
+              positions=[(0, 0, 0),
+                         (a / 2, b / 2, -h)],
+              cell=(a, b, 2 * h),
+              pbc=(1, 1, 0))
+              
 atoms *= (2, 2, 2)
 atoms.append(Atom('Al', (a / 2, b / 2, 3 * h)))
 atoms.center(vacuum=4., axis=2)

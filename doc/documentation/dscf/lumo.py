@@ -1,9 +1,12 @@
 #!/usr/bin/env python
-from ase import *
+
+from numpy import reshape, dot
+
+from ase.visualize import view
 from ase.lattice.surface import fcc111, add_adsorbate
-from gpaw import *
+from gpaw import GPAW
+from gpaw.mixer import MixerSum
 from gpaw import dscf
-from numpy import reshape
 
 filename='lumo'
 
@@ -56,6 +59,7 @@ wf2_k = [c_mol.get_pseudo_wave_function(band=6, kpt=k, spin=1)
 
 band_k = []
 for k in range(len(c_mol.wfs.weight_k)):
+    
     wf1 = reshape(wf1_k[k], -1)
     wf2 = reshape(wf2_k[k], -1)
     p1 = abs(dot(wf1, lumo))

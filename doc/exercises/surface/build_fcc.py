@@ -1,14 +1,25 @@
 """Module for building atomic structures"""
 
-from ase import *
+from math import sqrt
+
+from ase import Atoms, Atom
+from ase.visualize import view
 
 def fcc100(symbol, a, layers, L):
     """Build an fcc(100) surface
 
-    symbol: chemical symbol ('H', 'Li', ...)
-    a     : lattice constant
-    layers: number of layers
-    L     : height of unit cell"""
+    Parameters
+    ----------
+    symbol: string
+        Chemical symbol ('H', 'Li', ...).
+    a: float
+        Lattice constant.
+    layers: int
+        Number of layers.
+    L: float
+        Height of unit cell.
+
+    """
 
     # Distance between atoms:
     d = a / sqrt(2)
@@ -19,7 +30,8 @@ def fcc100(symbol, a, layers, L):
     assert L > layers * z, 'Unit cell too small!'
     
     # Start with an empty Atoms object:
-    atoms = Atoms(cell=(d, d, L), pbc=(True, True, False))
+    atoms = Atoms(cell=(d, d, L),
+                  pbc=(True, True, False))
     
     # Fill in the atoms:
     for n in range(layers):
@@ -29,9 +41,10 @@ def fcc100(symbol, a, layers, L):
         atoms.append(Atom(symbol, position))
 
     atoms.center(axis=2)
+
     return atoms
 
 if __name__ == '__main__':
+
     fcc = fcc100('Al', 4.0, 4, 15.0)
-    from ase import view
     view(fcc * (4, 4, 2))

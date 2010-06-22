@@ -1,4 +1,6 @@
-from ase import *
+from ase.visualize import view
+from ase.constraints import FixAtoms
+from ase.optimize import QuasiNewton
 from ase.lattice.surface import fcc100, add_adsorbate
 from gpaw import GPAW
 

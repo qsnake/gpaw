@@ -1,23 +1,30 @@
-from ase import *
-from gpaw import *
+import pickle
+
+from ase import Atoms
 from gpaw.transport.calculator import Transport 
 from gpaw.atom.basis import BasisMaker
 from gpaw.poisson import PoissonSolver
-import pickle
+from gpaw.mixer import Mixer
+from gpaw.occupations import FermiDirac
 
 a = 3.6
 L = 7.00
 
 basis = BasisMaker('Na').generate(1, 1, energysplit=0.3)
 
-atoms = Atoms('Na9', pbc=(0, 0, 1), cell=[L, L, 9 * a])
+atoms = Atoms('Na9',
+              cell=(L, L, 9 * a),
+              pbc=(0, 0, 1))
+              
 atoms.positions[:9, 2] = [i * a for i in range(9)]
 atoms.positions[:, :2] = L / 2.
 atoms.center()
+
 pl_atoms1 = range(4)     
 pl_atoms2 = range(5, 9)
 pl_cell1 = (L, L, 4 * a) 
 pl_cell2 = pl_cell1
+
 t = Transport(h=0.3,
               xc='LDA',
               basis={'Na': basis},
@@ -35,6 +42,7 @@ t = Transport(h=0.3,
               guess_steps=1,
               fixed_boundary=False,
               foot_print=False)
+
 atoms.set_calculator(t)
 t.calculate_iv(0.5, 2)
 

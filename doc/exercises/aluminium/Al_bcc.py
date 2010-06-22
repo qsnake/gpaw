@@ -1,31 +1,38 @@
 """Bulk Al(bcc) test"""
 
-from ase import *
-from gpaw import *
+from math import sqrt
+
+from ase import Atoms
+from ase.visualize import view
+from gpaw import GPAW
 
 afcc = 3.985          # Theoretical fcc lattice parameter
 a = afcc * 2**(-1/3.) # Assuming the same volume per atom
 a = afcc * sqrt(2/3.) # Assuming the same nearest neighbor distance
 
-bulk = Atoms(symbols='2Al', pbc=True,
+bulk = Atoms(symbols='2Al',
              positions=[(0, 0, 0),
-                        (.5, .5, .5)])
+                        (.5, .5, .5)],
+              pbc=True)
+
 bulk.set_cell((a, a, a), scale_atoms=True)
 
 # View 3x3x3 repeated structure
 view(bulk * [3, 3, 3])
 
-calc = Calculator(nbands=8)
+calc = GPAW(nbands=8)
 bulk.set_calculator(calc)
 
 # Convergence with respect to k-points:
 calc.set(h=.25, txt='Al-fcc-k.txt')
+
 for k in [4, 6, 8, 10]: 
     calc.set(kpts=(k, k, k))
     print k, bulk.get_potential_energy() 
 
 # Convergence with respect to grid spacing:
 calc.set(kpts=(8, 8, 8), txt='Al-bcc-h.txt')
+
 for g in [12, 16, 20]:
     h = a / g
     calc.set(h=h)

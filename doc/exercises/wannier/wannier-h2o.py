@@ -1,8 +1,10 @@
-from ase import *
+from ase.data.molecules import molecule
+from ase.visualize import view
 from gpaw import GPAW
 from gpaw.wannier import Wannier
 
 calc = GPAW(nbands=4)
+
 atoms = molecule('H2O')
 atoms.center(vacuum=3.)
 atoms.set_calculator(calc)
@@ -12,4 +14,5 @@ atoms.get_potential_energy()
 w = Wannier(calc)
 w.localize()
 centers = w.get_centers()
+
 view(atoms + Atoms(symbols='X4', positions=centers))

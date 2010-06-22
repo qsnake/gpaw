@@ -1,13 +1,14 @@
-from ase import *
-from gpaw import *
+from ase import Atoms, Atom
+from gpaw import GPAW
 
 a = 4.0
 b = a / 2**.5
 L = 11.0
 
 # Set up 2-layer 2x2 (100) Al-slab:
-slab = Atoms([Atom('Al', (0, 0, 0)),
-              Atom('Al', (b / 2, b/ 2, -a / 2))],
+slab = Atoms('Al2',
+             positions=[(0, 0, 0),
+                        (b / 2, b/ 2, -a / 2)],
              cell=(b, b, L),
              pbc=True)
 slab *= (2, 2, 1)
