@@ -10,9 +10,9 @@ bulk = Atoms([Atom('Al', (0, 0, 0)),
              pbc=1)
 n = 16
 calc = GPAW(gpts=(2*n, 2*n, 1*n),
-                  nbands=1*8,
-                  kpts=(1, 1, 4),
-                  convergence={'eigenstates': 1e-11},xc='LDA')
+            nbands=1*8,
+            kpts=(1, 1, 4),
+            convergence={'eigenstates': 1e-11},xc='LDA')
 bulk.set_calculator(calc)
 e2 = bulk.get_potential_energy()
 niter2 = calc.get_number_of_iterations()
