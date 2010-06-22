@@ -24,8 +24,8 @@ de1xb = calc.get_xc_difference({'name': 'EXX', 'finegrid': False})
 # Hydrogen molecule:
 d = 0.74  # Experimental bond length
 molecule = Atoms([Atom('H', (c - d / 2, c, c)),
-                        Atom('H', (c + d / 2, c, c))],
-                       cell=(a, a, a), pbc=False)
+                  Atom('H', (c + d / 2, c, c))],
+                 cell=(a, a, a), pbc=False)
 
 calc.set(txt='H2.txt')
 molecule.set_calculator(calc)
