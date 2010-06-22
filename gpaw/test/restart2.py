@@ -3,10 +3,12 @@
 import os
 import filecmp
 from gpaw import GPAW
-from ase import *
+from ase import Atom, Atoms
 from gpaw.test import equal
+
 restart = 'gpaw-restart'
 result  = 'gpaw-result'
+
 # H atom:
 H = Atoms([Atom('H')])
 H.center(vacuum=3.0)
