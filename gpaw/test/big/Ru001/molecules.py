@@ -1,5 +1,6 @@
-from gpaw import *
-from ase import *
+from ase.data.molecules import molecule
+from ase.optimize import QuasiNewton
+from gpaw import GPAW
 
 for name in ['H2', 'N2', 'O2', 'NO']:
     mol = molecule(name)

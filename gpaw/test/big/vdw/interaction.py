@@ -1,5 +1,5 @@
 import pickle
-from ase import *
+import numpy as np
 from gpaw import GPAW, setup_paths
 from gpaw.vdw import FFTVDWFunctional, RealSpaceVDWFunctional
 

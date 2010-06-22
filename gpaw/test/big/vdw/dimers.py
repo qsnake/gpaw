@@ -1,9 +1,10 @@
-from ase import *
-from gpaw import GPAW
-
+import numpy as np
+from ase import Atoms
+from ase.data.molecules import molecule
 from ase.parallel import rank, barrier
 from gpaw.atom.generator import Generator, parameters
 from gpaw import setup_paths
+from gpaw import GPAW
 
 # Generate setup
 if rank == 0:

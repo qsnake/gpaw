@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-
-from ase import *
-from gpaw import GPAW, FermiDirac
-from ase.data.molecules import molecule
 import numpy as np
+from ase.data.molecules import molecule
+from ase.constraints import FixedPlane
+from ase.optimize import QuasiNewton
+from gpaw import GPAW, FermiDirac
 from gpaw.test import equal
 
 #----------------------------------

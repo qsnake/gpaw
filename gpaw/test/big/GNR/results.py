@@ -1,7 +1,7 @@
 # Compare H adsorption energies and magnetic moments for a 12-ZGNR
 # It needs 'ZGNR12.traj', 'ZGNR12_H.traj' and 'H2.traj'
 
-from ase import *
+from ase.io import read
 
 reference = {'e_ads':-1.5,    #Reference from rev
              'magmom_C':0.5,

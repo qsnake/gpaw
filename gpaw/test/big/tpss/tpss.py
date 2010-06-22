@@ -1,7 +1,6 @@
-from gpaw import *
-from ase import *
+from ase.data.molecules import molecule
 from ase.parallel import paropen
-#from gpaw import GPAW, FermiDirac
+from gpaw import GPAW, Mixer, MixerDif
 from gpaw.utilities.tools import split_formula
 
 cell = [14.4, 14.4, 14.4]

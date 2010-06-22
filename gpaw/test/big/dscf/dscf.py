@@ -1,7 +1,8 @@
 #!/usr/bin/env python
-from ase import *
-from gpaw import *
+from ase.io import read
+from gpaw import GPAW
 from gpaw import dscf
+from gpaw.mixer import MixerSum
 from numpy import reshape, dot
 from gpaw.test import equal
 

@@ -1,9 +1,11 @@
 # 12-ZGNR with adsorbed H at both edges.
 # "ZGNR12.py" should be run first!
 
-from ase import *
-from gpaw import *
+from ase.io import read
+from ase import Atom
 from ase.structure import graphene_nanoribbon
+from ase.optimize import QuasiNewton
+from gpaw import GPAW
 
 GNR = read('ZGNR12.traj')
 pos = GNR[22].get_position() + [-1.05,0.0,0.0] 

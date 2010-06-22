@@ -5,9 +5,9 @@
 #PBS -l nodes=1:ppn=8
 #!/usr/bin/env python
 
-from ase import *
-from gpaw import *
-from ase.optimize.bfgslinesearch import *
+from ase.io import read
+from gpaw import GPAW
+from ase.optimize.bfgslinesearch import BFGSLineSearch
 
 slab = read('CH4Au532.xyz')
 slab.set_cell([[7.309254, 0., 0.], [4.872836, 7.509545, 0.], [0., 0., 20.]],scale_atoms=False)

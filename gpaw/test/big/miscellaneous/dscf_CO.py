@@ -1,5 +1,5 @@
-from ase import *
-from gpaw import *
+from ase.data.molecules import molecule
+from gpaw import GPAW
 from gpaw import dscf
 from gpaw.test import equal
 

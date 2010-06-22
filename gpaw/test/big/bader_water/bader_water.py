@@ -1,5 +1,7 @@
 import os
-from ase import *
+from ase.data.molecules import molecule
+from ase.io import write
+from ase.units import Bohr
 from gpaw import GPAW
 from gpaw.mpi import rank
 

@@ -1,11 +1,7 @@
-from ase import *
-from gpaw import *
+from ase.data.molecules import molecule
 from ase.structure import graphene_nanoribbon
-
-
-from ase import *
-from gpaw import *
-from ase.structure import graphene_nanoribbon
+from ase.optimize import QuasiNewton
+from gpaw import GPAW
 
 H2 = molecule('H2',cell=(10,10,10))
 H2.center()

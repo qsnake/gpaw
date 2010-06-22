@@ -1,7 +1,7 @@
 import pickle
-from ase import *
-from gpaw.vdw import VDWFunctional
 import pylab as plt
+import numpy as np
+from gpaw.vdw import VDWFunctional
 
 #VDWFunctional().make_prl_plot()
 

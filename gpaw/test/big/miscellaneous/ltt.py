@@ -1,6 +1,7 @@
-from ase import *
+from ase import Atoms
 from gpaw import GPAW
 from gpaw.test import equal
+
 h = 0.2
 n = 24
 a = n * h

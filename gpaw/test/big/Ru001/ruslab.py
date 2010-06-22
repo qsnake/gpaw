@@ -1,8 +1,8 @@
 from sys import argv
-from gpaw import *
-from ase import *
-from ase.lattice.surface import *
+from ase.lattice.surface import hcp0001, add_adsorbate
+from ase.constraints import FixAtoms
 from ase.optimize.lbfgs import LBFGS
+from gpaw import GPAW, Mixer, FermiDirac
 
 tag = 'Ru001'
 

@@ -1,5 +1,6 @@
-from gpaw import *
-from ase import *
+import numpy as np
+from ase.io import read
+from gpaw import FermiDirac, PoissonSolver, Mixer
 from gpaw.transport.calculator import Transport
 
 system = read('BDT.traj', -1)

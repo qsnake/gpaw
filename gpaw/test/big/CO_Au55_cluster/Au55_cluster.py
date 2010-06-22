@@ -5,9 +5,10 @@
 #PBS -l nodes=2:ppn=8
 #!/usr/bin/env python
 
-from ase import *
-from ase.optimize.bfgslinesearch import *
-from gpaw import *
+from ase import Atom, Atoms
+from ase.optimize.bfgslinesearch import BFGSLineSearch
+from ase.io import read
+from gpaw import GPAW
 
 #Relax the Au 55 atoms cluster with both lcao and paw modes
 cluster = read('Au55.xyz')
