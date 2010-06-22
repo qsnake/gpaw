@@ -1,6 +1,8 @@
-from ase import *
-from gpaw import *
-from gpaw.cluster import *
+from ase import Atom
+from ase.neb import SingleCalculatorNEB
+from ase.optimize import FIRE
+from gpaw import GPAW
+from gpaw.cluster import Cluster
 
 txt=None
 

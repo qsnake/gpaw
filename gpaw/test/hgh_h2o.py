@@ -14,7 +14,7 @@ Forces are compared to a previous finite-difference result.
 """
 
 import numpy as np
-from ase import *
+from ase.data.molecules import molecule
 from gpaw import GPAW
 from gpaw.utilities import unpack
 from gpaw.atom.basis import BasisMaker

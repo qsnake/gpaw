@@ -1,5 +1,7 @@
 import os
-from ase import *
+from ase import Atom, Atoms
+from ase.optimize import QuasiNewton
+from ase.io import read
 from gpaw import GPAW
 from gpaw.test import equal
 

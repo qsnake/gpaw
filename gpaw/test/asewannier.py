@@ -1,4 +1,5 @@
-from ase import *
+import numpy as np
+from ase.data.molecules import molecule
 from ase.dft import Wannier
 from gpaw import GPAW
 from gpaw.test import equal
