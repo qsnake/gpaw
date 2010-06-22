@@ -1,7 +1,7 @@
-from ase import *
+from ase import Atom, Atoms
 from gpaw import GPAW, mpi
 from gpaw.test import equal
-from gpaw.lrtddft import *
+from gpaw.lrtddft import LrTDDFT
 
 from gpaw.pes.dos import DOSPES
 from gpaw.pes.tddft import TDDFTPES
