@@ -1,5 +1,5 @@
-from ase import *
-from gpaw import *
+from gpaw import restart
+from ase.optimize import QuasiNewton
 
 molecule, calc = restart('H2.gpw', txt='H2-relaxed.txt')
 

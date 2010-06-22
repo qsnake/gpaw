@@ -1,13 +1,22 @@
 import numpy as np
-from ase import *
-from gpaw import *
+
+from ase.data.molecules import molecule
+from gpaw import GPAW
 
 unitcell = np.array([6.5, 6.6, 9.])
 gridrefinement = 2
 
 for formula in ('Na', 'Cl', 'NaCl',):
-    calc = GPAW(xc='PBE', nbands=-5, h=0.18, convergence={'eigenstates':1E-8}, txt=formula + '.txt')
-    if formula == 'Cl': calc.set(hund=True)
+
+    calc = GPAW(xc='PBE',
+                nbands=-5,
+                h=0.18,
+                convergence={'eigenstates':1E-8},
+                txt=formula + '.txt')
+    
+    if formula == 'Cl':
+        calc.set(hund=True)
+        
     sys = molecule(formula, cell=unitcell, calculator=calc)
     sys.center()
     sys.get_potential_energy()

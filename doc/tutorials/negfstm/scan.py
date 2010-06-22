@@ -1,6 +1,6 @@
-from ase import *
-from gpaw import *
 import pickle
+
+from gpaw import GPAW
 from gpaw.transport.jstm import STM
 
 # tip data

@@ -1,13 +1,13 @@
-from ase import *
-from gpaw import *
-from ase.lattice.surface import *
-from gpaw.transport.jstm import *
+from ase import Atoms, Atom
+from gpaw import GPAW, Mixer
+from ase.lattice.surface import fcc100
+from gpaw.transport.jstm import dump_hs, dump_lead_hs
 
 calc = GPAW(h=0.2, 
             mixer=Mixer(0.03, 5, weight=140.0),
             width=0.1, 
             mode='lcao',
-            basis='szp',
+            basis='szp(dzp)',
             txt='dumphs.txt',
             usesymm=False)
 
@@ -21,6 +21,7 @@ srf += Atom('H', (a / 2**.5, a / 2**.5, srf.positions[-1][2] + 1.55))
 srf.set_calculator(calc)
 srf.get_potential_energy()
 calc.write('srf')
+
 # Dump the overlap matrix and the Hamiltonian matrix to the local directory. 
 # Here the keyword 'cvl' refers  to the number of basis functions in the 
 # in the convergence layer, i.e. for the present system four atomic layers are used.
