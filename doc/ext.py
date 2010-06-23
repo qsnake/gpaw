@@ -7,6 +7,21 @@ from stat import ST_MTIME
 from docutils import nodes, utils
 from docutils.parsers.rst.roles import set_classes
 
+def mol_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
+    n = []
+    t = ''
+    while text:
+        if text[0] == '_':
+            n.append(nodes.inline(text=t))
+            t = ''
+            n.append(nodes.subscript(text=text[1]))
+            text = text[2:]
+        else:
+            t += text[0]
+            text = text[1:]
+    n.append(nodes.inline(text=t))
+    return n, []
+
 def svn_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
     if text[-1] == '>':
         i = text.index('<')
@@ -87,6 +102,7 @@ def epydoc_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
     return [node], []
 
 def setup(app):
+    app.add_role('mol', mol_role)
     app.add_role('svn', svn_role)
     app.add_role('trac', trac_role)
     app.add_role('epydoc', epydoc_role)
