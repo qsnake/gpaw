@@ -1,4 +1,4 @@
-"""Creates: Al110slab.png."""
+# creates: Al110slab.png
 
 from math import sqrt
 
