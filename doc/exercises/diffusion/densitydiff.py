@@ -1,3 +1,4 @@
+from ase.io import write
 from gpaw import restart
 
 slab, calc = restart('ontop.gpw', txt=None)

@@ -8,6 +8,7 @@ from ase.visualize import view
 from ase.constraints import FixAtoms
 from ase.optimize import QuasiNewton
 from ase.neb import NEB
+from ase.calculators.emt import EMT
 
 a = 4.0614
 b = a / sqrt(2)
