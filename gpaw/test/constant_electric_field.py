@@ -9,7 +9,6 @@ from ase import Atoms
 from ase.units import Bohr, Hartree
 from ase.parallel import rank
 from gpaw import GPAW
-from gpaw.mixer import Mixer_Broydn
 
 from gpaw.external_potential import ConstantElectricField
 

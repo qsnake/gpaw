@@ -4,16 +4,13 @@ import sys
 from math import sqrt, pi
 
 import numpy as np
-
 from ase import Atoms
 from ase.units import Bohr, Hartree
 from ase.parallel import rank, size
-from gpaw import GPAW
-from gpaw.mixer import Mixer_Broydn
 
+from gpaw import GPAW
 from gpaw.external_potential import ConstantElectricField
 from gpaw.point_charges import PointCharges
-
 from gpaw.utilities import packed_index
 from gpaw.pair_density import PairDensity
 
@@ -28,18 +25,18 @@ from gpaw.pair_density import PairDensity
 
 ###
 
-to_au   = Hartree/Bohr**2
-to_eVA  = Hartree/Bohr
+to_au = Hartree / Bohr**2
+to_eVA = Hartree / Bohr
 
 ###
 
 def dipole_op(c, state1, state2, k=0, s=0):
     # Taken from KSSingle, maybe make this accessible in
     # KSSingle?
-    wfs  = c.wfs
-    gd   = wfs.gd
+    wfs = c.wfs
+    gd = wfs.gd
 
-    kpt  = None
+    kpt = None
     for i in wfs.kpt_u:
         if i.k == k and i.s == s:
             kpt = i
@@ -56,18 +53,18 @@ def dipole_op(c, state1, state2, k=0, s=0):
     ma = np.zeros(me.shape)
     pos_av = c.get_atoms().get_positions() / Bohr
     for a, P_ni in kpt.P_ani.items():
-        Ra        = pos_av[a]
-        Pi_i      = P_ni[state1]
-        Pj_i      = P_ni[state2]
-        Delta_pL  = wfs.setups[a].Delta_pL
-        ni        = len(Pi_i)
+        Ra = pos_av[a]
+        Pi_i = P_ni[state1]
+        Pj_i = P_ni[state2]
+        Delta_pL = wfs.setups[a].Delta_pL
+        ni = len(Pi_i)
 
         ma0 = 0
         ma1 = np.zeros(me.shape)
         for i in range(ni):
             for j in range(ni):
-                pij  = Pi_i[i]*Pj_i[j]
-                ij   = packed_index(i, j, ni)
+                pij = Pi_i[i]*Pj_i[j]
+                ij = packed_index(i, j, ni)
                 # L=0 term
                 ma0 += Delta_pL[ij,0]*pij
                 # L=1 terms
@@ -81,19 +78,18 @@ def dipole_op(c, state1, state2, k=0, s=0):
 
     me += ma
 
-    return me*Bohr
+    return me * Bohr
 
-###
 
 # Currently only works on a single processor
 assert size == 1
 
-maxfield  = 0.01
-nfs       = 5     # Number of field
-nbands    = 30    # Number of bands
-h         = 0.20  # Grid spacing
+maxfield = 0.01
+nfs = 5          # number of field
+nbands = 30      # number of bands
+h = 0.20         # grid spacing
 
-debug     = False
+debug = False
 
 if debug:
     txt = 'gpaw.out'
@@ -109,7 +105,9 @@ test3 = True
 ###
 
 a0 = 6.0
-a  = Atoms('H', positions=[ [ a0/2, a0/2, a0/2  ] ], cell=[ a0, a0, a0 ])
+a  = Atoms('H',
+           positions=[[a0 / 2, a0 / 2, a0 / 2 ]],
+           cell=[ a0, a0, a0 ])
 
 ###
 
@@ -121,16 +119,16 @@ alpha3 = None
 
 if test1:
     c = GPAW(
-        h            = h,
-        width        = 0.00,
-        nbands       = nbands+10,
-        spinpol      = True,
-        hund         = True,
-        xc           = 'LDA',
-        eigensolver  = 'cg',
-        convergence  = { 'bands': nbands, 'eigenstates': 1e-5 },
-        maxiter      = 1000,
-        txt          = txt
+        h=h,
+        width=0.00,
+        nbands=nbands+10,
+        spinpol=True,
+        hund=True,
+        xc='LDA',
+        eigensolver='cg',
+        convergence={'bands': nbands, 'eigenstates': 1e-5 },
+        maxiter= 1000,
+        txt= txt
         )
     a.set_calculator(c)
     a.get_potential_energy()
@@ -144,8 +142,8 @@ if test1:
 
     alpha = 0.0
 
-    ev  = c.get_eigenvalues(0, spin)
-    gd  = c.wfs.gd
+    ev = c.get_eigenvalues(0, spin)
+    gd = c.wfs.gd
     for i in range(1, nbands):
         mu_x, mu_y, mu_z = dipole_op(c, 0, i, k=0, s=spin)
 
