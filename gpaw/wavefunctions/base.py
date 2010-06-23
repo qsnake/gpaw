@@ -259,7 +259,7 @@ class WaveFunctions(EmptyWaveFunctions):
     def collect_occupations(self, k, s):
         return self.collect_array('f_n', k, s)
 
-    def collect_array(self, name, k, s, subset=None, dtype=float):
+    def collect_array(self, name, k, s, subset=None):
         """Helper method for collect_eigenvalues and collect_occupations.
 
         For the parallel case find the rank in kpt_comm that contains
@@ -271,33 +271,34 @@ class WaveFunctions(EmptyWaveFunctions):
         kpt_rank, u = divmod(k + self.nibzkpts * s, len(kpt_u))
 
         if self.kpt_comm.rank == kpt_rank:
-            a_n = getattr(kpt_u[u], name)
+            a_nx = getattr(kpt_u[u], name)
 
             if subset is not None:
-                a_n = a_n[subset]
-
-            if a_n.dtype is not dtype:
-                a_n = a_n.astype(dtype)
+                a_nx = a_nx[subset]
 
             # Domain master send this to the global master
             if self.gd.comm.rank == 0:
                 if self.band_comm.size == 1:
                     if kpt_rank == 0:
-                        return a_n
+                        return a_nx
                     else:
-                        self.kpt_comm.ssend(a_n, 0, 1301)
+                        self.kpt_comm.ssend(a_nx, 0, 1301)
                 else:
-                    b_n = self.bd.collect(a_n)
+                    b_nx = self.bd.collect(a_nx)
                     if self.band_comm.rank == 0:
                         if kpt_rank == 0:
-                            return b_n
+                            return b_nx
                         else:
-                            self.kpt_comm.ssend(b_n, 0, 1301)
+                            self.kpt_comm.ssend(b_nx, 0, 1301)
 
         elif self.world.rank == 0 and kpt_rank != 0:
-            b_n = np.zeros(self.nbands, dtype=dtype)
-            self.kpt_comm.receive(b_n, kpt_rank, 1301)
-            return b_n
+            # Find shape and dtype:
+            a_nx = getattr(kpt_u[0], name)
+            shape = (self.nbands,) + a_nx.shape[1:]
+            dtype = a_nx.dtype
+            b_nx = np.zeros(shape, dtype=dtype)
+            self.kpt_comm.receive(b_nx, kpt_rank, 1301)
+            return b_nx
 
     def collect_auxiliary(self, value, k, s, shape=1, dtype=float):
         """Helper method for collecting band-independent scalars/arrays.

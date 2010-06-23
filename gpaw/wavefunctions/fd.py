@@ -339,6 +339,34 @@ class GridWaveFunctions(WaveFunctions):
             raise RuntimeError('This calculator has no wave functions!')
         return psit_nG[n][:] # dereference possible tar-file content
 
+    def write_wave_functions(self, writer):
+        try:
+            from gpaw.io.hdf5 import Writer as HDF5Writer
+        except ImportError:
+            hdf5 = False
+        else:
+            hdf5 = isinstance(writer, HDF5Writer)
+            
+        if self.world.rank == 0 or hdf5:
+            writer.add('PseudoWaveFunctions',
+                       ('nspins', 'nibzkpts', 'nbands',
+                        'ngptsx', 'ngptsy', 'ngptsz'),
+                       dtype=self.dtype)
+
+        if hdf5:
+            for kpt in self.kpt_u:
+                indices = [kpt.s, kpt.k]
+                indices.append(self.bd.get_slice())
+                indices += self.gd.get_slice()
+                writer.fill(kpt.psit_nG, parallel=True, *indices)
+        else:
+            for s in range(self.nspins):
+                for k in range(self.nibzkpts):
+                    for n in range(self.nbands):
+                        psit_G = self.get_wave_function_array(n, k, s)
+                        if self.world.rank == 0:
+                            writer.fill(psit_G, s, k, n)
+
     def estimate_memory(self, mem):
         gridbytes = self.gd.bytecount(self.dtype)
         mem.subnode('Arrays psit_nG', 

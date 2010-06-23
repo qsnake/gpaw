@@ -77,10 +77,10 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
 
     magmom_a = paw.get_magnetic_moments()
 
-    hdf5 = filename.endswith(".hdf5")
+    hdf5 = filename.endswith('.hdf5')
 
     if master:
-        if filename == ".db":
+        if filename == '.db':
             from cmr_io import create_db_filename
             filename = create_db_filename()
 
@@ -232,8 +232,9 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
                     basis = None
         w['BasisSet'] = repr(basis)
 
-
         dtype = {float: float, complex: complex}[wfs.dtype]
+    else:
+        w = None
 
     # Write projections:
     if master or hdf5:
@@ -293,7 +294,7 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
                     w.fill(a_n, s, k)
 
     # Attempt to read the number of delta-scf orbitals:
-    if hasattr(paw.occupations,'norbitals'):
+    if hasattr(paw.occupations, 'norbitals'):
         norbitals = paw.occupations.norbitals
     else:
         norbitals = None
@@ -316,7 +317,7 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
         for s in range(wfs.nspins):
             for k in range(wfs.nibzkpts):
                 for o in range(norbitals):
-                    c_n = wfs.collect_array('c_on', k, s, subset=o, dtype=complex)
+                    c_n = wfs.collect_array('c_on', k, s, subset=o)
                     if master:
                         w.fill(c_n, s, k, o)
 
@@ -354,32 +355,10 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
 
     # Write GLLB-releated stuff
     if hamiltonian.xcfunc.gllb:
-        if master:
             hamiltonian.xcfunc.xc.write(w)
-        else:
-            hamiltonian.xcfunc.xc.write(None)
 
     if mode == 'all':
-        # Write the wave functions:
-        if master or hdf5:
-            w.add('PseudoWaveFunctions', ('nspins', 'nibzkpts', 'nbands',
-                                          'ngptsx', 'ngptsy', 'ngptsz'),
-                  dtype=dtype)
-
-        if hdf5:
-            for kpt in wfs.kpt_u:
-                indices = [kpt.s, kpt.k]
-                indices.append(wfs.bd.get_slice())
-                indices += wfs.gd.get_slice()
-                w.fill(kpt.psit_nG, parallel=True, *indices)
-        else:
-            for s in range(wfs.nspins):
-                for k in range(wfs.nibzkpts):
-                    for n in range(wfs.nbands):
-                        psit_G = wfs.get_wave_function_array(n, k, s)
-                        if master:
-                            w.fill(psit_G, s, k, n)
-
+        wfs.write_wave_functions(w)
     elif mode != '':
         # Write the wave functions as seperate files
 
@@ -405,24 +384,24 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
                 for n in range(wfs.nbands):
                     psit_G = wfs.get_wave_function_array(n, k, s)
                     if master:
-                        fname = template % (s,k,n) + '.'+ftype
-                        wpsi = open(fname,'w')
+                        fname = template % (s, k, n) + '.' + ftype
+                        wpsi = open(fname, 'w')
                         wpsi.dimension('1', 1)
                         wpsi.dimension('ngptsx', ngd[0])
                         wpsi.dimension('ngptsy', ngd[1])
                         wpsi.dimension('ngptsz', ngd[2])
                         wpsi.add('PseudoWaveFunction',
-                                 ('1','ngptsx', 'ngptsy', 'ngptsz'),
+                                 ('1', 'ngptsx', 'ngptsy', 'ngptsz'),
                                  dtype=dtype)
                         wpsi.fill(psit_G)
                         wpsi.close()
 
     db = False
-    if filename.endswith(".db"):
+    if filename.endswith('.db'):
         if master:
             w.write_additional_db_params(cmr_params=cmr_params)
-    elif cmr_params is not None and "db" in cmr_params:
-        db = cmr_params["db"]
+    elif cmr_params is not None and 'db' in cmr_params:
+        db = cmr_params['db']
 
     if master or hdf5:
         # Close the file here to ensure that the last wave function is
@@ -434,9 +413,9 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
     world.barrier()
 
    # Creates a db file for CMR, if requested
-    if db and not filename.endswith(".db"):
+    if db and not filename.endswith('.db'):
         #Write a db copy to the database
-        write(paw, ".db", mode='', cmr_params=cmr_params, **kwargs)
+        write(paw, '.db', mode='', cmr_params=cmr_params, **kwargs)
 
 
 def read(paw, reader):
@@ -455,7 +434,7 @@ def read(paw, reader):
 
     version = r['version']
 
-    hdf5 = hasattr(r, "hdf5_reader")
+    hdf5 = hasattr(r, 'hdf5_reader')
 
     for setup in wfs.setups.setups.values():
         try:
@@ -601,7 +580,8 @@ def read(paw, reader):
         if version > 0.3:
             wfs.eigensolver.error = r['EigenstateError']
 
-        if r.has_array('PseudoWaveFunctions'):
+        if (r.has_array('PseudoWaveFunctions') and
+            paw.input_parameters.mode == 'fd'):
             
             if band_comm.size == 1 and not hdf5:
                 # We may not be able to keep all the wave
@@ -624,12 +604,17 @@ def read(paw, reader):
                         for myn, psit_G in enumerate(kpt.psit_nG):
                             n = wfs.bd.global_index(myn)
                             if domain_comm.rank == 0:
-                                big_psit_G = np.array(r.get('PseudoWaveFunctions',
-                                                            kpt.s, kpt.k, n),
-                                                      wfs.dtype)
+                                big_psit_G = np.array(
+                                    r.get('PseudoWaveFunctions',
+                                          kpt.s, kpt.k, n),
+                                    wfs.dtype)
                             else:
                                 big_psit_G = None
                             wfs.gd.distribute(big_psit_G, psit_G)
+
+        if (r.has_array('WaveFunctionCoefficients') and
+            paw.input_parameters.mode == 'lcao'):
+            wfs.read_coefficients(r)
 
         for u, kpt in enumerate(wfs.kpt_u):
             P_ni = r.get('Projections', kpt.s, kpt.k)
@@ -703,7 +688,7 @@ def read_wave_function(gd, s, k, n, mode):
 
     ftype, template = wave_function_name_template(mode)
     fname = template % (s,k,n) + '.'+ftype
-##    print "fname=",fname
+##    print 'fname=', fname
 
     i = gd.get_slice()
     r = open(fname, 'r')
