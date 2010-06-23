@@ -90,7 +90,6 @@ def aa2d(a, d=0):
     b = np.sum(a, axis=d) / a.shape[d]
     return b
 
-#def get_realspace_hs(h_skmm,s_kmm, ibzk_kc, weight_k, R_c=(0,0,0)):
 def k2r_hs(h_skmm, s_kmm, ibzk_kc, weight_k, R_c=(0,0,0)):
     phase_k = np.dot(2 * np.pi * ibzk_kc, R_c)
     c_k = np.exp(1.0j * phase_k) * weight_k
@@ -562,6 +561,26 @@ def fuzzy_sort(seq0, tol=1e-6):
         ind1 += ind
         n += 1
     return ind0
+
+def cubicing(atoms):
+    cell = atoms._cell
+    positions = atoms.positions
+    print 'cubicing only ok to [a,0,0][a/2, b, 0],[0,0,c] type '
+    tol = 1e-6
+    if abs(cell[1,0]*2 - cell[0,0]) < tol:
+        print 'ok, possible to get a cubic structure'
+        natoms = len(positions)
+        new_pos = np.empty([natoms * 2, 3])
+        for pos, i in zip(positions, range(natoms)):
+            new_pos[i] = pos
+            new_pos[i + natoms] = pos + cell[1]
+        atoms += atoms
+        atoms.positions = new_pos
+        sort_atoms(atoms)
+        cell[1, 0] = 0
+        cell[1, 1] *= 2
+        atoms.set_cell(cell)
+    return atoms
 
 class P_info:
     def __init__(self):
