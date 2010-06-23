@@ -15,7 +15,7 @@ atom and CO molecule and compare them to results from molecular orbital theory.
 
 
 * Towards the end, a :file:`.gpw` file is written with the Kohn-Sham wavefunctions
-  `{calc}.write('O.gpw', mode='all')`. At the very end we write the Kohn-Sham
+  by `calc.write('O.gpw', mode='all')`. At the very end we write the Kohn-Sham
   wavefunctions to :file:`.cube` files for
   handling with the :program:`VMD` program.
 
@@ -66,31 +66,13 @@ atom and CO molecule and compare them to results from molecular orbital theory.
   temperature was used and what is the significance of this?
 
 * Plot the Kohn-Sham wavefunctions of the different wave functions of the CO
-  molecule by writing :file:`.cube` files for handling with :program:`VMD`.
+  molecule by after writing :file:`.cube` files for handling with :program:`VMD`.
 
-<<<<<<< .mine
-=======
-    from ase.io import write
-    from gpaw import restart
-    CO, calc = restart('CO.gpw')
-    for n in range(calc.get_number_of_bands()):
-        wf = calc.get_pseudo_wave_function(band=n)
-        write('CO%d.cube' % n, CO, data=wf)
+* Can you identify the highest occupied state and the lowest unoccupied state?
 
-  You can then load all of the wave functions into :program:`VMD`
-  simultaneously, by running :samp:`vmd CO{?}.cube`.  In :program:`VMD` choose 
-  :menuselection:`Graphics --> Representations`, click 
-  :guilabel:`Create Rep`, then choose 
-  :menuselection:`Drawing Method --> isosurface`.  In the 
-  :guilabel:`Data Set` field, you can then
-  choose between all the saved wave functions.
-
->>>>>>> .r6756
-  What is the highest occupied state and the lowest unoccupied state?
-
-  How does your wave functions compare to a molecular orbital picture?
+  How does your wavefunctions compare to a molecular orbital picture?
   Try to Identify :math:`\sigma` and :math:`\pi` orbitals. Which
-  wave functions are bonding and which are antibonding?
+  wavefunctions are bonding and which are antibonding?
 
 .. hint::
 
