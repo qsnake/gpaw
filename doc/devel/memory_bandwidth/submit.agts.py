@@ -11,7 +11,7 @@ def agts(queue):
     #
     prepare = queue.add('prepare.py',
                         queueopts='-l nodes=1:ppn=1',
-                        ncpus=1, walltime=1, deps=[])
+                        ncpus=1, walltime=5, deps=[])
     run_numactl = queue.add('run_numactl.py',
                             queueopts='-l nodes=1:ppn=8:xeon5570',
                             ncpus=1, walltime=1*60, deps=[prepare])
