@@ -12,14 +12,14 @@ def mol_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
     t = ''
     while text:
         if text[0] == '_':
-            n.append(nodes.inline(text=t))
+            n.append(nodes.Text(t))
             t = ''
             n.append(nodes.subscript(text=text[1]))
             text = text[2:]
         else:
             t += text[0]
             text = text[1:]
-    n.append(nodes.inline(text=t))
+    n.append(nodes.Text(t))
     return n, []
 
 def svn_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
