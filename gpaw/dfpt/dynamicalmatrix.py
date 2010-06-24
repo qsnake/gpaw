@@ -14,8 +14,13 @@ from gpaw.utilities import unpack, unpack2
 class DynamicalMatrix:
     """This class is used to assemble the dynamical matrix.
 
-    Each of the various contributions to the second derivative of the total
-    energy are implemented in separate functions.
+    The second order derivative of the total energy with respect to atomic
+    displacements (possibly collective displacemnts characterized by a
+    q-vector) can be obtained from an expression involving the first-order
+    derivatives of the density and the wave-functions.
+    
+    Each of the various contributions to the second order derivative of the
+    total energy are implemented in separate functions.
     
     """
     
@@ -30,8 +35,8 @@ class DynamicalMatrix:
         
         # Matrix of force constants -- dict of dicts in atomic indices
         self.C_aavv = dict([(atom.index,
-                      dict([(atom_.index,np.zeros((3,3)))
-                            for atom_ in atoms])) for atom in atoms])
+                             dict([(atom_.index, np.zeros((3,3)))
+                                   for atom_ in atoms])) for atom in atoms])
         
         # Dynamical matrix -- 3Nx3N ndarray (vs q)
         self.D_u = []
@@ -40,7 +45,11 @@ class DynamicalMatrix:
     def assemble(self):
         """Assemble dynamical matrix from the force constants attribute ``C``.
 
-        D_ij = 1/(M_i + M_j) * C_ij
+        The elements of the dynamical matrix are given by::
+        
+            D_ij = 1/(M_i + M_j) * C_ij ,
+
+        where i and j are collective atomic and cartesian indices.
 
         """
 
@@ -60,12 +69,12 @@ class DynamicalMatrix:
                 # Mass prefactor
                 c = (m_a * m_a_)**(-.5)
 
-                if a != a_:
+                #if a != a_:
                     
-                    D[3*a : 3*a + 3, 3*a_ : 3*a_ + 3] += c * self.C_aavv[a][a_]
+                D[3*a : 3*a + 3, 3*a_ : 3*a_ + 3] += c * self.C_aavv[a][a_]
                 
                     # Acoustic sum-rule
-                    D[3*a : 3*a + 3, 3*a : 3*a + 3] -= 1/m_a * self.C_aavv[a][a_]
+                    # D[3*a : 3*a + 3, 3*a : 3*a + 3] -= 1/m_a * self.C_aavv[a][a_]
                 
         # Symmetrize
         self.D_ = D.copy()
@@ -80,11 +89,11 @@ class DynamicalMatrix:
         Parameters
         ----------
         a: int
-            Atomic index
+            Atomic index.
         v: int
-            Cartesian index
+            Cartesian index.
         nt1_G: ndarray
-            First-order density variation
+            First-order density variation.
 
         """
 

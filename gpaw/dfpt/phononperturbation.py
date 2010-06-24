@@ -16,7 +16,6 @@ from gpaw.dfpt.poisson import PoissonSolver, FFTPoissonSolver
 
 from gpaw.dfpt.perturbation import Perturbation
 
-from pylab import *
 
 class PhononPerturbation(Perturbation):
     """Implementation of a phonon perturbation.
@@ -211,12 +210,12 @@ class PhononPerturbation(Perturbation):
             # NOTICE: solve_neutral
             self.poisson.solve_neutral(phi_g, rho_g)  
         else:
-            # Divide out the phase factor to get the periodic part 
-            rho_g /= self.phase_qg[self.q]
+            # Divide out the phase factor to get the periodic part
+            rhot_g = rho_g/self.phase_qg[self.q]
 
             # Solve Poisson's equation for the periodic part of the potential
             # NOTICE: solve_neutral
-            self.poisson.solve_neutral(phi_g, rho_g)
+            self.poisson.solve_neutral(phi_g, rhot_g)
 
             # Return to Bloch form
             phi_g *= self.phase_qg[self.q]
@@ -237,12 +236,12 @@ class PhononPerturbation(Perturbation):
             
         """
 
+        assert self.a is not None
+        assert self.v is not None
+        assert self.q is not None
         assert x_nG.ndim in (3, 4)
         assert tuple(self.gd.n_c) == x_nG.shape[-3:]
 
-        if self.v1_G is None:
-            self.calculate_local_potential()
-        
         if x_nG.ndim == 3:
             y_nG += x_nG * self.v1_G
         else:
@@ -274,8 +273,8 @@ class PhononPerturbation(Perturbation):
 
         # Grid for derivative of compensation charges
         ghat1_g = self.finegd.zeros(dtype=self.dtype)
-        self.ghat.add_derivative(a, v, ghat1_g, Q_aL, q=self.q)
-            
+        self.ghat.add_derivative(a, v, ghat1_g, c_axi=Q_aL, q=self.q)
+        
         # Solve Poisson's eq. for the potential from the periodic part of the
         # compensation charge derivative
         v1_g = self.finegd.zeros(dtype=self.dtype)
@@ -291,7 +290,7 @@ class PhononPerturbation(Perturbation):
 
         # Store potential for the evaluation of the energy derivative
         self.v1_g = v1_g.copy()
-
+        
         # Transfer to coarse grid
         v1_G = self.gd.zeros(dtype=self.dtype)
         self.restrictor.apply(v1_g, v1_G, phases=self.phase_cd)

@@ -1,12 +1,20 @@
+2010-06-24
+ - Use of time-reversal symmetry in case of degeneracies (Gonze PRB 1997 in Ref. 82).
+ - Implicit downcast of complex numpy arrays to real arrays when assigning entrances of a real array to complex values.
+ - Use fast blacs functions.
+ - Implement ``Iteration`` class taking care of convergence checks for density, wave-functions and dynamical matrix.
+ - Convergenece criteria for SC loop; how does ``integrate`` member function on class ``GridDescriptor`` handle complex quantitites ?
 2010-05-25
- - Implement phases for the Transformer object for q != 0
+ - Implement phases for the Transformer object for q != 0.
 2010-04-08
- - Generalize Poisson solver to handle complex potentials with Bloch BC's
- - Generalize mixer to handle complex densities
- - Generalize `second_derivative` method in the LFC class to arbitraty angular momentum
- - Improve the `add_derivative` method of the LFC class
- - Generalize `dict` method of the LFC class to provide dicts for integrals with second derivatives
- - Does the linear solver handle complex vectors ??
- - Implement q-vectors
- - Implement symmetries
- - Convergence criteria for density (and wave functions)
+ * Generalize Poisson solver to handle complex potentials with Bloch BC's.
+   - dirty hack for q=0 in function ``construct_reciprocal``.
+ * Generalize mixer to handle complex densities.
+ - Generalize ``second_derivative`` method in the LFC class to arbitraty angular momentum.
+ - Improve the ``add_derivative`` method of the LFC class.
+ - Generalize ``dict`` method of the LFC class to provide dicts for integrals with second derivatives.
+ * Does the linear solver handle complex vectors ??
+ * Implement q-vectors.
+   - not very elegant but works for now.
+ - Implement symmetries.
+ - Convergence criteria for density (and wave functions).

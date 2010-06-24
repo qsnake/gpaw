@@ -122,8 +122,7 @@ class PhononCalculator:
                     self.perturbation.calculate_derivative()
                 else:
                     nt1_G, psit1_unG = \
-                           self.response(tolerance_sc = tolerance_sc,
-                                         tolerance_sternheimer = tolerance_sternheimer)
+                           self.response()
                     if save:
                         assert filebase is not None
                         file_av = "a_%.1i_v_%.1i.pckl" % (a, v)
