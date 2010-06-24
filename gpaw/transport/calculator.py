@@ -542,7 +542,7 @@ class Transport(GPAW):
         
         if self.non_sc:
             if not self.scat_restart:
-                atoms.get_potential_energy()
+                self.guess_total_energy = atoms.get_potential_energy()
                 calc = atoms.calc
                 if self.save_file:
                     atoms.calc.write('scat.gpw')
