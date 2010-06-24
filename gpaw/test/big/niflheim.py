@@ -84,6 +84,7 @@ class Niflheim(Cluster):
 
         submit_pythonpath = ':'.join([
             '%s/ase' % self.dir,
+            '%s/gpaw' % self.dir,
             '%s/gpaw/build/lib.%s' % (self.dir, arch),
             '$PYTHONPATH'])
         submit_gpaw_setup_path = '%s/gpaw/gpaw-setups' % self.dir
@@ -114,6 +115,7 @@ class Niflheim(Cluster):
              '-N',
              job.name],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+
         p.stdin.write(
             'touch %s.start\n' % job.name +
             run_command +
@@ -140,6 +142,7 @@ if __name__ == '__main__':
     queue.collect()
 
     # examples of selecting jobs
+    #queue.jobs = [j for j in queue.jobs if j.script == 'testsuite.agts.py']
     #queue.jobs = [j for j in queue.jobs if j.script == 'neb.agts.py']
     #queue.jobs = [j for j in queue.jobs if j.dir.startswith('doc')]
     #queue.jobs = [j for j in queue.jobs
@@ -161,6 +164,7 @@ if __name__ == '__main__':
             '../analysis',                 # Where to dump figures
             rev=niflheim.revision,
             mailto='gpaw-developers@listserv.fysik.dtu.dk',
+            #mailto='jensj@fysik.dtu.dk',
             mailserver='servfys.fysik.dtu.dk',
             attachment='status.log')
 
