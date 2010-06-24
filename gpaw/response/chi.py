@@ -62,7 +62,7 @@ class CHI:
             self.calc = GPAW(calc, communicator=serial_comm, txt=None)
         else:
             self.calc = calc
-            
+
         self.nbands = nbands
         self.q_c = q
 
@@ -110,6 +110,8 @@ class CHI:
 
         calc = self.calc
         gd = calc.wfs.gd
+
+        calc.initialize_positions()
 
         # kpoint init
         self.bzk_kc = calc.get_bz_k_points()
@@ -264,7 +266,7 @@ class CHI:
                 ibzkpt2, iop2, timerev2 = find_ibzkpt(self.op_scc, ibzk_kc, bzk_kc[kq_k[k]])
 
             for n in range(self.nbands):
-                psitold_g =  calc.wfs.kpt_u[ibzkpt1].psit_nG[n]
+                psitold_g = calc.wfs.get_wave_function_array(n, ibzkpt1, 0) # band, kpt, spin
                 psit1new_g = symmetrize_wavefunction(psitold_g, self.op_scc[iop1], ibzk_kc[ibzkpt1],
                                                       bzk_kc[k], timerev1)
 
@@ -280,7 +282,7 @@ class CHI:
                         check_focc = np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > self.ftol 
 
                     if check_focc:
-                        psitold_g =  calc.wfs.kpt_u[ibzkpt2].psit_nG[m]
+                        psitold_g =  calc.wfs.get_wave_function_array(m, ibzkpt2, 0) 
                         psit2_g = symmetrize_wavefunction(psitold_g, self.op_scc[iop2], ibzk_kc[ibzkpt2],
                                                            bzk_kc[kq_k[k]], timerev2)
 
