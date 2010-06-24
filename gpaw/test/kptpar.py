@@ -1,4 +1,5 @@
 # see changeset 4891
+import numpy as np
 from ase import Atoms
 from gpaw import GPAW
 from gpaw.mpi import world
