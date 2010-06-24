@@ -111,8 +111,6 @@ class CHI:
         calc = self.calc
         gd = calc.wfs.gd
 
-        calc.initialize_positions()
-
         # kpoint init
         self.bzk_kc = calc.get_bz_k_points()
         self.ibzk_kc = calc.get_ibz_k_points()
@@ -197,6 +195,9 @@ class CHI:
 
         if extra_parameters.get('df_dry_run'):
             raise SystemExit
+
+        # For LCAO wfs
+        calc.initialize_positions()
 
         # PAW part init
         # calculate <phi_i | e**(-i(q+G).r) | phi_j>
