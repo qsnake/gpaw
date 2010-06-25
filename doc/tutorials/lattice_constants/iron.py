@@ -1,6 +1,6 @@
 import numpy as np
 from ase.structure import bulk
-from gpaw import FermiDirac
+from gpaw import FermiDirac, MixerSum
 from gpaw.utilities.bulk2 import GPAWRunner
 
 strains = np.linspace(0.98, 1.02, 9)
@@ -12,6 +12,7 @@ def f(width, k, g):
     r = GPAWRunner('Fe', atoms, strains, tag=tag)
     r.set_parameters(xc='PBE',
                      occupations=FermiDirac(width),
+                     mixer=MixerSum(0.05, 5, 50),
                      kpts=(k, k, k),
                      gpts=(g, g, g))
     r.run()
