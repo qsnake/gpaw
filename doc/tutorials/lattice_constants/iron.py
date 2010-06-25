@@ -12,7 +12,8 @@ def f(width, k, g):
     r = GPAWRunner('Fe', atoms, strains, tag=tag)
     r.set_parameters(xc='PBE',
                      occupations=FermiDirac(width),
-                     mixer=MixerSum(0.05, 5, 50),
+                     mixer=MixerSum(0.025, 5, 50),
+                     eigensolver='cg',
                      kpts=(k, k, k),
                      gpts=(g, g, g))
     r.run()
