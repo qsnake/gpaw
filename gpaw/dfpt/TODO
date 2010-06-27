@@ -1,4 +1,5 @@
 2010-06-24
+ - use XXX for things that needs a closer inspection when time allows.
  - Use of time-reversal symmetry in case of degeneracies (Gonze PRB 1997 in Ref. 82).
  - Implicit downcast of complex numpy arrays to real arrays when assigning entrances of a real array to complex values.
  - Use fast blacs functions.

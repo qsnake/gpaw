@@ -18,11 +18,11 @@ class SternheimerOperator:
     perturbation with a specific q-vector, only the projections onto states at
     k+q are needed.
     
-    The main purpose of this class is to implement the multiplication with a
-    vector in the ``apply`` member function. An additional ``matvec`` member
-    function has been defined so that instances of this class can be passed as
-    a linear operator to scipy's iterative Krylov solvers in
-    ``scipy.sparse.linalg``.
+    The main purpose of this class is to implement the multiplication of the
+    linear operator (H - eps_nk) with a vector in the ``apply`` member
+    function. An additional ``matvec`` member function has been defined so that
+    instances of this class can be passed as a linear operator to scipy's
+    iterative Krylov solvers in ``scipy.sparse.linalg``.
 
     """
     
@@ -88,7 +88,7 @@ class SternheimerOperator:
         self.kplusq = kplusq
 
     def apply(self, x_nG, y_nG):
-        """Apply the Sternheimer operator to a vector.
+        """Apply the linear operator in the Sternheimer equation to a vector.
 
         For the eigenvalue term the k-point is the one of the state.
         For the other terms the k-point to be used is the one given by the k+q
@@ -120,7 +120,7 @@ class SternheimerOperator:
         # Local part of effective potential - no phase !!
         self.hamiltonian.apply_local_potential(x_nG, y_nG, kpt.s)
         
-        # Non-local part from projectors
+        # Non-local part from projectors (coefficients can not be reused)
         shape = x_nG.shape[:-3]
         P_ani = self.pt.dict(shape)
         # k+q 

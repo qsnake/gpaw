@@ -15,6 +15,7 @@ from gpaw.lfc import LocalizedFunctionsCollection as LFC
 from gpaw.dfpt.poisson import PoissonSolver, FFTPoissonSolver
 
 from gpaw.dfpt.perturbation import Perturbation
+from gpaw.dfpt.kpointcontainer import KPointContainer
 
 
 class PhononPerturbation(Perturbation):
@@ -35,7 +36,7 @@ class PhononPerturbation(Perturbation):
        
         """
 
-        self.calc = calc
+        self.atoms = calc.atoms
         self.gamma = gamma
         self.ibzq_qc = ibzq_qc
         self.poisson = poisson_solver
@@ -49,6 +50,7 @@ class PhononPerturbation(Perturbation):
             
         # dtype for ground-state wave-functions (used for the projectors)
         self.gs_gamma = calc.wfs.gamma
+        # k-points for the wave-functions also needed for the projectors
         self.ibzk_qc = calc.get_ibz_k_points()
 
         # Temp solution - should be given as argument to the init method
@@ -69,8 +71,11 @@ class PhononPerturbation(Perturbation):
         self.gd = calc.density.gd
         self.finegd = calc.density.finegd
 
-        # Steal setups
+        # Steal setups for the lfc's
         setups = calc.wfs.setups
+
+        # Store projector coefficients
+        self.dH_asp = calc.hamiltonian.dH_asp.copy()
         
         # Localized functions:
         # projectors
@@ -104,12 +109,14 @@ class PhononPerturbation(Perturbation):
         # Coefficients for the non-local part of the perturbation
         self.P_ani = None
         self.dP_aniv = None
+        # List of KPointContainers for storing the projector coefficients
+        self.kpt_u = [KPointContainer() for kpt in calc.wfs.kpt_u]
 
     def initialize(self):
         """Prepare the various attributes for a calculation."""
 
         # Get scaled atomic positions
-        spos_ac = self.calc.atoms.get_scaled_positions()
+        spos_ac = self.atoms.get_scaled_positions()
 
         # Set positions on LFC's
         self.pt.set_positions(spos_ac)
@@ -220,7 +227,7 @@ class PhononPerturbation(Perturbation):
             # Return to Bloch form
             phi_g *= self.phase_qg[self.q]
 
-    def apply(self, x_nG, y_nG, k, kplusq):
+    def apply(self, x_nG, y_nG, k, kplusq, calculate_projector_coef=True):
         """Apply the perturbation to a vector.
 
         Parameters
@@ -233,6 +240,8 @@ class PhononPerturbation(Perturbation):
             Index of the k-point for the vectors.
         kplusq: int
             Index of the k+q vector.
+        calculate_projector_coef: bool
+            Use existing coefficients when True.
             
         """
 
@@ -290,6 +299,7 @@ class PhononPerturbation(Perturbation):
 
         # Store potential for the evaluation of the energy derivative
         self.v1_g = v1_g.copy()
+        # self.v1_g = ghat1_g.copy()
         
         # Transfer to coarse grid
         v1_G = self.gd.zeros(dtype=self.dtype)
@@ -325,16 +335,13 @@ class PhononPerturbation(Perturbation):
         # Calculate coefficients needed for the non-local part of the PP
         self.calculate_projector_coef(x_nG, k)
 
-        hamiltonian = self.calc.hamiltonian
-
-        # <p_a^i | psi_n >
+        # < p_a^i | Psi_nk >
         P_ni = self.P_ani[a]
-        # <dp_av^i | psi_n > - remember the sign convention of the derivative
+        # < dp_av^i | Psi_nk > - remember the sign convention of the derivative
         dP_ni = -1 * self.dP_aniv[a][...,v]
 
         # Expansion coefficients for the projectors on atom a
-        dH_ii = unpack(hamiltonian.dH_asp[a][0])
-
+        dH_ii = unpack(self.dH_asp[a][0])
        
         # The derivative of the non-local PAW potential has two contributions
         # 1) Sum over projectors
@@ -362,18 +369,26 @@ class PhononPerturbation(Perturbation):
             potential operates on.
 
         The calculated coefficients are the following (except for an overall
-        sign of -1; see ``derivative`` method of the ``lfc`` class)::
+        sign of -1; see ``derivative`` member function of class ``LFC``):
 
-                     /        a*           
-          dP_aniv =  | dG dPhi  (G) Psi (G) ,
-                     /        iv       n
+        1. Coefficients from the projector functions::
+
+                        /      a          
+               P_ani =  | dG  p (G) Psi (G)  ,
+                        /      i       n
+                          
+        2. Coefficients from the derivative of the projector functions::
+
+                          /      a           
+               dP_aniv =  | dG dp  (G) Psi (G)  ,
+                          /      iv       n   
 
         where::
                        
-              a        d       a
-          dPhi  (G) =  ---  Phi (G) .
-              iv         a     i
-                       dR
+                 a        d       a
+               dp  (G) =  ---  Phi (G) .
+                 iv         a     i
+                          dR
 
         """
 
@@ -390,8 +405,10 @@ class PhononPerturbation(Perturbation):
         # k
         self.pt.integrate(x_nG, P_ani, q=k)
         self.P_ani = P_ani
-
+        self.kpt_u[k].P_ani = P_ani
+        
         # 2) Integrate with derivative of projectors
         # k
         self.pt.derivative(x_nG, dP_aniv, q=k)
         self.dP_aniv = dP_aniv
+        self.kpt_u[k].dP_aniv = dP_aniv
