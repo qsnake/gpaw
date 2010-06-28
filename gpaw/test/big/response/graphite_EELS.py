@@ -62,11 +62,11 @@ if GS:
 
 if EELS:
                 
-    w = np.linspace(0, 40, 401)
     f = paropen('graphite_q_list', 'w')
 
     for i in range(1,8):
        
+        w = np.linspace(0, 40, 401)
         q = np.array([i/20., 0., 0.]) # Gamma-M excitation
         #q = np.array([i/20., -i/20., 0.]) # Gamma-K excitation
 
