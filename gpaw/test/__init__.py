@@ -88,6 +88,7 @@ tests = [
     'parallel/compare.py',
     'ase3k.py',
     'laplace.py',
+    'ds_beta.py',
     'gauss_wave.py',
     'coulomb.py',
     'timing.py',
