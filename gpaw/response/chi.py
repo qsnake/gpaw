@@ -16,6 +16,7 @@ from gpaw.response.math_func import delta_function, hilbert_transform, \
 from gpaw.response.parallel import set_communicator, \
      parallel_partition, SliceAlongFrequency, SliceAlongOrbitals
 from gpaw.grid_descriptor import GridDescriptor
+from gpaw.utilities.memory import maxrss
 
 class CHI:
     """This class is a calculator for the linear density response function.
@@ -60,11 +61,9 @@ class CHI:
         self.output_init()
 
         if isinstance(calc, str):
-            self.calc = GPAW(calc, parallel={'domain':  world.size}, txt=None)
+            self.calc = GPAW(calc, txt=None)
         else:
             self.calc = calc
-            if calc.wfs.gd.comm.size != world.size:
-                raise ValueError('Only domain decomposition is supported ! ')
 
         self.nbands = nbands
         self.q_c = q
@@ -202,12 +201,7 @@ class CHI:
 
         # For LCAO wfs
         calc.initialize_positions()
-
-        # wfs flag init
-        self.wfs_mpi_flag = True
-        if calc.wfs._get_wave_function_array(0, 0).shape == (self.nG[0], self.nG[1], self.nG[2]):
-            self.wfs_mpi_flag = False
-
+        self.printtxt('     GS calculator   : %f M / cpu' %(maxrss() / 1024**2))
         # PAW part init
         # calculate <phi_i | e**(-i(q+G).r) | phi_j>
         # G != 0 part
@@ -264,10 +258,9 @@ class CHI:
             tmp = np.zeros((3), dtype=complex)
 
         rho_G = np.zeros(self.npw, dtype=complex)
+        ibzkpt_kcomm = np.zeros(self.kcomm.size, dtype=int)
         t0 = time()
 
-        ibzkpt_kcomm = np.zeros(self.kcomm.size, dtype=int)
-                
         for k in range(self.kstart, self.kend):
 
             # Find corresponding kpoint in IBZ
@@ -285,16 +278,29 @@ class CHI:
                     if (f_kn[ibzkpt_kcomm, n] < self.ftol).all():
                         break
 
-                if self.wfs_mpi_flag: 
-                    for ikcomm in range(self.kcomm.size):
-                        psit_kg = calc.wfs._get_wave_function_array(ibzkpt_kcomm[ikcomm], n)
-                        psit_tmp = calc.wfs.gd.collect(psit_kg, broadcast=True)
-    
-                        if self.kcomm.rank == ikcomm:
-                            psitold_g = psit_tmp
-                else:
-                    psitold_g = calc.wfs._get_wave_function_array(ibzkpt1, n)
-                
+                for ikcomm in range(self.kcomm.size):
+                    psit_g = calc.wfs.get_wave_function_array(n, ibzkpt_kcomm[ikcomm], 0)
+
+                    if self.comm.rank != 0:
+                        psit_g = calc.wfs.gd.empty(dtype=calc.wfs.dtype, global_array=True)
+                    self.comm.broadcast(psit_g, 0)
+                    if self.kcomm.rank == ikcomm:
+                        psitold_g = psit_g
+                    self.kcomm.barrier()
+
+#                    if ikcomm == 0:
+#                        if self.comm.rank == 0:
+#                            psitold_g = psit_g
+#                    else:
+#                        if self.comm.rank == 0: # world communicator == kcomm
+#                            self.comm.send(psit_g, ikcomm, 122+ikcomm)
+#                            
+#                        elif self.comm.rank == ikcomm:
+#                            psitold_g =  calc.wfs.gd.empty(dtype=calc.wfs.dtype, global_array=True)
+#                            self.comm.receive(psitold_g, 0, 122+ikcomm)
+#                        else:
+#                            pass
+#
                 psit1new_g = symmetrize_wavefunction(psitold_g, self.op_scc[iop1], ibzk_kc[ibzkpt1],
                                                       bzk_kc[k], timerev1)
 
@@ -313,18 +319,28 @@ class CHI:
                         check_focc = np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > self.ftol 
                     check_focc_all = np.zeros(self.kcomm.size, dtype=bool)
                     self.kcomm.all_gather(np.array([check_focc]), check_focc_all) 
-                    
-                    if self.wfs_mpi_flag: 
-                        for ikcomm in range(self.kcomm.size):
-                            if check_focc_all[ikcomm]:
-                                psit_kg  = calc.wfs._get_wave_function_array(ibzkpt_kcomm[ikcomm], m)
-                                psit_tmp = calc.wfs.gd.collect(psit_kg, broadcast=True)
-                                if self.kcomm.rank == ikcomm:
-                                    psitold_g = psit_tmp
-                    else:
-                        if check_focc:
-                            psitold_g = calc.wfs._get_wave_function_array(ibzkpt2, m)
-                        
+
+                    for ikcomm in range(self.kcomm.size):
+                        if check_focc_all[ikcomm]:
+                            psit_g = calc.wfs.get_wave_function_array(m, ibzkpt_kcomm[ikcomm], 0)
+                            if self.comm.rank != 0:
+                                psit_g = calc.wfs.gd.empty(dtype=calc.wfs.dtype, global_array=True)
+                            self.comm.broadcast(psit_g, 0)
+                            if self.kcomm.rank == ikcomm:
+                                psitold_g = psit_g
+                            self.kcomm.barrier()
+                            
+#                            if ikcomm == 0:
+#                                psitold_g = psit_g
+#                            else:
+#                                if self.comm.rank == 0: # world communicator == kcomm
+#                                    self.comm.send(psit_g, ikcomm, 122+ikcomm)
+#                                elif self.comm.rank == ikcomm:
+#                                    psitold_g =  calc.wfs.gd.empty(dtype=calc.wfs.dtype, global_array=True)
+#                                    self.comm.receive(psitold_g, 0, 122+ikcomm)
+#                                else:
+#                                    pass
+#
                     if check_focc:
         
                         psit2_g = symmetrize_wavefunction(psitold_g, self.op_scc[iop2], ibzk_kc[ibzkpt2],
@@ -460,7 +476,6 @@ class CHI:
         """
 
         if extra_parameters.get('df_dry_run'):
-            size = extra_parameters['df_dry_run']
             from gpaw.mpi import DryRunCommunicator
             size = extra_parameters['df_dry_run']
             world = DryRunCommunicator(size)
