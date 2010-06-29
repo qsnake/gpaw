@@ -32,68 +32,79 @@ class DynamicalMatrix:
         self.masses = atoms.get_masses()
         self.N = atoms.get_number_of_atoms()
 
-        if ibzq_qc = None:
+        if ibzq_qc is None:
             ibzq_qc = [(0, 0, 0)]
             assert dtype == float
-            
+
+        # Index of the gamma point -- for the acoustic sum-rule
+        self.gamma_index = 0
+        
         # Matrix of force constants -- dict of dicts in atomic indices
-        self.C_aavv = dict([(atom.index,
+        self.C_qaavv = [dict([(atom.index,
                                dict([(atom_.index, np.zeros((3,3), dtype=dtype))
                                      for atom_ in atoms])) for atom in atoms])
+                        for q in ibzq_qc]
         
         # Dynamical matrix -- 3Nx3N ndarray (vs q)
-        self.D_u = []
+        self.D_q = []
         self.D = None
-        
+
     def assemble(self, acoustic=False):
         """Assemble dynamical matrix from the force constants attribute ``C``.
 
         The elements of the dynamical matrix are given by::
-        
-            D_ij = 1/(M_i + M_j) * C_ij ,
 
+            D_ij(q) = 1/(M_i + M_j) * C_ij(q) ,
+                      
         where i and j are collective atomic and cartesian indices.
 
         Parameters
         ----------
         acoustic: bool
             When True, the diagonal of the matrix of force constants is
-            corrected to obey the acoustic sum-rule.
+            corrected to ensure that the acoustic sum-rule is fulfilled.
             
         """
 
-        # Dynamical matrix - need a dtype here
-        D = np.zeros((3*self.N, 3*self.N))
+        # First assemble matrix of force constants, then apply acoustic
+        # sum-rule 
+        for q, C_aavv in enumerate(self.C_qaavv):
 
-        for atom in self.atoms:
+            C_avav = np.zeros((3*self.N, 3*self.N), dtype=self.dtype)
+    
+            for atom in self.atoms:
+    
+                a = atom.index
+    
+                for atom_ in self.atoms:
+    
+                    a_ = atom_.index
+    
+                    C_avav[3*a : 3*a + 3, 3*a_ : 3*a_ + 3] += self.C_aavv[a][a_]
 
-            a = atom.index
-            m_a = self.masses[a]
+            # C is Hermitian
+            C = .5 * C_avav
+            C = C + C.T.conj()
 
-            for atom_ in self.atoms:
+            self.D_q.append(C)
 
-                a_ = atom_.index
-                m_a_ = self.masses[a_]
+        # Mass prefactor for the dynamical matrix
+        m_av = np.repeat(np.asarray(self.masses)**(-0.5), 3)
+        M_avav = m_av[:, newaxis] * m_av
 
-                # Mass prefactor
-                c = (m_a * m_a_)**(-.5)
-
-                #if a != a_:
-                    
-                D[3*a : 3*a + 3, 3*a_ : 3*a_ + 3] += c * self.C_aavv[a][a_]
-                
-                    # Acoustic sum-rule
-                    # D[3*a : 3*a + 3, 3*a : 3*a + 3] -= 1/m_a * self.C_aavv[a][a_]
-                
-        # Symmetrize
-        self.D_ = D.copy()
-        D *= 0.5
-        self.D = D + D.T
-        
-        return self.D, self.D_
-
+        if acoustic:
+            C_0 = C_q[self.gamma_index]
+            diag = C_0.sum(axis=1)
+            
+            for C in self.D_q:
+                C -= np.diag(diag)
+                C *= M_avav
+        else:
+            for C in self.D_q:
+                C *= M_avav
+            
     def update_row(self, a, v, nt1_G, psit1_nG, vghat1_g, dP_aniv):
-        """Update row of force constant matrix.
+        """Update row of force constant matrix attribute.
 
         Parameters
         ----------
@@ -128,7 +139,7 @@ class DynamicalMatrix:
         d2ghat_aLvv = dict([ (atom.index, np.zeros((3,3)))
                              for atom in self.atoms ])
         ghat.second_derivative(vH_g, d2ghat_aLvv)
- 
+        
         # Integral of electron density times the second derivative of vbar
         nt_g = self.calc.density.nt_g
         d2vbar_avv = dict([(atom.index, np.zeros((3,3)))
@@ -136,7 +147,7 @@ class DynamicalMatrix:
         vbar.second_derivative(nt_g, d2vbar_avv)
 
         for atom in self.atoms:
-
+            
             a = atom.index
 
             # NOTICE: HGH has only one ghat pr atoms -> generalize when
@@ -206,6 +217,11 @@ class DynamicalMatrix:
             
             self.C_aavv[a][a] += 2 * (A_vv + B_vv)
 
+    def core_corrections(self):
+        """Contribution from the derivative of the core density."""
+
+        pass
+    
     def density_response_local(self, a, v, nt1_G, vghat1_g):
         """Contributions involving the first-order density response."""
 
@@ -302,81 +318,3 @@ class DynamicalMatrix:
 
 
 
-##     def calculate_d2P_anivv(self, kpt=None, eps=1e-5/units.Bohr):
-##         """Coefficients for the second derivative of total energy.
-
-##         Parameters
-##         ----------
-##         kpt: k-point
-##             K-point of the Bloch state on which the non-local potential acts
-##             upon
-
-##         The calculated coefficients are the following::
-        
-##                       /         a*           
-##           d2P_aniv =  | dG d2Phi  (G) Psi (G) ,
-##                       /         iv       n
-
-##         where::
-        
-##                          2
-##                a        d       a
-##           d2Phi  (G) =  ---  Phi (G) .
-##                iv         2     i
-##                         dR
-##                           a
-        
-##         """
-
-##         atoms = self.calc.get_atoms()
-##         # Projectors on the atoms
-##         pt = self.calc.wfs.pt
-##         nbands = self.calc.wfs.nvalence/2
-##         # Wave functions
-##         psit_nG = self.calc.wfs.kpt_u[0].psit_nG[:nbands]
-##         # Integration dict
-##         d2P_anivv = dict([(
-##             atom.index, np.zeros((nbands, pt.get_function_count(atom.index),
-##                                   3, 3))) for atom in atoms ])
-
-##         gd = self.calc.density.gd
-        
-##         # Temp solution - finite difference of diagonal derivatives only
-##         for atom in atoms:
-##             a = atom.index
-##             c_ai = pt.dict(zero=True)
-##             # For now, only one projector pr atom
-##             c_ai[a][0]= 1.
-            
-##             for v in [0,1,2]:
-
-##                 d2P_G = gd.zeros()
-##                 # Atomic displacements in scaled coordinates
-##                 eps_s = eps/gd.cell_cv[v,v]
-##                 spos_ac = self.calc.atoms.get_scaled_positions()
-##                 #
-##                 c_ai[a] *= -2
-##                 pt.add(d2P_G, c_ai)
-##                 # -
-##                 c_ai[a] *= -.5
-##                 spos_ac[a, v] -= eps_s
-##                 pt.set_positions(spos_ac)
-##                 pt.add(d2P_G, c_ai)
-##                 # +
-##                 spos_ac[a, v] += 2 * eps_s
-##                 pt.set_positions(spos_ac)
-##                 pt.add(d2P_G, c_ai)
-##                 # Return to initial positions
-##                 spos_ac[a, v] -= eps_s
-##                 pt.set_positions(spos_ac)
-                
-##                 # Convert change to a derivative
-##                 d = eps**2
-##                 d2P_G /= d
-
-##                 int_n = gd.integrate(d2P_G * psit_nG)
-
-##                 d2P_anivv[a][:,0,v,v] = int_n
-
-
-##         return d2P_anivv
