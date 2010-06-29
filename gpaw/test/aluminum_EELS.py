@@ -24,12 +24,11 @@ a = 4.043
 atoms = bulk('Al', 'fcc', a=a)
 atoms.center()
 calc = GPAW(h=0.2,
-            kpts=(4,4,4),
+            kpts=(4,4,4), 
             xc='LDA')
 
 atoms.set_calculator(calc)
 atoms.get_potential_energy()
-calc.write('Al.gpw','all')
 
 t2 = time.time()
 
@@ -37,7 +36,7 @@ t2 = time.time()
 q = np.array([1./4.,0.,0.])
 w = np.linspace(0, 24, 241)
 
-df = DF(calc='Al.gpw', q=q, w=w, eta=0.2, ecut=50)
+df = DF(calc=calc, q=q, w=w, eta=0.2, ecut=50)
 df1, df2 = df.get_dielectric_function()
 #df.write('Al.pckl')
 df.get_EELS_spectrum(df1, df2,filename='EELS_Al')
@@ -60,8 +59,4 @@ if (np.abs(d[Nw, 1] - 29.5855600163) > 1e-5
     or np.abs(d[Nw, 2] -  28.3273860013) > 1e-5):
     print d[Nw, 1], d[Nw, 2]
     raise ValueError('Please check spectrum strength ! ')
-                                                              
-
-if rank == 0:
-  os.remove('Al.gpw')
 
