@@ -96,4 +96,4 @@ print >> f, 'Minimum (E_int,d):', e_0, d_0
 f.close()
 
 equal(e_0 , -0.11, 0.01)
-equal(d_0 , 2.68, 0.05)
+equal(d_0 , 2.86, 0.05)
