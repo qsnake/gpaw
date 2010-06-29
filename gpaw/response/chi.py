@@ -427,7 +427,15 @@ class CHI:
         band_rank, myn = self.calc.wfs.bd.who_has(n)
 
         psit_g = self.calc.wfs._get_wave_function_array(u, myn)
-        psit_G = self.calc.wfs.gd.collect(psit_g, broadcast=True)
+        psit_G = self.calc.wfs.gd.collect(psit_g)
+
+        world_rank = (kpt_rank * self.calc.wfs.gd.comm.size *
+                          self.calc.wfs.band_comm.size +
+                          band_rank * self.calc.wfs.gd.comm.size)
+        
+        if self.comm.rank != world_rank:
+            psit_G = self.gd.empty(dtype=self.calc.wfs.dtype)
+        self.comm.broadcast(psit_G, world_rank)
 
         return psit_G
 
