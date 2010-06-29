@@ -278,29 +278,14 @@ class CHI:
                     if (f_kn[ibzkpt_kcomm, n] < self.ftol).all():
                         break
 
-                for ikcomm in range(self.kcomm.size):
-                    psit_g = calc.wfs.get_wave_function_array(n, ibzkpt_kcomm[ikcomm], 0)
+                if calc.wfs.world.size != 1:
+                    for ikcomm in range(self.kcomm.size):
+                        psit_g = self.get_wavefunction(ibzkpt_kcomm[ikcomm], n)
+                        if self.kcomm.rank == ikcomm:
+                            psitold_g = psit_g
+                else:
+                    psitold_g = calc.wfs._get_wave_function_array(ibzkpt1, n)
 
-                    if self.comm.rank != 0:
-                        psit_g = calc.wfs.gd.empty(dtype=calc.wfs.dtype, global_array=True)
-                    self.comm.broadcast(psit_g, 0)
-                    if self.kcomm.rank == ikcomm:
-                        psitold_g = psit_g
-                    self.kcomm.barrier()
-
-#                    if ikcomm == 0:
-#                        if self.comm.rank == 0:
-#                            psitold_g = psit_g
-#                    else:
-#                        if self.comm.rank == 0: # world communicator == kcomm
-#                            self.comm.send(psit_g, ikcomm, 122+ikcomm)
-#                            
-#                        elif self.comm.rank == ikcomm:
-#                            psitold_g =  calc.wfs.gd.empty(dtype=calc.wfs.dtype, global_array=True)
-#                            self.comm.receive(psitold_g, 0, 122+ikcomm)
-#                        else:
-#                            pass
-#
                 psit1new_g = symmetrize_wavefunction(psitold_g, self.op_scc[iop1], ibzk_kc[ibzkpt1],
                                                       bzk_kc[k], timerev1)
 
@@ -320,27 +305,16 @@ class CHI:
                     check_focc_all = np.zeros(self.kcomm.size, dtype=bool)
                     self.kcomm.all_gather(np.array([check_focc]), check_focc_all) 
 
-                    for ikcomm in range(self.kcomm.size):
-                        if check_focc_all[ikcomm]:
-                            psit_g = calc.wfs.get_wave_function_array(m, ibzkpt_kcomm[ikcomm], 0)
-                            if self.comm.rank != 0:
-                                psit_g = calc.wfs.gd.empty(dtype=calc.wfs.dtype, global_array=True)
-                            self.comm.broadcast(psit_g, 0)
-                            if self.kcomm.rank == ikcomm:
-                                psitold_g = psit_g
-                            self.kcomm.barrier()
-                            
-#                            if ikcomm == 0:
-#                                psitold_g = psit_g
-#                            else:
-#                                if self.comm.rank == 0: # world communicator == kcomm
-#                                    self.comm.send(psit_g, ikcomm, 122+ikcomm)
-#                                elif self.comm.rank == ikcomm:
-#                                    psitold_g =  calc.wfs.gd.empty(dtype=calc.wfs.dtype, global_array=True)
-#                                    self.comm.receive(psitold_g, 0, 122+ikcomm)
-#                                else:
-#                                    pass
-#
+                    if calc.wfs.world.size != 1:
+                        for ikcomm in range(self.kcomm.size):
+                            if check_focc_all[ikcomm]:
+                                psit_g = self.get_wavefunction(ibzkpt_kcomm[ikcomm], m)
+                                if self.kcomm.rank == ikcomm:
+                                    psitold_g = psit_g
+                    else:
+                        if check_focc:
+                            psitold_g = calc.wfs._get_wave_function_array(ibzkpt2, m)
+
                     if check_focc:
         
                         psit2_g = symmetrize_wavefunction(psitold_g, self.op_scc[iop2], ibzk_kc[ibzkpt2],
@@ -400,6 +374,7 @@ class CHI:
 #                            for wi in range(self.NwS_local):
 #                                if deltaw[wi + self.wS1] > 1e-8:
 #                                    specfunc_wGG[wi] += tmp_GG * deltaw[wi + self.wS1]
+
             self.kcomm.barrier()            
             if k == 0:
                 dt = time() - t0
@@ -444,6 +419,17 @@ class CHI:
         self.chi0_wGG = chi0_wGG / self.vol
 
         return
+
+    def get_wavefunction(self, k, n):
+
+        mynu = len(self.calc.wfs.kpt_u)
+        kpt_rank, u = divmod(k, mynu)
+        band_rank, myn = self.calc.wfs.bd.who_has(n)
+
+        psit_g = self.calc.wfs._get_wave_function_array(u, myn)
+        psit_G = self.calc.wfs.gd.collect(psit_g, broadcast=True)
+
+        return psit_G
 
 
     def output_init(self):
