@@ -21,7 +21,7 @@ class ResponseCalculator:
 
     Parameters
     ----------
-    maxiter: int
+    max_iter: int
         Maximum number of iterations in the self-consistent evaluation of
         the density variation
     tolerance_sc: float
@@ -41,7 +41,7 @@ class ResponseCalculator:
     """
 
     parameters = {'verbose':               False,
-                  'maxiter':               1000,
+                  'max_iter':               1000,
                   'tolerance_sc':          1.0e-4,
                   'tolerance_sternheimer': 1e-5,
                   'use_pc':                True,
@@ -50,7 +50,8 @@ class ResponseCalculator:
                   'weight':                50
                   }
     
-    def __init__(self, calc, perturbation, poisson_solver=None, **kwargs):
+    def __init__(self, calc, perturbation, kpointdescriptor,
+                 poisson_solver=None, **kwargs):
         """Store calculator etc.
 
         Parameters
@@ -59,16 +60,19 @@ class ResponseCalculator:
             Calculator instance containing a ground-state calculation.
         perturbation: Perturbation
             Class implementing the perturbing potential. Must provide an
-            ``apply`` member function that knows how to operate the
-            perturbation to a (set of) state vector(s).
+            ``apply`` member function implementing the multiplication of the 
+            perturbing potential to a (set of) state vector(s).
             
         """
         
         # Make sure that localized functions are initialized
         calc.set_positions()
-        atoms = calc.get_atoms()
+
+        # Store ground-state quantities
+        self.wfs = calc.wfs
+        self.hamiltonian = calc.hamiltonian
+        self.density = calc.density
         
-        self.calc = calc
         self.perturbation = perturbation
 
         if hasattr(perturbation, 'solve_poisson'):
@@ -78,10 +82,11 @@ class ResponseCalculator:
 
             self.poisson = poisson_solver
             self.solve_poisson = self.poisson.solve_neutral
-            
-        # Get list of k-points
-        self.kpt_u = self.calc.wfs.kpt_u
 
+        # Get list of k-point containers
+        self.kpt_u = calc.wfs.kpt_u
+        self.kpointdescriptor = kpointdescriptor
+        
         # Store grid-descriptors
         self.gd = calc.density.gd
         self.finegd = calc.density.finegd
@@ -106,7 +111,7 @@ class ResponseCalculator:
         self.linear_solver = None
 
         # Number of occupied bands
-        nvalence = self.calc.wfs.nvalence
+        nvalence = calc.wfs.nvalence
         self.nbands = nvalence/2 + nvalence%2
         assert self.nbands <= calc.wfs.nbands
                                   
@@ -143,9 +148,6 @@ class ResponseCalculator:
         use_pc = p['use_pc']
         tolerance_sternheimer = p['tolerance_sternheimer']
         
-        hamiltonian = self.calc.hamiltonian
-        wfs = self.calc.wfs
-
         # Initialize interpolator and restrictor
         self.interpolator.allocate()
         self.restrictor.allocate()
@@ -157,6 +159,8 @@ class ResponseCalculator:
         self.mixer.initialize_metric(self.gd)
         
         # Linear operator in the Sternheimer equation
+        hamiltonian = self.hamiltonian
+        wfs = self.wfs        
         self.sternheimer_operator = \
             SternheimerOperator(hamiltonian, wfs, self.gd, dtype=self.gs_dtype)
 
@@ -176,13 +180,13 @@ class ResponseCalculator:
 
         self.initialized = True
         
-    def __call__(self, kplusq_k=None):
+    def __call__(self):
         """Calculate linear density response.
 
         Parameters
         ----------
-        kplusq_k: list
-            Indices of the k+q vectors.
+        q_c: ndarray
+            q-vector of perturbing potential.
             
         """
 
@@ -191,7 +195,7 @@ class ResponseCalculator:
 
         # Parameters
         p = self.parameters
-        maxiter = p['maxiter']
+        max_iter = p['max_iter']
         tolerance = p['tolerance_sc']
         
         # Reset mixer
@@ -200,8 +204,13 @@ class ResponseCalculator:
         # List the variations of the wave-functions
         self.psit1_unG = [self.gd.zeros(n=self.nbands, dtype=self.gs_dtype)
                           for kpt in self.kpt_u]
-      
-        for iter in range(maxiter):
+
+        
+        if self.perturbation.has_q:
+            q_c = self.perturbation.get_q()
+            kplusq_k = self.kpointdescriptor.find_k_plus_q(q_c)
+            
+        for iter in range(max_iter):
             print     "iter:%3i\t" % iter,
             if iter == 0:
                 self.first_iteration(kplusq_k)
@@ -218,7 +227,7 @@ class ResponseCalculator:
                            % iter)
                     break
                 
-            if iter == maxiter-1:
+            if iter == max_iter-1:
                 print     ("self-consistent loop did not converge in %i "
                            "iterations" % (iter+1))
                 
@@ -262,11 +271,11 @@ class ResponseCalculator:
         self.solve_poisson(vHXC1_g, nt1_g)
 
         # XC part - fix this in the xc_functional.py file !!!!
-        density = self.calc.density
+        density = self.density
         nt_g_ = density.nt_g.ravel()
         vXC1_g = self.finegd.zeros(dtype=float)
         vXC1_g.shape = nt_g_.shape
-        hamiltonian = self.calc.hamiltonian
+        hamiltonian = self.hamiltonian
         hamiltonian.xcfunc.calculate_fxc_spinpaired(nt_g_, vXC1_g)
         vXC1_g.shape = nt1_g.shape
         vHXC1_g += vXC1_g * nt1_g
@@ -315,6 +324,7 @@ class ResponseCalculator:
             # Right-hand side of Sternheimer equation
             rhs_nG = self.gd.zeros(n=self.nbands, dtype=self.gs_dtype)
             # k and k+q
+            # XXX should only be done once
             self.perturbation.apply(psit_nG, rhs_nG, k, kplusq)
 
             if self.pc is not None:

@@ -1,3 +1,6 @@
+2010-06-29
+ - The contribution to the rhs of the Sternheimer eq. from the perturbation is 
+   recalculated in each iteration - NOT necessary, at least not all of it!!!
 2010-06-24
  - use XXX for things that needs a closer inspection when time allows.
  - Use of time-reversal symmetry in case of degeneracies (Gonze PRB 1997 in Ref. 82).

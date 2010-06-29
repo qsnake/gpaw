@@ -7,42 +7,45 @@ from math import sqrt
 import numpy as np
 
 import ase.units as units
-
 from gpaw.utilities import unpack, unpack2
 
-
 class DynamicalMatrix:
-    """This class is used to assemble the dynamical matrix.
+    """Class for assembling the dynamical matrix from first-order responses.
 
     The second order derivative of the total energy with respect to atomic
-    displacements (possibly collective displacemnts characterized by a
-    q-vector) can be obtained from an expression involving the first-order
-    derivatives of the density and the wave-functions.
+    displacements (for periodic systems collective atomic displacemnts
+    characterized by a q-vector) can be obtained from an expression involving
+    the first-order derivatives of the density and the wave-functions.
     
     Each of the various contributions to the second order derivative of the
     total energy are implemented in separate functions.
     
     """
     
-    def __init__(self, atoms):
+    def __init__(self, atoms, ibzq_qc=None, dtype=float):
         """Inititialize class with a list of atoms."""
 
         # Store useful objects
         self.atoms = atoms
+        self.dtype = dtype
         self.calc = atoms.get_calculator()
         self.masses = atoms.get_masses()
         self.N = atoms.get_number_of_atoms()
-        
+
+        if ibzq_qc = None:
+            ibzq_qc = [(0, 0, 0)]
+            assert dtype == float
+            
         # Matrix of force constants -- dict of dicts in atomic indices
         self.C_aavv = dict([(atom.index,
-                             dict([(atom_.index, np.zeros((3,3)))
-                                   for atom_ in atoms])) for atom in atoms])
+                               dict([(atom_.index, np.zeros((3,3), dtype=dtype))
+                                     for atom_ in atoms])) for atom in atoms])
         
         # Dynamical matrix -- 3Nx3N ndarray (vs q)
         self.D_u = []
         self.D = None
-
-    def assemble(self):
+        
+    def assemble(self, acoustic=False):
         """Assemble dynamical matrix from the force constants attribute ``C``.
 
         The elements of the dynamical matrix are given by::
@@ -51,6 +54,12 @@ class DynamicalMatrix:
 
         where i and j are collective atomic and cartesian indices.
 
+        Parameters
+        ----------
+        acoustic: bool
+            When True, the diagonal of the matrix of force constants is
+            corrected to obey the acoustic sum-rule.
+            
         """
 
         # Dynamical matrix - need a dtype here

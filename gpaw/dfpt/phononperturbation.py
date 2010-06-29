@@ -66,7 +66,6 @@ class PhononPerturbation(Perturbation):
                 # FFT Poisson solver
                 self.poisson = FFTPoissonSolver(dtype=self.dtype)
       
-            
         # Store grid-descriptors
         self.gd = calc.density.gd
         self.finegd = calc.density.finegd
@@ -107,6 +106,7 @@ class PhononPerturbation(Perturbation):
             self.q = None
 
         # Coefficients for the non-local part of the perturbation
+        # XXX outphase these attributes
         self.P_ani = None
         self.dP_aniv = None
         # List of KPointContainers for storing the projector coefficients
@@ -128,7 +128,7 @@ class PhononPerturbation(Perturbation):
             # Set k-vectors and update
             self.pt.set_k_points(self.ibzk_qc)
             self.pt._update(spos_ac)
-            
+
         if not self.gamma:
             
             # Set q-vectors and update
@@ -157,6 +157,15 @@ class PhononPerturbation(Perturbation):
         # Grid transformer
         self.restrictor.allocate()
 
+    def has_q(self):
+        """Overwrite base class member function."""
+        return True
+
+    def get_q(self):
+        """Return q-vector."""
+
+        return self.ibzq_qc[self.q]
+    
     def set_perturbation(self, a, v):
         """Set atom and cartesian coordinate of the perturbation.
 
@@ -227,12 +236,12 @@ class PhononPerturbation(Perturbation):
             # Return to Bloch form
             phi_g *= self.phase_qg[self.q]
 
-    def apply(self, x_nG, y_nG, k, kplusq, calculate_projector_coef=True):
-        """Apply the perturbation to a vector.
+    def apply(self, psi_nG, y_nG, k, kplusq):
+        """Apply perturbation to unperturbed wave-functions.
 
         Parameters
         ----------
-        x_nG: ndarray
+        psi_nG: ndarray
             Set of grid vectors to which the perturbation is applied.
         y_nG: ndarray
             Output vectors.
@@ -248,16 +257,16 @@ class PhononPerturbation(Perturbation):
         assert self.a is not None
         assert self.v is not None
         assert self.q is not None
-        assert x_nG.ndim in (3, 4)
-        assert tuple(self.gd.n_c) == x_nG.shape[-3:]
+        assert psi_nG.ndim in (3, 4)
+        assert tuple(self.gd.n_c) == psi_nG.shape[-3:]
 
-        if x_nG.ndim == 3:
-            y_nG += x_nG * self.v1_G
+        if psi_nG.ndim == 3:
+            y_nG += psi_nG * self.v1_G
         else:
-            for x_G, y_G in zip(x_nG, y_nG):
+            for x_G, y_G in zip(psi_nG, y_nG):
                 y_G += x_G * self.v1_G
 
-        self.apply_nonlocal_potential(x_nG, y_nG, k, kplusq)
+        self.apply_nonlocal_potential(psi_nG, y_nG, k, kplusq)
 
     def calculate_local_potential(self):
         """Derivate of the local potential wrt an atomic displacements.
@@ -307,7 +316,7 @@ class PhononPerturbation(Perturbation):
 
         self.v1_G = v1_G
 
-    def apply_nonlocal_potential(self, x_nG, y_nG, k, kplusq):
+    def apply_nonlocal_potential(self, psi_nG, y_nG, k, kplusq):
         """Derivate of the non-local PAW potential wrt an atomic displacement.
 
         Parameters
@@ -321,19 +330,19 @@ class PhononPerturbation(Perturbation):
 
         assert self.a is not None
         assert self.v is not None
-        assert x_nG.ndim in (3,4)
-        assert tuple(self.gd.n_c) == x_nG.shape[-3:]
+        assert psi_nG.ndim in (3,4)
+        assert tuple(self.gd.n_c) == psi_nG.shape[-3:]
         
-        if x_nG.ndim == 3:
+        if psi_nG.ndim == 3:
             n = 1
         else:
-            n = x_nG.shape[0]
+            n = psi_nG.shape[0]
             
         a = self.a
         v = self.v
         
         # Calculate coefficients needed for the non-local part of the PP
-        self.calculate_projector_coef(x_nG, k)
+        self.calculate_projector_coef(psi_nG, k)
 
         # < p_a^i | Psi_nk >
         P_ni = self.P_ani[a]
@@ -359,7 +368,7 @@ class PhononPerturbation(Perturbation):
         # k+q !!
         self.pt.add_derivative(a, v, y_nG, dc_ani, q=kplusq)
         
-    def calculate_projector_coef(self, x_nG, k):
+    def calculate_projector_coef(self, psi_nG, k):
         """Coefficients for the derivative of the non-local part of the PP.
 
         Parameters
@@ -392,10 +401,10 @@ class PhononPerturbation(Perturbation):
 
         """
 
-        if x_nG.ndim == 3:
+        if psi_nG.ndim == 3:
             n = 1
         else:
-            n = x_nG.shape[0]
+            n = psi_nG.shape[0]
             
         # Integration dicts
         P_ani   = self.pt.dict(shape=n)
@@ -403,12 +412,12 @@ class PhononPerturbation(Perturbation):
 
         # 1) Integrate with projectors
         # k
-        self.pt.integrate(x_nG, P_ani, q=k)
+        self.pt.integrate(psi_nG, P_ani, q=k)
         self.P_ani = P_ani
         self.kpt_u[k].P_ani = P_ani
         
         # 2) Integrate with derivative of projectors
         # k
-        self.pt.derivative(x_nG, dP_aniv, q=k)
+        self.pt.derivative(psi_nG, dP_aniv, q=k)
         self.dP_aniv = dP_aniv
         self.kpt_u[k].dP_aniv = dP_aniv

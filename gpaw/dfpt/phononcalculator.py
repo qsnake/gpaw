@@ -13,6 +13,7 @@ import ase.units as units
 from gpaw.utilities import unpack, unpack2
 
 from gpaw.dfpt.poisson import PoissonSolver, FFTPoissonSolver
+from gpaw.dfpt.kpointdescriptor import KPointDescriptor
 from gpaw.dfpt.responsecalculator import ResponseCalculator
 from gpaw.dfpt.phononperturbation import PhononPerturbation
 from gpaw.dfpt.dynamicalmatrix import DynamicalMatrix
@@ -64,9 +65,13 @@ class PhononCalculator:
         self.perturbation = PhononPerturbation(self.calc, self.gamma,
                                                ibzq_qc=self.ibzq_qc)
                                                #, poisson_solver=poisson)
-        
+
+        # Ground-state k-points
+        ibzk_qc = calc.get_ibz_k_points()
+        bzk_qc = calc.get_ibz_k_points()
+        kdescr = KPointDescriptor(bzk_qc, ibzk_qc)
         # Linear response calculator
-        self.response = ResponseCalculator(self.calc, self.perturbation)
+        self.response = ResponseCalculator(self.calc, self.perturbation, kdescr)
 
         # Dynamical matrix object
         self.D_matrix = DynamicalMatrix(atoms)
@@ -87,10 +92,8 @@ class PhononCalculator:
         """Set indices of atoms to include in the calculation."""
 
         self.atoms_a = atoms_a
-        
-    def __call__(self, tolerance_sc=1.0e-4,
-                 tolerance_sternheimer=1.0e-5, use_dfpt=True,
-                 save=False, load=False, filebase=None):
+
+    def __call__(self):
         """Run calculation for atomic displacements and update matrix."""
 
         if not self.initialized:
