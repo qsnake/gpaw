@@ -62,6 +62,8 @@ class CHI:
 
         if isinstance(calc, str):
             self.calc = GPAW(calc, txt=None)
+            if self.calc.wfs.kpt_u[0].psit_nG is not None:
+                self.calc = GPAW(calc, communicator=serial_comm, txt=None)
         else:
             self.calc = calc
 
