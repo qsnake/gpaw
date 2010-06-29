@@ -3,10 +3,10 @@ import sys
 
 import numpy as np
 
-from ase import *
-from ase.parallel import *
+from ase import Atom
+from ase.units import Ha
 
-from gpaw import *
+from gpaw import GPAW
 from gpaw.cluster import *
 from gpaw.pes.state import BoundState, H1s
 from gpaw.pes.ds_beta import CrossSectionBeta
