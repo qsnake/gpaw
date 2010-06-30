@@ -74,10 +74,11 @@ class CrossSectionBeta:
         """Return the total cross section.
 
         E: photoelectron kinetic energy [eV]
-        units: 'Mb', 1 Mb = 1.e-22 m**2
-               'Ang', 1 A**2 = 1.e-20 m**2
-               'a.u.', 1 a_0**2 = 2.8e-21 m**2
-               as output units
+        units: 
+        'Mb', 1 Mb = 1.e-22 m**2
+        'Ang', 1 A**2 = 1.e-20 m**2
+        'a.u.', 1 a_0**2 = 2.8e-21 m**2
+        as output units
         """
         if Ekin is not None:
             self.calculate(Ekin)
