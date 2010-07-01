@@ -40,8 +40,8 @@ class ResponseCalculator:
         
     """
 
-    parameters = {'verbose':               False,
-                  'max_iter':               1000,
+    parameters = {'verbose':               True,
+                  'max_iter':              1,
                   'tolerance_sc':          1.0e-4,
                   'tolerance_sternheimer': 1e-5,
                   'use_pc':                True,
@@ -66,7 +66,7 @@ class ResponseCalculator:
         """
         
         # Make sure that localized functions are initialized
-        calc.set_positions()
+        #calc.set_positions()
 
         # Store ground-state quantities
         self.wfs = calc.wfs
@@ -85,7 +85,7 @@ class ResponseCalculator:
 
         # Get list of k-point containers
         self.kpt_u = calc.wfs.kpt_u
-        self.kpointdescriptor = kpointdescriptor
+        self.kd = kpointdescriptor
         
         # Store grid-descriptors
         self.gd = calc.density.gd
@@ -110,6 +110,11 @@ class ResponseCalculator:
         # Krylov solver
         self.linear_solver = None
 
+        # Phases for transformer objects - since the perturbation determines
+        # the form of the density response this is obtained from the
+        # perturbation in the ``__call__`` member function below.
+        self.phase_cd = None
+        
         # Number of occupied bands
         nvalence = calc.wfs.nvalence
         self.nbands = nvalence/2 + nvalence%2
@@ -181,14 +186,7 @@ class ResponseCalculator:
         self.initialized = True
         
     def __call__(self):
-        """Calculate linear density response.
-
-        Parameters
-        ----------
-        q_c: ndarray
-            q-vector of perturbing potential.
-            
-        """
+        """Calculate density derivative."""
 
         assert self.initialized, ("Linear response calculator "
                                   "not initizalized.")
@@ -205,10 +203,12 @@ class ResponseCalculator:
         self.psit1_unG = [self.gd.zeros(n=self.nbands, dtype=self.gs_dtype)
                           for kpt in self.kpt_u]
 
+        # Set phases
+        self.phase_cd = self.perturbation.get_phase_cd()
         
         if self.perturbation.has_q:
             q_c = self.perturbation.get_q()
-            kplusq_k = self.kpointdescriptor.find_k_plus_q(q_c)
+            kplusq_k = self.kd.find_k_plus_q(q_c)
             
         for iter in range(max_iter):
             print     "iter:%3i\t" % iter,
@@ -237,9 +237,11 @@ class ResponseCalculator:
         """Perform first iteration of sc-loop."""
 
         self.wave_function_variations(kplusq_k=kplusq_k)
-        self.nt1_G = self.density_response()
+        self.density_response()
         self.mixer.mix(self.nt1_G, [])
-
+        # Temp
+        v1_G = self.effective_potential_variation()
+        
     def iteration(self, kplusq_k):
         """Perform iteration."""
 
@@ -248,28 +250,22 @@ class ResponseCalculator:
         # Update wave function variations
         self.wave_function_variations(v1_G=v1_G, kplusq_k=kplusq_k)
         # Update density
-        self.nt1_G = self.density_response()
+        self.density_response()
         # Mix - supply phase_cd here for metric inside the mixer
-        phase_cd = self.perturbation.phase_cd
-        self.mixer.mix(self.nt1_G, [], phase_cd=phase_cd)
+        self.mixer.mix(self.nt1_G, [], phase_cd=self.phase_cd)
         norm = self.mixer.get_charge_sloshing()
 
         return norm
 
     def effective_potential_variation(self):
-        """Calculate variation in the effective potential."""
-
-        # Get phases for the transformation between grids from the perturbation
-        phase_cd = self.perturbation.phase_cd
-        
-        # Calculate new effective potential
-        nt1_g = self.finegd.zeros(dtype=self.dtype)
-        self.interpolator.apply(self.nt1_G, nt1_g, phases=phase_cd)
+        """Calculate derivative of the effective potential (Hartree + XC)."""
 
         # Hartree part
         vHXC1_g = self.finegd.zeros(dtype=self.dtype)
-        self.solve_poisson(vHXC1_g, nt1_g)
-
+        self.solve_poisson(vHXC1_g, self.nt1_g)
+        # Store for evaluation of second order derivative
+        self.vH1_g = vHXC1_g.copy()
+        
         # XC part - fix this in the xc_functional.py file !!!!
         density = self.density
         nt_g_ = density.nt_g.ravel()
@@ -277,12 +273,12 @@ class ResponseCalculator:
         vXC1_g.shape = nt_g_.shape
         hamiltonian = self.hamiltonian
         hamiltonian.xcfunc.calculate_fxc_spinpaired(nt_g_, vXC1_g)
-        vXC1_g.shape = nt1_g.shape
-        vHXC1_g += vXC1_g * nt1_g
+        vXC1_g.shape = self.nt1_g.shape
+        vHXC1_g += vXC1_g * self.nt1_g
 
         # Transfer to coarse grid
         v1_G = self.gd.zeros(dtype=self.dtype)
-        self.restrictor.apply(vHXC1_g, v1_G, phases=phase_cd)
+        self.restrictor.apply(vHXC1_g, v1_G, phases=self.phase_cd)
         
         return v1_G
     
@@ -368,8 +364,8 @@ class ResponseCalculator:
         """Calculate density response from variation in the wave-functions."""
 
         # Note, density might be complex
-        nt1_G = self.gd.zeros(dtype=self.dtype)
-        
+        self.nt1_G = self.gd.zeros(dtype=self.dtype)
+
         for kpt in self.kpt_u:
 
             # The occupations includes the weight of the k-points
@@ -381,6 +377,9 @@ class ResponseCalculator:
                 # NOTICE: this relies on the automatic down-cast of the complex
                 # array on the rhs to a real array when the lhs is real !!
                 # Factor 2 for time-reversal symmetry
-                nt1_G += 2 * f * (psit_nG[n].conjugate() * psit1_nG[n])
+                self.nt1_G += 2 * f * (psit_nG[n].conjugate() * psit1_nG[n])
 
-        return nt1_G
+        # Transfer to fine grid
+        self.nt1_g = self.finegd.zeros(dtype=self.dtype)
+        self.interpolator.apply(self.nt1_G, self.nt1_g, phases=self.phase_cd)
+

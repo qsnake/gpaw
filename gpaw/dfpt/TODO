@@ -1,4 +1,8 @@
 2010-06-29
+ - How does the ``second_derivative`` member function of class ``LFC`` handle complex wave-functions?
+ - Perturbation breaks symmetry -> how should that be accounted for.
+ - The integrated density change for q!=0 is different from zero.
+ - Include time-reversal symmetry.
  - The contribution to the rhs of the Sternheimer eq. from the perturbation is 
    recalculated in each iteration - NOT necessary, at least not all of it!!!
 2010-06-24
@@ -9,7 +13,7 @@
  - Implement ``Iteration`` class taking care of convergence checks for density, wave-functions and dynamical matrix.
  - Convergenece criteria for SC loop; how does ``integrate`` member function on class ``GridDescriptor`` handle complex quantitites ?
 2010-05-25
- - Implement phases for the Transformer object for q != 0.
+ * Implement phases for the Transformer object for q != 0.
 2010-04-08
  * Generalize Poisson solver to handle complex potentials with Bloch BC's.
    - dirty hack for q=0 in function ``construct_reciprocal``.

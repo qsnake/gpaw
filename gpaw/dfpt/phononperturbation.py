@@ -157,6 +157,11 @@ class PhononPerturbation(Perturbation):
         # Grid transformer
         self.restrictor.allocate()
 
+    def get_phase_cd(self):
+        """Return phases for instances of class ``Transformer`` ."""
+
+        return self.phase_cd
+    
     def has_q(self):
         """Overwrite base class member function."""
         return True
