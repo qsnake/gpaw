@@ -50,7 +50,7 @@ class ResponseCalculator:
                   'weight':                50
                   }
     
-    def __init__(self, calc, perturbation, kpointdescriptor,
+    def __init__(self, calc, wfs, perturbation, kpointdescriptor,
                  poisson_solver=None, **kwargs):
         """Store calculator etc.
 
@@ -58,6 +58,9 @@ class ResponseCalculator:
         ----------
         calc: Calculator
             Calculator instance containing a ground-state calculation.
+        wfs: WaveFunctions
+            Class taking care of wave-functions, projectors, k-point related
+            quantities and symmetries.
         perturbation: Perturbation
             Class implementing the perturbing potential. Must provide an
             ``apply`` member function implementing the multiplication of the 
@@ -69,10 +72,10 @@ class ResponseCalculator:
         #calc.set_positions()
 
         # Store ground-state quantities
-        self.wfs = calc.wfs
         self.hamiltonian = calc.hamiltonian
         self.density = calc.density
-        
+
+        self.wfs = wfs
         self.perturbation = perturbation
 
         if hasattr(perturbation, 'solve_poisson'):
@@ -142,7 +145,7 @@ class ResponseCalculator:
 
         self.parameters.update(kwargs)
             
-    def initialize(self):
+    def initialize(self, spos_ac):
         """Make the object ready for a calculation."""
 
         # Parameters
@@ -152,6 +155,9 @@ class ResponseCalculator:
         weight = p['weight']
         use_pc = p['use_pc']
         tolerance_sternheimer = p['tolerance_sternheimer']
+
+        # Initialize WaveFunctions attribute
+        self.wfs.initialize(spos_ac)
         
         # Initialize interpolator and restrictor
         self.interpolator.allocate()

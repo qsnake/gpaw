@@ -16,6 +16,7 @@ from gpaw.dfpt.poisson import PoissonSolver, FFTPoissonSolver
 from gpaw.dfpt.kpointdescriptor import KPointDescriptor
 from gpaw.dfpt.responsecalculator import ResponseCalculator
 from gpaw.dfpt.phononperturbation import PhononPerturbation
+from gpaw.dfpt.wavefunctions import WaveFunctions
 from gpaw.dfpt.dynamicalmatrix import DynamicalMatrix
 
 
@@ -31,15 +32,15 @@ class PhononCalculator:
  
         # Store useful objects
         self.atoms = atoms
-        self.calc = atoms.get_calculator()
+        calc = atoms.get_calculator()
         
         # Make sure localized functions are initialized
-        self.calc.set_positions()
+        calc.set_positions()
         # Note that this under some circumstances (e.g. when called twice)
         # allocates a new array for the P_ani coefficients !!
 
         # Boundary conditions
-        pbc_c = self.calc.atoms.get_pbc()
+        pbc_c = calc.atoms.get_pbc()
         
         if np.all(pbc_c == False):
             self.gamma = True
@@ -56,27 +57,36 @@ class PhononCalculator:
                 self.gamma = False
                 self.dtype = complex
                 # Get k-points -- only temp, I need q-vectors; maybe the same ???
-                self.ibzq_qc = self.calc.get_ibz_k_points()
-                phase_qcd = [kpt.phase_cd for kpt in self.calc.wfs.kpt_u]
+                self.ibzq_qc = calc.get_ibz_k_points()
+                phase_qcd = [kpt.phase_cd for kpt in calc.wfs.kpt_u]
                 
             # FFT Poisson solver
             poisson = FFTPoissonSolver(dtype=self.dtype)
             
-        # Include all atoms per default
+        # List of atom indices to include in calculation
         self.atoms_a = [atom.index for atom in atoms]
         
         # Phonon perturbation
-        self.perturbation = PhononPerturbation(self.calc, self.gamma,
+        self.perturbation = PhononPerturbation(calc, self.gamma,
                                                ibzq_qc=self.ibzq_qc)
                                                #, poisson_solver=poisson)
 
         # Ground-state k-points
-        ibzk_qc = self.calc.get_ibz_k_points()
-        bzk_qc = self.calc.get_ibz_k_points()
+        ibzk_qc = calc.get_ibz_k_points()
+        bzk_qc = calc.get_ibz_k_points()
         kd = KPointDescriptor(bzk_qc, ibzk_qc)
 
+        # Number of occupied bands
+        nvalence = calc.wfs.nvalence
+        nbands = nvalence/2 + nvalence%2
+        assert nbands <= calc.wfs.nbands
+
+        # WaveFunctions object
+        wfs = WaveFunctions(nbands, calc.wfs.kpt_u, calc.wfs.setups,
+                            calc.wfs.gamma, kd, calc.density.gd)
+        
         # Linear response calculator
-        self.response = ResponseCalculator(self.calc, self.perturbation, kd)
+        self.response = ResponseCalculator(calc, wfs, self.perturbation, kd)
 
         # Dynamical matrix object
         self.D_matrix = DynamicalMatrix(atoms, ibzq_qc=self.ibzq_qc,
@@ -87,9 +97,12 @@ class PhononCalculator:
         
     def initialize(self):
         """Initialize response calculator and perturbation."""
-        
-        self.response.initialize()
-        self.perturbation.initialize()
+
+        # Get scaled atomic positions
+        spos_ac = self.atoms.get_scaled_positions()
+
+        self.perturbation.initialize(spos_ac)
+        self.response.initialize(spos_ac)
 
         self.initialized = True
         
@@ -114,8 +127,7 @@ class PhononCalculator:
             for v in [1]:#[0, 1, 2]:
 
                 components = ['x','y','z']
-                atoms = self.calc.get_atoms()
-                symbols = atoms.get_chemical_symbols()
+                symbols = self.atoms.get_chemical_symbols()
                 print "Atom index: %i" % a
                 print "Atomic symbol: %s" % symbols[a]
                 print "Component: %s" % components[v]

@@ -33,7 +33,7 @@ class SternheimerOperator:
         ----------
         hamiltonian: Hamiltonian
             Hamiltonian for a ground-state calculation.
-        wfs: GridWavefunctions
+        wfs: WaveFunctions
             Ground-state wave-functions.
         gd: GridDescriptor
             Grid on which the operator is defined.
@@ -45,10 +45,6 @@ class SternheimerOperator:
         self.kpt_u = wfs.kpt_u
         self.pt = wfs.pt
         self.gd = gd
-
-        # Occupied bands
-        nvalence = wfs.nvalence
-        self.nbands = max(1, nvalence/2 + nvalence%2)
 
         # Variables for k-point and band index
         self.k = None
@@ -168,13 +164,13 @@ class SternheimerOperator:
         kpt = self.kpt_u[self.kplusq]
 
         # Occupied wave function
-        psit_nG = kpt.psit_nG[:self.nbands]
+        psit_nG = kpt.psit_nG
         
         # Project out one orbital at a time
-        for n in range(self.nbands):
+        for n, psit_G in enumerate(psit_nG): #range(self.nbands):
 
-            proj_n = self.gd.integrate(psit_nG[n].conjugate() * x_nG)
-            x_nG -= proj_n * psit_nG[n]
+            proj_n = self.gd.integrate(psit_G.conjugate() * x_nG)
+            x_nG -= proj_n * psit_G
 
         # Do the projection in one go - figure out how to use np.dot correctly
         # a_G -= np.dot(proj_n, psit_nG)

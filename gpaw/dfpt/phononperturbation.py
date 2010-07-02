@@ -36,7 +36,6 @@ class PhononPerturbation(Perturbation):
        
         """
 
-        self.atoms = calc.atoms
         self.gamma = gamma
         self.ibzq_qc = ibzq_qc
         self.poisson = poisson_solver
@@ -109,14 +108,9 @@ class PhononPerturbation(Perturbation):
         # XXX outphase these attributes
         self.P_ani = None
         self.dP_aniv = None
-        # List of KPointContainers for storing the projector coefficients
-        self.kpt_u = [KPointContainer() for kpt in calc.wfs.kpt_u]
 
-    def initialize(self):
+    def initialize(self, spos_ac):
         """Prepare the various attributes for a calculation."""
-
-        # Get scaled atomic positions
-        spos_ac = self.atoms.get_scaled_positions()
 
         # Set positions on LFC's
         self.pt.set_positions(spos_ac)
@@ -419,10 +413,8 @@ class PhononPerturbation(Perturbation):
         # k
         self.pt.integrate(psi_nG, P_ani, q=k)
         self.P_ani = P_ani
-        self.kpt_u[k].P_ani = P_ani
         
         # 2) Integrate with derivative of projectors
         # k
         self.pt.derivative(psi_nG, dP_aniv, q=k)
         self.dP_aniv = dP_aniv
-        self.kpt_u[k].dP_aniv = dP_aniv

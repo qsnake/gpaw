@@ -5,20 +5,20 @@ from ase.dft.kpoints import get_monkhorst_shape
 class KPointDescriptor:
     """Class for keeping track of k-points."""
 
-    def __init__(self, bzk_kc, ibzk_kc):
+    def __init__(self, bzk_kc, ibzk_qc):
         """Init with k-point coordinates for full and irreducible BZ.
 
         Parameters
         ----------
         bzk_kc: ndarray
             K-points in the BZ.
-        ibzk_kc: ndarray
+        ibzk_qc: ndarray
             K-points in the irreducible part of the BZ.
 
         """
 
         self.bzk_kc = bzk_kc
-        self.ibzk_kc = ibzk_kc
+        self.ibzk_qc = ibzk_qc
         self.nkpts = len(bzk_kc)
 
     def find_q_grid(self):
