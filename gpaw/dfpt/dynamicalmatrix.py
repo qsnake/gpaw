@@ -5,6 +5,7 @@ __all__ = ["DynamicalMatrix"]
 from math import sqrt
 
 import numpy as np
+import numpy.fft as fft
 
 import ase.units as units
 from gpaw.utilities import unpack, unpack2
@@ -83,7 +84,7 @@ class DynamicalMatrix:
     
                     a_ = atom_.index
     
-                    C_avav[3*a : 3*a + 3, 3*a_ : 3*a_ + 3] += self.C_aavv[a][a_]
+                    C_avav[3*a : 3*a + 3, 3*a_ : 3*a_ + 3] += C_aavv[a][a_]
 
             # C is Hermitian
             C = .5 * C_avav
@@ -93,7 +94,7 @@ class DynamicalMatrix:
 
         # Mass prefactor for the dynamical matrix
         m_av = np.repeat(np.asarray(self.masses)**(-0.5), 3)
-        M_avav = m_av[:, newaxis] * m_av
+        M_avav = m_av[:, np.newaxis] * m_av
 
         if acoustic:
             C_0 = C_q[self.gamma_index]
@@ -105,7 +106,12 @@ class DynamicalMatrix:
         else:
             for C in self.D_q:
                 C *= M_avav
-            
+
+    def fourier_interpolate(self):
+        """Fourier interpolate dynamical matrix to a finer q-grid."""
+
+        D_q = np.array(D_q)
+    
     def update_row(self, perturbation, response_calc):
         """Update row of force constant matrix from first-order derivatives.
 
@@ -158,29 +164,25 @@ class DynamicalMatrix:
         """Ground state contributions from the non-local potential."""
 
         # Projector functions
-        pt = perturbation.pt
+        pt = response_calc.wfs.pt
         # Projector coefficients
         dH_asp = perturbation.dH_asp
       
         # K-point
-        kpt_u = response_calc.kpt_u
-        # P_ani and dP_aniv
-        kpt_u_ = perturbation.kpt_u
-        
+        kpt_u = response_calc.wfs.kpt_u
         nbands = response_calc.nbands
-
+        
         for kpt in kpt_u:
 
             # Index of k
             k = kpt.k
+            P_ani = kpt.P_ani
+            dP_aniv = kpt.dP_aniv
             
             # Occupation factors include the weight of the k-points
-            f_n = kpt.f_n[:nbands]
-            psit_nG = kpt.psit_nG[:nbands]
-            psit1_nG = response_calc.psit1_unG[k]
-            
-            P_ani = kpt_u_[k]
-            dP_aniv = kpt_u_[k]
+            f_n = kpt.f_n
+            psit_nG = kpt.psit_nG
+            psit1_nG = kpt.psit1_nG
 
             # Calculate d2P_anivv coefficients
             # d2P_anivv = self.calculate_d2P_anivv()
@@ -271,8 +273,8 @@ class DynamicalMatrix:
             a_ = atom_.index
             # Minus sign below - see doc string to the lfc method
             # derivative
-            self.C_aavv[a][a_][v] -= np.dot(Q_aL[a_], dghat_aLv[a_]) 
-            self.C_aavv[a][a_][v] -= dvbar_av[a_][0]
+            C_aavv[a][a_][v] -= np.dot(Q_aL[a_], dghat_aLv[a_]) 
+            C_aavv[a][a_][v] -= dvbar_av[a_][0]
 
     def wfs_derivative(self, perturbation, response_calc):
         """Contributions from the non-local part of the PAW potential."""
@@ -288,17 +290,14 @@ class DynamicalMatrix:
         # Get k+q indices
         q_c = perturbation.get_q()
         kplusq_k = response_calc.kd.find_k_plus_q(q_c)
-                
+        
         # Projector functions
-        pt = perturbation.pt
+        pt = response_calc.wfs.pt
         # Projector coefficients
         dH_asp = perturbation.dH_asp
-      
-        # K-point
-        kpt_u = response_calc.kpt_u
-        # P_ani and dP_aniv
-        kpt_u_ = perturbation.kpt_u
         
+        # K-point
+        kpt_u = response_calc.wfs.kpt_u
         nbands = response_calc.nbands
         
         for kpt in kpt_u:
@@ -306,14 +305,15 @@ class DynamicalMatrix:
             # Indices of k and k+q
             k = kpt.k
             kplusq = kplusq_k[k]
+
+            # Projector coefficients
+            P_ani = kpt.P_ani
+            dP_aniv = kpt.dP_aniv
             
             # Occupation factors include the weight of the k-points
-            f_n = kpt.f_n[:nbands]
-            psit_nG = kpt.psit_nG[:nbands]
-            psit1_nG = response_calc.psit1_unG[k]
-            
-            P_ani = kpt_u_[k]
-            dP_aniv = kpt_u_[k]
+            f_n = kpt.f_n
+            psit_nG = kpt.psit_nG
+            psit1_nG = kpt.psit1_nG
 
             # Overlap between wave-function derivative and projectors
             Pdpsi_ani = pt.dict(shape=nbands, zero=True)

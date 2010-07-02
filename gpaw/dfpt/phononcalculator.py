@@ -33,6 +33,7 @@ class PhononCalculator:
         # Store useful objects
         self.atoms = atoms
         calc = atoms.get_calculator()
+        self.calc = calc
         
         # Make sure localized functions are initialized
         calc.set_positions()
@@ -86,7 +87,7 @@ class PhononCalculator:
                             calc.wfs.gamma, kd, calc.density.gd)
         
         # Linear response calculator
-        self.response = ResponseCalculator(calc, wfs, self.perturbation, kd)
+        self.response_calc = ResponseCalculator(calc, wfs, self.perturbation, kd)
 
         # Dynamical matrix object
         self.D_matrix = DynamicalMatrix(atoms, ibzq_qc=self.ibzq_qc,
@@ -102,7 +103,7 @@ class PhononCalculator:
         spos_ac = self.atoms.get_scaled_positions()
 
         self.perturbation.initialize(spos_ac)
-        self.response.initialize(spos_ac)
+        self.response_calc.initialize(spos_ac)
 
         self.initialized = True
         
@@ -120,11 +121,11 @@ class PhononCalculator:
         # Calculate linear response wrt displacements of specified atoms
         #for q, q_c in enumerate(self.ibzq_qc):
 
-        self.perturbation.set_q(5)
+        self.perturbation.set_q(0)
 
         for a in [0]:#self.atoms_a:
             
-            for v in [1]:#[0, 1, 2]:
+            for v in [2]:#[0, 1, 2]:
 
                 components = ['x','y','z']
                 symbols = self.atoms.get_chemical_symbols()
@@ -134,7 +135,7 @@ class PhononCalculator:
                 
                 self.perturbation.set_perturbation(a, v)
     
-                output = self.response()
+                output = self.response_calc()
 
                 if False: #save:
                     assert filebase is not None
@@ -145,10 +146,10 @@ class PhononCalculator:
                     f.close()
                             
                 self.D_matrix.update_row(self.perturbation,
-                                         self.response)
+                                         self.response_calc)
                 
         self.D_matrix.density_ground_state(self.perturbation, self.calc)
-        self.D_matrix.ground_state_nonlocal(self.perturbation, self.calc)
+        self.D_matrix.wfs_ground_state(self.perturbation, self.response_calc)
 
     def get_dynamical_matrix(self):
         """Assemble and return the dynamical matrix as an ndarray."""

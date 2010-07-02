@@ -1,4 +1,6 @@
 2010-06-29
+ - Provide instance of ``Perturbation`` in ``__call__`` member function of class ``ResponseCalculator`` instead of in constructor.
+ - Member function ``integrate/derivative`` of class ``lfc`` does not work with complex quantities when initialized with ``integral`` keyword.
  - How does the ``second_derivative`` member function of class ``LFC`` handle complex wave-functions?
  - Perturbation breaks symmetry -> how should that be accounted for.
  - The integrated density change for q!=0 is different from zero.

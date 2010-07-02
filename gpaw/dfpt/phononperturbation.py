@@ -80,8 +80,9 @@ class PhononPerturbation(Perturbation):
         self.nct = LFC(self.gd, [[setup.nct] for setup in setups],
                        integral=[setup.Nct for setup in setups])
         # compensation charges
-        self.ghat = LFC(self.finegd, [setup.ghat_l for setup in setups],
-                        integral=sqrt(4 * pi))
+        self.ghat = LFC(self.finegd, [setup.ghat_l for setup in setups])        
+        # self.ghat = LFC(self.finegd, [setup.ghat_l for setup in setups],
+        #                 integral=sqrt(4 * pi))
         # vbar potential
         self.vbar = LFC(self.finegd, [[setup.vbar] for setup in setups])
 
