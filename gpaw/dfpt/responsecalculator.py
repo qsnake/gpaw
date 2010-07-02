@@ -78,6 +78,11 @@ class ResponseCalculator:
         self.wfs = wfs
         self.perturbation = perturbation
 
+        # Get list of k-point containers
+        self.kpt_u = wfs.kpt_u
+        self.kd = kpointdescriptor
+
+        # Poisson solver
         if hasattr(perturbation, 'solve_poisson'):
             self.solve_poisson = perturbation.solve_poisson
         else:
@@ -85,11 +90,7 @@ class ResponseCalculator:
 
             self.poisson = poisson_solver
             self.solve_poisson = self.poisson.solve_neutral
-
-        # Get list of k-point containers
-        self.kpt_u = calc.wfs.kpt_u
-        self.kd = kpointdescriptor
-        
+       
         # Store grid-descriptors
         self.gd = calc.density.gd
         self.finegd = calc.density.finegd
@@ -106,8 +107,6 @@ class ResponseCalculator:
         self.restrictor = Transformer(self.finegd, self.gd, nn=3,
                                       dtype=self.dtype, allocate=False)
 
-        # Wave-function derivative
-        self.psit1_unG = None
         # Sternheimer operator
         self.sternheimer_operator = None
         # Krylov solver
@@ -204,10 +203,11 @@ class ResponseCalculator:
         
         # Reset mixer
         self.mixer.reset()
-        
-        # List the variations of the wave-functions
-        self.psit1_unG = [self.gd.zeros(n=self.nbands, dtype=self.gs_dtype)
-                          for kpt in self.kpt_u]
+
+        # Initialize arrays for wave-function derivatives
+        for kpt in self.wfs.kpt_u:
+
+            kpt.psit1_nG = self.gd.zeros(n=self.nbands, dtype=self.gs_dtype)
 
         # Set phases
         self.phase_cd = self.perturbation.get_phase_cd()
@@ -237,7 +237,7 @@ class ResponseCalculator:
                 print     ("self-consistent loop did not converge in %i "
                            "iterations" % (iter+1))
                 
-        return self.nt1_G.copy(), self.psit1_unG
+        return self.nt1_G.copy()
     
     def first_iteration(self, kplusq_k):
         """Perform first iteration of sc-loop."""
@@ -310,8 +310,8 @@ class ResponseCalculator:
             if verbose:
                 print "k-point %2.1i" % k
             
-            psit_nG = kpt.psit_nG[:self.nbands]
-            psit1_nG = self.psit1_unG[k]
+            psit_nG = kpt.psit_nG
+            psit1_nG = kpt.psit1_nG
 
             # Index of k+q vector
             if kplusq_k is None:
@@ -327,7 +327,7 @@ class ResponseCalculator:
             rhs_nG = self.gd.zeros(n=self.nbands, dtype=self.gs_dtype)
             # k and k+q
             # XXX should only be done once
-            self.perturbation.apply(psit_nG, rhs_nG, k, kplusq)
+            self.perturbation.apply(psit_nG, rhs_nG, self.wfs, k, kplusq)
 
             if self.pc is not None:
                 # k+q
@@ -375,9 +375,9 @@ class ResponseCalculator:
         for kpt in self.kpt_u:
 
             # The occupations includes the weight of the k-points
-            f_n = kpt.f_n[:self.nbands]
-            psit_nG = kpt.psit_nG[:self.nbands]
-            psit1_nG = self.psit1_unG[kpt.k]
+            f_n = kpt.f_n
+            psit_nG = kpt.psit_nG
+            psit1_nG = kpt.psit1_nG
 
             for n, f in enumerate(f_n):
                 # NOTICE: this relies on the automatic down-cast of the complex
