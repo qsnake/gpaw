@@ -69,12 +69,11 @@ class GaussianBasis:
         return eps_n, C_bn
     
     def calculate_density(self, f_n, C_bn):
-        """Calculate density and density matrix."""
+        """Calculate density."""
         Cf_bn = C_bn[:, :len(f_n)] * f_n**0.5
         n_g = (np.dot(Cf_bn.T, self.basis_bg)**2).sum(0) / (4 * pi)
         Cf_Bn = np.dot(self.Q_Bb, Cf_bn)
-        rho_BB = np.inner(Cf_Bn, Cf_Bn)
-        return n_g, rho_BB
+        return n_g
         
 
 class AllElectronAtom:
@@ -130,6 +129,7 @@ class AllElectronAtom:
                 f0 = min(f, 2 * l + 1)
                 self.f_lsn[l][0].append(f0)
                 self.f_lsn[l][1].append(f - f0)
+
     def add(self, n, l, df=+1, s=None):
         """Add (remove) electrons."""
         if s is None:
@@ -182,7 +182,7 @@ class AllElectronAtom:
 
         # Radial grid:
         self.ngpts = ngpts
-        beta = ngpts / alpha2**0.5 / 10
+        beta = self.beta = ngpts / alpha2**0.5 / 10
         self.x_g = np.linspace(0, 1, ngpts)
         self.r_g = beta * self.x_g / (1 - self.x_g)
         self.r_g[-1] = 1.0e9
@@ -196,7 +196,7 @@ class AllElectronAtom:
 
         self.basis_l = []
         for l in range(self.lmax + 1):
-            basis = GaussianBasis(l, self.r_g, self.alpha_B, eps)
+            basis = self.get_basis(l, eps)
             self.basis_l.append(basis)
 
         self.log('Basis functions:  %s (%s)' %
@@ -209,29 +209,32 @@ class AllElectronAtom:
 
         self.vr_sg = np.zeros((self.nspins, ngpts))
         self.vr_sg[:] = -self.Z
+
+    def get_basis(self, l, eps):
+        return GaussianBasis(l, self.r_g, self.alpha_B, eps)
         
     def diagonalize(self):
         """Diagonalize Schrödinger equation."""
         self.eps_lsn = []
         self.C_lsbn = []
+        self.eeig = 0.0
         for basis in self.basis_l:
             self.eps_lsn.append([])
             self.C_lsbn.append([])
-            for vr_g in self.vr_sg:
+            for s, vr_g in enumerate(self.vr_sg):
                 eps_n, C_bn = basis.diagonalize(self.r_g * vr_g * self.dr_g)
+                f_n = self.f_lsn[basis.l][s]
+                self.eeig += np.dot(f_n, eps_n[:len(f_n)])
                 self.eps_lsn[basis.l].append(eps_n)
                 self.C_lsbn[basis.l].append(C_bn)
 
     def calculate_density(self):
         """Calculate elctron density and kinetic energy."""
         self.n_sg = np.zeros((self.nspins, self.ngpts))
-        self.ekin = 0.0
         for l, basis in enumerate(self.basis_l):
             for s, f_n in enumerate(self.f_lsn[l]):
-                n_g, rho_BB = basis.calculate_density(np.array(f_n),
-                                                      self.C_lsbn[l][s])
-                self.n_sg[s] += n_g
-                self.ekin += (basis.T_BB * rho_BB).sum()
+                self.n_sg[s] += basis.calculate_density(np.array(f_n),
+                                                        self.C_lsbn[l][s])
 
     def calculate_electrostatic_potential(self):
         """Calculate electrostatic potential and energy."""
@@ -256,6 +259,8 @@ class AllElectronAtom:
                                             self.n_sg[1], self.vxc_sg[1])
         exc_g[-1] = 0.0
         self.exc = np.trapz(exc_g * self.r_g**2 * self.dr_g) * 4 * pi
+        self.vxc = np.trapz((self.n_sg * self.vxc_sg).sum(0) *
+                            self.r_g**2 * self.dr_g) * 4 * pi
 
     def step(self):
         self.diagonalize()
@@ -265,13 +270,16 @@ class AllElectronAtom:
         self.vr_sg = self.vxc_sg * self.r_g
         self.vr_sg += self.vHr_g
         self.vr_sg -= self.Z
-
+        self.ekin = (self.eeig -
+                     np.trapz((self.vr_sg * self.n_sg).sum(0) *
+                              self.r_g * self.dr_g) * 4 * pi)
+        
     def run(self, mix=0.4, maxiter=117, dnmax=1e-9):
         if self.basis_l is None:
             self.initialize()
 
         dn = self.Z
-        pb = ProgressBar(log(dnmax / dn), 0, 52, self.fd)
+        pb = ProgressBar(log(dnmax / dn), 0, 54, self.fd)
         self.log()
         
         for iter in range(maxiter):
@@ -294,15 +302,21 @@ class AllElectronAtom:
             raise RuntimeError('Did not converge!')
 
     def summary(self):
+        self.write_states()
+        self.write_energies()
+
+    def sort_states(self):
         states = []
         for l, f_sn in self.f_lsn.items():
             for n, f in enumerate(f_sn[0]):
                 states.append((self.eps_lsn[l][0][n], n, l, f))
         states.sort()
-        
-        self.log('\nstate  occupation             eigenvalue')
-        self.log('====================================================')
-        for e, n, l, f in states:
+        return states
+    
+    def write_states(self):
+        self.log('\n  state   occupation             eigenvalue')
+        self.log('======================================================')
+        for e, n, l, f in self.sort_states():
             self.log(' %d%s      %6.3f   %13.6f Ha  %13.5f eV' %
                      (n + l + 1, 'spdfg'[l], f, e, e * units.Hartree))
             if self.nspins == 2:
@@ -310,7 +324,9 @@ class AllElectronAtom:
                 e = self.eps_lsn[l][1][n]
                 self.log('         %6.3f   %13.6f Ha  %13.5f eV' %
                      (f, e, e * units.Hartree))
-        self.log('====================================================')
+        self.log('======================================================')
+
+    def write_energies(self):
         self.log('\nEnergies:')
         self.log('==============================')
         self.log('kinetic       %+13.6f Ha' % self.ekin)
@@ -321,10 +337,36 @@ class AllElectronAtom:
                  (self.ekin + self.eH + self.eZ + self.exc))
         self.log('==============================')
 
-    def g(self):
+    def get_wave_function(self, n, l, s=0, force_positive_tail=True):
+        f_g = np.dot(self.C_lsbn[l][s][:, n - l - 1],
+                     self.basis_l[l].basis_bg)
+        if force_positive_tail:
+            g = int(self.ngpts * 5.0 / (self.beta + 5.0))
+            if f_g[g] < 0:
+                f_g *= -1.0
+        return f_g
+        
+    def plot_wave_functions(self, rc=4.0):
         import matplotlib.pyplot as plt
-        for a in self.basis_l[0].alpha_B:
-            plt.plot(self.x_g, np.exp(-a * self.r_g**2))
+        if rc is None:
+            r_g = self.x_g
+        else:
+            r_g = self.r_g
+        colors = 'krgbycm' * 3
+        for e, n, l, f in self.sort_states():
+            n += l + 1
+            fr_g = self.get_wave_function(n, l, 0) * self.r_g
+            plt.plot(r_g, fr_g,
+                     lw=2, color=colors[0], ls='-',
+                     label='%d%s' % (n, 'spdfg'[l]))
+            if self.nspins == 2:
+                fr_g = self.get_wave_function(n, l, 1) * self.r_g
+                plt.plot(r_g, fr_g,
+                         lw=2, color=colors[0], ls='--')
+            colors = colors[1:]
+        plt.legend()
+        if rc is not None:
+            plt.axis(xmax=rc)
         plt.show()
 
     def plot(self, a_g, rc=4.0, show=False):
@@ -357,12 +399,12 @@ def build_parser():
     return parser
 
 
-def main():
+def main(AEA=AllElectronAtom):
     parser = build_parser()
     opt, args = parser.parse_args()
 
     if len(args) != 1:
-        parser.error("incorrect number of arguments")
+        parser.error('Incorrect number of arguments')
     symbol = args[0]
 
     nlfs = []
@@ -382,13 +424,16 @@ def main():
             else:
                 f = 1
             nlfs.append((n, l, f, s))
-            
-    aea = AllElectronAtom(symbol,
-                          xc=opt.xc_functional,
-                          spinpol=opt.spin_polarized)
+
+    kwargs = {'xc': opt.xc_functional}
+    if opt.spin_polarized:
+        kwargs['spinpol'] = True
+        
+    aea = AEA(symbol, **kwargs)
 
     if opt.exponents:
         parts = opt.exponents.split(':')
+        kwargs = {}
         kwargs['alpha1'] = float(parts[0])
         if len(parts) > 1:
             kwargs['alpha2'] = float(parts[1])
@@ -400,7 +445,9 @@ def main():
         aea.add(n, l, f, s)
 
     aea.run()
-    
+
+    if opt.plot:
+        aea.plot_wave_functions()
 
 if __name__ == '__main__':
     main()
