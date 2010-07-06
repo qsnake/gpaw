@@ -485,6 +485,7 @@ http://wiki.fysik.dtu.dk/gpaw/install/installationguide.html for details."""
         elif name == 'core_hole_state':
             setup.has_corehole = True
             setup.fcorehole = float(attrs['removed'])
+            setup.lcorehole = 'spdf'.find(attrs['state'][1])
             setup.core_hole_e = float(attrs['eig'])
             setup.core_hole_e_kin = float(attrs['ekin'])
             self.data = []

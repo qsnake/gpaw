@@ -535,6 +535,7 @@ class Setup(BaseSetup):
         rcut_j = self.rcut_j = data.rcut_j
 
         self.fcorehole = data.fcorehole
+        self.lcorehole = data.lcorehole
 
         self.ExxC = data.ExxC
         self.X_p = data.X_p
@@ -960,6 +961,7 @@ class Setup(BaseSetup):
         return basis
 
     def calculate_oscillator_strengths(self, r_g, dr_g, phi_jg):
+        assert(self.lcorehole == 0)
         self.A_ci = np.zeros((3, self.ni))
         nj = len(phi_jg)
         i = 0
