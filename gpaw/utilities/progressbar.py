@@ -12,7 +12,9 @@ class ProgressBar:
         
     def __call__(self, x):
         """Update progress bar."""
-        b = int(round((x - self.x0) / (self.x1 - self.x0) * self.n))
+        b = min(int(round((x - self.x0) / (self.x1 - self.x0) * self.n)),
+                self.n)
+        #print b, self.b0, self.n
         if b > self.b0:
             self.fd.write('=' * (b - self.b0))
             self.fd.flush()
