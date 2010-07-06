@@ -280,7 +280,7 @@ class Transport_Analysor:
 
     def calculate_realspace_wave_functions(self, C_nm, q):
         #nl number of molecular levels
-        wfs = self.tp.extended_calc.wfs
+        wfs = self.tp.wfs
         nao = wfs.setups.nao
         nb, nl = C_nm.shape
         if wfs.dtype == float:
