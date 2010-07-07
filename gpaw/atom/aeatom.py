@@ -9,6 +9,7 @@ from scipy.integrate import cumtrapz
 from scipy.special import gamma
 from ase.data import atomic_numbers, atomic_names, chemical_symbols
 import ase.units as units
+from ase.utils import devnull
 
 from gpaw.atom.configurations import configurations
 from gpaw.xc_functional import XCFunctional
@@ -244,7 +245,9 @@ class AllElectronAtom:
             self.xc = XCFunctional(xc, nspins=self.nspins)
         else:
             self.xc = xc
-            
+
+        if log is None:
+            log = devnull
         self.fd = log
 
         self.vr_sg = None  # potential * r
@@ -324,7 +327,7 @@ class AllElectronAtom:
         if alpha2 is None:
             alpha2 = 50.0 * self.Z**2
 
-        self.gd = GridDescriptor(r1=1 / alpha2**0.5 / 10, rN=rcut, N=ngpts)
+        self.gd = GridDescriptor(r1=1 / alpha2**0.5 / 50, rN=rcut, N=ngpts)
         self.log('Grid points:     %d (%.5f, %.5f, %.5f, ..., %.3f, %.3f)' %
                  ((self.gd.N,) + tuple(self.gd.r_g[[0, 1, 2, -2, -1]])))
 
