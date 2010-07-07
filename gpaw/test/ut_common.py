@@ -84,7 +84,7 @@ def create_random_atoms(gd, nmolecules=10, name='H2O', mindist=4.5 / Bohr):
         sdist_c = np.empty(3)
         if not gd.orthogonal:
             for c in range(3):
-                n_v = gd.iucell_cv[c] / np.linalg.norm(gd.iucell_cv[c])
+                n_v = gd.xxxiucell_cv[c] / np.linalg.norm(gd.xxxiucell_cv[c])
                 sdist_c[c] = mindist / np.dot(gd.cell_cv[c], n_v)
         else:
             sdist_c[:] = mindist / gd.cell_cv.diagonal()

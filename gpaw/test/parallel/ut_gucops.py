@@ -154,7 +154,7 @@ class UTDomainParallelSetup(TestCase):
                 # and point intersected by this plane (d=0,1 / bottom,top).
                 n_v = np.sign(cellvol) * (1-2*d) * c_v / np.linalg.norm(c_v)
                 if debug: print {0:'x',1:'y',2:'z'}[c]+'-'+{0:'bottom',1:'top'}[d]+':', n_v, 'Bohr'
-                if debug: print 'gd.iucell_cv[%d]~' % c, self.gd.iucell_cv[c] / np.linalg.norm(self.gd.iucell_cv[c]), 'Bohr'
+                if debug: print 'gd.xxxiucell_cv[%d]~' % c, self.gd.xxxiucell_cv[c] / np.linalg.norm(self.gd.xxxiucell_cv[c]), 'Bohr'
                 origin_v = np.dot(d * np.eye(3)[c], self.gd.cell_cv)
                 d_a = np.dot(pos_ac/Bohr - origin_v[np.newaxis,:], n_v)
                 if debug: print 'a:', self.a/2*Bohr, 'min:', np.min(d_a)*Bohr, 'max:', np.max(d_a)*Bohr
@@ -201,10 +201,11 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
             self.gamma, self.dtype)
 
         # Choose a sufficiently small width of gaussian test functions
-        self.sigma = np.min((0.1+0.4*self.gd.pbc_c)*self.gd.cell_c)
+        cell_c = np.sum(self.gd.cell_cv**2, axis=1)**0.5
+        self.sigma = np.min((0.1+0.4*self.gd.pbc_c)*cell_c)
 
         if debug and world.rank == 0:
-            print 'sigma=%8.5f Ang' % (self.sigma*Bohr), 'cell_c:', self.gd.cell_c*Bohr, 'Ang', 'N_c:', self.gd.N_c
+            print 'sigma=%8.5f Ang' % (self.sigma*Bohr), 'cell_c:', cell_c*Bohr, 'Ang', 'N_c:', self.gd.N_c
         self.atoms = create_random_atoms(self.gd, 4, 'H', 4*self.sigma)
         self.r_vG = None
         self.wf_uG = None
