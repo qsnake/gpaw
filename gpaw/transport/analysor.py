@@ -293,7 +293,8 @@ class Transport_Analysor:
             psi_g = psi_g.reshape(1, -1)
             wfs.basis_functions.lcao_to_grid(c_nm, psi_g, q)
             psi_g.shape = self.tp.gd.n_c
-            total_psi_g.append(psi_g / Bohr**1.5)
+            global_psi_g = self.tp.gd.collect(psi_g)
+            total_psi_g.append(global_psi_g / Bohr**1.5)
         return np.array(total_psi_g)
 
     def get_left_channels(self, energy, s, k):
@@ -701,7 +702,10 @@ class Transport_Analysor:
         gd = calc.gd
         finegd = calc.hamiltonian.finegd
 
-        nt_sG = tp.gd.collect(tp.density.nt_sG)
+        if not tp.use_qzk_boundary:
+            nt_sG = tp.gd.collect(tp.density.nt_sG)
+        else:
+            nt_sG = gd.collect(calc.density.nt_sG)            
         vt_sG = gd.collect(calc.hamiltonian.vt_sG)
         
         data = self.data
@@ -725,19 +729,27 @@ class Transport_Analysor:
         else:
             nt = None
             vt = None
-         
-        gd = tp.finegd
-        rhot_g = gd.collect(tp.density.rhot_g)
-
-        if world.rank == 0:
-            rho1 = tp.surround.sides['-'].boundary_rhot_g_line
-            rho2 = tp.surround.sides['+'].boundary_rhot_g_line
-            rho = aa1d(rhot_g)
-            rho = np.append(rho1, rho)
-            rho = np.append(rho, rho2)
-            data[flag + 'rho'] = np.array(rho)
+        
+        if not tp.use_qzk_boundary: 
+            gd = tp.finegd
+            rhot_g = gd.collect(tp.density.rhot_g)
+            if world.rank == 0:
+                rho1 = tp.surround.sides['-'].boundary_rhot_g_line
+                rho2 = tp.surround.sides['+'].boundary_rhot_g_line
+                rho = aa1d(rhot_g)
+                rho = np.append(rho1, rho)
+                rho = np.append(rho, rho2)
+                data[flag + 'rho'] = np.array(rho)
+            else:
+                rho = None
         else:
-            rho = None
+            gd = calc.finegd
+            rhot_g = gd.collect(calc.density.rhot_g)            
+            if world.rank == 0:
+                rho = aa1d(rhot_g)                
+                data[flag + 'rho'] = np.array(rho)
+            else:
+                rho = None
             
         gd = finegd
         vHt_g = gd.collect(calc.hamiltonian.vHt_g)
@@ -773,8 +785,12 @@ class Transport_Analysor:
         if tp.non_sc or self.tp.analysis_mode:
             force = None
             contour = None
-        else:       
-            force = tp.calculate_force() * Hartree / Bohr
+        else:
+            if not tp.use_qzk_boundary:
+                force = tp.calculate_force() * Hartree / Bohr
+            else:
+                force = tp.extended_calc.get_forces(tp.extended_atoms
+                                                    )[:len(tp.atoms)]
             tp.F_av = None
             contour = self.collect_contour()            
         charge = self.collect_charge()
@@ -902,8 +918,11 @@ class Transport_Analysor:
     def abstract_d_and_v(self):
         tp = self.tp
         calc = tp.extended_calc
-        gd = calc.gd        
-        nt_sG = tp.gd.collect(tp.density.nt_sG)
+        gd = calc.gd
+        if not tp.use_qzk_boundary:
+            nt_sG = tp.gd.collect(tp.density.nt_sG)
+        else:
+            nt_sG = gd.collect(calc.density.nt_sG)            
         vt_sG = gd.collect(calc.hamiltonian.vt_sG)
         nt = []
         vt = []
