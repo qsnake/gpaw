@@ -534,9 +534,6 @@ class Setup(BaseSetup):
         beta = self.beta = data.beta
         rcut_j = self.rcut_j = data.rcut_j
 
-        self.fcorehole = data.fcorehole
-        self.lcorehole = data.lcorehole
-
         self.ExxC = data.ExxC
         self.X_p = data.X_p
 
@@ -587,8 +584,13 @@ class Setup(BaseSetup):
 
         self.B_ii = self.calculate_projector_overlaps(r_g, dr_g, pt_jg)
 
+        self.fcorehole = data.fcorehole
+        self.lcorehole = data.lcorehole
         if data.phicorehole_g is not None:
-            self.calculate_oscillator_strengths(r_g, dr_g, phi_jg)
+            if self.lcorehole == 0:
+                self.calculate_oscillator_strengths(r_g, dr_g, phi_jg)
+            else:
+                self.A_ci = None
 
         # Construct splines:
         self.vbar = Spline(0, rcutfilter, data.vbar_g, r_g, beta)
@@ -961,6 +963,7 @@ class Setup(BaseSetup):
         return basis
 
     def calculate_oscillator_strengths(self, r_g, dr_g, phi_jg):
+        # XXX implement oscillator strengths for lcorehole != 0
         assert(self.lcorehole == 0)
         self.A_ci = np.zeros((3, self.ni))
         nj = len(phi_jg)

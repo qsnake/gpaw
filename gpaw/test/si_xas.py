@@ -67,3 +67,16 @@ energy_tolerance = 0.0003
 niter_tolerance = 0
 equal(e, 18.5772, energy_tolerance) # svnversion 5252
 equal(niter, 23, niter_tolerance) # svnversion 5252
+
+# 2p corehole
+gen('Si', name='hch2p', corehole=(2, 1, 0.5))
+calc = GPAW(nbands=None,
+            h=0.25,
+            occupations=FermiDirac(width=0.05),
+            setups={0: 'hch2p'},
+            usesymm=True)
+si.set_calculator(calc)
+e = si.get_potential_energy()
+niter = calc.get_number_of_iterations()
+calc.write('si_hch2p.gpw')
+
