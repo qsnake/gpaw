@@ -965,10 +965,15 @@ class Transport(GPAW):
    
         if self.save_bias_data:
             vt_sG = self.gd1.collect(self.extended_calc.hamiltonian.vt_sG)
-            ham = self.hamiltonian
+            if not self.use_qzk_boundary:
+                density = self.density
+                ham = self.hamiltonian
+            else:
+                density = self.extended_calc.density
+                ham = self.extended_calc.hamiltonian                
             dH_asp = collect_atomic_matrices(ham.dH_asp, ham.setups,
                                              ham.nspins, ham.gd.comm,
-                                             self.density.rank_a)
+                                             density.rank_a)
             if self.master:
                 fd = file('bias_data' + str(self.analysor.n_bias_step), 'wb')
                 cPickle.dump((self.bias, vt_sG, dH_asp), fd, 2)
@@ -1074,7 +1079,11 @@ class Transport(GPAW):
             self.diag_ham_old = np.copy(diag_ham)
         if var == 'd':
             if self.step > 0:
-                self.diff_d = self.density.mixer.get_charge_sloshing()
+                if not self.use_qzk_boundary:
+                    density = self.density
+                else:
+                    density = self.extended_calc.density
+                self.diff_d = density.mixer.get_charge_sloshing()
                 tol =  self.scf.max_density_error
  
                 if self.master:
@@ -1743,11 +1752,16 @@ class Transport(GPAW):
                 self.analysor.save_ion_step()
                 self.text('--------------ionic_step---' +
                           str(self.analysor.n_ion_step) + '---------------')
-                self.F_av = None   
-            f = self.calculate_force()
+                self.F_av = None
+            if not self.use_qzk_boundary:    
+                f = self.calculate_force()
+                f *= Hartree / Bohr
+            else:
+                f = self.extended_calc.get_forces()[:len(self.atoms)]
+                
             if not self.optimize:
                 self.optimize = True
-            return f * Hartree / Bohr 
+            return f  
 
     def calculate_force(self):
         """Return the atomic forces.""" 
@@ -1853,32 +1867,45 @@ class Transport(GPAW):
                 kpt.rho_MM = self.hsd.D[0][kpt.q].recover(True)
         self.timer.stop('dmm recover')        
         
-        density = self.density
+        if not self.use_qzk_boundary:        
+            density = self.density
+        else:
+            density = self.extended_calc.density
         self.timer.start('construct density')
 
         density.charge_eps = 1000
             
         nt_sG = self.gd1.zeros(self.nspins)
         self.extended_calc.wfs.calculate_density_contribution(nt_sG)
-        nn = self.surround.nn
-        density.nt_sG = self.surround.uncapsule(nn, nt_sG, self.gd1,
+        
+        if not self.use_qzk_boundary:
+            nn = self.surround.nn
+            density.nt_sG = self.surround.uncapsule(nn, nt_sG, self.gd1,
                                                     self.gd)
+        else:
+            density.nt_sG = nt_sG
+            
         density.nt_sG += density.nct_G
 
         self.timer.stop('construct density')
         self.timer.start('atomic density')
-
-        D_asp = self.extended_D_asp
+        
+        if not self.use_qzk_boundary:
+            D_asp = self.extended_D_asp
+        else:
+            D_asp = self.extended_calc.density.D_asp
         self.extended_calc.wfs.calculate_atomic_density_matrices(D_asp)
         #all_D_asp = collect_D_asp2(D_asp, self.extended_calc.wfs.setups, self.nspins,
         #                    self.gd.comm, self.extended_calc.wfs.rank_a)
-        wfs = self.extended_calc.wfs
-        all_D_asp = collect_atomic_matrices(D_asp, wfs.setups, self.nspins,
+        
+        if not self.use_qzk_boundary:    
+            wfs = self.extended_calc.wfs
+            all_D_asp = collect_atomic_matrices(D_asp, wfs.setups, self.nspins,
                                             self.gd.comm, wfs.rank_a)
-            
-        D_asp = all_D_asp[:len(self.atoms)]
-        #distribute_D_asp(D_asp, density)
-        distribute_atomic_matrices(D_asp, density.D_asp, density.setups)
+            D_asp = all_D_asp[:len(self.atoms)]
+
+            #distribute_D_asp(D_asp, density)
+            distribute_atomic_matrices(D_asp, density.D_asp, density.setups)
 
         self.timer.stop('atomic density')
         comp_charge = density.calculate_multipole_moments()
@@ -1887,7 +1914,10 @@ class Transport(GPAW):
         density.mix(comp_charge)
 
     def normalize(self, comp_charge):
-        density = self.density
+        if not self.use_qzk_boundary:
+            density = self.density
+        else:
+            density = self.extended_calc.density
         """Normalize pseudo density."""
         pseudo_charge = density.gd.integrate(density.nt_sG).sum()
         if pseudo_charge != 0:
