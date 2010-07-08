@@ -6,7 +6,6 @@
 #include "lfc.h"
 #include "bmgs/spherical_harmonics.h"
 
-
 PyObject* second_derivative(LFCObject *lfc, PyObject *args)
 {
   const PyArrayObject* a_G_obj;
@@ -16,76 +15,162 @@ PyObject* second_derivative(LFCObject *lfc, PyObject *args)
   PyObject* spline_M_obj;
   PyArrayObject* beg_c_obj;
   PyArrayObject* pos_Wc_obj;
+  int q;
 
-  if (!PyArg_ParseTuple(args, "OOOOOOO", &a_G_obj, &c_Mvv_obj,
+  if (!PyArg_ParseTuple(args, "OOOOOOOi", &a_G_obj, &c_Mvv_obj,
                         &h_cv_obj, &n_c_obj,
                         &spline_M_obj, &beg_c_obj,
-                        &pos_Wc_obj))
+                        &pos_Wc_obj, &q))
     return NULL; 
 
+  // Copied from derivative member function
+  int nd = a_G_obj->nd;
+  npy_intp* dims = a_G_obj->dimensions;
+  int nx = PyArray_MultiplyList(dims, nd - 3);
+  int nG = PyArray_MultiplyList(dims + nd - 3, 3);
+  int nM = c_Mvv_obj->dimensions[c_Mvv_obj->nd - 2];
+
+  // These were already present
   const double* h_cv = (const double*)h_cv_obj->data;
   const long* n_c = (const long*)n_c_obj->data;
   const double (*pos_Wc)[3] = (const double (*)[3])pos_Wc_obj->data;
 
   long* beg_c = LONGP(beg_c_obj);
+  ///////////////////////////////////////////////
 
   const double Y00dv = lfc->dv / sqrt(4.0 * M_PI);
-  const double* a_G = (const double*)a_G_obj->data;
-  double* c_Mvv = (double*)c_Mvv_obj->data;
-  GRID_LOOP_START(lfc, -1) {
-    // In one grid loop iteration, only i2 changes.
-    int i2 = Ga % n_c[2] + beg_c[2];
-    int i1 = (Ga / n_c[2]) % n_c[1] + beg_c[1];
-    int i0 = Ga / (n_c[2] * n_c[1]) + beg_c[0];
-    double xG = h_cv[0] * i0 + h_cv[3] * i1 + h_cv[6] * i2;
-    double yG = h_cv[1] * i0 + h_cv[4] * i1 + h_cv[7] * i2;
-    double zG = h_cv[2] * i0 + h_cv[5] * i1 + h_cv[8] * i2;
-    for (int G = Ga; G < Gb; G++) {
-      for (int i = 0; i < ni; i++) {
-        LFVolume* vol = volume_i + i;
-        int M = vol->M;
-        double* c_vv = c_Mvv + 9 * M;
-        const bmgsspline* spline = (const bmgsspline*) \
-          &((const SplineObject*)PyList_GetItem(spline_M_obj, M))->spline;
-          
-        double x = xG - pos_Wc[vol->W][0];
-        double y = yG - pos_Wc[vol->W][1];
-        double z = zG - pos_Wc[vol->W][2];
-        double r2 = x * x + y * y + z * z;
-        double r = sqrt(r2);
-        int bin = r / spline->dr;
-        assert(bin <= spline->nbins);
-        double* s = spline->data + 4 * bin;
-        double u = r - bin * spline->dr;
-        double dfdror;
-        if (bin == 0)
-          dfdror = 2.0 * s[2] + 3.0 * s[3] * r;
-        else
-          dfdror = (s[1] + u * (2.0 * s[2] + u * 3.0 * s[3])) / r;
-        double a = a_G[G] * Y00dv;
-        dfdror *= a;
-        c_vv[0] += dfdror;
-        c_vv[4] += dfdror;
-        c_vv[8] += dfdror;
-        if (r > 1e-15) {
-          double b = ((2.0 * s[2] + 6.0 * s[3] * u) * a - dfdror) / r2;
-          c_vv[0] += b * x * x;
-          c_vv[1] += b * x * y;
-          c_vv[2] += b * x * z;
-          c_vv[3] += b * y * x;
-          c_vv[4] += b * y * y;
-          c_vv[5] += b * y * z;
-          c_vv[6] += b * z * x;
-          c_vv[7] += b * z * y;
-          c_vv[8] += b * z * z;
+
+  if (!lfc->bloch_boundary_conditions) {
+    const double* a_G = (const double*)a_G_obj->data;
+    double* c_Mvv = (double*)c_Mvv_obj->data;
+    // Loop over number of x-dimension in a_xG (not relevant yet)
+    for (int x = 0; x < nx; x++) {
+      // JJs old stuff
+      GRID_LOOP_START(lfc, -1) {
+        // In one grid loop iteration, only i2 changes.
+        int i2 = Ga % n_c[2] + beg_c[2];
+        int i1 = (Ga / n_c[2]) % n_c[1] + beg_c[1];
+        int i0 = Ga / (n_c[2] * n_c[1]) + beg_c[0];
+        double xG = h_cv[0] * i0 + h_cv[3] * i1 + h_cv[6] * i2;
+        double yG = h_cv[1] * i0 + h_cv[4] * i1 + h_cv[7] * i2;
+        double zG = h_cv[2] * i0 + h_cv[5] * i1 + h_cv[8] * i2;
+        for (int G = Ga; G < Gb; G++) {
+          for (int i = 0; i < ni; i++) {
+            LFVolume* vol = volume_i + i;
+            int M = vol->M;
+            double* c_mvv = c_Mvv + 9 * M;
+            const bmgsspline* spline = (const bmgsspline*) \
+              &((const SplineObject*)PyList_GetItem(spline_M_obj, M))->spline;
+              
+            double x = xG - pos_Wc[vol->W][0];
+            double y = yG - pos_Wc[vol->W][1];
+            double z = zG - pos_Wc[vol->W][2];
+            double r2 = x * x + y * y + z * z;
+            double r = sqrt(r2);
+            int bin = r / spline->dr;
+            assert(bin <= spline->nbins);
+            double* s = spline->data + 4 * bin;
+            double u = r - bin * spline->dr;
+            double dfdror;
+            if (bin == 0)
+              dfdror = 2.0 * s[2] + 3.0 * s[3] * r;
+            else
+              dfdror = (s[1] + u * (2.0 * s[2] + u * 3.0 * s[3])) / r;
+            double a = a_G[G] * Y00dv;
+            dfdror *= a;
+            c_mvv[0] += dfdror;
+            c_mvv[4] += dfdror;
+            c_mvv[8] += dfdror;
+            if (r > 1e-15) {
+              double b = ((2.0 * s[2] + 6.0 * s[3] * u) * a - dfdror) / r2;
+              c_mvv[0] += b * x * x;
+              c_mvv[1] += b * x * y;
+              c_mvv[2] += b * x * z;
+              c_mvv[3] += b * y * x;
+              c_mvv[4] += b * y * y;
+              c_mvv[5] += b * y * z;
+              c_mvv[6] += b * z * x;
+              c_mvv[7] += b * z * y;
+              c_mvv[8] += b * z * z;
+            }
+          }
+          xG += h_cv[6];
+          yG += h_cv[7];
+          zG += h_cv[8];
         }
       }
-      xG += h_cv[6];
-      yG += h_cv[7];
-      zG += h_cv[8];
+      GRID_LOOP_STOP(lfc, -1);
+      c_Mvv += 9 * nM;
+      a_G += nG;
     }
   }
-  GRID_LOOP_STOP(lfc, -1);
+  else {
+    const complex double* a_G = (const complex double*)a_G_obj->data;
+    complex double* c_Mvv = (complex double*)c_Mvv_obj->data;
+
+    for (int x = 0; x < nx; x++) {
+      GRID_LOOP_START(lfc, q) {
+        // In one grid loop iteration, only i2 changes.
+        int i2 = Ga % n_c[2] + beg_c[2];
+        int i1 = (Ga / n_c[2]) % n_c[1] + beg_c[1];
+        int i0 = Ga / (n_c[2] * n_c[1]) + beg_c[0];
+        double xG = h_cv[0] * i0 + h_cv[3] * i1 + h_cv[6] * i2;
+        double yG = h_cv[1] * i0 + h_cv[4] * i1 + h_cv[7] * i2;
+        double zG = h_cv[2] * i0 + h_cv[5] * i1 + h_cv[8] * i2;
+        for (int G = Ga; G < Gb; G++) {
+          for (int i = 0; i < ni; i++) {
+            LFVolume* vol = volume_i + i;
+            int M = vol->M;
+            complex double* c_mvv = c_Mvv + 9 * M;
+            const bmgsspline* spline = (const bmgsspline*) \
+              &((const SplineObject*)PyList_GetItem(spline_M_obj, M))->spline;
+              
+            double x = xG - pos_Wc[vol->W][0];
+            double y = yG - pos_Wc[vol->W][1];
+            double z = zG - pos_Wc[vol->W][2];
+            double r2 = x * x + y * y + z * z;
+            double r = sqrt(r2);
+            double dfdror;
+
+            // use bmgs_get_value_and_derivative instead ??!!
+            int bin = r / spline->dr;
+            assert(bin <= spline->nbins);
+            double u = r - bin * spline->dr;
+            double* s = spline->data + 4 * bin;
+
+            if (bin == 0)
+              dfdror = 2.0 * s[2] + 3.0 * s[3] * r;
+            else
+              dfdror = (s[1] + u * (2.0 * s[2] + u * 3.0 * s[3])) / r;
+            // phase added here
+            complex double a = a_G[G] * phase_i[i] * Y00dv;
+            // dfdror *= a;
+            c_mvv[0] += a * dfdror;
+            c_mvv[4] += a * dfdror;
+            c_mvv[8] += a * dfdror;
+            if (r > 1e-15) {
+              double b = (2.0 * s[2] + 6.0 * s[3] * u - dfdror) / r2;
+              c_mvv[0] += a * b * x * x;
+              c_mvv[1] += a * b * x * y;
+              c_mvv[2] += a * b * x * z;
+              c_mvv[3] += a * b * y * x;
+              c_mvv[4] += a * b * y * y;
+              c_mvv[5] += a * b * y * z;
+              c_mvv[6] += a * b * z * x;
+              c_mvv[7] += a * b * z * y;
+              c_mvv[8] += a * b * z * z;
+            }
+          }
+          xG += h_cv[6];
+          yG += h_cv[7];
+          zG += h_cv[8];
+        }
+      }
+      GRID_LOOP_STOP(lfc, q);
+      c_Mvv += 9 * nM;
+      a_G += nG;
+    }
+  }
   Py_RETURN_NONE;
 }
 
@@ -130,6 +215,7 @@ PyObject* add_derivative(LFCObject *lfc, PyObject *args)
   long* beg_c = LONGP(beg_c_obj);
 
   if (!lfc->bloch_boundary_conditions) {
+
     const double* c_M = (const double*)c_xM_obj->data;
     double* a_G = (double*)a_xG_obj->data;
     for (int x = 0; x < nx; x++) {
