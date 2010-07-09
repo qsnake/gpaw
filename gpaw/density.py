@@ -550,10 +550,10 @@ class Density:
         
         self.interpolator.estimate_memory(mem.subnode('Interpolator'))
 
-    def get_spin_contermination(self, atoms, majority_spin=0):
-        """Calculate the spin contermination.
+    def get_spin_contamination(self, atoms, majority_spin=0):
+        """Calculate the spin contamination.
 
-        Spin contermination is defined as the integral over the
+        Spin contamination is defined as the integral over the
         spin density difference, where it is negative (i.e. the
         minority spin density is larger than the majority spin density.
         """

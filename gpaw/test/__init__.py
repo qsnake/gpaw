@@ -118,7 +118,7 @@ tests = [
     'revPBE.py',
     'lcao_largecellforce.py',
     'lcao_h2o.py',
-    'spin_contermination.py',
+    'spin_contamination.py',
     'lrtddft2.py',
     'stdout.py',
     'nonselfconsistentLDA.py',
