@@ -292,7 +292,7 @@ class ProjectorPairOverlap(Overlap, GridPairOverlap):
         ============  ======================================================
         """
 
-        Overlap.__init__(self, wfs)
+        Overlap.__init__(self, wfs.orthoksl, wfs.timer)
         GridPairOverlap.__init__(self, wfs.gd, wfs.setups)
         self.natoms = len(atoms)
         if debug:

@@ -14,20 +14,28 @@ from gpaw.band_descriptor import BandDescriptor
 from gpaw import extra_parameters
 from gpaw.wavefunctions.base import WaveFunctions
 from gpaw.wavefunctions.lcao import LCAOWaveFunctions
+from gpaw.hs_operators import MatrixOperator
+from gpaw.preconditioner import Preconditioner
 
 
 class GridWaveFunctions(WaveFunctions):
     def __init__(self, stencil, diagksl, orthoksl, initksl, *args, **kwargs):
         WaveFunctions.__init__(self, *args, **kwargs)
+
+        self.wd = self.gd  # wave function descriptor
+        
         # Kinetic energy operator:
         self.kin = Laplace(self.gd, -0.5, stencil, self.dtype, allocate=False)
+        
         self.diagksl = diagksl
         self.orthoksl = orthoksl
         self.initksl = initksl
+
         self.set_orthonormalized(False)
-        self.overlap = Overlap(self) # Object needed by memory estimate
-        # (it has to be overwritten on each initialize() anyway, because of
-        # weird object reuse issues, but we don't care)
+
+        self.matrixoperator = MatrixOperator(self.bd, self.gd, orthoksl)
+
+        self.overlap = Overlap(orthoksl, self.timer)
 
     def set_setups(self, setups):
         WaveFunctions.set_setups(self, setups)
@@ -48,8 +56,10 @@ class GridWaveFunctions(WaveFunctions):
         self.allocate_arrays_for_projections(self.pt.my_atom_indices)
         self.positions_set = True
 
+    def make_preconditioner(self):
+        return Preconditioner(self.gd, self.kin, self.dtype)
+    
     def initialize(self, density, hamiltonian, spos_ac):
-        self.overlap = Overlap(self)
         if self.kpt_u[0].psit_nG is None:
             basis_functions = BasisFunctions(self.gd,
                                              [setup.phit_j
@@ -78,6 +88,11 @@ class GridWaveFunctions(WaveFunctions):
         if self.kpt_u[0].psit_nG is None:
             self.initialize_wave_functions_from_basis_functions(
                 basis_functions, density, hamiltonian, spos_ac)
+
+    def apply_hamiltonian(self, hamiltonian, kpt, psit_xG, Htpsit_xG):
+        self.kin.apply(psit_xG, Htpsit_xG, kpt.phase_cd)
+        hamiltonian.apply_local_potential(psit_xG, Htpsit_xG, kpt.s)
+        hamiltonian.xc.add_non_local_terms(psit_xG, Htpsit_xG, kpt)
 
     def initialize_wave_functions_from_basis_functions(self,
                                                        basis_functions,
@@ -214,7 +229,8 @@ class GridWaveFunctions(WaveFunctions):
         # Hack used in delta-scf calculations:
         if hasattr(kpt, 'c_on'):
             assert self.bd.comm.size == 1
-            d_nn = np.zeros((self.bd.mynbands, self.bd.mynbands), dtype=complex)
+            d_nn = np.zeros((self.bd.mynbands, self.bd.mynbands),
+                            dtype=complex)
             for ne, c_n in zip(kpt.ne_o, kpt.c_on):
                 d_nn += ne * np.outer(c_n.conj(), c_n)
             for d_n, psi0_G in zip(d_nn, kpt.psit_nG):
@@ -244,7 +260,8 @@ class GridWaveFunctions(WaveFunctions):
         # Hack used in delta-scf calculations:
         if hasattr(kpt, 'c_on'):
             assert self.bd.comm.size == 1
-            d_nn = np.zeros((self.bd.mynbands, self.bd.mynbands), dtype=complex)
+            d_nn = np.zeros((self.bd.mynbands, self.bd.mynbands),
+                            dtype=complex)
             for ne, c_n in zip(kpt.ne_o, kpt.c_on):
                 d_nn += ne * np.outer(c_n.conj(), c_n)
             dwork_G = self.gd.empty(dtype=self.dtype)
@@ -255,7 +272,8 @@ class GridWaveFunctions(WaveFunctions):
                         for d, psit_G in zip(d_n, kpt.psit_nG):
                             if abs(d) > 1.e-12:
                                 d_c[c](psit_G, dwork_G)
-                                axpy(0.5*d, dpsit_G * dwork_G, taut_G) #taut_G += 0.5*f*dpsit_G*dwork_G
+                                # taut_G += 0.5*f*dpsit_G*dwork_G
+                                axpy(0.5*d, dpsit_G * dwork_G, taut_G)
             else:
                 for d_n, psit0_G in zip(d_nn, kpt.psit_nG):
                     for c in range(3):
@@ -263,35 +281,13 @@ class GridWaveFunctions(WaveFunctions):
                         for d, psit_G in zip(d_n, kpt.psit_nG):
                             if abs(d) > 1.e-12:
                                 d_c[c](psit_G, dwork_G, kpt.phase_cd)
-                                taut_G += 0.5 * (dpsit_G.conj() * d * dwork_G).real
+                                taut_G += 0.5 * (dpsit_G.conj() * d *
+                                                 dwork_G).real
 
     def orthonormalize(self):
         for kpt in self.kpt_u:
             self.overlap.orthonormalize(self, kpt)
         self.set_orthonormalized(True)
-
-    def initialize2(self, paw):
-        khjgkjhgkhjg
-        hamiltonian = paw.hamiltonian
-        density = paw.density
-        eigensolver = paw.eigensolver
-        assert not eigensolver.lcao
-        self.overlap = paw.overlap
-        if not eigensolver.initialized:
-            eigensolver.initialize(paw)
-        if not self.initialized:
-            if self.kpt_u[0].psit_nG is None:
-                paw.text('Atomic orbitals used for initialization:', paw.nao)
-                if paw.nbands > paw.nao:
-                    paw.text('Random orbitals used for initialization:',
-                             paw.nbands - paw.nao)
-            
-                # Now we should find out whether init'ing from file or
-                # something else
-                self.initialize_wave_functions_from_atomic_orbitals(paw)
-
-            else:
-                self.initialize_wave_functions_from_restart_file(paw)
 
     def calculate_forces(self, hamiltonian, F_av):
         # Calculate force-contribution from k-points:
@@ -375,5 +371,6 @@ class GridWaveFunctions(WaveFunctions):
                                          self.dtype, self.mynbands,
                                          self.nbands)
         self.pt.estimate_memory(mem.subnode('Projectors'))
-        self.overlap.estimate_memory(mem.subnode('Overlap op'), self.dtype)
+        self.matrixoperator.estimate_memory(mem.subnode('Overlap op'),
+                                            self.dtype)
         self.kin.estimate_memory(mem.subnode('Kinetic operator'))

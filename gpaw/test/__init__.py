@@ -91,6 +91,7 @@ tests = [
     'laplace.py',
     'ds_beta.py',
     'gauss_wave.py',
+    'planewavebasis.py',
     'coulomb.py',
     'timing.py',
     'lcao_density.py',

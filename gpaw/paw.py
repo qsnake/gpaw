@@ -27,6 +27,7 @@ from gpaw.brillouin import reduce_kpoints
 from gpaw.wavefunctions.base import EmptyWaveFunctions
 from gpaw.wavefunctions.fd import GridWaveFunctions
 from gpaw.wavefunctions.lcao import LCAOWaveFunctions
+from gpaw.wavefunctions.pw import PW
 from gpaw.utilities.memory import MemNode, maxrss
 from gpaw.parameters import InputParameters
 from gpaw.setup import Setups
@@ -522,7 +523,7 @@ class PAW(PAWTextOutput):
                                                 timer=self.timer)
 
                 self.wfs = LCAOWaveFunctions(lcaoksl, *args)
-            elif par.mode == 'fd':
+            elif par.mode == 'fd' or isinstance(par.mode, PW):
                 # Layouts used for diagonalizer
                 sl_diagonalize = par.parallel['sl_diagonalize']
                 if sl_diagonalize is None:
@@ -553,8 +554,17 @@ class PAW(PAWTextOutput):
                                                 gd, lcaobd, nao=nao,
                                                 timer=self.timer)
 
-                self.wfs = GridWaveFunctions(par.stencils[0], diagksl,
-                                             orthoksl, initksl, *args)
+                if par.mode == 'fd':
+                    self.wfs = GridWaveFunctions(par.stencils[0], diagksl,
+                                                 orthoksl, initksl, *args)
+                else:
+                    # Planewave basis.  Always use dtype=complex and
+                    # gamma=False.
+                    self.wfs = par.mode(diagksl, orthoksl, initksl,
+                                        gd, nspins, nvalence, setups, self.bd,
+                                        complex, world, kpt_comm,
+                                        False, bzk_kc, ibzk_kc, weight_k,
+                                        symmetry, self.timer)
             else:
                 self.wfs = par.mode(self, *args)
         else:

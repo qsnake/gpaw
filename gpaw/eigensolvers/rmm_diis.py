@@ -40,7 +40,7 @@ class RMM_DIIS(Eigensolver):
             self.calculate_residuals2(wfs, hamiltonian, kpt, R_nG)
 
         vt_G = hamiltonian.vt_sG[kpt.s]
-        dR_G = wfs.overlap.operator.work1_xG[0] # XXX presumptuous, but works
+        dR_G = wfs.matrixoperator.work1_xG[0] # XXX presumptuous, but works
         error = 0.0
         n0 = self.band_comm.rank * self.mynbands
         #B = max(self.mynbands // 8, self.mynbands)
@@ -51,7 +51,7 @@ class RMM_DIIS(Eigensolver):
             if self.keep_htpsit:
                 R_G = R_nG[n1]
             else:
-                R_G = wfs.overlap.operator.work1_xG[1] # XXX hello IndexError
+                R_G = wfs.matrixoperator.work1_xG[1] # XXX hello IndexError
                 self.calculate_residuals(wfs, hamiltonian, kpt,
                                          kpt.eps_n[n1:n2],
                                          R_G.reshape(shape),

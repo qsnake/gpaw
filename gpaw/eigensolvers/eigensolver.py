@@ -5,7 +5,6 @@ from math import ceil
 import numpy as np
 
 from gpaw.fd_operators import Laplace
-from gpaw.preconditioner import Preconditioner
 from gpaw.utilities.blas import axpy, r2k, gemm
 from gpaw.utilities.tools import apply_subspace_mask
 from gpaw.utilities import unpack
@@ -26,17 +25,17 @@ class Eigensolver:
         self.band_comm = wfs.band_comm
         self.dtype = wfs.dtype
         self.bd = wfs.bd
-        self.gd = wfs.gd
+        self.gd = wfs.wd
         self.ksl = wfs.diagksl
         self.nbands = wfs.nbands
         self.mynbands = wfs.mynbands
-        self.operator = wfs.overlap.operator
+        self.operator = wfs.matrixoperator
 
         if self.mynbands != self.nbands or self.operator.nblocks != 1:
             self.keep_htpsit = False
 
         # Preconditioner for the electronic gradients:
-        self.preconditioner = Preconditioner(self.gd, wfs.kin, self.dtype)
+        self.preconditioner = wfs.make_preconditioner()
 
         if self.keep_htpsit:
             # Soft part of the Hamiltonian times psit:
@@ -79,10 +78,9 @@ class Eigensolver:
 
     def calculate_residuals(self, wfs, hamiltonian, kpt, eps_n, R_nG, psit_nG,
                             n=None):
+        wfs.apply_hamiltonian(hamiltonian, kpt, psit_nG, R_nG)
+
         B = len(eps_n)  # block size
-        wfs.kin.apply(psit_nG, R_nG, kpt.phase_cd)
-        hamiltonian.apply_local_potential(psit_nG, R_nG, kpt.s)
-        hamiltonian.xc.add_non_local_terms(psit_nG, R_nG, kpt) #larin
         P_ani = dict([(a, np.zeros((B, wfs.setups[a].ni), wfs.dtype))
                       for a in kpt.P_ani])
         wfs.pt.integrate(psit_nG, P_ani, kpt.q)
@@ -148,9 +146,7 @@ class Eigensolver:
             Htpsit_xG = self.operator.suggest_temporary_buffer(psit_nG.dtype)
 
         def H(psit_xG):
-            wfs.kin.apply(psit_xG, Htpsit_xG, kpt.phase_cd)
-            hamiltonian.apply_local_potential(psit_xG, Htpsit_xG, kpt.s)
-            hamiltonian.xc.add_non_local_terms(psit_xG, Htpsit_xG, kpt)
+            wfs.apply_hamiltonian(hamiltonian, kpt, psit_xG, Htpsit_xG)
             return Htpsit_xG
                 
         dH_aii = dict([(a, unpack(dH_sp[kpt.s]))
