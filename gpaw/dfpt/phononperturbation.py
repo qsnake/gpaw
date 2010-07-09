@@ -146,7 +146,8 @@ class PhononPerturbation(Perturbation):
     
     def has_q(self):
         """Overwrite base class member function."""
-        return True
+
+        return (not self.gamma)
 
     def get_q(self):
         """Return q-vector."""

@@ -1,10 +1,11 @@
 2010-06-29
  - Provide instance of ``Perturbation`` in ``__call__`` member function of class ``ResponseCalculator`` instead of in constructor.
  - Member function ``integrate/derivative`` of class ``lfc`` does not work with complex quantities when initialized with ``integral`` keyword.
- - How does the ``second_derivative`` member function of class ``LFC`` handle complex wave-functions?
+ * How does the ``second_derivative`` member function of class ``LFC`` handle complex wave-functions?
+   - fixed for spherical symmetric lfc's now   
  - Perturbation breaks symmetry -> how should that be accounted for.
  - The integrated density change for q!=0 is different from zero.
- - Include time-reversal symmetry.
+ - Include time-reversal symmetry both in dynamical matrix and the self-consistent cycle.
  - The contribution to the rhs of the Sternheimer eq. from the perturbation is 
    recalculated in each iteration - NOT necessary, at least not all of it!!!
 2010-06-24
@@ -13,7 +14,8 @@
  - Implicit downcast of complex numpy arrays to real arrays when assigning entrances of a real array to complex values.
  - Use fast blacs functions.
  - Implement ``Iteration`` class taking care of convergence checks for density, wave-functions and dynamical matrix.
- - Convergenece criteria for SC loop; how does ``integrate`` member function on class ``GridDescriptor`` handle complex quantitites ?
+ * Convergenece criteria for SC loop; how does ``integrate`` member function on class ``GridDescriptor`` handle complex quantitites ?
+   - it returns a complex number. 
 2010-05-25
  * Implement phases for the Transformer object for q != 0.
 2010-04-08
@@ -24,6 +26,7 @@
  - Improve the ``add_derivative`` method of the LFC class.
  - Generalize ``dict`` method of the LFC class to provide dicts for integrals with second derivatives.
  * Does the linear solver handle complex vectors ??
+   - yes, taken care of by its dtype
  * Implement q-vectors.
    - not very elegant but works for now.
  - Implement symmetries.

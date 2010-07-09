@@ -40,7 +40,7 @@ class DynamicalMatrix:
             #XXX Maybe not needed as an attribute ??
             self.ibzq_qc = ibzq_qc
             
-        # Index of the gamma point -- for the acoustic sum-rule
+        #XXX Index of the gamma point -- for the acoustic sum-rule
         self.gamma_index = 0
         
         # Matrix of force constants -- dict of dicts in atomic indices
@@ -123,7 +123,7 @@ class DynamicalMatrix:
         self.density_derivative(perturbation, response_calc)
         self.wfs_derivative(perturbation, response_calc)
         
-    def density_ground_state(self, perturbation, calc):
+    def density_ground_state(self, calc):
         """Contributions involving ground-state density.
 
         These terms contains second-order derivaties of the localized functions
@@ -132,10 +132,12 @@ class DynamicalMatrix:
         """
 
         # Localized functions from the local part of the PAW potential
-        ghat = perturbation.ghat
-        vbar = perturbation.vbar
+        # ghat = perturbation.ghat
+        # vbar = perturbation.vbar
+        ghat = calc.density.ghat
+        vbar = calc.hamiltonian.vbar
         # Compensation charge coefficients
-        Q_aL = perturbation.Q_aL
+        Q_aL = calc.density.Q_aL
         
         # Integral of Hartree potential times the second derivative of ghat
         vH_g = calc.hamiltonian.vHt_g
@@ -155,18 +157,19 @@ class DynamicalMatrix:
                 
                 a = atom.index
     
-                # NOTICE: HGH has only one ghat pr atoms -> generalize when
+                # XXX: HGH has only one ghat pr atoms -> generalize when
                 # implementing PAW            
                 C_aavv[a][a] += d2ghat_aLvv[a] * Q_aL[a]
                 C_aavv[a][a] += d2vbar_avv[a]
 
-    def wfs_ground_state(self, perturbation, response_calc):
+    def wfs_ground_state(self, calc, response_calc):
         """Ground state contributions from the non-local potential."""
 
         # Projector functions
-        pt = response_calc.wfs.pt
+        # pt = response_calc.wfs.pt
+        pt = calc.wfs.pt
         # Projector coefficients
-        dH_asp = perturbation.dH_asp
+        dH_asp = calc.hamiltonian.dH_asp
       
         # K-point
         kpt_u = response_calc.wfs.kpt_u
@@ -271,8 +274,7 @@ class DynamicalMatrix:
         for atom_ in self.atoms:
             
             a_ = atom_.index
-            # Minus sign below - see doc string to the lfc method
-            # derivative
+            # Minus sign comes from lfc member function derivative
             C_aavv[a][a_][v] -= np.dot(Q_aL[a_], dghat_aLv[a_]) 
             C_aavv[a][a_][v] -= dvbar_av[a_][0]
 
@@ -286,11 +288,7 @@ class DynamicalMatrix:
 
         # Matrix of force constants to be updated
         C_aavv = self.C_qaavv[q]
-        
-        # Get k+q indices
-        q_c = perturbation.get_q()
-        kplusq_k = response_calc.kd.find_k_plus_q(q_c)
-        
+           
         # Projector functions
         pt = response_calc.wfs.pt
         # Projector coefficients
@@ -299,7 +297,14 @@ class DynamicalMatrix:
         # K-point
         kpt_u = response_calc.wfs.kpt_u
         nbands = response_calc.nbands
-        
+
+        # Get k+q indices
+        if perturbation.has_q():
+            q_c = perturbation.get_q()
+            plusq_k = response_calc.kd.find_k_plus_q(q_c)
+        else:
+            kplusq_k = range(len(kpt_u))
+            
         for kpt in kpt_u:
 
             # Indices of k and k+q

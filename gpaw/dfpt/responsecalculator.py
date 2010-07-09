@@ -41,7 +41,7 @@ class ResponseCalculator:
     """
 
     parameters = {'verbose':               True,
-                  'max_iter':              1,
+                  'max_iter':              100,
                   'tolerance_sc':          1.0e-4,
                   'tolerance_sternheimer': 1e-5,
                   'use_pc':                True,
@@ -212,21 +212,18 @@ class ResponseCalculator:
         # Set phases
         self.phase_cd = self.perturbation.get_phase_cd()
         
-        if self.perturbation.has_q:
-            q_c = self.perturbation.get_q()
-            kplusq_k = self.kd.find_k_plus_q(q_c)
-            
+           
         for iter in range(max_iter):
             print     "iter:%3i\t" % iter,
             if iter == 0:
-                self.first_iteration(kplusq_k)
+                self.first_iteration()
                 print "\n"
             else:
-                norm = self.iteration(kplusq_k)
+                norm = self.iteration()
                 print "abs-norm: %6.3e\t" % norm,
-                # The density is complex !!!!!!
-                print "integrated density response: %5.2e" % \
-                      self.gd.integrate(self.nt1_G)
+                #XXX The density is complex !!!!!!
+                print ("integrated density response: %5.2e" % 
+                       self.gd.integrate(self.nt1_G))
                 
                 if norm < tolerance:
                     print ("self-consistent loop converged in %i iterations"
@@ -239,22 +236,22 @@ class ResponseCalculator:
                 
         return self.nt1_G.copy()
     
-    def first_iteration(self, kplusq_k):
+    def first_iteration(self):
         """Perform first iteration of sc-loop."""
 
-        self.wave_function_variations(kplusq_k=kplusq_k)
+        self.wave_function_variations()
         self.density_response()
         self.mixer.mix(self.nt1_G, [])
         # Temp
         v1_G = self.effective_potential_variation()
         
-    def iteration(self, kplusq_k):
+    def iteration(self):
         """Perform iteration."""
 
         # Update variation in the effective potential
         v1_G = self.effective_potential_variation()
         # Update wave function variations
-        self.wave_function_variations(v1_G=v1_G, kplusq_k=kplusq_k)
+        self.wave_function_variations(v1_G=v1_G)
         # Update density
         self.density_response()
         # Mix - supply phase_cd here for metric inside the mixer
@@ -288,7 +285,7 @@ class ResponseCalculator:
         
         return v1_G
     
-    def wave_function_variations(self, v1_G=None, kplusq_k=None):
+    def wave_function_variations(self, v1_G=None):
         """Calculate variation in the wave-functions.
 
         Parameters
@@ -302,6 +299,12 @@ class ResponseCalculator:
 
         if verbose:
             print "Calculating wave function variations"
+
+        if self.perturbation.has_q():
+            q_c = self.perturbation.get_q()
+            kplusq_k = self.kd.find_k_plus_q(q_c)
+        else:
+            kplusq_k = None
             
         # Calculate wave-function variations for all k-points.
         for kpt in self.kpt_u:
