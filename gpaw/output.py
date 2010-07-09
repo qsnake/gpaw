@@ -300,7 +300,11 @@ class PAWTextOutput:
 
         if self.wfs.nspins == 2:
             t()
-            t('Total Magnetic Moment: %f' % self.occupations.magmom)
+            magmom = self.occupations.magmom
+            t('Total Magnetic Moment: %f' % magmom)
+            t('Spin contemination: %f electrons'  % 
+              self.density.get_spin_contermination(self.atoms, 
+                                                   int(magmom >= 0)))
             t('Local Magnetic Moments:')
             for a, mom in enumerate(self.get_magnetic_moments()):
                 t(a, mom)

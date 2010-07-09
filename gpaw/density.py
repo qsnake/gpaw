@@ -550,3 +550,21 @@ class Density:
         
         self.interpolator.estimate_memory(mem.subnode('Interpolator'))
 
+    def get_spin_contermination(self, atoms, majority_spin=0):
+        """Calculate the spin contermination.
+
+        Spin contermination is defined as the integral over the
+        spin density difference, where it is negative (i.e. the
+        minority spin density is larger than the majority spin density.
+        """
+
+        if majority_spin == 0:
+            smaj = 0
+            smin = 1
+        else:
+            smaj = 1
+            smin = 0
+        nt_sg, gd = self.get_all_electron_density(atoms)
+        dt_sg = nt_sg[smin] - nt_sg[smaj]
+        dt_sg = np.where(dt_sg > 0, dt_sg, 0.0)
+        return gd.integrate(dt_sg)
