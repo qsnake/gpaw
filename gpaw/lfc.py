@@ -390,6 +390,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
            x       --  xi    i
                    a,i
         """
+
         assert not self.use_global_indices
         if q == -1:
             assert self.dtype == float
@@ -471,18 +472,28 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         
         """
 
-        assert not self.use_global_indices
         assert v in [0, 1, 2]
-        
+        assert not self.use_global_indices
+
         if q == -1:
             assert self.dtype == float
-        
+
+        if isinstance(c_axi, float):
+            assert q == -1
+            c_xM = np.empty(self.Mmax)
+            c_xM.fill(c_axi)
+            self.lfc.add(c_xM, a_xG, q)
+            return
+
         dtype = a_xG.dtype
 
         if debug:
             assert a_xG.ndim >= 3
+            assert dtype == self.dtype
             if isinstance(c_axi, dict):
                 assert (np.sort(c_axi.keys()) == self.my_atom_indices).all()
+            for c_xi in c_axi.values():
+                assert c_xi.dtype == dtype
 
         cspline_M = []
         for a_ in self.atom_indices:
@@ -801,12 +812,10 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         """
         
         assert not self.use_global_indices
-
-        # Why is this necessary ???
-        assert a_xG.dtype == self.dtype
         
         if debug:
             assert a_xG.ndim == 3
+            assert a_xG.dtype == self.dtype            
             assert (np.sort(c_axivv.keys()) == self.my_atom_indices).all()
 
         dtype = a_xG.dtype
