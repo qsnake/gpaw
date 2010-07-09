@@ -481,9 +481,8 @@ class NewLocalizedFunctionsCollection(BaseLFC):
 
         if debug:
             assert a_xG.ndim >= 3
-            assert (np.sort(c_axi.keys()) == self.my_atom_indices).all()
-            for c_xi in c_axi.values():
-                assert c_xi.dtype == dtype
+            if isinstance(c_axi, dict):
+                assert (np.sort(c_axi.keys()) == self.my_atom_indices).all()
 
         cspline_M = []
         for a_ in self.atom_indices:
@@ -617,12 +616,13 @@ class NewLocalizedFunctionsCollection(BaseLFC):
 
         xshape = a_xG.shape[:-3]
         c_xMv = np.zeros(xshape + (self.Mmax, 3), dtype)
-
+        
         cspline_M = []
         for a in self.atom_indices:
             for spline in self.sphere_a[a].spline_j:
                 nm = 2 * spline.get_angular_momentum_number() + 1
                 cspline_M.extend([spline.spline] * nm)
+                
         gd = self.gd
         self.lfc.derivative(a_xG, c_xMv, gd.h_cv, gd.n_c, cspline_M,
                             gd.beg_c, self.pos_Wv, q)
@@ -665,7 +665,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
                 else:
                     c_xiv[:] = c_xMv[..., M1:M2, :]
             M1 = M2
-
+        
         for request in srequests:
             comm.wait(request)
 
@@ -783,8 +783,12 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         for request in srequests:
             comm.wait(request)
 
-    def second_derivative(self, a_G, c_avv):
+    def second_derivative(self, a_xG, c_axivv, q=-1):
         """Calculate second derivatives.
+
+        Works only for this type of input for now::
+        
+              second_derivative(self, a_G, c_avv, q=-1)
 
         ::
 
@@ -795,25 +799,33 @@ class NewLocalizedFunctionsCollection(BaseLFC):
                                dR dR
                                  i  j
         """
+        
         assert not self.use_global_indices
 
+        # Why is this necessary ???
+        assert a_xG.dtype == self.dtype
+        
         if debug:
-            assert a_G.ndim == 3
-            assert (np.sort(c_avv.keys()) == self.my_atom_indices).all()
+            assert a_xG.ndim == 3
+            assert (np.sort(c_axivv.keys()) == self.my_atom_indices).all()
 
-        dtype = a_G.dtype
+        dtype = a_xG.dtype
 
         c_Mvv = np.zeros((self.Mmax, 3, 3), dtype)
 
         cspline_M = []
         for a in self.atom_indices:
+            # Works only for atoms with a single function
             assert len(self.sphere_a[a].spline_j) == 1
             spline = self.sphere_a[a].spline_j[0]
+            # that is spherical symmetric
             assert spline.get_angular_momentum_number() == 0
             cspline_M.append(spline.spline)
+            
         gd = self.gd
-        self.lfc.second_derivative(a_G, c_Mvv, gd.h_cv, gd.n_c, cspline_M,
-                                   gd.beg_c, self.pos_Wv)
+
+        self.lfc.second_derivative(a_xG, c_Mvv, gd.h_cv, gd.n_c, cspline_M,
+                                   gd.beg_c, self.pos_Wv, q)
 
         comm = self.gd.comm
         rank = comm.rank
@@ -822,6 +834,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         c_arvv = {}
         b_avv = {}
         M1 = 0
+        
         for a in self.atom_indices:
             sphere = self.sphere_a[a]
             M2 = M1 + sphere.Mmax
@@ -842,7 +855,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
 
         M1 = 0
         for a in self.atom_indices:
-            c_vv = c_avv.get(a)
+            c_vv = c_axivv.get(a)
             sphere = self.sphere_a[a]
             M2 = M1 + sphere.Mmax
             if c_vv is not None:
