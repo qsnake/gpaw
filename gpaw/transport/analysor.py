@@ -293,8 +293,8 @@ class Transport_Analysor:
             psi_g = psi_g.reshape(1, -1)
             wfs.basis_functions.lcao_to_grid(c_nm, psi_g, q)
             psi_g.shape = self.tp.gd.n_c
-            global_psi_g = self.tp.gd.collect(psi_g)
-            total_psi_g.append(global_psi_g / Bohr**1.5)
+            global_psi_g = self.tp.gd.collect(psi_g / Bohr**1.5)
+            total_psi_g.append(global_psi_g)
         return np.array(total_psi_g)
 
     def get_left_channels(self, energy, s, k):
