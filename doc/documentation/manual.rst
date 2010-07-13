@@ -746,9 +746,9 @@ python-script, i.e.::
 
 The possible command line arguments are:
 
-===============================  ============================================
+===============================  =============================================
 argument                         description
-===============================  ============================================
+===============================  =============================================
 ``--trace``
 ``--debug``                      Run in debug-mode, e.g. check
                                  consistency of arrays passed to c-extensions
@@ -757,8 +757,9 @@ argument                         description
 ``--dry-run[=nprocs]``           Print out the computational
                                  parameters and estimate memory usage, 
                                  do not perform actual calculation. 
-                                 If ``nprocs`` is specified, print also how 
-                                 parallelization would be done.
+                                 If ``nprocs`` is specified, print also which 
+                                 parallelization settings would be employed
+                                 when run on ``nprocs`` processors.
 ``--memory-estimate-depth[=n]``  Print out an itemized memory estimate by
                                  stepping recursively through the object
                                  hierarchy of the calculator. If ``n`` is
@@ -767,13 +768,31 @@ argument                         description
                                  Default: ``n=2``
 ``--domain-decomposition=comp``  Specify the domain decomposition with
                                  ``comp`` as a positive integer or, for
-                                 greater control, a tuple of three integers,
-                                 e.g. ``8`` or ``(2,2,2)`` to parallelize
-                                 over 8 domains. If you do not specify the
-                                 number of domains per axis explicitly with
-                                 the tuple, this will be chosen based on grid
-                                 size and the total number of domains.
-===============================  ============================================
+                                 greater control, a tuple of three integers.
+                                 Allowed values are equivalent to those of
+                                 the ``domain`` argument in the
+                                 :ref:`parallel <manual_parallel>` keyword,
+                                 with tuples specified as ``nx,ny,nz``.
+                                 See :ref:`manual_parsize` for details.
+``--state-parallelization=nbg``  Specify the parallelization over Kohn-Sham
+                                 orbitals with ``nbg`` as a positive integer.
+                                 Allowed values are equivalent to those of
+                                 the ``band`` argument in the
+                                 :ref:`parallel <manual_parallel>` keyword.
+                                 See :ref:`manual_parsize_bands` for details.
+``--sl_...=m,n,mb``              Specify ScaLAPACK / BLACS parameters for
+                                 diagonalization (``--sl_default``),
+                                 inverse Cholesky factorization
+                                 (``--sl_inverse_cholesky``) and LCAO general
+                                 diagonalization (``--sl_lcao``) respectively.
+                                 Use ``--sl_default`` to specify all three
+                                 of the above at once or just the default
+                                 value for those not explicitly given.
+                                 Allowed values are equivalent to those of
+                                 the four ``sl_...`` arguments in the 
+                                 :ref:`parallel <manual_parallel>` keyword.
+                                 Requires GPAW to be built with ScaLAPACK.
+===============================  =============================================
 
 
 ----------
