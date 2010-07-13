@@ -12,9 +12,9 @@ if 1:
     si.set_calculator(calc)
     e = si.get_potential_energy()
     efermi = calc.get_fermi_level()
-    calc.write('Si')
+    calc.write('Si-gs.gpw')
 else:
-    efermi = GPAW('Si', txt=None).get_fermi_level()
+    efermi = GPAW('Si-gs.gpw', txt=None).get_fermi_level()
 
 points = ibz_points['fcc']
 G = points['Gamma']
@@ -27,21 +27,21 @@ print len(kpts), len(x), len(X)
 point_names = ['W', 'L', '\Gamma', 'X', 'W', 'K']
 
 if 1:
-    calc = GPAW('Si',
+    calc = GPAW('Si-gs.gpw',
                 kpts=kpts,
                 fixdensity=True,
                 usesymm=None,#False,
                 basis='dzp',
                 convergence=dict(nbands=8))
     e = calc.get_atoms().get_potential_energy()
-    calc.write('Sibs')
+    calc.write('Si-bs.gpw')
 
-calc = GPAW('Sibs', txt=None)
+calc = GPAW('Si-bs.gpw', txt=None)
 import matplotlib.pyplot as plt
 e = np.array([calc.get_eigenvalues(k) for k in range(len(kpts))])
 e -= efermi
 emin = e.min() - 1
-emax = e.max() + 1
+emax = e[:, :8].max() + 1
 
 for n in range(8):
     plt.plot(x, e[:, n])
@@ -52,5 +52,5 @@ plt.axis(xmin=0, xmax=X[-1], ymin=emin, ymax=emax)
 plt.xlabel('k-vector')
 plt.ylabel('Energy (eV)')
 plt.title('PBE bandstructure of Silicon')
-plt.savefig('Si.png')
+plt.savefig('Si-bs.png')
 plt.show()
