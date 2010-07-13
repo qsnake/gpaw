@@ -759,6 +759,12 @@ argument                         description
                                  do not perform actual calculation. 
                                  If ``nprocs`` is specified, print also how 
                                  parallelization would be done.
+``--memory-estimate-depth[=n]``  Print out an itemized memory estimate by
+                                 stepping recursively through the object
+                                 hierarchy of the calculator. If ``n`` is
+                                 specified, print a summary for depths
+                                 greater than the specified value.
+                                 Default: ``n=2``
 ``--domain-decomposition=comp``  Specify the domain decomposition with
 				 the tuple ``comp``, e.g. ``(2,2,2)``
 ===============================  ============================================

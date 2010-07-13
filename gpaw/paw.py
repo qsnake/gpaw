@@ -14,7 +14,8 @@ from ase.dft import monkhorst_pack
 import gpaw.io
 import gpaw.mpi as mpi
 import gpaw.occupations as occupations
-from gpaw import dry_run, KohnShamConvergenceError, hooks
+from gpaw import dry_run, memory_estimate_depth, \
+                 KohnShamConvergenceError, hooks
 from gpaw.density import Density
 from gpaw.eigensolvers import get_eigensolver
 from gpaw.band_descriptor import BandDescriptor
@@ -616,7 +617,7 @@ class PAW(PAWTextOutput):
             xcfunc.initialize_gllb(self)
 
         self.text()
-        self.print_memory_estimate(self.txt, maxdepth=2)
+        self.print_memory_estimate(self.txt, maxdepth=memory_estimate_depth)
         self.txt.flush()
 
         if dry_run:

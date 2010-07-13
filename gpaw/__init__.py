@@ -74,6 +74,7 @@ debug = False
 trace = False
 setup_paths = []
 dry_run = 0
+memory_estimate_depth = 2
 parsize = None
 parsize_bands = None
 sl_default = None
@@ -101,6 +102,10 @@ while len(sys.argv) > i:
         dry_run = 1
         if len(arg.split('=')) == 2:
             dry_run = int(arg.split('=')[1])
+    elif arg.startswith('--memory-estimate-depth'):
+        memory_estimate_depth = -1
+        if len(arg.split('=')) == 2:
+            memory_estimate_depth = int(arg.split('=')[1])
     elif arg.startswith('--domain-decomposition='):
         parsize = [int(n) for n in arg.split('=')[1].split(',')]
         if len(parsize) == 1:
