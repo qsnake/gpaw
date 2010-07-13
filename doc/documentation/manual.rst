@@ -766,7 +766,13 @@ argument                         description
                                  greater than the specified value.
                                  Default: ``n=2``
 ``--domain-decomposition=comp``  Specify the domain decomposition with
-				 the tuple ``comp``, e.g. ``(2,2,2)``
+                                 ``comp`` as a positive integer or, for
+                                 greater control, a tuple of three integers,
+                                 e.g. ``8`` or ``(2,2,2)`` to parallelize
+                                 over 8 domains. If you do not specify the
+                                 number of domains per axis explicitly with
+                                 the tuple, this will be chosen based on grid
+                                 size and the total number of domains.
 ===============================  ============================================
 
 
