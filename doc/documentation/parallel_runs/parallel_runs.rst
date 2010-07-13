@@ -254,7 +254,9 @@ the number of bands :math:`N` is so large that :math:`\mathcal{O}(N^2)`
 operations begin to dominate in terms of computational time. Linear algebra
 for orthonormalization and diagonalization of the wavefunctions is the most
 noticeable contributor in this regime, and therefore, band parallelization
-can be used to distribute the computational load over several CPUs.
+can be used to distribute the computational load over several CPUs. This
+is achieved by giving the ``band`` argument as ``parallel={'band': nbg}``
+where ``nbg`` is the number of band groups to parallelize over.
 
 .. tip::
    Whereas band parallelization in itself will reduce the amount of operations
