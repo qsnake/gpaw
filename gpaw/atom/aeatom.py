@@ -5,7 +5,6 @@ import sys
 from math import pi, log
 
 import numpy as np
-from scipy.integrate import cumtrapz
 from scipy.special import gamma
 from ase.data import atomic_numbers, atomic_names, chemical_symbols
 import ase.units as units
