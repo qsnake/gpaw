@@ -2,29 +2,35 @@ import numpy as np
 from numpy.fft import fftn, ifftn
 import ase.units as units
 
-from gpaw.wavefunctions.base import WaveFunctions
-from gpaw.wavefunctions.fd import GridWaveFunctions
+from gpaw.lfc import LocalizedFunctionsCollection as LFC
+from gpaw.wavefunctions.fdpw import FDPWWaveFunctions
 from gpaw.hs_operators import MatrixOperator
 
 
 class PWDescriptor:
-    def __init__(self, ecut, gd):
+    def __init__(self, ecut, gd, ibzk_qc):
         assert gd.pbc_c.all() and gd.comm.size == 1
-        
+
         self.ecut = ecut
 
+        assert 0.5 * np.pi**2 / (gd.h_cv**2).sum(1).max() > ecut
+        
         # Calculate reciprocal lattice vectors:
         N_c = gd.N_c
-        i_Qc = np.indices(N_c).reshape((3, -1)).T
+        i_Qc = np.indices(N_c).transpose((1, 2, 3, 0))
         i_Qc += N_c // 2
         i_Qc %= N_c
         i_Qc -= N_c // 2
         B_cv = 2.0 * np.pi * gd.icell_cv
-        G_Qv = np.dot(i_Qc, B_cv)
-        G2_Q = (G_Qv**2).sum(axis=1).ravel()
-        self.mask_Q = G2_Q <= 2 * self.ecut
-        self.G2_q = G2_Q[self.mask_Q]
-
+        G_Qv = np.dot(i_Qc, B_cv).reshape((-1, 3))
+        G2_Q = (G_Qv**2).sum(axis=1)
+        self.Q_q = np.arange(len(G2_Q))[G2_Q <= 2 * ecut]
+        K_qv = np.dot(ibzk_qc, B_cv)
+        G_qv = G_Qv[self.Q_q]
+        self.kin_qq = np.zeros((len(ibzk_qc), len(self.Q_q)))
+        for q, K_v in enumerate(K_qv):
+            self.kin_qq[q] = 0.5 * ((G_qv + K_v)**2).sum(1)
+        
         self.gd = gd
         self.dv = gd.dv / N_c.prod()
         self.comm = gd.comm
@@ -33,17 +39,17 @@ class PWDescriptor:
         assert dtype == complex
         if isinstance(n, int):
             n = (n,)
-        shape = n + self.G2_q.shape
+        shape = n + self.Q_q.shape
         return np.zeros(shape, complex)
     
     def fft(self, a_xG):
-        a_xq = fftn(a_xG, axes=(-3, -2, -1))
-        return a_xq.reshape(a_xG.shape[:-3] + (-1,))[..., self.mask_Q].copy()
+        a_xQ = fftn(a_xG, axes=(-3, -2, -1))
+        return a_xQ.reshape(a_xG.shape[:-3] + (-1,))[..., self.Q_q].copy()
 
     def ifft(self, a_xq):
         xshape = a_xq.shape[:-1]
         a_xQ = self.gd.zeros(xshape, complex)
-        a_xQ.reshape(xshape + (-1,))[..., self.mask_Q] = a_xq
+        a_xQ.reshape(xshape + (-1,))[..., self.Q_q] = a_xq
         return ifftn(a_xQ, axes=(-3, -2, -1)).copy()
 
 
@@ -52,35 +58,43 @@ class Preconditioner:
         self.pd = pd
         self.allocated = True
 
-    def __call__(self, R_q, phase_cd, psit_q):
-        return 0.01 * R_q
+    def __call__(self, R_q, kpt):
+        return R_q / (1.0 + self.pd.kin_qq[kpt.q])
 
 
-class PWWaveFunctions(GridWaveFunctions):
-    def __init__(self, ecut, diagksl, orthoksl, initksl, gd, *args):
-        self.pd = PWDescriptor(ecut / units.Hartree, gd)
-        GridWaveFunctions.__init__(self, 1, diagksl, orthoksl, initksl,
-                                   gd, *args)
-        del self.kin
+class PWWaveFunctions(FDPWWaveFunctions):
+    def __init__(self, ecut, diagksl, orthoksl, initksl,
+                 gd, nspins, nvalence, setups, bd,
+                 world, kpt_comm,
+                 bzk_kc, ibzk_kc, weight_k,
+                 symmetry, timer):
+        self.ecut =  ecut / units.Hartree
+        # Set dtype=complex and gamma=False:
+        FDPWWaveFunctions.__init__(self, diagksl, orthoksl, initksl,
+                                   gd, nspins, nvalence, setups, bd, complex,
+                                   world, kpt_comm,
+                                   False, bzk_kc, ibzk_kc, weight_k,
+                                   symmetry, timer)
+        
         self.matrixoperator = MatrixOperator(self.bd, self.pd, orthoksl)
-        self.wd = self.pd
+        self.wd = self.pd        
 
     def set_setups(self, setups):
-        GridWaveFunctions.set_setups(self, setups)
-        self.pt = PWLFC(self.pt, self.pd)
-        
-    def set_positions(self, spos_ac):
-        WaveFunctions.set_positions(self, spos_ac)
-        self.set_orthonormalized(False)
-        self.pt.set_positions(spos_ac)
-        self.allocate_arrays_for_projections(self.pt.lfc.my_atom_indices)
-        self.positions_set = True
+        self.pd = PWDescriptor(self.ecut, self.gd, self.ibzk_qc)
+        pt = LFC(self.gd, [setup.pt_j for setup in setups],
+                 self.kpt_comm, dtype=self.dtype, forces=True)
+        self.pt = PWLFC(pt, self.pd)
+        FDPWWaveFunctions.set_setups(self, setups)
 
+    def summary(self, fd):
+        fd.write('Mode: Plane waves (%d, ecut=%.3f eV)\n' %
+                 (len(self.pd.Q_q), self.pd.ecut * units.Hartree))
+        
     def make_preconditioner(self):
         return Preconditioner(self.pd)
 
     def apply_hamiltonian(self, hamiltonian, kpt, psit_xq, Htpsit_xq):
-        Htpsit_xq[:] = 0.5 * psit_xq * self.pd.G2_q
+        Htpsit_xq[:] = psit_xq * self.pd.kin_qq[kpt.q]
         for psit_q, Htpsit_q in zip(psit_xq, Htpsit_xq):
             psit_G = self.pd.ifft(psit_q)
             Htpsit_q += self.pd.fft(psit_G * hamiltonian.vt_sG[kpt.s])
@@ -93,21 +107,11 @@ class PWWaveFunctions(GridWaveFunctions):
     def initialize_wave_functions_from_basis_functions(self, basis_functions,
                                                        density, hamiltonian,
                                                        spos_ac):
-        GridWaveFunctions.initialize_wave_functions_from_basis_functions(
+        FDPWWaveFunctions.initialize_wave_functions_from_basis_functions(
             self, basis_functions, density, hamiltonian, spos_ac)
 
         for kpt in self.kpt_u:
             kpt.psit_nG = self.pd.fft(kpt.psit_nG)
-
-    def estimate_memory(self, mem):
-        gridbytes = self.gd.bytecount(self.dtype)
-        mem.subnode('Arrays psit_nG', 
-                    len(self.kpt_u) * self.mynbands * gridbytes)
-        #self.eigensolver.estimate_memory(mem.subnode('Eigensolver'), self.gd,
-        #                                 self.dtype, self.mynbands,
-        #                                 self.nbands)
-        self.pt.estimate_memory(mem.subnode('Projectors'))
-        self.overlap.estimate_memory(mem.subnode('Overlap op'), self.dtype)
 
 
 class PWLFC:
@@ -117,18 +121,26 @@ class PWLFC:
 
     def set_positions(self, spos_ac):
         self.lfc.set_positions(spos_ac)
+        self.my_atom_indices = self.lfc.my_atom_indices
+        
+    def set_k_points(self, ibzk_qc):
+        self.lfc.set_k_points(ibzk_qc)
+        N_c = self.pd.gd.N_c
+        self.expikr_qG = np.exp(2j * np.pi * np.dot(np.indices(N_c).T,
+                                                    (ibzk_qc / N_c).T).T)
 
     def add(self, a_xq, C_axi, q):
         a_xG = self.pd.gd.zeros(a_xq.shape[:-1], complex)
         self.lfc.add(a_xG, C_axi, q)
-        a_xq[:] += self.pd.fft(a_xG) 
+        a_xq[:] += self.pd.fft(a_xG / self.expikr_qG[q])
 
     def integrate(self, a_xq, C_axi, q):
-        a_xG = self.pd.ifft(a_xq)
+        a_xG = self.pd.ifft(a_xq) * self.expikr_qG[q]
+        C_axi[0][:]=0
         self.lfc.integrate(a_xG, C_axi, q)
 
 
-class PW:
+class PW: ####### use mode='pw'?  ecut=???
     def __init__(self, ecut=340):
         self.ecut = ecut
 

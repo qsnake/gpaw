@@ -10,26 +10,33 @@ from gpaw.wavefunctions.base import WaveFunctions
 
 
 class LCAOWaveFunctions(WaveFunctions):
-    def __init__(self, ksl, *args, **kwargs):
-        WaveFunctions.__init__(self, *args, **kwargs)
+    def __init__(self, ksl, gd, nspins, nvalence, setups, bd,
+                 dtype, world, kpt_comm,
+                 gamma, bzk_kc, ibzk_kc, weight_k, symmetry, timer=None):
+        WaveFunctions.__init__(self, gd, nspins, nvalence, setups, bd,
+                               dtype, world, kpt_comm,
+                               gamma, bzk_kc, ibzk_kc, weight_k, symmetry,
+                               timer)
         self.ksl = ksl
         self.S_qMM = None
         self.T_qMM = None
         self.P_aqMi = None
         
         self.timer.start('TCI: Evaluate splines')
-        self.tci = NewTCI(self.gd.cell_cv, self.gd.pbc_c, self.setups,
-                          self.ibzk_qc, self.gamma)
+        self.tci = NewTCI(gd.cell_cv, gd.pbc_c, setups, self.ibzk_qc, gamma)
         self.timer.stop('TCI: Evaluate splines')
         
-        self.basis_functions = BasisFunctions(self.gd,
+        self.basis_functions = BasisFunctions(gd,
                                               [setup.phit_j
-                                               for setup in self.setups],
-                                              self.kpt_comm,
+                                               for setup in setups],
+                                              kpt_comm,
                                               cut=True)
-        if not self.gamma:
+        if not gamma:
             self.basis_functions.set_k_points(self.ibzk_qc)
 
+    def summary(self, fd):
+        fd.write('Mode: LCAO\n')
+        
     def set_eigensolver(self, eigensolver):
         WaveFunctions.set_eigensolver(self, eigensolver)
         eigensolver.initialize(self.gd, self.dtype, self.setups.nao, self.ksl)

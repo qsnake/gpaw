@@ -71,7 +71,7 @@ class RMM_DIIS(Eigensolver):
 
             # Precondition the residual:
             self.timer.start('precondition')
-            pR_G = self.preconditioner(R_G, kpt.phase_cd, kpt.psit_nG[n1])
+            pR_G = self.preconditioner(R_G, kpt)
             self.timer.stop('precondition')
 
             # Calculate the residual of pR_G, dR_G = (H - e S) pR_G:
@@ -92,8 +92,7 @@ class RMM_DIIS(Eigensolver):
             R_G *= 2.0 * lam
             axpy(lam**2, dR_G, R_G)  # R_G += lam**2 * dR_G
             self.timer.start('precondition')
-            kpt.psit_nG[n1:n2] += self.preconditioner(R_G, kpt.phase_cd,
-                                                      kpt.psit_nG[n1])
+            kpt.psit_nG[n1:n2] += self.preconditioner(R_G, kpt)
             self.timer.stop('precondition')
             
         self.timer.stop('RMM-DIIS')

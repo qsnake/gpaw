@@ -75,7 +75,7 @@ class CG(Eigensolver):
                     # print >> self.f, "cg:iters", n, nit
                     break
 
-                pR_G = self.preconditioner(R_G, kpt.phase_cd)
+                pR_G = self.preconditioner(R_G, kpt)
 
                 # New search direction
                 gamma = self.gd.comm.sum(np.vdot(pR_G, R_G).real)

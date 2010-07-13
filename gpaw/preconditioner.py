@@ -41,7 +41,8 @@ class Preconditioner:
             transformer.allocate()
         self.allocated = True
         
-    def __call__(self, residuals, phases=None, phit=None, kpt=None):
+    def __call__(self, residuals, kpt):
+        phases = kpt.phase_cd
         step = self.step
         d0, q0 = self.scratch0
         r1, d1, q1 = self.scratch1

@@ -155,10 +155,10 @@ class PAWTextOutput:
             t('Spin-Paired Calculation')
         t('Total Charge:      %.6f' % p['charge'])
         t('Fermi Temperature: %.6f' % (self.occupations.width * Hartree))
-        t('Mode:              %s' % p['mode'])
+        self.wfs.summary(self.txt)
         eigensolver = p['eigensolver']
         if eigensolver is None:
-            eigensolver = {'lcao':'lcao (direct)', 'fd':'rmm-diis'}[p['mode']]
+            eigensolver = {'lcao':'lcao (direct)'}.get(p['mode'], 'rmm-diis')
         t('Eigensolver:       %s' % eigensolver)
         if p['mode'] != 'lcao':
             t('                   (%s)' % fd(p['stencils'][0]))

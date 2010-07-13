@@ -10,7 +10,10 @@ from gpaw.lcao.eigensolver import LCAO
 def get_eigensolver(name, mode, convergence=None):
     """Create eigensolver object."""
     if name is None:
-        name = {'fd': 'rmm-diis', 'lcao': 'lcao'}[mode]
+        if mode == 'lcao':
+            name = 'lcao'
+        else:
+            name = 'rmm-diis'
     if isinstance(name, str):
         eigensolver = {'rmm-diis':  RMM_DIIS,
                        'rmm-diis2': RMM_DIIS2,

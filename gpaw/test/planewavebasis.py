@@ -1,14 +1,14 @@
 from ase import Atoms
+from ase.data.molecules import molecule
 from gpaw import GPAW, FermiDirac
-from gpaw.eigensolvers.rmm_diis import RMM_DIIS
 from gpaw.wavefunctions.pw import PW
 from gpaw.mpi import world
 
+k = 2
 if world.size == 1:
-    a = Atoms('H', pbc=1)
+    a = molecule('H', pbc=1, magmoms=[0])
     a.center(vacuum=2)
     a.set_calculator(
-        GPAW(mode=PW(200),
-             eigensolver=RMM_DIIS(),
-             occupations=FermiDirac(0.1)))
+        GPAW(mode=PW(250),
+             kpts=(k, k, k)))
     a.get_potential_energy()

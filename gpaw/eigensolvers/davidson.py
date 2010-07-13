@@ -82,7 +82,7 @@ class Davidson(Eigensolver):
 
                 H_2n2n[n,n] = kpt.eps_n[n]
                 S_2n2n[n,n] = 1.0
-                psit2_nG[n] = self.preconditioner(R_nG[n], kpt.phase_cd)
+                psit2_nG[n] = self.preconditioner(R_nG[n], kpt)
             
             # Calculate projections
             P2_ani = wfs.pt.dict(nbands)

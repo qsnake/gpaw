@@ -44,8 +44,12 @@ class WaveFunctions(EmptyWaveFunctions):
     kpt_comm:
         MPI-communicator for parallelization over **k**-points.
     """
-    def __init__(self, gd, nspins, nvalence, setups, bd, dtype, world, kpt_comm,
-                 gamma, bzk_kc, ibzk_kc, weight_k, symmetry, timer=nulltimer):
+    def __init__(self, gd, nspins, nvalence, setups, bd, dtype,
+                 world, kpt_comm,
+                 gamma, bzk_kc, ibzk_kc, weight_k, symmetry, timer=None):
+        if timer is None:
+            timer = nulltimer
+            
         self.gd = gd
         self.nspins = nspins
         self.nvalence = nvalence
@@ -93,7 +97,7 @@ class WaveFunctions(EmptyWaveFunctions):
         
         self.eigensolver = None
         self.positions_set = False
-        
+
         self.set_setups(setups)
 
     def set_setups(self, setups):

@@ -30,9 +30,10 @@ class AtomWaveFunctions(WaveFunctions):
 
     def add_to_density_from_k_point(self, nt_sG, kpt):
         nt_sG[kpt.s] += np.dot(kpt.f_n / 4 / pi, kpt.psit_nG**2)
-        #import pylab as p
-        #p.plot(self.gd.r_g, nt_sG[0])
-        #p.show();sdg
+
+    def summary(self, fd):
+        fd.write('Mode: Spherically symmetric atomic solver')
+
 
 class AtomPoissonSolver:
     def set_grid_descriptor(self, gd):

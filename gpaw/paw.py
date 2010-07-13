@@ -25,7 +25,7 @@ from gpaw.utilities.timing import Timer
 from gpaw.xc_functional import XCFunctional
 from gpaw.brillouin import reduce_kpoints
 from gpaw.wavefunctions.base import EmptyWaveFunctions
-from gpaw.wavefunctions.fd import GridWaveFunctions
+from gpaw.wavefunctions.fd import FDWaveFunctions
 from gpaw.wavefunctions.lcao import LCAOWaveFunctions
 from gpaw.wavefunctions.pw import PW
 from gpaw.utilities.memory import MemNode, maxrss
@@ -555,15 +555,14 @@ class PAW(PAWTextOutput):
                                                 timer=self.timer)
 
                 if par.mode == 'fd':
-                    self.wfs = GridWaveFunctions(par.stencils[0], diagksl,
-                                                 orthoksl, initksl, *args)
+                    self.wfs = FDWaveFunctions(par.stencils[0], diagksl,
+                                               orthoksl, initksl, *args)
                 else:
-                    # Planewave basis.  Always use dtype=complex and
-                    # gamma=False.
+                    # Planewave basis:
                     self.wfs = par.mode(diagksl, orthoksl, initksl,
                                         gd, nspins, nvalence, setups, self.bd,
-                                        complex, world, kpt_comm,
-                                        False, bzk_kc, ibzk_kc, weight_k,
+                                        world, kpt_comm,
+                                        bzk_kc, ibzk_kc, weight_k,
                                         symmetry, self.timer)
             else:
                 self.wfs = par.mode(self, *args)

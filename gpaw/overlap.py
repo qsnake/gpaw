@@ -66,6 +66,7 @@ class Overlap:
         S = lambda x: x
         dS_aii = dict([(a, wfs.setups[a].dO_ii) for a in P_ani])
         self.timer.start('calc_matrix')
+
         S_nn = operator.calculate_matrix_elements(psit_nG, P_ani,
                                                        S, dS_aii)
         self.timer.stop('calc_matrix')

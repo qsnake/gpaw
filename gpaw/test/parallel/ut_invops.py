@@ -21,7 +21,7 @@ from gpaw.parameters import InputParameters
 from gpaw.xc_functional import XCFunctional
 from gpaw.setup import Setups
 from gpaw.wavefunctions.base import WaveFunctions
-from gpaw.wavefunctions.fd import GridWaveFunctions
+from gpaw.wavefunctions.fd import FDWaveFunctions
 from gpaw.fd_operators import Laplace # required but not really used
 from gpaw.pair_overlap import GridPairOverlap, ProjectorPairOverlap
 
@@ -105,7 +105,7 @@ class UTDomainParallelSetup_Mixed(UTDomainParallelSetup):
 
 # Helper functions/classes here
 
-class GDWFS(GridWaveFunctions):
+class FDWFS(FDWaveFunctions):
     def __init__(self, gd, bd, kpt_comm, setups, dtype): # override constructor
         assert kpt_comm.size == 1
         WaveFunctions.__init__(self, gd, 1, 1, setups, bd, dtype, \
@@ -178,7 +178,7 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
                              par.lmax, xcfunc)
 
         # Create gamma-point dummy wavefunctions
-        self.wfs = GDWFS(self.gd, self.bd, self.kpt_comm, self.setups,
+        self.wfs = FDWFS(self.gd, self.bd, self.kpt_comm, self.setups,
                          self.dtype)
         spos_ac = self.atoms.get_scaled_positions() % 1.0
         self.wfs.set_positions(spos_ac)
