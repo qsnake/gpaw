@@ -5,6 +5,7 @@
 
 import os
 import re
+from operator import mul
 from math import sqrt, exp
 
 import numpy as np
@@ -23,9 +24,18 @@ erf = np.vectorize(_gpaw.erf, (float,), 'Error function')
 cerf = np.vectorize(_gpaw.cerf, (complex,), 'Complex error function')
 
 # Factorials:
-fac = [1, 1, 2, 6, 24, 120, 720, 5040, 40320,
-       362880, 3628800, 39916800, 479001600]
+_fact = [1, 1, 2, 6, 24, 120, 720, 5040, 40320,
+         362880, 3628800, 39916800, 479001600]
 
+def fact(x):
+    if x in xrange(len(_fact)):
+        return _fact[x]
+    return reduce(mul, xrange(2, x+1), 1)
+
+def ffact(a, b):
+    """b!/a! where 0 <= a <= b"""
+    assert a in xrange(b+1)
+    return reduce(mul, xrange(a+1, b+1), 1)
 
 def h2gpts(h, cell_cv, idiv=4):
     """Convert grid spacing to number of grid points divisible by idiv.

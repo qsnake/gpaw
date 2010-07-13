@@ -12,7 +12,7 @@ from ase.units import Bohr, Hartree
 
 from gpaw import setup_paths
 from gpaw.spline import Spline
-from gpaw.utilities import fac, divrl
+from gpaw.utilities import _fact, divrl
 from gpaw.utilities.tools import md5_new
 from gpaw.xc_functional import XCRadialGrid
 from gpaw.xc_correction import XCCorrection
@@ -175,7 +175,7 @@ class SetupData:
         return K_p
 
     def get_ghat(self, lmax, alpha, r, rcut):
-        d_l = [fac[l] * 2**(2 * l + 2) / sqrt(pi) / fac[2 * l + 1]
+        d_l = [_fact[l] * 2**(2 * l + 2) / sqrt(pi) / _fact[2 * l + 1]
                for l in range(lmax + 1)]
         g = alpha**1.5 * np.exp(-alpha * r**2)
         g[-1] = 0.0

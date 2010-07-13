@@ -595,7 +595,7 @@ class GPAW(PAW):
 
         from gpaw.lfc import LocalizedFunctionsCollection as LFC
         from gpaw.spline import Spline
-        from gpaw.utilities import fac
+        from gpaw.utilities import _fact
 
         nkpts = len(wfs.ibzk_kc)
         nbf = np.sum([2 * l + 1 for pos, l, a in locfun])
@@ -613,9 +613,9 @@ class GPAW(PAW):
             
             alpha = .5 * Bohr**2 / sigma**2
             r = np.linspace(0, 6. * sigma, 500)
-            f_g = (fac[l] * (4 * alpha)**(l + 3 / 2.) *
+            f_g = (_fact[l] * (4 * alpha)**(l + 3 / 2.) *
                    np.exp(-a * r**2) /
-                   (np.sqrt(4 * np.pi) * fac[2 * l + 1]))
+                   (np.sqrt(4 * np.pi) * _fact[2 * l + 1]))
             splines_x.append([Spline(l, rmax=r[-1], f_g=f_g, points=61)])
             
         lf = LFC(wfs.gd, splines_x, wfs.kpt_comm, dtype=wfs.dtype)

@@ -5,7 +5,7 @@ from math import pi, log, sqrt
 
 import numpy as np
 
-from gpaw.utilities import fac
+from gpaw.utilities import _fact
 
 """Fourier filtering
 
@@ -172,7 +172,7 @@ class Filter:
         #       -l
         # f(r) r    for r -> 0
         #
-        c = 2.0**l * fac[l] / fac[2 * l + 1] * self.c
+        c = 2.0**l * _fact[l] / _fact[2 * l + 1] * self.c
         a_g[0] = np.dot(fq_i, q_i**(l + 1)) * c
 
         return a_g

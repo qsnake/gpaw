@@ -24,7 +24,7 @@ from gpaw.basis_data import Basis
 from gpaw.gaunt import gaunt as G_LLL, Y_LLv
 from gpaw.spline import Spline
 from gpaw.grid_descriptor import RadialGridDescriptor
-from gpaw.utilities import unpack, pack, fac, hartree, divrl
+from gpaw.utilities import unpack, pack, hartree, divrl
 from gpaw.rotation import rotation
 
 

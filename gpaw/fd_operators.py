@@ -13,7 +13,7 @@ import numpy as np
 from numpy.fft import fftn, ifftn
 
 from gpaw import debug, extra_parameters
-from gpaw.utilities import fac
+from gpaw.utilities import fact
 import _gpaw
 
 
@@ -127,7 +127,7 @@ class Gradient(FDOperator):
         A=np.zeros((2*n+1,2*n+1))
         for i,io in enumerate(range(-n,n+1)):
             for j in range(2*n+1):
-                A[i,j]=io**j/float(fac[j])
+                A[i,j]=io**j/float(fact(j))
         A[n,0]=1.
         coefs=np.linalg.inv(A)[1]
         coefs=np.delete(coefs,len(coefs)//2)
@@ -140,9 +140,6 @@ class Gradient(FDOperator):
                 offset = np.zeros((2*n, 3), int)
                 offset[:,i]=offs
                 offset_pc.extend(offset)
-
-        if n > len(fac):
-            raise RuntimeError('extend fac')
 
         FDOperator.__init__(self, coef_p, offset_pc, gd, dtype, allocate)
 
