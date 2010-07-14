@@ -70,6 +70,9 @@ def construct_reciprocal(gd, q_c=None):
 
     The ordering of the reciprocal lattice agrees with the one typically used
     in fft algorithms, i.e. positive k-values followed by negative.
+
+    Note that the G=(0,0,0) entrance is set to one instead of zero. This
+    bit should probably be moved somewhere else ...
     
     Parameters
     ----------
@@ -108,7 +111,9 @@ def construct_reciprocal(gd, q_c=None):
 
     if q_c is None:
         k2_Q[0, 0, 0] = 1.0
-
+    elif abs(q_c).sum() < 1e-8:
+        k2_Q[0, 0, 0] = 1.0
+        
     # Determine N^3
     N3 = gd.n_c[0] * gd.n_c[1] * gd.n_c[2]
 
