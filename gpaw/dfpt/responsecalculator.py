@@ -310,12 +310,10 @@ class ResponseCalculator:
         for kpt in self.kpt_u:
 
             k = kpt.k
+
             if verbose:
                 print "k-point %2.1i" % k
             
-            psit_nG = kpt.psit_nG
-            psit1_nG = kpt.psit1_nG
-
             # Index of k+q vector
             if kplusq_k is None:
                 kplusq = k
@@ -324,19 +322,24 @@ class ResponseCalculator:
                 kplusq = kplusq_k[k]
                 kplusqpt = self.kpt_u[kplusq]
 
+            # Ground-state and first-order wave-functions
+            psit_nG = kpt.psit_nG
+            psit1_nG = kpt.psit1_nG
+
+            # Update the SternheimerOperator
             self.sternheimer_operator.set_kplusq(kplusq)
             
             # Right-hand side of Sternheimer equation
             rhs_nG = self.gd.zeros(n=self.nbands, dtype=self.gs_dtype)
             # k and k+q
-            # XXX should only be done once
+            # XXX should only be done once but maybe too cheap to botter ??
             self.perturbation.apply(psit_nG, rhs_nG, self.wfs, k, kplusq)
 
             if self.pc is not None:
                 # k+q
-                self.pc.set_phases(kplusqpt.phase_cd)
+                self.pc.set_kpt(kplusqpt)
                 
-            # Loop over all valence-bands
+            # Loop over occupied bands
             for n in range(self.nbands):
 
                 # Get view of the Bloch function and its variation

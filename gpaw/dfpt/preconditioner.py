@@ -20,7 +20,8 @@ class ScipyPreconditioner:
 
         self.project = project
         self.gd = gd
-        self.phase_cd = None
+        # K-point for the preconditioner
+        self.kpt = None
         
         kin = Laplace(gd, scale=-0.5, n=3, dtype=dtype, allocate=True)
         self.pc = Preconditioner(gd, kin, dtype=dtype)
@@ -31,10 +32,17 @@ class ScipyPreconditioner:
         self.shape = (N,N)
         self.dtype = dtype
 
-    def set_phases(self, phase_cd):
-        """Set phases for ``Transformer`` objects inside the preconditioner."""
+    def set_kpt(self, kpt):
+        """Set k-point for ``Transformer`` objects inside the preconditioner.
 
-        self.phase_cd = phase_cd
+        Parameters
+        ----------
+        kpt: KPoint or KPointContainer
+            Only requirement is that it must have an ``phase_cd`` attribute.
+
+        """
+
+        self.kpt = kpt
         
     def matvec(self, x):
         """Matrix vector multiplication for ``scipy.sparse.linalg`` solvers.
@@ -56,7 +64,7 @@ class ScipyPreconditioner:
         x_G = x.reshape(shape)
 
         # Call gpaw preconditioner
-        y_G = self.pc(x_G, phases=self.phase_cd)
+        y_G = self.pc(x_G, kpt=self.kpt)
 
         # Project out undesired (numerical) components
         self.project(y_G)

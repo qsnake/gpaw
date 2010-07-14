@@ -1,4 +1,4 @@
-"""This module implements a wave-function class."""
+"""This module implements a simple wave-function class."""
 
 from gpaw.lfc import LocalizedFunctionsCollection as LFC
 

@@ -121,7 +121,7 @@ class DynamicalMatrix:
         """
 
         self.density_derivative(perturbation, response_calc)
-        self.wfs_derivative(perturbation, response_calc)
+        # self.wfs_derivative(perturbation, response_calc)
         
     def density_ground_state(self, calc):
         """Contributions involving ground-state density.
@@ -243,6 +243,7 @@ class DynamicalMatrix:
         # Get attributes from the phononperturbation
         a = perturbation.a
         v = perturbation.v
+        #XXX: careful here, Gamma calculation has q=-1
         q = perturbation.q
 
         # Matrix of force constants to be updated
