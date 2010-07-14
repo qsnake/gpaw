@@ -17,7 +17,7 @@ from gpaw.hgh import null_xc_correction
 
 
 class AppelbaumHamann(BaseSetup):
-    def __init__(self, alpha=0.6102, v1=3.042, v2=-1.372):
+    def __init__(self, alpha=0.6102*1.17, v1=3.042, v2=-1.372):
         self.alpha = alpha
         self.v1 = v1
         self.v2 = v2

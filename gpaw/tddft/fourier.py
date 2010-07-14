@@ -56,7 +56,7 @@ class DensityFourierTransform(Observer):
         self.stencil = paw.input_parameters.stencils[1] # i.e. tar['InterpolationStencil']
         self.interpolator = paw.density.interpolator
         self.cinterpolator = Transformer(self.gd, self.finegd, self.stencil, \
-                                        dtype=self.dtype, allocate=False)
+                                         dtype=self.dtype, allocate=False)
         self.phase_cd = np.ones((3, 2), dtype=complex)
 
         self.Ant_sG = paw.density.nt_sG.copy() # TODO in allocate instead?

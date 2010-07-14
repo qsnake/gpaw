@@ -2,6 +2,7 @@ import numpy as np
 from gpaw.lfc import LocalizedFunctionsCollection as LFC
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.spline import Spline
+
 gd = GridDescriptor([20, 16, 16], [(4, 2, 0), (0, 4, 0), (0, 0, 4)])
 spos_ac = np.array([[0.252, 0.15, 0.35], [0.503, 0.5, 0.5]])
 s = Spline(l=0, rmax=2.0, f_g=np.array([1, 0.9, 0.1, 0.0]))
