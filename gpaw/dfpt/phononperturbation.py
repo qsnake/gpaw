@@ -131,7 +131,7 @@ class PhononPerturbation(Perturbation):
                               np.dot(self.ibzq_qc, scoor_cg.swapaxes(0,-2)))
             self.phase_qg = phase_qg.swapaxes(1, -2)
 
-        #XXX To be removed from this class !!
+        # To be removed from this class !!
         # Setup the Poisson solver -- to be used on the fine grid
         self.poisson.set_grid_descriptor(self.finegd)
         self.poisson.initialize()
@@ -140,7 +140,7 @@ class PhononPerturbation(Perturbation):
         self.restrictor.allocate()
 
     def get_phase_cd(self):
-        """Overwrite base class member function."""
+        """Return phases for instances of class ``Transformer`` ."""
 
         return self.phase_cd
     
@@ -152,8 +152,6 @@ class PhononPerturbation(Perturbation):
     def get_q(self):
         """Return q-vector."""
 
-        assert not self.gamma, "Gamma-point calculation."
-        
         return self.ibzq_qc[self.q]
     
     def set_perturbation(self, a, v):

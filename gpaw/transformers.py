@@ -68,7 +68,7 @@ class _Transformer:
             comm = gdin.comm.get_c_object()
         else:
             comm = None
-
+        
         self.transformer = _gpaw.Transformer(gdin.n_c, 2 * self.nn,
                                              self.pad_cd, 
                                              self.neighborpad_cd, self.skip_cd,
@@ -127,6 +127,7 @@ class TransformerWrapper:
         assert (self.dtype == float or
                 (phases.dtype == complex and
                  phases.shape == (3, 2)))
+
         assert self.allocated
         self.transformer.apply(input, output, phases)
 

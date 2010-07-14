@@ -112,8 +112,7 @@ class PhononCalculator:
         """Set indices of atoms to include in the calculation."""
 
         if isinstance(atoms_a, dict):
-            #self.atoms_a.update(atoms_a)
-            self.atoms_a = atoms_a
+            self.atoms_a.update(atoms_a)
         else:
             # List of atoms indices
             for a in atoms_a:
@@ -140,7 +139,7 @@ class PhononCalculator:
     
                 for v in self.atoms_a[a]:
     
-                    components = ['x', 'y', 'z']
+                    components = ['x','y','z']
                     symbols = self.atoms.get_chemical_symbols()
                     print "q-vector index: %i" % q
                     print "Atom index: %i" % a
@@ -163,7 +162,7 @@ class PhononCalculator:
                                              self.response_calc)
                     
         self.D_matrix.density_ground_state(self.calc)
-        # self.D_matrix.wfs_ground_state(self.calc, self.response_calc)
+        self.D_matrix.wfs_ground_state(self.calc, self.response_calc)
 
     def get_dynamical_matrix(self):
         """Assemble and return the dynamical matrix as an ndarray."""
