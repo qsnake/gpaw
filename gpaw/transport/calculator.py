@@ -228,7 +228,7 @@ class Transport(GPAW):
         p['n_ion_step'] = 0
         p['eqinttol'] = 1e-4
         p['plot_eta'] = 0.005
-        p['plot_energy_range'] = [-5,5]
+        p['plot_energy_range'] = [-5.,5.]
         p['plot_energy_point_num'] = 201
         p['alpha'] = 0.0
         p['beta_guess'] = 0.1
@@ -1144,7 +1144,7 @@ class Transport(GPAW):
         self.step = 0
         self.cvgflag = False
         self.spin_coff = 3. - self.nspins
-        self.max_steps = 300
+        self.max_steps = 400
         self.h_cvg = False
         self.d_cvg = False
         self.ele_data = {}
@@ -1753,15 +1753,16 @@ class Transport(GPAW):
                 self.text('--------------ionic_step---' +
                           str(self.analysor.n_ion_step) + '---------------')
                 self.F_av = None
-            if not self.use_qzk_boundary:    
-                f = self.calculate_force()
-                f *= Hartree / Bohr
-            else:
-                f = self.extended_calc.get_forces()[:len(self.atoms)]
-                
+
             if not self.optimize:
                 self.optimize = True
-            return f  
+
+            if not self.use_qzk_boundary:    
+                f = self.calculate_force()
+                return f * Hartree / Bohr
+            else:
+                f = self.extended_calc.get_forces()[:len(self.atoms)]
+                return f  
 
     def calculate_force(self):
         """Return the atomic forces.""" 
