@@ -203,7 +203,12 @@ intersphinx_mapping = {'http://wiki.fysik.dtu.dk/ase': None}
 # sphinx.ext.pngmath manual configuration
 # ---------------------------------------
 
-pngmath_latex_preamble = '\usepackage{amsmath}\usepackage{amsfonts}\usepackage[active]{preview}'
+pngmath_latex_preamble = r"""
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage[active]{preview}
+\newcommand{\br}{\mathbf{r}}
+"""
 
 # Additional arguments to give to dvipng, as a list.
 # The default value is ['-gamma 1.5', '-D 110']
