@@ -260,7 +260,7 @@ class Contour:
     calcutype = ['eqInt', 'eqInt', 'eqInt', 'resInt', 'neInt', 'locInt']
     def __init__(self, kt, fermi, bias, maxdepth=7, comm=None, neint='linear',
                   tp=None, plot_eta=1e-4, neintstep=0.02, eqinttol=1e-4,
-                  min_energy=-700, plot_energy_range=[-5,5],
+                  min_energy=-700, plot_energy_range=[-5.,5.],
                   plot_energy_point_num=201):
         self.kt = kt
         self.nkt = 8 * self.kt 
@@ -372,7 +372,7 @@ class Contour:
                 path.ne = 261
             else:    
                 path.ne = self.plot_energy_point_num
-            path.int_step = (limits[1] - limits[0]) // (
+            path.int_step = (limits[1] - limits[0]) / (
                                                self.plot_energy_point_num - 1)
            
             digits = int(np.ceil(np.log10(path.ne)))
