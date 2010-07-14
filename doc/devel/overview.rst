@@ -139,7 +139,7 @@ WaveFunctions
 We currently have two representations for the wave functions: uniform
 3-d grids and expansions in atom centered basis functions as
 implemented in the two classes
-:class:`~gpaw.wavefunctions.fd.GridWaveFunctions` and
+:class:`~gpaw.wavefunctions.fd.FDWaveFunctions` and
 :class:`~gpaw.wavefunctions.lcao.LCAOWaveFunctions`.  Both inherit from the
 :class:`~gpaw.wavefunctions.base.WaveFunctions` class, so the wave
 functions object will always have a
@@ -166,7 +166,7 @@ objects.
                --------------------------------
               |                                |
      +-----------------+            +-----------------+
-     |LCAOWaveFunctions|            |GridWaveFunctions|
+     |LCAOWaveFunctions|            | FDWaveFunctions |
      +-----------------+            +-----------------+
            |        |              /    |           |
            v        |tci          |     |kin        |pt

@@ -719,7 +719,7 @@ class AbsorptionKick(ExplicitCrankNicolson):
         
         Parameters
         ----------
-        wfs: GridWaveFunctions
+        wfs: FDWaveFunctions
             time-independent grid-based wavefunctions
         abs_kick_hamiltonian: AbsorptionKickHamiltonian
             the absorption kick hamiltonian

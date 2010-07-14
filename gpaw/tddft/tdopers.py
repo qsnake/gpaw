@@ -29,7 +29,7 @@ class TimeDependentHamiltonian:
         
         Parameters
         ----------
-        wfs: GridWaveFunctions
+        wfs: FDWaveFunctions
             time-independent grid-based wavefunctions
         hamiltonian: Hamiltonian
             time-independent Hamiltonian
@@ -273,7 +273,7 @@ class AbsorptionKickHamiltonian:
 
         Parameters
         ----------
-        wfs: GridWaveFunctions
+        wfs: FDWaveFunctions
             time-independent grid-based wavefunctions
         atoms: Atoms
             list of atoms
@@ -366,7 +366,7 @@ class TimeDependentOverlap:
         
         Parameters
         ----------
-        wfs: GridWaveFunctions
+        wfs: FDWaveFunctions
             time-independent grid-based wavefunctions
 
         """
@@ -480,7 +480,7 @@ class DummyDensity:
 
         Parameters
         ----------
-        wfs: GridWaveFunctions
+        wfs: FDWaveFunctions
             time-independent grid-based wavefunctions
 
         """
