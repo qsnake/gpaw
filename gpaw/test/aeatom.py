@@ -12,7 +12,7 @@ errors = []
 for channel in aea.channels:
     channel.solve(-Z)
     for n in range(7):
-        e = channel.eps_n[n]
+        e = channel.e_n[n]
         e0 = -0.5 * Z**2 / (n + channel.l + 1)**2
         errors.append(abs(e / e0 - 1))
 equal(max(errors), 0, 2.0e-5)
@@ -25,7 +25,7 @@ errors = []
 for channel in aea.channels:
     channel.solve(-Z)
     for n in range(7):
-        e = channel.eps_n[n]
+        e = channel.e_n[n]
         if channel.k > 0:
             n += 1
         e0 = (1 +

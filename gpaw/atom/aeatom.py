@@ -158,7 +158,7 @@ class Channel:
         """Diagonalize Schrödinger equation in basis set."""
         H_bb = self.basis.calculate_potential_matrix(vr_g)
         H_bb += self.basis.T_bb
-        self.eps_n, C_bn = np.linalg.eigh(H_bb)
+        self.e_n, C_bn = np.linalg.eigh(H_bb)
         self.C_nb = C_bn.T
     
     def calculate_density(self, n=None):
@@ -173,7 +173,7 @@ class Channel:
 
     def get_eigenvalue_sum(self):
         f_n = self.f_n
-        return np.dot(f_n, self.eps_n[:len(f_n)])
+        return np.dot(f_n, self.e_n[:len(f_n)])
 
 
 class DiracChannel(Channel):
@@ -194,12 +194,12 @@ class DiracChannel(Channel):
         H_bb[:nb, :nb] = V_bb
         H_bb[nb:, nb:] = V_bb - 2 * c**2 * np.eye(nb)
         H_bb[nb:, :nb] = -c * (-self.basis.D_bb.T + self.k * self.basis.K_bb)
-        eps_n, C_bn = np.linalg.eigh(H_bb)
+        e_n, C_bn = np.linalg.eigh(H_bb)
         if self.k < 0:
             n0 = nb
         else:
             n0 = nb + 1
-        self.eps_n = eps_n[n0:].copy()
+        self.e_n = e_n[n0:].copy()
         self.C_nb = C_bn[:nb, n0:].T.copy()  # large component
         self.c_nb = C_bn[nb:, n0:].T.copy()  # small component
 
@@ -449,7 +449,7 @@ class AllElectronAtom:
         states = []
         for ch in self.channels:
             for n, f in enumerate(ch.f_n):
-                states.append((ch.eps_n[n], ch, n))
+                states.append((ch.e_n[n], ch, n))
         states.sort()
         for e, ch, n in states:
             name = str(n + ch.l + 1) + ch.name
