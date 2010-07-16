@@ -57,7 +57,8 @@ class ResponseCalculator:
         Parameters
         ----------
         calc: Calculator
-            Calculator instance containing a ground-state calculation.
+            Calculator instance containing a ground-state calculation
+            (calc.set_positions must have been called before this point!).
         wfs: WaveFunctions
             Class taking care of wave-functions, projectors, k-point related
             quantities and symmetries.
@@ -68,9 +69,6 @@ class ResponseCalculator:
             
         """
         
-        # Make sure that localized functions are initialized
-        #calc.set_positions()
-
         # Store ground-state quantities
         self.hamiltonian = calc.hamiltonian
         self.density = calc.density
@@ -116,6 +114,11 @@ class ResponseCalculator:
         # the form of the density response this is obtained from the
         # perturbation in the ``__call__`` member function below.
         self.phase_cd = None
+
+        # Array attributes
+        self.nt1_g = None
+        self.nt1_G = None
+        self.vH1_g = None
         
         # Number of occupied bands
         nvalence = calc.wfs.nvalence
@@ -169,10 +172,9 @@ class ResponseCalculator:
         self.mixer.initialize_metric(self.gd)
         
         # Linear operator in the Sternheimer equation
-        hamiltonian = self.hamiltonian
-        wfs = self.wfs        
         self.sternheimer_operator = \
-            SternheimerOperator(hamiltonian, wfs, self.gd, dtype=self.gs_dtype)
+            SternheimerOperator(self.hamiltonian, self.wfs, self.gd,
+                                dtype=self.gs_dtype)
 
         # Preconditioner for the Sternheimer equation
         if p['use_pc']:
@@ -203,16 +205,12 @@ class ResponseCalculator:
         
         # Reset mixer
         self.mixer.reset()
+        # Reset wave-functions
+        self.wfs.reset()
 
-        # Initialize arrays for wave-function derivatives
-        for kpt in self.wfs.kpt_u:
-
-            kpt.psit1_nG = self.gd.zeros(n=self.nbands, dtype=self.gs_dtype)
-
-        # Set phases
+        # Set phase attribute for Transformer objects
         self.phase_cd = self.perturbation.get_phase_cd()
         
-           
         for iter in range(max_iter):
             print     "iter:%3i\t" % iter,
             if iter == 0:
@@ -222,8 +220,8 @@ class ResponseCalculator:
                 norm = self.iteration()
                 print "abs-norm: %6.3e\t" % norm,
                 #XXX The density is complex !!!!!!
-                print ("integrated density response: %5.2e" % 
-                       self.gd.integrate(self.nt1_G))
+                print ("integrated density response: % 5.2e" % 
+                       self.gd.integrate(self.nt1_G).real)
                 
                 if norm < tolerance:
                     print ("self-consistent loop converged in %i iterations"
@@ -241,17 +239,17 @@ class ResponseCalculator:
 
         self.wave_function_variations()
         self.density_response()
-        self.mixer.mix(self.nt1_G, [])
-        # Temp
+        self.mixer.mix(self.nt1_G, [], phase_cd=self.phase_cd)
+        #XXX Temp
         v1_G = self.effective_potential_variation()
         
     def iteration(self):
         """Perform iteration."""
 
         # Update variation in the effective potential
-        v1_G = self.effective_potential_variation()
+        vHXC1_G = self.effective_potential_variation()
         # Update wave function variations
-        self.wave_function_variations(v1_G=v1_G)
+        self.wave_function_variations(vHXC1_G=vHXC1_G)
         # Update density
         self.density_response()
         # Mix - supply phase_cd here for metric inside the mixer
@@ -270,8 +268,8 @@ class ResponseCalculator:
         self.vH1_g = vHXC1_g.copy()
         
         # XC part - fix this in the xc_functional.py file !!!!
-        density = self.density
-        nt_g_ = density.nt_g.ravel()
+        nt_g = self.density.nt_g
+        nt_g_ = nt_g.ravel()
         vXC1_g = self.finegd.zeros(dtype=float)
         vXC1_g.shape = nt_g_.shape
         hamiltonian = self.hamiltonian
@@ -280,12 +278,12 @@ class ResponseCalculator:
         vHXC1_g += vXC1_g * self.nt1_g
 
         # Transfer to coarse grid
-        v1_G = self.gd.zeros(dtype=self.dtype)
-        self.restrictor.apply(vHXC1_g, v1_G, phases=self.phase_cd)
+        vHXC1_G = self.gd.zeros(dtype=self.dtype)
+        self.restrictor.apply(vHXC1_g, vHXC1_G, phases=self.phase_cd)
         
-        return v1_G
+        return vHXC1_G
     
-    def wave_function_variations(self, v1_G=None):
+    def wave_function_variations(self, vHXC1_G=None):
         """Calculate variation in the wave-functions.
 
         Parameters
@@ -332,7 +330,7 @@ class ResponseCalculator:
             # Right-hand side of Sternheimer equation
             rhs_nG = self.gd.zeros(n=self.nbands, dtype=self.gs_dtype)
             # k and k+q
-            # XXX should only be done once but maybe too cheap to botter ??
+            # XXX should only be done once but maybe too cheap to bother ??
             self.perturbation.apply(psit_nG, rhs_nG, self.wfs, k, kplusq)
 
             if self.pc is not None:
@@ -343,17 +341,17 @@ class ResponseCalculator:
             for n in range(self.nbands):
 
                 # Get view of the Bloch function and its variation
-                psit_G = psit_nG[n]
+                psit_G  = psit_nG[n]
                 psit1_G = psit1_nG[n]
-                rhs_G = -1 * rhs_nG[n]
-                
+
+                # Rhs of Sternheimer equation                
+                rhs_G   = -1 * rhs_nG[n]
+
+                if vHXC1_G is not None:
+                    rhs_G -= vHXC1_G * psit_G
+                    
                 # Update k-point index and band index in SternheimerOperator
                 self.sternheimer_operator.set_blochstate(n, k)
-
-                # Rhs of Sternheimer equation
-                if v1_G is not None:
-                    rhs_G -= v1_G * psit_G
-                
                 self.sternheimer_operator.project(rhs_G)
 
                 if verbose:
@@ -378,18 +376,27 @@ class ResponseCalculator:
         # Note, density might be complex
         self.nt1_G = self.gd.zeros(dtype=self.dtype)
 
+        total = 0
+        
         for kpt in self.kpt_u:
 
             # The occupations includes the weight of the k-points
             f_n = kpt.f_n
+            # Use weight of k-point instead of occupation
+            w = kpt.weight
+            # Wave functions
             psit_nG = kpt.psit_nG
             psit1_nG = kpt.psit1_nG
 
+            # for n in range(self.nbands):
             for n, f in enumerate(f_n):
                 # NOTICE: this relies on the automatic down-cast of the complex
                 # array on the rhs to a real array when the lhs is real !!
                 # Factor 2 for time-reversal symmetry
-                self.nt1_G += 2 * f * (psit_nG[n].conjugate() * psit1_nG[n])
+                self.nt1_G += 2 * w * (psit_nG[n].conjugate() * psit1_nG[n])
+                #XXX
+                ## self.nt1_G += f * (psit_nG[n].conjugate() * psit1_nG[n] +
+                ##                    psit1_nG[n].conjugate() * psit_nG[n])
 
         # Transfer to fine grid
         self.nt1_g = self.finegd.zeros(dtype=self.dtype)

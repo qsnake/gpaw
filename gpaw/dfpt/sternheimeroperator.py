@@ -169,8 +169,8 @@ class SternheimerOperator:
         # Project out one orbital at a time
         for n, psit_G in enumerate(psit_nG): #range(self.nbands):
 
-            proj_n = self.gd.integrate(psit_G.conjugate() * x_nG)
-            x_nG -= proj_n * psit_G
+            proj = self.gd.integrate(psit_G.conjugate() * x_nG)
+            x_nG -= proj * psit_G
 
         # Do the projection in one go - figure out how to use np.dot correctly
         # a_G -= np.dot(proj_n, psit_nG)

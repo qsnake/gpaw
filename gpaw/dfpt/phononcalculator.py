@@ -85,7 +85,8 @@ class PhononCalculator:
 
         # WaveFunctions object
         wfs = WaveFunctions(nbands, calc.wfs.kpt_u, calc.wfs.setups,
-                            calc.wfs.gamma, kd, calc.density.gd)
+                            calc.wfs.gamma, kd, calc.density.gd,
+                            dtype=calc.wfs.dtype)
         
         # Linear response calculator
         self.response_calc = ResponseCalculator(calc, wfs, self.perturbation, kd)
@@ -108,12 +109,24 @@ class PhononCalculator:
 
         self.initialized = True
         
-    def set_atoms(self, atoms_a):
-        """Set indices of atoms to include in the calculation."""
+    def set_atoms(self, atoms_a, exclude=True):
+        """Set indices of atoms to include in the calculation.
 
+        Parameters
+        ----------
+        exclude: bool
+            If True, all other atoms are neglected in the calculation of the
+            dynamical matrix.
+
+        """
+
+        assert isinstance(atoms_a, dict) or isinstance(atoms_a, list)
+        
         if isinstance(atoms_a, dict):
-            #self.atoms_a.update(atoms_a)
-            self.atoms_a = atoms_a
+            if exclude:
+                self.atoms_a = atoms_a
+            else:
+                self.atoms_a.update(atoms_a)
         else:
             # List of atoms indices
             for a in atoms_a:

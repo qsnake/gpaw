@@ -3,14 +3,16 @@
  - Member function ``integrate/derivative`` of class ``lfc`` does not work with complex quantities when initialized with ``integral`` keyword.
  * How does the ``second_derivative`` member function of class ``LFC`` handle complex wave-functions?
    - fixed for spherical symmetric lfc's now   
- - Perturbation breaks symmetry -> how should that be accounted for.
- - The integrated density change for q!=0 is different from zero.
+ * Perturbation breaks symmetry -> how should that be accounted for.
+   - the lower symmetry results in more k-points to be calculated. 
  - Include time-reversal symmetry both in dynamical matrix and the self-consistent cycle.
+   - Time-reversal symmetry does not reduce the number of k-points in the self-consistent perturation calculation.
+ - The integrated density change for q!=0 is different from zero.
  - The contribution to the rhs of the Sternheimer eq. from the perturbation is 
    recalculated in each iteration - NOT necessary, at least not all of it!!!
 2010-06-24
- - use XXX for things that needs a closer inspection when time allows.
- - Use of time-reversal symmetry in case of degeneracies (Gonze PRB 1997 in Ref. 82).
+ * use XXX for things that needs a closer inspection when time allows.
+ - Use of time-reversal symmetry in case of degeneracies (Gonze PRB 1997 in Ref. 82) ????
  - Implicit downcast of complex numpy arrays to real arrays when assigning entrances of a real array to complex values.
  - Use fast blacs functions.
  - Implement ``Iteration`` class taking care of convergence checks for density, wave-functions and dynamical matrix.

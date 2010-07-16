@@ -8,7 +8,8 @@ from gpaw.dfpt.kpointcontainer import KPointContainer
 class WaveFunctions:
     """Class for wave-function related stuff (e.g. projectors and symmetry)."""
     
-    def __init__(self, nbands, kpt_u, setups, gamma, kd, gd, symmetry=None):
+    def __init__(self, nbands, kpt_u, setups, gamma, kd, gd, symmetry=None,
+                 dtype=float):
         """Store and initialize required attributes.
 
         Parameters
@@ -29,16 +30,22 @@ class WaveFunctions:
             Descriptor for the coarse grid.            
         symmetry: ...
             Symmetry object ...
+        dtype: dtype
+            This is the ``dtype`` for the wave-function derivatives (same as
+            the ``dtype`` for the ground-state wave-functions).
 
         """
 
+        self.dtype = dtype
         # K-point related attributes
         self.gamma = gamma
         self.kd = kd
         # Number of occupied bands
         self.nbands = nbands
         # Projectors
-        self.pt = LFC(gd, [setup.pt_j for setup in setups])
+        self.pt = LFC(gd, [setup.pt_j for setup in setups], dtype=self.dtype)
+        # Store grid
+        self.gd = gd
 
         self.kpt_u = []
         
@@ -64,7 +71,7 @@ class WaveFunctions:
 
         # Set positions on LFC's
         self.pt.set_positions(spos_ac)
-
+        
         if not self.gamma:
             # Set k-vectors and update
             self.pt.set_k_points(self.kd.ibzk_qc)
@@ -72,6 +79,12 @@ class WaveFunctions:
 
         # Calculate projector coefficients for the GS wave-functions
         self.calculate_projector_coef()
+
+    def reset(self):
+        """Make fresh arrays for wave-function derivatives."""
+
+        for kpt in self.kpt_u:
+            kpt.psit1_nG = self.gd.zeros(n=self.nbands, dtype=self.dtype)
         
     def calculate_projector_coef(self):
         """Coefficients for the derivative of the non-local part of the PP.
