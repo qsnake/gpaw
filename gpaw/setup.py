@@ -53,7 +53,10 @@ def create_setup(symbol, xcfunc, lmax=0, nspins=1,
             setupdata = SetupData(symbol, xcfunc.get_setup_name(),
                                   type, True, zero_reference=zero_reference,
                                   world=world)
-    return LeanSetup(setupdata.build(xcfunc, lmax, nspins, basis))
+    if hasattr(setupdata, 'build'):
+        return LeanSetup(setupdata.build(xcfunc, lmax, nspins, basis))
+    else:
+        return setupdata
 
 
 class BaseSetup:
