@@ -533,6 +533,9 @@ class SerialCommunicator:
     def scatter(self, s, r, root):
         r[:] = s
 
+    def min(self, value, root=-1):
+        return value
+
     def max(self, value, root=-1):
         return value
 

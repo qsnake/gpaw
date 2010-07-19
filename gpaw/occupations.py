@@ -185,13 +185,15 @@ class ZeroKelvin(OccupationNumbers):
         OccupationNumbers.__init__(self, fixmagmom)
         
     def calculate_occupation_numbers(self, wfs):
-        assert wfs.gamma
         if self.fixmagmom:
+            assert wfs.gamma
             self.fixed_moment(wfs)
         elif wfs.nspins == 1:
             self.spin_paired(wfs)
         else:
+            assert wfs.gamma
             self.spin_polarized(wfs)
+
         self.e_entropy = 0.0
 
     def print_fermi_level(self, stream):
@@ -241,7 +243,7 @@ class ZeroKelvin(OccupationNumbers):
                 return fermilevels
             else:
                 raise ValueError('Distinct fermi-levels are only vaild '+
-                                    'for fixed-magmom calculations!')
+                                 'for fixed-magmom calculations!')
 
     def get_fermi_levels_mean(self):
         if self.fermilevel is None or not np.isfinite(self.fermilevel):
@@ -285,16 +287,27 @@ class ZeroKelvin(OccupationNumbers):
         self.split = fermilevels[0] - fermilevels[1]
         
     def spin_paired(self, wfs):
-        kpt = wfs.kpt_u[0]
-        eps_n = wfs.bd.collect(kpt.eps_n)
+        self.homo = -np.inf
+        self.lumo = np.inf
+        for kpt in wfs.kpt_u:
+            eps_n = wfs.bd.collect(kpt.eps_n)
+            if wfs.bd.comm.rank == 0:
+                f_n = np.empty(wfs.nbands)
+                homo, lumo = occupy(f_n, eps_n,
+                                    0.5 * self.nvalence * kpt.weight,
+                                    kpt.weight)
+                self.homo = max(self.homo, homo)
+                self.lumo = min(self.lumo, lumo)
+            else:
+                f_n = None
+                self.fermilevel = np.nan
+            wfs.bd.distribute(f_n, kpt.f_n)
+
         if wfs.bd.comm.rank == 0:
-            f_n = np.empty(wfs.nbands)
-            self.homo, self.lumo = occupy(f_n, eps_n, self.nvalence, 2)
+            self.homo = wfs.kpt_comm.max(self.homo)
+            self.lumo = wfs.kpt_comm.min(self.lumo)
             self.fermilevel = 0.5 * (self.homo + self.lumo)
-        else:
-            f_n = None
-            self.fermilevel = np.nan
-        wfs.bd.distribute(f_n, kpt.f_n)
+
         self.magmom = 0.0
         
     def spin_polarized(self, wfs):
