@@ -58,7 +58,8 @@ alternatively one can also restrict the number of transitions by their energy::
   lr.write('lr.dat.gz')
 
 Note, that parallelization over spin does not work here. As a workaround,
-domain decomposition only (see :ref:`manual_parsize`) 
+domain decomposition only (``parallel={'domain': world.size}``, 
+see :ref:`manual_parsize`) 
 has to be used for spin polarised 
 calculations in parallel.
 
