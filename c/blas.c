@@ -104,7 +104,7 @@ PyObject* gemm(PyObject *self, PyObject *args)
       for (int i = 2; i < a->nd; i++)
 	m *= a->dimensions[i];
       k = a->dimensions[0];
-      lda = m;
+      lda = MAX(1, m);
       ldb = b->strides[0] / b->strides[1];
       ldc = c->strides[0] / c->strides[c->nd - 1];
     }
@@ -114,8 +114,8 @@ PyObject* gemm(PyObject *self, PyObject *args)
       for (int i = 2; i < a->nd; i++)
 	k *= a->dimensions[i];
       m = a->dimensions[0];
-      lda = k;
-      ldb = k;
+      lda = MAX(1, k);
+      ldb = lda;
       ldc = c->strides[0] / c->strides[1];
     }
   int n = b->dimensions[0];
