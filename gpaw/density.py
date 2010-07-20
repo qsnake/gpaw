@@ -73,7 +73,13 @@ class Density:
         self.interpolator = Transformer(self.gd, self.finegd, stencil,
                                         allocate=False)
         
-        self.nct = LFC(self.gd, [[setup.nct] for setup in setups],
+        spline_aj = []
+        for setup in setups:
+            if setup.nct is None:
+                spline_aj.append([])
+            else:
+                spline_aj.append([setup.nct])
+        self.nct = LFC(self.gd, spline_aj, #[[setup.nct] for setup in setups],
                        integral=[setup.Nct for setup in setups],
                        forces=True, cut=True)
         self.ghat = LFC(self.finegd, [setup.ghat_l for setup in setups],

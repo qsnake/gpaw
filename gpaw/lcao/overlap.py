@@ -190,9 +190,9 @@ class TwoSiteOverlapExpansions(BaseOverlapExpansionSet):
         Ma1 = 0
         for j1, oe_j in enumerate(self.oe_jj):
             Mb1 = 0
-            Ma2 = Ma1 + oe_j[-1].shape[0]
+            Ma2 = Ma1
             for j2, oe in enumerate(oe_j):
-                assert oe.shape[0] == Ma2 - Ma1
+                Ma2 = Ma1 + oe.shape[0]
                 Mb2 = Mb1 + oe.shape[1]
                 yield x_xMM[..., Ma1:Ma2, Mb1:Mb2], oe
                 Mb1 = Mb2

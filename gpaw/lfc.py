@@ -100,10 +100,8 @@ class Sphere:
 
         self.Mmax = M
         
-        if ng > 0:
-            self.rank = gd.get_rank_from_position(spos_c)
-        else:
-            self.rank = None # XXX will *break* on empty domains
+        self.rank = gd.get_rank_from_position(spos_c)
+        if ng == 0:
             self.ranks = None # What about making empty lists instead?
             self.A_wgm = None
             self.G_wb = None
@@ -273,13 +271,13 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         self.M_a = []
         for a, sphere in enumerate(self.sphere_a):
             self.M_a.append(M)
+            if sphere.rank == self.gd.comm.rank:
+                self.my_atom_indices.append(a)
             G_wb = sphere.G_wb
             if G_wb:
                 nB += sum([len(G_b) for G_b in G_wb])
                 nW += len(G_wb)
                 self.atom_indices.append(a)
-                if sphere.rank == self.gd.comm.rank:
-                    self.my_atom_indices.append(a)
 
                 if not self.use_global_indices:
                     M += sphere.Mmax
