@@ -134,7 +134,7 @@ def intYY_ex(l1, m1, l2, m2):
                   0  0
 
     where u = theta and v = phi in the usual notation. Note that the result
-    is only non-zero if |l1-l2| = 1 and |m1-m2| = 1.
+    is only non-zero if `|l1-l2|` = 1 and `|m1-m2|` = 1.
     """
     #if abs(l1-l2) != 1 or abs(m1-m2) != 1:
     #    return 0.0
@@ -156,7 +156,7 @@ def intYY_ey(l1, m1, l2, m2):
                   0  0
 
     where u = theta and v = phi in the usual notation. Note that the result
-    is only non-zero if |l1-l2| = 1 and |m1-m2| = 1.
+    is only non-zero if `|l1-l2|` = 1 and `|m1-m2|` = 1.
     """
     #if abs(l1-l2) != 1 or abs(m1-m2) != 1:
     #    return 0.0
@@ -178,7 +178,7 @@ def intYY_ez(l1, m1, l2, m2):
                   0  0
 
     where u = theta and v = phi in the usual notation. Note that the result
-    is only non-zero if |l1-l2| = 1 and m1 = m2.
+    is only non-zero if `|l1-l2|` = 1 and m1 = m2.
     """
     return mix(l1,m1,l2,m2,_intYY_ez)
 
@@ -196,7 +196,7 @@ def intYdYdtheta_ex(l1, m1, l2, m2):
                   0  0
 
     where u = theta and v = phi in the usual notation. Note that the result
-    is only non-zero if |l1-l2| is odd and |m1-m2| = 1 (stricter rule applies).
+    is only non-zero if `|l1-l2|` is odd and `|m1-m2|` = 1 (stricter rule applies).
     """
     #if abs(l1-l2) % 2 != 1 or abs(m1-m2) != 1:
     #    return 0.0
@@ -232,7 +232,7 @@ def intYdYdtheta_ey(l1, m1, l2, m2):
                   0  0
 
     where u = theta and v = phi in the usual notation. Note that the result
-    is only non-zero if |l1-l2| is odd and |m1-m2| = 1 (stricter rule applies).
+    is only non-zero if `|l1-l2|` is odd and `|m1-m2|` = 1 (stricter rule applies).
     """
     #if abs(l1-l2) % 2 != 1 or abs(m1-m2) != 1:
     #    return 0.0
@@ -268,7 +268,7 @@ def intYdYdtheta_ez(l1, m1, l2, m2):
                      0  0
 
     where u = theta and v = phi in the usual notation. Note that the result
-    is only non-zero if |l1-l2| = 1 and m1 = m2.
+    is only non-zero if `|l1-l2|` = 1 and m1 = m2.
     """
     #if abs(l1-l2) != 1 or m1 != m2:
     #    return 0.0
@@ -290,7 +290,7 @@ def intYdYdphi_ex(l1, m1, l2, m2):
                      0  0
 
     where u = theta and v = phi in the usual notation. Note that the result
-    is only non-zero if |l1-l2| is odd and |m1-m2| = 1 (stricter rule applies).
+    is only non-zero if `|l1-l2|` is odd and `|m1-m2|` = 1 (stricter rule applies).
     """
     #if abs(l1-l2) % 2 != 1 or abs(m1-m2) != 1:
     #    return 0.0
@@ -313,7 +313,7 @@ def intYdYdphi_ey(l1, m1, l2, m2):
                   0  0
 
     where u = theta and v = phi in the usual notation. Note that the result
-    is only non-zero if |l1-l2| is odd and |m1-m2| = 1 (stricter rule applies).
+    is only non-zero if `|l1-l2|` is odd and `|m1-m2|` = 1 (stricter rule applies).
     """
     #if abs(l1-l2) % 2 != 1 or abs(m1-m2) != 1:
     #    return 0.0
@@ -341,7 +341,7 @@ def intYgradY(l1, m1, l2, m2, r_g, dr_g, A_g, B_g, dBdr_g, v=None):
                   0  0
 
     where u = theta and v = phi in the usual notation. Note that the result
-    is only non-zero if |l1-l2| is odd and |m1-m2| <= 1 (stricter rule applies).
+    is only non-zero if `|l1-l2|` is odd and `|m1-m2|` <= 1 (stricter rule applies).
     """
     if v is None:
         D = [intYY_ex(l1,m1,l2,m2), \
