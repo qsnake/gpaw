@@ -64,7 +64,6 @@ class GridDescriptor:
 
     def plot(self, a_g, n=0, rc=4.0, show=False):
         import matplotlib.pyplot as plt
-        gc = self.get_index(rc)
         plt.plot(self.r_g, a_g * self.r_g**n)
         plt.axis(xmax=rc)
         if show:
