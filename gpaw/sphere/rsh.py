@@ -15,49 +15,48 @@ C = lambda l,m: ((2.*l+1.)/(4*np.pi*lmfact(l,m)))**0.5 #XXX BAD BAD BAD?!?
 # Integral norm of the associated Legendre polynomials
 ilegendre = lambda l,m: 2./(2.*l+1.)*lmfact(l,m)
 
-"""
-from gpaw.sphere.legendre import ilegendre, legendre, dlegendre
-from gpaw.sphere.csh import C as _C, Y as _Y, dYdtheta as _dYdtheta, dYdphi as _dYdphi
 
-def Y(l,m,theta,phi):
-    if m == 0:
-        return _Y(l,m,theta,phi)
-    elif m > 0:
-        #return (-1)**m*np.real(_Y(l,abs(m),theta,phi))*2**0.5
-        #return (-1)**m*(_Y(l,m,theta,phi)+_Y(l,m,theta,phi).conj())/2**0.5
-        return (-1)**m*(_Y(l,m,theta,phi)+(-1)**m*_Y(l,-m,theta,phi))/2**0.5
-    else:
-        #return (-1)**m*np.imag(_Y(l,abs(m),theta,phi))*2**0.5
-        #return (-1)**m*(_Y(l,abs(m),theta,phi)-_Y(l,abs(m),theta,phi).conj())/(2**0.5*1j)
-        return (-1)**m*(_Y(l,abs(m),theta,phi)-(-1)**abs(m)*_Y(l,-abs(m),theta,phi))/(2**0.5*1j)
+#from gpaw.sphere.legendre import ilegendre, legendre, dlegendre
+#from gpaw.sphere.csh import C as _C, Y as _Y, dYdtheta as _dYdtheta, dYdphi as _dYdphi
 
-# Define theta-derivative of spherical harmoncics
-def dYdtheta(l,m,theta,phi):
-    if m == 0:
-        return _dYdtheta(l,m,theta,phi)
-    elif m > 0:
-        #return (-1)**m*np.real(_dYdtheta(l,abs(m),theta,phi))*2**0.5
-        #return (-1)**m*(_dYdtheta(l,m,theta,phi)+_dYdtheta(l,m,theta,phi).conj())/2**0.5
-        return (-1)**m*(_dYdtheta(l,m,theta,phi)+(-1)**m*_dYdtheta(l,-m,theta,phi))/2**0.5
-    else:
-        #return (-1)**m*np.imag(_Y(l,abs(m),theta,phi))*2**0.5
-        #return (-1)**m*(_dYdtheta(l,abs(m),theta,phi)-_dYdtheta(l,abs(m),theta,phi).conj())/(2**0.5*1j)
-        return (-1)**m*(_dYdtheta(l,abs(m),theta,phi)-(-1)**abs(m)*_dYdtheta(l,-abs(m),theta,phi))/(2**0.5*1j)
+#def Y(l,m,theta,phi):
+#    if m == 0:
+#        return _Y(l,m,theta,phi)
+#    elif m > 0:
+#        #return (-1)**m*np.real(_Y(l,abs(m),theta,phi))*2**0.5
+#        #return (-1)**m*(_Y(l,m,theta,phi)+_Y(l,m,theta,phi).conj())/2**0.5
+#        return (-1)**m*(_Y(l,m,theta,phi)+(-1)**m*_Y(l,-m,theta,phi))/2**0.5
+#    else:
+#        #return (-1)**m*np.imag(_Y(l,abs(m),theta,phi))*2**0.5
+#        #return (-1)**m*(_Y(l,abs(m),theta,phi)-_Y(l,abs(m),theta,phi).conj())/(2**0.5*1j)
+#        return (-1)**m*(_Y(l,abs(m),theta,phi)-(-1)**abs(m)*_Y(l,-abs(m),theta,phi))/(2**0.5*1j)
 
+## Define theta-derivative of spherical harmoncics
+#def dYdtheta(l,m,theta,phi):
+#    if m == 0:
+#        return _dYdtheta(l,m,theta,phi)
+#    elif m > 0:
+#        #return (-1)**m*np.real(_dYdtheta(l,abs(m),theta,phi))*2**0.5
+#        #return (-1)**m*(_dYdtheta(l,m,theta,phi)+_dYdtheta(l,m,theta,phi).conj())/2**0.5
+#        return (-1)**m*(_dYdtheta(l,m,theta,phi)+(-1)**m*_dYdtheta(l,-m,theta,phi))/2**0.5
+#    else:
+#        #return (-1)**m*np.imag(_Y(l,abs(m),theta,phi))*2**0.5
+#        #return (-1)**m*(_dYdtheta(l,abs(m),theta,phi)-_dYdtheta(l,abs(m),theta,phi).conj())/(2**0.5*1j)
+#        return (-1)**m*(_dYdtheta(l,abs(m),theta,phi)-(-1)**abs(m)*_dYdtheta(l,-abs(m),theta,phi))/(2**0.5*1j)
 
-# Define phi-derivative of spherical harmoncics
-def dYdphi(l,m,theta,phi):
-    if m == 0:
-        return _dYdphi(l,m,theta,phi)
-    elif m > 0:
-        #return (-1)**m*np.real(_dYdphi(l,abs(m),theta,phi))*2**0.5
-        return (-1)**m*(_dYdphi(l,m,theta,phi)+_dYdphi(l,m,theta,phi).conj())/2**0.5
-        #return (-1)**m*(_dYdphi(l,m,theta,phi)+(-1)**m*_dYdphi(l,-m,theta,phi))/2**0.5
-    else:
-        #return (-1)**m*np.imag(_dYdphi(l,abs(m),theta,phi))*2**0.5
-        return (-1)**m*(_dYdphi(l,abs(m),theta,phi)-_dYdphi(l,abs(m),theta,phi).conj())/(2**0.5*1j)
-        #return (-1)**m*(_dYdphi(l,abs(m),theta,phi)-(-1)**abs(m)*_dYdphi(l,-abs(m),theta,phi))/(2**0.5*1j)
-"""
+## Define phi-derivative of spherical harmoncics
+#def dYdphi(l,m,theta,phi):
+#    if m == 0:
+#        return _dYdphi(l,m,theta,phi)
+#    elif m > 0:
+#        #return (-1)**m*np.real(_dYdphi(l,abs(m),theta,phi))*2**0.5
+#        return (-1)**m*(_dYdphi(l,m,theta,phi)+_dYdphi(l,m,theta,phi).conj())/2**0.5
+#        #return (-1)**m*(_dYdphi(l,m,theta,phi)+(-1)**m*_dYdphi(l,-m,theta,phi))/2**0.5
+#    else:
+#        #return (-1)**m*np.imag(_dYdphi(l,abs(m),theta,phi))*2**0.5
+#        return (-1)**m*(_dYdphi(l,abs(m),theta,phi)-_dYdphi(l,abs(m),theta,phi).conj())/(2**0.5*1j)
+#        #return (-1)**m*(_dYdphi(l,abs(m),theta,phi)-(-1)**abs(m)*_dYdphi(l,-abs(m),theta,phi))/(2**0.5*1j)
+
 
 # -------------------------------------------------------------------
 
