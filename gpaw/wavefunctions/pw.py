@@ -8,7 +8,7 @@ from gpaw.hs_operators import MatrixOperator
 
 
 class PWDescriptor:
-    def __init__(self, ecut, gd, ibzk_qc):
+    def __init__(self, ecut, gd, ibzk_qc=[(0, 0, 0)]):
         assert gd.pbc_c.all() and gd.comm.size == 1
 
         self.ecut = ecut
@@ -24,12 +24,12 @@ class PWDescriptor:
         B_cv = 2.0 * np.pi * gd.icell_cv
         G_Qv = np.dot(i_Qc, B_cv).reshape((-1, 3))
         G2_Q = (G_Qv**2).sum(axis=1)
-        self.Q_q = np.arange(len(G2_Q))[G2_Q <= 2 * ecut]
+        self.Q_G = np.arange(len(G2_Q))[G2_Q <= 2 * ecut]
         K_qv = np.dot(ibzk_qc, B_cv)
-        G_qv = G_Qv[self.Q_q]
-        self.kin_qq = np.zeros((len(ibzk_qc), len(self.Q_q)))
+        G_Gv = G_Qv[self.Q_G]
+        self.G2_qG = np.zeros((len(ibzk_qc), len(self.Q_G)))
         for q, K_v in enumerate(K_qv):
-            self.kin_qq[q] = 0.5 * ((G_qv + K_v)**2).sum(1)
+            self.G2_qG[q] = ((G_Gv + K_v)**2).sum(1)
         
         self.gd = gd
         self.dv = gd.dv / N_c.prod()
@@ -39,17 +39,17 @@ class PWDescriptor:
         assert dtype == complex
         if isinstance(n, int):
             n = (n,)
-        shape = n + self.Q_q.shape
+        shape = n + self.Q_G.shape
         return np.zeros(shape, complex)
     
-    def fft(self, a_xG):
-        a_xQ = fftn(a_xG, axes=(-3, -2, -1))
-        return a_xQ.reshape(a_xG.shape[:-3] + (-1,))[..., self.Q_q].copy()
+    def fft(self, a_xR):
+        a_xQ = fftn(a_xR, axes=(-3, -2, -1))
+        return a_xQ.reshape(a_xR.shape[:-3] + (-1,))[..., self.Q_G].copy()
 
-    def ifft(self, a_xq):
-        xshape = a_xq.shape[:-1]
+    def ifft(self, a_xG):
+        xshape = a_xG.shape[:-1]
         a_xQ = self.gd.zeros(xshape, complex)
-        a_xQ.reshape(xshape + (-1,))[..., self.Q_q] = a_xq
+        a_xQ.reshape(xshape + (-1,))[..., self.Q_G] = a_xG
         return ifftn(a_xQ, axes=(-3, -2, -1)).copy()
 
 
@@ -58,8 +58,8 @@ class Preconditioner:
         self.pd = pd
         self.allocated = True
 
-    def __call__(self, R_q, kpt):
-        return R_q / (1.0 + self.pd.kin_qq[kpt.q])
+    def __call__(self, R_G, kpt):
+        return R_G / (1.0 + self.pd.G2_qG[kpt.q])
 
 
 class PWWaveFunctions(FDPWWaveFunctions):
@@ -88,21 +88,22 @@ class PWWaveFunctions(FDPWWaveFunctions):
 
     def summary(self, fd):
         fd.write('Mode: Plane waves (%d, ecut=%.3f eV)\n' %
-                 (len(self.pd.Q_q), self.pd.ecut * units.Hartree))
+                 (len(self.pd.Q_G), self.pd.ecut * units.Hartree))
         
     def make_preconditioner(self):
         return Preconditioner(self.pd)
 
-    def apply_hamiltonian(self, hamiltonian, kpt, psit_xq, Htpsit_xq):
-        Htpsit_xq[:] = psit_xq * self.pd.kin_qq[kpt.q]
-        for psit_q, Htpsit_q in zip(psit_xq, Htpsit_xq):
-            psit_G = self.pd.ifft(psit_q)
-            Htpsit_q += self.pd.fft(psit_G * hamiltonian.vt_sG[kpt.s])
+    def apply_hamiltonian(self, hamiltonian, kpt, psit_xG, Htpsit_xG):
+        Htpsit_xG[:] = 0.5 * self.pd.G2_qG[kpt.q] * psit_xG
+        for psit_G, Htpsit_G in zip(psit_xG, Htpsit_xG):
+            psit_R = self.pd.ifft(psit_G)
+            Htpsit_G += self.pd.fft(psit_R * hamiltonian.vt_sG[kpt.s])
+        hamiltonian.xc.add_non_local_terms(psit_xG, Htpsit_xG, kpt)
 
-    def add_to_density_from_k_point_with_occupation(self, nt_sG, kpt, f_n):
-        nt_G = nt_sG[kpt.s]
-        for f, psit_q in zip(f_n, kpt.psit_nG):
-            nt_G += f * abs(self.pd.ifft(psit_q))**2
+    def add_to_density_from_k_point_with_occupation(self, nt_sR, kpt, f_n):
+        nt_R = nt_sR[kpt.s]
+        for f, psit_G in zip(f_n, kpt.psit_nG):
+            nt_R += f * abs(self.pd.ifft(psit_G))**2
 
     def initialize_wave_functions_from_basis_functions(self, basis_functions,
                                                        density, hamiltonian,
@@ -126,18 +127,18 @@ class PWLFC:
     def set_k_points(self, ibzk_qc):
         self.lfc.set_k_points(ibzk_qc)
         N_c = self.pd.gd.N_c
-        self.expikr_qG = np.exp(2j * np.pi * np.dot(np.indices(N_c).T,
+        self.expikr_qR = np.exp(2j * np.pi * np.dot(np.indices(N_c).T,
                                                     (ibzk_qc / N_c).T).T)
 
-    def add(self, a_xq, C_axi, q):
-        a_xG = self.pd.gd.zeros(a_xq.shape[:-1], complex)
-        self.lfc.add(a_xG, C_axi, q)
-        a_xq[:] += self.pd.fft(a_xG / self.expikr_qG[q])
+    def add(self, a_xG, C_axi, q):
+        a_xR = self.pd.gd.zeros(a_xG.shape[:-1], complex)
+        self.lfc.add(a_xR, C_axi, q)
+        a_xG[:] += self.pd.fft(a_xR / self.expikr_qR[q])
 
-    def integrate(self, a_xq, C_axi, q):
-        a_xG = self.pd.ifft(a_xq) * self.expikr_qG[q]
-        C_axi[0][:]=0
-        self.lfc.integrate(a_xG, C_axi, q)
+    def integrate(self, a_xG, C_axi, q):
+        a_xR = self.pd.ifft(a_xG) * self.expikr_qR[q]
+        C_axi[0][:] = 0.0  # XXXXX
+        self.lfc.integrate(a_xR, C_axi, q)
 
 
 class PW: ####### use mode='pw'?  ecut=???
