@@ -27,7 +27,7 @@ for xc in ['LDA', 'PBE']:
     equal(dE, (E2 - E1) / x, 0.003)
 
     xcfunc = XCFunctional(xc, nspins_2)
-    d = create_setup('N', xcfunc, nspins=2)
+    d = create_setup('N', xcfunc)
     E2s = d.xc_correction.calculate_energy_and_derivatives(np.array(
         [0.5 * D_p, 0.5 * D_p]), np.array([H_p, H_p]))
     equal(E2, E2s, 1.0e-12)

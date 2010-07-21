@@ -260,7 +260,7 @@ class Density:
         c = self.charge / len(self.setups)  # distribute charge on all atoms
         for a in basis_functions.atom_indices:
             f_si = self.setups[a].calculate_initial_occupation_numbers(
-                    self.magmom_a[a], self.hund, charge=c)
+                    self.magmom_a[a], self.hund, charge=c, nspins=self.nspins)
             if a in basis_functions.my_atom_indices:
                 self.D_asp[a] = self.setups[a].initialize_density_matrix(f_si)
             f_asi[a] = f_si

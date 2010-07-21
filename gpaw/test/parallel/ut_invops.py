@@ -174,7 +174,7 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
         self.Z_a = self.atoms.get_atomic_numbers()
         par = InputParameters()
         xcfunc = XCFunctional('LDA')
-        self.setups = Setups(self.Z_a, par.setups, par.basis, self.nspins, \
+        self.setups = Setups(self.Z_a, par.setups, par.basis,
                              par.lmax, xcfunc)
 
         # Create gamma-point dummy wavefunctions

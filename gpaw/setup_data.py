@@ -343,9 +343,9 @@ class SetupData:
 
         print >> xml, '</paw_setup>'
 
-    def build(self, xcfunc, lmax, nspins, basis):
+    def build(self, xcfunc, lmax, basis):
         from gpaw.setup import Setup
-        setup = Setup(self, xcfunc, lmax, nspins, basis)
+        setup = Setup(self, xcfunc, lmax, basis)
         return setup
 
 

@@ -389,8 +389,7 @@ class PAW(PAWTextOutput):
         else:
             xcfunc = par.xc
 
-        setups = Setups(Z_a, par.setups, par.basis, nspins, par.lmax, xcfunc,
-                        world)
+        setups = Setups(Z_a, par.setups, par.basis, par.lmax, xcfunc, world)
 
         # Brillouin zone stuff:
         if gamma:
@@ -422,7 +421,7 @@ class PAW(PAWTextOutput):
         M = magmom_a.sum()
         if par.hund:
             f_si = setups[0].calculate_initial_occupation_numbers(
-                magmom=0, hund=True, charge=par.charge)
+                magmom=0, hund=True, charge=par.charge, nspins=nspins)
             Mh = f_si[0].sum() - f_si[1].sum()
             if magnetic and M != Mh:
                 raise RuntimeError('You specified a magmom that does not'

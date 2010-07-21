@@ -28,7 +28,7 @@ from gpaw.utilities import unpack, pack, hartree, divrl
 from gpaw.rotation import rotation
 
 
-def create_setup(symbol, xcfunc, lmax=0, nspins=1,
+def create_setup(symbol, xcfunc, lmax=0,
                  type='paw', basis=None, setupdata=None, world=None):
     if setupdata is None:
         if type == 'hgh' or type == 'hgh.sc':
@@ -43,7 +43,7 @@ def create_setup(symbol, xcfunc, lmax=0, nspins=1,
         elif type == 'ah':
             from gpaw.ah import AppelbaumHamann
             ah = AppelbaumHamann()
-            ah.build(nspins, basis)
+            ah.build(basis)
             return ah
         elif type == 'ghost':
             from gpaw.lcao.bsse import GhostSetupData
@@ -54,7 +54,7 @@ def create_setup(symbol, xcfunc, lmax=0, nspins=1,
                                   type, True, zero_reference=zero_reference,
                                   world=world)
     if hasattr(setupdata, 'build'):
-        return LeanSetup(setupdata.build(xcfunc, lmax, nspins, basis))
+        return LeanSetup(setupdata.build(xcfunc, lmax, basis))
     else:
         return setupdata
 
@@ -75,13 +75,12 @@ class BaseSetup:
         return self.basis.get_description()
 
     def calculate_initial_occupation_numbers(self, magmom, hund, charge,
-                                             f_j=None):
+                                             nspins, f_j=None):
         """If f_j is specified, custom occupation numbers will be used.
 
         Hund rules disabled if so."""
         
         niao = self.niAO
-        nspins = self.nspins
         f_si = np.zeros((nspins, niao))
 
         assert (not hund) or f_j is None
@@ -349,8 +348,7 @@ class LeanSetup(BaseSetup):
     class in order to function in a calculation."""
     def __init__(self, s):
         """Copies precisely the necessary attributes of the Setup s."""
-        # natoms, R_sii and HubU can be changed dynamically (which is ugly)
-        self.natoms = 0 # number of atoms with this setup
+        # R_sii and HubU can be changed dynamically (which is ugly)
         self.R_sii = None # rotations, initialized when doing sym. reductions
         self.HubU = s.HubU # XXX probably None
         self.lq  = s.lq # Required for LDA+U I think.
@@ -358,7 +356,6 @@ class LeanSetup(BaseSetup):
         self.fingerprint = s.fingerprint # also req. for writing
         self.filename = s.filename
 
-        self.nspins = s.nspins # XXX use self.xc_correction.nspins instead?
         self.symbol = s.symbol
         self.Z = s.Z
         self.Nv = s.Nv
@@ -509,9 +506,7 @@ class Setup(BaseSetup):
     ``tauct``  Pseudo core kinetic energy density
     ========== ============================================
     """
-    def __init__(self, data, xcfunc, lmax=0, nspins=1,
-                 basis=None):
-        self.natoms = 0  # number of atoms with this setup
+    def __init__(self, data, xcfunc, lmax=0, basis=None):
         self.type = data.name
         
         self.HubU = None
@@ -520,8 +515,6 @@ class Setup(BaseSetup):
             raise ValueError('Cannot use %s setup with %s functional' %
                              (data.setupname, xcfunc.get_setup_name()))
         
-        self.nspins = nspins
-
         self.symbol = symbol = data.symbol
         self.data = data
 
@@ -998,7 +991,7 @@ class Setups(list):
     ``core_charge`` Core hole charge.
     """
 
-    def __init__(self, Z_a, setup_types, basis_sets, nspins, lmax, xcfunc,
+    def __init__(self, Z_a, setup_types, basis_sets, lmax, xcfunc,
                  world=None):
         list.__init__(self)
         symbols = [chemical_symbols[Z] for Z in Z_a]
@@ -1007,6 +1000,7 @@ class Setups(list):
         
         # Construct necessary PAW-setup objects:
         self.setups = {}
+        natoms = {}
         self.id_a = zip(Z_a, type_a, basis_a)
         for id in self.id_a:
             setup = self.setups.get(id)
@@ -1016,10 +1010,11 @@ class Setups(list):
                 setupdata = None
                 if not isinstance(type, str):
                     setupdata = type
-                setup = create_setup(symbol, xcfunc, lmax, nspins, type,
+                setup = create_setup(symbol, xcfunc, lmax, type,
                                      basis, setupdata=setupdata, world=world)
                 self.setups[id] = setup
-            setup.natoms += 1
+                natoms[id] = 0
+            natoms[id] += 1
             self.append(setup)
 
         # Sum up ...
@@ -1027,11 +1022,12 @@ class Setups(list):
         self.nao = 0            # number of atomic orbitals
         self.Eref = 0.0         # reference energy
         self.core_charge = 0.0  # core hole charge
-        for setup in self.setups.values():
-            self.Eref += setup.natoms * setup.E
-            self.core_charge += setup.natoms * (setup.Z - setup.Nv - setup.Nc)
-            self.nvalence += setup.natoms * setup.Nv
-            self.nao += setup.natoms * setup.niAO
+        for id, setup in self.setups.items():
+            n = natoms[id]
+            self.Eref += n * setup.E
+            self.core_charge += n * (setup.Z - setup.Nv - setup.Nc)
+            self.nvalence += n * setup.Nv
+            self.nao += n * setup.niAO
 
     def set_symmetry(self, symmetry):
         """Find rotation matrices for spherical harmonics."""

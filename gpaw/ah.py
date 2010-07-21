@@ -53,8 +53,7 @@ class AppelbaumHamann(BaseSetup):
         self.type = 'ah'
         self.fingerprint = None
         
-    def build(self, nspins, basis):
-        self.nspins = nspins
+    def build(self, basis):
         if basis is None:
             basis = Basis('Si', 'sz(dzp)')
         self.basis = basis
@@ -63,8 +62,10 @@ class AppelbaumHamann(BaseSetup):
     def print_info(self, text):
         text('Appelbaum-Hamann pseudo potential')
         
-    def calculate_initial_occupation_numbers(self, magmom, hund, charge):
+    def calculate_initial_occupation_numbers(self, magmom, hund, charge,
+                                             nspins):
+        assert nspins == 1
         return np.array([(2.0, 2.0 / 3, 2.0 / 3, 2.0 / 3)])
 
     def initialize_density_matrix(self, f_si):
-        return np.zeros((self.nspins, 1))
+        return np.zeros((len(f_si), 1))

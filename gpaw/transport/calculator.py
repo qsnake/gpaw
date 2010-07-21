@@ -2348,20 +2348,22 @@ class Transport(GPAW):
                 c = density.charge / len(density.setups)  
                 for a in wfs.basis_functions.atom_indices:
                     f_si = wfs.setups[a].calculate_initial_occupation_numbers(
-                             magmom_a[a], density.hund, charge=c)
+                        magmom_a[a], density.hund, charge=c,
+                        nspins=self.nspins)
                     
                     if a in wfs.basis_functions.my_atom_indices:
-                        self.extended_D_asp[a] = \
-                                wfs.setups[a].initialize_density_matrix(f_si)
+                        self.extended_D_asp[a] = (
+                            wfs.setups[a].initialize_density_matrix(f_si))
                     f_asi[a] = f_si
 
                 for a in self.wfs.basis_functions.atom_indices:
                     setup = self.wfs.setups[a]
                     f_si = setup.calculate_initial_occupation_numbers(
-                                  density.magmom_a[a], density.hund, charge=c)
+                        density.magmom_a[a], density.hund, charge=c,
+                        nspins=self.nspins)
                     if a in self.wfs.basis_functions.my_atom_indices:
                         density.D_asp[a] = setup.initialize_density_matrix(
-                                                                         f_si)                    
+                            f_si)                    
 
                 all_D_asp = []
                 for a, setup in enumerate(wfs.setups):

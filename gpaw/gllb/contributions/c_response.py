@@ -281,10 +281,10 @@ class C_Response(Contribution):
             w_j = self.setups[a].extra_xc_data['w_j']
             # Basis function coefficients based of response weights
             w_si = self.setups[a].calculate_initial_occupation_numbers(
-                    0, False, charge=0, f_j = w_j)
+                    0, False, charge=0, nspins=self.nspins, f_j=w_j)
             # Basis function coefficients based on density
             f_si = self.setups[a].calculate_initial_occupation_numbers(
-                    0, False, charge=0)            
+                    0, False, charge=0, nspins=self.nspins)            
             if a in basis_functions.my_atom_indices:
                 self.Dresp_asp[a] = self.setups[a].initialize_density_matrix(w_si)
                 self.D_asp[a] = self.setups[a].initialize_density_matrix(f_si)

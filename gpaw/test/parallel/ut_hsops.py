@@ -196,21 +196,21 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         self.Z_a = self.atoms.get_atomic_numbers()
         par = InputParameters()
         xcfunc = XCFunctional('LDA')
-        self.setups = Setups(self.Z_a, par.setups, par.basis, self.nspins, \
+        self.setups = Setups(self.Z_a, par.setups, par.basis,
                              par.lmax, xcfunc)
 
         # Create atomic projector overlaps
         spos_ac = self.atoms.get_scaled_positions() % 1.0
         self.rank_a = self.gd.get_ranks_from_positions(spos_ac)
-        self.pt = LFC(self.gd, [setup.pt_j for setup in self.setups], \
+        self.pt = LFC(self.gd, [setup.pt_j for setup in self.setups],
                       self.kpt_comm, dtype=self.dtype)
         self.pt.set_positions(spos_ac)
 
         if memstats:
             # Hack to scramble heap usage into steady-state level
-            HEAPSIZE = 25*1024**2
+            HEAPSIZE = 25 * 1024**2
             for i in range(100):
-                data = np.empty(np.random.uniform(0,HEAPSIZE//8), float)
+                data = np.empty(np.random.uniform(0, HEAPSIZE // 8), float)
                 del data
             self.mem_pre = record_memory()
             self.mem_alloc = None

@@ -29,7 +29,7 @@ null_xc_correction = NullXCCorrection()
 
 
 class HGHSetup(BaseSetup):
-    def __init__(self, data, nspins, basis):
+    def __init__(self, data, basis):
         self.data = data
 
         self.natoms = 0
@@ -41,7 +41,6 @@ class HGHSetup(BaseSetup):
         self.fingerprint = None
         self.symbol = data.symbol
         self.type = data.name
-        self.nspins = nspins
 
         self.Z = data.Z
         self.Nv = data.Nv
@@ -377,7 +376,7 @@ class HGHSetupData:
     def get_local_potential(self):
         return self.rgd.reducedspline(0, self.vbar_g)
 
-    def build(self, xcfunc, lmax, nspins, basis):
+    def build(self, xcfunc, lmax, basis):
         if xcfunc.get_setup_name() != 'LDA':
             raise ValueError('HGH setups support only LDA')
         if lmax != 0:
@@ -386,7 +385,7 @@ class HGHSetupData:
             basis = self.create_basis_functions()
         elif isinstance(basis, str):
             basis = Basis(self.symbol, basis)
-        setup = HGHSetup(self, nspins, basis)
+        setup = HGHSetup(self, basis)
         return setup
 
 def create_local_shortrange_potential(r_g, rloc, c_n):
