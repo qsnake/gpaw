@@ -191,7 +191,7 @@ class ZeroKelvin(OccupationNumbers):
         elif wfs.nspins == 1:
             self.spin_paired(wfs)
         else:
-            assert wfs.gamma
+            assert wfs.nibzkpts == 1
             self.spin_polarized(wfs)
 
         self.e_entropy = 0.0
