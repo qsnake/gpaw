@@ -550,3 +550,26 @@ Publications using the gpaw code
    __ http://stacks.iop.org/0953-8984/22/253202
 
    .. 8 June 2010
+
+#) R. Frigge, T. Hoger, B. Siemer, H. Witte, M. Silies, H. Zacharias, 
+   T. Olsen and J. Schiøtz
+
+   `Site Specificity in Femtosecond Laser Desorption of Neutral 
+    H Atoms from Graphite(0001)`__  
+
+   Physical Review Letters **104**, 256102 (2010)
+
+   __ http://dx.doi.org/10.1103/PhysRevLett.104.256102
+
+   .. 25 June 2010
+
+#) Thomas Olsen and Jakob Schiøtz
+
+   `Quantum corrected Langevin dynamics for adsorbates on metal 
+   surfaces interacting with hot electrons`__  
+
+   Journal of Chemical Physics **133**, 034115 (2010)
+
+   __ http://dx.doi.org/10.1063/1.3457947
+
+   .. 20 July 2010
