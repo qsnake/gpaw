@@ -94,6 +94,7 @@ class PWWaveFunctions(FDPWWaveFunctions):
         return Preconditioner(self.pd)
 
     def apply_hamiltonian(self, hamiltonian, kpt, psit_xG, Htpsit_xG):
+        """Apply the non-pseudo Hamiltonian i.e. without PAW corrections."""
         Htpsit_xG[:] = 0.5 * self.pd.G2_qG[kpt.q] * psit_xG
         for psit_G, Htpsit_G in zip(psit_xG, Htpsit_xG):
             psit_R = self.pd.ifft(psit_G)

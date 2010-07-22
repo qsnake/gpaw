@@ -52,6 +52,7 @@ class FDWaveFunctions(FDPWWaveFunctions):
         return Preconditioner(self.gd, self.kin, self.dtype)
     
     def apply_hamiltonian(self, hamiltonian, kpt, psit_xG, Htpsit_xG):
+        """Apply the non-pseudo Hamiltonian i.e. without PAW corrections."""
         self.kin.apply(psit_xG, Htpsit_xG, kpt.phase_cd)
         hamiltonian.apply_local_potential(psit_xG, Htpsit_xG, kpt.s)
         hamiltonian.xc.add_non_local_terms(psit_xG, Htpsit_xG, kpt)
