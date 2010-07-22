@@ -555,7 +555,7 @@ Publications using the gpaw code
    T. Olsen and J. Schiøtz
 
    `Site Specificity in Femtosecond Laser Desorption of Neutral 
-    H Atoms from Graphite(0001)`__  
+   H Atoms from Graphite(0001)`__  
 
    Physical Review Letters **104**, 256102 (2010)
 
