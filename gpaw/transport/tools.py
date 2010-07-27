@@ -161,7 +161,7 @@ def get_hs(atoms):
     S_qMM = wfs.S_qMM.copy()
     for S_MM in S_qMM:
         tri2full(S_MM)
-    H_sqMM = np.empty((wfs.nspins,) + S_qMM.shape, complex)
+    H_sqMM = np.empty((wfs.nspins,) + S_qMM.shape, wfs.dtype)
     for kpt in wfs.kpt_u:
         H_MM = eigensolver.calculate_hamiltonian_matrix(ham, wfs, kpt)
         tri2full(H_MM)
@@ -584,28 +584,46 @@ def cubicing(atoms):
 
 class P_info:
     def __init__(self):
-        P.x = 0
-        P.y = 0
-        P.z = 0
-        P.Pxsign = 1
-        P.Pysign = 1
-        P.Pzsign = 1
-        P.N = 0
+        self.x = 0
+        self.y = 0
+        self.z = 0
+        self.Pxsign = 1
+        self.Pysign = 1
+        self.Pzsign = 1
+        self.N = 0
 class D_info:
     def __init__(self):
-        D.xy = 0
-        D.xz = 0
-        D.yz = 0
-        D.x2y2 = 0
-        D.z2r2 = 0
-        D.N = 0
+        self.xy = 0
+        self.xz = 0
+        self.yz = 0
+        self.x2y2 = 0
+        self.z2r2 = 0
+        self.N = 0
+
+def egodic(nums):
+    if len(nums)==1:
+        return np.array(nums)
+    else:
+        rows = np.product(np.arange(1, len(nums) + 1))
+        cols = len(nums)
+        all = np.zeros([rows, cols])
+        
+        for i, n in enumerate(nums):
+            subrows = np.product(np.arange(1, len(nums)))            
+            all[i*subrows: (i+1)*subrows, 0] = n
+            left_nums = nums[:]
+            left_nums.remove(n)
+            all[i*subrows: (i+1)*subrows, 1:] = egodic(left_nums)
+        return all
+    
+#PPP = egodic(range(3))
 
 def PutP(index, X, P, T):
-    if P.N == 0:
+    if P.N == 2:
         P.x = index
     if P.N == 1:
         P.y = index
-    if P.N == 2:
+    if P.N == 0:
         P.z = index
     P.N += 1
     
@@ -617,17 +635,20 @@ def PutP(index, X, P, T):
         ind = np.resize(bs, [3, 3])
         T[ind.T, ind] = X * cf 
         P.__init__()
-        
+
+#DDD = egodic(range(5))
+
 def PutD(index, X, D, T):
+    X = X.T
     if D.N == 0:
         D.xy = index
-    if D.N == 1:
-        D.xz = index
-    if D.N == 2:
-        D.yz = index
     if D.N == 3:
-        D.x2y2 = index
+        D.xz = index
+    if D.N == 1:
+        D.yz = index
     if D.N == 4:
+        D.x2y2 = index
+    if D.N == 2:
         D.z2r2 = index
         
     D.N += 1
@@ -660,7 +681,7 @@ def PutD(index, X, D, T):
         Dz2r2 = np.array([[-1, 0, 0],
                           [0, -1, 0],
                           [0,  0, 2]]) / sqrt(3)
-        D2z2r2 = np.dot(X, D2z2r2)
+        D2z2r2 = np.dot(X, Dz2r2)
         D2z2r2 = np.dot(D2z2r2, X.T)
         
         T[D.xy, D.xy] = D2xy[0, 1]               
@@ -695,21 +716,22 @@ def PutD(index, X, D, T):
         
         D.__init__()      
         
-def orbital_matrix_rotate_transformation(mat, X, basis_info):
-    nb = len(basis_info)
+def orbital_matrix_rotate_transformation(mat, X, orbital_indices):
+    nb = orbital_indices.shape[0]
     assert len(X) == 3 and nb == len(mat)
     T = np.zeros([nb, nb])
     P = P_info()
     D = D_info()
     for i in range(nb):
-        if basis_info[i] == 's':
+        if orbital_indices[i, 1] == 0:
             T[i, i] = 1
-        elif basis_info[i] == 'p':
+        elif orbital_indices[i, 1] == 1:
             PutP(i, X, P, T)
-        elif basis_info[i] == 'd':
+        elif orbital_indices[i, 1] == 2:
             PutD(i, X, D, T)
         else:
             raise NotImplementError('undown shell name')
+    return T
 
 def interpolate_2d(mat):
     from gpaw.grid_descriptor import GridDescriptor
