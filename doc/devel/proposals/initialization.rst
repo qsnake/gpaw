@@ -178,6 +178,10 @@ not necessarily portable (although it should be possible to ensure
 portability with the price of more expensive IO).
 
 
+Here is a prototype implementation of a hierachical reader/writer
+framework: :trac:`doc/devel/proposals/rw.py`.
+
+
 Parallel IO
 ===========
 
