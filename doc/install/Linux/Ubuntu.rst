@@ -1,8 +1,8 @@
-.. _Ubuntu:
+.. _Ubuntu_manual_install:
 
-======
-Ubuntu
-======
+=============================
+Manual installation on Ubuntu
+=============================
 
 Here you find information about the `Ubuntu distribution
 <http://www.ubuntu.com/>`_.

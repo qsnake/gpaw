@@ -36,7 +36,9 @@ The packages are provided for the following RPMS-based systems:
 
 - Fedora 13, 12: :ref:`Fedora`,
 
-- RedHat Enterprise Linux (or CentOS) 5: :ref:`CentOS`.
+- RedHat Enterprise Linux (or CentOS) 5: :ref:`CentOS`,
+
+- Ubuntu 9.10 or newer: :ref:`Ubuntupackage`.
 
 If you prefer to install manually proceed to the next section.
 
