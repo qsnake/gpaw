@@ -31,6 +31,7 @@ For comments and questions, write to the :ref:`mailing_lists`.
 .. toctree::
    :maxdepth: 1
 
+   gettingstarted/gettingstarted
    aluminium/aluminium
    surface/surface
    diffusion/diffusion
@@ -48,4 +49,3 @@ For comments and questions, write to the :ref:`mailing_lists`.
    faeq
    
 See also :ref:`timepropagation`.
-
