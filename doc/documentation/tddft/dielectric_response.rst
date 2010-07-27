@@ -341,7 +341,7 @@ The PAW terms comes in when calculating the dipole transition matrix
    = \langle \tilde{\psi}_{n \mathbf k} | 
    e^{-i (\mathbf q + \mathbf G) \cdot \mathbf r} | \tilde{\psi}_{n^{\prime} \mathbf k + \mathbf q} \rangle 
    + \sum_{a,ij} 
-   \langle  \tilde{\psi}_{n \mathbf k} | \tilde{p}_i^a  \rangle
+   \langle  \tilde{\psi}_{n \mathbf k} | \tilde{p}_i^a  \rangle^{\ast}
    \langle \tilde{\psi}_{n^{\prime} \mathbf k + \mathbf q} | \tilde{p}_j^a   \rangle
    \left[ \langle \phi_i^a | e^{-i(\mathbf{q} + \mathbf{G}) \cdot \mathbf{r}} | \phi_j^a \rangle
          - \langle \tilde{\phi}_i^a | e^{-i(\mathbf{q} + \mathbf{G}) \cdot \mathbf{r}} | \tilde{\phi}_j^a \rangle
@@ -376,8 +376,8 @@ For optical limit calculation, the dipole matrix related is
      \langle \psi_{n \mathbf{k}} | \nabla | \psi_{n^{\prime} \mathbf{k}} \rangle
      = \langle \tilde{\psi}_{n \mathbf{k}} | \nabla | \tilde{\psi}_{n^{\prime} \mathbf{k}} \rangle
        +  \sum_{a,ij} 
-   \langle  \tilde{\psi}_{n \mathbf k} | \tilde{p}_i^a  \rangle
-   \langle \tilde{\psi}_{n^{\prime} \mathbf k + \mathbf q} | \tilde{p}_j^a   \rangle
+   \langle  \tilde{\psi}_{n \mathbf k} | \tilde{p}_i^a  \rangle^{\ast}
+   \langle \tilde{\psi}_{n^{\prime} \mathbf k} | \tilde{p}_j^a   \rangle
    \left[ \langle \phi_i^a | \nabla_{\mathbf{r}} | \phi_j^a \rangle
          - \langle \tilde{\phi}_i^a | \nabla_{\mathbf{r}} | \tilde{\phi}_j^a \rangle
    \right]
