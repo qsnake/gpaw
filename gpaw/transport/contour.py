@@ -420,8 +420,7 @@ class Contour:
             exp10 = int(np.floor(np.log10(nid)))
             flags = self.paths[path_index].get_flags(nid, True)
             energy = self.paths[path_index].get_energy(flags[1:])
-            if self.tp.recal_path or (not self.tp.recal_path and
-                                      path_index in [0, 1, 2, 5]) :
+            if  path_index in [0, 1, 2, 5]:
                 calcutype = self.calcutype[path_index]
                 green_function, se = self.tp.calgfunc(energy, calcutype,
                                                       'new')
