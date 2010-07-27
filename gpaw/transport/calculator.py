@@ -960,7 +960,7 @@ class Transport(GPAW):
         
         if self.foot_print:
             self.analysor.save_bias_step()
-        
+       
         self.scf.converged = self.cvgflag
    
         if self.save_bias_data:
@@ -1011,19 +1011,21 @@ class Transport(GPAW):
         self.timer.start('DenMM')
         if self.use_qzk_boundary:
             self.fill_lead_with_scat()
-            for i in range(self.lead_num):
-                self.selfenergies[i].set_bias(0)
+            #for i in range(self.lead_num):
+                #self.selfenergies[i].set_bias(0)
         
         if self.recal_path:
-            self.initialize_path()
+            #self.initialize_path()
+            self.calculate_integral_path2()
             
         for s in range(self.my_nspins):
             for k in range(self.my_npk):
-                if self.recal_path:
-                    d_mm = self.get_eqintegral_points(s, k) + \
-                                              self.get_neintegral_points(s, k)
-                else:
-                    d_mm = self.fock2den(s, k)
+                #if self.recal_path:
+                    #d_mm = self.get_eqintegral_points(s, k) + \
+                    #                          self.get_neintegral_points(s, k)
+                #else:
+                    #d_mm = self.fock2den(s, k)
+                d_mm = self.fock2den(s, k)                    
                 d_mm = self.spin_coff * (d_mm + d_mm.T.conj()) / (2 * self.npk)
                 if self.gate_mode == 'AN':
                     d_mm_gate_plus = self.gate_filling()
@@ -1031,6 +1033,7 @@ class Transport(GPAW):
                     d_mm[ind.T, ind] += d_mm_gate_plus
                 self.hsd.reset(s, k, d_mm, 'D') 
         self.timer.stop('DenMM')
+        
         self.print_boundary_charge()
         if self.master:
             self.text('DenMM', self.timer.timers['DenMM', ], 'second')
@@ -1090,7 +1093,8 @@ class Transport(GPAW):
                     self.text('density: diff = %f  tol=%f' % (self.diff_d,
                                             tol))
                 if self.diff_d < tol * self.theta:
-                    if self.fixed and not self.normalize_density and self.neutral:
+                    if (self.use_qzk_boundary or self.fixed) and \
+                                  not self.normalize_density and self.neutral:
                         self.neutral = False
                     elif self.diff_d < tol:
                         cvg = True
@@ -1110,10 +1114,12 @@ class Transport(GPAW):
                                min_energy=self.min_energy,
                                plot_energy_range=self.plot_energy_range,
                              plot_energy_point_num=self.plot_energy_point_num)
-        if not self.use_qzk_boundary:
-            self.surround.reset_bias(self.bias)
-        else:
-            self.surround.reset_bias([0] * self.lead_num)
+
+        self.surround.reset_bias(self.bias)
+        #if not self.use_qzk_boundary:
+        #    self.surround.reset_bias(self.bias)
+        #else:
+        #    self.surround.reset_bias([0] * self.lead_num)
         self.initialize_green_function()
         self.calculate_integral_path2()
         self.distribute_energy_points()
@@ -2139,14 +2145,14 @@ class Transport(GPAW):
                 for pk in range(self.my_npk):
                     self.lead_hsd[i].reset(s, pk,
                         self.hsd.H[s][pk].diag_h[i][m].recover(), 'H')
-                    if i == 0:
-                        self.lead_couple_hsd[i].reset(s, pk,
-                            self.hsd.H[s][pk].upc_h[i][n], 'H')
-                    elif i == 1:
-                        self.lead_couple_hsd[i].reset(s, pk,
-                            self.hsd.H[s][pk].dwnc_h[i][n], 'H')                        
-                    else:
-                        raise NotImplementError()
+                    #if i == 0:
+                    #    self.lead_couple_hsd[i].reset(s, pk,
+                    #        self.hsd.H[s][pk].upc_h[i][n], 'H')
+                    #elif i == 1:
+                    #    self.lead_couple_hsd[i].reset(s, pk,
+                    #        self.hsd.H[s][pk].dwnc_h[i][n], 'H')                        
+                    #else:
+                    #    raise NotImplementError()
        
     def estimate_transport_matrix_memory(self):
         sum = 0
@@ -2198,8 +2204,8 @@ class Transport(GPAW):
             for i in range(self.lead_num):
                 self.selfenergies.append(LeadSelfEnergy(self.lead_hsd[i],
                    self.lead_couple_hsd[i], self.se_data_path, directions[i]))
-    
-                self.selfenergies[i].set_bias(self.bias[i])
+                if not self.use_qzk_boundary:
+                    self.selfenergies[i].set_bias(self.bias[i])
  
     def calculate_iv(self, v_limit=3, num_v=16, start=0):
         if self.non_sc:
@@ -2265,6 +2271,7 @@ class Transport(GPAW):
             for i in range(self.lead_num):
                 N_c[2] += self.bnc[i]
             p['gpts'] = N_c
+            p['txt'] = 'extended_' + p['txt']
             if 'mixer' in p:
                 if not self.spinpol:
                     p['mixer'] = Mixer(self.density.mixer.beta, 5, weight=100.0)
