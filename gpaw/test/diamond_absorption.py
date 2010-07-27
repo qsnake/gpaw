@@ -34,8 +34,8 @@ df = DF(calc=calc, q=q, w=(0.,), eta=0.001,
 df1, df2 = df.get_dielectric_function()
 eM1, eM2 = df.get_macroscopic_dielectric_constant(df1, df2)
 
-eM1_ = 6.1518509552
-eM2_ = 6.0525646447
+eM1_ = 6.15185095486
+eM2_ = 6.04844005522
 
 if (np.abs(eM1 - eM1_) > 1e-5 or
     np.abs(eM2 - eM2_) > 1e-5):

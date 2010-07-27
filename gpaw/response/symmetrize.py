@@ -9,7 +9,8 @@ def find_kq(bzk_kc, q_c):
     nkptxyz = get_monkhorst_shape(bzk_kc)
         
     dk = 1. / nkptxyz 
-    kmax = (nkptxyz - 1) * dk / 2.
+    #kmax = (nkptxyz - 1) * dk / 2.
+    kmax = - bzk_kc[0]
     N = np.zeros(3, dtype=int)
 
     for k in range(nkpt):

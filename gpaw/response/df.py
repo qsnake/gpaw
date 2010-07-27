@@ -94,7 +94,21 @@ class DF(CHI):
         N2 *= self.dw * self.vol / (2 * pi**2)
 
         self.printtxt('')
-        self.printtxt('Sum rule:')
+        self.printtxt('Sum rule for ABS:')
+        nv = self.nvalence
+        self.printtxt('Without local field: N1 = %f, %f  %% error' %(N1, (N1 - nv) / nv * 100) )
+        self.printtxt('Include local field: N2 = %f, %f  %% error' %(N2, (N2 - nv) / nv * 100) )
+
+        N1 = N2 = 0
+        for iw in range(self.Nw):
+            w = iw * self.dw
+            N1 -= np.imag(1/df1_w[iw]) * w
+            N2 -= np.imag(1/df2_w[iw]) * w
+        N1 *= self.dw * self.vol / (2 * pi**2)
+        N2 *= self.dw * self.vol / (2 * pi**2)
+                
+        self.printtxt('')
+        self.printtxt('Sum rule for EELS:')
         nv = self.nvalence
         self.printtxt('Without local field: N1 = %f, %f  %% error' %(N1, (N1 - nv) / nv * 100) )
         self.printtxt('Include local field: N2 = %f, %f  %% error' %(N2, (N2 - nv) / nv * 100) )
@@ -232,14 +246,14 @@ class DF(CHI):
         del dm_wGG
         chi_G = (np.linalg.inv(tmp_GG)[:, 0] - delta_G) * coef_G
 
-        gd = self.calc.wfs.gd
+        gd = self.gd
         r = gd.get_grid_point_coordinates()
 
         # calculate dn(r,q,w)
         drho_R = gd.zeros(dtype=complex)
         for iG in range(self.npw):
-            qG = np.dot(q + self.Gvec[iG], self.bcell_cv)
-            qGr_R = np.dot(qG, r.T).T
+            qG = np.dot(q + self.Gvec_Gc[iG], self.bcell_cv)
+            qGr_R = np.inner(qG, r.T).T
             drho_R += chi_G[iG] * np.exp(1j * qGr_R)
 
         # phase = sum exp(iq.R_i)

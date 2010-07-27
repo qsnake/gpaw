@@ -207,19 +207,13 @@ class CHI:
         # PAW part init
         # calculate <phi_i | e**(-i(q+G).r) | phi_j>
         # G != 0 part
-        phi_Gp = {}
-        phi_aGp = []
-        R_a = calc.atoms.positions / Bohr
-
         kk_Gv = gemmdot(self.q_c + self.Gvec_Gc, self.bcell_cv.copy(), beta=0.0)
+        phi_aGp = {}
         for a, id in enumerate(setups.id_a):
-            Z, type, basis = id
-            if not Z in phi_Gp:
-                phi_Gp[Z] = two_phi_planewave_integrals(kk_Gv, setups[a])
-            phi_aGp.append(phi_Gp[Z])
-
+            phi_aGp[a] = two_phi_planewave_integrals(kk_Gv, setups[a])
             for iG in range(self.npw):
-                phi_aGp[a][iG] *= np.exp(-1j * np.dot(kk_Gv[iG], R_a[a]))
+                phi_aGp[a][iG] *= np.exp(-1j * 2. * pi *
+                                         np.dot(self.q_c + self.Gvec_Gc[iG], spos_ac[a]) )
 
         # For optical limit, G == 0 part should change
         if self.optical_limit:
@@ -387,6 +381,7 @@ class CHI:
                 if k > 0 and k % (self.nkpt_local // 5) == 0:
                     dt =  time() - t0
                     self.printtxt('Finished k %d in %f seconds, estimated %f seconds left.  '%(k, dt, totaltime - dt) )
+        self.printtxt('Finished summation over k')
 
         del rho_GG, rho_G
         # Hilbert Transform
@@ -419,6 +414,9 @@ class CHI:
             del chi0_Wg
 
         self.chi0_wGG = chi0_wGG / self.vol
+
+        self.printtxt('')
+        self.printtxt('Finished chi0 !')
 
         return
 
@@ -567,8 +565,6 @@ class CHI:
         printtxt('     chi0_wGG        : %f M / cpu' %(self.Nw_local * self.npw**2 * 16. / 1024**2) )
         if self.hilbert_trans:
             printtxt('     specfunc_wGG    : %f M / cpu' %(self.NwS_local *self.npw**2 * 16. / 1024**2) )
-
-
 
 
 
