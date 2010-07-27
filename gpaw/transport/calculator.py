@@ -2271,7 +2271,8 @@ class Transport(GPAW):
             for i in range(self.lead_num):
                 N_c[2] += self.bnc[i]
             p['gpts'] = N_c
-            p['txt'] = 'extended_' + p['txt']
+            if 'txt' in p:
+                p['txt'] = 'extended_' + p['txt']
             if 'mixer' in p:
                 if not self.spinpol:
                     p['mixer'] = Mixer(self.density.mixer.beta, 5, weight=100.0)
