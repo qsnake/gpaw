@@ -57,7 +57,7 @@ if ABS:
 
     df.write('df_1.pckl')
 
-    if np.abs(eM1 - 13.992323) > 1e-5 or np.abs(eM2 - 12.544340) > 1e-5:
+    if np.abs(eM1 - 13.992323) > 1e-5 or np.abs(eM2 - 12.589641) > 1e-5:
         print eM1, eM2
         raise ValueError('Pls check dielectric constant !')
 
