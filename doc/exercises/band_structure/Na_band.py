@@ -32,5 +32,8 @@ calc = GPAW('Na_sc.gpw',
             eigensolver='cg',
             convergence={'bands': 'all'})
 
+if calc.input_parameters['mode'] == 'lcao':
+    calc.scf.reset()
+
 calc.get_potential_energy()
 calc.write('Na_harris.gpw')
