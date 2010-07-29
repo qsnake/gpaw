@@ -1,42 +1,51 @@
-.. _performance:
+.. _bgp_performance:
 
-======================
-Maximizing performance
-======================
+==============================
+Maximizing performance on BG/P
+==============================
 
-If you haven't done so already, this is a good point to read up on the
-GPAW parallelization strategies (:ref:`parallel_runs`) and the BG/P
-architecture.  In particular, :ref:`band_parallelization`
-will be needed to scale your calculation to large number of cores. The BG/P
-systems at Argonne National Laboratory uses Cobalt for scheduling and
-it will be referred to frequently below. Other schedulers should have
-similar functionality.
+Begin by reading up on the GPAW parallelization strategies 
+(:ref:`parallel_runs`) and the `BG/P
+architecture <https://wiki.alcf.anl.gov/index.php/References>`_.  In
+particular,  :ref:`band_parallelization` will be needed to scale your
+calculation to large number of cores. The BG/P systems at the `Argonne
+National Laboratory Computing Facility <http://www.alcf.anl.gov>`_
+uses Cobalt for scheduling and it will be referred to frequently below. Other schedulers should have similar functionality.
 
-There are four key points that will require careful considerations:
-1. Choosing a parallelization strategy
-2. Selecting the correct partion size and mapping
-3. Choosing an appropriate value of *nblocks*
-4. Setting the appropriate DCMF environmental variables.
+There are four key aspects that require careful considerations:
 
-In the section that follows, we aim to cultivate an understanding of
-how these parameters are chosen.
+1) Choosing a parallelization strategy.
+
+#) Selecting the correct partion size (number of nodes) and mapping.
+
+#) Choosing an appropriate value of *nblocks*. The constraints on *nbands* are also summarized.
+
+#) Setting the appropriate DCMF environmental variables.
+
+In the sections that follow, we aim to cultivate an understanding of
+how to choose these parameters.
 
 Parallelization Strategy
 ====================================
 
 Parallelization options are specified at the ``gpaw-python`` command
 line.  Domain decomposition  with ``--domain-decomposition=Nx,Ny,Nz``
-and band parallelization with ``--state-parallelization=B``. Here *nbands*
-is divided into *B* groups. It was empirically determined that you need to
-have *nbands/B > 256* for reasonable performance. It is possible to get
-away with smaller values, *N/B < 256*, but this may require large
-domains. It is *required* that *nbands/B* be integer divisible. The
-easiest values of B =2, 4, 8, 16, 32, 64, and 128.
+and band parallelization with ``--state-parallelization=B``.
+Additionally, the ``parallel`` keyword is also available.
 
-Obviously, the number of nodes must equal::
+The total number of bands (*nbands* ) must be divided into *B*
+groups. It was empirically determined that you need to have *nbands/B
+> 256*  for reasonable performance. It is also possible use smaller groups, 
+*N/B < 256*, but this may require large domains. It is *required* that
+*nbands/B* be integer-divisible. The best values for B =2, 4, 8, 16,
+32, 64, and 128.
+
+Obviously, the number of total cores must equal::
   
    Nx*Ny*Nz*B
 
+The parallelization strategy will require consideration of the
+partition size and mapping. Obviously, also memory!
 
 Partition size and Mapping 
 ========================================
@@ -81,21 +90,39 @@ single-core peak performance.
 .. |mapping2| image:: ../../_static/bgp_mapping2.png
    :width: 40 %
 
-There are some simple questions that are worth consideration.
+For the mapping on the *(Right)* above image, there are 
+two communication patterns (and hence mappings) that are worth
+distinguishing.
+
+|intranode|
+
+.. |intranode| image:: ../../_static/bgp_mapping_intranode.png
+   :width: 60 %
+
+The boxes in these images represent a node and the numbers inside
+the box repesent the distinct cores in the node (four for BG/P).
+Intuitively, the communication pattern of the *(Left)* image should
+lead to less network contention than the *(Right)*. However, this is
+not the case due to lack of optimization in the intranode
+implementation of MPI. The performance of these communications
+patterns is presently identical, though this may change in future
+version of the BG/P implementation of MPI. 
+
 
 B = 2
 --------
-Simply set the followin submission script settings::
+Simply set the followin submission script setting, noting that the
+domain decomposition must match up exactly with the partition dimensions::
 
   mode = dual
-  mapping = ZYXT
+  mapping = any mapping ending with T
+  {Nx, Ny, Nz} = {Px, Py, Pz}
 
 B = 4
 --------
-Similar to the *B=2* case::
+Similar to the *B=2* case, but with::
 
   mode = vn
-  mapping = ZYXT
 
 B = 8 or 16
 ---------------
@@ -104,8 +131,9 @@ match the partition dimension exactly, i.e.::
 
   {Nx, Ny, Nz, B} = {Px, Py, Pz, T},
   {Nx, Ny, Nz, B} = {T, Px, Py, Pz},
-  {Nx, Ny, Nz, B} = {Px, T, Py, Pz}, 
-  or another permutation.
+  {Nx, Ny, Nz, B} = {Px, T, Py, Pz},
+  or  
+  {Nx, Ny, Nz, B} = {Px, Py, T, Pz}
 
 This can be accomplised with the help of ``tools/mapfile.py.`` You will
 want to use ``band`` mode to generate a BG/P mapfile for a  DFT calculation.
@@ -117,10 +145,25 @@ products.  Remember to specify the mapfile via Cobalt::
 
 B = 32, 64, or 128
 ------------------
-Still working to finish documentation
+For *B=32*, a mapfile can be generated as in the *B=8 or 16* case. But
+it is much easier to fold the T-dimension into one of the three
+spatial dimensions and use this as the band parallelization
+direction. The three-dimensional physical domain can then be flattened into
+the two remaining spatial dimensions of the network. The constraints
+can be summarized as follows::
+
+  mode = vn
+  mapping =  any mapping end with T
+  T*[X,Y,Z] = B
+  product of remaining two dimensions = Nx*Ny*Nz
 
 Setting the value of nblocks
 ============================
+The computation of the hamiltonian and overlap matrix elements, as well as
+the computation of the new wavefunctions, is accomplished by a hand-coded 
+parallel matrix-multiply ``hs_operators.py`` employing a 1D systolic
+ring algorithm. 
+
 It will be necessary to select appropriate values for the number of blocks ``nblocks``::
 
   from gpaw.hs_operators import MatrixOperator
@@ -128,10 +171,25 @@ It will be necessary to select appropriate values for the number of blocks ``nbl
   MatrixOperator.async = True (default)
 
 where the ``B`` groups of bands are further divided into ``K``
-blocks. It is also required that *nbands/B/K*,  The value of ``K``
-should be chosen so that 2 MB of wavefunctions are sent/received. 
-Larger chunks of wavefunctions can be interchanged by adjusting
-appropriate Cobalt environment variables. 
+blocks. It is also required that *nbands/B/K* be integer-divisible. 
+The value of ``K`` should be chosen so that 2 MB of wavefunctions are
+interchanged.  Larger blocks of wavefunctions can be interchanged by
+adjusting the Cobalt environment variables: DMCF_RECFIFO.
+
+The size of the wavefunction being interchanged is given by::
+
+  gpts = (Gx, Gy, Gz)
+  size of wavefunction block in MB = (Gx/Nx, Gy/Ny, Gz/Nz)*(nbands/B/K)*8/1024^2
+
+There are thus a number of constraints on the value of nbands:
+
+1) ``nbands/B`` must be integer divisible
+
+#) ``nbands/B/K`` must be integer divisible
+
+#) size of wavefunction block ~ 2 MB
+
+#) ``nbands`` must be sufficient largely so that the RMM-DIIS eigensolver converges
 
 
 Important DCMF environment variables
@@ -143,31 +201,33 @@ To understand th DCMF environment variables in greater detail, please read the
 appropriate sections of the  IBM System Blue Gene Solution:  
 `Blue Gene/P Application Development <http://www.redbooks.ibm.com/abstracts/sg247287.html?Open>`_ 
 
-DCMF_EAGER
------------------
-The computation of the hamiltonian and overlap matrix elements, as well as
-the computation of the new wavefunctions, is accomplished by a hand-coded 
-parallel matrix-multiply ``hs_operators.py`` employing a 1D systolic
-ring algorithm. Please refer to the details of :ref:`band parallelization <band_parallelization>`.
-
+DCMF_EAGER and DCMF_RECFIFO
+-----------------------------------
 Communication and computation is overlapped to the extent allowed by the
-hardware by using non-blocking sends (Isend)and receives (Irecv). It will be also be necessary to pass to Cobalt::
+hardware by using non-blocking sends (Isend) and receives (Irecv). It will be also be necessary to pass to Cobalt::
 
   --env=DCMF_EAGER=8388608
 
 which corresponds to the larger size message that can be overlapped
-(8 MB). Note that the
-number is specified in bytes and not megabytes.
+(8 MB). Note that the number is specified in bytes and not
+megabytes. This is larger than the target 2 MB size, but we keep this
+for historical reasons since it is possible to use larger blocks of
+wavefunctions in the case of smp or dual mode are used. This is also
+equal to the default size of the DCMF_RECFIFO. If the following
+warning is obtained,::
 
-For larger blocks of wavefunctions, it may be necessary to increase
-DCMF_RECFIFO as well. This will depend on whether you are using smp, dual
-or vn mode. 
+  A DMA unit reception FIFO is full.  Automatic recovery occurs
+  for this event, but performance might be improved by increasing the FIFO size
+
+the default value of the DCMF_RECFIFO should be increased::
+
+   --env=DCMF_RECFIFO=<size in bytes>
 
 DCMF_REUSE_STORAGE
 -------------------------
-If you receive receive allocation error on MPI_Allreduce, please add the following
+If you receive allocation error on MPI_Allreduce, please add the following
 environment variables::
 
   --env=DCMF_REDUCE_REUSE_STORAGE=N:DCMF_ALLREDUCE_REUSE_STORAGE=N:DCMF_REDUCE=RECT
 
-Please also report this on the GPAW user mailing list.
+It is very likely that your calculation is low on memory. Simply try using more nodes.
