@@ -355,19 +355,20 @@ class NeighborPairs:
     def __init__(self, cutoff_a, cell_cv, pbc_c):
         self.neighbors = NeighborList(cutoff_a, skin=0, sorted=True)
         self.atoms = Atoms('X%d' % len(cutoff_a), cell=cell_cv, pbc=pbc_c)
-
+        # Warning: never use self.atoms.get_scaled_positions() for
+        # anything.  Those positions suffer from roundoff errors!
+        
     def set_positions(self, spos_ac):
         self.spos_ac = spos_ac
         self.atoms.set_scaled_positions(spos_ac)
         self.neighbors.update(self.atoms)
 
     def iter(self):
-        spos_ac = self.atoms.get_scaled_positions() % 1.0
         cell_cv = self.atoms.cell
-        for a1, spos1_c in enumerate(spos_ac):
+        for a1, spos1_c in enumerate(self.spos_ac):
             a2_a, offsets = self.neighbors.get_neighbors(a1)
             for a2, offset in zip(a2_a, offsets):
-                spos2_c = spos_ac[a2] + offset
+                spos2_c = self.spos_ac[a2] + offset
                 R_c = np.dot(spos2_c - spos1_c, cell_cv)
                 yield a1, a2, R_c, offset
 
