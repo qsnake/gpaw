@@ -35,7 +35,7 @@ are in order:
 * A :class:`~ase.optimize.bfgs.BFGS` optimizer is created and
   associated with the
   :class:`Atoms` object.  It is also given an optional argument,
-  :keyword:`trajectory`, which specifies a filename into which the
+  :keyword:`trajectory`, which specifies the name of a file into which the
   positions will be saved for each step in the geometry optimization.
 * Finally the call ``opt.run(fmax=0.05)`` will run the
   optimization algorithm until all atomic forces are below 0.05 eV per
@@ -102,7 +102,7 @@ the molecule minus the sum of the energies of each of its constituent
 *isolated* atoms.  For example, the atomization energy of :mol:`H_2` is
 :math:`E[\mathrm{H}_2] - 2 E[\mathrm H]`.
 
-GPAW calculations are by default spin-paired, i.e.\ the spin-up and
+GPAW calculations are by default spin-paired, i.e. the spin-up and
 spin-down densities are assumed to be equal.  As this is not the case
 for isolated atoms, it will be necessary to instruct GPAW to do
 something different::
