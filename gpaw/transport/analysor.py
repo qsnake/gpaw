@@ -340,15 +340,25 @@ class Transport_Analysor:
             s = kpt.s
             q = kpt.q
             sigma = self.calculate_sigma(s, q, energy)
-            gr = self.calculate_green_function_of_k_point(s, q, energy, sigma)
-            dos_mm = np.dot(gr, self.tp.hsd.S[q].recover())
+
+            self.reset_green_function(s, q)
+            self.tp.hsd.G.reset_from_others(self.tp.hsd.S[q],
+                                            self.tp.hsd.H[s][q],
+                                            energy, -1, init=True)
+            
+            for i in range(self.tp.hsd.G.lead_num):
+                self.tp.hsd.G.diag_h[i][-1].reset_minus(sigma[i])
+            
+            gr = np.linalg.inv(self.tp.hsd.G.recover(True))
+            dos_mm = np.dot(gr, self.tp.hsd.S[q].recover(True))
         
             if wfs.dtype == float:
                 dos_mm = np.real(dos_mm).copy()
             wfs.basis_functions.construct_density(dos_mm, dosg[kpt.s], kpt.q)
         wfs.kpt_comm.sum(dosg)
         wfs.band_comm.sum(dosg)
-        return dosg
+        global_dosg = wfs.gd.collect(dosg)        
+        return global_dosg
        
     def lead_k_matrix(self, l, s, pk, k_vec, hors='S'):
         tp = self.tp
@@ -702,7 +712,7 @@ class Transport_Analysor:
         gd = calc.gd
         finegd = calc.hamiltonian.finegd
 
-        if not tp.use_qzk_boundary:
+        if not tp.use_qzk_boundary and not tp.multi_leads:
             nt_sG = tp.gd.collect(tp.density.nt_sG)
         else:
             nt_sG = gd.collect(calc.density.nt_sG)            
@@ -716,10 +726,11 @@ class Transport_Analysor:
             for s in range(tp.nspins): 
                 nts = aa1d(nt_sG[s]) 
                 vts = aa1d(vt_sG[s]) * Hartree
-                nt1 = aa1d(tp.surround.sides['-'].boundary_nt_sG[s])
-                nt2 = aa1d(tp.surround.sides['+'].boundary_nt_sG[s])
-                nts = np.append(nt1, nts)
-                nts = np.append(nts, nt2)
+                if not tp.multi_leads:
+                    nt1 = aa1d(tp.surround.sides['-'].boundary_nt_sG[s])
+                    nt2 = aa1d(tp.surround.sides['+'].boundary_nt_sG[s])
+                    nts = np.append(nt1, nts)
+                    nts = np.append(nts, nt2)
                 nt.append(nts)
                 vt.append(vts)
             data[flag + 'nt'] = np.array(nt)
@@ -730,7 +741,7 @@ class Transport_Analysor:
             nt = None
             vt = None
         
-        if not tp.use_qzk_boundary: 
+        if not tp.use_qzk_boundary and not tp.multi_leads: 
             gd = tp.finegd
             rhot_g = gd.collect(tp.density.rhot_g)
             if world.rank == 0:
@@ -786,7 +797,7 @@ class Transport_Analysor:
             force = None
             contour = None
         else:
-            if not tp.use_qzk_boundary:
+            if not tp.use_qzk_boundary and not tp.multi_leads:
                 force = tp.calculate_force() * Hartree / Bohr
             else:
                 force = tp.extended_calc.get_forces(tp.extended_atoms
@@ -919,7 +930,7 @@ class Transport_Analysor:
         tp = self.tp
         calc = tp.extended_calc
         gd = calc.gd
-        if not tp.use_qzk_boundary:
+        if not tp.use_qzk_boundary and not tp.multi_leads:
             nt_sG = tp.gd.collect(tp.density.nt_sG)
         else:
             nt_sG = gd.collect(calc.density.nt_sG)            
@@ -1142,7 +1153,7 @@ class Transport_Plotter:
         if not spinpol:
             currents *= 2
         return currents
-    
+           
     def tvs(self, nsteps=16, spinpol=True):
         bias, current = self.iv(nsteps,  spinpol)
         current *= 1e-6 # switch unit to Ampier
