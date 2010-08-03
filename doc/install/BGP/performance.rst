@@ -9,7 +9,7 @@ Begin by reading up on the GPAW parallelization strategies
 architecture <https://wiki.alcf.anl.gov/index.php/References>`_.  In
 particular,  :ref:`band_parallelization` will be needed to scale your
 calculation to large number of cores. The BG/P systems at the `Argonne
-National Laboratory Computing Facility <http://www.alcf.anl.gov>`_
+Leadership Computing Facility <http://www.alcf.anl.gov>`_
 uses Cobalt for scheduling and it will be referred to frequently below. Other schedulers should have similar functionality.
 
 There are four key aspects that require careful considerations:
@@ -18,7 +18,7 @@ There are four key aspects that require careful considerations:
 
 #) Selecting the correct partion size (number of nodes) and mapping.
 
-#) Choosing an appropriate value of *nblocks*. The constraints on *nbands* are also summarized.
+#) Choosing an appropriate value of ``nblocks``. The constraints on ``nbands`` are also summarized.
 
 #) Setting the appropriate DCMF environmental variables.
 
@@ -33,8 +33,18 @@ line.  Domain decomposition  with ``--domain-decomposition=Nx,Ny,Nz``
 and band parallelization with ``--state-parallelization=B``.
 Additionally, the ``parallel`` keyword is also available.
 
-The total number of bands (*nbands* ) must be divided into *B*
-groups. It was empirically determined that you need to have *nbands/B
+The smallest calculation that can benefit from band/state
+parallelization is *nbands = 1000*. If you are using fewer bands, you
+are possibly *not* in need of a leadership class computer facility. 
+Note that only ref:`RMM-DIIS` eigensolver is compatible with band
+parallelization. Furthermore, the RMM-DIIS eigensolver requires 
+some unoccupied bands in order to converge properly. Recommend range is::
+
+  nbands = valence electrons/spin*[1.0 - 1.2], where
+  spin = 1 for spinpol = True
+  spin = 2 for spinpol = False
+  
+It was empirically determined that you need to have *nbands/B
 > 256*  for reasonable performance. It is also possible use smaller groups, 
 *N/B < 256*, but this may require large domains. It is *required* that
 *nbands/B* be integer-divisible. The best values for B =2, 4, 8, 16,
@@ -44,7 +54,7 @@ Obviously, the number of total cores must equal::
   
    Nx*Ny*Nz*B
 
-The parallelization strategy will require consideration of the
+The parallelization strategy will require careful consideration of the
 partition size and mapping. Obviously, also memory!
 
 Partition size and Mapping 
@@ -173,8 +183,11 @@ It will be necessary to select appropriate values for the number of blocks ``nbl
 where the ``B`` groups of bands are further divided into ``K``
 blocks. It is also required that *nbands/B/K* be integer-divisible. 
 The value of ``K`` should be chosen so that 2 MB of wavefunctions are
-interchanged.  Larger blocks of wavefunctions can be interchanged by
-adjusting the Cobalt environment variables: DMCF_RECFIFO.
+interchanged.  The special cases of B=2, 4 as described
+above permit the use blocks of wavefunctions larger than 2 MB to be
+interchanged since there is only intranode communication. Larger
+blocks of wavefunctions can be interchanged by adjusting the 
+Cobalt environment variables: DMCF_RECFIFO.
 
 The size of the wavefunction being interchanged is given by::
 
@@ -212,7 +225,7 @@ which corresponds to the larger size message that can be overlapped
 (8 MB). Note that the number is specified in bytes and not
 megabytes. This is larger than the target 2 MB size, but we keep this
 for historical reasons since it is possible to use larger blocks of
-wavefunctions in the case of smp or dual mode are used. This is also
+wavefunctions in the case of *smp* or *dual* mode. This is also
 equal to the default size of the DCMF_RECFIFO. If the following
 warning is obtained,::
 
