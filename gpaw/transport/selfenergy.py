@@ -7,12 +7,14 @@ import cPickle
 class LeadSelfEnergy:
     #This object use the sparse_matrix object Banded_Sparse_HSD
     conv = 1e-8 # Convergence criteria for surface Green function
-    def __init__(self, hsd_ii, hsd_ij, data_path=None, direction='left'):
+    def __init__(self, hsd_ii, hsd_ij, data_path=None, direction='left',
+                 rotation_mat=None):
         self.hsd_ii = hsd_ii
         self.hsd_ij = hsd_ij
         self.data_path = data_path
         self.direction = direction
         self.energy = None
+        self.rotation_mat = rotation_mat
         self.bias = 0
         self.s = 0
         self.pk = 0
@@ -38,8 +40,12 @@ class LeadSelfEnergy:
                 tau_ji = z * dagger(self.hsd_ij.S[self.pk].recover()) - \
                              dagger(self.hsd_ij.H[self.s][self.pk].recover())
                 ginv = self.get_sgfinv(energy)
-                a_ij = dot(ginv, tau_ij)        
-                self.sigma = Banded_Sparse_Matrix(complex, dot(tau_ji, a_ij),
+                a_ij = dot(ginv, tau_ij)
+                mat = dot(tau_ji, a_ij)
+                #if self.rotation_mat is not None:
+                #    mat = np.dot(self.rotation_mat, mat)
+                #    mat = np.dot(mat, self.rotation_mat.T)
+                self.sigma = Banded_Sparse_Matrix(complex, mat,
                                             self.hsd_ii.S[self.pk].band_index)
             return self.sigma
        
