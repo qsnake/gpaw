@@ -200,6 +200,7 @@ class WaveFunctions(EmptyWaveFunctions):
                                                     self.symmetry.maps))
 
     def set_positions(self, spos_ac):
+        self.positions_set = False
         rank_a = self.gd.get_ranks_from_positions(spos_ac)
 
         """
