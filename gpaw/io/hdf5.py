@@ -70,7 +70,7 @@ class Writer:
         self.params_grp.attrs[name] = value
 
     def add(self, name, shape, array=None, dtype=None, units=None, 
-            parallel=False, write=True):
+            parallel=False):
         if array is not None:
             array = np.asarray(array)
 
@@ -80,9 +80,20 @@ class Writer:
             shape = [1,]
         self.dset = self.file.create_dataset(name, shape, type)
         if array is not None:
-            self.fill(array, parallel=parallel, write=write)
+            self.fill(array, parallel=parallel)
 
-    def fill(self, array, *indices, parallel=False, write=True):
+    def fill(self, array, *indices, **kwargs):
+
+        try:
+            parallel = kwargs['parallel']
+        except KeyError:
+            parallel = False
+
+        try:
+            write = kwargs['write']
+        except KeyError:
+            write = True
+
         if parallel:
             # Create H5P_DATASET_XFER property list
             plist = h5py.h5p.create(h5py.h5p.DATASET_XFER)
@@ -159,7 +170,13 @@ class Reader:
     def has_array(self, name):
         return name in self.file.keys()
     
-    def get(self, name, *indices, parallel=False):
+    def get(self, name, *indices, **kwargs):
+
+        try:
+            parallel = kwargs['parallel']
+        except KeyError:
+            parallel = False
+
         if parallel:
             # Create H5P_DATASET_XFER property list
             plist = h5py.h5p.create(h5py.h5p.DATASET_XFER)
