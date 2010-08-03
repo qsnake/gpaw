@@ -145,7 +145,7 @@ def collect_lead_mat(lead_hsd, lead_couple_hsd, s, pk, flag='S'):
             band_mat, cp_mat = hsd.H[s][pk], c_hsd.H[s][pk]
         else:
             band_mat, cp_mat = hsd.D[s][pk], c_hsd.D[s][pk]
-        diag_h.append(band_mat)
+        diag_h.append(copy.deepcopy(band_mat))
         upc_h.append(cp_mat.recover('c'))
         dwnc_h.append(cp_mat.recover('n'))
     return diag_h, upc_h, dwnc_h        
@@ -621,25 +621,26 @@ def egodic(nums):
 def PutP(index, X, P, T):
     if P.N == 2:
         P.x = index
-    if P.N == 1:
-        P.y = index
     if P.N == 0:
+        P.y = index
+    if P.N == 1:
         P.z = index
     P.N += 1
     
     if P.N == 3:
         bs = np.array([P.x, P.y, P.z])
-        c = np.array([P.Pxsign, P.Pysign, P.Pzsign])
-        c = np.resize(c, [3, 3])
-        cf = c / c.T
-        ind = np.resize(bs, [3, 3])
-        T[ind.T, ind] = X * cf 
+        #c = np.array([P.Pxsign, P.Pysign, P.Pzsign])
+        #c = np.resize(c, [3, 3])
+        #cf = c / c.T
+        #ind = np.resize(bs, [3, 3])
+        ind = get_matrix_index(bs)
+        T[ind.T, ind] = X
+        #T[ind.T, ind] = X * cf
         P.__init__()
 
 #DDD = egodic(range(5))
 
 def PutD(index, X, D, T):
-    X = X.T
     if D.N == 0:
         D.xy = index
     if D.N == 3:
@@ -716,9 +717,9 @@ def PutD(index, X, D, T):
         
         D.__init__()      
         
-def orbital_matrix_rotate_transformation(mat, X, orbital_indices):
+def orbital_matrix_rotate_transformation(X, orbital_indices):
     nb = orbital_indices.shape[0]
-    assert len(X) == 3 and nb == len(mat)
+    assert len(X) == 3 
     T = np.zeros([nb, nb])
     P = P_info()
     D = D_info()
@@ -732,6 +733,47 @@ def orbital_matrix_rotate_transformation(mat, X, orbital_indices):
         else:
             raise NotImplementError('undown shell name')
     return T
+
+def normalize(r):
+    return r/np.sqrt(np.sum(r*r))
+
+def vector_to_paramid(r):
+    r = normalize(r)
+    x, y, z = r
+    if z!=0:
+        a1, b1, c1 = 0, 1, -y/z
+        a2, b2, c2 = 1, -x*y/(y**2 + z**2), -x*z/(y**2 + z**2)
+    elif y!=0:
+        a1, b1, c1 = 1, -x/y, 0
+        a2, b2, c2 = -x*z/(y**2 + x**2), -y*z/(y**2 + x**2), 1
+    elif x!=0:
+        a1, b1, c1 = -z/x, 0, 1
+        a2, b2, c2 = -y*z/(x**2 + z**2), 1, -x*y/(x**2 + z**2)
+    else:
+        raise RuntimeError('The input vector is zero!')
+    r1 = np.array([a1, b1, c1])
+    r2 = np.array([a2, b2, c2])
+    r1 = normalize(r1)
+    r2 = normalize(r2)
+    R1 = r + r1
+    R2 = r - r1 / 2. + r2 / 2.
+    R3 = r - r1 / 2. - r2 / 2. 
+    return np.array([R1, R2, R3])
+  
+def transform_3d(rs1, rs2):
+    assert rs1.shape == rs2.shape
+    if rs1.shape[0] == 2:
+        r1 = rs1[1] - rs1[0]
+        r2 = rs2[1] - rs2[0]
+        RS1 = vector_to_paramid(r1)
+        RS2 = vector_to_paramid(r2)
+    elif rs1.shape[0] == 4:
+        RS1 = rs1[1:] - rs1[0]
+        RS2 = rs2[1:] - rs2[0]
+    else:
+        raise RuntimeError('Transform atoms indices wrong!')
+    X = np.dot(RS2.T, np.linalg.inv(RS1.T))
+    return X
 
 def interpolate_2d(mat):
     from gpaw.grid_descriptor import GridDescriptor
