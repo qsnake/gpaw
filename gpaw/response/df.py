@@ -344,7 +344,8 @@ class DF(CHI):
                 'dfLFC_w'      : self.df2_w}
 
         if all == True:
-            data += {'chi0_wGG' : self.chi0_wGG}
+            from gpaw.response.parallel import par_write
+            par_write('chi0','chi0_wGG',self.wcomm,self.chi0_wGG)
         
         if rank == 0:
             pickle.dump(data, open(filename, 'w'), -1)
@@ -355,9 +356,7 @@ class DF(CHI):
     def read(self, filename):
         """Read data from pickle file"""
 
-        if rank == 0:
-            data = pickle.load(open(filename))
-        self.comm.barrier()
+        data = pickle.load(open(filename))
         
         self.nbands = data['nbands']
         self.acell_cv = data['acell']

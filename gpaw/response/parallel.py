@@ -153,3 +153,59 @@ def SliceAlongOrbitals(a_Eo, coords, comm):
         if rank == comm.rank:
             a_eO = tmp.reshape(nenergies, Norb, Norb)
     return a_eO
+
+
+def par_write(filename, name, comm, chi0_wGG):
+
+    ## support only world communicator at the moment
+    from gpaw.mpi import rank, size, world
+    from gpaw.io import open
+    
+    assert comm.size == size
+    assert comm.rank == rank
+
+    Nw_local, npw, npw1 = chi0_wGG.shape
+    assert npw == npw1
+    Nw = Nw_local * size
+    
+    if rank == 0:
+        w = open(filename, 'w', comm)
+        w.dimension('Nw', Nw)
+        w.dimension('npw', npw)
+        w.add(name, ('Nw', 'npw', 'npw'), dtype=complex)
+        tmp = np.zeros_like(chi0_wGG[0])
+
+    for iw in range(Nw):
+        irank = iw // Nw_local
+        if irank == 0:
+            if rank == 0:
+                w.fill(chi0_wGG[iw])
+        else:
+            if rank == irank:
+                world.send(chi0_wGG[iw-rank*Nw_local], 0, irank+100)
+            if rank == 0:
+                world.receive(tmp, irank, irank+100)
+                w.fill(tmp)
+    if rank == 0:
+        w.close()
+    world.barrier()
+        
+def par_read(filename, name):
+
+    from gpaw.mpi import world, rank, size
+    from gpaw.io import open
+
+    r = open(filename, 'r')
+    Nw = r.dimension('Nw')
+    npw = r.dimension('npw')
+    Nw_local = Nw // size
+    chi0_wGG = np.zeros((Nw_local, npw, npw), dtype=complex)
+
+    for iw in range(Nw):
+        irank = iw // Nw_local
+        if rank == irank:
+            chi0_wGG[iw-irank*Nw_local] = r.get(name, iw)
+
+    r.close()
+    
+    return chi0_wGG

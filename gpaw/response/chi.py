@@ -170,10 +170,6 @@ class CHI:
         pt = LFC(gd, [setup.pt_j for setup in setups],
                  calc.wfs.kpt_comm, dtype=calc.wfs.dtype, forces=True)
         spos_ac = calc.atoms.get_scaled_positions()
-        for ia in range(spos_ac.shape[0]):
-            for idim in range(3):
-                if spos_ac[ia,idim] == 1.:
-                    spos_ac[ia,idim] -= 1.
         pt.set_k_points(self.bzk_kc)
         pt.set_positions(spos_ac)
         self.pt = pt
