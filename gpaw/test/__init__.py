@@ -156,6 +156,7 @@ tests = [
     'diamond_absorption.py',
     'aluminum_EELS.py',
     'aluminum_testcell.py',
+    'dump_chi0.py'
     'hgh_h2o.py',
     'apmb.py',
     'relax.py',
