@@ -45,8 +45,8 @@ class UTDomainParallelSetup(TestCase):
     nibzkpts = 1
 
     # Mean spacing and number of grid points per axis (G x G x G)
-    h = 0.2 / Bohr
-    G = 90
+    h = 0.25 / Bohr
+    G = 48
 
     # Type of boundary conditions employed
     boundaries = None
@@ -155,7 +155,7 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
             assert getattr(self,virtvar) is not None, 'Virtual "%s"!' % virtvar
 
         # Create randomized atoms
-        self.atoms = create_random_atoms(self.gd) # also tested: 10xNH3/BDA
+        self.atoms = create_random_atoms(self.gd, 5) # also tested: 10xNH3/BDA
 
         # XXX DEBUG START
         if False:
@@ -319,7 +319,7 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
                 P_ni += np.dot(Q_ni, B_ii.T) #sum over a2 and last i in B_ii
             self.gd.comm.sum(P_ni)
 
-        self.check_and_plot(P_ani, P0_ani, 9, 'projection,linearity')
+        self.check_and_plot(P_ani, P0_ani, 8, 'projection,linearity')
 
     def test_extrapolate_overlap(self):
         kpt = self.wfs.kpt_u[0]
@@ -340,7 +340,7 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
         self.pt.integrate(work_nG, P0_ani, kpt.q)
         del work_nG
 
-        self.check_and_plot(P_ani, P0_ani, 12, 'extrapolate,overlap')
+        self.check_and_plot(P_ani, P0_ani, 11, 'extrapolate,overlap')
 
     def test_extrapolate_inverse(self):
         kpt = self.wfs.kpt_u[0]
@@ -361,7 +361,7 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
         self.pt.integrate(work_nG, P0_ani, kpt.q)
         del work_nG
 
-        self.check_and_plot(P_ani, P0_ani, 12, 'extrapolate,inverse')
+        self.check_and_plot(P_ani, P0_ani, 11, 'extrapolate,inverse')
 
     def test_overlap_inverse_after(self):
         kpt = self.wfs.kpt_u[0]
@@ -394,9 +394,9 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
                 abserr[:] = np.abs(self.psit_nG[myn] - res_nG[myn]).max()
                 self.gd.comm.max(abserr)
             self.bd.comm.broadcast(abserr, band_rank)
-            self.assertAlmostEqual(abserr.item(), 0, 11)
+            self.assertAlmostEqual(abserr.item(), 0, 10)
 
-        self.check_and_plot(P_ani, P0_ani, 12, 'overlap,inverse,after')
+        self.check_and_plot(P_ani, P0_ani, 11, 'overlap,inverse,after')
 
     def test_overlap_inverse_before(self):
         kpt = self.wfs.kpt_u[0]
@@ -429,9 +429,9 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
                 abserr[:] = np.abs(self.psit_nG[myn] - res_nG[myn]).max()
                 self.gd.comm.max(abserr)
             self.bd.comm.broadcast(abserr, band_rank)
-            self.assertAlmostEqual(abserr.item(), 0, 11)
+            self.assertAlmostEqual(abserr.item(), 0, 10)
 
-        self.check_and_plot(P_ani, P0_ani, 12, 'overlap,inverse,before')
+        self.check_and_plot(P_ani, P0_ani, 11, 'overlap,inverse,before')
 
 # -------------------------------------------------------------------
 
