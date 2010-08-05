@@ -62,14 +62,19 @@ Partition size and Mapping
 The BG/P partition dimensions (Px, Py, Pz, T) for Surveyor and Intrepid at the
 Argonne Leadership Computing Facility are `available here 
 <https://wiki.alcf.anl.gov/index.php/Running#What_are_the_sizes_and_dimensions_of_the_partitions_on_the_system.3F>`_,
-where T represents the number of cores (not whether a
-torus network is available). The number of cores per node with
-MPI tasks is specified by the Cobalt flag::
+where T represents the number of MPI tasks (not whether a
+torus network is available). The number of cores per node which
+execute MPI tasks is specified by the Cobalt flag::
 
   --mode={smp,dual,vn}
 
-where smp, dual and vn are for 1, 2, and 4, MPI tasks respectively. Note that
-there are 4 cores per node and 2 GB per node on BG/P. As GPAW is
+Hence, the possible values of T are::
+
+  T = 1 for smp
+  T = 2 for dual
+  T = 4 for vn
+
+Note that there are 4 cores per node and 2 GB per node on BG/P. As GPAW is
 presently an MPI-only code, vn mode is preferred since all cores will
 be perform computational work.
 
@@ -88,7 +93,7 @@ a simple 1D systolic communication pattern.
 Here we show the examples of different mappings on a 512-node BG/P
 partition. Band groups are colored coded. *(Left)* Inefficient mapping
 for four groups of bands (B = 4). This mapping leads to contention on
-network links in z-direction. *(Right)*  Efficient mapping for eight
+network links in the z-direction. *(Right)*  Efficient mapping for eight
 groups of bands (B=8). Correct mapping maximizes scalability and
 single-core peak performance. 
 
@@ -118,15 +123,30 @@ implementation of MPI. The performance of these communications
 patterns is presently identical, though this may change in future
 version of the BG/P implementation of MPI. 
 
+Mapping is accomplished by the Cobalt flag::
+  
+   --env=BG_MAPPING=<mapping>
+
+where *<mapping>* can be one of the standard BG/P mappings or
+a mapfile.
+
+Lastly, it is important to note that GPAW code orders the MPI tasks as
+follows::
+  
+   Z, Y, X, bands, kpoints, and spins.
 
 B = 2
 --------
 Simply set the followin submission script setting, noting that the
-domain decomposition must match up exactly with the partition dimensions::
+domain decomposition must match up *exactly* with the partition dimensions::
 
   mode = dual
-  mapping = any mapping ending with T
-  {Nx, Ny, Nz} = {Px, Py, Pz}
+  any mapping ending with a T
+  {Nz, Ny, Nx} = {Px, Py, Pz}; BG_MAPPING = XYZT
+  {Nz, Ny, Nx} = {Pz, Px, Py}; BG_MAPPING = ZXYT
+  {Nz, Ny, Nx} = {Py, Pz, Px}; BG_MAPPING = YZXT
+  plus other permutations of the right-hand side which end with a T
+  
 
 B = 4
 --------
@@ -139,17 +159,19 @@ B = 8 or 16
 It will be necessary to have the combined band-domain decomposition
 match the partition dimension exactly, i.e.::
 
-  {Nx, Ny, Nz, B} = {Px, Py, Pz, T},
-  {Nx, Ny, Nz, B} = {T, Px, Py, Pz},
-  {Nx, Ny, Nz, B} = {Px, T, Py, Pz},
-  or  
-  {Nx, Ny, Nz, B} = {Px, Py, T, Pz}
+  {Nz, Ny, Nx, B} = {T, Px, Py, Pz}
+  {Nz, Ny, Nx, B} = {Px, T, Py, Pz}
+  {Nz, Ny, Nx, B} = {Px, Py, T, Pz}
+  plus other permutations of the right-hand side which do not end with
+  a T
 
-This can be accomplised with the help of ``tools/mapfile.py.`` You will
-want to use ``band`` mode to generate a BG/P mapfile for a  DFT calculation.
-Since there is no orthogonalization in the rTDDFT method, one can use 
-``domain`` mode to satisfy the communiation pattern of the H*Psi
-products.  Remember to specify the mapfile via Cobalt::
+As only mappings with T at the beginning or end are standard mappings
+on BG/P, a mapfile must be provided for many of the *B=8 or 16*
+case. This can be accomplised with ``tools/mapfile.py.`` You will want
+to use ``band``  mode to generate a BG/P mapfile for a  DFT
+calculation. Since there is no orthogonalization in the rTDDFT method,
+one can use ``domain`` mode to satisfy the communiation pattern of the
+H*Psi products.  Remember to specify the mapfile via Cobalt::
 
   --env=BG_MAPPING=<mapfile>
 
