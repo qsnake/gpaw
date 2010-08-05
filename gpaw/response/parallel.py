@@ -190,21 +190,22 @@ def par_write(filename, name, comm, chi0_wGG):
         w.close()
     world.barrier()
         
-def par_read(filename, name):
+def par_read(filename, name, Nw=None):
 
     from gpaw.mpi import world, rank, size
     from gpaw.io import open
 
     r = open(filename, 'r')
-    Nw = r.dimension('Nw')
+    if Nw is None:
+        Nw = r.dimension('Nw')
+    else:
+        assert Nw <= r.dimension('Nw')
     npw = r.dimension('npw')
     Nw_local = Nw // size
     chi0_wGG = np.zeros((Nw_local, npw, npw), dtype=complex)
 
-    for iw in range(Nw):
-        irank = iw // Nw_local
-        if rank == irank:
-            chi0_wGG[iw-irank*Nw_local] = r.get(name, iw)
+    for iw in range(Nw_local):
+        chi0_wGG[iw] = r.get(name, iw+rank*Nw_local)
 
     r.close()
     
