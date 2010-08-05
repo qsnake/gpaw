@@ -396,7 +396,7 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
             self.bd.comm.broadcast(abserr, band_rank)
             self.assertAlmostEqual(abserr.item(), 0, 10)
 
-        self.check_and_plot(P_ani, P0_ani, 11, 'overlap,inverse,after')
+        self.check_and_plot(P_ani, P0_ani, 10, 'overlap,inverse,after')
 
     def test_overlap_inverse_before(self):
         kpt = self.wfs.kpt_u[0]
@@ -431,7 +431,7 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
             self.bd.comm.broadcast(abserr, band_rank)
             self.assertAlmostEqual(abserr.item(), 0, 10)
 
-        self.check_and_plot(P_ani, P0_ani, 11, 'overlap,inverse,before')
+        self.check_and_plot(P_ani, P0_ani, 10, 'overlap,inverse,before')
 
 # -------------------------------------------------------------------
 
