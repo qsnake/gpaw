@@ -153,3 +153,8 @@ When updating the gpaw code in the future:
     ssh p024 ps -fL
 
   Numbers higher then **1** in the **NLWP** column mean multi-threaded job.
+
+  In case of openmpi it is necessary to set the :envvar:`OMP_NUM_THREADS` variable::
+
+    setenv OMP_NUM_THREADS 1 # [t]csh
+    export OMP_NUM_THREADS=1 # [ba]sh
