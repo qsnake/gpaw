@@ -80,13 +80,7 @@ class Domain:
         if np.product(self.parsize_c) != self.comm.size:
             raise RuntimeError('Bad domain decomposition!')
 
-        rnk = self.comm.rank
-        self.parpos_c = np.array(
-            [rnk // self.stride_c[0],
-             (rnk % self.stride_c[0]) // self.stride_c[1],
-             rnk % self.stride_c[1]])
-        assert np.dot(self.parpos_c, self.stride_c) == rnk
-
+        self.parpos_c = self.get_processor_position_from_rank()
         self.find_neighbor_processors()
 
     def scale_position(self, pos_v):
@@ -114,6 +108,16 @@ class Domain:
         rnk_c = np.floor(spos_c * self.parsize_c).astype(int)
         assert (rnk_c >= 0).all() and (rnk_c < self.parsize_c).all()
         return np.dot(rnk_c, self.stride_c)
+
+    def get_processor_position_from_rank(self, rank=None):
+        """Calculate position of a domain in the 3D grid of all domains."""
+        if rank is None:
+            rank = self.comm.rank
+        parpos_c = np.array([rank // self.stride_c[0],
+                             (rank % self.stride_c[0]) // self.stride_c[1],
+                             rank % self.stride_c[1]])
+        assert np.dot(parpos_c, self.stride_c) == rank
+        return parpos_c
 
     def find_neighbor_processors(self):
         """Find neighbor processors - surprise!
