@@ -1,6 +1,5 @@
 import numpy as np
 
-from gpaw.eigensolvers import get_eigensolver
 from gpaw.overlap import Overlap
 from gpaw.fd_operators import Laplace
 from gpaw.lfc import LocalizedFunctionsCollection as LFC

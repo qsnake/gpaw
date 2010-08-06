@@ -165,6 +165,9 @@ class PAW(PAWTextOutput):
             if key == 'basis' and  p['mode'] == 'fd':
                 continue
 
+            if key == 'eigensolver':
+                self.wfs.set_eigensolver(None)
+            
             if key in ['fixmom', 'mixer',
                        'verbose', 'txt', 'hund', 'random',
                        'eigensolver', 'poissonsolver', 'idiotproof', 'notify']:

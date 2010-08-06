@@ -9,6 +9,9 @@ from gpaw.utilities.timing import nulltimer
 class EmptyWaveFunctions:
     def __nonzero__(self):
         return False
+    
+    def set_eigensolver(self, eigensolver):
+        pass
 
     def set_orthonormalized(self, flag):
         pass
