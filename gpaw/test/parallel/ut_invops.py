@@ -19,7 +19,7 @@ from gpaw.grid_descriptor import GridDescriptor
 from gpaw.blacs import BandLayouts
 from gpaw.parameters import InputParameters
 from gpaw.xc_functional import XCFunctional
-from gpaw.setup import Setups
+from gpaw.setup import create_setup, Setups
 from gpaw.wavefunctions.base import WaveFunctions
 from gpaw.wavefunctions.fd import FDWaveFunctions
 from gpaw.fd_operators import Laplace # required but not really used
@@ -33,6 +33,11 @@ from gpaw.test.ut_common import ase_svnversion, shapeopt, TestCase, \
 
 # -------------------------------------------------------------------
 
+p = InputParameters(spinpol=False)
+xcfunc = XCFunctional(p.xc, 1+int(p.spinpol))
+p.setups = {'H': create_setup('H', xcfunc, p.lmax, p.setups, None),
+            'O': create_setup('O', xcfunc, p.lmax, p.setups, None)}
+
 class UTDomainParallelSetup(TestCase):
     """
     Setup a simple domain parallel calculation."""
@@ -41,7 +46,7 @@ class UTDomainParallelSetup(TestCase):
     nbands = 1
 
     # Spin-paired, single kpoint
-    nspins = 1
+    nspins = xcfunc.nspins
     nibzkpts = 1
 
     # Mean spacing and number of grid points per axis (G x G x G)
@@ -172,10 +177,8 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
 
         # Create setups for atoms
         self.Z_a = self.atoms.get_atomic_numbers()
-        par = InputParameters()
-        xcfunc = XCFunctional('LDA')
-        self.setups = Setups(self.Z_a, par.setups, par.basis,
-                             par.lmax, xcfunc)
+        self.setups = Setups(self.Z_a, p.setups, p.basis,
+                             p.lmax, xcfunc)
 
         # Create gamma-point dummy wavefunctions
         self.wfs = FDWFS(self.gd, self.bd, self.kpt_comm, self.setups,
