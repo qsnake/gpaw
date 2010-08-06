@@ -104,8 +104,7 @@ class XCFunctional:
             assert (nspins is not None)
             code = 'lxc' # libxc
             self.uses_libxc = True
-            self.mgga = True ## use real tau and local potential
-            local_tau = False ## use Weiszacker term
+            self.mgga = True
             self.orbital_dependent = True
             xcname = 'X_TPSS-C_TPSS'
             self.setupname = 'PBE'
@@ -113,8 +112,7 @@ class XCFunctional:
             assert (nspins is not None)
             code = 'lxc' # libxc
             self.uses_libxc = True
-            self.mgga = True ## use real tau and local potential
-            local_tau = False ## use Weiszacker term
+            self.mgga = True 
             self.orbital_dependent = True
             xcname = 'X_REVTPSS-C_REVTPSS'
             self.setupname = 'PBE'
@@ -122,8 +120,7 @@ class XCFunctional:
             assert (nspins is not None)
             code = 'lxc' # libxc
             self.uses_libxc = True
-            self.mgga = True ## use real tau and local potential
-            local_tau = False ## use Weiszacker term
+            self.mgga = True 
             self.orbital_dependent = True
             xcname = 'X_M06L-C_M06L'
             self.setupname = 'PBE'
