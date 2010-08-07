@@ -7,15 +7,18 @@ Installation guide
 Requirements
 ============
 
-1) Python 2.3 or later is required.  Python is available from http://www.python.org.
+1) Python 2.3 or later.  Python is available from http://www.python.org.
 
-2) Atomic Simulation Environment (:ase:`ASE <>`).
+2) NumPy_.
 
-3) NumPy_.
+3) Atomic Simulation Environment (:ase:`ASE <>`).
 
-4) BLAS and LAPACK libraries.
+4) C compiler - preferably gcc.
 
-5) An MPI library is required for parallel calculations.
+5) BLAS and LAPACK libraries. Start with your system provided defaults or e.g. http://www.amd.com/acml.
+   Consult the :ref:`best_performance` page.
+
+6) An MPI library required for parallel calculations.
 
 .. note::
 
