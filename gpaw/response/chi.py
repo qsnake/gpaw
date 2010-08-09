@@ -264,13 +264,11 @@ class CHI:
 
             for n in range(self.nbands):
 
-                self.kcomm.all_gather(np.array([ibzkpt1]), ibzkpt_kcomm)
-
-                if self.hilbert_trans:
-                    if (f_kn[ibzkpt_kcomm, n] < self.ftol).all():
-                        break
-
                 if calc.wfs.world.size != 1:
+                    self.kcomm.all_gather(np.array([ibzkpt1]), ibzkpt_kcomm)
+                    if self.hilbert_trans:
+                        if (f_kn[ibzkpt_kcomm, n] < self.ftol).all():
+                            break
                     for ikcomm in range(self.kcomm.size):
                         psit_g = self.get_wavefunction(ibzkpt_kcomm[ikcomm], n)
                         if self.kcomm.rank == ikcomm:
@@ -288,16 +286,15 @@ class CHI:
 
                 for m in range(self.nbands):
                     
-                    self.kcomm.all_gather(np.array([ibzkpt2]), ibzkpt_kcomm)
-                    
 		    if self.hilbert_trans:
 			check_focc = (f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > self.ftol
                     else:
                         check_focc = np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > self.ftol 
-                    check_focc_all = np.zeros(self.kcomm.size, dtype=bool)
-                    self.kcomm.all_gather(np.array([check_focc]), check_focc_all) 
 
                     if calc.wfs.world.size != 1:
+                        self.kcomm.all_gather(np.array([ibzkpt2]), ibzkpt_kcomm)
+                        check_focc_all = np.zeros(self.kcomm.size, dtype=bool)
+                        self.kcomm.all_gather(np.array([check_focc]), check_focc_all) 
                         for ikcomm in range(self.kcomm.size):
                             if check_focc_all[ikcomm]:
                                 psit_g = self.get_wavefunction(ibzkpt_kcomm[ikcomm], m)
@@ -367,7 +364,8 @@ class CHI:
 #                                if deltaw[wi + self.wS1] > 1e-8:
 #                                    specfunc_wGG[wi] += tmp_GG * deltaw[wi + self.wS1]
 
-            self.kcomm.barrier()            
+            if calc.wfs.world.size != 1:
+                self.kcomm.barrier()            
             if k == 0:
                 dt = time() - t0
                 totaltime = dt * self.nkpt_local

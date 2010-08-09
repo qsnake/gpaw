@@ -48,6 +48,29 @@ class DF(CHI):
         return dm_wGG
 
 
+    def get_chi(self):
+        """Solve Dyson's equation."""
+
+	if self.chi0_wGG is None:
+            self.initialize()
+            self.calculate()
+        else:
+            pass # read from file and re-initializing .... need to be implemented
+
+        kernel_GG = np.zeros((self.npw, self.npw))
+        chi_wGG = np.zeros_like(self.chi0_wGG)
+
+        for iG in range(self.npw):
+            qG = np.dot(self.q_c + self.Gvec_Gc[iG], self.bcell_cv)
+            kernel_GG[iG,iG] = 4 * pi / np.dot(qG, qG)
+
+        for iw in range(self.Nw_local):
+            tmp_GG = np.eye(self.npw, self.npw) - np.dot(self.chi0_wGG[iw], kernel_GG)
+            chi_wGG[iw] = np.dot(np.linalg.inv(tmp_GG) , self.chi0_wGG[iw])
+            
+        return chi_wGG
+
+
     def get_dielectric_function(self):
         """Calculate the dielectric function. Returns df1_w and df2_w.
 
@@ -80,6 +103,73 @@ class DF(CHI):
             self.df2_w = df2_w
 
         return self.df1_w, self.df2_w
+
+
+    def get_surface_response_function(self, z0=0., filename='surf_EELS'):
+        """Calculate surface response function."""
+
+        chi_wGG = self.get_chi()
+
+        assert self.acell_cv[0,2] == 0. and self.acell_cv[1,2] == 0.
+
+        Nz = self.nG[2] # number of points in z direction
+        tmp = np.zeros(Nz, dtype=int)
+        nGz = 0         # number of G_z 
+        for i in range(self.npw):
+            if self.Gvec_Gc[i, 0] == 0 and self.Gvec_Gc[i, 1] == 0:
+                tmp[nGz] = self.Gvec_Gc[i, 2]
+                nGz += 1
+
+        # The first nGz are all Gx=0 and Gy=0 component
+        assert (np.abs(self.Gvec_Gc[:nGz, :2]) < 1e-10).all()
+        chi_wgg_NLF = self.chi0_wGG[:, :nGz, :nGz]
+        chi_wgg_LFC = chi_wGG[:, :nGz, :nGz]
+        del chi_wGG
+        chi_wzz_NLF = np.zeros((self.Nw_local, Nz, Nz), dtype=complex)
+        chi_wzz_LFC = np.zeros((self.Nw_local, Nz, Nz), dtype=complex)        
+
+        # Fourier transform of chi_wgg to chi_wzz
+        Gz_g = tmp[:nGz] * self.bcell_cv[2,2]
+        z_z = np.linspace(0, self.acell_cv[2,2]-self.h_cv[2,2], Nz)
+        phase1_zg = np.exp(1j  * np.outer(z_z, Gz_g))
+        phase2_gz = np.exp(-1j * np.outer(Gz_g, z_z))
+
+        for iw in range(self.Nw_local):
+            chi_wzz_NLF[iw] = np.dot(np.dot(phase1_zg, chi_wgg_NLF[iw]), phase2_gz)            
+            chi_wzz_LFC[iw] = np.dot(np.dot(phase1_zg, chi_wgg_LFC[iw]), phase2_gz)
+        chi_wzz_NLF /= self.acell_cv[2,2]
+        chi_wzz_LFC /= self.acell_cv[2,2]        
+
+        # Get surface response function
+
+        z_z -= z0 / Bohr
+        q_v = np.dot(self.q_c, self.bcell_cv)
+        qq = sqrt(np.inner(q_v, q_v))
+        phase1_1z = np.array([np.exp(qq*z_z)])
+        phase2_z1 = np.exp(qq*z_z)
+
+        tmp1_w = np.zeros(self.Nw_local, dtype=complex)
+        tmp2_w = np.zeros(self.Nw_local, dtype=complex)        
+        for iw in range(self.Nw_local):
+            tmp1_w[iw] = np.dot(np.dot(phase1_1z, chi_wzz_NLF[iw]), phase2_z1)[0]
+            tmp2_w[iw] = np.dot(np.dot(phase1_1z, chi_wzz_LFC[iw]), phase2_z1)[0]            
+
+        tmp1_w *= -2 * pi / qq * self.h_cv[2,2]**2
+        tmp2_w *= -2 * pi / qq * self.h_cv[2,2]**2        
+        g1_w = np.zeros(self.Nw, dtype=complex)
+        g2_w = np.zeros(self.Nw, dtype=complex)        
+        self.wcomm.all_gather(tmp1_w, g1_w)
+        self.wcomm.all_gather(tmp2_w, g2_w)        
+
+        if rank == 0:
+            f = open(filename,'w')
+            for iw in range(self.Nw):
+                energy = iw * self.dw * Hartree
+                print >> f, energy, np.imag(g1_w[iw]), np.imag(g2_w[iw])
+            f.close()
+
+        # Wait for I/O to finish
+        self.comm.barrier()
 
 
     def check_sum_rule(self, df1_w, df2_w):
