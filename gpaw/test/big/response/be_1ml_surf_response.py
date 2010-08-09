@@ -1,3 +1,4 @@
+### Refer to Chulkov and Echenique, PRB 67, 245402 (2003) for comparison of results ###
 import numpy as np
 import sys
 import time
