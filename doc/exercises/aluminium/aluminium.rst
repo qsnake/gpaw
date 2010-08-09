@@ -1,6 +1,6 @@
-=========================
-Getting started with GPAW
-=========================
+=============
+Bulk aluminum
+=============
 
 .. default-role:: math
 

@@ -53,6 +53,9 @@ algorithms used <features_and_algorithms>`.
 News
 ====
 
+* The :ref:`exercises` are ready for use in the `CAMd summer
+  school 2010`_ (Aug 9 2010)
+
 * :ref:`GPAW version 0.7 <releasenotes>` released (Apr 23 2010)
 
 * GPAW is :math:`\Psi_k` `scientific highlight of the month`_ (Apr 3 2010)
@@ -102,6 +105,7 @@ News
 .. _GPAW course: http://www.csc.fi/english/csc/courses/archive/gpaw-2008-01
 .. _Trac: https://trac.fysik.dtu.dk/projects/gpaw
 .. _Sphinx: http://sphinx.pocoo.org
+.. _CAMd summer school 2010: http://www.camd.dtu.dk/English/Events/CAMD_Summer_School_2010.aspx
 .. _CAMd summer school 2008: http://www.camd.dtu.dk/English/Events/CAMD_Summer_School_2008/Programme.aspx
 .. _code sprint 2007: http://www.dtu.dk/Nyheder/Nyt_fra_Institutterne.aspx?guid={38B92D63-FB09-4DFA-A074-504146A2D678}
 .. _Virtual NanoLab: http://www.quantumwise.com/products/12-products/28-atk-se-200906#GPAW

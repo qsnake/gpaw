@@ -29,6 +29,7 @@ Old pages that need some more work
 .. toctree::
    :maxdepth: 2
 
+   exercises/summerschool10
    exercises/summerschool08
    technology
    introduction_to_paw
