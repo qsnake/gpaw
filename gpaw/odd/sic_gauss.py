@@ -6,6 +6,7 @@ import _gpaw
 from gpaw import debug
 from gpaw.utilities import erf, is_contiguous
 from math import atan2
+#from gpaw import wannier
 
 # computer generated code:
 # use c/bmgs/sharmonic.py::construct_gauss_code(lmax) to generate more
@@ -58,13 +59,14 @@ class Gaussian:
     spherical harmonic.
     The gaussians are centered in the middle of input grid-descriptor."""
     
-    def __init__(self, gd, cell, pbc, a=10., w=0.05):
+    def __init__(self, gd, cell, pbc, dens, a=10., w=0.05):
         #
-        self.cell  = cell
-        self.pbc   = pbc
-        self.gd    = gd
-        self.alpha = a
-        self.width = w
+        self.cell    = cell
+        self.density = dens
+        self.pbc     = pbc
+        self.gd      = gd
+        self.alpha   = a
+        self.width   = w
         #
         # transformation from cartesian to direct coordinates
         self.T    = np.linalg.solve(self.cell.T, np.eye(3))
@@ -96,10 +98,25 @@ class Gaussian:
                 self.p[i,:] = np.exp(1j*2.0*pi*self.x[i,:])
             else:
                 #
-                # finite dimension 
-                self.p[i,:] = 2.0*pi*self.x[i,:]
+                # finite dimension
+                self.p[i,:] = np.exp(1j*2.0*pi*self.x[i,:])
         #        
         return
+
+#    def localize_states(self,psi_nG,finite=False):
+#        #
+#        if (finite):
+#            
+#        #nbands   = psi_nG.shape[0]
+#        #dens_nG  = np.ndarray(psi_nG.shape,dtype=complex)
+#        #
+#        #print nbands
+#        #
+#        #for c in range(3):
+#        #    for n1 in range(nbands):
+#        #        dens_nG[n1,:] = self.p[c,:]*psi_nG[n1,:] 
+#        #        for n2 in range(nbands):
+#        #            Z_nnc[n1,n2] = self.gd.integrate(dens_nG[n1,:]*psi_nG[n2,:])
 
     def get_positions(self,dens):
         #
@@ -122,6 +139,26 @@ class Gaussian:
                 rpos[i] = cpos[i].real/(2.0*pi)
         #
         return rpos
+
+    def get_wannier(self, psit_nG, nt_g):
+        #
+        nbands = psit_nG.shape[0]
+        #
+        Z_cnn = np.zeros((nbands,nbands,3),dtype=complex)
+        #
+        for i in range(3):
+            #
+            for n in range(nbands):
+                for m in range(nbands):
+                    if (psit_nG[n,:].shape==nt_g.shape):
+                        nt_g = psit_nG[n,:]*psit_nG[m,:]
+                    else:
+                        nt_G = psit_nG[n,:]*psit_nG[m,:]
+                        self.density.interpolator.apply(nt_G,nt_g)
+                    Z_cnn[n,m,i] = np.sum(self.p[i,:]*nt_g) * self.gd.dv
+            #
+        self.gd.comm.sum(Z_cnn)
+        return Z_cnn
     
     def get_fields2(self, x0, chg, pot, mask,
                     tiny=1e-12,huge=1e+12):
