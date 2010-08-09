@@ -172,8 +172,12 @@ class DF(CHI):
         self.comm.barrier()
 
 
-    def check_sum_rule(self, df1_w, df2_w):
+    def check_sum_rule(self, df1_w=None, df2_w=None):
         """Check f-sum rule."""
+
+	if df1_w is None:
+            df1_w = self.df1_w
+            df2_w = self.df2_w
 
         N1 = N2 = 0
         for iw in range(self.Nw):

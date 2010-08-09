@@ -6,7 +6,11 @@ def agts(queue):
 
     calc2 = queue.add('silicon_ABS.py',
                      ncpus=16,
-                     walltime=40)    
+                     walltime=40)   
+ 
+    calc3 = queue.add('be_1ml_surf_response.py',
+                     ncpus=8,
+                     walltime=120)
 
     queue.add('plot_spectra.py',
               ncpus=1,
