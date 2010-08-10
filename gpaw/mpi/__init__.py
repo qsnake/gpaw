@@ -570,6 +570,8 @@ class SerialCommunicator:
                                   'serial mode')
 
     def waitall(self, request):
+        if not requests:
+            return
         raise NotImplementedError('Calls to mpi waitall should not happen in '
                                   'serial mode')
 
