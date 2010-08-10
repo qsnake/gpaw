@@ -2,6 +2,7 @@
 
 import os
 import datetime
+import numpy as np
 import pylab as pl
 
 
@@ -20,7 +21,7 @@ def polygon(x, y1, y2, *args, **kwargs):
 
 def plot_count(fname, dpi=70):
     # Load data
-    date, libxc, c, code, test, doc = pl.load(fname, unpack=True)
+    date, libxc, c, code, test, doc = np.loadtxt(fname, unpack=True)
     zero = pl.zeros_like(date)
 
     fig = pl.figure(1, figsize=(7.5, 5), dpi=dpi)
