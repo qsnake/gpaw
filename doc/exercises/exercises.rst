@@ -25,18 +25,26 @@ of :ase:`ASE <>` and Python_.  Here are some useful resources:
 
 The exercises are used in the course `Electronic structure methods
 in materials physics, chemistry and biology
-<http://www.kurser.dtu.dk/10302.aspx>`_:
+<http://www.kurser.dtu.dk/10302.aspx>`_.
+
+Introductory exercises (do these first):
 
 .. toctree::
    :maxdepth: 1
 
    gettingstarted/gettingstarted
-   aluminium/aluminium
+   wavefunctions/wavefunctions
+
+Advanced exercises:
+
+.. toctree::
+   :maxdepth: 1
+
+   vibrations/vibrations
    surface/surface
    diffusion/diffusion
-   vibrations/vibrations
+   aluminium/aluminium
    neb/neb
-   wavefunctions/wavefunctions
    wannier/wannier
    iron/iron
    dos/dos

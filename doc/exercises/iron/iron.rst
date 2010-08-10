@@ -1,3 +1,5 @@
+.. _iron_exercise:
+
 ====================================
 Electron spin and magnetic structure
 ====================================

@@ -1,6 +1,6 @@
-======================================================
-Vibrational frequencies of the H\ :sub:`2`\ O molecule
-======================================================
+================================================
+Vibrational modes of the H\ :sub:`2`\ O molecule
+================================================
 
 Density functional theory can be used to calculate vibrational frequencies of
 molecules, e.g. either in the gas phase or on a surface. These results can be

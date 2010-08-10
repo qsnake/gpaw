@@ -87,10 +87,12 @@ bulk Aluminum.
          for a in [3.9, 4.0, 4.1, 4.2]:
              name = 'bulk-fcc-%.1f' % a
 
-     and then indent the rest of the code (that depends on `a`) by
-     four spaces.  Remove the ``view(bulk)`` line and change ``h=0.2``
-     to ``gpts=12,12,12`` so that we are sure that 12x12x12 grid
-     points will be used for all lattice constants.
+     and then indent the rest of the code by
+     four spaces (Python uses indentation to group statements together
+     - thus the for-loop will end at the first unindented line).
+     Remove the ``view(bulk)`` line and change ``h=0.2`` to
+     ``gpts=12,12,12`` so that we are sure that 12x12x12 grid points
+     will be used for all lattice constants.
 
 * Fit the data you have obtained to get `a_0` and the energy curve
   minimum `E_0=E(a_0)`.  From your fit, calculate the bulk
@@ -100,7 +102,7 @@ bulk Aluminum.
 
   where *M* is the number of atoms per cubic unit cell:
   `V=Ma^3` (`M=4` for fcc).  Make the fit using your favorite math
-  package (Mathematica/MatLab/Maple/Python/...) or use :program:`ag`
+  package (SciPy/Mathematica/MatLab/Maple/...) or use :program:`ag`
   like this::
 
     $ ag bulk-*.txt
@@ -171,5 +173,5 @@ Equilibrium lattice properties for bcc
   :ref:`zero_energy`).  This exercise is sensitive to the number of
   **k**-points, make sure that your **k**-point sampling is dense
   enough.  Also make sure your energies are converged with respect to
-  the number of grid points used (see the *atomization energy*
-  exercise).
+  the number of grid points used (see the exercise on
+  :ref:`parameters_exercise`).

@@ -26,7 +26,7 @@ slab.set_calculator(calc)
 
 qn = QuasiNewton(slab, trajectory='hollow.traj')
 
-# Find optimal height.  The stopping criteria is: the force on the
+# Find optimal height.  The stopping criterion is: the force on the
 # Au atom should be less than 0.05 eV/Ang
 qn.run(fmax=0.05)
 

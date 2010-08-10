@@ -2,10 +2,11 @@
 Density of states
 =================
 
-Take a look at the :svn:`~doc/exercises/dos/dos.py` program
-and try to get a rough idea of what it can do for you.  Use it to plot
-the density of states (DOS) for the three Fe configurations (on the
-*x*-axis you have the energy relative to the Fermilevel).
+Take a look at the :svn:`~doc/exercises/dos/dos.py` program and try to
+get a rough idea of what it can do for you.  Use it to plot the
+density of states (DOS) for the three Fe configurations from the
+:ref:`iron_exercise` exercise (on the *x*-axis you have the energy
+relative to the Fermilevel).
 
 * Do the DOS plots integrate to the correct numbers? (i.e.
   number of bands).
