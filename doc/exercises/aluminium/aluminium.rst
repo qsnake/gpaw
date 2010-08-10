@@ -131,10 +131,14 @@ Convergence in number of **k**-points
 Now we will investigate the necessary **k**-point sampling for bulk
 fcc Aluminum; this is a standard first step in all DFT calculations.
 
-.. highlight:: bash
-
 * Repeat the calculation above for the equilibrium lattice constant
   for more dense Brillouin zone samplings (try ``k=6,8,10,...``).
+
+  .. hint::
+
+     You may want to speed up these calculations by running them in
+     parallel.  Use ``parallel={'domain': 1}`` to force
+     parallelization over **k**-points.
 
 * Estimate the necessary number of **k**-points for achieving an
   accurate value for the lattice constant.

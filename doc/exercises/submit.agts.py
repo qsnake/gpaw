@@ -1,7 +1,7 @@
 def agts(queue):
     queue.add('neb/neb1.py', ncpus=8)
-    queue.add('aluminium/Al_fcc.py', ncpus=8)
-    queue.add('aluminium/Al_fcc_convergence.py', ncpus=8)
+    queue.add('aluminium/Al_fcc.py', ncpus=4)
+    queue.add('aluminium/Al_lattice.py', ncpus=8)
     queue.add('diffusion/initial.py', ncpus=8)
     sol = queue.add('diffusion/solution.py', ncpus=8)
     queue.add('diffusion/densitydiff.py', deps=[sol])
