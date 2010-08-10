@@ -131,6 +131,7 @@ def setup(app):
 
     # Get files that we can't generate:
     for dir, file in [
+        ('.', 'camd.png'),
         ('tutorials/xas', 'xas_illustration.png'),
         ('tutorials/xas', 'xas_h2o_convergence.png')]:
         get('gpaw-stuff', [file], dir, jjwww)

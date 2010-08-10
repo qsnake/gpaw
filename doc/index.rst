@@ -51,7 +51,7 @@ algorithms used <features_and_algorithms>`.
 
 .. note::
 
-    **CAMd** summer school 2010 links:
+    |CAMd| Summer School 2010 links:
 
     * Programme_
     * :ref:`exercises`
@@ -59,6 +59,7 @@ algorithms used <features_and_algorithms>`.
 
 .. _Programme:
    http://www.camd.dtu.dk/English/Events/CAMD_Summer_School_2010.aspx
+.. |CAMd| image:: camd.png
 
 
 
