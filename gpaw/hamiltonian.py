@@ -124,26 +124,31 @@ class Hamiltonian:
             self.dH_asp is None and (rank_a == self.gd.comm.rank).any()):
             self.dH_asp = {}
 
-        if self.dH_asp is not None:
+        if self.rank_a is not None and self.dH_asp is not None:
+            self.timer.start('Redistribute')
             requests = []
-            dH_asp = {}
-            for a in self.vbar.my_atom_indices: #XXX a better way to obtain?
-                if a in self.dH_asp:
-                    dH_asp[a] = self.dH_asp.pop(a)
-                else:
-                    # Get matrix from old domain:
-                    ni = self.setups[a].ni
-                    dH_sp = np.empty((self.nspins, ni * (ni + 1) // 2))
-                    dH_asp[a] = dH_sp
-                    requests.append(self.gd.comm.receive(dH_sp, self.rank_a[a],
-                                                         tag=a, block=False))
-            for a, dH_sp in self.dH_asp.items():
+            flags = (self.rank_a != rank_a)
+            my_incoming_atom_indices = np.argwhere(np.bitwise_and(flags, \
+                rank_a == self.gd.comm.rank)).ravel()
+            my_outgoing_atom_indices = np.argwhere(np.bitwise_and(flags, \
+                self.rank_a == self.gd.comm.rank)).ravel()
+
+            for a in my_incoming_atom_indices:
+                # Get matrix from old domain:
+                ni = self.setups[a].ni
+                dH_sp = np.empty((self.nspins, ni * (ni + 1) // 2))
+                requests.append(self.gd.comm.receive(dH_sp, self.rank_a[a],
+                                                     tag=a, block=False))
+                assert a not in self.dH_asp
+                self.dH_asp[a] = dH_sp
+
+            for a in my_outgoing_atom_indices:
                 # Send matrix to new domain:
+                dH_sp = self.dH_asp.pop(a)
                 requests.append(self.gd.comm.send(dH_sp, rank_a[a],
                                                   tag=a, block=False))
-            for request in requests:
-                self.gd.comm.wait(request)
-            self.dH_asp = dH_asp
+            self.gd.comm.waitall(requests)
+            self.timer.stop('Redistribute')
 
         if self.xc.xcfunc.mgga:
             self.xc.set_positions(spos_ac)

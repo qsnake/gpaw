@@ -118,27 +118,31 @@ class Density:
             self.D_asp is None and (rank_a == self.gd.comm.rank).any()):
             self.D_asp = {}
 
-        if self.D_asp is not None:
+        if self.rank_a is not None and self.D_asp is not None:
+            self.timer.start('Redistribute')
             requests = []
-            D_asp = {}
-            for a in self.nct.my_atom_indices:
-                if a in self.D_asp:
-                    D_asp[a] = self.D_asp.pop(a)
-                else:
-                    # Get matrix from old domain:
-                    ni = self.setups[a].ni
-                    D_sp = np.empty((self.nspins, ni * (ni + 1) // 2))
-                    D_asp[a] = D_sp
-                    requests.append(self.gd.comm.receive(D_sp, self.rank_a[a],
-                                                         tag=a, block=False))
-                
-            for a, D_sp in self.D_asp.items():
+            flags = (self.rank_a != rank_a)
+            my_incoming_atom_indices = np.argwhere(np.bitwise_and(flags, \
+                rank_a == self.gd.comm.rank)).ravel()
+            my_outgoing_atom_indices = np.argwhere(np.bitwise_and(flags, \
+                self.rank_a == self.gd.comm.rank)).ravel()
+
+            for a in my_incoming_atom_indices:
+                # Get matrix from old domain:
+                ni = self.setups[a].ni
+                D_sp = np.empty((self.nspins, ni * (ni + 1) // 2))
+                requests.append(self.gd.comm.receive(D_sp, self.rank_a[a],
+                                                     tag=a, block=False))
+                assert a not in self.D_asp
+                self.D_asp[a] = D_sp
+
+            for a in my_outgoing_atom_indices:
                 # Send matrix to new domain:
+                D_sp = self.D_asp.pop(a)
                 requests.append(self.gd.comm.send(D_sp, rank_a[a],
                                                   tag=a, block=False))
-            for request in requests:
-                self.gd.comm.wait(request)
-            self.D_asp = D_asp
+            self.gd.comm.waitall(requests)
+            self.timer.stop('Redistribute')
 
         self.rank_a = rank_a
 

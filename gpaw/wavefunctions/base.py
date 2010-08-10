@@ -215,34 +215,33 @@ class WaveFunctions(EmptyWaveFunctions):
                 kpt.P_ani = {}
         """
 
-        # Should we use pt.my_atom_indices or basis_functions.my_atom_indices?
-        # Regardless, they are updated after this invocation, so here's a hack:
-        my_atom_indices = np.argwhere(rank_a == self.gd.comm.rank).ravel()
-
         if self.rank_a is not None and self.kpt_u[0].P_ani is not None:
+            self.timer.start('Redistribute')
             requests = []
-            P_auni = {}
-            for a in my_atom_indices:
-                if a in self.kpt_u[0].P_ani:
-                    P_uni = np.array([kpt.P_ani.pop(a) for kpt in self.kpt_u])
-                else:
-                    # Get matrix from old domain:
-                    mynks = len(self.kpt_u)
-                    ni = self.setups[a].ni
-                    P_uni = np.empty((mynks, self.mynbands, ni), self.dtype)
-                    requests.append(self.gd.comm.receive(P_uni, self.rank_a[a],
-                                                         tag=a, block=False))
-                P_auni[a] = P_uni
-            for a in self.kpt_u[0].P_ani.keys():
+            mynks = len(self.kpt_u)
+            flags = (self.rank_a != rank_a)
+            my_incoming_atom_indices = np.argwhere(np.bitwise_and(flags, \
+                rank_a == self.gd.comm.rank)).ravel()
+            my_outgoing_atom_indices = np.argwhere(np.bitwise_and(flags, \
+                self.rank_a == self.gd.comm.rank)).ravel()
+
+            for a in my_incoming_atom_indices:
+                # Get matrix from old domain:
+                ni = self.setups[a].ni
+                P_uni = np.empty((mynks, self.mynbands, ni), self.dtype)
+                requests.append(self.gd.comm.receive(P_uni, self.rank_a[a],
+                                                     tag=a, block=False))
+                for myu, kpt in enumerate(self.kpt_u):
+                    assert a not in kpt.P_ani
+                    kpt.P_ani[a] = P_uni[myu]
+
+            for a in my_outgoing_atom_indices:
                 # Send matrix to new domain:
                 P_uni = np.array([kpt.P_ani.pop(a) for kpt in self.kpt_u])
                 requests.append(self.gd.comm.send(P_uni, rank_a[a],
                                                   tag=a, block=False))
-            for request in requests:
-                self.gd.comm.wait(request)
-            for u, kpt in enumerate(self.kpt_u):
-                assert len(kpt.P_ani.keys()) == 0
-                kpt.P_ani = dict([(a,P_uni[u],) for a,P_uni in P_auni.items()])
+            self.gd.comm.waitall(requests)
+            self.timer.stop('Redistribute')
 
         self.rank_a = rank_a
 
