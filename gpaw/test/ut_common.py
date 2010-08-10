@@ -4,7 +4,7 @@ __all__ = ['ase_svnversion', 'shapeopt', 'TestCase', 'TextTestRunner', \
     'CustomTextTestRunner', 'defaultTestLoader', 'initialTestLoader', \
     'create_random_atoms', 'create_parsize_maxbands', 'create_parsize_minbands']
 
-partest = False
+partest = True
 
 # -------------------------------------------------------------------
 

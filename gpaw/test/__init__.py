@@ -200,6 +200,7 @@ tests = [
     'parallel/ut_hsblacs.py',
     'parallel/ut_invops.py',
     'parallel/ut_kptops.py',
+    'parallel/ut_redist.py',
     'parallel/pblas.py',
     'parallel/blacsdist.py',
     'parallel/scalapack.py',
