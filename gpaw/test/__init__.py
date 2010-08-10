@@ -136,6 +136,7 @@ tests = [
     'degeneracy.py',
     'h2o_xas.py',
     'fermilevel.py',
+    'al_chain.py',
     'bulk.py',
     'si.py',
     'gemm.py',

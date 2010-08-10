@@ -624,14 +624,23 @@ def distribute_cpus(parsize, parsize_bands, nspins, nibzkpts, comm=world):
     size = comm.size
     rank = comm.rank
 
-    ntot = nspins * nibzkpts * parsize_bands
-    if parsize is None:
-        ndomains = size // gcd(ntot, size)
-    elif type(parsize) is int:
-        ndomains = parsize
+    assert size % parsize_bands == 0
+    
+    nsk = nspins * nibzkpts
+
+    if parsize is not None:
+        if type(parsize) is int:
+            ndomains = parsize
+        else:
+            ndomains = parsize[0] * parsize[1] * parsize[2]
+        assert (size // parsize_bands) % ndomains == 0
+
+        # How many spin/k-point combinations do we get per node:
+        nu, x = divmod(nsk, size // parsize_bands // ndomains)
+        assert x == 0 or nu >= 2, 'load imbalance!'
     else:
-        parsize_c = parsize
-        ndomains = parsize_c[0] * parsize_c[1] * parsize_c[2]
+        ntot = nsk * parsize_bands
+        ndomains = size // gcd(ntot, size)
 
     r0 = (rank // ndomains) * ndomains
     ranks = np.arange(r0, r0 + ndomains)
@@ -646,7 +655,6 @@ def distribute_cpus(parsize, parsize_bands, nspins, nibzkpts, comm=world):
     band_comm = comm.new_communicator(ranks)
 
     assert size == domain_comm.size * kpt_comm.size * band_comm.size
-    assert nspins * nibzkpts % kpt_comm.size == 0
 
     return domain_comm, kpt_comm, band_comm
 
@@ -783,4 +791,3 @@ if parallel and not (dry_run_size > 1):
             world.abort(42)
 
     atexit.register(cleanup)
-    

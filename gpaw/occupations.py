@@ -408,12 +408,25 @@ class SmoothDistribution(ZeroKelvin):
         
     def guess_fermi_level(self, wfs):
         fermilevel = 0.0
-        myeps_n = np.ravel([wfs.bd.collect(kpt.eps_n) for kpt in wfs.kpt_u])
+
+        # find the maximum length of kpt_u:
+        nu = wfs.nu
+        if wfs.kpt_rank0 < wfs.kpt_comm.size:
+            nu += 1
+
+        # myeps_un must have same size on all cpu's so we can use gather.
+        myeps_un = np.empty((nu, wfs.nbands))
+        for u, kpt in enumerate(wfs.kpt_u):
+            myeps_un[u] = wfs.bd.collect(kpt.eps_n)
+        if len(wfs.kpt_u) < nu:
+            myeps_un[-1] = 1.0e10  # fill in large dummy values
+        myeps_n = myeps_un.ravel()
+        
         if wfs.bd.comm.rank == 0:
             if wfs.kpt_comm.rank > 0:
                 wfs.kpt_comm.gather(myeps_n, 0)
             else:
-                eps_n = np.empty(wfs.nspins * wfs.nibzkpts * wfs.nbands)
+                eps_n = np.empty(nu * wfs.kpt_comm.size * wfs.nbands)
                 wfs.kpt_comm.gather(myeps_n, 0, eps_n)
                 eps_n = eps_n.ravel()
                 eps_n.sort()

@@ -75,10 +75,19 @@ class WaveFunctions(EmptyWaveFunctions):
         # Total number of k-point/spin combinations:
         nks = self.nibzkpts * nspins
 
-        # Number of k-point/spin combinations on this cpu:
-        mynks = nks // kpt_comm.size
+        # Ranks < self.kpt_rank0 have self.nu k-point/spin
+        # combinations and ranks >= self.kpt_rank0 have self.nu+1
+        # k-point/spin combinations.
+        self.nu, x = divmod(nks, self.kpt_comm.size)
+        self.kpt_rank0 = self.kpt_comm.size - x
 
-        ks0 = kpt_comm.rank * mynks
+        # XXX hide this stuff in a k-point descriptor!
+        ks0 = kpt_comm.rank * self.nu
+        mynks = self.nu  # number of k-point/spin combinations on this cpu
+        if kpt_comm.rank >= self.kpt_rank0:
+            ks0 += kpt_comm.rank - self.kpt_rank0
+            mynks += 1
+            
         self.kpt_u = []
         sdisp_cd = gd.sdisp_cd
         for ks in range(ks0, ks0 + mynks):
@@ -102,6 +111,16 @@ class WaveFunctions(EmptyWaveFunctions):
         self.positions_set = False
 
         self.set_setups(setups)
+
+    def find_kpt(self, k, s):
+        """Find rank and local index."""
+        ks = k + self.nibzkpts * s
+        if ks < self.nu * self.kpt_rank0:
+            kpt_rank, u = divmod(ks, self.nu)
+        else:
+            kpt_rank, u = divmod(ks - self.nu * self.kpt_rank0, self.nu + 1)
+            kpt_rank += self.kpt_rank0
+        return kpt_rank, u
 
     def set_setups(self, setups):
         self.setups = setups
@@ -275,7 +294,7 @@ class WaveFunctions(EmptyWaveFunctions):
         global master."""
 
         kpt_u = self.kpt_u
-        kpt_rank, u = divmod(k + self.nibzkpts * s, len(kpt_u))
+        kpt_rank, u = self.find_kpt(k, s)
 
         if self.kpt_comm.rank == kpt_rank:
             a_nx = getattr(kpt_u[u], name)
@@ -316,7 +335,7 @@ class WaveFunctions(EmptyWaveFunctions):
         global master."""
 
         kpt_u = self.kpt_u
-        kpt_rank, u = divmod(k + self.nibzkpts * s, len(kpt_u))
+        kpt_rank, u = self.find_kpt(k, s)
 
         if self.kpt_comm.rank == kpt_rank:
             if isinstance(value, str):
@@ -349,7 +368,7 @@ class WaveFunctions(EmptyWaveFunctions):
         the (k,s) pair, for this rank, send to the global master."""
 
         kpt_u = self.kpt_u
-        kpt_rank, u = divmod(k + self.nibzkpts * s, len(kpt_u))
+        kpt_rank, u = self.find_kpt(k, s)
         P_ani = kpt_u[u].P_ani
 
         natoms = len(self.rank_a) # it's a hack...
@@ -390,9 +409,7 @@ class WaveFunctions(EmptyWaveFunctions):
         domain a full array on the domain master and send this to the
         global master."""
 
-        nk = len(self.ibzk_kc)
-        mynu = len(self.kpt_u)
-        kpt_rank, u = divmod(k + nk * s, mynu)
+        kpt_rank, u = self.find_kpt(k, s)
         band_rank, myn = self.bd.who_has(n)
 
         psit1_G = self._get_wave_function_array(u, myn)
