@@ -569,7 +569,7 @@ class SerialCommunicator:
         raise NotImplementedError('Calls to mpi wait should not happen in '
                                   'serial mode')
 
-    def waitall(self, request):
+    def waitall(self, requests):
         if not requests:
             return
         raise NotImplementedError('Calls to mpi waitall should not happen in '
