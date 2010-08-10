@@ -8,7 +8,7 @@ Setting up your UNIX environment
 --------------------------------
 
 The first time you use the databar computers, you must configure your
-environment.  Open the `.bashrc` file in your favourite editor:
+environment.  Open the ``.bashrc`` file in your favourite editor:
 
 .. highlight:: bash
 
@@ -51,8 +51,8 @@ increased speed, by specifying e.g. 4 CPUs like this::
 
   $ gpaw-qsub 4 filename.py
 
-The `qstat` or :samp:`qstat -u {USERNAME}` commands can be used to
-monitor running jobs, and :samp:`qdel {NUMBER}` to delete jobs if
+The ``qstat`` or :samp:`qstat -u {USERNAME}` commands can be used to
+monitor running jobs, and :samp:`qdel {JOB_ID}` to delete jobs if
 necessary.
 
 
