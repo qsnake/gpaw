@@ -5,22 +5,19 @@ from ase.visualize import view
 from gpaw import GPAW
 
 name = 'Al-fcc'
-a = 4.05   # fcc lattice paramter
+a = 4.05  # fcc lattice paramter
 b = a / 2 
 
-bulk = Atoms(symbols='4Al',
-             positions=[(0, 0, 0),
-                        (b, b, 0),
-                        (0, b, b),
-                        (b, 0, b)],
-             cell=(a, a, a),
+bulk = Atoms('Al',
+             cell=[[0, b, b],
+                   [b, 0, b],
+                   [b, b, 0]],
              pbc=True)
 
 view(bulk)
 
 k = 4
-calc = GPAW(nbands=16,          # number of electronic bands
-            h=0.2,              # grid spacing
+calc = GPAW(h=0.2,              # grid spacing
             kpts=(k, k, k),     # k-points
             txt=name + '.txt')  # output file
 

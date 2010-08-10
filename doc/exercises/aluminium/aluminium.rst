@@ -33,29 +33,21 @@ Typically, when you execute a GPAW electronic structure calculation,
 you get two files:
 
 * A tar-file (conventional suffix :file:`.gpw`) containing binary data
-  input/output files and an XML file. The contents may be viewed with
-  the command::
-
-    $ tar -tf Al-fcc.gpw
-
-  The file :file:`info.xml` has information about array sizes, types,
-  endianness, parameters, and more.  Try::
-
-    $ tar xf Al-fcc.gpw info.xml
-    $ less info.xml
-
-  or use ``tar --help`` for more options.
+  such as eigenvalues, electron density and wave functions (see
+  :ref:`restart_files`).
 
 * An ASCII formatted log file (conventional suffix :file:`.txt`) that
   monitors the progress of the calculation.
 
-Try to take a look at the file :file:`Al-fcc.txt`.  You can conveniently
-monitor some variables by using the :command:`grep` utility.  By typing::
+Try to take a look at the file :file:`Al-fcc.txt`.  Find the number of
+grid points used - it should be 12x12x12 points.  You can conveniently
+monitor some variables by using the :command:`grep` utility.  By
+typing::
 
   $ grep iter Al-fcc.txt
 
 you see the progress of the iteration cycles including convergence of
-wavefunctions, density and total energy. If the txt keyword is omitted 
+wave functions, density and total energy. If the ``txt`` keyword is omitted 
 the log output will be printed directly in the terminal.
 
 .. highlight:: python
@@ -76,62 +68,40 @@ typing the following from the Python interpreter::
 Try to make :program:`VMD` show an isosurface of the electron density.
 
 
-Convergence in **k**-points and grid spacing
---------------------------------------------
-
-Now we will investigate the necessary **k**-point sampling
-and grid spacing needed for bulk fcc Aluminum at the
-experimental lattice constant `a_0` = 4.05 Å; this is a standard
-first step in all DFT calculations.
-
-.. highlight:: bash
-
-* Copy the script
-  :svn:`~doc/exercises/aluminium/Al_fcc_convergence.py` to a
-  place in your file
-  area.  Read the script and get an idea of what it will do. Then run
-  the script by typing::
-
-    $ python Al_fcc_convergence.py
-
-* Estimate the necessary values of grid spacing and **k**-point sampling.
-
-* Do you expect that the **k**-point / grid spacing test is universal
-  for all other Aluminum structures than fcc? What about other
-  chemical elements ?
-
-* Are both **k**-point / grid spacing energy convergence covered by the
-  variational principle, i.e. are all your calculated energies upper
-  bounds to *true* total energy?
-
-* Why do you think Al was chosen for this exercise?
-
-..
-  We use h = 0.2 Å
-  and kpts = (8,8,8) for fcc and  kpts = (10,10,10) for bcc
-
-
 Equilibrium lattice properties
 ==============================
 
-Having determined the necessary values of grid spacing and
-**k**-point sampling, we now proceed to calculate some equilibrium
-lattice properties of bulk Aluminum.
+We now proceed to calculate some equilibrium lattice properties of
+bulk Aluminum.
 
 * First map out the cohesive curve `E(a)` for Al(fcc), i.e.  the
-  total energy as function of lattice constant a, around the
+  total energy as function of lattice constant `a`, around the
   experimental equilibrium value of `a_0` = 4.05 Å.  Get four or more
   energy points, so that you can make a fit.
+
+  .. hint::
+
+     Modify :svn:`~doc/exercises/aluminium/Al_fcc.py` by adding a
+     for-loop like this::
+
+         for a in [3.9, 4.0, 4.1, 4.2]:
+             name = 'bulk-fcc-%.1f' % a
+
+     and then indent the rest of the code (that depends on `a`) by
+     four spaces.  Remove the ``view(bulk)`` line and change ``h=0.2``
+     to ``gpts=12,12,12`` so that we are sure that 12x12x12 grid
+     points will be used for all lattice constants.
 
 * Fit the data you have obtained to get `a_0` and the energy curve
   minimum `E_0=E(a_0)`.  From your fit, calculate the bulk
   modulus
 
-  .. math:: B = \frac{M}{9a_0}\frac{d^2 E}{da^2}
+  .. math:: B = V\frac{d^2 E}{dV^2} = \frac{M}{9a_0}\frac{d^2 E}{da^2},
 
-  for `a = a_0`, where *M* is the number of atoms per cubic unit
-  cell.  Make the fit using your favorite math package
-  (Mathematica/MatLab/Maple/Python/...) or use :program:`ag` like this::
+  where *M* is the number of atoms per cubic unit cell:
+  `V=Ma^3` (`M=4` for fcc).  Make the fit using your favorite math
+  package (Mathematica/MatLab/Maple/Python/...) or use :program:`ag`
+  like this::
 
     $ ag bulk-*.txt
 
@@ -144,11 +114,31 @@ lattice properties of bulk Aluminum.
 * Compare your results to the experimental values `a_0` = 4.05 Å and `B`
   = 76 GPa.  Mind the units when you calculate the bulk modulus (read
   about ASE-units :ase:`here <ase/units.html>`).
-  What are the possible error sources, and what quantity is more
-  sensitive, the lattice constant or the bulk modulus?
+  What are the possible error sources?
+
+  .. note::
+
+     The LDA reference values are: `a_0` = 3.98 Å and `B` = 84.0 GPa -
+     see S. Kurth *et al.*, Int. J. Quant. Chem. **75** 889-909
+     (1999).
 
 
+Convergence in number of **k**-points
+-------------------------------------
 
+Now we will investigate the necessary **k**-point sampling for bulk
+fcc Aluminum; this is a standard first step in all DFT calculations.
+
+.. highlight:: bash
+
+* Repeat the calculation above for the equilibrium lattice constant
+  for more dense Brillouin zone samplings (try ``k=6,8,10,...``).
+
+* Estimate the necessary number of **k**-points for achieving an
+  accurate value for the lattice constant.
+
+* Do you expect that this **k**-point test is universal for all other
+  Aluminum structures than fcc?  What about other chemical elements ?
 
 
 Equilibrium lattice properties for bcc
@@ -157,11 +147,11 @@ Equilibrium lattice properties for bcc
 * Set up a similar calculation for bcc, in the minimal unit cell. Note that 
   the cubic unit cell for a bcc lattice only contains two atoms.
   
-* Make a qualified starting guess on *a*\ :sub:`bcc` from the lattice
+* Make a qualified starting guess on `a_\text{bcc}` from the lattice
   constant for fcc, that you have determined above. One can either
   assume that the primitive unit cell volumes of the fcc and bcc
   structure are the same or that the nearest neighbor distances are
-  the same. Find a guess for *a*\ :sub:`bcc` for both
+  the same. Find a guess for `a_\text{bcc}` for both
   assumptions. Later, you can comment on which assumption gives the
   guess closer to the right lattice constant.
 
@@ -169,24 +159,17 @@ Equilibrium lattice properties for bcc
   :program:`ag` this
   is done by choosing :menuselection:`View --> Repeat`.
 
-* Map out the cohesive curve *E*\ (*a*) for Al(bcc) and determine *a*\
-  :sub:`bcc`, using a few points.  Is it a good idea to use the same
-  **k**-point setup parameters as for the fcc calculations?  Calculate the
-  bulk modulus, as it was done for fcc, and compare the result to the
-  fcc bulk modulus. What would you expect?
+* Map out the cohesive curve `E(a)` for Al(bcc) and determine
+  `a_\text{bcc}`, using a few points.  Is it a good idea to use the
+  same **k**-point setup parameters as for the fcc calculations?
+  Calculate the bulk modulus, as it was done for fcc, and compare the
+  result to the fcc bulk modulus. What would you expect?
 
 * Using the lattice constants determined above for fcc and bcc,
-  calculate the fcc/bcc total energies at different grid spacings:
-  0.25 Å and 0.2 Å, i.e. four calculations.  Compare the
-  structure energy differences for the two cutoffs.  Generally,
-  energy differences converge much faster
-  with grid spacing than total energies themselves.  The total
-  energies that GPAW calculates are relative to isolated atoms (more
-  details here: :ref:`zero_energy`).  This exercise is sensitive to the number
-  of **k**-points, make sure that your **k**-point sampling is dense enough.
-
-* GPAW requires an orthorhombic unit cell and therefore one cannot choose a
-  primitive unit cell with one atom for bcc and fcc calculations. Show that it 
-  is  possible to choose an orthorhombic (but not cubic) unit cell for fcc 
-  which contains two atoms. Would this minimal choice affect the choice of 
-  **k**-point sampling?
+  calculate the fcc/bcc total energies.  The total energies that GPAW
+  calculates are relative to isolated atoms (more details here:
+  :ref:`zero_energy`).  This exercise is sensitive to the number of
+  **k**-points, make sure that your **k**-point sampling is dense
+  enough.  Also make sure your energies are converged with respect to
+  the number of grid points used (see the *atomization energy*
+  exercise).
