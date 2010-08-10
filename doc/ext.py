@@ -116,7 +116,10 @@ def create_png_files():
             if filename.endswith('.py'):
                 path = join(dirpath, filename)
                 lines = open(path).readlines()
-                line = lines[0]
+                try:
+                    line = lines[0]
+                except IndexError:
+                    continue
                 if 'coding: utf-8' in line:
                     line = lines[1]
                 if line.startswith('# creates:'):
