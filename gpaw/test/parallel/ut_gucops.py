@@ -77,7 +77,7 @@ class UTDomainParallelSetup(TestCase):
         #p = InputParameters()
         #Z_a = self.atoms.get_atomic_numbers()
         #xcfunc = XCFunctional(p.xc, self.nspins)
-        #setups = Setups(Z_a, p.setups, p.basis, self.nspins, p.lmax, xcfunc)
+        #setups = Setups(Z_a, p.setups, p.basis, p.lmax, xcfunc)
         #symmetry, weight_k, self.ibzk_kc = reduce_kpoints(self.atoms, bzk_kc,
         #                                                  setups, p.usesymm)
 
