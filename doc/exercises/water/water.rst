@@ -129,8 +129,6 @@ faster for most systems, but also less precise.
 Performing an LCAO calculation requires setting the ``mode`` and
 normally a ``basis``::
 
-::
-
   calc = GPAW(...,
               mode='lcao',
               basis='dzp',
@@ -145,7 +143,7 @@ This will pick out only one function per valence state
 ("single-zeta"), making the calculation even faster but less precise.
 
 Calculate the atomization energy of :mol:`H_2O` using different basis
-sets.  Instead of looping over grid spacing, use a 
+sets.  Instead of looping over grid spacing, use a loop over basis keywords::
 
   for basis in ['sz(dzp)', 'szp(dzp)', 'dzp']:
       ...

@@ -61,12 +61,9 @@ Notes
 
 * Useful links: Userguides_ FAQ_ Unix_ USB-sticks_ (is it still valid???)
 
-* Editors: emacs, vim, nedit (MS Windows/Macintosh-like environment) support python syntax highlighting (is it still valid???)
+* Editors: emacs, vim, gedit (MS Windows/Macintosh-like environment)
+  support python syntax highlighting
 
 * Printer: gps1-308. Terminal: :samp:`lp -d gps1-308 {filename}`
-
-* E-mail client:
-  Thunderbird is the default mail client in the databar and configured  
-  with your summer school e-mail (camd0??@student.dtu.dk) (is it still valid???)
 
 * To open a pdf-file: acroread filename
