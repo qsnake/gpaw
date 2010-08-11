@@ -177,5 +177,5 @@ Equilibrium lattice properties for bcc
   :ref:`zero_energy`).  This exercise is sensitive to the number of
   **k**-points, make sure that your **k**-point sampling is dense
   enough.  Also make sure your energies are converged with respect to
-  the number of grid points used (see the exercise on
-  :ref:`parameters_exercise`).
+  the number of grid points used (see the :ref:`Water
+  <convergence_checks>` exercise).

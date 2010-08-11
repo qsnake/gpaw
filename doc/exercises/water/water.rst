@@ -1,4 +1,3 @@
-
 ===========================
 Basics of GPAW calculations
 ===========================
@@ -6,6 +5,7 @@ Basics of GPAW calculations
 XXX It is possible that the script requires too much tinkering
 (particularly with output).  Should this be improved?  Are
 calculations too time consuming? -Ask
+
 
 Atomization energy revisited
 ============================
@@ -48,6 +48,7 @@ log files (e.g. ``gpaw.H2O.txt``).  The command :samp:`tail -f
 the atomization energy from the contents of the ``energy.*.txt``
 files.
 
+
 Parallelization
 ===============
 
@@ -74,6 +75,9 @@ Verify by checking the log file that GPAW is actually using multiple
 CPUs.  The log file should reveal that the :mol:`H_2O` calculation
 uses domain-decomposed with four domains, while the two atomic
 calculations should parallelize over the two spins and two domains.
+
+
+.. _convergence_checks:
 
 Convergence checks
 ==================
@@ -117,6 +121,7 @@ of the basis.  Grid-based methods rely on `finite-difference
 stencils`, where the gradient in one point is calculated from the
 surrounding points.  This makes the grid strictly inequivalent to a
 basis, and thus not (necessarily) variational.
+
 
 LCAO calculations
 =================
