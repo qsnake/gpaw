@@ -1,6 +1,6 @@
-============================================================
+==========================================================
 Kohn-Sham wavefunctions of the oxygen atom and CO molecule
-============================================================
+==========================================================
 
 In this section we will look at the Kohn-Sham wavefunctions of the O
 atom and CO molecule and compare them to results from molecular orbital theory.
