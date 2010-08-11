@@ -1,5 +1,5 @@
 ============================================================
-Kohn-Sham wavefunctions of a the oxygen atom and CO molecule
+Kohn-Sham wavefunctions of the oxygen atom and CO molecule
 ============================================================
 
 In this section we will look at the Kohn-Sham wavefunctions of the O
