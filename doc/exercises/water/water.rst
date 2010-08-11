@@ -18,21 +18,21 @@ Read the script and try to understand what it does.  A few notes:
 
  * In most languages it is common to declare loops with integer counters.
    In Python, a ``for`` loop always loops over elements of an
-   `iterable` (in this case a list of the strings ``H2O``, ``H`` and ``O``).
+   *iterable* (in this case a list of the strings ``H2O``, ``H`` and ``O``).
    You can loop over integers, if desired, using ``for x in range(17):``.
 
  * The code in loops, if-statements and other code blocks is indented.  
    The loop or if-statement stops when the lines are no longer indented.
-   Thus, `indentation determines control flow`.
+   Thus, *indentation determines control flow*.
 
  * In this case we conveniently load the geometry from the G2 database of
-   small molecules, using the :meth:`molecule` function from ASE.
+   small molecules, using the :meth:`~ase.data.molecule` function from ASE.
 
  * By setting the ``txt`` parameter, we specify a file where GPAW will save
    the calculation log.
 
  * The expression ``'gpaw.%s.txt' % symbol`` inserts the value of
-   ``symbol`` in place of the `substitution code` ``%s``.  
+   ``symbol`` in place of the *substitution code* ``%s``.  
    Thus the logfile name evaluates
    to ``gpaw.H2O.txt`` in the first loop iteration.
 
@@ -117,8 +117,8 @@ improve performance.  You may wish to run the calculation in parallel.
 For the last question, total energies (maybe surprisingly) do not drop
 as the grid is refined.  This would be the case in plane-wave methods,
 where increase of the planewave cutoff strictly increases the quality
-of the basis.  Grid-based methods rely on `finite-difference
-stencils`, where the gradient in one point is calculated from the
+of the basis.  Grid-based methods rely on *finite-difference
+stencils*, where the gradient in one point is calculated from the
 surrounding points.  This makes the grid strictly inequivalent to a
 basis, and thus not (necessarily) variational.
 
@@ -162,6 +162,6 @@ the energy variational with respect to the quality of the basis?
 
 LCAO calculations do not in fact produce very precise binding energies
 (although these can be improved considerably by manually generating
-and specifying a long-range basis) - however the method is well suited
-to calculate geometries, and applications that require a small basis
+optimized bsis functions) - however the method is well suited
+to calculate geometries, and for applications that require a small basis
 set, such as electron transport calculations.
