@@ -135,7 +135,8 @@ class BaseMixer:
                 
             for R_1G in self.R_iG:
                 # Inner product between new and old residues
-                a = np.abs(self.gd.comm.sum(np.vdot(R_1G, mR_G)))
+                # a = np.abs(self.gd.comm.sum(np.vdot(R_1G, mR_G)))
+                a = self.gd.comm.sum(np.vdot(R_1G, mR_G))
                 A_ii[i1, i2] = a
                 A_ii[i2, i1] = a
                 i1 += 1
@@ -155,7 +156,7 @@ class BaseMixer:
                 except ZeroDivisionError:
                     alpha_i[:] = 0.0
                     alpha_i[-1] = 1.0
-            
+
             # Calculate new input density:
             nt_G[:] = 0.0
 

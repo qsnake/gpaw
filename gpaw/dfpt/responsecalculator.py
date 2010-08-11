@@ -240,8 +240,10 @@ class ResponseCalculator:
         self.wave_function_variations()
         self.density_response()
         self.mixer.mix(self.nt1_G, [], phase_cd=self.phase_cd)
+        self.interpolate_density()
+
         #XXX Temp - in order to see the Hartree potential after 1'st iteration
-        v1_G = self.effective_potential_variation()
+        # v1_G = self.effective_potential_variation()
         
     def iteration(self):
         """Perform iteration."""
@@ -256,15 +258,19 @@ class ResponseCalculator:
         self.mixer.mix(self.nt1_G, [], phase_cd=self.phase_cd)
         norm = self.mixer.get_charge_sloshing()
 
+        self.interpolate_density()
+       
         return norm
 
-    def effective_potential_variation(self):
-        """Calculate derivative of the effective potential (Hartree + XC)."""
+    def interpolate_density(self):
+        """Interpolate density derivative onto the fine grid."""
 
-        # Transfer density to fine grid
         self.nt1_g = self.finegd.zeros(dtype=self.dtype)
         self.interpolator.apply(self.nt1_G, self.nt1_g, phases=self.phase_cd)
         
+    def effective_potential_variation(self):
+        """Calculate derivative of the effective potential (Hartree + XC)."""
+
         # Hartree part
         vHXC1_g = self.finegd.zeros(dtype=self.dtype)
         self.solve_poisson(vHXC1_g, self.nt1_g)
