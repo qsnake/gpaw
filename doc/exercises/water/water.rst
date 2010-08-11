@@ -112,9 +112,8 @@ improve performance.  You may wish to run the calculation in parallel.
 
  * How do the total energies converge with respect to grid spacing?
  * How does the atomization energy converge?
- * Do the total energies behave variationally with respect to the grid?
 
-For the last question, total energies (maybe surprisingly) do not drop
+Total energies (maybe surprisingly) do not drop
 as the grid is refined.  This would be the case in plane-wave methods,
 where increase of the planewave cutoff strictly increases the quality
 of the basis.  Grid-based methods rely on *finite-difference

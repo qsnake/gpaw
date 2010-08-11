@@ -1,7 +1,7 @@
 from ase.data.molecules import molecule
 from gpaw import GPAW
 
-a = 10.0
+a = 8.0
 h = 0.2
 
 energies = {}
