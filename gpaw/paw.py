@@ -92,7 +92,8 @@ class PAW(PAWTextOutput):
             filename = None # XXX
 
         if filename is not None:
-            reader = gpaw.io.open(filename, 'r')
+            comm = kwargs.get('communicator', mpi.world)
+            reader = gpaw.io.open(filename, 'r', comm)
             self.atoms = gpaw.io.read_atoms(reader)
             par = self.input_parameters
             par.read(reader)
@@ -142,7 +143,7 @@ class PAW(PAWTextOutput):
                 if (len(oldbzk_kc) == len(newbzk_kc) and
                     (oldbzk_kc == newbzk_kc).all()):
                     kwargs.pop('kpts')
-            elif p[key] == value:
+            elif np.all(p[key] == value):
                 kwargs.pop(key)
 
         if (kwargs.get('h') is not None) and (kwargs.get('gpts') is not None):
