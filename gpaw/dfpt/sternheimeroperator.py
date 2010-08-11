@@ -1,4 +1,16 @@
-"""This module implements the linear operator in the Sternheimer equation."""
+"""This module implements the linear operator in the Sternheimer equation.
+
+Sternheimer equation::
+
+       /           \             q
+       | H - eps   | P      |dPsi  > = - P      dV  |Psi  > ,
+       \        nk /  c,k+q      nk       c,k+q   q     nk
+   
+where P_c is the projection operator onto the unoccupied states. For a
+perturbation with a specific q-vector, only the projections onto states at
+k+q are needed.
+
+"""
 
 import numpy as np
 
@@ -7,16 +19,6 @@ from gpaw.fd_operators import Laplace
 
 class SternheimerOperator:
     """Class implementing the linear operator in the Sternheimer equation.
-
-    Sternheimer equation::
-
-           /           \             q
-           | H - eps   | P      |dPsi  > = - P      dV  |Psi  >
-           \        nk /  c,k+q      nk       c,k+q   q     nk
-       
-    where P_c is the projection operator onto the unoccupied states. For a
-    perturbation with a specific q-vector, only the projections onto states at
-    k+q are needed.
     
     The main purpose of this class is to implement the multiplication of the
     linear operator (H - eps_nk) with a vector in the ``apply`` member
@@ -59,12 +61,15 @@ class SternheimerOperator:
     def set_blochstate(self, n, k):
         """Set k-vector and band index for the Bloch-state in consideration.
 
+        Note that n different from None has implications for the interpretation
+        of the input vector in the ``apply`` member function.
+
         Parameters
         ----------
         n: int
-           Band index
+           Band index.
         k: int
-           k-point index
+           k-point index.
 
         """
 
@@ -77,7 +82,7 @@ class SternheimerOperator:
         Parameters
         ----------
         kplusq: int
-           Index of the k+q vector
+           Index of the k+q vector.
 
         """
 
@@ -118,25 +123,25 @@ class SternheimerOperator:
         
         # Non-local part from projectors (coefficients can not be reused)
         shape = x_nG.shape[:-3]
-        P_ani = self.pt.dict(shape)
+        P_ani = self.pt.dict(shape=shape)
+
         # k+q 
         self.pt.integrate(x_nG, P_ani, q=kplusqpt.q)
-            
+
         for a, P_ni in P_ani.items():
             dH_ii = unpack(self.hamiltonian.dH_asp[a][kpt.s])
             P_ani[a] = np.dot(P_ni, dH_ii)
         # k+q
         self.pt.add(y_nG, P_ani, q=kplusqpt.q)
 
-        # Eigenvalue term
-        if len(x_nG.shape) == 3:
-            assert self.n is not None
+        # XXX Eigenvalue term
+        if self.n is not None:
             # k
             y_nG -= kpt.eps_n[self.n] * x_nG
         else:
-            for n, a_G in enumerate(x_nG):
+            for n, x_G in enumerate(x_nG):
                 # k
-                y_nG[n,:] -= kpt.eps_n[n] * a_G
+                y_nG[n] -= kpt.eps_n[n] * x_G
 
         # Project out undesired (numerical) components
         # k+q
@@ -145,9 +150,7 @@ class SternheimerOperator:
     def project(self, x_nG):
         """Project the vector onto the unoccupied states at k+q.
 
-        Implementation for q != 0 to be done !
-
-        ::
+        The projection operator is defined as follows::
 
                       --                    --             
              P      = >  |Psi ><Psi | = 1 - >  |Psi ><Psi |
@@ -161,13 +164,13 @@ class SternheimerOperator:
         assert self.kplusq is not None
 
         # k+q
-        kpt = self.kpt_u[self.kplusq]
+        kplusqpt = self.kpt_u[self.kplusq]
 
         # Occupied wave function
-        psit_nG = kpt.psit_nG
+        psit_nG = kplusqpt.psit_nG
         
         # Project out one orbital at a time
-        for n, psit_G in enumerate(psit_nG): #range(self.nbands):
+        for n, psit_G in enumerate(psit_nG):
 
             proj = self.gd.integrate(psit_G.conjugate() * x_nG)
             x_nG -= proj * psit_G
@@ -197,7 +200,7 @@ class SternheimerOperator:
         grid_shape = tuple(self.gd.n_c)
         assert ((x.size % np.prod(grid_shape)) == 0), ("Incompatible array " +
                                                        "shapes")
-        # Number of states
+        # Number of states in the vector
         N = x.size / np.prod(grid_shape)
         
         # Output array

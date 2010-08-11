@@ -70,8 +70,8 @@ class ScipyLinearSolver:
             
         """
 
+        assert x_nG.shape == b_nG.shape
         shape = x_nG.shape
-        assert shape == b_nG.shape
 
         # Initialize iteration counter
         self.i = 0
@@ -79,7 +79,7 @@ class ScipyLinearSolver:
         # Reshape arrays for scipy
         x_0 = x_nG.ravel()
         b = b_nG.ravel()
-
+        
         x, info = self.solver(A, b, x0=x_0, maxiter=self.max_iter, M=self.pc,
                               tol=self.tolerance, callback=self.iteration)
 

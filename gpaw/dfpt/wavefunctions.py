@@ -50,7 +50,7 @@ class WaveFunctions:
         self.kpt_u = []
         
         for kpt in kpt_u:
-            # Strip off KPoint attributes and store in your own KPointContainer
+            # Strip off KPoint attributes and store in the new KPointContainer
             # Note, only the occupied GS wave-functions are retained here !!
             kpt_ = KPointContainer(weight=kpt.weight,
                                    k=kpt.k,

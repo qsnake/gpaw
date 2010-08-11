@@ -234,12 +234,12 @@ class PhononPerturbation(Perturbation):
             Set of grid vectors to which the perturbation is applied.
         y_nG: ndarray
             Output vectors.
+        wfs: WaveFunctions
+            Instance of class ``WaveFunctions``.
         k: int
             Index of the k-point for the vectors.
         kplusq: int
             Index of the k+q vector.
-        calculate_projector_coef: bool
-            Use existing coefficients when True.
             
         """
 
@@ -338,7 +338,7 @@ class PhononPerturbation(Perturbation):
         P_ni = P_ani[a]
         # < dp_av^i | Psi_nk > - remember the sign convention of the derivative
         dP_ni = -1 * dP_aniv[a][...,v]
-
+        
         # Expansion coefficients for the projectors on atom a
         dH_ii = unpack(self.dH_asp[a][0])
        
