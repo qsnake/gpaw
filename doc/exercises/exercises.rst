@@ -33,6 +33,7 @@ Introductory exercises (do these first):
    :maxdepth: 1
 
    gettingstarted/gettingstarted
+   water/water
    wavefunctions/wavefunctions
 
 Advanced exercises:

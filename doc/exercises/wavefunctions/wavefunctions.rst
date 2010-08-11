@@ -2,7 +2,7 @@
 Kohn-Sham wavefunctions of a the oxygen atom and CO molecule
 ============================================================
 
-In this section, we will look at the Kohn-Sham wavefunctions of the O
+In this section we will look at the Kohn-Sham wavefunctions of the O
 atom and CO molecule and compare them to results from molecular orbital theory.
 
 * The first script :svn:`~doc/exercises/wavefunctions/O.py` sets up an oxygen
@@ -22,7 +22,7 @@ atom and CO molecule and compare them to results from molecular orbital theory.
 * Run the script and check the output file. What is the occupation numbers
   for the oxygen atom free in vacuum?
 
-* The orbitals are vislulizable in :program:`VMD`. 
+* The orbitals can be visualized in :program:`VMD`. 
   Load all of the wavefunctions into :program:`VMD`
   simultaneously, by running :samp:`vmd O{?}.cube`. In :program:`VMD` choose
   :menuselection:`Graphics --> Representations`, click
