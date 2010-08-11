@@ -42,14 +42,14 @@ the command::
 If the calculation lasts more than a few seconds, submit it to the
 queue instead of running it directly::
 
-  $ gpaw-qsub 1 filename.py
+  $ gpaw-qsub filename.py
 
 This will allow the script to be executed on a different host, so the
 jobs will be distributed efficiently even if many users logged on to
 the same computer.  You can run jobs in parallel, using more CPUs for
 increased speed, by specifying e.g. 4 CPUs like this::
 
-  $ gpaw-qsub 4 filename.py
+  $ gpaw-qsub -pe 4 filename.py
 
 The ``qstat`` or :samp:`qstat -u {USERNAME}` commands can be used to
 monitor running jobs, and :samp:`qdel {JOB_ID}` to delete jobs if
