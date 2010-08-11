@@ -191,6 +191,8 @@ tests = [
     'exx.py',
     'h2o_dks.py',
     'nscfsic.py',
+    'scfsic_h2.py',
+    #'scfsic_n2.py',
     'vdw/quick.py',
     'vdw/potential.py',
     'vdw/quick_spin.py',

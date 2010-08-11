@@ -23,7 +23,7 @@ F_ac_ref = np.array([[  0.32375,  -0.00100,  -82.8350],
 # tolerance
 energy_tolerance = 0.00001
 force_tolerance  = 0.001
-niter_tolerance  = 0
+niter_tolerance  = 2
 #
 atom     = Atoms('N', positions=[(0.0,0.0,0.0)], magmoms=[3.0])
 #molecule = Atoms('N2', positions=[(0.0,0.0,0.0), (0.0,0.0,1.13)],
