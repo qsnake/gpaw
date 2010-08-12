@@ -10,4 +10,4 @@ system.set_calculator(calc)
 
 opt = QuasiNewton(system, trajectory='h2.emt.traj')
 
-opt.run(fmax=0.01)
+opt.run(fmax=0.05)
