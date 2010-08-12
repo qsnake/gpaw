@@ -25,8 +25,9 @@ Read the script and try to understand what it does.  A few notes:
    The loop or if-statement stops when the lines are no longer indented.
    Thus, *indentation determines control flow*.
 
- * In this case we conveniently load the geometry from the G2 database of
-   small molecules, using the :meth:`~ase.data.molecule` function from ASE.
+ * In this case we conveniently load the geometry from the G2 database
+   of small molecules, using the :meth:`~ase.data.molecules.molecule`
+   function from ASE.
 
  * By setting the ``txt`` parameter, we specify a file where GPAW will save
    the calculation log.
