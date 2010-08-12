@@ -267,7 +267,7 @@ class Transport(GPAW):
         self.adjust_atom_positions(atoms)
         self.atoms = atoms.copy()
         if self.edge_atoms is None:
-            self.edge_atoms = [[0, len(self.pl_atoms[0]) - 1],
+            self.edge_atoms = [[0, len(self.pl_atoms[1]) - 1],
                                 [0, len(self.atoms) -1]]
         if self.mol_atoms is None:
             self.mol_atoms = range(len(self.atoms))
@@ -671,7 +671,8 @@ class Transport(GPAW):
             for i in range(self.lead_num):
                 begin = np.min(self.lead_index[i])
                 newb = tp_mat.nb + sum
-                ex_index.append(self.lead_index[i] - begin + newb)
+                #ex_index.append(self.lead_index[i] - begin + newb)
+                ex_index.append(np.argsort(self.lead_index[i]) + newb)
                 sum += self.nblead[i]
                 #ex_index = [self.lead_index[0] + tp_mat.nb]
                 #ex_index.append(self.lead_index[1] +
@@ -2330,7 +2331,10 @@ class Transport(GPAW):
             ex_cell = cell.copy()
             di = 2
             for i in range(self.lead_num):
-                atoms_l = self.atoms[self.pl_atoms[i]].copy()
+                if self.leads is None:
+                    atoms_l = self.atoms[self.pl_atoms[i]].copy()
+                else:
+                    atoms_l = self.leads[i]
                 cell_l = self.pl_cells[i]
                 assert self.gd.orthogonal
                 ex_cell[di] += self.gd.h_cv[2, 2] * Bohr * self.bnc[i]
