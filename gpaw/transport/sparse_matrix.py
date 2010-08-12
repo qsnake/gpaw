@@ -129,7 +129,7 @@ class Banded_Sparse_Matrix:
         index1, index2 = self.band_index[-2:]
         assert self.dtype == mat.dtype
         self.spar = mat[index1, index2]
-    
+
     def reset_from_others(self, bds_mm1, bds_mm2, c1, c2):
         assert self.dtype == complex
         self.spar = c1 * bds_mm1.spar + c2 * bds_mm2.spar 
@@ -277,6 +277,7 @@ class Tp_Sparse_HSD:
             gr_sub = inv_mat[l2][l1][-1]
             return gr_sub, inv_mat
         else:
+            gr_sub = inv_mat[l2][l1][-1]            
             return gr_sub
        
 class Tp_Sparse_Matrix:
