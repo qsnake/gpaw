@@ -5,24 +5,23 @@ a = 8.0
 h = 0.2
 
 energies = {}
+resultfile = open('results-%.2f.txt' % h, 'w')
 
-for symbol in ['H2O', 'H', 'O']:
-    system = molecule(symbol)
+for name in ['H2O', 'H', 'O']:
+    system = molecule(name)
     system.set_cell((a, a, a))
     system.center()
 
     calc = GPAW(h=h,
-                txt='gpaw.%s.txt' % symbol)
-    if symbol == 'H' or symbol == 'O':
+                txt='gpaw-%s-%.2f.txt' % (name, h))
+    if name == 'H' or name == 'O':
         calc.set(hund=True)
     
     system.set_calculator(calc)
     
-    resultfile = open('energy.%s.txt' % symbol, 'w')
     energy = system.get_potential_energy()
-    energies[symbol] = energy
-    print >> resultfile, energy
+    energies[name] = energy
+    print >> resultfile, name, energy
 
 e_atomization = energies['H2O'] - 2 * energies['H'] - energies['O']
-resultfile = open('energy.atomization.txt', 'w')
 print >> resultfile, e_atomization

@@ -32,10 +32,12 @@ Read the script and try to understand what it does.  A few notes:
  * By setting the ``txt`` parameter, we specify a file where GPAW will save
    the calculation log.
 
- * The expression ``'gpaw.%s.txt' % symbol`` inserts the value of
-   ``symbol`` in place of the *substitution code* ``%s``.  
-   Thus the logfile name evaluates
-   to ``gpaw.H2O.txt`` in the first loop iteration.
+ * The expression ``'results-%.2f.txt' % h`` inserts the value of ``h``
+   in place of the *substitution code* ``%.2f`` (floating point number
+   with 2 decimals).  Thus the result file name evaluates to
+   ``results-0.20.txt``.  Similarly, ``'gpaw-%s-%.2f.txt' % (name, h)``
+   evaluates to ``gpaw-H2O-0.20.txt`` in the first loop iteration
+   (``%s`` is a substitution code for a string).
 
  * The call to ``open`` opens a file.  The parameter ``'w'`` signifies that
    the file is opened in write mode (deleting any previous file with that
@@ -45,9 +47,8 @@ Read the script and try to understand what it does.  A few notes:
 
 Run the script.  You can monitor the progress by opening one of the
 log files (e.g. ``gpaw.H2O.txt``).  The command :samp:`tail -f
-{filename}` can be used to view the output in real-time.  Calculate
-the atomization energy from the contents of the ``energy.*.txt``
-files.
+{filename}` can be used to view the output in real-time.  The calculated
+atomization energy can be found in the ``results-0.20.txt`` file.
 
 
 Parallelization
@@ -60,12 +61,12 @@ CPUs, while the rest of the script (everything except
 independently by each CPU.  This matters little except when writing to
 files.  Each CPU will attempt to write to the same file, probably at
 the same time, producing garbled data.  We must therefore make sure
-that only one process writes.  ASE provides the handy ``paropen``
-method for just that::
+that only one process writes.  ASE provides the handy
+:func:`~ase.parallel.paropen` function for just that::
 
   from ase.parallel import paropen
   ...
-  resultsfile = paropen(filename, 'w')
+  resultfile = paropen('results-%.2f.txt' % h, 'w')
 
 Apply the above modifications to the script and run it in parallel
 e.g. on four CPUs::

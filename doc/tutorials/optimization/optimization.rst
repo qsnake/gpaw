@@ -34,7 +34,7 @@ constraints::
 
   molecule.set_constraint(FixAtoms(mask=[0, 1]))
 
-The keyword `mask` contains list of booleans for each atom indicating
+The keyword ``mask`` contains list of booleans for each atom indicating
 whether the atom's position should be fixed or not. See the
 :ase:`constraints <ase/constraints.html>` section on the ASE page for
 more information and examples for setting constraints.
