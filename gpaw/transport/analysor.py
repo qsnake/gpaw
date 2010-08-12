@@ -968,7 +968,7 @@ class Transport_Analysor:
         current = np.array([0])
         if tp.wfs.kpt_comm.rank == 0:
             intctrl = tp.intctrl
-            kt = 0.01
+            kt = 0.02
             fd = fermidistribution        
             lead_ef1 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][0]]
             lead_ef2 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][1]]
