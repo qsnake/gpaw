@@ -42,6 +42,7 @@ class ResponseCalculator:
 
     parameters = {'verbose':               True,
                   'max_iter':              100,
+                  'max_iter_krylov':       100,
                   'tolerance_sc':          1.0e-4,
                   'tolerance_sternheimer': 1e-5,
                   'use_pc':                True,
@@ -199,7 +200,8 @@ class ResponseCalculator:
         weight = p['weight']
         use_pc = p['use_pc']
         tolerance_sternheimer = p['tolerance_sternheimer']
-
+        max_iter_krylov = p['max_iter_krylov']
+        
         # Initialize WaveFunctions attribute
         self.wfs.initialize(spos_ac)
         
@@ -230,7 +232,8 @@ class ResponseCalculator:
         self.pc = pc
         # Linear solver for the solution of Sternheimer equation            
         self.linear_solver = ScipyLinearSolver(tolerance=tolerance_sternheimer,
-                                               preconditioner=pc)
+                                               preconditioner=pc,
+                                               max_iter=max_iter_krylov)
 
         self.initialized = True
 
@@ -374,12 +377,14 @@ class ResponseCalculator:
                     if verbose: 
                         print "linear solver converged in %i iterations" % iter
                 elif info > 0:
-                    print ("linear solver did not converge in maximum number "
-                           "(=%i) of iterations" % iter)
-                    assert False
+                    print ""
+                    # print ("linear solver did not converge in maximum number "
+                    #        "(=%i) of iterations" % iter)
+                    # assert False
                 else:
-                    print "linear solver failed to converge"
-                    assert False
+                    print ""
+                    # print "linear solver failed to converge"
+                    # assert False
                 
     def density_response(self):
         """Calculate density response from variation in the wave-functions."""

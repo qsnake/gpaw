@@ -27,7 +27,7 @@ class ScipyLinearSolver:
                }
     
     def __init__(self, method='cg', preconditioner=None, tolerance=1e-5,
-                 max_iter=1000):
+                 max_iter=100):
         """Initialize the linear solver.
 
         Parameters
