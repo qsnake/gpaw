@@ -968,7 +968,7 @@ class Transport_Analysor:
         current = np.array([0])
         if tp.wfs.kpt_comm.rank == 0:
             intctrl = tp.intctrl
-            kt = intctrl.kt
+            kt = 0.01
             fd = fermidistribution        
             lead_ef1 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][0]]
             lead_ef2 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][1]]
@@ -1047,6 +1047,12 @@ class Transport_Plotter:
             info = data[name]
         return info
 
+    def get_positions(self, ion_step=0):
+        fd = file('analysis_data/ionic_step_' + str(ion_step) + '/positions', 'r')
+        positions = cPickle.load(fd)
+        fd.close()
+        return positions
+
     def process(self, info, s=0, k=None, lp=None):
         if s is None:
             info = np.sum(info, axis=0) / info.shape[0]
@@ -1074,11 +1080,33 @@ class Transport_Plotter:
         return np.sum(info, axis=-2)
  
     def partial_dos(self, bias_step, ion_step=0, s=0, k=None,
-                    atom_indices=None, orbital_type=None):
+                    atom_indices=None, orbital_type=None, direction=None):
         self.read_overhead()
         dos_array = self.dos_array(bias_step, ion_step, s, k)
         orbital_indices = self.basis['orbital_indices']
         orbital_map = {'S': 0, 'P': 1, 'D': 2, 'F': 3}
+        direction_map = {'x': 2, 'y': 0, 'z': 1, 'xy': 0, 'yz': 1,
+                         'z2r2': 2, 'xz': 3, 'x2y2': 4}        
+        if direction is None:
+            direction_index = np.zeros([orbital_indices.shape[0]]) + 1
+        else:
+            directions = []
+            num = -1
+            oio = 0
+            for oi in orbital_indices:
+                if oi[1] != oio:
+                    num = -1
+                oio = oi[1]      
+                if oi[1] != orbital_map[orbital_type]:
+                    directions.append(0)
+                else:
+                    num += 1
+                    if num == direction_map[direction]:
+                        directions.append(1)
+                    else:
+                        directions.append(0)
+            direction_index = np.array(directions)
+            
         if orbital_type is None:
             orbital_index = np.zeros([orbital_indices.shape[0]]) + 1
         else:
@@ -1091,7 +1119,7 @@ class Transport_Plotter:
                 atom_index += orbital_indices[:, 0] - i == 0
         pdos = []
         for i in range(dos_array.shape[1]):
-            pdos.append(np.sum(dos_array[:,i] * orbital_index * atom_index))
+            pdos.append(np.sum(dos_array[:,i] * orbital_index * atom_index * direction_index))
         pdos = np.array(pdos)
         return pdos
 
