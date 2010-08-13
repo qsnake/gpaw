@@ -10,9 +10,6 @@ Exercises
   this :ref:`page <summerschool10>` before you start working on the
   exercises.
 
-Notes related to the CAMd summer school 2008
-are on this :ref:`page <summerschool08>`.
-
 In order to do the exercises, it helps with a little bit of knowledge
 of :ase:`ASE <>` and Python_.  Here are some useful resources:
 
