@@ -197,3 +197,48 @@ entire instrumentation framework for building dynamic analysis tools and thus
 includes other debugging tools, e.g. a heap/stack/global array overrun detector.
 
 .. _Valgrind: http://valgrind.org
+
+
+.. _parallel_debugging:
+
+Parallel debugging
+==================
+
+Debugging programs that are run in parallel with MPI is not as straight forward
+as in serial, but many of the same tools can be used (e.g. GDB and Valgrind).
+Note that one cannot use the Python debugger as described above because GPAW
+requires that a custom Python interpreter is built with the necessary MPI bindings.
+
+There are probably numerous ways to debug an MPI application with GDB, and experimentation
+is strongly encouraged, but the following method is recommended for interactive debugging.
+This approach builds upon advice in Open MPI's FAQ `Debugging applications in parallel
+<http://www.open-mpi.org/faq/?category=debugging#serial-debuggers>`_, but is adapted for use
+with Python on a GNU/Linux development platform. Prepend the following to your script::
+
+   import os, sys, time, math
+   from gpaw.mpi import world
+   from gpaw import get_gpaw_python_path
+   gpaw_python_path = os.path.join(get_gpaw_python_path(), 'gpaw-python')
+   ndigits = 1 + int(math.log10(world.size))
+   assert os.system('screen -S gdb.%0*d -dm gdb %s %d' \
+       % (ndigits, world.rank, gpaw_python_path, os.getpid())) == 0
+   time.sleep(ndigits)
+   world.barrier()
+
+This runs ``gdb /path/to/gpaw-python pid`` from within each instance of the custom Python
+interpreter and detaches it into a `screen <http://www.gnu.org/software/screen/>`_ session
+called ``gdb.0`` for rank 0 etc. You may now resume control of the debugger instances by
+running ``screen -rd gdb.0``, entering `c` to continue and so forth for all instances.
+
+.. hint::
+   Run ``screen -ls`` to get an overview of running sessions.
+   Enable logging of an attached session with Ctrl+a H (capital H).
+   Use Ctrl+a Ctrl+d to detach a session but leave it running.
+
+.. note::
+   This approach only works if the problem you're trying to address occurs *after* the
+   GPAW executable has been loaded. In the alternate case, it is recommended to debug
+   a single instance of the parallel program with the usual serial methods first.
+
+For details on using Valgrind on parallel programs, please refer to the online manual
+`Debugging MPI Parallel Programs with Valgrind <http://valgrind.org/docs/manual/mc-manual.html#mc-manual.mpiwrap>`_
