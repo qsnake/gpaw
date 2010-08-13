@@ -18,6 +18,7 @@ avoided by calling the ``update()`` function at intervals smaller than
 72 minutes."""
 
 import time
+import math
 import sys
 try:
     import pytau
@@ -169,6 +170,25 @@ class NullTimer:
 
 
 nulltimer = NullTimer()
+
+
+class DebugTimer(Timer):
+    def __init__(self, print_levels=1000, comm=mpi.world, txt=sys.stdout):
+        Timer.__init__(self, print_levels)
+        ndigits = 1 + int(math.log10(comm.size))
+        self.srank = '%0*d' % (ndigits, comm.rank)
+        self.txt = txt
+
+    def start(self, name):
+        Timer.start(self, name)
+        t = self.timers[tuple(self.running)] + time.time()
+        self.txt.write('T%s >> %s (%7.5fs) started\n' % (self.srank, name, t))
+
+    def stop(self, name=None):
+        if name is None: name = self.running[-1]
+        t = self.timers[tuple(self.running)] + time.time()
+        self.txt.write('T%s << %s (%7.5fs) stopped\n' % (self.srank, name, t))
+        Timer.stop(self, name)
 
 
 class StepTimer(Timer):
