@@ -8,7 +8,7 @@ When you log into the databars, you can select various desktop
 environments.  We recommend CDE or IceWM, but any will do.
 
 Exercises will make use of terminals.  Choose :menuselection:`Terminal
---> Terminal on linux` from the GBar menu, accessible by
+--> Terminal (mrxvt)` from the GBar menu, accessible by
 right-clicking on the desktop in CDE/IceWM.
 
 Setting up your UNIX environment
