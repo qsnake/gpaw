@@ -969,11 +969,9 @@ class SIC:
             self.v_unG[q,:] *= self.phit_unG[q,:]
             #
             # action of the canonic ODD potential
-            self.Htphit_unG[q] = 117
             gemm(1.0,self.v_unG[q],W_nn,0.0,self.Htphit_unG[q])
             #
             # setup new canonic states |k>
-            self.phit_unG[q] = 117
             gemm(1.0,  psit_nG,V_nn,0.0,self.phit_unG[q])
             #
             for i in range(nbands):
@@ -992,10 +990,7 @@ class SIC:
             #
             V_nn  = H_nn - np.dot(q_nn,self.H0_unn[q])
             #
-            print np.isfinite(self.phit_unG[q]).all()
-            print np.isfinite(V_nn).all()
             gemm(+1.0,self.phit_unG[q]  ,V_nn, 1.0,Htpsit_nG)
-            print np.isfinite(Htpsit_nG).all()
             gemm(+1.0,self.Htphit_unG[q],q_nn, 1.0,Htpsit_nG)
             #
             self.setup_unified[q]=False
