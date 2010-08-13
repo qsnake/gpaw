@@ -6,6 +6,8 @@ New release
 
 When it is time for a new release of the code, here is what you have to do:
 
+* **Warning:** use only three digits release numbers, e.g. *0.7.2*,
+
 * Checkout the :ref:`latest_development_release`,
 
 * then :ref:`running_tests`.
@@ -20,17 +22,17 @@ When it is time for a new release of the code, here is what you have to do:
   (to make sure **not** to include changes done by other developers
   in the meantime!)::
 
-    svn copy -r 2733 https://svn.fysik.dtu.dk/projects/gpaw/trunk https://svn.fysik.dtu.dk/projects/gpaw/tags/0.4 -m "Version 0.4"
+    svn copy -r 6972 https://svn.fysik.dtu.dk/projects/gpaw/trunk https://svn.fysik.dtu.dk/projects/gpaw/tags/0.7.2 -m "Version 0.7.2"
 
   **Note** the resulting tag's revision ``tags_revision``.
 
 * **Checkout** the source, specifying the version number in the directory name::
 
-   svn co -r tags_revision https://svn.fysik.dtu.dk/projects/gpaw/tags/0.4 gpaw-0.4
+   svn co -r tags_revision https://svn.fysik.dtu.dk/projects/gpaw/tags/0.7.2 gpaw-0.7.2
 
 * Create the tar file::
 
-   cd gpaw-0.4
+   cd gpaw-0.7.2
    rm -f MANIFEST gpaw/svnversion.py*
    python setup.py sdist
 
@@ -41,17 +43,17 @@ When it is time for a new release of the code, here is what you have to do:
 
 * Put the tar file on web2 (set it read-able for all)::
 
-   scp dist/gpaw-0.4."tags_revision".tar.gz root@web2:/var/www/wiki/gpaw-files
+   scp dist/gpaw-0.7.2."tags_revision".tar.gz root@web2:/var/www/wiki/gpaw-files
 
-* Add a link to the new GPAW release **together**
-  with the compatible ASE release at :ref:`latest_stable_release`.
+* Add a link to the new GPAW on :ref:`news` and update the information
+  on the :ref:`download` page.
 
-* Optionally, update the :ref:`releasenotes`.
+* Update the :ref:`releasenotes` including the compatible ASE release!.
 
 * Increase the version number in gpaw/version.py, and commit the change::
 
     cd ~/gpaw
-    svn ci -m "Version 0.5"
+    svn ci -m "Version 0.8.0"
 
   Now the trunk is ready for work on the new version.
 

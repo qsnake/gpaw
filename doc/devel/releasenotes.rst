@@ -5,11 +5,12 @@ Release notes
 =============
 
 
-Version 0.8 (development version in trunk)
+Version 0.8.0 (development version in trunk)
 ==========================================
 
 :trac:`trunk <>`.
 
+* corresponding ASE release: ...
 * Add important changes here.
 * ...
 
@@ -19,16 +20,20 @@ Version 0.7.2
 
 13 August 2010: :trac:`tags/0.7.2 <../tags/0.7.2>`.
 
+* corresponding ASE release: ase-3.4.1_
 * For version 0.7, the default Poisson solver was changed to
   ``PoissonSolver(nn=3)``.  Now, also the Poisson solver's default
   value for ``nn`` has been changed from ``'M'`` to ``3``.
 
+.. _ase-3.4.1:
+    https://svn.fysik.dtu.dk/projects/ase/tags/3.4.1
 
 Version 0.7
 ===========
 
 23 April 2010: :trac:`tags/0.7 <../tags/0.7>`.
 
+* corresponding ASE release: ase-3.4.0_
 * Better and much more efficient handling of non-orthorhombic unit
   cells.  It may actually work now!
 * Much better use of ScaLAPACK and BLACS.  All large matrices can now
@@ -44,32 +49,41 @@ Version 0.7
 * New HDF IO-format.
 * :ref:`Advanced GPAW Test System <big-test>` Introduced.
 
+.. _ase-3.4.0:
+    https://svn.fysik.dtu.dk/projects/ase/tags/3.4.0
 
 Version 0.6
 ===========
 
 9 October 2009: :trac:`tags/0.6 <../tags/0.6>`.
 
+* corresponding ASE release: ase-3.2.0_
 * Much improved default parameters.
 * Using higher order finite-difference stencil for kinetic energy.
 * Many many other improvements like: better parallelization, fewer bugs and
   smaller memory footprint.
 
+.. _ase-3.2.0:
+    https://svn.fysik.dtu.dk/projects/ase/tags/3.2.0
 
 Version 0.5
 ===========
 
 1 April 2009: :trac:`tags/0.5 <../tags/0.5>`.
 
+* corresponding ASE release: ase-3.1.0_
 * `new setups added Bi, Br, I, In, Os, Sc, Te; changed Rb setup <https://trac.fysik.dtu.dk/projects/gpaw/changeset/3612>`_.
 * `memory estimate feature is back <https://trac.fysik.dtu.dk/projects/gpaw/changeset/3575>`_
+
+.. _ase-3.1.0:
+    https://svn.fysik.dtu.dk/projects/ase/tags/3.1.0
 
 Version 0.4
 ===========
 
 13 November 2008: :trac:`tags/0.4 <../tags/0.4>`.
 
-
+* corresponding ASE release: ase-3.0.0_
 * Now using ASE-3 and numpy.
 * TPSS non self-consistent implementation.
 * LCAO mode.
@@ -98,6 +112,8 @@ Version 0.4
 * Experimental Hartwigsen-Goedecker-Hutter pseudopotentials added.
 * Transport calculations with LCAO.
 
+.. _ase-3.0.0:
+    https://svn.fysik.dtu.dk/projects/ase/tags/3.0.0
 
 Version 0.3
 ===========

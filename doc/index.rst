@@ -62,7 +62,7 @@ algorithms used <features_and_algorithms>`.
    http://www.camd.dtu.dk/English/Events/CAMD_Summer_School_2010.aspx
 .. |CAMd| image:: camd.png
 
-
+.. _news:
 
 News
 ====

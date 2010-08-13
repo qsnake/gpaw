@@ -26,13 +26,13 @@ When using svn please set the following variable:
    setenv GPAW_TAGS https://svn.fysik.dtu.dk/projects/gpaw/tags/
 
 ========= =========== ============================================== =======================
-Release   Date        Retrieve as svn checkout                       Retrieve as tarball  
+Release   Date        Retrieve as svn checkout                       Retrieve as tarball    
 ========= =========== ============================================== =======================
    0.7.2_ Aug 11 2010 ``svn co -r 6974 $GPAW_TAGS/0.7.2 gpaw-0.7.2`` gpaw-0.7.2.6974.tar.gz_
-   0.7_   Apr 23 2010 ``svn co -r 6383 $GPAW_TAGS/0.7 gpaw-0.7``     gpaw-0.7.6383.tar.gz_
-   0.6_   Oct  9 2009 ``svn co -r 5147 $GPAW_TAGS/0.6 gpaw-0.6``     gpaw-0.6.5147.tar.gz_
-   0.5_   Apr  1 2009 ``svn co -r 3667 $GPAW_TAGS/0.5 gpaw-0.5``     gpaw-0.5.3667.tar.gz_
-   0.4_   Nov 16 2008 ``svn co -r 2734 $GPAW_TAGS/0.4 gpaw-0.4``     gpaw-0.4.2734.tar.gz_
+   0.7_   Apr 23 2010 ``svn co -r 6383 $GPAW_TAGS/0.7 gpaw-0.7``     gpaw-0.7.6383.tar.gz_  
+   0.6_   Oct  9 2009 ``svn co -r 5147 $GPAW_TAGS/0.6 gpaw-0.6``     gpaw-0.6.5147.tar.gz_  
+   0.5_   Apr  1 2009 ``svn co -r 3667 $GPAW_TAGS/0.5 gpaw-0.5``     gpaw-0.5.3667.tar.gz_  
+   0.4_   Nov 16 2008 ``svn co -r 2734 $GPAW_TAGS/0.4 gpaw-0.4``     gpaw-0.4.2734.tar.gz_  
 ========= =========== ============================================== =======================
 
 .. _0.7.2:
@@ -67,9 +67,8 @@ Release   Date        Retrieve as svn checkout                       Retrieve as
 
 .. note::
 
-   GPAW uses ASE, which you get here:
+   GPAW requires ASE.
    :ase:`Download and install ASE <download.html>`.
-
 
 .. _latest_development_release:
 
