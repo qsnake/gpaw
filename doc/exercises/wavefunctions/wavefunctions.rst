@@ -6,21 +6,25 @@ In this section we will look at the Kohn-Sham wavefunctions of the O
 atom and CO molecule and compare them to results from molecular orbital theory.
 
 * The first script :svn:`~doc/exercises/wavefunctions/O.py` sets up an oxygen
-  atom in a cubic supercell with non-periodic boundary conditions and calculates
-  the total energy. A couple of unoccupied bands are included in the calculation:
+  atom in a cubic supercell with non-periodic boundary conditions and 
+  calculates the total energy. A couple of extra bands (i.e. Kohn-Sham 
+  states) are included in the calculation:
 
 .. literalinclude:: O.py
 
 .. highlight:: bash
 
+* In this case we modify the Pulay density mixer.  Adjusting the mixer can
+  sometimes help the calculation converge - see :ref:`densitymix`.
 
-* Towards the end, a :file:`.gpw` file is written with the Kohn-Sham wavefunctions
-  by `calc.write('O.gpw', mode='all')`. At the very end we write the Kohn-Sham
+* Towards the end, a :file:`.gpw` file is written with the Kohn-Sham
+  wavefunctions by ``calc.write('O.gpw', mode='all')``.
+  At the very end we write the Kohn-Sham
   wavefunctions to :file:`.cube` files for
   handling with the :program:`VMD` program.
 
-* Run the script and check the output file. What is the occupation numbers
-  for the oxygen atom free in vacuum?
+* Run the script and check the output file. What are the occupation numbers
+  for the free oxygen atom?
 
 * The orbitals can be visualized in :program:`VMD`. 
   Load all of the wavefunctions into :program:`VMD`
@@ -33,10 +37,10 @@ atom and CO molecule and compare them to results from molecular orbital theory.
 
   Can you identify the highest occupied state and the lowest unoccupied state?
 
-  How does your wave functions compare to a molecular orbital picture?
+  How do your wavefunctions compare to a molecular orbital picture?
 
   
-* Make a script, where a CO molecule is placed in the center of a cubic
+* Make a script where a CO molecule is placed in the center of a cubic
   unit cell with non-periodic boundary conditions, e.g. of 6 Å. For
   more accurate calculations, the cell should definitely be bigger,
   but for reasons of speed, we use this cell here. A grid spacing of 
@@ -65,7 +69,7 @@ atom and CO molecule and compare them to results from molecular orbital theory.
   occupation numbers - check this in the text output.  What electronic
   temperature was used and what is the significance of this?
 
-* Plot the Kohn-Sham wavefunctions of the different wave functions of the CO
+* Plot the Kohn-Sham wavefunctions of the different wavefunctions of the CO
   molecule by after writing :file:`.cube` files for handling with :program:`VMD`.
 
 * Can you identify the highest occupied state and the lowest unoccupied state?
@@ -76,7 +80,7 @@ atom and CO molecule and compare them to results from molecular orbital theory.
 
 .. hint::
 
-  You might find it usefull to look at the molecular orbital diagram
+  You might find it useful to look at the molecular orbital diagram
   below, taken from `The Chemogenesis Web Book`_.
 
   .. figure:: co_bonding.jpg
