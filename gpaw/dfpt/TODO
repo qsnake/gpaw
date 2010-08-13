@@ -1,3 +1,10 @@
+2010-08-12
+ - Test how it works if a set number of Krylov iteration are done in each SC iteration.
+ - How to mix the complex density derivative for q != 0
+   - if the mapping between in and output density, i.e. each iteration in the SC loop, does not mix the real and imaginary parts of the density derivative they should be mixed separately.
+     It seems that the real and imaginary parts are mixed via the wave-functions when calculating the density derivative!
+   - how about q != 0 where the density derivative does not integrate to zero - should you use a different constraint ???
+ - Does the implementation work with other functionals than LDA?
 2010-06-29
  - Provide instance of ``Perturbation`` in ``__call__`` member function of class ``ResponseCalculator`` instead of in constructor.
  - Member function ``integrate/derivative`` of class ``lfc`` does not work with complex quantities when initialized with ``integral`` keyword.

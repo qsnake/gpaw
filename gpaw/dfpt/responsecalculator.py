@@ -151,17 +151,17 @@ class ResponseCalculator:
         self.phase_cd = self.perturbation.get_phase_cd()
         
         for iter in range(max_iter):
-            print     "iter:%3i\t" % iter,
+
             if iter == 0:
                 self.first_iteration()
-                print "\n"
             else:
+                print "iter:%3i\t" % iter,
                 norm = self.iteration()
                 print "abs-norm: %6.3e\t" % norm,
-                #XXX The density is complex !!!!!!
-                print ("integrated density response: % 5.2e" % 
-                       self.gd.integrate(self.nt1_G).real)
-                
+                print ("integrated density response (abs): % 5.2e (%5.2e) "
+                       % (self.gd.integrate(self.nt1_G.real), 
+                          self.gd.integrate(np.absolute(self.nt1_G))))
+                       
                 if norm < tolerance:
                     print ("self-consistent loop converged in %i iterations"
                            % iter)
@@ -246,7 +246,7 @@ class ResponseCalculator:
         self.interpolate_density()
 
         #XXX Temp - in order to see the Hartree potential after 1'st iteration
-        # v1_G = self.effective_potential_variation()
+        v1_G = self.effective_potential_variation()
         
     def iteration(self):
         """Perform iteration."""
@@ -316,6 +316,9 @@ class ResponseCalculator:
             kplusq_k = self.kd.find_k_plus_q(q_c)
         else:
             kplusq_k = None
+
+        # XXX Temp
+        # self.rhs_nG = self.gd.zeros(n=self.nbands, dtype=self.gs_dtype)
             
         # Calculate wave-function variations for all k-points.
         for kpt in self.kpt_u:
@@ -342,6 +345,7 @@ class ResponseCalculator:
             
             # Right-hand side of Sternheimer equations
             rhs_nG = self.gd.zeros(n=self.nbands, dtype=self.gs_dtype)
+            
             # k and k+q
             # XXX should only be done once but maybe too cheap to bother ??
             self.perturbation.apply(psit_nG, rhs_nG, self.wfs, k, kplusq)
@@ -366,6 +370,10 @@ class ResponseCalculator:
                 # Update k-point index and band index in SternheimerOperator
                 self.sternheimer_operator.set_blochstate(n, k)
                 self.sternheimer_operator.project(rhs_G)
+
+                # XXX Temp
+                #if k == 0:
+                #    self.rhs_nG[n] = rhs_G.copy()
                 
                 if verbose:
                     print "\tBand %2.1i -" % n,
@@ -377,14 +385,11 @@ class ResponseCalculator:
                     if verbose: 
                         print "linear solver converged in %i iterations" % iter
                 elif info > 0:
-                    print ""
-                    # print ("linear solver did not converge in maximum number "
-                    #        "(=%i) of iterations" % iter)
-                    # assert False
+                    assert False, ("linear solver did not converge in maximum "
+                                   "number (=%i) of iterations" % iter)
                 else:
-                    print ""
-                    # print "linear solver failed to converge"
-                    # assert False
+                    assert False, ("linear solver failed to converge")
+
                 
     def density_response(self):
         """Calculate density response from variation in the wave-functions."""

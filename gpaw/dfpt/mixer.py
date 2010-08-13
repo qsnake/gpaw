@@ -136,6 +136,7 @@ class BaseMixer:
             for R_1G in self.R_iG:
                 # Inner product between new and old residues
                 # XXX For now, use only real part of residues
+                # For complex quantities a .conjugate should be added ??
                 a = self.gd.comm.sum(np.vdot(R_1G.real, mR_G.real))
                 A_ii[i1, i2] = a
                 A_ii[i2, i1] = a
