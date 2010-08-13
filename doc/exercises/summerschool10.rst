@@ -15,19 +15,16 @@ Setting up your UNIX environment
 --------------------------------
 
 The first time you use the databar computers, you must configure your
-environment.  Open the ``.bashrc`` file in your favourite editor:
+environment.  Run the commands:
 
 .. highlight:: bash
 
 ::
 
-  $ emacs ~/.bashrc
+  $ mv ~/.bashrc ~/old.bashrc
+  $ echo source ~ashj/summerschool-env/gbar-gpaw.rc > ~/.bashrc
 
-Scroll down and append this line at the end of the file::
-
-  source ~ashj/summerschool/gbar-gpaw.rc
-
-That will set up the environment for you so that you can use ASE,
+This will set up the environment for you so that you can use ASE,
 GPAW, VMD and matplotlib.  The changes will take effect for all new
 terminals opened from now on.
 
@@ -59,6 +56,8 @@ necessary.
 
 Notes
 -----
+
+* Editor: Several editors are available including emacs, vim and gedit.
 
 * Printer: ``gps1-308``. Terminal: :samp:`lp -d gps1-308 {filename}`.  The
   printer is located in databar 15, the middle of the three databars.
