@@ -4,6 +4,13 @@
 CAMd Summer school 2010
 =======================
 
+When you log into the databars, you can select various desktop
+environments.  We recommend CDE or IceWM, but any will do.
+
+Exercises will make use of terminals.  Choose :menuselection:`Terminal
+--> Terminal on linux` from the GBar menu, accessible by
+right-clicking on the desktop in CDE/IceWM.
+
 Setting up your UNIX environment
 --------------------------------
 
@@ -20,16 +27,10 @@ Scroll down and append this line at the end of the file::
 
   source ~ashj/summerschool/gbar-gpaw.rc
 
-Run this command to apply the changes:
-
-.. highlight:: bash
-
-::
-
-  $ source ~/.bashrc
-
 That will set up the environment for you so that you can use ASE,
-GPAW, VMD and matplotlib.
+GPAW, VMD and matplotlib.  The changes will take effect for all new
+terminals opened from now on.
+
 
 Running GPAW calculations
 -------------------------
@@ -59,11 +60,10 @@ necessary.
 Notes
 -----
 
-* Useful links: Userguides_ FAQ_ Unix_ USB-sticks_ (is it still valid???)
+* Printer: ``gps1-308``. Terminal: :samp:`lp -d gps1-308 {filename}`.  The
+  printer is located in databar 15, the middle of the three databars.
 
-* Editors: emacs, vim, gedit (MS Windows/Macintosh-like environment)
-  support python syntax highlighting
+* To open a pdf-file: :samp:`evince {filename}`
 
-* Printer: gps1-308. Terminal: :samp:`lp -d gps1-308 {filename}`
-
-* To open a pdf-file: acroread filename
+* The normal tilde (~) key combination is not functional on the
+  databar computers.  Use :kbd:`Alt Graph + 5` to type a tilde.
