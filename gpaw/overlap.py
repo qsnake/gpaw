@@ -11,6 +11,9 @@ functions.
 import sys
 import numpy as np
 
+from gpaw.utilities.tools import lowdin, tri2full
+from gpaw import extra_parameters
+from gpaw.utilities.lapack import diagonalize
 
 class Overlap:
     """Overlap operator class.
@@ -73,7 +76,18 @@ class Overlap:
 
         orthonormalization_string = repr(self.ksl)
         self.timer.start(orthonormalization_string)
-        self.ksl.inverse_cholesky(S_nn)
+        #
+        if extra_parameters.get('sic', False):
+            #
+            # symmetric Loewdin Orthonormalization
+            tri2full(S_nn, UL='L', map=np.conj)
+            nrm_n = np.empty(S_nn.shape[0])
+            diagonalize(S_nn, nrm_n)
+            nrm_nn = np.diag(1.0/np.sqrt(nrm_n))
+            S_nn = np.dot(np.dot(S_nn.T.conj(), nrm_nn), S_nn)
+        else:
+            #
+            self.ksl.inverse_cholesky(S_nn)
         # S_nn now contains the inverse of the Cholesky factorization.
         # Let's call it something different:
         C_nn = S_nn
