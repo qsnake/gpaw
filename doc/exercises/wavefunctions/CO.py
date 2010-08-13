@@ -1,28 +1,24 @@
+from ase import Atoms
 from ase.io import write
-from ase.optimize import QuasiNewton
+from gpaw import GPAW, Mixer
 from ase.data.molecules import molecule
 
-from gpaw import GPAW
+CO = molecule('CO')
+CO.set_cell((6., 6., 6.))
+CO.center()
 
-
-# Gpaw calculator with 3 unonccupied bands (CO has 10 valence electrons)
 calc = GPAW(h=0.2,
             nbands=8,
-            eigensolver='cg',
-            convergence={'bands': 'all'},
+            mixer=Mixer(beta=0.1, nmaxold=5, weight=50.0),
             txt='CO.txt')
 
-# Make the CO molecule and relax the structure
-CO = molecule('CO')
-CO.center(vacuum=3.)
 CO.set_calculator(calc)
-QuasiNewton(CO, trajectory='CO.traj').run(fmax=0.05)
+CO.get_potential_energy()
 
 # Write wave functions to gpw file
 calc.write('CO.gpw', mode='all')
 
 # Generate cube-files of the orbitals.
 for n in range(calc.get_number_of_bands()):
-
-  wf = calc.get_pseudo_wave_function(band=n)
-  write('CO%d.cube' % n, CO, data=wf)
+    wf = calc.get_pseudo_wave_function(band=n)
+    write('CO%d.cube' % n, CO, data=wf)
