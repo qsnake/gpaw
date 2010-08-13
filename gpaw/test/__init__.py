@@ -191,7 +191,7 @@ tests = [
     'exx.py',
     'h2o_dks.py',
     'nscfsic.py',
-    'scfsic_h2.py',
+    #'scfsic_h2.py',
     #'scfsic_n2.py',
     'vdw/quick.py',
     'vdw/potential.py',
@@ -222,7 +222,6 @@ exclude = []
 if mpi.size > 1:
     exclude += ['pes.py',
                 'nscfsic.py',
-                'scfsic_h2.py',
                 'coreeig.py',
                 'asewannier.py',
                 'wannier_ethylene.py',
