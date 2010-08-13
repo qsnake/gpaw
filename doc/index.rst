@@ -46,7 +46,8 @@ algorithms used <features_and_algorithms>`.
 * `Department of Physics, University of Jyväskylä <http://www.phys.jyu.fi>`_
 * `Freiburg Materials Research Center <http://www.fmf.uni-freiburg.de>`_
 * `Institute of Physics, Tampere University of Technology <http://www.tut.fi>`_
-* `Laboratory of Physics, Helsinki University of Technology <http://www.fyslab.hut.fi>`_
+* `Laboratory of Physics, Helsinki University of Technology
+  <http://www.fyslab.hut.fi>`_
 
 
 .. note::
@@ -66,7 +67,7 @@ algorithms used <features_and_algorithms>`.
 News
 ====
 
-* :ref:`GPAW version 0.7.1 <releasenotes>` released (Aug 11 2010)
+* :ref:`GPAW version 0.7.2 <releasenotes>` released (Aug 13 2010)
 
 * :ref:`GPAW version 0.7 <releasenotes>` released (Apr 23 2010)
 

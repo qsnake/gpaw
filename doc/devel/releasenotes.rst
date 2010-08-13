@@ -14,10 +14,10 @@ Version 0.8 (development version in trunk)
 * ...
 
 
-Version 0.7.1
+Version 0.7.2
 =============
 
-11 August 2010: :trac:`tags/0.7.1 <../tags/0.7.1>`.
+13 August 2010: :trac:`tags/0.7.2 <../tags/0.7.2>`.
 
 * For version 0.7, the default Poisson solver was changed to
   ``PoissonSolver(nn=3)``.  Now, also the Poisson solver's default
