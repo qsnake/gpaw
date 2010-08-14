@@ -6,7 +6,7 @@ Release notes
 
 
 Version 0.8.0 (development version in trunk)
-==========================================
+============================================
 
 :trac:`trunk <>`.
 
