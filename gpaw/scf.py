@@ -80,11 +80,6 @@ class SCFLoop:
         if self.density_error is None:
             self.density_error = 1000000.0
 
-        if 0:
-            print (self.eigenstates_error, self.max_eigenstates_error,
-                   self.energy_error, self.max_energy_error,
-                   self.density_error, self.max_density_error)
-
         self.converged = (
             self.eigenstates_error < self.max_eigenstates_error and
             self.energy_error < self.max_energy_error and

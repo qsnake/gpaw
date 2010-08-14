@@ -47,9 +47,9 @@ class InputParameters(dict):
             ('communicator' ,   None),
             ('idiotproof'   ,   True),
             ('mode',            'fd'),
-            ('convergence',     {'energy':      0.001,  # eV / atom
+            ('convergence',     {'energy':      0.0005,  # eV / electron
                                  'density':     1.0e-4,
-                                 'eigenstates': 1.0e-9,
+                                 'eigenstates': 1.0e-9,  # XXX ???
                                  'bands':       'occupied'}),
             ])
         dict.update(self, kwargs)

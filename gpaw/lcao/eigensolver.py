@@ -79,16 +79,10 @@ class LCAO:
         if sl_diagonalize:
             assert scalapack()
 
-        kpt.eps_n[0] = 42
-        
         diagonalization_string = repr(self.diagonalizer)
         wfs.timer.start(diagonalization_string)
         self.diagonalizer.diagonalize(H_MM, kpt.C_nM, kpt.eps_n, S_MM)
         wfs.timer.stop(diagonalization_string)
-
-        if kpt.eps_n[0] == 42:
-            raise RuntimeError('LCAO diagonalization failed! ' +
-                               'You may want to check your structure.')    
 
         wfs.timer.start('Calculate projections')
         # P_ani are not strictly necessary as required quantities can be

@@ -645,7 +645,7 @@ class NewTwoCenterIntegrals:
                                                                 pbc_c))
         self.atoms = self.atompairs.pairs.atoms # XXX compatibility
 
-        rcmax = max(cutoff_I)
+        rcmax = max(cutoff_I + [0.001])
 
         ng = 2**extra_parameters.get('log2ng', 10)
         transformer = FourierTransformer(rcmax, ng)

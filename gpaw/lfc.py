@@ -246,7 +246,9 @@ class NewLocalizedFunctionsCollection(BaseLFC):
                 self.integral_a = np.array(integral)
         else:
             self.integral_a = None
-        
+  
+        self.my_atom_indices = None
+
     def set_k_points(self, ibzk_qc):
         self.ibzk_qc = ibzk_qc
         self.gamma = False
@@ -259,7 +261,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         for spos_c, sphere in zip(spos_ac, self.sphere_a):
             movement |= sphere.set_position(spos_c, self.gd, self.cut)
 
-        if movement:
+        if movement or self.my_atom_indices is None:
             self._update(spos_ac)
     
     def _update(self, spos_ac):

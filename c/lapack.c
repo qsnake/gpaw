@@ -132,8 +132,8 @@ PyObject* general_diagonalize(PyObject *self, PyObject *args)
   if (!PyArg_ParseTuple(args, "OOO", &a, &w, &b))
     return NULL;
   int n = a->dimensions[0];
-  int lda = n;
-  int ldb = n;
+  int lda = MAX(1, n);
+  int ldb = lda;
   int itype = 1;
   int info = 0;
   if (a->descr->type_num == PyArray_DOUBLE)
@@ -167,7 +167,7 @@ PyObject* inverse_cholesky(PyObject *self, PyObject *args)
   if (!PyArg_ParseTuple(args, "O", &a))
     return NULL;
   int n = a->dimensions[0];
-  int lda = n;
+  int lda = MAX(1, n);
   int info = 0;
 
   if (a->descr->type_num == PyArray_DOUBLE)

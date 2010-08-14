@@ -26,7 +26,7 @@ mol.center(vacuum=2.0)
 calc = GPAW(nbands=6,
             gpts=(32, 40, 40),
             setups='hgh',
-            convergence=dict(eigenstates=1e-9, density=1e-5, energy=1e-5),
+            convergence=dict(eigenstates=1e-9, density=1e-5, energy=0.3e-5),
             txt='-')
 mol.set_calculator(calc)
 e = mol.get_potential_energy()

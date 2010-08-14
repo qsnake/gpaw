@@ -10,7 +10,7 @@ bulk = Atoms('Fe2',
              pbc=True)
 mom0 = sum(bulk.get_initial_magnetic_moments())
 h = 0.2
-conv = {'eigenstates': 0.1, 'density':0.1, 'energy':0.1}
+conv = {'eigenstates': 0.1, 'density':0.1, 'energy':0.01}
 calc = GPAW(h=h,
             nbands=11,
             kpts=(3, 3, 3),

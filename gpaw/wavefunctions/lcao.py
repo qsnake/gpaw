@@ -121,7 +121,8 @@ class LCAOWaveFunctions(WaveFunctions):
             kpt.T_MM = T_qMM[q]
 
 
-        if debug and self.band_comm.size == 1 and self.gd.comm.rank == 0:
+        if (debug and self.band_comm.size == 1 and self.gd.comm.rank == 0 and
+            nao > 0):
             # S and T are summed only on comm master, so check only there
             from numpy.linalg import eigvalsh
             self.timer.start('Check positive definiteness')

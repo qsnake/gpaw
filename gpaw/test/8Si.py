@@ -44,4 +44,4 @@ force_tolerance = 0.0001
 niter_tolerance = 0
 equal(e1, -46.6596470348, energy_tolerance) # svnversion 5252
 equal(f1, -1.38242356123, force_tolerance) # svnversion 5252
-equal(niter1, 53, niter_tolerance) # svnversion 5252
+equal(niter1, 49, niter_tolerance) # svnversion 5252

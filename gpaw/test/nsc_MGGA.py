@@ -57,7 +57,7 @@ equal(e1He+de12tHe, -0.448532905095, 0.005)
 equal(e1He+de12mHe, -0.51400253951, 0.005)
 equal(e1He+de12rHe, -0.512681077838, 0.005)
 
-energy_tolerance = 0.0001
+energy_tolerance = 0.0005
 niter_tolerance = 0
 equal(e1, -1.123322, energy_tolerance)
 assert 25 <= niter1 <= 28, niter1

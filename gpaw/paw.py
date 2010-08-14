@@ -464,11 +464,12 @@ class PAW(PAWTextOutput):
             niter_fixdensity = None
 
         if self.scf is None:
-            self.scf = self.scf_loop_class(cc['eigenstates'] * nvalence,
-                                           cc['energy'] / Hartree * natoms,
-                                           cc['density'] * nvalence,
-                                           par.maxiter, par.fixdensity,
-                                           niter_fixdensity)
+            self.scf = self.scf_loop_class(
+                cc['eigenstates'] * nvalence,
+                cc['energy'] / Hartree * max(nvalence, 1),
+                cc['density'] * nvalence,
+                par.maxiter, par.fixdensity,
+                niter_fixdensity)
 
         parsize, parsize_bands = par.parallel['domain'], par.parallel['band']
 

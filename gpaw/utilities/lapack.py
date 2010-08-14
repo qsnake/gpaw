@@ -82,7 +82,9 @@ def general_diagonalize(a, w, b):
     assert b.dtype == a.dtype
     assert b.shape == a.shape
 
+    w[:1] = 42
     info = _gpaw.general_diagonalize(a, w, b)
+    assert n == 0 or w[0] != 42
     return info
 
 def slgeneral_diagonalize(a, w, b, blockcomm, root=0):

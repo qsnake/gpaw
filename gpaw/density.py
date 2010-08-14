@@ -183,9 +183,14 @@ class Density:
             comp_charge = self.calculate_multipole_moments()
         
         pseudo_charge = self.gd.integrate(self.nt_sG).sum()
-        if pseudo_charge != 0:
-            x = -(self.charge + comp_charge) / pseudo_charge
-            self.nt_sG *= x
+
+        if pseudo_charge + self.charge + comp_charge != 0:
+            if pseudo_charge != 0:
+                x = -(self.charge + comp_charge) / pseudo_charge
+                self.nt_sG *= x
+            else:
+                # Use homogeneous background:
+                self.nt_sG[:] = (self.charge + comp_charge) * self.gd.dv
 
     def calculate_pseudo_charge(self, comp_charge):
         self.nt_g = self.nt_sg.sum(axis=0)
@@ -261,8 +266,8 @@ class Density:
         f_sM = np.empty((self.nspins, basis_functions.Mmax))
         self.D_asp = {}
         f_asi = {}
-        c = self.charge / len(self.setups)  # distribute charge on all atoms
         for a in basis_functions.atom_indices:
+            c = self.charge / len(self.setups)  # distribute on all atoms
             f_si = self.setups[a].calculate_initial_occupation_numbers(
                     self.magmom_a[a], self.hund, charge=c, nspins=self.nspins)
             if a in basis_functions.my_atom_indices:

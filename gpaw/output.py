@@ -232,7 +232,7 @@ class PAWTextOutput:
         cc = p['convergence']
         t()
         t('Convergence Criteria:')
-        t('Total Energy Change per Atom:           %g eV / atom' %
+        t('Total Energy Change per Atom:           %g eV / electron' %
           (cc['energy']))
         t('Integral of Absolute Density Change:    %g electrons' %
           cc['density'])
