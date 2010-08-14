@@ -2,11 +2,6 @@
 Basics of GPAW calculations
 ===========================
 
-XXX It is possible that the script requires too much tinkering
-(particularly with output).  Should this be improved?  Are
-calculations too time consuming? -Ask
-
-
 Atomization energy revisited
 ============================
 
