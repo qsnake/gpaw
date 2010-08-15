@@ -26,9 +26,7 @@ environment.  Run the commands:
   $ source ~/.bashrc
 
 This will set up the environment for you so that you can use ASE,
-GPAW, VMD and matplotlib.  The changes will take effect for all new
-terminals opened from now on.
-
+GPAW, VMD and matplotlib.
 
 Running GPAW calculations
 -------------------------
