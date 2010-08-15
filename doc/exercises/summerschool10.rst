@@ -64,5 +64,7 @@ Notes
 
 * To open a pdf-file: :samp:`evince {filename}`
 
+* How to `use USB sticks <http://www.gbar.dtu.dk/wiki/USB_Access>`_.
+
 * The normal tilde (~) key combination is not functional on the
   databar computers.  Use :kbd:`Alt Graph + 5` to type a tilde.
