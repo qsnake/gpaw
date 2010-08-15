@@ -23,6 +23,7 @@ environment.  Run the commands:
 
   $ mv ~/.bashrc ~/old.bashrc
   $ echo source ~ashj/summerschool-env/gbar-gpaw.rc > ~/.bashrc
+  $ . ~/.bashrc
 
 This will set up the environment for you so that you can use ASE,
 GPAW, VMD and matplotlib.  The changes will take effect for all new
