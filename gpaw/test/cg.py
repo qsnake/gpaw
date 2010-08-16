@@ -31,4 +31,4 @@ niter_tolerance = 0
 equal(e0, -6.97626, energy_tolerance)
 assert 16 <= niter0 <= 22, niter0
 equal(e1, -6.97627, energy_tolerance)
-assert 16 <= niter1 <= 21, niter1
+assert 12 <= niter1 <= 17, niter1
