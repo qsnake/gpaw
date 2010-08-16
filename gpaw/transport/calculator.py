@@ -2335,6 +2335,13 @@ class Transport(GPAW):
                     atoms_l = self.atoms[self.pl_atoms[i]].copy()
                 else:
                     atoms_l = self.leads[i]
+                    if i == 0:
+                        j = 0
+                    else:
+                        j = 1
+                    atoms_l.positions += self.atoms[self.pl_atoms[i]].positions[j]- \
+                                              self.leads[i].positions[j]                        
+                    
                 cell_l = self.pl_cells[i]
                 assert self.gd.orthogonal
                 ex_cell[di] += self.gd.h_cv[2, 2] * Bohr * self.bnc[i]
