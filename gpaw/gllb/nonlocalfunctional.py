@@ -1,8 +1,6 @@
-from gpaw.xc_functional import ZeroFunctional
 from gpaw.mpi import world
 
-class NonLocalFunctional(ZeroFunctional):
-
+class NonLocalFunctional:
     def __init__(self):
         self.contributions = []
         self.xcs = {}

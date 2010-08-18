@@ -125,6 +125,7 @@ tests = [
     'nonselfconsistentLDA.py',
     'nonselfconsistent.py',
     'ewald.py',
+    'harmonic.py',
     'spinpol.py',
     'kptpar.py',
     'plt.py',

@@ -321,7 +321,7 @@ class PAWTextOutput:
         # Output from each iteration:
         t = self.text
 
-        nvalence = self.wfs.setups.nvalence
+        nvalence = self.wfs.setups.nvalence - self.input_parameters.charge
         eigerr = self.scf.eigenstates_error / nvalence
         if self.verbose != 0:
             T = time.localtime()

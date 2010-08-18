@@ -32,11 +32,24 @@ import _gpaw
 
 class ZeroFunctional:
     """Dummy XC functional"""
+    gga = False
+    mgga = False
+    uses_libxc = False
+    gllb = False
+    xcname = 'None'
+    hybrid = 0.0
     def calculate_spinpaired(self, e_g, n_g, v_g):
         e_g[:] = 0.0
-
     def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g):
         e_g[:] = 0.0
+    def set_non_local_things(self, *args):
+        pass
+    def get_non_local_energy(self):
+        return 0.0
+    def get_non_local_kinetic_corrections(self):
+        return 0.0
+    def adjust_non_local_residual(self, *args):
+        pass
 
 
 class XCFunctional:
