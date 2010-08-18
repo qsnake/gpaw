@@ -48,4 +48,4 @@ eigs = calc.get_eigenvalues()
 equal(eigs[0], 1.5 * Hartree, 0.002)
 equal(abs(eigs[1:] - 2.5 * Hartree).max(), 0, 0.003)
 
-#del x, calc
+del x, calc  # XXX why????
