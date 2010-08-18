@@ -22,20 +22,26 @@ if __name__ == '__main__':
 
     plt.figure(figsize=(6, 4))
     for width in [0.05, 0.1, 0.15, 0.2]:
-        a = [f(width, k, 12)[0]**(1.0 / 3.0) for k in kk]
+        a = []
+        for k in kk:
+            v0, e0, B = f(width, k, 12)
+            a.append((2 * v0)**(1.0 / 3.0))
         print ('%7.3f ' * 7) % ((width,) + tuple(a))
         plt.plot(kk, a, label='width = %.2f eV' % width)
     plt.legend(loc='lower right')
-    plt.axis(ymin=2.83, ymax=2.85)
+    #plt.axis(ymin=2.83, ymax=2.85)
     plt.xlabel('number of k-points')
     plt.ylabel('lattice constant [Ang]')
     plt.savefig('Fe_conv_k.png')
 
     plt.figure(figsize=(6, 4))
     gg = np.arange(8, 32, 4)
-    a = [f(0.1, 8, g)[0]**(1.0 / 3.0) for g in gg]
+    a = []
+    for g in gg:
+        v0, e0, B = f(0.1, 8, g)
+        a.append((2 * v0)**(1.0 / 3.0))
     plt.plot(2.84 / gg, a, 'o-')
-    plt.axis(ymin=2.83, ymax=2.85)
+    #plt.axis(ymin=2.83, ymax=2.85)
     plt.xlabel('grid-spacing [Ang]')
     plt.ylabel('lattice constant [Ang]')
     plt.savefig('Fe_conv_h.png')
