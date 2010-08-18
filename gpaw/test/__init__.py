@@ -341,7 +341,10 @@ class TestRunner:
         filename = gpaw.__path__[0] + '/test/' + test
 
         try:
-            execfile(filename, {})
+            loc = {}
+            execfile(filename, loc)
+            loc.clear()
+            del loc
             self.check_garbage()
         except KeyboardInterrupt:
             self.write_result(test, 'STOPPED', t0)
