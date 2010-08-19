@@ -17,6 +17,7 @@ from gpaw.hgh import null_xc_correction
 
 
 class AppelbaumHamann(BaseSetup):
+
     def __init__(self, alpha=0.6102, v1=3.042, v2=-1.372):
         self.alpha = alpha
         self.v1 = v1
@@ -37,7 +38,7 @@ class AppelbaumHamann(BaseSetup):
         rc = 4.0
         r2_g = np.linspace(0, rc, 100)**2
         x_g = np.exp(-alpha * r2_g)
-        self.ghat_l = [Spline(0, rc, 8 * alpha**1.5 / np.pi * x_g)]
+        self.ghat_l = [Spline(0, rc, 4 * alpha**1.5 / np.pi**0.5 * x_g)]
         self.vbar = Spline(0, rc, 2 * np.pi**0.5 * (v1 + v2 * r2_g) * x_g)
         self.Delta_pL = np.zeros((1, 1))
         self.Delta0 = -4 / (4 * np.pi)**0.5
