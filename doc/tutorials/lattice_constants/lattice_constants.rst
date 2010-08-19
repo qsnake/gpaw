@@ -6,11 +6,13 @@ Finding lattice constants
 
 .. seealso::
 
-   * `ASE equation of state module
-     <https://wiki.fysik.dtu.dk/ase/ase/utils.html#equation-of-state>`_
    * `ASE EOS tutorial
      <https://wiki.fysik.dtu.dk/ase/tutorials/eos/eos.html>`_
+   * `ASE Finding lattice constants tutorial
+     <https://wiki.fysik.dtu.dk/ase/tutorials/lattice_constant.html>`_
 
+   * `ASE equation of state module
+     <https://wiki.fysik.dtu.dk/ase/ase/utils.html#equation-of-state>`_
 
 BCC iron
 ========
