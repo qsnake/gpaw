@@ -347,7 +347,7 @@ class PAWTextOutput:
 
             T = time.localtime()
 
-            if eigerr == 0.0:
+            if eigerr == 0.0 or nvalence == 0:
                 eigerr = ''
             else:
                 eigerr = '%-+5.1f' % (log(eigerr) / log(10))
