@@ -28,7 +28,7 @@ if __name__ == '__main__':
             a.append((2 * v0)**(1.0 / 3.0))
         print ('%7.3f ' * 7) % ((width,) + tuple(a))
         plt.plot(kk, a, label='width = %.2f eV' % width)
-    plt.legend(loc='lower right')
+    plt.legend(loc='upper right')
     #plt.axis(ymin=2.83, ymax=2.85)
     plt.xlabel('number of k-points')
     plt.ylabel('lattice constant [Ang]')
