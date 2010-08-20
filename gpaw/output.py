@@ -322,7 +322,11 @@ class PAWTextOutput:
         t = self.text
 
         nvalence = self.wfs.setups.nvalence - self.input_parameters.charge
-        eigerr = self.scf.eigenstates_error / nvalence
+        if nvalence > 0:
+            eigerr = self.scf.eigenstates_error / nvalence
+        else:
+            eigerr = 0.0
+            
         if self.verbose != 0:
             T = time.localtime()
             t()
@@ -347,7 +351,7 @@ class PAWTextOutput:
 
             T = time.localtime()
 
-            if eigerr == 0.0 or nvalence == 0:
+            if eigerr == 0.0:
                 eigerr = ''
             else:
                 eigerr = '%-+5.1f' % (log(eigerr) / log(10))
