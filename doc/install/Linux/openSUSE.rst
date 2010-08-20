@@ -7,3 +7,23 @@ openSUSE
 Here you find information about the the system
 `<http://www.opensuse.org/>`_.
 
+System wide installation with yast
+==================================
+
+The steps described below require root access and assume bash shell:
+
+- `configure fys yum repository <https://wiki.fysik.dtu.dk/niflheim/Cluster_software_-_RPMS#configure-fys-yum-repository>`_
+
+- on openSUSE 11.2 i386 or x86_64, as root:
+
+  - list available packages::
+
+      zypper packages -r fys_openSUSE
+
+  - install gpaw and dependencies::
+
+      yast -i campos-gpaw
+
+  - install optional packages::
+
+      yast -i scipy ScientificPython
