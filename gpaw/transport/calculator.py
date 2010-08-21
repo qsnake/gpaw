@@ -232,7 +232,7 @@ class Transport(GPAW):
         p['n_bias_step'] = 0
         p['n_ion_step'] = 0
         p['eqinttol'] = 1e-4
-        p['plot_eta'] = 0.005
+        p['plot_eta'] = 0.0001
         p['plot_energy_range'] = [-5.,5.]
         p['plot_energy_point_num'] = 201
         p['alpha'] = 0.0
@@ -1157,7 +1157,7 @@ class Transport(GPAW):
                     self.text('density: diff = %f  tol=%f' % (self.diff_d,
                                             tol))
                 if self.diff_d < tol * self.theta:
-                    if (self.use_qzk_boundary or self.fixed) and \
+                    if (self.use_qzk_boundary or self.fixed or self.multi_leads) and \
                                   not self.normalize_density and self.neutral:
                         self.neutral = False
                     elif self.diff_d < tol:
@@ -2325,7 +2325,8 @@ class Transport(GPAW):
 
     def get_extended_atoms(self):
         # for LR leads only
-        if self.extended_atoms is None:
+        if self.extended_atoms is None or (self.extended_atoms is not None
+                                              and self.optimize):
             atoms = self.atoms.copy()
             cell = np.diag(atoms.cell)
             ex_cell = cell.copy()
@@ -2334,14 +2335,13 @@ class Transport(GPAW):
                 if self.leads is None:
                     atoms_l = self.atoms[self.pl_atoms[i]].copy()
                 else:
-                    atoms_l = self.leads[i]
+                    atoms_l = self.leads[i].copy()
                     if i == 0:
                         j = 0
                     else:
                         j = 1
                     atoms_l.positions += self.atoms[self.pl_atoms[i]].positions[j]- \
-                                              self.leads[i].positions[j]                        
-                    
+                                              self.leads[i].positions[j]
                 cell_l = self.pl_cells[i]
                 assert self.gd.orthogonal
                 ex_cell[di] += self.gd.h_cv[2, 2] * Bohr * self.bnc[i]
