@@ -66,6 +66,7 @@ Linux:
    Linux/monolith
    Linux/murska
    Linux/neolith
+   Linux/newcell
    Linux/sepeli
    Linux/supernova
    Linux/uranus
