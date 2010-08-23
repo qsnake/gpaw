@@ -78,14 +78,13 @@ def hRPS(x, xc=1.0):
     y = np.exp(y)
     return xc * (1.0 - y), z * y
 
-Zab = -0.8491
-
 
 class VDWFunctional:
     """Base class for vdW-DF."""
     def __init__(self, nspins=1, world=None, q0cut=5.0,
                  phi0=0.5, ds=1.0, Dmax=20.0, nD=201, ndelta=21,
-                 soft_correction=False, verbose=False):
+                 soft_correction=False, exchange='revPBEx', Zab=-0.8491,
+                 verbose=False):
         """vdW-DF.
 
         parameters:
@@ -110,6 +109,10 @@ class VDWFunctional:
             Correct for soft kernel.
         verbose: bool
             Print useful information.
+        exchange:
+            Which exchange to use ('revPBEx' for vdW-DF-1, 'X_PW86-None' for vdW-DF-2)
+        Zab:
+            parameter in nonlocal kernel (Zab=-0.8491 for vdW-DF-1, Zab=-1.887 for vdW-DF-2)
         """
 
         self.nspins = nspins
@@ -127,9 +130,10 @@ class VDWFunctional:
         self.D_j = np.linspace(0, Dmax, nD)
 
         self.verbose = verbose
-        
-        self.revPBEx = XCFunctional('revPBEx', nspins)
+
+        self.revPBEx = XCFunctional(exchange, nspins)
         self.LDAc = XCFunctional('None-C_PW', nspins)
+        self.Zab = Zab
 
         if nspins == 2:
             self.LDAc_spinpaired = XCFunctional('None-C_PW', nspins=1)
@@ -224,7 +228,7 @@ class VDWFunctional:
         kF_g = (3 * pi**2 * n_g)**(1.0 / 3.0)
         q0_g, dhdx_g = hRPS(kF_g -
                             4 * pi / 3 * e_LDAc_g / n_g -
-                            Zab / 36 / kF_g * a2_g / n_g**2, self.q0cut)
+                            self.Zab / 36 / kF_g * a2_g / n_g**2, self.q0cut)
 
         if self.verbose:
             print ('VDW: q0 (min, mean, max): (%f, %f, %f)' %
@@ -491,7 +495,7 @@ class FFTVDWFunctional(VDWFunctional):
     """FFT implementation of vdW-DF."""
     def __init__(self, nspins=1,
                  Nalpha=20, lambd=1.2, rcut=125.0, Nr=2048, size=None,
-                 **kwargs):
+                 exchange='revPBEx', Zab=-0.8491, **kwargs):
         """FFT vdW-DF.
 
         parameters:
@@ -506,14 +510,20 @@ class FFTVDWFunctional(VDWFunctional):
             Number of real-space points for kernel function.
         size: 3-tuple
             Size of FFT-grid.
+	exchange:
+	    Which exchange to use ('revPBEx' for vdW-DF-1, 'X_PW86-None' for vdW-DF-2)
+	Zab:
+	    parameter in nonlocal kernel (Zab=-0.8491 for vdW-DF-1, Zab=-1.887 for vdW-DF-2)
         """
-        VDWFunctional.__init__(self, nspins, **kwargs)
+        VDWFunctional.__init__(self, nspins, exchange=exchange, Zab=Zab, **kwargs)
         self.Nalpha = Nalpha
         self.lambd = lambd
         self.rcut = rcut
         self.Nr = Nr
         self.size = size
         
+        self.Zab = Zab
+
         self.C_aip = None
         self.phi_aajp = None
 
@@ -771,9 +781,9 @@ class FFTVDWFunctional(VDWFunctional):
             self.timer.start('p1')
             dq0dn_g = ((pi / 3 / n_g)**(2.0 / 3.0) +
                        4 * pi / 3 * (e_LDAc_g / n_g - v_LDAc_g) / n_g +
-                       7 * Zab / 108 / (3 * pi**2)**(1.0 / 3.0) * a2_g *
+                       7 * self.Zab / 108 / (3 * pi**2)**(1.0 / 3.0) * a2_g *
                        n_g**(-10.0 / 3.0))
-            dq0da2_g = -Zab / 36 / (3 * pi**2)**(1.0 / 3.0) / n_g**(7.0 / 3.0)
+            dq0da2_g = -self.Zab / 36 / (3 * pi**2)**(1.0 / 3.0) / n_g**(7.0 / 3.0)
             self.timer.stop('p1')
         
         v0_g = np.zeros_like(n_g)
