@@ -43,7 +43,6 @@ set apps_path ${APPS}
 prereq nose # nose
 prepend-path    PATH                \$apps_path/numpy-${numpy_version}-1/usr/bin
 prepend-path    PYTHONPATH          \$apps_path/numpy-${numpy_version}-1/usr/lib64/python2.4/site-packages/
-prepend-path    PYTHONPATH          \$apps_path/numpy-${numpy_version}-1/usr/lib/python2.4/site-packages/
 unset apps_path
 EOF
 
