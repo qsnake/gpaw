@@ -43,27 +43,8 @@ if os.system('svn checkout ' +
              'https://svn.fysik.dtu.dk/projects/ase/trunk ase -r %s' %
              ase_required_svnversion) != 0:
     fail('Checkout of ASE failed!')
-try: 
-    # subprocess was introduced with python 2.4
-    from subprocess import Popen, PIPE
-    cmd = Popen('svnversion ase',
-                shell=True, stdout=PIPE, stderr=PIPE, close_fds=True).stdout
-except ImportError:
-    cmd = popen3('svnversion ase')[1] # assert that we are in gpaw project
-aserevision = int(cmd.readline())
-cmd.close()
 
 os.chdir('gpaw')
-
-try: 
-    # subprocess was introduced with python 2.4
-    from subprocess import Popen, PIPE
-    cmd = Popen('svnversion', 
-                shell=True, stdout=PIPE, stderr=PIPE, close_fds=True).stdout
-except ImportError:
-    cmd = popen3('svnversion')[1] # assert that we are in gpaw project
-gpawrevision = int(cmd.readline().strip('M\n'))
-cmd.close()
 
 if os.system('python setup.py install --home=%s ' % tmpdir +
              '2>&1 | grep -v "c/libxc/src"') != 0:
@@ -104,10 +85,6 @@ if failed:
         if n > 2:
             subject += ', ...'
     fail(subject, 'test.out')
-
-open('/home/camp/jensj/gpawrevision.ok', 'w').write('%d %d\n' %
-                                                    (aserevision,
-                                                     gpawrevision))
 
 def count(dir, pattern):
     p = os.popen('wc -l `find %s -name %s` | tail -1' % (dir, pattern), 'r')
