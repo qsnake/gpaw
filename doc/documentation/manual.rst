@@ -94,8 +94,6 @@ keyword            type       default value        description
 ``random``         ``bool``   ``False``            Use random numbers for
                                                    :ref:`manual_random`
 ``occupations``    occ. obj.                       :ref:`manual_occ`
-``width``          ``float``  ``0`` or ``0.1`` eV  :ref:`manual_occ`
-``fixmom``         ``bool``   ``False``            :ref:`manual_occ`
 ``lmax``           ``int``    ``2``                Maximum angular momentum
                                                    for expansion of
                                                    :ref:`manual_lmax`

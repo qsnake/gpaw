@@ -131,7 +131,7 @@ The class ``Mixer`` indicates one of the possible mixing schemes.  The
 Pulay mixing can be based on:
 
 1. The spin densities seperately, ``Mixer`` (This will *not* work for
-   spinpolarized system if fixmom=False or width!=0)
+   a spinpolarized system, unless the magnetic moment is fixed)
 2. The total density, ``MixerSum2``
 3. Spin channels seperately for the density matrices, and the summed
    channels for the pseudo electron density, ``MixerSum``

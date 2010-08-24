@@ -47,8 +47,8 @@ where we compute the total energy difference between the ground state
 and the first core excited state. The excited state should be spin
 polarized and to fix the occupation to a spin up core hole and an
 electron in the lowest unoccupied spin up state (singlet) we must set
-the magnetic moment to one on the atom with the hole and set
-``fixmom=True``.
+the magnetic moment to one on the atom with the hole and fix the total
+magnetic moment with ``occupations=FermiDirac(0.0, fixmagmom=True)``:
 
 .. literalinclude:: dks.py
 
