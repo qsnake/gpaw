@@ -7,7 +7,6 @@ import glob
 import trace
 import tempfile
 
-
 def send_email(subject, filename='/dev/null'):
     assert os.system(
         'mail -s "%s" gpaw-developers@listserv.fysik.dtu.dk < %s' %
@@ -35,15 +34,14 @@ if os.system('svn checkout ' +
     fail('Checkout of gpaw failed!')
 
 if day % 2:
-    d = {}
-    execfile('gpaw/gpaw/version.py', d)
-    asesvnversion = d['ase_required_svnversion']
+    exec([line for line in open('gpaw/gpaw/version.py').readlines()
+          if line.startswith('ase_required_svnversion')][0])
 else:
-    asesvnversion = 'HEAD'
+    ase_required_svnversion = 'HEAD'
 
 if os.system('svn checkout ' +
              'https://svn.fysik.dtu.dk/projects/ase/trunk ase -r %s' %
-             asesvnversion) != 0:
+             ase_required_svnversion) != 0:
     fail('Checkout of ASE failed!')
 try: 
     # subprocess was introduced with python 2.4
@@ -92,6 +90,7 @@ from gpaw.test import TestRunner, tests
 os.mkdir('gpaw-test')
 os.chdir('gpaw-test')
 out = open('test.out', 'w')
+#tests = ['ase3k.py', 'jstm.py']
 failed = TestRunner(tests, stream=out).run()
 out.close()
 if failed:
@@ -167,4 +166,3 @@ pylab.title('Number of lines')
 pylab.savefig(dir + 'stat.png')
 
 os.system('cd; rm -r ' + tmpdir)
-
