@@ -4,7 +4,7 @@ extra_compile_args = ['-O3', '-std=c99', '-fpic']
 
 compiler = '/afs/crc.nd.edu/x86_64_linux/openmpi/1.3.2/gnu/bin/mpicc'
 
-libraries = ['mkl_core', 'mkl_sequential', 'mkl_gf_lp64', 'iomp5']
+libraries = ['mkl_def', 'mkl_core', 'mkl_sequential', 'mkl_gf_lp64', 'iomp5']
 
 mkl_lib_path = '/opt/crc/scilib/mkl/10.1.0.015/lib/em64t/'
 ompi_lib_path = '/afs/crc.nd.edu/x86_64_linux/openmpi/1.3.2/gnu/lib/'
