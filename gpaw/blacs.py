@@ -923,7 +923,7 @@ class BlacsOrbitalLayouts(BlacsLayouts):
         nao = self.nao
         
         if rho_mM is None:
-            rho_mM = self.mMdescriptor.zeros()
+            rho_mM = self.mMdescriptor.zeros(dtype=C_nM.dtype)
         
         Cf_nM = C_nM * f_n[:, None]
         pblas_simple_gemm(self.nMdescriptor, self.nMdescriptor,

@@ -416,8 +416,18 @@ PyObject* construct_density(LFCObject *lfc, PyObject *args)
         LFVolume* v1 = volume_i + i1;
         int M1 = v1->M;
         int nm1 = v1->nm;
+
+	int M1p = MAX(M1, Mstart);
+	int nm1p = MIN(M1 + nm1, Mstop) - M1p;
+	if (nm1p <= 0)
+	  continue;
+
         memset(work_gm, 0, nG * nm1 * sizeof(double));
         double complex factor = 1.0;
+	
+	int m1end = MIN(nm1, Mstop - M1);
+	int m1start = MAX(0, Mstart - M1);
+	
         for (int i2 = i1; i2 < ni; i2++) {
           if (i2 > i1)
             factor = 2.0 * phase_i[i1] * conj(phase_i[i2]);
@@ -429,19 +439,19 @@ PyObject* construct_density(LFCObject *lfc, PyObject *args)
           const double* A2_gm = v2->A_gm;
           int M2 = v2->M;
           int nm2 = v2->nm;
-          const double complex* rho_mm = rho_MM + M1 * nM + M2;
+          const double complex* rho_mm = rho_MM + (M1p - Mstart) * nM + M2;
           double rrho, irho, rwork, iwork;
           complex double rho;
           for (int g = 0; g < nG; g++) {
             int gnm1 = g * nm1;
             int gnm2 = g * nm2;
-            int m1nM = 0;
-            for (int m1 = 0; m1 < nm1; m1++) {
-              m1nM = m1 * nM;
+            int m1pnM = 0;
+            for (int m1 = m1start, m1p=0; m1 < m1end; m1++, m1p++) {
+              m1pnM = m1p * nM;
               iwork = 0;
               rwork = 0;
               for (int m2 = 0; m2 < nm2; m2++) {
-                rho = rho_mm[m1nM + m2];
+                rho = rho_mm[m1pnM + m2];
                 rrho = creal(rho);
                 irho = cimag(rho);
                 rwork += A2_gm[gnm2 + m2] * rrho;
