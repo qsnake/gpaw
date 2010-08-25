@@ -858,6 +858,13 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
             (const bmgsspline*)(&(spline_obj->spline));
           
           int nm1 = v1->nm;
+
+          int M1p = MAX(M1, Mstart);
+          int nm1p = MIN(M1 + nm1, Mstop) - M1p;
+          if (nm1p <= 0)
+            continue;
+
+
           double fdYdc_m[nm1];
           double rlYdfdr_m[nm1];
           double f, dfdr;
@@ -893,9 +900,11 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
               break;
             }
             spherical_harmonics(l, dfdr * Rc_over_r, x, y, z, r2, rlYdfdr_m);
-
-            for (int m1 = 0; m1 < nm1; m1++, gm1++) {
-              work_gm[gm1] = vtdv * (fdYdc_m[m1] + rlYdfdr_m[m1]);
+	    
+            int m1start = M1 < Mstart ? nm1 - nm1p : 0;
+            for (int m1 = 0; m1 < nm1p; m1++, gm1++) {
+              work_gm[gm1] = vtdv * (fdYdc_m[m1 + m1start] 
+				     + rlYdfdr_m[m1 + m1start]);
             }            
           } // end loop over G
 
@@ -904,7 +913,7 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
             int M2 = v2->M;
             const double* A2_start_gm = v2->A_gm;
             const double* A2_gm;
-            double complex* DVt_start_mm = DVt_MM + M1 * nM + M2;
+            double complex* DVt_start_mm = DVt_MM + (M1p - Mstart) * nM + M2;
             double complex* DVt_mm;
             double complex work;
             int nm2 = v2->nm;
@@ -912,8 +921,8 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
             
             for (int g = 0; g < nG; g++) {
               A2_gm = A2_start_gm + g * nm2;
-              for (int m1 = 0; m1 < nm1; m1++) {
-                work = work_gm[g * nm1 + m1] * phase;
+              for (int m1 = 0; m1 < nm1p; m1++) {
+                work = work_gm[g * nm1p + m1] * phase;
                 DVt_mm = DVt_start_mm + m1 * nM;
                 for (int m2 = 0; m2 < nm2; m2++) {
                   DVt_mm[m2] += A2_gm[m2] * work;
