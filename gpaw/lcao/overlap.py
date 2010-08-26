@@ -125,8 +125,8 @@ class BaseOverlapExpansionSet:
     def __init__(self, shape):
         self.shape = shape
 
-    def zeros(self, *shape):
-        return np.zeros(shape + self.shape)
+    def zeros(self, shape=(), dtype=float):
+        return np.zeros(shape + self.shape, dtype=dtype)
 
 
 class OverlapExpansion(BaseOverlapExpansionSet):
@@ -169,7 +169,7 @@ class OverlapExpansion(BaseOverlapExpansionSet):
 
         This function assumes r > 0.  If r = 0, i.e. if the functions
         reside on the same atom, the derivative is zero in any case."""
-        dxdR_cmi = self.zeros(3)
+        dxdR_cmi = self.zeros((3,))
         for l, spline, G_mmm in self.gaunt_iter():
             x, dxdr = spline.get_value_and_derivative(r)
             GrlY_mi = np.dot(G_mmm, rlY_lm[l])
@@ -205,7 +205,7 @@ class TwoSiteOverlapExpansions(BaseOverlapExpansionSet):
         return x_MM
 
     def derivative(self, r, Rhat, rlY_lm, drlYdR_lmc):
-        x_cMM = self.zeros(3)
+        x_cMM = self.zeros((3,))
         for x_cmm, oe in self.slice(x_cMM):
             x_cmm += oe.derivative(r, Rhat, rlY_lm, drlYdR_lmc)
         return x_cMM
@@ -312,7 +312,7 @@ class BlacsOverlapExpansions(BaseOverlapExpansionSet):
             I1 = msoe.I1_a[a1]
             I2 = msoe.I2_a[a2]
             tsoe = msoe.tsoe_II[I1, I2]
-            x_qxmm = tsoe.zeros(*x_xqNM.shape[:-2])
+            x_qxmm = tsoe.zeros(x_xqNM.shape[:-2], dtype=x_xqNM.dtype)
             disp.evaluate_overlap(tsoe, x_qxmm)
             Mstart1 = msoe.M1_a[a1] - self.Mmystart
             Mend1 = Mstart1 + tsoe.shape[0]
@@ -416,7 +416,7 @@ class FourierTransformer:
         self.k_q = np.arange(self.Q // 2) * self.dk
 
     def transform(self, spline):
-        assert spline.get_cutoff() <= self.rcmax
+        assert spline.get_cutoff() <= self.rcmax, '%s vs %s' % (spline.get_cutoff(), self.rcmax)
         l = spline.get_angular_momentum_number()
         f_g = spline.map(self.r_g)
         f_q = fbt(l, f_g, self.r_g, self.k_q)
@@ -581,6 +581,7 @@ class BlochPhases:
         self.offset = offset
 
     def apply(self, src_xMM, dst_qxMM):
+        assert dst_qxMM.dtype == complex, dst_qxMM.dtype
         for phase, dst_xMM in zip(self.phase_q, dst_qxMM):
             dst_xMM[:] += phase * src_xMM
 
@@ -630,7 +631,8 @@ class NewTwoCenterIntegrals:
         I_setup = {}
         for I, setup in enumerate(setups_I):
             I_setup[setup] = I
-            cutoff_I.append(max([phit.get_cutoff() for phit in setup.phit_j]))
+            cutoff_I.append(max([func.get_cutoff()
+                                 for func in setup.phit_j + setup.pt_j]))
         
         I_a = []
         for setup in setups:
@@ -677,7 +679,7 @@ class NewTwoCenterIntegrals:
         pt_Ijq = self.msoc.transform(pt_Ij)
 
         msoc = self.msoc
-        
+
         self.Theta_expansions = msoc.calculate_expansions(l_Ij, phit_Ijq,
                                                           l_Ij, phit_Ijq)
         self.T_expansions = msoc.calculate_kinetic_expansions(l_Ij, phit_Ijq)
@@ -757,8 +759,9 @@ class OldOverlapExpansion: # Old version, remove this and use OverlapExpansion
             yield l, spline, G_mmm
             l += 2
 
-    def zeros(self, shape=()):
-        return np.zeros(shape + (2 * self.lb + 1, 2 * self.la + 1))
+    def zeros(self, shape=(), dtype=float):
+        return np.zeros(shape + (2 * self.lb + 1, 2 * self.la + 1),
+                        dtype=dtype)
     
     def evaluate(self, r, rlY_lm):
         """Get overlap between localized functions.
