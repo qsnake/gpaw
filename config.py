@@ -116,7 +116,7 @@ def get_system_config(define_macros, undef_macros,
 
         msg += ['* Using SUN high performance library']
 
-    elif sys.platform == 'aix5':
+    elif sys.platform in ['aix5', 'aix6']:
 
         #
         # o|_  _ _
@@ -124,7 +124,10 @@ def get_system_config(define_macros, undef_macros,
         #
 
         extra_compile_args += ['-qlanglvl=stdc99']
-        extra_link_args += ['-bmaxdata:0x80000000', '-bmaxstack:0x80000000']
+        # setting memory limit is necessary on aix5
+        if sys.platform == 'aix5':
+            extra_link_args += ['-bmaxdata:0x80000000',
+                '-bmaxstack:0x80000000']
 
         libraries += ['f', 'lapack', 'essl']
         define_macros.append(('GPAW_AIX', '1'))
@@ -422,7 +425,7 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
     runtime_libs = ' '.join([ runtime_lib_option + lib for lib in runtime_library_dirs])
 
     extra_link_args.append(cfgDict['LDFLAGS'])
-    if sys.platform == 'aix5':
+    if sys.platform in ['aix5', 'aix6']:
         extra_link_args.append(cfgDict['LINKFORSHARED'].replace('Modules', cfgDict['LIBPL']))
     elif sys.platform == 'darwin':
         pass
