@@ -854,10 +854,10 @@ class BlacsOrbitalLayouts(BlacsLayouts):
         subM, subN = outdescriptor.gshape
         
         C_mm = blockdescriptor.zeros(dtype=dtype)
-        self.timer.start('General diagonalize ex')
+        self.timer.start('General diagonalize')
         blockdescriptor.general_diagonalize_ex(H_mm, S_mm.copy(), C_mm, eps_M,
                                                UL='L', iu=self.bd.nbands)
-        self.timer.stop('General diagonalize ex')
+        self.timer.stop('General diagonalize')
  
        # Make C_nM compatible with the redistributor
         self.timer.start('Redistribute coefs')
