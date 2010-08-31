@@ -76,11 +76,11 @@ class PhononPerturbation(Perturbation):
         self.nct = LFC(self.gd, [[setup.nct] for setup in setups],
                        integral=[setup.Nct for setup in setups], dtype=self.dtype)
         # compensation charges
-        #XXX 
-        # self.ghat = LFC(self.finegd, [setup.ghat_l for setup in setups],
-        #                 dtype=self.dtype)
+        #XXX what is the consequence of numerical errors in the integral ??
         self.ghat = LFC(self.finegd, [setup.ghat_l for setup in setups],
-                        integral=sqrt(4 * pi), dtype=self.dtype)
+                        dtype=self.dtype)
+        ## self.ghat = LFC(self.finegd, [setup.ghat_l for setup in setups],
+        ##                 integral=sqrt(4 * pi), dtype=self.dtype)
         # vbar potential
         self.vbar = LFC(self.finegd, [[setup.vbar] for setup in setups],
                         dtype=self.dtype)
@@ -277,7 +277,9 @@ class PhononPerturbation(Perturbation):
         # Expansion coefficients for the ghat functions
         Q_aL = self.ghat.dict(zero=True)
         # Remember sign convention for add_derivative method
-        Q_aL[a] = -1 * self.Q_aL[a]
+        # And be sure not to change the dtype of the arrays by assigning values
+        # to array elements.
+        Q_aL[a][:] = -1 * self.Q_aL[a]
 
         # Grid for derivative of compensation charges
         ghat1_g = self.finegd.zeros(dtype=self.dtype)

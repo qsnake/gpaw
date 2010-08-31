@@ -60,7 +60,8 @@ class PhononCalculator:
                 self.dtype = complex
                 # Get k-points -- only temp, I need q-vectors; maybe the same ???
                 self.ibzq_qc = calc.get_ibz_k_points()
-                phase_qcd = [kpt.phase_cd for kpt in calc.wfs.kpt_u]
+                # XXX unused variable
+                # phase_qcd = [kpt.phase_cd for kpt in calc.wfs.kpt_u]
                 
             # FFT Poisson solver
             poisson = FFTPoissonSolver(dtype=self.dtype)
@@ -91,9 +92,15 @@ class PhononCalculator:
         # Linear response calculator
         self.response_calc = ResponseCalculator(calc, wfs, self.perturbation, kd)
 
-        # Dynamical matrix object
+        # Dynamical matrix object - its dtype should be determined by the
+        # presence of inversion symmetry !
+        inversion_symmetry = False
+        if inversion_symmetry:
+            D_dtype = float
+        else:
+            D_dtype = complex
         self.D_matrix = DynamicalMatrix(self.atoms, ibzq_qc=self.ibzq_qc,
-                                        dtype=self.dtype)
+                                        dtype=D_dtype)
 
         # Initialize flag
         self.initialized = False
@@ -132,19 +139,30 @@ class PhononCalculator:
             for a in atoms_a:
                 self.atoms_a = [0, 1, 2]
 
-    def __call__(self):
-        """Run calculation for atomic displacements and update matrix."""
+    def __call__(self, qpts_q=None):
+        """Run calculation for atomic displacements and update matrix.
+
+        Parameters
+        ----------
+        qpts: List
+            List of q-points indices for which the dynamical matrix will be
+            calculated (only temporary).
+
+        """
 
         if not self.initialized:
             self.initialize()
-       
+
         if self.gamma:
-            i_q = [0]
+            qpts_q = [0]
+        elif qpts_q is None:
+            qpts_q = range(len(self.ibzq_qc))
         else:
-            i_q = range(len(self.ibzq_qc))
+            assert type(qpts_q) == list
+            
                         
         # Calculate linear response wrt displacements of specified atoms
-        for q in i_q:
+        for q in qpts_q:
 
             if not self.gamma:
                 self.perturbation.set_q(q)
@@ -179,9 +197,9 @@ class PhononCalculator:
         # self.D_matrix.wfs_ground_state(self.calc, self.response_calc)
 
     def get_dynamical_matrix(self):
-        """Assemble and return the dynamical matrix as an ndarray."""
+        """Return reference to ``DynamicalMatrix`` object."""
         
-        return self.D_matrix.assemble()
+        return self.D_matrix
         
     def frequencies(self):
         """Calculate phonon frequencies from the dynamical matrix."""

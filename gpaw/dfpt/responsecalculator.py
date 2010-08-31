@@ -40,15 +40,15 @@ class ResponseCalculator:
         
     """
 
-    parameters = {'verbose':               True,
+    parameters = {'verbose':               False,
                   'max_iter':              100,
-                  'max_iter_krylov':       100,
+                  'max_iter_krylov':       1000,
                   'tolerance_sc':          1.0e-4,
-                  'tolerance_sternheimer': 1e-5,
+                  'tolerance_sternheimer': 1.0e-5,
                   'use_pc':                True,
                   'beta':                  0.4,
-                  'nmaxold':               3,
-                  'weight':                50
+                  'nmaxold':               5,
+                  'weight':                1
                   }
     
     def __init__(self, calc, wfs, perturbation, kpointdescriptor,
@@ -159,7 +159,7 @@ class ResponseCalculator:
                 norm = self.iteration()
                 print "abs-norm: %6.3e\t" % norm,
                 print ("integrated density response (abs): % 5.2e (%5.2e) "
-                       % (self.gd.integrate(self.nt1_G.real), 
+                       % (self.gd.integrate(self.nt1_G.real),
                           self.gd.integrate(np.absolute(self.nt1_G))))
                        
                 if norm < tolerance:
@@ -371,10 +371,6 @@ class ResponseCalculator:
                 self.sternheimer_operator.set_blochstate(n, k)
                 self.sternheimer_operator.project(rhs_G)
 
-                # XXX Temp
-                #if k == 0:
-                #    self.rhs_nG[n] = rhs_G.copy()
-                
                 if verbose:
                     print "\tBand %2.1i -" % n,
 
@@ -382,7 +378,7 @@ class ResponseCalculator:
                                                       psit1_G, rhs_G)
                 
                 if info == 0:
-                    if verbose: 
+                    if verbose:
                         print "linear solver converged in %i iterations" % iter
                 elif info > 0:
                     assert False, ("linear solver did not converge in maximum "
@@ -390,7 +386,6 @@ class ResponseCalculator:
                 else:
                     assert False, ("linear solver failed to converge")
 
-                
     def density_response(self):
         """Calculate density response from variation in the wave-functions."""
 
@@ -413,8 +408,8 @@ class ResponseCalculator:
                 # NOTICE: this relies on the automatic down-cast of the complex
                 # array on the rhs to a real array when the lhs is real !!
                 # Factor 2 for time-reversal symmetry
-                self.nt1_G += 2 * w * psit_nG[n].conjugate() * psit1_nG[n]
+                self.nt1_G += 2 * w * psit_nG[n].conj() * psit1_nG[n]
                 #XXX
-                ## self.nt1_G += f * (psit_nG[n].conjugate() * psit1_nG[n] +
-                ##                    psit1_nG[n].conjugate() * psit_nG[n])
+                ## self.nt1_G += f * (psit_nG[n].conj() * psit1_nG[n] +
+                ##                    psit1_nG[n].conj() * psit_nG[n])
 

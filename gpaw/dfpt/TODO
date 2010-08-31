@@ -1,17 +1,22 @@
+2010-08-25
+ - The dtype of the DynamcialMatrix object must be determined by the presence of inversion symmetry!
 2010-08-12
- - Test how it works if a set number of Krylov iteration are done in each SC iteration.
+ * Test how it works if a set number of Krylov iteration are done in each SC iteration.
+   - did not work.
  - How to mix the complex density derivative for q != 0
    - if the mapping between in and output density, i.e. each iteration in the SC loop, does not mix the real and imaginary parts of the density derivative they should be mixed separately.
      It seems that the real and imaginary parts are mixed via the wave-functions when calculating the density derivative!
    - how about q != 0 where the density derivative does not integrate to zero - should you use a different constraint ???
  - Does the implementation work with other functionals than LDA?
+   - No, see Clark paper in ``__init__.py``.
 2010-06-29
  - Provide instance of ``Perturbation`` in ``__call__`` member function of class ``ResponseCalculator`` instead of in constructor.
- - Member function ``integrate/derivative`` of class ``lfc`` does not work with complex quantities when initialized with ``integral`` keyword.
+ * Member function ``integrate/derivative`` of class ``lfc`` does not work with complex quantities when initialized with ``integral`` keyword.
+   - did not seem to have any consequence for the second-order derivative for Si with AH pseudo-potential
  * How does the ``second_derivative`` member function of class ``LFC`` handle complex wave-functions?
    - fixed for spherical symmetric lfc's now   
  * Perturbation breaks symmetry -> how should that be accounted for.
-   - the lower symmetry results in more k-points to be calculated. 
+   - the lower symmetry results in more k-points to be calculated.
  - Include time-reversal symmetry both in dynamical matrix and the self-consistent cycle.
    - Time-reversal symmetry does not reduce the number of k-points in the self-consistent perturation calculation.
  - The integrated density change for q!=0 is different from zero.
@@ -38,5 +43,6 @@
    - yes, taken care of by its dtype
  * Implement q-vectors.
    - not very elegant but works for now.
+   - move on to exploit symmetries (complex stuff!)
  - Implement symmetries.
  - Convergence criteria for density (and wave functions).

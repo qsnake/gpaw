@@ -138,6 +138,9 @@ class BaseMixer:
                 # XXX For now, use only real part of residues
                 # For complex quantities a .conjugate should be added ??
                 a = self.gd.comm.sum(np.vdot(R_1G.real, mR_G.real))
+                if self.dtype == complex:
+                    a += self.gd.comm.sum(np.vdot(R_1G.imag, mR_G.imag))
+                    
                 A_ii[i1, i2] = a
                 A_ii[i2, i1] = a
                 i1 += 1

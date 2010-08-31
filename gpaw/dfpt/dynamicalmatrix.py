@@ -34,23 +34,30 @@ class DynamicalMatrix:
         self.N = atoms.get_number_of_atoms()
 
         if ibzq_qc is None:
-            self.ibzq_qc = [(0, 0, 0)]
+            self.ibzq_qc = [(0., 0., 0.)]
             assert dtype == float
         else:
             #XXX Maybe not needed as an attribute ??
             self.ibzq_qc = ibzq_qc
             
         #XXX Index of the gamma point -- for the acoustic sum-rule
-        self.gamma_index = 0
+        self.gamma_index = None
+        for q, q_c in enumerate(self.ibzq_qc):
+            if np.all(q_c == 0.):
+                self.gamma_index = q
+        assert self.gamma_index is not None
         
         # Matrix of force constants -- dict of dicts in atomic indices
+        # In case of inversion symmetry this is a real matrix !!
         self.C_qaavv = [dict([(atom.index,
-                               dict([(atom_.index, np.zeros((3,3), dtype=dtype))
+                               dict([(atom_.index, np.zeros((3, 3), dtype=dtype))
                                      for atom_ in atoms])) for atom in atoms])
                         for q in self.ibzq_qc]
         
         # Dynamical matrix -- 3Nx3N ndarray (vs q)
         self.D_q = []
+        #XXX Temp attribute
+        self.D_q_ = []
         self.D = None
 
     def assemble(self, acoustic=False):
@@ -71,7 +78,7 @@ class DynamicalMatrix:
         """
 
         # First assemble matrix of force constants, then apply acoustic
-        # sum-rule 
+        # sum-rule
         for q, C_aavv in enumerate(self.C_qaavv):
 
             C_avav = np.zeros((3*self.N, 3*self.N), dtype=self.dtype)
@@ -86,18 +93,19 @@ class DynamicalMatrix:
     
                     C_avav[3*a : 3*a + 3, 3*a_ : 3*a_ + 3] += C_aavv[a][a_]
 
-            # C is Hermitian
+            # C(q) is Hermitian
             C = .5 * C_avav
             C = C + C.T.conj()
-
             self.D_q.append(C)
-
+            #XXX Temp
+            self.D_q_.append(C_avav)
+            
         # Mass prefactor for the dynamical matrix
         m_av = np.repeat(np.asarray(self.masses)**(-0.5), 3)
         M_avav = m_av[:, np.newaxis] * m_av
 
         if acoustic:
-            C_0 = C_q[self.gamma_index]
+            C_0 = D_q[self.gamma_index]
             diag = C_0.sum(axis=1)
             
             for C in self.D_q:
@@ -106,7 +114,10 @@ class DynamicalMatrix:
         else:
             for C in self.D_q:
                 C *= M_avav
-
+            #XXX Temp
+            for C in self.D_q_:
+                C *= M_avav
+                
     def fourier_interpolate(self):
         """Fourier interpolate dynamical matrix to a finer q-grid."""
 
@@ -131,9 +142,7 @@ class DynamicalMatrix:
 
         """
 
-        # Localized functions from the local part of the PAW potential
-        # ghat = perturbation.ghat
-        # vbar = perturbation.vbar
+        # Use the GS LFC's to integrate with the ground-state quantities !
         ghat = calc.density.ghat
         vbar = calc.hamiltonian.vbar
         # Compensation charge coefficients
@@ -141,22 +150,21 @@ class DynamicalMatrix:
         
         # Integral of Hartree potential times the second derivative of ghat
         vH_g = calc.hamiltonian.vHt_g
-        d2ghat_aLvv = dict([ (atom.index, np.zeros((3,3)))
-                             for atom in self.atoms ])
+        d2ghat_aLvv = dict([(atom.index, np.zeros((3, 3)))
+                            for atom in self.atoms])
         ghat.second_derivative(vH_g, d2ghat_aLvv)
-        
+
         # Integral of electron density times the second derivative of vbar
         nt_g = calc.density.nt_g
-        d2vbar_avv = dict([(atom.index, np.zeros((3,3)))
+        d2vbar_avv = dict([(atom.index, np.zeros((3, 3)))
                            for atom in self.atoms ])
         vbar.second_derivative(nt_g, d2vbar_avv)
 
         for C_aavv in self.C_qaavv:
-            
+
             for atom in self.atoms:
                 
                 a = atom.index
-    
                 # XXX: HGH has only one ghat pr atoms -> generalize when
                 # implementing PAW            
                 C_aavv[a][a] += d2ghat_aLvv[a] * Q_aL[a]
@@ -190,8 +198,9 @@ class DynamicalMatrix:
             # Calculate d2P_anivv coefficients
             # d2P_anivv = self.calculate_d2P_anivv()
             d2P_anivv = dict([(atom.index,
-                               np.zeros((nbands, pt.get_function_count(atom.index),
-                                         3, 3))) for atom in self.atoms])
+                               np.zeros(
+                (nbands, pt.get_function_count(atom.index), 3, 3)
+                )) for atom in self.atoms])
             # Temp dict, second_derivative method only takes a_G array -- no extra dims
             d2P_avv = dict([(atom.index, np.zeros((3, 3)))
                             for atom in self.atoms])
@@ -235,7 +244,7 @@ class DynamicalMatrix:
     def core_corrections(self):
         """Contribution from the derivative of the core density."""
 
-        pass
+        raise NotImplementedError
     
     def density_derivative(self, perturbation, response_calc):
         """Contributions involving the first-order density derivative."""
@@ -245,8 +254,8 @@ class DynamicalMatrix:
         v = perturbation.v
         #XXX: careful here, Gamma calculation has q=-1
         q = perturbation.q
-
-        # Matrix of force constants to be updated
+        
+        # Matrix of force constants to be updated; q=-1 for Gamma calculation!
         C_aavv = self.C_qaavv[q]
         
         # Localized functions 
@@ -268,15 +277,14 @@ class DynamicalMatrix:
         dvbar_av = vbar.dict(derivative=True)
         
         # Evaluate integrals
-        ghat.derivative(vH1_g.conj(), dghat_aLv, q=q)
-        vbar.derivative(nt1_g.conj(), dvbar_av, q=q)
+        ghat.derivative(vH1_g, dghat_aLv, q=q)
+        vbar.derivative(nt1_g, dvbar_av, q=q)
 
         # Add to force constant matrix attribute
         for atom_ in self.atoms:
-            
             a_ = atom_.index
             # Minus sign comes from lfc member function derivative
-            C_aavv[a][a_][v] -= np.dot(Q_aL[a_], dghat_aLv[a_]) 
+            C_aavv[a][a_][v] -= np.dot(Q_aL[a_], dghat_aLv[a_])
             C_aavv[a][a_][v] -= dvbar_av[a_][0]
 
     def wfs_derivative(self, perturbation, response_calc):
@@ -302,7 +310,7 @@ class DynamicalMatrix:
         # Get k+q indices
         if perturbation.has_q():
             q_c = perturbation.get_q()
-            plusq_k = response_calc.kd.find_k_plus_q(q_c)
+            kplusq_k = response_calc.kd.find_k_plus_q(q_c)
         else:
             kplusq_k = range(len(kpt_u))
             

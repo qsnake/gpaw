@@ -60,7 +60,8 @@ Implementaion notes
    for correcting the sign error, i.e. correct the sign when extracting from
    the dictionary.
 
-2. More to come
+2. Arrays containing first-order derivatives should be suffixed with a ``1``
+   in the variable name, e.g. ``nt1_g`` for the density.
 
 """
 
