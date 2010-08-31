@@ -1,5 +1,13 @@
+from ase.units import Bohr
+
 import gpaw.mpi as mpi
 from gpaw.lrtddft.spectrum import Writer
+
+ds_prefactor = {
+    'Ang' : Bohr**2,
+    'a.u.': 1.0,
+    'Mb'  : Bohr**2 * 100,
+    }
 
 class PESpectrum(Writer):
     def __init__(self, 

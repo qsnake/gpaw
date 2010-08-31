@@ -2,8 +2,9 @@ from math import exp, sin, cos, pi, sqrt, acos, asin
 
 import numpy as np
 
-from ase.units import Bohr, Hartree
+from ase.units import Bohr, Hartree, alpha
 import _gpaw
+from gpaw.pes import ds_prefactor
 
 class State:
     """Electronic state base class."""
@@ -78,13 +79,18 @@ class H1s(State):
             raise NonImplementedError
         return  pre * k_c * self.FT(k) 
 
-    def get_ds(self, k, omega, form='L'):
-        """Angular averaged cross section."""
+    def get_ds(self, Ekin, form='L', units='Mb'):
+        """Angular averaged cross section.
+
+        Ekin: photoelectron kinetic energy [eV]"""
+        E = Ekin / Hartree
+        k = sqrt(2 * E)
+        omega = E - self.energy
         k_c = np.array([0., 0., k])
         me_c = self.get_me_c(k_c, form)
         T2 = np.abs(np.dot(me_c, me_c)) / 3.
-        c = 137.03599982170522
-        return (2 * pi)**2 / c * k * 4 * pi / omega * T2
+        pre = ds_prefactor[units]
+        return pre * (2 * pi)**2 * alpha * k * 4 * pi / omega * T2
         
     def FT(self, k):
         return sqrt(8 * self.Z**5) / pi / (k**2 + self.Z**2)**2

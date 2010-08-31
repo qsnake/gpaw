@@ -86,7 +86,7 @@ class GridDescriptor(Domain):
 
         ==========  ========================================================
         ``dv``      Volume per grid point.
-        ``h_c``     Array of the grid spacing along the three axes.
+        ``h_cv``    Array of the grid spacing along the three axes.
         ``N_c``     Array of the number of grid points along the three axes.
         ``n_c``     Number of grid points on this CPU.
         ``beg_c``   Beginning of grid-point indices (inclusive).
