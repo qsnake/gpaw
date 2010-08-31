@@ -29,6 +29,7 @@ typedef struct
   MPI_Request recvreq[2];
   MPI_Request sendreq[2];
   int skip[3][2];
+  int size_out[3];          /* Size of the output grid */
   double* buf;
   double* buf2;
   double* sendbuf;
@@ -80,11 +81,8 @@ void *transapply_worker(void *threadarg)
   if (nend > args->nin)
     nend = args->nin;
 
-  int out_ng;
-  if (self->interpolate)
-    out_ng = args->ng * 8;
-  else
-    out_ng = args->ng / 8;
+  int out_ng = bc->ndouble * self->size_out[0] * self->size_out[1]
+               * self->size_out[2];
 
   for (int n = nstart; n < nend; n++)
     {
@@ -222,7 +220,8 @@ static PyTypeObject TransformerType = {
 
 PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
 {
-  PyArrayObject* size;
+  PyArrayObject* size_in;
+  PyArrayObject* size_out;
   int k;
   PyArrayObject* paddings;
   PyArrayObject* npaddings;
@@ -231,8 +230,8 @@ PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
   int real;
   PyObject* comm_obj;
   int interpolate;
-  if (!PyArg_ParseTuple(args, "OiOOOOiOi",
-                        &size, &k, &paddings, &npaddings, &skip,
+  if (!PyArg_ParseTuple(args, "OOiOOOOiOi",
+                        &size_in, &size_out, &k, &paddings, &npaddings, &skip,
                         &neighbors, &real, &comm_obj,
                         &interpolate))
     return NULL;
@@ -252,9 +251,12 @@ PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
   const long (*pad)[2] = (const long (*)[2])LONGP(paddings);
   const long (*npad)[2] = (const long (*)[2])LONGP(npaddings);
   const long (*skp)[2] = (const long (*)[2])LONGP(skip);
-  self->bc = bc_init(LONGP(size), pad, npad, nb, comm, real, 0);
+  self->bc = bc_init(LONGP(size_in), pad, npad, nb, comm, real, 0);
   //const int* size1 = self->bc->size1;
   const int* size2 = self->bc->size2;
+
+  for (int c = 0; c < 3; c++)
+      self->size_out[c] = LONGP(size_out)[c];
 
   for (int c = 0; c < 3; c++)
     for (int d = 0; d < 2; d++)

@@ -47,8 +47,8 @@ class FDWaveFunctions(FDPWWaveFunctions):
     def summary(self, fd):
         fd.write('Mode: Finite-difference\n')
         
-    def make_preconditioner(self):
-        return Preconditioner(self.gd, self.kin, self.dtype)
+    def make_preconditioner(self, block=1):
+        return Preconditioner(self.gd, self.kin, self.dtype, block)
     
     def apply_hamiltonian(self, hamiltonian, kpt, psit_xG, Htpsit_xG):
         """Apply the non-pseudo Hamiltonian i.e. without PAW corrections."""

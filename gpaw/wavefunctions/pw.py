@@ -90,7 +90,7 @@ class PWWaveFunctions(FDPWWaveFunctions):
         fd.write('Mode: Plane waves (%d, ecut=%.3f eV)\n' %
                  (len(self.pd.Q_G), self.pd.ecut * units.Hartree))
         
-    def make_preconditioner(self):
+    def make_preconditioner(self, block=1):
         return Preconditioner(self.pd)
 
     def apply_hamiltonian(self, hamiltonian, kpt, psit_xG, Htpsit_xG):

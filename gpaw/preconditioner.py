@@ -42,13 +42,14 @@ class Preconditioner:
         self.allocated = True
         
     def __call__(self, residuals, kpt):
+        nb = len(residuals) # number of bands
         phases = kpt.phase_cd
         step = self.step
-        d0, q0 = self.scratch0
-        r1, d1, q1 = self.scratch1
-        r2, d2, q2 = self.scratch2
+        d0, q0 = self.scratch0[:,:nb]
+        r1, d1, q1 = self.scratch1[:, :nb]
+        r2, d2, q2 = self.scratch2[:, :nb]
         self.restrictor0(-residuals, r1, phases)
-        d1 = 4 * step * r1
+        d1[:] = 4 * step * r1
         self.kin1.apply(d1, q1, phases)
         q1 -= r1
         self.restrictor1(q1, r2, phases)

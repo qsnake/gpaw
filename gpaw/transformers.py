@@ -64,13 +64,14 @@ class _Transformer:
     def allocate(self):
         assert not self.allocated
         gdin = self.gdin
+        gdout = self.gdout
         if gdin.comm.size > 1:
             comm = gdin.comm.get_c_object()
         else:
             comm = None
         
-        self.transformer = _gpaw.Transformer(gdin.n_c, 2 * self.nn,
-                                             self.pad_cd, 
+        self.transformer = _gpaw.Transformer(gdin.n_c, gdout.n_c, 
+                                             2 * self.nn, self.pad_cd, 
                                              self.neighborpad_cd, self.skip_cd,
                                              gdin.neighbor_cd,
                                              self.dtype == float, comm,

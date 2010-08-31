@@ -12,11 +12,12 @@ from gpaw import debug, extra_parameters
 
 
 class Eigensolver:
-    def __init__(self, keep_htpsit=True):
+    def __init__(self, keep_htpsit=True, block=1):
         self.keep_htpsit = keep_htpsit
         self.initialized = False
         self.Htpsit_nG = None
         self.error = np.inf
+        self.block = block
         
     def initialize(self, wfs):
         self.timer = wfs.timer
@@ -31,11 +32,15 @@ class Eigensolver:
         self.mynbands = wfs.mynbands
         self.operator = wfs.matrixoperator
 
+        # XXX RMM-DIIS uses matrixoperators's temporary arrays
+        # XXX Safer way to use temporary arrays is needed
+        self.block = min(self.block, self.mynbands // self.operator.nblocks)
+
         if self.mynbands != self.nbands or self.operator.nblocks != 1:
             self.keep_htpsit = False
 
         # Preconditioner for the electronic gradients:
-        self.preconditioner = wfs.make_preconditioner()
+        self.preconditioner = wfs.make_preconditioner(self.block)
 
         if self.keep_htpsit:
             # Soft part of the Hamiltonian times psit:
@@ -107,6 +112,10 @@ class Eigensolver:
             if hamiltonian.xc.xcfunc.hybrid > 0.0 and hasattr(kpt, 'vxx_ani'):
                 if n is None:
                     c_ni += kpt.vxx_ani[a]
+                elif isinstance(n, tuple):
+                    n1, n2 = n
+                    for i in range(0, n2 - n1):
+                        c_ni[i] += np.dot(kpt.vxx_anii[a][n1 + i], P_ni[i])
                 else:
                     assert len(P_ni) == 1
                     c_ni[0] += np.dot(kpt.vxx_anii[a][n], P_ni[0])
