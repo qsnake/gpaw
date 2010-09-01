@@ -129,6 +129,7 @@ Poisson solver did not converge!
 If you are doing a spin-polarized calculation for an isolated molecule, 
 then you should set the Fermi temperature to a low value.
 
+You can also try to set the number of grid points to be divisible by 8. 
 
 How to switch between several GPAW versions
 ===========================================
