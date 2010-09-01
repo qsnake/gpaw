@@ -43,10 +43,10 @@ class ResponseCalculator:
     parameters = {'verbose':               False,
                   'max_iter':              100,
                   'max_iter_krylov':       1000,
-                  'tolerance_sc':          1.0e-4,
-                  'tolerance_sternheimer': 1.0e-5,
+                  'tolerance_sc':          1.0e-5,
+                  'tolerance_sternheimer': 1.0e-4,
                   'use_pc':                True,
-                  'beta':                  0.4,
+                  'beta':                  0.2,
                   'nmaxold':               5,
                   'weight':                1
                   }
