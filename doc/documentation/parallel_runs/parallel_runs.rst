@@ -132,7 +132,8 @@ which is equivalent to
 >>> if rank == 0:
 ...     print 'This is written by the master only'
 
-Note that parprint has to be used as the print statement of python 3.
+Note that parprint has the syntax of the print statement in 
+`Python3 <http://docs.python.org/release/3.0.1/whatsnew/3.0.html>`_.
 
 Running different calculations in parallel
 ==========================================
