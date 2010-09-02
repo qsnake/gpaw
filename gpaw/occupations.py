@@ -345,6 +345,7 @@ class ZeroKelvin(OccupationNumbers):
         for kpt in wfs.kpt_u:
             wfs.bd.distribute(f_sn[kpt.s], kpt.f_n)
 
+
 class SmoothDistribution(ZeroKelvin):
     """Base class for Fermi-Dirac and other smooth distributions."""
     def __init__(self, width, fixmagmom, maxiter):
@@ -367,6 +368,13 @@ class SmoothDistribution(ZeroKelvin):
         self.width = width / Hartree
         self.maxiter = maxiter
         
+    def __repr__(self):
+        classname = self.__class__.__name__
+        template = '%s(width=%f, fixmagmom=%r, maxiter=%d)'
+        string = template % (classname, self.width * Hartree, self.fixmagmom,
+                             self.maxiter)
+        return string
+
     def calculate_occupation_numbers(self, wfs):
         if self.width == 0 or self.nvalence == wfs.nbands * 2:
             ZeroKelvin.calculate_occupation_numbers(self, wfs)
