@@ -61,9 +61,8 @@ class CHI:
         self.output_init()
 
         if isinstance(calc, str):
-            self.calc = GPAW(calc, txt=None)
-            if self.calc.wfs.kpt_u[0].psit_nG is not None:
-                self.calc = GPAW(calc, communicator=serial_comm, txt=None)
+            # Always use serial_communicator when a filename is given.
+            self.calc = GPAW(calc, communicator=serial_comm, txt=None)
         else:
             self.calc = calc
 
@@ -264,48 +263,24 @@ class CHI:
 
             for n in range(self.nbands):
 
-                if calc.wfs.world.size != 1:
-                    self.kcomm.all_gather(np.array([ibzkpt1]), ibzkpt_kcomm)
-                    if self.hilbert_trans:
-                        if (f_kn[ibzkpt_kcomm, n] < self.ftol).all():
-                            break
-                    for ikcomm in range(self.kcomm.size):
-                        psit_g = self.get_wavefunction(ibzkpt_kcomm[ikcomm], n)
-                        if self.kcomm.rank == ikcomm:
-                            psitold_g = psit_g
-                else:
-                    psitold_g = calc.wfs._get_wave_function_array(ibzkpt1, n)
-
+                psitold_g = self.get_wavefunction(ibzkpt1, n)
+                
                 psit1new_g = symmetrize_wavefunction(psitold_g, self.op_scc[iop1], ibzk_kc[ibzkpt1],
                                                       bzk_kc[k], timerev1)
-
                 P1_ai = pt.dict()
                 pt.integrate(psit1new_g, P1_ai, k)
 
                 psit1_g = psit1new_g.conj() * self.expqr_g
 
                 for m in range(self.nbands):
-                    
+
 		    if self.hilbert_trans:
 			check_focc = (f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > self.ftol
                     else:
                         check_focc = np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > self.ftol 
 
-                    if calc.wfs.world.size != 1:
-                        self.kcomm.all_gather(np.array([ibzkpt2]), ibzkpt_kcomm)
-                        check_focc_all = np.zeros(self.kcomm.size, dtype=bool)
-                        self.kcomm.all_gather(np.array([check_focc]), check_focc_all) 
-                        for ikcomm in range(self.kcomm.size):
-                            if check_focc_all[ikcomm]:
-                                psit_g = self.get_wavefunction(ibzkpt_kcomm[ikcomm], m)
-                                if self.kcomm.rank == ikcomm:
-                                    psitold_g = psit_g
-                    else:
-                        if check_focc:
-                            psitold_g = calc.wfs._get_wave_function_array(ibzkpt2, m)
-
                     if check_focc:
-        
+                        psitold_g = self.get_wavefunction(ibzkpt2, m)
                         psit2_g = symmetrize_wavefunction(psitold_g, self.op_scc[iop2], ibzk_kc[ibzkpt2],
                                                            bzk_kc[kq_k[k]], timerev2)
 
@@ -414,23 +389,17 @@ class CHI:
 
         return
 
+
     def get_wavefunction(self, k, n):
+        psit_G = self.calc.wfs.get_wave_function_array(n, k, 0)
 
-        mynu = len(self.calc.wfs.kpt_u)
-        kpt_rank, u = divmod(k, mynu)
-        band_rank, myn = self.calc.wfs.bd.who_has(n)
-
-        psit_g = self.calc.wfs._get_wave_function_array(u, myn)
-        psit_G = self.calc.wfs.gd.collect(psit_g)
-
-        world_rank = (kpt_rank * self.calc.wfs.gd.comm.size *
-                          self.calc.wfs.band_comm.size +
-                          band_rank * self.calc.wfs.gd.comm.size)
+        if self.calc.wfs.world.size == 1:
+            return psit_G
         
-        if self.comm.rank != world_rank:
-            psit_G = self.gd.empty(dtype=self.calc.wfs.dtype)
-        self.comm.broadcast(psit_G, world_rank)
-
+        if not self.calc.wfs.world.rank == 0:
+            psit_G = self.calc.wfs.gd.empty(dtype=self.calc.wfs.dtype,
+                                            global_array=True)
+        self.calc.wfs.world.broadcast(psit_G, 0)
         return psit_G
 
 
