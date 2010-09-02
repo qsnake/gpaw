@@ -179,13 +179,14 @@ class CrossSectionBeta:
                 me_c *= -omega
         elif self.form == 'V':
             dtype = final_G.dtype
+            phase_cd = np.ones((3, 2), dtype)
             if not hasattr(gd, 'ddr'):
                 gd.ddr = [Gradient(gd, c, dtype=dtype).apply for c in range(3)]
             dfinal_G = gd.empty(dtype=dtype)
             me_c = np.empty(3, dtype=dtype)
             for c in range(3):
-                print "rank, c, apply", rank, c, dtype, final_G.shape, dfinal_G.shape
-                gd.ddr[c](final_G, dfinal_G)
+#                print "rank, c, apply", rank, c, dtype, final_G.shape, dfinal_G.shape
+                gd.ddr[c](final_G, dfinal_G, phase_cd)
                 me_c[c] = gd.integrate(initial_G * dfinal_G)
         else:
             raise NotImplementedError

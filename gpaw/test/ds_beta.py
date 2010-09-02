@@ -5,6 +5,7 @@ import numpy as np
 
 from ase import Atom
 from ase.units import Ha
+from ase.parallel import parprint
 
 from gpaw import GPAW
 from gpaw.cluster import *
@@ -18,7 +19,7 @@ h=.3
 box=3.
 
 gpwname='H1s.gpw'
-if 1:
+if 0:
     c = GPAW(xc='PBE', nbands=-1, h=h)
     s = Cluster([Atom('H')])
     s.minimal_box(box, h=h)
@@ -46,12 +47,14 @@ for form in ['L', 'V']:
                                r0=cm, ngauss=ngauss, form=form)
         if analytic:
             ds.append(initial.get_ds(Ekin, form))
-            print '%5.3f' %(Ekin + Ha/2.),
-            print '%7.4f %12.5f' %(2, ds[-1])
+            parprint('%5.3f' %(Ekin + Ha/2.), end='') 
+            parprint('%7.4f %12.5f' %(2, ds[-1]))
         ds.append(csb.get_ds(Ekin))
-        print '%5.3f' %(Ekin + Ha/2.),
-        print '%7.4f %12.5f' %(csb.get_beta(Ekin), ds[-1])
-    print 'error analytic GS:', int(100 * abs(ds[1] / ds[0] - 1.) + .5), '%'
+        parprint('%5.3f' %(Ekin + Ha/2.), end='') 
+        parprint('%7.4f %12.5f' %(csb.get_beta(Ekin), ds[-1]))
+    parprint('error analytic GS:', 
+             int(100 * abs(ds[1] / ds[0] - 1.) + .5), '%')
     assert(abs(ds[1] / ds[0] - 1.) < 0.31)
-    print  'error numeric GS:', int(100 * abs(ds[2] / ds[0] - 1.) + .5), '%'
+    parprint('error numeric GS:', 
+             int(100 * abs(ds[2] / ds[0] - 1.) + .5), '%')
     assert(abs(ds[2] / ds[0] - 1.) < 0.2)
