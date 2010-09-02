@@ -240,6 +240,8 @@ where ``n`` is the total number of boxes.
    ``parallel={'domain': world.size}`` will force all parallelization to be
    carried out solely in terms of domain decomposition, and will in general
    be much more efficient than e.g. ``parallel={'domain': (1,1,world.size)}``.
+   You might have to add ``from gpaw.mpi import wold`` to the script to 
+   define ``world``.
 
 There is also a command line argument ``--domain-decomposition`` which allows you
 to control domain decomposition (see example at :ref:`submit_tool_on_niflheim`).
