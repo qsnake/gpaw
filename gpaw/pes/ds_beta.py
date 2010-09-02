@@ -10,6 +10,9 @@ from gpaw.pes import ds_prefactor
 from gpaw.pes.state import State, H1s
 from gpaw.pes.continuum import PlaneWave
 
+#debug
+from gpaw.mpi import rank
+
 class CrossSectionBeta:
     def __init__(self, 
                  initial = None,
@@ -175,13 +178,14 @@ class CrossSectionBeta:
                 me_c += self.r0 * gd.integrate(if_G)
                 me_c *= -omega
         elif self.form == 'V':
-            dtype=final_G.dtype
+            dtype = final_G.dtype
             if not hasattr(gd, 'ddr'):
                 gd.ddr = [Gradient(gd, c, dtype=dtype).apply for c in range(3)]
             dfinal_G = gd.empty(dtype=dtype)
             me_c = np.empty(3, dtype=dtype)
             for c in range(3):
-                gd.ddr[c](final_G, dfinal_G, None)
+                print "rank, c, apply", rank, c, dtype, final_G.shape, dfinal_G.shape
+                gd.ddr[c](final_G, dfinal_G)
                 me_c[c] = gd.integrate(initial_G * dfinal_G)
         else:
             raise NotImplementedError
