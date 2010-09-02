@@ -210,8 +210,8 @@ class ZeroKelvin(OccupationNumbers):
     def get_fermi_level(self):
         """This function returns the calculated fermi-level.
 
-        Care: you get two distinct fermi-levels is you do
-        fixed-magmom calculations. Therefor you should use
+        Care: you get two distinct fermi-levels if you do
+        fixed-magmom calculations. Therefore you should use
         "get_fermi_levels" or "get_fermi_levels_mean" in
         conjunction with "get_fermi_splitting" if you do
         fixed-magmom calculations. We will issue an warning
