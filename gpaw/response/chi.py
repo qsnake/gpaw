@@ -64,6 +64,14 @@ class CHI:
             # Always use serial_communicator when a filename is given.
             self.calc = GPAW(calc, communicator=serial_comm, txt=None)
         else:
+            # To be optimized so that the communicator is loaded automatically 
+            # according to kcommsize.
+            # 
+            # so temporarily it is used like this :
+            # kcommsize = int (should <= world.size)
+            # r0 = rank % kcommsize
+            # ranks = np.arange(r0, r0+size, kcommsize)
+            # calc = GPAW(filename.gpw, communicator=ranks, txt=None)
             self.calc = calc
 
         self.nbands = nbands
