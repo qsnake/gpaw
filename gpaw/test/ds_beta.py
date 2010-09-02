@@ -19,7 +19,7 @@ h=.3
 box=3.
 
 gpwname='H1s.gpw'
-if 0:
+if 1:
     c = GPAW(xc='PBE', nbands=-1, h=h)
     s = Cluster([Atom('H')])
     s.minimal_box(box, h=h)
