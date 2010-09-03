@@ -43,6 +43,7 @@ class ResponseCalculator:
     parameters = {'verbose':               False,
                   'max_iter':              100,
                   'max_iter_krylov':       1000,
+                  'krylov_solver':         'cg',
                   'tolerance_sc':          1.0e-5,
                   'tolerance_sternheimer': 1.0e-4,
                   'use_pc':                True,
@@ -201,7 +202,8 @@ class ResponseCalculator:
         use_pc = p['use_pc']
         tolerance_sternheimer = p['tolerance_sternheimer']
         max_iter_krylov = p['max_iter_krylov']
-        
+        krylov_solver = p['krylov_solver']
+                
         # Initialize WaveFunctions attribute
         self.wfs.initialize(spos_ac)
         
@@ -231,8 +233,9 @@ class ResponseCalculator:
         #XXX K-point of the pc must be set in the k-point loop -> store a ref.
         self.pc = pc
         # Linear solver for the solution of Sternheimer equation            
-        self.linear_solver = ScipyLinearSolver(tolerance=tolerance_sternheimer,
+        self.linear_solver = ScipyLinearSolver(method=krylov_solver,
                                                preconditioner=pc,
+                                               tolerance=tolerance_sternheimer,
                                                max_iter=max_iter_krylov)
 
         self.initialized = True

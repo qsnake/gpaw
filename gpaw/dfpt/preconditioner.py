@@ -67,7 +67,7 @@ class ScipyPreconditioner:
         y_G = self.pc(x_G, kpt=self.kpt)
 
         # Project out undesired (numerical) components
-        # self.project(y_G)
+        self.project(y_G)
         
         y = y_G.ravel()
         
