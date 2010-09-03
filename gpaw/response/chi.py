@@ -453,7 +453,8 @@ class CHI:
         wcommsize += 1
         if size < wcommsize:
             raise ValueError('Number of cpus are not enough ! ')
-        if wcommsize > 1: # if matrix too large, overwrite kcommsize and distribute matrix
+        if wcommsize > size // self.kcommsize: # if matrix too large, overwrite kcommsize and distribute matrix
+            self.printtxt('kcommsize is over written ! ')
             while size % wcommsize != 0:
                 wcommsize += 1
             self.kcommsize = size // wcommsize
