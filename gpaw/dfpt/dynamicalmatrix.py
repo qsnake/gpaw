@@ -105,8 +105,8 @@ class DynamicalMatrix:
         M_avav = m_av[:, np.newaxis] * m_av
 
         if acoustic:
-            C_0 = D_q[self.gamma_index]
-            diag = C_0.sum(axis=1)
+            C_gamma = self.D_q[self.gamma_index]
+            diag = C_gamma.sum(axis=1)
             
             for C in self.D_q:
                 C -= np.diag(diag)
@@ -201,12 +201,12 @@ class DynamicalMatrix:
                                np.zeros(
                 (nbands, pt.get_function_count(atom.index), 3, 3)
                 )) for atom in self.atoms])
-            # Temp dict, second_derivative method only takes a_G array -- no extra dims
+            #XXX Temp dict, second_derivative method only takes a_G array
+            # -- no extra dims
             d2P_avv = dict([(atom.index, np.zeros((3, 3)))
                             for atom in self.atoms])
          
             for n in range(nbands):
-    
                 pt.second_derivative(psit_nG[n], d2P_avv)
                 # Insert in other dict
                 for atom in self.atoms:

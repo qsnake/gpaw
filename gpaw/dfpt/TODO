@@ -1,3 +1,6 @@
+2010-09-02
+ - Should the projection operator be included in the preconditioning ???
+   - seems like it makes the convergence considerably slower.
 2010-08-25
  - The dtype of the DynamcialMatrix object must be determined by the presence of inversion symmetry!
 2010-08-12
@@ -42,7 +45,6 @@
  * Does the linear solver handle complex vectors ??
    - yes, taken care of by its dtype
  * Implement q-vectors.
-   - not very elegant but works for now.
    - move on to exploit symmetries (complex stuff!)
  - Implement symmetries.
  - Convergence criteria for density (and wave functions).

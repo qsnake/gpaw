@@ -228,7 +228,7 @@ class ResponseCalculator:
         else:
             pc = None
 
-        # Temp ??
+        #XXX K-point of the pc must be set in the k-point loop -> store a ref.
         self.pc = pc
         # Linear solver for the solution of Sternheimer equation            
         self.linear_solver = ScipyLinearSolver(tolerance=tolerance_sternheimer,
@@ -317,9 +317,6 @@ class ResponseCalculator:
         else:
             kplusq_k = None
 
-        # XXX Temp
-        # self.rhs_nG = self.gd.zeros(n=self.nbands, dtype=self.gs_dtype)
-            
         # Calculate wave-function variations for all k-points.
         for kpt in self.kpt_u:
 
@@ -363,14 +360,14 @@ class ResponseCalculator:
 
                 # Rhs of Sternheimer equation                
                 rhs_G = -1 * rhs_nG[n]
-
+                
                 if vHXC1_G is not None:
                     rhs_G -= vHXC1_G * psit_G
-                    
+
                 # Update k-point index and band index in SternheimerOperator
                 self.sternheimer_operator.set_blochstate(n, k)
                 self.sternheimer_operator.project(rhs_G)
-
+                
                 if verbose:
                     print "\tBand %2.1i -" % n,
 
@@ -382,7 +379,8 @@ class ResponseCalculator:
                         print "linear solver converged in %i iterations" % iter
                 elif info > 0:
                     assert False, ("linear solver did not converge in maximum "
-                                   "number (=%i) of iterations" % iter)
+                                   "number (=%i) of iterations for "
+                                   "k-point number %d" % (iter, k))
                 else:
                     assert False, ("linear solver failed to converge")
 
