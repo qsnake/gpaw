@@ -43,6 +43,7 @@ def kwargs2str(**kwargs):
 
 
 def str2kwargs(string):
+    from numpy import array  # eval may need this
     kwargs = eval(string)
     assert isinstance(kwargs, dict)
     return kwargs
