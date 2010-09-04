@@ -83,6 +83,8 @@ class CHI:
         self.ecut = ecut
         self.hilbert_trans = hilbert_trans
         self.optical_limit = optical_limit
+        if kcommsize is None:
+            kcommsize = world.size
         self.kcommsize = kcommsize
         self.comm = world
         self.chi0_wGG = None
