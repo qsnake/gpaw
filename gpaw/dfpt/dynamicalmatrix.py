@@ -33,18 +33,20 @@ class DynamicalMatrix:
         self.masses = atoms.get_masses()
         self.N = atoms.get_number_of_atoms()
 
+        #XXX Index of the gamma point -- for the acoustic sum-rule
+        self.gamma_index = None
+        
         if ibzq_qc is None:
             self.ibzq_qc = [(0., 0., 0.)]
+            self.gamma_index = 0
             assert dtype == float
         else:
             #XXX Maybe not needed as an attribute ??
             self.ibzq_qc = ibzq_qc
-            
-        #XXX Index of the gamma point -- for the acoustic sum-rule
-        self.gamma_index = None
-        for q, q_c in enumerate(self.ibzq_qc):
-            if np.all(q_c == 0.):
-                self.gamma_index = q
+            for q, q_c in enumerate(self.ibzq_qc):
+                if np.all(q_c == 0.):
+                    self.gamma_index = q            
+
         assert self.gamma_index is not None
         
         # Matrix of force constants -- dict of dicts in atomic indices
