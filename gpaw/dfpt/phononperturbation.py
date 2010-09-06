@@ -28,7 +28,7 @@ class PhononPerturbation(Perturbation):
     
     """
     
-    def __init__(self, calc, gamma, ibzq_qc=None, poisson_solver=None, **kwargs):
+    def __init__(self, calc, gamma, poisson_solver=None, dtype=float, **kwargs):
         """Store useful objects, e.g. lfc's for the various atomic functions.
             
         Depending on whether the system is periodic or finite, Poisson's equation
@@ -37,30 +37,17 @@ class PhononPerturbation(Perturbation):
         """
 
         self.gamma = gamma
-        self.ibzq_qc = ibzq_qc
+        self.dtype = dtype
         self.poisson = poisson_solver
 
         # Gamma wrt q-vector
         if gamma:
-            self.dtype = float
             self.phase_cd = None
+            self.ibzq_qc = None
         else:
-            self.dtype = complex
             self.phase_qcd = [kpt.phase_cd for kpt in calc.wfs.kpt_u]
+            self.ibzq_qc = calc.get_ibz_k_points()
             
-        # Temp solution - should be given as argument to the init method
-        if poisson_solver is None:
-            
-            # Boundary conditions
-            pbc_c = calc.atoms.get_pbc()
-
-            if np.all(pbc_c == False):
-                # Multigrid Poisson solver
-                self.poisson = PoissonSolver()
-            else:
-                # FFT Poisson solver
-                self.poisson = FFTPoissonSolver(dtype=self.dtype)
-      
         # Store grid-descriptors
         self.gd = calc.density.gd
         self.finegd = calc.density.finegd

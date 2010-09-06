@@ -28,6 +28,10 @@ class PhononCalculator:
 
         The atoms object must contain a converged ground-state calculation.
 
+        The irreducible set of q-vectors in which the dynamical matrix will be
+        calculated will be the irreducible set of k-vector used in the
+        ground-state calculations.
+        
         For now the q-points are taken from the ground-state calculation.
 
         """
@@ -60,8 +64,6 @@ class PhononCalculator:
                 self.dtype = complex
                 # Get k-points -- only temp, I need q-vectors; maybe the same ???
                 self.ibzq_qc = calc.get_ibz_k_points()
-                # XXX unused variable
-                # phase_qcd = [kpt.phase_cd for kpt in calc.wfs.kpt_u]
                 
             # FFT Poisson solver
             poisson = FFTPoissonSolver(dtype=self.dtype)
@@ -71,8 +73,8 @@ class PhononCalculator:
         
         # Phonon perturbation
         self.perturbation = PhononPerturbation(calc, self.gamma,
-                                               ibzq_qc=self.ibzq_qc)
-                                               #, poisson_solver=poisson)
+                                               poisson_solver=poisson,
+                                               dtype=self.dtype)
 
         # Ground-state k-points
         ibzk_qc = calc.get_ibz_k_points()
@@ -84,7 +86,7 @@ class PhononCalculator:
         nbands = nvalence/2 + nvalence%2
         assert nbands <= calc.wfs.nbands
 
-        # WaveFunctions object
+        # My own WaveFunctions object
         wfs = WaveFunctions(nbands, calc.wfs.kpt_u, calc.wfs.setups,
                             calc.wfs.gamma, kd, calc.density.gd,
                             dtype=calc.wfs.dtype)
@@ -98,11 +100,12 @@ class PhononCalculator:
         if inversion_symmetry:
             D_dtype = float
         else:
-            D_dtype = complex
+            D_dtype = self.dtype
+        
         self.D_matrix = DynamicalMatrix(self.atoms, ibzq_qc=self.ibzq_qc,
                                         dtype=D_dtype)
 
-        # Initialize flag
+        # Initialization flag
         self.initialized = False
         
     def initialize(self):

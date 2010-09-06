@@ -47,8 +47,8 @@ class ResponseCalculator:
                   'tolerance_sc':          1.0e-5,
                   'tolerance_sternheimer': 1.0e-4,
                   'use_pc':                True,
-                  'beta':                  0.2,
-                  'nmaxold':               5,
+                  'beta':                  0.4,
+                  'nmaxold':               6,
                   'weight':                1
                   }
     
@@ -83,11 +83,10 @@ class ResponseCalculator:
         self.kd = kpointdescriptor
 
         # Poisson solver
-        if hasattr(perturbation, 'solve_poisson'):
+        if poisson_solver is None:
+            assert hasattr(perturbation, 'solve_poisson')
             self.solve_poisson = perturbation.solve_poisson
         else:
-            assert poisson_solver is not None, "No Poisson solver given"
-
             self.poisson = poisson_solver
             self.solve_poisson = self.poisson.solve_neutral
        
