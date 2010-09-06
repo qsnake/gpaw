@@ -26,6 +26,7 @@ from gpaw.spline import Spline
 from gpaw.grid_descriptor import RadialGridDescriptor
 from gpaw.utilities import unpack, pack, hartree, divrl
 from gpaw.rotation import rotation
+from gpaw import extra_parameters
 
 
 def create_setup(symbol, xcfunc, lmax=0,
@@ -872,6 +873,9 @@ class Setup(BaseSetup):
 
         and similar for y and z."""
 
+        if extra_parameters.get('fprojectors'):
+            return None
+        
         r_g = rgd.r_g
         dr_g = rgd.dr_g
         nabla_iiv = np.empty((self.ni, self.ni, 3))
