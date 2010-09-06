@@ -24,12 +24,13 @@ calc = GPAW(h=0.2,
 
 atoms.set_calculator(calc)
 atoms.get_potential_energy()
+calc.write('C.gpw','all')
 
 # Macroscopic dielectric constant calculation
 q = np.array([0.0, 0.00001, 0.])
 w = np.linspace(0, 24., 241)
 
-df = DF(calc=calc, q=q, w=(0.,), eta=0.001,
+df = DF(calc='C.gpw', q=q, w=(0.,), eta=0.001,
         ecut=50, hilbert_trans=False, optical_limit=True)
 df1, df2 = df.get_dielectric_function()
 eM1, eM2 = df.get_macroscopic_dielectric_constant(df1, df2)
@@ -44,7 +45,7 @@ if (np.abs(eM1 - eM1_) > 1e-5 or
 
 
 # Absorption spectrum calculation
-df = DF(calc=calc, q=q, w=w, eta=0.25,
+df = DF(calc='C.gpw', q=q, w=w, eta=0.25,
         ecut=50, optical_limit=True, txt='C_df.out')
 df1, df2 = df.get_dielectric_function()
 df.get_absorption_spectrum(df1, df2)
