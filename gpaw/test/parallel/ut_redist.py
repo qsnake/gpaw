@@ -13,6 +13,7 @@ from gpaw.brillouin import reduce_kpoints
 from gpaw.setup import create_setup, Setups
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.band_descriptor import BandDescriptor
+from gpaw.kpt_descriptor import KPointDescriptorOld
 from gpaw.kpt_descriptor import KPointDescriptor
 from gpaw.wavefunctions.fd import FDWaveFunctions
 from gpaw.density import Density
@@ -71,50 +72,48 @@ class UTDomainParallelSetup(TestCase):
         tmpgd = GridDescriptor(N_c, cell_cv, pbc_c)
         self.atoms = create_random_atoms(tmpgd)
 
-        # Decide how many kpoints to sample from the 1st Brillouin Zone
-        kpts_c = np.ceil((10/Bohr)/np.sum(cell_cv**2,axis=1)**0.5).astype(int)
-        kpts_c = tuple(kpts_c * pbc_c + 1 - pbc_c)
-        self.bzk_kc = kpts2ndarray(kpts_c)
-        self.gamma = len(self.bzk_kc) == 1 and not self.bzk_kc[0].any()
-
         # Create setups
         Z_a = self.atoms.get_atomic_numbers()
         assert xcfunc.nspins == self.nspins
         self.setups = Setups(Z_a, p.setups, p.basis, p.lmax, xcfunc)
         self.natoms = len(self.setups)
 
-        # Reduce number of kpoints in the 1st Brillouin Zone
-        if self.gamma:
-            self.symmetry = None
-            self.weight_k = np.array([1.0])
-            self.ibzk_kc = np.zeros((1, 3))
+        # Decide how many kpoints to sample from the 1st Brillouin Zone
+        kpts_c = np.ceil((10/Bohr)/np.sum(cell_cv**2,axis=1)**0.5).astype(int)
+        kpts_c = tuple(kpts_c * pbc_c + 1 - pbc_c)
+        self.bzk_kc = kpts2ndarray(kpts_c)
+
+        # Set up k-point descriptor
+        self.kd = KPointDescriptor(self.bzk_kc, self.nspins)
+        self.kd.set_symmetry(self.atoms, self.setups, p.usesymm)
+
+        # Set the dtype
+        if self.kd.gamma:
             self.dtype = float
         else:
-            # Reduce the the k-points to those in the irreducible part of
-            # the Brillouin zone:
-            self.symmetry, self.weight_k, self.ibzk_kc = \
-                reduce_kpoints(self.atoms, self.bzk_kc, self.setups, p.usesymm)
             self.dtype = complex
-        self.nibzkpts = len(self.ibzk_kc)
-
+            
         # Create communicators
         parsize, parsize_bands = self.get_parsizes()
         assert self.nbands % np.prod(parsize_bands) == 0
         domain_comm, kpt_comm, band_comm = distribute_cpus(parsize,
-            parsize_bands, self.nspins, self.nibzkpts)
+            parsize_bands, self.nspins, self.kd.nibzkpts)
 
+        self.kd.set_communicator(kpt_comm)
+        
         # Set up band descriptor:
         self.bd = BandDescriptor(self.nbands, band_comm)
 
         # Set up grid descriptor:
         self.gd = GridDescriptor(N_c, cell_cv, pbc_c, domain_comm, parsize)
 
-        # Set up kpoint/spin descriptor:
-        self.kd = KPointDescriptor(self.nspins, self.nibzkpts,
-                                   kpt_comm, self.gamma, self.dtype)
+        # Set up kpoint/spin descriptor (to be removed):
+        self.kd_old = KPointDescriptorOld(self.nspins, self.kd.nibzkpts,
+                                          kpt_comm, self.kd.gamma, self.dtype)
 
+       
     def tearDown(self):
-        del self.atoms, self.bd, self.gd, self.kd
+        del self.atoms, self.bd, self.gd, self.kd, self.kd_old
 
     def get_parsizes(self):
         # Careful, overwriting imported GPAW params may cause amnesia in Python.
@@ -139,10 +138,10 @@ class UTDomainParallelSetup(TestCase):
         if world.size == 1:
             return
         comm_sizes = tuple([comm.size for comm in [world, self.bd.comm, \
-                                                   self.gd.comm, self.kd.comm]])
+                                                   self.gd.comm, self.kd_old.comm]])
         self._parinfo =  '%d world, %d band, %d domain, %d kpt' % comm_sizes
         self.assertEqual(self.nbands % self.bd.comm.size, 0)
-        self.assertEqual((self.nspins * self.nibzkpts) % self.kd.comm.size, 0)
+        self.assertEqual((self.nspins * self.kd.nibzkpts) % self.kd_old.comm.size, 0)
 
 
 class UTDomainParallelSetup_Zero(UTDomainParallelSetup):
@@ -195,7 +194,7 @@ class UTLocalizedFunctionSetup(UTDomainParallelSetup):
         for a in my_atom_indices:
             ni = self.setups[a].ni
             M_asp[a] = np.empty((self.nspins, ni * (ni + 1) // 2), dtype=float)
-        self.chk_sa = np.zeros((self.kd.nspins, self.natoms), dtype=np.int64)
+        self.chk_sa = np.zeros((self.kd_old.nspins, self.natoms), dtype=np.int64)
 
         self.allocated = True
 
@@ -208,7 +207,7 @@ class UTLocalizedFunctionSetup(UTDomainParallelSetup):
     def update_references(self, M_asp, rank_a):
         requests = []
         domain_comm = self.gd.comm
-        for s in range(self.kd.nspins):
+        for s in range(self.kd_old.nspins):
             for a in range(self.natoms):
                 domain_rank = rank_a[a]
                 if domain_comm.rank == domain_rank:
@@ -231,7 +230,7 @@ class UTLocalizedFunctionSetup(UTDomainParallelSetup):
         # Compare to reference checksums
         ret = True
         domain_comm = self.gd.comm
-        for s in range(self.kd.nspins):
+        for s in range(self.kd_old.nspins):
             for a in range(self.natoms):
                 domain_rank = rank_a[a]
                 if domain_comm.rank == domain_rank:
@@ -251,9 +250,8 @@ class UTProjectorFunctionSetup(UTLocalizedFunctionSetup):
         fdksl = get_kohn_sham_layouts(None, 'fd', False, self.gd, self.bd)
         lcaoksl = get_kohn_sham_layouts(None, 'lcao', False, self.gd, self.bd,
                                         nao=self.setups.nao)
-        args = (self.gd, self.nspins, self.setups.nvalence, self.setups, \
-                self.bd, self.dtype, world, self.kd.comm, self.gamma, \
-                self.bzk_kc, self.ibzk_kc, self.weight_k, self.symmetry)
+        args = (self.gd, self.setups.nvalence, self.setups,
+                self.bd, self.dtype, world, self.kd)
         self.wfs = FDWaveFunctions(p.stencils[0], fdksl, fdksl, lcaoksl, *args)
         self.wfs.rank_a = self.rank0_a
         self.allocate(self.wfs.kpt_u, self.wfs.rank_a)
@@ -277,15 +275,15 @@ class UTProjectorFunctionSetup(UTLocalizedFunctionSetup):
         my_atom_indices = np.argwhere(rank_a == self.gd.comm.rank).ravel()
         self.holm_nielsen_check(my_atom_indices)
         self.wfs.allocate_arrays_for_projections(my_atom_indices) #XXX
-        self.chk_una = np.zeros((self.kd.nks, self.bd.nbands,
+        self.chk_una = np.zeros((self.kd_old.nks, self.bd.nbands,
                                  self.natoms), dtype=np.int64)
         self.allocated = True
 
     def update_references(self, kpt_u, rank_a):
         requests = []
-        kpt_comm, band_comm, domain_comm = self.kd.comm, self.bd.comm, self.gd.comm
-        for u in range(self.kd.nks):
-            kpt_rank, myu = self.kd.who_has(u)
+        kpt_comm, band_comm, domain_comm = self.kd_old.comm, self.bd.comm, self.gd.comm
+        for u in range(self.kd_old.nks):
+            kpt_rank, myu = self.kd_old.who_has(u)
             for n in range(self.bd.nbands):
                 band_rank, myn = self.bd.who_has(n)
                 for a in range(self.natoms):
@@ -316,9 +314,9 @@ class UTProjectorFunctionSetup(UTLocalizedFunctionSetup):
 
         # Compare to reference checksums
         ret = True
-        kpt_comm, band_comm, domain_comm = self.kd.comm, self.bd.comm, self.gd.comm
-        for u in range(self.kd.nks):
-            kpt_rank, myu = self.kd.who_has(u)
+        kpt_comm, band_comm, domain_comm = self.kd_old.comm, self.bd.comm, self.gd.comm
+        for u in range(self.kd_old.nks):
+            kpt_rank, myu = self.kd_old.who_has(u)
             for n in range(self.bd.nbands):
                 band_rank, myn = self.bd.who_has(n)
                 for a in range(self.natoms):
@@ -385,7 +383,7 @@ class UTDensityFunctionSetup(UTLocalizedFunctionSetup):
         for a, D_sp in self.density.D_asp.items():
             ni = self.setups[a].ni
             for s, D_p in enumerate(D_sp):
-                D_p[:] = 1e9 * self.kd.comm.rank + 1e6 * self.bd.comm.rank \
+                D_p[:] = 1e9 * self.kd_old.comm.rank + 1e6 * self.bd.comm.rank \
                     + 1e3 * s + np.arange(ni * (ni + 1) // 2, dtype=float)
 
     def tearDown(self):
@@ -448,7 +446,7 @@ class UTHamiltonianFunctionSetup(UTLocalizedFunctionSetup):
         for a, dH_sp in self.hamiltonian.dH_asp.items():
             ni = self.setups[a].ni
             for s, dH_p in enumerate(dH_sp):
-                dH_p[:] = 1e9 * self.kd.comm.rank + 1e6 * self.bd.comm.rank \
+                dH_p[:] = 1e9 * self.kd_old.comm.rank + 1e6 * self.bd.comm.rank \
                     + 1e3 * s + np.arange(ni * (ni + 1) // 2, dtype=float)    
 
     def tearDown(self):

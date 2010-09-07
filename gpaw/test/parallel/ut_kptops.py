@@ -11,7 +11,7 @@ from ase.utils.memory import MemorySingleton, MemoryStatistics
 from gpaw.mpi import world
 from gpaw.utilities import gcd
 #from gpaw.utilities.tools import tri2full, md5_array, gram_schmidt
-from gpaw.kpt_descriptor import KPointDescriptor
+from gpaw.kpt_descriptor import KPointDescriptorOld as KPointDescriptor
 #from gpaw.hs_operators import MatrixOperator
 #from gpaw.parameters import InputParameters
 #from gpaw.xc_functional import XCFunctional

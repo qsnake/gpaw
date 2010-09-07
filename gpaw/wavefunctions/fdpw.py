@@ -32,7 +32,7 @@ class FDPWWaveFunctions(WaveFunctions):
     def set_setups(self, setups):
         WaveFunctions.set_setups(self, setups)
         if not self.gamma:
-            self.pt.set_k_points(self.ibzk_qc)
+            self.pt.set_k_points(self.kd.ibzk_qc)
 
     def set_orthonormalized(self, flag):
         self.orthonormalized = flag
@@ -51,7 +51,7 @@ class FDPWWaveFunctions(WaveFunctions):
                                               for setup in self.setups],
                                              cut=True)
             if not self.gamma:
-                basis_functions.set_k_points(self.ibzk_qc)
+                basis_functions.set_k_points(self.kd.ibzk_qc)
             basis_functions.set_positions(spos_ac)
         elif isinstance(self.kpt_u[0].psit_nG, TarFileReference):
             self.initialize_wave_functions_from_restart_file()
@@ -91,11 +91,9 @@ class FDPWWaveFunctions(WaveFunctions):
 
         self.timer.start('LCAO initialization')
         lcaoksl, lcaobd = self.initksl, self.initksl.bd
-        lcaowfs = LCAOWaveFunctions(lcaoksl, self.gd, self.nspins,
-                                    self.nvalence, self.setups, lcaobd,
-                                    self.dtype, self.world, self.kpt_comm,
-                                    self.gamma, self.bzk_kc, self.ibzk_kc,
-                                    self.weight_k, self.symmetry)
+        lcaowfs = LCAOWaveFunctions(lcaoksl, self.gd, self.nvalence,
+                                    self.setups, lcaobd, self.dtype,
+                                    self.world, self.kd)
         lcaowfs.basis_functions = basis_functions
         lcaowfs.timer = self.timer
         self.timer.start('Set positions (LCAO WFS)')

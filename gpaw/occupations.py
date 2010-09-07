@@ -418,8 +418,8 @@ class SmoothDistribution(ZeroKelvin):
         fermilevel = 0.0
 
         # find the maximum length of kpt_u:
-        nu = wfs.nu
-        if wfs.kpt_rank0 < wfs.kpt_comm.size:
+        nu = wfs.kd.mynks
+        if wfs.kd.rank0 < wfs.kd.comm.size:
             nu += 1
 
         # myeps_un must have same size on all cpu's so we can use gather.

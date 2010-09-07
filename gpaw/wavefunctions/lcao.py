@@ -10,29 +10,26 @@ from gpaw.wavefunctions.base import WaveFunctions
 
 
 class LCAOWaveFunctions(WaveFunctions):
-    def __init__(self, ksl, gd, nspins, nvalence, setups, bd,
-                 dtype, world, kpt_comm,
-                 gamma, bzk_kc, ibzk_kc, weight_k, symmetry, timer=None):
-        WaveFunctions.__init__(self, gd, nspins, nvalence, setups, bd,
-                               dtype, world, kpt_comm,
-                               gamma, bzk_kc, ibzk_kc, weight_k, symmetry,
-                               timer)
+    def __init__(self, ksl, gd, nvalence, setups, bd,
+                 dtype, world, kd, timer=None):
+        WaveFunctions.__init__(self, gd, nvalence, setups, bd,
+                               dtype, world, kd, timer)
         self.ksl = ksl
         self.S_qMM = None
         self.T_qMM = None
         self.P_aqMi = None
         
         self.timer.start('TCI: Evaluate splines')
-        self.tci = NewTCI(gd.cell_cv, gd.pbc_c, setups, self.ibzk_qc, gamma)
+        self.tci = NewTCI(gd.cell_cv, gd.pbc_c, setups, kd.ibzk_qc, kd.gamma)
         self.timer.stop('TCI: Evaluate splines')
         
         self.basis_functions = BasisFunctions(gd,
                                               [setup.phit_j
                                                for setup in setups],
-                                              kpt_comm,
+                                              kd.comm,
                                               cut=True)
-        if not gamma:
-            self.basis_functions.set_k_points(self.ibzk_qc)
+        if not kd.gamma:
+            self.basis_functions.set_k_points(kd.ibzk_qc)
 
     def summary(self, fd):
         fd.write('Mode: LCAO\n')
@@ -52,7 +49,7 @@ class LCAOWaveFunctions(WaveFunctions):
             self.basis_functions.set_matrix_distribution(self.ksl.Mstart,
                                                          self.ksl.Mstop)
 
-        nq = len(self.ibzk_qc)
+        nq = len(self.kd.ibzk_qc)
         nao = self.setups.nao
         mynbands = self.mynbands
         
@@ -205,7 +202,7 @@ class LCAOWaveFunctions(WaveFunctions):
         spos_ac = self.tci.atoms.get_scaled_positions() % 1.0
         nao = self.ksl.nao
         mynao = self.ksl.mynao
-        nq = len(self.ibzk_qc)
+        nq = len(self.kd.ibzk_qc)
         dtype = self.dtype
         dThetadR_qvMM = np.empty((nq, 3, mynao, nao), dtype)
         dTdR_qvMM = np.empty((nq, 3, mynao, nao), dtype)
@@ -436,7 +433,7 @@ class LCAOWaveFunctions(WaveFunctions):
         psit_1G = psit_G.reshape(1, -1)
         C_1M = kpt.C_nM[n].reshape(1, -1)
         q = kpt.q # Should we enforce q=-1 for gamma-point?
-        if self.gamma:
+        if self.kd.gamma:
             q = -1
         self.basis_functions.lcao_to_grid(C_1M, psit_1G, q)
         return psit_G
@@ -476,7 +473,7 @@ class LCAOWaveFunctions(WaveFunctions):
                                          kpt.s, kpt.k, n)
 
     def estimate_memory(self, mem):
-        nq = len(self.ibzk_qc)
+        nq = len(self.kd.ibzk_qc)
         nao = self.setups.nao
         ni_total = sum([setup.ni for setup in self.setups])
         itemsize = mem.itemsize[self.dtype]

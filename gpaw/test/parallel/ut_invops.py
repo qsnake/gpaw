@@ -16,6 +16,7 @@ from gpaw.utilities.tools import md5_array
 from gpaw.utilities.gauss import gaussian_wave
 from gpaw.band_descriptor import BandDescriptor
 from gpaw.grid_descriptor import GridDescriptor
+from gpaw.kpt_descriptor import KPointDescriptor
 from gpaw.blacs import BandLayouts
 from gpaw.parameters import InputParameters
 from gpaw.xc_functional import XCFunctional
@@ -111,10 +112,13 @@ class UTDomainParallelSetup_Mixed(UTDomainParallelSetup):
 # Helper functions/classes here
 
 class FDWFS(FDWaveFunctions):
-    def __init__(self, gd, bd, kpt_comm, setups, dtype): # override constructor
-        assert kpt_comm.size == 1
-        WaveFunctions.__init__(self, gd, 1, 1, setups, bd, dtype, \
-            world, kpt_comm, True, [None], [None], [1.], None)
+    
+    def __init__(self, gd, bd, kd, setups, dtype): # override constructor
+
+        assert kd.comm.size == 1
+
+        WaveFunctions.__init__(self, gd, 1, setups, bd, dtype, world,
+                               kd, None)
         self.kin = Laplace(gd, -0.5, dtype=dtype, allocate=False)
         self.diagksl = None
         self.orthoksl = BandLayouts(gd, bd)
@@ -180,9 +184,16 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
         self.setups = Setups(self.Z_a, p.setups, p.basis,
                              p.lmax, xcfunc)
 
+        bzk_kc = np.array([[0, 0, 0],])
+        # K-point descriptor
+        self.kd = KPointDescriptor(bzk_kc, 1)
+        self.kd.set_symmetry(self.atoms, self.setups, True)
+        self.kd.set_communicator(self.kpt_comm)
+        
         # Create gamma-point dummy wavefunctions
-        self.wfs = FDWFS(self.gd, self.bd, self.kpt_comm, self.setups,
+        self.wfs = FDWFS(self.gd, self.bd, self.kd, self.setups,
                          self.dtype)
+        
         spos_ac = self.atoms.get_scaled_positions() % 1.0
         self.wfs.set_positions(spos_ac)
         self.pt = self.wfs.pt # XXX shortcut

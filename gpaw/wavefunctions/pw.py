@@ -64,23 +64,20 @@ class Preconditioner:
 
 class PWWaveFunctions(FDPWWaveFunctions):
     def __init__(self, ecut, diagksl, orthoksl, initksl,
-                 gd, nspins, nvalence, setups, bd,
-                 world, kpt_comm,
-                 bzk_kc, ibzk_kc, weight_k,
-                 symmetry, timer):
+                 gd, nvalence, setups, bd,
+                 world, kd, timer):
         self.ecut =  ecut / units.Hartree
         # Set dtype=complex and gamma=False:
         FDPWWaveFunctions.__init__(self, diagksl, orthoksl, initksl,
-                                   gd, nspins, nvalence, setups, bd, complex,
-                                   world, kpt_comm,
-                                   False, bzk_kc, ibzk_kc, weight_k,
-                                   symmetry, timer)
+                                   gd, nvalence, setups, bd, complex,
+                                   world, kd, timer)
         
         self.matrixoperator = MatrixOperator(self.bd, self.pd, orthoksl)
         self.wd = self.pd        
 
     def set_setups(self, setups):
-        self.pd = PWDescriptor(self.ecut, self.gd, self.ibzk_qc)
+
+        self.pd = PWDescriptor(self.ecut, self.gd, self.kd.ibzk_qc)
         pt = LFC(self.gd, [setup.pt_j for setup in setups],
                  self.kpt_comm, dtype=self.dtype, forces=True)
         self.pt = PWLFC(pt, self.pd)

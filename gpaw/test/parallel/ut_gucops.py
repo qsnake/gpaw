@@ -13,7 +13,7 @@ from gpaw.utilities import gcd
 from gpaw.utilities.gauss import gaussian_wave
 from gpaw.band_descriptor import BandDescriptor
 from gpaw.grid_descriptor import GridDescriptor
-from gpaw.kpt_descriptor import KPointDescriptor
+from gpaw.kpt_descriptor import KPointDescriptorOld as KPointDescriptor
 #from gpaw.test.ut_common import create_parsize_maxbands
 from gpaw.paw import kpts2ndarray
 #from gpaw.brillouin import reduce_kpoints

@@ -24,6 +24,7 @@ from gpaw.blacs import get_kohn_sham_layouts
 from gpaw.hamiltonian import Hamiltonian
 from gpaw.utilities.timing import Timer
 from gpaw.xc_functional import XCFunctional
+from gpaw.kpt_descriptor import KPointDescriptor
 from gpaw.brillouin import reduce_kpoints
 from gpaw.wavefunctions.base import EmptyWaveFunctions
 from gpaw.wavefunctions.fd import FDWaveFunctions
@@ -339,21 +340,6 @@ class PAW(PAWTextOutput):
         Z_a = atoms.get_atomic_numbers()
         magmom_a = atoms.get_initial_magnetic_moments()
 
-        # Set the scaled k-points:
-        bzk_kc = kpts2ndarray(par.kpts)
-
-        # Is this a gamma-point calculation?
-        gamma = len(bzk_kc) == 1 and not bzk_kc[0].any()
-
-        width = par.width
-        if width is None:
-            if gamma:
-                width = 0.0
-            else:
-                width = 0.1  # eV
-        else:
-            assert par.occupations is None
-
         magnetic = magmom_a.any()
 
         spinpol = par.spinpol
@@ -369,7 +355,28 @@ class PAW(PAWTextOutput):
                              'spin-paired calculation!')
 
         nspins = 1 + int(spinpol)
+        
+        if isinstance(par.xc, (str, dict)):
+            xcfunc = XCFunctional(par.xc, nspins)
+        else:
+            xcfunc = par.xc
 
+        setups = Setups(Z_a, par.setups, par.basis, par.lmax, xcfunc, world)
+        
+        # Set the scaled k-points:
+        bzk_kc = kpts2ndarray(par.kpts)
+
+        kd = KPointDescriptor(bzk_kc, nspins)
+
+        width = par.width
+        if width is None:
+            if kd.gamma:
+                width = 0.0
+            else:
+                width = 0.1  # eV
+        else:
+            assert par.occupations is None
+      
         if par.gpts is not None and par.h is None:
             N_c = np.array(par.gpts)
         else:
@@ -383,28 +390,12 @@ class PAW(PAWTextOutput):
         if hasattr(self, 'time'):
             dtype = complex
         else:
-            if gamma:
+            if kd.gamma:
                 dtype = float
             else:
                 dtype = complex
 
-        if isinstance(par.xc, (str, dict)):
-            xcfunc = XCFunctional(par.xc, nspins)
-        else:
-            xcfunc = par.xc
-
-        setups = Setups(Z_a, par.setups, par.basis, par.lmax, xcfunc, world)
-
-        # Brillouin zone stuff:
-        if gamma:
-            symmetry = None
-            weight_k = np.array([1.0])
-            ibzk_kc = np.zeros((1, 3))
-        else:
-            # Reduce the the k-points to those in the irreducible part of
-            # the Brillouin zone:
-            symmetry, weight_k, ibzk_kc = reduce_kpoints(atoms, bzk_kc,
-                                                         setups, par.usesymm)
+        kd.set_symmetry(atoms, setups, par.usesymm)
 
         nao = setups.nao
         nvalence = setups.nvalence - par.charge
@@ -486,7 +477,9 @@ class PAW(PAWTextOutput):
                 parsize = world.size
 
             domain_comm, kpt_comm, band_comm = mpi.distribute_cpus(parsize,
-                parsize_bands, nspins, len(ibzk_kc), world)
+                parsize_bands, nspins, kd.nibzkpts, world)
+
+            kd.set_communicator(kpt_comm)
 
             if self.bd is not None and self.bd.comm.size != band_comm.size:
                 # Band grouping has changed, so we need to
@@ -511,9 +504,8 @@ class PAW(PAWTextOutput):
                                             domain_comm, parsize)
 
             # do k-point analysis here? XXX
-            args = (gd, nspins, nvalence, setups, self.bd,
-                    dtype, world, kpt_comm,
-                    gamma, bzk_kc, ibzk_kc, weight_k, symmetry, self.timer)
+            args = (gd, nvalence, setups, self.bd, dtype, world, kd,
+                    self.timer)
 
             from gpaw import extra_parameters
             use_blacs = bool(extra_parameters.get('blacs'))
@@ -565,10 +557,8 @@ class PAW(PAWTextOutput):
                 else:
                     # Planewave basis:
                     self.wfs = par.mode(diagksl, orthoksl, initksl,
-                                        gd, nspins, nvalence, setups, self.bd,
-                                        world, kpt_comm,
-                                        bzk_kc, ibzk_kc, weight_k,
-                                        symmetry, self.timer)
+                                        gd, nvalence, setups, self.bd,
+                                        world, kd, self.timer)
             else:
                 self.wfs = par.mode(self, *args)
         else:

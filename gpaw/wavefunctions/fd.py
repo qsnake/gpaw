@@ -18,14 +18,11 @@ from gpaw.preconditioner import Preconditioner
 
 class FDWaveFunctions(FDPWWaveFunctions):
     def __init__(self, stencil, diagksl, orthoksl, initksl,
-                 gd, nspins, nvalence, setups, bd,
-                 dtype, world, kpt_comm,
-                 gamma, bzk_kc, ibzk_kc, weight_k, symmetry, timer=None):
+                 gd, nvalence, setups, bd,
+                 dtype, world, kd, timer=None):
         FDPWWaveFunctions.__init__(self, diagksl, orthoksl, initksl,
-                                   gd, nspins, nvalence, setups, bd,
-                                   dtype, world, kpt_comm,
-                                   gamma, bzk_kc, ibzk_kc, weight_k, symmetry,
-                                   timer)
+                                   gd, nvalence, setups, bd,
+                                   dtype, world, kd, timer)
 
         self.wd = self.gd  # wave function descriptor
         

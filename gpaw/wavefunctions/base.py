@@ -2,7 +2,6 @@ import numpy as np
 
 from gpaw.utilities.blas import gemm
 from gpaw.utilities import pack, unpack2
-from gpaw.kpoint import KPoint
 from gpaw.utilities.timing import nulltimer
 
 
@@ -47,80 +46,41 @@ class WaveFunctions(EmptyWaveFunctions):
     kpt_comm:
         MPI-communicator for parallelization over **k**-points.
     """
-    def __init__(self, gd, nspins, nvalence, setups, bd, dtype,
-                 world, kpt_comm,
-                 gamma, bzk_kc, ibzk_kc, weight_k, symmetry, timer=None):
+    def __init__(self, gd, nvalence, setups, bd, dtype,
+                 world, kd, timer=None):
         if timer is None:
             timer = nulltimer
             
         self.gd = gd
-        self.nspins = nspins
+        self.nspins = kd.nspins
         self.nvalence = nvalence
         self.bd = bd
         self.nbands = self.bd.nbands #XXX
         self.mynbands = self.bd.mynbands #XXX
         self.dtype = dtype
         self.world = world
-        self.kpt_comm = kpt_comm
+        self.kd = kd
         self.band_comm = self.bd.comm #XXX
-        self.gamma = gamma
-        self.bzk_kc = bzk_kc
-        self.ibzk_kc = ibzk_kc
-        self.weight_k = weight_k
-        self.symmetry = symmetry
         self.timer = timer
         self.rank_a = None
-        self.nibzkpts = len(weight_k)
 
-        # Total number of k-point/spin combinations:
-        nks = self.nibzkpts * nspins
-
-        # Ranks < self.kpt_rank0 have self.nu k-point/spin
-        # combinations and ranks >= self.kpt_rank0 have self.nu+1
-        # k-point/spin combinations.
-        self.nu, x = divmod(nks, self.kpt_comm.size)
-        self.kpt_rank0 = self.kpt_comm.size - x
-
-        # XXX hide this stuff in a k-point descriptor!
-        ks0 = kpt_comm.rank * self.nu
-        mynks = self.nu  # number of k-point/spin combinations on this cpu
-        if kpt_comm.rank >= self.kpt_rank0:
-            ks0 += kpt_comm.rank - self.kpt_rank0
-            mynks += 1
+        # XXX Remember to modify aseinterface when removing the following
+        # attributes from the wfs object
+        self.gamma = kd.gamma
+        self.kpt_comm = kd.comm
+        self.bzk_kc = kd.bzk_kc
+        self.ibzk_kc = kd.ibzk_kc
+        self.ibzk_qc = kd.ibzk_qc
+        self.weight_k = kd.weight_k
+        self.symmetry = kd.symmetry
+        self.nibzkpts = kd.nibzkpts
             
-        self.kpt_u = []
-        sdisp_cd = gd.sdisp_cd
-        for ks in range(ks0, ks0 + mynks):
-            s, k = divmod(ks, self.nibzkpts)
-            q = (ks - ks0) % self.nibzkpts
-            weight = weight_k[k] * 2 / nspins
-            if gamma:
-                phase_cd = np.ones((3, 2), complex)
-            else:
-                phase_cd = np.exp(2j * np.pi *
-                                  sdisp_cd * ibzk_kc[k, :, np.newaxis])
-            self.kpt_u.append(KPoint(weight, s, k, q, phase_cd))
+        self.kpt_u = kd.create_k_points(self.gd)
 
-        if nspins == 2 and kpt_comm.size == 1:
-            # Avoid duplicating k-points in local list of k-points.
-            self.ibzk_qc = ibzk_kc.copy()
-        else:
-            self.ibzk_qc = np.vstack((ibzk_kc, ibzk_kc))[ks0:ks0 + mynks]
-        
         self.eigensolver = None
         self.positions_set = False
 
         self.set_setups(setups)
-
-    def find_kpt(self, k, s):
-        """Find rank and local index."""
-        ks = k + self.nibzkpts * s
-        if ks < self.nu * self.kpt_rank0:
-            kpt_rank, u = divmod(ks, self.nu)
-        else:
-            kpt_rank, u = divmod(ks - self.nu * self.kpt_rank0, self.nu + 1)
-            kpt_rank += self.kpt_rank0
-        return kpt_rank, u
 
     def set_setups(self, setups):
         self.setups = setups
@@ -294,7 +254,7 @@ class WaveFunctions(EmptyWaveFunctions):
         global master."""
 
         kpt_u = self.kpt_u
-        kpt_rank, u = self.find_kpt(k, s)
+        kpt_rank, u = self.kd.get_rank_and_index(k, s)
 
         if self.kpt_comm.rank == kpt_rank:
             a_nx = getattr(kpt_u[u], name)
@@ -335,7 +295,7 @@ class WaveFunctions(EmptyWaveFunctions):
         global master."""
 
         kpt_u = self.kpt_u
-        kpt_rank, u = self.find_kpt(k, s)
+        kpt_rank, u = self.kd.get_rank_and_index(k, s)
 
         if self.kpt_comm.rank == kpt_rank:
             if isinstance(value, str):
@@ -368,7 +328,7 @@ class WaveFunctions(EmptyWaveFunctions):
         the (k,s) pair, for this rank, send to the global master."""
 
         kpt_u = self.kpt_u
-        kpt_rank, u = self.find_kpt(k, s)
+        kpt_rank, u = self.kd.get_rank_and_index(k, s)
         P_ani = kpt_u[u].P_ani
 
         natoms = len(self.rank_a) # it's a hack...
@@ -409,7 +369,7 @@ class WaveFunctions(EmptyWaveFunctions):
         domain a full array on the domain master and send this to the
         global master."""
 
-        kpt_rank, u = self.find_kpt(k, s)
+        kpt_rank, u = self.kd.get_rank_and_index(k, s)
         band_rank, myn = self.bd.who_has(n)
 
         psit1_G = self._get_wave_function_array(u, myn)
