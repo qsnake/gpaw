@@ -21,6 +21,13 @@ Then :command:`cd` to the :file:`doc` directory and build the html-pages::
   $ cd ~/gpaw/doc
   $ sphinx-build . _build
 
+.. Note::
+
+   Make sure that you build the Sphinx documentation using the corresponding GPAW version
+   by setting the environment variables :envvar:`$PYTHONPATH`, :envvar:`$PATH`,
+   and :envvar:`$GPAW_SETUP_PATH` accordingly
+   (described at :ref:`developer_installation`).
+
 Make your changes to the ``.rst`` files, run the
 :command:`sphinx-build` command again, check the results and if things
 looks ok, commit::
