@@ -89,7 +89,7 @@ def SliceGen(psit_nG, operator):
     raise StopIteration
 
 from gpaw.kpoint import GlobalKPoint
-from gpaw.kpt_descriptor import KPointDescriptor
+from gpaw.kpt_descriptor import KPointDescriptorOld as KPointDescriptor
 from gpaw.hs_operators import MatrixOperator
 
 def dscf_kpoint_overlaps(paw, phasemod=True, broadcast=True):
