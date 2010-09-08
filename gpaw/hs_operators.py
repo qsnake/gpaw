@@ -83,8 +83,8 @@ class MatrixOperator:
             M = mynbands // self.nblocks
             self.M = M
             X = M
-            if self.gd.n_c.prod() % self.nblocks != 0:
-                X += int(np.ceil(mynbands/self.gd.n_c.prod()))
+            if self.gd.bytecount(np.byte) % self.nblocks != 0:
+                X += int(np.ceil(mynbands / self.gd.bytecount(np.byte)))
             self.work1_xG = self.gd.zeros(X, dtype)
             self.work2_xG = self.gd.zeros(X, dtype)
             if ngroups > 1:

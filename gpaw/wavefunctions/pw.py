@@ -34,7 +34,10 @@ class PWDescriptor:
         self.gd = gd
         self.dv = gd.dv / N_c.prod()
         self.comm = gd.comm
-        
+
+    def bytecount(self, dtype=float):
+        return len(self.Q_G) * np.array(1, dtype).itemsize
+    
     def zeros(self, n=(), dtype=float):
         assert dtype == complex
         if isinstance(n, int):
@@ -68,6 +71,7 @@ class PWWaveFunctions(FDPWWaveFunctions):
                  world, kd, timer):
         self.ecut =  ecut / units.Hartree
         # Set dtype=complex and gamma=False:
+        kd.gamma = False
         FDPWWaveFunctions.__init__(self, diagksl, orthoksl, initksl,
                                    gd, nvalence, setups, bd, complex,
                                    world, kd, timer)
