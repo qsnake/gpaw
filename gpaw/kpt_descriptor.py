@@ -129,7 +129,7 @@ class KPointDescriptor:
         self.ks0 = comm.rank * self.mynks0
         self.mynks = self.mynks0  # my number of k-point/spin combinations
         if comm.rank >= self.rank0:
-            self.ks0 += kpt_comm.rank - self.rank0
+            self.ks0 += comm.rank - self.rank0
             self.mynks += 1
 
         if self.nspins == 2 and comm.size == 1:
