@@ -17,7 +17,11 @@ class State:
             self.r_c.append(r_G)
 
     def get_grid(self):
-        return self.grid
+        return self.grid_g
+
+    def set_grid(self, grid_g):
+#        assert(grid_g.shape == self.gd.empty().shape)
+        self.grid_g = grid_g
 
     def get_energy(self):
         """The states energy in [eV]"""
@@ -34,9 +38,9 @@ class BoundState(State):
                  s, n):
         self.gd = calculator.wfs.gd
         self.kpt = calculator.wfs.kpt_u[s]
-        self.grid = self.kpt.psit_nG[n]
+        self.grid_g = self.kpt.psit_nG[n]
         self.energy = self.kpt.eps_n[n]
-    
+
 class H1s(State):
     """Analytic H1s state."""
     def __init__(self, gd=None, center=None, Z=1):
@@ -47,11 +51,11 @@ class H1s(State):
         self.Z = Z
         self.energy = - Z**2 / 2.
         if gd is not None:
-            self.grid = None
+            self.grid_g = None
             State.__init__(self, gd)
 
     def get_grid(self):
-        if self.grid is None:
+        if self.grid_g is None:
             gd = self.gd
             assert(gd.orthogonal)
             wf = gd.zeros(dtype=float)
@@ -65,8 +69,8 @@ class H1s(State):
                         vr = vr0 - self.center
                         r = sqrt(np.dot(vr, vr))
                         wf[i, j, k] = exp(-self.Z * r)
-            self.grid = wf * sqrt(self.Z**3 / pi)
-        return self.grid
+            self.grid_g = wf * sqrt(self.Z**3 / pi)
+        return self.grid_g
                     
     def get_me_c(self, k_c, form='L'):
         """Transition matrix element."""
