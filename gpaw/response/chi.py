@@ -83,8 +83,6 @@ class CHI:
         self.ecut = ecut
         self.hilbert_trans = hilbert_trans
         self.optical_limit = optical_limit
-        if kcommsize is None:
-            kcommsize = world.size
         self.kcommsize = kcommsize
         self.comm = world
         self.chi0_wGG = None
@@ -455,6 +453,8 @@ class CHI:
         wcommsize += 1
         if size < wcommsize:
             raise ValueError('Number of cpus are not enough ! ')
+        if self.kcommsize is None:
+            self.kcommsize = world.size
         if wcommsize > size // self.kcommsize: # if matrix too large, overwrite kcommsize and distribute matrix
             self.printtxt('kcommsize is over written ! ')
             while size % wcommsize != 0:
