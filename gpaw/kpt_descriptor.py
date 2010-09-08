@@ -61,9 +61,9 @@ class KPointDescriptor:
     def set_symmetry(self, atoms, setups, usesymm):
         """Create symmetry object and construct irreducible Brillouin zone.
 
-        Parameters
-        ----------
-        atoms: list of Atoms
+        atoms: Atoms object
+            Defines atom positions and types and also unit cell and
+            boundary conditions.
         setups: instance of class Setups
             PAW setups for the atoms.
         usesymm: bool
