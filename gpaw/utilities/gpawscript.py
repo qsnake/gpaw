@@ -197,6 +197,10 @@ def run():
                     fmax=opt.relax, out=out)
 
     if not opt.effective_medium_theory:
+        # Import stuff that eval() may need to know:
+        from gpaw.wavefunctions.pw import PW
+        from gpaw.occupations import FermiDirac
+            
         if opt.parameters:
             input_parameters = eval(open(opt.parameters).read())
         else:
