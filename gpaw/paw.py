@@ -14,8 +14,8 @@ from ase.dft import monkhorst_pack
 import gpaw.io
 import gpaw.mpi as mpi
 import gpaw.occupations as occupations
-from gpaw import dry_run, memory_estimate_depth, \
-                 KohnShamConvergenceError, hooks
+from gpaw import dry_run, memory_estimate_depth, KohnShamConvergenceError
+from gpaw.hooks import hooks
 from gpaw.density import Density
 from gpaw.eigensolvers import get_eigensolver
 from gpaw.band_descriptor import BandDescriptor
@@ -275,8 +275,8 @@ class PAW(PAWTextOutput):
             if 'converged' in hooks:
                 hooks['converged'](self)
         elif converge:
-            if 'crashed' in hooks:
-                hooks['crashed'](self)
+            if 'not_converged' in hooks:
+                hooks['not_converged'](self)
             raise KohnShamConvergenceError('Did not converge!')
 
     def initialize_positions(self, atoms=None):
