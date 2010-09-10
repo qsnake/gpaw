@@ -34,6 +34,8 @@ def plot_count(fname, dpi=70):
             facecolor='g', label='Python-code')
     polygon(date, zero, c,
             facecolor='r', label='C-code')
+    polygon(date, zero, zero,
+            facecolor='b', label='Fortran-code')
 
     months = pl.MonthLocator()
     months4 = pl.MonthLocator(interval=4)
