@@ -463,7 +463,7 @@ PyObject* new_blacs_context(PyObject *self, PyObject *args)
   MPI_Comm_size(comm, &nprocs);
   
   // Create blacs grid on this communicator continued
-  ConTxt = Csys2blacs_handle(comm);
+  ConTxt = Csys2blacs_handle_(comm);
   Cblacs_gridinit_(&ConTxt, &order, nprow, npcol);
   PyObject* returnvalue = Py_BuildValue("i", ConTxt);
   return returnvalue;
