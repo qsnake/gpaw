@@ -2,12 +2,14 @@
 
 __all__ = ["DynamicalMatrix"]
 
-from math import sqrt
+from math import sqrt, pi
 
 import numpy as np
 import numpy.fft as fft
-
+import numpy.linalg as la
 import ase.units as units
+
+from gpaw import debug
 from gpaw.utilities import unpack, unpack2
 
 class DynamicalMatrix:
@@ -23,7 +25,7 @@ class DynamicalMatrix:
     
     """
     
-    def __init__(self, atoms, ibzq_qc=None, dtype=float):
+    def __init__(self, atoms, ibzq_kc=None, dtype=float):
         """Inititialize class with a list of atoms."""
 
         # Store useful objects
@@ -36,32 +38,30 @@ class DynamicalMatrix:
         #XXX Index of the gamma point -- for the acoustic sum-rule
         self.gamma_index = None
         
-        if ibzq_qc is None:
-            self.ibzq_qc = [(0., 0., 0.)]
+        if ibzq_kc is None:
+            self.ibzq_kc = [(0., 0., 0.)]
             self.gamma_index = 0
             assert dtype == float
         else:
             #XXX Maybe not needed as an attribute ??
-            self.ibzq_qc = ibzq_qc
-            for q, q_c in enumerate(self.ibzq_qc):
+            self.ibzq_kc = ibzq_kc
+            for q, q_c in enumerate(self.ibzq_kc):
                 if np.all(q_c == 0.):
-                    self.gamma_index = q            
+                    self.gamma_index = q
 
         assert self.gamma_index is not None
         
         # Matrix of force constants -- dict of dicts in atomic indices
-        # In case of inversion symmetry this is a real matrix !!
+        # XXX In case of inversion symmetry this is a real matrix !!
         self.C_qaavv = [dict([(atom.index,
                                dict([(atom_.index, np.zeros((3, 3), dtype=dtype))
                                      for atom_ in atoms])) for atom in atoms])
-                        for q in self.ibzq_qc]
+                        for q in self.ibzq_kc]
         
         # Dynamical matrix -- 3Nx3N ndarray (vs q)
         self.D_q = []
-        #XXX Temp attribute
-        self.D_q_ = []
-        self.D = None
-
+        self.assembled = False
+        
     def assemble(self, acoustic=False):
         """Assemble dynamical matrix from the force constants attribute ``C``.
 
@@ -80,7 +80,7 @@ class DynamicalMatrix:
         """
 
         # First assemble matrix of force constants, then apply acoustic
-        # sum-rule
+        # sum-rule if requested
         for q, C_aavv in enumerate(self.C_qaavv):
 
             C_avav = np.zeros((3*self.N, 3*self.N), dtype=self.dtype)
@@ -97,33 +97,104 @@ class DynamicalMatrix:
 
             # C(q) is Hermitian
             C = .5 * C_avav
-            C = C + C.T.conj()
+            C += C.conj().T
             self.D_q.append(C)
-            #XXX Temp
-            self.D_q_.append(C_avav)
             
+        if acoustic:
+            
+            # Matrix of force constants in Gamma point
+            C_gamma = self.D_q[self.gamma_index].copy()
+
+            # Correct atomic diagonal for each q-vector
+            for C in self.D_q:
+
+                for atom in self.atoms:
+                    a = atom.index
+                    C_gamma_av = C_gamma[3*a: 3*a+3]
+
+                    for atom_ in self.atoms:
+                        a_ = atom_.index
+                        C[3*a : 3*a + 3, 3*a : 3*a + 3] -= \
+                              C_gamma_av[:3, 3*a_: 3*a_+3]
+
         # Mass prefactor for the dynamical matrix
         m_av = np.repeat(np.asarray(self.masses)**(-0.5), 3)
         M_avav = m_av[:, np.newaxis] * m_av
 
-        if acoustic:
-            C_gamma = self.D_q[self.gamma_index]
-            diag = C_gamma.sum(axis=1)
-            
-            for C in self.D_q:
-                C -= np.diag(diag)
-                C *= M_avav
-        else:
-            for C in self.D_q:
-                C *= M_avav
-            #XXX Temp
-            for C in self.D_q_:
-                C *= M_avav
-                
-    def fourier_interpolate(self):
-        """Fourier interpolate dynamical matrix to a finer q-grid."""
+        for C in self.D_q:
+            C *= M_avav
 
-        D_q = np.array(D_q)
+        self.assembled = True
+
+    def real_space(self):
+        """Fourier transform the dynamical matrix to real-space."""
+
+        if not self.assembled:
+            self.assemble()
+
+        # XXX Temp solution
+        nqpts = len(self.ibzq_kc)
+        n = int(round(nqpts**(1./3)))
+        N_k = (n, n, n)
+
+        D_q = np.array(self.D_q)
+        # Reshape before Fourier transforming
+        M = 3 * self.N
+        D_q = D_q.reshape(N_k + (M, M))
+        D_R_m = fft.ifftn(fft.ifftshift(D_q, axes=(0, 1, 2)), axes=(0, 1, 2))
+
+        if debug:
+            # Check that D_R is real enough
+            assert np.all(D_R_m.imag < 1e-8)
+            
+        D_R_m = D_R_m.real
+        # Reshape for the evaluation of the fourier sums
+        D_R_m = D_R_m.reshape(nqpts, M, M)
+
+        # Corresponding R_m vectors in units of the lattice vectors
+        N_c = np.array(N_k)[:, np.newaxis]
+        R_cm = np.indices(N_k).reshape(3, -1)
+        R_cm += N_c // 2
+        R_cm %= N_c
+        R_cm -= N_c // 2
+
+        return D_R_m, R_cm
+    
+    def band_structure(self, path_kc):
+        """Calculate phonon bands along a path in the Brillouin zone.
+
+        The dynamical matrix at arbitrary q-vectors are obtained by Fourier
+        interpolating the matrix in real-space.
+
+        Parameters
+        ----------
+        path_kc: ndarray
+            List of k-point coordinates (in units of the reciprocal lattice
+            vectors) specifying the path in the Brillouin zone for which the
+            dynamical matrix will be calculated.
+            
+        """
+
+        for k_c in path_kc:
+            assert np.all(np.asarray(k_c) <= 1.0), \
+                   "Scaled coordinates must be given"
+
+        # Get the dynamical matrix in real-space
+        D_R_m, R_cm = self.real_space()
+        
+        # List for squared frequencies along path
+        omega2_kn = []
+
+        for q_c in path_kc:
+            
+            phase = np.exp(-2.j * pi * np.dot(q_c, R_cm))
+            D = np.sum(phase[:, np.newaxis, np.newaxis] * D_R_m, axis=0)
+            # Units: Ha / Bohr**2 / amu
+            omega2, u = la.eigh(D, UPLO='L')
+            omega2.sort()
+            omega2_kn.append(omega2)
+
+        return omega2_kn
     
     def update_row(self, perturbation, response_calc):
         """Update row of force constant matrix from first-order derivatives.
@@ -176,7 +247,6 @@ class DynamicalMatrix:
         """Ground state contributions from the non-local potential."""
 
         # Projector functions
-        # pt = response_calc.wfs.pt
         pt = calc.wfs.pt
         # Projector coefficients
         dH_asp = calc.hamiltonian.dH_asp
@@ -312,7 +382,7 @@ class DynamicalMatrix:
         # Get k+q indices
         if perturbation.has_q():
             q_c = perturbation.get_q()
-            kplusq_k = response_calc.kd.find_k_plus_q(q_c)
+            kplusq_k = response_calc.wfs.kd.find_k_plus_q(q_c)
         else:
             kplusq_k = range(len(kpt_u))
             
