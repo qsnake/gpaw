@@ -11,9 +11,9 @@ import ase.units as units
 
 # Temp modules
 from gpaw.utilities import unpack, unpack2
+from gpaw.kpt_descriptor import KPointDescriptor
 
 from gpaw.dfpt.poisson import PoissonSolver, FFTPoissonSolver
-from gpaw.dfpt.kpointdescriptor import KPointDescriptor
 from gpaw.dfpt.responsecalculator import ResponseCalculator
 from gpaw.dfpt.phononperturbation import PhononPerturbation
 from gpaw.dfpt.wavefunctions import WaveFunctions
@@ -51,36 +51,34 @@ class PhononCalculator:
         if np.all(pbc_c == False):
             self.gamma = True
             self.dtype = float
-            self.ibzq_qc = None # np.array((0, 0, 0), dtype=float)
+            self.ibzq_kc = np.array(((0, 0, 0),), dtype=float)
             # Multigrid Poisson solver
-            poisson = PoissonSolver()
+            poisson_solver = PoissonSolver()
         else:
             if gamma:
                 self.gamma = True
                 self.dtype = float
-                self.ibzq_qc = None #np.array(((0, 0, 0),), dtype=float)
+                self.ibzq_kc = np.array(((0, 0, 0),), dtype=float)
             else:
                 self.gamma = False
                 self.dtype = complex
                 # Get k-points -- only temp, I need q-vectors; maybe the same ???
-                self.ibzq_qc = calc.get_ibz_k_points()
+                self.ibzq_kc = calc.get_ibz_k_points()
                 
             # FFT Poisson solver
-            poisson = FFTPoissonSolver(dtype=self.dtype)
+            poisson_solver = FFTPoissonSolver(dtype=self.dtype)
             
         # Include all atoms and cartesian coordinates by default
         self.atoms_a = dict([ (atom.index, [0, 1, 2]) for atom in self.atoms])
         
-        # Phonon perturbation
-        self.perturbation = PhononPerturbation(calc, self.gamma,
-                                               poisson_solver=poisson,
-                                               dtype=self.dtype)
+        # Ground-state k-point descriptor - used for the k-points in the
+        # ResponseCalculator 
+        kd_gs = calc.wfs.kd
 
-        # Ground-state k-points
-        ibzk_qc = calc.get_ibz_k_points()
-        bzk_qc = calc.get_ibz_k_points()
-        kd = KPointDescriptor(bzk_qc, ibzk_qc)
-
+        # K-point descriptor for the q-vectors of the dynamical matrix
+        self.kd = KPointDescriptor(kd_gs.bzk_kc, 1)
+        self.kd.set_symmetry(self.atoms, calc.wfs.setups, True)
+        
         # Number of occupied bands
         nvalence = calc.wfs.nvalence
         nbands = nvalence/2 + nvalence%2
@@ -88,11 +86,15 @@ class PhononCalculator:
 
         # My own WaveFunctions object
         wfs = WaveFunctions(nbands, calc.wfs.kpt_u, calc.wfs.setups,
-                            calc.wfs.gamma, kd, calc.density.gd,
-                            dtype=calc.wfs.dtype)
-        
+                            kd_gs, calc.density.gd, dtype=calc.wfs.dtype)
+
         # Linear response calculator
-        self.response_calc = ResponseCalculator(calc, wfs, self.perturbation, kd)
+        self.response_calc = ResponseCalculator(calc, wfs, dtype=self.dtype)
+        
+        # Phonon perturbation
+        self.perturbation = PhononPerturbation(calc, self.gamma,
+                                               poisson_solver,
+                                               dtype=self.dtype)
 
         # Dynamical matrix object - its dtype should be determined by the
         # presence of inversion symmetry !
@@ -102,7 +104,7 @@ class PhononCalculator:
         else:
             D_dtype = self.dtype
         
-        self.D_matrix = DynamicalMatrix(self.atoms, ibzq_qc=self.ibzq_qc,
+        self.D_matrix = DynamicalMatrix(self.atoms, ibzq_kc=self.ibzq_kc,
                                         dtype=D_dtype)
 
         # Initialization flag
@@ -159,7 +161,7 @@ class PhononCalculator:
         if self.gamma:
             qpts_q = [0]
         elif qpts_q is None:
-            qpts_q = range(len(self.ibzq_qc))
+            qpts_q = range(len(self.ibzq_kc))
         else:
             assert type(qpts_q) == list
             
@@ -183,7 +185,7 @@ class PhononCalculator:
                     
                     self.perturbation.set_perturbation(a, v)
         
-                    output = self.response_calc()
+                    output = self.response_calc(self.perturbation)
     
                     if False: #save:
                         assert filebase is not None
