@@ -336,7 +336,7 @@ class FFTPoissonSolver(PoissonSolver):
 
     where the tilde denotes a lattice-periodic function, the factor of G^2
     in Poisson equation is replaced by (q+G)^2. In this case, use the ``set_q``
-    member function to set the vector and update the ``k2_Q`` attribute.
+    member function to set the q-vector and update the ``k2_Q`` attribute.
 
     """
     
