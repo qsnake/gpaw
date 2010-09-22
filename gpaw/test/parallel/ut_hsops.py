@@ -21,7 +21,7 @@ from gpaw.blacs import BandLayouts
 from gpaw.hs_operators import MatrixOperator
 from gpaw.parameters import InputParameters
 from gpaw.xc_functional import XCFunctional
-from gpaw.setup import create_setup, Setups
+from gpaw.setup import SetupData, Setups
 from gpaw.lfc import LFC
 
 # -------------------------------------------------------------------
@@ -40,8 +40,8 @@ if memstats:
 
 p = InputParameters(spinpol=False)
 xcfunc = XCFunctional(p.xc, 1+int(p.spinpol))
-p.setups = {'H': create_setup('H', xcfunc, p.lmax, p.setups, None),
-            'O': create_setup('O', xcfunc, p.lmax, p.setups, None)}
+p.setups = dict([(symbol, SetupData(symbol, xcfunc.get_setup_name(), 'paw', \
+    readxml=True, zero_reference=xcfunc.hybrid > 0)) for symbol in 'HO'])
 
 class UTBandParallelSetup(TestCase):
     """

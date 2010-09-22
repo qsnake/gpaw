@@ -20,7 +20,7 @@ from gpaw.kpt_descriptor import KPointDescriptor
 from gpaw.blacs import BandLayouts
 from gpaw.parameters import InputParameters
 from gpaw.xc_functional import XCFunctional
-from gpaw.setup import create_setup, Setups
+from gpaw.setup import SetupData, Setups
 from gpaw.wavefunctions.base import WaveFunctions
 from gpaw.wavefunctions.fd import FDWaveFunctions
 from gpaw.fd_operators import Laplace # required but not really used
@@ -36,8 +36,8 @@ from gpaw.test.ut_common import ase_svnversion, shapeopt, TestCase, \
 
 p = InputParameters(spinpol=False)
 xcfunc = XCFunctional(p.xc, 1+int(p.spinpol))
-p.setups = {'H': create_setup('H', xcfunc, p.lmax, p.setups, None),
-            'O': create_setup('O', xcfunc, p.lmax, p.setups, None)}
+p.setups = dict([(symbol, SetupData(symbol, xcfunc.get_setup_name(), 'paw', \
+    readxml=True, zero_reference=xcfunc.hybrid > 0)) for symbol in 'HO'])
 
 class UTDomainParallelSetup(TestCase):
     """

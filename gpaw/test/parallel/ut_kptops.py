@@ -52,7 +52,7 @@ class UTKPointParallelSetup(UTBandParallelSetup):
         UTBandParallelSetup.tearDown(self)
         del self.kd
 
-    def get_parsizes(self):
+    def get_parsizes(self): #XXX NO LONGER IN UT_HSOPS?!?
         # Careful, overwriting imported GPAW params may cause amnesia in Python.
         from gpaw import parsize, parsize_bands
 

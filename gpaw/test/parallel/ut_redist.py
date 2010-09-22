@@ -10,7 +10,7 @@ from gpaw.paw import kpts2ndarray
 from gpaw.parameters import InputParameters
 from gpaw.xc_functional import XCFunctional
 from gpaw.brillouin import reduce_kpoints
-from gpaw.setup import create_setup, Setups
+from gpaw.setup import SetupData, Setups
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.band_descriptor import BandDescriptor
 from gpaw.kpt_descriptor import KPointDescriptorOld
@@ -32,8 +32,8 @@ from gpaw.test.ut_common import ase_svnversion, shapeopt, TestCase, \
 
 p = InputParameters(spinpol=True)
 xcfunc = XCFunctional(p.xc, 1+int(p.spinpol))
-p.setups = {'H': create_setup('H', xcfunc, p.lmax, p.setups, None),
-            'O': create_setup('O', xcfunc, p.lmax, p.setups, None)}
+p.setups = dict([(symbol, SetupData(symbol, xcfunc.get_setup_name(), 'paw', \
+    readxml=True, zero_reference=xcfunc.hybrid > 0)) for symbol in 'HO'])
 
 class UTDomainParallelSetup(TestCase):
     """
