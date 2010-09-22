@@ -40,7 +40,7 @@ class ResponseCalculator:
         
     """
 
-    parameters = {'verbose':               False,
+    parameters = {'verbose':               True,
                   'max_iter':              100,
                   'max_iter_krylov':       1000,
                   'krylov_solver':         'cg',
@@ -52,8 +52,7 @@ class ResponseCalculator:
                   'weight':                1
                   }
     
-    def __init__(self, calc, wfs, perturbation, kpointdescriptor,
-                 poisson_solver=None, **kwargs):
+    def __init__(self, calc, wfs, poisson_solver=None, dtype=float, **kwargs):
         """Store calculator etc.
 
         Parameters
@@ -64,11 +63,8 @@ class ResponseCalculator:
         wfs: WaveFunctions
             Class taking care of wave-functions, projectors, k-point related
             quantities and symmetries.
-        perturbation: Perturbation
-            Class implementing the perturbing potential. Must provide an
-            ``apply`` member function implementing the multiplication of the 
-            perturbing potential to a (set of) state vector(s).
-            
+        dtype: ...
+            dtype of the density response.
         """
         
         # Store ground-state quantities
@@ -76,16 +72,15 @@ class ResponseCalculator:
         self.density = calc.density
 
         self.wfs = wfs
-        self.perturbation = perturbation
 
         # Get list of k-point containers
         self.kpt_u = wfs.kpt_u
-        self.kd = kpointdescriptor
 
         # Poisson solver
         if poisson_solver is None:
-            assert hasattr(perturbation, 'solve_poisson')
-            self.solve_poisson = perturbation.solve_poisson
+            # Solver must be provided by the perturbation
+            self.poisson = None
+            self.solve_poisson = None
         else:
             self.poisson = poisson_solver
             self.solve_poisson = self.poisson.solve_neutral
@@ -97,7 +92,7 @@ class ResponseCalculator:
         # dtype for ground-state wave-functions
         self.gs_dtype = calc.wfs.dtype
         # dtype for the perturbing potential and density
-        self.dtype = perturbation.dtype
+        self.dtype = dtype
         
         # Grid transformer -- convert array from coarse to fine grid
         self.interpolator = Transformer(self.gd, self.finegd, nn=3,
@@ -120,6 +115,9 @@ class ResponseCalculator:
         self.nt1_g = None
         self.nt1_G = None
         self.vH1_g = None
+
+        # Perturbation
+        self.perturbation = None
         
         # Number of occupied bands
         nvalence = calc.wfs.nvalence
@@ -131,17 +129,27 @@ class ResponseCalculator:
         self.parameters = {}
         self.set(**kwargs)
 
-    def __call__(self):
-        """Calculate density derivative."""
+    def __call__(self, perturbation):
+        """Calculate density response (derivative) to perturbation.
 
+        Parameters
+        ----------
+        perturbation: Perturbation
+            Class implementing the perturbing potential. Must provide an
+            ``apply`` member function implementing the multiplication of the
+            perturbing potential to a (set of) state vector(s).
+            
+        """
+        
         assert self.initialized, ("Linear response calculator "
                                   "not initizalized.")
 
-        # Parameters
-        p = self.parameters
-        max_iter = p['max_iter']
-        tolerance = p['tolerance_sc']
-        
+        if self.poisson is None:
+            assert hasattr(perturbation, 'solve_poisson')
+            self.solve_poisson = perturbation.solve_poisson
+
+        # Store perturbation - used in other member functions
+        self.perturbation = perturbation
         # Reset mixer
         self.mixer.reset()
         # Reset wave-functions
@@ -149,6 +157,11 @@ class ResponseCalculator:
 
         # Set phase attribute for Transformer objects
         self.phase_cd = self.perturbation.get_phase_cd()
+
+        # Parameters for the SC-loop
+        p = self.parameters
+        max_iter = p['max_iter']
+        tolerance = p['tolerance_sc']
         
         for iter in range(max_iter):
 
@@ -170,7 +183,9 @@ class ResponseCalculator:
             if iter == max_iter-1:
                 print     ("self-consistent loop did not converge in %i "
                            "iterations" % (iter+1))
-                
+
+        self.perturbation = None
+        
         return self.nt1_G.copy()
     
     def set(self, **kwargs):
@@ -315,7 +330,7 @@ class ResponseCalculator:
 
         if self.perturbation.has_q():
             q_c = self.perturbation.get_q()
-            kplusq_k = self.kd.find_k_plus_q(q_c)
+            kplusq_k = self.wfs.kd.find_k_plus_q(q_c)
         else:
             kplusq_k = None
 
@@ -395,7 +410,7 @@ class ResponseCalculator:
         for kpt in self.kpt_u:
 
             # The occupations includes the weight of the k-points
-            f_n = kpt.f_n
+            # f_n = kpt.f_n
             # Use weight of k-point instead of occupation -- spin degeneracy is
             # included in the weight
             w = kpt.weight
@@ -404,11 +419,11 @@ class ResponseCalculator:
             psit1_nG = kpt.psit1_nG
 
             # for n in range(self.nbands):
-            for n, f in enumerate(f_n):
+            for psit_G, psit1_G in zip(psit_nG, psit1_nG):
                 # NOTICE: this relies on the automatic down-cast of the complex
                 # array on the rhs to a real array when the lhs is real !!
                 # Factor 2 for time-reversal symmetry
-                self.nt1_G += 2 * w * psit_nG[n].conj() * psit1_nG[n]
+                self.nt1_G += 2 * w * psit_G.conj() * psit1_G
                 #XXX
                 ## self.nt1_G += f * (psit_nG[n].conj() * psit1_nG[n] +
                 ##                    psit1_nG[n].conj() * psit_nG[n])
