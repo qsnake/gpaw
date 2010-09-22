@@ -28,12 +28,19 @@ class PhononPerturbation(Perturbation):
     
     """
     
-    def __init__(self, calc, gamma, poisson_solver=None, dtype=float, **kwargs):
+    def __init__(self, calc, gamma, poisson_solver, dtype=float, **kwargs):
         """Store useful objects, e.g. lfc's for the various atomic functions.
             
         Depending on whether the system is periodic or finite, Poisson's equation
         is solved with FFT or multigrid techniques, respectively.
-       
+
+        Parameters
+        ----------
+        calc: Calculator
+            Ground-state calculation.
+        gamma: bool
+            Gamma with respect to the q-vector.
+     
         """
 
         self.gamma = gamma
@@ -43,10 +50,10 @@ class PhononPerturbation(Perturbation):
         # Gamma wrt q-vector
         if gamma:
             self.phase_cd = None
-            self.ibzq_qc = None
+            self.ibzq_kc = None
         else:
             self.phase_qcd = [kpt.phase_cd for kpt in calc.wfs.kpt_u]
-            self.ibzq_qc = calc.get_ibz_k_points()
+            self.ibzq_kc = calc.get_ibz_k_points()
             
         # Store grid-descriptors
         self.gd = calc.density.gd
@@ -100,10 +107,10 @@ class PhononPerturbation(Perturbation):
         if not self.gamma:
             
             # Set q-vectors and update
-            self.ghat.set_k_points(self.ibzq_qc)
+            self.ghat.set_k_points(self.ibzq_kc)
             self.ghat._update(spos_ac)
             # Set q-vectors and update
-            self.vbar.set_k_points(self.ibzq_qc)
+            self.vbar.set_k_points(self.ibzq_kc)
             self.vbar._update(spos_ac)
 
             # Phase factor exp(iq.r) needed to obtian the periodic part of lfcs
@@ -114,7 +121,7 @@ class PhononPerturbation(Perturbation):
             scoor_cg = scoor_cg.swapaxes(1,-2)
             # Phase factor
             phase_qg = np.exp(2j * pi *
-                              np.dot(self.ibzq_qc, scoor_cg.swapaxes(0,-2)))
+                              np.dot(self.ibzq_kc, scoor_cg.swapaxes(0,-2)))
             self.phase_qg = phase_qg.swapaxes(1, -2)
 
         #XXX To be removed from this class !!
@@ -140,7 +147,7 @@ class PhononPerturbation(Perturbation):
 
         assert not self.gamma, "Gamma-point calculation."
         
-        return self.ibzq_qc[self.q]
+        return self.ibzq_kc[self.q]
     
     def set_perturbation(self, a, v):
         """Set atom and cartesian coordinate of the perturbation.
@@ -170,7 +177,7 @@ class PhononPerturbation(Perturbation):
 
         # Update phases and Poisson solver
         self.phase_cd = self.phase_qcd[q]
-        self.poisson.set_q(self.ibzq_qc[q])
+        self.poisson.set_q(self.ibzq_kc[q])
 
         # Invalidate calculated quantities
         # - local part of perturbing potential        
