@@ -1,15 +1,18 @@
 """This module implements a simple wave-function class."""
 
-from gpaw.lfc import LocalizedFunctionsCollection as LFC
+from math import pi
 
+import numpy as np
+
+from gpaw.response.symmetrize import find_ibzkpt
+from gpaw.lfc import LocalizedFunctionsCollection as LFC
 from gpaw.dfpt.kpointcontainer import KPointContainer
 
 
 class WaveFunctions:
-    """Class for wave-function related stuff (e.g. projectors and symmetry)."""
+    """Class for wave-function related stuff (e.g. projectors)."""
     
-    def __init__(self, nbands, kpt_u, setups, gamma, kd, gd, symmetry=None,
-                 dtype=float):
+    def __init__(self, nbands, kpt_u, setups, kd, gd, dtype=float):
         """Store and initialize required attributes.
 
         Parameters
@@ -19,17 +22,12 @@ class WaveFunctions:
         kpt_u: list of KPoints
             List of KPoint instances from a ground-state calculation (i.e. the
             attribute ``calc.wfs.kpt_u``).
-        setups: ...
-            LFC setups.
-        gamma: bool
-            Gamma-point calculation if True.
+        setups: Setups
+            LocalizedFunctionsCollection setups.
         kd: KPointDescriptor
-            Contains scaled coordinates of the k-points in the BZ and
-            irreducible BZ.
+            K-point and symmetry related stuff.
         gd: GridDescriptor
             Descriptor for the coarse grid.            
-        symmetry: ...
-            Symmetry object ...
         dtype: dtype
             This is the ``dtype`` for the wave-function derivatives (same as
             the ``dtype`` for the ground-state wave-functions).
@@ -38,7 +36,6 @@ class WaveFunctions:
 
         self.dtype = dtype
         # K-point related attributes
-        self.gamma = gamma
         self.kd = kd
         # Number of occupied bands
         self.nbands = nbands
@@ -47,34 +44,114 @@ class WaveFunctions:
         # Store grid
         self.gd = gd
 
-        self.kpt_u = []
-        
-        for kpt in kpt_u:
-            # Strip off KPoint attributes and store in the new KPointContainer
-            # Note, only the occupied GS wave-functions are retained here !!
-            kpt_ = KPointContainer(weight=kpt.weight,
-                                   k=kpt.k,
-                                   q=kpt.q,
-                                   s=kpt.s,
-                                   phase_cd=kpt.phase_cd,
-                                   f_n=kpt.f_n[:nbands],
-                                   eps_n=kpt.eps_n[:nbands],
-                                   psit_nG=kpt.psit_nG[:nbands],
-                                   psit1_nG=None,
-                                   P_ani=None,
-                                   dP_aniv=None)
-            
-            self.kpt_u.append(kpt_)
+        #XXX Temp
+        ## import numpy.linalg as la
+        ## coor_vg = self.gd.get_grid_point_coordinates()
+        ## cell_cv = self.gd.cell_cv
+        ## # Convert to scaled coordinates
+        ## scoor_cg = np.dot(la.inv(cell_cv), coor_vg.swapaxes(0, -2))
+        ## scoor_cg = scoor_cg.swapaxes(1,-2)
+        ## # Phase factor
+        ## phase_kg = np.exp(2j * pi *
+        ##                   np.dot(kd.bzk_kc, scoor_cg.swapaxes(0,-2)))
+        ## self.phase_kg = phase_kg.swapaxes(1, -2)
 
+
+        # Unfold the irreducible BZ to the full BZ
+        # List of KPointContainers for the k-points in the full BZ
+        self.kpt_u = []
+
+        # No symmetries or only time-reversal symmetry used
+        if kd.symmetry is None:
+            # For now, time-reversal symmetry not allowed
+            assert len(kpt_u) == kd.nbzkpts            
+
+            for k in range(kd.nbzkpts):
+                kpt_ = kpt_u[k]
+
+                psit_nG = gd.empty(nbands, dtype=self.dtype)
+
+                for n, psit_G in enumerate(psit_nG):
+                    psit_G[:] = kpt_.psit_nG[n]
+                    # psit_0 = psit_G[0, 0, 0]
+                    # psit_G *= psit_0.conj() / (abs(psit_0))
+                    
+                # Strip off KPoint attributes and store in the KPointContainer
+                # Note, only the occupied GS wave-functions are retained here !
+                kpt = KPointContainer(weight=kpt_.weight,
+                                      k=kpt_.k,
+                                      s=kpt_.s,
+                                      phase_cd=kpt_.phase_cd,
+                                      eps_n=kpt_.eps_n[:nbands],
+                                      psit_nG=psit_nG,
+                                      psit1_nG=None,
+                                      P_ani=None,
+                                      dP_aniv=None)
+                                       # q=kpt.q,
+                                       # f_n=kpt.f_n[:nbands])
+            
+                self.kpt_u.append(kpt)
+
+        else:
+
+            assert len(kpt_u) == kd.nibzkpts
+
+            for k, k_c in enumerate(kd.bzk_kc):
+
+                ik1, s1, time_reversal1 = find_ibzkpt(kd.symmetry.op_scc,
+                                                      kd.ibzk_kc, k_c)
+
+                # Index of symmetry related point in the irreducible BZ
+                ik = kd.symmetry.kibz_k[k]
+                # Index of point group operation
+                s = kd.symmetry.sym_k[k]
+                # Time-reversal symmetry used
+                time_reversal = kd.symmetry.time_reversal_k[k]
+
+                if False:
+                    ik = ik1; s = s1; time_reversal = time_reversal1
+
+                # Coordinates of symmetry related point in the irreducible BZ
+                ik_c = kd.ibzk_kc[ik]
+                # Point group operation
+                op_cc = kd.symmetry.op_scc[s]
+
+                # KPoint from ground-state calculation
+                kpt_ = kpt_u[ik]
+                weight = 1. / kd.nbzkpts * (2 - kpt_.s)
+                phase_cd = np.exp(2j * pi * gd.sdisp_cd * k_c[:, np.newaxis])
+
+                psit_nG = gd.empty(nbands, dtype=self.dtype)
+
+                for n, psit_G in enumerate(psit_nG):
+                    #XXX Seems to corrupt my memory somehow ???
+                    psit_G[:] = kd.symmetry.symmetrize_wavefunction(
+                        kpt_.psit_nG[n], ik_c, k_c, op_cc, time_reversal)
+                    # Choose gauge
+                    # psit_0 = psit_G[0, 0, 0]
+                    # psit_G *= psit_0.conj() / (abs(psit_0))
+
+                kpt = KPointContainer(weight=weight,
+                                      k=k,
+                                      s=kpt_.s,
+                                      phase_cd=phase_cd,
+                                      eps_n=kpt_.eps_n[:nbands],
+                                      psit_nG=psit_nG,
+                                      psit1_nG=None,
+                                      P_ani=None,
+                                      dP_aniv=None)
+                
+                self.kpt_u.append(kpt)
+                
     def initialize(self, spos_ac):
         """Initialize projectors according to ``gamma`` attribute."""
 
         # Set positions on LFC's
         self.pt.set_positions(spos_ac)
         
-        if not self.gamma:
+        if not self.kd.gamma:
             # Set k-vectors and update
-            self.pt.set_k_points(self.kd.ibzk_qc)
+            self.pt.set_k_points(self.kd.ibzk_kc)
             self.pt._update(spos_ac)
 
         # Calculate projector coefficients for the GS wave-functions
