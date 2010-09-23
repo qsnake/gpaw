@@ -147,12 +147,17 @@ Calculate transmission using hamiltonian from normal DFT
 Get an iv curve using NEGF:
 
 .. literalinclude:: transport.py
-  
+ 
+Optimize a system under bias voltage:
+
+.. literalinclude:: transport_optimize.py
+
+ 
 Analysis:
 
 >>> from gpaw.transport.analysor import Transport_Plotter
 >>> plotter = Transport_Plotter()
->>> data = plotter.get_info(XXX, bias_step, ion_step) 
+>>> data = plotter.get_info(XXX, 0, 0) #information string, bias_step, ion_step 
 
 Transport_Plotter now just get the data, users need to plot the data themselves.
 XXX can be one in the list ['tc', 'dos', 'force', 'lead_fermi', 'bias', 'gate', 'nt', 'vt'].
@@ -238,22 +243,24 @@ i.e., force 1-0 plot the force differnece for bias step 1 and bias step 0.
 
 Optional keywords:
 
-
-====================  =====  =============  ==============================
-keyword               type   default value  description
-====================  =====  =============  ==============================
-``bias``              list   [0, 0]         :ref:`manual_bias`  
-``gate``              float  0              :ref:`manual_gate`
-``fixed_boundary``    bool   True           :ref:`manual_fixed_boundary`
-``lead_restart``      bool   False          :ref:`manual_lead_restart`
-``scat_restart``      bool   False          :ref:`manual_scat_restart`
-``cal_loc``           bool   False          :ref:`manual_cal_loc`
-``recal_path``        bool   False          :ref:`manual_recal_path`
-``use_buffer``        bool   False          :ref:`manual_use_buffer`
-``buffer_atoms``      list   []             :ref:`manual_buffer_atoms`
-``use_qzk_boundary``  bool   False          :ref:`manual_use_qzk_boundary`
-``identical_leads``   bool   False          :ref:`manual_identical_leads`
-====================  =====  =============  ==============================
+=====================  ===========      =============  ===============================
+    keyword              type           default value          description
+=====================  ===========      =============  ===============================
+``bias``                 list               [0, 0]     :ref:`manual_bias`  
+``gate``                 float                0        :ref:`manual_gate`
+``fixed_boundary``       bool                True      :ref:`manual_fixed_boundary`
+``lead_restart``         bool               False      :ref:`manual_lead_restart`
+``scat_restart``         bool               False      :ref:`manual_scat_restart`
+``cal_loc``              bool               False      :ref:`manual_cal_loc`
+``recal_path``           bool               False      :ref:`manual_recal_path`
+``use_buffer``           bool               False      :ref:`manual_use_buffer`
+``buffer_atoms``         list                []        :ref:`manual_buffer_atoms`
+``use_qzk_boundary``     bool               False      :ref:`manual_use_qzk_boundary`
+``identical_leads``      bool               False      :ref:`manual_identical_leads`
+``normalize_density``    bool               True       :ref:`manual_normalize_density`
+``alpha``                float               0.0       :ref:`manual_alpha`
+``gate_fun``           numpy array          None       :ref:`manual_gate_fun`
+=====================  ===========      =============  ===============================
  
 .. _manual_pl_atoms:
 
@@ -405,6 +412,42 @@ Identical Leads
 When the two electrodes are exactly the same, including cell, atom positions,
 and also stacking, set ``identical_leads`` as True can help to save
 some time for electrode calculation.
+
+.. _manual_normalize_density:
+
+Normalize Density
+-----------------
+
+In normal DFT calculation, the density is always scaled to satisfy the charge
+neutrality condition. Because the charge is conserved always by filling up
+the molecular levels, the scaling factor is very close to 1. There the scaling
+just helps to converge, and does not influece the calculation result. In NEGF
+calculation, because the density matrix is obtain by the Green's function integral
+to the fermi level, the charge neutrality is not garanteed. Without scaling, there
+may be a convergence problem for the three dimensional system. So the code 
+is forced to do scaling always for the first several steps. The keyword 
+``normalize_density`` decides whether the scaling will be released or not at last.
+In principle it should be released, but there is only very tiny diference if
+the scaling factor is close to 1 at last.
+
+.. _manual_alpha:
+
+Alpha
+-----
+If scaling the electron density, sometime you can meet a trap, when the scaling 
+factor oscillating far away from 1. If this situation happen, just set 
+``alpha`` 0.1~0.3, then when you do scaling, there will be a small amount of
+net charge after scaling, which will help the calculatoin jump out the trap and 
+not get diverged.
+
+.. _manual_gate_fun:
+
+Gate Function
+-------------
+Gate Function describes the external gate potential shape in transport direction.
+The numbers in this array shoule be 1 in the middle, and decays to 0 on both sides,
+for example np.array([0,0,0.1,0.5,1,1,0.5,0.1,0,0]). Interpolation will be done
+automatically to fit the function to the whole scaterring region.
 
 .. _manual_non_sc:
 
