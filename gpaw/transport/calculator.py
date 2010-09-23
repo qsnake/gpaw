@@ -278,6 +278,9 @@ class Transport(GPAW):
                     self.mol_atoms.remove(ind)            
 
     def adjust_atom_positions(self, atoms):
+        # match the scattering region and the lead region
+        # to get a correct boundary which is used to
+        # solve the Poisson equation
         if self.identical_leads or self.vaccs is None:
             atoms.center()
         else:
@@ -290,6 +293,8 @@ class Transport(GPAW):
             assert abs(np.diag(atoms.cell)[2] - rb - dis -self.vaccs[1]) < 0.005
        
     def initialize_transport(self):
+        # calculate the lead and generate a guess hamiltonian for
+        # scattering region
         if self.use_lead:
             if self.LR_leads:
                 self.dimt_lead = []
@@ -413,12 +418,8 @@ class Transport(GPAW):
             else:
                 self.get_hamiltonian_initial_guess()                
         
-        #if self.analysis_mode > -3:
-            #del self.wfs
-            #self.wfs = self.extended_calc.wfs
         self.initialize_gate()
         self.initialized_transport = True
-        #self.neutral = True
         self.matrix_mode = 'sparse'
         if not hasattr(self, 'plot_option'):
             self.plot_option = None
@@ -451,6 +452,8 @@ class Transport(GPAW):
                     self.lead_couple_hsd[i].reset(s, pk, h_cmm,'H')     
        
     def get_ks_map(self):
+        # ks_map: s, k, rank
+        # my_ks_map: s, q, rank (q is the k index in local processor)
         self.ks_map = np.zeros([self.npk * self.nspins, 3], int)
         self.my_ks_map = np.zeros([self.my_npk * self.my_nspins, 3], int)
         for i, kpt in enumerate(self.wfs.kpt_u):
@@ -485,6 +488,9 @@ class Transport(GPAW):
             self.gate_basis_index = get_atom_indices(self.gate_atoms, setups)
 
     def rotation_prepare(self):
+        #rotate the overlap and hiamltonian matrix for different leads
+        # in multi-terminal mode
+        
         from gpaw.transport.tools import transform_3d, \
                                           orbital_matrix_rotate_transformation
         self.pl_rotation_mats = []
@@ -499,6 +505,7 @@ class Transport(GPAW):
             self.pl_rotation_mats.append(tmat)
         
     def get_hamiltonian_initial_guess2(self):
+        # get a hamiltonian guess for scattering region using buffer layer
         atoms = self.atoms.copy()
         cell = np.diag(atoms.cell)
         cell[2] += 15.0
@@ -541,6 +548,7 @@ class Transport(GPAW):
         self.boundary_align_up()        
             
     def get_hamiltonian_initial_guess(self):
+        # get hamiltonian guess for scattering region using normal DFT
         atoms = self.atoms.copy()
         #atoms.pbc[self.d] = True
         kwargs = self.gpw_kwargs.copy()
@@ -606,6 +614,7 @@ class Transport(GPAW):
         #atoms.get_potential_energy()
 
     def get_hamiltonian_initial_guess3(self):
+        #get hamiltonian_guess from a hamiltonian file
         fd = file(self.restart_file, 'r')
         self.bias, vt_sG, dH_asp = cPickle.load(fd)
         fd.close()
