@@ -2,17 +2,9 @@
 
 __all__ = ["PhononCalculator"]
 
-from math import sqrt
-
-import pickle
 import numpy as np
 
-import ase.units as units
-
-# Temp modules
-from gpaw.utilities import unpack, unpack2
 from gpaw.kpt_descriptor import KPointDescriptor
-
 from gpaw.dfpt.poisson import PoissonSolver, FFTPoissonSolver
 from gpaw.dfpt.responsecalculator import ResponseCalculator
 from gpaw.dfpt.phononperturbation import PhononPerturbation
@@ -84,7 +76,7 @@ class PhononCalculator:
         nbands = nvalence/2 + nvalence%2
         assert nbands <= calc.wfs.nbands
 
-        # My own WaveFunctions object
+        #  WaveFunctions object
         wfs = WaveFunctions(nbands, calc.wfs.kpt_u, calc.wfs.setups,
                             kd_gs, calc.density.gd, dtype=calc.wfs.dtype)
 
@@ -166,7 +158,7 @@ class PhononCalculator:
             assert type(qpts_q) == list
             
                         
-        # Calculate linear response wrt displacements of specified atoms
+        # Calculate linear response wrt q-vectors and displacements of atoms
         for q in qpts_q:
 
             if not self.gamma:
@@ -182,22 +174,17 @@ class PhononCalculator:
                     print "Atom index: %i" % a
                     print "Atomic symbol: %s" % symbols[a]
                     print "Component: %s" % components[v]
-                    
-                    self.perturbation.set_perturbation(a, v)
-        
+
+                    # Set atom and cartesian component of perturbation
+                    self.perturbation.set(a, v)
+                    # Calculate linear response
                     output = self.response_calc(self.perturbation)
-    
-                    if False: #save:
-                        assert filebase is not None
-                        file_av = "a_%.1i_v_%.1i.pckl" % (a, v)
-                        fname = "_".join([filebase, file_av])
-                        f = open(fname, 'w')
-                        pickle.dump([nt1_G, psit1_unG], f)
-                        f.close()
-                                
+
+                    # Calculate corresponding row of dynamical matrix
                     self.D_matrix.update_row(self.perturbation,
                                              self.response_calc)
-                    
+
+        # Add ground-state contributions to the dynamical matrix
         self.D_matrix.density_ground_state(self.calc)
         # self.D_matrix.wfs_ground_state(self.calc, self.response_calc)
 
@@ -205,81 +192,3 @@ class PhononCalculator:
         """Return reference to ``DynamicalMatrix`` object."""
         
         return self.D_matrix
-        
-    def frequencies(self):
-        """Calculate phonon frequencies from the dynamical matrix."""
-
-        # In Ha/(Bohr^2 * amu)
-        D, D_ = self.D_matrix.assemble()
-        
-        freq2, modes = np.linalg.eigh(D)
-        freq = np.sqrt(freq2)
-        # Convert to eV
-        freq *= sqrt(units.Hartree) / (units.Bohr * 1e-10) / \
-                sqrt(units._amu * units._e) * units._hbar
-
-        print "Calculated frequencies (meV):"
-        for f in freq:
-            print f*1000
-
-        return freq
-
-    def forces(self):
-        """Check for the forces."""
-
-        N_atoms = self.atoms.get_number_of_atoms()
-        nbands = self.calc.wfs.nvalence/2        
-        Q_aL = self.calc.density.Q_aL
-        # Forces
-        F = np.zeros((N_atoms, 3))
-        F_1 = np.zeros((N_atoms, 3))
-        F_2 = np.zeros((N_atoms, 3))
-        F_3 = np.zeros((N_atoms, 3))
-        
-        # Check the force
-        ghat = self.calc.density.ghat
-        vH_g = self.calc.hamiltonian.vHt_g
-        F_ghat_aLv = ghat.dict(derivative=True)
-        ghat.derivative(vH_g,F_ghat_aLv)
-        
-        vbar = self.calc.hamiltonian.vbar
-        nt_g = self.calc.density.nt_g
-        F_vbar_av = vbar.dict(derivative=True)
-        vbar.derivative(nt_g,F_vbar_av)
-
-        pt = self.calc.wfs.pt
-        psit_nG = self.calc.wfs.kpt_u[0].psit_nG[:nbands]        
-        P_ani = pt.dict(nbands)
-        pt.integrate(psit_nG, P_ani)        
-        dP_aniv = pt.dict(nbands, derivative=True)
-        pt.derivative(psit_nG, dP_aniv)
-        dH_asp = self.calc.hamiltonian.dH_asp
-
-        # P_ani = self.calc.wfs.kpt_u[0].P_ani
-        kpt = self.calc.wfs.kpt_u[0]
-        
-        for atom in self.atoms:
-
-            a = atom.index
-            # ghat and vbar contributions
-            F_1[a] += F_ghat_aLv[a][0] * Q_aL[a][0]
-            F_2[a] += F_vbar_av[a][0]
-            # Contribution from projectors
-            dH_ii = unpack(dH_asp[a][0])
-            P_ni = P_ani[a][:nbands]
-            dP_niv = dP_aniv[a]
-            dHP_ni = np.dot(P_ni, dH_ii)
-            # Factor 2 for spin
-            dHP_ni *= kpt.f_n[:nbands, np.newaxis]
-
-            F_3[a] += 2 * (dP_niv * dHP_ni[:, :, np.newaxis]).sum(0).sum(0)
-            #print F_3[a]
-            F[a] += F_1[a] + F_2[a] + F_3[a]
-            
-        # Convert to eV/Ang            
-        F *= units.Hartree/units.Bohr
-        F_1 *= units.Hartree/units.Bohr
-        F_2 *= units.Hartree/units.Bohr
-        F_3 *= units.Hartree/units.Bohr
-        
-        return F, F_1, F_2, F_3

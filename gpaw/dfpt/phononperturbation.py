@@ -3,19 +3,13 @@
 __all__ = ["PhononPerturbation"]
 
 from math import sqrt, pi
-
 import numpy as np
 import numpy.linalg as la
 
 from gpaw.utilities import unpack, unpack2
 from gpaw.transformers import Transformer
 from gpaw.lfc import LocalizedFunctionsCollection as LFC
-
-# To be removed
-from gpaw.dfpt.poisson import PoissonSolver, FFTPoissonSolver
-
 from gpaw.dfpt.perturbation import Perturbation
-from gpaw.dfpt.kpointcontainer import KPointContainer
 
 
 class PhononPerturbation(Perturbation):
@@ -132,6 +126,41 @@ class PhononPerturbation(Perturbation):
         # Grid transformer
         self.restrictor.allocate()
 
+    def set(self, a, v):
+        """Set atom and cartesian component of the perturbation.
+
+        Parameters
+        ----------
+        a: int
+            Index of the atom.
+        v: int 
+            Cartesian component (0, 1 or 2) of the atomic displacement.
+            
+        """
+
+        assert self.q is not None
+        
+        self.a = a
+        self.v = v
+        
+        # Update derivative of local potential
+        self.calculate_local_potential()
+
+    def set_q(self, q):
+        """Set the index of the q-vector of the perturbation."""
+
+        assert not self.gamma, "Gamma-point calculation"
+        
+        self.q = q
+
+        # Update phases and Poisson solver
+        self.phase_cd = self.phase_qcd[q]
+        self.poisson.set_q(self.ibzq_kc[q])
+
+        # Invalidate calculated quantities
+        # - local part of perturbing potential
+        self.v1_G = None
+        
     def get_phase_cd(self):
         """Overwrite base class member function."""
 
@@ -149,40 +178,6 @@ class PhononPerturbation(Perturbation):
         
         return self.ibzq_kc[self.q]
     
-    def set_perturbation(self, a, v):
-        """Set atom and cartesian coordinate of the perturbation.
-
-        Parameters
-        ----------
-        a: int
-            Index of the atom.
-        v: int 
-            Cartesian component (0, 1 or 2) of the atomic displacement.
-            
-        """
-
-        assert self.q is not None
-        
-        self.a = a
-        self.v = v
-
-        self.calculate_local_potential()
-
-    def set_q(self, q):
-        """Set the index of the q-vector of the perturbation."""
-
-        assert not self.gamma, "Gamma-point calculation"
-        
-        self.q = q
-
-        # Update phases and Poisson solver
-        self.phase_cd = self.phase_qcd[q]
-        self.poisson.set_q(self.ibzq_kc[q])
-
-        # Invalidate calculated quantities
-        # - local part of perturbing potential        
-        self.v1_G = None
-        
     def solve_poisson(self, phi_g, rho_g):
         """Solve Poisson's equation for a Bloch-type charge distribution.
 
@@ -201,56 +196,20 @@ class PhononPerturbation(Perturbation):
         #       ("Arrays have incompatible shapes.")
         assert self.q is not None, ("q-vector not set")
         
-        # Solve Poisson's eq. for the potential from the periodic part of the
-        # compensation charge derivative
-
-        # Gamma point calculation wrt the q-vector
+        # Gamma point calculation wrt the q-vector -> rho_g periodic
         if self.gamma: 
-            # NOTICE: solve_neutral
+            #XXX NOTICE: solve_neutral
             self.poisson.solve_neutral(phi_g, rho_g)
         else:
             # Divide out the phase factor to get the periodic part
             rhot_g = rho_g/self.phase_qg[self.q]
 
             # Solve Poisson's equation for the periodic part of the potential
-            # NOTICE: solve_neutral
+            #XXX NOTICE: solve_neutral
             self.poisson.solve_neutral(phi_g, rhot_g)
 
             # Return to Bloch form
             phi_g *= self.phase_qg[self.q]
-
-    def apply(self, psi_nG, y_nG, wfs, k, kplusq):
-        """Apply perturbation to unperturbed wave-functions.
-
-        Parameters
-        ----------
-        psi_nG: ndarray
-            Set of grid vectors to which the perturbation is applied.
-        y_nG: ndarray
-            Output vectors.
-        wfs: WaveFunctions
-            Instance of class ``WaveFunctions``.
-        k: int
-            Index of the k-point for the vectors.
-        kplusq: int
-            Index of the k+q vector.
-            
-        """
-
-        assert self.a is not None
-        assert self.v is not None
-        assert self.q is not None
-        assert psi_nG.ndim in (3, 4)
-        assert tuple(self.gd.n_c) == psi_nG.shape[-3:]
-
-        if psi_nG.ndim == 3:
-            y_nG += self.v1_G * psi_nG
-        else:
-            y_nG += self.v1_G[np.newaxis, :] * psi_nG
-            #for psi_G, y_G in zip(psi_nG, y_nG):
-            #    y_G += self.v1_G * psi_G
-
-        self.apply_nonlocal_potential(psi_nG, y_nG, wfs, k, kplusq)
 
     def calculate_local_potential(self):
         """Derivate of the local potential wrt an atomic displacements.
@@ -300,6 +259,37 @@ class PhononPerturbation(Perturbation):
         self.restrictor.apply(v1_g, v1_G, phases=self.phase_cd)
 
         self.v1_G = v1_G
+        
+    def apply(self, psi_nG, y_nG, wfs, k, kplusq):
+        """Apply perturbation to unperturbed wave-functions.
+
+        Parameters
+        ----------
+        psi_nG: ndarray
+            Set of grid vectors to which the perturbation is applied.
+        y_nG: ndarray
+            Output vectors.
+        wfs: WaveFunctions
+            Instance of class ``WaveFunctions``.
+        k: int
+            Index of the k-point for the vectors.
+        kplusq: int
+            Index of the k+q vector.
+            
+        """
+
+        assert self.a is not None
+        assert self.v is not None
+        assert self.q is not None
+        assert psi_nG.ndim in (3, 4)
+        assert tuple(self.gd.n_c) == psi_nG.shape[-3:]
+
+        if psi_nG.ndim == 3:
+            y_nG += self.v1_G * psi_nG
+        else:
+            y_nG += self.v1_G[np.newaxis, :] * psi_nG
+
+        self.apply_nonlocal_potential(psi_nG, y_nG, wfs, k, kplusq)
 
     def apply_nonlocal_potential(self, psi_nG, y_nG, wfs, k, kplusq):
         """Derivate of the non-local PAW potential wrt an atomic displacement.
