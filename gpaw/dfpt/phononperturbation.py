@@ -126,7 +126,22 @@ class PhononPerturbation(Perturbation):
         # Grid transformer
         self.restrictor.allocate()
 
-    def set(self, a, v):
+    def set_q(self, q):
+        """Set the index of the q-vector of the perturbation."""
+
+        assert not self.gamma, "Gamma-point calculation"
+        
+        self.q = q
+
+        # Update phases and Poisson solver
+        self.phase_cd = self.phase_qcd[q]
+        self.poisson.set_q(self.ibzq_kc[q])
+
+        # Invalidate calculated quantities
+        # - local part of perturbing potential
+        self.v1_G = None
+
+    def set_av(self, a, v):
         """Set atom and cartesian component of the perturbation.
 
         Parameters
@@ -145,21 +160,6 @@ class PhononPerturbation(Perturbation):
         
         # Update derivative of local potential
         self.calculate_local_potential()
-
-    def set_q(self, q):
-        """Set the index of the q-vector of the perturbation."""
-
-        assert not self.gamma, "Gamma-point calculation"
-        
-        self.q = q
-
-        # Update phases and Poisson solver
-        self.phase_cd = self.phase_qcd[q]
-        self.poisson.set_q(self.ibzq_kc[q])
-
-        # Invalidate calculated quantities
-        # - local part of perturbing potential
-        self.v1_G = None
         
     def get_phase_cd(self):
         """Overwrite base class member function."""

@@ -176,7 +176,7 @@ class PhononCalculator:
                     print "Component: %s" % components[v]
 
                     # Set atom and cartesian component of perturbation
-                    self.perturbation.set(a, v)
+                    self.perturbation.set_av(a, v)
                     # Calculate linear response
                     output = self.response_calc(self.perturbation)
 

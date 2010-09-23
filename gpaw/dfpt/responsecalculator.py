@@ -5,9 +5,7 @@ __all__ = ["ResponseCalculator"]
 import numpy as np
 
 from gpaw.transformers import Transformer
-# from gpaw.mixer import BaseMixer
 from gpaw.dfpt.mixer import BaseMixer
-
 from gpaw.dfpt.sternheimeroperator import SternheimerOperator
 from gpaw.dfpt.scipylinearsolver import ScipyLinearSolver
 from gpaw.dfpt.preconditioner import ScipyPreconditioner
@@ -63,6 +61,10 @@ class ResponseCalculator:
         wfs: WaveFunctions
             Class taking care of wave-functions, projectors, k-point related
             quantities and symmetries.
+        poisson_solver: PoissonSolver
+            Multigrid or FFT poisson solver (not required if the
+            ``Perturbation`` to be solved for has a ``solve_poisson`` member
+            function). 
         dtype: ...
             dtype of the density response.
         """
@@ -184,7 +186,9 @@ class ResponseCalculator:
                 print     ("self-consistent loop did not converge in %i "
                            "iterations" % (iter+1))
 
+        # Return to state prior to the function call
         self.perturbation = None
+        self.solve_poisson = None
         
         return self.nt1_G.copy()
     
@@ -261,9 +265,6 @@ class ResponseCalculator:
         self.density_response()
         self.mixer.mix(self.nt1_G, [], phase_cd=self.phase_cd)
         self.interpolate_density()
-
-        #XXX Temp - in order to see the Hartree potential after 1'st iteration
-        v1_G = self.effective_potential_variation()
         
     def iteration(self):
         """Perform iteration."""
@@ -404,13 +405,12 @@ class ResponseCalculator:
     def density_response(self):
         """Calculate density response from variation in the wave-functions."""
 
-        # Note, density might be complex
+        # Density might be complex
         self.nt1_G = self.gd.zeros(dtype=self.dtype)
 
         for kpt in self.kpt_u:
 
             # The occupations includes the weight of the k-points
-            # f_n = kpt.f_n
             # Use weight of k-point instead of occupation -- spin degeneracy is
             # included in the weight
             w = kpt.weight
@@ -418,13 +418,8 @@ class ResponseCalculator:
             psit_nG = kpt.psit_nG
             psit1_nG = kpt.psit1_nG
 
-            # for n in range(self.nbands):
             for psit_G, psit1_G in zip(psit_nG, psit1_nG):
                 # NOTICE: this relies on the automatic down-cast of the complex
                 # array on the rhs to a real array when the lhs is real !!
                 # Factor 2 for time-reversal symmetry
                 self.nt1_G += 2 * w * psit_G.conj() * psit1_G
-                #XXX
-                ## self.nt1_G += f * (psit_nG[n].conj() * psit1_nG[n] +
-                ##                    psit1_nG[n].conj() * psit_nG[n])
-
