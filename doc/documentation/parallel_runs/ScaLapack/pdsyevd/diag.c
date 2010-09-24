@@ -254,7 +254,7 @@ int main(int argc, char *argv[]) {
      }
 
      // We can do this on any subcommunicator.
-     #ifdef CartComm
+#ifdef CartComm
      int dim[2];
      int pbc[2];
      dim[0] = nprow;
@@ -262,9 +262,9 @@ int main(int argc, char *argv[]) {
      pbc[0] = 0;
      pbc[1] = 0;
      MPI_Cart_create(MPI_COMM_WORLD, 2, dim, pbc, 1, &blacs_comm);
-     #else
+#else
      blacs_comm = MPI_COMM_WORLD;
-     #endif
+#endif
 
      // initialize the grid
      // The lines below are equivalent to the one call to:
