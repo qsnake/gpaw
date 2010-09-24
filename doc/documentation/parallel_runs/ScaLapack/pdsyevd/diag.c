@@ -231,6 +231,7 @@ int main(int argc, char *argv[]) {
      MPI_Comm blacs_comm;
      int nprocs;
      int iam;
+     int myrow, mycol;
 
      MPI_Init(&argc, &argv);
      ttotal0 = MPI_Wtime();
@@ -252,20 +253,28 @@ int main(int argc, char *argv[]) {
        printf("npcol %d \n", npcol);
      }
 
-     // We can do this on any subcommunicator. 
+     // We can do this on any subcommunicator.
+     #ifdef CartComm
+     int dim[2];
+     int pbc[2];
+     dim[0] = nprow;
+     dim[1] = npcol;
+     pbc[0] = 0;
+     pbc[1] = 0;
+     MPI_Cart_create(MPI_COMM_WORLD, 2, dim, pbc, 1, &blacs_comm);
+     #else
      blacs_comm = MPI_COMM_WORLD;
+     #endif
 
      // initialize the grid
      // The lines below are equivalent to the one call to:
-     // sl_init_(&ConTxt, &nprow, &npcol);
-     ConTxt = Csys2blacs_handle_(blacs_comm);
-     Cblacs_gridinit_(&ConTxt, &order, nprow, npcol);
+     if (blacs_comm != MPI_COMM_NULL) {
+       ConTxt = Csys2blacs_handle_(blacs_comm);
+       Cblacs_gridinit_(&ConTxt, &order, nprow, npcol);
 
-     // get information back about the grid
-     int myrow;
-     int mycol;
-
-     Cblacs_gridinfo_(ConTxt, &nprow, &npcol, &myrow, &mycol);
+       // get information back about the grid
+       Cblacs_gridinfo_(ConTxt, &nprow, &npcol, &myrow, &mycol);
+     }
 
      if (ConTxt != minusone) {
 
