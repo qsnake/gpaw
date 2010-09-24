@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 #include <mpi.h>
 
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
@@ -222,12 +223,16 @@ int main(int argc, char *argv[]) {
      double alpha = 0.0; // off-diagonal
      double beta = 75.0; // diagonal
      
+     // For timing:
+     double tdiag0, tdiag, ttotal0, ttotal;
+
      // BLACS Communicator
      MPI_Comm blacs_comm;
      int nprocs;
      int iam;
 
      MPI_Init(&argc, &argv);
+     ttotal0 = MPI_Wtime();
      MPI_Barrier(MPI_COMM_WORLD);
      MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
      MPI_Comm_rank(MPI_COMM_WORLD, &iam);
@@ -347,12 +352,17 @@ int main(int argc, char *argv[]) {
           // pdsyevx_(&jobz, &range, &uplo, &n, mata, &one, &one, desc, &vl,
           //          &vu, &il, &iu, &abstol, &eigvalm, &nz, eigvals, &orfac, z, &one,
           //          &one, desc, work, &lwork, iwork, &liwork, ifail, iclustr, gap, &info);
+  
+          MPI_Barrier(MPI_COMM_WORLD);
+          tdiag0 = MPI_Wtime();
           pdsyevd_(&jobz, &uplo, &n, mata, &one, &one, desc, eigvals,
                    z, &one, &one, desc,
                    work, &lwork, iwork, &liwork, &info);
 
           //pdsyev_(&jobz, &uplo, &m, mata, &one, &one, desc, eigvals,
           //        z, &one, &one, desc, work, &lwork, &info);
+          MPI_Barrier(MPI_COMM_WORLD);
+          tdiag = MPI_Wtime() - tdiag0;
 
           free(work);
           free(iwork);
@@ -365,11 +375,13 @@ int main(int argc, char *argv[]) {
           // Destroy BLACS grid
           Cblacs_gridexit_(ConTxt);
 
-	  // Print out eigenvalues
+	  // Check eigenvalues
 	  if (myrow == zero && mycol == zero) {
 	    for (int i = 0; i < n; i++)
 	      {
-		printf("eigval %d = %f\n", i, eigvals[i]);
+                if (fabs(eigvals[i] - beta) > 0.0001) 
+		    printf("Problem: eigval %d != %f5.2 but %f\n", 
+                            i, beta, eigvals[i]);
 	      }
 	    
 	    if (info != zero) {
@@ -380,5 +392,9 @@ int main(int argc, char *argv[]) {
 	  free(eigvals);
      }
 
+     int myid;
+     ttotal = MPI_Wtime() - ttotal0;
+     if (iam == 0)
+          printf("Time (s) diag: %f total: %f\n", tdiag, ttotal);
      MPI_Finalize();
 }
