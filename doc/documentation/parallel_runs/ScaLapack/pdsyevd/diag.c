@@ -234,8 +234,8 @@ int main(int argc, char *argv[]) {
      int myrow, mycol;
 
      MPI_Init(&argc, &argv);
-     ttotal0 = MPI_Wtime();
      MPI_Barrier(MPI_COMM_WORLD);
+     ttotal0 = MPI_Wtime();
      MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
      MPI_Comm_rank(MPI_COMM_WORLD, &iam);
 
@@ -397,13 +397,16 @@ int main(int argc, char *argv[]) {
 	    if (info != zero) {
 	      printf("info = %d \n", info);
 	    }
+	    
+	    printf("Time (s) diag: %f\n", tdiag);
 	  }
 
 	  free(eigvals);
      }
 
+     MPI_Barrier(MPI_COMM_WORLD);
      ttotal = MPI_Wtime() - ttotal0;
      if (iam == 0)
-          printf("Time (s) diag: %f total: %f\n", tdiag, ttotal);
+          printf("Time (s) total: %f\n", ttotal);
      MPI_Finalize();
 }
