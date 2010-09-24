@@ -188,6 +188,7 @@ int main(int argc, char *argv[]) {
 
      // order
      char order = 'R';
+     char scope = 'A';
 
      // root process
      int root = zero;
@@ -353,7 +354,7 @@ int main(int argc, char *argv[]) {
           //          &vu, &il, &iu, &abstol, &eigvalm, &nz, eigvals, &orfac, z, &one,
           //          &one, desc, work, &lwork, iwork, &liwork, ifail, iclustr, gap, &info);
   
-          MPI_Barrier(MPI_COMM_WORLD);
+          Cblacs_barrier(ConTxt, &scope);
           tdiag0 = MPI_Wtime();
           pdsyevd_(&jobz, &uplo, &n, mata, &one, &one, desc, eigvals,
                    z, &one, &one, desc,
@@ -361,7 +362,7 @@ int main(int argc, char *argv[]) {
 
           //pdsyev_(&jobz, &uplo, &m, mata, &one, &one, desc, eigvals,
           //        z, &one, &one, desc, work, &lwork, &info);
-          MPI_Barrier(MPI_COMM_WORLD);
+          Cblacs_barrier(ConTxt, &scope);
           tdiag = MPI_Wtime() - tdiag0;
 
           free(work);
@@ -392,7 +393,6 @@ int main(int argc, char *argv[]) {
 	  free(eigvals);
      }
 
-     int myid;
      ttotal = MPI_Wtime() - ttotal0;
      if (iam == 0)
           printf("Time (s) diag: %f total: %f\n", tdiag, ttotal);
