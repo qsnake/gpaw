@@ -45,12 +45,15 @@ class KPointDescriptor:
 
         self.bzk_kc = bzk_kc
         self.nspins = nspins
-
+        self.nbzkpts = len(bzk_kc)
+        
         # Gamma-point calculation
-        self.gamma = len(bzk_kc) == 1 and not bzk_kc[0].any()
+        self.gamma = self.nbzkpts == 1 and not bzk_kc[0].any()
 
+        self.symmetry = None
         self.comm = None
         self.ibzk_kc = None
+        self.weight_k = None
         self.nibzkpts = None
 
     def __len__(self):
@@ -61,6 +64,8 @@ class KPointDescriptor:
     def set_symmetry(self, atoms, setups, usesymm):
         """Create symmetry object and construct irreducible Brillouin zone.
 
+        Parameters
+        ----------
         atoms: Atoms object
             Defines atom positions and types and also unit cell and
             boundary conditions.
@@ -80,24 +85,24 @@ class KPointDescriptor:
             self.ibzk_kc = np.zeros((1, 3))
 
         elif usesymm is None:
-            # Time-reversal symmetry neglected
+            # Point group and time-reversal symmetry neglected
             nkpts = len(self.bzk_kc)
             self.symmetry = None
             self.weight_k = np.ones(nkpts) / nkpts
             self.ibzk_kc = self.bzk_kc.copy()
 
         else:
-            # Round off:
+            # Round off
             magmom_a = atoms.get_initial_magnetic_moments().round(decimals=3)
             id_a = zip(magmom_a, setups.id_a)
 
-            # Construct a Symmetry instance containing the identity
-            # operation only:
+            # Construct a Symmetry instance containing the identity operation
+            # only
             self.symmetry = Symmetry(id_a, atoms.get_cell() / Bohr,
                                      atoms.get_pbc())
 
             if usesymm:
-                # Find symmetry operations of atoms:
+                # Find symmetry operations of atoms
                 self.symmetry.analyze(atoms.get_scaled_positions())
             else:
                 self.symmetry.prune_symmetries(atoms.get_scaled_positions())
@@ -181,9 +186,9 @@ class KPointDescriptor:
         kmax = (nkptxyz - 1) * dk / 2.
         N = np.zeros(3, dtype=int)
 
-        for k in range(len(bzk_kc)):
+        for k, k_c in enumerate(self.bzk_kc):
             
-            kplusq_c = self.bzk_kc[k] + q_c
+            kplusq_c = k_c + q_c
             
             for dim in range(3):
                 if kplusq_c[dim] > 0.5:
@@ -193,7 +198,7 @@ class KPointDescriptor:
     
                 N[dim] = int(np.round((kplusq_c[dim] + kmax[dim])/dk[dim]))
     
-            kplusq_k.append(N[2] + N[1]*nkptxyz[2] + N[0]*nkptxyz[2]*nkptxyz[1])
+            kplusq_k.append(N[2] + N[1] * nkptxyz[2] + N[0] * nkptxyz[2] * nkptxyz[1])
 
             # Check the k+q vector index
             k_c = self.bzk_kc[kplusq_k[k]]
