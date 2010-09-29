@@ -269,8 +269,8 @@ class BlacsDescriptor(MatrixDescriptor):
     def __init__(self, blacsgrid, M, N, mb, nb, rsrc, csrc):
         assert M > 0
         assert N > 0
-        assert 1 <= mb <= M
-        assert 1 <= nb <= N
+        assert 1 <= mb <= M, (mb, M)
+        assert 1 <= nb <= N, (nb, N)
         assert 0 <= rsrc < blacsgrid.nprow
         assert 0 <= csrc < blacsgrid.npcol
         
@@ -931,9 +931,7 @@ class BlacsOrbitalLayouts(BlacsLayouts):
         return rho_mM
 
     def get_transposed_density_matrix(self, f_n, C_nM, rho_mM=None):
-        # XXX for the complex case, find out whether this or the other
-        # method should be changed
-        return self.calculate_density_matrix(f_n, C_nM, rho_mM)
+        return self.calculate_density_matrix(f_n, C_nM, rho_mM).conj()
 
     def get_description(self):
         (title, template) = BlacsLayouts.get_description(self)
