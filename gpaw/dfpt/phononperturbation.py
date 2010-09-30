@@ -22,7 +22,7 @@ class PhononPerturbation(Perturbation):
     
     """
     
-    def __init__(self, calc, gamma, poisson_solver, dtype=float, **kwargs):
+    def __init__(self, calc, kd, poisson_solver, dtype=float, **kwargs):
         """Store useful objects, e.g. lfc's for the various atomic functions.
             
         Depending on whether the system is periodic or finite, Poisson's equation
@@ -32,22 +32,20 @@ class PhononPerturbation(Perturbation):
         ----------
         calc: Calculator
             Ground-state calculation.
-        gamma: bool
-            Gamma with respect to the q-vector.
+        kd: KPointDescriptor
+            Descriptor for the q-vectors of the dynamical matrix.
      
         """
 
-        self.gamma = gamma
+        self.kd = kd
         self.dtype = dtype
         self.poisson = poisson_solver
 
         # Gamma wrt q-vector
-        if gamma:
+        if self.kd.gamma:
             self.phase_cd = None
-            self.ibzq_kc = None
         else:
-            self.phase_qcd = [kpt.phase_cd for kpt in calc.wfs.kpt_u]
-            self.ibzq_kc = calc.get_ibz_k_points()
+            self.phase_kcd = [kpt.phase_cd for kpt in calc.wfs.kpt_u]
             
         # Store grid-descriptors
         self.gd = calc.density.gd
@@ -84,8 +82,8 @@ class PhononPerturbation(Perturbation):
         self.a = None
         self.v = None
         
-        # q-vector of the perturbation
-        if self.gamma:
+        # Local q-vector index of the perturbation
+        if self.kd.gamma:
             self.q = -1
         else:
             self.q = None
@@ -98,13 +96,13 @@ class PhononPerturbation(Perturbation):
         self.ghat.set_positions(spos_ac)
         self.vbar.set_positions(spos_ac)
 
-        if not self.gamma:
+        if not self.kd.gamma:
             
             # Set q-vectors and update
-            self.ghat.set_k_points(self.ibzq_kc)
+            self.ghat.set_k_points(self.kd.ibzk_qc)
             self.ghat._update(spos_ac)
             # Set q-vectors and update
-            self.vbar.set_k_points(self.ibzq_kc)
+            self.vbar.set_k_points(self.kd.ibzk_qc)
             self.vbar._update(spos_ac)
 
             # Phase factor exp(iq.r) needed to obtian the periodic part of lfcs
@@ -115,7 +113,7 @@ class PhononPerturbation(Perturbation):
             scoor_cg = scoor_cg.swapaxes(1,-2)
             # Phase factor
             phase_qg = np.exp(2j * pi *
-                              np.dot(self.ibzq_kc, scoor_cg.swapaxes(0,-2)))
+                              np.dot(self.kd.ibzk_qc, scoor_cg.swapaxes(0,-2)))
             self.phase_qg = phase_qg.swapaxes(1, -2)
 
         #XXX To be removed from this class !!
@@ -129,13 +127,14 @@ class PhononPerturbation(Perturbation):
     def set_q(self, q):
         """Set the index of the q-vector of the perturbation."""
 
-        assert not self.gamma, "Gamma-point calculation"
+        assert not self.kd.gamma, "Gamma-point calculation"
         
         self.q = q
 
         # Update phases and Poisson solver
-        self.phase_cd = self.phase_qcd[q]
-        self.poisson.set_q(self.ibzq_kc[q])
+        k = self.kd.ks0 + q
+        self.phase_cd = self.phase_kcd[k]
+        self.poisson.set_q(self.kd.ibzk_qc[q])
 
         # Invalidate calculated quantities
         # - local part of perturbing potential
@@ -169,14 +168,14 @@ class PhononPerturbation(Perturbation):
     def has_q(self):
         """Overwrite base class member function."""
 
-        return (not self.gamma)
+        return (not self.kd.gamma)
 
     def get_q(self):
         """Return q-vector."""
 
-        assert not self.gamma, "Gamma-point calculation."
+        assert not self.kd.gamma, "Gamma-point calculation."
         
-        return self.ibzq_kc[self.q]
+        return self.kd.ibzk_qc[self.q]
     
     def solve_poisson(self, phi_g, rho_g):
         """Solve Poisson's equation for a Bloch-type charge distribution.
@@ -197,7 +196,7 @@ class PhononPerturbation(Perturbation):
         assert self.q is not None, ("q-vector not set")
         
         # Gamma point calculation wrt the q-vector -> rho_g periodic
-        if self.gamma: 
+        if self.kd.gamma: 
             #XXX NOTICE: solve_neutral
             self.poisson.solve_neutral(phi_g, rho_g)
         else:

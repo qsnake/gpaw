@@ -21,16 +21,16 @@ class ResponseCalculator:
     ----------
     max_iter: int
         Maximum number of iterations in the self-consistent evaluation of
-        the density variation
+        the density variation.
     tolerance_sc: float
         Tolerance for the self-consistent loop measured in terms of
         integrated absolute change of the density derivative between two
-        iterations
+        iterations.
     tolerance_sternheimer: float
         Tolerance for the solution of the Sternheimer equation -- passed to
-        the ``LinearSolver``
+        the ``LinearSolver``.
     beta: float (0 < beta < 1)
-        Mixing coefficient
+        Mixing coefficient.
     nmaxold: int
         Length of history for the mixer.
     weight: int
@@ -38,7 +38,7 @@ class ResponseCalculator:
         
     """
 
-    parameters = {'verbose':               True,
+    parameters = {'verbose':               False,
                   'max_iter':              100,
                   'max_iter_krylov':       1000,
                   'krylov_solver':         'cg',
@@ -189,21 +189,17 @@ class ResponseCalculator:
         # Return to state prior to the function call
         self.perturbation = None
         self.solve_poisson = None
-        
-        return self.nt1_G.copy()
     
     def set(self, **kwargs):
         """Set parameters for calculation."""
 
         # Check for legal input parameters
         for key, value in kwargs.items():
-
             if not key in ResponseCalculator.parameters:
                 raise TypeError("Unknown keyword argument: '%s'" % key)
 
         # Insert default values if not given
         for key, value in ResponseCalculator.parameters.items():
-
             if key not in kwargs:
                 kwargs[key] = value
 

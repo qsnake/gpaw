@@ -25,45 +25,45 @@ class DynamicalMatrix:
     
     """
     
-    def __init__(self, atoms, ibzq_kc=None, dtype=float):
+    def __init__(self, atoms, kd, dtype=float):
         """Inititialize class with a list of atoms."""
 
         # Store useful objects
         self.atoms = atoms
+        self.kd = kd
         self.dtype = dtype
         self.calc = atoms.get_calculator()
         self.masses = atoms.get_masses()
         self.N = atoms.get_number_of_atoms()
 
-        #XXX Index of the gamma point -- for the acoustic sum-rule
+        # Index of the gamma point -- for the acoustic sum-rule
         self.gamma_index = None
         
-        if ibzq_kc is None:
-            self.ibzq_kc = [(0., 0., 0.)]
+        if self.kd.gamma:
             self.gamma_index = 0
             assert dtype == float
         else:
             #XXX Maybe not needed as an attribute ??
-            self.ibzq_kc = ibzq_kc
-            for q, q_c in enumerate(self.ibzq_kc):
+            for q, q_c in enumerate(self.kd.bzk_kc):
                 if np.all(q_c == 0.):
                     self.gamma_index = q
 
         assert self.gamma_index is not None
         
         # Matrix of force constants -- dict of dicts in atomic indices
-        # XXX In case of inversion symmetry this is a real matrix !!
+        # Only local q-vector stored here
         self.C_qaavv = [dict([(atom.index,
                                dict([(atom_.index, np.zeros((3, 3), dtype=dtype))
                                      for atom_ in atoms])) for atom in atoms])
-                        for q in self.ibzq_kc]
+                        for q in range(self.kd.mynks)]
         
         # Dynamical matrix -- 3Nx3N ndarray (vs q)
         self.D_q = []
+        self.D_k = None
         self.assembled = False
         
-    def assemble(self, acoustic=False):
-        """Assemble dynamical matrix from the force constants attribute ``C``.
+    def assemble(self, acoustic=True):
+        """Assemble dynamical matrix from the force constants attribute.
 
         The elements of the dynamical matrix are given by::
 
@@ -78,9 +78,8 @@ class DynamicalMatrix:
             corrected to ensure that the acoustic sum-rule is fulfilled.
             
         """
-
-        # First assemble matrix of force constants, then apply acoustic
-        # sum-rule if requested
+          
+        # Assemble matrix of force constants locally
         for q, C_aavv in enumerate(self.C_qaavv):
 
             C_avav = np.zeros((3*self.N, 3*self.N), dtype=self.dtype)
@@ -99,11 +98,20 @@ class DynamicalMatrix:
             C = .5 * C_avav
             C += C.conj().T
             self.D_q.append(C)
-            
+      
+        # Apply acoustic sum-rule if requested        
         if acoustic:
-            
-            # Matrix of force constants in Gamma point
-            C_gamma = self.D_q[self.gamma_index].copy()
+
+            # Get matrix of force constants in the Gamma-point
+            rank_gamma, q_gamma = \
+                        self.kd.get_rank_and_index(self.gamma_index, 0)
+
+            # Broadcast Gamma-point matrix
+            if self.kd.comm.rank != rank_gamma:
+                C_gamma = np.empty((3*self.N, 3*self.N), dtype=self.dtype)
+            else:
+                C_gamma = self.D_q[q_gamma].copy()
+                self.kd.comm.broadcast(C_gamma, rank_gamma)
 
             # Correct atomic diagonal for each q-vector
             for C in self.D_q:
@@ -124,8 +132,69 @@ class DynamicalMatrix:
         for C in self.D_q:
             C *= M_avav
 
+        # Collect dynamical matrices from slaves
+        if self.kd.comm.rank == 0:
+            # Global array
+            self.D_k = np.empty((self.kd.nibzkpts, 3*self.N, 3*self.N),
+                                dtype=self.dtype)
+            uslice = self.kd.get_slice()
+            self.D_k[uslice] = np.asarray(self.D_q)
+            
+            for slave_rank in range(1, self.kd.comm.size):
+                uslice = self.kd.get_slice(rank=slave_rank)
+                nks = uslice.stop - uslice.start
+                D_q = np.empty((nks, 3*self.N, 3*self.N), dtype=self.dtype)
+                self.kd.comm.receive(D_q, slave_rank, tag=123)
+                self.D_k[uslice] = D_q
+        else:
+            D_q = np.asarray(self.D_q)
+            self.kd.comm.send(D_q, 0, tag=123)
+
         self.assembled = True
 
+    def assemble_force_constants(self):
+        """Assemble matrix of force constants."""
+
+        C_q = []
+        
+        # Assemble matrix of force constants locally
+        for q, C_aavv in enumerate(self.C_qaavv):
+
+            C_avav = np.zeros((3*self.N, 3*self.N), dtype=self.dtype)
+    
+            for atom in self.atoms:
+    
+                a = atom.index
+    
+                for atom_ in self.atoms:
+    
+                    a_ = atom_.index
+    
+                    C_avav[3*a : 3*a + 3, 3*a_ : 3*a_ + 3] += C_aavv[a][a_]
+
+            # C(q) is Hermitian
+            C = .5 * C_avav
+            C += C.conj().T
+            C_q.append(C)
+
+        # Collect from slaves
+        if self.kd.comm.rank == 0:
+            # Global array
+            C_k = np.empty((self.kd.nibzkpts, 3*self.N, 3*self.N),
+                           dtype=self.dtype)
+            uslice = self.kd.get_slice()
+            C_k[uslice] = np.asarray(C_q)
+            
+            for slave_rank in range(1, self.kd.comm.size):
+                uslice = self.kd.get_slice(rank=slave_rank)
+                nks = uslice.stop - uslice.start
+                C = np.empty((nks, 3*self.N, 3*self.N), dtype=self.dtype)
+                self.kd.comm.receive(C, slave_rank, tag=123)
+                C_k[uslice] = C
+        else:
+            C_q = np.asarray(C_q)
+            self.kd.comm.send(C_q, 0, tag=123)
+            
     def real_space(self):
         """Fourier transform the dynamical matrix to real-space."""
 
@@ -133,11 +202,11 @@ class DynamicalMatrix:
             self.assemble()
 
         # XXX Temp solution
-        nqpts = len(self.ibzq_kc)
+        nqpts = len(self.kd.bzk_kc)
         n = int(round(nqpts**(1./3)))
         N_k = (n, n, n)
 
-        D_q = np.array(self.D_q)
+        D_q = self.D_k
         # Reshape before Fourier transforming
         M = 3 * self.N
         D_q = D_q.reshape(N_k + (M, M))
@@ -233,10 +302,11 @@ class DynamicalMatrix:
                            for atom in self.atoms ])
         vbar.second_derivative(nt_g, d2vbar_avv)
 
+        # Matrix of force constants to be updated; q=-1 for Gamma calculation!
         for C_aavv in self.C_qaavv:
 
             for atom in self.atoms:
-                
+            
                 a = atom.index
                 # XXX: HGH has only one ghat pr atoms -> generalize when
                 # implementing PAW            
@@ -326,7 +396,7 @@ class DynamicalMatrix:
         v = perturbation.v
         #XXX: careful here, Gamma calculation has q=-1
         q = perturbation.q
-        
+
         # Matrix of force constants to be updated; q=-1 for Gamma calculation!
         C_aavv = self.C_qaavv[q]
         

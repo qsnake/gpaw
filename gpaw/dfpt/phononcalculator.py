@@ -4,6 +4,8 @@ __all__ = ["PhononCalculator"]
 
 import numpy as np
 
+from gpaw import GPAW
+from gpaw.mpi import world, rank, size, serial_comm
 from gpaw.kpt_descriptor import KPointDescriptor
 from gpaw.dfpt.poisson import PoissonSolver, FFTPoissonSolver
 from gpaw.dfpt.responsecalculator import ResponseCalculator
@@ -15,7 +17,7 @@ from gpaw.dfpt.dynamicalmatrix import DynamicalMatrix
 class PhononCalculator:
     """This class defines the interface for phonon calculations."""
     
-    def __init__(self, calc, gamma=True, **kwargs):
+    def __init__(self, calc, gamma=True, e_ph=False, **kwargs):
         """Inititialize class with a list of atoms.
 
         The atoms object must contain a converged ground-state calculation.
@@ -26,36 +28,51 @@ class PhononCalculator:
         
         For now the q-points are taken from the ground-state calculation.
 
+        Parameters
+        ----------
+        calc: str or Calculator
+            Calculator containing a ground-state calculation.
+        gamma: bool
+            Gamma-point calculation with respect to the q-vector of the
+            dynamical matrix. When ``False``, the Monkhorst-Pack grid from the
+            ground-state calculation is used.
+        e_ph: bool
+            Calculate electron-phonon coupling.
+
         """
- 
-        # Store useful objects
-        self.atoms = calc.get_atoms()
-        self.calc = calc
-        
+
+        if isinstance(calc, str):
+            self.calc = GPAW(calc, communicator=serial_comm, txt=None)
+        else:
+            self.calc = calc
+
         # Make sure localized functions are initialized
-        calc.set_positions()
+        self.calc.set_positions()
         # Note that this under some circumstances (e.g. when called twice)
         # allocates a new array for the P_ani coefficients !!
+        
+        # Store useful objects
+        self.atoms = self.calc.get_atoms()
 
         # Boundary conditions
-        pbc_c = calc.atoms.get_pbc()
+        pbc_c = self.calc.atoms.get_pbc()
         
         if np.all(pbc_c == False):
             self.gamma = True
             self.dtype = float
-            self.ibzq_kc = np.array(((0, 0, 0),), dtype=float)
+            bzq_kc = np.array(((0, 0, 0),), dtype=float)
             # Multigrid Poisson solver
             poisson_solver = PoissonSolver()
         else:
             if gamma:
                 self.gamma = True
                 self.dtype = float
-                self.ibzq_kc = np.array(((0, 0, 0),), dtype=float)
+                bzq_kc = np.array(((0, 0, 0),), dtype=float)
             else:
                 self.gamma = False
                 self.dtype = complex
-                # Get k-points -- only temp, I need q-vectors; maybe the same ???
-                self.ibzq_kc = calc.get_ibz_k_points()
+                # Get k-points from ground-state calculation
+                bzq_kc = self.calc.get_bz_k_points()
                 
             # FFT Poisson solver
             poisson_solver = FFTPoissonSolver(dtype=self.dtype)
@@ -65,43 +82,47 @@ class PhononCalculator:
         
         # Ground-state k-point descriptor - used for the k-points in the
         # ResponseCalculator 
-        kd_gs = calc.wfs.kd
+        kd_gs = self.calc.wfs.kd
 
         # K-point descriptor for the q-vectors of the dynamical matrix
-        self.kd = KPointDescriptor(kd_gs.bzk_kc, 1)
-        self.kd.set_symmetry(self.atoms, calc.wfs.setups, True)
+        self.kd = KPointDescriptor(bzq_kc, 1)
+        self.kd.set_symmetry(self.atoms, self.calc.wfs.setups, None)
+        self.kd.set_communicator(world)
         
         # Number of occupied bands
-        nvalence = calc.wfs.nvalence
+        nvalence = self.calc.wfs.nvalence
         nbands = nvalence/2 + nvalence%2
-        assert nbands <= calc.wfs.nbands
+        assert nbands <= self.calc.wfs.nbands
 
         #  WaveFunctions object
-        wfs = WaveFunctions(nbands, calc.wfs.kpt_u, calc.wfs.setups,
-                            kd_gs, calc.density.gd, dtype=calc.wfs.dtype)
+        wfs = WaveFunctions(nbands, self.calc.wfs.kpt_u, self.calc.wfs.setups,
+                            kd_gs, self.calc.density.gd, dtype=self.calc.wfs.dtype)
 
         # Linear response calculator
-        self.response_calc = ResponseCalculator(calc, wfs, dtype=self.dtype)
+        self.response_calc = ResponseCalculator(self.calc, wfs, dtype=self.dtype)
         
         # Phonon perturbation
-        self.perturbation = PhononPerturbation(calc, self.gamma,
+        self.perturbation = PhononPerturbation(self.calc, self.kd,
                                                poisson_solver,
                                                dtype=self.dtype)
 
         # Dynamical matrix object - its dtype should be determined by the
-        # presence of inversion symmetry !
+        # presence of inversion symmetry - NO, only for monoatomic bases !
         inversion_symmetry = False
         if inversion_symmetry:
             D_dtype = float
         else:
             D_dtype = self.dtype
         
-        self.D_matrix = DynamicalMatrix(self.atoms, ibzq_kc=self.ibzq_kc,
+        self.D_matrix = DynamicalMatrix(self.atoms, self.kd,
                                         dtype=D_dtype)
 
         # Initialization flag
         self.initialized = False
-        
+
+        # Parallel stuff
+        self.comm = world
+
     def initialize(self):
         """Initialize response calculator and perturbation."""
 
@@ -153,24 +174,24 @@ class PhononCalculator:
         if self.gamma:
             qpts_q = [0]
         elif qpts_q is None:
-            qpts_q = range(len(self.ibzq_kc))
+            qpts_q = range(self.kd.mynks)
         else:
-            assert type(qpts_q) == list
-            
-                        
+            assert isinstance(qpts_q, list)
+
         # Calculate linear response wrt q-vectors and displacements of atoms
         for q in qpts_q:
-
+            
             if not self.gamma:
                 self.perturbation.set_q(q)
 
+            # First-order contributions to the force constants
             for a in self.atoms_a:
     
                 for v in self.atoms_a[a]:
     
                     components = ['x', 'y', 'z']
                     symbols = self.atoms.get_chemical_symbols()
-                    print "q-vector index: %i" % q
+                    print "q-vector index: %i" % (self.kd.ks0 + q)
                     print "Atom index: %i" % a
                     print "Atomic symbol: %s" % symbols[a]
                     print "Component: %s" % components[v]
@@ -178,16 +199,18 @@ class PhononCalculator:
                     # Set atom and cartesian component of perturbation
                     self.perturbation.set_av(a, v)
                     # Calculate linear response
-                    output = self.response_calc(self.perturbation)
+                    self.response_calc(self.perturbation)
 
                     # Calculate corresponding row of dynamical matrix
                     self.D_matrix.update_row(self.perturbation,
                                              self.response_calc)
 
-        # Add ground-state contributions to the dynamical matrix
+        # Ground-state contributions to the force constants
         self.D_matrix.density_ground_state(self.calc)
         # self.D_matrix.wfs_ground_state(self.calc, self.response_calc)
 
+        self.kd.comm.barrier()
+        
     def get_dynamical_matrix(self):
         """Return reference to ``DynamicalMatrix`` object."""
         

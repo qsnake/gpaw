@@ -1,10 +1,8 @@
 """This module implements a simple wave-function class."""
 
 from math import pi
-
 import numpy as np
 
-from gpaw.response.symmetrize import find_ibzkpt
 from gpaw.lfc import LocalizedFunctionsCollection as LFC
 from gpaw.dfpt.kpointcontainer import KPointContainer
 
@@ -44,19 +42,6 @@ class WaveFunctions:
         # Store grid
         self.gd = gd
 
-        #XXX Temp
-        ## import numpy.linalg as la
-        ## coor_vg = self.gd.get_grid_point_coordinates()
-        ## cell_cv = self.gd.cell_cv
-        ## # Convert to scaled coordinates
-        ## scoor_cg = np.dot(la.inv(cell_cv), coor_vg.swapaxes(0, -2))
-        ## scoor_cg = scoor_cg.swapaxes(1,-2)
-        ## # Phase factor
-        ## phase_kg = np.exp(2j * pi *
-        ##                   np.dot(kd.bzk_kc, scoor_cg.swapaxes(0,-2)))
-        ## self.phase_kg = phase_kg.swapaxes(1, -2)
-
-
         # Unfold the irreducible BZ to the full BZ
         # List of KPointContainers for the k-points in the full BZ
         self.kpt_u = []
@@ -93,13 +78,9 @@ class WaveFunctions:
                 self.kpt_u.append(kpt)
 
         else:
-
             assert len(kpt_u) == kd.nibzkpts
 
             for k, k_c in enumerate(kd.bzk_kc):
-
-                ik1, s1, time_reversal1 = find_ibzkpt(kd.symmetry.op_scc,
-                                                      kd.ibzk_kc, k_c)
 
                 # Index of symmetry related point in the irreducible BZ
                 ik = kd.symmetry.kibz_k[k]
@@ -107,9 +88,6 @@ class WaveFunctions:
                 s = kd.symmetry.sym_k[k]
                 # Time-reversal symmetry used
                 time_reversal = kd.symmetry.time_reversal_k[k]
-
-                if False:
-                    ik = ik1; s = s1; time_reversal = time_reversal1
 
                 # Coordinates of symmetry related point in the irreducible BZ
                 ik_c = kd.ibzk_kc[ik]
@@ -144,7 +122,7 @@ class WaveFunctions:
                 self.kpt_u.append(kpt)
                 
     def initialize(self, spos_ac):
-        """Initialize projectors according to ``gamma`` attribute."""
+        """Initialize projectors according to the ``gamma`` attribute."""
 
         # Set positions on LFC's
         self.pt.set_positions(spos_ac)
