@@ -81,6 +81,8 @@ void zgebs2d_(int *ConTxt, char* scope, char* top, int *m, int *n,
 #define   pdtrtri_  pdtrtri
 #define   pztrtri_  pztrtri
 
+#define   pdsytrd_  pdsytrd
+
 #define   pdsyevd_  pdsyevd
 #define   pdsyev_  pdsyev
 #define   pdsyevx_  pdsyevx
@@ -138,6 +140,9 @@ void pdtrtri_(char *uplo, char *diag, int *n, double* a, int *ia, int* ja,
 void pztrtri_(char *uplo, char *diag, int *n, void* a, int *ia, int* ja,
               int* desca, int *info);
 
+void pdsytrd_(char *uplo, int *n, double* a, int *ia, int* ja,
+              int* desca, double *d, double *e, double *tau,
+              double *work, int *lwork, int *info);
 
 void pdsyevd_(char *jobz, char *uplo, int *n, double* a, int *ia, int* ja,
               int* desca, double *w,
@@ -292,108 +297,48 @@ int main(int argc, char *argv[]) {
           // build the descriptor
           descinit_(desc, &m, &n, &mb, &nb, &rsrc, &csrc, &ConTxt, &lld, &info);
           // Allocate arrays
-	  // eigenvalues
-	  double* eigvals = malloc(n * sizeof(double));
+	  double* mata = malloc(locM*locN * sizeof(double));
+	  double* matd = malloc(locM*locN * sizeof(double));
+	  double* mate = malloc(locM*locN * sizeof(double));
+	  double* tau  = malloc(locM*locN * sizeof(double));
 
-          // allocate the distributed matrices
-          double* mata = malloc(locM*locN * sizeof(double));
-          // allocate the distributed matrix of eigenvectors
-          double* z = malloc(locM*locN * sizeof(double));
-
-          // Eigensolver parameters
-          int ibtype = one;
-          char jobz = 'V'; // eigenvectors also
-          char range = 'A'; // all eiganvalues
-          char uplo = 'L'; // work with upper
-
-          double vl, vu;
-          int il, iu;
-
-          char cmach = 'U';
-
-          double abstol = 2.0 * pdlamch_(&ConTxt, &cmach);
-
-          int eigvalm, nz;
-
-          double orfac = -1.0;
-          //double orfac = 0.001;
-
-          int* ifail;
-          ifail = malloc(m * sizeof(int));
-
-          int* iclustr;
-          iclustr =  malloc(2*nprow*npcol * sizeof(int));
-
-          double* gap;
-          gap =  malloc(nprow*npcol * sizeof(double));
-
-          double* work;
+	  double* work;
           work = malloc(3 * sizeof(double));
           int querylwork = minusone;
-          int* iwork;
-          iwork = malloc(1 * sizeof(int));
-          int queryliwork = minusone;
-
+          
           // Build a trivial distributed matrix: Diagonal matrix
+	  char uplo = 'L'; // work with upper
 	  pdlaset_(&uplo, &m, &n, &alpha, &beta, mata, &one, &one, desc);
 
 	  // First there is a workspace query
+          pdsytrd_(&uplo, &n, mata, &one, &one, desc, matd, mate, tau,
+		   work, &querylwork, &info);
 
-          // pdsyevx_(&jobz, &range, &uplo, &n, mata, &one, &one, desc, &vl,
-          //          &vu, &il, &iu, &abstol, &eigvalm, &nz, eigvals, &orfac, z, &one,
-          //          &one, desc, work, &querylwork, iwork, &queryliwork, ifail, iclustr, gap, &info);
-          pdsyevd_(&jobz, &uplo, &n, mata, &one, &one, desc, eigvals,
-		   z, &one, &one, desc,
-		   work, &querylwork, iwork, &queryliwork, &info);
-          //pdsyev_(&jobz, &uplo, &m, mata, &one, &one, desc, eigvals,
-          //        z, &one, &one, desc, work, &querylwork, &info);
 
           int lwork = (int)work[0];
           //printf("lwork %d\n", lwork);
           free(work);
-          int liwork = (int)iwork[0];
-          //printf("liwork %d\n", liwork);
-          free(iwork);
 
           work = (double*)malloc(lwork * sizeof(double));
-          iwork = (int*)malloc(liwork * sizeof(int));
-
-	  // This is actually diagonalizes the matrix
-          // pdsyevx_(&jobz, &range, &uplo, &n, mata, &one, &one, desc, &vl,
-          //          &vu, &il, &iu, &abstol, &eigvalm, &nz, eigvals, &orfac, z, &one,
-          //          &one, desc, work, &lwork, iwork, &liwork, ifail, iclustr, gap, &info);
-  
+	  // This is actually performs the tridiagonalization
+	  tdiag0 = MPI_Wtime();
           Cblacs_barrier(ConTxt, &scope);
-          tdiag0 = MPI_Wtime();
-          pdsyevd_(&jobz, &uplo, &n, mata, &one, &one, desc, eigvals,
-                   z, &one, &one, desc,
-                   work, &lwork, iwork, &liwork, &info);
-
-          //pdsyev_(&jobz, &uplo, &m, mata, &one, &one, desc, eigvals,
-          //        z, &one, &one, desc, work, &lwork, &info);
+          pdsytrd_(&uplo, &n, mata, &one, &one, desc, matd, mate, tau,
+		   work, &lwork, &info);
           Cblacs_barrier(ConTxt, &scope);
           tdiag = MPI_Wtime() - tdiag0;
 
           free(work);
-          free(iwork);
-          free(gap);
-          free(iclustr);
-          free(ifail);
-          free(z);
           free(mata);
+	  free(matd);
+	  free(mate);
+	  free(tau);
 
           // Destroy BLACS grid
           Cblacs_gridexit_(ConTxt);
 
-	  // Check eigenvalues
+	  // Print time
 	  if (myrow == zero && mycol == zero) {
-	    for (int i = 0; i < n; i++)
-	      {
-                if (fabs(eigvals[i] - beta) > 0.0001) 
-		    printf("Problem: eigval %d != %f5.2 but %f\n", 
-                            i, beta, eigvals[i]);
-	      }
-	    
 	    if (info != zero) {
 	      printf("info = %d \n", info);
 	    }
@@ -401,7 +346,6 @@ int main(int argc, char *argv[]) {
 	    printf("Time (s) diag: %f\n", tdiag);
 	  }
 
-	  free(eigvals);
      }
 
      MPI_Barrier(MPI_COMM_WORLD);
