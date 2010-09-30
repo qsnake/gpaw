@@ -111,7 +111,8 @@ class DynamicalMatrix:
                 C_gamma = np.empty((3*self.N, 3*self.N), dtype=self.dtype)
             else:
                 C_gamma = self.D_q[q_gamma].copy()
-                self.kd.comm.broadcast(C_gamma, rank_gamma)
+
+            self.kd.comm.broadcast(C_gamma, rank_gamma)
 
             # Correct atomic diagonal for each q-vector
             for C in self.D_q:
