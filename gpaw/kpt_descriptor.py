@@ -207,13 +207,13 @@ class KPointDescriptor:
         return kplusq_k
 
     def get_rank_and_index(self, k, s):
-        """Find rank and local index."""
+        """Find rank and local index of k-point/spin combination."""
         
         ks = k + self.nibzkpts * s
-        if ks < self.mynks * self.rank0:
-            rank, u = divmod(ks, self.mynks)
+        if ks < self.mynks0 * self.rank0:
+            rank, u = divmod(ks, self.mynks0)
         else:
-            rank, u = divmod(ks - self.mynks * self.rank0, self.mynks + 1)
+            rank, u = divmod(ks - self.mynks0 * self.rank0, self.mynks0 + 1)
             rank += self.rank0
             
         return rank, u

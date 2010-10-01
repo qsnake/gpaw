@@ -106,14 +106,12 @@ class DynamicalMatrix:
             rank_gamma, q_gamma = \
                         self.kd.get_rank_and_index(self.gamma_index, 0)
 
-            # Broadcast Gamma-point matrix
-            if self.kd.comm.rank != rank_gamma:
-                C_gamma = np.empty((3*self.N, 3*self.N), dtype=self.dtype)
-            else:
-                C_gamma = self.D_q[q_gamma].copy()
-
+            # Broadcast Gamma-point matrix to all ranks
+            C_gamma = np.empty((3*self.N, 3*self.N), dtype=self.dtype)
+            if self.kd.comm.rank == rank_gamma:
+                C_gamma[...] = self.D_q[q_gamma].copy()
             self.kd.comm.broadcast(C_gamma, rank_gamma)
-
+            
             # Correct atomic diagonal for each q-vector
             for C in self.D_q:
 
