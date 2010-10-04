@@ -30,6 +30,7 @@ import numpy as np
 from unittest import __version__, TestResult, TestCase, TestSuite, \
                      _TextTestResult, TextTestRunner, TestLoader, \
                      FunctionTestCase, TestProgram, defaultTestLoader
+from gpaw import debug
 from gpaw.mpi import world, broadcast_string
 from gpaw.utilities import devnull
 
@@ -231,8 +232,16 @@ class _ParallelTextTestResult(ParallelTestResult, _TextTestResult):
         self.comm.barrier()
 
         if self.last_errors.any() and self.last_failed.any():
-            raise RuntimeError('Parallel unittest can\'t handle simultaneous' \
-                               + ' errors and failures within a single test.')
+            if not debug:
+                raise RuntimeError('Parallel unittest can\'t handle ' \
+                    'simultaneous errors and failures within a single test.')
+            if self.showAll:
+                error_rankinfo = self.shortRanks(self.last_errors)
+                fail_rankinfo = self.shortRanks(self.last_failed)
+                self.stream.writeln("ERROR (%s) / FAIL (%s)" \
+                                    % (error_rankinfo, fail_rankinfo))
+            elif self.dots:
+                self.stream.writeln('M')
         elif self.last_errors.any():
             if self.showAll:
                 rankinfo = self.shortRanks(self.last_errors)
