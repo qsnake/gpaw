@@ -97,14 +97,13 @@ A second, more pedagogical, article on PAW by Blöchl and co-workers.
   __ http://www.ias.ac.in/matersci/
 
 
-
 .. _gpaw_publications:
 
 Publications using the gpaw code
 --------------------------------
 
 .. image:: publications.png
-   :width: 650
+   :width: 750
 
 .. If the first author is A. Einstein, then remember to use
    \A. Einstein so that we don't start an enumerated list (A, B, C,
@@ -341,6 +340,17 @@ Publications using the gpaw code
 
    .. 12 June 2009 
 
+#) Lara Ferrighi, B. Hammer, G. K. H. Madsen
+
+   `2D-3D Transition for Cationic and Anionic Gold Clusters: A Kinetic Energy  
+   Density Functional Study`__
+
+   Journal of the American Chemical Society **131**, 10605-10609 (2009)
+
+   __ http://dx.doi.org/10.1021/ja903069x
+
+   .. 6 july 2009
+
 #) \A. K. Kelkkanen, B. I. Lundqvist, J. K. Nørskov
 
    `Density functional for van der Waals forces accounts for hydrogen
@@ -396,14 +406,6 @@ Publications using the gpaw code
 
    .. 18 November 2009
 
-#) Jiří Klimeš, David R. Bowler, and Angelos Michaelides
-
-   `Chemical accuracy for the van der Waals density functional`__
-
-   __ http://arxiv.org/abs/0910.0438
-
-   .. 10 December 2009
-
 #) Thomas Olsen and Jakob Schiøtz
 
    `Origin of Power Laws for Reactions at Metal Surfaces Mediated by Hot Electrons`__  
@@ -413,6 +415,25 @@ Publications using the gpaw code
    __ http://dx.doi.org/10.1103/PhysRevLett.103.238301
 
    .. 4 December 2009
+
+#) Jiří Klimeš, David R. Bowler, and Angelos Michaelides
+
+   `Chemical accuracy for the van der Waals density functional`__
+
+   __ http://arxiv.org/abs/0910.0438
+
+   .. 10 December 2009
+
+#) Georg K. H. Madsen, L. Ferrighi, B. Hammer
+
+   `Treatment of Layered Structures Using a Semilocal meta-GGA Density  
+   Functional`__
+
+   Journal of Physical Chemistry Letters **1**, 515-519 (2010)
+
+   __ http://dx.doi.org/10.1021/jz9002422
+
+   .. 28 December 2009
 
 #) Carsten Rostgaard, Karsten W. Jacobsen, and Kristian S. Thygesen
 
@@ -483,13 +504,23 @@ Publications using the gpaw code
 
    .. 13 April 2010
 
-#) \J. Akola, K. A. Kacprzak, O. Lopez-Acevedo, M. Walter, H. Grönbeck and 
-   H. Häkkinen
+#) Lara Ferrighi, G. K. H. Madsen, B. Hammer
 
-   `Materials from thiolate-protected Au25 superatoms: Dimers and 
-   crystals`__
+   `Alkane dimers interaction: A semi-local MGGA functional study`__
 
-   \J. Phys. Chem C ASAP
+   Chemical Physics Letters **492**, 183-186 (2010)
+
+   __ http://dx.doi.org/10.1016/j.cplett.2010.04.034
+
+   .. 24 April 2010
+
+#) Jaakko Akola, K.A. Kacprzak, O. Lopez-Acevedo, M. Walter,
+   H. Grönbeck and H. Häkkinen
+
+   `Thiolate-protected Au25 superatoms as building blocks: Dimers and
+   crystals`__ 
+
+   J. Phys. Chem C **114**, 15986 (2010)
 
    __ http://dx.doi.org/10.1021/jp1015438
 
@@ -573,3 +604,15 @@ Publications using the gpaw code
    __ http://dx.doi.org/10.1063/1.3457947
 
    .. 20 July 2010
+
+#) Pentti Frondelius, Hannu Häkkinen, Karoliina Honkala
+
+   `Formation of Gold(I) Edge Oxide at Flat Gold Nanoclusters on an Ultrathin
+   MgO Film under Ambient Conditions`__
+
+   Angew. Chemie Int. Ed. 2010  Early View article
+
+   __ http://dx.doi.org/10.1002/anie.201003851
+
+   .. 17 September 2010
+

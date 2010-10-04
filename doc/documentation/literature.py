@@ -22,7 +22,7 @@ y = range(n + 1, len(publications) + 1)
 z = [d.toordinal() for d in x]
 p = np.polyfit(z, np.log(y), 1)
 
-plt.figure(figsize=(8, 5))
+plt.figure(figsize=(10, 5))
 plt.semilogy(x, np.exp(np.polyval(p, z)), lw=3,
              label='Doubling time: %d days' % round(np.log(2) / p[0]))
 plt.semilogy(x, y, 'ro', mew=2)
