@@ -254,7 +254,7 @@ class WaveFunctions(EmptyWaveFunctions):
         global master."""
 
         kpt_u = self.kpt_u
-        kpt_rank, u = self.kd.get_rank_and_index(k, s)
+        kpt_rank, u = self.kd.get_rank_and_index(s, k)
 
         if self.kpt_comm.rank == kpt_rank:
             a_nx = getattr(kpt_u[u], name)
@@ -295,7 +295,7 @@ class WaveFunctions(EmptyWaveFunctions):
         global master."""
 
         kpt_u = self.kpt_u
-        kpt_rank, u = self.kd.get_rank_and_index(k, s)
+        kpt_rank, u = self.kd.get_rank_and_index(s, k)
 
         if self.kpt_comm.rank == kpt_rank:
             if isinstance(value, str):
@@ -328,7 +328,7 @@ class WaveFunctions(EmptyWaveFunctions):
         the (k,s) pair, for this rank, send to the global master."""
 
         kpt_u = self.kpt_u
-        kpt_rank, u = self.kd.get_rank_and_index(k, s)
+        kpt_rank, u = self.kd.get_rank_and_index(s, k)
         P_ani = kpt_u[u].P_ani
 
         natoms = len(self.rank_a) # it's a hack...
@@ -369,7 +369,7 @@ class WaveFunctions(EmptyWaveFunctions):
         domain a full array on the domain master and send this to the
         global master."""
 
-        kpt_rank, u = self.kd.get_rank_and_index(k, s)
+        kpt_rank, u = self.kd.get_rank_and_index(s, k)
         band_rank, myn = self.bd.who_has(n)
 
         psit1_G = self._get_wave_function_array(u, myn)

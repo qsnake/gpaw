@@ -145,7 +145,7 @@ def dscf_kpoint_overlaps(paw, phasemod=True, broadcast=True):
                 P0_ni[:] = np.exp(2j*np.pi*np.sum(spos_ac[a]*(k_c-k0_c), axis=0)) * kpt0.P_ani[a]
 
             ## NB: No exp(ikr) approximate here, but has a parallelization bug
-            #kpt0_rank, myu0 = kd.who_has_and_where_is(kpt0.s, kpt0.k)
+            #kpt0_rank, myu0 = kd.get_rank_and_index(kpt0.s, kpt0.k)
             #if kd.comm.rank == kpt0_rank:
             #    paw.wfs.pt.integrate(psit0_nG, P0_ani, kpt0.q)
             #for a, P0_ni in P0_ani.items():
@@ -573,7 +573,7 @@ def dscf_collapse_orbitals(paw, nbands_max='occupied', f_tol=1e-4,
     f_skn = np.empty((kd.nspins, kd.nibzkpts, bd.nbands), dtype=float)
     for s, f_kn in enumerate(f_skn):
         for k, f_n in enumerate(f_kn):
-            kpt_rank, myu = kd.who_has_and_where_is(s, k)
+            kpt_rank, myu = kd.get_rank_and_index(s, k)
             if kd.comm.rank == kpt_rank:
                 f_n[:] = paw.wfs.kpt_u[myu].f_n
             kd.comm.broadcast(f_n, kpt_rank)

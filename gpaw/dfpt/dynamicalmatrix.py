@@ -141,7 +141,7 @@ class DynamicalMatrix:
 
             # Get matrix of force constants in the Gamma-point
             rank_gamma, q_gamma = \
-                        self.kd.get_rank_and_index(self.gamma_index, 0)
+                        self.kd.get_rank_and_index(0, self.gamma_index)
 
             # Broadcast Gamma-point matrix to all ranks
             C_gamma = np.empty((3*self.N, 3*self.N), dtype=self.dtype)

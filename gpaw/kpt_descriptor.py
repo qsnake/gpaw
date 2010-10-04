@@ -56,6 +56,11 @@ class KPointDescriptor:
         self.weight_k = None
         self.nibzkpts = None
 
+        self.rank0 = None
+        self.mynks = None
+        self.ks0 = None
+        self.ibzk_qc = None
+
     def __len__(self):
         """Return number of k-point/spin combinations of local CPU."""
         
@@ -116,33 +121,28 @@ class KPointDescriptor:
             else:
                 self.symmetry = None
 
+        # Number of irreducible k-points and k-point/spin combinations.
         self.nibzkpts = len(self.ibzk_kc)
+        self.nks = self.nibzkpts * self.nspins
         
     def set_communicator(self, comm):
         """Set k-point communicator."""
 
-        self.comm = comm
-        # Total number of k-point/spin combinations:
-        nks = self.nibzkpts * self.nspins
-
         # Ranks < self.rank0 have mynks0 k-point/spin combinations and
-        # ranks >= self.rank0 have mynks+1 k-point/spin combinations.
-        self.mynks0, x = divmod(nks, comm.size)
+        # ranks >= self.rank0 have mynks0+1 k-point/spin combinations.
+        mynks0, x = divmod(self.nks, comm.size)
         self.rank0 = comm.size - x
-        self.ks0 = comm.rank * self.mynks0
-        # My number of k-point/spin combinations
-        self.mynks = self.mynks0  
-        if comm.rank >= self.rank0:
-            self.ks0 += comm.rank - self.rank0
-            self.mynks += 1
+        self.comm = comm
+
+        # My number and offset of k-point/spin combinations
+        self.mynks, self.ks0 = self.get_count(), self.get_offset()
 
         if self.nspins == 2 and comm.size == 1:
             # Avoid duplicating k-points in local list of k-points.
             self.ibzk_qc = self.ibzk_kc.copy()
         else:
             self.ibzk_qc = np.vstack((self.ibzk_kc,
-                                      self.ibzk_kc))[self.ks0:self.ks0 +
-                                                     self.mynks]
+                                      self.ibzk_kc))[self.get_slice()]
 
     def create_k_points(self, gd):
         """Return a list of KPoints."""
@@ -206,17 +206,36 @@ class KPointDescriptor:
     
         return kplusq_k
 
-    def get_rank_and_index(self, k, s):
+    def get_count(self, rank=None):
+        """Return the number of ks-pairs which belong to a given rank."""
+
+        if rank is None:
+            rank = self.comm.rank
+        assert rank in xrange(self.comm.size)
+        mynks0 = self.nks // self.comm.size
+        mynks = mynks0
+        if rank >= self.rank0:
+            mynks += 1
+        return mynks
+
+    def get_offset(self, rank=None):
+        """Return the offset of the first ks-pair on a given rank."""
+
+        if rank is None:
+            rank = self.comm.rank
+        assert rank in xrange(self.comm.size)
+        mynks0 = self.nks // self.comm.size
+        ks0 = rank * mynks0
+        if rank >= self.rank0:
+            ks0 += rank - self.rank0
+        return ks0
+
+    def get_rank_and_index(self, s, k):
         """Find rank and local index of k-point/spin combination."""
         
-        ks = k + self.nibzkpts * s
-        if ks < self.mynks0 * self.rank0:
-            rank, u = divmod(ks, self.mynks0)
-        else:
-            rank, u = divmod(ks - self.mynks0 * self.rank0, self.mynks0 + 1)
-            rank += self.rank0
-            
-        return rank, u
+        u = self.where_is(s, k)
+        rank, myu = self.who_has(u)
+        return rank, myu
    
     def get_slice(self, rank=None):
         """Return the slice of global ks-pairs which belong to a given rank."""
@@ -224,24 +243,17 @@ class KPointDescriptor:
         if rank is None:
             rank = self.comm.rank
         assert rank in xrange(self.comm.size)
-
-        ks0 = rank * self.mynks0
-        mynks = self.mynks0
-        
-        if rank >= self.rank0:
-            ks0 += rank - self.rank0
-            mynks += 1
-            
+        mynks, ks0 = self.get_count(rank), self.get_offset(rank)
         uslice = slice(ks0, ks0 + mynks)
         return uslice
 
-    def get_ks_pair_indices(self, rank=None):
+    def get_indices(self, rank=None):
         """Return the global ks-pair indices which belong to a given rank."""
         
         uslice = self.get_slice(rank)
         return np.arange(*uslice.indices(self.nks))
 
-    def get_ks_pair_ranks(self):
+    def get_ranks(self):
         """Return array of ranks as a function of global ks-pair indices."""
         
         rank_u = np.empty(self.nks, dtype=int)
@@ -253,8 +265,13 @@ class KPointDescriptor:
 
     def who_has(self, u):
         """Convert global index to rank information and local index."""
-        
-        rank, myu = divmod(u, self.mynks)
+
+        mynks0 = self.nks // self.comm.size
+        if u < mynks0 * self.rank0:
+            rank, myu = divmod(u, mynks0)
+        else:
+            rank, myu = divmod(u - mynks0 * self.rank0, mynks0 + 1)
+            rank += self.rank0
         return rank, myu
 
     def global_index(self, myu, rank=None):
@@ -262,7 +279,9 @@ class KPointDescriptor:
         
         if rank is None:
             rank = self.comm.rank
-        u = rank * self.mynks + myu
+        assert rank in xrange(self.comm.size)
+        ks0 = self.get_offset(rank)
+        u = ks0 + myu
         return u
 
     def what_is(self, u):
@@ -276,13 +295,6 @@ class KPointDescriptor:
         
         u = k + self.nibzkpts * s
         return u
-
-    def who_has_and_where_is(self, s, k):
-        """Redundant function is redundant.""" #XXX most often used though!
-        
-        u = self.where_is(s, k)
-        rank, myu = self.who_has(u)
-        return rank, myu
 
     #def get_size_of_global_array(self):
     #    return (self.nspins*self.nibzkpts,)
@@ -362,6 +374,12 @@ class KPointDescriptorOld:
     def __len__(self):
         return self.mynks
 
+    def get_rank_and_index(self, s, k):
+        """Find rank and local index of k-point/spin combination."""
+        u = self.where_is(s, k)
+        rank, myu = self.who_has(u)
+        return rank, myu
+
     def get_slice(self, rank=None):
         """Return the slice of global ks-pairs which belong to a given rank."""
         if rank is None:
@@ -371,12 +389,12 @@ class KPointDescriptorOld:
         uslice = slice(ks0, ks0 + self.mynks)
         return uslice
 
-    def get_ks_pair_indices(self, rank=None):
+    def get_indices(self, rank=None):
         """Return the global ks-pair indices which belong to a given rank."""
         uslice = self.get_slice(rank)
         return np.arange(*uslice.indices(self.nks))
 
-    def get_ks_pair_ranks(self):
+    def get_ranks(self):
         """Return array of ranks as a function of global ks-pair indices."""
         rank_u = np.empty(self.nks, dtype=int)
         for rank in range(self.comm.size):
@@ -406,12 +424,6 @@ class KPointDescriptorOld:
         """Convert kpoint/spin combination to the global index thereof."""
         u = k + self.nibzkpts * s
         return u
-
-    def who_has_and_where_is(self, s, k):
-        """Redundant function is redundant.""" #XXX most often used though!
-        u = self.where_is(s, k)
-        rank, myu = self.who_has(u)
-        return rank, myu
 
     #def get_size_of_global_array(self):
     #    return (self.nspins*self.nibzkpts,)

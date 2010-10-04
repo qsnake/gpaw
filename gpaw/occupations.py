@@ -418,7 +418,7 @@ class SmoothDistribution(ZeroKelvin):
         fermilevel = 0.0
 
         # find the maximum length of kpt_u:
-        nu = wfs.kd.mynks0
+        nu = wfs.kd.nks // wfs.kd.comm.size
         if wfs.kd.rank0 < wfs.kd.comm.size:
             nu += 1
 
