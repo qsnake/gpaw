@@ -7,11 +7,20 @@ import sys
 import time
 import numpy as np
 
+from ase.units import Bohr
 from ase.utils.memory import MemorySingleton, MemoryStatistics
-from gpaw.mpi import world
+from gpaw.mpi import world, distribute_cpus
 from gpaw.utilities import gcd
 #from gpaw.utilities.tools import tri2full, md5_array, gram_schmidt
-from gpaw.kpt_descriptor import KPointDescriptorOld as KPointDescriptor
+#from gpaw.kpt_descriptor import KPointDescriptorOld as KPointDescriptor
+from gpaw.paw import kpts2ndarray
+from gpaw.band_descriptor import BandDescriptor
+from gpaw.grid_descriptor import GridDescriptor
+from gpaw.kpt_descriptor import KPointDescriptor, KPointDescriptorOld #XXX
+from gpaw.parameters import InputParameters
+from gpaw.xc_functional import XCFunctional
+from gpaw.setup import SetupData, Setups
+
 #from gpaw.hs_operators import MatrixOperator
 #from gpaw.parameters import InputParameters
 #from gpaw.xc_functional import XCFunctional
@@ -20,21 +29,35 @@ from gpaw.kpt_descriptor import KPointDescriptorOld as KPointDescriptor
 
 from gpaw.test.ut_common import ase_svnversion, shapeopt, TestCase, \
     TextTestRunner, CustomTextTestRunner, defaultTestLoader, \
-    initialTestLoader
-from gpaw.test.parallel.ut_hsops import UTBandParallelSetup
+    initialTestLoader, create_random_atoms, create_parsize_minbands
 
 # -------------------------------------------------------------------
 
-class UTKPointParallelSetup(UTBandParallelSetup):
+p = InputParameters(spinpol=False, usesymm=None)
+xcfunc = XCFunctional(p.xc, 1+int(p.spinpol))
+p.setups = dict([(symbol, SetupData(symbol, xcfunc.get_setup_name(), 'paw', \
+    readxml=True, zero_reference=xcfunc.hybrid > 0)) for symbol in 'HO'])
+
+class UTKPointParallelSetup(TestCase):
     """
     Setup a simple kpoint parallel calculation."""
 
     # Number of bands
-    nbands = 360//10 #*5
+    nbands = 1
 
-    # Spin-polarized, three kpoints
-    nspins = 2
-    nibzkpts = 3
+    # Spin-polarized
+    nspins = xcfunc.nspins
+
+    # Mean spacing and number of grid points per axis (G x G x G)
+    h = 0.25 / Bohr
+    G = 48
+
+    ## Symmetry-reduction of k-points TODO
+    #symmetry = p.usesymm #XXX 'None' is an allowed value!!!
+
+    # Whether spin/k-points are equally distributed (determines nibzkpts)
+    equipartition = None
+    nibzkpts = None
 
     gamma = False # can't be gamma point when nibzkpts > 1 ...
     dtype = complex #XXX virtual so far..
@@ -42,15 +65,52 @@ class UTKPointParallelSetup(UTBandParallelSetup):
     # =================================
 
     def setUp(self):
-        UTBandParallelSetup.setUp(self)
+        for virtvar in ['equipartition']:
+            assert getattr(self,virtvar) is not None, 'Virtual "%s"!' % virtvar
+
+        kpts = {'even' : (12,1,2), \
+                'prime': (23,1,1)}[self.equipartition]
+
+        #primes = [i for i in xrange(50,1,-1) if ~np.any(i%np.arange(2,i)==0)]
+        bzk_kc = kpts2ndarray(kpts)
+        assert p.usesymm == None
+        self.nibzkpts = len(bzk_kc)
+
+        #parsize, parsize_bands = create_parsize_minbands(self.nbands, world.size)
+        parsize, parsize_bands = 1, 1 #XXX
+        assert self.nbands % np.prod(parsize_bands) == 0
+        domain_comm, kpt_comm, band_comm = distribute_cpus(parsize,
+            parsize_bands, self.nspins, self.nibzkpts)
+
+        # Set up band descriptor:
+        self.bd = BandDescriptor(self.nbands, band_comm, p.parallel['stridebands'])
+
+        # Set up grid descriptor:
+        res, ngpts = shapeopt(300, self.G**3, 3, 0.2)
+        cell_c = self.h * np.array(ngpts)
+        pbc_c = (True, False, True)
+        self.gd = GridDescriptor(ngpts, cell_c, pbc_c, domain_comm, parsize)
+
+        # Create randomized gas-like atomic configuration
+        self.atoms = create_random_atoms(self.gd)
+
+        # Create setups
+        Z_a = self.atoms.get_atomic_numbers()
+        assert xcfunc.nspins == self.nspins
+        self.setups = Setups(Z_a, p.setups, p.basis, p.lmax, xcfunc)
+        self.natoms = len(self.setups)
 
         # Set up kpoint descriptor:
-        self.kd = KPointDescriptor(self.nspins, self.nibzkpts, self.kpt_comm, \
-            self.gamma, self.dtype)
+        self.kd = KPointDescriptor(bzk_kc, self.nspins)
+        self.kd.set_symmetry(self.atoms, self.setups, p.usesymm)
+        self.kd.set_communicator(kpt_comm)
+
+        #self.kd_old = KPointDescriptorOld(self.nspins, self.nibzkpts, \
+        #    kpt_comm, self.gamma, self.dtype) #XXX
 
     def tearDown(self):
-        UTBandParallelSetup.tearDown(self)
-        del self.kd
+        del self.bd, self.gd, self.kd #self.kd_old
+        del self.setups, self.atoms
 
     def get_parsizes(self): #XXX NO LONGER IN UT_HSOPS?!?
         # Careful, overwriting imported GPAW params may cause amnesia in Python.
@@ -70,13 +130,22 @@ class UTKPointParallelSetup(UTBandParallelSetup):
 
     # =================================
 
-        #mynks = self.nspins*self.nibzkpts // self.kpt_comm.size
+    def verify_comm_sizes(self): #TODO needs work
+        if world.size == 1:
+            return
+        comm_sizes = tuple([comm.size for comm in [world, self.bd.comm, \
+                                                   self.gd.comm, self.kd.comm]])
+        self._parinfo =  '%d world, %d band, %d domain, %d kpt' % comm_sizes
+        #self.assertEqual((self.nspins*self.nibzkpts) % self.kd.comm.size, 0) #XXX
 
-        # mynu = len(self.kpt_u)
-        # s, k = divmod(ks, self.nibzkpts)
-        # kpt_rank, u = divmod(k + self.nibzkpts * s, mynu)
+    def verify_slice_consistency(self):
+        for kpt_rank in range(self.kd.comm.size):
+            uslice = self.kd.get_slice(kpt_rank)
+            myus = np.arange(*uslice.indices(self.kd.nks))
+            for myu,u in enumerate(myus):
+                self.assertEqual(self.kd.who_has(u), (kpt_rank, myu))
 
-    def verify_ks_pair_combination_consistency(self):
+    def verify_combination_consistency(self):
         for u in range(self.kd.nks):
             s, k = self.kd.what_is(u)
             self.assertEqual(self.kd.where_is(s, k), u)
@@ -84,37 +153,36 @@ class UTKPointParallelSetup(UTBandParallelSetup):
         for s in range(self.kd.nspins):
             for k in range(self.kd.nibzkpts):
                 u = self.kd.where_is(s, k)
-                self.assertTrue(self.kd.what_is(u) == (s,k,))
+                self.assertEqual(self.kd.what_is(u), (s,k,))
 
-    def verify_ks_pair_indexing_consistency(self):
+    def verify_indexing_consistency(self):
         for u in range(self.kd.nks):
             kpt_rank, myu = self.kd.who_has(u)
             self.assertEqual(self.kd.global_index(myu, kpt_rank), u)
 
         for kpt_rank in range(self.kd.comm.size):
-            for myu in range(self.kd.mynks):
+            for myu in range(self.kd.get_count(kpt_rank)):
                 u = self.kd.global_index(myu, kpt_rank)
-                self.assertTrue(self.kd.who_has(u) == (kpt_rank, myu))
+                self.assertEqual(self.kd.who_has(u), (kpt_rank, myu))
 
-    def verify_ks_pair_ranking_consistency(self):
-        rank_u = self.kd.get_ks_pair_ranks()
+    def verify_ranking_consistency(self):
+        rank_u = self.kd.get_ranks()
 
         for kpt_rank in range(self.kd.comm.size):
-            my_ks_pair_indices = self.kd.get_ks_pair_indices(kpt_rank)
+            my_indices = self.kd.get_indices(kpt_rank)
             matches = np.argwhere(rank_u == kpt_rank).ravel()
-            self.assertTrue((matches == my_ks_pair_indices).all())
-
-            for myu in range(self.kd.mynks):
+            self.assertTrue((matches == my_indices).all())
+            for myu in range(self.kd.get_count(kpt_rank)):
                 u = self.kd.global_index(myu, kpt_rank)
-                self.assertEqual(my_ks_pair_indices[myu], u)
+                self.assertEqual(my_indices[myu], u)
 
-class UTKPointParallelSetup_Blocked(UTKPointParallelSetup):
+class UTKPointParallelSetup_Even(UTKPointParallelSetup):
     __doc__ = UTKPointParallelSetup.__doc__
-    parstride_bands = False
+    equipartition = 'even'
 
-class UTKPointParallelSetup_Strided(UTKPointParallelSetup):
+class UTKPointParallelSetup_Prime(UTKPointParallelSetup):
     __doc__ = UTKPointParallelSetup.__doc__
-    parstride_bands = True
+    equipartition = 'prime'
 
 # -------------------------------------------------------------------
 
@@ -122,6 +190,20 @@ class UTRubbishWavefunctionSetup(UTKPointParallelSetup):
     __doc__ = UTKPointParallelSetup.__doc__ + """
     The pseudo wavefunctions are orthonormalized rubbish."""
 
+    def test_nothing(self): #TODO
+        pass
+
+# -------------------------------------------------------------------
+
+def UTRubbishWavefunctionFactory(equipartition):
+    sep = '_'
+    classname = 'UTRubbishWavefunctionSetup' \
+    + sep + {'even':'Even', 'prime':'Prime'}[equipartition]
+    class MetaPrototype(UTRubbishWavefunctionSetup, object):
+        __doc__ = UTRubbishWavefunctionSetup.__doc__
+        equipartition = equipartition
+    MetaPrototype.__name__ = classname
+    return MetaPrototype
 
 # -------------------------------------------------------------------
 
@@ -135,7 +217,7 @@ if __name__ in ['__main__', '__builtin__']:
         testrunner = TextTestRunner(stream=stream, verbosity=2)
 
     parinfo = []
-    for test in [UTKPointParallelSetup_Blocked, UTKPointParallelSetup_Strided]:
+    for test in [UTKPointParallelSetup_Even, UTKPointParallelSetup_Prime]:
         info = ['', test.__name__, test.__doc__.strip('\n'), '']
         testsuite = initialTestLoader.loadTestsFromTestCase(test)
         map(testrunner.stream.writeln, info)
@@ -145,7 +227,10 @@ if __name__ in ['__main__', '__builtin__']:
                         tci in testsuite._tests if hasattr(tci, '_parinfo')])
     parinfo = np.unique(np.sort(parinfo)).tolist()
 
-    testcases = [UTRubbishWavefunctionSetup] #XXX no test cases yet
+    testcases = []
+    for equipartition in ['even', 'prime']:
+        testcases.append(UTRubbishWavefunctionFactory(equipartition))
+
     for test in testcases:
         info = ['', test.__name__, test.__doc__.strip('\n')] + parinfo + ['']
         testsuite = defaultTestLoader.loadTestsFromTestCase(test)
