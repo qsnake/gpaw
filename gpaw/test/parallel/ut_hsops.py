@@ -62,7 +62,8 @@ class UTBandParallelSetup(TestCase):
     G = 20
 
     def setUp(self):
-        assert self.parstride_bands is not None, 'Virtual "parstride_bands"!'
+        for virtvar in ['parstride_bands']:
+            assert getattr(self,virtvar) is not None, 'Virtual "%s"!' % virtvar
 
         parsize, parsize_bands = create_parsize_maxbands(self.nbands, world.size)
         assert self.nbands % np.prod(parsize_bands) == 0
@@ -380,14 +381,14 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
             self.P_ani[a][:] = np.outer(self.gamma**my_band_indices \
                                         * my_band_indices**0.5, beta_i)
 
-    def check_and_plot(self, A_nn, A0_nn, digits, keywords='none', comm=world):
+    def check_and_plot(self, A_nn, A0_nn, digits, keywords=''):
         # Construct fingerprint of input matrices for comparison
         fingerprint = np.array([md5_array(A_nn, numeric=True),
                                 md5_array(A0_nn, numeric=True)])
 
         # Compare fingerprints across all processors
-        fingerprints = np.empty((comm.size, 2), np.int64)
-        comm.all_gather(fingerprint, fingerprints)
+        fingerprints = np.empty((world.size, 2), np.int64)
+        world.all_gather(fingerprint, fingerprints)
         if fingerprints.ptp(0).any():
             raise RuntimeError('Distributed matrices are not identical!')
 
@@ -395,14 +396,15 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         try:
             self.assertAlmostEqual(np.abs(A_nn-A0_nn).max(), 0, digits)
         except AssertionError:
-            if comm.rank == 0 and mpl is not None:
+            if world.rank == 0 and mpl is not None:
                 from matplotlib.figure import Figure
                 fig = Figure()
                 ax = fig.add_axes([0.0, 0.1, 1.0, 0.83])
                 ax.set_title(self.__class__.__name__)
                 im = ax.imshow(np.abs(A_nn-A0_nn), interpolation='nearest')
                 fig.colorbar(im)
-                fig.legend((im,), (keywords,), 'lower center')
+                fig.text(0.5, 0.05, 'Keywords: ' + keywords, \
+                    horizontalalignment='center', verticalalignment='top')
 
                 from matplotlib.backends.backend_agg import FigureCanvasAgg
                 img = 'ut_hsops_%s_%s.png' % (self.__class__.__name__, \
