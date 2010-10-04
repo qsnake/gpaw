@@ -126,7 +126,7 @@ def create_parsize_maxbands(nbands, world_size):
             D = world_size // B
         else:
             D = parsize
-            B = world_size // np.prod(D)
+            B = gcd(nbands, world_size // np.prod(D))
     else:
         B = parsize_bands
         D = parsize or world_size // B
