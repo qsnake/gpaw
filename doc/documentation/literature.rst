@@ -605,6 +605,16 @@ Publications using the gpaw code
 
    .. 20 July 2010
 
+#) M. Kuisma, J. Ojanen, J. Enkovaara, and T. T. Rantala
+
+   `Kohn-Sham potential with discontinuity for band gap materials`__
+
+   Physical Review B **82**, 115106 (2010)
+
+   __ http://dx.doi.org/10.1103/PhysRevB.82.115106
+
+   .. 7 September 2010
+
 #) Pentti Frondelius, Hannu Häkkinen, Karoliina Honkala
 
    `Formation of Gold(I) Edge Oxide at Flat Gold Nanoclusters on an Ultrathin
