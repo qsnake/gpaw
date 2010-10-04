@@ -44,9 +44,9 @@ class DynamicalMatrix:
             assert dtype == float
         else:
             #XXX Maybe not needed as an attribute ??
-            for q, q_c in enumerate(self.kd.bzk_kc):
-                if np.all(q_c == 0.):
-                    self.gamma_index = q
+            for k, k_c in enumerate(self.kd.bzk_kc):
+                if np.all(k_c == 0.):
+                    self.gamma_index = k
 
         assert self.gamma_index is not None
         
@@ -58,9 +58,12 @@ class DynamicalMatrix:
                         for q in range(self.kd.mynks)]
         
         # Dynamical matrix -- 3Nx3N ndarray (vs q)
+        # Local matrices
         self.D_q = []
+        # Global array of matrices used upon collecting from slaves
         self.D_k = None
         self.assembled = False
+        self.collected = False
         
     def assemble(self, acoustic=True):
         """Assemble dynamical matrix from the force constants attribute.
@@ -78,7 +81,41 @@ class DynamicalMatrix:
             corrected to ensure that the acoustic sum-rule is fulfilled.
             
         """
-          
+
+        # Assemble matrix of force constants locally
+        if not self.collected:
+            self.collect_force_constants(acoustic=False)
+        
+        # Apply acoustic sum-rule if requested  
+        if acoustic:
+
+            # Get matrix of force constants in the Gamma-point
+            C_gamma = self.D_k[self.gamma_index].copy()
+            
+            # Correct atomic diagonal for each q-vector
+            for C in self.D_k:
+
+                for atom in self.atoms:
+                    a = atom.index
+                    C_gamma_av = C_gamma[3*a: 3*a+3]
+
+                    for atom_ in self.atoms:
+                        a_ = atom_.index
+                        C[3*a : 3*a + 3, 3*a : 3*a + 3] -= \
+                              C_gamma_av[:3, 3*a_: 3*a_+3]
+
+        # Mass prefactor for the dynamical matrix
+        m_av = np.repeat(np.asarray(self.masses)**(-0.5), 3)
+        M_avav = m_av[:, np.newaxis] * m_av
+
+        for C in self.D_k:
+            C *= M_avav
+
+        self.assembled = True
+
+    def collect_force_constants(self, acoustic=False):
+        """Collect matrix of force constants from slaves."""
+
         # Assemble matrix of force constants locally
         for q, C_aavv in enumerate(self.C_qaavv):
 
@@ -98,7 +135,7 @@ class DynamicalMatrix:
             C = .5 * C_avav
             C += C.conj().T
             self.D_q.append(C)
-      
+
         # Apply acoustic sum-rule if requested        
         if acoustic:
 
@@ -123,15 +160,8 @@ class DynamicalMatrix:
                         a_ = atom_.index
                         C[3*a : 3*a + 3, 3*a : 3*a + 3] -= \
                               C_gamma_av[:3, 3*a_: 3*a_+3]
-
-        # Mass prefactor for the dynamical matrix
-        m_av = np.repeat(np.asarray(self.masses)**(-0.5), 3)
-        M_avav = m_av[:, np.newaxis] * m_av
-
-        for C in self.D_q:
-            C *= M_avav
-
-        # Collect dynamical matrices from slaves
+                        
+        # Collect from slaves
         if self.kd.comm.rank == 0:
             # Global array
             self.D_k = np.empty((self.kd.nibzkpts, 3*self.N, 3*self.N),
@@ -142,58 +172,15 @@ class DynamicalMatrix:
             for slave_rank in range(1, self.kd.comm.size):
                 uslice = self.kd.get_slice(rank=slave_rank)
                 nks = uslice.stop - uslice.start
-                D_q = np.empty((nks, 3*self.N, 3*self.N), dtype=self.dtype)
-                self.kd.comm.receive(D_q, slave_rank, tag=123)
-                self.D_k[uslice] = D_q
+                C_q = np.empty((nks, 3*self.N, 3*self.N), dtype=self.dtype)
+                self.kd.comm.receive(C_q, slave_rank, tag=123)
+                self.D_k[uslice] = C_q
         else:
-            D_q = np.asarray(self.D_q)
-            self.kd.comm.send(D_q, 0, tag=123)
-
-        self.assembled = True
-
-    def assemble_force_constants(self):
-        """Assemble matrix of force constants."""
-
-        C_q = []
-        
-        # Assemble matrix of force constants locally
-        for q, C_aavv in enumerate(self.C_qaavv):
-
-            C_avav = np.zeros((3*self.N, 3*self.N), dtype=self.dtype)
-    
-            for atom in self.atoms:
-    
-                a = atom.index
-    
-                for atom_ in self.atoms:
-    
-                    a_ = atom_.index
-    
-                    C_avav[3*a : 3*a + 3, 3*a_ : 3*a_ + 3] += C_aavv[a][a_]
-
-            # C(q) is Hermitian
-            C = .5 * C_avav
-            C += C.conj().T
-            C_q.append(C)
-
-        # Collect from slaves
-        if self.kd.comm.rank == 0:
-            # Global array
-            C_k = np.empty((self.kd.nibzkpts, 3*self.N, 3*self.N),
-                           dtype=self.dtype)
-            uslice = self.kd.get_slice()
-            C_k[uslice] = np.asarray(C_q)
-            
-            for slave_rank in range(1, self.kd.comm.size):
-                uslice = self.kd.get_slice(rank=slave_rank)
-                nks = uslice.stop - uslice.start
-                C = np.empty((nks, 3*self.N, 3*self.N), dtype=self.dtype)
-                self.kd.comm.receive(C, slave_rank, tag=123)
-                C_k[uslice] = C
-        else:
-            C_q = np.asarray(C_q)
+            C_q = np.asarray(self.D_q)
             self.kd.comm.send(C_q, 0, tag=123)
-            
+
+        self.collected = True
+        
     def real_space(self):
         """Fourier transform the dynamical matrix to real-space."""
 

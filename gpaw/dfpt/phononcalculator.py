@@ -17,7 +17,8 @@ from gpaw.dfpt.dynamicalmatrix import DynamicalMatrix
 class PhononCalculator:
     """This class defines the interface for phonon calculations."""
     
-    def __init__(self, calc, gamma=True, e_ph=False, **kwargs):
+    def __init__(self, calc, gamma=True, symmetry=False, e_ph=False,
+                 **kwargs):
         """Inititialize class with a list of atoms.
 
         The atoms object must contain a converged ground-state calculation.
@@ -36,6 +37,9 @@ class PhononCalculator:
             Gamma-point calculation with respect to the q-vector of the
             dynamical matrix. When ``False``, the Monkhorst-Pack grid from the
             ground-state calculation is used.
+        symmetry: bool
+            None, False or True. The different options are equivalent to the
+            options in a ground-state calculation.
         e_ph: bool
             Calculate electron-phonon coupling.
 
@@ -86,7 +90,8 @@ class PhononCalculator:
 
         # K-point descriptor for the q-vectors of the dynamical matrix
         self.kd = KPointDescriptor(bzq_kc, 1)
-        self.kd.set_symmetry(self.atoms, self.calc.wfs.setups, None)
+        # Use time-reversal symmetry for now
+        self.kd.set_symmetry(self.atoms, self.calc.wfs.setups, symmetry)
         self.kd.set_communicator(world)
         
         # Number of occupied bands
