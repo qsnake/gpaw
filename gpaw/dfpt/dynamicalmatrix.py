@@ -3,6 +3,7 @@
 __all__ = ["DynamicalMatrix"]
 
 from math import sqrt, pi
+import pickle
 
 import numpy as np
 import numpy.fft as fft
@@ -10,6 +11,7 @@ import numpy.linalg as la
 import ase.units as units
 
 from gpaw import debug
+from gpaw.mpi import serial_comm
 from gpaw.utilities import unpack, unpack2
 
 class DynamicalMatrix:
@@ -32,7 +34,6 @@ class DynamicalMatrix:
         self.atoms = atoms
         self.kd = kd
         self.dtype = dtype
-        self.calc = atoms.get_calculator()
         self.masses = atoms.get_masses()
         self.N = atoms.get_number_of_atoms()
 
@@ -43,8 +44,7 @@ class DynamicalMatrix:
             self.gamma_index = 0
             assert dtype == float
         else:
-            #XXX Maybe not needed as an attribute ??
-            for k, k_c in enumerate(self.kd.bzk_kc):
+            for k, k_c in enumerate(self.kd.ibzk_kc):
                 if np.all(k_c == 0.):
                     self.gamma_index = k
 
@@ -62,57 +62,47 @@ class DynamicalMatrix:
         self.D_q = []
         # Global array of matrices used upon collecting from slaves
         self.D_k = None
+        # Dynamical matrix in the full Brillouin zone
+        self.D = None
+        
         self.assembled = False
         self.collected = False
-        
-    def assemble(self, acoustic=True):
-        """Assemble dynamical matrix from the force constants attribute.
 
-        The elements of the dynamical matrix are given by::
+    def __getstate__(self): 
+        """Method used to pickle an instance of ``DynamicalMatrix``.
 
-            D_ij(q) = 1/(M_i + M_j) * C_ij(q) ,
-                      
-        where i and j are collective atomic and cartesian indices.
+        Bound method attributes cannot be pickled and must therefore be deleted
+        before an instance is dumped to file.
 
-        Parameters
-        ----------
-        acoustic: bool
-            When True, the diagonal of the matrix of force constants is
-            corrected to ensure that the acoustic sum-rule is fulfilled.
-            
         """
 
-        # Assemble matrix of force constants locally
-        if not self.collected:
-            self.collect_force_constants(acoustic=False)
+        # Get state of object and take care of troublesome attributes
+        state = dict(self.__dict__)
+        state['kd'].__dict__['comm'] = serial_comm
+        state['atoms'].__dict__.pop('calc')
+
+        return state
+
+    def __setstate__(self, state):
+        """Method used to unpickle an instance of ``DynamicalMatrix``."""
+
+        self.__dict__.update(state)
         
-        # Apply acoustic sum-rule if requested  
-        if acoustic:
+    def dump(self, filename):
+        """Dump the ``DynamicalMatrix`` object to a pickle file."""
 
-            # Get matrix of force constants in the Gamma-point
-            C_gamma = self.D_k[self.gamma_index].copy()
-            
-            # Correct atomic diagonal for each q-vector
-            for C in self.D_k:
+        if self.kd.comm.rank == 0:
+            f = open(filename, 'w')
+            pickle.dump(self, f)
+            f.close()
 
-                for atom in self.atoms:
-                    a = atom.index
-                    C_gamma_av = C_gamma[3*a: 3*a+3]
+    def load(filename):
+        """Load ``DynamicalMatrix`` instance from a pickle file."""
 
-                    for atom_ in self.atoms:
-                        a_ = atom_.index
-                        C[3*a : 3*a + 3, 3*a : 3*a + 3] -= \
-                              C_gamma_av[:3, 3*a_: 3*a_+3]
-
-        # Mass prefactor for the dynamical matrix
-        m_av = np.repeat(np.asarray(self.masses)**(-0.5), 3)
-        M_avav = m_av[:, np.newaxis] * m_av
-
-        for C in self.D_k:
-            C *= M_avav
-
-        self.assembled = True
-
+        f = open(filename, 'r')
+        pickle.load(self, f)
+        f.close()
+        
     def collect_force_constants(self, acoustic=False):
         """Collect matrix of force constants from slaves."""
 
@@ -131,24 +121,26 @@ class DynamicalMatrix:
     
                     C_avav[3*a : 3*a + 3, 3*a_ : 3*a_ + 3] += C_aavv[a][a_]
 
-            # C(q) is Hermitian
-            C = .5 * C_avav
-            C += C.conj().T
-            self.D_q.append(C)
+            self.D_q.append(C_avav)
 
         # Apply acoustic sum-rule if requested        
         if acoustic:
 
+            # Make C(q) Hermitian
+            for C in self.D_q:
+                C *= 0.5
+                C += C.conj().T
+                
             # Get matrix of force constants in the Gamma-point
             rank_gamma, q_gamma = \
                         self.kd.get_rank_and_index(0, self.gamma_index)
-
+            
             # Broadcast Gamma-point matrix to all ranks
             C_gamma = np.empty((3*self.N, 3*self.N), dtype=self.dtype)
             if self.kd.comm.rank == rank_gamma:
                 C_gamma[...] = self.D_q[q_gamma].copy()
             self.kd.comm.broadcast(C_gamma, rank_gamma)
-            
+
             # Correct atomic diagonal for each q-vector
             for C in self.D_q:
 
@@ -181,6 +173,78 @@ class DynamicalMatrix:
 
         self.collected = True
         
+    def assemble(self, acoustic=True):
+        """Assemble dynamical matrix from the force constants attribute.
+
+        The elements of the dynamical matrix are given by::
+
+            D_ij(q) = 1/(M_i + M_j) * C_ij(q) ,
+                      
+        where i and j are collective atomic and cartesian indices.
+
+        During the assembly, various symmetries of the dynamical matrix are
+        restored::
+
+            1) Hermiticity
+            2) Acoustic sum-rule
+            3) D(q) = D*(-q)
+
+        Parameters
+        ----------
+        acoustic: bool
+            When True, the diagonal of the matrix of force constants is
+            corrected to ensure that the acoustic sum-rule is fulfilled.
+            
+        """
+
+        # Assemble matrix of force constants locally
+        if not self.collected:
+            self.collect_force_constants(acoustic=False)
+
+        # Make C(q) Hermitian
+        for C in self.D_k:
+            C *= 0.5
+            C += C.conj().T
+            
+        # Apply acoustic sum-rule if requested
+        if acoustic:
+
+            # Get matrix of force constants in the Gamma-point
+            C_gamma = self.D_k[self.gamma_index].copy()
+            # print C_gamma
+            # Correct atomic diagonal for each q-vector
+            for C in self.D_k:
+
+                for atom in self.atoms:
+                    a = atom.index
+                    C_gamma_av = C_gamma[3*a: 3*a+3]
+
+                    for atom_ in self.atoms:
+                        a_ = atom_.index
+                        C[3*a : 3*a + 3, 3*a : 3*a + 3] -= \
+                              C_gamma_av[:3, 3*a_: 3*a_+3]
+
+        # XXX Time-reversal symmetry
+        if len(self.kd.ibzk_kc) != len(self.kd.bzk_kc):
+            if len(self.kd.ibzk_kc) != len(self.kd.bzk_kc):
+                self.D = np.concatenate((self.D_k[:0:-1].conjugate(), self.D_k))
+            else:
+                N = len(self.kd.bzk_kc)/2
+                self.D_ = self.D_k[N:]
+                self.D = np.concatenate((self.D_[:0:-1].conjugate(), self.D_))
+        else:
+            self.D = 0.5 * self.D_k
+            self.D += self.D[::-1].conjugate()
+            
+        # Mass prefactor for the dynamical matrix
+        m_av = np.repeat(np.asarray(self.masses)**(-0.5), 3)
+        M_avav = m_av[:, np.newaxis] * m_av
+
+        for C in self.D:
+            C *= M_avav
+
+        self.assembled = True
+       
     def real_space(self):
         """Fourier transform the dynamical matrix to real-space."""
 
@@ -190,12 +254,11 @@ class DynamicalMatrix:
         # XXX Temp solution
         nqpts = len(self.kd.bzk_kc)
         n = int(round(nqpts**(1./3)))
-        N_k = (n, n, n)
+        N_c = (n, n, n)
 
-        D_q = self.D_k
         # Reshape before Fourier transforming
         M = 3 * self.N
-        D_q = D_q.reshape(N_k + (M, M))
+        D_q = self.D.reshape(N_c + (M, M))
         D_R_m = fft.ifftn(fft.ifftshift(D_q, axes=(0, 1, 2)), axes=(0, 1, 2))
 
         if debug:
@@ -207,11 +270,11 @@ class DynamicalMatrix:
         D_R_m = D_R_m.reshape(nqpts, M, M)
 
         # Corresponding R_m vectors in units of the lattice vectors
-        N_c = np.array(N_k)[:, np.newaxis]
-        R_cm = np.indices(N_k).reshape(3, -1)
-        R_cm += N_c // 2
-        R_cm %= N_c
-        R_cm -= N_c // 2
+        N1_c = np.array(N_c)[:, np.newaxis]
+        R_cm = np.indices(N1_c).reshape(3, -1)
+        R_cm += N1_c // 2
+        R_cm %= N1_c
+        R_cm -= N1_c // 2
 
         return D_R_m, R_cm
     
