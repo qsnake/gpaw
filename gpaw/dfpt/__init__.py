@@ -71,13 +71,16 @@ Implementaion notes
 from gpaw.dfpt.phononcalculator import *
 from gpaw.dfpt.responsecalculator import *
 from gpaw.dfpt.phononperturbation import *
+from gpaw.dfpt.dynamicalmatrix import *
 
 # Set the behavior of from gpaw.dfpt import *
 import gpaw.dfpt.phononcalculator
 import gpaw.dfpt.responsecalculator
 import gpaw.dfpt.phononperturbation
+import gpaw.dfpt.dynamicalmatrix
 
 __all__ = []
 __all__.extend(phononcalculator.__all__)
 __all__.extend(responsecalculator.__all__)
 __all__.extend(phononperturbation.__all__)
+__all__.extend(dynamicalmatrix.__all__)
