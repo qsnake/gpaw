@@ -166,11 +166,11 @@ class UTKPointParallelSetup(TestCase):
                 self.assertEqual(self.kd.who_has(u), (kpt_rank, myu))
 
     def verify_ranking_consistency(self):
-        rank_u = self.kd.get_ranks()
+        ranks = self.kd.get_ranks()
 
         for kpt_rank in range(self.kd.comm.size):
             my_indices = self.kd.get_indices(kpt_rank)
-            matches = np.argwhere(rank_u == kpt_rank).ravel()
+            matches = np.argwhere(ranks == kpt_rank).ravel()
             self.assertTrue((matches == my_indices).all())
             for myu in range(self.kd.get_count(kpt_rank)):
                 u = self.kd.global_index(myu, kpt_rank)

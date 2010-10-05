@@ -256,12 +256,12 @@ class KPointDescriptor:
     def get_ranks(self):
         """Return array of ranks as a function of global ks-pair indices."""
         
-        rank_u = np.empty(self.nks, dtype=int)
+        ranks = np.empty(self.nks, dtype=int)
         for rank in range(self.comm.size):
             uslice = self.get_slice(rank)
-            rank_u[uslice] = rank
-        assert (rank_u >= 0).all() and (rank_u < self.comm.size).all()
-        return rank_u
+            ranks[uslice] = rank
+        assert (ranks >= 0).all() and (ranks < self.comm.size).all()
+        return ranks
 
     def who_has(self, u):
         """Convert global index to rank information and local index."""
@@ -396,12 +396,12 @@ class KPointDescriptorOld:
 
     def get_ranks(self):
         """Return array of ranks as a function of global ks-pair indices."""
-        rank_u = np.empty(self.nks, dtype=int)
+        ranks = np.empty(self.nks, dtype=int)
         for rank in range(self.comm.size):
             uslice = self.get_slice(rank)
-            rank_u[uslice] = rank
-        assert (rank_u >= 0).all() and (rank_u < self.comm.size).all()
-        return rank_u
+            ranks[uslice] = rank
+        assert (ranks >= 0).all() and (ranks < self.comm.size).all()
+        return ranks
 
     def who_has(self, u):
         """Convert global index to rank information and local index."""
