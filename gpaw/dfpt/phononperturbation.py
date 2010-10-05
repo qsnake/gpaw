@@ -45,7 +45,11 @@ class PhononPerturbation(Perturbation):
         if self.kd.gamma:
             self.phase_cd = None
         else:
-            self.phase_kcd = [kpt.phase_cd for kpt in calc.wfs.kpt_u]
+            self.phase_qcd = []
+            assert self.kd.mynks == len(self.kd.ibzk_qc)
+            for myu in range(self.kd.mynks):
+                u = self.kd.global_index(myu)
+                self.phase_qcd.append(calc.wfs.kpt_u[u].phase_cd)
             
         # Store grid-descriptors
         self.gd = calc.density.gd
@@ -132,8 +136,7 @@ class PhononPerturbation(Perturbation):
         self.q = q
 
         # Update phases and Poisson solver
-        k = self.kd.ks0 + q
-        self.phase_cd = self.phase_kcd[k]
+        self.phase_cd = self.phase_qcd[q]
         self.poisson.set_q(self.kd.ibzk_qc[q])
 
         # Invalidate calculated quantities
