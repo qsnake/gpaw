@@ -45,11 +45,15 @@ class PhononPerturbation(Perturbation):
         if self.kd.gamma:
             self.phase_cd = None
         else:
-            self.phase_qcd = []
             assert self.kd.mynks == len(self.kd.ibzk_qc)
-            for myu in range(self.kd.mynks):
-                u = self.kd.global_index(myu)
-                self.phase_qcd.append(calc.wfs.kpt_u[u].phase_cd)
+
+            self.phase_qcd = []
+            sdisp_cd = calc.wfs.gd.sdisp_cd
+
+            for q in range(self.kd.mynks):
+                phase_cd = np.exp(2j * np.pi * \
+                                  sdisp_cd * self.kd.ibzk_qc[q, :, np.newaxis])
+                self.phase_qcd.append(phase_cd)
             
         # Store grid-descriptors
         self.gd = calc.density.gd

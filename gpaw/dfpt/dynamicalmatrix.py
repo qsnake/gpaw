@@ -211,7 +211,7 @@ class DynamicalMatrix:
 
             # Get matrix of force constants in the Gamma-point
             C_gamma = self.D_k[self.gamma_index].copy()
-            # print C_gamma
+
             # Correct atomic diagonal for each q-vector
             for C in self.D_k:
 

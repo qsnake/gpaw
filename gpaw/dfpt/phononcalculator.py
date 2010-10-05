@@ -90,7 +90,7 @@ class PhononCalculator:
         # Use time-reversal symmetry for now
         self.kd.set_symmetry(self.atoms, self.calc.wfs.setups, symmetry)
         self.kd.set_communicator(world)
-        
+
         # Number of occupied bands
         nvalence = self.calc.wfs.nvalence
         nbands = nvalence/2 + nvalence%2

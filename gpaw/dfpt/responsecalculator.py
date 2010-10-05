@@ -67,6 +67,7 @@ class ResponseCalculator:
             function). 
         dtype: ...
             dtype of the density response.
+            
         """
         
         # Store ground-state quantities

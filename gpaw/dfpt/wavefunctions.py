@@ -93,7 +93,7 @@ class WaveFunctions:
                 ik_c = kd.ibzk_kc[ik]
                 # Point group operation
                 op_cc = kd.symmetry.op_scc[s]
-
+                    
                 # KPoint from ground-state calculation
                 kpt_ = kpt_u[ik]
                 weight = 1. / kd.nbzkpts * (2 - kpt_.s)
