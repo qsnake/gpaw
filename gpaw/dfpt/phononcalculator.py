@@ -23,11 +23,9 @@ class PhononCalculator:
 
         The atoms object must contain a converged ground-state calculation.
 
-        The irreducible set of q-vectors in which the dynamical matrix will be
-        calculated will be the irreducible set of k-vector used in the
-        ground-state calculations.
-        
-        For now the q-points are taken from the ground-state calculation.
+        The set of q-vectors in which the dynamical matrix will be calculated
+        is determined from the ``symmetry``. For now, only time-reversal
+        symmetry is used to generate the irrecducible BZ.
 
         Parameters
         ----------
@@ -45,6 +43,9 @@ class PhononCalculator:
 
         """
 
+        # XXX
+        assert symmetry in [None, False], "Spatial symmetries not allowed yet"
+        
         if isinstance(calc, str):
             self.calc = GPAW(calc, communicator=serial_comm, txt=None)
         else:
@@ -84,10 +85,6 @@ class PhononCalculator:
         # Include all atoms and cartesian coordinates by default
         self.atoms_a = dict([ (atom.index, [0, 1, 2]) for atom in self.atoms])
         
-        # Ground-state k-point descriptor - used for the k-points in the
-        # ResponseCalculator 
-        kd_gs = self.calc.wfs.kd
-
         # K-point descriptor for the q-vectors of the dynamical matrix
         self.kd = KPointDescriptor(bzq_kc, 1)
         # Use time-reversal symmetry for now
@@ -99,6 +96,10 @@ class PhononCalculator:
         nbands = nvalence/2 + nvalence%2
         assert nbands <= self.calc.wfs.nbands
 
+        # Ground-state k-point descriptor - used for the k-points in the
+        # ResponseCalculator 
+        kd_gs = self.calc.wfs.kd
+        
         #  WaveFunctions object
         wfs = WaveFunctions(nbands, self.calc.wfs.kpt_u, self.calc.wfs.setups,
                             kd_gs, self.calc.density.gd, dtype=self.calc.wfs.dtype)
@@ -111,7 +112,7 @@ class PhononCalculator:
                                                poisson_solver,
                                                dtype=self.dtype)
 
-        # Dynamical matrix object - its dtype should be determined by the
+        # XXX Dynamical matrix object - its dtype should be determined by the
         # presence of inversion symmetry - NO, only for monoatomic bases !
         inversion_symmetry = False
         if inversion_symmetry:
@@ -119,8 +120,7 @@ class PhononCalculator:
         else:
             D_dtype = self.dtype
         
-        self.D_matrix = DynamicalMatrix(self.atoms, self.kd,
-                                        dtype=D_dtype)
+        self.D_matrix = DynamicalMatrix(self.atoms, self.kd, dtype=D_dtype)
 
         # Initialization flag
         self.initialized = False
