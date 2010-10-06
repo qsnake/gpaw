@@ -2,6 +2,8 @@
 
 __all__ = ["PhononCalculator"]
 
+import pickle
+
 import numpy as np
 
 from gpaw import GPAW
@@ -36,10 +38,11 @@ class PhononCalculator:
             dynamical matrix. When ``False``, the Monkhorst-Pack grid from the
             ground-state calculation is used.
         symmetry: bool
-            None, False or True. The different options are equivalent to the
+            Use symmetries to reduce the q-vectors of the dynamcial matrix
+            (None, False or True). The different options are equivalent to the
             options in a ground-state calculation.
         e_ph: bool
-            Calculate electron-phonon coupling.
+            Save the derivative of the effective potential.
 
         """
 
@@ -112,16 +115,12 @@ class PhononCalculator:
                                                poisson_solver,
                                                dtype=self.dtype)
 
-        # XXX Dynamical matrix object - its dtype should be determined by the
-        # presence of inversion symmetry - NO, only for monoatomic bases !
-        inversion_symmetry = False
-        if inversion_symmetry:
-            D_dtype = float
-        else:
-            D_dtype = self.dtype
-        
-        self.D_matrix = DynamicalMatrix(self.atoms, self.kd, dtype=D_dtype)
+        # Dynamical matrix object
+        self.D_matrix = DynamicalMatrix(self.atoms, self.kd, dtype=self.dtype)
 
+        self.symmetry = symmetry
+        # Store derivative of pseudo-potential for e-ph calculations
+        self.e_ph = e_ph
         # Initialization flag
         self.initialized = False
 
@@ -162,6 +161,11 @@ class PhononCalculator:
             for a in atoms_a:
                 self.atoms_a = [0, 1, 2]
 
+    def get_dynamical_matrix(self):
+        """Return reference to ``DynamicalMatrix`` object."""
+        
+        return self.D_matrix
+    
     def __call__(self, qpts_q=None):
         """Run calculation for atomic displacements and update matrix.
 
@@ -210,13 +214,18 @@ class PhononCalculator:
                     self.D_matrix.update_row(self.perturbation,
                                              self.response_calc)
 
+                    if self.e_ph:
+                        v1_G = self.perturbation.v1_G + \
+                               self.response_calc.vHXC1_G
+                        PP = self.calc.input_parameters['setups'][None].upper()
+                        
+                        f = open('v1_G_%s_a_%i_v_%i_%s_symmetry_%s.pckl' \
+                                 % (symbols[a], a, v, PP, self.symmetry), 'w')
+                        pickle.dump(v1_G, f)
+                        f.close()
+                        
         # Ground-state contributions to the force constants
         self.D_matrix.density_ground_state(self.calc)
         # self.D_matrix.wfs_ground_state(self.calc, self.response_calc)
 
         self.kd.comm.barrier()
-        
-    def get_dynamical_matrix(self):
-        """Return reference to ``DynamicalMatrix`` object."""
-        
-        return self.D_matrix
