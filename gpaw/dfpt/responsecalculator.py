@@ -115,8 +115,9 @@ class ResponseCalculator:
         self.phase_cd = None
 
         # Array attributes
-        self.nt1_g = None
         self.nt1_G = None
+        self.vHXC1_G = None        
+        self.nt1_g = None
         self.vH1_g = None
 
         # Perturbation
@@ -132,6 +133,17 @@ class ResponseCalculator:
         self.parameters = {}
         self.set(**kwargs)
 
+    def clean(self):
+        """Cleanup before call to ``__call__``."""
+
+        self.perturbation = None
+        self.solve_poisson = None
+
+        self.nt1_G = None
+        self.vHXC1_G = None        
+        self.nt1_g = None
+        self.vH1_g = None
+        
     def __call__(self, perturbation):
         """Calculate density response (derivative) to perturbation.
 
@@ -146,7 +158,8 @@ class ResponseCalculator:
         
         assert self.initialized, ("Linear response calculator "
                                   "not initizalized.")
-
+        self.clean()
+        
         if self.poisson is None:
             assert hasattr(perturbation, 'solve_poisson')
             self.solve_poisson = perturbation.solve_poisson
@@ -186,11 +199,7 @@ class ResponseCalculator:
             if iter == max_iter-1:
                 print     ("self-consistent loop did not converge in %i "
                            "iterations" % (iter+1))
-
-        # Return to state prior to the function call
-        self.perturbation = None
-        self.solve_poisson = None
-    
+   
     def set(self, **kwargs):
         """Set parameters for calculation."""
 
@@ -267,9 +276,9 @@ class ResponseCalculator:
         """Perform iteration."""
 
         # Update variation in the effective potential
-        vHXC1_G = self.effective_potential_variation()
+        self.effective_potential_variation()
         # Update wave function variations
-        self.wave_function_variations(vHXC1_G=vHXC1_G)
+        self.wave_function_variations()
         # Update density
         self.density_response()
         # Mix - supply phase_cd here for metric inside the mixer
@@ -306,12 +315,10 @@ class ResponseCalculator:
         vHXC1_g += vXC1_g * self.nt1_g
 
         # Transfer to coarse grid
-        vHXC1_G = self.gd.zeros(dtype=self.dtype)
-        self.restrictor.apply(vHXC1_g, vHXC1_G, phases=self.phase_cd)
-        
-        return vHXC1_G
+        self.vHXC1_G = self.gd.zeros(dtype=self.dtype)
+        self.restrictor.apply(vHXC1_g, self.vHXC1_G, phases=self.phase_cd)
     
-    def wave_function_variations(self, vHXC1_G=None):
+    def wave_function_variations(self):
         """Calculate variation in the wave-functions.
 
         Parameters
@@ -376,8 +383,8 @@ class ResponseCalculator:
                 # Rhs of Sternheimer equation                
                 rhs_G = -1 * rhs_nG[n]
                 
-                if vHXC1_G is not None:
-                    rhs_G -= vHXC1_G * psit_G
+                if self.vHXC1_G is not None:
+                    rhs_G -= self.vHXC1_G * psit_G
 
                 # Update k-point index and band index in SternheimerOperator
                 self.sternheimer_operator.set_blochstate(n, k)
