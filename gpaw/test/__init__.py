@@ -250,6 +250,7 @@ try:
 except ImportError:
     exclude += ['diamond_absorption.py',
                 'aluminum_EELS.py',
+                'aluminum_EELS_lcao.py',
                 'aluminum_testcell.py',
                 'aeatom.py']
 
