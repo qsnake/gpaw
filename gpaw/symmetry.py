@@ -213,8 +213,6 @@ class Symmetry:
     def symmetrize_wavefunction(self, a_g, kibz_c, kbz_c, op_cc, time_reversal):
         """Generate Bloch function from symmetry related function in the IBZ.
 
-        Parameters
-        ----------
         a_g: ndarray
             Array with Bloch function from the irreducible BZ.
         kibz_c: ndarray
