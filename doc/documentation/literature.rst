@@ -626,3 +626,12 @@ Publications using the gpaw code
 
    .. 17 September 2010
 
+#) Thomas Olsen and Jakob Schiøtz
+
+   `Memory effects in nonadiabatic molecular dynamics at metal surfaces`__  
+
+   Journal of Chemical Physics **133**, 134109 (2010)
+
+   __ http://dx.doi.org/10.1063/1.3490247
+
+   .. 5 October 2010
