@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <math.h>
 #include <mpi.h>
+#ifdef BGP
+#include <mpix.h>
+#endif
 
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
@@ -237,6 +240,7 @@ int main(int argc, char *argv[]) {
      int nprocs;
      int iam;
      int myrow, mycol;
+     int result;
 
      MPI_Init(&argc, &argv);
      MPI_Barrier(MPI_COMM_WORLD);
@@ -251,13 +255,6 @@ int main(int argc, char *argv[]) {
        n = m;
      }
     
-     if (iam == root) {
-       printf("world size %d \n",nprocs);
-       printf("n %d \n", n);
-       printf("nprow %d \n", nprow);
-       printf("npcol %d \n", npcol);
-     }
-
      // We can do this on any subcommunicator.
 #ifdef CartComm
      int dim[2];
@@ -270,6 +267,19 @@ int main(int argc, char *argv[]) {
 #else
      blacs_comm = MPI_COMM_WORLD;
 #endif
+
+
+     if (iam == root) {
+       printf("world size %d \n",nprocs);
+       printf("n %d \n", n);
+       printf("nprow %d \n", nprow);
+       printf("npcol %d \n", npcol);
+#ifdef BGP
+       MPIX_Get_property(blacs_comm, MPIDO_RECT_COMM, &result);
+       if (result) printf("this is a rectangular communicator\n");
+#endif
+
+     }
 
      // initialize the grid
      // The lines below are equivalent to the one call to:
