@@ -28,7 +28,7 @@ def find_kq(bzk_kc, q_c):
         tmp = bzk_kc[kq_k[k]]
         if (abs(kplusq_c - tmp)).sum() > 1e-8:
             print k, kplusq_c, tmp
-            raise ValueError('k+q index not correct!')
+            raise ValueError('k+q index not correct! q must be the difference between two kpoints!')
 
     return kq_k
 
