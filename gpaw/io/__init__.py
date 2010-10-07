@@ -1,6 +1,12 @@
 import os
 import os.path
 
+try:
+    from ase.units import AUT # requires rev1839 or later
+except ImportError:
+    from ase.units import second, alpha, _hbar, _me, _c
+    AUT = second * _hbar / (alpha**2 * _me * _c**2)
+    del second, alpha, _hbar, _me, _c
 
 from ase.units import Bohr, Hartree
 from ase.data import atomic_names
@@ -104,19 +110,23 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
         w.dimension('3', 3)
 
         w.add('AtomicNumbers', ('natoms',),
-              atoms.get_atomic_numbers(), units=(0, 0))
+              atoms.get_atomic_numbers(), units=(0, 0, 0))
         w.add('CartesianPositions', ('natoms', '3'),
-              atoms.get_positions() / Bohr, units=(1, 0))
-        w.add('MagneticMoments', ('natoms',), magmom_a, units=(0, 0))
-        w.add('Tags', ('natoms',), tag_a, units=(0, 0))
-        w.add('BoundaryConditions', ('3',), atoms.get_pbc(), units=(0, 0))
-        w.add('UnitCell', ('3', '3'), atoms.get_cell() / Bohr, units=(1, 0))
+              atoms.get_positions() / Bohr, units=(1, 0, 0))
+        w.add('MagneticMoments', ('natoms',), magmom_a, units=(0, 0, 0))
+        w.add('Tags', ('natoms',), tag_a, units=(0, 0, 0))
+        w.add('BoundaryConditions', ('3',), atoms.get_pbc(), units=(0, 0, 0))
+        w.add('UnitCell', ('3', '3'), atoms.get_cell() / Bohr, units=(1, 0, 0))
+
+        if atoms.get_velocities() is not None:
+            w.add('CartesianVelocities', ('natoms', '3'),
+                  atoms.get_velocities() * AUT / Bohr, units=(1, 0, -1))
 
         w.add('PotentialEnergy', (), hamiltonian.Etot + 0.5 * hamiltonian.S,
-              units=(0, 1))
+              units=(0, 1, 0))
         if paw.forces.F_av is not None:
             w.add('CartesianForces', ('natoms', '3'), paw.forces.F_av,
-                  units=(-1, 1))
+                  units=(-1, 1, 0))
 
         # Write the k-points:
         w.dimension('nbzkpts', len(wfs.bzk_kc))
@@ -667,6 +677,10 @@ def read_atoms(reader):
         atoms.set_tags(tags)
     if magmoms.any():
         atoms.set_initial_magnetic_moments(magmoms)
+
+    if reader.has_array('CartesianVelocities'):
+        velocities = reader.get('CartesianVelocities') * Bohr / AUT
+        atoms.set_velocities(velocities)
 
     return atoms
 
