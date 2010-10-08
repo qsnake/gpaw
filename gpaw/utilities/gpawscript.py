@@ -35,7 +35,7 @@ def build_parser():
                                'rocksalt', 'zincblende'])
     struct.add_option('-a', '--lattice-constant', type='float',
                       help='Lattice constant in Angstrom.')
-    struct.add_option('--c_over_a', type='float',
+    struct.add_option('--c-over-a', type='float',
                       help='c/a ratio.')
     struct.add_option('-v', '--vacuum', type='float', default=3.0,
                       help='Amount of vacuum to add around isolated systems '
@@ -141,7 +141,7 @@ def run():
                 out.write('Using an estimated lattice constant of %.3f Ang\n' %
                           a)
 
-            atoms = bulk(name, opt.crystal_structure, a, opt.c_over_a,
+            atoms = bulk(name, opt.crystal_structure, a, covera=opt.c_over_a,
                          orthorhombic=opt.orthorhombic, cubic=opt.cubic)
         else:
             try:
