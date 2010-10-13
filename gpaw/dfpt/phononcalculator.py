@@ -14,7 +14,7 @@ from gpaw.dfpt.responsecalculator import ResponseCalculator
 from gpaw.dfpt.phononperturbation import PhononPerturbation
 from gpaw.dfpt.wavefunctions import WaveFunctions
 from gpaw.dfpt.dynamicalmatrix import DynamicalMatrix
-
+from gpaw.dfpt.electronphononcoupling import ElectronPhononCoupling
 
 class PhononCalculator:
     """This class defines the interface for phonon calculations."""
@@ -48,7 +48,8 @@ class PhononCalculator:
 
         # XXX
         assert symmetry in [None, False], "Spatial symmetries not allowed yet"
-        
+        self.symmetry = symmetry
+
         if isinstance(calc, str):
             self.calc = GPAW(calc, communicator=serial_comm, txt=None)
         else:
@@ -90,7 +91,6 @@ class PhononCalculator:
         
         # K-point descriptor for the q-vectors of the dynamical matrix
         self.kd = KPointDescriptor(bzq_kc, 1)
-        # Use time-reversal symmetry for now
         self.kd.set_symmetry(self.atoms, self.calc.wfs.setups, symmetry)
         self.kd.set_communicator(world)
 
@@ -102,10 +102,14 @@ class PhononCalculator:
         # Ground-state k-point descriptor - used for the k-points in the
         # ResponseCalculator 
         kd_gs = self.calc.wfs.kd
+        # Extract other useful objects
+        gd = self.calc.density.gd
+        kpt_u = self.calc.wfs.kpt_u
+        setups = self.calc.wfs.setups
+        dtype_gs = self.calc.wfs.dtype
         
-        #  WaveFunctions object
-        wfs = WaveFunctions(nbands, self.calc.wfs.kpt_u, self.calc.wfs.setups,
-                            kd_gs, self.calc.density.gd, dtype=self.calc.wfs.dtype)
+        #  WaveFunctions
+        wfs = WaveFunctions(nbands, kpt_u, setups, kd_gs, gd, dtype=dtype_gs)
 
         # Linear response calculator
         self.response_calc = ResponseCalculator(self.calc, wfs, dtype=self.dtype)
@@ -115,12 +119,16 @@ class PhononCalculator:
                                                poisson_solver,
                                                dtype=self.dtype)
 
-        # Dynamical matrix object
+        # Dynamical matrix
         self.D_matrix = DynamicalMatrix(self.atoms, self.kd, dtype=self.dtype)
 
-        self.symmetry = symmetry
-        # Store derivative of pseudo-potential for e-ph calculations
-        self.e_ph = e_ph
+        # Electron-phonon couplings
+        if e_ph:
+            self.e_ph = ElectronPhononCoupling(self.atoms, gd, self.kd,
+                                               dtype=self.dtype)
+        else:
+            self.e_ph = None
+                                               
         # Initialization flag
         self.initialized = False
 
@@ -214,15 +222,11 @@ class PhononCalculator:
                     self.D_matrix.update_row(self.perturbation,
                                              self.response_calc)
 
-                    if self.e_ph:
-                        v1_G = self.perturbation.v1_G + \
-                               self.response_calc.vHXC1_G
-                        PP = self.calc.input_parameters['setups'][None].upper()
-                        
-                        f = open('v1_G_%s_a_%i_v_%i_%s_symmetry_%s.pckl' \
-                                 % (symbols[a], a, v, PP, self.symmetry), 'w')
-                        pickle.dump(v1_G, f)
-                        f.close()
+                    # Store effective potential derivative
+                    if self.e_ph is not None:
+                        v1_eff_G = self.perturbation.v1_G + \
+                                   self.response_calc.vHXC1_G
+                        self.e_ph.v1_eff_qavG.append(v1_eff_G)
                         
         # Ground-state contributions to the force constants
         self.D_matrix.density_ground_state(self.calc)
