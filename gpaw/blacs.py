@@ -498,7 +498,7 @@ def parallelprint(comm, obj):
 from gpaw.matrix_descriptor import BandMatrixDescriptor, \
                                    BlacsBandMatrixDescriptor
 
-def get_kohn_sham_layouts(sl, mode, use_blacs, gd, bd, **kwargs):
+def get_kohn_sham_layouts(sl, mode, gd, bd, **kwargs):
     """Create Kohn-Sham layouts object."""
     # Not needed for AtomPAW special mode, as usual we just provide whatever
     # happens to make the code not crash
@@ -506,23 +506,19 @@ def get_kohn_sham_layouts(sl, mode, use_blacs, gd, bd, **kwargs):
         return None #XXX
     name = {'fd': 'BandLayouts', 'lcao': 'OrbitalLayouts'}[mode]
     args = (gd, bd)
-    if use_blacs:
+    if sl is not None:
         name = 'Blacs' + name
         assert len(sl) == 3
         args += tuple(sl)
-    elif sl is not None: #TODO deprecate
-        name = 'SL' + name
     ksl = {'BandLayouts':         BandLayouts,
            'BlacsBandLayouts':    BlacsBandLayouts,
-           'SLBandLayouts':       OldSLBandLayouts, #TODO deprecate
            'BlacsOrbitalLayouts': BlacsOrbitalLayouts,
            'OrbitalLayouts':      OrbitalLayouts,
-           'SLOrbitalLayouts':    OldSLOrbitalLayouts, #TODO deprecate
             }[name](*args, **kwargs)
     if 0: #XXX debug
         print 'USING KSL: %s' % repr(ksl)
     assert isinstance(ksl, KohnShamLayouts)
-    assert isinstance(ksl, BlacsLayouts) == use_blacs, (ksl, use_blacs)
+    assert isinstance(ksl, BlacsLayouts) == (sl is not None)
     return ksl
 
 
@@ -641,6 +637,7 @@ class OldSLBandLayouts(BandLayouts): #old SL before BLACS grids. TODO delete!
     """Original ScaLAPACK diagonalizer using 
     redundantly distributed arrays."""
     def __init__(self, gd, bd, timer=nulltimer, root=0):
+        raise DeprecationWarning
         BandLayouts.__init__(self, gd, bd, timer)
         bcommsize = self.bd.comm.size
         gcommsize = self.gd.comm.size
@@ -1028,6 +1025,7 @@ class OldSLOrbitalLayouts(OrbitalLayouts): #old SL before BLACS grids. TODO dele
     """Original ScaLAPACK diagonalizer using 
     redundantly distributed arrays."""
     def __init__(self, gd, bd, nao, timer=nulltimer, root=0):
+        raise DeprecationWarning
         OrbitalLayouts.__init__(self, gd, bd, nao, timer)
         bcommsize = self.bd.comm.size
         gcommsize = self.gd.comm.size
