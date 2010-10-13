@@ -103,7 +103,7 @@ class DynamicalMatrix:
         pickle.load(self, f)
         f.close()
         
-    def collect_force_constants(self, acoustic=False):
+    def collect(self, acoustic=False):
         """Collect matrix of force constants from slaves."""
 
         # Assemble matrix of force constants locally
@@ -199,7 +199,7 @@ class DynamicalMatrix:
 
         # Assemble matrix of force constants locally
         if not self.collected:
-            self.collect_force_constants(acoustic=False)
+            self.collect(acoustic=False)
 
         # Make C(q) Hermitian
         for C in self.D_k:
@@ -301,25 +301,39 @@ class DynamicalMatrix:
         D_R_m, R_cm = self.real_space()
         
         # List for squared frequencies along path
-        omega2_kn = []
+        omega_kn = []
 
         for q_c in path_kc:
             
             phase = np.exp(-2.j * pi * np.dot(q_c, R_cm))
             D = np.sum(phase[:, np.newaxis, np.newaxis] * D_R_m, axis=0)
             # Units: Ha / Bohr**2 / amu
-            omega2, u = la.eigh(D, UPLO='L')
-            omega2.sort()
-            omega2_kn.append(omega2)
+            omega2_n, u_n = la.eigh(D, UPLO='L')
+            # XXX Sort the eigen-vectors accordingly 
+            omega2_n.sort()
+            omega_n = np.sqrt(omega2_n.astype(complex))
 
-        return omega2_kn
+            if not np.all(omega_n.imag == 0):
+                print "WARNING, complex frequency at q =", q_c, \
+                      "(omega_q =% 5.3e +% 5.3e*i)" % (omega_n[0].real,
+                                                       omega_n[0].imag)
+
+            omega_kn.append(omega_n)
+
+        return np.asarray(omega_kn)
     
     def update_row(self, perturbation, response_calc):
         """Update row of force constant matrix from first-order derivatives.
 
         Parameters
         ----------
-
+        perturbation: PhononPerturbation
+            The perturbation which holds the derivative of the
+            pseudo-potential.
+        response_calc: ResponseCalculator
+            Calculator with the corresponding derivatives of the density and
+            the wave-functions.
+            
         """
 
         self.density_derivative(perturbation, response_calc)
@@ -417,6 +431,7 @@ class DynamicalMatrix:
                 HP_ni = np.dot(P_ni, H_ii)
                 d2PHP_nvv = (d2P_nivv.conj() *
                              HP_ni[:, :, np.newaxis, np.newaxis]).sum(1)
+                assert False, "you are using the f_n attribute here"
                 d2PHP_nvv *= kpt.f_n[:, np.newaxis, np.newaxis]
                 A_vv = d2PHP_nvv.sum(0)
     
