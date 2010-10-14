@@ -12,6 +12,7 @@ This module contains classes for defining combinations of two indices:
 
 import numpy as np
 from ase.units import Bohr
+from ase.dft import monkhorst_pack
 from ase.dft.kpoints import get_monkhorst_shape
 
 from gpaw.symmetry import Symmetry
@@ -20,19 +21,20 @@ from gpaw.kpoint import KPoint
 class KPointDescriptor:
     """Descriptor-class for k-points."""
 
-    def __init__(self, bzk_kc, nspins):
+    def __init__(self, kpts, nspins):
         """Construct descriptor object for kpoint/spin combinations (ks-pair).
 
         Parameters
         ----------
-        bzk_kc: ndarray
-            Coordinates of the k-points in the Brillouin zone in units of the
-            reciprocal lattice vectors.
+        kpts: None, list of ints, or ndarray
+            Specification of the k-point grid. None=Gamma, list of
+            ints=Monkhorst-Pack, ndarray=user specified.
         nspins: int
             Number of spins.
 
         Attributes
         ============  ======================================================
+        ``N_c``       Number of k-points in the different directions.
         ``nspins``    Number of spins.
         ``nibzkpts``  Number of irreducible kpoints in 1st Brillouin zone.
         ``nks``       Number of k-point/spin combinations in total.
@@ -43,7 +45,16 @@ class KPointDescriptor:
         
         """
 
-        self.bzk_kc = bzk_kc
+        if kpts is None:
+            self.bzk_kc = np.zeros((1, 3))
+            self.N_c = np.array((1, 1, 1), int)
+        elif isinstance(kpts[0], int):
+            self.bzk_kc = monkhorst_pack(kpts)
+            self.N_c = np.array(kpts, int)
+        else:
+            self.bzk_kc = np.array(kpts)
+            self.N_c = None
+
         self.nspins = nspins
         self.nbzkpts = len(bzk_kc)
         

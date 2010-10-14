@@ -362,11 +362,9 @@ class PAW(PAWTextOutput):
             xcfunc = par.xc
 
         setups = Setups(Z_a, par.setups, par.basis, par.lmax, xcfunc, world)
-        
-        # Set the scaled k-points:
-        bzk_kc = kpts2ndarray(par.kpts)
 
-        kd = KPointDescriptor(bzk_kc, nspins)
+        # K-point descriptor
+        kd = KPointDescriptor(par.kpts, nspins)
 
         width = par.width
         if width is None:
