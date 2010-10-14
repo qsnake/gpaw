@@ -48,6 +48,7 @@ class PhononCalculator:
 
         # XXX
         assert symmetry in [None, False], "Spatial symmetries not allowed yet"
+
         self.symmetry = symmetry
 
         if isinstance(calc, str):
@@ -62,7 +63,9 @@ class PhononCalculator:
         
         # Store useful objects
         self.atoms = self.calc.get_atoms()
-
+        # Get rid of ``calc`` attribute
+        self.atoms.calc = None
+        
         # Boundary conditions
         pbc_c = self.calc.atoms.get_pbc()
         
@@ -133,8 +136,32 @@ class PhononCalculator:
         self.initialized = False
 
         # Parallel stuff
-        self.comm = world
+        # self.comm = world
 
+    def __getstate__(self): 
+        """Method used to pickle.
+
+        Bound method attributes cannot be pickled and must therefore be deleted
+        before an instance is dumped to file.
+
+        """
+
+        # Get state of object and take care of troublesome attributes
+        state = dict(self.__dict__)
+        state['kd'].__dict__['comm'] = serial_comm
+        state.pop('calc')
+        state.pop('perturbation')
+        state.pop('response_calc')
+        
+        return state
+
+    def collect(self):
+        """Collect calculated quantities."""
+
+        self.D_matrix.collect()
+        if self.e_ph is not None:
+            self.e_ph.collect()
+            
     def initialize(self):
         """Initialize response calculator and perturbation."""
 

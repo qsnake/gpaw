@@ -78,8 +78,8 @@ class DynamicalMatrix:
 
         # Get state of object and take care of troublesome attributes
         state = dict(self.__dict__)
-        state['kd'].__dict__['comm'] = serial_comm
-        state['atoms'].__dict__.pop('calc')
+        # state['kd'].__dict__['comm'] = serial_comm
+        # state['atoms'].__dict__.pop('calc')
 
         return state
 
@@ -251,12 +251,12 @@ class DynamicalMatrix:
         if not self.assembled:
             self.assemble()
 
-        # Shape of k-point grid
+        # Shape of q-point grid
         N_c = tuple(self.kd.N_c)
 
         # Reshape before Fourier transforming
         M = 3 * self.N
-        D_q = self.D.reshape(N_c + (M, M,))
+        D_q = self.D.reshape(N_c + (M, M))
         D_R_m = fft.ifftn(fft.ifftshift(D_q, axes=(0, 1, 2)), axes=(0, 1, 2))
 
         if debug:
