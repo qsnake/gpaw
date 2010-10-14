@@ -251,14 +251,12 @@ class DynamicalMatrix:
         if not self.assembled:
             self.assemble()
 
-        # XXX Temp solution
-        nqpts = len(self.kd.bzk_kc)
-        n = int(round(nqpts**(1./3)))
-        N_c = (n, n, n)
+        # Shape of k-point grid
+        N_c = tuple(self.kd.N_c)
 
         # Reshape before Fourier transforming
         M = 3 * self.N
-        D_q = self.D.reshape(N_c + (M, M))
+        D_q = self.D.reshape(N_c + (M, M,))
         D_R_m = fft.ifftn(fft.ifftshift(D_q, axes=(0, 1, 2)), axes=(0, 1, 2))
 
         if debug:

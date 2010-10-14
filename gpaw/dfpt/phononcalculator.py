@@ -69,19 +69,19 @@ class PhononCalculator:
         if np.all(pbc_c == False):
             self.gamma = True
             self.dtype = float
-            bzq_kc = np.array(((0, 0, 0),), dtype=float)
+            kpts = None
             # Multigrid Poisson solver
             poisson_solver = PoissonSolver()
         else:
             if gamma:
                 self.gamma = True
                 self.dtype = float
-                bzq_kc = np.array(((0, 0, 0),), dtype=float)
+                kpts = None
             else:
                 self.gamma = False
                 self.dtype = complex
                 # Get k-points from ground-state calculation
-                bzq_kc = self.calc.get_bz_k_points()
+                kpts = self.calc.input_parameters.kpts
                 
             # FFT Poisson solver
             poisson_solver = FFTPoissonSolver(dtype=self.dtype)
@@ -90,7 +90,7 @@ class PhononCalculator:
         self.atoms_a = dict([ (atom.index, [0, 1, 2]) for atom in self.atoms])
         
         # K-point descriptor for the q-vectors of the dynamical matrix
-        self.kd = KPointDescriptor(bzq_kc, 1)
+        self.kd = KPointDescriptor(kpts, 1)
         self.kd.set_symmetry(self.atoms, self.calc.wfs.setups, symmetry)
         self.kd.set_communicator(world)
 
