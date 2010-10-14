@@ -13,7 +13,6 @@ This module contains classes for defining combinations of two indices:
 import numpy as np
 from ase.units import Bohr
 from ase.dft import monkhorst_pack
-from ase.dft.kpoints import get_monkhorst_shape
 
 from gpaw.symmetry import Symmetry
 from gpaw.kpoint import KPoint
@@ -188,32 +187,34 @@ class KPointDescriptor:
 
         """
 
-        kplusq_k = []
-        
-        nkptxyz = get_monkhorst_shape(self.bzk_kc)
-        
-        dk = 1. / nkptxyz 
-        kmax = (nkptxyz - 1) * dk / 2.
+        assert self.N_c is not None, "Not Monkhorst-Pack grid ..."
+
+        N_c = self.N_c
+        dk_c = 1. / N_c
+        kmax = (N_c - 1) * dk_c / 2.
         N = np.zeros(3, dtype=int)
+
+        # List of k+q indices
+        kplusq_k = []
 
         for k, k_c in enumerate(self.bzk_kc):
             
             kplusq_c = k_c + q_c
             
-            for dim in range(3):
-                if kplusq_c[dim] > 0.5:
-                    kplusq_c[dim] -= 1.
-                elif kplusq_c[dim] < -0.5:
-                    kplusq_c[dim] += 1.
+            for c in range(3):
+                if kplusq_c[c] > 0.5:
+                    kplusq_c[c] -= 1.
+                elif kplusq_c[c] < -0.5:
+                    kplusq_c[c] += 1.
     
-                N[dim] = int(np.round((kplusq_c[dim] + kmax[dim])/dk[dim]))
+                N[c] = int(np.round((kplusq_c[c] + kmax[c])/dk_c[c]))
     
-            kplusq_k.append(N[2] + N[1] * nkptxyz[2] + N[0] * nkptxyz[2] * nkptxyz[1])
+            kplusq_k.append(N[2] + N[1] * N_c[2] + N[0] * N_c[2] * N_c[1])
 
             # Check the k+q vector index
             k_c = self.bzk_kc[kplusq_k[k]]
 
-            assert abs(kplusq_c - k_c).sum() < 1e-8, 'k+q index not correct!'
+            assert abs(kplusq_c - k_c).sum() < 1e-8, "Could not find k+q!"
     
         return kplusq_k
 
