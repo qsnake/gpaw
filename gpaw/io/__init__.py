@@ -91,7 +91,6 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
             filename = create_db_filename()
 
     if master or hdf5:
-
         w = open(filename, 'w', world)
         
         w['history'] = 'GPAW restart file'
@@ -146,13 +145,8 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
         w.dimension('nfinegptsz', ng[2])
         w.dimension('nspins', wfs.nspins)
         w.dimension('nbands', wfs.nbands)
-
-        nproj = 0
-        nadm = 0
-        for setup in wfs.setups:
-            ni = setup.ni
-            nproj += ni
-            nadm += ni * (ni + 1) // 2
+        nproj = sum([setup.ni for setup in wfs.setups])
+        nadm = sum([setup.ni * (setup.ni + 1) // 2 for setup in wfs.setups])
         w.dimension('nproj', nproj)
         w.dimension('nadm', nadm)
 
@@ -446,22 +440,42 @@ def read(paw, reader):
 
     hdf5 = hasattr(r, 'hdf5_reader')
 
+    # Verify setup fingerprints and count projectors and atomic matrices:
     for setup in wfs.setups.setups.values():
         try:
             key = atomic_names[setup.Z] + 'Fingerprint'
             if setup.type != 'paw':
                 key += '(%s)' % setup.type
-            fp = r[key]
+            if setup.fingerprint != r[key]:
+                str = 'Setup for %s (%s) not compatible with restart file.' \
+                    % (setup.symbol, setup.filename)
+                if paw.input_parameters['idiotproof']:
+                    raise RuntimeError(str)
+                else:
+                    paw.warn(str)
         except (AttributeError, KeyError):
-            break
-        if setup.fingerprint != fp:
-            str = 'Setup for %s (%s) not compatible with restart file.' % \
-                  (setup.symbol, setup.filename)
+            str = 'Fingerprint of setup for %s (%s) not in restart file.' \
+                % (setup.symbol, setup.filename)
             if paw.input_parameters['idiotproof']:
                 raise RuntimeError(str)
             else:
                 paw.warn(str)
-            
+    nproj = sum([setup.ni for setup in wfs.setups])
+    nadm = sum([setup.ni * (setup.ni + 1) // 2 for setup in wfs.setups])
+
+    # Verify dimensions for minimally required netCDF variables:
+    ng = wfs.gd.get_size_of_global_array()
+    nfg = density.finegd.get_size_of_global_array()
+    shapes = {'ngptsx': ng[0],
+              'ngptsy': ng[1],
+              'ngptsz': ng[2],
+              'nspins': wfs.nspins,
+              'nproj' : nproj,
+              'nadm'  : nadm}
+    for name,dim in shapes.items():
+        if r.dimension(name) != dim:
+            raise ValueError('shape mismatch: expected %s=%d' % (name,dim))
+
     # Read pseudoelectron density on the coarse grid
     # and distribute out to nodes:
     nt_sG = wfs.gd.empty(density.nspins)
@@ -470,18 +484,14 @@ def read(paw, reader):
         nt_sG[:] = r.get('PseudoElectronDensity', *indices)
     else:
         for s in range(density.nspins):
-            wfs.gd.distribute(r.get('PseudoElectronDensity', s),
-                              nt_sG[s])
+            wfs.gd.distribute(r.get('PseudoElectronDensity', s), nt_sG[s])
 
     # Read atomic density matrices
     D_asp = {}
     density.rank_a = np.zeros(natoms, int)
     if domain_comm.rank == 0:
-        D_asp = read_atomic_matrices(r, 'AtomicDensityMatrices',
-                                     wfs.setups)
-    
+        D_asp = read_atomic_matrices(r, 'AtomicDensityMatrices', wfs.setups)
     density.initialize_directly_from_arrays(nt_sG, D_asp)
-
 
     # Read pseudo potential on the coarse grid
     # and distribute out to nodes:
@@ -525,7 +535,7 @@ def read(paw, reader):
         if energy_error is not None:
             paw.scf.energies = [Etot, Etot + energy_error, Etot]
     else:
-        paw.scf.converged = True
+        paw.scf.converged = r['Converged']
 
     if version > 0.6:
         if paw.occupations.fixmagmom:
@@ -570,6 +580,11 @@ def read(paw, reader):
 
     if (nibzkpts == len(wfs.ibzk_kc) and
         nbands == band_comm.size * wfs.mynbands):
+
+        # Verify that symmetries for for k-point reduction hasn't changed:
+        assert np.abs(r.get('IBZKPoints')-wfs.kd.ibzk_kc).max() < 1e-12
+        assert np.abs(r.get('IBZKPointWeights')-wfs.kd.weight_k).max() < 1e-12
+
         for kpt in wfs.kpt_u:
             # Eigenvalues and occupation numbers:
             k = kpt.k
