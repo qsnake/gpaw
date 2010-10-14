@@ -55,10 +55,10 @@ class KPointDescriptor:
             self.N_c = None
 
         self.nspins = nspins
-        self.nbzkpts = len(bzk_kc)
+        self.nbzkpts = len(self.bzk_kc)
         
         # Gamma-point calculation
-        self.gamma = self.nbzkpts == 1 and not bzk_kc[0].any()
+        self.gamma = self.nbzkpts == 1 and not self.bzk_kc[0].any()
 
         self.symmetry = None
         self.comm = None
