@@ -247,8 +247,8 @@ class UTProjectorFunctionSetup(UTLocalizedFunctionSetup):
     def setUp(self):
         UTLocalizedFunctionSetup.setUp(self)
 
-        fdksl = get_kohn_sham_layouts(None, 'fd', False, self.gd, self.bd)
-        lcaoksl = get_kohn_sham_layouts(None, 'lcao', False, self.gd, self.bd,
+        fdksl = get_kohn_sham_layouts(None, 'fd', self.gd, self.bd)
+        lcaoksl = get_kohn_sham_layouts(None, 'lcao', self.gd, self.bd,
                                         nao=self.setups.nao)
         args = (self.gd, self.setups.nvalence, self.setups,
                 self.bd, self.dtype, world, self.kd)
