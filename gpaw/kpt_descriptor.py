@@ -218,7 +218,6 @@ class KPointDescriptor:
                 k = np.argmin(np.sum(np.abs(self.bzk_kc - kplusq_c), axis=1))
                 kplusq_k.append(k)
 
-            print kplusq_k
             # Check the k+q vector index
             k_c = self.bzk_kc[kplusq_k[kplusq]]
             assert abs(kplusq_c - k_c).sum() < 1e-8, "Could not find k+q!"
