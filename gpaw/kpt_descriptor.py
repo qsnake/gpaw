@@ -200,13 +200,14 @@ class KPointDescriptor:
         kplusq_kc = self.bzk_kc + q_c
         # Translate back into the first BZ
         kplusq_kc[np.where(kplusq_kc > 0.5)] -= 1.
-        kplusq_kc[np.where(kplusq_kc < -0.5)] += 1.
+        kplusq_kc[np.where(kplusq_kc <= -0.5)] += 1.
 
         # List of k+q indices
         kplusq_k = []
         
         # Find index of k+q vector in the bzk_kc attribute
         for kplusq, kplusq_c in enumerate(kplusq_kc):
+            print kplusq_c
             # Calculate index for Monkhorst-Pack grids
             if self.N_c is not None:
                 N = np.asarray(np.round((kplusq_c + kmax_c) / dk_c),
@@ -217,6 +218,7 @@ class KPointDescriptor:
                 k = np.argmin(np.sum(np.abs(self.bzk_kc - kplusq_c), axis=1))
                 kplusq_k.append(k)
 
+            print kplusq_k
             # Check the k+q vector index
             k_c = self.bzk_kc[kplusq_k[kplusq]]
             assert abs(kplusq_c - k_c).sum() < 1e-8, "Could not find k+q!"
