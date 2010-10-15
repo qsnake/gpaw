@@ -46,10 +46,10 @@ class KPointDescriptor:
 
         if kpts is None:
             self.bzk_kc = np.zeros((1, 3))
-            self.N_c = np.array((1, 1, 1), int)
+            self.N_c = np.array((1, 1, 1), dtype=int)
         elif isinstance(kpts[0], int):
             self.bzk_kc = monkhorst_pack(kpts)
-            self.N_c = np.array(kpts, int)
+            self.N_c = np.array(kpts, dtype=int)
         else:
             self.bzk_kc = np.array(kpts)
             self.N_c = None
@@ -160,6 +160,7 @@ class KPointDescriptor:
         sdisp_cd = gd.sdisp_cd
 
         kpt_u = []
+
         for ks in range(self.ks0, self.ks0 + self.mynks):
             s, k = divmod(ks, self.nibzkpts)
             q = (ks - self.ks0) % self.nibzkpts
@@ -182,40 +183,44 @@ class KPointDescriptor:
         Parameters
         ----------
         q_c: ndarray
-            Scaled coordinates for the q-vector in units of the reciprocal
+            Coordinates for the q-vector in units of the reciprocal
             lattice vectors.
 
         """
 
-        assert self.N_c is not None, "Not Monkhorst-Pack grid ..."
+        # Monkhorst-pack grid
+        if self.N_c is not None:
+            N_c = self.N_c
+            dk_c = 1. / N_c
+            kmax_c = (N_c - 1) * dk_c / 2.
 
-        N_c = self.N_c
-        dk_c = 1. / N_c
-        kmax = (N_c - 1) * dk_c / 2.
         N = np.zeros(3, dtype=int)
+
+        # k+q vectors
+        kplusq_kc = self.bzk_kc + q_c
+        # Translate back into the first BZ
+        kplusq_kc[np.where(kplusq_kc > 0.5)] -= 1.
+        kplusq_kc[np.where(kplusq_kc < -0.5)] += 1.
 
         # List of k+q indices
         kplusq_k = []
-
-        for k, k_c in enumerate(self.bzk_kc):
-            
-            kplusq_c = k_c + q_c
-            
-            for c in range(3):
-                if kplusq_c[c] > 0.5:
-                    kplusq_c[c] -= 1.
-                elif kplusq_c[c] < -0.5:
-                    kplusq_c[c] += 1.
-    
-                N[c] = int(np.round((kplusq_c[c] + kmax[c])/dk_c[c]))
-    
-            kplusq_k.append(N[2] + N[1] * N_c[2] + N[0] * N_c[2] * N_c[1])
+        
+        # Find index of k+q vector in the bzk_kc attribute
+        for kplusq, kplusq_c in enumerate(kplusq_kc):
+            # Calculate index for Monkhorst-Pack grids
+            if self.N_c is not None:
+                N = np.asarray(np.round((kplusq_c + kmax_c) / dk_c),
+                               dtype=int)
+                kplusq_k.append(N[2] + N[1] * N_c[2] +
+                                N[0] * N_c[2] * N_c[1])
+            else:
+                k = np.argmin(np.sum(np.abs(self.bzk_kc - kplusq_c), axis=1))
+                kplusq_k.append(k)
 
             # Check the k+q vector index
-            k_c = self.bzk_kc[kplusq_k[k]]
-
+            k_c = self.bzk_kc[kplusq_k[kplusq]]
             assert abs(kplusq_c - k_c).sum() < 1e-8, "Could not find k+q!"
-    
+        
         return kplusq_k
 
     def get_count(self, rank=None):
