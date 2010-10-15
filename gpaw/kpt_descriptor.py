@@ -207,7 +207,7 @@ class KPointDescriptor:
         
         # Find index of k+q vector in the bzk_kc attribute
         for kplusq, kplusq_c in enumerate(kplusq_kc):
-            print kplusq_c
+
             # Calculate index for Monkhorst-Pack grids
             if self.N_c is not None:
                 N = np.asarray(np.round((kplusq_c + kmax_c) / dk_c),
