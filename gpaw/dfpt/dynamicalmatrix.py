@@ -255,8 +255,8 @@ class DynamicalMatrix:
         N_c = tuple(self.kd.N_c)
 
         # Reshape before Fourier transforming
-        M = 3 * self.N
-        D_q = self.D.reshape(N_c + (M, M))
+        shape = self.D.shape
+        D_q = self.D.reshape(N_c + shape[1:])
         D_R_m = fft.ifftn(fft.ifftshift(D_q, axes=(0, 1, 2)), axes=(0, 1, 2))
 
         if debug:
@@ -265,7 +265,7 @@ class DynamicalMatrix:
             
         D_R_m = D_R_m.real
         # Reshape for the evaluation of the fourier sums
-        D_R_m = D_R_m.reshape(nqpts, M, M)
+        D_R_m = D_R_m.reshape(shape)
 
         # Corresponding R_m vectors in units of the lattice vectors
         N1_c = np.array(N_c)[:, np.newaxis]
@@ -279,7 +279,7 @@ class DynamicalMatrix:
     def band_structure(self, path_kc):
         """Calculate phonon bands along a path in the Brillouin zone.
 
-        The dynamical matrix at arbitrary q-vectors are obtained by Fourier
+        The dynamical matrix at arbitrary q-vectors is obtained by Fourier
         interpolating the matrix in real-space.
 
         Parameters
@@ -303,8 +303,8 @@ class DynamicalMatrix:
 
         for q_c in path_kc:
             
-            phase = np.exp(-2.j * pi * np.dot(q_c, R_cm))
-            D = np.sum(phase[:, np.newaxis, np.newaxis] * D_R_m, axis=0)
+            phase_m = np.exp(-2.j * pi * np.dot(q_c, R_cm))
+            D = np.sum(phase_m[:, np.newaxis, np.newaxis] * D_R_m, axis=0)
             # Units: Ha / Bohr**2 / amu
             omega2_n, u_n = la.eigh(D, UPLO='L')
             # XXX Sort the eigen-vectors accordingly 
@@ -318,7 +318,7 @@ class DynamicalMatrix:
 
             omega_kn.append(omega_n)
 
-        return np.asarray(omega_kn)
+        return np.asarray(omega_kn) #, D
     
     def update_row(self, perturbation, response_calc):
         """Update row of force constant matrix from first-order derivatives.

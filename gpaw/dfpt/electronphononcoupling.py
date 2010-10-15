@@ -102,7 +102,7 @@ class ElectronPhononCoupling:
         Parameters
         ----------
         kpts: ???
-            ...
+            Specification of the k-point grid.
         bands: list
             List of band indices to include.
 
@@ -110,40 +110,62 @@ class ElectronPhononCoupling:
 
         assert self.calc is not None, "Calculator not set."
 
-        # 1) Do a single-shot calculation to get the required wave-functions
-        ## self.calc.set(fixdensity=True,
-        ##               kpts=kpts,
-        ##               convergence=dict(nbands=8),
-        ##               # basis='dzp',
-        ##               eigensolver='cg',
-        ##               usesymm=None)
+        # Phonon k-point descriptor
+        kd_p = self.kd
+
+        # Find k-points to be included
+        if kpts is None:
+            # Use existing wave-functions in the calculator
+            pass
+        elif isinstance(kpts[0], int):
+            # List of ints
+            self.calc.set(kpts=kpts)
+            # assert not smaller than q-grid
+        else:
+            # Shifted k-point grid (should be possible to make it dense too)
+            kpts = np.array(kpts)
+            assert kpts.shape == (1, 3), "Invalid kpts value"
+            kpts = kd_p.bzk_kc + kpts
+            # Translate back into the first BZ
+            kpts[np.where(kpts > 0.5)] -= 1.
+            kpts[np.where(kpts <= -0.5)] += 1.
+            self.calc.set(kpts=kpts)
+            
+        # Do a single-shot calculation to get the required wave-functions
+##         self.calc.set(fixdensity=True,
+##                       nbands=10,
+##                       convergence=dict(nbands=8),
+##                       # basis='dzp',
+##                       eigensolver='cg',
+##                       usesymm=None)
+##         self.calc.get_potential_energy()
         
         # Electronic k-point descriptor
         kd_e = self.calc.wfs.kd
-        # Phonon k-point descriptor
-        kd_p = self.kd
 
         # Grid descriptor
         gd = self.calc.wfs.gd
 
-        # Array for matrix elements
+        # Number of matrix elements along the different indices
         n_q = kd_p.nbzkpts
         n_k = kd_e.nbzkpts
         n_a = self.atoms.get_number_of_atoms()
         n_bands = len(bands)
+        # Array for matrix elements
         g_qavknn = np.empty((n_q, n_a, 3, n_k, n_bands, n_bands),
                             dtype=self.dtype)
-        
+
+        # Calculate matrix elements
         for q, q_c in enumerate(kd_p.bzk_kc):
-            
-            kplusq_k  = kd_e.find_k_plus_q(q_c)
+
+            kplusq_k = kd_e.find_k_plus_q(q_c)
 
             for a, atom in enumerate(self.atoms):
 
                 for v in [0, 1, 2]:
 
                     v1_eff_G = self.v1_eff_kavG[q, a, v]
-                    
+
                     for k, k_c in enumerate(kd_e.bzk_kc):
 
                         kplusq = kplusq_k[k]
@@ -151,6 +173,7 @@ class ElectronPhononCoupling:
                         kpt = self.calc.wfs.kpt_u[k]
                         kplusqpt = self.calc.wfs.kpt_u[kplusq]
 
+                        # XXX Tar load
                         psit_k_nG = kpt.psit_nG[:][bands]
                         psit_kplusq_nG = kplusqpt.psit_nG[:][bands]
 
@@ -159,11 +182,52 @@ class ElectronPhononCoupling:
                         for n, psit_G in enumerate(psit_k_nG):
                             
                             g_n = gd.integrate(a_n * psit_G)
-
-                            g_qavknn[q, a, v, k, n] = g_n
+                            # XXX Squared elements
+                            g_qavknn[q, a, v, k, n] = (g_n * g_n.conj()).real
 
         return g_qavknn
-            
 
+    def real_space(self, g_qavknn):
+        """Fourier transform to real-space."""
 
+        # Shape of q-point grid
+        N_c = tuple(self.kd.N_c)
         
+        # Reshape before Fourier transforming
+        shape = g_qavknn.shape
+        gq_cccavknn = g_qavknn.reshape(N_c + shape[1:])
+
+        gm_cccavknn = fft.ifftn(fft.ifftshift(gq_cccavknn, axes=(0, 1, 2)),
+                                axes=(0, 1, 2))
+            
+        # Reshape for the evaluation of the fourier sums
+        g_mavknn = gm_cccavknn.reshape(shape)
+
+        # Corresponding R_m vectors in units of the lattice vectors
+        N1_c = np.array(N_c)[:, np.newaxis]
+        R_cm = np.indices(N1_c).reshape(3, -1)
+        R_cm += N1_c // 2
+        R_cm %= N1_c
+        R_cm -= N1_c // 2
+
+        return g_mavknn, R_cm
+            
+    def fourier_interpolate(self, g_mavknn, N=2**5):
+        """Fourier interpolate the real-space matrix elements."""
+
+        # Reshape before fourier transforming
+        shape = g_mavknn.shape
+        N_c = tuple(self.kd.N_c)
+        gm_cccavknn = g_mavknn.reshape(N_c + shape[1:])
+        # Zero pad
+        gm_cccavknn_ = np.zeros((N, N, N) + shape[1:], dtype=self.dtype)
+        # Insert existing values
+        i, j, k = self.kd.N_c / 2 + 1
+        gm_cccavknn_[:i, :j, :k] = gm_cccavknn[:i, :j, :k]
+        i, j, k = - self.kd.N_c / 2 
+        gm_cccavknn_[i:, j:, k:] = gm_cccavknn[i:, j:, k:]
+
+        # Fourier transform
+        gq_cccavknn = fft.fftn(gm_cccavknn_, axes=(0, 1, 2))
+
+        return gq_cccavknn
