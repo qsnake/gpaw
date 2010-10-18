@@ -149,10 +149,24 @@ class CHI:
         nibzkpt = self.ibzk_kc.shape[0]
         kweight_k = calc.get_k_point_weights()
 
-        self.e_kn = np.array([calc.get_eigenvalues(kpt=k)
+        try:
+            self.e_kn
+        except:
+            self.printtxt('Use eigenvalues from the calculator.')
+            self.e_kn = np.array([calc.get_eigenvalues(kpt=k)
                     for k in range(nibzkpt)]) / Hartree
         self.f_kn = np.array([calc.get_occupation_numbers(kpt=k) / kweight_k[k]
                     for k in range(nibzkpt)]) / self.nkpt
+
+        if self.hilbert_trans:
+            # for band parallelization.
+            for n in range(self.nbands):
+                if (self.f_kn[:, n] - self.ftol < 0).all():
+                    self.nvalbands = n
+                    break
+        else:
+            # if not hilbert transform, all the bands should be used.
+            self.nvalbands = self.nbands
 
         # k + q init
         assert self.q_c is not None
@@ -183,7 +197,7 @@ class CHI:
 
         # Symmetry operations init
         usesymm = calc.input_parameters.get('usesymm')
-        if usesymm == None:
+        if usesymm == None or self.nkpt == 1:
             op_scc = (np.eye(3, dtype=int),)
         elif usesymm == False:
             op_scc = (np.eye(3, dtype=int), -np.eye(3, dtype=int))
@@ -205,7 +219,8 @@ class CHI:
             raise SystemExit
 
         # For LCAO wfs
-        calc.initialize_positions()
+        if calc.input_parameters['mode'] == 'lcao':
+            calc.initialize_positions()        
         self.printtxt('     GS calculator   : %f M / cpu' %(maxrss() / 1024**2))
         # PAW part init
         # calculate <phi_i | e**(-i(q+G).r) | phi_j>
@@ -269,8 +284,7 @@ class CHI:
             else:
                 ibzkpt2, iop2, timerev2 = find_ibzkpt(self.op_scc, ibzk_kc, bzk_kc[kq_k[k]])
 
-            for n in range(self.nbands):
-
+            for n in range(self.nstart, self.nend):
                 psitold_g = self.get_wavefunction(ibzkpt1, n)
                 
                 psit1new_g = symmetrize_wavefunction(psitold_g, self.op_scc[iop1], ibzk_kc[ibzkpt1],
@@ -346,13 +360,21 @@ class CHI:
 #                            for wi in range(self.NwS_local):
 #                                if deltaw[wi + self.wS1] > 1e-8:
 #                                    specfunc_wGG[wi] += tmp_GG * deltaw[wi + self.wS1]
-
+                if self.nkpt == 1:
+                    if n == 0:
+                        dt = time() - t0
+                        totaltime = dt * self.nband_local
+                        self.printtxt('Finished n 0 in %f seconds, estimated %f seconds left.' %(dt, totaltime) )
+                    if rank == 0 and self.nband_local // 5 > 0:
+                        if n > 0 and n % (self.nband_local // 5) == 0:
+                            dt = time() - t0
+                            self.printtxt('Finished n %d in %f seconds, estimated %f seconds left.'%(n, dt, totaltime-dt))
             if calc.wfs.world.size != 1:
                 self.kcomm.barrier()            
             if k == 0:
                 dt = time() - t0
                 totaltime = dt * self.nkpt_local
-                self.printtxt('Finished k 0 in %f seconds, estimatied %f seconds left.' %(dt, totaltime))
+                self.printtxt('Finished k 0 in %f seconds, estimated %f seconds left.' %(dt, totaltime))
                 
             if rank == 0 and self.nkpt_local // 5 > 0:            
                 if k > 0 and k % (self.nkpt_local // 5) == 0:
@@ -360,6 +382,7 @@ class CHI:
                     self.printtxt('Finished k %d in %f seconds, estimated %f seconds left.  '%(k, dt, totaltime - dt) )
         self.printtxt('Finished summation over k')
 
+        self.kcomm.barrier()
         del rho_GG, rho_G
         # Hilbert Transform
         if not self.hilbert_trans:
@@ -399,20 +422,21 @@ class CHI:
 
 
     def get_wavefunction(self, k, n):
+
         psit_G = self.calc.wfs.get_wave_function_array(n, k, 0)
 
         if self.calc.wfs.world.size == 1:
-            return psit_G
+            return np.complex128(psit_G)
         
         if not self.calc.wfs.world.rank == 0:
             psit_G = self.calc.wfs.gd.empty(dtype=self.calc.wfs.dtype,
                                             global_array=True)
         self.calc.wfs.world.broadcast(psit_G, 0)
-        return psit_G
+
+        return np.complex128(psit_G)
 
 
     def output_init(self):
-
 
         if self.txtname is None:
             if rank == 0:
@@ -466,8 +490,20 @@ class CHI:
 
         self.kcomm, self.wScomm, self.wcomm = set_communicator(world, rank, size, self.kcommsize)
 
-        self.nkpt, self.nkpt_local, self.kstart, self.kend = parallel_partition(
+        if self.nkpt != 1:
+            self.nkpt, self.nkpt_local, self.kstart, self.kend = parallel_partition(
                                self.nkpt, self.kcomm.rank, self.kcomm.size, reshape=False)
+            self.nband_local = self.nband
+            self.nstart = 0
+            self.nend = self.nband
+        else:
+            # if number of kpoints == 1, use band parallelization
+            self.nkpt_local = 1
+            self.kstart = 0
+            self.kend = 1
+
+            self.nvalbands, self.nband_local, self.nstart, self.nend = parallel_partition(
+                               self.nvalbands, self.kcomm.rank, self.kcomm.size, reshape=False)
 
         self.NwS, self.NwS_local, self.wS1, self.wS2 = parallel_partition(
                                self.NwS, self.wScomm.rank, self.wScomm.size, reshape=True)
@@ -531,7 +567,10 @@ class CHI:
         printtxt('')
         printtxt('Parallelization scheme:')
         printtxt('     Total cpus      : %d' %(self.comm.size))
-        printtxt('     kpoint parsize  : %d' %(self.kcomm.size))
+        if self.nkpt == 1:
+            printtxt('     nbands parsize  : %d' %(self.kcomm.size))
+        else:
+            printtxt('     kpoint parsize  : %d' %(self.kcomm.size))
         printtxt('     specfunc parsize: %d' %(self.wScomm.size))
         printtxt('     w parsize       : %d' %(self.wcomm.size))
         printtxt('')
