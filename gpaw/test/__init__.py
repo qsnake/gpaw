@@ -160,6 +160,7 @@ tests = [
     'aluminum_EELS_lcao.py',
     'aluminum_testcell.py',
     'dump_chi0.py',
+    'au02_absorption.py',
     'hgh_h2o.py',
     'apmb.py',
     'relax.py',
@@ -252,6 +253,7 @@ except ImportError:
                 'aluminum_EELS.py',
                 'aluminum_EELS_lcao.py',
                 'aluminum_testcell.py',
+                'au02_absorption.py',
                 'aeatom.py']
 
 for test in exclude:
