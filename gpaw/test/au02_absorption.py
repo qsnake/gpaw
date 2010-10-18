@@ -5,7 +5,7 @@ from ase import Atom, Atoms
 from ase.visualize import view
 from gpaw.response.df import DF
 
-GS = 0
+GS = 1
 ABS = 1
 if GS:
     cluster = Atoms([Atom('Au', (0, 0, 0)),
