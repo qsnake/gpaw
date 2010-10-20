@@ -46,7 +46,7 @@ The installation of user's packages on neolith described below uses
 - build `gpaw-setups`::
 
    cd ~/apps
-   wget --no-check-certificate "http://wiki.fysik.dtu.dk/stuff/gpaw-setups-0.5.3574.tar.gz"
+   wget --no-check-certificate "http://wiki.fysik.dtu.dk/gpaw-files/gpaw-setups-0.5.3574.tar.gz"
    tar zxf gpaw-setups-0.5.3574.tar.gz
 
 - deploy modules::
