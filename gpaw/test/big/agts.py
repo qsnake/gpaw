@@ -43,6 +43,8 @@ class AGTSJob:
         self.ncpus = ncpus
         self.walltime = walltime
         if deps:
+            if not isinstance(deps, (list, tuple)):
+                deps = [deps]
             self.deps = deps
         else:
             self.deps = []
