@@ -45,9 +45,9 @@ class ResponseCalculator:
                   'tolerance_sc':          1.0e-5,
                   'tolerance_sternheimer': 1.0e-4,
                   'use_pc':                True,
-                  'beta':                  0.4,
+                  'beta':                  0.2,
                   'nmaxold':               6,
-                  'weight':                1
+                  'weight':                50
                   }
     
     def __init__(self, calc, wfs, poisson_solver=None, dtype=float, **kwargs):
@@ -196,9 +196,9 @@ class ResponseCalculator:
                            % iter)
                     break
                 
-            if iter == max_iter-1:
-                print     ("self-consistent loop did not converge in %i "
-                           "iterations" % (iter+1))
+            if iter == max_iter:
+                raise RuntimeError, ("self-consistent loop did not converge "
+                                     "in %i iterations" % iter)
    
     def set(self, **kwargs):
         """Set parameters for calculation."""
