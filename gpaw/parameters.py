@@ -97,7 +97,11 @@ class InputParameters(dict):
         self.xc = r['XCFunctional']
         self.nbands = r.dimension('nbands')
         self.spinpol = (r.dimension('nspins') == 2)
-        self.kpts = r.get('BZKPoints')
+
+        if r.has_array('NBZKPoints'):
+            self.kpts = r.get('NBZKPoints')
+        else:
+            self.kpts = r.get('BZKPoints')
         self.usesymm = r['UseSymmetry']
         try:
             self.basis = r['BasisSet']

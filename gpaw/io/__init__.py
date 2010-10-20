@@ -128,6 +128,8 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
                   units=(-1, 1, 0))
 
         # Write the k-points:
+        if wfs.kd.N_c is not None:
+            w.add('NBZKPoints', ('3'), wfs.kd.N_c)
         w.dimension('nbzkpts', len(wfs.bzk_kc))
         w.dimension('nibzkpts', len(wfs.ibzk_kc))
         w.add('BZKPoints', ('nbzkpts', '3'), wfs.bzk_kc)
