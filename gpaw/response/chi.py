@@ -493,9 +493,9 @@ class CHI:
         if self.nkpt != 1:
             self.nkpt, self.nkpt_local, self.kstart, self.kend = parallel_partition(
                                self.nkpt, self.kcomm.rank, self.kcomm.size, reshape=False)
-            self.nband_local = self.nband
+            self.nband_local = self.nbands
             self.nstart = 0
-            self.nend = self.nband
+            self.nend = self.nbands
         else:
             # if number of kpoints == 1, use band parallelization
             self.nkpt_local = 1
