@@ -24,7 +24,7 @@ wget https://wiki.fysik.dtu.dk/gpaw-files/gpaw-${gpaw_version}.tar.gz
 tar zxf gpaw-${gpaw_version}.tar.gz
 
 set gpaw_setups_version=0.6.6300
-wget http://wiki.fysik.dtu.dk/stuff/gpaw-setups-${gpaw_setups_version}.tar.gz
+wget http://wiki.fysik.dtu.dk/gpaw-files/gpaw-setups-${gpaw_setups_version}.tar.gz
 tar zxf gpaw-setups-${gpaw_setups_version}.tar.gz
 
 mkdir -p ${MODULEFILES}/nose

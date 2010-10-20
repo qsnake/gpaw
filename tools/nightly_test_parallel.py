@@ -42,7 +42,7 @@ if os.system('source /home/camp/modulefiles.sh&& ' +
 os.system('mv ../ase/ase ../lib64/python')
 
 os.system('wget --no-check-certificate --quiet ' +
-          'http://wiki.fysik.dtu.dk/stuff/gpaw-setups-latest.tar.gz')
+          'http://wiki.fysik.dtu.dk/gpaw-files/gpaw-setups-latest.tar.gz')
 os.system('tar xvzf gpaw-setups-latest.tar.gz')
 setups = tmpdir + '/gpaw/' + glob.glob('gpaw-setups-[0-9]*')[0]
 

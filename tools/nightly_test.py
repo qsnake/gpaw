@@ -53,7 +53,7 @@ if os.system('python setup.py install --home=%s ' % tmpdir +
 os.system('mv ../ase/ase ../lib/python')
 
 os.system('wget --no-check-certificate --quiet ' +
-          'http://wiki.fysik.dtu.dk/stuff/gpaw-setups-latest.tar.gz')
+          'http://wiki.fysik.dtu.dk/gpaw-files/gpaw-setups-latest.tar.gz')
 
 os.system('tar xvzf gpaw-setups-latest.tar.gz')
 

@@ -41,7 +41,7 @@ class Niflheim(Cluster):
             raise RuntimeError('Installation of GPAW (Opteron) failed!')
         
         os.system('wget --no-check-certificate --quiet ' +
-                  'http://wiki.fysik.dtu.dk/stuff/gpaw-setups-latest.tar.gz')
+                  'http://wiki.fysik.dtu.dk/gpaw-files/gpaw-setups-latest.tar.gz')
         os.system('tar xzf gpaw-setups-latest.tar.gz')
         os.system('rm gpaw-setups-latest.tar.gz')
         os.system('mv gpaw-setups-[0-9]* gpaw/gpaw-setups')

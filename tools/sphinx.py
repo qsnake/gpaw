@@ -27,7 +27,7 @@ def build():
     os.system('grep -v "c/libxc/src" error 1>&2')
 
     os.system('wget --no-check-certificate --quiet ' +
-              'http://wiki.fysik.dtu.dk/stuff/gpaw-setups-latest.tar.gz')
+              'http://wiki.fysik.dtu.dk/gpaw-files/gpaw-setups-latest.tar.gz')
 
     os.system('tar xvzf gpaw-setups-latest.tar.gz')
 
