@@ -177,26 +177,7 @@ class XCFunctional:
             code = 'lxc' # libxc
             self.uses_libxc = True
             xcname = 'None-XC_HCTH_407'# MDTMP a hack: should be 'XC_HCTH_407'
-        elif xcname == 'PBE0':
-            assert (nspins is not None)
-            code = 'lxc' # libxc
-            self.uses_libxc = True
-            xcname = 'X_PBE-C_PBE'
-            self.orbital_dependent = True
-            self.hybrid = 0.25
-            if self.setupname is None:
-                self.setupname = 'PBE'
-        elif xcname == 'PW1PW':
-            # T. Bredow and A.R. Gerson, Phys. Rev. B 61 (2000), p. 5194
-            assert (nspins is not None)
-            code = 'lxc' # libxc
-            self.uses_libxc = True
-            xcname = 'X_PW91-C_PW91'
-            self.orbital_dependent = True
-            self.hybrid = 0.20
-            if self.setupname is None:
-                self.setupname = 'PW91'
-        elif xcname == 'PBEH':
+        elif xcname in ['PBE0', 'PBEH']:
             # preferred, direct implementation of PBE0 in libxc
             assert (nspins is not None)
             code = 'lxc' # libxc
