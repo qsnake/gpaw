@@ -12,7 +12,7 @@ import pylab as plt
 import ase.units as units
 from ase.dft.kpoints import ibz_points, get_bandpath
 
-from gpaw,mpi import rank
+from gpaw.mpi import rank
 from gpaw.dfpt import PhononCalculator
 
 # Pseudo-potential
