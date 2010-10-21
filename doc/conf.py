@@ -53,16 +53,14 @@ master_doc = 'contents'
 
 # General substitutions.
 project = 'GPAW'
-copyright = '2008, CAMd et al.'
+copyright = 'CAMd et al.'
 
 # The default replacements for |version| and |release|, also used in various
 # other places throughout the built documents.
 #
 # The short X.Y version.
-try:
-    from gpaw.version import version
-except ImportError:
-    version = '0.5'
+from gpaw.version import version_base as version
+
 # The full version, including alpha/beta/rc tags.
 release = version
 
@@ -107,7 +105,7 @@ html_style = 'gpaw.css'
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-#html_title = None
+html_title = 'GPAW'
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 #html_short_title = None
@@ -128,7 +126,7 @@ html_static_path = ['_static']
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
-html_last_updated_fmt = '%b %d, %Y'
+html_last_updated_fmt = ''#'%b %d, %Y'
 
 # If true, SmartyPants will be used to convert quotes and dashes to
 # typographically correct entities.
