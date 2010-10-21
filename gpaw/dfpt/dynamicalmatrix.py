@@ -256,16 +256,14 @@ class DynamicalMatrix:
 
         # Reshape before Fourier transforming
         shape = self.D.shape
-        D_q = self.D.reshape(N_c + shape[1:])
-        D_R_m = fft.ifftn(fft.ifftshift(D_q, axes=(0, 1, 2)), axes=(0, 1, 2))
+        Dq_lmn = self.D.reshape(N_c + shape[1:])
+        DR_lmn = fft.ifftn(fft.ifftshift(Dq_lmn, axes=(0, 1, 2)), axes=(0, 1, 2))
 
         if debug:
             # Check that D_R is real enough
-            assert np.all(D_R_m.imag < 1e-8)
+            assert np.all(DR_lmn.imag < 1e-8)
             
-        D_R_m = D_R_m.real
-        # Reshape for the evaluation of the fourier sums
-        D_R_m = D_R_m.reshape(shape)
+        DR_lmn = DR_lmn.real
 
         # Corresponding R_m vectors in units of the lattice vectors
         N1_c = np.array(N_c)[:, np.newaxis]
@@ -274,7 +272,7 @@ class DynamicalMatrix:
         R_cm %= N1_c
         R_cm -= N1_c // 2
 
-        return D_R_m, R_cm
+        return DR_lmn, R_cm
     
     def band_structure(self, path_kc):
         """Calculate phonon bands along a path in the Brillouin zone.
@@ -296,7 +294,11 @@ class DynamicalMatrix:
                    "Scaled coordinates must be given"
 
         # Get the dynamical matrix in real-space
-        D_R_m, R_cm = self.real_space()
+        DR_lmn, R_cm = self.real_space()
+
+        # Reshape for the evaluation of the fourier sums
+        shape = DR_lmn.shape
+        DR_m = DR_lmn.reshape((-1,) + shape[-2:])
         
         # List for squared frequencies along path
         omega_kn = []
@@ -304,11 +306,12 @@ class DynamicalMatrix:
         for q_c in path_kc:
             
             phase_m = np.exp(-2.j * pi * np.dot(q_c, R_cm))
-            D = np.sum(phase_m[:, np.newaxis, np.newaxis] * D_R_m, axis=0)
+            D = np.sum(phase_m[:, np.newaxis, np.newaxis] * DR_m, axis=0)
             # Units: Ha / Bohr**2 / amu
             omega2_n, u_n = la.eigh(D, UPLO='L')
             # XXX Sort the eigen-vectors accordingly 
             omega2_n.sort()
+            # Use dtype=complex to handle negative frequencies
             omega_n = np.sqrt(omega2_n.astype(complex))
 
             if not np.all(omega_n.imag == 0):
@@ -316,9 +319,9 @@ class DynamicalMatrix:
                       "(omega_q =% 5.3e +% 5.3e*i)" % (omega_n[0].real,
                                                        omega_n[0].imag)
 
-            omega_kn.append(omega_n)
+            omega_kn.append(omega_n.real)
 
-        return np.asarray(omega_kn) #, D
+        return np.asarray(omega_kn)
     
     def update_row(self, perturbation, response_calc):
         """Update row of force constant matrix from first-order derivatives.
@@ -335,6 +338,7 @@ class DynamicalMatrix:
         """
 
         self.density_derivative(perturbation, response_calc)
+        # XXX
         # self.wfs_derivative(perturbation, response_calc)
         
     def density_ground_state(self, calc):
@@ -456,7 +460,7 @@ class DynamicalMatrix:
         # Get attributes from the phononperturbation
         a = perturbation.a
         v = perturbation.v
-        #XXX: careful here, Gamma calculation has q=-1
+        #XXX careful here, Gamma calculation has q=-1
         q = perturbation.q
 
         # Matrix of force constants to be updated; q=-1 for Gamma calculation!
