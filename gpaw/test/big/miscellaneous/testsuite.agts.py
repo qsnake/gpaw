@@ -4,3 +4,5 @@ def agts(queue):
 if __name__ == '__main__':
     # Run test suite
     import gpaw.test.test
+    import os
+    assert not os.path.isfile('failed-tests.txt')
