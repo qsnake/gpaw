@@ -74,6 +74,14 @@ def update():
     t0 = t
     c0 = c
 
+def function_timer(func, *args, **kwargs):
+    out = kwargs.pop('timeout', sys.stdout)
+    t1 = time.time()
+    r = func(*args, **kwargs)
+    t2 = time.time()
+    print >>out, t2 - t1
+    return r
+
 
 class Timer:
     def __init__(self, print_levels=1000):
@@ -226,6 +234,7 @@ class StepTimer(Timer):
         del self.timers[self.now]
         self.start(self.now)
 
+
 class TAUTimer(Timer):
     """TAUTimer requires installation of the TAU Performance System
     http://www.cs.uoregon.edu/research/tau/home.php
@@ -252,6 +261,7 @@ class TAUTimer(Timer):
         self.stop('PAW_calc')
         Timer.write(self, out)
 
+
 class HPMTimer(Timer):
     """HPMTimer requires installation of the IBM BlueGene/P HPM
     middleware interface to the low-level UPC library. This will
@@ -275,6 +285,7 @@ class HPMTimer(Timer):
     def write(self, out=sys.stdout):
         self.stop('PAW_calc')
         Timer.write(self, out)
+
 
 class CrayPAT_timer(Timer):
     """Interface to CrayPAT API. In addition to regular timers,

@@ -1,19 +1,6 @@
 import numpy as np
 
-
-def function_timer(func, *args, **kwargs):
-    if 'timeout' in kwargs:
-        out = kwargs.pop('timeout')
-    else:
-        from sys import stdout as out
-
-    from time import time
-    t1 = time()
-    r = func(*args, **kwargs)
-    t2 = time()
-    print >>out, t2 - t1
-    return r
-
+from ase import Hartree, Bohr
 
 def L_to_lm(L):
     """Convert L index to (l, m) index."""
@@ -25,24 +12,6 @@ def L_to_lm(L):
 def lm_to_L(l, m):
     """Convert (l, m) index to L index."""
     return l**2 + l + m
-
-
-def core_states(symbol):
-    """Method returning the number of core states for given element."""
-    from gpaw.atom.configurations import configurations
-    from gpaw.atom.generator import parameters
-
-    core = parameters[symbol].get('core', '')
-
-    # Parse core string:
-    j = 0
-    if core.startswith('['):
-        a, core = core.split(']')
-        core_symbol = a[1:]
-        j = len(configurations[core_symbol][1])
-
-    Njcore = j + len(core) // 2
-    return Njcore
 
 
 def split_formula(formula):
@@ -270,7 +239,6 @@ def apply_subspace_mask(H_nn, f_n):
 
 def cutoff2gridspacing(E):
     """Convert planewave energy cutoff to a real-space gridspacing."""
-    from ase import Hartree, Bohr
     return np.pi / np.sqrt(2 * E / Hartree) * Bohr
 
 
@@ -278,7 +246,6 @@ def gridspacing2cutoff(h):
     """Convert real-space gridspacing to planewave energy cutoff."""
     # In Hartree units, E = k^2 / 2, where k_max is approx. given by pi / h
     # See PRB, Vol 54, 14362 (1996)
-    from ase import Hartree, Bohr
     return 0.5 * (np.pi * Bohr / h)**2 * Hartree
 
 

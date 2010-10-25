@@ -9,7 +9,6 @@ from gpaw.fd_operators import Gradient
 from gpaw.utilities import is_contiguous
 from gpaw.utilities.blas import axpy
 from gpaw.utilities.timing import Timer
-from gpaw.exx import EXX
 from gpaw.gllb.nonlocalfunctionalfactory import NonLocalFunctionalFactory
 from gpaw.libxc import Libxc
 from gpaw.lfc import LFC
@@ -386,6 +385,7 @@ class XCFunctional:
                 use_finegrid = self.parameters['finegrid']
             else:
                 use_finegrid = True
+            from gpaw.exx import EXX
             self.exx = EXX(density, hamiltonian, wfs, atoms,
                            energy_only=energy_only,
                            use_finegrid=use_finegrid)

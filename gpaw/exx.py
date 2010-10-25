@@ -80,14 +80,14 @@ In PAW, equation (5.3) above transforms to::
 
 import numpy as np
 
-from gpaw.utilities.tools import core_states, symmetrize
+from ase.units import Hartree
+from gpaw.atom.configurations import configurations, core_states
 from gpaw.gaunt import make_gaunt
 from gpaw.utilities import hartree, packed_index, unpack, unpack2, pack, pack2
-from gpaw.ae import AllElectronSetup
 from gpaw.utilities.blas import gemm, r2k
 from gpaw.pair_density import PairDensity2 as PairDensity
 from gpaw.poisson import PoissonSolver, PoissonFFTSolver
-from gpaw.utilities.tools import apply_subspace_mask
+from gpaw.utilities.tools import apply_subspace_mask, symmetrize
 
 usefft = False
 verbose = False
@@ -595,5 +595,4 @@ def H_coulomb_val_core(paw, u=0):
         X_ii = unpack(paw.wfs.setups[a].X_p)
         H_nn += np.dot(P_ni.conj(), np.dot(X_ii, P_ni.T))
     paw.wfs.gd.comm.sum(H_nn)
-    from ase.units import Hartree
     return H_nn * Hartree

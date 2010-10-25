@@ -9,108 +9,13 @@ from numpy.linalg import solve, inv
 from ase.data import atomic_names
 
 from gpaw.setup_data import SetupData
-from gpaw.atom.configurations import configurations
+from gpaw.atom.configurations import configurations, parameters #XXX temporary
 from gpaw.version import version
 from gpaw.atom.all_electron import AllElectron, shoot
 from gpaw.utilities.lapack import general_diagonalize
 from gpaw.utilities import hartree
 from gpaw.exx import constructX, atomic_exact_exchange
 from gpaw.atom.filter import Filter
-
-
-parameters = {
- 'H' : {'rcut': 0.9},
- 'He': {'rcut': 1.5},
- 'Li': {'core': '[He]',   'rcut': 2.0},
- 'Be': {'core': '[He]',   'rcut': 1.5},
- 'B' : {'core': '[He]',   'rcut': 1.2},
- 'C' : {'core': '[He]',   'rcut': 1.2},
- 'N' : {'core': '[He]',   'rcut': 1.1},
- 'O' : {'core': '[He]',   'rcut': 1.4, 'filter': (0.5, 1.75)},
- 'F' : {'core': '[He]',   'rcut': 1.2},
- 'Ne': {'core': '[He]',   'rcut': 1.8},
- 'Na': {'core': '[Ne]',   'rcut': 2.55},
- 'Mg': {'core': '[Ne]',   'rcut': [1.9, 2.0]},
- 'Al': {'core': '[Ne]',   'rcut': 2.05},
- 'Si': {'core': '[Ne]',   'rcut': 2.0},
- 'P' : {'core': '[Ne]',   'rcut': 1.8},
- 'S' : {'core': '[Ne]',   'rcut': 1.6},
- 'Cl': {'core': '[Ne]',   'rcut': 1.5},
- 'Ar': {'core': '[Ne]',   'rcut': 1.6},
- 'K' : {'core': '[Ne]',   'rcut': [2.5, 2.1, 2.1]},
- 'Ca': {'core': '[Ne]',   'rcut': [2.0, 1.7]},
- 'Sc': {'core': '[Ne]',   'rcut': [1.9, 1.8]},
- 'Ti': {'core': '[Ne]', 'rcut': [2.4, 2.0, 2.0],
-        'vbar': ('f', 1.8), 'rcutcomp': 2.3},
- 'V' : {'core': '[Ar]',   'rcut': [2.5, 2.4, 2.0],
-        'vbar': ('poly', 2.3), 'rcutcomp': 2.5},
- 'Cr': {'core': '[Ar]',   'rcut': [2.2, 2.3, 2.1]},
- 'Mn': {'core': '[Ar]',   'rcut': [2.2, 2.1, 2.1]},
- 'Fe': {'core': '[Ar]',   'rcut': [2.2, 2.0, 2.0]},
- 'Co': {'core': '[Ar]',   'rcut': [1.9, 2.0, 1.9]},
- 'Ni': {'core': '[Ar]',   'rcut': [1.8, 1.9, 1.8]},
- 'Cu': {'core': '[Ar]',   'rcut': [2.2, 2.2, 2.0]},
- 'Zn': {'core': '[Ar]',   'rcut': [2.0, 1.9, 1.9]},
- 'Ga': {'core': '[Ar]3d', 'rcut': 2.2},
- 'Ge': {'core': '[Ar]3d', 'rcut': 1.9},
- 'As': {'core': '[Ar]3d', 'rcut': 2.0},
- 'Se': {'core': '[Ar]3d', 'rcut': [1.6, 1.9]},
- 'Br': {'core': '[Ar]3d', 'rcut': 2.1},
- 'Kr': {'core': '[Ar]3d', 'rcut': 2.2},
- 'Rb': {'core': '[Ar]3d', 'rcut': [2.6, 2.4, 2.3]},
- 'Sr': {'core': '[Ar]3d', 'rcut': [2.4, 2.4, 2.3],
-        'extra':{1: [0.0], 2: [0.0]}},
-#'Y' : Missing
- 'Zr': {'core': '[Ar]3d', 'rcut': 2.0},
- 'Nb': {'core': '[Kr]',   'rcut': [2.9, 2.9, 2.6]},
- 'Mo': {'core': '[Kr]',   'rcut': [2.8, 2.8, 2.5]},
-#'Tc': Radioactive
- 'Ru': {'core': '[Kr]',   'rcut': 2.6},
- 'Rh': {'core': '[Kr]',   'rcut': 2.5},
- 'Pd': {'core': '[Kr]',   'rcut': [2.3, 2.5, 2.2]},
- 'Ag': {'core': '[Kr]',   'rcut': 2.45},
- 'Cd': {'core': '[Kr]',   'rcut': [2.1, 2.5, 2.0]},
- 'In': {'core': '[Kr]',   'rcut': [2.1, 2.5, 2.0]},
- 'Sn': {'core': '[Kr]',   'rcut': 2.2},
-#'Sb': Missing
- 'Te': {'core': '[Kr]',   'rcut': 2.2},
- 'I' : {'core': '[Kr]4d', 'rcut': 2.2},
-#'Xe': Missing
- 'Cs': {'core': '[Kr]4d', 'rcut': [2.2, 2.0]},
- 'Ba': {'core': '[Kr]4d', 'rcut': 2.2, 'extra': {1: [0.0], 2: [0.0, 1.0]}},
- 'La': {'core': '[Kr]4d', 'rcut': [2.3, 2.0, 1.9]},
-#'La': {'core': '[Kr]4d5s', 'rcut': [2.3, 2.0, 1.9]},
-#'Lu': Missing
-#'Hf': Missing
- 'Ta': {'core': '[Xe]4f', 'rcut': 2.8},
- 'W' : {'core': '[Xe]4f', 'rcut': 2.8},
-#'Re': Missing
- 'Os': {'core': '[Xe]4f', 'rcut': [2.5, 2.7, 2.5]},
- 'Ir': {'core': '[Xe]4f', 'rcut': [2.3, 2.6, 2.0],
-        'vbar': ('poly', 2.1), 'rcutcomp': 2.3},
- 'Pt': {'core': '[Xe]4f', 'rcut': [2.5, 2.7, 2.3]},
- 'Au': {'core': '[Xe]4f', 'rcut': 2.5},
-#'Hg': Missing
-#'Tl': Missing
- 'Pb': {'core': '[Xe]4f', 'rcut': [2.4, 2.6, 2.4]},
- 'Bi': {'core': '[Xe]4f', 'rcut': [2.2, 2.4, 2.2]}
-#'Bi': Missing
-#'Po': Missing
-#'At': Missing
-#'Rn': Missing
- }
-
-# Extra setups
-parameters_extra = {
- 'H' : {'name': 'single', 'rcut': 0.9, 'extra': {}},# No extra projectors
- 'Li': {'name': 'hard', 'rcut': 1.5, 'extra': {1: [-0.0413]}}, # No core
- 'Be': {'name': 'soft', 'core': '[He]', 'rcut': 1.9},
- 'O' : {'name': 'hard', 'core': '[He]', 'rcut': 1.2},
- 'Si': {'name': 'hard', 'core': '[Ne]', 'rcut': 1.85},
- 'Br': {'name': 'old',  'core': '[Ar]3d', 'rcut': 2.2},
- 'Pt': {'name': 'soft', 'core': '[Xe]4f', 'rcut': [2.5, 2.7, 2.3],
-        'rcutcomp': 2.5},
- }
 
 
 class Generator(AllElectron):

@@ -18,7 +18,6 @@ from gpaw.atom.configurations import configurations
 from gpaw.grid_descriptor import RadialGridDescriptor
 from gpaw.xc_functional import XCRadialGrid, XCFunctional
 from gpaw.utilities import hartree, devnull
-from gpaw.exx import atomic_exact_exchange
 from gpaw import ConvergenceError
 
 tempdir = tempfile.gettempdir()
@@ -296,6 +295,7 @@ class AllElectron:
 
         # When iterations are over calculate the correct exchange energy
         #if self.xc.is_non_local():
+        #    from gpaw.exx import atomic_exact_exchange
         #    Exc = atomic_exact_exchange(self)
 
         t()
