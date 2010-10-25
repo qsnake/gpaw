@@ -9,7 +9,7 @@ from numpy.linalg import solve, inv
 from ase.data import atomic_names
 
 from gpaw.setup_data import SetupData
-from gpaw.atom.configurations import configurations, parameters #XXX temporary
+from gpaw.atom.configurations import configurations
 from gpaw.version import version
 from gpaw.atom.all_electron import AllElectron, shoot
 from gpaw.utilities.lapack import general_diagonalize
@@ -1017,6 +1017,7 @@ if __name__ == '__main__':
     import os
     from gpaw.xc_functional import XCFunctional
     from gpaw.atom.basis import BasisMaker
+    from gpaw.atom.configurations import parameters
 
     for xcname in ['LDA', 'PBE', 'RPBE', 'revPBE']:
         for symbol, par in parameters.items():
@@ -1030,4 +1031,4 @@ if __name__ == '__main__':
                 bm = BasisMaker(g, name='dzp', run=False)
                 basis = bm.generate()
                 basis.write_xml()
-                
+
