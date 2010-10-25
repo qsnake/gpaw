@@ -103,7 +103,7 @@ void *transapply_worker(void *threadarg)
             bmgs_interpolate(self->k, self->skip, buf, bc->size2,
                              out, buf2);
           else
-            bmgs_restrict(self->k, self->buf, bc->size2,
+            bmgs_restrict(self->k, buf, bc->size2,
                           out, buf2);
         }
       else
