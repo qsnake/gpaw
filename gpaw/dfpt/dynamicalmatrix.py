@@ -27,16 +27,35 @@ class DynamicalMatrix:
     
     """
     
-    def __init__(self, atoms, kd, dtype=float):
-        """Inititialize class with a list of atoms."""
+    def __init__(self, atoms, kd, dtype=float, name=None):
+        """Inititialize class with a list of atoms.
+
+        Parameters
+        ----------
+        atoms: Atoms
+            List of atoms for the system.
+        kd: KPointDescriptor
+            Descriptor for the q-vector grid.
+        name: str
+            Base name for the files which the elements of the matrix of force
+            constants will be written to.
+
+        """
 
         # Store useful objects
         self.atoms = atoms
         self.kd = kd
         self.dtype = dtype
         self.masses = atoms.get_masses()
-        self.N = atoms.get_number_of_atoms()
+        
+        if name is None:
+            self.name = atoms.get_name() + '_D_nibzkpts_%i' % kd.nibzkpts
+        else:
+            self.name = name
 
+        # List of atomic indices to be included (default is all atoms)
+        self.indices = range(len(self.atoms))
+        
         # Index of the gamma point -- for the acoustic sum-rule
         self.gamma_index = None
         
@@ -52,10 +71,10 @@ class DynamicalMatrix:
         
         # Matrix of force constants -- dict of dicts in atomic indices
         # Only local q-vector stored here
-        self.C_qaavv = [dict([(atom.index,
-                               dict([(atom_.index, np.zeros((3, 3), dtype=dtype))
-                                     for atom_ in atoms])) for atom in atoms])
-                        for q in range(self.kd.mynks)]
+        self.C_qaavv = [dict([(i, dict([(j, np.zeros((3, 3), dtype=dtype))
+                                        for j in self.indices]))
+                              for i in self.indices])
+                        for q in range(self.kd.nibzkpts)]
         
         # Dynamical matrix -- 3Nx3N ndarray (vs q)
         # Local matrices
@@ -66,6 +85,7 @@ class DynamicalMatrix:
         self.D = None
         
         self.assembled = False
+        # XXX deprecated
         self.collected = False
 
     def __getstate__(self): 
@@ -78,8 +98,7 @@ class DynamicalMatrix:
 
         # Get state of object and take care of troublesome attributes
         state = dict(self.__dict__)
-        # state['kd'].__dict__['comm'] = serial_comm
-        # state['atoms'].__dict__.pop('calc')
+        state['kd'].__dict__['comm'] = serial_comm
 
         return state
 
@@ -87,92 +106,54 @@ class DynamicalMatrix:
         """Method used to unpickle an instance of ``DynamicalMatrix``."""
 
         self.__dict__.update(state)
+
+    def set_indices(self, indices):
+        """Set indices of atoms to include in the calculation."""
         
-    def dump(self, filename):
-        """Dump the ``DynamicalMatrix`` object to a pickle file."""
+        self.indices = indices
 
-        if self.kd.comm.rank == 0:
-            f = open(filename, 'w')
-            pickle.dump(self, f)
-            f.close()
+        self.C_qaavv = [dict([(a, dict([(a_, np.zeros((3, 3), dtype=dtype))
+                                        for a_ in self.indices]))
+                              for a in self.indices])
+                        for q in range(self.kd.nibzkpts)]
 
-    def load(filename):
-        """Load ``DynamicalMatrix`` instance from a pickle file."""
+    def get_name_string(self):
+        """Return filename string."""
 
-        f = open(filename, 'r')
-        pickle.load(self, f)
-        f.close()
+        name_str = (self.name + '.' + 'q_%%0%ii_' % len(str(self.kd.nibzkpts)) +
+                    'a_%%0%ii_' % len(str(len(self.atoms))) + 'v_%i' + '.pckl')
+
+        return name_str
+    
+    def write(self, q, a, v):
+        """Dump force constants for specified indices to file."""
+
+        # Create filename
+        name_str = self.get_name_string()
+        filename = name_str % (q, a, v)
+
+        # Dump force constants
+        fd = open(filename, 'w')
+        C_qav_a = [self.C_qaavv[q][a][a_][v] for a_ in self.indices]
+        pickle.dump(C_qav_a, fd)
+        fd.close()
         
-    def collect(self, acoustic=False):
-        """Collect matrix of force constants from slaves."""
+    def read(self):
+        """Read the force constants from files."""
 
-        # Assemble matrix of force constants locally
-        for q, C_aavv in enumerate(self.C_qaavv):
+        name_str = self.get_name_string()
 
-            C_avav = np.zeros((3*self.N, 3*self.N), dtype=self.dtype)
-    
-            for atom in self.atoms:
-    
-                a = atom.index
-    
-                for atom_ in self.atoms:
-    
-                    a_ = atom_.index
-    
-                    C_avav[3*a : 3*a + 3, 3*a_ : 3*a_ + 3] += C_aavv[a][a_]
-
-            self.D_q.append(C_avav)
-
-        # Apply acoustic sum-rule if requested        
-        if acoustic:
-
-            # Make C(q) Hermitian
-            for C in self.D_q:
-                C *= 0.5
-                C += C.conj().T
-                
-            # Get matrix of force constants in the Gamma-point
-            rank_gamma, q_gamma = \
-                        self.kd.get_rank_and_index(0, self.gamma_index)
-            
-            # Broadcast Gamma-point matrix to all ranks
-            C_gamma = np.empty((3*self.N, 3*self.N), dtype=self.dtype)
-            if self.kd.comm.rank == rank_gamma:
-                C_gamma[...] = self.D_q[q_gamma].copy()
-            self.kd.comm.broadcast(C_gamma, rank_gamma)
-
-            # Correct atomic diagonal for each q-vector
-            for C in self.D_q:
-
-                for atom in self.atoms:
-                    a = atom.index
-                    C_gamma_av = C_gamma[3*a: 3*a+3]
-
-                    for atom_ in self.atoms:
-                        a_ = atom_.index
-                        C[3*a : 3*a + 3, 3*a : 3*a + 3] -= \
-                              C_gamma_av[:3, 3*a_: 3*a_+3]
-                        
-        # Collect from slaves
-        if self.kd.comm.rank == 0:
-            # Global array
-            self.D_k = np.empty((self.kd.nibzkpts, 3*self.N, 3*self.N),
-                                dtype=self.dtype)
-            uslice = self.kd.get_slice()
-            self.D_k[uslice] = np.asarray(self.D_q)
-            
-            for slave_rank in range(1, self.kd.comm.size):
-                uslice = self.kd.get_slice(rank=slave_rank)
-                nks = uslice.stop - uslice.start
-                C_q = np.empty((nks, 3*self.N, 3*self.N), dtype=self.dtype)
-                self.kd.comm.receive(C_q, slave_rank, tag=123)
-                self.D_k[uslice] = C_q
-        else:
-            C_q = np.asarray(self.D_q)
-            self.kd.comm.send(C_q, 0, tag=123)
-
-        self.collected = True
-        
+        for q in range(self.kd.nibzkpts):
+            for a in self.indices:
+                for v in [0, 1, 2]:
+                    filename = name_str % (q, a, v)
+                    print filename
+                    fd = open(filename)
+                    C_qav_a = pickle.load(fd)
+                    fd.close()
+                    for a_ in self.indices:
+                        self.C_qaavv[q][a][a_][v] = C_qav_a[a_]
+                      
     def assemble(self, acoustic=True):
         """Assemble dynamical matrix from the force constants attribute.
 
@@ -197,10 +178,26 @@ class DynamicalMatrix:
             
         """
 
-        # Assemble matrix of force constants locally
-        if not self.collected:
-            self.collect(acoustic=False)
+        # Read force constants from files
+        self.read()
 
+        # Number of atoms included
+        N = len(self.indices)
+        
+        # Assemble matrix of force constants
+        for q, C_aavv in enumerate(self.C_qaavv):
+
+            C_avav = np.zeros((3*N, 3*N), dtype=self.dtype)
+    
+            for a, i in enumerate(self.indices):
+                for a_, j in enumerate(self.indices):
+                    C_avav[3*i : 3*i + 3, 3*j : 3*j + 3] += C_aavv[a][a_]
+
+            self.D_q.append(C_avav)
+
+        # XXX
+        self.D_k = np.asarray(self.D_q)
+        
         # Make C(q) Hermitian
         for C in self.D_k:
             C *= 0.5
@@ -215,17 +212,16 @@ class DynamicalMatrix:
             # Correct atomic diagonal for each q-vector
             for C in self.D_k:
 
-                for atom in self.atoms:
-                    a = atom.index
+                for a in range(N):
                     C_gamma_av = C_gamma[3*a: 3*a+3]
 
-                    for atom_ in self.atoms:
-                        a_ = atom_.index
+                    for a_ in range(N):
                         C[3*a : 3*a + 3, 3*a : 3*a + 3] -= \
                               C_gamma_av[:3, 3*a_: 3*a_+3]
 
+        # Move this bit to an ``unfold`` member function
         # XXX Time-reversal symmetry
-        if len(self.kd.ibzk_kc) != len(self.kd.bzk_kc):
+        if self.kd.nibzkpts != self.kd.nbzkpts:
             if len(self.kd.ibzk_kc) != len(self.kd.bzk_kc):
                 self.D = np.concatenate((self.D_k[:0:-1].conjugate(), self.D_k))
             else:
@@ -302,7 +298,9 @@ class DynamicalMatrix:
         
         # List for squared frequencies along path
         omega_kn = []
-
+        # XXX Add kwarg for return of modes aswell
+        u_kn =  []
+        
         for q_c in path_kc:
             
             phase_m = np.exp(-2.j * pi * np.dot(q_c, R_cm))
@@ -315,10 +313,11 @@ class DynamicalMatrix:
             omega_n = np.sqrt(omega2_n.astype(complex))
 
             if not np.all(omega_n.imag == 0):
-                print "WARNING, complex frequency at q =", q_c, \
-                      "(omega_q =% 5.3e +% 5.3e*i)" % (omega_n[0].real,
-                                                       omega_n[0].imag)
-
+                indices = np.where(omega_n.imag != 0)[0]
+                print "WARNING, %i complex frequency at q =" % len(indices), q_c, \
+                      "(omega_q =% 5.3e +% 5.3e*i)" % (omega_n[indices][0].real,
+                                                       omega_n[indices][0].imag)
+                
             omega_kn.append(omega_n.real)
 
         return np.asarray(omega_kn)
@@ -572,5 +571,145 @@ class DynamicalMatrix:
                 C_aavv[a][a_][v] += 2 * (A_v + B_v)
 
 
+    def collect(self, acoustic=False):
+        """Collect matrix of force constants from slaves."""
 
+        # Assemble matrix of force constants locally
+        for q, C_aavv in enumerate(self.C_qaavv):
 
+            C_avav = np.zeros((3*self.N, 3*self.N), dtype=self.dtype)
+    
+            for atom in self.atoms:
+    
+                a = atom.index
+    
+                for atom_ in self.atoms:
+    
+                    a_ = atom_.index
+    
+                    C_avav[3*a : 3*a + 3, 3*a_ : 3*a_ + 3] += C_aavv[a][a_]
+
+            self.D_q.append(C_avav)
+
+        # Apply acoustic sum-rule if requested        
+        if acoustic:
+
+            # Make C(q) Hermitian
+            for C in self.D_q:
+                C *= 0.5
+                C += C.conj().T
+                
+            # Get matrix of force constants in the Gamma-point
+            rank_gamma, q_gamma = \
+                        self.kd.get_rank_and_index(0, self.gamma_index)
+            
+            # Broadcast Gamma-point matrix to all ranks
+            C_gamma = np.empty((3*self.N, 3*self.N), dtype=self.dtype)
+            if self.kd.comm.rank == rank_gamma:
+                C_gamma[...] = self.D_q[q_gamma].copy()
+            self.kd.comm.broadcast(C_gamma, rank_gamma)
+
+            # Correct atomic diagonal for each q-vector
+            for C in self.D_q:
+
+                for atom in self.atoms:
+                    a = atom.index
+                    C_gamma_av = C_gamma[3*a: 3*a+3]
+
+                    for atom_ in self.atoms:
+                        a_ = atom_.index
+                        C[3*a : 3*a + 3, 3*a : 3*a + 3] -= \
+                              C_gamma_av[:3, 3*a_: 3*a_+3]
+                        
+        # Collect from slaves
+        if self.kd.comm.rank == 0:
+            # Global array
+            self.D_k = np.empty((self.kd.nibzkpts, 3*self.N, 3*self.N),
+                                dtype=self.dtype)
+            uslice = self.kd.get_slice()
+            self.D_k[uslice] = np.asarray(self.D_q)
+            
+            for slave_rank in range(1, self.kd.comm.size):
+                uslice = self.kd.get_slice(rank=slave_rank)
+                nks = uslice.stop - uslice.start
+                C_q = np.empty((nks, 3*self.N, 3*self.N), dtype=self.dtype)
+                self.kd.comm.receive(C_q, slave_rank, tag=123)
+                self.D_k[uslice] = C_q
+        else:
+            C_q = np.asarray(self.D_q)
+            self.kd.comm.send(C_q, 0, tag=123)
+
+        self.collected = True
+        
+
+    def assemble_old(self, acoustic=True):
+        """Assemble dynamical matrix from the force constants attribute.
+
+        The elements of the dynamical matrix are given by::
+
+            D_ij(q) = 1/(M_i + M_j) * C_ij(q) ,
+                      
+        where i and j are collective atomic and cartesian indices.
+
+        During the assembly, various symmetries of the dynamical matrix are
+        restored::
+
+            1) Hermiticity
+            2) Acoustic sum-rule
+            3) D(q) = D*(-q)
+
+        Parameters
+        ----------
+        acoustic: bool
+            When True, the diagonal of the matrix of force constants is
+            corrected to ensure that the acoustic sum-rule is fulfilled.
+            
+        """
+
+        # Assemble matrix of force constants locally
+        if not self.collected:
+            self.collect(acoustic=False)
+
+        # Make C(q) Hermitian
+        for C in self.D_k:
+            C *= 0.5
+            C += C.conj().T
+            
+        # Apply acoustic sum-rule if requested
+        if acoustic:
+
+            # Get matrix of force constants in the Gamma-point
+            C_gamma = self.D_k[self.gamma_index].copy()
+
+            # Correct atomic diagonal for each q-vector
+            for C in self.D_k:
+
+                for atom in self.atoms:
+                    a = atom.index
+                    C_gamma_av = C_gamma[3*a: 3*a+3]
+
+                    for atom_ in self.atoms:
+                        a_ = atom_.index
+                        C[3*a : 3*a + 3, 3*a : 3*a + 3] -= \
+                              C_gamma_av[:3, 3*a_: 3*a_+3]
+
+        # XXX Time-reversal symmetry
+        if len(self.kd.ibzk_kc) != len(self.kd.bzk_kc):
+            if len(self.kd.ibzk_kc) != len(self.kd.bzk_kc):
+                self.D = np.concatenate((self.D_k[:0:-1].conjugate(), self.D_k))
+            else:
+                N = len(self.kd.bzk_kc)/2
+                self.D_ = self.D_k[N:]
+                self.D = np.concatenate((self.D_[:0:-1].conjugate(), self.D_))
+        else:
+            self.D = 0.5 * self.D_k
+            self.D += self.D[::-1].conjugate()
+            
+        # Mass prefactor for the dynamical matrix
+        m_av = np.repeat(np.asarray(self.masses)**(-0.5), 3)
+        M_avav = m_av[:, np.newaxis] * m_av
+
+        for C in self.D:
+            C *= M_avav
+
+        self.assembled = True
