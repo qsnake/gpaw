@@ -10,7 +10,8 @@ from ase.atoms import Atoms
 from ase.utils import devnull
 from ase.data import atomic_numbers, atomic_names, covalent_radii
 
-from gpaw.atom.generator import Generator, parameters
+from gpaw.atom.generator import Generator
+from gpaw.atom.configurations import parameters
 from gpaw.atom.analyse_setup import analyse
 from gpaw import GPAW, ConvergenceError, Mixer, FermiDirac
 import gpaw.mpi as mpi

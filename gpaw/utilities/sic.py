@@ -2,7 +2,8 @@ from gpaw.xc_functional import XCFunctional
 import numpy as np
 from itertools import izip
 from gpaw.mpi import world
-from gpaw.atom.generator import Generator, parameters
+from gpaw.atom.generator import Generator
+from gpaw.atom.configurations import parameters
 from gpaw.utilities import hartree
 from math import pi
 

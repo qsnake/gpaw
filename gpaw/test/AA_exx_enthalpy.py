@@ -6,7 +6,7 @@ from gpaw import GPAW, setup_paths
 from gpaw.mixer import Mixer, MixerSum
 from gpaw.occupations import FermiDirac
 from gpaw.atom.generator import Generator
-from gpaw.atom.generator import parameters
+from gpaw.atom.configurations import parameters
 from gpaw.test import equal, gen
 from gpaw.mpi import rank
 

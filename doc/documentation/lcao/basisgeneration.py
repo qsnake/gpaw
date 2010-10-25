@@ -1,4 +1,5 @@
-from gpaw.atom.generator import Generator, parameters
+from gpaw.atom.generator import Generator
+from gpaw.atom.configurations import parameters
 from gpaw.atom.basis import BasisMaker
 
 symbol = 'Au'

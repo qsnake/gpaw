@@ -43,7 +43,7 @@ Comparison and Benchmark DataBase`_, `Dacapo pseudo potentials`_, and
    generation_of_setups
 
 
-.. from gpaw.atom.generator import parameters
+.. from gpaw.atom.configurations import parameters
    for s in parameters:
        print '.. %3s: %2s.html' % ('_' + s, s)
 

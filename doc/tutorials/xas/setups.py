@@ -1,7 +1,8 @@
 import os
 
 from gpaw import Calculator
-from gpaw.atom.generator import Generator, parameters
+from gpaw.atom.generator import Generator
+from gpaw.atom.configurations import parameters
 
 # Generate setups with 0.5, 1.0, 0.0 core holes in 1s
 elements = ['O', 'C', 'N']

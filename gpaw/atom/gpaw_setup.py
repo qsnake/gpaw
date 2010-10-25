@@ -68,7 +68,8 @@ def main():
 
     import sys
     
-    from gpaw.atom.generator import Generator, parameters
+    from gpaw.atom.generator import Generator
+    from gpaw.atom.configurations import parameters
     from gpaw.atom.all_electron import AllElectron
     from gpaw import ConvergenceError
 

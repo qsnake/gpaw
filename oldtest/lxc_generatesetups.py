@@ -1,5 +1,6 @@
 from ase.parallel import rank
-from gpaw.atom.generator import Generator, parameters
+from gpaw.atom.generator import Generator
+from gpaw.atom.configurations import parameters
 from gpaw.xc_functional import XCFunctional
 
 """Test generation of setups

@@ -1,7 +1,8 @@
 from gpaw import GPAW
 from ase import *
 from gpaw.utilities import equal
-from gpaw.atom.generator import Generator, parameters
+from gpaw.atom.generator import Generator
+from gpaw.atom.configurations import parameters
 from gpaw import setup_paths
 from gpaw.mpi import world
 

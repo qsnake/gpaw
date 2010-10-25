@@ -10,7 +10,8 @@ from ase.units import Hartree
 
 from gpaw.spline import Spline
 from gpaw.atom.all_electron import AllElectron, ConvergenceError
-from gpaw.atom.generator import Generator, parameters
+from gpaw.atom.generator import Generator
+from gpaw.atom.configurations import parameters
 #from gpaw.atom.polarization import PolarizationOrbitalGenerator, Reference,\
 #     QuasiGaussian, default_rchar_rel, rchar_rels
 from gpaw.utilities import devnull, divrl

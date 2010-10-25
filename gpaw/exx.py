@@ -81,7 +81,7 @@ In PAW, equation (5.3) above transforms to::
 import numpy as np
 
 from ase.units import Hartree
-from gpaw.atom.configurations import configurations, core_states
+from gpaw.atom.configurations import core_states
 from gpaw.gaunt import make_gaunt
 from gpaw.utilities import hartree, packed_index, unpack, unpack2, pack, pack2
 from gpaw.utilities.blas import gemm, r2k

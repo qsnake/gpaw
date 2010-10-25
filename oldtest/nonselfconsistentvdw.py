@@ -3,7 +3,8 @@ from ase import *
 from ase.parallel import rank, barrier
 from gpaw.utilities import equal
 from gpaw import Calculator
-from gpaw.atom.generator import Generator, parameters
+from gpaw.atom.generator import Generator
+from gpaw.atom.configurations import parameters
 from gpaw.xc_functional import XCFunctional
 from gpaw import setup_paths
 

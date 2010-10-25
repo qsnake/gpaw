@@ -18,7 +18,8 @@ from gpaw.xc_functional import XCFunctional
 from gpaw.utilities.timing import Timer
 from gpaw.poisson import PoissonSolver
 from gpaw.odd.sic_gauss import Gaussian
-from gpaw.atom.generator import Generator, parameters
+from gpaw.atom.generator import Generator
+from gpaw.atom.configurations import parameters
 from ase.units import Bohr, Hartree
 from gpaw.lfc import LFC
 from gpaw.odd import SICXCCorrection

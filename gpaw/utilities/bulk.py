@@ -6,7 +6,7 @@ from ase.data import reference_states as crystal_structures
 from ase.data import covalent_radii
 
 from gpaw import Calculator
-from gpaw.atom.generator import parameters as setup_parameters
+from gpaw.atom.configurations import parameters as setup_parameters
 
 data = {}
 for symbol in setup_parameters:

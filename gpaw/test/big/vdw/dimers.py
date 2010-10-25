@@ -2,7 +2,8 @@ import numpy as np
 from ase import Atoms
 from ase.data.molecules import molecule
 from ase.parallel import rank, barrier
-from gpaw.atom.generator import Generator, parameters
+from gpaw.atom.generator import Generator
+from gpaw.atom.configurations import parameters
 from gpaw import setup_paths
 from gpaw import GPAW
 

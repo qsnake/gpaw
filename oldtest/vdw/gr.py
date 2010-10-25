@@ -3,7 +3,8 @@ from ase import *
 from gpaw import GPAW, setup_paths
 from gpaw.vdw import FFTVDWFunctional
 from ase.parallel import rank, barrier
-from gpaw.atom.generator import Generator, parameters
+from gpaw.atom.generator import Generator
+from gpaw.atom.configurations import parameters
 
 def test():
    

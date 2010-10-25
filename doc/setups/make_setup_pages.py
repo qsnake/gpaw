@@ -13,7 +13,7 @@ from ase.data.molecules import rest
 from ase.data.molecules import data as molecule_data
 
 from gpaw.testing.atomization_data import atomization_vasp
-from gpaw.atom.generator import parameters
+from gpaw.atom.configurations import parameters
 
 page = """.. Computer generated reST (make_setup_pages.py)
 .. index:: %(name)s

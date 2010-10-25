@@ -2,7 +2,8 @@
 from ase import *
 from gpaw import GPAW
 from gpaw.mpi import run, world
-from gpaw.atom.generator import Generator, parameters
+from gpaw.atom.generator import Generator
+from gpaw.atom.configurations import parameters
 from gpaw import setup_paths
 
 # Generate setups for oxygen and hydrogen:

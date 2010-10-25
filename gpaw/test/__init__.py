@@ -7,7 +7,8 @@ import traceback
 
 import numpy as np
 
-from gpaw.atom.generator import Generator, parameters
+from gpaw.atom.generator import Generator
+from gpaw.atom.configurations import parameters
 from gpaw.utilities import devnull
 from gpaw import setup_paths
 from gpaw import mpi
