@@ -4,7 +4,8 @@ import sys
 import time
 
 from math import sqrt
-from ase import Atoms, Atom, view
+from ase import Atoms, Atom
+from ase.visualize import view
 from ase.units import Bohr
 from ase.lattice.surface import *
 from ase.parallel import paropen
