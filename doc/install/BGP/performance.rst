@@ -36,7 +36,7 @@ Additionally, the ``parallel`` keyword is also available.
 The smallest calculation that can benefit from band/state
 parallelization is *nbands = 1000*. If you are using fewer bands, you
 are possibly *not* in need of a leadership class computer facility. 
-Note that only ref:`RMM-DIIS` eigensolver is compatible with band
+Note that only :ref:`RMM-DIIS` eigensolver is compatible with band
 parallelization. Furthermore, the RMM-DIIS eigensolver requires 
 some unoccupied bands in order to converge properly. Recommend range is::
 
