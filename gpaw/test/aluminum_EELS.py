@@ -48,15 +48,15 @@ print 'For ground  state calc, it took', (t2 - t1) / 60, 'minutes'
 print 'For excited state calc, it took', (t3 - t2) / 60, 'minutes'
 
 d = np.loadtxt('EELS_Al')
-wpeak = 15.9 # eV
-Nw = 159
+wpeak = 15.7 # eV
+Nw = 157
 if d[Nw, 1] > d[Nw-1, 1] and d[Nw, 2] > d[Nw+1, 2]:
     pass
 else:
     raise ValueError('Plasmon peak not correct ! ')
 
-if (np.abs(d[Nw, 1] - 29.5855600163) > 1e-5
-    or np.abs(d[Nw, 2] -  28.3273860013) > 1e-5):
+if (np.abs(d[Nw, 1] - 28.8932274034) > 1e-5
+    or np.abs(d[Nw, 2] -  25.9806674277) > 1e-5):
     print d[Nw, 1], d[Nw, 2]
     raise ValueError('Please check spectrum strength ! ')
 
