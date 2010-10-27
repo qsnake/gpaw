@@ -1,6 +1,9 @@
 Miscellaneous objects
 =====================
 
+.. autoclass:: gpaw.xc.functional.XCFunctional
+   :members:
+
 .. autoclass:: gpaw.forces.ForceCalculator
    :members:
 

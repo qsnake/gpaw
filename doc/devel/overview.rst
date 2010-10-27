@@ -232,6 +232,17 @@ Example::
     # or:
     xc = GGA(LibXC('GGA_X_PBE+GGA_C_PBE'))
 
+In this example, calling the
+:meth:`~gpaw.xc.gga.XCFunctional.calculate` method of the ``xc``
+object passing in a :class:`~gpaw.grid_descriptor.GridDescriptor`, an
+input density array and an output array for the potential, the
+:class:`~gpaw.xc.gga.GGA` object will calculate the gradient of the
+density and pass that and the density on to the libxc kernel.
+
+GPAW also has a few non-libxc kernels that one can use like this::
+
+    from gpaw.xc.kernel import XCKernel
+    xc = XC(XCKernel('PBE'))
 
 
 

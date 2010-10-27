@@ -14,6 +14,23 @@ class XCFunctional:
     def set_grid_descriptor(self, gd):
         self.gd = gd
 
+    def calculate(self, gd, n_sg, v_sg=None, e_g=None):
+        """Calculate energy and potential.
+
+        gd: GridDescriptor
+            Descriptor for 3-d grid.
+        n_sg: rank-4 ndarray
+            Spin densities.
+        v_sg: rank-4 ndarray
+            Array for potential.  The XC potential is added to the values
+            already there.
+        e_g: rank-3 ndarray
+            Energy density.
+
+        The total XC energy is returned."""
+        
+        raise NotImplementedError
+    
     def set_positions(self, spos_ac):
         pass
     
