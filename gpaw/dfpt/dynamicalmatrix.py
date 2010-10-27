@@ -3,6 +3,7 @@
 __all__ = ["DynamicalMatrix"]
 
 from math import sqrt, pi
+import os
 import pickle
 
 import numpy as np
@@ -27,7 +28,7 @@ class DynamicalMatrix:
     
     """
     
-    def __init__(self, atoms, kd, dtype=float, name=None):
+    def __init__(self, atoms, kd, dtype=float):
         """Inititialize class with a list of atoms.
 
         Parameters
@@ -36,9 +37,6 @@ class DynamicalMatrix:
             List of atoms for the system.
         kd: KPointDescriptor
             Descriptor for the q-vector grid.
-        name: str
-            Base name for the files which the elements of the matrix of force
-            constants will be written to.
 
         """
 
@@ -47,12 +45,10 @@ class DynamicalMatrix:
         self.kd = kd
         self.dtype = dtype
         self.masses = atoms.get_masses()
-        
-        if name is None:
-            self.name = atoms.get_name() + '_D_nibzkpts_%i' % kd.nibzkpts
-        else:
-            self.name = name
 
+        # Set default filename and path for the force constant files
+        self.set_name_and_path()
+        
         # List of atomic indices to be included (default is all atoms)
         self.indices = range(len(self.atoms))
         
@@ -106,7 +102,7 @@ class DynamicalMatrix:
         """Method used to unpickle an instance of ``DynamicalMatrix``."""
 
         self.__dict__.update(state)
-
+      
     def set_indices(self, indices):
         """Set indices of atoms to include in the calculation."""
         
@@ -117,20 +113,42 @@ class DynamicalMatrix:
                               for a in self.indices])
                         for q in range(self.kd.nibzkpts)]
 
-    def get_name_string(self):
-        """Return filename string."""
+    def set_name_and_path(self, name=None, path=None):
+        """Set name and path of the force constant files.
+
+        name: str
+            Base name for the files which the elements of the matrix of force
+            constants will be written to.
+        path: str
+            Path specifying the directory where the files will be dumped.
+            
+        """
+
+        if name is None:
+            self.name = self.atoms.get_name() + \
+                        'D_nibzkpts_%i' % self.kd.nibzkpts
+        else:
+            self.name = name
+            
+        if path is None:
+            self.path = '.'
+        else:
+            self.path = path
+        
+    def get_filename_string(self):
+        """Return string template for filenames."""
 
         name_str = (self.name + '.' + 'q_%%0%ii_' % len(str(self.kd.nibzkpts)) +
                     'a_%%0%ii_' % len(str(len(self.atoms))) + 'v_%i' + '.pckl')
 
-        return name_str
-    
+        return os.path.join(self.path, name_str)
+
     def write(self, q, a, v):
-        """Dump force constants for specified indices to file."""
+        """Write force constants for specified indices to file."""
 
         # Create filename
-        name_str = self.get_name_string()
-        filename = name_str % (q, a, v)
+        filename_str = self.get_filename_string()
+        filename = filename_str % (q, a, v)
 
         # Dump force constants
         fd = open(filename, 'w')
@@ -141,19 +159,31 @@ class DynamicalMatrix:
     def read(self):
         """Read the force constants from files."""
 
-        name_str = self.get_name_string()
+        filename_str = self.get_filename_string()
 
         for q in range(self.kd.nibzkpts):
             for a in self.indices:
                 for v in [0, 1, 2]:
-                    filename = name_str % (q, a, v)
-                    print filename
+                    filename = filename_str % (q, a, v)
+                    # print filename
                     fd = open(filename)
                     C_qav_a = pickle.load(fd)
                     fd.close()
                     for a_ in self.indices:
                         self.C_qaavv[q][a][a_][v] = C_qav_a[a_]
-                      
+
+    def clean(self):
+        """Delete generated files."""
+
+        filename_str = self.get_filename_string()
+        
+        for q in range(self.kd.nibzkpts):
+            for a in range(len(self.atoms)):
+                for v in [0, 1, 2]:
+                    filename = filename_str % (q, a, v)
+                    if os.path.isfile(filename):
+                        os.remove(filename)
+                        
     def assemble(self, acoustic=True):
         """Assemble dynamical matrix from the force constants attribute.
 
@@ -164,7 +194,7 @@ class DynamicalMatrix:
         where i and j are collective atomic and cartesian indices.
 
         During the assembly, various symmetries of the dynamical matrix are
-        restored::
+        enforced::
 
             1) Hermiticity
             2) Acoustic sum-rule
@@ -197,7 +227,8 @@ class DynamicalMatrix:
 
         # XXX
         self.D_k = np.asarray(self.D_q)
-        
+
+        # XXX Figure out in which order the corrections should be done
         # Make C(q) Hermitian
         for C in self.D_k:
             C *= 0.5
@@ -219,6 +250,7 @@ class DynamicalMatrix:
                         C[3*a : 3*a + 3, 3*a : 3*a + 3] -= \
                               C_gamma_av[:3, 3*a_: 3*a_+3]
 
+           
         # Move this bit to an ``unfold`` member function
         # XXX Time-reversal symmetry
         if self.kd.nibzkpts != self.kd.nbzkpts:
@@ -270,11 +302,12 @@ class DynamicalMatrix:
 
         return DR_lmn, R_cm
     
-    def band_structure(self, path_kc):
-        """Calculate phonon bands along a path in the Brillouin zone.
+    def band_structure(self, path_kc, modes=False):
+        """Calculate phonon dispersion along a path in the Brillouin zone.
 
         The dynamical matrix at arbitrary q-vectors is obtained by Fourier
-        interpolating the matrix in real-space.
+        transforming the real-space matrix. In case of negative eigenvalues
+        (squared frequency), the corresponding negative frequency is returned.
 
         Parameters
         ----------
@@ -282,6 +315,8 @@ class DynamicalMatrix:
             List of k-point coordinates (in units of the reciprocal lattice
             vectors) specifying the path in the Brillouin zone for which the
             dynamical matrix will be calculated.
+        modes: bool
+            Returns both frequencies and modes when True.
             
         """
 
@@ -296,30 +331,44 @@ class DynamicalMatrix:
         shape = DR_lmn.shape
         DR_m = DR_lmn.reshape((-1,) + shape[-2:])
         
-        # List for squared frequencies along path
+        # Lists for frequencies and modes along path
         omega_kn = []
-        # XXX Add kwarg for return of modes aswell
         u_kn =  []
         
         for q_c in path_kc:
-            
+
+            # Evaluate fourier transform 
             phase_m = np.exp(-2.j * pi * np.dot(q_c, R_cm))
-            D = np.sum(phase_m[:, np.newaxis, np.newaxis] * DR_m, axis=0)
-            # Units: Ha / Bohr**2 / amu
-            omega2_n, u_n = la.eigh(D, UPLO='L')
-            # XXX Sort the eigen-vectors accordingly 
+            D_q = np.sum(phase_m[:, np.newaxis, np.newaxis] * DR_m, axis=0)
+
+            if modes:
+                omega2_n, u_avn = la.eigh(D_q, UPLO='L')
+                # Sort eigenmodes according to eigenvalues (see below)
+                u_n = u_avn[:, omega2_n.argsort()]
+                u_kn.append(u_avn)
+            else:
+                omega2_n = la.eigvalsh(D_q, UPLO='L')
+
+            # Sort eigenvalues in increasing order
             omega2_n.sort()
-            # Use dtype=complex to handle negative frequencies
+            # Use dtype=complex to handle negative eigenvalues
             omega_n = np.sqrt(omega2_n.astype(complex))
 
-            if not np.all(omega_n.imag == 0):
-                indices = np.where(omega_n.imag != 0)[0]
-                print "WARNING, %i complex frequency at q =" % len(indices), q_c, \
-                      "(omega_q =% 5.3e +% 5.3e*i)" % (omega_n[indices][0].real,
-                                                       omega_n[indices][0].imag)
+            # Take care of imaginary frequencies
+            if not np.all(omega2_n >= 0.):
+                indices = np.where(omega2_n < 0)[0]
+                print ("WARNING, %i imaginary frequencies at "
+                       "q = (% 5.2f, % 5.2f, % 5.2f) ; (omega_q =% 5.3e*i)"
+                       % (len(indices), q_c[0], q_c[1], q_c[2],
+                          omega_n[indices][0].imag))
                 
+                omega_n[indices] = -1 * np.sqrt(np.abs(omega2_n[indices].real))
+
             omega_kn.append(omega_n.real)
 
+        if modes:
+            return np.asarray(omega_kn), np.asarray(u_kn)
+        
         return np.asarray(omega_kn)
     
     def update_row(self, perturbation, response_calc):
