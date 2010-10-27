@@ -5,6 +5,20 @@ from gpaw.xc.mgga import MGGA
 
 
 def XC(kernel, parameters=None):
+    """Create XCFunctional object.
+
+    kernel: XCKernel object or str
+        Kernel object or name of functional.
+    parameters: ndarray
+        Parameters for BEE functional.
+
+    Recognized names are: LDA, PW91, PBE, revPBE, RPBE, BLYP, HCTH407,
+    TPSS, M06L, revTPSS, vdW-DF, vdW-DF2, EXX, PBE0, B3LYP, BEE,
+    GLLBSC.  One can also use libxc names like this:
+    GGA_X_PBE+GGA_C_PBE would be equivalent to PBE, and LDA_X would
+    give LDA exchange.  See gpaw.xc.libxc.py for a list of libxc
+    names.  """
+    
     if isinstance(kernel, str):
         name = kernel
         if name in ['vdW-DF', 'vdW-DF2']:

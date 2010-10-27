@@ -187,6 +187,54 @@ Attributes of the wave function object: :attr:`gd`, :attr:`nspins`,
 :attr:`ibzk_qc`, :attr:`eigensolver`, and :attr:`timer`.
         
 
+
+Exchange-correlation functionals
+================================
+
+The ``gpaw.xc`` module contains all the code for XC functionals in
+GPAW::
+
+   +------------+
+   |XCFunctional|
+   +------------+
+       ^     ^
+      /_\   /_\
+       |     |
+     +---+   |    +------------------------+
+     |LDA|    ----|vdW-DF/HybridXC/SIC/GLLB|
+     +---+        +------------------------+
+       ^
+      /_\
+       |
+     +---+
+     |GGA|
+     +---+
+       ^
+      /_\
+       |
+     +----+
+     |MGGA|
+     +----+
+
+An :class:`~gpaw.xc.functional.XCFunctional` object is usually created
+using the :func:`gpaw.xc.XC` function:
+
+.. autofunc:: gpaw.xc.XC
+
+Example::
+
+    from gpaw.xc import XC
+    xc = XC('PBE')
+    # alternative:
+    from gpaw.xc.libxc import LibXC
+    from gpaw.xc.gga import GGA
+    xc = GGA(LibXC('PBE'))
+    # or:
+    xc = GGA(LibXC('GGA_X_PBE+GGA_C_PBE'))
+
+
+
+
 .. _overview_array_naming:
 
 Naming convention for arrays
