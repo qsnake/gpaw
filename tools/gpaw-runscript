@@ -19,19 +19,20 @@ defaults = { 'err'   : None,
              'wd'    : None
              }
 
-hosts = { 'batman'             : 'pbs_batman',
-          'c551'               : 'murska',
-          'c552'               : 'murska',
-          'c553'               : 'murska',
-          'c554'               : 'murska',
-          'louhi'              : 'louhi',
-          'opaali.phys.jyu.fi' : 'sge',
-          'sepeli.csc.fi'      : 'sepeli',
-          'ui.bfg.uni'         : 'pbs_bfg',
-          'xc2n992'            : 'xc2',
-          'xc2n993'            : 'xc2',
-          'xc2.rz.uni-karlsruhe.de' : 'xc2',
-          'juropa.fz-juelich.de': 'juropa'
+hosts = { 'batman'                   : 'pbs_batman',
+          'c551'                     : 'murska',
+          'c552'                     : 'murska',
+          'c553'                     : 'murska',
+          'c554'                     : 'murska',
+          'louhi'                    : 'louhi',
+          'opaali.phys.jyu.fi'       : 'sge',
+          'sepeli.csc.fi'            : 'sepeli',
+          'bwui.bfg.uni-freiburg.de' : 'pbs_bwg',
+          'ui.bfg.uni'               : 'pbs_bfg',
+          'xc2n992'                  : 'xc2',
+          'xc2n993'                  : 'xc2',
+          'xc2.rz.uni-karlsruhe.de'  : 'xc2',
+          'juropa.fz-juelich.de'     : 'juropa'
           }
 
 platforms = { 'aix5' : 'loadleveler' }
@@ -338,6 +339,38 @@ unset CC CFLAGS LDFLAGS
         print >> f, 'export PYTHONPATH=$PYTHONPATH:' + env['PYTHONPATH']
         print >> f, 'export GPAW_SETUP_PATH='+env['GPAW_SETUP_PATH']
         print >> f, 'export GPAW_PYTHON='+env['GPAW_PYTHON']
+        print >> f, 'mpirun -np', cores, '$GPAW_PYTHON', set['script'],
+        print >> f, '>', set['out']+'_$PBS_JOBID',
+        print >> f, '2>', set['err']+'_$PBS_JOBID'
+
+    def pbs_bwg(self, f, set, env):
+        modules_to_load = [
+		'system/python/2.6',
+		'compiler/intel/10.1',
+		'numlib/mkl/10.0-intel-10.1',
+		'compiler/gnu/4.3',
+		'mpi/openmpi/1.2.8_static-gnu-4.3']
+        print >> f, '#!/bin/bash'
+        print >> f, '#PBS -N '+set['name']
+        # bfg nodes contain 8 cores
+        cores = set['cores']
+        nodes = int((cores + 7) / 8)
+        ppn = int((cores + nodes - 1) / nodes)
+        if cores != nodes * ppn:
+            print 'Note:', nodes * ppn, 'cores reserved but only', cores, 'cores used.'
+            print '     Consider to use multiples of 8 processors for best performance.'
+        print >> f, '#PBS -l nodes=' + str(nodes) + ':ppn=' + str(ppn)
+        print >> f, '#PBS -l walltime=' + hms_string(set['time'])
+        print >> f, '#PBS -m bea'
+        if set['mail'] is not None:
+            print >> f, '#PBS -M',set['mail']
+	for module in modules_to_load:
+        	print >> f, 'module load ' + module
+        print >> f, 'cd', set['wd']
+        print >> f, 'export PYTHONPATH=$PYTHONPATH:' + env['PYTHONPATH']
+        print >> f, 'export GPAW_SETUP_PATH='+env['GPAW_SETUP_PATH']
+        print >> f, 'export GPAW_PYTHON='+env['GPAW_PYTHON']
+        print >> f, 'export LD_LIBRARY_PATH='+os.environ['LD_LIBRARY_PATH']
         print >> f, 'mpirun -np', cores, '$GPAW_PYTHON', set['script'],
         print >> f, '>', set['out']+'_$PBS_JOBID',
         print >> f, '2>', set['err']+'_$PBS_JOBID'

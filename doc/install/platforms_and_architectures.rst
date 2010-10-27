@@ -59,6 +59,7 @@ Linux:
    Linux/Niflheim/Niflheim
    Linux/akka
    Linux/batman
+   Linux/bwgrid
    Linux/carbon_cnm
    Linux/davinci
    Linux/huygens
