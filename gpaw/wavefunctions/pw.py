@@ -45,6 +45,13 @@ class PWDescriptor:
         shape = n + self.Q_G.shape
         return np.zeros(shape, complex)
     
+    def empty(self, n=(), dtype=float):
+        assert dtype == complex
+        if isinstance(n, int):
+            n = (n,)
+        shape = n + self.Q_G.shape
+        return np.empty(shape, complex)
+    
     def fft(self, a_xR):
         a_xQ = fftn(a_xR, axes=(-3, -2, -1))
         return a_xQ.reshape(a_xR.shape[:-3] + (-1,))[..., self.Q_G].copy()
@@ -94,13 +101,12 @@ class PWWaveFunctions(FDPWWaveFunctions):
     def make_preconditioner(self, block=1):
         return Preconditioner(self.pd)
 
-    def apply_hamiltonian(self, hamiltonian, kpt, psit_xG, Htpsit_xG):
+    def apply_pseudo_hamiltonian(self, kpt, hamiltonian, psit_xG, Htpsit_xG):
         """Apply the non-pseudo Hamiltonian i.e. without PAW corrections."""
         Htpsit_xG[:] = 0.5 * self.pd.G2_qG[kpt.q] * psit_xG
         for psit_G, Htpsit_G in zip(psit_xG, Htpsit_xG):
             psit_R = self.pd.ifft(psit_G)
             Htpsit_G += self.pd.fft(psit_R * hamiltonian.vt_sG[kpt.s])
-        hamiltonian.xc.add_non_local_terms(psit_xG, Htpsit_xG, kpt)
 
     def add_to_density_from_k_point_with_occupation(self, nt_sR, kpt, f_n):
         nt_R = nt_sR[kpt.s]
@@ -121,6 +127,9 @@ class PWLFC:
     def __init__(self, lfc, pd):
         self.lfc = lfc
         self.pd = pd
+
+    def dict(self, shape=(), derivative=False, zero=False):
+        return self.lfc.dict(shape, derivative, zero)
 
     def set_positions(self, spos_ac):
         self.lfc.set_positions(spos_ac)

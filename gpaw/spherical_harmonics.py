@@ -158,7 +158,7 @@ def Y(L, x, y, z):
     return result
 
 
-def nablaYL(L, R):
+def nablarlYL(L, R):
     """Calculate the gradient of a real solid spherical harmonic."""
     x, y, z = R
     dYdx = dYdy = dYdz = 0.

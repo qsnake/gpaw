@@ -37,19 +37,14 @@ typedef struct
   boundary_conditions* bc;
   MPI_Request recvreq[2];
   MPI_Request sendreq[2];
-  double* buf;
-  double* sendbuf;
-  double* recvbuf;
 } OperatorObject;
 
 static void Operator_dealloc(OperatorObject *self)
 {
   free(self->bc);
-  free(self->buf);
-  free(self->sendbuf);
-  free(self->recvbuf);
   PyObject_DEL(self);
 }
+
 
 static PyObject * Operator_relax(OperatorObject *self,
                                  PyObject *args)
@@ -57,9 +52,10 @@ static PyObject * Operator_relax(OperatorObject *self,
   int relax_method;
   PyArrayObject* func;
   PyArrayObject* source;
-  double w = 1.0;
   int nrelax;
-  if (!PyArg_ParseTuple(args, "iOOi|d", &relax_method, &func, &source, &nrelax, &w))
+  double w = 1.0;
+  if (!PyArg_ParseTuple(args, "iOOi|d", &relax_method, &func, &source,
+                        &nrelax, &w))
     return NULL;
 
   const boundary_conditions* bc = self->bc;
@@ -68,20 +64,29 @@ static PyObject * Operator_relax(OperatorObject *self,
   const double* src = DOUBLEP(source);
   const double_complex* ph;
 
+  const int* size2 = bc->size2;
+  double* buf = GPAW_MALLOC(double, size2[0] * size2[1] * size2[2] *
+                            bc->ndouble);
+  double* sendbuf = GPAW_MALLOC(double, bc->maxsend);
+  double* recvbuf = GPAW_MALLOC(double, bc->maxrecv);
+
   ph = 0;
 
   for (int n = 0; n < nrelax; n++ )
     {
       for (int i = 0; i < 3; i++)
         {
-          bc_unpack1(bc, fun, self->buf, i,
+          bc_unpack1(bc, fun, buf, i,
                self->recvreq, self->sendreq,
-               self->recvbuf, self->sendbuf, ph + 2 * i, 0, 1);
-          bc_unpack2(bc, self->buf, i,
-               self->recvreq, self->sendreq, self->recvbuf, 1);
+               recvbuf, sendbuf, ph + 2 * i, 0, 1);
+          bc_unpack2(bc, buf, i,
+               self->recvreq, self->sendreq, recvbuf, 1);
         }
-      bmgs_relax(relax_method, &self->stencil, self->buf, fun, src, w);
+      bmgs_relax(relax_method, &self->stencil, buf, fun, src, w);
     }
+  free(recvbuf);
+  free(sendbuf);
+  free(buf);
   Py_RETURN_NONE;
 }
 
@@ -105,9 +110,6 @@ void *apply_worker(void *threadarg)
 {
   struct apply_args *args = (struct apply_args *) threadarg;
   boundary_conditions* bc = args->self->bc;
-  double* sendbuf = args->self->sendbuf + args->thread_id * bc->maxsend * args->chunksize;
-  double* recvbuf = args->self->recvbuf + args->thread_id * bc->maxrecv * args->chunksize;
-  double* buf = args->self->buf + args->thread_id * args->ng2 * args->chunksize;
   MPI_Request recvreq[2];
   MPI_Request sendreq[2];
 
@@ -122,6 +124,10 @@ void *apply_worker(void *threadarg)
     nend = args->nin;
   if (chunksize > args->chunksize)
     chunksize = args->chunksize;
+
+  double* sendbuf = GPAW_MALLOC(double, bc->maxsend * args->chunksize);
+  double* recvbuf = GPAW_MALLOC(double, bc->maxrecv * args->chunksize);
+  double* buf = GPAW_MALLOC(double, args->ng2 * args->chunksize);
 
   for (int n = nstart; n < nend; n += chunksize)
     {
@@ -144,6 +150,9 @@ void *apply_worker(void *threadarg)
           bmgs_fdz(&args->self->stencil, (const double_complex*) (buf + m * args->ng2),
                                          (double_complex*) (out + m * args->ng));
     }
+  free(buf);
+  free(recvbuf);
+  free(sendbuf);
   return NULL;
 }
 
@@ -152,9 +161,6 @@ void *apply_worker_cfd_async(void *threadarg)
 {
   struct apply_args *args = (struct apply_args *) threadarg;
   boundary_conditions* bc = args->self->bc;
-  double* sendbuf = args->self->sendbuf + args->thread_id * bc->maxsend * GPAW_ASYNC3 * args->chunksize;
-  double* recvbuf = args->self->recvbuf + args->thread_id * bc->maxrecv * GPAW_ASYNC3 * args->chunksize;
-  double* buf = args->self->buf + args->thread_id * args->ng2 * args->chunksize;
   MPI_Request recvreq[2 * GPAW_ASYNC3];
   MPI_Request sendreq[2 * GPAW_ASYNC3];
 
@@ -169,6 +175,12 @@ void *apply_worker_cfd_async(void *threadarg)
     nend = args->nin;
   if (chunksize > args->chunksize)
     chunksize = args->chunksize;
+
+  double* sendbuf = GPAW_MALLOC(double, bc->maxsend * GPAW_ASYNC3 *
+                                args->chunksize);
+  double* recvbuf = GPAW_MALLOC(double, bc->maxrecv * GPAW_ASYNC3 *
+                                args->chunksize);
+  double* buf = GPAW_MALLOC(double, args->ng2 * args->chunksize);
 
   for (int n = nstart; n < nend; n += chunksize)
     {
@@ -197,6 +209,9 @@ void *apply_worker_cfd_async(void *threadarg)
           bmgs_fdz(&args->self->stencil, (const double_complex*) (buf + m * args->ng2),
                                          (double_complex*) (out + m * args->ng));
     }
+  free(buf);
+  free(recvbuf);
+  free(sendbuf);
   return NULL;
 }
 
@@ -205,12 +220,6 @@ void *apply_worker_cfd(void *threadarg)
 {
   struct apply_args *args = (struct apply_args *) threadarg;
   boundary_conditions* bc = args->self->bc;
-  double* sendbuf = args->self->sendbuf + args->thread_id *
-          bc->maxsend * args->chunksize * GPAW_ASYNC3 * GPAW_ASYNC2;
-  double* recvbuf = args->self->recvbuf + args->thread_id *
-          bc->maxrecv * args->chunksize * GPAW_ASYNC3 * GPAW_ASYNC2;
-  double* buf = args->self->buf +
-          args->thread_id * args->ng2 * args->chunksize * GPAW_ASYNC2;
   MPI_Request recvreq[2 * GPAW_ASYNC3 * GPAW_ASYNC2];
   MPI_Request sendreq[2 * GPAW_ASYNC3 * GPAW_ASYNC2];
 
@@ -229,6 +238,12 @@ void *apply_worker_cfd(void *threadarg)
   int chunk = args->chunkinc;
   if (chunk > chunksize);
     chunk = chunksize;
+
+  double* sendbuf = GPAW_MALLOC(double, bc->maxsend * args->chunksize
+                                * GPAW_ASYNC3 * GPAW_ASYNC2);
+  double* recvbuf = GPAW_MALLOC(double, bc->maxrecv * args->chunksize
+                                * GPAW_ASYNC3 * GPAW_ASYNC2);
+  double* buf = GPAW_MALLOC(double, args->ng2 * args->chunksize * GPAW_ASYNC2);
 
   int odd = 0;
   const double* in = args->in + nstart * args->ng;
@@ -292,6 +307,9 @@ void *apply_worker_cfd(void *threadarg)
       bmgs_fdz(&args->self->stencil, (const double_complex*) (buf + m * args->ng2 + odd * args->ng2 * chunksize),
                                      (double_complex*) (out + m * args->ng));
 
+  free(buf);
+  free(recvbuf);
+  free(sendbuf);
   return NULL;
 }
 
@@ -476,29 +494,5 @@ PyObject * NewOperatorObject(PyObject *obj, PyObject *args)
     comm = ((MPIObject*)comm_obj)->comm;
 
   self->bc = bc_init(LONGP(size), padding, padding, nb, comm, real, cfd);
-
-  const int* size2 = self->bc->size2;
-
-  int chunksize = 1;
-  if (getenv("GPAW_CHUNK_SIZE") != NULL)
-    chunksize = atoi(getenv("GPAW_CHUNK_SIZE"));
-
-#ifndef GPAW_OMP
-  self->buf = GPAW_MALLOC(double, size2[0] * size2[1] * size2[2] *
-                          self->bc->ndouble * chunksize * GPAW_ASYNC2);
-  self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend * chunksize * GPAW_ASYNC3 * GPAW_ASYNC2);
-  self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv * chunksize * GPAW_ASYNC3 * GPAW_ASYNC2);
-#else
-  int nthds = 1;
-  if (getenv("OMP_NUM_THREADS") != NULL)
-    nthds = atoi(getenv("OMP_NUM_THREADS"));
-  //We need a buffer per OpenMP Thread.
-  self->buf = GPAW_MALLOC(double, size2[0] * size2[1] * size2[2] *
-                          self->bc->ndouble * nthds * chunksize * GPAW_ASYNC2);
-  self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend *
-                              nthds * chunksize * GPAW_ASYNC3 * GPAW_ASYNC2);
-  self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv *
-                              nthds * chunksize * GPAW_ASYNC3 * GPAW_ASYNC2);
-#endif
   return (PyObject*)self;
 }

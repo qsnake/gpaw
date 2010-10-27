@@ -22,7 +22,7 @@ for m in range(20):
     half_integer_gamma.append(half_integer_gamma[m] * (m + 0.5))
 
 class NullXCCorrection:
-    def calculate_energy_and_derivatives(self, D_sp, H_sp, a=None):
+    def calculate(self, xc, D_sp, H_sp=None, addcoredensity=True):
         return 0.0
 
 null_xc_correction = NullXCCorrection()
@@ -377,8 +377,6 @@ class HGHSetupData:
         return self.rgd.reducedspline(0, self.vbar_g)
 
     def build(self, xcfunc, lmax, basis):
-        if xcfunc.get_setup_name() != 'LDA':
-            raise ValueError('HGH setups support only LDA')
         if lmax != 0:
             raise ValueError('HGH setups support only lmax=0')
         if basis is None:

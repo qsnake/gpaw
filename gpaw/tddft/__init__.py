@@ -408,9 +408,8 @@ class TDDFT(GPAW):
         H = self.td_hamiltonian.hamiltonian
 
         # Nonlocal
-        xcfunc = H.xc.xcfunc
-        self.Enlxc = xcfunc.get_non_local_energy()
-        self.Enlkin = xcfunc.get_non_local_kinetic_corrections()
+        self.Enlxc = 0.0#xcfunc.get_non_local_energy()
+        self.Enlkin = H.xc.get_kinetic_energy_correction()
 
         # PAW
         self.Ekin = H.Ekin0 + self.occupations.e_band + self.Enlkin

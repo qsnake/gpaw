@@ -38,10 +38,8 @@ typedef struct
 {
   bool gga;
   double kappa;
-  double hybrid;
-  int i;
-  double s0;
-  double pade[14];
+  int nparameters;
+  double parameters[14];
 } xc_parameters;
 
 #endif /* _XC_GPAW_H */

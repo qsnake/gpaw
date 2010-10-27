@@ -16,7 +16,7 @@ from ase.data import atomic_names
 
 from gpaw.atom.configurations import configurations
 from gpaw.grid_descriptor import RadialGridDescriptor
-from gpaw.xc_functional import XCRadialGrid, XCFunctional
+from gpaw.xc import XC
 from gpaw.utilities import hartree, devnull
 from gpaw import ConvergenceError
 
@@ -174,13 +174,12 @@ class AllElectron:
         self.n = np.zeros(N)
 
         # Always spinpaired nspins=1
-        self.xcfunc = XCFunctional(self.xcname, 1)
-        self.xc = XCRadialGrid(self.xcfunc, self.rgd)
+        self.xc = XC(self.xcname)
 
         # Initialize for non-local functionals
-        if self.xc.is_non_local():
-            self.xcfunc.xc.pass_stuff_1d(self)
-            self.xcfunc.xc.initialize_1d()
+        if self.xc.type == 'GLLB':
+            self.xc.pass_stuff_1d(self)
+            self.xc.initialize_1d()
             
         n_j = self.n_j
         l_j = self.l_j
@@ -197,7 +196,7 @@ class AllElectron:
         self.vXC = np.zeros(self.N)
 
         restartfile = '%s/%s.restart' % (tempdir, self.symbol)
-        if self.xc.is_non_local() or not use_restart_file:
+        if self.xc.type == 'GLLB' or not use_restart_file:
             # Do not start from initial guess when doing
             # non local XC!
             # This is because we need wavefunctions as well
@@ -239,14 +238,13 @@ class AllElectron:
             # calculated exchange correlation potential and energy
             self.vXC[:] = 0.0
 
-            if self.xc.is_non_local():
+            if self.xc.type == 'GLLB':
                 # Update the potential to self.vXC an the energy to self.Exc
-                Exc = self.xcfunc.xc.get_xc_potential_and_energy_1d(self.vXC)
+                Exc = self.xc.get_xc_potential_and_energy_1d(self.vXC)
             else:
-                tau = None
-                if self.xc.xcfunc.mgga:
-                    tau = self.calculate_kinetic_energy_density()
-                Exc = self.xc.get_energy_and_potential(n, self.vXC)
+                Exc = self.xc.calculate_spherical(self.rgd,
+                                                  n.reshape((1, -1)),
+                                                  self.vXC.reshape((1, -1)))
 
             # calculate new total Kohn-Sham effective potential and
             # admix with old version

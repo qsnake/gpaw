@@ -16,7 +16,8 @@ from os.path import exists
 data = {}
 
 # data (from tables.pdf of 10.1063/1.1626543)
-data['N'] = { # intermolecular distance (A), formation enthalpy(298) (kcal/mol) on B3LYP geometry
+data['N'] = { # intermolecular distance (A),
+              #formation enthalpy(298) (kcal/mol) on B3LYP geometry
     'exp': (1.098, 0.0, 'none', 'none'),
     'HCTH407': (1.097, 7.9, 'HCTH407', 'gga'),
     'PBE': (1.103, -15.1, 'PBE', 'gga'),
@@ -28,15 +29,19 @@ data['N'] = { # intermolecular distance (A), formation enthalpy(298) (kcal/mol) 
     'PBE0': (1.090, 3.1, 'PBE', 'hyb_gga'),
     'PBEH': (1.090, 3.1, 'PBE', 'hyb_gga'),
     'magmom': 3.0,
-    # tables.pdf: http://ftp.aip.org/epaps/journ_chem_phys/E-JCPSA6-119-302348/tables.pdf
+    # tables.pdf:
+    # http://ftp.aip.org/epaps/journ_chem_phys/E-JCPSA6-119-302348/tables.pdf
     'R_AA_B3LYP': 1.092, # (from tables.pdf of 10.1063/1.1626543) (Angstom)
-    'ZPE_AA_B3LYP': 0.005457 * Hartree, # (from benchmarks.txt of 10.1063/1.1626543) (eV)
-    'H_298_H_0_AA_B3LYP': 0.003304 * Hartree, # (from benchmarks.txt of 10.1063/1.1626543) (eV)
+    'ZPE_AA_B3LYP': 0.005457 * Hartree, # (from benchmarks.txt of
+                                        # 10.1063/1.1626543) (eV)
+    'H_298_H_0_AA_B3LYP': 0.003304 * Hartree, # (from benchmarks.txt of
+                                              # 10.1063/1.1626543) (eV)
     'H_298_H_0_A': 1.04 / (mol / kcal), # (from 10.1063/1.473182) (eV)
     'dHf_0_A': 112.53 / (mol / kcal), # (from 10.1063/1.473182) (eV)
     }
 
-data['O'] = { # intermolecular distance (A), formation enthalpy(298) (kcal/mol) on B3LYP geometry
+data['O'] = { # intermolecular distance (A),
+              # formation enthalpy(298) (kcal/mol) on B3LYP geometry
     'exp': (1.208, 0.0, 'none', 'none'),
     'HCTH407': (1.202, -14.5, 'HCTH407', 'gga'),
     'PBE': (1.218, -23.6, 'PBE', 'gga'),
@@ -48,15 +53,19 @@ data['O'] = { # intermolecular distance (A), formation enthalpy(298) (kcal/mol) 
     'PBE0': (1.192, -4.3, 'PBE', 'hyb_gga'),
     'PBEH': (1.192, -4.3, 'PBE', 'hyb_gga'),
     'magmom': 2.0,
-    # tables.pdf: http://ftp.aip.org/epaps/journ_chem_phys/E-JCPSA6-119-302348/tables.pdf
+    # tables.pdf:
+    # http://ftp.aip.org/epaps/journ_chem_phys/E-JCPSA6-119-302348/tables.pdf
     'R_AA_B3LYP': 1.204, # (from tables.pdf of 10.1063/1.1626543) (Angstom)
-    'ZPE_AA_B3LYP': 0.003736 * Hartree, # (from benchmarks.txt of 10.1063/1.1626543) (eV)
-    'H_298_H_0_AA_B3LYP': 0.003307*Hartree, # (from benchmarks.txt of 10.1063/1.1626543) (eV)
+    'ZPE_AA_B3LYP': 0.003736 * Hartree, # (from benchmarks.txt of
+                                        # 10.1063/1.1626543) (eV)
+    'H_298_H_0_AA_B3LYP': 0.003307*Hartree, # (from benchmarks.txt of
+                                            # 10.1063/1.1626543) (eV)
     'H_298_H_0_A': 1.04 / (mol / kcal), # (from 10.1063/1.473182) (eV)
     'dHf_0_A': 58.99 / (mol / kcal), # (from 10.1063/1.473182) (eV)
     }
 
-data['H'] = { # intermolecular distance (A), formation enthalpy(298) (kcal/mol) on B3LYP geometry
+data['H'] = { # intermolecular distance (A),
+              # formation enthalpy(298) (kcal/mol) on B3LYP geometry
     'exp': (0.741, 0.0, 'none', 'none'),
     'HCTH407': (0.744, 1.8, 'HCTH407', 'gga'),
     'PBE': (0.750, 5.1, 'PBE', 'gga'),
@@ -68,10 +77,13 @@ data['H'] = { # intermolecular distance (A), formation enthalpy(298) (kcal/mol) 
     'PBE0': (0.745, 5.3, 'PBE', 'hyb_gga'),
     'PBEH': (0.745, 5.3, 'PBE', 'hyb_gga'),
     'magmom': 1.0,
-    # tables.pdf: http://ftp.aip.org/epaps/journ_chem_phys/E-JCPSA6-119-302348/tables.pdf
+    # tables.pdf:
+    # http://ftp.aip.org/epaps/journ_chem_phys/E-JCPSA6-119-302348/tables.pdf
     'R_AA_B3LYP': 0.742, # (from tables.pdf of 10.1063/1.1626543) (Angstom)
-    'ZPE_AA_B3LYP': 0.010025 * Hartree, # (from benchmarks.txt of 10.1063/1.1626543) (eV)
-    'H_298_H_0_AA_B3LYP': 0.003305 * Hartree, # (from benchmarks.txt of 10.1063/1.1626543) (eV)
+    'ZPE_AA_B3LYP': 0.010025 * Hartree, # (from benchmarks.txt of
+                                        # 10.1063/1.1626543) (eV)
+    'H_298_H_0_AA_B3LYP': 0.003305 * Hartree, # (from benchmarks.txt of
+                                              # 10.1063/1.1626543) (eV)
     'H_298_H_0_A': 1.01 / (mol / kcal), # (from 10.1063/1.473182) (eV)
     'dHf_0_A': 51.63 / (mol / kcal), # (from 10.1063/1.473182) (eV)
     }
@@ -94,7 +106,7 @@ def calculate(element, h, vacuum, xc, magmom):
                      occupations=FermiDirac(0.0, fixmagmom=True),
                      mixer=mixer,
                      nbands=-2,
-                     txt=None)
+                     txt='%s.%s.txt' % (element, xc))
     atom.set_calculator(calc_atom)
 
     mixer = Mixer(beta=0.2, weight=100)
@@ -106,7 +118,7 @@ def calculate(element, h, vacuum, xc, magmom):
 
     calc = GPAW(h=h, xc=data[element][xc][2],
                 mixer=mixer,
-                txt=None)
+                txt='%s2.%s.txt' % (element, xc))
     compound.set_distance(0,1, data[element]['R_AA_B3LYP'])
     compound.center(vacuum=vacuum)
 
@@ -116,23 +128,27 @@ def calculate(element, h, vacuum, xc, magmom):
         e_atom = atom.get_potential_energy()
         e_compound = compound.get_potential_energy()
 
-        calc_atom.set(xc={'name': xc, 'finegrid': False})
-        calc.set(xc={'name': xc, 'finegrid': False})
+        calc_atom.set(xc=xc)
+        calc.set(xc=xc)
 
     if 0:
         qn = QuasiNewton(compound)
-        qn.attach(PickleTrajectory(element+'2'+'_'+xc+'.traj', 'w', compound).write)
+        qn.attach(PickleTrajectory(
+            element+'2'+'_'+xc+'.traj', 'w', compound).write)
         qn.run(fmax=0.02)
     e_atom = atom.get_potential_energy()
     e_compound = compound.get_potential_energy()
 
-    dHf_0   = e_compound - 2*e_atom + data[element]['ZPE_AA_B3LYP'] + 2*data[element]['dHf_0_A']
-    dHf_298 = (dHf_0 + data[element]['H_298_H_0_AA_B3LYP'] - 2*data[element]['H_298_H_0_A'])*(mol/kcal)
+    dHf_0   = (e_compound - 2 * e_atom + data[element]['ZPE_AA_B3LYP'] +
+               2 * data[element]['dHf_0_A'])
+    dHf_298 = (dHf_0 + data[element]['H_298_H_0_AA_B3LYP'] -
+               2 * data[element]['H_298_H_0_A']) * (mol / kcal)
     dist_compound = compound.get_distance(0,1)
     de = dHf_298-data[element][xc][1]
     E[element][xc] = de
     if rank == 0:
-        print xc, h, vacuum, dHf_298, data[element][xc][1], de, de/data[element][xc][1]
+        print (xc, h, vacuum, dHf_298, data[element][xc][1], de,
+               de/data[element][xc][1])
         if element == 'H':
             equal(dHf_298, data[element][xc][1], 0.25, msg=xc+': ') # kcal/mol
         elif element == 'O':
@@ -143,11 +159,18 @@ def calculate(element, h, vacuum, xc, magmom):
 
 E = {}
 
-E_ref = {'H': {'HCTH407': 0.19286893273630645, 'B3LYP': -0.11369634560501423, 'PBE0': -0.21413764474738262, 'PBEH': -0.14147808591211231}, 'N': {'HCTH407': 2.1354017840869268, 'B3LYP': 0.63466589919873972, 'PBE0': -0.33376468078480226, 'PBEH': -0.30365500626180042}} # svnversion 5599 # -np 4
+E_ref = {'H': {'HCTH407': 0.19286893273630645,
+               'B3LYP': -0.11369634560501423,
+               'PBE0': -0.21413764474738262,
+               'PBEH': -0.14147808591211231},
+         'N': {'HCTH407': 2.1354017840869268,
+               'B3LYP': 0.63466589919873972,
+               'PBE0': -0.33376468078480226,
+               'PBEH': -0.30365500626180042}} # svnversion 5599 # -np 4
 
 for element in ['H']:#, 'N']:#, 'O']: # oxygen atom fails to converge
     E[element] = {}
-    for xc in ['HCTH407', 'PBE0', 'PBEH', 'B3LYP']:
+    for xc in ['HCTH407', 'PBE0', 'B3LYP']:
         setup = data[element][xc][2]
         if data[element][xc][3] == 'hyb_gga': # only for hybrids
             exx = True
@@ -161,6 +184,3 @@ for element in ['H']:#, 'N']:#, 'O']: # oxygen atom fails to converge
         if rank == 0:
             if exists(element+'.'+setup):
                 remove(element+'.'+setup)
-
-#if rank == 0:
-#    print E

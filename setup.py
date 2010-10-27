@@ -52,8 +52,6 @@ packages = ['gpaw',
             'gpaw.analyse',
             'gpaw.atom',
             'gpaw.eigensolvers',
-            'gpaw.gllb',
-            'gpaw.gllb.contributions',
             'gpaw.io',
             'gpaw.lcao',
             'gpaw.lrtddft',
@@ -70,7 +68,9 @@ packages = ['gpaw',
             'gpaw.testing',
             'gpaw.transport',
             'gpaw.utilities',
-            'gpaw.wavefunctions']
+            'gpaw.wavefunctions',
+            'gpaw.xc',
+            'gpaw.xc.gllb']
 
 include_ase = False
 if '--include-ase' in sys.argv:

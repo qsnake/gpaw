@@ -5,7 +5,8 @@ from ase import Atoms
 from ase.units import Hartree, Bohr
 
 from gpaw import GPAW
-from gpaw.xc_functional import ZeroFunctional
+from gpaw.xc import XC
+from gpaw.xc.kernel import XCNull
 from gpaw.test import equal
 
 
@@ -36,7 +37,7 @@ class HarmonicPotential:
 calc = GPAW(charge=-8,
             nbands=4,
             h=0.2,
-            xc=ZeroFunctional(),
+            xc=XC(XCNull()),
             external=HarmonicPotential(0.5),
             poissonsolver=NoInteractionPoissonSolver(),
             eigensolver='cg')

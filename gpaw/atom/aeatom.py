@@ -11,7 +11,7 @@ import ase.units as units
 from ase.utils import devnull
 
 from gpaw.atom.configurations import configurations
-from gpaw.xc_functional import XCFunctional
+from gpaw.xc import XC
 from gpaw.utilities.progressbar import ProgressBar
 
 # Velocity of light in atomic units:
@@ -122,12 +122,15 @@ class GaussianBasis:
         self.K_bb = np.dot(np.dot(Q_Bb.T, K_BB), Q_Bb)
 
         r_g = gd.r_g
+        # Avoid errors in debug mode from division by zero:
+        old_settings = np.seterr(divide='ignore')
         self.basis_bg = (np.dot(
                 Q_Bb.T,
                 (2 * (2 * alpha_B[:, np.newaxis])**(l + 1.5) /
                  gamma(l + 1.5))**0.5 *
                 np.exp(-np.multiply.outer(alpha_B, r_g**2))) * r_g**l)
-
+        np.seterr(**old_settings)
+        
     def __len__(self):
         return self.nbasis
 
@@ -240,7 +243,7 @@ class AllElectronAtom:
         self.dirac = bool(dirac)
 
         if isinstance(xc, str):
-            self.xc = XCFunctional(xc, nspins=self.nspins)
+            self.xc = XC(xc)
         else:
             self.xc = xc
 
@@ -265,7 +268,7 @@ class AllElectronAtom:
         self.log('Z:              ', self.Z)
         self.log('Name:           ', atomic_names[self.Z])
         self.log('Symbol:         ', symbol)
-        self.log('XC-functional:  ', self.xc.xcname)
+        self.log('XC-functional:  ', self.xc.name)
         self.log('Equation:       ', ['Schrödinger', 'Dirac'][self.dirac])
 
     def log(self, *args, **kwargs):
@@ -387,16 +390,7 @@ class AllElectronAtom:
         
     def calculate_xc_potential(self):
         self.vxc_sg = self.gd.zeros(self.nspins)
-        exc_g = self.gd.zeros()
-        if self.nspins == 1:
-            self.xc.calculate_spinpaired(exc_g, self.n_sg[0], self.vxc_sg[0])
-        else:
-            self.xc.calculate_spinpolarized(exc_g,
-                                            self.n_sg[0], self.vxc_sg[0],
-                                            self.n_sg[1], self.vxc_sg[1])
-        exc_g[-1] = 0.0
-        self.exc = self.gd.integrate(exc_g)
-        self.exc_g = exc_g
+        self.exc = self.xc.calculate_spherical(self.gd, self.n_sg, self.vxc_sg)
 
     def step(self):
         self.solve()

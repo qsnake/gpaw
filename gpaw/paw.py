@@ -23,7 +23,7 @@ from gpaw.grid_descriptor import GridDescriptor
 from gpaw.blacs import get_kohn_sham_layouts
 from gpaw.hamiltonian import Hamiltonian
 from gpaw.utilities.timing import Timer
-from gpaw.xc_functional import XCFunctional
+from gpaw.xc import XC
 from gpaw.kpt_descriptor import KPointDescriptor
 from gpaw.brillouin import reduce_kpoints
 from gpaw.wavefunctions.base import EmptyWaveFunctions
@@ -119,12 +119,6 @@ class PAW(PAWTextOutput):
 
             self.initialize()
             self.read(reader)
-
-            # XXX this stuff here can be moved now.            ###
-            # Read GLLB-releated stuff here, so they are not   ###
-            # overwritten by self.initialize()                 ###
-            if self.hamiltonian.xcfunc.gllb:                   ###
-                self.hamiltonian.xcfunc.xc.read(reader)        ###
 
             self.print_cell_and_parameters()
 
@@ -356,12 +350,12 @@ class PAW(PAWTextOutput):
 
         nspins = 1 + int(spinpol)
         
-        if isinstance(par.xc, (str, dict)):
-            xcfunc = XCFunctional(par.xc, nspins)
+        if isinstance(par.xc, str):
+            xc = XC(par.xc)
         else:
-            xcfunc = par.xc
+            xc = par.xc
 
-        setups = Setups(Z_a, par.setups, par.basis, par.lmax, xcfunc, world)
+        setups = Setups(Z_a, par.setups, par.basis, par.lmax, xc, world)
 
         # K-point descriptor
         kd = KPointDescriptor(par.kpts, nspins)
@@ -594,16 +588,11 @@ class PAW(PAWTextOutput):
             gd, finegd = self.density.gd, self.density.finegd
             self.hamiltonian = Hamiltonian(gd, finegd, nspins,
                                            setups, par.stencils[1], self.timer,
-                                           xcfunc, par.poissonsolver,
+                                           xc, par.poissonsolver,
                                            par.external)
 
-        xcfunc.set_non_local_things(self.density, self.hamiltonian, self.wfs,
-                                    self.atoms)
-
-        # For gllb releated calculations, the required parameters (wfs, etc.)
-        # are obtained using paw object
-        if xcfunc.gllb:
-            xcfunc.initialize_gllb(self)
+        xc.initialize(self.density, self.hamiltonian, self.wfs,
+                      self.occupations)
 
         self.text()
         self.print_memory_estimate(self.txt, maxdepth=memory_estimate_depth)

@@ -47,11 +47,9 @@ class FDWaveFunctions(FDPWWaveFunctions):
     def make_preconditioner(self, block=1):
         return Preconditioner(self.gd, self.kin, self.dtype, block)
     
-    def apply_hamiltonian(self, hamiltonian, kpt, psit_xG, Htpsit_xG):
-        """Apply the non-pseudo Hamiltonian i.e. without PAW corrections."""
+    def apply_pseudo_hamiltonian(self, kpt, hamiltonian, psit_xG, Htpsit_xG):
         self.kin.apply(psit_xG, Htpsit_xG, kpt.phase_cd)
         hamiltonian.apply_local_potential(psit_xG, Htpsit_xG, kpt.s)
-        hamiltonian.xc.add_non_local_terms(psit_xG, Htpsit_xG, kpt)
 
     def add_orbital_density(self, nt_G, kpt, n):
         if self.dtype == float:
@@ -83,52 +81,23 @@ class FDWaveFunctions(FDPWWaveFunctions):
                     if abs(d) > 1.e-12:
                         nt_G += (psi0_G.conj() * d * psi_G).real
 
-    def add_to_kinetic_density_from_k_point(self, taut_G, kpt):
-        """Add contribution to pseudo kinetic energy density."""
-
-        if isinstance(kpt.psit_nG, TarFileReference):
+    def calculate_kinetic_energy_density(self, tauct, grad_v):
+        assert not hasattr(self.kpt_u[0], 'c_on')
+        if isinstance(self.kpt_u[0].psit_nG, TarFileReference):
             raise RuntimeError('Wavefunctions have not been initialized.')
 
-        d_c = [Gradient(self.gd, c, dtype=self.dtype).apply for c in range(3)]
+        taut_sG = self.gd.zeros(self.nspins)
         dpsit_G = self.gd.empty(dtype=self.dtype)
-        if self.dtype == float:
+        for kpt in self.kpt_u:
             for f, psit_G in zip(kpt.f_n, kpt.psit_nG):
-                for c in range(3):
-                    d_c[c](psit_G, dpsit_G)
-                    axpy(0.5*f, dpsit_G**2, taut_G) #taut_G += 0.5*f*dpsit_G**2
-        else:
-            for f, psit_G in zip(kpt.f_n, kpt.psit_nG):
-                for c in range(3):
-                    d_c[c](psit_G, dpsit_G, kpt.phase_cd)
-                    taut_G += 0.5 * f * (dpsit_G.conj() * dpsit_G).real
+                for v in range(3):
+                    grad_v[v](psit_G, dpsit_G)
+                    axpy(0.5 * f, abs(dpsit_G)**2, taut_sG[kpt.s])
 
-        # Hack used in delta-scf calculations:
-        if hasattr(kpt, 'c_on'):
-            assert self.bd.comm.size == 1
-            d_nn = np.zeros((self.bd.mynbands, self.bd.mynbands),
-                            dtype=complex)
-            for ne, c_n in zip(kpt.ne_o, kpt.c_on):
-                d_nn += ne * np.outer(c_n.conj(), c_n)
-            dwork_G = self.gd.empty(dtype=self.dtype)
-            if self.dtype == float:
-                for d_n, psit0_G in zip(d_nn, kpt.psit_nG):
-                    for c in range(3):
-                        d_c[c](psit0_G, dpsit_G)
-                        for d, psit_G in zip(d_n, kpt.psit_nG):
-                            if abs(d) > 1.e-12:
-                                d_c[c](psit_G, dwork_G)
-                                # taut_G += 0.5*f*dpsit_G*dwork_G
-                                axpy(0.5*d, dpsit_G * dwork_G, taut_G)
-            else:
-                for d_n, psit0_G in zip(d_nn, kpt.psit_nG):
-                    for c in range(3):
-                        d_c[c](psit0_G, dpsit_G, kpt.phase_cd)
-                        for d, psit_G in zip(d_n, kpt.psit_nG):
-                            if abs(d) > 1.e-12:
-                                d_c[c](psit_G, dwork_G, kpt.phase_cd)
-                                taut_G += 0.5 * (dpsit_G.conj() * d *
-                                                 dwork_G).real
-
+        self.kpt_comm.sum(taut_sG)
+        self.band_comm.sum(taut_sG)
+        return taut_sG
+        
     def calculate_forces(self, hamiltonian, F_av):
         # Calculate force-contribution from k-points:
         F_av.fill(0.0)

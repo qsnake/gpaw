@@ -66,12 +66,16 @@ class Overlap:
 
         # Construct the overlap matrix:
         operator = wfs.matrixoperator
-        S = lambda x: x
-        dS_aii = dict([(a, wfs.setups[a].dO_ii) for a in P_ani])
+
+        def S(psit_G):
+            return psit_G
+        
+        def dS(a, P_ni):
+            return np.dot(P_ni, wfs.setups[a].dO_ii)
+
         self.timer.start('calc_matrix')
 
-        S_nn = operator.calculate_matrix_elements(psit_nG, P_ani,
-                                                       S, dS_aii)
+        S_nn = operator.calculate_matrix_elements(psit_nG, P_ani, S, dS)
         self.timer.stop('calc_matrix')
 
         orthonormalization_string = repr(self.ksl)

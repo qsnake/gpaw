@@ -143,7 +143,7 @@ class PAWTextOutput:
             t()
             
         t('Using the %s Exchange-Correlation Functional.'
-          % self.hamiltonian.xcfunc.xcname)
+          % self.hamiltonian.xc.name)
         if self.wfs.nspins == 2:
             t('Spin-Polarized Calculation.')
             t('Magnetic Moment:   %.6f' % self.density.magmom_a.sum(), end='')
@@ -285,6 +285,8 @@ class PAWTextOutput:
 
         self.print_eigenvalues()
 
+        self.hamiltonian.xc.summary(self.txt)
+            
         if self.density.rhot_g is None:
             return
         
@@ -313,9 +315,6 @@ class PAWTextOutput:
             for a, mom in enumerate(self.get_magnetic_moments()):
                 t(a, mom)
             t()
-
-##         if self.xcfunc.is_gllb():
-##             self.xcfunc.xc.print_converged(self)
 
     def print_iteration(self, iter):
         # Output from each iteration:

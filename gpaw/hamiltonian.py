@@ -10,7 +10,6 @@ import numpy as np
 
 from gpaw.poisson import PoissonSolver
 from gpaw.transformers import Transformer
-from gpaw.xc_functional import XCFunctional, xcgrid
 from gpaw.lfc import LFC
 from gpaw.utilities import pack2,unpack,unpack2
 from gpaw.utilities.tools import tri2full
@@ -52,7 +51,7 @@ class Hamiltonian:
 
     """
 
-    def __init__(self, gd, finegd, nspins, setups, stencil, timer, xcfunc,
+    def __init__(self, gd, finegd, nspins, setups, stencil, timer, xc,
                  psolver, vext_g):
         """Create the Hamiltonian."""
         self.gd = gd
@@ -60,7 +59,7 @@ class Hamiltonian:
         self.nspins = nspins
         self.setups = setups
         self.timer = timer
-        self.xcfunc = xcfunc
+        self.xc = xc
         
         # Solver for the Poisson equation:
         if psolver is None:
@@ -85,9 +84,6 @@ class Hamiltonian:
                                       allocate=False)
         self.restrict = self.restrictor.apply
 
-        # Exchange-correlation functional object:
-        self.xc = xcgrid(xcfunc, finegd, nspins)
-
         self.vbar = LFC(self.finegd, [[setup.vbar] for setup in setups],
                         forces=True)
 
@@ -105,7 +101,6 @@ class Hamiltonian:
         # TODO We should move most of the gd.empty() calls here
         assert not self.allocated
         self.restrictor.allocate()
-        self.xc.allocate()
         self.allocated = True
 
     def set_positions(self, spos_ac, rank_a=None):
@@ -118,6 +113,8 @@ class Hamiltonian:
         self.vbar_g[:] = 0.0
         self.vbar.add(self.vbar_g)
 
+        self.xc.set_positions(spos_ac)
+        
         # If both old and new atomic ranks are present, start a blank dict if
         # it previously didn't exist but it will needed for the new atoms.
         if (self.rank_a is not None and rank_a is not None and
@@ -150,9 +147,6 @@ class Hamiltonian:
             self.gd.comm.waitall(requests)
             self.timer.stop('Redistribute')
 
-        if self.xc.xcfunc.mgga:
-            self.xc.set_positions(spos_ac)
-            
         self.rank_a = rank_a
 
     def aoom(self, DM, a, l, scale=1):
@@ -247,13 +241,8 @@ class Hamiltonian:
             self.vt_sg[1] = vt_g
 
         self.timer.start('XC 3D grid')
-        if self.nspins == 2:
-            Exc = self.xc.get_energy_and_potential(
-                density.nt_sg[0], self.vt_sg[0],
-                density.nt_sg[1], self.vt_sg[1])
-        else:
-            Exc = self.xc.get_energy_and_potential(
-                density.nt_sg[0], self.vt_sg[0])
+        Exc = self.xc.calculate(self.finegd, density.nt_sg, self.vt_sg)
+        Exc /= self.gd.comm.size
         self.timer.stop('XC 3D grid')
 
         self.timer.start('Poisson')
@@ -311,8 +300,7 @@ class Hamiltonian:
 
             self.dH_asp[a] = dH_sp = np.zeros_like(D_sp)
             self.timer.start('XC Correction')
-            Exc += setup.xc_correction.calculate_energy_and_derivatives(
-                D_sp, dH_sp, a)
+            Exc += setup.xc_correction.calculate(self.xc, D_sp, dH_sp, a)
             self.timer.stop('XC Correction')
 
             if setup.HubU is not None:
@@ -351,19 +339,10 @@ class Hamiltonian:
 
         self.timer.stop('Atomic')
 
-        #meta-gga correction
-        # < tilde_Psi | +1/2*nabla.(dedtau * nabla tilde_Psi)> = -< dedtau * tau>
-        if self.xc.xcfunc.mgga:
-            self.Ekin_mgga = 0.0
-            for taut_G, dedtau_g in zip(self.xc.tautnocore_sG, self.xc.dedtau_sg):
-                self.xc.xcfunc.restrictor.apply(dedtau_g, self.xc.dedtau_G)
-                self.Ekin_mgga -= self.gd.integrate(self.xc.dedtau_G, taut_G, global_integral=False)
-            Ekin += self.Ekin_mgga
-
         # Make corrections due to non-local xc:
-        xcfunc = self.xc.xcfunc
-        self.Enlxc = xcfunc.get_non_local_energy()
-        self.Enlkin = xcfunc.get_non_local_kinetic_corrections()
+        #xcfunc = self.xc.xcfunc
+        self.Enlxc = 0.0#XXXxcfunc.get_non_local_energy()
+        Ekin += self.xc.get_kinetic_energy_correction() / self.gd.comm.size
 
         energies = np.array([Ekin, Epot, Ebar, Eext, Exc])
         self.timer.start('Communicate energies')
@@ -371,8 +350,8 @@ class Hamiltonian:
         self.timer.stop('Communicate energies')
         (self.Ekin0, self.Epot, self.Ebar, self.Eext, self.Exc) = energies
 
-        self.Exc += self.Enlxc
-        self.Ekin0 += self.Enlkin
+        #self.Exc += self.Enlxc
+        #self.Ekin0 += self.Enlkin
 
         self.timer.stop('Hamiltonian')
 
@@ -383,8 +362,6 @@ class Hamiltonian:
         # Total free energy:
         self.Etot = (self.Ekin + self.Epot + self.Eext +
                      self.Ebar + self.Exc - self.S)
-        #print self.Etot, self.Ekin, self.Epot, self.Eext, self.Ebar, self.Exc,
-        #print self.S, self.Enlxc,self.Enlkin
 
         return self.Etot
 
@@ -453,50 +430,18 @@ class Hamiltonian:
             P_axi[a] = np.dot(P_xi, dH_ii)
         wfs.pt.add(b_xG, P_axi, kpt.q)
 
-    def get_xc_difference(self, xcname, wfs, density, atoms):
+    def get_xc_difference(self, xc, density):
         """Calculate non-selfconsistent XC-energy difference."""
-        xc = self.xc
-        oldxcfunc = xc.xcfunc
-
-        if isinstance(xcname, str):
-            newxcfunc = XCFunctional(xcname, self.nspins)
-        else:
-            newxcfunc = xcname
-        
-        newxcfunc.set_non_local_things(density, self, wfs, atoms,
-                                       energy_only=True)
-
-        xc.set_functional(newxcfunc)
-        xc.set_positions(atoms.get_scaled_positions() % 1.0)
-        for setup in self.setups.setups.values():
-            setup.xc_correction.xc.set_functional(newxcfunc)
-            if newxcfunc.mgga:
-                setup.xc_correction.initialize_kinetic(setup.data)
-
-        vt_g = self.finegd.empty()  # not used for anything!
         if density.nt_sg is None:
             density.interpolate()
         nt_sg = density.nt_sg
-        if self.nspins == 2:
-            Exc = xc.get_energy_and_potential(nt_sg[0], vt_g, nt_sg[1], vt_g)
-        else:
-            Exc = xc.get_energy_and_potential(nt_sg[0], vt_g)
-
+        if hasattr(xc, 'hybrid'):
+            xc.calculate_exx()
+        Exc = xc.calculate(density.finegd, nt_sg) / self.gd.comm.size
         for a, D_sp in density.D_asp.items():
             setup = self.setups[a]
-            Exc += setup.xc_correction.calculate_energy_and_derivatives(
-                D_sp, np.zeros_like(D_sp), a)
-
+            Exc += setup.xc_correction.calculate(xc, D_sp)
         Exc = self.gd.comm.sum(Exc)
-
-        for kpt in wfs.kpt_u:
-            newxcfunc.apply_non_local(kpt)
-        Exc += newxcfunc.get_non_local_energy()
-
-        xc.set_functional(oldxcfunc)
-        for setup in self.setups.setups.values():
-            setup.xc_correction.xc.set_functional(oldxcfunc)
-
         return Exc - self.Exc
 
     def get_vxc(self, density, wfs):
@@ -557,6 +502,6 @@ class Hamiltonian:
         arrays.subnode('vt_sG', self.nspins * nbytes)
         arrays.subnode('vt_sg', self.nspins * nfinebytes)
         self.restrictor.estimate_memory(mem.subnode('Restrictor'))
-        self.xc.estimate_memory(mem.subnode('XC 3D grid'))
+        self.xc.estimate_memory(mem.subnode('XC'))
         self.poisson.estimate_memory(mem.subnode('Poisson'))
         self.vbar.estimate_memory(mem.subnode('vbar'))

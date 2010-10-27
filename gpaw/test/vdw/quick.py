@@ -1,9 +1,9 @@
 import os
 from ase import Atoms
 from gpaw import GPAW
-from gpaw.vdw import FFTVDWFunctional
+from gpaw.xc.vdw import FFTVDWFunctional
 
-vdw = FFTVDWFunctional(verbose=1)
+vdw = FFTVDWFunctional('vdW-DF', verbose=1)
 L = 2.5
 a = Atoms('H', cell=(L, L, L), pbc=True, calculator=GPAW(nbands=1))
 e = a.get_potential_energy()

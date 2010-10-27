@@ -1,6 +1,7 @@
-from gpaw.gllb.contributions.contribution import Contribution
-from gpaw.xc_functional import XCRadialGrid, XC3DGrid, XCFunctional
-from gpaw.xc_correction import A_Liy, weights
+from gpaw.xc.gllb.contribution import Contribution
+from gpaw.xc import XC
+from gpaw.xc.pawcorrection import rnablaY_nLv
+from gpaw.sphere.lebedev import weight_n
 import numpy as np
 from numpy import dot as dot3  # Avoid dotblas bug!
 from math import pi, sqrt
@@ -17,22 +18,22 @@ class C_XC(Contribution):
         return "("+self.functional+")"
         
     def initialize(self):
-        self.xc = XC3DGrid(XCFunctional(self.functional), self.nlfunc.finegd, self.nlfunc.nspins)
-        self.xc.allocate()
+        self.xc = XC(self.functional)
         self.vt_sg = self.nlfunc.finegd.empty(self.nlfunc.nspins)
         self.e_g = self.nlfunc.finegd.empty()
 
     def initialize_1d(self):
         self.ae = self.nlfunc.ae
-        self.xc = XCRadialGrid(self.functional, self.ae.rgd) 
+        self.xc = XC(self.functional) 
         self.v_g = np.zeros(self.ae.N)
 
     def calculate_spinpaired(self, e_g, n_g, v_g):
         self.e_g[:] = 0.0
         self.vt_sg[:] = 0.0
-        self.xc.get_energy_and_potential_spinpaired(n_g, self.vt_sg[0], e_g=self.e_g)
+        self.xc.calculate(self.nlfunc.finegd, n_g[None, ...], self.vt_sg,
+                          self.e_g)
         v_g += self.weight * self.vt_sg[0]
-        e_g += (self.weight * self.e_g).ravel()
+        e_g += self.weight * self.e_g
 
     def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g):
         self.e_g[:] = 0.0
@@ -47,10 +48,9 @@ class C_XC(Contribution):
         c = self.nlfunc.setups[a].xc_correction
 
         assert self.nlfunc.nspins == 1
-        xcfunc = self.xc.xcfunc
         D_p = D_sp[0]
         dEdD_p = H_sp[0][:]
-        D_Lq = dot3(c.B_Lqp, D_p)
+        D_Lq = dot3(c.B_pqL.T, D_p)
         n_Lg = np.dot(D_Lq, c.n_qg)
         n_Lg[0] += c.nc_g * sqrt(4 * pi)
         nt_Lg = np.dot(D_Lq, c.nt_qg)
@@ -66,8 +66,8 @@ class C_XC(Contribution):
         v_g = np.zeros(c.ng)
         e_g = np.zeros(c.ng)
         y = 0
-        for w, Y_L in zip(weights, c.Y_nL):
-            A_Li = A_Liy[:c.Lmax, :, y]
+        for w, Y_L in zip(weight_n, c.Y_nL):
+            A_Li = rnablaY_nLv[y, :c.Lmax]
             a1x_g = np.dot(A_Li[:, 0], n_Lg)
             a1y_g = np.dot(A_Li[:, 1], n_Lg)
             a1z_g = np.dot(A_Li[:, 2], n_Lg)
@@ -81,7 +81,10 @@ class C_XC(Contribution):
             v_g[:] = 0.0
             e_g[:] = 0.0
             n_g = np.dot(Y_L, n_Lg)
-            xcfunc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
+            self.xc.kernel.calculate(e_g, n_g.reshape((1, -1)),
+                                     v_g.reshape((1, -1)),
+                                     a2_g.reshape((1, -1)),
+                                     deda2_g.reshape((1, -1)))
             
             E += w * np.dot(e_g, c.rgd.dv_g)
             x_g = -2.0 * deda2_g * c.rgd.dv_g * a1_g
@@ -115,14 +118,17 @@ class C_XC(Contribution):
 
             v_g[:] = 0.0
             e_g[:] = 0.0
-            xcfunc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
+            self.xc.kernel.calculate(e_g, n_g.reshape((1, -1)),
+                                     v_g.reshape((1, -1)),
+                                     a2_g.reshape((1, -1)),
+                                     deda2_g.reshape((1, -1)))
 
             E -= w * np.dot(e_g, c.dv_g)
             x_g = -2.0 * deda2_g * c.dv_g * a1_g
             c.rgd.derivative2(x_g, x_g)
             x_g += v_g * c.dv_g
-                                                                                                                                                            
-            B_Lqp = c.B_Lqp
+
+            B_Lqp = c.B_pqL.T
             dEdD_p -= w * np.dot(dot3(c.B_pqL, Y_L),
                                   np.dot(c.nt_qg, x_g))
             x_g = 8.0 * pi * deda2_g * c.rgd.dr_g
@@ -143,13 +149,17 @@ class C_XC(Contribution):
 
     def add_xc_potential_and_energy_1d(self, v_g):
         self.v_g[:] = 0.0
-        Exc = self.xc.get_energy_and_potential(self.ae.n, self.v_g)
+        Exc = self.xc.calculate_spherical(self.ae.rgd,
+                                          self.ae.n.reshape((1, -1)),
+                                          self.v_g.reshape((1, -1)))
         v_g += self.weight * self.v_g
         return self.weight * Exc
 
     def add_smooth_xc_potential_and_energy_1d(self, vt_g):
         self.v_g[:] = 0.0
-        Exc = self.xc.get_energy_and_potential(self.ae.nt, self.v_g)
+        Exc = self.xc.calculate_spherical(self.ae.rgd,
+                                          self.ae.nt.reshape((1, -1)),
+                                          self.v_g.reshape((1, -1)))
         vt_g += self.weight * self.v_g
         return self.weight * Exc
 
@@ -161,7 +171,7 @@ class C_XC(Contribution):
         # LDA has not any special data
         pass
 
-    def write(self, writer):
+    def write(self, writer, natoms):
         # LDA has not any special data to be written
         pass
 

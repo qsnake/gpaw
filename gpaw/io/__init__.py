@@ -157,7 +157,7 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
         (w['KohnShamStencil'],
          w['InterpolationStencil']) = p['stencils']
         w['PoissonStencil'] = paw.hamiltonian.poisson.nn
-        w['XCFunctional'] = paw.hamiltonian.xcfunc.get_name()
+        w['XCFunctional'] = paw.hamiltonian.xc.name
         w['Charge'] = p['charge']
         w['FixMagneticMoment'] = paw.occupations.fixmagmom
         w['UseSymmetry'] = p['usesymm']
@@ -360,8 +360,8 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
                 w.fill(vt_sG, s)
 
     # Write GLLB-releated stuff
-    if hamiltonian.xcfunc.gllb:
-            hamiltonian.xcfunc.xc.write(w)
+    if hamiltonian.xc.type == 'GLLB':
+        hamiltonian.xc.write(w, natoms)
 
     if mode == 'all':
         wfs.write_wave_functions(w)
@@ -673,6 +673,10 @@ def read(paw, reader):
         paw.forces.F_av = r.get('CartesianForces')
     else:
         paw.forces.reset()
+
+    if hamiltonian.xc.type == 'GLLB':
+        hamiltonian.xc.read(r)
+
 
 def read_atoms(reader):
     if isinstance(reader, str):

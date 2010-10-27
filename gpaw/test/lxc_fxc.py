@@ -1,14 +1,16 @@
-from gpaw.xc_functional import XCFunctional
+from gpaw.xc.libxc import LibXC
 from math import pi
 import numpy as np
 
 nspins = 1
 for name in [
     'LDA', 'PBE', 'revPBE', 'RPBE',
-    'LDAx', 'revPBEx', 'RPBEx',
-    'None-C_PW',
+    'LDA_X', 'GGA_X_PBE_R', 'GGA_X_RPBE',
+    'LDA_C_PW',
     ]:
-    libxc = XCFunctional(name, nspins)
+    xc = LibXC(name)
+    xc.initialize(nspins)
+    libxc = xc.xc
     lxc_fxc = libxc.calculate_fxc_spinpaired
     lxc_fxc_fd = libxc.calculate_fxc_fd_spinpaired
     na = 2.0

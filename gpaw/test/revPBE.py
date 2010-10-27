@@ -3,7 +3,6 @@ from ase import Atoms
 from ase.parallel import rank, barrier
 from gpaw import GPAW
 from gpaw.test import equal, gen
-from gpaw.xc_functional import XCFunctional
 from ase.units import Bohr, Hartree
 
 # Generate setup

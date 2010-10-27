@@ -57,7 +57,8 @@ class CG(Eigensolver):
         
         R_nG[:] = self.Htpsit_nG
         self.timer.start('Residuals')        
-        self.calculate_residuals2(wfs, hamiltonian, kpt, R_nG)
+        self.calculate_residuals(kpt, wfs, hamiltonian, kpt.psit_nG,
+                                 kpt.P_ani, kpt.eps_n, R_nG)
         self.timer.stop('Residuals')        
 
         self.timer.start('CG')

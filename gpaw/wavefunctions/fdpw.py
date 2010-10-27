@@ -61,8 +61,8 @@ class FDPWWaveFunctions(WaveFunctions):
         elif density.nt_sG is None:
             density.initialize_from_atomic_densities(basis_functions)
             # Initialize GLLB-potential from basis function orbitals
-            if hamiltonian.xcfunc.gllb:
-                hamiltonian.xcfunc.xc.initialize_from_atomic_orbitals(
+            if hamiltonian.xc.type == 'GLLB':
+                hamiltonian.xc.initialize_from_atomic_orbitals(
                     basis_functions)
         else: # XXX???
             # We didn't even touch density, but some combinations in paw.set()

@@ -20,7 +20,7 @@ from gpaw.lrtddft.apmb import ApmB
 ##from gpaw.lrtddft.transition_density import TransitionDensity
 from gpaw.utilities import packed_index
 from gpaw.utilities.lapack import diagonalize
-from gpaw.xc_functional import XC3DGrid, XCFunctional
+from gpaw.xc import XC
 from gpaw.lrtddft.spectrum import spectrum
 
 __all__ = ['LrTDDFT', 'photoabsorption_spectrum', 'spectrum']
@@ -172,8 +172,8 @@ class LrTDDFT(ExcitationList):
             Om = OmegaMatrix
             name = 'LrTDDFT'
             if self.xc:
-                xc = XCFunctional(self.xc)
-                if xc.hybrid > 0.0:
+                xc = XC(self.xc)
+                if hasattr(xc, 'hybrid') and xc.hybrid > 0.0:
                     Om = ApmB
                     name = 'LrTDDFThyb'
         else:

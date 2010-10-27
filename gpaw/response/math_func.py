@@ -1,14 +1,10 @@
 from math import sqrt, pi
 
 import numpy as np
-from ase.data import chemical_symbols
 
 from gpaw.utilities.blas import gemmdot
 from gpaw.gaunt import gaunt as G_LLL
 from gpaw.spherical_harmonics import Y
-from gpaw.setup_data import SetupData
-from gpaw.setup import Setup
-from gpaw.xc_functional import XCFunctional
 
 
 def delta_function(x0, dx, Nx, sigma):

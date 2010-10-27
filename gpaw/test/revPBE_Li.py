@@ -4,7 +4,6 @@ from ase.units import Hartree
 from ase.parallel import rank, barrier
 from gpaw import GPAW, PoissonSolver
 from gpaw.test import equal, gen
-from gpaw.xc_functional import XCFunctional
 
 # Generate setup
 gen('Li', xcname='revPBE')

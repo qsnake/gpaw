@@ -1,6 +1,7 @@
 from ase import Atom, Atoms
 from gpaw import GPAW, PoissonSolver
 from gpaw.test import equal
+from gpaw.xc.hybrid import HybridXC
 
 a = 6.  # Size of unit cell (Angstrom)
 c = a / 2
@@ -18,8 +19,8 @@ e1 = atom.get_potential_energy()
 niter1 = calc.get_number_of_iterations()
 de1t = calc.get_xc_difference('TPSS')
 de1m = calc.get_xc_difference('M06L')
-de1x = calc.get_xc_difference({'name': 'EXX', 'finegrid': True})
-de1xb = calc.get_xc_difference({'name': 'EXX', 'finegrid': False})
+de1x = calc.get_xc_difference(HybridXC('EXX', finegrid=True))
+de1xb = calc.get_xc_difference(HybridXC('EXX', finegrid=False))
 
 # Hydrogen molecule:
 d = 0.74  # Experimental bond length
@@ -33,8 +34,8 @@ e2 = molecule.get_potential_energy()
 niter2 = calc.get_number_of_iterations()
 de2t = calc.get_xc_difference('TPSS')
 de2m = calc.get_xc_difference('M06L')
-de2x = calc.get_xc_difference({'name': 'EXX', 'finegrid': True})
-de2xb = calc.get_xc_difference({'name': 'EXX', 'finegrid': False})
+de2x = calc.get_xc_difference(HybridXC('EXX', finegrid=True))
+de2xb = calc.get_xc_difference(HybridXC('EXX', finegrid=False))
 
 print 'hydrogen atom energy:     %5.2f eV' % e1
 print 'hydrogen molecule energy: %5.2f eV' % e2

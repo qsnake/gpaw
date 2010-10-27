@@ -8,8 +8,9 @@
 import numpy as np
 from ase.units import Bohr, Hartree
 
+from gpaw.xc import XC
 from gpaw.paw import PAW
-from gpaw.xc_functional import XCFunctional
+
 
 class GPAW(PAW):
     """This is the ASE-calculator frontend for doing a PAW calculation.
@@ -105,7 +106,7 @@ class GPAW(PAW):
         
         'LDA', 'PBE', ..."""
         
-        return self.hamiltonian.xc.xcfunc.xcname
+        return self.hamiltonian.xc.name
  
     def get_bz_k_points(self):
         """Return the k-points."""
@@ -402,19 +403,17 @@ class GPAW(PAW):
             self.wfs.world.broadcast(f_n, 0)
         return f_n
     
-    def get_xc_difference(self, xcname):
-        if isinstance(xcname, str) or isinstance(xcname, dict):
-            xcfunc = XCFunctional(xcname, self.hamiltonian.nspins)
-        else:
-            xcfunc = xcname
-        if xcfunc.mgga or xcfunc.orbital_dependent:
+    def get_xc_difference(self, xc):
+        if isinstance(xc, str):
+            xc = XC(xc)
+        xc.initialize(self.density, self.hamiltonian, self.wfs,
+                      self.occupations)
+        xc.set_positions(self.atoms.get_scaled_positions() % 1.0)
+        if xc.orbital_dependent:
             self.converge_wave_functions()
-        return self.hamiltonian.get_xc_difference(xcfunc, self.wfs,
-                                                  self.density,
-                                                  self.atoms) * Hartree
+        return self.hamiltonian.get_xc_difference(xc, self.density) * Hartree
 
     def get_nonselfconsistent_eigenvalues(self, xcname):
-        from gpaw.xc_functional import XCFunctional
         wfs = self.wfs
         oldxc = self.hamiltonian.xc.xcfunc
 

@@ -304,15 +304,11 @@ class ResponseCalculator:
         # Store for evaluation of second order derivative
         self.vH1_g = vHXC1_g.copy()
         
-        # XC part - fix this in the xc_functional.py file !!!!
-        nt_g = self.density.nt_g
-        nt_g_ = nt_g.ravel()
-        vXC1_g = self.finegd.zeros(dtype=float)
-        vXC1_g.shape = nt_g_.shape
-        hamiltonian = self.hamiltonian
-        hamiltonian.xcfunc.calculate_fxc_spinpaired(nt_g_, vXC1_g)
-        vXC1_g.shape = self.nt1_g.shape
-        vHXC1_g += vXC1_g * self.nt1_g
+        # XC part
+        nt_sg = self.density.nt_sg
+        fxct_sg = np.zeros_like(nt_sg)
+        self.hamiltonian.xc.calculate_fxc(self.finegd, nt_sg, fxct_sg)
+        vHXC1_g += fxct_sg[0] * self.nt1_g
 
         # Transfer to coarse grid
         self.vHXC1_G = self.gd.zeros(dtype=self.dtype)

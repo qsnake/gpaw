@@ -81,49 +81,26 @@ class Eigensolver:
         """Implemented in subclasses."""
         raise NotImplementedError
 
-    def calculate_residuals(self, wfs, hamiltonian, kpt, eps_n, R_nG, psit_nG,
-                            n=None):
-        wfs.apply_hamiltonian(hamiltonian, kpt, psit_nG, R_nG)
+    def calculate_residuals(self, kpt, wfs, hamiltonian, psit_xG, P_axi, eps_x,
+                            R_xG, n_x=None, calculate_change=False):
+        """Calculate residual.
 
-        B = len(eps_n)  # block size
-        P_ani = dict([(a, np.zeros((B, wfs.setups[a].ni), wfs.dtype))
-                      for a in kpt.P_ani])
-        wfs.pt.integrate(psit_nG, P_ani, kpt.q)
-        self.calculate_residuals2(wfs, hamiltonian, kpt, R_nG,
-                                  eps_n, psit_nG, P_ani, n=n)
+        From R=Ht*psit calculate R=H*psit-eps*S*psit."""
         
-    def calculate_residuals2(self, wfs, hamiltonian, kpt, R_nG,
-                             eps_n=None, psit_nG=None, P_ani=None, n=None):
-        if eps_n is None:
-            eps_n = kpt.eps_n
-        if psit_nG is None:
-            psit_nG = kpt.psit_nG
-        if P_ani is None:
-            P_ani = kpt.P_ani
-        for R_G, eps, psit_G in zip(R_nG, eps_n, psit_nG):
+        for R_G, eps, psit_G in zip(R_xG, eps_x, psit_xG):
             axpy(-eps, psit_G, R_G)
-        c_ani = {}
-        for a, P_ni in P_ani.items():
+
+        c_axi = {}
+        for a, P_xi in P_axi.items():
             dH_ii = unpack(hamiltonian.dH_asp[a][kpt.s])
             dO_ii = hamiltonian.setups[a].dO_ii
-            c_ni = (np.dot(P_ni, dH_ii) -
-                    np.dot(P_ni * eps_n[:, np.newaxis], dO_ii))
-
-            if hamiltonian.xc.xcfunc.hybrid > 0.0 and hasattr(kpt, 'vxx_ani'):
-                if n is None:
-                    c_ni += kpt.vxx_ani[a]
-                elif isinstance(n, tuple):
-                    n1, n2 = n
-                    for i in range(0, n2 - n1):
-                        c_ni[i] += np.dot(kpt.vxx_anii[a][n1 + i], P_ni[i])
-                else:
-                    assert len(P_ni) == 1
-                    c_ni[0] += np.dot(kpt.vxx_anii[a][n], P_ni[0])
-
-            c_ani[a] = c_ni
-
-        wfs.pt.add(R_nG, c_ani, kpt.q)
-
+            c_xi = (np.dot(P_xi, dH_ii) -
+                    np.dot(P_xi * eps_x[:, np.newaxis], dO_ii))
+            c_axi[a] = c_xi
+        hamiltonian.xc.add_correction(kpt, psit_xG, R_xG, P_axi, c_axi, n_x,
+                                      calculate_change)
+        wfs.pt.add(R_xG, c_axi, kpt.q)
+        
     def subspace_diagonalize(self, hamiltonian, wfs, kpt, rotate=True):
         """Diagonalize the Hamiltonian in the subspace of kpt.psit_nG
 
@@ -155,50 +132,39 @@ class Eigensolver:
             Htpsit_xG = self.operator.suggest_temporary_buffer(psit_nG.dtype)
 
         def H(psit_xG):
-            wfs.apply_hamiltonian(hamiltonian, kpt, psit_xG, Htpsit_xG)
+            wfs.apply_pseudo_hamiltonian(kpt, hamiltonian, psit_xG, Htpsit_xG)
+            hamiltonian.xc.apply_orbital_dependent_hamiltonian(
+                kpt, psit_xG, Htpsit_xG, hamiltonian.dH_asp)
             return Htpsit_xG
-                
-        dH_aii = dict([(a, unpack(dH_sp[kpt.s]))
-                       for a, dH_sp in hamiltonian.dH_asp.items()])
+
+        def dH(a, P_ni):
+            return np.dot(P_ni, unpack(hamiltonian.dH_asp[a][kpt.s]))
 
         self.timer.start('calc_matrix')
-        if hamiltonian.xc.xcfunc.hybrid == 0.0:
-            H_nn = self.operator.calculate_matrix_elements(psit_nG, P_ani,
-                                                           H, dH_aii)
-        else:
-            if self.band_comm.size > 1:
-                raise NotImplementedError
-            else:
-                H_nn = hamiltonian.xc.xcfunc.exx.grr(wfs, kpt, Htpsit_xG,
-                                                     hamiltonian)
+        H_nn = self.operator.calculate_matrix_elements(psit_nG, P_ani,
+                                                       H, dH)
+        hamiltonian.xc.correct_hamiltonian_matrix(kpt, H_nn)
         self.timer.stop('calc_matrix')
 
         diagonalization_string = repr(self.ksl)
         wfs.timer.start(diagonalization_string)
         self.ksl.diagonalize(H_nn, kpt.eps_n)
         # H_nn now contains the result of the diagonalization.
-        # Let's call it something different:
-        U_nn = H_nn
-        del H_nn
         wfs.timer.stop(diagonalization_string)
-        
+
         if not rotate:
             self.timer.stop('Subspace diag')
             return
 
         self.timer.start('rotate_psi')
-        kpt.psit_nG = self.operator.matrix_multiply(U_nn, psit_nG, P_ani)
-        #
-        # store the transformation for later use
-        if extra_parameters.get('sic'):
-            kpt.W_nn = U_nn.T.conj().copy()
+        kpt.psit_nG = self.operator.matrix_multiply(H_nn, psit_nG, P_ani)
         if self.keep_htpsit:
-            self.Htpsit_nG = self.operator.matrix_multiply(U_nn, Htpsit_xG)
-        self.timer.stop('rotate_psi')
+            self.Htpsit_nG = self.operator.matrix_multiply(H_nn, Htpsit_xG)
 
-        # Rotate EXX related stuff
-        if hamiltonian.xc.xcfunc.hybrid > 0.0:
-            hamiltonian.xc.xcfunc.exx.rotate(kpt, U_nn)
+        # Rotate orbital dependent XC stuff:
+        hamiltonian.xc.rotate(kpt, H_nn)
+
+        self.timer.stop('rotate_psi')
 
         self.timer.stop('Subspace diag')
 

@@ -1,4 +1,4 @@
-from gpaw.lrtddft import d2Excdnsdnt,d2Excdn2
+from gpaw.lrtddft import d2Excdnsdnt, d2Excdn2
 import numpy as np
 
 dup=np.array([.1,.3])

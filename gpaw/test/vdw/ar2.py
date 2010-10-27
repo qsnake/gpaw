@@ -6,7 +6,7 @@ from ase.parallel import rank, barrier
 
 from gpaw import GPAW
 from gpaw.test import equal, gen
-from gpaw.vdw import FFTVDWFunctional
+from gpaw.xc.vdw import FFTVDWFunctional
 
 gen('Ar', xcname='revPBE')
 
@@ -14,7 +14,7 @@ energy_tolerance = 0.00002
 niter_tolerance = 0
 
 def test():
-    vdw = FFTVDWFunctional(verbose=1)
+    vdw = FFTVDWFunctional('vdW-DF', verbose=1)
     d = 3.9
     x = d / sqrt(3)
     L = 3.0 + 2 * 4.0

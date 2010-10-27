@@ -17,7 +17,7 @@ from gpaw.transformers import Transformer
 from gpaw.utilities import pack, pack2, packed_index
 from gpaw.utilities.lapack import diagonalize
 from gpaw.utilities.timing import Timer
-from gpaw.xc_functional import XC3DGrid, XCFunctional
+from gpaw.xc import XC
 
 import time
 
@@ -94,8 +94,10 @@ class OmegaMatrix:
         if xc == 'RPA': 
             xc = None # enable RPA as keyword
         if xc is not None:
-            self.xc = XC3DGrid(xc, self.gd, kss.npspins)
-            self.xc.allocate()
+            self.xc = XC(xc)
+            self.xc.initialize(self.paw.density, self.paw.hamiltonian,
+                               wfs, self.paw.occupations)
+
             # check derivativeLevel
             if derivativeLevel is None:
                 derivativeLevel= \
@@ -107,12 +109,6 @@ class OmegaMatrix:
                 spin_increased = True
             else:
                 spin_increased = False
-            for setup in wfs.setups.setups.values():
-                sxc = setup.xc_correction
-                if spin_increased or sxc.xc.xcfunc.xcname != xc:
-                    sxc.xc.set_functional(XCFunctional(xc, kss.npspins))
-                if spin_increased:
-                    sxc.set_nspins(2)
         else:
             self.xc = None
 
@@ -133,7 +129,6 @@ class OmegaMatrix:
 
         if self.xc is not None:
             self.paw.timer.start('Omega XC')
-            xcf=self.xc.get_functional()
             self.full = self.get_xc(self.full)
             self.paw.timer.stop()
         self.paw.wfs.band_comm.sum(self.full)
@@ -144,8 +139,8 @@ class OmegaMatrix:
         # shorthands
         paw = self.paw
         wfs = paw.wfs
-        fgd = paw.density.finegd
-        comm = fgd.comm
+        gd = paw.density.finegd
+        comm = gd.comm
         eh_comm = self.eh_comm
         
         fg = self.finegrid is 2
@@ -183,6 +178,7 @@ class OmegaMatrix:
             nt_s = self.gd.zeros(nt_sg.shape[0])
             for s in range(nt_sg.shape[0]):
                 self.restrict(nt_sg[s], nt_s[s])
+            gd = paw.density.gd
                 
         # initialize vxc or fxc
 
@@ -225,21 +221,19 @@ class OmegaMatrix:
                 timer2.start('init v grids')
                 vp_s=np.zeros(nt_s.shape,nt_s.dtype.char)
                 vm_s=np.zeros(nt_s.shape,nt_s.dtype.char)
-                if kss.npspins==2: # spin polarised
-                    nv_s=nt_s.copy()
-                    nv_s[kss[ij].pspin] += ns*kss[ij].get(fg)
-                    xc.get_energy_and_potential(nv_s[0],vp_s[0],
-                                                nv_s[1],vp_s[1])
-                    nv_s=nt_s.copy()
-                    nv_s[kss[ij].pspin] -= ns*kss[ij].get(fg)
-                    xc.get_energy_and_potential(nv_s[0],vm_s[0],
-                                                nv_s[1],vm_s[1])
+                if kss.npspins == 2: # spin polarised
+                    nv_s = nt_s.copy()
+                    nv_s[kss[ij].pspin] += ns * kss[ij].get(fg)
+                    xc.calculate(gd, nv_s, vp_s)
+                    nv_s = nt_s.copy()
+                    nv_s[kss[ij].pspin] -= ns * kss[ij].get(fg)
+                    xc.calculate(gd, nv_s, vm_s)
                 else: # spin unpolarised
-                    nv=nt_s[0] + ns*kss[ij].get(fg)
-                    xc.get_energy_and_potential(nv,vp_s[0])
-                    nv=nt_s[0] - ns*kss[ij].get(fg)
-                    xc.get_energy_and_potential(nv,vm_s[0])
-                vvt_s = (.5/ns)*(vp_s-vm_s)
+                    nv = nt_s + ns * kss[ij].get(fg)
+                    xc.calculate(gd, nv, vp_s)
+                    nv = nt_s - ns * kss[ij].get(fg)
+                    xc.calculate(gd, nv, vm_s)
+                vvt_s = (0.5 / ns) * (vp_s - vm_s)
                 timer2.stop()
 
                 # initialize the correction matrices
@@ -249,17 +243,19 @@ class OmegaMatrix:
                     # create the modified density matrix
                     Pi_i = P_ni[kss[ij].i]
                     Pj_i = P_ni[kss[ij].j]
-                    P_ii = np.outer(Pi_i,Pj_i)
+                    P_ii = np.outer(Pi_i, Pj_i)
                     # we need the symmetric form, hence we can pack
-                    P_p = pack(P_ii,tolerance=1e30)
+                    P_p = pack(P_ii, tolerance=1e30)
+                    D_sp = self.paw.density.D_asp[a].copy()
+                    D_sp[kss[ij].pspin] -= ns * P_p
+                    setup = wfs.setups[a]
+                    I_sp = np.zeros_like(D_sp)
+                    setup.xc_correction.calculate(self.xc, D_sp, I_sp)
+                    I_sp *= -1.0
                     D_sp = self.paw.density.D_asp[a].copy()
                     D_sp[kss[ij].pspin] += ns*P_p
-                    setup = wfs.setups[a]
-                    I_sp = setup.xc_correction.two_phi_integrals(D_sp)
-                    D_sp = self.paw.density.D_asp[a].copy()
-                    D_sp[kss[ij].pspin] -= ns*P_p
-                    I_sp -= setup.xc_correction.two_phi_integrals(D_sp)
-                    I_sp /= 2.*ns
+                    setup.xc_correction.calculate(self.xc, D_sp, I_sp)
+                    I_sp /= 2.0 * ns
                     I_asp[a] = I_sp
                 timer2.stop()
                     

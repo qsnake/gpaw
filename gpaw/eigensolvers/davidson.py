@@ -61,7 +61,8 @@ class Davidson(Eigensolver):
 
         self.timer.start('Davidson')
         R_nG = self.Htpsit_nG 
-        self.calculate_residuals2(wfs, hamiltonian, kpt, R_nG)
+        self.calculate_residuals(kpt, wfs, hamiltonian, kpt.psit_nG,
+                                 kpt.P_ani, kpt.eps_n, R_nG)
 
         for nit in range(niter):
             H_2n2n[:] = 0.0
@@ -160,7 +161,8 @@ class Davidson(Eigensolver):
                 hamiltonian.apply_local_potential(kpt.psit_nG, self.Htpsit_nG,
                                                   kpt.s)
                 R_nG = self.Htpsit_nG
-                self.calculate_residuals2(wfs, hamiltonian, kpt, R_nG)
+                self.calculate_residuals(kpt, wfs, hamiltonian, kpt.psit_nG,
+                                         kpt.P_ani, kpt.eps_n, R_nG)
 
         self.timer.stop('Davidson')
         error = self.gd.comm.sum(error)

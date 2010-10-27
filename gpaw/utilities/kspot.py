@@ -1,12 +1,13 @@
 from math import pi,sqrt
 from itertools import izip
+
+import numpy as np
+
 from gpaw.utilities import hartree
 from gpaw.utilities.blas import gemmdot
 from gpaw.atom.all_electron import AllElectron
 from gpaw import extra_parameters
-from gpaw.sphere import weights, points
-
-import numpy as np
+from gpaw.sphere.lebedev import weight_n, R_nv
 
 
 def get_scaled_positions(atoms, positions):
@@ -54,7 +55,7 @@ class AllElectronPotential:
       radf_g = np.zeros(xccorr.ng)
       target_g = np.zeros(xccorr.ng)
       
-      for w,p in zip(weights, points):
+      for w, p in zip(weight_n, R_nv):
          scaled_nc = []
          # Very inefficient loop
          for i, r in enumerate(xccorr.rgd.r_g):
@@ -74,9 +75,8 @@ class AllElectronPotential:
    def get_spherical_ks_potential(self,a):
       #self.paw.restore_state()
 
-      print "XC:", self.paw.hamiltonian.xc.xcfunc.xcname
-      if not self.paw.hamiltonian.xc.xcfunc.xcname == 'LDA':
-         raise NotImplementedError
+      print "XC:", self.paw.hamiltonian.xc.name
+      assert self.paw.hamiltonian.xc.type == 'LDA'
 
       # If the calculation is just loaded, density needs to be interpolated
       if self.paw.density.nt_sg is None:
@@ -91,7 +91,7 @@ class AllElectronPotential:
       D_sp = self.paw.density.D_asp[a]
 
       # density a function of L and partial wave radial pair density coefficient
-      D_sLq = gemmdot(D_sp, xccorr.B_Lqp, trans='t')
+      D_sLq = np.inner(D_sp, xccorr.B_pqL.T)
 
       # The 'spherical' spherical harmonic
       Y0 = 1.0/sqrt(4*pi)
@@ -99,8 +99,9 @@ class AllElectronPotential:
       # Generate cartesian fine grid xc-potential
       print "Generate cartesian fine grid xc-potential"
       gd = self.paw.density.finegd
-      vxct_g = gd.zeros()
-      self.paw.hamiltonian.xc.get_energy_and_potential(self.paw.density.nt_sg[0], vxct_g)
+      vxct_sg = gd.zeros(1)
+      xc = self.paw.hamiltonian.xc
+      xc.calculate(gd, self.paw.density.nt_sg, vxct_sg)
 
       # ---------------------------------------------
       # The Electrostatic potential                  
@@ -124,9 +125,9 @@ class AllElectronPotential:
       print "D_sp", D_sp
 
       # Calculate the difference in density and pseudo density
-      dn_g = Y0 * (xccorr.expand_density(D_sLq, xccorr.n_qg, xccorr.nc_g, xccorr.ncorehole_g).n_sLg[0][0]
-                   - xccorr.expand_density(D_sLq, xccorr.nt_qg, xccorr.nct_g).n_sLg[0][0])
-
+      dn_g = (Y0 * np.dot(D_sLq[0, 0], (xccorr.n_qg - xccorr.nt_qg)) +
+              xccorr.nc_g - xccorr.nct_g)
+      
       # Add the compensation charge contribution
       dn_g -= Y0 * self.paw.density.Q_aL[a][0] * setup.g_lg[0]
       
@@ -147,26 +148,23 @@ class AllElectronPotential:
 
       print "Evaluating xc potential"
       # Interpolate the smooth xc potential  from fine grid to radial grid
-      radvxct_g = self.grid_to_radial(a, gd, vxct_g)
+      radvxct_g = self.grid_to_radial(a, gd, vxct_sg[0])
 
       # Arrays for evaluating radial xc potential slice
       e_g = np.zeros((xccorr.ng,))
       vxc_sg = np.zeros((len(D_sp), xccorr.ng))
 
-      # Create pseudo/ae density iterators for integration
-      n_iter = xccorr.expand_density(D_sLq, xccorr.n_qg, xccorr.nc_g, xccorr.ncorehole_g)
-      nt_iter = xccorr.expand_density(D_sLq, xccorr.nt_qg, xccorr.nct_g)
-      
-      # Take the spherical average of smooth and ae radial xc potentials
-      for n_sg, nt_sg, integrator in izip(n_iter,
-                                          nt_iter,
-                                          xccorr.get_integrator(None)):
-         # Add the ae xc potential
-         xccorr.calculate_potential_slice(e_g, n_sg, vxc_sg)
-         radvxct_g += integrator.weight * vxc_sg[0]
-         # Substract the pseudo xc potential
-         xccorr.calculate_potential_slice(e_g, nt_sg, vxc_sg)
-         radvxct_g -= integrator.weight * vxc_sg[0]
+      for n, Y_L in enumerate(xccorr.Y_nL):
+         n_sLg = np.dot(D_sLq, xccorr.n_qg)
+         n_sLg[:, 0] += sqrt(4 * pi) * xccorr.nc_g
+         vxc_sg[:] = 0.0
+         xc.calculate_radial(xccorr.rgd, n_sLg, Y_L, vxc_sg)
+         radvxct_g += weight_n[n] * vxc_sg[0]
+         nt_sLg = np.dot(D_sLq, xccorr.nt_qg)
+         nt_sLg[:, 0] += sqrt(4 * pi) *xccorr.nct_g
+         vxc_sg[:] = 0.0
+         xc.calculate_radial(xccorr.rgd, nt_sLg, Y_L, vxc_sg)
+         radvxct_g -= weight_n[n] * vxc_sg[0]
 
       radvks_g = radvxct_g*xccorr.rgd.r_g + radHt_g
       return (xccorr.rgd.r_g, radvks_g)

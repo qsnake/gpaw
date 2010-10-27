@@ -19,7 +19,7 @@ from gpaw.grid_descriptor import GridDescriptor
 from gpaw.kpt_descriptor import KPointDescriptor
 from gpaw.blacs import BandLayouts
 from gpaw.parameters import InputParameters
-from gpaw.xc_functional import XCFunctional
+from gpaw.xc import XC
 from gpaw.setup import SetupData, Setups
 from gpaw.wavefunctions.base import WaveFunctions
 from gpaw.wavefunctions.fd import FDWaveFunctions
@@ -35,9 +35,8 @@ from gpaw.test.ut_common import ase_svnversion, shapeopt, TestCase, \
 # -------------------------------------------------------------------
 
 p = InputParameters(spinpol=False)
-xcfunc = XCFunctional(p.xc, 1+int(p.spinpol))
-p.setups = dict([(symbol, SetupData(symbol, xcfunc.get_setup_name(), 'paw', \
-    readxml=True, zero_reference=xcfunc.hybrid > 0)) for symbol in 'HO'])
+xc = XC(p.xc)
+p.setups = dict([(symbol, SetupData(symbol, xc.name)) for symbol in 'HO'])
 
 class UTDomainParallelSetup(TestCase):
     """
@@ -47,7 +46,7 @@ class UTDomainParallelSetup(TestCase):
     nbands = 1
 
     # Spin-paired, single kpoint
-    nspins = xcfunc.nspins
+    nspins = 1
     nibzkpts = 1
 
     # Mean spacing and number of grid points per axis (G x G x G)
@@ -182,7 +181,7 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
         # Create setups for atoms
         self.Z_a = self.atoms.get_atomic_numbers()
         self.setups = Setups(self.Z_a, p.setups, p.basis,
-                             p.lmax, xcfunc)
+                             p.lmax, xc)
 
         bzk_kc = np.array([[0, 0, 0],])
         # K-point descriptor

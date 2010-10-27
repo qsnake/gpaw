@@ -1,22 +1,24 @@
+from gpaw.xc.functional import XCFunctional
 from gpaw.mpi import world
 
-class NonLocalFunctional:
+class NonLocalFunctional(XCFunctional):
+    type = 'GLLB'
     def __init__(self):
         self.contributions = []
         self.xcs = {}
-        
-    def pass_stuff(self, paw):
-        self.gd = paw.density.gd # smooth grid describtor
-        self.finegd = paw.density.finegd # fine grid describtor
-        self.nt_sg = paw.density.nt_sg # smooth density
-        self.setups = paw.wfs.setups # All the setups 
-        self.nspins = paw.wfs.nspins # number of spins
-        self.wfs = paw.wfs
-        self.occupations = paw.occupations
-        self.density = paw.density
-        self.atoms = paw.atoms
-        self.hamiltonian = paw.hamiltonian
-        self.nvalence = paw.wfs.nvalence
+        XCFunctional.__init__(self, 'GLLBSC')
+    
+    def initialize(self, density, hamiltonian, wfs, occupations):
+        self.gd = density.gd # smooth grid describtor
+        self.finegd = density.finegd # fine grid describtor
+        self.nt_sg = density.nt_sg # smooth density
+        self.setups = wfs.setups # All the setups 
+        self.nspins = wfs.nspins # number of spins
+        self.wfs = wfs
+        self.occupations = occupations
+        self.density = density
+        self.hamiltonian = hamiltonian
+        self.nvalence = wfs.nvalence
 
         #self.vt_sg = paw.vt_sg # smooth potential
         #self.kpt_u = kpt_u # kpoints object       
@@ -24,18 +26,31 @@ class NonLocalFunctional:
         #self.nuclei = nuclei
 
         # Is this OK place?
-        self.initialize()
+        self.initialize0()
         
     def pass_stuff_1d(self, ae):
         self.ae = ae
 
-    def initialize(self):
+    def initialize0(self):
         for contribution in self.contributions:
             contribution.initialize()
 
     def initialize_1d(self):
         for contribution in self.contributions:
             contribution.initialize_1d()
+
+    def calculate(self, gd, n_sg, v_sg=None, e_g=None):
+        #if gd is not self.gd:
+        #    self.set_grid_descriptor(gd)
+        if e_g is None:
+            e_g = gd.empty()
+        if v_sg is None:
+            v_sg = np.zeros_like(n_sg)
+        if self.nspins == 1:
+            self.calculate_spinpaired(e_g, n_sg[0], v_sg[0])
+        else:
+            dsfsdfg
+        return gd.integrate(e_g)
     
     def calculate_spinpaired(self, e_g, n_g, v_g):
         e_g[:] = 0.0
@@ -96,6 +111,6 @@ class NonLocalFunctional:
         for contribution in self.contributions:
             contribution.read(reader)
 
-    def write(self, writer):
+    def write(self, writer, natoms):
         for contribution in self.contributions:
-            contribution.write(writer)     
+            contribution.write(writer, natoms)     

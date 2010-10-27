@@ -1,48 +1,75 @@
 from math import pi
 from gpaw.grid_descriptor import RadialGridDescriptor, GridDescriptor
-from gpaw.xc_functional import XC3DGrid, XCRadialGrid
+from gpaw.xc import XC
 import numpy as np
 from gpaw.test import equal
 
+r = 0.01 * np.arange(100)
+dr = 0.01 * np.ones(100)
+rgd = RadialGridDescriptor(r, dr)
 
 for name in ['LDA', 'PBE']:
-    r = 0.01 * np.arange(100)
-    dr = 0.01 * np.ones(100)
-    rgd = RadialGridDescriptor(r, dr)
-    xc = XCRadialGrid(name, rgd)
-    n = np.exp(-r**2)
-    v = np.zeros(100)
-    E = xc.get_energy_and_potential(n, v)
-    print E
-    n2 = 1.0 * n
-    i = 23
-    n2[i] += 0.000001
-    x = v[i] * rgd.dv_g[i]
-    E2 = xc.get_energy_and_potential(n2, v)
-    x2 = (E2 - E) / 0.000001
-    print i, x, x2, x - x2
-    equal(x, x2, 2e-8)
+    xc = XC(name)
+    for nspins in [1, 2]:
+        n = rgd.zeros(nspins)
+        v = rgd.zeros(nspins)
+        n[:] = np.exp(-r**2)
+        n[-1] *= 2
+        E = xc.calculate_spherical(rgd, n, v)
+        i = 23
+        x = v[-1, i] * rgd.dv_g[i]
+        n[-1, i] += 0.000001
+        Ep = xc.calculate_spherical(rgd, n, v)
+        n[-1, i] -= 0.000002
+        Em = xc.calculate_spherical(rgd, n, v)
+        x2 = (Ep - Em) / 0.000002
+        print name, nspins, E, x, x2, x - x2
+        equal(x, x2, 1e-9)
+        n[-1, i] += 0.000001
+        if nspins == 1:
+            ns = rgd.empty(2)
+            ns[:] = n / 2
+            Es = xc.calculate_spherical(rgd, ns, 0 * ns)
+            equal(E, Es, 1e-13)
+        
 
-    N = 20
-    a = 1.0
-    gd = GridDescriptor((N, N, N), (a, a, a))
-    xc = XC3DGrid(name, gd)
-    xc.allocate()
-    n = gd.empty()
-    n.fill(0.02)
-    n += 0.01 * np.sin(np.arange(gd.beg_c[2], gd.end_c[2]) * 2 * pi / N)
-    v = 0.0 * n
-    E = xc.get_energy_and_potential(n, v)
+N = 20
+a = 1.0
+gd = GridDescriptor((N, N, N), (a, a, a))
 
-    n2 = 1.0 * n
-    here = (gd.beg_c[0] <= 1 < gd.end_c[0] and
-            gd.beg_c[1] <= 2 < gd.end_c[1] and
-            gd.beg_c[2] <= 3 < gd.end_c[2])
-    if here:
-        n2[1, 2, 3] += 0.000001
-        x = v[1, 2, 3] * gd.dv
-    E2 = xc.get_energy_and_potential(n2, v)
-    x2 = (E2 - E) / 0.000001
-    if here:
-        print x, x2, x - x2
-        equal(x, x2, 2e-8)
+for name in ['LDA', 'PBE']:
+    xc = XC(name)
+    for nspins in [1, 2]:
+        n = gd.empty(nspins)
+        n.fill(0.03)
+        z = np.arange(gd.beg_c[2], gd.end_c[2]) * a / N
+        n[:] += 0.01 * np.sin(2 * pi * z / a)
+        if nspins == 2:
+            n[1] += 0.01 * np.cos(2 * pi * z / a)
+        n /= nspins
+
+        v = 0.0 * n
+        E = xc.calculate(gd, n, v)
+
+        here = (gd.beg_c[0] <= 1 < gd.end_c[0] and
+                gd.beg_c[1] <= 2 < gd.end_c[1] and
+                gd.beg_c[2] <= 3 < gd.end_c[2])
+        if here:
+            x = v[-1, 1, 2, 3] * gd.dv
+            n[-1, 1, 2, 3] += 0.000001
+        Ep = xc.calculate(gd, n, v)
+        if here:
+            n[-1, 1, 2, 3] -= 0.000002
+        Em = xc.calculate(gd, n, v)
+        x2 = (Ep - Em) / 0.000002
+        if here:
+            print name, nspins, E, x, x2, x - x2
+            equal(x, x2, 1e-11)
+            n[-1, 1, 2, 3] += 0.000001
+            
+        if nspins == 1:
+            ns = gd.empty(2)
+            ns[:] = n / 2
+            Es = xc.calculate(gd, ns, 0 * ns)
+            equal(E, Es, 1e-13)
+

@@ -14,8 +14,7 @@ from gpaw import setup_paths
 from gpaw.spline import Spline
 from gpaw.utilities import _fact, divrl
 from gpaw.utilities.tools import md5_new
-from gpaw.xc_functional import XCRadialGrid
-from gpaw.xc_correction import XCCorrection
+from gpaw.xc.pawcorrection import PAWXCCorrection
 from gpaw.mpi import broadcast_string
 
 try:
@@ -107,8 +106,8 @@ class SetupData:
             nj = len(self.l_j)
             self.e_kin_jj.shape = (nj, nj)
 
-    def is_compatible(self, xcfunc):
-        return xcfunc.get_setup_name() == self.setupname
+    def is_compatible(self, xc):
+        return xc.get_setup_name() == self.setupname
 
     def print_info(self, text, setup):
         if self.phicorehole_g is None:
@@ -202,28 +201,25 @@ class SetupData:
         gcutfilter = g + 1
         return gcutfilter
 
-    def get_xc_correction(self, rgd, xcfunc, gcut2, lcut):
-        xc = XCRadialGrid(xcfunc, rgd, xcfunc.nspins)
+    def get_xc_correction(self, rgd, xc, gcut2, lcut):
         phicorehole_g = self.phicorehole_g
         if phicorehole_g is not None:
             phicorehole_g = phicorehole_g[:gcut2].copy()
 
-        xc_correction = XCCorrection(
-            xc,
-            [divrl(phi_g[:gcut2].copy(), l, rgd.r_g)
-             for l, phi_g in zip(self.l_j, self.phi_jg)],
-            [divrl(phit_g[:gcut2].copy(), l, rgd.r_g)
-             for l, phit_g in zip(self.l_j, self.phit_jg)],
-            self.nc_g[:gcut2].copy() / sqrt(4 * pi),
-            self.nct_g[:gcut2].copy() / sqrt(4 * pi),
+        xc_correction = PAWXCCorrection(
+            [phi_g[:gcut2] for phi_g in self.phi_jg],
+            [phit_g[:gcut2] for phit_g in self.phit_jg],
+            self.nc_g[:gcut2] / sqrt(4 * pi),
+            self.nct_g[:gcut2] / sqrt(4 * pi),
             rgd,
             list(enumerate(self.l_j)),
             min(2 * lcut, 4),
             self.e_xc,
             phicorehole_g,
             self.fcorehole,
-            xcfunc.nspins,
-            self.tauc_g[:gcut2].copy())
+            self.tauc_g[:gcut2].copy(),
+            self.tauct_g[:gcut2].copy())
+
         return xc_correction
 
     def write_xml(self):

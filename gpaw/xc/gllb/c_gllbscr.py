@@ -1,30 +1,31 @@
-from gpaw.gllb.contributions.contribution import Contribution
-from gpaw.xc_functional import XCRadialGrid, XCFunctional, XC3DGrid
-from gpaw.xc_correction import A_Liy, weights
-from gpaw.gllb import safe_sqr
+from gpaw.xc.gllb.contribution import Contribution
+from gpaw.xc import XC
+from gpaw.xc.pawcorrection import rnablaY_nLv
+from gpaw.xc.gllb import safe_sqr
 from math import sqrt, pi
 from gpaw.io.tar import TarFileReference
+from gpaw.sphere.lebedev import weight_n
 import numpy as np
 
 K_G = 0.382106112167171
 
 class C_GLLBScr(Contribution):
-    def __init__(self, nlfunc, weight, functional = 'X_B88-None'):
+    def __init__(self, nlfunc, weight, functional='GGA_X_B88'):
         Contribution.__init__(self, nlfunc, weight)
         self.functional = functional
         self.old_coeffs = None
         self.iter = 0
         
     def get_name(self):
-        return "SCREENING"
+        return 'SCREENING'
 
     def get_desc(self):
-        return "("+self.functional+")"
+        return '(' + self.functional + ')'
         
     # Initialize GLLBScr functional
     def initialize_1d(self):
         self.ae = self.nlfunc.ae
-        self.xc = XCRadialGrid(self.functional, self.ae.rgd) 
+        self.xc = XC(self.functional)
         self.v_g = np.zeros(self.ae.N)
         self.e_g = np.zeros(self.ae.N)
 
@@ -32,16 +33,15 @@ class C_GLLBScr(Contribution):
     def add_xc_potential_and_energy_1d(self, v_g):
         self.v_g[:] = 0.0
         self.e_g[:] = 0.0
-        self.xc.get_energy_and_potential_spinpaired(self.ae.n, self.v_g, e_g=self.e_g)
+        self.xc.calculate_spherical(self.ae.rgd, self.ae.n.reshape((1, -1)),
+                                    self.v_g.reshape((1, -1)), self.e_g)
         v_g += 2 * self.weight * self.e_g / (self.ae.n + 1e-10)
         Exc = self.weight * np.sum(self.e_g * self.ae.rgd.dv_g)
         return Exc
 
     def initialize(self):
         self.occupations = self.nlfunc.occupations
-        self.xc = XCFunctional(self.functional)
-        self.xc_grid3d = XC3DGrid(self.xc, self.nlfunc.finegd, self.nlfunc.nspins)
-        self.xc_grid3d.allocate()
+        self.xc = XC(self.functional)
         self.vt_sg = self.nlfunc.finegd.empty(self.nlfunc.nspins)
         self.e_g = self.nlfunc.finegd.empty()#.ravel()
 
@@ -105,9 +105,10 @@ class C_GLLBScr(Contribution):
     def calculate_spinpaired(self, e_g, n_g, v_g):
         self.e_g[:] = 0.0
         self.vt_sg[:] = 0.0
-        self.xc_grid3d.get_energy_and_potential_spinpaired(n_g, self.vt_sg[0], e_g = self.e_g)
+        self.xc.calculate(self.nlfunc.finegd, n_g[None, ...], self.vt_sg,
+                          self.e_g)
         v_g += self.weight * 2 * self.e_g / (n_g + 1e-10)
-        e_g += self.weight * self.e_g.ravel()
+        e_g += self.weight * self.e_g
 
     def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g, 
                                 a2_g=None, aa2_g=None, ab2_g=None, deda2_g=None,
@@ -122,7 +123,7 @@ class C_GLLBScr(Contribution):
 
         D_p = D_sp[0]
         dEdD_p = H_sp[0][:]
-        D_Lq = np.dot(c.B_Lqp, D_p)
+        D_Lq = np.dot(c.B_pqL.T, D_p)
         n_Lg = np.dot(D_Lq, c.n_qg)
         n_Lg[0] += c.nc_g * sqrt(4 * pi)
         nt_Lg = np.dot(D_Lq, c.nt_qg)
@@ -137,9 +138,9 @@ class C_GLLBScr(Contribution):
         v_g = np.zeros(c.ng)
         e_g = np.zeros(c.ng)
         deda2_g = np.zeros(c.ng)
-        for y, (w, Y_L) in enumerate(zip(weights, c.Y_nL)):
+        for y, (w, Y_L) in enumerate(zip(weight_n, c.Y_nL)):
             # Cut gradient releated coefficient to match the setup's Lmax
-            A_Li = A_Liy[:c.Lmax, :, y]
+            A_Li = rnablaY_nLv[y, :c.Lmax]
 
             # Expand pseudo density
             nt_g = np.dot(Y_L, nt_Lg)
@@ -157,8 +158,10 @@ class C_GLLBScr(Contribution):
             vt_g[:] = 0.0
             e_g[:] = 0.0
             # Calculate pseudo GGA energy density (potential is discarded)
-            self.xc.calculate_spinpaired(e_g, nt_g, vt_g, a2_g, deda2_g)
-
+            self.xc.kernel.calculate(e_g, nt_g.reshape((1, -1)),
+                                     vt_g.reshape((1, -1)),
+                                     a2_g.reshape((1, -1)),
+                                     deda2_g.reshape((1, -1)))
 
             # Calculate pseudo GLLB-potential from GGA-energy density
             vt_g[:] = 2 * e_g / (nt_g + 1e-10)
@@ -185,7 +188,10 @@ class C_GLLBScr(Contribution):
             v_g[:] = 0.0
             e_g[:] = 0.0
             # Calculate GGA energy density (potential is discarded)
-            self.xc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
+            self.xc.kernel.calculate(e_g, n_g.reshape((1, -1)),
+                                     v_g.reshape((1, -1)),
+                                     a2_g.reshape((1, -1)),
+                                     deda2_g.reshape((1, -1)))
 
             # Calculate GLLB-potential from GGA-energy density
             v_g[:] = 2 * e_g / (n_g + 1e-10)
@@ -199,7 +205,8 @@ class C_GLLBScr(Contribution):
     def add_smooth_xc_potential_and_energy_1d(self, vt_g):
         self.v_g[:] = 0.0
         self.e_g[:] = 0.0
-        self.xc.get_energy_and_potential_spinpaired(self.ae.nt, self.v_g, e_g=self.e_g)
+        self.xc.calculate_spherical(self.ae.rgd, self.ae.nt.reshape((1, -1)),
+                                    self.v_g.reshape((1, -1)), self.e_g)
         vt_g += 2 * self.weight * self.e_g / (self.ae.nt + 1e-10)
         return self.weight * np.sum(self.e_g * self.ae.rgd.dv_g)
 
@@ -215,7 +222,7 @@ class C_GLLBScr(Contribution):
         # GLLBScr has no special data to be read
         pass
 
-    def write(self, writer):
+    def write(self, writer, natoms):
         # GLLBScr has no special data to be written
         pass
         

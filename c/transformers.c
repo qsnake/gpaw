@@ -30,19 +30,11 @@ typedef struct
   MPI_Request sendreq[2];
   int skip[3][2];
   int size_out[3];          /* Size of the output grid */
-  double* buf;
-  double* buf2;
-  double* sendbuf;
-  double* recvbuf;
 } TransformerObject;
 
 static void Transformer_dealloc(TransformerObject *self)
 {
   free(self->bc);
-  free(self->buf);
-  free(self->buf2);
-  free(self->sendbuf);
-  free(self->recvbuf);
   PyObject_DEL(self);
 }
 
@@ -64,10 +56,10 @@ void *transapply_worker(void *threadarg)
   struct transapply_args *args = (struct transapply_args *) threadarg;
   boundary_conditions* bc = args->self->bc;
   TransformerObject *self = args->self;
-  double* sendbuf = self->sendbuf + args->thread_id * bc->maxsend * GPAW_ASYNC_D;
-  double* recvbuf = self->recvbuf + args->thread_id * bc->maxrecv * GPAW_ASYNC_D;
-  double* buf = self->buf + args->thread_id * args->ng2;
-  double* buf2 = self->buf2 + args->thread_id * args->ng2 * 16;
+  double* sendbuf = GPAW_MALLOC(double, bc->maxsend * GPAW_ASYNC_D);
+  double* recvbuf = GPAW_MALLOC(double, bc->maxrecv * GPAW_ASYNC_D);
+  double* buf = GPAW_MALLOC(double, args->ng2);
+  double* buf2 = GPAW_MALLOC(double, args->ng2 * 16);
   MPI_Request recvreq[2 * GPAW_ASYNC_D];
   MPI_Request sendreq[2 * GPAW_ASYNC_D];
 
@@ -118,6 +110,10 @@ void *transapply_worker(void *threadarg)
                            (double_complex*) buf2);
         }
     }
+  free(buf2);
+  free(buf);
+  free(recvbuf);
+  free(sendbuf);
   return NULL;
 }
 
@@ -262,39 +258,5 @@ PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
     for (int d = 0; d < 2; d++)
       self->skip[c][d] = (int)skp[c][d];
 
-#ifndef GPAW_OMP
-  self->buf = GPAW_MALLOC(double, size2[0] * size2[1] * size2[2] *
-                          self->bc->ndouble);
-  if (interpolate)
-    // Much larger than necessary!  I don't have the energy right now to
-    // estimate the minimum size of buf2!
-    self->buf2 = GPAW_MALLOC(double, 16 * size2[0] * size2[1] * size2[2] *
-                             self->bc->ndouble);
-  else
-    self->buf2 = GPAW_MALLOC(double, size2[0] * size2[1] *
-                             //size1[2] / 2 *
-                             (size2[2] - 2 * k + 3) / 2 *
-                             self->bc->ndouble);
-  self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend);
-  self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv);
-#else
-  int nthds = 1;
-  if (getenv("OMP_NUM_THREADS") != NULL)
-    nthds = atoi(getenv("OMP_NUM_THREADS"));
-  self->buf = GPAW_MALLOC(double, size2[0] * size2[1] * size2[2] *
-                          self->bc->ndouble * nthds);
-  if (interpolate)
-    // Much larger than necessary!  I don't have the energy right now to
-    // estimate the minimum size of buf2!
-    self->buf2 = GPAW_MALLOC(double, 16 * size2[0] * size2[1] * size2[2] *
-                             self->bc->ndouble * nthds);
-  else
-    self->buf2 = GPAW_MALLOC(double, size2[0] * size2[1] *
-                             //size1[2] / 2 *
-                             (size2[2] - 2 * k + 3) / 2 *
-                             self->bc->ndouble * nthds);
-  self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend * nthds);
-  self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv * nthds);
-#endif
   return (PyObject*)self;
 }

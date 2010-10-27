@@ -1,43 +1,48 @@
 import numpy as np
 import numpy.random as ra
 from gpaw.setup import create_setup
-from gpaw.xc_functional import XCFunctional
+from gpaw.xc import XC
 from gpaw.test import equal
 
 
 x = 0.000001
 ra.seed(8)
-nspins_1 = 1
-nspins_2 = 2
 for xc in ['LDA', 'PBE']:
-    xcfunc = XCFunctional(xc, nspins_1)
-    s = create_setup('N', xcfunc)
+    print xc
+    xc = XC(xc)
+    s = create_setup('N', xc)
     ni = s.ni
     nii = ni * (ni + 1) // 2
     D_p = 0.1 * ra.random(nii) + 0.2
     H_p = np.zeros(nii)
 
-    E1 = s.xc_correction.calculate_energy_and_derivatives(D_p.reshape(1, -1),
-                                                          H_p.reshape(1, -1))
+    E = s.xc_correction.calculate(xc,D_p.reshape(1, -1),
+                                                         H_p.reshape(1, -1))
     dD_p = x * ra.random(nii)
-    D_p += dD_p
     dE = np.dot(H_p, dD_p) / x
-    E2 = s.xc_correction.calculate_energy_and_derivatives(D_p.reshape(1, -1),
+    D_p += dD_p
+    Ep = s.xc_correction.calculate(xc,D_p.reshape(1, -1),
                                                           H_p.reshape(1, -1))
-    equal(dE, (E2 - E1) / x, 0.003)
+    D_p -= 2 * dD_p
+    Em = s.xc_correction.calculate(xc,D_p.reshape(1, -1),
+                                                          H_p.reshape(1, -1))
+    print dE, dE - 0.5 * (Ep - Em) / x
+    equal(dE, 0.5 * (Ep - Em) / x, 1e-6)
 
-    xcfunc = XCFunctional(xc, nspins_2)
-    d = create_setup('N', xcfunc)
-    E2s = d.xc_correction.calculate_energy_and_derivatives(np.array(
+    Ems = s.xc_correction.calculate(xc,np.array(
         [0.5 * D_p, 0.5 * D_p]), np.array([H_p, H_p]))
-    equal(E2, E2s, 1.0e-12)
+    print Em - Ems
+    equal(Em, Ems, 1.0e-12)
 
     D_sp = 0.1 * ra.random((2, nii)) + 0.2
     H_sp = np.zeros((2, nii))
 
-    E1 = d.xc_correction.calculate_energy_and_derivatives(D_sp, H_sp)
+    E = s.xc_correction.calculate(xc, D_sp, H_sp)
     dD_sp = x * ra.random((2, nii))
-    D_sp += dD_sp
     dE = np.dot(H_sp.ravel(), dD_sp.ravel()) / x
-    E2 = d.xc_correction.calculate_energy_and_derivatives(D_sp, H_sp)
-    equal(dE, (E2 - E1) / x, 0.005)
+    D_sp += dD_sp
+    Ep = s.xc_correction.calculate(xc, D_sp, H_sp)
+    D_sp -= 2 * dD_sp
+    Em = s.xc_correction.calculate(xc, D_sp, H_sp)
+    print dE, dE - 0.5 * (Ep - Em) / x
+    equal(dE, 0.5 * (Ep - Em) / x, 1e-6)

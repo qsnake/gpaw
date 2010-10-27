@@ -18,8 +18,8 @@ from gpaw.band_descriptor import BandDescriptor
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.kpt_descriptor import KPointDescriptor, KPointDescriptorOld #XXX
 from gpaw.parameters import InputParameters
-from gpaw.xc_functional import XCFunctional
 from gpaw.setup import SetupData, Setups
+from gpaw.xc import XC
 
 #from gpaw.hs_operators import MatrixOperator
 #from gpaw.parameters import InputParameters
@@ -34,9 +34,8 @@ from gpaw.test.ut_common import ase_svnversion, shapeopt, TestCase, \
 # -------------------------------------------------------------------
 
 p = InputParameters(spinpol=False, usesymm=None)
-xcfunc = XCFunctional(p.xc, 1+int(p.spinpol))
-p.setups = dict([(symbol, SetupData(symbol, xcfunc.get_setup_name(), 'paw', \
-    readxml=True, zero_reference=xcfunc.hybrid > 0)) for symbol in 'HO'])
+xc = XC(p.xc)
+p.setups = dict([(symbol, SetupData(symbol, xc.name)) for symbol in 'HO'])
 
 class UTKPointParallelSetup(TestCase):
     """
@@ -46,7 +45,7 @@ class UTKPointParallelSetup(TestCase):
     nbands = 1
 
     # Spin-polarized
-    nspins = xcfunc.nspins
+    nspins = 1
 
     # Mean spacing and number of grid points per axis (G x G x G)
     h = 0.25 / Bohr
@@ -96,8 +95,7 @@ class UTKPointParallelSetup(TestCase):
 
         # Create setups
         Z_a = self.atoms.get_atomic_numbers()
-        assert xcfunc.nspins == self.nspins
-        self.setups = Setups(Z_a, p.setups, p.basis, p.lmax, xcfunc)
+        self.setups = Setups(Z_a, p.setups, p.basis, p.lmax, xc)
         self.natoms = len(self.setups)
 
         # Set up kpoint descriptor:

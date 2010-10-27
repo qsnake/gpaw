@@ -77,7 +77,9 @@ def run(psit_mG):
             y_G += vt_G * psit_G
         return overlap.work1_xG[:M // J]
     dH_aii = {0: np.ones((2, 2)) * 0.123, 1: np.ones((3, 3)) * 0.321}
-    H_nn = overlap.calculate_matrix_elements(psit_mG, P_ani, H, dH_aii)
+    def dH(a, P_ni):
+        return np.dot(P_ni, dH_aii[a])
+    H_nn = overlap.calculate_matrix_elements(psit_mG, P_ani, H, dH)
 
     t1 = time()
     if world.rank == 0:
@@ -101,7 +103,7 @@ def run(psit_mG):
     assert not(P_ani[0] - psit_mG[:, :2, 0, 0]).round(10).any()
     assert not(P_ani[1] - psit_mG[:, -1, -1, -3:]).round(10).any()
 
-    H_nn = overlap.calculate_matrix_elements(psit_mG, P_ani, H, dH_aii)
+    H_nn = overlap.calculate_matrix_elements(psit_mG, P_ani, H, dH)
     if world.rank == 0:
         for n in range(N):
             assert abs(H_nn[n, n] - eps_n[n]) < 1.5e-8

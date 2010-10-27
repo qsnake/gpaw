@@ -146,9 +146,7 @@ restrictor = Box('Transformer', '(fine -> coarse)',
                  color='yellow!80')
 interpolator = Box('Transformer', '(coarse -> fine)',
                    color='yellow!80')
-xcfunc = Box('XCFunctional')
-xc3dgrid = Box('XC3DGrid', color='brown!80')
-xc1dgrid = Box('XCRadialGrid', color='brown!80')
+xc = Box('XCFunctional')
 kin = Box('FDOperator', r'$-\frac{1}{2}\nabla^2$')
 hsoperator = Box('HSOperator',
                  r"$\langle \psi_n | A | \psi_{n'} \rangle,~" +
@@ -180,14 +178,12 @@ density.has(nct, 'nct', -90, 3)
 density.has(ghat, 'ghat', -130, 3.4)
 density.has(interpolator, 'interpolator', -45, 4)
 hamiltonian.has(restrictor, 'restrictor', 40, 4)
-hamiltonian.has(xc3dgrid, 'xc', 160, 6, x=0.6)
+hamiltonian.has(xc, 'xc', 160, 6, x=0.6)
 hamiltonian.has(vbar, 'vbar', 80, 4)
 hamiltonian.has(setups, 'setups', x=0.3)
 hamiltonian.has(gd, 'gd', x=0.45)
 hamiltonian.has(finegd, 'finegd')
 hamiltonian.has(poisson, 'poissonsolver', 130, 4)
-hamiltonian.has(xcfunc, 'xcfunc', x=0.6)
-xc3dgrid.has(xcfunc, 'xcfunc', -90, 4.5)
 wfs.has(gd, 'gd', 160, 4.8, x=0.48)
 wfs.has(setups, 'setups', x=0.4)
 wfs.has(lcao, 'INSTANCE', -55, 5.9)
@@ -210,8 +206,6 @@ for i in range(3):
                        (0.9 - i * 0.14, 0.3 - i * 0.14))
 setup.has(xccorrection, 'xc_correction', -110, 3.7)
 xccorrection.has(rgd, 'rgd', -105, 2.4, 0.4)
-xccorrection.has(xc1dgrid, 'xc', -170, 10.03)
-xc1dgrid.has(xcfunc, 'xcfunc')
 
 kpts = [Box('KPoint', None, ['psit_nG', 'C_nM', 'eps_n', 'f_n', 'P_ani'],
             color='cyan!50') for i in range(3)]

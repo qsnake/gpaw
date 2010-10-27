@@ -23,7 +23,7 @@ class NonLocalFunctionalFactory:
     def get_functional_by_name(self, name):
         print "Functional name", name
 
-        from gpaw.gllb.nonlocalfunctional import NonLocalFunctional
+        from gpaw.xc.gllb.nonlocalfunctional import NonLocalFunctional
         functional = NonLocalFunctional()
         
         if name == 'GLLB':
@@ -37,17 +37,19 @@ class NonLocalFunctionalFactory:
                        C_GLLBScr(functional, 1.0).get_coefficient_calculator())
             return functional
         elif name == 'GLLBSC':
-                        from gpaw.gllb.contributions.c_gllbscr import C_GLLBScr
-                        from gpaw.gllb.contributions.c_response import C_Response
-                        from gpaw.gllb.contributions.c_xc import C_XC
-                        C_Response(functional, 1.0,
-                        C_GLLBScr(functional, 1.0,'X_PBE_SOL-None').get_coefficient_calculator())
-                        C_XC(functional, 1.0, 'None-C_PBE_SOL')
-                        return functional
+            from gpaw.xc.gllb.c_gllbscr import C_GLLBScr
+            from gpaw.xc.gllb.c_response import C_Response
+            from gpaw.xc.gllb.c_xc import C_XC
+            C_Response(functional, 1.0, C_GLLBScr(
+                functional,
+                1.0,
+                'GGA_X_PBE_SOL').get_coefficient_calculator())
+            C_XC(functional, 1.0, 'GGA_C_PBE_SOL')
+            return functional
         elif name == 'GLLBC':
-            from gpaw.gllb.contributions.c_gllbscr import C_GLLBScr
-            from gpaw.gllb.contributions.c_response import C_Response
-            from gpaw.gllb.contributions.c_xc import C_XC
+            from gpaw.xc.gllb.contributions.c_gllbscr import C_GLLBScr
+            from gpaw.xc.gllb.contributions.c_response import C_Response
+            from gpaw.xc.gllb.contributions.c_xc import C_XC
             C_Response(functional, 1.0,
                        C_GLLBScr(functional, 1.0,'X_PBE-None').get_coefficient_calculator())
             C_XC(functional, 1.0, 'None-C_PBE')

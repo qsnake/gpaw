@@ -79,7 +79,7 @@ class Density:
                 spline_aj.append([])
             else:
                 spline_aj.append([setup.nct])
-        self.nct = LFC(self.gd, spline_aj, #[[setup.nct] for setup in setups],
+        self.nct = LFC(self.gd, spline_aj,
                        integral=[setup.Nct for setup in setups],
                        forces=True, cut=True)
         self.ghat = LFC(self.finegd, [setup.ghat_l for setup in setups],

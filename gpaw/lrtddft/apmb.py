@@ -113,7 +113,10 @@ class ApmB(OmegaMatrix):
 
         # add HF parts and apply symmetry
         timer.start('RPA hyb HF part')
-        weight = self.xc.xcfunc.hybrid
+        if hasattr(self.xc, 'hybrid'):
+            weight = self.xc.hybrid
+        else:
+            weight = 0.0
         for ij in range(nij):
             i = kss[ij].i
             j = kss[ij].j

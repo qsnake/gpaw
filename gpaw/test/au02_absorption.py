@@ -14,7 +14,7 @@ if GS:
     cluster.set_cell((12.,12.,12.),
                    scale_atoms=False)
     cluster.center()
-    view(cluster)    
+    #view(cluster)    
     calc=GPAW(xc='RPBE',
               h=0.15,
               mode='lcao',
@@ -46,7 +46,7 @@ if ABS:
     else:
         raise ValueError('Plasmon peak not correct ! ')
     
-    if np.abs(d[Nw, 4] - 0.25788817927) > 1e-5:
+    if np.abs(d[Nw, 4] - 0.25788817927) > 5e-5:
         print d[Nw, 0], d[Nw, 4]
         raise ValueError('Please check spectrum strength ! ')
     

@@ -468,7 +468,7 @@ class GridDescriptor(Domain):
                 slice_nG = psit_nG[:nbands, :, g].copy()
             else:
                 slice_nG = psit_nG[:nbands, :, :, g].copy()
-            return slice_nG.reshape(nbands, -1)
+            return slice_nG.reshape((nbands, np.prod(slice_nG.shape[1:])))
         
         Z_nn = np.zeros((nbands, nbands), complex)
         for g in range(self.n_c[c]):
