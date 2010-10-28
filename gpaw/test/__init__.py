@@ -131,6 +131,7 @@ tests = [
     'hydrogen.py',
     'H_force.py',
     'Cl_minus.py',
+    'blocked_rmm_diis.py',
     'degeneracy.py',
     'h2o_xas.py',
     'fermilevel.py',

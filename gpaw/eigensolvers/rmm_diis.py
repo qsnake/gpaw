@@ -22,8 +22,8 @@ class RMM_DIIS(Eigensolver):
     * Improvement of wave functions:  psi' = psi + lambda PR + lambda PR'
     * Orthonormalization"""
 
-    def __init__(self, keep_htpsit=True):
-        Eigensolver.__init__(self, keep_htpsit)
+    def __init__(self, keep_htpsit=True, blocksize=1):
+        Eigensolver.__init__(self, keep_htpsit, blocksize)
 
     def initialize(self, wfs):
         Eigensolver.initialize(self, wfs)
@@ -40,11 +40,10 @@ class RMM_DIIS(Eigensolver):
             self.calculate_residuals(kpt, wfs, hamiltonian, kpt.psit_nG,
                                      kpt.P_ani, kpt.eps_n, R_nG)
 
-        B = 1
+        B = self.blocksize
         dR_xG = self.gd.empty(B, wfs.dtype)
         P_axi = wfs.pt.dict(B)
         error = 0.0
-        assert B == 1
         for n1 in range(0, wfs.bd.mynbands, B):
             n2 = min(n1 + B, wfs.bd.mynbands)
             n_x = range(n1, n2)
@@ -83,14 +82,19 @@ class RMM_DIIS(Eigensolver):
                                      calculate_change=True)
             
             # Find lam that minimizes the norm of R'_G = R_G + lam dR_G
-            RdR = self.gd.comm.sum(np.vdot(R_xG, dR_xG).real)
-            dRdR = self.gd.comm.sum(np.vdot(dR_xG, dR_xG).real)
+            RdR_x = np.array([np.vdot(R_G, dR_G).real
+                              for R_G, dR_G in zip(R_xG, dR_xG)])
+            dRdR_x = np.array([np.vdot(dR_G, dR_G).real for dR_G in dR_xG])
+            self.gd.comm.sum(RdR_x)
+            self.gd.comm.sum(dRdR_x)
 
-            lam = -RdR / dRdR
+            lam_x = -RdR_x / dRdR_x
             # Calculate new psi'_G = psi_G + lam pR_G + lam pR'_G
             #                      = psi_G + p(2 lam R_G + lam**2 dR_G)
-            R_xG *= 2.0 * lam
-            axpy(lam**2, dR_xG, R_xG)  # R_G += lam**2 * dR_G
+            for lam, R_G, dR_G in zip(lam_x, R_xG, dR_xG):
+                R_G *= 2.0 * lam
+                axpy(lam**2, dR_G, R_G)  # R_G += lam**2 * dR_G
+                
             self.timer.start('precondition')
             kpt.psit_nG[n1:n2] += self.preconditioner(R_xG, kpt)
             self.timer.stop('precondition')
