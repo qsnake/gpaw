@@ -11,11 +11,12 @@ from gpaw.xc import XC
 from gpaw.xc.kernel import XCNull
 from gpaw.xc.functional import XCFunctional
 from gpaw.poisson import PoissonSolver
-from gpaw.utilities import pack, unpack, unpack2, packed_index
+from gpaw.utilities import hartree, pack, pack2, unpack, unpack2, packed_index
 from gpaw.utilities.tools import symmetrize
 from gpaw.atom.configurations import core_states
 from gpaw.lfc import LFC
 from gpaw.utilities.blas import gemm
+from gpaw.gaunt import make_gaunt
 
 
 class HybridXC(XCFunctional):
