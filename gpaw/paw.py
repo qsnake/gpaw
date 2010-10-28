@@ -41,11 +41,6 @@ from gpaw.utilities import h2gpts
 
 class PAW(PAWTextOutput):
     """This is the main calculation object for doing a PAW calculation."""
-
-    timer_class = Timer
-    scf_loop_class = SCFLoop
-    grid_descriptor_class = GridDescriptor
-
     def __init__(self, filename=None, **kwargs):
         """ASE-calculator interface.
 
@@ -71,8 +66,10 @@ class PAW(PAWTextOutput):
         **k**-points."""
 
         PAWTextOutput.__init__(self)
+        self.grid_descriptor_class = GridDescriptor
         self.input_parameters = InputParameters()
-        self.timer = self.timer_class()
+        self.timer = Timer()
+
         self.scf = None
         self.forces = ForceCalculator(self.timer)
         self.wfs = EmptyWaveFunctions()
@@ -447,7 +444,7 @@ class PAW(PAWTextOutput):
             niter_fixdensity = None
 
         if self.scf is None:
-            self.scf = self.scf_loop_class(
+            self.scf = SCFLoop(
                 cc['eigenstates'] * nvalence,
                 cc['energy'] / Hartree * max(nvalence, 1),
                 cc['density'] * nvalence,

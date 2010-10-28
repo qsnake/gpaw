@@ -44,10 +44,8 @@ class Lead_Calc(GPAW):
         self.finegd = self.density.finegd
         
 class Transport(GPAW):
-
-    grid_descriptor_class = FixedBC_GridDescriptor
-    
     def __init__(self, **transport_kwargs):
+        self.grid_descriptor_class = FixedBC_GridDescriptor
         self.set_transport_kwargs(**transport_kwargs)
         GPAW.__init__(self, **self.gpw_kwargs)
             
