@@ -219,7 +219,7 @@ GPAW::
 An :class:`~gpaw.xc.functional.XCFunctional` object is usually created
 using the :func:`gpaw.xc.XC` function:
 
-.. autofunc:: gpaw.xc.XC
+.. autofunction:: gpaw.xc.XC
 
 Example::
 
