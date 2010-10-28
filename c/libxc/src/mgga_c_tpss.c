@@ -184,7 +184,7 @@ static void c_tpss_12(XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma,
 	   -> 4 (sigma_aa n_b^2 - 2 sigma_ab n_a n_b + sigma_bb n_b^2)/(n_a+n_b)^2 */
 
     num = sigma[0] * POW(rho[1],2) - 2.* sigma[1]*rho[0]*rho[1]+ sigma[2]*POW(rho[0],2);
-	num = max(num,0);
+	num = max(num, 1e-20);
 	gzeta = sqrt(4*(num))/(dens*dens);
 	gzeta = max(gzeta, MIN_GRAD);
 	  /*denominator of csi*/
