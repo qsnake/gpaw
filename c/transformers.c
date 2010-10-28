@@ -248,8 +248,6 @@ PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
   const long (*npad)[2] = (const long (*)[2])LONGP(npaddings);
   const long (*skp)[2] = (const long (*)[2])LONGP(skip);
   self->bc = bc_init(LONGP(size_in), pad, npad, nb, comm, real, 0);
-  //const int* size1 = self->bc->size1;
-  const int* size2 = self->bc->size2;
 
   for (int c = 0; c < 3; c++)
       self->size_out[c] = LONGP(size_out)[c];

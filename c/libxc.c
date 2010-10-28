@@ -88,6 +88,8 @@ typedef struct
   int nspin; /* must be common to x and c, so declared redundantly here */
 } lxcXCFunctionalObject;
 
+void XC(lda_fxc_fd)(const XC(lda_type) *p, const FLOAT *rho, FLOAT *fxc);
+
 /* a general call for an LDA functional */
 void get_vxc_lda(functionals_type *func, double point[7], double *e, double der[7])
 {

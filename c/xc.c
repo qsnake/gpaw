@@ -263,7 +263,7 @@ PyObject * NewXCFunctionalObject(PyObject *obj, PyObject *args)
     self->exchange = bee1_exchange;
     int n = PyArray_DIM(parameters, 0);
     assert(n <= 14);
-    double* p = PyArray_BYTES(parameters);
+    double* p = (double*)PyArray_BYTES(parameters);
     for (int i = 0; i < n; i++)
       self->par.parameters[i] = p[i];
     self->par.nparameters = n / 2;
