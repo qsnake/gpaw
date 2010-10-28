@@ -41,6 +41,7 @@ from gpaw.utilities import h2gpts
 
 class PAW(PAWTextOutput):
     """This is the main calculation object for doing a PAW calculation."""
+    timer_class = Timer
     def __init__(self, filename=None, **kwargs):
         """ASE-calculator interface.
 
@@ -68,7 +69,7 @@ class PAW(PAWTextOutput):
         PAWTextOutput.__init__(self)
         self.grid_descriptor_class = GridDescriptor
         self.input_parameters = InputParameters()
-        self.timer = Timer()
+        self.timer = self.timer_class()
 
         self.scf = None
         self.forces = ForceCalculator(self.timer)
