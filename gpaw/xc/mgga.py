@@ -27,7 +27,6 @@ class MGGA(GGA):
         self.interpolate = density.interpolator.apply
         self.taugrad_v = [Gradient(wfs.gd, v, allocate=True).apply
                           for v in range(3)]
-        print 'TODO: Make transformers use malloc/free.'
 
     def set_positions(self, spos_ac):
         self.tauct.set_positions(spos_ac)
@@ -51,7 +50,8 @@ class MGGA(GGA):
         for s in range(self.wfs.nspins):
             self.restrict(dedtaut_sg[s], self.dedtaut_sG[s])
             self.ekin -= self.wfs.gd.integrate(
-                self.dedtaut_sG[s] * (taut_G - self.tauct_G / self.wfs.nspins))
+                self.dedtaut_sG[s] * (taut_sG[s] -
+                                      self.tauct_G / self.wfs.nspins))
                                                
     def apply_orbital_dependent_hamiltonian(self, kpt, psit_xG,
                                             Htpsit_xG, dH_asp):
@@ -64,11 +64,10 @@ class MGGA(GGA):
                 axpy(-0.5, a_G, Htpsit_G)
 
     def add_forces(self, F_av):
-        dF_av = hamiltonian.xc.tauct.dict(derivative=True)
-        dedtau_G = hamiltonian.xc.dedtau_G
-        hamiltonian.xc.tauct.derivative(dedtau_G, dF_av)
+        dF_av = self.tauct.dict(derivative=True)
+        self.tauct.derivative(self.dedtaut_sG.sum(0), dF_av)
         for a, dF_v in dF_av.items():
-            self.F_av[a] += dF_v[0]
+            F_av[a] += dF_v[0]
 
     def estimate_memory(self, mem):
         bytecount = self.wfs.gd.bytecount()
