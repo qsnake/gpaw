@@ -75,7 +75,8 @@ class RMM_DIIS(Eigensolver):
             self.timer.stop('precondition')
 
             # Calculate the residual of dpsit_G, dR_G = (H - e S) dpsit_G:
-            wfs.apply_pseudo_hamiltonian(kpt, hamiltonian, dpsit_xG, dR_xG)
+            wfs.apply_pseudo_hamiltonian(kpt, hamiltonian, dpsit_xG,
+                                         dR_xG[:n2 - n1])
             wfs.pt.integrate(dpsit_xG, P_axi, kpt.q)
             self.calculate_residuals(kpt, wfs, hamiltonian, dpsit_xG,
                                      P_axi, kpt.eps_n[n_x], dR_xG, n_x,
