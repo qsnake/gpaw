@@ -1,8 +1,8 @@
 """Phonon band-structure for silicon using the Appelbaum-Hamann PP.
 
-For comparison, see e.g.::
+For comparison, see e.g.:
 
-- Phys. Rev. B 43, 7231 (1991)
+    * Phys. Rev. B 43, 7231 (1991).
 
 """
 
@@ -24,13 +24,11 @@ name = 'Si_%s.gpw' % PP
 # Create phonon calculator
 ph = PhononCalculator(name,
                       gamma=False,
-                      symmetry=None,
+                      symmetry=False,
                       e_ph=False)
 
 # Run the self-consistent calculation
-ph()
-# Collect calculated force constants from the slaves
-ph.collect()
+ph.run()
 
 # Calculate band-structure and plot on master
 if rank == 0:
@@ -62,7 +60,6 @@ if rank == 0:
     # Plot the band-structure
     plt.figure(1)
     for n in range(len(omega_kn[0])):
-    
        plt.plot(q, omega_kn[:, n], 'k-', lw=2)
         
     plt.xticks(Q, point_names, fontsize=18)
