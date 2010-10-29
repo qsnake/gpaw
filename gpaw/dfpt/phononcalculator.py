@@ -21,15 +21,17 @@ from gpaw.dfpt.electronphononcoupling import ElectronPhononCoupling
 class PhononCalculator:
     """This class defines the interface for phonon calculations."""
     
-    def __init__(self, calc, gamma=True, symmetry=False, e_ph=False, name=None,
+    def __init__(self, calc, gamma=True, symmetry=False, e_ph=False,
                  communicator=serial_comm):
         """Inititialize class with a list of atoms.
 
         The atoms object must contain a converged ground-state calculation.
 
         The set of q-vectors in which the dynamical matrix will be calculated
-        is determined from the ``symmetry``. For now, only time-reversal
+        is determined from the ``symmetry`` kwarg. For now, only time-reversal
         symmetry is used to generate the irrecducible BZ.
+
+        Add a little note on parallelization strategy here.
 
         Parameters
         ----------
@@ -45,8 +47,6 @@ class PhononCalculator:
             options in a ground-state calculation.
         e_ph: bool
             Save the derivative of the effective potential.
-        name: str
-            Name of files that the force constants will be written to.
         communicator: Communicator
             Communicator for parallelization over k-points and real-space
             domain.
@@ -97,19 +97,21 @@ class PhononCalculator:
             poisson_solver = FFTPoissonSolver(dtype=self.dtype)
 
         # K-point descriptor for the q-vectors of the dynamical matrix
+        # Note, no explicit parallelization here.
         self.kd = KPointDescriptor(kpts, 1)
         self.kd.set_symmetry(self.atoms, self.calc.wfs.setups, symmetry)
-        self.kd.set_communicator(communicator)
+        self.kd.set_communicator(serial_comm)
 
         # Number of occupied bands
         nvalence = self.calc.wfs.nvalence
         nbands = nvalence/2 + nvalence%2
         assert nbands <= self.calc.wfs.nbands
 
-        # Ground-state k-point descriptor - used for the k-points in the
-        # ResponseCalculator 
-        kd_gs = self.calc.wfs.kd
         # Extract other useful objects
+        # Ground-state k-point descriptor - used for the k-points in the
+        # ResponseCalculator
+        # XXX replace communicators when ready to parallelize
+        kd_gs = self.calc.wfs.kd
         gd = self.calc.density.gd
         kpt_u = self.calc.wfs.kpt_u
         setups = self.calc.wfs.setups
@@ -127,8 +129,7 @@ class PhononCalculator:
                                                dtype=self.dtype)
 
         # Dynamical matrix
-        self.D_matrix = DynamicalMatrix(self.atoms, self.kd, dtype=self.dtype,
-                                        name=name)
+        self.D_matrix = DynamicalMatrix(self.atoms, self.kd, dtype=self.dtype)
 
         # Electron-phonon couplings
         if e_ph:
@@ -140,7 +141,7 @@ class PhononCalculator:
         # Initialization flag
         self.initialized = False
 
-        # Parallel stuff
+        # Parallel communicator for parallelization over kpts and domain
         self.comm = communicator
 
     def __getstate__(self): 
@@ -190,6 +191,100 @@ class PhononCalculator:
         
         return self.D_matrix
     
+    def run(self, qpts_q=None, clean=False, name=None, path=None):
+        """Run calculation for atomic displacements and update matrix.
+
+        Parameters
+        ----------
+        qpts: List
+            List of q-points indices for which the dynamical matrix will be
+            calculated (only temporary).
+
+        """
+
+        if not self.initialized:
+            self.initialize()
+
+        if self.gamma:
+            qpts_q = [0]
+        elif qpts_q is None:
+            qpts_q = range(self.kd.nibzkpts)
+        else:
+            assert isinstance(qpts_q, list)
+
+        # Update name and path in the dynamical matrix
+        self.D_matrix.set_name_and_path(name=name, path=path)
+        # Get string template for filenames
+        filename_str = self.D_matrix.get_filename_string()
+
+        # Delay the ranks belonging to the same k-point/domain decomposition
+        # equally
+        time.sleep(rank // self.comm.size)
+
+        # XXX Make a single ground_state_contributions member function
+        # Ground-state contributions to the force constants
+        self.D_matrix.density_ground_state(self.calc)
+        # self.D_matrix.wfs_ground_state(self.calc, self.response_calc)
+        
+        # Calculate linear response wrt q-vectors and displacements of atoms
+        for q in qpts_q:
+            
+            if not self.gamma:
+                self.perturbation.set_q(q)
+
+            # First-order contributions to the force constants
+            for a in self.D_matrix.indices:
+    
+                for v in [0, 1, 2]:
+
+                    # Check if the calculation has already been done
+                    filename = filename_str % (q, a, v)
+                    # Wait for all sub-ranks to enter
+                    self.comm.barrier()
+                    
+                    if os.path.isfile(filename):
+                        continue
+
+                    if self.comm.rank == 0:
+                        fd = open(filename, 'w')
+                        fd.close()
+                    # Wait for all sub-ranks here
+                    self.comm.barrier()
+                    
+                    components = ['x', 'y', 'z']
+                    symbols = self.atoms.get_chemical_symbols()
+                    print "q-vector index: %i" % q
+                    print "Atom index: %i" % a
+                    print "Atomic symbol: %s" % symbols[a]
+                    print "Component: %s" % components[v]
+
+                    # Set atom and cartesian component of perturbation
+                    self.perturbation.set_av(a, v)
+                    # Calculate linear response
+                    self.response_calc(self.perturbation)
+
+                    # Calculate row of the matrix of force constants
+                    self.D_matrix.update_row(self.perturbation,
+                                             self.response_calc)
+
+                    # Write force constants to file
+                    if self.comm.rank == 0:
+                        self.D_matrix.write(q, a, v)
+
+                    # Store effective potential derivative
+                    if self.e_ph is not None:
+                        v1_eff_G = self.perturbation.v1_G + \
+                                   self.response_calc.vHXC1_G
+                        self.e_ph.v1_eff_qavG.append(v1_eff_G)
+
+                    # Wait for the file-writing rank here
+                    self.comm.barrier()
+
+        # Remove the files
+        if clean:
+            self.D_matrix.clean()
+
+    # To be removed
     def __call__(self, qpts_q=None):
         """Run calculation for atomic displacements and update matrix.
 
@@ -224,7 +319,7 @@ class PhononCalculator:
     
                     components = ['x', 'y', 'z']
                     symbols = self.atoms.get_chemical_symbols()
-                    print "q-vector index: %i" % (self.kd.ks0 + q)
+                    print "q-vector index: %i" % q
                     print "Atom index: %i" % a
                     print "Atomic symbol: %s" % symbols[a]
                     print "Component: %s" % components[v]
@@ -249,84 +344,3 @@ class PhononCalculator:
         # self.D_matrix.wfs_ground_state(self.calc, self.response_calc)
 
         self.kd.comm.barrier()
-
-    def run(self, qpts_q=None, write=True):
-        """Run calculation for atomic displacements and update matrix.
-
-        Parameters
-        ----------
-        qpts: List
-            List of q-points indices for which the dynamical matrix will be
-            calculated (only temporary).
-
-        """
-
-        if not self.initialized:
-            self.initialize()
-
-        if self.gamma:
-            qpts_q = [0]
-        elif qpts_q is None:
-            qpts_q = range(self.kd.nibzkpts)
-        else:
-            assert isinstance(qpts_q, list)
-
-        # Ground-state contributions to the force constants
-        self.D_matrix.density_ground_state(self.calc)
-        # self.D_matrix.wfs_ground_state(self.calc, self.response_calc)
-
-        name_str = self.D_matrix.get_name_string()
-        # Delay the ranks belonging to the same k-point/domain decomposition
-        # equally
-        time.sleep(rank // self.comm.size)
-        
-        # Calculate linear response wrt q-vectors and displacements of atoms
-        for q in qpts_q:
-            
-            if not self.gamma:
-                self.perturbation.set_q(q)
-
-            # First-order contributions to the force constants
-            for a in self.D_matrix.indices:
-    
-                for v in [0, 1, 2]:
-
-                    # Check if the calculation has already been done
-                    filename = name_str % (q, a, v)
-                    print filename
-                    if os.path.isfile(filename):
-                        continue
-
-                    if self.comm.rank == 0:
-                        fd = open(filename, 'w')
-                    # Wait for all sub-ranks here
-                    self.comm.barrier()
-                    
-                    components = ['x', 'y', 'z']
-                    symbols = self.atoms.get_chemical_symbols()
-                    print "q-vector index: %i" % (self.kd.ks0 + q)
-                    print "Atom index: %i" % a
-                    print "Atomic symbol: %s" % symbols[a]
-                    print "Component: %s" % components[v]
-
-                    # Set atom and cartesian component of perturbation
-                    self.perturbation.set_av(a, v)
-                    # Calculate linear response
-                    self.response_calc(self.perturbation)
-
-                    # Calculate row of the matrix of force constants
-                    self.D_matrix.update_row(self.perturbation,
-                                             self.response_calc)
-
-                    # Write force constants to file
-                    if write and self.comm.rank == 0:
-                        self.D_matrix.write(q, a, v)
-
-                    # Store effective potential derivative
-                    if self.e_ph is not None:
-                        v1_eff_G = self.perturbation.v1_G + \
-                                   self.response_calc.vHXC1_G
-                        self.e_ph.v1_eff_qavG.append(v1_eff_G)
-
-                    # Wait for the file-writing rank here
-                    self.comm.barrier()
