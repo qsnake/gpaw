@@ -93,8 +93,9 @@ def coordinates(gd, origin=None, tiny=1e-12):
     """Constructs and returns matrices containing cartesian coordinates,
        and the square of the distance from the origin.
 
-       The origin is placed in the center of the box described by the given
-       grid-descriptor 'gd'.
+       The origin can be given explicitely (in Bohr units, not Anstroms). 
+       Otherwise the origin is placed in the center of the box described 
+       by the given grid-descriptor 'gd'.
     """
     
     if origin is None:
