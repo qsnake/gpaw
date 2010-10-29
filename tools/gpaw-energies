@@ -8,7 +8,8 @@ from optparse import OptionParser
 from math import log,sqrt
 import numpy as npy
 
-from ase import *
+#from ase import *
+from ase.units import Ha
 from gpaw.output import eigenvalue_string
 from gpaw.cluster import Cluster
 
@@ -61,11 +62,11 @@ print >> out, "# file=",fname
 additional_info=True
 if additional_info:
     p = paw.input_parameters
-    print >> out, '# xc:',paw.hamiltonian.xc.xcfunc.get_name()
+    print >> out, '# xc:',paw.hamiltonian.xc.type
     if  p['charge']:
         print >> out, '# charge:',p['charge']
     if paw.get_spin_polarized():
-        if paw.occupations.fixmom:
+        if paw.occupations.fixmagmom:
             fixmom = '(fixed)'
         else:
             fixmom = ''
