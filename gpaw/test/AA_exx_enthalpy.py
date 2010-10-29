@@ -155,7 +155,7 @@ def calculate(element, h, vacuum, xc, magmom):
             equal(dHf_298, data[element][xc][1], 7.5, msg=xc+': ') # kcal/mol
         else:
             equal(dHf_298, data[element][xc][1], 2.15, msg=xc+': ') # kcal/mol
-        equal(de, E_ref[element][xc], 0.05, msg=xc+': ') # kcal/mol
+        equal(de, E_ref[element][xc], 0.06, msg=xc+': ') # kcal/mol
 
 E = {}
 
