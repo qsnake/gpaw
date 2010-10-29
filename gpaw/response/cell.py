@@ -20,10 +20,10 @@ def set_Gvectors(acell, bcell, nG, Ecut):
     """Calculate the number of planewaves with a certain cutoff, their reduced coordinates and index."""
 
     # Refer to R.Martin P85
-    Gcut = sqrt(2*Ecut)
     Gmax = np.zeros(3, dtype=int)
     for i in range(3):
         a = acell[i]
+        Gcut = sqrt(2*Ecut[i])
         Gmax[i] = sqrt(a[0]**2 + a[1]**2 + a[2]**2) * Gcut/ (2*pi)
      
     Nmax = 2 * Gmax + 1

@@ -80,7 +80,11 @@ class CHI:
         self.w_w = w
         self.eta = eta
         self.ftol = ftol
-        self.ecut = ecut
+        if type(ecut) is int or type(ecut) is float:
+            self.ecut = np.ones(3) * ecut
+        else:
+            assert len(ecut) == 3
+            self.ecut = np.array(ecut, dtype=float)
         self.hilbert_trans = hilbert_trans
         self.optical_limit = optical_limit
         self.kcommsize = kcommsize
@@ -548,7 +552,7 @@ class CHI:
         printtxt('')                         
         printtxt('Number of bands              : %d' %(self.nbands) )
         printtxt('Number of kpoints            : %d' %(self.nkpt) )
-        printtxt('Planewave ecut (eV)          : %f' %(self.ecut * Hartree) )
+        printtxt('Planewave ecut (eV)          : (%f, %f, %f)' %(self.ecut[0]*Hartree,self.ecut[1]*Hartree,self.ecut[2]*Hartree) )
         printtxt('Number of planewave used     : %d' %(self.npw) )
         printtxt('Broadening (eta)             : %f' %(self.eta * Hartree))
         printtxt('Number of frequency points   : %d' %(self.Nw) )
