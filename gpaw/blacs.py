@@ -584,50 +584,58 @@ class BandLayouts(KohnShamLayouts):
     matrix_descriptor_class = BandMatrixDescriptor
 
     def diagonalize(self, H_NN, eps_n):
+        """Serial diagonalizer must handle two cases:
+        1. Parallelization over domains only.
+        2. Simultaneous parallelization over domains and bands.
+        """
         nbands = self.bd.nbands
+        mynbands = self.bd.mynbands
         eps_N = np.empty(nbands)
         self.timer.start('Diagonalize')
+        # Broadcast on band communicator first if using
+        # state-parallelization. 
+        if self.bd.comm.size > 1 and self.gd.comm.rank == 0:
+            self.bd.comm.broadcast(H_NN, 0)
+        self.gd.comm.broadcast(H_NN, 0)
         info = self._diagonalize(H_NN, eps_N)
         self.timer.stop('Diagonalize')
         if info != 0:
             raise RuntimeError('Failed to diagonalize: %d' % info)
 
         self.timer.start('Distribute results')
-        if self.gd.comm.rank == 0:
-            self.bd.distribute(eps_N, eps_n)
-            self.bd.comm.broadcast(H_NN, 0)
-        self.gd.comm.broadcast(H_NN, 0)
-        self.gd.comm.broadcast(eps_n, 0)
+        # Basically just a copy
+        bstart = self.bd.comm.rank*mynbands
+        bend = bstart + mynbands
+        eps_n[:] = eps_N[bstart:bend]
         self.timer.stop('Distribute results')
 
     def _diagonalize(self, H_NN, eps_N):
-        """Serial diagonalizer."""
-        # Only one processor really does any work.
-        if self.gd.comm.rank == 0 and self.bd.comm.rank == 0:
-            return diagonalize(H_NN, eps_N)
-        else:
-            return 0
+        """Serial diagonalize via LAPACK."""
+        # This is replicated computation but ultimately avoids
+        # additional communication.
+        return diagonalize(H_NN, eps_N)
 
     def inverse_cholesky(self, S_NN):
+        """Serial inverse Cholesky must handle two cases:
+        1. Parallelization over domains only.
+        2. Simultaneous parallelization over domains and bands.
+        """
         self.timer.start('Inverse Cholesky')
+        # Broadcast on band communicator first if using
+        # state-parallelization. 
+        if self.bd.comm.size > 1 and self.gd.comm.rank == 0:
+            self.bd.comm.broadcast(S_NN, 0)
+        self.gd.comm.broadcast(S_NN, 0)
         info = self._inverse_cholesky(S_NN)
         self.timer.stop('Inverse Cholesky')
         if info != 0:
             raise RuntimeError('Failed to orthogonalize: %d' % info)
 
-        self.timer.start('Distribute results')
-        if self.bd.comm.rank == 0:
-            self.gd.comm.broadcast(S_NN, 0)
-        self.bd.comm.broadcast(S_NN, 0)
-        self.timer.stop('Distribute results')
-
     def _inverse_cholesky(self, S_NN):
-        """Serial inverse cholesky."""
-        # Only one processor really does any work.
-        if self.gd.comm.rank == 0 and self.bd.comm.rank == 0:
-            return inverse_cholesky(S_NN)
-        else:
-            return 0
+        """Serial inverse Cholesky via LAPACK."""
+        # This is replicated computation but ultimately avoids
+        # additional communication.
+        return inverse_cholesky(S_NN)
 
     def get_description(self):
         return 'Serial LAPACK'
