@@ -112,7 +112,7 @@ def scalapack_diagonalize_ex(desca, a, z, w, uplo, iu=None):
     if iu is None: # calculate all eigenvectors and eigenvalues
         iu = desca.gshape[0]
     assert 1 < iu <= desca.gshape[0]
-    # stil need assert for eigenvalues
+    # still need assert for eigenvalues
     assert uplo in ['L', 'U']
     if not desca.blacsgrid.is_active():
         return
