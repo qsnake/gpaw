@@ -67,7 +67,7 @@ class PhononCalculator:
         self.calc.set_positions()
         # Note that this under some circumstances (e.g. when called twice)
         # allocates a new array for the P_ani coefficients !!
-        
+
         # Store useful objects
         self.atoms = self.calc.get_atoms()
         # Get rid of ``calc`` attribute
@@ -75,7 +75,7 @@ class PhononCalculator:
  
         # Boundary conditions
         pbc_c = self.calc.atoms.get_pbc()
-        
+
         if np.all(pbc_c == False):
             self.gamma = True
             self.dtype = float
@@ -283,64 +283,3 @@ class PhononCalculator:
         # Remove the files
         if clean:
             self.D_matrix.clean()
-
-    # To be removed
-    def __call__(self, qpts_q=None):
-        """Run calculation for atomic displacements and update matrix.
-
-        Parameters
-        ----------
-        qpts: List
-            List of q-points indices for which the dynamical matrix will be
-            calculated (only temporary).
-
-        """
-
-        if not self.initialized:
-            self.initialize()
-
-        if self.gamma:
-            qpts_q = [0]
-        elif qpts_q is None:
-            qpts_q = range(self.kd.nibzkpts)
-        else:
-            assert isinstance(qpts_q, list)
-
-        # Calculate linear response wrt q-vectors and displacements of atoms
-        for q in qpts_q:
-            
-            if not self.gamma:
-                self.perturbation.set_q(q)
-
-            # First-order contributions to the force constants
-            for a in self.D_matrix.indices:
-    
-                for v in [0, 1, 2]:
-    
-                    components = ['x', 'y', 'z']
-                    symbols = self.atoms.get_chemical_symbols()
-                    print "q-vector index: %i" % q
-                    print "Atom index: %i" % a
-                    print "Atomic symbol: %s" % symbols[a]
-                    print "Component: %s" % components[v]
-
-                    # Set atom and cartesian component of perturbation
-                    self.perturbation.set_av(a, v)
-                    # Calculate linear response
-                    self.response_calc(self.perturbation)
-
-                    # Calculate corresponding row of dynamical matrix
-                    self.D_matrix.update_row(self.perturbation,
-                                             self.response_calc)
-
-                    # Store effective potential derivative
-                    if self.e_ph is not None:
-                        v1_eff_G = self.perturbation.v1_G + \
-                                   self.response_calc.vHXC1_G
-                        self.e_ph.v1_eff_qavG.append(v1_eff_G)
-                        
-        # Ground-state contributions to the force constants
-        self.D_matrix.density_ground_state(self.calc)
-        # self.D_matrix.wfs_ground_state(self.calc, self.response_calc)
-
-        self.kd.comm.barrier()

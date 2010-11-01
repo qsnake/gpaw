@@ -254,12 +254,7 @@ class DynamicalMatrix:
         # Move this bit to an ``unfold`` member function
         # XXX Time-reversal symmetry
         if self.kd.nibzkpts != self.kd.nbzkpts:
-            if len(self.kd.ibzk_kc) != len(self.kd.bzk_kc):
-                self.D = np.concatenate((self.D_k[:0:-1].conjugate(), self.D_k))
-            else:
-                N = len(self.kd.bzk_kc)/2
-                self.D_ = self.D_k[N:]
-                self.D = np.concatenate((self.D_[:0:-1].conjugate(), self.D_))
+            self.D = np.concatenate((self.D_k[:0:-1].conjugate(), self.D_k))
         else:
             self.D = 0.5 * self.D_k
             self.D += self.D[::-1].conjugate()
@@ -418,11 +413,9 @@ class DynamicalMatrix:
         # Matrix of force constants to be updated; q=-1 for Gamma calculation!
         for C_aavv in self.C_qaavv:
 
-            for atom in self.atoms:
-            
-                a = atom.index
+            for a in self.indices:
                 # XXX: HGH has only one ghat pr atoms -> generalize when
-                # implementing PAW            
+                # implementing PAW
                 C_aavv[a][a] += d2ghat_aLvv[a] * Q_aL[a]
                 C_aavv[a][a] += d2vbar_avv[a]
 
@@ -468,9 +461,7 @@ class DynamicalMatrix:
                     a = atom.index
                     d2P_anivv[a][n, 0] = d2P_avv[a]
             
-            for atom in self.atoms:
-    
-                a = atom.index
+            for a in self.indices:
     
                 H_ii = unpack(dH_asp[a][0])
                 P_ni = P_ani[a]
@@ -537,8 +528,7 @@ class DynamicalMatrix:
         vbar.derivative(nt1_g, dvbar_av, q=q)
 
         # Add to force constant matrix attribute
-        for atom_ in self.atoms:
-            a_ = atom_.index
+        for a_ in self.indices:
             # Minus sign comes from lfc member function derivative
             C_aavv[a][a_][v] -= np.dot(Q_aL[a_], dghat_aLv[a_])
             C_aavv[a][a_][v] -= dvbar_av[a_][0]
@@ -592,10 +582,7 @@ class DynamicalMatrix:
             dPdpsi_aniv = pt.dict(shape=nbands, derivative=True)
             pt.derivative(psit1_nG, dPdpsi_aniv, q=kplusq)
 
-            for atom_ in self.atoms:
-    
-                a_ = atom_.index
-
+            for a_ in self.indices:
                 # Coefficients from atom a
                 Pdpsi_ni = Pdpsi_ani[a]
                 dPdpsi_niv = -1 * dPdpsi_aniv[a]
@@ -618,147 +605,3 @@ class DynamicalMatrix:
 
                 # Factor of 2 from time-reversal symmetry
                 C_aavv[a][a_][v] += 2 * (A_v + B_v)
-
-
-    def collect(self, acoustic=False):
-        """Collect matrix of force constants from slaves."""
-
-        # Assemble matrix of force constants locally
-        for q, C_aavv in enumerate(self.C_qaavv):
-
-            C_avav = np.zeros((3*self.N, 3*self.N), dtype=self.dtype)
-    
-            for atom in self.atoms:
-    
-                a = atom.index
-    
-                for atom_ in self.atoms:
-    
-                    a_ = atom_.index
-    
-                    C_avav[3*a : 3*a + 3, 3*a_ : 3*a_ + 3] += C_aavv[a][a_]
-
-            self.D_q.append(C_avav)
-
-        # Apply acoustic sum-rule if requested        
-        if acoustic:
-
-            # Make C(q) Hermitian
-            for C in self.D_q:
-                C *= 0.5
-                C += C.conj().T
-                
-            # Get matrix of force constants in the Gamma-point
-            rank_gamma, q_gamma = \
-                        self.kd.get_rank_and_index(0, self.gamma_index)
-            
-            # Broadcast Gamma-point matrix to all ranks
-            C_gamma = np.empty((3*self.N, 3*self.N), dtype=self.dtype)
-            if self.kd.comm.rank == rank_gamma:
-                C_gamma[...] = self.D_q[q_gamma].copy()
-            self.kd.comm.broadcast(C_gamma, rank_gamma)
-
-            # Correct atomic diagonal for each q-vector
-            for C in self.D_q:
-
-                for atom in self.atoms:
-                    a = atom.index
-                    C_gamma_av = C_gamma[3*a: 3*a+3]
-
-                    for atom_ in self.atoms:
-                        a_ = atom_.index
-                        C[3*a : 3*a + 3, 3*a : 3*a + 3] -= \
-                              C_gamma_av[:3, 3*a_: 3*a_+3]
-                        
-        # Collect from slaves
-        if self.kd.comm.rank == 0:
-            # Global array
-            self.D_k = np.empty((self.kd.nibzkpts, 3*self.N, 3*self.N),
-                                dtype=self.dtype)
-            uslice = self.kd.get_slice()
-            self.D_k[uslice] = np.asarray(self.D_q)
-            
-            for slave_rank in range(1, self.kd.comm.size):
-                uslice = self.kd.get_slice(rank=slave_rank)
-                nks = uslice.stop - uslice.start
-                C_q = np.empty((nks, 3*self.N, 3*self.N), dtype=self.dtype)
-                self.kd.comm.receive(C_q, slave_rank, tag=123)
-                self.D_k[uslice] = C_q
-        else:
-            C_q = np.asarray(self.D_q)
-            self.kd.comm.send(C_q, 0, tag=123)
-
-        self.collected = True
-        
-
-    def assemble_old(self, acoustic=True):
-        """Assemble dynamical matrix from the force constants attribute.
-
-        The elements of the dynamical matrix are given by::
-
-            D_ij(q) = 1/(M_i + M_j) * C_ij(q) ,
-                      
-        where i and j are collective atomic and cartesian indices.
-
-        During the assembly, various symmetries of the dynamical matrix are
-        restored::
-
-            1) Hermiticity
-            2) Acoustic sum-rule
-            3) D(q) = D*(-q)
-
-        Parameters
-        ----------
-        acoustic: bool
-            When True, the diagonal of the matrix of force constants is
-            corrected to ensure that the acoustic sum-rule is fulfilled.
-            
-        """
-
-        # Assemble matrix of force constants locally
-        if not self.collected:
-            self.collect(acoustic=False)
-
-        # Make C(q) Hermitian
-        for C in self.D_k:
-            C *= 0.5
-            C += C.conj().T
-            
-        # Apply acoustic sum-rule if requested
-        if acoustic:
-
-            # Get matrix of force constants in the Gamma-point
-            C_gamma = self.D_k[self.gamma_index].copy()
-
-            # Correct atomic diagonal for each q-vector
-            for C in self.D_k:
-
-                for atom in self.atoms:
-                    a = atom.index
-                    C_gamma_av = C_gamma[3*a: 3*a+3]
-
-                    for atom_ in self.atoms:
-                        a_ = atom_.index
-                        C[3*a : 3*a + 3, 3*a : 3*a + 3] -= \
-                              C_gamma_av[:3, 3*a_: 3*a_+3]
-
-        # XXX Time-reversal symmetry
-        if len(self.kd.ibzk_kc) != len(self.kd.bzk_kc):
-            if len(self.kd.ibzk_kc) != len(self.kd.bzk_kc):
-                self.D = np.concatenate((self.D_k[:0:-1].conjugate(), self.D_k))
-            else:
-                N = len(self.kd.bzk_kc)/2
-                self.D_ = self.D_k[N:]
-                self.D = np.concatenate((self.D_[:0:-1].conjugate(), self.D_))
-        else:
-            self.D = 0.5 * self.D_k
-            self.D += self.D[::-1].conjugate()
-            
-        # Mass prefactor for the dynamical matrix
-        m_av = np.repeat(np.asarray(self.masses)**(-0.5), 3)
-        M_avav = m_av[:, np.newaxis] * m_av
-
-        for C in self.D:
-            C *= M_avav
-
-        self.assembled = True
