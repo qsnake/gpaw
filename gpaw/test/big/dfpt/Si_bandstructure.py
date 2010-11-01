@@ -36,11 +36,6 @@ world.barrier()
 # Calculate band-structure and plot on master
 if rank == 0:
 
-    # Dynamical matrix object
-    dy = ph.get_dynamical_matrix()
-    # Assemble the dynamical matrix
-    dy.assemble(acoustic=True)
-    
     # High-symmetry points in the Brillouin zone
     points = ibz_points['fcc']
     G = points['Gamma']
@@ -48,12 +43,14 @@ if rank == 0:
     W = points['W']
     K = points['K']
     L = points['L']
+
+    atoms = ph.get_atoms()
     path_kc, q, Q = get_bandpath([G, K, X, G, L, X, W, L],
-                                 dy.atoms.cell, 100)
+                                 atoms.cell, 100)
     point_names = ['$\Gamma$', 'K', 'X', '$\Gamma$', 'L', 'X', 'W', 'L']
     
     # Calculate band-structure
-    omega_kn = dy.band_structure(path_kc)
+    omega_kn = ph.band_structure(path_kc)
     
     # Convert from sqrt(Ha / Bohr**2 / amu) -> meV
     s = units.Hartree**0.5 * units._hbar * 1.e10 / \
