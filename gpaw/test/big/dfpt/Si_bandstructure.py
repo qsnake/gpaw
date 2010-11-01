@@ -12,7 +12,7 @@ import pylab as plt
 import ase.units as units
 from ase.dft.kpoints import ibz_points, get_bandpath
 
-from gpaw.mpi import rank
+from gpaw.mpi import rank, world
 from gpaw.dfpt import PhononCalculator
 
 # Pseudo-potential
@@ -29,6 +29,9 @@ ph = PhononCalculator(name,
 
 # Run the self-consistent calculation
 ph.run()
+
+# Ensure that the master does not enter here before all files have been created
+world.barrier()
 
 # Calculate band-structure and plot on master
 if rank == 0:
@@ -68,4 +71,5 @@ if rank == 0:
     plt.ylim(0, np.ceil(omega_kn.max() / 10) * 10)
     plt.ylabel("Frequency ($\mathrm{meV}$)", fontsize=22)
     plt.grid('on')
+    # plt.show()
     plt.savefig('Si_bandstructure.png')

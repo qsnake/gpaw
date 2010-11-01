@@ -24,4 +24,4 @@ calc = GPAW(kpts=(k, k, k),
 
 atoms.set_calculator(calc)
 atoms.get_potential_energy()
-calc.write('Si_AH.gpw')
+calc.write('Si_AH.gpw', mode='all')
