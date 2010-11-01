@@ -45,7 +45,7 @@ class ResponseCalculator:
                   'tolerance_sc':          1.0e-5,
                   'tolerance_sternheimer': 1.0e-4,
                   'use_pc':                True,
-                  'beta':                  0.2,
+                  'beta':                  0.1,
                   'nmaxold':               6,
                   'weight':                50
                   }
