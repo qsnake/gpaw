@@ -5,8 +5,13 @@ __all__ = ["PhononCalculator"]
 import time
 import os
 import pickle
+from math import pi, sqrt, exp
 
 import numpy as np
+import numpy.linalg as la
+
+import ase.units as units
+from ase.io.trajectory import PickleTrajectory
 
 from gpaw import GPAW
 from gpaw.mpi import serial_comm, rank
@@ -129,7 +134,7 @@ class PhononCalculator:
                                                dtype=self.dtype)
 
         # Dynamical matrix
-        self.D_matrix = DynamicalMatrix(self.atoms, self.kd, dtype=self.dtype)
+        self.dyn = DynamicalMatrix(self.atoms, self.kd, dtype=self.dtype)
 
         # Electron-phonon couplings
         if e_ph:
@@ -144,8 +149,19 @@ class PhononCalculator:
         # Parallel communicator for parallelization over kpts and domain
         self.comm = communicator
 
+    def initialize(self):
+        """Initialize response calculator and perturbation."""
+
+        # Get scaled atomic positions
+        spos_ac = self.atoms.get_scaled_positions()
+
+        self.perturbation.initialize(spos_ac)
+        self.response_calc.initialize(spos_ac)
+
+        self.initialized = True
+        
     def __getstate__(self): 
-        """Method used to pickle.
+        """Method used when pickling.
 
         Bound method attributes cannot be pickled and must therefore be deleted
         before an instance is dumped to file.
@@ -160,37 +176,7 @@ class PhononCalculator:
         state.pop('response_calc')
         
         return state
-           
-    def initialize(self):
-        """Initialize response calculator and perturbation."""
 
-        # Get scaled atomic positions
-        spos_ac = self.atoms.get_scaled_positions()
-
-        self.perturbation.initialize(spos_ac)
-        self.response_calc.initialize(spos_ac)
-
-        self.initialized = True
-
-    def collect(self):
-        """Collect calculated quantities."""
-
-        self.D_matrix.collect()
-        if self.e_ph is not None:
-            self.e_ph.collect()
-            
-    def set_atoms(self, atoms_a):
-        """Set indices of atoms to include in the calculation."""
-
-        assert isinstance(atoms_a, list)
-
-        self.D_matrix.set_indices(atoms_a)
-
-    def get_dynamical_matrix(self):
-        """Return reference to ``DynamicalMatrix`` object."""
-        
-        return self.D_matrix
-    
     def run(self, qpts_q=None, clean=False, name=None, path=None):
         """Run calculation for atomic displacements and update matrix.
 
@@ -212,10 +198,10 @@ class PhononCalculator:
         else:
             assert isinstance(qpts_q, list)
 
-        # Update name and path in the dynamical matrix
-        self.D_matrix.set_name_and_path(name=name, path=path)
+        # Update name and path attributes
+        self.set_name_and_path(name=name, path=path)
         # Get string template for filenames
-        filename_str = self.D_matrix.get_filename_string()
+        filename_str = self.get_filename_string()
 
         # Delay the ranks belonging to the same k-point/domain decomposition
         # equally
@@ -223,8 +209,8 @@ class PhononCalculator:
 
         # XXX Make a single ground_state_contributions member function
         # Ground-state contributions to the force constants
-        self.D_matrix.density_ground_state(self.calc)
-        # self.D_matrix.wfs_ground_state(self.calc, self.response_calc)
+        self.dyn.density_ground_state(self.calc)
+        # self.dyn.wfs_ground_state(self.calc, self.response_calc)
         
         # Calculate linear response wrt q-vectors and displacements of atoms
         for q in qpts_q:
@@ -233,8 +219,7 @@ class PhononCalculator:
                 self.perturbation.set_q(q)
 
             # First-order contributions to the force constants
-            for a in self.D_matrix.indices:
-    
+            for a in self.dyn.indices:
                 for v in [0, 1, 2]:
 
                     # Check if the calculation has already been done
@@ -242,12 +227,12 @@ class PhononCalculator:
                     # Wait for all sub-ranks to enter
                     self.comm.barrier()
                     
-                    if os.path.isfile(filename):
+                    if os.path.isfile(os.path.join(self.path, filename)):
                         continue
 
                     if self.comm.rank == 0:
-                        fd = open(filename, 'w')
-                        fd.close()
+                        fd = open(os.path.join(self.path, filename), 'w')
+
                     # Wait for all sub-ranks here
                     self.comm.barrier()
                     
@@ -264,13 +249,14 @@ class PhononCalculator:
                     self.response_calc(self.perturbation)
 
                     # Calculate row of the matrix of force constants
-                    self.D_matrix.update_row(self.perturbation,
-                                             self.response_calc)
+                    self.dyn.calculate_row(self.perturbation,
+                                           self.response_calc)
 
                     # Write force constants to file
                     if self.comm.rank == 0:
-                        self.D_matrix.write(q, a, v)
-
+                        self.dyn.write(fd, q, a, v)
+                        fd.close()
+                        
                     # Store effective potential derivative
                     if self.e_ph is not None:
                         v1_eff_G = self.perturbation.v1_G + \
@@ -280,6 +266,208 @@ class PhononCalculator:
                     # Wait for the file-writing rank here
                     self.comm.barrier()
 
+        # XXX
+        # Check that all files are valid and collect in a single file
         # Remove the files
         if clean:
-            self.D_matrix.clean()
+            self.clean()
+            
+    def get_atoms(self):
+        """Return atoms."""
+
+        return self.atoms
+    
+    def get_dynamical_matrix(self):
+        """Return reference to ``dyn`` attribute."""
+        
+        return self.dyn
+
+    def get_filename_string(self):
+        """Return string template for force constant filenames."""
+
+        name_str = (self.name + '.' + 'q_%%0%ii_' % len(str(self.kd.nibzkpts)) +
+                    'a_%%0%ii_' % len(str(len(self.atoms))) + 'v_%i' + '.pckl')
+
+        return name_str
+    
+    def set_atoms(self, atoms):
+        """Set atoms to be included in the calculation.
+
+        Parameters
+        ----------
+        atoms: list
+            Can be either a list of strings, ints or ...
+            
+        """
+        
+        assert isinstance(atoms, list)
+        
+        if isinstance(atoms[0], str):
+            assert np.all([isinstance(atom, str) for atom in atoms])
+            sym_a = self.atoms.get_chemical_symbols()
+            # List for atomic indices
+            indices = []
+            for type in atoms:
+                indices.extend([a for a, atom in enumerate(sym_a)
+                                if atom == type])
+        else:
+            assert np.all([isinstance(atom, int) for atom in atoms])
+            indices = atoms
+            
+        self.dyn.set_indices(indices)
+
+    def set_name_and_path(self, name=None, path=None):
+        """Set name and path of the force constant files.
+
+        name: str
+            Base name for the files which the elements of the matrix of force
+            constants will be written to.
+        path: str
+            Path specifying the directory where the files will be dumped.
+            
+        """
+
+        if name is None:
+            self.name = 'phonon.' + self.atoms.get_name()
+        else:
+            self.name = name
+        # self.name += '.nibzkpts_%i' % self.kd.nibzkpts
+        
+        if path is None:
+            self.path = '.'
+        else:
+            self.path = path
+
+        # Set corresponding attributes in the ``dyn`` attribute
+        filename_str = self.get_filename_string()
+        self.dyn.set_name_and_path(filename_str, self.path)
+            
+    def clean(self):
+        """Delete generated files."""
+
+        filename_str = self.get_filename_string()
+        
+        for q in range(self.kd.nibzkpts):
+            for a in range(len(self.atoms)):
+                for v in [0, 1, 2]:
+                    filename = filename_str % (q, a, v)
+                    if os.path.isfile(os.path.join(self.path, filename)):
+                        os.remove(filename)
+                        
+    def band_structure(self, path_kc, modes=False):
+        """Calculate phonon dispersion along a path in the Brillouin zone.
+
+        The dynamical matrix at arbitrary q-vectors is obtained by Fourier
+        transforming the real-space matrix. In case of negative eigenvalues
+        (squared frequency), the corresponding negative frequency is returned.
+
+        Parameters
+        ----------
+        path_kc: ndarray
+            List of k-point coordinates (in units of the reciprocal lattice
+            vectors) specifying the path in the Brillouin zone for which the
+            dynamical matrix will be calculated.
+        modes: bool
+            Returns both frequencies and modes when True.
+            
+        """
+
+        for k_c in path_kc:
+            assert np.all(np.asarray(k_c) <= 1.0), \
+                   "Scaled coordinates must be given"
+
+        # Get the dynamical matrix in real-space
+        DR_lmn, R_clmn = self.dyn.real_space()
+
+        # Reshape for the evaluation of the fourier sums
+        shape = DR_lmn.shape
+        DR_m = DR_lmn.reshape((-1,) + shape[-2:])
+        R_cm = R_clmn.reshape((3, -1))
+
+        # Lists for frequencies and modes along path
+        omega_kn = []
+        u_kn =  []
+        # Mass prefactor for the normal modes
+        m_inv_av = self.dyn.get_mass_array()
+        
+        for q_c in path_kc:
+
+            # Evaluate fourier transform 
+            phase_m = np.exp(-2.j * pi * np.dot(q_c, R_cm))
+            # Dynamical matrix in unit of Ha / Bohr**2 / amu
+            D_q = np.sum(phase_m[:, np.newaxis, np.newaxis] * DR_m, axis=0)
+
+            if modes:
+                omega2_n, u_avn = la.eigh(D_q, UPLO='L')
+                # Sort eigenmodes according to eigenvalues (see below) 
+                u_nav = u_avn[:, omega2_n.argsort()].T.reshape((-1, 3))
+                # Multiply with mass prefactor and reshape
+                u_kn.append((u_nav * m_inv_av).reshape((-1, 3)))
+            else:
+                omega2_n = la.eigvalsh(D_q, UPLO='L')
+
+            # Sort eigenvalues in increasing order
+            omega2_n.sort()
+            # Use dtype=complex to handle negative eigenvalues
+            omega_n = np.sqrt(omega2_n.astype(complex))
+
+            # Take care of imaginary frequencies
+            if not np.all(omega2_n >= 0.):
+                indices = np.where(omega2_n < 0)[0]
+                print ("WARNING, %i imaginary frequencies at "
+                       "q = (% 5.2f, % 5.2f, % 5.2f) ; (omega_q =% 5.3e*i)"
+                       % (len(indices), q_c[0], q_c[1], q_c[2],
+                          omega_n[indices][0].imag))
+                
+                omega_n[indices] = -1 * np.sqrt(np.abs(omega2_n[indices].real))
+
+            omega_kn.append(omega_n.real)
+
+        if modes:
+            return np.asarray(omega_kn), np.asarray(u_kn)
+        
+        return np.asarray(omega_kn)
+
+    def write_mode(self, q_c, u_av, omega, n=1, kT=units.kB*300,
+                   repeat=(1, 1, 1), nimages=30):
+        """Write mode to trajectory file.
+
+        Units ... ?
+        
+        Parameters
+        ----------
+        u_av: ndarray
+            Array with normal mode (shape=(n, 3)), i.e. mass prefactor must be
+            included.
+        omega: float
+            Corresponding frequency.
+
+        """
+
+        assert u_av.shape[-1] == 3, "incorrect mode array"
+
+        # Repeat atoms -- this create a new instance ??
+        atoms = self.atoms * repeat
+        
+        # Corresponding lattice vectors R_m
+        N_c = np.array(repeat)[:, np.newaxis]
+        R_cm = np.indices(N_c).reshape(3, -1)
+        R_cm += N_c // 2
+        R_cm %= N_c
+        R_cm -= N_c // 2
+        # Bloch phase
+        phase_m = np.exp(2.j * pi * np.dot(q_c, R_cm))
+        
+        mode = np.zeros((len(atoms), 3), dtype=self.dtype)
+        indices = self.dyn.get_indices()
+        mode[indices] = u_av * sqrt(kT / abs(omega))
+        pos_c = atoms.positions.copy()
+        
+        traj = PickleTrajectory('%s.%d.traj' % (self.name, n), 'w')
+
+        for x in np.linspace(0, 2*pi, nimages, endpoint=False):
+            # The most is complex -> exponential must be used
+            atoms.set_positions(pos_c + (np.exp(x) * mode).real)
+            traj.write(atoms)
+        traj.close()
+

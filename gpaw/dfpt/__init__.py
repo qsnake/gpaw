@@ -63,6 +63,18 @@ Implementaion notes
 2. Arrays containing first-order derivatives should be suffixed with a ``1``
    in the variable name, e.g. ``nt1_g`` for the density.
 
+3. Naming conventions for arrays:
+
+    * q-vectors for the dynamical matrix:
+        - q: index in irreducible BZ.
+        - k: index in the full BZ.
+
+    * atomic and cartesian indices in the dynamical matrix
+        - av: be careful, can both refer to a composite atomic and cartesian
+        index (i.e. corresponds only to ONE dimension in the array) and
+        individual atomic and cartesian indices (corresponding to TWO
+        dimensions in an array).
+
 """
 
 # __version__ = "0.1"
