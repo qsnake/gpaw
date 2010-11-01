@@ -604,9 +604,7 @@ class BandLayouts(KohnShamLayouts):
 
         self.timer.start('Distribute results')
         # Basically just a copy
-        bstart = self.bd.comm.rank*mynbands
-        bend = bstart + mynbands
-        eps_n[:] = eps_N[bstart:bend]
+        eps_n[:] = eps_N[self.bd.get_slice()]
         self.timer.stop('Distribute results')
 
     def _diagonalize(self, H_NN, eps_N):
