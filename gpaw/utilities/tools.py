@@ -1,6 +1,6 @@
 import numpy as np
 
-from ase import Hartree, Bohr
+from ase.units import Hartree, Bohr
 
 def L_to_lm(L):
     """Convert L index to (l, m) index."""
