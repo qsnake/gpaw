@@ -27,6 +27,7 @@ calc = GPAW(h=0.2,
             kpts=(4,4,4),
             parallel={'domain':1,
                       'band':1},
+            idiotproof=True,  # allow uneven distribution of k-points
             xc='LDA')
 
 atoms.set_calculator(calc)

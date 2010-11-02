@@ -467,7 +467,7 @@ class PAW(PAWTextOutput):
                 parsize = world.size
 
             domain_comm, kpt_comm, band_comm = mpi.distribute_cpus(parsize,
-                parsize_bands, nspins, kd.nibzkpts, world)
+                parsize_bands, nspins, kd.nibzkpts, world, par.idiotproof)
 
             kd.set_communicator(kpt_comm)
 
