@@ -487,6 +487,7 @@ class Setup(BaseSetup):
     ``dEH0``      Constant correction due to average electrostatic potential
     ``dEH_p``     Linear correction due to average electrostatic potential
     ``I4_iip``    Correction to integrals over 4 all electron wave functions
+    ``Nct``       Analytical integral of the pseudo core density ``nct``
     ============= ==========================================================
 
     It also has the attribute ``xc_correction`` which is an XCCorrection class
