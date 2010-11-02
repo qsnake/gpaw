@@ -447,7 +447,7 @@ class PhononCalculator:
             displacements.
         repeat: tuple
             Repeat atoms (l, m, n) times in the directions of the lattice
-            vectors.
+            vectors. 
         nimages: int
             Number of images in an oscillation.
             
@@ -460,6 +460,7 @@ class PhononCalculator:
 
         # Repeat atoms
         atoms = self.atoms * repeat
+        pos_mav = atoms.positions.copy()
         # Total number of unit cells
         M = np.prod(repeat)
             
@@ -468,7 +469,7 @@ class PhononCalculator:
         # Bloch phase
         phase_m = np.exp(2.j * pi * np.dot(q_c, R_cm))
         phase_ma = phase_m.repeat(len(self.atoms))
-        
+
         # Calculate modes
         omega_n, u_n = self.band_structure([q_c], modes=True)
 
@@ -481,16 +482,15 @@ class PhononCalculator:
             omega = omega_n[0, n] * s
             u_av = u_n[0, n].reshape((-1, 3)) * units.Bohr
             # Mean displacement at high T ?
-            u_av *= sqrt(kT / abs(omega))
+            u_av *= sqrt(kT / abs(omega)) # * 10
             
             mode_av = np.zeros((len(self.atoms), 3), dtype=self.dtype)
             indices = self.dyn.get_indices()
             mode_av[indices] = u_av
-            mode_mav = (np.tile(mode_av, (M, 1)) * phase_ma[:, np.newaxis]).real
-          
+            mode_mav = (np.vstack([mode_av]*M) * phase_ma[:, np.newaxis]).real
+
             traj = PickleTrajectory('%s.mode.%d.traj' % (self.name, n), 'w')
-            pos_mav = atoms.positions.copy()
-            
+
             for x in np.linspace(0, 2*pi, nimages, endpoint=False):
                 # XXX Is it correct to take out the sine component here ?
                 atoms.set_positions(pos_mav + sin(x) * mode_mav)

@@ -269,8 +269,8 @@ class DynamicalMatrix:
         DR_lmn = DR_lmn.real
 
         # Corresponding R_m vectors in units of the lattice vectors
-        N1_c = np.array(N_c)[:, np.newaxis]
         R_cm = np.indices(N_c).reshape(3, -1)
+        N1_c = np.array(N_c)[:, np.newaxis]        
         R_cm += N1_c // 2
         R_cm %= N1_c
         R_cm -= N1_c // 2
