@@ -5,7 +5,7 @@ __all__ = ["PhononCalculator"]
 import time
 import os
 import pickle
-from math import pi, sqrt, exp
+from math import pi, sqrt, exp, sin
 
 import numpy as np
 import numpy.linalg as la
@@ -404,9 +404,9 @@ class PhononCalculator:
             if modes:
                 omega2_n, u_avn = la.eigh(D_q, UPLO='L')
                 # Sort eigenmodes according to eigenvalues (see below) 
-                u_nav = u_avn[:, omega2_n.argsort()].T.reshape((-1, 3))
-                # Multiply with mass prefactor and reshape
-                u_kn.append((u_nav * m_inv_av).reshape((-1, 3)))
+                u_nav = u_avn[:, omega2_n.argsort()].T
+                # Multiply with mass prefactor
+                u_kn.append(u_nav * m_inv_av)
             else:
                 omega2_n = la.eigvalsh(D_q, UPLO='L')
 
@@ -432,46 +432,69 @@ class PhononCalculator:
         
         return np.asarray(omega_kn)
 
-    def write_mode(self, q_c, u_av, omega, n=1, kT=units.kB*300,
-                   repeat=(1, 1, 1), nimages=30):
+    def write_modes(self, q_c, branches=0, kT=units.kB*300, repeat=(1, 1, 1),
+                    nimages=30):
         """Write mode to trajectory file.
 
-        Units ... ?
-        
         Parameters
         ----------
-        u_av: ndarray
-            Array with normal mode (shape=(n, 3)), i.e. mass prefactor must be
-            included.
-        omega: float
-            Corresponding frequency.
-
+        q_c: ndarray
+            q-vector of the modes.
+        branches: int or list
+            Branch index of calculated modes.
+        kT: float
+            Temperature in units of eV. Determines the amplitude of the atomic
+            displacements.
+        repeat: tuple
+            Repeat atoms (l, m, n) times in the directions of the lattice
+            vectors.
+        nimages: int
+            Number of images in an oscillation.
+            
         """
 
-        assert u_av.shape[-1] == 3, "incorrect mode array"
+        if isinstance(branches, int):
+            branch_n = [branches]
+        else:
+            branch_n = list(branches)
 
-        # Repeat atoms -- this create a new instance ??
+        # Repeat atoms
         atoms = self.atoms * repeat
-        
+        # Total number of unit cells
+        M = np.prod(repeat)
+            
         # Corresponding lattice vectors R_m
-        N_c = np.array(repeat)[:, np.newaxis]
-        R_cm = np.indices(N_c).reshape(3, -1)
-        R_cm += N_c // 2
-        R_cm %= N_c
-        R_cm -= N_c // 2
+        R_cm = np.indices(repeat[::-1]).reshape(3, -1)[::-1]
         # Bloch phase
         phase_m = np.exp(2.j * pi * np.dot(q_c, R_cm))
+        phase_ma = phase_m.repeat(len(self.atoms))
         
-        mode = np.zeros((len(atoms), 3), dtype=self.dtype)
-        indices = self.dyn.get_indices()
-        mode[indices] = u_av * sqrt(kT / abs(omega))
-        pos_c = atoms.positions.copy()
-        
-        traj = PickleTrajectory('%s.%d.traj' % (self.name, n), 'w')
+        # Calculate modes
+        omega_n, u_n = self.band_structure([q_c], modes=True)
 
-        for x in np.linspace(0, 2*pi, nimages, endpoint=False):
-            # The most is complex -> exponential must be used
-            atoms.set_positions(pos_c + (np.exp(x) * mode).real)
-            traj.write(atoms)
-        traj.close()
+        # Conversion factor from sqrt(Ha / Bohr**2 / amu) -> eV
+        s = units.Hartree**0.5 * units._hbar * 1.e10 / \
+            (units._e * units._amu)**(0.5) / units.Bohr
+        
+        for n in branch_n:
+            
+            omega = omega_n[0, n] * s
+            u_av = u_n[0, n].reshape((-1, 3)) * units.Bohr
+            # Mean displacement at high T ?
+            u_av *= sqrt(kT / abs(omega))
+            
+            mode_av = np.zeros((len(self.atoms), 3), dtype=self.dtype)
+            indices = self.dyn.get_indices()
+            mode_av[indices] = u_av
+            mode_mav = (np.tile(mode_av, (M, 1)) * phase_ma[:, np.newaxis]).real
+          
+            traj = PickleTrajectory('%s.mode.%d.traj' % (self.name, n), 'w')
+            pos_mav = atoms.positions.copy()
+            
+            for x in np.linspace(0, 2*pi, nimages, endpoint=False):
+                # XXX Is it correct to take out the sine component here ?
+                atoms.set_positions(pos_mav + sin(x) * mode_mav)
+                traj.write(atoms)
+                
+            traj.close()
 

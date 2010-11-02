@@ -77,7 +77,7 @@ class DynamicalMatrix:
         
         # Force constants and dynamical matrix attributes
         # Irreducible zone -- list with array entrances C_avav
-        self.C_q = []
+        self.C_q = None
         # Full BZ (ndarray)
         self.D_k = None
         
@@ -193,6 +193,7 @@ class DynamicalMatrix:
         N = len(self.indices)
         
         # Assemble matrix of force constants
+        self.C_q = []
         for q, C_aavv in enumerate(self.C_qaavv):
 
             C_avav = np.zeros((3*N, 3*N), dtype=self.dtype)
@@ -269,7 +270,7 @@ class DynamicalMatrix:
 
         # Corresponding R_m vectors in units of the lattice vectors
         N1_c = np.array(N_c)[:, np.newaxis]
-        R_cm = np.indices(N1_c).reshape(3, -1)
+        R_cm = np.indices(N_c).reshape(3, -1)
         R_cm += N1_c // 2
         R_cm %= N1_c
         R_cm -= N1_c // 2
