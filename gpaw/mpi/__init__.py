@@ -615,7 +615,7 @@ parallel = (size > 1)
 
 
 def distribute_cpus(parsize, parsize_bands, nspins, nibzkpts, comm=world,
-                    idiotproof=False):
+                    idiotproof=True):
     """Distribute k-points/spins to processors.
 
     Construct communicators for parallelization over
@@ -638,7 +638,7 @@ def distribute_cpus(parsize, parsize_bands, nspins, nibzkpts, comm=world,
 
         # How many spin/k-point combinations do we get per node:
         nu, x = divmod(nsk, size // parsize_bands // ndomains)
-        assert x == 0 or nu >= 2 or idiotproof, 'load imbalance!'
+        assert x == 0 or nu >= 2 or not idiotproof, 'load imbalance!'
     else:
         ntot = nsk * parsize_bands
         ndomains = size // gcd(ntot, size)
