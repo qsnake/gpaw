@@ -208,23 +208,27 @@ class DynamicalMatrix:
         for C in self.C_q:
             C *= 0.5
             C += C.conj().T
+
+        # Get matrix of force constants in the Gamma-point (is real!)
+        C_gamma = self.C_q[self.gamma_index].real
+        # Make Gamma-component real
+        self.C_q[self.gamma_index] = C_gamma.copy()
             
         # Apply acoustic sum-rule if requested
         if acoustic:
-            # Get matrix of force constants in the Gamma-point
-            C_gamma = self.C_q[self.gamma_index].copy()
-
             # Correct atomic diagonal for each q-vector
             for C in self.C_q:
-
                 for a in range(N):
-                    C_gamma_av = C_gamma[3*a: 3*a+3]
-
                     for a_ in range(N):
                         C[3*a : 3*a + 3, 3*a : 3*a + 3] -= \
-                              C_gamma_av[:3, 3*a_: 3*a_+3]
+                              C_gamma[3*a: 3*a+3, 3*a_: 3*a_+3]
 
-           
+            # Check sum-rule for Gamma-component in debug mode
+            if debug:
+                C = self.C_q[self.gamma_index]
+                assert np.all(np.sum(C.reshape((3*N, N, 3)), axis=1) < 1e-15)
+
+        
         # Move this bit to an ``unfold`` member function
         # XXX Time-reversal symmetry
         C_q = np.asarray(self.C_q)

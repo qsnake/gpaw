@@ -354,7 +354,7 @@ class PhononCalculator:
                     if os.path.isfile(os.path.join(self.path, filename)):
                         os.remove(filename)
                         
-    def band_structure(self, path_kc, modes=False):
+    def band_structure(self, path_kc, modes=False, acoustic=True):
         """Calculate phonon dispersion along a path in the Brillouin zone.
 
         The dynamical matrix at arbitrary q-vectors is obtained by Fourier
@@ -369,6 +369,8 @@ class PhononCalculator:
             dynamical matrix will be calculated.
         modes: bool
             Returns both frequencies and modes when True.
+        acoustic: bool
+            Restore the acoustic sum-rule in the calculated force constants.
             
         """
 
@@ -376,6 +378,8 @@ class PhononCalculator:
             assert np.all(np.asarray(k_c) <= 1.0), \
                    "Scaled coordinates must be given"
 
+        # Assemble the dynanical matrix from calculated force constants
+        self.dyn.assemble(acoustic=acoustic)
         # Get the dynamical matrix in real-space
         DR_lmn, R_clmn = self.dyn.real_space()
 
