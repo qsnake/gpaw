@@ -10,6 +10,8 @@ from gpaw.test import equal
 try:
     calc = GPAW('NaCl.gpw')
     NaCl = calc.get_atoms()
+    e = NaCl.get_potential_energy()
+    niter = None
 except IOError:
     h = 0.21 # gridspacing
     a = [6.5, 6.5, 7.7] # unit cell
@@ -23,7 +25,7 @@ except IOError:
                 convergence={'eigenstates': 1e-6}, spinpol=1)
 
     NaCl.set_calculator(calc)
-    e= NaCl.get_potential_energy()
+    e = NaCl.get_potential_energy()
     niter = calc.get_number_of_iterations()
     calc.write('NaCl.gpw')
 
@@ -44,4 +46,5 @@ for gridrefinement in [1, 2, 4]:
 energy_tolerance = 0.00004
 niter_tolerance = 0
 equal(e, -4.908677, energy_tolerance)
-equal(niter, 20, niter_tolerance)
+if niter is not None:
+    equal(niter, 20, niter_tolerance)
