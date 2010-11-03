@@ -25,10 +25,6 @@ class RMM_DIIS(Eigensolver):
     def __init__(self, keep_htpsit=True, blocksize=1):
         Eigensolver.__init__(self, keep_htpsit, blocksize)
 
-    def initialize(self, wfs):
-        Eigensolver.initialize(self, wfs)
-        self.overlap = wfs.overlap
-
     def iterate_one_k_point(self, hamiltonian, wfs, kpt):
         """Do a single RMM-DIIS iteration for the kpoint"""
 
@@ -45,15 +41,22 @@ class RMM_DIIS(Eigensolver):
         P_axi = wfs.pt.dict(B)
         error = 0.0
         for n1 in range(0, wfs.bd.mynbands, B):
-            n2 = min(n1 + B, wfs.bd.mynbands)
+            n2 = n1 + B
+            if n2 > wfs.bd.mynbands:
+                n2 = wfs.bd.mynbands
+                B = n2 - n1
+                P_axi = dict([(a, P_xi[:B]) for a, P_xi in P_axi.items()])
+                dR_xG = dR_xG[:B]
+                
             n_x = range(n1, n2)
+            
             if self.keep_htpsit:
                 R_xG = R_nG[n_x]
             else:
-                R_xG = self.gd.empty(n2 - n1, wfs.dtype)
+                R_xG = self.gd.empty(B, wfs.dtype)
                 psit_xG = kpt.psit_nG[n_x]
                 wfs.apply_pseudo_hamiltonian(kpt, hamiltonian, psit_xG, R_xG)
-                wfs.pt.integrate(psit_xG, P_axi)
+                wfs.pt.integrate(psit_xG, P_axi, kpt.q)
                 self.calculate_residuals(kpt, wfs, hamiltonian, psit_xG,
                                          P_axi, kpt.eps_n[n_x], R_xG, n_x)
 
@@ -75,8 +78,7 @@ class RMM_DIIS(Eigensolver):
             self.timer.stop('precondition')
 
             # Calculate the residual of dpsit_G, dR_G = (H - e S) dpsit_G:
-            wfs.apply_pseudo_hamiltonian(kpt, hamiltonian, dpsit_xG,
-                                         dR_xG[:n2 - n1])
+            wfs.apply_pseudo_hamiltonian(kpt, hamiltonian, dpsit_xG, dR_xG)
             wfs.pt.integrate(dpsit_xG, P_axi, kpt.q)
             self.calculate_residuals(kpt, wfs, hamiltonian, dpsit_xG,
                                      P_axi, kpt.eps_n[n_x], dR_xG, n_x,
