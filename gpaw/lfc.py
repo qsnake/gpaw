@@ -535,13 +535,16 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         if q == -1:
             assert self.dtype == float
         
+        xshape = a_xG.shape[:-3]
+
         if debug:
             assert a_xG.ndim >= 3
             assert (np.sort(c_axi.keys()) == self.my_atom_indices).all()
+            for c_xi in c_axi.values():
+                assert c_xi.shape[:-1] == xshape
 
         dtype = a_xG.dtype
         
-        xshape = a_xG.shape[:-3]
         c_xM = np.zeros(xshape + (self.Mmax,), dtype)
         self.lfc.integrate(a_xG, c_xM, q)
 
