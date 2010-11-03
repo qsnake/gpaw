@@ -269,8 +269,12 @@ class BlacsDescriptor(MatrixDescriptor):
     def __init__(self, blacsgrid, M, N, mb, nb, rsrc, csrc):
         assert M > 0
         assert N > 0
-        assert 1 <= mb <= M, (mb, M)
-        assert 1 <= nb <= N, (nb, N)
+        assert 1 <= mb
+        assert 1 <= nb
+        if mb > M:
+            mb = M
+        if nb > N:
+            nb = N
         assert 0 <= rsrc < blacsgrid.nprow
         assert 0 <= csrc < blacsgrid.npcol
         
