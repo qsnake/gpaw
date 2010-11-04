@@ -15,6 +15,7 @@ k+q are needed.
 import numpy as np
 
 from gpaw.utilities import unpack
+from gpaw.utilities.blas import gemm
 from gpaw.fd_operators import Laplace
 
 class SternheimerOperator:
@@ -39,6 +40,8 @@ class SternheimerOperator:
             Ground-state wave-functions.
         gd: GridDescriptor
             Grid on which the operator is defined.
+        dtype: dtype
+            dtype of the wave-function being operated on.
 
         """
 
@@ -58,23 +61,20 @@ class SternheimerOperator:
         self.shape = (N, N)
         self.dtype = dtype
 
-    def set_blochstate(self, n, k):
-        """Set k-vector and band index for the Bloch-state in consideration.
+    def set_k(self, k):
+        """Set k-vector for the Bloch-state in consideration."""
+
+        self.k = k
+        
+    def set_band(self, n):
+        """Set band index for the Bloch-state in consideration.
 
         Note that n different from None has implications for the interpretation
         of the input vector in the ``apply`` member function.
 
-        Parameters
-        ----------
-        n: int
-           Band index.
-        k: int
-           k-point index.
-
         """
 
         self.n = n
-        self.k = k
 
     def set_kplusq(self, kplusq):
         """Set q-vector of the perturbing potential.
@@ -160,24 +160,27 @@ class SternheimerOperator:
         """
 
         # It might be a good idea to move this functionality to its own class
-
+        assert x_nG.ndim == 4
         assert self.kplusq is not None
 
         # k+q
         kplusqpt = self.kpt_u[self.kplusq]
-
         # Occupied wave function
         psit_nG = kplusqpt.psit_nG
-        
+
+        # Project out occupied sub-space using blas routine gemm
+        m = len(x_nG)
+        n = len(psit_nG)
+        proj_mn = np.zeros((m, n), dtype=self.dtype)
+        gemm(self.gd.dv, psit_nG, x_nG, 0.0, proj_mn, 'c')
+        gemm(-1.0, psit_nG, proj_mn, 1.0, x_nG)
+
         # Project out one orbital at a time
-        for n, psit_G in enumerate(psit_nG):
-
-            proj = self.gd.integrate(psit_G.conjugate() * x_nG)
-            x_nG -= proj * psit_G
-
-        # Do the projection in one go - figure out how to use np.dot correctly
-        # a_G -= np.dot(proj_n, psit_nG)
-
+        ## for n, psit_G in enumerate(psit_nG):
+        ## 
+        ##     proj = self.gd.integrate(psit_G.conjugate() * x_nG)
+        ##     x_nG -= proj * psit_G
+        
     def matvec(self, x):
         """Matrix-vector multiplication for scipy's Krylov solvers.
 

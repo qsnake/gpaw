@@ -356,42 +356,41 @@ class ResponseCalculator:
             psit1_nG = kpt.psit1_nG
 
             # Update the SternheimerOperator
+            self.sternheimer_operator.set_k(k)
             self.sternheimer_operator.set_kplusq(kplusq)
-            
-            # Right-hand side of Sternheimer equations
-            rhs_nG = self.gd.zeros(n=self.nbands, dtype=self.gs_dtype)
-            
-            # k and k+q
-            # XXX should only be done once but maybe too cheap to bother ??
-            self.perturbation.apply(psit_nG, rhs_nG, self.wfs, k, kplusq)
-            
+            # Update preconditioner
             if self.pc is not None:
                 # k+q
                 self.pc.set_kpt(kplusqpt)
                 
+            # Right-hand side of Sternheimer equations
+            # k and k+q
+            # XXX should only be done once for all k-points but maybe too cheap
+            # to bother ??
+            rhs_nG = self.gd.zeros(n=self.nbands, dtype=self.gs_dtype)            
+            self.perturbation.apply(psit_nG, rhs_nG, self.wfs, k, kplusq)
+            if self.vHXC1_G is not None:
+                rhs_nG += self.vHXC1_G * psit_nG
+            # Project out occupied subspace
+            self.sternheimer_operator.project(rhs_nG)
+              
             # Loop over occupied bands
             for n in range(self.nbands):
 
-                # Get view of the Bloch function and its variation
-                psit_G  = psit_nG[n]
+                # Update band index in SternheimerOperator
+                self.sternheimer_operator.set_band(n)
+                # Get view of the Bloch function derivative
                 psit1_G = psit1_nG[n]
-
                 # Rhs of Sternheimer equation                
                 rhs_G = -1 * rhs_nG[n]
-                
-                if self.vHXC1_G is not None:
-                    rhs_G -= self.vHXC1_G * psit_G
-
-                # Update k-point index and band index in SternheimerOperator
-                self.sternheimer_operator.set_blochstate(n, k)
-                self.sternheimer_operator.project(rhs_G)
-                
-                if verbose:
-                    print "\tBand %2.1i -" % n,
-
+               
+                # Solve Sternheimer equation
                 iter, info = self.linear_solver.solve(self.sternheimer_operator,
                                                       psit1_G, rhs_G)
                 
+                if verbose:
+                    print "\tBand %2.1i -" % n,
+                    
                 if info == 0:
                     if verbose:
                         print "linear solver converged in %i iterations" % iter
@@ -410,9 +409,7 @@ class ResponseCalculator:
 
         for kpt in self.kpt_u:
 
-            # The occupations includes the weight of the k-points
-            # Use weight of k-point instead of occupation -- spin degeneracy is
-            # included in the weight
+            # The weight of the k-points include spin-degeneracy            
             w = kpt.weight
             # Wave functions
             psit_nG = kpt.psit_nG
