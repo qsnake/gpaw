@@ -71,9 +71,9 @@ Implementaion notes
 
     * atomic and cartesian indices in the dynamical matrix
         - av: be careful, can both refer to a composite atomic and cartesian
-        index (i.e. corresponds only to ONE dimension in the array) and
-        individual atomic and cartesian indices (corresponding to TWO
-        dimensions in an array).
+              index (i.e. corresponds only to ONE dimension in the array) and
+              individual atomic and cartesian indices (corresponding to TWO
+              dimensions in an array).
 
 """
 
