@@ -25,13 +25,14 @@ Build the unoptimized numpy::
   mkdir -p ${HOME}/opt/python/lib/python2.6/site-packages
   export PYTHONPATH=${HOME}/opt/python/lib/python2.6/site-packages
 
-  wget http://dfn.dl.sourceforge.net/sourceforge/numpy/numpy-1.3.0.tar.gz
+  wget http://dfn.dl.sourceforge.net/sourceforge/numpy/numpy-1.5.0.tar.gz
   wget http://python-nose.googlecode.com/files/nose-0.11.0.tar.gz
   tar zxf nose-0.11.0.tar.gz
-  tar zxf numpy-1.3.0.tar.gz
+  tar zxf numpy-1.5.0.tar.gz
   cd nose-0.11.0
   python setup.py install --prefix=$HOME/opt/python | tee install.log
-  cd ../numpy-1.3.0
+  cd ../numpy-1.5.0
+  python setup.py build --fcompiler=gnu95  | tee build.log
   python setup.py install --prefix=$HOME/opt/python | tee install.log
   cd ..
   python -c "import numpy; numpy.test()"
@@ -75,9 +76,9 @@ with this :file:`customize.py` file
   define_macros += [('GPAW_NO_UNDERSCORE_CSCALAPACK', '1')]
 
 
-**Note**: You also have to set `LD_LIBRARY_PATH=` to::
+**Note**: You also have to set `LD_LIBRARY_PATH` to::
 
-  LD_LIBRARY_PATH="/opt/system/ofed/1.3/lib:/opt/system/ofed/1.3/lib64:$LD_LIBRARY_PATH"
+  export LD_LIBRARY_PATH="/opt/system/ofed/1.3/lib:/opt/system/ofed/1.3/lib64:$LD_LIBRARY_PATH"
 
 A gpaw script :file:`test.py` can be submitted to run on 8 cpus like this::
 
