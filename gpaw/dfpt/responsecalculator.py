@@ -354,7 +354,6 @@ class ResponseCalculator:
             # Ground-state and first-order wave-functions
             psit_nG = kpt.psit_nG
             psit1_nG = kpt.psit1_nG
-
             # Update the SternheimerOperator
             self.sternheimer_operator.set_k(k)
             self.sternheimer_operator.set_kplusq(kplusq)
@@ -408,8 +407,7 @@ class ResponseCalculator:
         self.nt1_G = self.gd.zeros(dtype=self.dtype)
 
         for kpt in self.kpt_u:
-
-            # The weight of the k-points include spin-degeneracy            
+            # The weight of the k-points includes spin-degeneracy
             w = kpt.weight
             # Wave functions
             psit_nG = kpt.psit_nG
