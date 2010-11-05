@@ -218,6 +218,8 @@ class AtomGridDescriptor(EquidistantRadialGridDescriptor):
             return np.dot(a_xg * b_xg, self.dv_g)
     def calculate_dipole_moment(self, rhot_g):
         return np.zeros(3)
+    def symmetrize(self, a_g, op_scc):
+        pass
 
 class AtomOccupations(OccupationNumbers):
     def __init__(self, f_sln):
