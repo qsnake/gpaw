@@ -72,6 +72,7 @@ the corresponding objects are defined in the code:
    wavefunctions
    setups
    density_and_hamiltonian
+   planewaves
    communicators
    others
 

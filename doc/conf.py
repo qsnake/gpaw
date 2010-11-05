@@ -206,6 +206,8 @@ pngmath_latex_preamble = r"""
 \usepackage{amsfonts}
 \usepackage[active]{preview}
 \newcommand{\br}{\mathbf{r}}
+\newcommand{\bk}{\mathbf{k}}
+\newcommand{\bG}{\mathbf{G}}
 """
 
 # Additional arguments to give to dvipng, as a list.
