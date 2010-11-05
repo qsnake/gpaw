@@ -91,9 +91,6 @@ class KPoint:
         self.psit_nG = None  # wave functions on 3D grid
         self.C_nM = None     # LCAO coefficients for wave functions XXX
 
-        if extra_parameters.get('sic'):
-            self.W_nn = None  # storage for a unitary transformation
-
         self.rho_MM = None
         
         self.P_aMi = None
