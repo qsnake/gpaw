@@ -210,7 +210,7 @@ class PhononCalculator:
         # XXX Make a single ground_state_contributions member function
         # Ground-state contributions to the force constants
         self.dyn.density_ground_state(self.calc)
-        # self.dyn.wfs_ground_state(self.calc, self.response_calc)
+        self.dyn.wfs_ground_state(self.calc, self.response_calc)
         
         # Calculate linear response wrt q-vectors and displacements of atoms
         for q in qpts_q:
@@ -436,6 +436,17 @@ class PhononCalculator:
                     nimages=30):
         """Write mode to trajectory file.
 
+        The classical equipartioning theorem states that each normal mode has
+        an average energy::
+        
+            <E> = 1/2 * k_B * T = 1/2 * omega^2 * Q^2
+
+                =>
+
+              Q = sqrt(k_B*T) / omega
+
+        at temperature T. Here, Q denotes the normal coordinate of the mode.
+        
         Parameters
         ----------
         q_c: ndarray
@@ -444,10 +455,11 @@ class PhononCalculator:
             Branch index of calculated modes.
         kT: float
             Temperature in units of eV. Determines the amplitude of the atomic
-            displacements.
+            displacements in the modes.
         repeat: tuple
             Repeat atoms (l, m, n) times in the directions of the lattice
-            vectors. 
+            vectors. Displacements of atoms in repeated cells carry a Bloch
+            phase factor given by the q-vector and the cell lattice vector R_m.
         nimages: int
             Number of images in an oscillation.
             

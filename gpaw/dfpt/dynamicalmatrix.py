@@ -298,8 +298,7 @@ class DynamicalMatrix:
         """
 
         self.density_derivative(perturbation, response_calc)
-        # XXX
-        # self.wfs_derivative(perturbation, response_calc)
+        self.wfs_derivative(perturbation, response_calc)
         
     def density_ground_state(self, calc):
         """Contributions involving ground-state density.
@@ -355,8 +354,7 @@ class DynamicalMatrix:
             P_ani = kpt.P_ani
             dP_aniv = kpt.dP_aniv
             
-            # Occupation factors include the weight of the k-points
-            f_n = kpt.f_n
+            # Wave functions
             psit_nG = kpt.psit_nG
             psit1_nG = kpt.psit1_nG
 
@@ -389,14 +387,13 @@ class DynamicalMatrix:
                 HP_ni = np.dot(P_ni, H_ii)
                 d2PHP_nvv = (d2P_nivv.conj() *
                              HP_ni[:, :, np.newaxis, np.newaxis]).sum(1)
-                assert False, "you are using the f_n attribute here"
-                d2PHP_nvv *= kpt.f_n[:, np.newaxis, np.newaxis]
+                d2PHP_nvv *= kpt.weight
                 A_vv = d2PHP_nvv.sum(0)
     
                 # Term with first-order derivative of the projectors
                 HdP_inv = np.dot(H_ii, dP_niv.conj())
                 HdP_niv = np.swapaxes(HdP_inv, 0, 1)
-                HdP_niv *= kpt.f_n[:, np.newaxis, np.newaxis]
+                HdP_niv *= kpt.weight
     
                 B_vv = (dP_niv[:, :, np.newaxis, :] * 
                         HdP_niv[:, :, :, np.newaxis]).sum(0).sum(0)
@@ -486,8 +483,6 @@ class DynamicalMatrix:
             P_ani = kpt.P_ani
             dP_aniv = kpt.dP_aniv
             
-            # Occupation factors include the weight of the k-points
-            f_n = kpt.f_n
             psit_nG = kpt.psit_nG
             psit1_nG = kpt.psit1_nG
 
@@ -510,13 +505,13 @@ class DynamicalMatrix:
                 # Term with dPdpsi and P coefficients
                 HP_ni = np.dot(P_ni, H_ii)
                 dPdpsiHP_nv = (dPdpsi_niv.conj() * HP_ni[:, :, np.newaxis]).sum(1)
-                dPdpsiHP_nv *= f_n[:, np.newaxis]
+                dPdpsiHP_nv *= kpt.weight
                 A_v = dPdpsiHP_nv.sum(0)
     
                 # Term with dP and Pdpsi coefficients
                 HPdpsi_ni = np.dot(Pdpsi_ni.conj(), H_ii)
                 dPHPdpsi_nv = (dP_niv * HPdpsi_ni[:, :, np.newaxis]).sum(1)
-                dPHPdpsi_nv *= f_n[:, np.newaxis]
+                dPHPdpsi_nv *= kpt.weight
                 B_v = dPHPdpsi_nv.sum(0)
 
                 # Factor of 2 from time-reversal symmetry
