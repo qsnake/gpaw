@@ -39,6 +39,7 @@ and execute::
 
   module unload parastation/intel
   module load parastation/gcc
+  module load mkl/10.1.0
 
   python setup.py build
 
