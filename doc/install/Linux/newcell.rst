@@ -29,7 +29,7 @@ The installation of user's packages on newcell described below uses
   .. literalinclude:: install_newcell.csh
 
   **Note** that every time you wish to install a new version of a package,
-  and deploy new module file, keeping the old module file.
+  and deploy new module file, better keep the old module file.
 
 - submit the test job::
 

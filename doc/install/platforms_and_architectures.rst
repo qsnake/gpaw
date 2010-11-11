@@ -66,6 +66,7 @@ Linux:
    Linux/juropa
    Linux/monolith
    Linux/murska
+   Linux/nanolab_EL4
    Linux/neolith
    Linux/newcell
    Linux/sepeli
