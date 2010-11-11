@@ -346,13 +346,10 @@ unset CC CFLAGS LDFLAGS
     def pbs_bwg(self, f, set, env):
         modules_to_load = [
 		'system/python/2.6',
-		'compiler/intel/10.1',
-		'numlib/mkl/10.0-intel-10.1',
-		'compiler/gnu/4.3',
-		'mpi/openmpi/1.2.8_static-gnu-4.3']
+		'mpi/openmpi/1.2.8-gnu-4.1']
         print >> f, '#!/bin/bash'
         print >> f, '#PBS -N '+set['name']
-        # bfg nodes contain 8 cores
+        # bwg nodes contain 8 cores
         cores = set['cores']
         nodes = int((cores + 7) / 8)
         ppn = int((cores + nodes - 1) / nodes)
