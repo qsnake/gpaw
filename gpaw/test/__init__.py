@@ -216,7 +216,7 @@ tests = [
     'AA_exx_enthalpy.py',
     'transport.py',
     'constant_electric_field.py',
-    #'stark_shift.py',
+    'stark_shift.py',
     ]
 
 exclude = []
@@ -226,7 +226,8 @@ if mpi.size > 1:
                 'coreeig.py',
                 'asewannier.py',
                 'wannier_ethylene.py',
-                'muffintinpot.py']
+                'muffintinpot.py',
+                'stark_shift.py']
 
 if mpi.size > 2:
     exclude += ['neb.py']
