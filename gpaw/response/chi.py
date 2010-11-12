@@ -174,7 +174,7 @@ class CHI:
 
         # k + q init
         assert self.q_c is not None
-        self.qq_v = np.dot(self.q_c, self.bcell_cv)
+        self.qq_v = np.dot(self.q_c, self.bcell_cv) # summation over c
 
         if self.optical_limit:
             kq_k = np.arange(self.nkpt)
@@ -276,9 +276,8 @@ class CHI:
             tmp = np.zeros((3), dtype=complex)
 
         rho_G = np.zeros(self.npw, dtype=complex)
-        ibzkpt_kcomm = np.zeros(self.kcomm.size, dtype=int)
         t0 = time()
-
+        t_get_wfs = 0
         for k in range(self.kstart, self.kend):
 
             # Find corresponding kpoint in IBZ
@@ -289,7 +288,10 @@ class CHI:
                 ibzkpt2, iop2, timerev2 = find_ibzkpt(self.op_scc, ibzk_kc, bzk_kc[kq_k[k]])
 
             for n in range(self.nstart, self.nend):
-                psitold_g = self.get_wavefunction(ibzkpt1, n, k)
+                print >> self.txt, k, n, t_get_wfs, time() - t0
+                t1 = time()
+                psitold_g = self.get_wavefunction(ibzkpt1, n, k, True)
+                t_get_wfs += time() - t1
                 psit1new_g = symmetrize_wavefunction(psitold_g, self.op_scc[iop1], ibzk_kc[ibzkpt1],
                                                       bzk_kc[k], timerev1)
                 P1_ai = pt.dict()
@@ -302,11 +304,13 @@ class CHI:
 		    if self.hilbert_trans:
 			check_focc = (f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > self.ftol
                     else:
-                        check_focc = np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > self.ftol 
+                        check_focc = np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > self.ftol
 
-                    psitold_g = self.get_wavefunction(ibzkpt2, m, k)
+                    t1 = time()
+                    psitold_g = self.get_wavefunction(ibzkpt2, m, k, check_focc)
+                    t_get_wfs += time() - t1
+
                     if check_focc:
-                        #psitold_g = self.get_wavefunction(ibzkpt2, m, k)
                         psit2_g = symmetrize_wavefunction(psitold_g, self.op_scc[iop2], ibzk_kc[ibzkpt2],
                                                            bzk_kc[kq_k[k]], timerev2)
 
@@ -393,26 +397,25 @@ class CHI:
             self.kcomm.sum(chi0_wGG)
         else:
             self.kcomm.sum(specfunc_wGG)
+            # redistribute specfunc_wGG to all nodes
+            assert self.NwS % size == 0
+            NwStmp1 = (rank % self.kcomm.size) * self.NwS // size
+            NwStmp2 = (rank % self.kcomm.size + 1) * self.NwS // size 
+            specfuncnew_wGG = specfunc_wGG[NwStmp1:NwStmp2]
+            del specfunc_wGG
+            
+            coords = np.zeros(self.wcomm.size, dtype=int)
+            nG_local = self.npw**2 // self.wcomm.size
+            if self.wcomm.rank == self.wcomm.size - 1:
+                nG_local = self.npw**2 - (self.wcomm.size - 1) * nG_local
+            self.wcomm.all_gather(np.array([nG_local]), coords)
 
-            coords = np.zeros(self.wScomm.size, dtype=int)
-            nG_local = self.npw**2 // self.wScomm.size
-            if self.wScomm.rank == self.wScomm.size - 1:
-                nG_local = self.npw**2 - (self.wScomm.size - 1) * nG_local
-            self.wScomm.all_gather(np.array([nG_local]), coords)
-
-            specfunc_Wg = SliceAlongFrequency(specfunc_wGG, coords, self.wScomm)
-
+            specfunc_Wg = SliceAlongFrequency(specfuncnew_wGG, coords, self.wcomm)
             chi0_Wg = hilbert_transform(specfunc_Wg, self.Nw, self.dw, self.eta)[:self.Nw]
-
             self.comm.barrier()
-            del specfunc_wGG, specfunc_Wg
+            del specfunc_Wg
 
-            # redistribute chi0_wGG
-            assert self.kcomm.size == size // self.wScomm.size
-            Nwtmp1 = (rank % self.kcomm.size ) * self.Nw_local
-            Nwtmp2 = (rank % self.kcomm.size + 1) * self.Nw_local
-
-            chi0_wGG = SliceAlongOrbitals(chi0_Wg, coords, self.wScomm)[Nwtmp1:Nwtmp2]
+            chi0_wGG = SliceAlongOrbitals(chi0_Wg, coords, self.wcomm)
 
             self.comm.barrier()
             del chi0_Wg
@@ -425,20 +428,24 @@ class CHI:
         return
 
 
-    def get_wavefunction(self, ibzk, n, k):
+    def get_wavefunction(self, ibzk, n, k, check_focc=True):
 
         if self.calc.wfs.kpt_comm.size != world.size:
-            psit_G = self.calc.wfs.get_wave_function_array(n, ibzk, 0)
-    
-            if self.calc.wfs.world.size == 1:
+
+            if check_focc == False:
+                return
+            else:
+                psit_G = self.calc.wfs.get_wave_function_array(n, ibzk, 0)
+        
+                if self.calc.wfs.world.size == 1:
+                    return np.complex128(psit_G)
+                
+                if not self.calc.wfs.world.rank == 0:
+                    psit_G = self.calc.wfs.gd.empty(dtype=self.calc.wfs.dtype,
+                                                    global_array=True)
+                self.calc.wfs.world.broadcast(psit_G, 0)
+        
                 return np.complex128(psit_G)
-            
-            if not self.calc.wfs.world.rank == 0:
-                psit_G = self.calc.wfs.gd.empty(dtype=self.calc.wfs.dtype,
-                                                global_array=True)
-            self.calc.wfs.world.broadcast(psit_G, 0)
-    
-            return np.complex128(psit_G)
         else:
             # support ground state calculation with only kpoint parallelization
             kpt_rank, u = self.calc.wfs.kd.get_rank_and_index(0, ibzk)
@@ -447,23 +454,26 @@ class CHI:
             klist = np.array([kpt_rank, u, bzkpt_rank])
             klist_kcomm = np.zeros((self.kcomm.size, 3), dtype=int)            
             self.kcomm.all_gather(klist, klist_kcomm)
+
+            check_focc_global = np.zeros(self.kcomm.size, dtype=bool)
+            self.kcomm.all_gather(np.array([check_focc]), check_focc_global)
+
+            psit_G = self.calc.wfs.gd.empty(dtype=self.calc.wfs.dtype)
             
 	    for i in range(self.kcomm.size):
-                kpt_rank, u, bzkpt_rank = klist_kcomm[i]
-                if kpt_rank == bzkpt_rank:
-                    if rank == kpt_rank:
-                        psit_G = self.calc.wfs.kpt_u[u].psit_nG[n]
-                else:
-                    if rank == kpt_rank:
-                        world.send(self.calc.wfs.kpt_u[u].psit_nG[n],
-                                   bzkpt_rank, 1300+bzkpt_rank)
-                    if rank == bzkpt_rank:
-                        psit_G = self.calc.wfs.gd.empty(dtype=self.calc.wfs.dtype)
-                        world.receive(psit_G, kpt_rank, 1300+bzkpt_rank)
-
-            if self.wScomm.rank != 0:
-                psit_G = self.calc.wfs.gd.empty(dtype=self.calc.wfs.dtype)
-            
+                if check_focc_global[i] == True:
+                    kpt_rank, u, bzkpt_rank = klist_kcomm[i]
+                    if kpt_rank == bzkpt_rank:
+                        if rank == kpt_rank:
+                            psit_G = self.calc.wfs.kpt_u[u].psit_nG[n]
+                    else:
+                        if rank == kpt_rank:
+                            world.send(self.calc.wfs.kpt_u[u].psit_nG[n],
+                                       bzkpt_rank, 1300+bzkpt_rank)
+                        if rank == bzkpt_rank:
+                            psit_G = self.calc.wfs.gd.empty(dtype=self.calc.wfs.dtype)
+                            world.receive(psit_G, kpt_rank, 1300+bzkpt_rank)
+                    
             self.wScomm.broadcast(psit_G, 0)
             return psit_G
         
@@ -526,7 +536,10 @@ class CHI:
                                self.nkpt, self.kcomm.rank, self.kcomm.size, reshape=False)
             self.nband_local = self.nbands
             self.nstart = 0
-            self.nend = self.nbands
+            if self.hilbert_trans:
+                self.nend = self.nvalbands
+            else:
+                self.nend = self.nbands
         else:
             # if number of kpoints == 1, use band parallelization
             self.nkpt_local = 1
@@ -536,8 +549,11 @@ class CHI:
             self.nvalbands, self.nband_local, self.nstart, self.nend = parallel_partition(
                                self.nvalbands, self.kcomm.rank, self.kcomm.size, reshape=False)
 
+        if self.NwS % size != 0:
+            self.NwS -= self.NwS % size
+            
         self.NwS, self.NwS_local, self.wS1, self.wS2 = parallel_partition(
-                               self.NwS, self.wScomm.rank, self.wScomm.size, reshape=True)
+                               self.NwS, self.wScomm.rank, self.wScomm.size, reshape=False)
 
         if self.hilbert_trans:
             self.Nw, self.Nw_local, self.wstart, self.wend =  parallel_partition(
