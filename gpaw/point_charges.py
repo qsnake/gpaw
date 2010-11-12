@@ -98,6 +98,8 @@ class PointCharges(Atoms, ElectrostaticPotential):
 
         if gd is None:
             gd = self.gd
+
+        assert gd.orthogonal
         potential = gd.empty()
 
         n = len(self)
@@ -110,7 +112,7 @@ class PointCharges(Atoms, ElectrostaticPotential):
         self.charge_n = charge_n
 
         _gpaw.pc_potential(potential, pc_nc, charge_n,
-                           gd.beg_c, gd.end_c, gd.h_cv)
+                           gd.beg_c, gd.end_c, gd.h_cv.diagonal())
 
         # save grid descriptor and potential for future use
         self.potential = potential
