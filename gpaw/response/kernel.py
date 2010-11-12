@@ -1,33 +1,33 @@
-"""Defines kernel. Not in use now. """
-def fxc(self, n):
+from gpaw.utilities.blas import gemmdot
+import numpy as np
+
+def calculate_Kxc(xc, gd, nt_sG, npw, Gvec_Gc, nG, vol, bcell_cv):
+    """LDA kernel"""
+
+    # get fxc(tilden(r))
+    assert np.abs(nt_sG[0].shape - nG).sum() == 0
     
-    name = self.xc
-    nspins = self.nspin
+    fxc_sg = np.zeros_like(nt_sG)
+    xc.calculate_fxc(gd, nt_sG, fxc_sg)
+    fxc_g = fxc_sg[0]
 
-    libxc = XCFunctional(name, nspins)
-   
-    N = n.shape
-    n = np.ravel(n)
-    fxc = np.zeros_like(n)
+    # FFT fxc(r)
+    nG0 = nG[0] * nG[1] * nG[2]
+    tmp_g = np.fft.fftn(fxc_g) * vol / nG0
 
-    libxc.calculate_fxc_spinpaired(n, fxc)
-    return np.reshape(fxc, N)
-
-
-def calculate_Kxc(self, gd, nt_G):
-    # Currently without PAW correction
+    r_vg = gd.get_grid_point_coordinates()
     
-    Kxc_GG = np.zeros((self.npw, self.npw), dtype = complex)
-    Gvec = self.Gvec
+    Kxc_GG = np.zeros((npw, npw), dtype=complex)
+    for iG in range(npw):
+        for jG in range(npw):
+            dG_c = Gvec_Gc[iG] - Gvec_Gc[jG]
+            if (nG / 2 - np.abs(dG_c) > 0).all():
+                index = (dG_c + nG) % nG
+                Kxc_GG[iG, jG] = tmp_g[index[0], index[1], index[2]]
+            else: # not in the fft index
+                dG_v = np.dot(dG_c, bcell_cv)
+                dGr_g = gemmdot(dG_v, r_vg, beta=0.0) 
+                Kxc_GG[iG, jG] = gd.integrate(np.exp(-1j*dGr_g)*fxc_g)
 
-    fxc_G = self.fxc(nt_G)
-
-    for iG in range(self.npw):
-        for jG in range(self.npw):
-            dG = np.array([np.inner(Gvec[iG] - Gvec[jG],
-                          self.bcell[:,i]) for i in range(3)])
-            dGr = np.inner(dG, self.r)
-            Kxc_GG[iG, jG] = gd.integrate(np.exp(-1j * dGr) * fxc_G)
-            
-    return Kxc_GG / self.vol
+    return Kxc_GG / vol
                 

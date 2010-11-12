@@ -15,6 +15,7 @@ from gpaw.response.math_func import delta_function, hilbert_transform, \
      two_phi_planewave_integrals
 from gpaw.response.parallel import set_communicator, \
      parallel_partition, SliceAlongFrequency, SliceAlongOrbitals
+from gpaw.response.kernel import calculate_Kxc
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.utilities.memory import maxrss
 
@@ -209,9 +210,11 @@ class CHI:
             op_scc = calc.wfs.symmetry.op_scc
         self.op_scc = op_scc
 
-
-#        nt_G = calc.density.nt_sG[0] # G is the number of grid points
-#        self.Kxc_GG = self.calculate_Kxc(calc.wfs.gd, nt_G)
+        self.Kxc_GG = calculate_Kxc(calc.hamiltonian.xc,
+                                    self.gd, # global grid
+                                    calc.density.nt_sG,
+                                    self.npw, self.Gvec_Gc,
+                                    self.nG, self.vol, self.bcell_cv)
 
         # Parallelization initialize
         self.parallel_init()
