@@ -36,11 +36,11 @@ def get_lcao_xc(calc, P_aqMi, bfs=None, spin=0):
     
     if calc.density.nt_sg is None:
         calc.density.interpolate()
-    nt_g = calc.density.nt_sg[spin]
-    vxct_g = calc.density.finegd.zeros()
-    calc.hamiltonian.xc.get_energy_and_potential(nt_g, vxct_g)
+    nt_sg = calc.density.nt_sg
+    vxct_sg = calc.density.finegd.zeros(calc.wfs.nspins)
+    calc.hamiltonian.xc.calculate(calc.density.finegd, nt_sg, vxct_sg)
     vxct_G = calc.wfs.gd.zeros()
-    calc.hamiltonian.restrict(vxct_g, vxct_G)
+    calc.hamiltonian.restrict(vxct_sg[spin], vxct_G)
     Vxc_qMM = np.zeros((nq, nao, nao), dtype)
     for q, Vxc_MM in enumerate(Vxc_qMM):
         bfs.calculate_potential_matrix(vxct_G, Vxc_MM, q)
@@ -50,7 +50,7 @@ def get_lcao_xc(calc, P_aqMi, bfs=None, spin=0):
     for a, P_qMi in P_aqMi.items():
         D_sp = calc.density.D_asp[a][:]
         H_sp = np.zeros_like(D_sp)
-        calc.wfs.setups[a].xc_correction.calculate_energy_and_derivatives(
+        calc.wfs.setups[a].xc_correction.calculate(calc.hamiltonian.xc,
             D_sp, H_sp)
         H_ii = unpack(H_sp[spin])
         for Vxc_MM, P_Mi in zip(Vxc_qMM, P_qMi):
