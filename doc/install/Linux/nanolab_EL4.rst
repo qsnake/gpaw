@@ -40,6 +40,7 @@ The installation of user's packages on nanolab EL4, 32-bit described below uses
   **Note** that every time you wish to install a new version of a package,
   and deploy new module file, better keep the old module file.
 
+
 - submit the test job::
 
    qsub submit.sh
@@ -47,3 +48,13 @@ The installation of user's packages on nanolab EL4, 32-bit described below uses
   using the following :file:`submit.sh`::
 
    TODO
+
+- to enable the installation permanently add the following to `~/.bashrc`::
+
+   module use --append /home/karsten/CAMd/modulefiles
+   module load numpy
+   module load campos-ase3
+   module load campos-gpaw-setups
+   module load intel_compilers/11.1
+   module load openmpi/1.3.3
+   module load campos-gpaw
