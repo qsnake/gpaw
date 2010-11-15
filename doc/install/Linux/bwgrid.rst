@@ -1,10 +1,8 @@
-.. _bwgrid:
-
-=========
+======
 bwgrid
-=========
+======
 
-The `BWgrid <http://www.bw-grid.de/>`_
+The `BWgrid <http://www.bw-grid.de/>`__
 is an grid of machines located in Baden-Württemberg, Germany.
 The installation in Freiburg is an cluster of dual socket, quad-core
 Intel Xenon 5440 CPUs, 2.83GHz processors with 2 GB of memory per core.
