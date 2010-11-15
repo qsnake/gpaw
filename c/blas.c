@@ -35,37 +35,38 @@ void daxpy_(int* n, double* alpha,
 void zaxpy_(int* n, void* alpha,
 	    void* x, int *incx,
 	    void* y, int *incy);
-int dsyrk_(char *uplo, char *trans, int *n, int *k,
-	   double *alpha, double *a, int *lda, double *beta,
-	   double *c, int *ldc);
-int zherk_(char *uplo, char *trans, int *n, int *k,
-	   double *alpha, void *a, int *lda,
-	   double *beta,
-	   void *c, int *ldc);
-int dsyr2k_(char *uplo, char *trans, int *n, int *k,
-	    double *alpha, double *a, int *lda,
+
+void dsyrk_(char *uplo, char *trans, int *n, int *k,
+	    double *alpha, double *a, int *lda, double *beta,
+	    double *c, int *ldc);
+void zherk_(char *uplo, char *trans, int *n, int *k,
+	    double *alpha, void *a, int *lda,
+	    double *beta,
+	    void *c, int *ldc);
+void dsyr2k_(char *uplo, char *trans, int *n, int *k,
+	     double *alpha, double *a, int *lda,
+	     double *b, int *ldb, double *beta,
+	     double *c, int *ldc);
+void zher2k_(char *uplo, char *trans, int *n, int *k,
+	     void *alpha, void *a, int *lda,
+	     void *b, int *ldb, double *beta,
+	     void *c, int *ldc);
+void dgemm_(char *transa, char *transb, int *m, int * n,
+	    int *k, double *alpha, double *a, int *lda,
 	    double *b, int *ldb, double *beta,
 	    double *c, int *ldc);
-int zher2k_(char *uplo, char *trans, int *n, int *k,
-	    void *alpha, void *a, int *lda,
-	    void *b, int *ldb, double *beta,
+void zgemm_(char *transa, char *transb, int *m, int * n,
+	    int *k, void *alpha, void *a, int *lda,
+	    void *b, int *ldb, void *beta,
 	    void *c, int *ldc);
-int dgemm_(char *transa, char *transb, int *m, int * n,
-	   int *k, double *alpha, double *a, int *lda,
-	   double *b, int *ldb, double *beta,
-	   double *c, int *ldc);
-int zgemm_(char *transa, char *transb, int *m, int * n,
-	   int *k, void *alpha, void *a, int *lda,
-	   void *b, int *ldb, void *beta,
-	   void *c, int *ldc);
-int dgemv_(char *trans, int *m, int * n,
-	   double *alpha, double *a, int *lda,
-	   double *x, int *incx, double *beta,
-	   double *y, int *incy);
-int zgemv_(char *trans, int *m, int * n,
-	   void *alpha, void *a, int *lda,
-	   void *x, int *incx, void *beta,
-	   void *y, int *incy);
+void dgemv_(char *trans, int *m, int * n,
+	    double *alpha, double *a, int *lda,
+	    double *x, int *incx, double *beta,
+	    double *y, int *incy);
+void zgemv_(char *trans, int *m, int * n,
+	    void *alpha, void *a, int *lda,
+	    void *x, int *incx, void *beta,
+	    void *y, int *incy);
 double ddot_(int *n, void *dx, int *incx, void *dy, int *incy);
 
 PyObject* scal(PyObject *self, PyObject *args)

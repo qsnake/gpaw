@@ -8,8 +8,8 @@
 #define NO_IMPORT_ARRAY
 #include <numpy/arrayobject.h>
 #include "extensions.h"
-
 #ifdef GPAW_NO_UNDERSCORE_LAPACK
+#  define dlamch_ dlamch
 #  define dsyev_  dsyev
 #  define zheev_  zheev
 #  define dsygv_  dsygv
@@ -35,60 +35,75 @@
 #  define zgttrs_ zgttrs
 #endif
 
-int dsyev_(char *jobz, char *uplo, int *n, double *
-	   a, int *lda, double *w, double *work, int *lwork,
-	   int *info);
-int zheev_(char *jobz, char *uplo, int *n,
+double dlamch_(char* cmach);
+
+void dsyev_(char *jobz, char *uplo, int *n, 
+	    double *a, int *lda, double *w, double *work, int *lwork,
+	    int *info);
+void zheev_(char *jobz, char *uplo, int *n,
 	   void *a, int *lda, double *w, void *work,
 	   int *lwork, double *rwork, int *lrwork, int *info);
-int dsygv_(int *itype, char *jobz, char *uplo, int *
+void dsyevr_(char *jobz, char *range, char *uplo, int *n, 
+	     double *a, int *lda, 
+	     int *vl, int *vu, int *il, int*iu, double *abstol,
+	     int *m, double *w, double *z, int *ldz, int *isuppz, 
+	     double *work, int *lwork, int *iwork, int *liwork,
+	     int *info);
+void zheevr_(char *jobz, char *range, char *uplo, int *n, 
+	     void *a, int *lda, 
+	     int *vl, int *vu, int *il, int*iu, double *abstol,
+	     int *m, double *w, void *z, int *ldz, int *isuppz,
+	     void *work, int *lwork, double *rwork, int *lrwork, 
+	     int *iwork, int *liwork,
+	     int *info);	   
+void dsygv_(int *itype, char *jobz, char *uplo, int *
 	   n, double *a, int *lda, double *b, int *ldb,
 	   double *w, double *work, int *lwork, int *info);
-int zhegv_(int *itype, char *jobz, char *uplo, int *
+void zhegv_(int *itype, char *jobz, char *uplo, int *
 	   n, void *a, int *lda, void *b, int *ldb,
 	   double *w, void *work, int *lwork,
 	   double *rwork,
 	   int *lrwork, int *info);
-int dpotrf_(char *uplo, int *n, double *a, int *
+void dpotrf_(char *uplo, int *n, double *a, int *
 	    lda, int *info);
-int dpotri_(char *uplo, int *n, double *a, int *
+void dpotri_(char *uplo, int *n, double *a, int *
 	    lda, int *info);
-int zpotrf_(char *uplo, int *n, void *a,
+void zpotrf_(char *uplo, int *n, void *a,
 	    int *lda, int *info);
-int zpotri_(char *uplo, int *n, void *a,
+void zpotri_(char *uplo, int *n, void *a,
 	    int *lda, int *info);
-int dgeev_(char *jovl, char *jobvr, int *n, double *a, int *lda,
+void dgeev_(char *jovl, char *jobvr, int *n, double *a, int *lda,
 	   double *wr, double *wl,
 	   double *vl, int *ldvl, double *vr, int *ldvr,
 	   double *work, int *lwork, int *info);
 
-int dtrtri_(char *uplo,char *diag, int *n, void *a,
+void dtrtri_(char *uplo,char *diag, int *n, void *a,
 	    int *lda, int *info );
-int ztrtri_(char *uplo,char *diag, int *n, void *a,
+void ztrtri_(char *uplo,char *diag, int *n, void *a,
 	    int *lda, int *info );
 
-int dsytrf_(char *uplo, int *n, double *a, int *lda, int *ipiv,
+void dsytrf_(char *uplo, int *n, double *a, int *lda, int *ipiv,
             double *work, int *lwork, int *info);
-int zsytrf_(char *uplo, int *n, void *a, int *lda, int *ipiv,
+void zsytrf_(char *uplo, int *n, void *a, int *lda, int *ipiv,
             void *work, int *lwork, int *info);
 
-int dgetrf_(int *n, int *m, double *a, int *lda, int *ipiv, int *info);
-int zgetrf_(int *n, int *m, void *a, int *lda, int *ipiv, int *info);
+void dgetrf_(int *n, int *m, double *a, int *lda, int *ipiv, int *info);
+void zgetrf_(int *n, int *m, void *a, int *lda, int *ipiv, int *info);
 
-int dsytri_(char *uplo, int *n, double *a, int *lda, int *ipiv,
-            double *work, int *info);
-int zsytri_(char *uplo, int *n, void *a, int *lda, int *ipiv,
-            void *work, int *info);
+void dsytri_(char *uplo, int *n, double *a, int *lda, int *ipiv,
+	     double *work, int *info);
+void zsytri_(char *uplo, int *n, void *a, int *lda, int *ipiv,
+	     void *work, int *info);
 
-int dgetri_(int *n, double *a, int *lda, int *ipiv,
-            double *work, int *lwork, int *info);
-int zgetri_(int *n, void *a, int *lda, int *ipiv,
-            void *work, int *lwork, int *info);
-int zgbsv_(int*n, int* kl, int* ku, int* nrhs, void* ab, int*ldab,
-                 int*ipiv, void* b, int*ldb, int*info);
-int zgttrf_(int* n, void* dl, void* d, void* du,
-                      void* du2, int* ipiv, int* info);
-int zgttrs_(char* tran, int* n, int* nrhs, void* dl,
+void dgetri_(int *n, double *a, int *lda, int *ipiv,
+	     double *work, int *lwork, int *info);
+void zgetri_(int *n, void *a, int *lda, int *ipiv,
+	     void *work, int *lwork, int *info);
+void zgbsv_(int*n, int* kl, int* ku, int* nrhs, void* ab, int*ldab,
+	    int*ipiv, void* b, int*ldb, int*info);
+void zgttrf_(int* n, void* dl, void* d, void* du,
+	    void* du2, int* ipiv, int* info);
+void zgttrs_(char* tran, int* n, int* nrhs, void* dl,
                void* d, void* du, void* du2,
                int* ipiv, void* b, int* ldb, int* info);
 
@@ -121,6 +136,64 @@ PyObject* diagonalize(PyObject *self, PyObject *args)
       free(work);
       free(rwork);
     }
+  return Py_BuildValue("i", info);
+}
+
+PyObject* diagonalize_mr3(PyObject *self, PyObject *args)
+{
+  PyArrayObject* a;
+  PyArrayObject* w;
+  PyArrayObject* z;
+  if (!PyArg_ParseTuple(args, "OOO", &a, &w, &z))
+    return NULL;
+  char jobz = 'V';
+  char range = 'A';
+  char uplo = 'U';
+  int n = a->dimensions[0];
+  int lda = MAX(1, n);
+  int vl, vu;
+  int il, iu;
+  double abstol = dlamch_("Safe minimum");
+  int m = n; /* assume we find all eigenvalues */ 
+  int ldz = lda;
+  int isuppz = 2*MAX(1, m);
+  int info = 0;
+  if (a->descr->type_num == PyArray_DOUBLE)
+    {
+      /* Minimum workspace plus a little extra */
+      int lwork = 26 * n + 1;
+      int liwork = 10 * n + 1;
+      double* work = GPAW_MALLOC(double, lwork);
+      int* iwork = GPAW_MALLOC(int, liwork);
+      dsyevr_(&jobz, &range, &uplo, &n, 
+	      DOUBLEP(a), &lda,
+	      &vl, &vu, &il, &iu, &abstol, &m, 
+	      DOUBLEP(w), DOUBLEP(z), &ldz, &isuppz, 
+	      work, &lwork, iwork, &liwork,
+	      &info);
+      free(work);
+      free(iwork);
+    }
+  else
+    {
+      /* Minimum workspace plus a little extra */
+      int lwork = 2 * n + 1;
+      int lrwork = 24 * n + 1;
+      int liwork = 10 * n + 1;
+      void* work = GPAW_MALLOC(double_complex, lwork);
+      double* rwork = GPAW_MALLOC(double, lrwork);
+      int* iwork = GPAW_MALLOC(int, liwork);
+      zheevr_(&jobz, &range, &uplo, &n, 
+	      (void*)COMPLEXP(a), &lda, &vl, &vu, &il, &iu, &abstol, &m, 
+	      DOUBLEP(w), (void*)COMPLEXP(z), &ldz, &isuppz, 
+	      work, &lwork, rwork, &lrwork, iwork, &liwork, 
+	      &info);
+      free(work);
+      free(rwork);
+      free(iwork);
+    }
+  // If this fails, fewer eigenvalues than request were computed
+  assert (m == n);
   return Py_BuildValue("i", info);
 }
 

@@ -35,6 +35,27 @@ def diagonalize(a, w):
     info = _gpaw.diagonalize(a, w)
     return info
 
+def diagonalize_mr3(a, w, z):
+    """Diagonalize a symmetric/hermitian matrix.
+
+    Uses dsyevd/zheevd to diagonalize symmetric/hermitian matrix
+    `a`. The eigenvectors are returned in the rows of `a`, and the
+    eigenvalues in `w` in ascending order. Only the lower triangle of
+    `a` is considered."""
+
+    assert a.flags.contiguous
+    assert w.flags.contiguous
+    assert z.flags.contiguous
+    assert a.dtype in [float, complex]
+    assert w.dtype == float
+    assert z.dtype in [float, complex]
+    n = len(a)
+    assert a.shape == (n, n)
+    assert w.shape == (n,)
+    assert z.shape == (n, n)
+    info = _gpaw.diagonalize_mr3(a, w, z)
+    return info
+
 def sldiagonalize(a, w, blockcomm, root=0):
     """Diagonalize a symmetric/hermitian matrix.
 
@@ -256,6 +277,7 @@ if not debug:
     # For ScaLAPACK, we can't bypass the Python wrappers!
     if not sl_diagonalize:
         diagonalize = _gpaw.diagonalize
+        diagonalize_mr3 = _gpaw.diagonalize_mr3
     if not sl_lcao:
         general_diagonalize = _gpaw.general_diagonalize
     if not sl_inverse_cholesky:
