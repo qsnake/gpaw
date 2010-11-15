@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
-
-"""Phonons for periodic systems."""
+"""Module for calculating phonons of periodic systems."""
 
 import pickle
 from math import sin, pi, sqrt
@@ -9,6 +7,8 @@ from os.path import isfile
 import sys
 
 import numpy as np
+import numpy.linalg as la
+import numpy.fft as fft
 
 import ase.units as units
 from ase.io.trajectory import PickleTrajectory
@@ -44,36 +44,45 @@ class Phonons:
 
     def __init__(self, atoms, calc, supercell=(1, 1, 1), name='phonon',
                  delta=0.01, nfree=2):
-        """Init with an instance of class ``Atoms`` containing a calculator.
+        """Init with an instance of class ``Atoms`` and a calculator.
 
         Parameters
         ----------
         atoms: Atoms object
             The atoms to work on.
+        calc: Calculator
+            Calculator for the supercell calculation.
         supercell: tuple
-            Size of supercell given by the number of repetitions of the small
-            unit cell in each direction.
+            Size of supercell given by the number of repetitions (l, m, n) of
+            the small unit cell in each direction.
         name: str
             Name to use for files.
         delta: float
             Magnitude of displacements.
         nfree: int
-            Number of displacements per atom and cartesian coordinate,
-            2 and 4 are supported. Default is 2 which will displace 
-            each atom +delta and -delta for each cartesian coordinate.
+            Number of displacements per atom and cartesian coordinate, 2 and 4
+            are supported. Default is 2 which will displace each atom +delta
+            and -delta for each cartesian coordinate. 
 
         """
         
         assert nfree in [2, 4]
         self.atoms = atoms
+        # Atoms in the supercell -- repeated in the lattice vector directions
+        # beginning with the last
         self.atoms_lmn = atoms * supercell
         self.atoms_lmn.set_calculator(calc)
         # Vibrate all atoms in small unit cell by default
-        indices = range(len(atoms))
+        self.indices = range(len(atoms))
         self.name = name
         self.delta = delta
         self.nfree = nfree
+        self.N_c = supercell
 
+        # Attributes for force constants and dynamical matrix in real-space
+        self.C_m = None  # in units of eV / Ang**2 
+        self.D_m = None  # in units of eV / Ang**2 / amu
+        
     def set_atoms(self, atoms):
         """Set the atoms to vibrate.
 
@@ -104,31 +113,29 @@ class Phonons:
     def run(self):
         """Run the total energy calculations for the required displacements.
 
-        This will calculate the forces for 6 displacements per atom ±x, ±y, ±z.
-        Only those calculations that are not already done will be started. Be
-        aware that an interrupted calculation may produce an empty file (ending
-        with .pckl), which must be deleted before restarting the job. Otherwise
-        the forces will not be calculated for that displacement.
+        This will calculate the forces for 6 displacements per atom, +-x, +-y,
+        and +-z. Only those calculations that are not already done will be
+        started. Be aware that an interrupted calculation may produce an empty
+        file (ending with .pckl), which must be deleted before restarting the
+        job. Otherwise the forces will not be calculated for that displacement.
 
         """
 
         # Calculate forces in equilibrium structure
         filename = self.name + '.eq.pckl'
+        
         if not isfile(filename):
+            # Wait for all ranks to enter
             barrier()
-            forces = self.atoms_lmn.get_forces()
-            ## if self.ir:
-            ##     dipole = self.calc.get_dipole_moment(self.atoms)
+            # Create file
             if rank == 0:
                 fd = open(filename, 'w')
-                if False: ## self.ir:
-                    pickle.dump([forces, dipole], fd)
-                    sys.stdout.write(
-                        'Writing %s, dipole moment = (%.6f %.6f %.6f)\n' % 
-                        (filename, dipole[0], dipole[1], dipole[2]))
-                else:
-                    pickle.dump(forces, fd)
-                    sys.stdout.write('Writing %s\n' % filename)
+            # Calculate forces
+            forces = self.atoms_lmn.get_forces()
+            # Write forces to file
+            if rank == 0:
+                pickle.dump(forces, fd)
+                sys.stdout.write('Writing %s\n' % filename)
                 fd.close()
             sys.stdout.flush()
 
@@ -146,26 +153,21 @@ class Phonons:
                         # Skip if already being processed
                         if isfile(filename):
                             continue
+                        # Wait for ranks
                         barrier()
-                        # XXX The file should be created immediately ???
+                        if rank == 0:
+                            fd = open(filename, 'w')
+                        # Update atomic positions and calculate forces
                         self.atoms_lmn.positions[a, i] = \
                             (pos[a, i] + ndis * sign * self.delta)
                         forces = self.atoms_lmn.get_forces()
-                        ## if self.ir:
-                        ##     dipole = self.calc.get_dipole_moment(self.atoms_lmn)
+                        # Write forces to file                        
                         if rank == 0:
-                            fd = open(filename, 'w')
-                            if False: ## self.ir:
-                                pickle.dump([forces, dipole], fd)
-                                sys.stdout.write(
-                                    'Writing %s, ' % filename +
-                                    'dipole moment = (%.6f %.6f %.6f)\n' % 
-                                    (dipole[0], dipole[1], dipole[2]))
-                            else:
-                                pickle.dump(forces, fd)
-                                sys.stdout.write('Writing %s\n' % filename)
+                            pickle.dump(forces, fd)
+                            sys.stdout.write('Writing %s\n' % filename)
                             fd.close()
                         sys.stdout.flush()
+                        # Return to initial positions
                         self.atoms_lmn.positions[a, i] = pos[a, i]
                         
         # self.atoms.set_positions(pos)
@@ -184,13 +186,11 @@ class Phonons:
                         if isfile(name):
                             remove(name)
         
-    def read(self, acoustic=True, direction='central', method='frederiksen'):
+    def read(self, direction='central', method='frederiksen'):
         """Read pickle files and calculate matrix of force constants.
 
         Parameters
         ----------
-        acoustic: bool
-            Enforce the acoustic sum-rule on the matrix of force constants.
         direction: str
             Type of finite difference approximation to use.
         method: str
@@ -201,23 +201,22 @@ class Phonons:
         direction = direction.lower()
         assert method in ['standard', 'frederiksen']
         assert direction in ['central', 'forward', 'backward']
-
         
         # Number of atoms
         N = len(self.indices)
         # Number of unit cells
-        M = np.prod(self.supercell)
-        # Matrix of force constants as a function of unit cell index
-        C_m = np.empty((M, 3*N, 3*N), dtype=float)
+        M = np.prod(self.N_c)
+        # Matrix of force constants as a function of unit cell index in units
+        # of eV/Ang**2 
+        C_m = np.empty((3*N*M, 3*N), dtype=float)
 
         # Equilibrium forces
         if direction != 'central':
             feq = pickle.load(open(self.name + '.eq.pckl'))
-            
+
         # Loop over all atomic displacements and calculate force constants
         for i, a in enumerate(self.indices):
             for j, v in enumerate('xyz'):
-
                 # Atomic forces for a displacement of atom a in direction v
                 name = '%s.%d%s' % (self.name, a, v)
                 fminus_av = pickle.load(open(name + '-.pckl'))
@@ -231,39 +230,52 @@ class Phonons:
                         C_av = fminus_av - fplus_av
                    
                 C_av /= 2 * self.delta
-                
+
                 # Slice out included atoms
                 C_mav = C_av.reshape((M, len(self.atoms), 3))[:, self.indices]
                 index = 3*i + j                
-                C_m[:, index] = C_mav.reshape((-1, 3*N))
+                C_m[:, index] = C_mav.ravel()
 
+        # Reshape force constant to (l, m, n) cell indices
+        C_lmn = C_m.reshape(self.N_c + (3*N, 3*N))
+        # Shift reference cell to center
+        C_lmn = fft.fftshift(C_lmn, axes=(0, 1, 2))
         # Make force constants symmetric
-        ## C_lmn = C_m.reshape(self.supercell + (-1,))
-        ## for C in C_m:
-        ##     C *= 0.5
-        ##     C += C.T.copy()
-
+        C_lmn *= 0.5
+        C_lmn += C_lmn[::-1, ::-1, ::-1].transpose(0, 1, 2, 4, 3).copy()
+        C_lmn = fft.ifftshift(C_lmn, axes=(0, 1, 2))
+        
+        # Change to single unit cell index shape
+        C_m = C_lmn.reshape((M, 3*N, 3*N))
+        
         # Add mass prefactor
         m = self.atoms.get_masses()
         self.m_inv = np.repeat(m[self.indices]**-0.5, 3)
+        M_inv = self.m_inv[:, np.newaxis] * self.m_inv
         for C in C_m:
-            C *= self.m_inv[:, np.newaxis] * self.m_inv
+            C *= M_inv
 
-        self.D = C_m
-        # omega2, modes = np.linalg.eigh(self.im[:, None] * H * self.im)
-        # self.modes = modes.T.copy()
+        # Store force constants and dynamical matrix
+        self.C_m = C_m
+        self.D_m = C_m
 
-        # Conversion factor:
-        # s = units._hbar * 1e10 / sqrt(units._e * units._amu)
-        # self.hnu = s * omega2.astype(complex)**0.5
+    def get_force_constant(self):
+        """Return matrix of force constants."""
 
-
-    def band_structure(self, path_kc, modes=False, acoustic=True):
+        assert self.C_m is not None
+        
+        return self.C_m
+    
+    def band_structure(self, path_kc, modes=False):
         """Calculate phonon dispersion along a path in the Brillouin zone.
 
         The dynamical matrix at arbitrary q-vectors is obtained by Fourier
-        transforming the real-space matrix. In case of negative eigenvalues
-        (squared frequency), the corresponding negative frequency is returned.
+        transforming the real-space force constants. In case of negative
+        eigenvalues (squared frequency), the corresponding negative frequency
+        is returned.
+
+        Eigenvalues and modes are in units of eV and Ang/sqrt(amu),
+        respectively.
 
         Parameters
         ----------
@@ -276,12 +288,15 @@ class Phonons:
             
         """
 
+        assert self.D_m is not None
+        
         for k_c in path_kc:
             assert np.all(np.asarray(k_c) <= 1.0), \
                    "Scaled coordinates must be given"
 
-        R_cm = np.indices(self.supercell).reshape(3, -1)
-        N_c = np.array(self.supercell)[:, np.newaxis]
+        # Lattice vectors
+        R_cm = np.indices(self.N_c).reshape(3, -1)
+        N_c = np.array(self.N_c)[:, np.newaxis]
         R_cm += N_c // 2
         R_cm %= N_c
         R_cm -= N_c // 2        
@@ -292,10 +307,9 @@ class Phonons:
         
         for q_c in path_kc:
 
-            # Evaluate fourier transform 
+            # Evaluate fourier sum
             phase_m = np.exp(-2.j * pi * np.dot(q_c, R_cm))
-            # Dynamical matrix in unit of Ha / Bohr**2 / amu
-            D_q = np.sum(phase_m[:, np.newaxis, np.newaxis] * DR_m, axis=0)
+            D_q = np.sum(phase_m[:, np.newaxis, np.newaxis] * self.D_m, axis=0)
 
             if modes:
                 omega2_n, u_avn = la.eigh(D_q, UPLO='L')
@@ -323,7 +337,75 @@ class Phonons:
 
             omega_kn.append(omega_n.real)
 
-        if modes:
-            return np.asarray(omega_kn), np.asarray(u_kn)
+        # Conversion factor: sqrt(eV / Ang^2 / amu) -> eV
+        s = units._hbar * 1e10 / sqrt(units._e * units._amu)
+        omega_kn = s * np.asarray(omega_kn)
         
-        return np.asarray(omega_kn)
+        if modes:
+            return omega_kn, np.asarray(u_kn)
+        
+        return omega_kn
+
+    def write_modes(self, q_c, branches=0, kT=units.kB*300, repeat=(1, 1, 1),
+                    nimages=30):
+        """Write modes to trajectory file.
+
+        Parameters
+        ----------
+        q_c: ndarray
+            q-vector of modes.
+        branches: int or list
+            Branch index of modes.
+        kT: float
+            Temperature in units of eV. Determines the amplitude of the atomic
+            displacements in the modes.
+        repeat: tuple
+            Repeat atoms (l, m, n) times in the directions of the lattice
+            vectors. Displacements of atoms in repeated cells carry a Bloch
+            phase factor given by the q-vector and the cell lattice vector R_m.
+        nimages: int
+            Number of images in an oscillation.
+            
+        """
+
+        if isinstance(branches, int):
+            branch_n = [branches]
+        else:
+            branch_n = list(branches)
+
+        # Calculate modes
+        omega_n, u_n = self.band_structure([q_c], modes=True)
+        
+        # Repeat atoms
+        atoms = self.atoms * repeat
+        # Here ma refers to a composite unit cell/atom dimension
+        pos_mav = atoms.get_positions()
+        # Total number of unit cells
+        M = np.prod(repeat)
+
+        # Corresponding lattice vectors R_m
+        R_cm = np.indices(repeat).reshape(3, -1)
+        # Bloch phase
+        phase_m = np.exp(2.j * pi * np.dot(q_c, R_cm))
+        phase_ma = phase_m.repeat(len(self.atoms))
+
+        for n in branch_n:
+            
+            omega = omega_n[0, n]
+            u_av = u_n[0, n].reshape((-1, 3))
+            # Mean displacement at high T ?
+            u_av *= sqrt(kT / abs(omega))
+
+            mode_av = np.zeros((len(self.atoms), 3), dtype=complex)
+            # Insert slice with atomic displacements for the included atoms
+            mode_av[self.indices] = u_av
+            # Repeat and multiply by Bloch phase factor
+            mode_mav = (np.vstack([mode_av]*M) * phase_ma[:, np.newaxis]).real
+
+            traj = PickleTrajectory('%s.mode.%d.traj' % (self.name, n), 'w')
+            
+            for x in np.linspace(0, 2*pi, nimages, endpoint=False):
+                atoms.set_positions(pos_mav + sin(x) * mode_mav)
+                traj.write(atoms)
+                
+            traj.close()
