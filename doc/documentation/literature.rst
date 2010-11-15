@@ -635,3 +635,13 @@ Publications using the gpaw code
    __ http://dx.doi.org/10.1063/1.3490247
 
    .. 5 October 2010
+
+#) B. Siemer, T. Olsen, T. Hoger, M. Rutkowski, C. Thewes, S. Düsterer, J. Schiøtz and H. Zacharias
+
+   `Desorption of H atoms from graphite (0001) using XUV free electron laser pulses`__  
+
+   Chemical Physics Letters **500**, 291 (2010)
+
+   __ http://dx.doi.org/10.1016/j.cplett.2010.10.040
+
+   .. 20 October 2010
