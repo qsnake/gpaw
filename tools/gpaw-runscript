@@ -592,7 +592,9 @@ if set['name'] is None:
     # avoid binning with a number
     if name[0].isdigit():
         name = 'j' + name
-    set['name']=name
+    if 'parameters' in set:
+        name += set['parameters'].replace(' ','')
+    set['name'] = name 
 
 RunScript(set,env)
 
