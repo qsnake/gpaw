@@ -367,7 +367,8 @@ unset CC CFLAGS LDFLAGS
         print >> f, 'export PYTHONPATH=$PYTHONPATH:' + env['PYTHONPATH']
         print >> f, 'export GPAW_SETUP_PATH='+env['GPAW_SETUP_PATH']
         print >> f, 'export GPAW_PYTHON='+env['GPAW_PYTHON']
-        print >> f, 'export LD_LIBRARY_PATH='+os.environ['LD_LIBRARY_PATH']
+        print >> f, ('export LD_LIBRARY_PATH=' + os.environ['LD_LIBRARY_PATH']
+                     + ':$LD_LIBRARY_PATH')
         print >> f, 'mpirun -np', cores, '$GPAW_PYTHON', set['script'],
         if 'parameters' in set:
             print >> f, set['parameters'],
