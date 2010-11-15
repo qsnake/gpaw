@@ -369,6 +369,8 @@ unset CC CFLAGS LDFLAGS
         print >> f, 'export GPAW_PYTHON='+env['GPAW_PYTHON']
         print >> f, 'export LD_LIBRARY_PATH='+os.environ['LD_LIBRARY_PATH']
         print >> f, 'mpirun -np', cores, '$GPAW_PYTHON', set['script'],
+        if 'parameters' in set:
+            print >> f, set['parameters'],
         print >> f, '>', set['out']+'_$PBS_JOBID',
         print >> f, '2>', set['err']+'_$PBS_JOBID'
 
@@ -500,6 +502,8 @@ parser.add_option("-n", "--name", dest='name',
                   help='Name of the job (def: name of parent directory)')
 parser.add_option("-o", "--outfile", dest='outfile',
                   help='Name of the output file (def: script.out)')
+parser.add_option("-p", "--parameters", dest='parameters',
+                  help='Parameters to give to the script (def: empty)')
 parser.add_option("-q", "--qsys", dest='qsys',
                   help='queue system (def: try to guess)')
 parser.add_option("-t", "--time", dest='time',
@@ -519,6 +523,9 @@ if opt.name:
 
 if opt.outfile:
     set['out'] = str(opt.outfile)
+
+if opt.parameters:
+    set['parameters'] = str(opt.parameters)
 
 if opt.time:
     set['time'] = s_from_dhms(opt.time)
