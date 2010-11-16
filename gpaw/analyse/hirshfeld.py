@@ -87,18 +87,21 @@ class HirshfeldPartitioning:
         After: Tkatchenko and Scheffler PRL 102 (2009) 073005
         """
         atoms = self.atoms
-        den_g = self.calculator.density.get_all_electron_density(atoms)[0][0]
-        denfree_g, gd = self.hdensity.get_density([atom_index])
-
-        # my r^3 grid
         finegd = self.calculator.density.finegd
+
+        den_g, gd = self.calculator.density.get_all_electron_density(atoms)
+        assert(gd == finegd)
+        denfree_g, gd = self.hdensity.get_density([atom_index])
+        assert(gd == finegd)
+
+        # the atoms r^3 grid
         position = self.atoms[atom_index].position / Bohr
         r_vg, r2_g = coordinates(finegd, origin=position)
         r3_g = r2_g * np.sqrt(r2_g)
 
         weight_g = denfree_g * self.invweight_g
 
-        nom = finegd.integrate(r3_g * den_g * weight_g)
+        nom = finegd.integrate(r3_g * den_g[0] * weight_g)
         denom = finegd.integrate(r3_g * denfree_g)
 
         return nom / denom
