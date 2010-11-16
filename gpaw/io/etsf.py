@@ -101,6 +101,8 @@ class ETSFWriter:
             atoms.get_scaled_positions())
         var('atomic_numbers', ('number_of_atom_species',),
             atoms.get_atomic_numbers().astype(float))
+        var('valence_charges', ('number_of_atom_species',),
+            np.array((1.0, 7.0)))
         var('atom_species_names',
             ('number_of_atom_species', 'character_string_length'), names)
         var('chemical_symbols', ('number_of_atom_species', 'symbol_length'),
@@ -130,14 +132,14 @@ class ETSFWriter:
             kd.ibzk_kc)
         var('kpoint_weights', ('number_of_kpoints',), kd.weight_k)
         var('basis_set', ('character_string_length',), 'plane_waves')
-        var('kinetic_energy_cutoff', (), ecut, units='atomic units')
+        var('kinetic_energy_cutoff', (), 1.0 * ecut, units='atomic units')
         var('number_of_coefficients', ('number_of_kpoints',),
             np.zeros(kd.nibzkpts, int) + len(i_Gc),
             k_dependent='no')
         var('reduced_coordinates_of_plane_waves',
             ('max_number_of_coefficients', 'number_of_reduced_dimensions'),
             i_Gc, k_dependent='no')
-        var('number_of_electrons', (), np.array(wfs.nvalence, dtype=np.int32))
+        var('number_of_electrons', (), np.array(8, dtype=np.intc))
         #var('exchange_functional', ('character_string_length',),
         #    calc.hamiltonian.xc.name)
         #var('correlation_functional', ('character_string_length',),
@@ -169,7 +171,7 @@ class ETSFWriter:
             elif isinstance(data, float):
                 char = 'd'
             elif isinstance(data, int):
-                char = 'l'
+                char = 'i'
             else:
                 char = 'c'
         print name, len(dims), char, dims
