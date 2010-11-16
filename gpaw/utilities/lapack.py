@@ -48,7 +48,7 @@ def diagonalize_mr3(a, w, z):
     assert z.flags.contiguous
     assert a.dtype in [float, complex]
     assert w.dtype == float
-    assert z.dtype in [float, complex]
+    assert z.dtype == a.dtype 
     n = len(a)
     assert a.shape == (n, n)
     assert w.shape == (n,)
