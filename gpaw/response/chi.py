@@ -432,7 +432,7 @@ class CHI:
 
     def get_wavefunction(self, ibzk, n, k, check_focc=True):
 
-        if self.calc.wfs.kpt_comm.size != world.size:
+        if self.calc.wfs.kpt_comm.size != world.size or world.size == 1:
 
             if check_focc == False:
                 return
