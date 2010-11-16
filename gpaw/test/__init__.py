@@ -159,7 +159,7 @@ tests = [
     'aluminum_EELS_lcao.py',
     'aluminum_testcell.py',
     'dump_chi0.py',
-    #'au02_absorption.py',
+    'au02_absorption.py',
     'hgh_h2o.py',
     'apmb.py',
     'relax.py',

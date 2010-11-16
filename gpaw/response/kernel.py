@@ -1,11 +1,14 @@
-from gpaw.utilities.blas import gemmdot
 import numpy as np
+from gpaw.utilities.blas import gemmdot
+from gpaw.xc import XC
 
-def calculate_Kxc(xc, gd, nt_sG, npw, Gvec_Gc, nG, vol, bcell_cv):
+def calculate_Kxc(gd, nt_sG, npw, Gvec_Gc, nG, vol, bcell_cv):
     """LDA kernel"""
 
     # get fxc(tilden(r))
     assert np.abs(nt_sG[0].shape - nG).sum() == 0
+
+    xc = XC('LDA')
     
     fxc_sg = np.zeros_like(nt_sG)
     xc.calculate_fxc(gd, nt_sG, fxc_sg)
