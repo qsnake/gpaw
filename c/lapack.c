@@ -47,13 +47,13 @@ void zheev_(char *jobz, char *uplo, int *n,
 	   int *lwork, double *rwork, int *lrwork, int *info);
 void dsyevr_(char *jobz, char *range, char *uplo, int *n, 
 	     double *a, int *lda, 
-	     int *vl, int *vu, int *il, int*iu, double *abstol,
+	     double *vl, double *vu, int *il, int*iu, double *abstol,
 	     int *m, double *w, double *z, int *ldz, int *isuppz, 
 	     double *work, int *lwork, int *iwork, int *liwork,
 	     int *info);
 void zheevr_(char *jobz, char *range, char *uplo, int *n, 
 	     void *a, int *lda, 
-	     int *vl, int *vu, int *il, int*iu, double *abstol,
+	     double *vl, double *vu, int *il, int *iu, double *abstol,
 	     int *m, double *w, void *z, int *ldz, int *isuppz,
 	     void *work, int *lwork, double *rwork, int *lrwork, 
 	     int *iwork, int *liwork,
@@ -153,13 +153,13 @@ PyObject* diagonalize_mr3(PyObject *self, PyObject *args)
   char uplo = 'U';
   int n = a->dimensions[0];
   int lda = MAX(1, n);
-  int vl, vu;
+  double vl, vu;
   int il, iu;
   double abstol = dlamch_("Safe minimum");
   int m = n; /* assume we find all eigenvalues */ 
   int ldz = lda;
-  int isuppz = 2*MAX(1, m);
   int info = 0;
+  int* isuppz = GPAW_MALLOC(int, 2*m);
   if (a->descr->type_num == PyArray_DOUBLE)
     {
       /* Minimum workspace plus a little extra */
@@ -169,8 +169,8 @@ PyObject* diagonalize_mr3(PyObject *self, PyObject *args)
       int* iwork = GPAW_MALLOC(int, liwork);
       dsyevr_(&jobz, &range, &uplo, &n, 
 	      DOUBLEP(a), &lda,
-	      &vl, &vu, &il, &iu, &abstol, &m, 
-	      DOUBLEP(w), DOUBLEP(z), &ldz, &isuppz, 
+	      &vl, &vu, &il, &iu, &abstol, 
+	      &m, DOUBLEP(w), DOUBLEP(z), &ldz, isuppz, 
 	      work, &lwork, iwork, &liwork,
 	      &info);
       free(work);
@@ -186,14 +186,17 @@ PyObject* diagonalize_mr3(PyObject *self, PyObject *args)
       double* rwork = GPAW_MALLOC(double, lrwork);
       int* iwork = GPAW_MALLOC(int, liwork);
       zheevr_(&jobz, &range, &uplo, &n, 
-	      (void*)COMPLEXP(a), &lda, &vl, &vu, &il, &iu, &abstol, &m, 
-	      DOUBLEP(w), (void*)COMPLEXP(z), &ldz, &isuppz, 
-	      work, &lwork, rwork, &lrwork, iwork, &liwork, 
+	      (void*)COMPLEXP(a), &lda,
+	      &vl, &vu, &il, &iu, &abstol, 
+	      &m,  DOUBLEP(w), (void*)COMPLEXP(z), &ldz, isuppz, 
+	      work, &lwork, rwork, &lrwork,
+	      iwork, &liwork, 
 	      &info);
       free(work);
       free(rwork);
       free(iwork);
     }
+  free(isuppz);
   // If this fails, fewer eigenvalues than request were computed
   assert (m == n);
   return Py_BuildValue("i", info);
