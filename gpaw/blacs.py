@@ -90,8 +90,7 @@ from gpaw.mpi import SerialCommunicator, serial_comm
 from gpaw.matrix_descriptor import MatrixDescriptor
 from gpaw.utilities import uncamelcase
 from gpaw.utilities.blas import gemm, r2k, gemmdot
-from gpaw.utilities.lapack import diagonalize, \
-    diagonalize_mr3, sldiagonalize, \
+from gpaw.utilities.lapack import diagonalize, sldiagonalize, \
     general_diagonalize, slgeneral_diagonalize, \
     inverse_cholesky, slinverse_cholesky
 from gpaw.utilities.blacs import scalapack_inverse_cholesky, \
@@ -616,10 +615,7 @@ class BandLayouts(KohnShamLayouts):
         """Serial diagonalize via LAPACK."""
         # This is replicated computation but ultimately avoids
         # additional communication.
-        Z_NN = np.zeros_like(H_NN)
-        info = diagonalize_mr3(H_NN, eps_N, Z_NN)
-        H_NN[:] = Z_NN
-        return info
+        return diagonalize(H_NN, eps_N)
 
     def inverse_cholesky(self, S_NN):
         """Serial inverse Cholesky must handle two cases:
