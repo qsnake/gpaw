@@ -210,15 +210,6 @@ class CHI:
             op_scc = calc.wfs.symmetry.op_scc
         self.op_scc = op_scc
 
-        R_av = calc.atoms.positions / Bohr
-        self.Kxc_GG = calculate_Kxc(self.gd, # global grid
-                                    calc.density.nt_sG,
-                                    self.npw, self.Gvec_Gc,
-                                    self.nG, self.vol,
-                                    self.bcell_cv, R_av,
-                                    calc.wfs.setups,
-                                    calc.density.D_asp)
-
         # Parallelization initialize
         self.parallel_init()
 
@@ -252,8 +243,25 @@ class CHI:
         self.phi_aGp = phi_aGp
         self.printtxt('')
         self.printtxt('Finished phi_Gp !')
-        self.printtxt('')
 
+        # Calculate ALDA kernel for EELS spectrum
+        # Use RPA kernel for Optical spectrum
+        if not self.optical_limit:
+            R_av = calc.atoms.positions / Bohr
+            self.Kxc_GG = calculate_Kxc(self.gd, # global grid
+                                    calc.density.nt_sG,
+                                    self.npw, self.Gvec_Gc,
+                                    self.nG, self.vol,
+                                    self.bcell_cv, R_av,
+                                    calc.wfs.setups,
+                                    calc.density.D_asp)
+
+            self.printtxt('Finished ALDA kernel ! ')
+        else:
+            self.Kxc_GG = np.zeros((self.npw, self.npw))
+            self.printtxt('Use RPA for optical spectrum ! ')
+            self.printtxt('')
+            
         return
 
 
@@ -294,7 +302,7 @@ class CHI:
                 ibzkpt2, iop2, timerev2 = find_ibzkpt(self.op_scc, ibzk_kc, bzk_kc[kq_k[k]])
 
             for n in range(self.nstart, self.nend):
-                print >> self.txt, k, n, t_get_wfs, time() - t0
+#                print >> self.txt, k, n, t_get_wfs, time() - t0
                 t1 = time()
                 psitold_g = self.get_wavefunction(ibzkpt1, n, k, True)
                 t_get_wfs += time() - t1
