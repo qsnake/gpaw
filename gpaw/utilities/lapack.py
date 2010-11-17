@@ -33,13 +33,14 @@ def diagonalize(a, w):
     assert w.shape == (n,)
 
     info = _gpaw.diagonalize(a, w)
-    return info
+    if info != 0:
+        raise RuntimeError('diagonalize error: %d' % info)
 
 def diagonalize_mr3(a, w, z):
     """Diagonalize a symmetric/hermitian matrix.
 
-    Uses dsyevd/zheevd to diagonalize symmetric/hermitian matrix
-    `a`. The eigenvectors are returned in the rows of `a`, and the
+    Uses dsyevr/zheevr to diagonalize symmetric/hermitian matrix
+    `a`. The eigenvectors are returned in the rows of `z`, and the
     eigenvalues in `w` in ascending order. Only the lower triangle of
     `a` is considered."""
 
@@ -54,7 +55,8 @@ def diagonalize_mr3(a, w, z):
     assert w.shape == (n,)
     assert z.shape == (n, n)
     info = _gpaw.diagonalize_mr3(a, w, z)
-    return info
+    if info != 0:
+        raise RuntimeError('diagonalize_mr3 error: %d' % info)
 
 def sldiagonalize(a, w, blockcomm, root=0):
     """Diagonalize a symmetric/hermitian matrix.
@@ -82,7 +84,8 @@ def sldiagonalize(a, w, blockcomm, root=0):
     # symmetrize the matrix
     tri2full(a)
     info = blockcomm.diagonalize(a, w, mcpus, ncpus, blocksize, root)
-    return info
+    if info != 0:
+        raise RuntimeError('sldiagonalize error: %d' % info)
 
 def general_diagonalize(a, w, b):
     """Diagonalize a generalized symmetric/hermitian matrix.
@@ -106,7 +109,8 @@ def general_diagonalize(a, w, b):
     w[:1] = 42
     info = _gpaw.general_diagonalize(a, w, b)
     assert n == 0 or w[0] != 42
-    return info
+    if info != 0:
+        raise RuntimeError('general_diagonalize error: %d' % info)
 
 def slgeneral_diagonalize(a, w, b, blockcomm, root=0):
     """Diagonalize a generalized symmetric/hermitian matrix.
@@ -138,7 +142,10 @@ def slgeneral_diagonalize(a, w, b, blockcomm, root=0):
     tri2full(a)
     tri2full(b)
     info = blockcomm.diagonalize(a, w, mcpus, ncpus, blocksize, root, b)
-    return info
+    if info not in [0, 2]:
+        # 0 means you are OK
+        # 2 means eigenvectors not guaranteed to be orthogonal
+        raise RuntimeError('slgeneral_diagonalize error: %d' % info)
 
 def inverse_cholesky(a):
     """Calculate the inverse of the Cholesky decomposition of
@@ -153,7 +160,8 @@ def inverse_cholesky(a):
     assert a.shape == (n, n)
 
     info = _gpaw.inverse_cholesky(a)
-    return info
+    if info != 0:
+        raise RuntimeError('inverse_cholesky error: %d' % info)
 
 def slinverse_cholesky(a, blockcomm, root=0):
     """Calculate the inverse of the Cholesky decomposition of
@@ -177,14 +185,16 @@ def slinverse_cholesky(a, blockcomm, root=0):
     # symmetrize the matrix
     tri2full(a)
     info = blockcomm.inverse_cholesky(a, mcpus, ncpus, blocksize, root)
-    return info
+    if info != 0:
+        raise RuntimeError('slinverse_cholesky error: %d' % info)
 
 def inverse_general(a):
     assert a.dtype in [float, complex]
     n = len(a)
     assert a.shape == (n, n)
     info = _gpaw.inverse_general(a)
-    return info 
+    if info != 0:
+        raise RuntimeError('inverse_general error: %d' % info)
 
 def inverse_symmetric(a):
     assert a.dtype in [float, complex]
@@ -192,7 +202,8 @@ def inverse_symmetric(a):
     assert a.shape == (n, n)
     info = _gpaw.inverse_symmetric(a)
     tri2full(a, 'L', 'symm')
-    return info 
+    if info != 0:
+        raise RuntimeError('inverse_symmetric: %d' % info)
 
 def right_eigenvectors(a, w, v):
     """Get right eigenvectors and eigenvalues from a square matrix
@@ -269,16 +280,3 @@ def sqrt_matrix(a, preserve=False):
     gemm(1., ZT, c, 0., b)
 
     return b
-
-if not debug:
-    # Bypass the Python wrappers
-    right_eigenvectors = _gpaw.right_eigenvectors
-
-    # For ScaLAPACK, we can't bypass the Python wrappers!
-    if not sl_diagonalize:
-        diagonalize = _gpaw.diagonalize
-        diagonalize_mr3 = _gpaw.diagonalize_mr3
-    if not sl_lcao:
-        general_diagonalize = _gpaw.general_diagonalize
-    if not sl_inverse_cholesky:
-        inverse_cholesky = _gpaw.inverse_cholesky

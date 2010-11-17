@@ -62,16 +62,10 @@ def main(N=73, seed=42, mprocs=2, nprocs=2, dtype=float):
 
     # Calculate eigenvalues
     if rank == 0:
-        info = diagonalize(H0.copy(), W0)
-        if info > 0:
-            raise RuntimeError('LAPACK diagonalized failed.')
-        info = general_diagonalize(H0.copy(), W0_g, S0.copy())
-        if info > 0:
-            raise RuntimeError('LAPACK general diagonalize failed.')
-        info = inverse_cholesky(C0) # result returned in lower triangle
+        diagonalize(H0.copy(), W0)
+        general_diagonalize(H0.copy(), W0_g, S0.copy())
+        inverse_cholesky(C0) # result returned in lower triangle
         # tri2full(C0) # symmetrize
-        if info > 0:
-            raise RuntimeError('LAPACK inverse cholesky failed.')
         
     assert glob.check(H0) and glob.check(S0) and glob.check(C0)
 

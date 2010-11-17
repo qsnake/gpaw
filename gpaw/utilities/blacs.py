@@ -434,10 +434,3 @@ def pblas_simple_rk(desca, descc, a, c):
     pblas_rk(alpha, a, beta, c, 
              desca, descc)
 
-#if not debug:
-#    blacs_create = _gpaw.blacs_create
-#    blacs_destroy = _gpaw.blacs_destroy
-#    scalapack_redist1 = _gpaw.scalapack_redist1
-#    scalapack_diagonalize_dc = _gpaw.scalapack_diagonalize_dc
-#    scalapack_diagonalize_ex = _gpaw.scalapack_diagonalize_ex
-#    scalapack_inverse_cholesky = _gpaw.scalapack_inverse_cholesky

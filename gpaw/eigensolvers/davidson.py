@@ -134,9 +134,7 @@ class Davidson(Eigensolver):
             S_2n2n[nbands:, nbands:] = self.S_nn
 
             if self.gd.comm.rank == 0:
-                info = general_diagonalize(H_2n2n, eps_2n, S_2n2n)
-                if info != 0:
-                    raise RuntimeError, 'Very Bad!!'
+                general_diagonalize(H_2n2n, eps_2n, S_2n2n)
 
             self.gd.comm.broadcast(H_2n2n, 0)
             self.gd.comm.broadcast(eps_2n, 0)

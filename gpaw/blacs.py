@@ -601,10 +601,8 @@ class BandLayouts(KohnShamLayouts):
         if self.bd.comm.size > 1 and self.gd.comm.rank == 0:
             self.bd.comm.broadcast(H_NN, 0)
         self.gd.comm.broadcast(H_NN, 0)
-        info = self._diagonalize(H_NN, eps_N)
+        self._diagonalize(H_NN, eps_N)
         self.timer.stop('Diagonalize')
-        if info != 0:
-            raise RuntimeError('Failed to diagonalize: %d' % info)
 
         self.timer.start('Distribute results')
         # Basically just a copy
@@ -615,7 +613,7 @@ class BandLayouts(KohnShamLayouts):
         """Serial diagonalize via LAPACK."""
         # This is replicated computation but ultimately avoids
         # additional communication.
-        return diagonalize(H_NN, eps_N)
+        diagonalize(H_NN, eps_N)
 
     def inverse_cholesky(self, S_NN):
         """Serial inverse Cholesky must handle two cases:
@@ -628,16 +626,14 @@ class BandLayouts(KohnShamLayouts):
         if self.bd.comm.size > 1 and self.gd.comm.rank == 0:
             self.bd.comm.broadcast(S_NN, 0)
         self.gd.comm.broadcast(S_NN, 0)
-        info = self._inverse_cholesky(S_NN)
+        self._inverse_cholesky(S_NN)
         self.timer.stop('Inverse Cholesky')
-        if info != 0:
-            raise RuntimeError('Failed to orthogonalize: %d' % info)
 
     def _inverse_cholesky(self, S_NN):
         """Serial inverse Cholesky via LAPACK."""
         # This is replicated computation but ultimately avoids
         # additional communication.
-        return inverse_cholesky(S_NN)
+        inverse_cholesky(S_NN)
 
     def get_description(self):
         return 'Serial LAPACK'
@@ -741,10 +737,8 @@ class BlacsBandLayouts(BlacsLayouts): #XXX should derive from BandLayouts too!
         nbands = self.bd.nbands
         eps_N = np.empty(nbands)
         self.timer.start('Diagonalize')
-        info = self._diagonalize(H_nn, eps_N)
+        self._diagonalize(H_nn, eps_N)
         self.timer.stop('Diagonalize')
-        if info != 0:
-            raise RuntimeError('Failed to diagonalize: %d' % info)
 
         self.timer.start('Distribute results')
         if self.gd.comm.rank == 0:
@@ -759,18 +753,14 @@ class BlacsBandLayouts(BlacsLayouts): #XXX should derive from BandLayouts too!
     def _diagonalize(self, H_nn, eps_N):
         """Parallel diagonalizer."""
         self.nndescriptor.diagonalize_dc(H_nn.copy(), H_nn, eps_N, 'L')
-        return 0 #XXX scalapack_diagonalize_dc doesn't return this info!!!
-
+        
     def inverse_cholesky(self, S_nn):
         self.timer.start('Inverse Cholesky')
-        info = self._inverse_cholesky(S_nn)
+        self._inverse_cholesky(S_nn)
         self.timer.stop('Inverse Cholesky')
-        if info != 0:
-            raise RuntimeError('Failed to orthogonalize: %d' % info)
-
+        
     def _inverse_cholesky(self, S_nn):
         self.nndescriptor.inverse_cholesky(S_nn, 'L')
-        return 0 #XXX scalapack_inverse_cholesky doesn't return this info!!!
 
     def get_description(self):
         (title, template) = BlacsLayouts.get_description(self)
@@ -964,10 +954,7 @@ class OrbitalLayouts(KohnShamLayouts):
 
     def diagonalize(self, H_MM, C_nM, eps_n, S_MM):
         eps_M = np.empty(C_nM.shape[-1])
-        info = self._diagonalize(H_MM, S_MM.copy(), eps_M)
-        if info != 0:
-            raise RuntimeError('Failed to diagonalize: %d' % info)
-        
+        self._diagonalize(H_MM, S_MM.copy(), eps_M)
         nbands = self.bd.nbands
         if self.bd.rank == 0:
             self.gd.comm.broadcast(H_MM[:nbands], 0)
@@ -978,9 +965,9 @@ class OrbitalLayouts(KohnShamLayouts):
     def _diagonalize(self, H_MM, S_MM, eps_M):
         # Only one processor really does any work.
         if self.gd.comm.rank == 0 and self.bd.comm.rank == 0:
-            return general_diagonalize(H_MM, eps_M, S_MM)
+            general_diagonalize(H_MM, eps_M, S_MM)
         else:
-            return 0
+            return 
 
     def estimate_memory(self, mem, dtype):
         nao = self.setups.nao
@@ -1049,8 +1036,8 @@ class OldSLOrbitalLayouts(OrbitalLayouts): #old SL before BLACS grids. TODO dele
         # Work is done on BLACS grid, but one processor still collects
         # all eigenvectors. Only processors on the BLACS grid return
         # meaningful values of info.
-        return slgeneral_diagonalize(H_MM, eps_M, S_MM, self.blockcomm,
-                                     root=self.root)
+        slgeneral_diagonalize(H_MM, eps_M, S_MM, self.blockcomm,
+                              root=self.root)
 
     def get_description(self):
         return 'Old ScaLAPACK'

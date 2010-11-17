@@ -804,9 +804,7 @@ class Generator(AllElectron):
             H.ravel()[ng::ng + 1] -= 0.5 / h**2
             S.ravel()[::ng + 1] += 1.0
             e_n = np.zeros(ng)
-            error = general_diagonalize(H, e_n, S)
-            if error != 0:
-                raise RuntimeError('Diagonalization failed for l=%d.' % l)
+            general_diagonalize(H, e_n, S)
             ePAW = e_n[0]
             if l <= self.lmax and self.n_ln[l][0] > 0:
                 eAE = self.e_ln[l][0]

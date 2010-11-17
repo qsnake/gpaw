@@ -259,10 +259,8 @@ class ApmB(OmegaMatrix):
         
         self.eigenvalues = np.zeros((len(kss)))
         self.kss = kss
-        info = diagonalize(self.eigenvectors, self.eigenvalues)
-        if info != 0:
-            raise RuntimeError('Diagonalisation error in ApmB')
-
+        diagonalize(self.eigenvectors, self.eigenvalues)
+        
     def read(self, filename=None, fh=None):
         """Read myself from a file"""
         if mpi.rank == mpi.MASTER:

@@ -579,9 +579,7 @@ class OmegaMatrix:
         self.eigenvectors = evec        
         self.eigenvalues = np.zeros((len(kss)))
         self.kss = kss
-        info = diagonalize(self.eigenvectors, self.eigenvalues)
-        if info != 0:
-            raise RuntimeError('Diagonalisation error in OmegaMatrix')
+        diagonalize(self.eigenvectors, self.eigenvalues)
 
     def Kss(self, kss=None):
         """Set and get own Kohn-Sham singles"""
