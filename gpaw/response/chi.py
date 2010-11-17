@@ -210,10 +210,14 @@ class CHI:
             op_scc = calc.wfs.symmetry.op_scc
         self.op_scc = op_scc
 
+        R_av = calc.atoms.positions / Bohr
         self.Kxc_GG = calculate_Kxc(self.gd, # global grid
                                     calc.density.nt_sG,
                                     self.npw, self.Gvec_Gc,
-                                    self.nG, self.vol, self.bcell_cv)
+                                    self.nG, self.vol,
+                                    self.bcell_cv, R_av,
+                                    calc.wfs.setups,
+                                    calc.density.D_asp)
 
         # Parallelization initialize
         self.parallel_init()
