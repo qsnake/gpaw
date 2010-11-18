@@ -972,8 +972,8 @@ lxcXCFunctional_CalculateFXCSpinPaired(lxcXCFunctionalObject *self, PyObject *ar
       // \sigma[1] = \nabla n_\uparrow \cdot \nabla n_\downarrow \qquad
       // \sigma[2] = \nabla n_\downarrow \cdot \nabla n_\downarrow \qquad
 
-      double derivative_x[5][5]; /* generalized derivative */
-      double derivative_c[5][5]; /* generalized derivative */
+      double derivative_x[7][7]; /* generalized derivative */
+      double derivative_c[7][7]; /* generalized derivative */
       double v2rho2_x[3];
       double v2rhosigma_x[6];
       double v2sigma2_x[6];
@@ -1137,8 +1137,8 @@ lxcXCFunctional_CalculateFXC_FD_SpinPaired(lxcXCFunctionalObject *self, PyObject
       // \sigma[1] = \nabla n_\uparrow \cdot \nabla n_\downarrow \qquad
       // \sigma[2] = \nabla n_\downarrow \cdot \nabla n_\downarrow \qquad
 
-      double derivative_x[5][5]; /* generalized derivative */
-      double derivative_c[5][5]; /* generalized derivative */
+      double derivative_x[7][7]; /* generalized derivative */
+      double derivative_c[7][7]; /* generalized derivative */
       double v2rho2_x[3];
       double v2rhosigma_x[6];
       double v2sigma2_x[6];
