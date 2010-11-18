@@ -1,4 +1,5 @@
 import numpy as np
+from math import sqrt, pi
 from gpaw.utilities.blas import gemmdot
 from gpaw.xc import XC
 from gpaw.sphere.lebedev import weight_n, R_nv
