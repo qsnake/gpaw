@@ -48,6 +48,8 @@ def calculate_Kxc(gd, nt_sG, npw, Gvec_Gc, nG, vol,
             rgd = setup.xc_correction.rgd
             n_qg = setup.xc_correction.n_qg
             nt_qg = setup.xc_correction.nt_qg
+            nc_g = setup.xc_correction.nc_g
+            nct_g = setup.xc_correction.nct_g
             Y_nL = setup.xc_correction.Y_nL
             dv_g = rgd.dv_g
         
@@ -62,7 +64,10 @@ def calculate_Kxc(gd, nt_sG, npw, Gvec_Gc, nG, vol,
         
             n_sLg = np.dot(D_sLq, n_qg)
             nt_sLg = np.dot(D_sLq, nt_qg)
-        
+            # Add core density
+            n_sLg[:, 0] += sqrt(4 * pi) / nspins * nc_g
+            nt_sLg[:, 0] += sqrt(4 * pi) / nspins * nct_g
+            
             coefatoms_GG = np.exp(-1j * np.inner(dG_GGv, R_av[a]))
         
             for n, Y_L in enumerate(Y_nL):
@@ -70,7 +75,7 @@ def calculate_Kxc(gd, nt_sG, npw, Gvec_Gc, nG, vol,
                 f_sg[:] = 0.0
                 n_sg = np.dot(Y_L, n_sLg)
                 xc.calculate_fxc(rgd, n_sg, f_sg)
-        
+                
                 ft_sg[:] = 0.0
                 nt_sg = np.dot(Y_L, nt_sLg)
                 xc.calculate_fxc(rgd, nt_sg, ft_sg)
