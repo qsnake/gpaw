@@ -70,6 +70,7 @@ Linux:
    Linux/nanolab_EL4
    Linux/neolith
    Linux/newcell
+   Linux/ranger_EL4
    Linux/sepeli
    Linux/supernova
    Linux/uranus
