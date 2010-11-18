@@ -1,10 +1,10 @@
 """Module for calculating phonons of periodic systems."""
 
+import sys
 import pickle
 from math import sin, pi, sqrt
 from os import remove
 from os.path import isfile
-import sys
 
 import numpy as np
 import numpy.linalg as la
@@ -12,31 +12,53 @@ import numpy.fft as fft
 
 import ase.units as units
 from ase.io.trajectory import PickleTrajectory
-from ase.parallel import rank, barrier, paropen
+from ase.parallel import rank, barrier
 
 class Phonons:
     """Class for calculating phonon modes using finite difference.
 
-    The normal modes are calculated from a finite difference approximation to
-    the matrix of force constants.
+    The matrix of force constants is calculated from the finite difference
+    approximation to the first-order derivative of the atomic forces as::
+    
+                            2           nbj   nbj
+                nbj        d V         F-  - F+
+               C     = ------------ ~  ----------  ,
+                mai     dR   dR         2 * delta
+                          mai  nbj       
 
+    where F+/F- denotes the force in direction j on atom nb when atom ma is
+    displaced in direction +i/-i. The force constants are related by various
+    symmetry relations. From the definition of the force constants it must
+    be symmetric in the three indices mai::
+
+                nbj    mai         bj        ai
+               C    = C      ->   C  (R ) = C  (-R )  .
+                mai    nbj         ai  n     bj   n
+
+    As it can only depend on the difference between the m and n indices, this
+    symmetry is more conveniently expressed as shown on the right hand-side.
+    
+    Ordering of the unit cells illustrated here for a 1-dimensional system:
+
+    ::
+               m = 0        m = 1        m = -1        m = -2
+           -----------------------------------------------------
+           |            |            |            |            |
+           |        * b |        *   |        *   |        *   |
+           |            |            |            |            |
+           |   * a      |   *        |   *        |   *        |
+           |            |            |            |            |       
+           -----------------------------------------------------
+       
     Example:
 
     >>> from ase.structure import bulk
-    >>> from ase.optimizers import BFGS
     >>> from ase.phonons import Phonons
     >>> from gpaw import GPAW, FermiDirac
     >>> atoms = bulk('Si2', 'diamond', a=5.4)
     >>> calc = GPAW(kpts=(5, 5, 5),
                     h=0.2,
                     occupations=FermiDirac(0.))
-    >>> atoms.set_calculator(calc)
-    >>> BFGS(atoms).run(fmax=0.01)
-    BFGS:   0  19:16:06        0.042171       2.9357
-    BFGS:   1  19:16:07        0.104197       3.9270
-    BFGS:   2  19:16:07        0.000963       0.4142
-    BFGS:   3  19:16:07        0.000027       0.0698
-    BFGS:   4  19:16:07        0.000000       0.0010
     >>> ph = Phonons(atoms, calc, supercell=(5, 5, 5))
     >>> ph.run()
 
@@ -130,10 +152,12 @@ class Phonons:
             # Create file
             if rank == 0:
                 fd = open(filename, 'w')
+                fd.close()
             # Calculate forces
             forces = self.atoms_lmn.get_forces()
             # Write forces to file
             if rank == 0:
+                fd = open(filename, 'w')
                 pickle.dump(forces, fd)
                 sys.stdout.write('Writing %s\n' % filename)
                 fd.close()
@@ -157,12 +181,14 @@ class Phonons:
                         barrier()
                         if rank == 0:
                             fd = open(filename, 'w')
+                            fd.close()
                         # Update atomic positions and calculate forces
                         self.atoms_lmn.positions[a, i] = \
                             (pos[a, i] + ndis * sign * self.delta)
                         forces = self.atoms_lmn.get_forces()
                         # Write forces to file                        
                         if rank == 0:
+                            fd = open(filename, 'w')
                             pickle.dump(forces, fd)
                             sys.stdout.write('Writing %s\n' % filename)
                             fd.close()
@@ -240,24 +266,26 @@ class Phonons:
         C_lmn = C_m.reshape(self.N_c + (3*N, 3*N))
         # Shift reference cell to center
         C_lmn = fft.fftshift(C_lmn, axes=(0, 1, 2))
-        # Make force constants symmetric
-        C_lmn *= 0.5
-        C_lmn += C_lmn[::-1, ::-1, ::-1].transpose(0, 1, 2, 4, 3).copy()
+        # Make force constants symmetric in indices -- in case of an even
+        # number of unit cells don't include the first
+        i, j, k = (np.asarray(self.N_c) + 1) % 2
+        C_lmn[i:, j:, k:] *= 0.5
+        C_lmn[i:, j:, k:] += C_lmn[i:, j:, k:][::-1, ::-1, ::-1].transpose(0, 1, 2, 4, 3).copy()
         C_lmn = fft.ifftshift(C_lmn, axes=(0, 1, 2))
         
         # Change to single unit cell index shape
         C_m = C_lmn.reshape((M, 3*N, 3*N))
+
+        # Store force constants and dynamical matrix
+        self.C_m = C_m
+        self.D_m = C_m.copy()
         
         # Add mass prefactor
         m = self.atoms.get_masses()
         self.m_inv = np.repeat(m[self.indices]**-0.5, 3)
         M_inv = self.m_inv[:, np.newaxis] * self.m_inv
-        for C in C_m:
-            C *= M_inv
-
-        # Store force constants and dynamical matrix
-        self.C_m = C_m
-        self.D_m = C_m
+        for D in self.D_m:
+            D *= M_inv
 
     def get_force_constant(self):
         """Return matrix of force constants."""
