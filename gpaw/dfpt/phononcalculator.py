@@ -8,6 +8,7 @@ import pickle
 from math import pi, sqrt, exp, sin
 
 import numpy as np
+import numpy.random as rand
 import numpy.linalg as la
 
 import ase.units as units
@@ -210,7 +211,7 @@ class PhononCalculator:
         # XXX Make a single ground_state_contributions member function
         # Ground-state contributions to the force constants
         self.dyn.density_ground_state(self.calc)
-        self.dyn.wfs_ground_state(self.calc, self.response_calc)
+        # self.dyn.wfs_ground_state(self.calc, self.response_calc)
         
         # Calculate linear response wrt q-vectors and displacements of atoms
         for q in qpts_q:
@@ -368,7 +369,7 @@ class PhononCalculator:
             vectors) specifying the path in the Brillouin zone for which the
             dynamical matrix will be calculated.
         modes: bool
-            Returns both frequencies and modes when True.
+            Returns both frequencies and modes (mass scaled) when True.
         acoustic: bool
             Restore the acoustic sum-rule in the calculated force constants.
             
@@ -391,6 +392,9 @@ class PhononCalculator:
         # Lists for frequencies and modes along path
         omega_kn = []
         u_kn =  []
+        # Number of atoms included
+        N = len(self.dyn.get_indices())
+        
         # Mass prefactor for the normal modes
         m_inv_av = self.dyn.get_mass_array()
         
@@ -403,10 +407,11 @@ class PhononCalculator:
 
             if modes:
                 omega2_n, u_avn = la.eigh(D_q, UPLO='L')
-                # Sort eigenmodes according to eigenvalues (see below) 
-                u_nav = u_avn[:, omega2_n.argsort()].T
+                # Sort eigenmodes according to eigenvalues (see below) and
+                # multiply with mass prefactor
+                u_nav = u_avn[:, omega2_n.argsort()].T.copy() * m_inv_av
                 # Multiply with mass prefactor
-                u_kn.append(u_nav * m_inv_av)
+                u_kn.append(u_nav.reshape((3*N, -1, 3)))
             else:
                 omega2_n = la.eigvalsh(D_q, UPLO='L')
 
@@ -427,13 +432,19 @@ class PhononCalculator:
 
             omega_kn.append(omega_n.real)
 
+        # Conversion factor from sqrt(Ha / Bohr**2 / amu) -> eV
+        s = units.Hartree**0.5 * units._hbar * 1.e10 / \
+            (units._e * units._amu)**(0.5) / units.Bohr
+        # Convert to eV and Ang
+        omega_kn = s * np.asarray(omega_kn)
         if modes:
-            return np.asarray(omega_kn), np.asarray(u_kn)
+            u_kn = np.asarray(u_kn) * units.Bohr
+            return omega_kn, u_kn
         
-        return np.asarray(omega_kn)
+        return omega_kn
 
     def write_modes(self, q_c, branches=0, kT=units.kB*300, repeat=(1, 1, 1),
-                    nimages=30):
+                    nimages=30, acoustic=True):
         """Write mode to trajectory file.
 
         The classical equipartioning theorem states that each normal mode has
@@ -470,6 +481,9 @@ class PhononCalculator:
         else:
             branch_n = list(branches)
 
+        # Calculate modes
+        omega_n, u_n = self.band_structure([q_c], modes=True, acoustic=acoustic)
+        
         # Repeat atoms
         atoms = self.atoms * repeat
         pos_mav = atoms.positions.copy()
@@ -482,19 +496,13 @@ class PhononCalculator:
         phase_m = np.exp(2.j * pi * np.dot(q_c, R_cm))
         phase_ma = phase_m.repeat(len(self.atoms))
 
-        # Calculate modes
-        omega_n, u_n = self.band_structure([q_c], modes=True)
-
-        # Conversion factor from sqrt(Ha / Bohr**2 / amu) -> eV
-        s = units.Hartree**0.5 * units._hbar * 1.e10 / \
-            (units._e * units._amu)**(0.5) / units.Bohr
-        
+     
         for n in branch_n:
-            
-            omega = omega_n[0, n] * s
-            u_av = u_n[0, n].reshape((-1, 3)) * units.Bohr
+
+            omega = omega_n[0, n]
+            u_av = u_n[0, n] # .reshape((-1, 3))
             # Mean displacement at high T ?
-            u_av *= sqrt(kT / abs(omega)) # * 10
+            u_av *= sqrt(kT / abs(omega))
             
             mode_av = np.zeros((len(self.atoms), 3), dtype=self.dtype)
             indices = self.dyn.get_indices()

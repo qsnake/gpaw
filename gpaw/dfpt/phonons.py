@@ -341,10 +341,10 @@ class Phonons:
 
             if modes:
                 omega2_n, u_avn = la.eigh(D_q, UPLO='L')
-                # Sort eigenmodes according to eigenvalues (see below) 
-                u_nav = u_avn[:, omega2_n.argsort()].T.copy()
-                # Multiply with mass prefactor
-                u_kn.append(u_nav * self.m_inv)
+                # Sort eigenmodes according to eigenvalues (see below) and 
+                # multiply with mass prefactor
+                u_nav = u_avn[:, omega2_n.argsort()].T.copy() * self.m_inv
+                u_kn.append(u_nav.reshape((-1, 3)))
             else:
                 omega2_n = la.eigvalsh(D_q, UPLO='L')
 
@@ -420,7 +420,7 @@ class Phonons:
         for n in branch_n:
             
             omega = omega_n[0, n]
-            u_av = u_n[0, n].reshape((-1, 3))
+            u_av = u_n[0, n] # .reshape((-1, 3))
             # Mean displacement at high T ?
             u_av *= sqrt(kT / abs(omega))
 
