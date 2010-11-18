@@ -58,6 +58,7 @@ Linux:
    Linux/Ubuntu
    Linux/Niflheim/Niflheim
    Linux/akka
+   Linux/armageddon
    Linux/batman
    Linux/bwgrid
    Linux/carbon_cnm
