@@ -47,7 +47,8 @@ for atom in e_HOMO_cs.keys():
     
     SS = Atoms([Atom(atom)], cell=(7, 7, 7), pbc=False)
     SS.center()
-    c = GPAW(h=.3, xc='LB94', nbands=-2, txt=txt)
+    c = GPAW(h=.3, xc='LB94',
+             nbands=-2, txt=txt)
     c.calculate(SS)
     # find HOMO energy
     eps_n = c.get_eigenvalues(kpt=0, spin=0) / 27.211
@@ -59,7 +60,7 @@ for atom in e_HOMO_cs.keys():
     e_homo = int( e_homo * 10000 + .5 ) / 10.
     diff = e_ref + e_homo
     print '%2s %8g %6.1f %4.1f' % (atom, e_ref, -e_homo, diff)
-#    assert( abs(diff) < 7 )
+    assert abs(diff) < 7
 
 
 # HOMO energy in mHa and magn. mom. for open shell atoms
@@ -96,4 +97,4 @@ for atom in e_HOMO_os.keys():
     e_homo = int( e_homo * 10000 + .5 ) / 10.
     diff = e_ref + e_homo
     print '%2s %8g %6.1f %4.1f' % (atom, e_ref, -e_homo, diff)
-#    assert abs(diff) < 14
+    assert abs(diff) < 15
