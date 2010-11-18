@@ -14,9 +14,10 @@ diagonalize(a.copy(), w)
 print w
 assert abs(w - w0).max() < tol
 # LAPACK's MR3 Diagonalize
-from gpaw.utilities.lapack import diagonalize_mr3
-z = np.zeros_like(a)
-diagonalize_mr3(a, w, z)
-print w
-assert abs(w - w0).max() < tol
+# Requires Netlib LAPACK 3.2.1 or later
+# from gpaw.utilities.lapack import diagonalize_mr3
+# z = np.zeros_like(a)
+# diagonalize_mr3(a, w, z)
+# print w
+# assert abs(w - w0).max() < tol
 

@@ -200,7 +200,7 @@ tests = [
     'vdw/quick_spin.py',
     'vdw/ar2.py',
     'fd2lcao_restart.py',
-#    'eigh_perf.py',
+#    'eigh_perf.py', # Requires LAPACK 3.2.1 or later
     'parallel/parallel_eigh.py',
     'parallel/ut_hsops.py',
     'parallel/ut_hsblacs.py',
