@@ -402,6 +402,8 @@ ormance.'
         print >> f, '-env PYTHONPATH $PYTHONPATH',
         print >> f, '-env GPAW_SETUP_PATH $GPAW_SETUP_PATH',
         print >> f, '$GPAW_PYTHON', set['script'],
+        if 'parameters' in set:
+            print >> f, set['parameters'],
         print >> f, '>', set['out']+'_$PBS_JOBID',
         print >> f, '2>', set['err']+'_$PBS_JOBID'
 
@@ -471,7 +473,11 @@ echo \"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\"
         print >> f, 'export PYTHONPATH=$PYTHONPATH:' + env['PYTHONPATH']
         print >> f, 'export GPAW_SETUP_PATH='+env['GPAW_SETUP_PATH']
         print >> f, 'export GPAW_PYTHON='+env['GPAW_PYTHON']
-        print >> f, 'mpirun $GPAW_PYTHON', set['script']
+        print >> f, 'mpirun $GPAW_PYTHON', set['script'],
+        if 'parameters' in set:
+            print >> f, set['parameters']
+        else:
+            print >> f
         f.close()
         os.chmod(f.name, 0755)
         if set['cores'] > 16 or set['mem'] or minutes(set['time']) > 60:
