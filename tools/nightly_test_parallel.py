@@ -32,9 +32,10 @@ if os.system('svn export ' +
 os.chdir('gpaw')
 if os.system('source /home/camp/modulefiles.sh&& ' +
              'module load NUMPY&& ' +
+             'module load open64/4.2.3-0&& ' +
              'python setup.py --remove-default-flags ' +
              '--customize=' +
-             'doc/install/Linux/Niflheim/el5-xeon-gcc43-acml-4.3.0.py ' +
+             'doc/install/Linux/Niflheim/el5-xeon-open64-goto2-1.13-acml-4.4.0.py ' +
              'install --home=%s 2>&1 | ' % tmpdir +
              'grep -v "c/libxc/src"') != 0:
     fail('Installation failed!')
@@ -58,7 +59,7 @@ else:
 print 'Run'
 if os.system('source /home/camp/modulefiles.sh; ' +
              'module load NUMPY; ' +
-             'module load openmpi/1.3.3-1.el5.fys.gfortran43.4.3.2; ' +
+             'module load openmpi/1.3.3-1.el5.fys.open64.4.2.3; ' +
              'export PYTHONPATH=%s/lib64/python:$PYTHONPATH; ' % tmpdir +
              'export GPAW_SETUP_PATH=%s; ' % setups +
              'mpiexec -np %d ' % cpus +
