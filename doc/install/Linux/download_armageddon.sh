@@ -20,7 +20,7 @@ gpaw_version=0.7.2.6974
 wget https://wiki.fysik.dtu.dk/gpaw-files/gpaw-${gpaw_version}.tar.gz
 gpaw_setups_version=0.6.6300
 wget http://wiki.fysik.dtu.dk/gpaw-files/gpaw-setups-${gpaw_setups_version}.tar.gz
-if [ "${INSTALL_DACAPO}" == "True" ];
+if [ "${INSTALL_DACAPO}" = "True" ];
     then
     # dacapo
     dacapo_version=2.7.16

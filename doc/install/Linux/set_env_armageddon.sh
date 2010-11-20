@@ -139,7 +139,7 @@ case $PYTHONPATH in
 esac
 export PYTHONPATH
 
-if [ "${INSTALL_DACAPO}" == "True" ];
+if [ "${INSTALL_DACAPO}" = "True" ];
 then
     # dacapo-pseudopotentials
     dacapo_psp_version=1

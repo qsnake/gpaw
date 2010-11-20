@@ -48,7 +48,7 @@ tar zxf gpaw-${gpaw_version}.tar.gz
 gpaw_setups_version=0.6.6300
 tar zxf gpaw-setups-${gpaw_setups_version}.tar.gz
 
-if [ "${INSTALL_DACAPO}" == "True" ];
+if [ "${INSTALL_DACAPO}" = "True" ];
     then
     dacapo_version=2.7.16
     tar zxf campos-dacapo-${dacapo_version}.tar.gz
@@ -82,7 +82,7 @@ if [ "${INSTALL_DACAPO}" == "True" ];
     cp -pr campos-dacapo-pseudopotentials-1/psp/*/*/*.pseudo psp-1
 fi
 
-. set_env_armageddon.sh
+. ./set_env_armageddon.sh
 
 # test numpy
 python -c "import numpy; numpy.test()"
