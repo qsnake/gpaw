@@ -1,4 +1,8 @@
+#!/bin/sh
+
 export APPS="/home/firegam/CAMd"
+
+INSTALL_DACAPO=False
 
 # openmpi
 openmpi_version=1.4.3
@@ -14,12 +18,12 @@ export PATH
 
 PY=${APPS}/openmpi-${openmpi_version}-1/lib
 
-case $PYTHONPATH in
+case $LD_LIBRARY_PATH in
   *${PY}*)      ;;
-  *?*)  PYTHONPATH=${PY}:${PYTHONPATH} ;;
-  *)    PYTHONPATH=${PY} ;;
+  *?*)  LD_LIBRARY_PATH=${PY}:${LD_LIBRARY_PATH} ;;
+  *)    LD_LIBRARY_PATH=${PY} ;;
 esac
-export PYTHONPATH
+export LD_LIBRARY_PATH
 
 # nose
 nose_version=0.11.3
@@ -134,3 +138,49 @@ case $PYTHONPATH in
   *)    PYTHONPATH=${PY} ;;
 esac
 export PYTHONPATH
+
+if [ "${INSTALL_DACAPO}" == "True" ];
+then
+    # dacapo-pseudopotentials
+    dacapo_psp_version=1
+
+    PA=${APPS}/psp-${dacapo_psp_version}
+
+    case $DACAPOPATH in
+        *${PA}*)      ;;
+        *?*)  DACAPOPATH=${PA}:${DACAPOPATH} ;;
+        *)    DACAPOPATH=${PA} ;;
+    esac
+    export DACAPOPATH
+
+    # dacapo
+    dacapo_version=2.7.16
+
+    PA=${APPS}/campos-dacapo-${dacapo_version}/src/gfortran_fnosecond_underscore_serial/dacapo_${dacapo_version}-1_serial.run
+
+    case $DACAPOEXE_SERIAL in
+        *${PA}*)      ;;
+        *?*)  DACAPOEXE_SERIAL=${PA}:${DACAPOEXE_SERIAL} ;;
+        *)    DACAPOEXE_SERIAL=${PA} ;;
+    esac
+    export DACAPOEXE_SERIAL
+
+    PA=${APPS}/campos-dacapo-${dacapo_version}/src/gfortran_fnosecond_underscore_mpi/dacapo_${dacapo_version}-1_mpi.run
+
+    case $DACAPOEXE_PARALLEL in
+        *${PA}*)      ;;
+        *?*)  DACAPOEXE_PARALLEL=${PA}:${DACAPOEXE_PARALLEL} ;;
+        *)    DACAPOEXE_PARALLEL=${PA} ;;
+    esac
+    export DACAPOEXE_PARALLEL
+
+    PA=${APPS}/campos-dacapo-${dacapo_version}/
+
+    case $PATH in
+        *${PA}*)      ;;
+        *?*)  PATH=${PA}:${PATH} ;;
+        *)    PATH=${PA} ;;
+    esac
+    export PATH
+
+fi

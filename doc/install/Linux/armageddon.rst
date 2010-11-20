@@ -25,11 +25,7 @@ The installation of user's packages described below assumes `bash` shell:
   .. literalinclude:: download_armageddon.sh
 
 - install packages and test with :svn:`~doc/install/Linux/install_armageddon.sh`,
-  buy running ``sh install_armageddon.sh``:
-
-  .. literalinclude:: install_armageddon.sh
+  buy running ``sh install_armageddon.sh``.
 
 - enable packages with :svn:`~doc/install/Linux/set_env_armageddon.sh`,
-  buy running ``. set_env_armageddon.sh`` (put this in `~/.bashrc`):
-
-  .. literalinclude:: set_env_armageddon.sh
+  buy running ``. set_env_armageddon.sh`` (put this in `~/.bashrc`).
