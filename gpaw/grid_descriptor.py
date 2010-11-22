@@ -543,8 +543,16 @@ class GridDescriptor(Domain):
                     (1.0 - dg_c[0]) * (0.0 + dg_c[1]) * (0.0 + dg_c[2]) + 
                     vt_g[Bg_c[0],Bg_c[1],Bg_c[2]] *
                     (0.0 + dg_c[0]) * (0.0 + dg_c[1]) * (0.0 + dg_c[2]))
-                
 
+    def __eq__(self, other):
+        return (self.dv == other.dv and
+                (self.h_cv == other.h_cv).all() and
+                (self.N_c == other.N_c).all() and
+                (self.n_c == other.n_c).all() and
+                (self.beg_c == other.beg_c).all() and
+                (self.end_c == other.end_c).all()
+                )
+               
 class RadialGridDescriptor:
     """Descriptor-class for radial grid."""
     def __init__(self, r_g, dr_g):

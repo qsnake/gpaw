@@ -80,7 +80,10 @@ class HirshfeldPartitioning:
         density_g, gd = self.hdensity.get_density()
         self.invweight_g = np.where(density_g > density_cutoff, 
                                     1.0 /  density_g, 0.0)
-        
+    
+    def get_calculator(self):
+        return self.calculator
+    
     def get_effective_volume_ratio(self, atom_index):
         """Effective volume to free volume ratio.
 
