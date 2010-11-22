@@ -41,6 +41,7 @@ class Phonons:
     Ordering of the unit cells illustrated here for a 1-dimensional system:
 
     ::
+
                m = 0        m = 1        m = -1        m = -2
            -----------------------------------------------------
            |            |            |            |            |
