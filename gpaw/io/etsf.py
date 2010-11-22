@@ -51,12 +51,16 @@ class ETSFWriter:
         species = {}
         names = []
         symbols = []
+        numbers = []
+        charges = []
         for a, id in enumerate(setups.id_a):
             if id not in species:
                 species[id] = nspecies
                 nspecies += 1
                 names.append(setups[a].symbol)
                 symbols.append(setups[a].symbol)
+                numbers.append(setups[a].Z)
+                charges.append(setups[a].Nv)
             specie_a[a] = species[id]
             
         dimensions = [
@@ -100,9 +104,9 @@ class ETSFWriter:
             ('number_of_atoms', 'number_of_reduced_dimensions'),
             atoms.get_scaled_positions())
         var('atomic_numbers', ('number_of_atom_species',),
-            atoms.get_atomic_numbers().astype(float))
+            np.array(numbers, dtype=float))
         var('valence_charges', ('number_of_atom_species',),
-            np.array((1.0, 7.0)))
+            np.array(charges, dtype=float))
         var('atom_species_names',
             ('number_of_atom_species', 'character_string_length'), names)
         var('chemical_symbols', ('number_of_atom_species', 'symbol_length'),
@@ -152,13 +156,16 @@ class ETSFWriter:
                            'real_or_complex_coefficients'))
 
         x = atoms.get_volume()**0.5 / N_c.prod()
+        psit_Gx = np.empty((len(i_Gc), 2))
         for s in range(wfs.nspins):
             for k in range(kd.nibzkpts):
+                print s,k,len(i_Gc)
                 for n in range(bd.nbands):
                     psit_G = pwd.fft(calc.get_pseudo_wave_function(n, k, s))
                     psit_G *= x
-                    psit_skn1G2[s, k, n, 0, :, 0] = psit_G.real
-                    psit_skn1G2[s, k, n, 0, :, 1] = psit_G.imag
+                    psit_Gx[:, 0] = psit_G.real
+                    psit_Gx[:, 1] = psit_G.imag
+                    psit_skn1G2[s, k, n, 0] = psit_Gx
 
         self.nc.close()
     
