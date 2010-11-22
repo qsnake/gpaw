@@ -88,7 +88,7 @@ class SimpleStm:
                 else:
                     occupied = False
                 emin_s = np.array([emin + efermi] * 2)
-                emax_s = np.array([emin + efermi] * 2)
+                emax_s = np.array([emax + efermi] * 2)
 
             emin_s /= Hartree
             emax_s /= Hartree
