@@ -35,20 +35,30 @@ class Phonons:
                C    = C      ->   C  (R ) = C  (-R )  .
                 mai    nbj         ai  n     bj   n
 
-    As it can only depend on the difference between the m and n indices, this
-    symmetry is more conveniently expressed as shown on the right hand-side.
-    
+    As the force constants can only depend on the difference between the m and
+    n indices, this symmetry is more conveniently expressed as shown on the
+    right hand-side.
+
+    The acoustic sum-rule::
+                            _
+                aj         \    bj    
+               C  (R ) = -  >  C  (R )
+                ai  0      /_   ai  m
+                         (m, b)
+                           !=
+                         (0, a)
+                        
     Ordering of the unit cells illustrated here for a 1-dimensional system:
-
+    
     ::
-
+    
                m = 0        m = 1        m = -1        m = -2
            -----------------------------------------------------
            |            |            |            |            |
            |        * b |        *   |        *   |        *   |
            |            |            |            |            |
            |   * a      |   *        |   *        |   *        |
-           |            |            |            |            |       
+           |            |            |            |            |
            -----------------------------------------------------
        
     Example:
@@ -62,11 +72,12 @@ class Phonons:
                     occupations=FermiDirac(0.))
     >>> ph = Phonons(atoms, calc, supercell=(5, 5, 5))
     >>> ph.run()
+    >>> ph.read(method='frederiksen', acoustic=True)
 
     """
 
     def __init__(self, atoms, calc, supercell=(1, 1, 1), name='phonon',
-                 delta=0.01, nfree=2):
+                 delta=0.01):
         """Init with an instance of class ``Atoms`` and a calculator.
 
         Parameters
@@ -82,14 +93,9 @@ class Phonons:
             Name to use for files.
         delta: float
             Magnitude of displacements.
-        nfree: int
-            Number of displacements per atom and cartesian coordinate, 2 and 4
-            are supported. Default is 2 which will displace each atom +delta
-            and -delta for each cartesian coordinate. 
 
         """
         
-        assert nfree in [2, 4]
         self.atoms = atoms
         # Atoms in the supercell -- repeated in the lattice vector directions
         # beginning with the last
@@ -99,7 +105,6 @@ class Phonons:
         self.indices = range(len(atoms))
         self.name = name
         self.delta = delta
-        self.nfree = nfree
         self.N_c = supercell
 
         # Attributes for force constants and dynamical matrix in real-space
@@ -171,31 +176,30 @@ class Phonons:
         for a in self.indices:
             for i in range(3):
                 for sign in [-1, 1]:
-                    for ndis in range(1, self.nfree//2+1):
-                        # Filename for atomic displacement
-                        filename = ('%s.%d%s%s.pckl' %
-                                    (self.name, a, 'xyz'[i], ndis*' +-'[sign]))
-                        # Skip if already being processed
-                        if isfile(filename):
-                            continue
-                        # Wait for ranks
-                        barrier()
-                        if rank == 0:
-                            fd = open(filename, 'w')
-                            fd.close()
-                        # Update atomic positions and calculate forces
-                        self.atoms_lmn.positions[a, i] = \
-                            (pos[a, i] + ndis * sign * self.delta)
-                        forces = self.atoms_lmn.get_forces()
-                        # Write forces to file                        
-                        if rank == 0:
-                            fd = open(filename, 'w')
-                            pickle.dump(forces, fd)
-                            sys.stdout.write('Writing %s\n' % filename)
-                            fd.close()
-                        sys.stdout.flush()
-                        # Return to initial positions
-                        self.atoms_lmn.positions[a, i] = pos[a, i]
+                    # Filename for atomic displacement
+                    filename = ('%s.%d%s%s.pckl' %
+                                (self.name, a, 'xyz'[i], ' +-'[sign]))
+                    # Skip if already being processed
+                    if isfile(filename):
+                        continue
+                    # Wait for ranks
+                    barrier()
+                    if rank == 0:
+                        fd = open(filename, 'w')
+                        fd.close()
+                    # Update atomic positions and calculate forces
+                    self.atoms_lmn.positions[a, i] = \
+                        pos[a, i] + sign * self.delta
+                    forces = self.atoms_lmn.get_forces()
+                    # Write forces to file                        
+                    if rank == 0:
+                        fd = open(filename, 'w')
+                        pickle.dump(forces, fd)
+                        sys.stdout.write('Writing %s\n' % filename)
+                        fd.close()
+                    sys.stdout.flush()
+                    # Return to initial positions
+                    self.atoms_lmn.positions[a, i] = pos[a, i]
                         
         # self.atoms.set_positions(pos)
 
@@ -208,26 +212,24 @@ class Phonons:
         for a in self.indices:
             for i in 'xyz':
                 for sign in '-+':
-                    for ndis in range(1, self.nfree/2+1):
-                        name = '%s.%d%s%s.pckl' % (self.name, a, i, ndis*sign)
-                        if isfile(name):
-                            remove(name)
+                    name = '%s.%d%s%s.pckl' % (self.name, a, i, sign)
+                    if isfile(name):
+                        remove(name)
         
-    def read(self, direction='central', method='frederiksen'):
+    def read(self, method='Frederiksen', acoustic=True):
         """Read pickle files and calculate matrix of force constants.
 
         Parameters
         ----------
-        direction: str
-            Type of finite difference approximation to use.
         method: str
             Specify method for evaluating the atomic forces.
+        acoustic: bool
+            Restore the acoustic sum-rule on the force constants.
             
         """
-        
-        direction = direction.lower()
+
+        method = method.lower()
         assert method in ['standard', 'frederiksen']
-        assert direction in ['central', 'forward', 'backward']
         
         # Number of atoms
         N = len(self.indices)
@@ -235,11 +237,7 @@ class Phonons:
         M = np.prod(self.N_c)
         # Matrix of force constants as a function of unit cell index in units
         # of eV/Ang**2 
-        C_m = np.empty((3*N*M, 3*N), dtype=float)
-
-        # Equilibrium forces
-        if direction != 'central':
-            feq = pickle.load(open(self.name + '.eq.pckl'))
+        C_m = np.empty((3*N, 3*N*M), dtype=float)
 
         # Loop over all atomic displacements and calculate force constants
         for i, a in enumerate(self.indices):
@@ -252,31 +250,42 @@ class Phonons:
                 if method == 'frederiksen':
                     fminus_av[a] -= fminus_av.sum(0)
                     fplus_av[a] -= fplus_av.sum(0)
-                if direction == 'central':
-                    if self.nfree == 2:
-                        C_av = fminus_av - fplus_av
-                   
+
+                # Finite difference derivative
+                C_av = fminus_av - fplus_av
                 C_av /= 2 * self.delta
 
                 # Slice out included atoms
                 C_mav = C_av.reshape((M, len(self.atoms), 3))[:, self.indices]
                 index = 3*i + j                
-                C_m[:, index] = C_mav.ravel()
+                C_m[index] = C_mav.ravel()
 
         # Reshape force constant to (l, m, n) cell indices
-        C_lmn = C_m.reshape(self.N_c + (3*N, 3*N))
+        C_lmn = C_m.transpose().copy().reshape(self.N_c + (3*N, 3*N))
         # Shift reference cell to center
         C_lmn = fft.fftshift(C_lmn, axes=(0, 1, 2))
         # Make force constants symmetric in indices -- in case of an even
         # number of unit cells don't include the first
         i, j, k = (np.asarray(self.N_c) + 1) % 2
         C_lmn[i:, j:, k:] *= 0.5
-        C_lmn[i:, j:, k:] += C_lmn[i:, j:, k:][::-1, ::-1, ::-1].transpose(0, 1, 2, 4, 3).copy()
+        C_lmn[i:, j:, k:] += \
+            C_lmn[i:, j:, k:][::-1, ::-1, ::-1].transpose(0, 1, 2, 4, 3).copy()
         C_lmn = fft.ifftshift(C_lmn, axes=(0, 1, 2))
-        
+
         # Change to single unit cell index shape
         C_m = C_lmn.reshape((M, 3*N, 3*N))
 
+        # Restore acoustic sum-rule
+        if acoustic:
+            # Copy force constants
+            C_m_temp = C_m.copy()
+            # Correct atomic diagonals of R_m = 0 matrix
+            for C in C_m_temp:
+                for a in range(N):
+                    for a_ in range(N):
+                        C_m[0, 3*a: 3*a + 3, 3*a: 3*a + 3] -= \
+                               C[3*a: 3*a+3, 3*a_: 3*a_+3]
+                        
         # Store force constants and dynamical matrix
         self.C_m = C_m
         self.D_m = C_m.copy()
@@ -344,7 +353,7 @@ class Phonons:
                 omega2_n, u_avn = la.eigh(D_q, UPLO='L')
                 # Sort eigenmodes according to eigenvalues (see below) and 
                 # multiply with mass prefactor
-                u_nav = u_avn[:, omega2_n.argsort()].T.copy() * self.m_inv
+                u_nav = self.m_inv * u_avn[:, omega2_n.argsort()].T.copy()
                 u_kn.append(u_nav.reshape((-1, 3)))
             else:
                 omega2_n = la.eigvalsh(D_q, UPLO='L')
@@ -421,9 +430,9 @@ class Phonons:
         for n in branch_n:
             
             omega = omega_n[0, n]
-            u_av = u_n[0, n] # .reshape((-1, 3))
-            # Mean displacement at high T ?
-            u_av *= sqrt(kT / abs(omega))
+            u_av = u_n[0, n]
+            # Mean displacement of a classical oscillator at temperature T
+            u_av *= sqrt(kT) / abs(omega)
 
             mode_av = np.zeros((len(self.atoms), 3), dtype=complex)
             # Insert slice with atomic displacements for the included atoms
