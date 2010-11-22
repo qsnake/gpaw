@@ -359,9 +359,7 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
             if master:
                 w.fill(vt_sG, s)
 
-    # Write GLLB-releated stuff
-    if hamiltonian.xc.type == 'GLLB':
-        hamiltonian.xc.write(w, natoms)
+    hamiltonian.xc.write(w, natoms)
 
     if mode == 'all':
         wfs.write_wave_functions(w)
@@ -674,8 +672,7 @@ def read(paw, reader):
     else:
         paw.forces.reset()
 
-    if hamiltonian.xc.type == 'GLLB':
-        hamiltonian.xc.read(r)
+    hamiltonian.xc.read(r)
 
 
 def read_atoms(reader):

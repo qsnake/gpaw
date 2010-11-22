@@ -37,6 +37,12 @@ class XCFunctional:
     def summary(self, fd):
         pass
 
+    def write(self, writer, natoms=None):
+        pass
+
+    def read(self, reader):
+        pass
+
     def estimate_memory(self, mem):
         pass
     
