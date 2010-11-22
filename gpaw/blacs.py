@@ -288,22 +288,29 @@ class BlacsDescriptor(MatrixDescriptor):
         self.rsrc = rsrc
         self.csrc = csrc
         
-        if 1:#blacsgrid.is_active():
+        if blacsgrid.is_active():
             locN, locM = _gpaw.get_blacs_local_shape(self.blacsgrid.context,
                                                      self.N, self.M,
                                                      self.nb, self.mb, 
                                                      self.csrc, self.rsrc)
             self.lld  = max(1, locN) # max 1 is nonsensical, but appears
                                      # to be required by PBLAS
-        else:
+        else: 
+            # ScaLAPACK has no requirements as to what these values on an
+            # inactive blacsgrid should be. This seemed reasonable to me
+            # at the time.
             locN, locM = 0, 0
             self.lld = 0
         
+        # locM, locN is not allowed to be negative. This will cause the
+        # redistributor to fail. This could happen on active blacsgrid
+        # which does not contain any piece of the distribute matrix.
+        # This is why there is a final check on the value of locM, locN.
         MatrixDescriptor.__init__(self, max(0, locM), max(0, locN))
         
-        self.active = locM > 0 and locN > 0 # inactive descriptor can
-                                            # exist on an active OR
-                                            # inactive blacs grid
+        # This is the definition of inactive descriptor; can occur
+        # on an active or inactive blacs grid.
+        self.active = locM > 0 and locN > 0
         
         self.bshape = (self.mb, self.nb) # Shape of one block
         self.gshape = (M, N) # Global shape of array
