@@ -160,7 +160,7 @@ class SIC(XCFunctional):
         self.parameters = parameters
 
     
-    def initialize(self, density, hamiltonian, wfs, occ):
+    def initialize(self, density, hamiltonian, wfs, occ=None):
         
         assert wfs.gamma
         
