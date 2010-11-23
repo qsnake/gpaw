@@ -555,13 +555,13 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
   int n;
   int one = 1;
 
-  if (!PyArg_ParseTuple(args, "OOOOiiiic", &desca, &descb, &a, &b,
-                        &c_ConTxt, &m, &n, &isreal, &uplo))
+  if (!PyArg_ParseTuple(args, "OOOOiiic", &desca, &descb, &a, &b,
+                        &c_ConTxt, &m, &n, &uplo))
     return NULL;
 
   if (uplo == 'G') // General matrix
     {
-      if(isreal)
+      if (a->descr->type_num == PyArray_DOUBLE)
 	Cpdgemr2d_(m, n, DOUBLEP(a), one, one, INTP(desca),
 		   DOUBLEP(b), one, one, INTP(descb), c_ConTxt);
       else
@@ -570,7 +570,7 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
     }
   else // Trapezoidal matrix
     {
-      if(isreal)
+      if (a->descr->type_num == PyArray_DOUBLE)
 	Cpdtrmr2d_(&uplo, &diag, m, n, DOUBLEP(a), one, one, INTP(desca),
 		   DOUBLEP(b), one, one, INTP(descb), c_ConTxt);
       else

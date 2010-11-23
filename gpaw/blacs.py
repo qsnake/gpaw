@@ -457,8 +457,6 @@ class Redistributor:
         # We should verify this somehow.
         dtype = src_mn.dtype
         assert dtype == dst_mn.dtype
-        
-        isreal = (dtype == float)
         assert dtype == float or dtype == complex
 
         # Check to make sure the submatrix of the source
@@ -480,7 +478,7 @@ class Redistributor:
                                dstdescriptor.asarray(),
                                src_mn, dst_mn,
                                self.supercomm_bg.context,
-                               subN, subM, isreal, uplo)
+                               subN, subM, uplo)
     
     def redistribute(self, src_mn, dst_mn):
         """Redistribute src_mn to dst_mn.
