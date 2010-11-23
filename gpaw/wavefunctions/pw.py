@@ -13,7 +13,7 @@ class PWDescriptor:
 
         self.ecut = ecut
 
-        assert 0.5 * np.pi**2 / (gd.h_cv**2).sum(1).max() > ecut
+        assert 0.5 * np.pi**2 / (gd.h_cv**2).sum(1).max() >= ecut
         
         # Calculate reciprocal lattice vectors:
         N_c = gd.N_c
