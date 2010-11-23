@@ -15,7 +15,7 @@ from gpaw.utilities.lapack import diagonalize
 from gpaw.xc import XC
 from gpaw.xc.functional import XCFunctional
 from gpaw.poisson import PoissonSolver
-from gpaw.utilities import pack
+from gpaw.utilities import pack, unpack
 from gpaw.lfc import LFC
 import gpaw.mpi as mpi
 import _gpaw
@@ -557,23 +557,26 @@ class SICSpin:
 
 
     def calculate_sic_matrixelements(self):
-        #
         # overlap of pseudo wavefunctions
         Htphit_mG = self.vt_mG * self.phit_mG
         V_mm = np.zeros((self.nocc, self.nocc), dtype=self.dtype)
         gemm(self.gd.dv, self.phit_mG, Htphit_mG, 0.0, V_mm, 't')
-        #
+
+        #for a, P_mi in self.P_ami.items():
+        #    for m, dH_p in enumerate(self.dH_amp[a]):
+        #        dH_ii = unpack(dH_p)
+        #        V_mm[m] += np.dot(P_mi, np.dot(P_mi[m], dH_ii))
+        
         # PAW corrections
 
-        #
         # accumulate over grid-domains
         self.gd.comm.sum(V_mm)
         self.V_mm = V_mm
-        #
+
         # Symmetrization of V and kappa-matrix:
         K_mm = 0.5 * (V_mm - V_mm.T.conj())
         V_mm = 0.5 * (V_mm + V_mm.T.conj())
-        #
+
         # evaluate the kinetic correction
         self.ekin = -np.trace(V_mm) * (3 - self.nspins) 
         
@@ -603,7 +606,9 @@ class SICSpin:
         else:
             nt_g = self.finegd.empty()
             self.interpolator.apply(nt_G, nt_g)
-        #
+            # normalize single-particle density
+            nt_g *= self.gd.integrate(nt_G) / self.finegd.integrate(nt_g)
+
         # PAW corrections
         Q_aL = {}
         D_ap = {}
@@ -613,12 +618,10 @@ class SICSpin:
             D_ap[a] = D_p = pack(D_ii)
             Q_aL[a] = np.dot(D_p, self.setups[a].Delta_pL)
 
-        self.ghat.add(nt_g, Q_aL)
-        #
-        # normalize single-particle density
-        nt_g *= 1.0 / self.finegd.integrate(nt_g)
+        rhot_g = nt_g.copy()
+        self.ghat.add(rhot_g, Q_aL)
 
-        return nt_g, D_ap
+        return nt_g, rhot_g, D_ap
         
     def update_potentials(self, save=False, restore=False):
         
@@ -659,7 +662,7 @@ class SICSpin:
         for m, phit_G in enumerate(self.phit_mG):
             #
             # setup the single-particle density and PAW density-matrix
-            nt_sg[0], D_ap = self.calculate_density(m)
+            nt_sg[0], rhot_g, D_ap = self.calculate_density(m)
             vt_sg[:] = 0.0
             #
             # xc-SIC
@@ -673,15 +676,14 @@ class SICSpin:
                 for a, D_p in D_ap.items():
                     setup = self.setups[a]
                     dH_p = self.dH_amp[a][m]
-                    dH_p[:] = 0.0
+                    dH_sp = np.zeros((2, len(dH_p)))
                     #
                     # TODO: check this
-                    D_sp = [ D_p, np.zeros_like(D_p)]
-                    dH_sp = [ dH_p, np.zeros_like(dH_p)]
+                    
+                    D_sp = np.array([D_p, np.zeros_like(D_p)])
                     exc += setup.xc_correction.calculate(self.xc, D_sp, dH_sp,
                                                          addcoredensity=False)
-                    dH_p[:] = dH_sp[0]
-                    dH_p *= -self.xc_factor
+                    dH_p[:] = -dH_sp[0] * self.xc_factor
                 
                 self.exc_m[m] = -self.xc_factor * exc
             self.timer.stop('XC')
@@ -689,9 +691,9 @@ class SICSpin:
             # Hartree-SIC
             self.timer.start('Hartree')
             if self.coulomb_factor != 0.0:
-                self.poissonsolver.solve(self.vHt_mg[m], nt_sg[0],
+                self.poissonsolver.solve(self.vHt_mg[m], rhot_g,
                                          zero_initial_phi=zero_initial_phi)
-                ecoulomb = 0.5 * self.finegd.integrate(nt_sg[0] *
+                ecoulomb = 0.5 * self.finegd.integrate(rhot_g *
                                                        self.vHt_mg[m])
                 ecoulomb /= self.gd.comm.size
                 vt_sg[0] -= self.coulomb_factor * self.vHt_mg[m]
