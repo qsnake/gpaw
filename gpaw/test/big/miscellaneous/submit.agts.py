@@ -5,3 +5,4 @@ def agts(queue):
     queue.add('dscf_CO.py')
     queue.add('revtpss_tpss_scf.py')
     queue.add('ltt.py')
+    queue.add('pblacs_oblong.py', walltime=5, ncpus=64)
