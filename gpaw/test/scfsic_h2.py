@@ -1,7 +1,7 @@
 import numpy as np
 from ase import Atoms
 from gpaw import GPAW, restart
-from gpaw.xc.sic2 import SIC
+from gpaw.xc.sic import SIC
 from gpaw.test import equal
 a = 6.0
 atom = Atoms('H', magmoms=[1.0], cell=(a, a, a))
