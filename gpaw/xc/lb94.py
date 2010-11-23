@@ -12,7 +12,7 @@ class LB94(XCKernel):
 
     def __init__(self, beta=0.05):
         XCKernel.__init__(self, 'LDA')
-        self.name == 'LB94'
+        self.name = 'LB94'
         self.type = 'GGA'
         self.beta = beta
 
