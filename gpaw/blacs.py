@@ -540,6 +540,18 @@ class KohnShamLayouts:
         self.world = bd.comm.parent
         self.gd = gd
         self.bd = bd
+
+        # Columncomm contains all gd.comm.rank == 0, i.e. "grid-masters"
+        # Blockcomm contains all ranks with the same k-point or spin but different
+        # subdomains and band groups
+        bcommsize = self.bd.comm.size
+        gcommsize = self.gd.comm.size
+        shiftks = self.world.rank - self.world.rank % (bcommsize * gcommsize)
+        column_ranks = shiftks + np.arange(bcommsize) * gcommsize
+        block_ranks = shiftks + np.arange(bcommsize * gcommsize)
+        self.columncomm = self.world.new_communicator(column_ranks)
+        self.blockcomm = self.world.new_communicator(block_ranks)
+
         self.timer = timer
         self._kwargs = {'timer': timer}
 
@@ -571,16 +583,12 @@ class BlacsLayouts(KohnShamLayouts):
     def __init__(self, gd, bd, mcpus, ncpus, blocksize, timer=nulltimer):
         KohnShamLayouts.__init__(self, gd, bd, timer)
         self._kwargs.update({'mcpus': mcpus, 'ncpus': ncpus, 'blocksize': blocksize})
-
         bcommsize = self.bd.comm.size
         gcommsize = self.gd.comm.size
-        shiftks = self.world.rank - self.world.rank % (bcommsize * gcommsize)
-        column_ranks = shiftks + np.arange(bcommsize) * gcommsize
-        block_ranks = shiftks + np.arange(bcommsize * gcommsize)
-        self.columncomm = self.world.new_communicator(column_ranks) #XXX rename?
-        self.blockcomm = self.world.new_communicator(block_ranks)
-
         assert mcpus * ncpus <= bcommsize * gcommsize
+        # WARNING: Do not create the BlacsGrid on a communicator which does not 
+        # contain blockcomm.rank = 0. This will break BlacsBandLayouts which
+        # assume eps_M will be broadcast over blockcomm.
         self.blockgrid = BlacsGrid(self.blockcomm, mcpus, ncpus)
 
     def get_description(self):
@@ -601,16 +609,14 @@ class BandLayouts(KohnShamLayouts):
         mynbands = self.bd.mynbands
         eps_N = np.empty(nbands)
         self.timer.start('Diagonalize')
-        # Broadcast on band communicator first if using
-        # state-parallelization. 
-        if self.bd.comm.size > 1 and self.gd.comm.rank == 0:
-            self.bd.comm.broadcast(H_NN, 0)
-        self.gd.comm.broadcast(H_NN, 0)
+        # Broadcast on blockcomm since result
+        # is k-point and spin-dependent only
+        self.blockcomm.broadcast(H_NN, 0)
         self._diagonalize(H_NN, eps_N)
         self.timer.stop('Diagonalize')
 
         self.timer.start('Distribute results')
-        # Basically just a copy
+        # Copy the portion that belongs to my band group
         eps_n[:] = eps_N[self.bd.get_slice()]
         self.timer.stop('Distribute results')
 
@@ -626,11 +632,9 @@ class BandLayouts(KohnShamLayouts):
         2. Simultaneous parallelization over domains and bands.
         """
         self.timer.start('Inverse Cholesky')
-        # Broadcast on band communicator first if using
-        # state-parallelization. 
-        if self.bd.comm.size > 1 and self.gd.comm.rank == 0:
-            self.bd.comm.broadcast(S_NN, 0)
-        self.gd.comm.broadcast(S_NN, 0)
+        # Broadcast on blockcomm since result
+        # is k-point and spin-dependent only
+        self.blockcomm.broadcast(S_NN, 0)
         self._inverse_cholesky(S_NN)
         self.timer.stop('Inverse Cholesky')
 
@@ -746,13 +750,11 @@ class BlacsBandLayouts(BlacsLayouts): #XXX should derive from BandLayouts too!
         self.timer.stop('Diagonalize')
 
         self.timer.start('Distribute results')
-        if self.gd.comm.rank == 0:
-            # grid master with bd.rank = 0 
-            # scatters to other grid masters
-            # NOTE: If the origin of the blacs grid
-            # ever shifts this will not work
-            self.bd.distribute(eps_N, eps_n)
-        self.gd.comm.broadcast(eps_n, 0)
+        # eps_N is already on blockcomm.rank = 0
+        # easier to broadcast eps_N to all and
+        # get the correct slice afterward.
+        self.blockcomm.broadcast(eps_N, 0)
+        eps_n[:] = eps_N[self.bd.get_slice()]
         self.timer.stop('Distribute results')
 
     def _diagonalize(self, H_nn, eps_N):
@@ -872,15 +874,11 @@ class BlacsOrbitalLayouts(BlacsLayouts):
         self.timer.stop('Redistribute coefs')
 
         self.timer.start('Send coefs to domains')
-        if outdescriptor: # grid masters only
-            assert self.gd.comm.rank == 0
-            # grid master with bd.rank = 0 
-            # scatters to other grid masters
-            # NOTE: If the origin of the blacs grid
-            # ever shifts this will not work
-            self.bd.distribute(eps_M[:self.bd.nbands], eps_n)
-        else:
-            assert self.gd.comm.rank != 0
+        # eps_M is already on blockcomm.rank = 0
+        # easier to broadcast eps_M to all and
+        # get the correct slice afterward.
+        self.blockcomm.broadcast(eps_M, 0)
+        eps_n[:] = eps_M[self.bd.get_slice()]
 
         self.gd.comm.broadcast(C_nM, 0)
         self.gd.comm.broadcast(eps_n, 0)
