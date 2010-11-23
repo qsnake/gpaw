@@ -730,10 +730,6 @@ static PyObject * mpi_broadcast(MPIObject *self, PyObject *args)
   Py_RETURN_NONE;
 }
 
-#ifdef GPAW_WITH_SL
-#include "scalapack.c"
-#endif
-
 static PyObject * get_members(MPIObject *self, PyObject *args)
 {
   PyArrayObject *ranks;
@@ -806,10 +802,6 @@ static PyMethodDef mpi_methods[] = {
      "all_gather(src, target) gathers data from all tasks on all tasks."},
     {"broadcast",        (PyCFunction)mpi_broadcast,    METH_VARARGS,
      "broadcast(buffer, root) Broadcast data in-place from root task."},
-#ifdef GPAW_WITH_SL
-    {"diagonalize",      (PyCFunction)diagonalize,      METH_VARARGS, 0},
-    {"inverse_cholesky", (PyCFunction)inverse_cholesky, METH_VARARGS, 0},
-#endif
     {"get_members",      (PyCFunction)get_members,      METH_VARARGS, 0},
     {"get_c_object",     (PyCFunction)get_c_object,     METH_VARARGS, 0},
     {"new_communicator", (PyCFunction)MPICommunicator,  METH_VARARGS,

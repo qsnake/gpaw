@@ -373,8 +373,6 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
                      'c/libxc/src/work_gga_x.c',
                      'c/libxc/src/work_lda.c'
                      ]
-    cfiles2remove.append('c/scalapack.c')
-    cfiles2remove.append('c/sl_inverse_cholesky.c')
 
     for c2r in glob('c/libxc/src/funcs_*.c'): cfiles2remove.append(c2r)
     for c2r in cfiles2remove: cfiles.remove(c2r)

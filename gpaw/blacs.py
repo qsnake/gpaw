@@ -90,9 +90,8 @@ from gpaw.mpi import SerialCommunicator, serial_comm
 from gpaw.matrix_descriptor import MatrixDescriptor
 from gpaw.utilities import uncamelcase
 from gpaw.utilities.blas import gemm, r2k, gemmdot
-from gpaw.utilities.lapack import diagonalize, sldiagonalize, \
-    general_diagonalize, slgeneral_diagonalize, \
-    inverse_cholesky, slinverse_cholesky
+from gpaw.utilities.lapack import diagonalize, general_diagonalize, \
+    inverse_cholesky
 from gpaw.utilities.blacs import scalapack_inverse_cholesky, \
     scalapack_diagonalize_ex, scalapack_general_diagonalize_ex, \
     scalapack_diagonalize_dc, scalapack_general_diagonalize_dc, \
@@ -647,34 +646,6 @@ class BandLayouts(KohnShamLayouts):
     def get_description(self):
         return 'Serial LAPACK'
 
-
-class OldSLBandLayouts(BandLayouts): #old SL before BLACS grids. TODO delete!
-    """Original ScaLAPACK diagonalizer using 
-    redundantly distributed arrays."""
-    def __init__(self, gd, bd, timer=nulltimer, root=0):
-        raise DeprecationWarning
-        BandLayouts.__init__(self, gd, bd, timer)
-        bcommsize = self.bd.comm.size
-        gcommsize = self.gd.comm.size
-        shiftks = self.world.rank - self.world.rank % (bcommsize * gcommsize)
-        block_ranks = shiftks + np.arange(bcommsize * gcommsize)
-        self.blockcomm = self.world.new_communicator(block_ranks)
-        self.root = root
-        # Keep buffers?
-
-    def _diagonalize(self, H_NN, eps_N):
-        # Work is done on BLACS grid, but one processor still collects
-        # all eigenvectors. Only processors on the BLACS grid return
-        # meaningful values of info.
-        return sldiagonalize(H_NN, eps_N, self.blockcomm, root=self.root)
-
-    def _inverse_cholesky(self, S_NN):
-        return slinverse_cholesky(S_NN, self.blockcomm, self.root)
-
-    def get_description(self):
-        return 'Old ScaLAPACK'
-
-
 class BlacsBandLayouts(BlacsLayouts): #XXX should derive from BandLayouts too!
     """ScaLAPACK Dense Linear Algebra.
 
@@ -1019,30 +990,4 @@ class OrbitalLayouts(KohnShamLayouts):
 
     def get_description(self):
         return 'Serial LAPACK'
-
-
-class OldSLOrbitalLayouts(OrbitalLayouts): #old SL before BLACS grids. TODO delete!
-    """Original ScaLAPACK diagonalizer using 
-    redundantly distributed arrays."""
-    def __init__(self, gd, bd, nao, timer=nulltimer, root=0):
-        raise DeprecationWarning
-        OrbitalLayouts.__init__(self, gd, bd, nao, timer)
-        bcommsize = self.bd.comm.size
-        gcommsize = self.gd.comm.size
-        shiftks = self.world.rank - self.world.rank % (bcommsize * gcommsize)
-        block_ranks = shiftks + np.arange(bcommsize * gcommsize)
-        self.blockcomm = self.world.new_communicator(block_ranks)
-        self.root = root
-        # Keep buffers?
-
-    def _diagonalize(self, H_MM, S_MM, eps_M):
-        # Work is done on BLACS grid, but one processor still collects
-        # all eigenvectors. Only processors on the BLACS grid return
-        # meaningful values of info.
-        slgeneral_diagonalize(H_MM, eps_M, S_MM, self.blockcomm,
-                              root=self.root)
-
-    def get_description(self):
-        return 'Old ScaLAPACK'
-
 

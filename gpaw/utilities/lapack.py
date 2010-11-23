@@ -9,8 +9,6 @@ Linear Algebra PACKage (LAPACK)
 import numpy as np
 
 from gpaw import debug
-from gpaw.utilities import scalapack
-from gpaw import sl_default, sl_diagonalize, sl_inverse_cholesky, sl_lcao
 import _gpaw
 from gpaw.utilities.tools import tri2full
 from gpaw.utilities.blas import gemm
@@ -58,35 +56,6 @@ def diagonalize_mr3(a, w, z):
     if info != 0:
         raise RuntimeError('diagonalize_mr3 error: %d' % info)
 
-def sldiagonalize(a, w, blockcomm, root=0):
-    """Diagonalize a symmetric/hermitian matrix.
-
-    Uses dsyevd/zheevd to diagonalize symmetric/hermitian matrix
-    `a`. The eigenvectors are returned in the rows of `a`, and the
-    eigenvalues in `w` in ascending order. Only the lower triangle of
-    `a` is considered."""
-
-    assert a.flags.contiguous
-    assert w.flags.contiguous
-    assert a.dtype in [float, complex]
-    assert w.dtype == float
-    n = len(a)
-    assert a.shape == (n, n)
-    assert w.shape == (n,)
-
-    assert scalapack()
-    if sl_diagonalize is not None:
-        mcpus, ncpus, blocksize = sl_diagonalize
-    else:
-        mcpus, ncpus, blocksize = sl_default
-    size = blockcomm.size
-    assert mcpus*ncpus <= size, 'Grid %d x %d > %d cpus' % (mcpus,ncpus,size)
-    # symmetrize the matrix
-    tri2full(a)
-    info = blockcomm.diagonalize(a, w, mcpus, ncpus, blocksize, root)
-    if info != 0:
-        raise RuntimeError('sldiagonalize error: %d' % info)
-
 def general_diagonalize(a, w, b):
     """Diagonalize a generalized symmetric/hermitian matrix.
 
@@ -112,41 +81,6 @@ def general_diagonalize(a, w, b):
     if info != 0:
         raise RuntimeError('general_diagonalize error: %d' % info)
 
-def slgeneral_diagonalize(a, w, b, blockcomm, root=0):
-    """Diagonalize a generalized symmetric/hermitian matrix.
-
-    Uses dsygvd/zhegvd to diagonalize symmetric/hermitian matrix
-    `a`. The eigenvectors are returned in the rows of `a`, and the
-    eigenvalues in `w` in ascending order. Only the lower triangle of
-    `a` is considered."""
-
-    assert a.flags.contiguous
-    assert w.flags.contiguous
-    assert a.dtype in [float, complex]
-    assert w.dtype == float
-    n = len(a)
-    assert a.shape == (n, n)
-    assert w.shape == (n,)
-    assert b.flags.contiguous
-    assert b.dtype == a.dtype
-    assert b.shape == a.shape
-
-    assert scalapack()
-    if sl_lcao is not None:
-        mcpus, ncpus, blocksize = sl_lcao
-    else:
-        mcpus, ncpus, blocksize = sl_default
-    size = blockcomm.size
-    assert mcpus*ncpus <= size, 'Grid %d x %d > %d cpus' % (mcpus,ncpus,size)
-    # symmetrize the matrix
-    tri2full(a)
-    tri2full(b)
-    info = blockcomm.diagonalize(a, w, mcpus, ncpus, blocksize, root, b)
-    if info not in [0, 2]:
-        # 0 means you are OK
-        # 2 means eigenvectors not guaranteed to be orthogonal
-        raise RuntimeError('slgeneral_diagonalize error: %d' % info)
-
 def inverse_cholesky(a):
     """Calculate the inverse of the Cholesky decomposition of
     a symmetric/hermitian positive definite matrix `a`.
@@ -162,31 +96,6 @@ def inverse_cholesky(a):
     info = _gpaw.inverse_cholesky(a)
     if info != 0:
         raise RuntimeError('inverse_cholesky error: %d' % info)
-
-def slinverse_cholesky(a, blockcomm, root=0):
-    """Calculate the inverse of the Cholesky decomposition of
-    a symmetric/hermitian positive definite matrix `a`.
-
-    Uses dpotrf/zpotrf to calculate the decomposition and then
-    dtrtri/ztrtri for the inversion"""
-
-    assert a.flags.contiguous
-    assert a.dtype in [float, complex]
-    n = len(a)
-    assert a.shape == (n, n)
-
-    assert scalapack()
-    if sl_inverse_cholesky is not None:
-        mcpus, ncpus, blocksize = sl_inverse_cholesky
-    else:
-        mcpus, ncpus, blocksize = sl_default
-    size = blockcomm.size
-    assert mcpus*ncpus <= size, 'Grid %d x %d > %d cpus' % (mcpus,ncpus,size)
-    # symmetrize the matrix
-    tri2full(a)
-    info = blockcomm.inverse_cholesky(a, mcpus, ncpus, blocksize, root)
-    if info != 0:
-        raise RuntimeError('slinverse_cholesky error: %d' % info)
 
 def inverse_general(a):
     assert a.dtype in [float, complex]
