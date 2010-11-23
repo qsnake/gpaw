@@ -61,7 +61,7 @@ class NSCFSIC:
         assert len(self.paw.wfs.kpt_u)==1, ('Not tested for bulk calculations')
         
         for s, spin in sic.spin_s.items():
-            spin.initialize()
+            spin.initialize_orbitals()
             spin.update_optimal_states()
             spin.update_potentials()
 
