@@ -50,8 +50,7 @@ def get_angular_projectors(setup, angular, type='bound'):
     """
     # Get the number of relevant j values
     if type == 'bound':
-        nj = 0
-        while setup.n_j[nj] != -1: nj += 1
+        nj = len([n for n in setup.n_j if n >= 0])
     else:
         nj = len(setup.n_j)
             
