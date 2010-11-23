@@ -98,7 +98,7 @@ The gradient is:
    \frac{\partial E_x}{\partial\tilde\psi_{\bk_1n_1}(\br)}=
    -\pi\Omega\sum_{\bk_2n_2}f_{\bk_1n_1}f_{\bk_2n_2}
    e^{i(\bk_1-\bk_2)\cdot\br}\tilde\psi_{\bk_2n_2}(\br)
-   \frac1N\sum_\bG\frac{C_{\bk_1n_1\bk_1n_2}(G)^*}{|\bk_1-\bk_2-\bG|^2}
+   \frac1N\sum_\bG\frac{C_{\bk_1n_1\bk_2n_2}(G)^*}{|\bk_1-\bk_2-\bG|^2}
    e^{-i\bG\cdot\br},
 
 where `1/|\bk_1-\bk_2-\bG|^2` is replaced by `\gamma` for the term where
