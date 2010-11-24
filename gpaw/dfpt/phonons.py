@@ -40,6 +40,7 @@ class Phonons:
     right hand-side.
 
     The acoustic sum-rule::
+
                             _
                 aj         \    bj    
                C  (R ) = -  >  C  (R )

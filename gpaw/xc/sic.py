@@ -743,29 +743,25 @@ class SICSpin:
             
 
     def apply_orbital_dependent_hamiltonian(self, psit_nG):
-
+        """...
+        
+        Setup ``|V phi_m>`` and ``<l|Vphi_m>`` for occupied states m
+        and unoccupied states l.
         """
-            setup |V phi_m>   and   <l|Vphi_m>
 
-            for occupied states m and unoccupied states l
-        """
-        #
         nocc = self.nocc
         nvirt = psit_nG.shape[0] - nocc
-        #
-        R_lm = np.zeros((nvirt, nocc), dtype=self.dtype)
-        #
-        self.Htphit_mG = self.vt_mG * self.phit_mG
-        #
-        if nvirt>0:
-            gemm(self.gd.dv, self.Htphit_mG,  psit_nG[nocc:], 0.0, R_lm, 't')
-            self.gd.comm.sum(R_lm)
-        #
-        # TODO: PAW corrections to the matrixelements
-        
-        #
-        self.R_lm = R_lm
 
+        R_lm = np.zeros((nvirt, nocc), dtype=self.dtype)
+        self.Htphit_mG = self.vt_mG * self.phit_mG
+
+        if nvirt > 0:
+            gemm(self.gd.dv, self.Htphit_mG, psit_nG[nocc:], 0.0, R_lm, 't')
+            self.gd.comm.sum(R_lm)
+
+        # TODO: PAW corrections to the matrixelements
+
+        self.R_lm = R_lm
         
     def correct_hamiltonian_matrix(self, H_nn):
         
