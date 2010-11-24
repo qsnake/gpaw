@@ -39,14 +39,14 @@ class ETSFWriter:
 
         pwd = PWDescriptor(ecut / Hartree, wfs.gd, kd.ibzk_kc)
         N_c = pwd.gd.N_c
-        i_Qc = np.indices(N_c).transpose((1, 2, 3, 0))
+        i_Qc = np.indices(N_c, np.int32).transpose((1, 2, 3, 0))
         i_Qc += N_c // 2
         i_Qc %= N_c
         i_Qc -= N_c // 2
         i_Qc.shape = (-1, 3)
         i_Gc = i_Qc[pwd.Q_G]
 
-        specie_a = np.empty(natoms, int)
+        specie_a = np.empty(natoms, np.int32)
         nspecies = 0
         species = {}
         names = []
@@ -95,10 +95,10 @@ class ETSFWriter:
         var('reduced_symmetry_matrices',
             ('number_of_symmetry_operations',
              'number_of_reduced_dimensions', 'number_of_reduced_dimensions'),
-            op_scc, symmorphic='yes')
+            op_scc.astype(np.int32), symmorphic='yes')
         var('reduced_symmetry_translations',
             ('number_of_symmetry_operations', 'number_of_reduced_dimensions'),
-            np.zeros((len(op_scc), 3)))
+            np.zeros((len(op_scc), 3), dtype=np.int32))
         var('atom_species', ('number_of_atoms',), specie_a + 1)
         var('reduced_atom_positions',
             ('number_of_atoms', 'number_of_reduced_dimensions'),
@@ -119,7 +119,7 @@ class ETSFWriter:
         var('smearing_scheme', ('character_string_length',), 'fermi-dirac')
         var('smearing_width', (), calc.occupations.width, units='atomic units')
         var('number_of_states', ('number_of_spins', 'number_of_kpoints'),
-            np.zeros((wfs.nspins, kd.nibzkpts), int) + bd.nbands,
+            np.zeros((wfs.nspins, kd.nibzkpts), np.int32) + bd.nbands,
             k_dependent='no')
         var('eigenvalues',
             ('number_of_spins', 'number_of_kpoints', 'max_number_of_states'),
@@ -138,23 +138,24 @@ class ETSFWriter:
         var('basis_set', ('character_string_length',), 'plane_waves')
         var('kinetic_energy_cutoff', (), 1.0 * ecut, units='atomic units')
         var('number_of_coefficients', ('number_of_kpoints',),
-            np.zeros(kd.nibzkpts, int) + len(i_Gc),
+            np.zeros(kd.nibzkpts, np.int32) + len(i_Gc),
             k_dependent='no')
         var('reduced_coordinates_of_plane_waves',
             ('max_number_of_coefficients', 'number_of_reduced_dimensions'),
             i_Gc, k_dependent='no')
-        var('number_of_electrons', (), np.array(8, dtype=np.intc))
+        var('number_of_electrons', (), np.array(wfs.nvalence, dtype=np.int32))
         #var('exchange_functional', ('character_string_length',),
         #    calc.hamiltonian.xc.name)
         #var('correlation_functional', ('character_string_length',),
         #    calc.hamiltonian.xc.name)
+
         psit_skn1G2 = var('coefficients_of_wavefunctions',
                           ('number_of_spins', 'number_of_kpoints',
                            'max_number_of_states',
                            'number_of_spinor_components',
                            'max_number_of_coefficients',
                            'real_or_complex_coefficients'))
-
+        
         x = atoms.get_volume()**0.5 / N_c.prod()
         psit_Gx = np.empty((len(i_Gc), 2))
         for s in range(wfs.nspins):
