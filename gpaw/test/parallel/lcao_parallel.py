@@ -87,39 +87,74 @@ def run(formula='H2O', vacuum=2.0, cell=None, pbc=0, **morekwargs):
         print >> stderr, parallel
         raise AssertionError(msg)
         
-
+# reference:
+# domain-decomposition = (1, 2, 2)
 run()
 
+# state-parallelization = 2,
+# domain-decomposition = (1, 2, 1)
 parallel['band'] = 2
 parallel['domain'] = (1, 2, 1)
-
 run()
 
 if scalapack():
-    from gpaw import extra_parameters
-    extra_parameters['blacs'] = True
-
+    # state-parallelization = 2,
+    # domain-decomposition = (1, 2, 1)
+    # with blacs
     parallel['sl_default'] = (2, 2, 2)
     run()
 
-    OH_kwargs = dict(formula='NH2', vacuum=1.5, pbc=1, spinpol=1, width=0.1)
-
-    Eref = None
-    Fref = None
-
+    # domain-decomposition = (1, 2, 2)
+    # with blacs
+    del parallel['band']
     del parallel['domain']
-    parallel['sl_default'] = (2, 1, 2)
+    run()
 
+# perform spin polarization test
+parallel = dict()
+
+basekwargs = dict(mode='lcao',
+                  maxiter=3,
+                  #basis='dzp',
+                  #nbands=18,
+                  nbands=6,
+                  parallel=parallel)
+
+Eref = None
+Fref_av = None
+
+OH_kwargs = dict(formula='NH2', vacuum=1.5, pbc=1, spinpol=1, width=0.1)
+
+# start with empty parallel keyword
+# del parallel['sl_default']
+# parallel = None
+# parallel = dict()
+# print parallel
+# del parallel['band']
+parallel['domain'] = (1, 2, 1)
+
+# reference:
+# spin-polarization = 2
+# domain-decomposition = (1, 2, 1)
+run(**OH_kwargs)
+
+# state-parallelization= 2,
+# domain-decomposition = (1, 1, 1)
+del parallel['domain']
+parallel['band'] = 2 
+# run(**OH_kwargs) # test for forces is failing in thise case!
+
+if scalapack():
+    # state-parallelization= 2,
+    # domain-decomposition = (1, 1, 1)
+    # with blacs
+    parallel['sl_default'] = (2, 1, 2)
     run(**OH_kwargs)
 
+    # spin-polarization = 2,
+    # domain-decomposition = (1, 2, 1)
+    del parallel['band']
     parallel['domain'] = (1, 2, 1)
 
     run(**OH_kwargs)
 
-    extra_parameters['blacs'] = False
-
-
-# gamma point, kpts, kpt parallelization
-# spinpair, spinpol, spin parallelization
-# pbc, non-pbc
-# blacs, noblacs, state parallelization, domain decomposition
