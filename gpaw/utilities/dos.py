@@ -110,7 +110,7 @@ def raw_orbital_LDOS(paw, a, spin, angular='spdf'):
     if angular is None:
         return energies, weights_xi
     elif type(angular) is int:
-        return energies, weights_xi[angular]
+        return energies, weights_xi[:, angular]
     else:
         projectors = get_angular_projectors(setup, angular, type='bound')
         weights = np.sum(np.take(weights_xi,
