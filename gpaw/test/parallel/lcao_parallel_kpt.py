@@ -18,13 +18,14 @@ basekwargs = dict(mode='lcao',
                   #basis='dzp',
                   #nbands=18,
                   nbands=6,
+                  kpts=(4,4,4), # 8 kpts in the IBZ
                   parallel=parallel)
 
 Eref = None
 Fref_av = None
 
 
-def run(formula='H2O', vacuum=2.0, cell=None, pbc=0, **morekwargs):
+def run(formula='H2O', vacuum=1.5, cell=None, pbc=1, **morekwargs):
     print formula, parallel
     system = molecule(formula)
     kwargs = dict(basekwargs)
@@ -87,27 +88,21 @@ def run(formula='H2O', vacuum=2.0, cell=None, pbc=0, **morekwargs):
         print >> stderr, parallel
         raise AssertionError(msg)
         
-# reference:
-# domain-decomposition = (1, 2, 2)
+
+# only kpt-parallelization, this is the reference
 run()
 
-# state-parallelization = 2,
-# domain-decomposition = (1, 2, 1)
+# kpt-parallelization=2, state-parallelization=2,
+# domain-decomposition=(1,2,1)
 parallel['band'] = 2
 parallel['domain'] = (1, 2, 1)
 run()
 
 if scalapack():
-    # state-parallelization = 2,
-    # domain-decomposition = (1, 2, 1)
+    # kpt-parallelization=2, state-parallelization=2,
+    # domain-decomposition=(1,2,1)
     # with blacs
     parallel['sl_default'] = (2, 2, 2)
-    run()
-
-    # domain-decomposition = (1, 2, 2)
-    # with blacs
-    del parallel['band']
-    del parallel['domain']
     run()
 
 # perform spin polarization test
@@ -115,9 +110,8 @@ parallel = dict()
 
 basekwargs = dict(mode='lcao',
                   maxiter=3,
-                  #basis='dzp',
-                  #nbands=18,
                   nbands=6,
+                  kpts=(4,4,4), # 8 kpts in the IBZ
                   parallel=parallel)
 
 Eref = None
@@ -125,36 +119,34 @@ Fref_av = None
 
 OH_kwargs = dict(formula='NH2', vacuum=1.5, pbc=1, spinpol=1, width=0.1)
 
-# start with empty parallel keyword
-# del parallel['sl_default']
-# parallel = None
-# parallel = dict()
-# print parallel
-# del parallel['band']
-parallel['domain'] = (1, 2, 1)
-
 # reference:
-# spin-polarization = 2
-# domain-decomposition = (1, 2, 1)
+# kpt-parallelization = 4, spin-polarization = 2,
 run(**OH_kwargs)
 
-# state-parallelization= 2,
-# domain-decomposition = (1, 1, 1)
+# kpt-parallelization = 2, spin-polarization = 2,
+# domain-decomposition = (1, 2, 1)
+parallel['domain'] = (1, 2, 1)
+run(**OH_kwargs)
+
+# kpt-parallelization = 2, spin-polarization = 2,
+# state-parallelization = 2,
+# domain-decomposition=(1, 1, 1)
 del parallel['domain']
-parallel['band'] = 2 
+parallel['band'] = 2
 # run(**OH_kwargs) # test for forces is failing in this case!
 
 if scalapack():
-    # state-parallelization= 2,
-    # domain-decomposition = (1, 1, 1)
+    # kpt-parallelization=2, spin-polarization=2,
+    # state-parallelization = 2
+    # domain-decomposition=(1, 2, 1)
     # with blacs
+    parallel['domain'] = (1, 2, 1)
     parallel['sl_default'] = (2, 1, 2)
     run(**OH_kwargs)
 
-    # spin-polarization = 2,
+    # kpt-parallelization=2, state-parallelization=2,
     # domain-decomposition = (1, 2, 1)
-    del parallel['band']
-    parallel['domain'] = (1, 2, 1)
-
+    # with blacs
+    parallel['sl_default'] = (2, 2, 2)
     run(**OH_kwargs)
 

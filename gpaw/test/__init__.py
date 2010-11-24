@@ -151,6 +151,7 @@ tests = [
     'lcao_force.py',
     'parallel/lcao_hamiltonian.py',
     'parallel/lcao_parallel.py',
+    'parallel/lcao_parallel_kpt.py',
     'wannier_ethylene.py',
     'CH4.py',
     'neb.py',
@@ -246,6 +247,9 @@ if mpi.size != 4:
 
 if mpi.size == 8:
     exclude += ['transport.py']
+
+if mpi.size != 8:
+    exclude += ['parallel/lcao_parallel_kpt.py']
 
 try:
     import scipy
