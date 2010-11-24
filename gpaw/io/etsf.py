@@ -24,8 +24,8 @@ class ETSFWriter:
 
     def write(self, calc, ecut=40 * Hartree, spacegroup=1):
 
-        sg = Spacegroup(spacegroup)
-        print sg
+        #sg = Spacegroup(spacegroup)
+        #print sg
         
         wfs = calc.wfs
         setups = wfs.setups
@@ -35,7 +35,10 @@ class ETSFWriter:
         atoms = calc.atoms
         natoms = len(atoms)
         
-        op_scc = wfs.symmetry.op_scc
+        if wfs.symmetry is None:
+            op_scc = np.eye(3, dtype=int).reshape((1, 3, 3))
+        else:
+            op_scc = wfs.symmetry.op_scc
 
         pwd = PWDescriptor(ecut / Hartree, wfs.gd, kd.ibzk_kc)
         N_c = pwd.gd.N_c
@@ -84,6 +87,7 @@ class ETSFWriter:
             ('symbol_length', 2)]
 
         for name, size in dimensions:
+            print('%-34s %d' % (name, size))
             self.nc.createDimension(name, size)
 
         var = self.add_variable
@@ -144,6 +148,7 @@ class ETSFWriter:
             ('max_number_of_coefficients', 'number_of_reduced_dimensions'),
             i_Gc, k_dependent='no')
         var('number_of_electrons', (), np.array(wfs.nvalence, dtype=np.int32))
+
         #var('exchange_functional', ('character_string_length',),
         #    calc.hamiltonian.xc.name)
         #var('correlation_functional', ('character_string_length',),
@@ -160,7 +165,6 @@ class ETSFWriter:
         psit_Gx = np.empty((len(i_Gc), 2))
         for s in range(wfs.nspins):
             for k in range(kd.nibzkpts):
-                print s,k,len(i_Gc)
                 for n in range(bd.nbands):
                     psit_G = pwd.fft(calc.get_pseudo_wave_function(n, k, s))
                     psit_G *= x
@@ -182,7 +186,9 @@ class ETSFWriter:
                 char = 'i'
             else:
                 char = 'c'
-        print name, len(dims), char, dims
+        print('%-34s %s%s' % (
+            name, char,
+            tuple([self.nc.dimensions[dim] for dim in dims])))
         var = self.nc.createVariable(name, char, dims)
         for attr, value in kwargs.items():
             setattr(var, attr, value)
