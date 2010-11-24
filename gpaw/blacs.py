@@ -850,9 +850,7 @@ class BlacsOrbitalLayouts(BlacsLayouts):
         # get the correct slice afterward.
         self.blockcomm.broadcast(eps_M, 0)
         eps_n[:] = eps_M[self.bd.get_slice()]
-
         self.gd.comm.broadcast(C_nM, 0)
-        self.gd.comm.broadcast(eps_n, 0)
         self.timer.stop('Send coefs to domains')
 
     def distribute_overlap_matrix(self, S_qmM, root=0):
