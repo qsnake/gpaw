@@ -152,6 +152,8 @@ tests = [
     'parallel/lcao_hamiltonian.py',
     'parallel/lcao_parallel.py',
     'parallel/lcao_parallel_kpt.py',
+    'parallel/fd_parallel.py',
+    'parallel/fd_parallel_kpt.py',
     'wannier_ethylene.py',
     'CH4.py',
     'neb.py',
@@ -213,7 +215,6 @@ tests = [
     'parallel/scalapack.py',
     'parallel/realspace_blacs.py',
     'parallel/lcao_projections.py',
-    'parallel/n2.py',
     #'dscf_forces.py',
     'lrtddft3.py',
     'AA_exx_enthalpy.py',
@@ -239,17 +240,18 @@ if mpi.size < 4:
     exclude += ['parallel/pblas.py',
                 'parallel/scalapack.py',
                 'parallel/realspace_blacs.py',
-                'parallel/n2.py',
                 'AA_exx_enthalpy.py']
 
 if mpi.size != 4:
     exclude += ['parallel/lcao_parallel.py']
+    exclude += ['parallel/fd_parallel.py']
 
 if mpi.size == 8:
     exclude += ['transport.py']
 
 if mpi.size != 8:
     exclude += ['parallel/lcao_parallel_kpt.py']
+    exclude += ['parallel/fd_parallel_kpt.py']
 
 try:
     import scipy
