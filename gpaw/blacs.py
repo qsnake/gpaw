@@ -924,24 +924,22 @@ class OrbitalLayouts(KohnShamLayouts):
         self.Mmax = nao
         self.mynao = nao
         self.nao = nao
-        self.orbital_comm = serial_comm
+        self.orbital_comm = serial_comm # why do we do this here?
 
     def diagonalize(self, H_MM, C_nM, eps_n, S_MM):
         eps_M = np.empty(C_nM.shape[-1])
+        self.blockcomm.broadcast(H_MM, 0)
+        self.blockcomm.broadcast(S_MM, 0)
         self._diagonalize(H_MM, S_MM.copy(), eps_M)
         nbands = self.bd.nbands
-        if self.bd.rank == 0:
-            self.gd.comm.broadcast(H_MM[:nbands], 0)
-            self.gd.comm.broadcast(eps_M[:nbands], 0)
-        self.bd.distribute(H_MM[:nbands], C_nM)
-        self.bd.distribute(eps_M[:nbands], eps_n)
+        eps_n[:] = eps_M[self.bd.get_slice()]
+        C_nM[:] = H_MM[self.bd.get_slice()]
     
     def _diagonalize(self, H_MM, S_MM, eps_M):
-        # Only one processor really does any work.
-        if self.gd.comm.rank == 0 and self.bd.comm.rank == 0:
-            general_diagonalize(H_MM, eps_M, S_MM)
-        else:
-            return 
+        """Serial diagonalize via LAPACK."""
+        # This is replicated computation but ultimately avoids
+        # additional communication
+        general_diagonalize(H_MM, eps_M, S_MM)
 
     def estimate_memory(self, mem, dtype):
         nao = self.setups.nao
