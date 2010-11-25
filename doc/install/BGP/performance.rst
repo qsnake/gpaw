@@ -99,10 +99,10 @@ single-core peak performance.
 
 |mapping1|		|mapping2|
 
-.. |mapping1| image:: ../../_static/bgp_mapping1.png	
+.. |mapping1| image:: bgp_mapping1.png	
    :width: 40 % 
   
-.. |mapping2| image:: ../../_static/bgp_mapping2.png
+.. |mapping2| image:: bgp_mapping2.png
    :width: 40 %
 
 For the mapping on the *(Right)* above image, there are 
@@ -111,7 +111,7 @@ distinguishing.
 
 |intranode|
 
-.. |intranode| image:: ../../_static/bgp_mapping_intranode.png
+.. |intranode| image:: bgp_mapping_intranode.png
    :width: 60 %
 
 The boxes in these images represent a node and the numbers inside
