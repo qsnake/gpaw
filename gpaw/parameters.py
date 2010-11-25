@@ -142,6 +142,10 @@ class InputParameters(dict):
                 from gpaw.mixer import Mixer
             elif mixer == 'MixerSum':
                 from gpaw.mixer import MixerSum as Mixer
+            elif mixer == 'MixerSum2':
+                from gpaw.mixer import MixerSum2 as Mixer
+            elif mixer == 'MixerDif':
+                from gpaw.mixer import MixerDif as Mixer
             elif mixer == 'DummyMixer':
                 from gpaw.mixer import DummyMixer as Mixer
             else:

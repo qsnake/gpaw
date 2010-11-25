@@ -35,7 +35,7 @@ from glob import glob
 from os.path import join, isfile
 
 __all__ = ['GPAW', 'Calculator',
-           'Mixer', 'MixerSum', 'MixerDif',
+           'Mixer', 'MixerSum', 'MixerDif', 'MixerSum2',
            'PoissonSolver',
            'FermiDirac',
            'restart']
@@ -237,7 +237,7 @@ if 'setup_path' in extra_parameters:
     setup_paths = extra_parameters['setup_path'].split(':') + setup_paths
 
 from gpaw.aseinterface import GPAW
-from gpaw.mixer import Mixer, MixerSum, MixerDif
+from gpaw.mixer import Mixer, MixerSum, MixerDif, MixerSum2
 from gpaw.poisson import PoissonSolver
 from gpaw.occupations import FermiDirac
 
