@@ -85,7 +85,8 @@ class VDWFunctional(GGA):
     def __init__(self, name, world=None, q0cut=5.0,
                  phi0=0.5, ds=1.0, Dmax=20.0, nD=201, ndelta=21,
                  soft_correction=False,
-                 exchange=None, Zab=None,
+                 kernel=None, Zab=None,
+                 vdwcoef=1.0,
                  verbose=False, energy_only=False):
         """vdW-DF.
 
@@ -109,10 +110,12 @@ class VDWFunctional(GGA):
             Number of values for delta in kernel-table.
         soft_correction: bool
             Correct for soft kernel.
-        exchange:
-            Which exchange to use.
+        kernel:
+            Which kernel to use.
         Zab:
             parameter in nonlocal kernel.
+        vdwcoef: float
+            Scaling of vdW energy.
         verbose: bool
             Print useful information.
         """
@@ -143,16 +146,17 @@ class VDWFunctional(GGA):
         self.timer = nulltimer
 
         if name == 'vdW-DF':
-            assert exchange is None and Zab is None
-            exchange = 'GGA_X_PBE_R'
+            assert kernel is None and Zab is None
+            kernel = LibXC('GGA_X_PBE_R+LDA_C_PW')
             Zab = -0.8491
         elif name == 'vdW-DF2':
-            assert exchange is None and Zab is None
-            exchange = 'GGA_X_PW86'
+            assert kernel is None and Zab is None
+            kernel = LibXC('GGA_X_PW86+LDA_C_PW')
             Zab = -1.887
 
         self.Zab = Zab
-        GGA.__init__(self, LibXC(exchange + '+LDA_C_PW'))
+        GGA.__init__(self, kernel)
+        self.vdwcoef = vdwcoef
         self.name = name
         self.LDAc = LibXC('LDA_C_PW')
 
@@ -167,6 +171,9 @@ class VDWFunctional(GGA):
 
         eLDAc_g = self.gd.empty()
         vLDAc_sg = self.gd.zeros(1)
+
+        if self.vdwcoef == 0.0:
+            return
 
         if len(n_sg) == 1:
             self.LDAc.calculate(eLDAc_g, n_sg, vLDAc_sg)
@@ -183,14 +190,14 @@ class VDWFunctional(GGA):
             a2_g = sigma_xg[0] + 2 * sigma_xg[1] + sigma_xg[2]
             e = self.get_non_local_energy(n_sg[0], a2_g, eLDAc_g,
                                           vLDAc_sg[0],
-                                          v_g, deda2nl_g) 
-            dedsigma_xg[0] += deda2nl_g
-            dedsigma_xg[1] += 2 * deda2nl_g
-            dedsigma_xg[2] += deda2nl_g
-            dedn_sg += v_g 
+                                          v_g, deda2nl_g)
+            dedsigma_xg[0] += self.vdwcoef * deda2nl_g
+            dedsigma_xg[1] += self.vdwcoef * 2 * deda2nl_g
+            dedsigma_xg[2] += self.vdwcoef * deda2nl_g
+            dedn_sg += self.vdwcoef * v_g 
 
         if self.gd.comm.rank == 0:
-            e_g[0, 0, 0] += e / self.gd.dv
+            e_g[0, 0, 0] += self.vdwcoef * e / self.gd.dv
 
     def get_non_local_energy(self, n_g=None, a2_g=None, e_LDAc_g=None,
                              v_LDAc_g=None, v_g=None, deda2_g=None):
@@ -235,42 +242,6 @@ class VDWFunctional(GGA):
         Ecnl = self.calculate_6d_integral(n_g, q0_g, a2_g, e_LDAc_g, v_LDAc_g,
                                           v_g, deda2_g)
         return Ecnl + dEcnl    
-
-    def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g,
-                                a2_g, aa2_g, ab2_g,
-                                deda2_g, dedaa2_g, dedab2_g):
-        """Calculate energy and potential."""
-        # LDA correlation:
-        self.LDAc.calculate_spinpolarized(e_g, na_g, va_g, nb_g, vb_g)
-
-        # revPBE exchange:
-        e_revPBEx_g = np.empty_like(e_g)
-        self.revPBEx.calculate_spinpolarized(e_revPBEx_g,
-                                             na_g, va_g, nb_g, vb_g,
-                                             a2_g, aa2_g, ab2_g,
-                                             deda2_g, dedaa2_g, dedab2_g)
-        e_g += e_revPBEx_g
-        
-        e_LDAc_g = np.empty_like(e_g)
-        v_LDAc_g = np.zeros_like(va_g)
-        self.LDAc_spinpaired.calculate_spinpaired(e_LDAc_g,
-                                                  na_g + nb_g, v_LDAc_g)
-
-        if na_g.ndim == 3:
-            # Non-local part:
-            v_g = np.zeros_like(va_g)
-            deda2nl_g = np.zeros_like(deda2_g)
-            e = self.get_non_local_energy(na_g + nb_g, a2_g, e_LDAc_g,
-                                          v_LDAc_g,
-                                          v_g, deda2nl_g) 
-            deda2_g += deda2nl_g * 2
-            dedaa2_g += deda2nl_g
-            dedab2_g += deda2nl_g
-            va_g += v_g 
-            vb_g += v_g 
-            if self.gd.comm.rank == 0:
-                assert e_g.ndim == 1
-                e_g[0] += e / self.gd.dv 
 
     def read_table(self):
         name = ('phi-%.3f-%.3f-%.3f-%d-%d.pckl' %
