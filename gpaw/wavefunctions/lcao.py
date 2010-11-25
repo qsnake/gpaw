@@ -119,7 +119,7 @@ class LCAOWaveFunctions(WaveFunctions):
 
 
         if (debug and self.band_comm.size == 1 and self.gd.comm.rank == 0 and
-            nao > 0):
+            nao > 0 and not self.ksl.using_blacs):
             # S and T are summed only on comm master, so check only there
             from numpy.linalg import eigvalsh
             self.timer.start('Check positive definiteness')
