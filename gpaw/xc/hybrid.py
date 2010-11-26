@@ -166,7 +166,6 @@ class HybridXC(XCFunctional):
                 if self.gd.comm.rank == 0:  # only add to energy on master CPU
                     exx += 0.5 * dc * int_fine
                     ekin -= dc * int_coarse
-
                 if Htpsit_nG is not None:
                     Htpsit_nG[n1] += vt_G * psit2_G
                     if n1 == n2:
@@ -229,14 +228,15 @@ class HybridXC(XCFunctional):
             # --
             # >  X   D
             # --  ii  ii
-            exx -= hybrid * np.dot(D_p, setup.X_p)
-            if Htpsit_nG is not None:
-                dH_p -= hybrid * setup.X_p
-                ekin += hybrid * np.dot(D_p, setup.X_p)
+            if setup.X_p is not None:
+                exx -= hybrid * np.dot(D_p, setup.X_p)
+                if Htpsit_nG is not None:
+                    dH_p -= hybrid * setup.X_p
+                    ekin += hybrid * np.dot(D_p, setup.X_p)
 
-            # Add core-core exchange energy
-            if kpt.s == 0:
-                exx += hybrid * setup.ExxC
+                # Add core-core exchange energy
+                if kpt.s == 0:
+                    exx += hybrid * setup.ExxC
 
         self.exx_s[kpt.s] = self.gd.comm.sum(exx)
         self.ekin_s[kpt.s] = self.gd.comm.sum(ekin)
