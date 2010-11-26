@@ -42,6 +42,9 @@ def XC(kernel, parameters=None):
         elif name.endswith('PZ-SIC'): 
             from gpaw.xc.sic import SIC 
             return SIC(xc=name[:-7])
+        elif name.startswith('old'): 
+            from gpaw.xc.kernel import XCKernel
+            kernel = XCKernel(name[3:])
         else:
             kernel = LibXC(kernel)
     if kernel.type == 'LDA':
