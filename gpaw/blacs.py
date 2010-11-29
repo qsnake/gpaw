@@ -95,8 +95,7 @@ from gpaw.matrix_descriptor import MatrixDescriptor
 from gpaw.utilities.scalapack import scalapack_inverse_cholesky, \
     scalapack_diagonalize_ex, scalapack_general_diagonalize_ex, \
     scalapack_diagonalize_dc, scalapack_general_diagonalize_dc, \
-    scalapack_diagonalize_mr3, scalapack_general_diagonalize_mr3, \
-    pblas_simple_gemm
+    scalapack_diagonalize_mr3, scalapack_general_diagonalize_mr3
 import _gpaw
 
 
