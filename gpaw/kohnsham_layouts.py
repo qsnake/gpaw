@@ -41,7 +41,7 @@ def get_KohnSham_layouts(sl, mode, gd, bd, **kwargs):
 
 
 class KohnShamLayouts:
-    using_blacs = False
+    using_blacs = False # This is only used by a regression test
     matrix_descriptor_class = None
 
     def __init__(self, gd, bd, timer=nulltimer):
@@ -87,14 +87,11 @@ class KohnShamLayouts:
 
 
 class BlacsLayouts(KohnShamLayouts):
-    using_blacs = True
+    using_blacs = True # This is only used by a regression test
 
     def __init__(self, gd, bd, mcpus, ncpus, blocksize, timer=nulltimer):
         KohnShamLayouts.__init__(self, gd, bd, timer)
         self._kwargs.update({'mcpus': mcpus, 'ncpus': ncpus, 'blocksize': blocksize})
-        bcommsize = self.bd.comm.size
-        gcommsize = self.gd.comm.size
-        assert mcpus * ncpus <= bcommsize * gcommsize
         # WARNING: Do not create the BlacsGrid on a communicator which does not 
         # contain blockcomm.rank = 0. This will break BlacsBandLayouts which
         # assume eps_M will be broadcast over blockcomm.
