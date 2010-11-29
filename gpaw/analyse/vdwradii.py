@@ -19,6 +19,8 @@ def vdWradii(symbols, xc):
 
     Method proposed in:
     Tkatchenko and Scheffler PRL 102 (2009) 073005
+    
+    The returned radii are given in Angstroms.
     """
     Z_rare_gas = [atomic_numbers[symbol] for symbol in Bondi64jpc_vdWradii]
     Z_rare_gas.sort()
@@ -71,7 +73,7 @@ def vdWradii(symbols, xc):
             # linear interpolation
             R = (r_g[n-1] +
                  (r_g[n] - r_g[n-1]) * (ncut - n_g[n-1]) / (n_g[n] - n_g[n-1]))
-            radius[symbol] = R
+            radius[symbol] = R * Bohr
 
         radii.append(radius[symbol])
 

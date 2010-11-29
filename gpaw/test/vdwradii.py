@@ -18,7 +18,7 @@ data_Hanke = { # units Anstrom
     'Cu': 1.9897063095999996,
 }    
 for symbol in ['He', 'Ne', 'Ar', 'Kr', 'H', 'C', 'N', 'O', 'Cu']:
-    R = vdWradii([symbol], 'PBE')[0] * Bohr
+    R = vdWradii([symbol], 'PBE')[0]
     if symbol in data_Bondi:
         Rref = data_Bondi[symbol]
     else:
