@@ -45,6 +45,11 @@ class GridDescriptor:
             x = (x,)
         return np.zeros(x + (self.N,))
 
+    def empty(self, x=()):
+        if isinstance(x, int):
+            x = (x,)
+        return np.zeros(x + (self.N,))
+
     def integrate(self, a_xg, n=0):
         assert n > -2
         return np.dot(a_xg[..., 1:],
