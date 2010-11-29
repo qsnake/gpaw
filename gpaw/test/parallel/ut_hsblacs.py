@@ -7,10 +7,10 @@ from gpaw import debug
 from gpaw.mpi import world
 from gpaw.utilities.tools import tri2full
 from gpaw.hs_operators import MatrixOperator
-from gpaw.utilities import scalapack
-from gpaw.utilities.blacs import scalapack_set
-from gpaw.blacs import BlacsBandLayouts, Redistributor
-
+from gpaw.utilities import compiled_with_sl
+from gpaw.utilities.scalapack import scalapack_set
+from gpaw.blacs import Redistributor
+from gpaw.kohnsham_layouts import BlacsBandLayouts 
 if debug:
     np.set_printoptions(linewidth=168) #XXX large xterm width
 
@@ -350,7 +350,7 @@ def UTConstantWavefunctionFactory(dtype, parstride_bands, blocking, async):
 
 # -------------------------------------------------------------------
 
-if __name__ in ['__main__', '__builtin__'] and scalapack(True):
+if __name__ in ['__main__', '__builtin__'] and compiled_with_sl(True):
     # We may have been imported by test.py, if so we should redirect to logfile
     if __name__ == '__builtin__':
         testrunner = CustomTextTestRunner('ut_hsblacs.log', verbosity=2)

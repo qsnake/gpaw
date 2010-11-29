@@ -10,10 +10,10 @@ import numpy as np
 from gpaw.band_descriptor import BandDescriptor
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.mpi import world, distribute_cpus
-from gpaw.utilities import scalapack
+from gpaw.utilities import compiled_with_sl
 from gpaw.utilities.blacs import scalapack_set, scalapack_zero 
-from gpaw.blacs import BlacsGrid, Redistributor, parallelprint, \
-    BlacsBandLayouts
+from gpaw.blacs import BlacsGrid, Redistributor, parallelprint
+from gpaw.kohnsham_layouts import BlacsBandLayouts
 
 G = 120  # number of grid points (G x G x G)
 N = 10  # number of bands
@@ -119,7 +119,7 @@ def main(seed=42, dtype=float):
     parallelprint(world, C_nN)
 
 if __name__ in ['__main__', '__builtin__']:
-    if not scalapack(True):
+    if not compiled_with_sl(True):
         print('Not built with ScaLAPACK. Test does not apply.')
     else:
         main(dtype=float)

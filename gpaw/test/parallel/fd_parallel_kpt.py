@@ -3,7 +3,7 @@ import sys
 from ase import Atoms
 from gpaw import GPAW
 from gpaw import KohnShamConvergenceError
-from gpaw.utilities import devnull, scalapack
+from gpaw.utilities import devnull, compiled_with_sl
 
 from ase.data.molecules import molecule
 
@@ -98,7 +98,7 @@ parallel['band'] = 2
 parallel['domain'] = (1, 2, 1)
 run()
 
-if scalapack():
+if compiled_with_sl():
     # kpt-parallelization=2, state-parallelization=2,
     # domain-decomposition=(1,2,1)
     # with blacs
@@ -135,7 +135,7 @@ del parallel['domain']
 parallel['band'] = 2
 run(**OH_kwargs) 
 
-if scalapack():
+if compiled_with_sl():
     # kpt-parallelization=2, spin-polarization=2,
     # state-parallelization = 2
     # domain-decomposition=(1, 2, 1)

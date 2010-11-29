@@ -53,8 +53,8 @@ def parallel_eigh(matrixfile, blacsgrid=(4, 2), blocksize=64):
         return None, None
 
 
-from gpaw.utilities import scalapack
-if __name__ == '__main__' and scalapack():
+from gpaw.utilities import compiled_with_sl
+if __name__ == '__main__' and compiled_with_sl():
     # Test script which should be run on 1, 2, 4, or 8 CPUs
     
     if world.size == 1:

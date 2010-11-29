@@ -17,7 +17,7 @@ from gpaw.mpi import world, distribute_cpus
 from gpaw.utilities.tools import tri2full, md5_array, gram_schmidt
 from gpaw.band_descriptor import BandDescriptor
 from gpaw.grid_descriptor import GridDescriptor
-from gpaw.blacs import BandLayouts
+from gpaw.kohnsham_layouts import BandLayouts
 from gpaw.hs_operators import MatrixOperator
 from gpaw.parameters import InputParameters
 from gpaw.xc import XC

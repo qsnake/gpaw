@@ -1,4 +1,5 @@
 # Copyright (C) 2003  CAMP
+# Copyright (C) 2010  Argonne National Laboratory
 # Please see the accompanying LICENSE file for further information.
 
 """

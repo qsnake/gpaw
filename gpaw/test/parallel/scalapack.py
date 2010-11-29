@@ -13,7 +13,7 @@ import numpy as np
 
 from gpaw.mpi import world, rank
 from gpaw.blacs import BlacsGrid, Redistributor, parallelprint
-from gpaw.utilities import scalapack
+from gpaw.utilities import compiled_with_sl
 from gpaw.utilities.lapack import diagonalize, general_diagonalize, \
     inverse_cholesky
 from gpaw.utilities.blas import rk, gemm
@@ -150,7 +150,7 @@ def main(N=73, seed=42, mprocs=2, nprocs=2, dtype=float):
     assert inverse_chol_err < tol
 
 if __name__ in ['__main__', '__builtin__']:
-    if not scalapack(True):
+    if not compiled_with_sl(True):
         print('Not built with ScaLAPACK. Test does not apply.')
     else:
         main(dtype=float)

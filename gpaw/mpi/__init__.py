@@ -11,7 +11,7 @@ import numpy as np
 from gpaw import debug
 from gpaw import dry_run as dry_run_size
 from gpaw.utilities import is_contiguous
-from gpaw.utilities import scalapack, gcd
+from gpaw.utilities import gcd
 from gpaw.utilities.tools import md5_array
 
 import _gpaw
