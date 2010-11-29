@@ -83,6 +83,7 @@ tests = [
     'XC2.py',
     'multipoletest.py',
     'proton.py',
+    'vdwradii.py',
     'parallel/ut_parallel.py',
     'parallel/compare.py',
     'ase3k.py',
