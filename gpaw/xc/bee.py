@@ -49,11 +49,11 @@ class BEEVDWKernel(XCKernel):
             (self.pbec - 1.0, self.PBEc),
             (self.lyp, self.LYP)]:
             dedn0_sg[:] = 0.0
-            #dedsigma0_xg[:] = 0.0
             kernel.calculate(e0_g, n_sg, dedn0_sg, sigma_xg, dedsigma0_xg)
             e_g += coef * e0_g
             dedn_sg += coef * dedn0_sg
-            dedsigma_xg += coef * dedsigma0_xg
+            if kernel.type == 'GGA':
+                dedsigma_xg += coef * dedsigma0_xg
 
             
 class BEEVDWFunctional(FFTVDWFunctional):
