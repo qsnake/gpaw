@@ -1,7 +1,7 @@
 from ase import Atoms, Atom
 from gpaw import GPAW
 from gpaw.mpi import rank, size
-a = 2.0
+a = 3.0
 H = Atoms([Atom('H')],
           cell=(a, a, a),
           pbc=True,
