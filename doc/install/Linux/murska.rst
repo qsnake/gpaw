@@ -1,11 +1,11 @@
 .. _murska:
 
-=============
-murska.csc.fi
-=============
+=========================================================
+murska.csc.fi  (AMD Opteron, Infiniband, ACML)
+=========================================================
 
 Here you find information about the the system
-`<http://raketti.csc.fi/english/research/Computing_services/computing/servers/murska>`_.
+`<http://www.csc.fi/english/research/Computing_services/computing/servers/murska>`_.
 
 Installation of user's packages on murska is recommended under /v/users/$USER/appl/.
 

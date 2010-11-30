@@ -1,8 +1,8 @@
 .. _huygens:
 
-===============
-huygens.sara.nl
-===============
+===============================================
+huygens.sara.nl  (IBM Power6, Infiniband, ESSL)
+===============================================
 
 Here you find information about the the system
 `<http://huygens.supercomputer.nl/description/>`_.

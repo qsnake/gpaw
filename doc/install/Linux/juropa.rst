@@ -1,51 +1,69 @@
 .. _juropa:
 
-====================
-juropa.fz-juelich.de
-====================
+====================================================
+juropa.fz-juelich.de   (Intel Xeon, Infiniband, MKL)
+====================================================
 
 Here you find information about the the system
 `<http://www.fz-juelich.de/jsc/juropa>`_.
 
-The instructions assume **bash** and installation of the python modules 
-under `${HOME}/opt/python`. Build the unoptimized numpy::
+Numpy is installed system wide, so separate installation is not needed.
 
-  mkdir ${HOME}/opt/python
-  cd ${HOME}/opt/python
+Building GPAW with gcc
+======================
 
-  # nose (needed by numpy)
-  # ====
-  wget http://python-nose.googlecode.com/files/nose-0.11.0.tar.gz
-  tar zxf nose-0.11.0.tar.gz
-  cd nose-0.11.0
-  python setup.py install --prefix=${HOME}/opt/python | tee install.log
-  cd ..
+Build GPAW using **gcc** with the configuration file
+:svn:`~doc/install/Linux/customize_juropa_gcc.py`.
 
-  # numpy
-  # =====
-  wget http://dfn.dl.sourceforge.net/sourceforge/numpy/numpy-1.3.0.tar.gz
-  tar zxf numpy-1.3.0.tar.gz
-  cd numpy-1.3.0
-  python setup.py install --prefix=${HOME}/opt/python | tee install.log
-  cd ..
-  python -c "import numpy; numpy.test()"
+.. literalinclude:: customize_juropa_gcc.py
 
-Build GPAW using **gcc** with this :file:`customize.py` file::
-
-  libraries = ['mkl', 'mkl_gnu_thread', 'iomp5']
-  library_dirs += ['/opt/intel/Compiler/11.0/074/lib/intel64']
-
-and execute::
+and by executing::
 
   module unload parastation/intel
   module load parastation/gcc
-  module load mkl/10.1.0
 
-  python setup.py build
+  python setup.py install --prefix='' --home=MY_INSTALLATION_DIR
 
-Job scripts can be written using::
+Building GPAW with Intel compiler
+=================================
+
+Use the compiler wrapper file :svn:`~doc/install/Linux/icc.py`
+
+.. literalinclude:: icc.py
+
+and the configuration file :svn:`~doc/install/Linux/customize_juropa_icc.py`.
+
+.. literalinclude:: customize_juropa_icc.py
+
+Now, default parastation/intel module is used so execute only::
+
+  python setup.py install --prefix='' --home=MY_INSTALLATION_DIR
+
+Execution
+=========
+
+General execution instructions can be found at `<http://www.fz-juelich.de/jsc/juropa/usage/quick-intro>`_.
+
+Example batch job script for GPAW (512 cores, 30 minutes)::
+
+  #!/bin/bash -x
+  #MSUB -l nodes=64:ppn=8
+  #MSUB -l walltime=0:30:00
+  
+  cd $PBS_O_WORKDIR
+  export PYTHONPATH="MY_INSTALLATION_DIR/ase/lib64/python"
+  export PYTHONPATH="$PYTHONPATH":"MY_INSTALLATION_DIR/gpaw/svn/lib64/python"
+  export GPAW_SETUP_PATH=SETUP_DIR/gpaw-setups-0.5.3574
+  export GPAW_PYTHON=MY_INSTALLATION_DIR/bin/gpaw-python
+
+  export PSP_ONDEMAND=1
+
+  mpiexec -np 512 -x $GPAW_PYTHON my_input.py --sl_default=4,4,64
+
+Note that **-x** flag for `mpiexec` is needed for exporting the environment 
+variables to MPI tasks. The environment variable ``PSP_ONDEMAND`` can decrease 
+the running time with almost a factor of two with large process counts!
+
+Job scripts can be written also using::
 
   gpaw-runscript -h
-
-Note, that environment variables must be submitted explicitely to 
-`mpiexec`.
