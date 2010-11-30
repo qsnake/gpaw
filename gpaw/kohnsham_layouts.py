@@ -294,7 +294,6 @@ class BlacsOrbitalLayouts(BlacsLayouts):
                                                            naoblocksize, nao)
         self.nMdescriptor = self.columngrid.new_descriptor(nbands, nao,
                                                            mynbands, nao)
-        assert self.mMdescriptor.shape == (self.mynao, nao)
 
         #parallelprint(world, (mynao, self.mMdescriptor.shape))
 

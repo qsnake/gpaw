@@ -145,23 +145,34 @@ class BlacsGrid:
         assert npcol > 0
         assert len(order) == 1
         assert order in 'CcRr'
+        # set a default value for the context, makes destructor
+        # valid for SerialCommunicator also leads to fewer if statements
+        self.context = INACTIVE
 
-        if isinstance(comm, SerialCommunicator):
-            raise ValueError('Instance of SerialCommunicator not supported')
-        if comm is None: # if and only if rank is not part of the communicator
-            context = INACTIVE
-        else:
+        # There are three cases to handle:
+        # 1. Comm is None is inactive (default). 
+        # 2. DryRun Communicator which is a subclass of SerialCommunicator
+        # 3. Comm is a legitimate communicator
+        if comm is not None: # MPI task is part of the communicator
             if nprow * npcol > comm.size:
                 raise ValueError('Impossible: %dx%d Blacs grid with %d CPUs'
                                  % (nprow, npcol, comm.size))
-            context = _gpaw.new_blacs_context(comm.get_c_object(),
-                                              npcol, nprow, order)
-            assert (context != INACTIVE) == (comm.rank < nprow * npcol)
+            if not isinstance(comm, SerialCommunicator):
+                self.context = _gpaw.new_blacs_context(comm.get_c_object(),
+                                                       npcol, nprow, order)
+                assert (self.context != INACTIVE) == \
+                    (comm.rank < nprow * npcol)
 
-        self.mycol, self.myrow = _gpaw.get_blacs_gridinfo(context, nprow,
-                                                          npcol)
+        # INACTIVE case is also handled by C call to blacs_gridinfo.
+        # The check is done at the Python level to make it compatible
+        # with the SerialCommunicator.
+        if self.context == INACTIVE:
+            self.mycol, self.myrow = (INACTIVE, INACTIVE)
+        else:
+            self.mycol, self.myrow = _gpaw.get_blacs_gridinfo(self.context, 
+                                                              nprow,
+                                                              npcol)
         
-        self.context = context
         self.comm = comm
         self.nprow = nprow
         self.npcol = npcol
