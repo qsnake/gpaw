@@ -18,7 +18,7 @@ from gpaw.kpt_descriptor import KPointDescriptor
 from gpaw.wavefunctions.fd import FDWaveFunctions
 from gpaw.density import Density
 from gpaw.hamiltonian import Hamiltonian
-from gpaw.blacs import get_kohn_sham_layouts
+from gpaw.kohnsham_layouts import get_KohnSham_layouts
 from gpaw.utilities.tools import md5_array
 from gpaw.utilities.timing import nulltimer
 
@@ -246,8 +246,8 @@ class UTProjectorFunctionSetup(UTLocalizedFunctionSetup):
     def setUp(self):
         UTLocalizedFunctionSetup.setUp(self)
 
-        fdksl = get_kohn_sham_layouts(None, 'fd', self.gd, self.bd)
-        lcaoksl = get_kohn_sham_layouts(None, 'lcao', self.gd, self.bd,
+        fdksl = get_KohnSham_layouts(None, 'fd', self.gd, self.bd)
+        lcaoksl = get_KohnSham_layouts(None, 'lcao', self.gd, self.bd,
                                         nao=self.setups.nao)
         args = (self.gd, self.setups.nvalence, self.setups,
                 self.bd, self.dtype, world, self.kd)

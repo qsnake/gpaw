@@ -4,7 +4,7 @@ import numpy as np
 from gpaw import parsize, parsize_bands
 from gpaw.band_descriptor import BandDescriptor
 from gpaw.grid_descriptor import GridDescriptor
-from gpaw.blacs import BandLayouts
+from gpaw.kohnsham_layouts import BandLayouts
 from gpaw.mpi import world, distribute_cpus
 from gpaw.utilities import gcd
 from gpaw.utilities.lapack import inverse_cholesky
