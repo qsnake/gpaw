@@ -15,7 +15,7 @@ from gpaw.test import equal
 from gpaw.blacs import BlacsGrid, Redistributor, parallelprint
 from gpaw.utilities import compiled_with_sl
 from gpaw.utilities.blas import gemm, gemv, r2k, rk
-from gpaw.utilities.blacs import pblas_simple_gemm, pblas_simple_gemv, \
+from gpaw.utilities.scalapack import pblas_simple_gemm, pblas_simple_gemv, \
     pblas_simple_r2k, pblas_simple_rk
 
 import _gpaw

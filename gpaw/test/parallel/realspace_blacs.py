@@ -11,7 +11,7 @@ from gpaw.band_descriptor import BandDescriptor
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.mpi import world, distribute_cpus
 from gpaw.utilities import compiled_with_sl
-from gpaw.utilities.blacs import scalapack_set, scalapack_zero 
+from gpaw.utilities.scalapack import scalapack_set, scalapack_zero 
 from gpaw.blacs import BlacsGrid, Redistributor, parallelprint
 from gpaw.kohnsham_layouts import BlacsBandLayouts
 

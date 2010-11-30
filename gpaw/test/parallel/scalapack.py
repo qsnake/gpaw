@@ -17,7 +17,7 @@ from gpaw.utilities import compiled_with_sl
 from gpaw.utilities.lapack import diagonalize, general_diagonalize, \
     inverse_cholesky
 from gpaw.utilities.blas import rk, gemm
-from gpaw.utilities.blacs import scalapack_general_diagonalize_dc, \
+from gpaw.utilities.scalapack import scalapack_general_diagonalize_dc, \
     scalapack_general_diagonalize_ex, \
     scalapack_diagonalize_dc, scalapack_diagonalize_ex, \
     scalapack_inverse_cholesky ## , \
