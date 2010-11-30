@@ -1,8 +1,8 @@
 .. _louhi:
 
-============
-louhi.csc.fi
-============
+============================
+louhi.csc.fi  (Cray XT4/XT5) 
+============================
 
 Here you find information about the the system
 `<http://www.csc.fi/english/research/Computing_services/computing/servers/louhi>`_.

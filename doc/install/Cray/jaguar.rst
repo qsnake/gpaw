@@ -1,8 +1,8 @@
 .. _jaguar:
 
-======
-jaguar
-======
+==================
+jaguar  (Cray XT5)
+==================
 
 Here you find information about the the system
 `<http://www.nccs.gov/computing-resources/jaguar/>`_.
