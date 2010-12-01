@@ -173,6 +173,15 @@ class LCAOWaveFunctions(WaveFunctions):
             r2k(0.5, C_Mn, f_n * C_Mn, 0.0, rho_MM)
             tri2full(rho_MM)
 
+    def calculate_density_matrix_delta(self, d_nn, C_nM, rho_MM=None):
+        # ATLAS can't handle uninitialized output array:
+        #rho_MM.fill(42)
+
+        self.timer.start('Calculate density matrix')
+        rho_MM = self.ksl.calculate_density_matrix_delta(d_nn, C_nM, rho_MM)
+        self.timer.stop('Calculate density matrix')
+        return rho_MM
+
     def add_to_density_from_k_point_with_occupation(self, nt_sG, kpt, f_n):
         """Add contribution to pseudo electron-density. Do not use the standard
         occupation numbers, but ones given with argument f_n."""
@@ -182,6 +191,12 @@ class LCAOWaveFunctions(WaveFunctions):
         Mstop = self.basis_functions.Mstop
         if kpt.rho_MM is None:
             rho_MM = self.calculate_density_matrix(f_n, kpt.C_nM)
+            if hasattr(kpt, 'c_on'):
+                assert self.bd.comm.size == 1
+                d_nn = np.zeros((self.bd.mynbands, self.bd.mynbands), dtype=kpt.C_nM.dtype)
+                for ne, c_n in zip(kpt.ne_o, kpt.c_on):
+                    d_nn += ne * np.outer(c_n.conj(), c_n)
+                rho_MM += self.calculate_density_matrix_delta(d_nn, kpt.C_nM)
         else:
             rho_MM = kpt.rho_MM
         self.timer.start('Construct density')
@@ -286,6 +301,13 @@ class LCAOWaveFunctions(WaveFunctions):
             rhoT_MM = self.ksl.get_transposed_density_matrix(kpt.f_n, kpt.C_nM)
             ET_MM = self.ksl.get_transposed_density_matrix(kpt.f_n * kpt.eps_n,
                                                            kpt.C_nM)
+            if hasattr(kpt, 'c_on'):
+                assert self.bd.comm.size == 1
+                d_nn = np.zeros((self.bd.mynbands, self.bd.mynbands), dtype=kpt.C_nM.dtype)
+                for ne, c_n in zip(kpt.ne_o, kpt.c_on):
+                        d_nn += ne * np.outer(c_n.conj(), c_n)
+                rhoT_MM += self.ksl.get_transposed_density_matrix_delta(d_nn, kpt.C_nM)
+                ET_MM+=self.ksl.get_transposed_density_matrix_delta(d_nn*kpt.eps_n, kpt.C_nM)
         else:
             H_MM = self.eigensolver.calculate_hamiltonian_matrix(hamiltonian,
                                                                  self,

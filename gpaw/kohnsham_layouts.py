@@ -497,3 +497,21 @@ class OrbitalLayouts(KohnShamLayouts):
 
     def get_description(self):
         return 'Serial LAPACK'
+
+    def calculate_density_matrix_delta(self, d_nn, C_nM, rho_MM=None):
+        # Only a madman would use a non-transposed density matrix.
+        # Maybe we should use the get_transposed_density_matrix instead
+        if rho_MM is None:
+            rho_MM = np.zeros((self.mynao, self.nao), dtype=C_nM.dtype)
+        Cd_Mn = np.zeros((self.nao, self.bd.mynbands), dtype=C_nM.dtype)
+        # XXX Should not conjugate, but call gemm(..., 'c')
+        # Although that requires knowing C_Mn and not C_nM.
+        # that also conforms better to the usual conventions in literature
+        C_Mn = C_nM.T.conj().copy()
+        gemm(1.0, d_nn, C_Mn, 0.0, Cd_Mn, 'n')
+        gemm(1.0, C_nM, Cd_Mn,  0.0, rho_MM, 'n')
+        self.bd.comm.sum(rho_MM)
+        return rho_MM
+
+    def get_transposed_density_matrix_delta(self, d_nn, C_nM, rho_MM=None):
+        return self.calculate_density_matrix_delta(d_nn, C_nM, rho_MM).T.copy()

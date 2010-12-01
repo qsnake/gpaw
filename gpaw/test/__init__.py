@@ -191,6 +191,7 @@ tests = [
     'tpss.py',
     'nsc_MGGA.py',
     '8Si.py',
+    'dscf_lcao.py',
     'coreeig.py',
     'Cu.py',
     'exx.py',
