@@ -71,9 +71,9 @@ class Transport(GPAW):
                        'LR_leads', 'gate', 'gate_mode', 'gate_atoms', 'gate_fun',                 
                        'recal_path', 'min_energy', 'fix_contour',
                        'use_qzk_boundary','n_bias_step', 'n_ion_step',
-                       'scat_restart', 'save_file', 'restart_file',
+                       'scat_restart', 'save_file', 'restart_file','save_lead_hamiltonian',
                        'non_sc', 'fixed_boundary', 'guess_steps', 'foot_print',
-                       'data_file', 'extended_atoms',
+                       'data_file', 'extended_atoms','restart_lead_hamiltonian',
                         'analysis_data_list', 'save_bias_data',
                         'analysis_mode', 'normalize_density', 'se_data_path',                     
                         'neintmethod', 'neintstep', 'eqinttol', 'extra_density']:
@@ -133,6 +133,7 @@ class Transport(GPAW):
         self.foot_print = p['foot_print']
         self.save_file = p['save_file']
         self.restart_file = p['restart_file']
+        self.restart_lead_hamiltonian = p['restart_lead_hamiltonian']
         self.neintmethod = p['neintmethod']
         self.neintstep = p['neintstep']
         self.n_bias_step = p['n_bias_step']
@@ -151,6 +152,7 @@ class Transport(GPAW):
         self.special_datas = p['special_datas']
         self.analysis_data_list = p['analysis_data_list']
         self.save_bias_data = p['save_bias_data']
+        self.save_lead_hamiltonian = p['save_lead_hamiltonian']
         self.se_data_path = p['se_data_path']
         self.analysis_mode = p['analysis_mode']
         self.normalize_density = p['normalize_density']
@@ -213,6 +215,7 @@ class Transport(GPAW):
         p['bias'] = [0, 0]
         p['d'] = 2
         p['lead_restart'] = False
+        p['restart_lead_hamiltonian'] = False
         p['multi_lead_directions'] = None
         p['lead_atoms'] = None
         p['extended_atoms'] = None
@@ -255,6 +258,7 @@ class Transport(GPAW):
         p['use_qzk_boundary'] = False
         p['scat_restart'] = False
         p['save_file'] = False
+        p['save_lead_hamiltonian'] =False
         p['restart_file'] = None
         p['fixed_boundary'] = True
         p['fix_contour'] = False
@@ -372,8 +376,10 @@ class Transport(GPAW):
         for i in range(self.lead_num):
             if self.identical_leads and i > 0:
                 self.update_lead_hamiltonian(i, 'lead0')    
-            else:
+            elif not self.restart_lead_hamiltonian:
                 self.update_lead_hamiltonian(i)
+            else:
+                self.update_lead_hamiltonian2(i)
 
         self.fermi = self.lead_fermi[0]
         self.leads_fermi_lineup()
@@ -885,6 +891,86 @@ class Transport(GPAW):
                 self.lead_couple_hsd[l].reset(s, pk, dl_spkcmm[s, pk],
                                                                'D', init=True)                    
         self.timer.stop('init lead' + str(l))
+
+        if self.save_lead_hamiltonian:
+            calc = atoms.calc
+            vt_sG = calc.gd.collect(calc.hamiltonian.vt_sG)
+            density = calc.density
+            ham = calc.hamiltonian
+            dH_asp = collect_atomic_matrices(ham.dH_asp, ham.setups,
+                                             ham.nspins, ham.gd.comm,
+                                             density.rank_a)
+            if self.master:
+                fd = file('lead_hamiltonian_data' + str(l), 'wb')
+                cPickle.dump((self.lead_fermi[l], vt_sG, dH_asp), fd, 2)
+                fd.close()
+
+    def update_lead_hamiltonian2(self, l):
+        self.timer.start('update lead hamiltonian' + str(l))
+        restart_file = 'lead_hamiltonian_data' + str(l)
+        atoms = self.atoms_l[l]
+        fd = file(restart_file, 'r')
+        lead_fermi, vt_sG, dH_asp = cPickle.load(fd)
+        fd.close()
+        calc = atoms.calc
+        for i, dH_p in enumerate(dH_asp):
+             calc.hamiltonian.dH_asp[i] = dH_p
+        calc.gd.distribute(vt_sG, calc.hamiltonian.vt_sG) 
+        hl_skmm, sl_kmm = self.get_hs(calc)
+        nb = sl_kmm.shape[-1]
+        dtype = sl_kmm.dtype
+      
+        self.lead_fermi[l] = lead_fermi
+        dl_skmm = np.zeros_like(hl_skmm)
+
+        if self.multi_leads:
+            lead_direction = 1
+        else:
+            lead_direction = l
+        hl_spkmm, sl_pkmm, dl_spkmm,  \
+        hl_spkcmm, sl_pkcmm, dl_spkcmm = get_pk_hsd(self.d, self.ntklead,
+                                                calc.wfs.ibzk_qc,
+                                                hl_skmm, sl_kmm, dl_skmm,
+                                                self.text, self.wfs.dtype,
+                                                direction=lead_direction)
+        
+        self.timer.stop('update lead hamiltonian' + str(l))
+
+        if self.multi_leads:
+            tmat = self.pl_rotation_mats[l]
+            for pk in range(self.my_npk):
+                sl_pkmm[pk] = np.dot(tmat, sl_pkmm[pk])
+                sl_pkmm[pk] = np.dot(sl_pkmm[pk], tmat.T)
+                sl_pkcmm[pk] = np.dot(tmat, sl_pkcmm[pk])
+                sl_pkcmm[pk] = np.dot(sl_pkcmm[pk], tmat.T)                
+                for s in range(self.my_nspins):
+                    dl_spkmm[s, pk] = np.dot(tmat, dl_spkmm[s, pk])
+                    dl_spkmm[s, pk] = np.dot(dl_spkmm[s, pk], tmat.T)
+
+                    dl_spkcmm[s, pk] = np.dot(tmat, dl_spkcmm[s, pk])
+                    dl_spkcmm[s, pk] = np.dot(dl_spkcmm[s, pk], tmat.T)                    
+
+                    hl_spkmm[s, pk] = np.dot(tmat, hl_spkmm[s, pk])
+                    hl_spkmm[s, pk] = np.dot(hl_spkmm[s, pk], tmat.T)
+
+                    hl_spkcmm[s, pk] = np.dot(tmat, hl_spkcmm[s, pk])
+                    hl_spkcmm[s, pk] = np.dot(hl_spkcmm[s, pk], tmat.T)
+            
+        self.timer.start('init lead' + str(l))
+        for pk in range(self.my_npk):
+            self.lead_hsd[l].reset(0, pk, sl_pkmm[pk], 'S', init=True)
+            self.lead_couple_hsd[l].reset(0, pk, sl_pkcmm[pk], 'S',
+                                                              init=True)
+            for s in range(self.my_nspins):
+                self.lead_hsd[l].reset(s, pk, hl_spkmm[s, pk], 'H', init=True)     
+                self.lead_hsd[l].reset(s, pk, dl_spkmm[s, pk], 'D', init=True)
+                
+                self.lead_couple_hsd[l].reset(s, pk, hl_spkcmm[s, pk],
+                                                               'H', init=True)     
+                self.lead_couple_hsd[l].reset(s, pk, dl_spkcmm[s, pk],
+                                                               'D', init=True)                    
+        self.timer.stop('init lead' + str(l))
+
 
     def recover_lead_info(self, s00, s01, h00, h01, fermi):
         for pk in range(self.npk):
