@@ -327,7 +327,7 @@ class PAW(PAWTextOutput):
         natoms = len(atoms)
 
         pos_av = atoms.get_positions() / Bohr
-        cell_cv = atoms.get_cell() / Bohr
+        cell_cv = atoms.get_cell()
         pbc_c = atoms.get_pbc()
         Z_a = atoms.get_atomic_numbers()
         magmom_a = atoms.get_initial_magnetic_moments()
@@ -372,10 +372,13 @@ class PAW(PAWTextOutput):
         else:
             if par.h is None:
                 self.text('Using default value for grid spacing.')
-                h = 0.2 / Bohr
+                h = 0.2 
             else:
-                h = par.h / Bohr
+                h = par.h
             N_c = h2gpts(h, cell_cv)
+
+        cell_cv /= Bohr
+
 
         if hasattr(self, 'time'):
             dtype = complex
