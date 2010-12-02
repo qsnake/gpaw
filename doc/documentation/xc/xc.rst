@@ -10,3 +10,4 @@ XC Functionals
    exx
    tpss
    vdw
+   vdwcorrection
