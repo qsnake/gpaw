@@ -23,12 +23,13 @@ class ApmB(OmegaMatrix):
     def get_full(self):
 
         self.paw.timer.start('ApmB RPA')
-        self.ApB, self.AmB = self.get_rpa()
+        self.ApB = self.Om
+        self.AmB = self.get_rpa()
         self.paw.timer.stop()
 
         if self.xc is not None:
             self.paw.timer.start('ApmB XC')
-            self.ApB = self.get_xc(self.ApB) # inherited from OmegaMatrix
+            self.get_xc() # inherited from OmegaMatrix
             self.paw.timer.stop()
         
     def get_rpa(self):
@@ -43,7 +44,7 @@ class ApmB(OmegaMatrix):
         print >> self.txt, 'RPAhyb', nij, 'transitions'
         
         AmB = np.zeros((nij, nij))
-        ApB = np.zeros((nij, nij))
+        ApB = self.ApB
 
         # storage place for Coulomb integrals
         integrals = {}
@@ -134,7 +135,7 @@ class ApmB(OmegaMatrix):
                 AmB[kq,ij] = AmB[ij,kq]
         timer.stop()
         
-        return ApB, AmB
+        return AmB
     
     def Coulomb_integral_name(self, i, j, k, l, spin):
         """return a unique name considering the Coulomb integral

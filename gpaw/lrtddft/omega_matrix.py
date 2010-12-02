@@ -119,21 +119,25 @@ class OmegaMatrix:
              # this will be a singlet to singlet calculation only
              self.singletsinglet=True
 
+        nij = len(kss)
+        self.Om = np.zeros((nij,nij))
         self.get_full()
 
     def get_full(self):
 
         self.paw.timer.start('Omega RPA')
-        self.full = self.get_rpa()
+        self.get_rpa()
         self.paw.timer.stop()
 
         if self.xc is not None:
             self.paw.timer.start('Omega XC')
-            self.full = self.get_xc(self.full)
+            self.get_xc()
             self.paw.timer.stop()
-        self.paw.wfs.band_comm.sum(self.full)
 
-    def get_xc(self, Om):
+        self.eh_comm.sum(self.Om)
+        self.full = self.Om
+
+    def get_xc(self):
         """Add xc part of the coupling matrix"""
 
         # shorthands
@@ -147,7 +151,7 @@ class OmegaMatrix:
         kss = self.fullkss
         nij = len(kss)
 
-        Om_xc = np.zeros((nij,nij))
+        Om_xc = self.Om
         # initialize densities
         # nt_sg is the smooth density on the fine grid with spin index
 
@@ -362,10 +366,6 @@ class OmegaMatrix:
                       self.timestring(t0*(nij-ij-1)+t)
 
 
-        eh_comm.sum(Om_xc)
-        Om += Om_xc
-        return Om
-
     def get_rpa(self):
         """calculate RPA part of the omega matrix"""
 
@@ -379,7 +379,7 @@ class OmegaMatrix:
         nij = len(kss)
         print >> self.txt,'RPA',nij,'transitions'
         
-        Om = np.zeros((nij,nij))
+        Om = self.Om
         
         for ij in range(eh_comm.rank, nij, eh_comm.size):
             print >> self.txt,'RPA kss['+'%d'%ij+']=', kss[ij]
@@ -463,9 +463,6 @@ class OmegaMatrix:
                 t = .5*t*(nij-ij)  # estimated time for n*(n+1)/2, n=nij-(ij+1)
                 print >> self.txt,'RPA estimated time left',\
                       self.timestring(t0*(nij-ij-1)+t)
-
-        eh_comm.sum(Om)
-        return Om
 
     def singlets_triplets(self):
         """Split yourself into singlet and triplet transitions"""
