@@ -152,7 +152,10 @@ Optimize a system under bias voltage:
 
 .. literalinclude:: transport_optimize.py
 
- 
+Do a multi_terminal calculation:
+
+.. literalinclude:: transport_multi_terminal.py
+
 Analysis:
 
 >>> from gpaw.transport.analysor import Transport_Plotter
