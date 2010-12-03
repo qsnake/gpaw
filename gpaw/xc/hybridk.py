@@ -101,19 +101,27 @@ class HybridXC(XCFunctional):
         if self.kd.N_c is None:
             self.bzk_kc = np.zeros((1, 3))
         else:
-            bzk_kc = np.indices(self.kd.N_c).transpose((1, 2, 3, 0))
+            n = self.kd.N_c * 2 - 1
+            bzk_kc = np.indices(n).transpose((1, 2, 3, 0))
             bzk_kc.shape = (-1, 3)
-            bzk_kc -= self.kd.N_c // 2
+            bzk_kc -= self.kd.N_c - 1
             self.bzk_kc = bzk_kc.astype(float) / self.kd.N_c
         
         self.pwd = PWDescriptor(ecut, self.gd, self.bzk_kc)
-        for k_c, Gpk2_G in zip(self.bzk_kc, self.pwd.G2_qG):
-            if k_c.any():
-                self.gamma -= np.dot(np.exp(-self.alpha * Gpk2_G), Gpk2_G**-1)
-            else:
-                self.gamma -= np.dot(np.exp(-self.alpha * Gpk2_G[1:]),
-                                     Gpk2_G[1:]**-1)
-                
+        n = 0
+        print self.gamma
+        for k_c, Gpk2_G in zip(self.bzk_kc[:], self.pwd.G2_qG):
+            if (k_c > -0.5).all() and (k_c <= 0.5).all(): #XXX???
+                if k_c.any():
+                    self.gamma -= np.dot(np.exp(-self.alpha * Gpk2_G),
+                                         Gpk2_G**-1)
+                else:
+                    self.gamma -= np.dot(np.exp(-self.alpha * Gpk2_G[1:]),
+                                         Gpk2_G[1:]**-1)
+                n += 1
+        print self.gamma, self.alpha
+        assert n == self.kd.N_c.prod()
+        
     def set_positions(self, spos_ac):
         if 0:#not self.finegrid:
             self.ghat.set_positions(spos_ac)
@@ -127,10 +135,14 @@ class HybridXC(XCFunctional):
         for kpt in self.kpt_u:
             self.apply_orbital_dependent_hamiltonian(kpt, kpt.psit_nG)
 
-    def apply(self, kpt1, kpt2):        
-        k12_c = ((self.kd.ibzk_kc[kpt1.k] -
-                  self.kd.ibzk_kc[kpt2.k]) + 0.4999) % 1 - 0.4999
+    def apply(self, kpt1, kpt2, invert=False):        
+        k1_c = self.kd.ibzk_kc[kpt1.k]
+        k2_c = self.kd.ibzk_kc[kpt2.k]
+        if invert:
+            k2_c = -k2_c
+        k12_c = k1_c - k2_c
         N_c = self.gd.N_c
+        #k12_c = ((k1_c - k2_c) + 0.4999) % 1 - 0.4999
         expikr_R = np.exp(2j * pi * np.dot(np.indices(N_c).T, k12_c / N_c).T)
 
         for q, k_c in enumerate(self.bzk_kc):
@@ -139,7 +151,7 @@ class HybridXC(XCFunctional):
                 break
             
         Gpk2_G = self.pwd.G2_qG[q0]
-        if kpt1 is kpt2:
+        if Gpk2_G[0] == 0:
             Gpk2_G = Gpk2_G.copy()
             Gpk2_G[0] = 1.0 / self.gamma
         N = N_c.prod()
@@ -153,22 +165,46 @@ class HybridXC(XCFunctional):
             for n2, psit2_R in enumerate(kpt2.psit_nG):
                 f2 = kpt2.f_n[n2]
 
-                nt_R = self.calculate_pair_density(n1, n2,
-                                                   psit1_R, psit2_R,
-                                                   )
+                if invert:
+                    nt_R = self.calculate_pair_density(n1, n2,
+                                                       psit1_R, psit2_R.conj())
+                else:
+                    nt_R = self.calculate_pair_density(n1, n2,
+                                                       psit1_R, psit2_R)
+                    
                 nt_G = self.pwd.fft(nt_R * expikr_R / N)
                 vt_G = nt_G.copy()
                 vt_G *= -pi * vol / Gpk2_G
                 e = f1 * f2 * np.vdot(nt_G, vt_G).real * nspins
+                if kpt1 is kpt2:
+                    e /= 2
                 self.exx += e
                 self.ekin -= 2 * e
+                #print k1_c[0], k2_c[0], invert, f1,f2,e, self.exx
                 
                 vt_R = self.pwd.ifft(vt_G).conj() * expikr_R * N / vol
-                if kpt1 is kpt2 and n1 == n2:
-                    kpt1.vt_nG[n1] = f1 * vt_R
 
-                kpt1.Htpsit_nG[n1] += f2 * nspins * psit2_R * vt_R
-                kpt2.Htpsit_nG[n2] += f1 * nspins * psit1_R * vt_R.conj()
+                if kpt1 is kpt2 and not invert and n1 == n2:
+                    kpt1.vt_nG[n1] = 0.5 * f1 * vt_R
+
+                if invert:
+                    if kpt1 is kpt2:
+                        #print kpt1.k,f2*(psit2_R.conj() * vt_R)[9,9,9]
+                        kpt1.Htpsit_nG[n1] += f2 * nspins * psit2_R.conj() * vt_R
+                    else:
+                        #print kpt1.k,f2*(psit2_R.conj() * vt_R)[9,9,9]
+                        #print kpt2.k,f1*(psit1_R.conj() * vt_R)[9,9,9]
+                        kpt1.Htpsit_nG[n1] += f2 * nspins * psit2_R.conj() * vt_R
+                        kpt2.Htpsit_nG[n2] += f1 * nspins * psit1_R.conj() * vt_R
+                else:
+                    if kpt1 is kpt2:
+                        #print kpt1.k,f2*(psit2_R * vt_R)[9,9,9]
+                        kpt1.Htpsit_nG[n1] += f2 * nspins * psit2_R * vt_R
+                    else:
+                        #print kpt1.k,f2*(psit2_R * vt_R)[9,9,9]
+                        #print kpt2.k,f1*(psit1_R * vt_R.conj())[9,9,9]
+                        kpt1.Htpsit_nG[n1] += f2 * nspins * psit2_R * vt_R
+                        kpt2.Htpsit_nG[n2] += f1 * nspins * psit1_R * vt_R.conj()
 
     def calculate_pair_density(self, n1, n2, psit1_G, psit2_G):#, P_ani):
         Q_aL = {}
@@ -249,11 +285,17 @@ class HybridRMMDIIS(RMM_DIIS):
 
         xc.exx = 0.0
         xc.ekin = 0.0
+        #for u1, kpt1 in enumerate(wfs.kpt_u):
+        #    kpt1.Htpsit_nG[:] = 0
         for u1, kpt1 in enumerate(wfs.kpt_u):
-            for u2, kpt2 in enumerate(wfs.kpt_u):
+            for kpt2 in wfs.kpt_u[u1:]:
                 if kpt1.s == kpt2.s:
                     xc.apply(kpt1, kpt2)
-                
+                    if kd.ibzk_kc[kpt1.k].any() and kd.ibzk_kc[kpt2.k].any():
+                        xc.apply(kpt1, kpt2, invert=True)
+        #for u1, kpt1 in enumerate(wfs.kpt_u):
+        #    print u1, self.gd.integrate(kpt1.psit_nG[0] * kpt1.Htpsit_nG[0].conj())
+        
     def subspace_diagonalize(self, ham, wfs, kpt, rotate=True):
         if self.band_comm.size > 1 and wfs.bd.strided:
             raise NotImplementedError
