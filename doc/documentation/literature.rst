@@ -420,7 +420,9 @@ Publications using the gpaw code
 
    `Chemical accuracy for the van der Waals density functional`__
 
-   __ http://arxiv.org/abs/0910.0438
+   \J. Phys.: Condens. Matter **22**, 022201 (2010)
+
+   __ http://dx.doi.org/10.1088/0953-8984/22/2/022201
 
    .. 10 December 2009
 
