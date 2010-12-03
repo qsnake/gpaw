@@ -15,6 +15,7 @@ nearly no additional computational cost and performs very well:
 Mean deviation 116  155   83     16
 RMS deviation  111  131   64     18
 ============== ===  ===== ====== ====
+
 Error in energies compared to CCSD results of the S26 test set.
 All values in meV.
 GPAW calculations were done with h=0.18 and at least 4 A vacuum.
