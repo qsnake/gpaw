@@ -38,4 +38,4 @@ niter_tolerance = 0
 equal(e1, -0.07904951, energy_tolerance)
 equal(niter1, 14, niter_tolerance)
 equal(e2, -0.08147563, energy_tolerance)
-equal(niter2, 10, niter_tolerance)
+equal(niter2, 11, niter_tolerance)
