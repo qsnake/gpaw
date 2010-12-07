@@ -283,6 +283,12 @@ class Density:
         """Initialize D_asp, nt_sG and Q_aL from wave functions."""
         self.nt_sG = self.gd.empty(self.nspins)
         self.calculate_pseudo_density(wfs)
+        self.D_asp = {}
+        my_atom_indices = np.argwhere(wfs.rank_a == self.gd.comm.rank).ravel()
+        for a in my_atom_indices:
+            ni = self.setups[a].ni
+            self.D_asp[a] = np.empty((self.nspins, ni * (ni + 1) // 2))
+        wfs.calculate_atomic_density_matrices(self.D_asp)
         self.calculate_normalized_charges_and_mix()
 
     def initialize_directly_from_arrays(self, nt_sG, D_asp):
