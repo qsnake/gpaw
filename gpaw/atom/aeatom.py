@@ -301,7 +301,7 @@ class AllElectronAtom:
                 s = 0
             else:
                 self.add(n, l, 0.5 * df, 0)
-                self.add(n, l, 0.6 * df, 1)
+                self.add(n, l, 0.5 * df, 1)
                 return
             
         if l not in self.f_lsn:
