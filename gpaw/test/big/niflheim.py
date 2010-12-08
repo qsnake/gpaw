@@ -21,25 +21,27 @@ class Niflheim(Cluster):
         p = subprocess.Popen(['svnversion', 'gpaw'], stdout=subprocess.PIPE)
         self.revision = int(p.stdout.read())
 
-        if os.system('cd gpaw&& ' +
-                     'source /home/camp/modulefiles.sh&& ' +
-                     'module load NUMPY&& '+
-                     'module load open64/4.2.3-0 && ' +
-                     'python setup.py --remove-default-flags ' +
-                     '--customize=doc/install/Linux/Niflheim/' +
-                     'el5-xeon-open64-goto2-1.13-acml-4.4.0.py ' +
-                     'build_ext') != 0:
+        thul_install = ('cd weekend-tests/gpaw&& ' +
+                        'source /home/camp/modulefiles.sh&& ' +
+                        'module load NUMPY&& '+
+                        'module load open64/4.2.3-0 && ' +
+                        'python setup.py --remove-default-flags ' +
+                        '--customize=doc/install/Linux/Niflheim/' +
+                        'el5-xeon-open64-goto2-1.13-acml-4.4.0.py ' +
+                        'build_ext')
+        if os.system('echo "'+thul_install+'" | ssh thul bash') != 0:
             raise RuntimeError('Installation of GPAW (Xeon) failed!')
-        if os.system('ssh fjorm "cd weekend-tests/gpaw&& ' +
-                     'source /home/camp/modulefiles.sh&& ' +
-                     'module load NUMPY&& '+
-                     'module load open64/4.2.3-0 && ' +
-                     'python setup.py --remove-default-flags ' +
-                     '--customize=doc/install/Linux/Niflheim/' +
-                     'el5-opteron-open64-goto2-1.13-acml-4.4.0.py ' +
-                     'build_ext"') != 0:
+        fjorm_install = ('cd weekend-tests/gpaw&& ' +
+                         'source /home/camp/modulefiles.sh&& ' +
+                         'module load NUMPY&& '+
+                         'module load open64/4.2.3-0 && ' +
+                         'python setup.py --remove-default-flags ' +
+                         '--customize=doc/install/Linux/Niflheim/' +
+                         'el5-opteron-open64-goto2-1.13-acml-4.4.0.py ' +
+                         'build_ext')
+        if os.system('echo "'+fjorm_install+'" | ssh fjorm bash') != 0:
             raise RuntimeError('Installation of GPAW (Opteron) failed!')
-        
+
         os.system('wget --no-check-certificate --quiet ' +
                   'http://wiki.fysik.dtu.dk/gpaw-files/gpaw-setups-latest.tar.gz')
         os.system('tar xzf gpaw-setups-latest.tar.gz')
@@ -78,7 +80,7 @@ class Niflheim(Cluster):
         else:
             queueopts = job.queueopts
             arch = 'linux-x86_64-xeon-2.4'
-            
+
         gpaw_python = os.path.join(self.dir, 'gpaw', 'build',
                                    'bin.' + arch, 'gpaw-python')
 
@@ -142,6 +144,10 @@ if __name__ == '__main__':
     queue.collect()
 
     # examples of selecting jobs
+    #
+    # **Note** that this script searches the directories
+    # created during the niflheim.install() step above!
+    #
     #queue.jobs = [j for j in queue.jobs if j.script == 'testsuite.agts.py']
     #queue.jobs = [j for j in queue.jobs if j.script == 'neb.agts.py']
     #queue.jobs = [j for j in queue.jobs if j.dir.startswith('doc')]
