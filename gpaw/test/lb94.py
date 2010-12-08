@@ -22,13 +22,15 @@ print 'and', ref2
 
 print '**** all electron calculations'
 print 'atom [refs] -e_homo diff   all in mHa'
-for atom in e_HOMO_cs.keys():
-    ae = AllElectron(atom, 'LB94', txt=txt)
-    ae.run()
-    e_homo = int( ae.e_j[-1] * 10000 + .5 ) / 10.
-    diff = e_HOMO_cs[atom] + e_homo
-    print '%2s %8g %6.1f %4.1g' % (atom, e_HOMO_cs[atom], -e_homo, diff)
-    assert( abs(diff) < 6 )
+if rank == 0:
+    for atom in e_HOMO_cs.keys():
+        ae = AllElectron(atom, 'LB94', txt=txt)
+        ae.run()
+        e_homo = int( ae.e_j[-1] * 10000 + .5 ) / 10.
+        diff = e_HOMO_cs[atom] + e_homo
+        print '%2s %8g %6.1f %4.1g' % (atom, e_HOMO_cs[atom], -e_homo, diff)
+        assert abs(diff) < 6
+barrier()
 
 setup_paths.insert(0, '.')
 setups = {}
