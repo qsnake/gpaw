@@ -12,11 +12,69 @@ from gpaw.spline import Spline
 from gpaw.atom.all_electron import AllElectron, ConvergenceError
 from gpaw.atom.generator import Generator
 from gpaw.atom.configurations import parameters
+from gpaw.grid_descriptor import AERadialGridDescriptor
 #from gpaw.atom.polarization import PolarizationOrbitalGenerator, Reference,\
 #     QuasiGaussian, default_rchar_rel, rchar_rels
 from gpaw.utilities import devnull, divrl
 from gpaw.basis_data import Basis, BasisFunction, parse_basis_name
 from gpaw.version import version
+
+
+def get_gaussianlike_basis_function(rgd, l, rchar, gcut):
+    rcut = rgd.r_g[gcut]
+    gaussian = QuasiGaussian(1.0 / rchar**2, rcut)
+    r_g = rgd.r_g[:gcut + 1]
+    phit_g = gaussian(r_g) * r_g**l
+    phit_g[-1] = 0.0
+    norm = np.dot(rgd.dr_g[:gcut + 1], (r_g * phit_g)**2)**0.5
+    phit_g /= norm
+    norm2 = np.dot(rgd.dr_g[:gcut + 1], (r_g * phit_g)**2)**0.5
+    assert abs(1.0 - norm2) < 1e-10
+    return phit_g
+
+
+def make_split_valence_basis_function(r_g, psi_g, l, gcut):
+    """Get polynomial which joins psi smoothly at rcut.
+
+    Returns an array of function values f(r) * r, where::
+
+              l           2
+      f(r) = r  * (a - b r ),  r < rcut
+      f(r) = psi(r),           r >= rcut
+
+    where a and b are determined such that f(r) is continuous and
+    differentiable at rcut.  The parameter psi should be an atomic
+    orbital.
+    """
+    r1 = r_g[gcut] # ensure that rcut is moved to a grid point
+    r2 = r_g[gcut + 1]
+    y1 = psi_g[gcut] / r_g[gcut]
+    y2 = psi_g[gcut + 1] / r_g[gcut + 1]
+    b = - (y2 / r2**l - y1 / r1**l)/(r2**2 - r1**2)
+    a = (y1 / r1**l + b * r1**2)
+    psi_g2 = r_g**(l + 1) * (a - b * r_g**2)
+    psi_g2[gcut:] = psi_g[gcut:]
+    return psi_g2
+
+
+def rsplit_by_norm(rgd, l, u, tailnorm_squared, txt):
+    """Find radius outside which remaining tail has a particular norm."""
+    norm_squared = np.dot(rgd.dr_g, u * u)
+    partial_norm_squared = 0.
+    i = len(u) - 1
+    absolute_tailnorm_squared = tailnorm_squared * norm_squared
+    while partial_norm_squared < absolute_tailnorm_squared:
+        # Integrate backwards.  This is important since the pseudo
+        # wave functions have strange behaviour near the core.
+        partial_norm_squared += rgd.dr_g[i] * u[i]**2
+        i -= 1
+    rsplit = rgd.r_g[i + 1]
+    msg = ('Tail norm %.03f :: rsplit=%.02f Bohr' %
+           ((partial_norm_squared / norm_squared)**0.5, rsplit))
+    print >> txt, msg
+    gsplit = rgd.r2g_floor(rsplit)
+    splitwave = make_split_valence_basis_function(rgd.r_g, u, l, gsplit)
+    return rsplit, partial_norm_squared, splitwave
 
 
 class BasisMaker:
@@ -29,6 +87,8 @@ class BasisMaker:
                                   nofiles=True)
             generator.N *= 4
         self.generator = generator
+        self.rgd = AERadialGridDescriptor(generator.beta, generator.N,
+                                          default_spline_points=100)
         self.name = name
         if run:
             if non_relativistic_guess:
@@ -95,107 +155,6 @@ class BasisMaker:
         psit_mg = psi_mg * w_g + np.dot(Qt_nm.T, s_ng - u_ng * w_g)
         return psit_mg
 
-    def get_unsmoothed_projector_coefficients(self, psi_jg, l):
-        """Calculates scalar products of psi with non-smoothed projectors.
-
-        Returns a matrix with (i,j)'th element equal to::
-
-            < p  | psi  > ,
-               i      j
-
-        where the argument psi is the coefficient matrix for a system of
-        vectors, and where p_i are determined by::
-
-                            -----
-               ~             \      ~
-             < p  | psi  > =  )   < p  | phi  > < p  | psi  > ,
-                i      j     /       i      k      k      j
-                            -----
-                              k
-
-        where p_i-tilde are the projectors and phi_k the AE partial waves.
-        """
-        raise DeprecationWarning
-        if np.rank(psi_jg) == 1:
-            # vector/matrix polymorphism hack
-            return self.get_unsmoothed_projector_coefficients([psi_jg], l)[0]
-
-        g = self.generator
-        u = g.u_ln[l]
-        q = g.q_ln[l]
-
-        m = len(q)
-        n = len(u)
-
-        A = np.zeros((m, n))
-        b = np.zeros((m, len(psi_jg)))
-
-        # This can probably be done in the constructor once and for all
-        # Not to mention that it can be replaced by a matrix multiplication
-        for i in range(m):
-            for j in range(n):
-                A[i, j] = np.dot(g.dr, q[i] * u[j])
-
-        for i in range(m):
-            for j in range(len(psi_jg)):
-                b[i, j] = np.dot(g.dr, q[i] * psi_jg[j])
-
-        p = solve(A, b)
-        return p
-
-    def unsmoothify(self, psit_jg, l):
-        """Given smooth functions psit, return non-smooth ones.
-        
-        Converts each column of psit, interpreted as a pseudo wave
-        function, to original wave functions using the formula::
-
-                                  -----
-                          ~        \    /             ~    \    ~     ~
-            | psi  > = | psi  > +   )  ( | phi > - | phi  > ) < p  | psi  >
-                 i          i      /    \     j         j  /     j      i
-                                  -----
-                                    j
-        """
-        raise DeprecationWarning
-        if np.rank(psit_jg) == 1:
-            # vector/matrix polymorphism hack
-            return self.unsmoothify([psit_jg], l)[0]
-        g = self.generator
-        (q, u, s) = (g.q_ln[l], g.u_ln[l], g.s_ln[l])
-        
-        psi_jg = [psit_jg[j] + sum([(u[i] - s[i]) * q[i, j]
-                                    for i in range(len(s))])
-               for j in range(len(psit_jg))]
-        return psi_jg
-
-    def old_smoothify(self, psi_jg, l):
-        """Given non-smooth functions psi, return smooth ones.
-        
-        Converts each column of psi, interpreted as an all-electron
-        wave function, to pseudo wave functions using the formula::
-
-                                  -----
-               ~                   \    /   ~              \           
-            | psi  > = | psi  > +   )  ( | phi > - | phi  > ) < p  | psi  >
-                 i          i      /    \     j         j  /     j      i
-                                  -----
-                                    j
-
-        """
-        raise DeprecationWarning
-        if np.rank(psi_jg) == 1:
-            # vector/matrix polymorphism hack
-            return self.old_smoothify([psi_jg], l)[0]
-        
-        p = self.get_unsmoothed_projector_coefficients(psi_jg, l)
-        g = self.generator
-        (q, u, s) = (g.q_ln[l], g.u_ln[l], g.s_ln[l])
-        
-        psit_jg = [psi_jg[j] + sum([(s[i] - u[i]) * p[i, j]
-                                    for i in range(len(s))])
-                for j in range(len(psi_jg))]
-        return psit_jg
-
     def make_orbital_vector(self, j, rcut, vconf=None):
         """Returns a smooth basis vector given an all-electron one."""
         l = self.generator.l_j[j]
@@ -203,30 +162,9 @@ class BasisMaker:
         psit_g = self.smoothify(psi_g, l)
         return psit_g
 
-    def make_split_valence_vector(self, psi_g, l, rcut):
-        """Get polynomial which joins psi smoothly at rcut.
-
-        Returns an array of function values f(r) * r, where::
-        
-                  l           2
-          f(r) = r  * (a - b r ),  r < rcut
-          f(r) = psi(r),           r >= rcut
-
-        where a and b are determined such that f(r) is continuous and
-        differentiable at rcut.  The parameter psi should be an atomic
-        orbital.
-        """
-        g = self.generator
-        icut = g.r2g(rcut)
-        r1 = g.r[icut] # ensure that rcut is moved to a grid point
-        r2 = g.r[icut + 1]
-        y1 = psi_g[icut] / g.r[icut]
-        y2 = psi_g[icut + 1] / g.r[icut + 1]
-        b = - (y2 / r2**l - y1 / r1**l)/(r2**2 - r1**2)
-        a = (y1 / r1**l + b * r1**2)
-        psi_g2 = g.r**(l + 1) * (a - b * g.r**2)
-        psi_g2[icut:] = psi_g[icut:]
-        return psi_g2
+    #def make_split_valence_basis_function(self, psi_g, l, rcut):
+    #    gcut = self.generator.r2g(rcut)
+    #    return make_split_valence_basis_function(psi_g, l, gcut)
 
     def make_polarization_function(self, rcut, l, referencefile=None, 
                                    index=None, ngaussians=None, txt=devnull):
@@ -269,14 +207,6 @@ class BasisMaker:
         psi = r**l * y(r)
         return psi * r # Recall that wave functions are represented as psi*r
 
-    def make_mock_vector(self, rcut, l):
-        """Return orbital-like polynomial."""
-        r = self.generator.r
-        x = r / rcut
-        y = (1 - 3 * x**2 + 2 * x**3) * x**l
-        icut = self.generator.r2g(rcut)
-        y[icut:] *= 0
-        return y * r # Recall that wave functions are represented as psi*r
 
     def rcut_by_energy(self, j, esplit=.1, tolerance=.1, rguess=6.,
                        vconf_args=None):
@@ -326,24 +256,6 @@ class BasisMaker:
         #print 'Done!'
         return psi_g, e, de, vconf, rc
 
-    def rsplit_by_norm(self, l, u, tailnorm_squared, txt):
-        """Find radius outside which remaining tail has a particular norm."""
-        g = self.generator
-        norm_squared = np.dot(g.dr, u*u)
-        partial_norm_squared = 0.
-        i = len(u) - 1
-        absolute_tailnorm_squared = tailnorm_squared * norm_squared
-        while partial_norm_squared < absolute_tailnorm_squared:
-            # Integrate backwards.  This is important since the pseudo
-            # wave functions have strange behaviour near the core.
-            partial_norm_squared += g.dr[i] * u[i]**2
-            i -= 1
-        rsplit = g.r[i+1]
-        msg = ('Tail norm %.03f :: rsplit=%.02f Bohr' %
-               ((partial_norm_squared / norm_squared)**.5, rsplit))
-        print >> txt, msg
-        splitwave = self.make_split_valence_vector(u, l, rsplit)
-        return rsplit, partial_norm_squared, splitwave
 
     def generate(self, zetacount=2, polarizationcount=1,
                  tailnorm=(0.16, 0.3, 0.6), energysplit=0.1, tolerance=1.0e-3,
@@ -402,6 +314,7 @@ class BasisMaker:
             amplitude, ri_rel = vconf_args
 
         g = self.generator
+        rgd = self.rgd
 
         # Find out all relevant orbitals
         # We'll probably need: s, p and d.
@@ -501,7 +414,7 @@ class BasisMaker:
                 
                 phit2_g = self.smoothify(u2, l)
                 dphit_g = phit2_g - phit_g
-                dphit_norm = np.dot(g.dr, dphit_g * dphit_g) ** .5
+                dphit_norm = np.dot(rgd.dr_g, dphit_g * dphit_g) ** .5
                 dphit_g /= dphit_norm
                 descr = '%s-dz E-derivative of sz' % orbitaltype
                 bf = BasisFunction(l, rc, dphit_g, descr)
@@ -513,9 +426,9 @@ class BasisMaker:
                 # of the first function impact the tail norm scheme?
                 # Presumably not much, since most interesting stuff happens
                 # close to the core.
-                rsplit, norm, splitwave = self.rsplit_by_norm(l, phit_g,
-                                                              tailnorm[i]**2.0,
-                                                              txt)
+                rsplit, norm, splitwave = rsplit_by_norm(rgd, l, phit_g,
+                                                         tailnorm[i]**2.0,
+                                                         txt)
                 descr = '%s-%sz split-valence wave' % (orbitaltype,
                                                        '0sdtq56789'[zeta])
                 bf = BasisFunction(l, rsplit, phit_g - splitwave, descr)
@@ -561,8 +474,8 @@ class BasisMaker:
                 rcharpol_rel = rchar_rels.get(l_pol, default_rchar_rel)
             rchar = rcharpol_rel * rc_fixed
             gaussian = QuasiGaussian(1./rchar**2, rcut)
-            psi_pol = gaussian(g.r) * g.r**(l_pol + 1)
-            norm = np.dot(g.dr, psi_pol * psi_pol) ** .5
+            psi_pol = gaussian(rgd.r_g) * rgd.r_g**(l_pol + 1)
+            norm = np.dot(rgd.dr_g, psi_pol * psi_pol) ** .5
             psi_pol /= norm
             print >> txt, 'Single quasi Gaussian'
             msg = 'Rchar = %.03f*rcut = %.03f Bohr' % (rcharpol_rel, rchar)
@@ -585,9 +498,9 @@ class BasisMaker:
                                      'Quintary', 'Sextary', 'Septenary'][i],
                                     splitvalencedescr)
                 print >> txt, msg
-                rsplit, norm, splitwave = self.rsplit_by_norm(l_pol, psi_pol,
-                                                              tailnorm[i],
-                                                              txt)
+                rsplit, norm, splitwave = rsplit_by_norm(rgd, l_pol, psi_pol,
+                                                         tailnorm[i],
+                                                         txt)
                 descr = ('%s-type split-valence polarization %d'
                          % ('spdfg'[l_pol], npol))
                 bf_pol = BasisFunction(l_pol, rsplit, psi_pol - splitwave,
@@ -610,7 +523,7 @@ class BasisMaker:
 
         for bf in bf_j:
             # We have been storing phit_g * r, but we just want phit_g
-            bf.phit_g = divrl(bf.phit_g, 1, g.r)
+            bf.phit_g = divrl(bf.phit_g, 1, rgd.r_g)
             
             gcut = min(int(1 + bf.rc / d), ng - 1)
             
@@ -624,9 +537,9 @@ class BasisMaker:
             # not here
             
             # Quick hack to change to equidistant coordinates
-            spline = Spline(bf.l, g.r[g.r2g(bf.rc)],
+            spline = Spline(bf.l, rgd.r_g[rgd.r2g_floor(bf.rc)],
                             bf.phit_g,
-                            g.r, beta=g.beta, points=100)
+                            rgd.r_g, beta=rgd.beta, points=100)
             bf.phit_g = np.array([spline(r) * r**bf.l
                                    for r in equidistant_grid[:bf.ng]])
             bf.phit_g[-1] = 0.

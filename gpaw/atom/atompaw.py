@@ -120,7 +120,6 @@ class AtomEigensolver:
                                   np.outer(pt1 * r,  pt2 * r))
                         i2 += 2 * l2 + 1
                     i1 += 2 * l1 + 1
-                H0 = H.copy()#XXX
                 general_diagonalize(H, e_n, self.S_l[l].copy())
 
                 for n in range(len(self.f_sln[s][l])):
