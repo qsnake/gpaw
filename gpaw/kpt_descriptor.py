@@ -76,7 +76,7 @@ class KPointDescriptor:
         
         return self.mynks
 
-    def set_symmetry(self, atoms, setups, usesymm):
+    def set_symmetry(self, atoms, setups, usesymm, N_c=None):
         """Create symmetry object and construct irreducible Brillouin zone.
 
         Parameters
@@ -88,7 +88,8 @@ class KPointDescriptor:
             PAW setups for the atoms.
         usesymm: bool
             Symmetry flag.
-
+        N_c: three int's or None
+            If not None:  Check also symmetry of grid.
         """
 
         if (~atoms.pbc & self.bzk_kc.any(0)).any():
@@ -121,6 +122,9 @@ class KPointDescriptor:
                 self.symmetry.analyze(atoms.get_scaled_positions())
             else:
                 self.symmetry.prune_symmetries(atoms.get_scaled_positions())
+
+            if N_c is not None:
+                self.symmetry.prune_symmetries_grid(N_c)
 
             # Reduce the set of k-points and add inversion if not already
             # detected

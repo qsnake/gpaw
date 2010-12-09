@@ -205,6 +205,19 @@ class Symmetry:
         
         return ibzk_kc[::-1].copy(), weight_k[:nibzkpts][::-1] / nbzkpts
 
+    def prune_symmetries_grid(self, N_c):
+        """Remove symmetries that are not satisfied by the grid."""
+
+        U_scc = []
+        a_sa = []
+        for U_cc, a_a in zip(self.op_scc, self.maps):
+            if not (U_cc * N_c - (U_cc.T * N_c).T).any():
+                U_scc.append(U_cc)
+                a_sa.append(a_a)
+                
+        self.maps = np.array(a_sa)
+        self.op_scc = np.array(U_scc)
+
     def symmetrize(self, a, gd):
         """Symmetrize array."""
         
