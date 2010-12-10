@@ -1,6 +1,6 @@
 import os
 from ase import Atom, Atoms
-from ase.optimize import QuasiNewton
+from ase.optimize import BFGS
 from ase.io import read
 from gpaw import GPAW
 from gpaw.test import equal
@@ -8,9 +8,11 @@ from gpaw.test import equal
 a = 4.    # Size of unit cell (Angstrom)
 c = a / 2
 d = 0.74  # Experimental bond length
-molecule = Atoms([Atom('H', (c - d / 2, c, c)),
-                        Atom('H', (c + d / 2, c, c))],
-                       cell=(a, a, a), pbc=False)
+molecule = Atoms('H2',
+                 [(c - d / 2, c, c),
+                  (c + d / 2, c, c)],
+                 cell=(a, a, a),
+                 pbc=False)
 calc = GPAW(h=0.2, nbands=1, xc='PBE', txt=None)
 molecule.set_calculator(calc)
 e1 = molecule.get_potential_energy()
@@ -59,7 +61,7 @@ print 'hydrogen molecule energy: %7.3f eV' % e1
 print 'bondlength              : %7.3f Ang' % d0
 
 # Find the theoretical bond length:
-relax = QuasiNewton(molecule)
+relax = BFGS(molecule)
 relax.run(fmax=0.05)
 
 e2 = molecule.get_potential_energy()
@@ -78,7 +80,7 @@ print 'bondlength              : %7.3f Ang' % d0
 
 
 molecule = GPAW('H2fa.gpw', txt='H2.txt').get_atoms()
-relax = QuasiNewton(molecule)
+relax = BFGS(molecule)
 relax.run(fmax=0.05)
 e2q = molecule.get_potential_energy()
 niter2q = calc.get_number_of_iterations()
