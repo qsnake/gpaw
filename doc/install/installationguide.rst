@@ -122,7 +122,7 @@ This will take around 40 minutes.  If you have a multicore CPU, you
 can speed up the test by using ``gpaw-test -j <number-of-cores>``.
 This will run tests simultaneously (**not** employing MPI parallelization)
 on the requested `<number-of-cores>`.
-Please report errors to the ``gridpaw-developer`` mailing list (see
+Please report errors to the ``gpaw-developers`` mailing list (see
 :ref:`mailing_lists`) Send us :file:`test.log`, as well as the
 information about your environment (processor architecture, versions
 of python and numpy, C-compiler, BLAS and LAPACK libraries, MPI
