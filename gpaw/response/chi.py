@@ -642,7 +642,8 @@ class CHI:
             printtxt('     nbands parsize  : %d' %(self.kcomm.size))
         else:
             printtxt('     kpoint parsize  : %d' %(self.kcomm.size))
-        printtxt('     specfunc parsize: %d' %(self.wScomm.size))
+        if self.hilbert_trans:
+            printtxt('     specfunc parsize: %d' %(self.wScomm.size))
         printtxt('     w parsize       : %d' %(self.wcomm.size))
         printtxt('')
         printtxt('Memory usage estimation:')
