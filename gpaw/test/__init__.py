@@ -158,6 +158,7 @@ tests = [
     'gllbatomic.py', 
     'ne_gllb.py',
     'ne_disc.py', 
+    'diamond_gllb.py',
     'wannier_ethylene.py',
     'CH4.py',
     'neb.py',

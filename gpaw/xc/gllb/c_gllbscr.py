@@ -67,12 +67,15 @@ class C_GLLBScr(Contribution):
                      for e_n, f_n in zip(self.ae.e_ln, self.ae.f_ln) ]
         
 
-    def get_coefficients_by_kpt(self, kpt_u, lumo_perturbation=False):
+    def get_coefficients_by_kpt(self, kpt_u, lumo_perturbation=False, homolumo=None):
         if kpt_u[0].psit_nG is None or isinstance(kpt_u[0].psit_nG,
                                                   TarFileReference): 
             return None
 
-        e_ref, e_ref_lumo = self.occupations.get_homo_lumo(self.nlfunc.wfs)
+        if homolumo == None:
+            e_ref, e_ref_lumo = self.occupations.get_homo_lumo(self.nlfunc.wfs)
+        else:
+            e_ref, e_ref_lumo = homolumo
 
         # The parameter ee might sometimes be set to small thereshold value to
         # achieve convergence on systems with degenerate HOMO.

@@ -163,19 +163,25 @@ class C_Response(Contribution):
         vt_g += self.weight * v_g / (n_g + 1e-10)
         return 0.0 # Response part does not contribute to energy
 
-    def calculate_delta_xc(self):
-        # Calculate band gap
-        homo, lumo = self.occupations.get_homo_lumo(self.wfs)
-        Ksgap = lumo - homo
-        #print "KSgap ", Ksgap
+    def calculate_delta_xc(self, homolumo = None):
+        if homolumo == None:
+            # Calculate band gap
+            print "Warning: Calculating KS-gap directly from the k-points, can be inaccurate."
+            homolumo = self.occupations.get_homo_lumo(self.wfs)
 
+
+        homo, lumo = homolumo
+        Ksgap = lumo-homo
+        print "Using KS-gap of ", Ksgap
+
+        
         for a in self.density.D_asp:
             ni = self.setups[a].ni
             self.Dxc_Dresp_asp[a] = np.zeros((self.nlfunc.nspins, ni * (ni + 1) // 2))
             self.Dxc_D_asp[a] = np.zeros((self.nlfunc.nspins, ni * (ni + 1) // 2))
 
         # Calculate new response potential with LUMO reference 
-        w_kn = self.coefficients.get_coefficients_by_kpt(self.kpt_u, lumo_perturbation=True)
+        w_kn = self.coefficients.get_coefficients_by_kpt(self.kpt_u, lumo_perturbation=True, homolumo=homolumo)
         #print "dxc w_kn", w_kn
        
         f_kn = [ kpt.f_n for kpt in self.kpt_u ]
@@ -205,10 +211,9 @@ class C_Response(Contribution):
             self.Dxc_D_asp, f_kn)
 
     def calculate_delta_xc_perturbation(self):
-        # Calculate band gap
         homo, lumo = self.occupations.get_homo_lumo(self.wfs)
         Ksgap = lumo - homo
-
+        
         # Calculate average of lumo reference response potential
         method1_dxc = np.average(self.Dxc_vt_sG[0])
         #print self.Dxc_vt_sG[0][0][0]
