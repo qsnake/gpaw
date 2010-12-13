@@ -27,7 +27,7 @@ for xcname in ['GLLB','GLLBSC']:
     calc = GPAW(nbands=10, h=0.2, xc=xcname)
     Ne.set_calculator(calc)
     e = Ne.get_potential_energy()
-    response = calc.hamiltonian.xc.xcfunc.xc.xcs['RESPONSE']
+    response = calc.hamiltonian.xc.xcs['RESPONSE']
     response.calculate_delta_xc()
     KS, dxc = response.calculate_delta_xc_perturbation()
     if xcname=='GLLB':
