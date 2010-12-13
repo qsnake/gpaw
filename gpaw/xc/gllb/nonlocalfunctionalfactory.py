@@ -31,8 +31,8 @@ class NonLocalFunctionalFactory:
             # Contains screening part from GGA functional
             # And response part based on simple square root expection
             # of orbital energy differences.
-            from gpaw.gllb.contributions.c_gllbscr import C_GLLBScr
-            from gpaw.gllb.contributions.c_response import C_Response
+            from gpaw.xc.gllb.c_gllbscr import C_GLLBScr
+            from gpaw.xc.gllb.c_response import C_Response
             C_Response(functional, 1.0,
                        C_GLLBScr(functional, 1.0).get_coefficient_calculator())
             return functional
@@ -47,9 +47,9 @@ class NonLocalFunctionalFactory:
             C_XC(functional, 1.0, 'GGA_C_PBE_SOL')
             return functional
         elif name == 'GLLBC':
-            from gpaw.xc.gllb.contributions.c_gllbscr import C_GLLBScr
-            from gpaw.xc.gllb.contributions.c_response import C_Response
-            from gpaw.xc.gllb.contributions.c_xc import C_XC
+            from gpaw.xc.gllb.c_gllbscr import C_GLLBScr
+            from gpaw.xc.gllb.c_response import C_Response
+            from gpaw.xc.gllb.c_xc import C_XC
             C_Response(functional, 1.0,
                        C_GLLBScr(functional, 1.0,'X_PBE-None').get_coefficient_calculator())
             C_XC(functional, 1.0, 'None-C_PBE')
