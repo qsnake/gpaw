@@ -3,10 +3,10 @@ from gpaw.mpi import world
 
 class NonLocalFunctional(XCFunctional):
     type = 'GLLB'
-    def __init__(self):
+    def __init__(self, xcname):
         self.contributions = []
         self.xcs = {}
-        XCFunctional.__init__(self, 'GLLBSC')
+        XCFunctional.__init__(self, xcname)
     
     def initialize(self, density, hamiltonian, wfs, occupations):
         self.gd = density.gd # smooth grid describtor

@@ -24,7 +24,7 @@ class NonLocalFunctionalFactory:
         print "Functional name", name
 
         from gpaw.xc.gllb.nonlocalfunctional import NonLocalFunctional
-        functional = NonLocalFunctional()
+        functional = NonLocalFunctional(name)
         
         if name == 'GLLB':
             # Functional GLLB

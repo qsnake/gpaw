@@ -32,6 +32,8 @@ for xcname in ['GLLB','GLLBSC']:
     KS, dxc = response.calculate_delta_xc_perturbation()
     if xcname=='GLLB':
         equal(KS+dxc, 24.71, 1e-1)
+    else:
+        equal(KS+dxc, 27.70, 1e-2)
     eps3d = calc.wfs.kpt_u[0].eps_n[3]
     calc.write('Ne_temp.gpw')
 
