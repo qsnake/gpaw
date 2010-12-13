@@ -49,6 +49,6 @@ equal(E[True], E[False], 0.01)
 
 energy_tolerance = 0.0003
 equal(E[False], 6.97818, energy_tolerance)
-assert 15 <= niter[False] <= 21, niter[False]
+assert 15 <= niter[False] <= 24, niter[False]
 equal(E[True], 6.97153, energy_tolerance)
-assert 16 <= niter[True] <= 23, niter[True]
+assert 15 <= niter[True] <= 24, niter[True]
