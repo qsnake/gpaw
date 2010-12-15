@@ -1,5 +1,7 @@
 def agts(queue):
-    queue.add('neb/neb1.py', ncpus=8)
+    queue.add('neb/neb1.py', ncpus=1)
+    queue.add('neb/neb2.py', ncpus=1)
+    queue.add('neb/neb3.py', ncpus=1)
     queue.add('aluminium/Al_fcc.py', ncpus=4)
     queue.add('aluminium/Al_lattice.py', ncpus=8)
     queue.add('diffusion/initial.py', ncpus=8)

@@ -7,7 +7,9 @@ from ase.io import write
 from ase.visualize import view
 from ase.constraints import FixAtoms
 from ase.optimize import QuasiNewton
+from ase.optimize import BFGS
 from ase.neb import NEB
+from ase.calculators.emt import EMT
 
 a = 4.0614
 b = a / sqrt(2)
@@ -19,7 +21,7 @@ initial = Atoms('Al2',
                 pbc=(1, 1, 0))
 initial *= (2, 2, 2)
 initial.append(Atom('Al', (a / 2, b / 2, 3 * h)))
-initial.center(vacuum=4., axis=2)
+initial.center(vacuum=4.0, axis=2)
 
 final = initial.copy()
 final.positions[-1, 0] += a
@@ -50,12 +52,12 @@ QuasiNewton(final).run(fmax=0.05)
 # Create a Nudged Elastic Band:
 neb = NEB(images)
 
-# Mak a starting guess for the minimum energy path (a straight line
+# Make a starting guess for the minimum energy path (a straight line
 # from the initial to the final state):
 neb.interpolate()
 
 # Relax the NEB path:
-minimizer = QuasiNewton(neb)
+minimizer = BFGS(neb)
 minimizer.run(fmax=0.05)
 
 # Write the path to a trajectory:
