@@ -105,6 +105,17 @@ def coordinates(gd, origin=None, tiny=1e-12):
 
     r_vG = (gd.get_grid_point_coordinates() -
             r0_v[:, np.newaxis, np.newaxis, np.newaxis])
+
+    # periodic boundary conditions, orthorhombic cell only
+    for c in range(3):
+        if gd.pbc_c[c]:
+            r_vG[c,:,:,:] = np.where(r_vG[c,:,:,:] > 0.5 * gd.cell_cv[c,c],
+                                     r_vG[c,:,:,:] - gd.cell_cv[c,c],
+                                     r_vG[c,:,:,:])
+            r_vG[c,:,:,:] = np.where(r_vG[c,:,:,:] < -0.5 * gd.cell_cv[c,c],
+                                     r_vG[c,:,:,:] + gd.cell_cv[c,c],
+                                     r_vG[c,:,:,:])
+
     r2_G = np.sum(r_vG**2, axis=0)
     # Remove singularity at origin and replace with small number
     r2_G = np.where(r2_G < tiny, tiny, r2_G)
