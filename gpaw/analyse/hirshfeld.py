@@ -34,11 +34,14 @@ class HirshfeldDensity(Density):
         # select atoms
         atoms = []
         D_asp = {}
+        rank_a = []
         all_D_asp = self.calculator.density.D_asp
+        all_rank_a = self.calculator.density.rank_a
         for a in atom_indicees:
             if a in all_D_asp:
                 D_asp[len(atoms)] = all_D_asp.get(a)
             atoms.append(all_atoms[a])
+            rank_a.append(all_rank_a[a])
         atoms = Atoms(atoms, cell=all_atoms.get_cell())
         spos_ac = atoms.get_scaled_positions() % 1.0
         Z_a = atoms.get_atomic_numbers()
@@ -55,7 +58,7 @@ class HirshfeldDensity(Density):
                         self.calculator.timer,
                         [0] * len(atoms), False)
         self.set_mixer(None)
-        self.set_positions(spos_ac, self.calculator.wfs.rank_a)
+        self.set_positions(spos_ac, rank_a)
         basis_functions = BasisFunctions(self.gd,
                                          [setup.phit_j
                                           for setup in self.setups],
