@@ -25,7 +25,7 @@ nband = 30
 
 if GS:
 
-    kpts = (54,54,1)
+    kpts = (64,64,1)
     atoms = hcp0001('Be',size=(1,1,1))
     atoms.cell[2][2] = (21.2)
     atoms.set_pbc(True)
@@ -39,22 +39,19 @@ if GS:
                 kpts=kpts,
                 basis='dzp',
                 nbands=nband+5,
+                parallel={'domain':1,
+                          'band':1},
                 convergence={'bands':nband},
                 eigensolver = 'cg',
                 width=0.1)
     atoms.set_calculator(calc)
     atoms.get_potential_energy()
-    calc.write('Be.gpw','all')
-
 
 if EELS:
 
-    calc = GPAW('Be.gpw',communicator=serial_comm, txt=None)
-                
     for i in range(1, 2):
         w = np.linspace(0, 15, 301)
-#        q = np.array([i/50., 0., 0.]) # Gamma - M
-        q = np.array([-i/54., i/54., 0.]) # Gamma - K
+        q = np.array([-i/64., i/64., 0.]) # Gamma - K
 	ecut = 40 + i*10
         df = DF(calc=calc, q=q, w=w, eta=0.05, ecut = ecut,
                       txt='df_' + str(i) + '.out')  
@@ -66,18 +63,18 @@ if EELS:
 if check:
     d = np.loadtxt('be_EELS')
 
-    wpeak1 = 2.55 # eV
+    wpeak1 = 2.50 # eV
     wpeak2 = 9.95
-    Nw1 = 51
+    Nw1 = 50
     Nw2 = 199
 
-    if (d[Nw1, 2] > d[Nw1-1, 2] and d[Nw1, 2] > d[Nw1+1, 2] and  
-       d[Nw2, 2] > d[Nw2-1, 2] and d[Nw2, 2] > d[Nw2+1, 2]):
+    if (d[Nw1, 1] > d[Nw1-1, 1] and d[Nw1, 1] > d[Nw1+1, 1] and  
+       d[Nw2, 1] > d[Nw2-1, 1] and d[Nw2, 1] > d[Nw2+1, 1]):
         pass
     else:
         raise ValueError('Plasmon peak not correct ! ')
 
-    if (np.abs(d[Nw1, 2] - 10.6346557215) > 1e-5
-        or np.abs(d[Nw2, 2] - 2.6228166295 ) > 1e-5):
-        print d[Nw1, 2], d[Nw, 2]
+    if (np.abs(d[Nw1, 1] - 10.1346526489) > 1e-5
+        or np.abs(d[Nw2, 1] - 2.17958316492 ) > 1e-5):
+        print d[Nw1, 1], d[Nw, 1]
         raise ValueError('Please check spectrum strength ! ')
