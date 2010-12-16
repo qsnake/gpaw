@@ -3,10 +3,20 @@ import numpy as np
 
 from ase.units import Bohr
 
-from gpaw.utilities import pack, pack2, wignerseitz
+from gpaw.utilities import pack, pack2
 from gpaw.analyse.hirshfeld import HirshfeldDensity
 from gpaw.utilities.tools import coordinates
 from gpaw.mpi import MASTER
+
+def wignerseitz(gd, atoms):
+    """Determine which atom is closest to each grid point."""
+    r_vG, R2min_G = coordinates(gd, atoms[0].position / Bohr)
+    index_G = gd.zeros(dtype=int)
+    for a, atom in enumerate(atoms[1:]):
+        r_vG, r2_G = coordinates(gd, atom.position / Bohr)
+        index_G = np.where(R2min_G > r2_G, a + 1, index_G)
+        R2min_G = np.where(R2min_G > r2_G, r2_G, R2min_G)
+    return index_G
 
 class WignerSeitz:
     def __init__(self, gd, atoms, calculator=None):
@@ -16,16 +26,7 @@ class WignerSeitz:
         self.gd = gd
         self.calculator = calculator
 
-        n = len(self.atoms)
-        atom_c = np.empty((n, 3))
-        spos_ac = atoms.get_scaled_positions() % 1.0
-        for a, spos_c in enumerate(spos_ac):
-            atom_c[a] = spos_c * gd.N_c
-
-        # define the atom index for each grid point 
-        atom_index = gd.empty(dtype=int)
-        wignerseitz(atom_index, atom_c, gd)
-        self.atom_index = atom_index
+        self.atom_index = wignerseitz(gd, atoms)
 
     def expand(self, density):
         """Expand a smooth density in Wigner-Seitz cells around the atoms"""

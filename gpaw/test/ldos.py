@@ -18,7 +18,7 @@ Hnospin.center()
 Hspin.center()
 LiH.center(vacuum=3.0)
 
-# This is needed for the Wigner-Zeitz test to give
+# This is needed for the Wigner-Seitz test to give
 # architecture-independent results:
 LiH.translate(0.003234)
 

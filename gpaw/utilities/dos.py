@@ -2,7 +2,8 @@ from math import pi, sqrt
 import numpy as np
 from ase.units import Hartree, Bohr
 from ase.parallel import paropen
-from gpaw.utilities import pack, wignerseitz
+from gpaw.utilities import pack
+from gpaw.analyse.wignerseitz import wignerseitz
 from gpaw.setup_data import SetupData
 from gpaw.gauss import Gauss
 from gpaw.io.fmf import FMF
@@ -239,9 +240,7 @@ def raw_wignerseitz_LDOS(paw, a, spin):
     """Return a list of eigenvalues, and their weight on the specified atom"""
     wfs = paw.wfs
     gd = wfs.gd
-    atom_index = gd.empty(dtype=int)
-    atom_ac = paw.atoms.get_scaled_positions() * gd.N_c
-    wignerseitz(atom_index, atom_ac, gd)
+    atom_index = wignerseitz(gd, paw.atoms)
 
     w_k = wfs.weight_k
     nk = len(w_k)

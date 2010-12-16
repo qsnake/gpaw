@@ -128,28 +128,6 @@ def hartree(l, nrdr, beta, N, vr):
     assert nrdr.shape == vr.shape and len(vr.shape) == 1
     return _gpaw.hartree(l, nrdr, beta, N, vr)
 
-
-def wignerseitz(index_G, atom_ac, gd):
-    """Determine which atom is closest to each grid point.
-
-    For a uniform grid defined by the first and last grid point indices
-    gd.beg_c and gd.end_c, determine for each grid point, which atom, specified
-    by the atomic coordinates in atom_ac, is the closest. Return result as
-    atomic indices on the grid index_G.
-    """
-    assert gd.orthogonal
-    if gd.pbc_c.any():
-        print "WARNING: Wigner-Seitz code does not take PBC's into account!"
-        
-    beg_c = gd.beg_c
-    end_c = gd.end_c
-    assert is_contiguous(index_G, int)
-    assert is_contiguous(atom_ac, float)
-    assert atom_ac.shape[1] == len(beg_c) == len(end_c) == 3
-    assert index_G.shape == tuple(end_c - beg_c)
-    return _gpaw.wigner_seitz_grid(index_G, atom_ac, beg_c, end_c)
-
-
 def packed_index(i1, i2, ni):
     """Return a packed index"""
     if i1 > i2:

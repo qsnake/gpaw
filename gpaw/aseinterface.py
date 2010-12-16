@@ -257,10 +257,8 @@ class GPAW(PAW):
         The density assigned to each atom is relative to the neutral atom,
         i.e. the density sums to zero.
         """
-        from gpaw.utilities import wignerseitz
-        atom_index = self.wfs.gd.empty(dtype=int)
-        atom_ac = self.atoms.get_scaled_positions() * self.wfs.gd.N_c
-        wignerseitz(atom_index, atom_ac, self.wfs.gd)
+        from gpaw.analyse.wignerseitz import wignerseitz
+        atom_index = wignerseitz(self.wfs.gd, self.atoms)
 
         nt_G = self.density.nt_sG[spin]
         weight_a = np.empty(len(self.atoms))
