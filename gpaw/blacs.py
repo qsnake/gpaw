@@ -145,34 +145,29 @@ class BlacsGrid:
         assert npcol > 0
         assert len(order) == 1
         assert order in 'CcRr'
-        # set a default value for the context, makes destructor
-        # valid for SerialCommunicator also leads to fewer if statements
-        self.context = INACTIVE
+        # set a default value for the context leads to fewer
+        # if statements below
+        context = INACTIVE
 
         # There are three cases to handle:
         # 1. Comm is None is inactive (default). 
-        # 2. DryRun Communicator which is a subclass of SerialCommunicator
-        # 3. Comm is a legitimate communicator
+        # 2. Comm is a legitimate communicator
+        # 3. DryRun Communicator is now handled by subclass
         if comm is not None: # MPI task is part of the communicator
             if nprow * npcol > comm.size:
                 raise ValueError('Impossible: %dx%d Blacs grid with %d CPUs'
                                  % (nprow, npcol, comm.size))
-            if not isinstance(comm, SerialCommunicator):
-                self.context = _gpaw.new_blacs_context(comm.get_c_object(),
-                                                       npcol, nprow, order)
-                assert (self.context != INACTIVE) == \
-                    (comm.rank < nprow * npcol)
 
-        # INACTIVE case is also handled by C call to blacs_gridinfo.
-        # The check is done at the Python level to make it compatible
-        # with the SerialCommunicator.
-        if self.context == INACTIVE:
-            self.mycol, self.myrow = (INACTIVE, INACTIVE)
-        else:
-            self.mycol, self.myrow = _gpaw.get_blacs_gridinfo(self.context, 
-                                                              nprow,
-                                                              npcol)
+            context = _gpaw.new_blacs_context(comm.get_c_object(),
+                                              npcol, nprow, order)
+            assert (context != INACTIVE) == (comm.rank < nprow * npcol)
+
+
+        self.mycol, self.myrow = _gpaw.get_blacs_gridinfo(context, 
+                                                          nprow,
+                                                          npcol)
         
+        self.context = context
         self.comm = comm
         self.nprow = nprow
         self.npcol = npcol
@@ -202,6 +197,27 @@ class BlacsGrid:
     def __del__(self):
         if self.is_active():
             _gpaw.blacs_destroy(self.context)
+
+
+class DryRunBlacsGrid(BlacsGrid):
+    def __init__(self, comm, nprow, npcol, order='R'):
+        assert isinstance(comm, SerialCommunicator) #DryRunCommunicator is subclass
+        if nprow * npcol > comm.size:
+            raise ValueError('Impossible: %dx%d Blacs grid with %d CPUs'
+                             % (nprow, npcol, comm.size))
+        self.context = INACTIVE
+        self.comm = comm
+        self.nprow = nprow
+        self.npcol = npcol
+        self.ncpus = nprow * npcol
+        self.mycol, self.myrow = INACTIVE, INACTIVE
+        self.order = order
+
+
+#XXX A MAJOR HACK HERE:
+from gpaw import dry_run
+if dry_run:
+    BlacsGrid = DryRunBlacsGrid
 
 
 class BlacsDescriptor(MatrixDescriptor):
