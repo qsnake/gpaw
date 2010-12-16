@@ -107,7 +107,7 @@ tests = [
     'usesymm.py',
 #    'usesymm2.py',
     'eed.py',
-#    'hirshfeld.py',
+    'partitioning.py',
     'mixer.py',
     'broydenmixer.py',
     'restart.py',
