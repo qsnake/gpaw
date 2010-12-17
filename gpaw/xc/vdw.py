@@ -577,6 +577,8 @@ class FFTVDWFunctional(VDWFunctional):
         self.dj_k -= self.j_k
         self.dj_k *= 2 * pi / self.rcut
 
+        assert self.j_k.max() < self.Nr // 2, 'Use larger Nr.'
+ 
         if self.verbose:
             print 'VDW: density array size:', gd.get_size_of_global_array()
             print 'VDW: zero-padded array size:', self.shape
