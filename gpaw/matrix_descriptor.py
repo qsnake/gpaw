@@ -47,6 +47,9 @@ class MatrixDescriptor:
                        (self.shape, a_mn.shape))
             raise AssertionError(msg)
 
+    def estimate_memory(self, mem, dtype):
+        """Handled by subclass."""
+        pass
 # -------------------------------------------------------------------
 
 class BandMatrixDescriptor(MatrixDescriptor):
@@ -267,6 +270,12 @@ class BandMatrixDescriptor(MatrixDescriptor):
         if debug:
             self.checkassert(A_NN)
         return A_NN
+
+    def estimate_memory(self, mem, dtype):
+        # Temporary work arrays included in estimate #
+        nbands = self.bd.nbands
+        itemsize = mem.itemsize[dtype]
+        mem.subnode('2 A_NN', 2*nbands*nbands*itemsize)
 
 # -------------------------------------------------------------------
 
@@ -577,6 +586,14 @@ class BlacsBandMatrixDescriptor(MatrixDescriptor):#, BlacsBandLayouts):
             A_nn = self.ksl.nndescriptor.empty(dtype=A_Nn.dtype)
         self.ksl.Nn2nn.redistribute(A_Nn, A_nn)
         return A_nn
+    
+    def estimate_memory(self, mem, dtype):
+        # Temporary work arrays included in estimate #
+        mynbands = self.bd.mynbands
+        nbands = self.bd.nbands
+        itemsize = mem.itemsize[dtype]
+        mem.subnode('2 A_nN', 2*mynbands*nbands*itemsize)
+        mem.subnode('2 A_nn', 2*nbands*nbands/self.ksl.blockgrid.ncpus*itemsize)
 
     #def redistribute_input(self, A_NN): # 2D -> 1D row layout
     #    # XXX instead of a BLACS-distribute from 2D, we disassemble the full matrix

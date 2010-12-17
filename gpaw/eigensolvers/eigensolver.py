@@ -174,8 +174,9 @@ class Eigensolver:
         else:
             mem.subnode('No Htpsit', 0)
 
-        # mem.subnode('U_nn', nbands*nbands*mem.floatsize)
-        mem.subnode('eps_n', nbands*mem.floatsize)
+        mem.subnode('eps_n', mynbands*mem.floatsize)
+        mem.subnode('eps_N', nbands*mem.floatsize)
         mem.subnode('Preconditioner', 4 * gridmem)
         mem.subnode('Work', gridmem)
+        
 
