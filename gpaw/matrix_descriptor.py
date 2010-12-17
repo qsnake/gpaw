@@ -275,7 +275,7 @@ class BandMatrixDescriptor(MatrixDescriptor):
         # Temporary work arrays included in estimate #
         nbands = self.bd.nbands
         itemsize = mem.itemsize[dtype]
-        mem.subnode('2 A_NN', 2*nbands*nbands*itemsize)
+        mem.subnode('A_NN', nbands*nbands*itemsize)
 
 # -------------------------------------------------------------------
 
