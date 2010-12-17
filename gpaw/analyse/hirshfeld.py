@@ -81,9 +81,10 @@ class HirshfeldPartitioning:
         self.atoms = calculator.get_atoms()
         self.hdensity = HirshfeldDensity(calculator)
         density_g, gd = self.hdensity.get_density()
-        self.invweight_g = np.where(density_g > density_cutoff, 
-                                    1.0 /  density_g, 0.0)
-    
+        self.invweight_g = 0. * density_g
+        density_ok = np.where(density_g > density_cutoff)
+        self.invweight_g[density_ok] = 1.0 / density_g[density_ok]
+
     def get_calculator(self):
         return self.calculator
     
