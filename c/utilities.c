@@ -1,6 +1,6 @@
 /*  Copyright (C) 2003-2007  CAMP
  *  Copyright (C) 2007-2008  CAMd
- *  Copyright (C) 2008       CSC - IT Center for Science Ltd.
+ *  Copyright (C) 2008-2010  CSC - IT Center for Science Ltd.
  *  Please see the accompanying LICENSE file for further information. */
 
 #include <Python.h>
@@ -13,6 +13,8 @@
 #ifdef GPAW_HPM
 void HPM_Start(char *);
 void HPM_Stop(char *);
+void HPM_Print(void);
+void HPM_Print_Flops(void);
 
 PyObject* ibm_hpm_start(PyObject *self, PyObject *args)
 {
@@ -57,6 +59,182 @@ PyObject* craypat_region_end(PyObject *self, PyObject *args)
 }
 #endif
 
+#ifdef PARALLEL
+#include <mpi.h>
+
+struct eval {
+  double val;
+  int rank;
+};
+
+static void coll_print(FILE *fp, const char *label, double val,
+		       int print_aggregate, MPI_Comm Comm){
+  double sum;
+  struct eval in;
+  struct eval out;
+  int rank, numranks;
+  MPI_Comm_size(Comm, &numranks);
+  MPI_Comm_rank(Comm, &rank);
+  in.val=val;
+  in.rank=rank;
+
+  MPI_Reduce(&val, &sum, 1, MPI_DOUBLE, MPI_SUM, 0, Comm);
+  if(rank==0) {
+    if(print_aggregate)
+      fprintf(fp,"#%19s %14.3f %10.3f ",label,sum,sum/numranks);
+    else
+      fprintf(fp,"#%19s                %10.3f ",label,sum/numranks);
+  }
+ 	
+  MPI_Reduce(&in, &out, 1, MPI_DOUBLE_INT, MPI_MINLOC, 0, Comm);
+  if(rank==0){
+    fprintf(fp,"%4d %10.3f ", out.rank, out.val);
+  }
+  MPI_Reduce(&in, &out, 1, MPI_DOUBLE_INT, MPI_MAXLOC, 0, Comm);
+  if(rank==0){
+    fprintf(fp,"%4d %10.3f\n",out.rank, out.val);
+  }
+}
+
+// Utilities for performance measurement with PAPI
+#ifdef GPAW_PAPI
+#include <papi.h>
+
+#define NUM_PAPI_EV 1
+
+static long_long papi_start_usec_p;
+static long_long papi_start_usec_r;
+
+int gpaw_perf_init()
+{
+  int events[NUM_PAPI_EV];
+  events[0] = PAPI_FP_OPS;
+  // events[1] = PAPI_L1_DCM;
+  // events[2] = PAPI_L1_DCH;
+  // events[3] = PAPI_TOT_INS;
+  PAPI_start_counters(events, NUM_PAPI_EV);
+  papi_start_usec_r = PAPI_get_real_usec();
+  papi_start_usec_p = PAPI_get_virt_usec();
+
+  return 0;
+}
+
+void gpaw_perf_finalize()
+{
+  long long papi_values[NUM_PAPI_EV];
+  double rtime,ptime;
+  double avegflops;
+  double gflop_opers;
+  PAPI_dmem_info_t dmem;
+  int error = 0;
+  double l1hitratio;
+  long_long papi_end_usec_p;
+  long_long papi_end_usec_r;
+
+  int rank, numranks;
+
+  MPI_Comm Comm = MPI_COMM_WORLD;
+  
+  //get papi info, first time it intializes PAPI counters
+  papi_end_usec_r = PAPI_get_real_usec();
+  papi_end_usec_p = PAPI_get_virt_usec();
+
+  MPI_Comm_size(Comm, &numranks);
+  MPI_Comm_rank(Comm, &rank);
+  
+  FILE *fp;
+  if (rank == 0)
+    fp = fopen("gpaw_perf.log", "w");
+  else
+    fp = NULL;
+ 	   
+  if(PAPI_read_counters(papi_values, NUM_PAPI_EV) != PAPI_OK)
+    error++;
+ 	
+  if(PAPI_get_dmem_info(&dmem) != PAPI_OK)
+    error++;
+ 	   
+  rtime=(double)(papi_end_usec_r - papi_start_usec_r)/1e6;
+  ptime=(double)(papi_end_usec_p - papi_start_usec_p)/1e6;
+  avegflops=(double)papi_values[0]/rtime/1e9;
+  gflop_opers = (double)papi_values[0]/1e9;
+  // l1hitratio=100.0*(double)papi_values[1]/(papi_values[0] + papi_values[1]);
+  
+  if (rank==0 ) {
+    fprintf(fp,"########  GPAW PERFORMANCE REPORT (PAPI)  ########\n");
+    fprintf(fp,"# MPI tasks   %d\n", numranks);
+    fprintf(fp,"#                        aggregated    average    min(rank/val)   max(rank/val) \n");
+  }
+  coll_print(fp, "Real time (s)", rtime, 1, Comm);
+  coll_print(fp, "Process time (s)", ptime, 1, Comm);
+  coll_print(fp, "Flops (GFlop/s)", avegflops, 1, Comm);
+  coll_print(fp, "Flp-opers (10^9)", gflop_opers, 1, Comm);
+  // coll_print(fp, "L1 hit ratio (%)", l1hitratio, 0, Comm);
+  coll_print(fp, "Peak mem size (MB)", (double)dmem.peak/1.0e3, 0, Comm );
+  coll_print(fp, "Peak resident (MB)", (double)dmem.high_water_mark/1.0e3 ,
+	     0, Comm);
+  if(rank==0)  {
+    fflush(fp);
+    fclose(fp);
+  }
+}
+#elif GPAW_HPM
+void HPM_Init(void);
+void HPM_Start(char *);
+
+int gpaw_perf_init()
+{
+  HPM_Init();
+  HPM_Start("GPAW");
+  return 0;
+}
+
+void gpaw_perf_finalize()
+{
+  HPM_Stop("GPAW");
+  HPM_Print();
+  HPM_Print_Flops();
+}
+#else  // Use just MPI_Wtime
+static double t0;
+int gpaw_perf_init()
+{
+  t0 = MPI_Wtime();
+  return 0;
+}
+
+void gpaw_perf_finalize()
+{
+  double rtime;
+  int rank, numranks;
+
+  MPI_Comm Comm = MPI_COMM_WORLD;
+  
+  MPI_Comm_size(Comm, &numranks);
+  MPI_Comm_rank(Comm, &rank);
+
+  double t1 = MPI_Wtime();
+  rtime = t1 - t0;
+  
+  FILE *fp;
+  if (rank == 0)
+    fp = fopen("gpaw_perf.log", "w");
+  else
+    fp = NULL;
+  
+  if (rank==0 ) {
+    fprintf(fp,"########  GPAW PERFORMANCE REPORT (MPI_Wtime)  ########\n");
+    fprintf(fp,"# MPI tasks   %d\n", numranks);
+    fprintf(fp,"#                        aggregated    average    min(rank/val)   max(rank/val) \n");
+  }
+  coll_print(fp, "Real time (s)", rtime, 1, Comm);
+  if(rank==0)  {
+    fflush(fp);
+    fclose(fp);
+  }
+}
+#endif
+#endif
 
 // returns the distance between two 3d double vectors
 double distance(double *a, double *b)

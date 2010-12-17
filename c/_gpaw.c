@@ -8,17 +8,8 @@
 #include <numpy/arrayobject.h>
 
 #ifdef GPAW_HPM
-void HPM_Init(void);
-void HPM_Start(char *);
-void HPM_Stop(char *);
-void HPM_Print(void);
-void HPM_Print_Flops(void);
 PyObject* ibm_hpm_start(PyObject *self, PyObject *args);
 PyObject* ibm_hpm_stop(PyObject *self, PyObject *args);
-#endif
-
-#ifdef GPAW_PAPI
-#include <papi.h>
 #endif
 
 #ifdef GPAW_CRAYPAT
@@ -260,6 +251,10 @@ PyMODINIT_FUNC initsocket(void)
 #ifdef GPAW_INTERPRETER
 extern DL_EXPORT(int) Py_Main(int, char **);
 
+// Performance measurement
+int gpaw_perf_init();
+void gpaw_perf_finalize();
+
 #include <mpi.h>
 
 int
@@ -279,10 +274,8 @@ main(int argc, char **argv)
   if(granted != MPI_THREAD_MULTIPLE) exit(1);
 #endif // GPAW_OMP
 
-#ifdef GPAW_PAPI
-  float rtime, ptime, mflops;
-  long_long flpops;
-  PAPI_flops( &rtime, &ptime, &flpops, &mflops );
+#ifdef GPAW_PERFORMANCE_REPORT
+  gpaw_perf_init();
 #endif
 
 #ifdef IO_WRAPPERS
@@ -349,33 +342,11 @@ main(int argc, char **argv)
   PAT_region_end(1);
 #endif
   status = Py_Main(argc, argv);
-#ifdef GPAW_HPM
-  HPM_Stop("GPAW");
-  HPM_Print();
-  HPM_Print_Flops();
+
+#ifdef GPAW_PERFORMANCE_REPORT
+  gpaw_perf_finalize();
 #endif
-#ifdef GPAW_PAPI
-  // print out some statistics
-  int myid, numprocs;
-  long_long sum_flpops;
-  float ave_mflops;
-  MPI_Comm_size(MPI_COMM_WORLD, &numprocs );
-  MPI_Comm_rank(MPI_COMM_WORLD, &myid );
-  PAPI_flops( &rtime, &ptime, &flpops, &mflops );
-  MPI_Reduce(&mflops, &ave_mflops, 1, MPI_FLOAT, MPI_SUM, 0, 
-	     MPI_COMM_WORLD);
-  ave_mflops /= numprocs;
-  MPI_Reduce(&flpops, &sum_flpops, 1, MPI_LONG_LONG, MPI_SUM, 0, 
-	     MPI_COMM_WORLD);
-  if (myid == 0)
-    {
-      printf("GPAW: Information from PAPI counters\n");
-      printf("GPAW: Total time: %10.2f s\n", rtime);
-      printf("GPAW: Floating point operations: %lld \n", sum_flpops);
-      printf("GPAW: FLOP rate (GFLOP/s):  ave %10.3f  total %10.3f\n",
-	     ave_mflops / 1000.0 , sum_flpops / rtime / 1.e9);
-    }
-#endif      
+
   MPI_Finalize();
   return status;
 }
