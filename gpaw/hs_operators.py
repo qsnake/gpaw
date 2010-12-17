@@ -73,15 +73,16 @@ class MatrixOperator:
             self.hermitian = hermitian
         self.bmd = ksl.new_descriptor() #XXX take hermitian as argument?
 
-        # Store these for calculating work arrays later
+        # Calculate M, Q, and X for allocating arrays later
+        self.M = 1
+        self.X = 1 # not used in some cases
+        self.Q = 1
         ngroups = self.bd.comm.size
         mynbands = self.bd.mynbands
         nbands = self.bd.nbands
         G = self.gd.n_c.prod()
-        if ngroups == 1 and nblocks == 1:
-            self.M = 1
-            self.X = 1 # not used, but for symmetry
-            self.Q = bd.comm.size 
+        if ngroups == 1 and self.nblocks == 1:
+            pass
         else:
             assert mynbands % self.nblocks == 0
             self.M = mynbands // self.nblocks
