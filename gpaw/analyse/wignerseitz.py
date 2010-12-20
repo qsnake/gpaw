@@ -8,25 +8,34 @@ from gpaw.analyse.hirshfeld import HirshfeldDensity
 from gpaw.utilities.tools import coordinates
 from gpaw.mpi import MASTER
 
-def wignerseitz(gd, atoms):
-    """Determine which atom is closest to each grid point."""
+def wignerseitz(gd, atoms, scale=None):
+    """Determine which atom is closest to each grid point.
+
+    The atom distances might be scaled by the scale list."""
+    if scale is None:
+        scale = [1.] * len(atoms)
+    else:
+        assert(len(scale) == len(atoms))
     r_vG, R2min_G = coordinates(gd, atoms[0].position / Bohr)
+    R2min_G *= scale[0]**2
     index_G = gd.zeros(dtype=int)
     for a, atom in enumerate(atoms[1:]):
         r_vG, r2_G = coordinates(gd, atom.position / Bohr)
+        r2_G *= scale[a + 1]**2
         index_G = np.where(R2min_G > r2_G, a + 1, index_G)
         R2min_G = np.where(R2min_G > r2_G, r2_G, R2min_G)
     return index_G
 
 class WignerSeitz:
-    def __init__(self, gd, atoms, calculator=None):
+    def __init__(self, gd, atoms, 
+                 calculator=None, scale=None):
         """Find the grid points nearest to the atoms"""
 
         self.atoms = atoms
         self.gd = gd
         self.calculator = calculator
 
-        self.atom_index = wignerseitz(gd, atoms)
+        self.atom_index = wignerseitz(gd, atoms, scale)
 
     def expand(self, density):
         """Expand a smooth density in Wigner-Seitz cells around the atoms"""
