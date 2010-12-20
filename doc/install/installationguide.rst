@@ -37,11 +37,11 @@ GPAW and dependencies will be installed system-wide. This procedure requires roo
 
 The packages are provided for the following RPMS-based systems:
 
-- Fedora 13, 12: :ref:`Fedora`,
+- Fedora: :ref:`Fedora`,
 
-- openSUSE 11.2, :ref:`openSUSE`,
+- openSUSE: :ref:`openSUSE`,
 
-- RedHat Enterprise Linux (or CentOS) 5: :ref:`CentOS`,
+- RedHat Enterprise Linux (or CentOS): :ref:`CentOS`,
 
 - Ubuntu 9.10 or newer: :ref:`Ubuntupackage`.
 

@@ -14,7 +14,7 @@ The steps described below require root access and assume bash shell:
 
 - `configure fys yum repository <https://wiki.fysik.dtu.dk/niflheim/Cluster_software_-_RPMS#configure-fys-yum-repository>`_
 
-- on EL/CentOS 5 i386 or x86_64, as root:
+- on EL/CentOS 5 or newer i386 or x86_64, as root:
 
   - install gpaw and dependencies::
 
@@ -24,6 +24,11 @@ The steps described below require root access and assume bash shell:
 
       yum -y install --enablerepo=fys_el,epel,atrpms scipy ScientificPython
  
+.. note::
+
+   There are no new releases of fys packages after "End of Regular Life Cycle"
+   of CentOS releases: see https://access.redhat.com/support/policy/updates/errata/
+
 .. _PGO_gcc_EL5:
 
 Profile guided optimization

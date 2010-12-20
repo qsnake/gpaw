@@ -14,7 +14,7 @@ The steps described below require root access and assume bash shell:
 
 - `configure fys yum repository <https://wiki.fysik.dtu.dk/niflheim/Cluster_software_-_RPMS#configure-fys-yum-repository>`_
 
-- on Fedora 12, 13 i386 or x86_64, as root:
+- on Fedora 12 or newer i386 or x86_64, as root:
 
   - install gpaw and dependencies::
 
@@ -23,3 +23,9 @@ The steps described below require root access and assume bash shell:
   - install optional packages::
 
       yum -y install scipy ScientificPython
+
+.. note::
+
+   There are no new releases of fys packages for "Old Unsupported Releases"
+   of Fedora: see http://fedoraproject.org/wiki/Releases
+ 
