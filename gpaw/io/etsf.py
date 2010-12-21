@@ -49,6 +49,10 @@ class ETSFWriter:
         i_Qc.shape = (-1, 3)
         i_Gc = i_Qc[pwd.Q_G]
 
+        B_cv = 2.0 * np.pi * wfs.gd.icell_cv
+        G_Qv = np.dot(i_Gc, B_cv).reshape((-1, 3))
+        G2_Q = (G_Qv**2).sum(axis=1)
+
         specie_a = np.empty(natoms, np.int32)
         nspecies = 0
         species = {}
@@ -146,7 +150,7 @@ class ETSFWriter:
             k_dependent='no')
         var('reduced_coordinates_of_plane_waves',
             ('max_number_of_coefficients', 'number_of_reduced_dimensions'),
-            i_Gc, k_dependent='no')
+            i_Gc[np.argsort(G2_Q)], k_dependent='no')
         var('number_of_electrons', (), np.array(wfs.nvalence, dtype=np.int32))
 
         #var('exchange_functional', ('character_string_length',),
@@ -166,7 +170,7 @@ class ETSFWriter:
         for s in range(wfs.nspins):
             for k in range(kd.nibzkpts):
                 for n in range(bd.nbands):
-                    psit_G = pwd.fft(calc.get_pseudo_wave_function(n, k, s))
+                    psit_G = pwd.fft(calc.get_pseudo_wave_function(n, k, s))[np.argsort(G2_Q)]
                     psit_G *= x
                     psit_Gx[:, 0] = psit_G.real
                     psit_Gx[:, 1] = psit_G.imag
