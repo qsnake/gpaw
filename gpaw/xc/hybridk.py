@@ -2,26 +2,83 @@
 # Please see the accompanying LICENSE file for further information.
 
 """This module provides all the classes and functions associated with the
-evaluation of exact exchange with k-point sampling.
-"""
-from math import pi, sqrt, ceil
+evaluation of exact exchange with k-point sampling."""
+
+from math import pi, sqrt
 
 import numpy as np
 
 from gpaw.xc import XC
 from gpaw.xc.kernel import XCNull
 from gpaw.xc.functional import XCFunctional
-from gpaw.poisson import PoissonSolver
-from gpaw.utilities import hartree, pack, pack2, unpack, unpack2, packed_index
-from gpaw.utilities.tools import symmetrize
-from gpaw.atom.configurations import core_states
+from gpaw.utilities import hartree, pack, unpack2, packed_index
 from gpaw.lfc import LFC
-from gpaw.gaunt import make_gaunt
 from gpaw.wavefunctions.pw import PWDescriptor
-from gpaw.fd_operators import Laplace
-from gpaw.utilities.blas import axpy, r2k, gemm
-from gpaw.eigensolvers.rmm_diis import RMM_DIIS
 
+
+class KPoint:
+    def __init__(self, kd, kpt=None):
+        """Helper class for parallelizing over k-points.
+
+        Placeholder for wave functions, occupation numbers,
+        projections, and global k-point index."""
+        
+        self.kd = kd
+        
+        if kpt is not None:
+            self.psit_nG = kpt.psit_nG
+            self.f_n = kpt.f_n
+            self.P_ani = kpt.P_ani
+            self.k = kpt.k
+            self.s = kpt.s
+            
+        self.requests = []
+        
+    def next(self):
+        """Create empty object.
+
+        Data will be received from other processor."""
+        
+        kpt = KPoint(self.kd)
+
+        # intialize array for receiving:
+        kpt.psit_nG = np.empty_like(self.psit_nG)
+        kpt.f_n = np.empty_like(self.f_n)
+
+        # Total number of projector functions:
+        I = sum([P_ni.shape[1] for P_ni in self.P_ani.values()])
+        
+        kpt.P_In = np.empty((I, len(kpt.f_n)), complex)
+
+        kpt.P_ani = {}
+        I1 = 0
+        for a, P_ni in self.P_ani.items():
+            I2 = I1 + P_ni.shape[1]
+            kpt.P_ani[a] = kpt.P_In[I1:I2].T
+            I1 = I2
+
+        kpt.k = (self.k + 1) % self.kd.nibzkpts
+        kpt.s = self.s
+        
+        return kpt
+        
+    def start_sending(self, rank):
+        P_In = np.concatenate([P_ni.T for P_ni in self.P_ani.values()])
+        self.requests += [
+            self.kd.comm.send(self.psit_nG, rank, block=False, tag=1),
+            self.kd.comm.send(self.f_n, rank, block=False, tag=2),
+            self.kd.comm.send(P_In, rank, block=False, tag=3)]
+        
+    def start_receiving(self, rank):
+        self.requests += [
+            self.kd.comm.receive(self.psit_nG, rank, block=False, tag=1),
+            self.kd.comm.receive(self.f_n, rank, block=False, tag=2),
+            self.kd.comm.receive(self.P_In, rank, block=False, tag=3)]
+        
+    def wait(self):
+        self.kd.comm.waitall(self.requests)
+        self.requests = []
+        
 
 class HybridXC(XCFunctional):
     orbital_dependent = True
@@ -74,7 +131,6 @@ class HybridXC(XCFunctional):
     
     def initialize(self, density, hamiltonian, wfs, occupations):
         self.xc.initialize(density, hamiltonian, wfs, occupations)
-        self.kpt_comm = wfs.kpt_comm
         self.nspins = wfs.nspins
         self.setups = wfs.setups
         self.density = density
@@ -83,8 +139,8 @@ class HybridXC(XCFunctional):
         self.ghat = LFC(density.gd,
                         [setup.ghat_l for setup in density.setups],
                         integral=np.sqrt(4 * pi), forces=True)
+
         self.gd = density.gd
-        self.finegd = self.ghat.gd
         self.kd = wfs.kd
 
         N_c = self.gd.N_c
@@ -108,8 +164,8 @@ class HybridXC(XCFunctional):
             self.bzk_kc = bzk_kc.astype(float) / self.kd.N_c
         
         self.pwd = PWDescriptor(ecut, self.gd, self.bzk_kc)
+
         n = 0
-        print self.gamma
         for k_c, Gpk2_G in zip(self.bzk_kc[:], self.pwd.G2_qG):
             if (k_c > -0.5).all() and (k_c <= 0.5).all(): #XXX???
                 if k_c.any():
@@ -119,30 +175,70 @@ class HybridXC(XCFunctional):
                     self.gamma -= np.dot(np.exp(-self.alpha * Gpk2_G[1:]),
                                          Gpk2_G[1:]**-1)
                 n += 1
-        print self.gamma, self.alpha
+
         assert n == self.kd.N_c.prod()
         
     def set_positions(self, spos_ac):
-        if 0:#not self.finegrid:
-            self.ghat.set_positions(spos_ac)
+        self.ghat.set_positions(spos_ac)
     
     def calculate(self, gd, n_sg, v_sg=None, e_g=None):
         # Normal XC contribution:
         exc = self.xc.calculate(gd, n_sg, v_sg, e_g)
+
+        # Add EXX contribution:
         return exc + self.exx
 
     def calculate_exx(self):
-        for kpt in self.kpt_u:
-            self.apply_orbital_dependent_hamiltonian(kpt, kpt.psit_nG)
+        """Non-selfconsistent calculation."""
 
+        self.exx = 0.0
+        K = self.kd.nibzkpts
+        parallel = (self.kd.comm.size > self.nspins)
+        
+        for s in range(self.nspins):
+            kpt1_q = [KPoint(self.kd, kpt) for kpt in self.kpt_u if kpt.s == s]
+            kpt2_q = kpt1_q[:]
+
+            k = (kpt1_q[-1].k + 1) % K
+            rrank = self.kd.get_rank_and_index(s, k)[0]
+            k = (kpt1_q[0].k - 1) % K
+            srank = self.kd.get_rank_and_index(s, k)[0]
+            
+            for i in range(K // 2 + 1):
+                if i < K // 2:
+                    if parallel:
+                        kpt = kpt2_q[-1].next()
+                        kpt.start_receiving(rrank)
+                        kpt2_q[0].start_sending(srank)
+                    else:
+                        kpt = kpt2_q[0]
+
+                for kpt1, kpt2 in zip(kpt1_q, kpt2_q):
+                    if 2 * i == K:
+                        self.apply(kpt1, kpt2, invert=(kpt1.k > kpt2.k))
+                    else:
+                        self.apply(kpt1, kpt2)
+                        self.apply(kpt1, kpt2, invert=True)
+
+                if i < K // 2:
+                    if parallel:
+                        kpt.wait()
+                        kpt2_q[0].wait()
+                    kpt2_q.pop(0)
+                    kpt2_q.append(kpt)
+
+        self.exx = self.kd.comm.sum(self.exx)
+
+        self.exx += self.calculate_paw_correction()
+        
     def apply(self, kpt1, kpt2, invert=False):        
         k1_c = self.kd.ibzk_kc[kpt1.k]
         k2_c = self.kd.ibzk_kc[kpt2.k]
         if invert:
             k2_c = -k2_c
         k12_c = k1_c - k2_c
+
         N_c = self.gd.N_c
-        #k12_c = ((k1_c - k2_c) + 0.4999) % 1 - 0.4999
         expikr_R = np.exp(2j * pi * np.dot(np.indices(N_c).T, k12_c / N_c).T)
 
         for q, k_c in enumerate(self.bzk_kc):
@@ -154,211 +250,90 @@ class HybridXC(XCFunctional):
         if Gpk2_G[0] == 0:
             Gpk2_G = Gpk2_G.copy()
             Gpk2_G[0] = 1.0 / self.gamma
+
+        P1_ani = kpt1.P_ani
+        P2_ani = kpt2.P_ani
+        if invert:
+            P2_ani = dict([(a, P_ni.conj()) for a, P_ni in P2_ani.items()])
+
         N = N_c.prod()
         vol = self.gd.dv * N
         nspins = self.nspins
-        
-        deg = 2 // self.nspins
+
+        same = (kpt1.k == kpt2.k)
         
         for n1, psit1_R in enumerate(kpt1.psit_nG):
             f1 = kpt1.f_n[n1]
             for n2, psit2_R in enumerate(kpt2.psit_nG):
+                if same and n2 > n1:
+                    continue
+                
                 f2 = kpt2.f_n[n2]
 
                 if invert:
-                    nt_R = self.calculate_pair_density(n1, n2,
-                                                       psit1_R, psit2_R.conj())
-                else:
-                    nt_R = self.calculate_pair_density(n1, n2,
-                                                       psit1_R, psit2_R)
-                    
+                    psit2_R = psit2_R.conj()
+
+                nt_R = self.calculate_pair_density(n1, n2, psit1_R, psit2_R,
+                                                   P1_ani, P2_ani)
                 nt_G = self.pwd.fft(nt_R * expikr_R / N)
                 vt_G = nt_G.copy()
                 vt_G *= -pi * vol / Gpk2_G
-                e = f1 * f2 * np.vdot(nt_G, vt_G).real * nspins
-                if kpt1 is kpt2:
+                e = f1 * f2 * np.vdot(nt_G, vt_G).real * nspins * self.hybrid
+                if same and n1 == n2:
                     e /= 2
                 self.exx += e
                 self.ekin -= 2 * e
-                #print k1_c[0], k2_c[0], invert, f1,f2,e, self.exx
-                
-                vt_R = self.pwd.ifft(vt_G).conj() * expikr_R * N / vol
 
-                if kpt1 is kpt2 and not invert and n1 == n2:
-                    kpt1.vt_nG[n1] = 0.5 * f1 * vt_R
+                calculate_potential = not not not not not not not not not True
+                if calculate_potential:
+                    vt_R = self.pwd.ifft(vt_G).conj() * expikr_R * N / vol
+                    if kpt1 is kpt2 and not invert and n1 == n2:
+                        kpt1.vt_nG[n1] = 0.5 * f1 * vt_R
+                    kpt1.Htpsit_nG[n1] += f2 * nspins * psit2_R * vt_R
+                    if kpt1 is not kpt2:
+                        if invert:
+                            kpt2.Htpsit_nG[n2] += (f1 * nspins *
+                                                   psit1_R.conj() * vt_R)
+                        else:
+                            kpt2.Htpsit_nG[n2] += (f1 * nspins *
+                                                   psit1_R * vt_R.conj())
 
-                if invert:
-                    if kpt1 is kpt2:
-                        #print kpt1.k,f2*(psit2_R.conj() * vt_R)[9,9,9]
-                        kpt1.Htpsit_nG[n1] += f2 * nspins * psit2_R.conj() * vt_R
-                    else:
-                        #print kpt1.k,f2*(psit2_R.conj() * vt_R)[9,9,9]
-                        #print kpt2.k,f1*(psit1_R.conj() * vt_R)[9,9,9]
-                        kpt1.Htpsit_nG[n1] += f2 * nspins * psit2_R.conj() * vt_R
-                        kpt2.Htpsit_nG[n2] += f1 * nspins * psit1_R.conj() * vt_R
-                else:
-                    if kpt1 is kpt2:
-                        #print kpt1.k,f2*(psit2_R * vt_R)[9,9,9]
-                        kpt1.Htpsit_nG[n1] += f2 * nspins * psit2_R * vt_R
-                    else:
-                        #print kpt1.k,f2*(psit2_R * vt_R)[9,9,9]
-                        #print kpt2.k,f1*(psit1_R * vt_R.conj())[9,9,9]
-                        kpt1.Htpsit_nG[n1] += f2 * nspins * psit2_R * vt_R
-                        kpt2.Htpsit_nG[n2] += f1 * nspins * psit1_R * vt_R.conj()
+    def calculate_paw_correction(self):
+        exx = 0
+        deg = 2 // self.nspins  # spin degeneracy
+        for a, D_sp in self.density.D_asp.items():
+            setup = self.setups[a]
+            for D_p in D_sp:
+                D_ii = unpack2(D_p)
+                ni = len(D_ii)
 
-    def calculate_pair_density(self, n1, n2, psit1_G, psit2_G):#, P_ani):
+                for i1 in range(ni):
+                    for i2 in range(ni):
+                        A = 0.0
+                        for i3 in range(ni):
+                            p13 = packed_index(i1, i3, ni)
+                            for i4 in range(ni):
+                                p24 = packed_index(i2, i4, ni)
+                                A += setup.M_pp[p13, p24] * D_ii[i3, i4]
+                        p12 = packed_index(i1, i2, ni)
+                        exx -= self.hybrid / deg * D_ii[i1, i2] * A
+
+                if setup.X_p is not None:
+                    exx -= self.hybrid * np.dot(D_p, setup.X_p)
+            exx += self.hybrid * setup.ExxC
+        return exx
+    
+    def calculate_pair_density(self, n1, n2, psit1_G, psit2_G, P1_ani, P2_ani):
         Q_aL = {}
-        if 0:#for a, P_ni in P_ani.items():
-            P1_i = P_ni[n1]
-            P2_i = P_ni[n2]
+        for a, P1_ni in P1_ani.items():
+            P1_i = P1_ni[n1]
+            P2_i = P2_ani[a][n2]
             D_ii = np.outer(P1_i, P2_i.conj()).real
             D_p = pack(D_ii, tolerance=1e30)
             Q_aL[a] = np.dot(D_p, self.setups[a].Delta_pL)
             
         nt_G = psit1_G.conj() * psit2_G
 
-        #rhot_g = nt_g.copy()
-        #self.ghat.add(rhot_g, Q_aL)
+        self.ghat.add(nt_G, Q_aL)
 
-        return nt_G#, rhot_g
-
-    def correct_hamiltonian_matrix(self, kpt, H_nn):
-        if not hasattr(kpt, 'vxx_ani'):
-            return
-
-        if self.gd.comm.rank > 0:
-            H_nn[:] = 0.0
-            
-        nocc = 1
-        if 0:#for a, P_ni in kpt.P_ani.items():
-            H_nn[:nocc, :nocc] += symmetrize(np.inner(P_ni[:nocc],
-                                                      kpt.vxx_ani[a]))
-        self.gd.comm.sum(H_nn)
-        
-        H_nn[:nocc, nocc:] = 0.0
-        H_nn[nocc:, :nocc] = 0.0
-
-    def add_correction(self, kpt, psit_xG, Htpsit_xG, P_axi, c_axi, n_x,
-                       calculate_change=False):
-        if kpt.f_n is None:
-            return
-
-        if calculate_change:
-            for x, n in enumerate(n_x):
-                Htpsit_xG[x] += kpt.vt_nG[n] * psit_xG[x]
-                #for a, P_xi in P_axi.items():
-                #    c_axi[a][x] += np.dot(kpt.vxx_anii[a][n], P_xi[x])
-        else:
-            if 0:#for a, c_xi in c_axi.items():
-                c_xi[:nocc] += kpt.vxx_ani[a]
-        
-    def rotate(self, kpt, U_nn):
-        if kpt.f_n is None:
-            return
-
-        gemm(1.0, kpt.vt_nG.copy(), U_nn, 0.0, kpt.vt_nG)
-        #for v_ni in kpt.vxx_ani.values():
-        #    gemm(1.0, v_ni.copy(), U_nn, 0.0, v_ni)
-        #for v_nii in kpt.vxx_anii.values():
-        #    gemm(1.0, v_nii.copy(), U_nn, 0.0, v_nii)
-
-
-
-
-
-class HybridRMMDIIS(RMM_DIIS):
-    def update(self, wfs, xc, ham):
-        kd = wfs.kd
-        assert kd.mynks * kd.comm.size == kd.nks
-        #assert kd.nspins == 1
-        assert kd.symmetry is None
-
-        B = kd.mynks
-        rank = kd.comm.rank
-        P = kd.comm.size
-
-        for u1, kpt1 in enumerate(wfs.kpt_u):
-            wfs.apply_pseudo_hamiltonian(kpt1, ham, kpt1.psit_nG,
-                                         kpt1.Htpsit_nG)
-        if wfs.kpt_u[0].f_n is None:
-            return
-
-        xc.exx = 0.0
-        xc.ekin = 0.0
-        #for u1, kpt1 in enumerate(wfs.kpt_u):
-        #    kpt1.Htpsit_nG[:] = 0
-        for u1, kpt1 in enumerate(wfs.kpt_u):
-            for kpt2 in wfs.kpt_u[u1:]:
-                if kpt1.s == kpt2.s:
-                    xc.apply(kpt1, kpt2)
-                    if kd.ibzk_kc[kpt1.k].any() and kd.ibzk_kc[kpt2.k].any():
-                        xc.apply(kpt1, kpt2, invert=True)
-        #for u1, kpt1 in enumerate(wfs.kpt_u):
-        #    print u1, self.gd.integrate(kpt1.psit_nG[0] * kpt1.Htpsit_nG[0].conj())
-        
-    def subspace_diagonalize(self, ham, wfs, kpt, rotate=True):
-        if self.band_comm.size > 1 and wfs.bd.strided:
-            raise NotImplementedError
-
-        if not hasattr(kpt, 'vt_nG'):
-            for kpt1 in wfs.kpt_u:
-                kpt1.vt_nG = wfs.gd.empty(wfs.bd.mynbands, wfs.dtype)
-                kpt1.Htpsit_nG = wfs.gd.empty(wfs.bd.mynbands, wfs.dtype)
-
-        if kpt is wfs.kpt_u[0]:
-            self.update(wfs, ham.xc, ham)
-
-        psit_nG = kpt.psit_nG
-        self.Htpsit_nG = kpt.Htpsit_nG
-        P_ani = kpt.P_ani
-
-        def H(psit_xG):
-            return kpt.Htpsit_nG
-
-        def dH(a, P_ni):
-            return np.dot(P_ni, unpack(ham.dH_asp[a][kpt.s]))
-
-        self.timer.start('calc_matrix')
-        H_nn = self.operator.calculate_matrix_elements(psit_nG, P_ani,
-                                                       H, dH)
-        ham.xc.correct_hamiltonian_matrix(kpt, H_nn)
-        self.timer.stop('calc_matrix')
-
-        self.timer.start('Subspace diag')
-        diagonalization_string = repr(self.ksl)
-        wfs.timer.start(diagonalization_string)
-        self.ksl.diagonalize(H_nn, kpt.eps_n)
-        # H_nn now contains the result of the diagonalization.
-        wfs.timer.stop(diagonalization_string)
-
-        if not rotate:
-            self.timer.stop('Subspace diag')
-            return
-
-        self.timer.start('rotate_psi')
-        kpt.psit_nG = self.operator.matrix_multiply(H_nn, psit_nG, P_ani)
-        if self.keep_htpsit:
-            kpt.Htpsit_nG = self.operator.matrix_multiply(H_nn, kpt.Htpsit_nG)
-
-        # Rotate orbital dependent XC stuff:
-        ham.xc.rotate(kpt, H_nn)
-
-        self.timer.stop('rotate_psi')
-
-        self.timer.stop('Subspace diag')
-
-    def estimate_memory(self, mem, gd, dtype, mynbands, nbands):
-        gridmem = gd.bytecount(dtype)
-
-        keep_htpsit = self.keep_htpsit and (mynbands == nbands)
-
-        if keep_htpsit:
-            mem.subnode('Htpsit', nbands * gridmem)
-        else:
-            mem.subnode('No Htpsit', 0)
-
-        # mem.subnode('U_nn', nbands*nbands*mem.floatsize)
-        mem.subnode('eps_n', nbands*mem.floatsize)
-        mem.subnode('Preconditioner', 4 * gridmem)
-        mem.subnode('Work', gridmem)
-
+        return nt_G

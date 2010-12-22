@@ -409,6 +409,9 @@ class SmoothDistribution(ZeroKelvin):
         if wfs.nspins == 2:
             raise NotImplementedError
         
+        if self.nvalence is None:
+            self.calculate(wfs)
+
         n = self.nvalence // 2
         homo = wfs.world.max(max([kpt.eps_n[n - 1] for kpt in wfs.kpt_u]))
         lumo = -wfs.world.max(-min([kpt.eps_n[n] for kpt in wfs.kpt_u]))
