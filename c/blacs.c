@@ -1265,7 +1265,11 @@ PyObject* scalapack_general_diagonalize_ex(PyObject *self, PyObject *args)
   else 
     {
       double_complex* work = GPAW_MALLOC(double_complex, lwork);
-      double* rwork = GPAW_MALLOC(double, lrwork);
+      int nrwork = lrwork;
+      if (nrwork < 3)
+	nrwork = 3;
+      double* rwork = GPAW_MALLOC(double, nrwork);
+      // rwork must always be larger than or equal to 3
       pzhegvx_(&ibtype, &jobz, &range, &uplo, &n,
                (void*)COMPLEXP(a), &one, &one, INTP(desca),
                (void*)COMPLEXP(b), &one, &one, INTP(desca),
