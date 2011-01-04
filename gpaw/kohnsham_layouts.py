@@ -347,7 +347,7 @@ class BlacsOrbitalLayouts(BlacsLayouts):
         else:
             C2_nM = outdescriptor.empty(dtype=dtype)
         assert outdescriptor.check(C2_nM)
-        self.mm2nM.redistribute_submatrix(C_mm, C2_nM, subM, subN) #blocks2cols
+        self.mm2nM.redistribute(C_mm, C2_nM, subM, subN) #blocks2cols
         self.timer.stop('Redistribute coefs')
 
         self.timer.start('Send coefs to domains')

@@ -23,7 +23,7 @@ jb = 1
 M = 4
 N = 5
 
-r.redistribute_submatrix(a, b, M, N, ia, ja, ib, jb)
+r.redistribute(a, b, M, N, ia, ja, ib, jb)
 
 a0 = desc.collect_on_master(a)
 b0 = subdesc.collect_on_master(b)

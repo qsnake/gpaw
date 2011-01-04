@@ -471,11 +471,21 @@ class Redistributor:
         assert uplo in ['G', 'U', 'L'] 
         self.uplo = uplo
     
-    def redistribute_submatrix(self, src_mn, dst_mn, subM, subN,
-                               ia=0, ja=0, ib=0, jb=0):
-        """Redistribute submatrix into other submatrix.  
+    def redistribute(self, src_mn, dst_mn,
+                     subM=None, subN=None,
+                     ia=0, ja=0, ib=0, jb=0):
+        """Redistribute src_mn into dst_mn.
+
+        src_mn and dst_mn must be compatible with source and
+        destination descriptors of this redistributor.
+
+        If subM and subN are given, distribute only a subM by subN
+        submatrix.
+
+        If any ia, ja, ib and jb are given, they denote the global
+        index (i, j) of the origin of the submatrix inside the source
+        and destination (a, b) matrices."""
         
-        A bit more general than redistribute().  See also redistribute()."""
         # self.supercomm must be a supercommunicator of the communicators
         # corresponding to the context of srcmatrix as well as dstmatrix.
         # We should verify this somehow.
@@ -490,6 +500,12 @@ class Redistributor:
         dstdescriptor = self.dstdescriptor
         srcdescriptor.checkassert(src_mn)
         dstdescriptor.checkassert(dst_mn)
+
+        if subM is None:
+            subM = srcdescriptor.gshape[0]
+        if subN is None:
+            subN = srcdescriptor.gshape[1]
+
         assert srcdescriptor.gshape[0] >= subM
         assert srcdescriptor.gshape[1] >= subN
         assert dstdescriptor.gshape[0] >= subM
@@ -504,15 +520,6 @@ class Redistributor:
                                subN, subM,
                                ja + 1, ia + 1, jb + 1, ib + 1, # 1-indexing
                                self.supercomm_bg.context, uplo)
-    
-    def redistribute(self, src_mn, dst_mn):
-        """Redistribute src_mn to dst_mn.
-
-        src_mn must be compatible with the source descriptor of this 
-        redistributor, while dst_mn must be compatible with the 
-        destination descriptor.""" 
-        subM, subN = self.srcdescriptor.gshape 
-        self.redistribute_submatrix(src_mn, dst_mn, subM, subN)
 
 
 def parallelprint(comm, obj):
