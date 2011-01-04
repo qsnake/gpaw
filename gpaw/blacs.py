@@ -471,9 +471,10 @@ class Redistributor:
         assert uplo in ['G', 'U', 'L'] 
         self.uplo = uplo
     
-    def redistribute_submatrix(self, src_mn, dst_mn, subM, subN):
+    def redistribute_submatrix(self, src_mn, dst_mn, subM, subN,
+                               ia=0, ja=0, ib=0, jb=0):
         """Redistribute submatrix into other submatrix.  
-
+        
         A bit more general than redistribute().  See also redistribute()."""
         # self.supercomm must be a supercommunicator of the communicators
         # corresponding to the context of srcmatrix as well as dstmatrix.
@@ -481,7 +482,7 @@ class Redistributor:
         dtype = src_mn.dtype
         assert dtype == dst_mn.dtype
         assert dtype == float or dtype == complex
-
+        
         # Check to make sure the submatrix of the source
         # matrix will fit into the destination matrix
         # plus standard BLACS matrix checks.
@@ -493,15 +494,16 @@ class Redistributor:
         assert srcdescriptor.gshape[1] >= subN
         assert dstdescriptor.gshape[0] >= subM
         assert dstdescriptor.gshape[1] >= subN
-
+        
         # Switch to Fortran conventions
         uplo = {'U': 'L', 'L': 'U', 'G': 'G'}[self.uplo]
         
         _gpaw.scalapack_redist(srcdescriptor.asarray(), 
                                dstdescriptor.asarray(),
                                src_mn, dst_mn,
-                               self.supercomm_bg.context,
-                               subN, subM, uplo)
+                               subN, subM,
+                               ja + 1, ia + 1, jb + 1, ib + 1, # 1-indexing
+                               self.supercomm_bg.context, uplo)
     
     def redistribute(self, src_mn, dst_mn):
         """Redistribute src_mn to dst_mn.

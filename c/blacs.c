@@ -555,27 +555,43 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
   int n;
   int one = 1;
 
-  if (!PyArg_ParseTuple(args, "OOOOiiic", &desca, &descb, &a, &b,
-                        &c_ConTxt, &m, &n, &uplo))
+  int ia, ja, ib, jb;
+
+  if (!PyArg_ParseTuple(args, "OOOOiiiiiiic",
+                        &desca, &descb, 
+                        &a, &b,
+                        &m, &n, 
+                        &ia, &ja,
+                        &ib, &jb,
+                        &c_ConTxt,
+			&uplo))
     return NULL;
 
   if (uplo == 'G') // General matrix
     {
       if (a->descr->type_num == PyArray_DOUBLE)
-	Cpdgemr2d_(m, n, DOUBLEP(a), one, one, INTP(desca),
-		   DOUBLEP(b), one, one, INTP(descb), c_ConTxt);
+	Cpdgemr2d_(m, n,
+                   DOUBLEP(a), ia, ja, INTP(desca),
+		   DOUBLEP(b), ib, jb, INTP(descb),
+                   c_ConTxt);
       else
-	Cpzgemr2d_(m, n, (void*)COMPLEXP(a), one, one, INTP(desca),
-		   (void*)COMPLEXP(b), one, one, INTP(descb), c_ConTxt);
+	Cpzgemr2d_(m, n,
+                   (void*)COMPLEXP(a), ia, ja, INTP(desca),
+		   (void*)COMPLEXP(b), ib, jb, INTP(descb),
+                   c_ConTxt);
     }
   else // Trapezoidal matrix
     {
       if (a->descr->type_num == PyArray_DOUBLE)
-	Cpdtrmr2d_(&uplo, &diag, m, n, DOUBLEP(a), one, one, INTP(desca),
-		   DOUBLEP(b), one, one, INTP(descb), c_ConTxt);
+	Cpdtrmr2d_(&uplo, &diag, m, n,
+                   DOUBLEP(a), ia, ja, INTP(desca),
+		   DOUBLEP(b), ib, jb, INTP(descb),
+                   c_ConTxt);
       else
-	Cpztrmr2d_(&uplo, &diag, m, n, (void*)COMPLEXP(a), one, one, INTP(desca),
-		   (void*)COMPLEXP(b), one, one, INTP(descb), c_ConTxt);      
+	Cpztrmr2d_(&uplo, &diag, m, n, 
+                   (void*)COMPLEXP(a), ia, ja, INTP(desca),
+		   (void*)COMPLEXP(b), ib, jb, INTP(descb),
+                   c_ConTxt);
     }
     
   Py_RETURN_NONE;
