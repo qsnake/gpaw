@@ -27,7 +27,7 @@ SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 import sys
 import numpy as np
-from unittest import __version__, TestResult, TestCase, TestSuite, \
+from unittest import TestResult, TestCase, TestSuite, \
                      _TextTestResult, TextTestRunner, TestLoader, \
                      FunctionTestCase, TestProgram, defaultTestLoader
 from gpaw import debug
@@ -49,7 +49,12 @@ __all__ = ['ParallelTestResult', 'ParallelTestCase', 'ParallelTestSuite',
 if sys.version_info[:2] < (2, 3):
     raise RuntimeError('Python 2.3 or greater required!')
 
-unittest_version = tuple(map(int, __version__.split('.')))
+try:
+    from unittest import __version__
+except ImportError:
+    unittest_version = (2, 0)
+else:
+    unittest_version = tuple(map(int, __version__.split('.')))
 
 # User interface should at least comply with Unittest version 1.56 rev. 34209
 if unittest_version < (1,56):
