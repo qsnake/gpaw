@@ -65,6 +65,7 @@ sl_default = None
 sl_diagonalize = None
 sl_inverse_cholesky = None
 sl_lcao = None
+buffer_size = None
 extra_parameters = {}
 profile = False
 i = 1
@@ -170,6 +171,9 @@ while len(sys.argv) > i:
                     sl_lcao.append(int(sl_args[sl_args_index]))
                 else:
                     sl_lcao.append(sl_args[sl_args_index])
+    elif arg.startswith('--buffer_size='):
+        # Buffer size for MatrixOperator in MB
+        buffer_size = int(arg.split('=')[1])
     elif arg.startswith('--gpaw='):
         extra_parameters = eval('dict(%s)' % arg[7:])
     elif arg == '--gpaw':

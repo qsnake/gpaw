@@ -52,7 +52,7 @@ class CG(Eigensolver):
         
         self.subspace_diagonalize(hamiltonian, wfs, kpt)
         
-        R_nG = wfs.matrixoperator.suggest_temporary_buffer(wfs.dtype)
+        R_nG = wfs.matrixoperator.suggest_temporary_buffer()
         Htphi_G = R_nG[0]
         
         R_nG[:] = self.Htpsit_nG

@@ -60,8 +60,11 @@ class UTBandParallelSetup(TestCase):
     h = 1.0 / Bohr
     G = 20
 
+    # Wavefunction data type
+    dtype = None
+
     def setUp(self):
-        for virtvar in ['parstride_bands']:
+        for virtvar in ['dtype','parstride_bands']:
             assert getattr(self,virtvar) is not None, 'Virtual "%s"!' % virtvar
 
         parsize, parsize_bands = create_parsize_maxbands(self.nbands, world.size)
@@ -88,7 +91,7 @@ class UTBandParallelSetup(TestCase):
         del self.bd, self.gd, self.ksl, self.kpt_comm
 
     def create_kohn_sham_layouts(self):
-        return BandLayouts(self.gd, self.bd)
+        return BandLayouts(self.gd, self.bd, self.dtype)
 
     # =================================
 
@@ -148,11 +151,12 @@ class UTBandParallelSetup(TestCase):
 class UTBandParallelSetup_Blocked(UTBandParallelSetup):
     __doc__ = UTBandParallelSetup.__doc__
     parstride_bands = False
+    dtype = float
 
 class UTBandParallelSetup_Strided(UTBandParallelSetup):
     __doc__ = UTBandParallelSetup.__doc__
     parstride_bands = True
-
+    dtype = float
 # -------------------------------------------------------------------
 
 def record_memory(wait=0.1):
@@ -177,13 +181,11 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
     The pseudo wavefunctions are constants normalized to their band index."""
 
     allocated = False
-    dtype = None
     blocking = None
     async = None
-
+    
     def setUp(self):
         UTBandParallelSetup.setUp(self)
-
         for virtvar in ['dtype','blocking','async']:
             assert getattr(self,virtvar) is not None, 'Virtual "%s"!' % virtvar
 
@@ -735,6 +737,7 @@ if __name__ in ['__main__', '__builtin__']:
         testrunner = TextTestRunner(stream=stream, verbosity=2)
 
     parinfo = []
+    # Initial Verification only tests dtype = float
     for test in [UTBandParallelSetup_Blocked, UTBandParallelSetup_Strided]:
         info = ['', test.__name__, test.__doc__.strip('\n'), '']
         testsuite = initialTestLoader.loadTestsFromTestCase(test)

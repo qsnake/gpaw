@@ -125,7 +125,7 @@ class Eigensolver:
         if self.keep_htpsit:
             Htpsit_xG = self.Htpsit_nG
         else:
-            Htpsit_xG = self.operator.suggest_temporary_buffer(psit_nG.dtype)
+            Htpsit_xG = self.operator.suggest_temporary_buffer()
 
         def H(psit_xG):
             wfs.apply_pseudo_hamiltonian(kpt, hamiltonian, psit_xG, Htpsit_xG)

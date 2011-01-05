@@ -39,7 +39,7 @@ class UTBandParallelBlacsSetup(UTBandParallelSetup):
         cpus = self.bd.comm.size * self.gd.comm.size
         self.mcpus = int(cpus**0.5)
         self.ncpus = cpus//self.mcpus
-        return BlacsBandLayouts(self.gd, self.bd, self.mcpus, self.ncpus, 6)
+        return BlacsBandLayouts(self.gd, self.bd, self.dtype, self.mcpus, self.ncpus, 6)
 
     # =================================
 
@@ -62,10 +62,12 @@ class UTBandParallelBlacsSetup(UTBandParallelSetup):
 class UTBandParallelBlacsSetup_Blocked(UTBandParallelBlacsSetup):
     __doc__ = UTBandParallelBlacsSetup.__doc__
     parstride_bands = False
+    dtype = float
 
 class UTBandParallelBlacsSetup_Strided(UTBandParallelSetup):
     __doc__ = UTBandParallelBlacsSetup.__doc__
     parstride_bands = True
+    dtype = float
 
 # -------------------------------------------------------------------
 
@@ -360,6 +362,7 @@ if __name__ in ['__main__', '__builtin__'] and compiled_with_sl(True):
         testrunner = TextTestRunner(stream=stream, verbosity=2)
 
     parinfo = []
+    # Initial Verification only tests case : dtype = float
     for test in [UTBandParallelBlacsSetup_Blocked]: #, UTBandParallelBlacsSetup_Strided]:
         info = ['', test.__name__, test.__doc__.strip('\n'), '']
         testsuite = initialTestLoader.loadTestsFromTestCase(test)

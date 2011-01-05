@@ -506,17 +506,21 @@ class PAW(PAWTextOutput):
                 if sl_lcao is None:
                     sl_lcao = par.parallel['sl_default']
                 lcaoksl = get_KohnSham_layouts(sl_lcao, 'lcao',
-                                               gd, self.bd, nao=nao,
+                                               gd, self.bd, dtype,
+                                               nao=nao,
                                                timer=self.timer)
 
                 self.wfs = LCAOWaveFunctions(lcaoksl, *args)
             elif par.mode == 'fd' or isinstance(par.mode, PW):
+                # buffer_size keyword only relevant for fdpw
+                buffer_size = par.parallel['buffer_size']
                 # Layouts used for diagonalizer
                 sl_diagonalize = par.parallel['sl_diagonalize']
                 if sl_diagonalize is None:
                     sl_diagonalize = par.parallel['sl_default']
                 diagksl = get_KohnSham_layouts(sl_diagonalize, 'fd',
-                                               gd, self.bd,
+                                               gd, self.bd, dtype,
+                                               buffer_size=buffer_size,
                                                timer=self.timer)
 
                 # Layouts used for orthonormalizer
@@ -524,7 +528,8 @@ class PAW(PAWTextOutput):
                 if sl_inverse_cholesky is None:
                     sl_inverse_cholesky = par.parallel['sl_default']
                 orthoksl = get_KohnSham_layouts(sl_inverse_cholesky, 'fd',
-                                                gd, self.bd,
+                                                gd, self.bd, dtype,
+                                                buffer_size=buffer_size,
                                                 timer=self.timer)
 
                 # Use (at most) all available LCAO for initialization
@@ -538,7 +543,8 @@ class PAW(PAWTextOutput):
                 if sl_lcao is None:
                     sl_lcao = par.parallel['sl_default']
                 initksl = get_KohnSham_layouts(sl_lcao, 'lcao',
-                                               gd, lcaobd, nao=nao,
+                                               gd, lcaobd, dtype, 
+                                               nao=nao,
                                                timer=self.timer)
 
                 if par.mode == 'fd':

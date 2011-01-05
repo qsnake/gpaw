@@ -72,6 +72,8 @@ class MatrixOperator:
         if hermitian is not None:
             self.hermitian = hermitian
         self.bmd = ksl.new_descriptor() #XXX take hermitian as argument?
+        self.dtype = ksl.dtype
+        self.buffer_size = ksl.buffer_size
 
         # Calculate M, Q, and X for allocating arrays later
         self.M = 1
@@ -81,6 +83,18 @@ class MatrixOperator:
         mynbands = self.bd.mynbands
         nbands = self.bd.nbands
         G = self.gd.n_c.prod()
+
+        # If buffer_size keyword exist, use it to
+        # calculate closest value of nblocks
+        if self.buffer_size is not None:
+            sizeof_single_wfs = self.gd.bytecount(self.dtype)
+            number_wfs = float(self.nblocks)*1024*1024/sizeof_single_wfs
+            temp_nblocks = int(np.floor(mynbands/multiple_wfs))
+            while (mynbands % temp_nblocks) != 0:
+                temp_nblocks -= temp_nblocks
+            assert temp_nblocks > 0
+            self.nblocks = temp_nblocks
+
         if ngroups == 1 and self.nblocks == 1:
             pass
         else:
@@ -96,9 +110,10 @@ class MatrixOperator:
                 else:
                     self.Q = ngroups
 
-    def allocate_work_arrays(self, dtype):
+    def allocate_work_arrays(self):
         ngroups = self.bd.comm.size
         mynbands = self.bd.mynbands
+        dtype = self.dtype
         if ngroups == 1 and self.nblocks == 1:
             self.work1_xG = self.gd.zeros(mynbands, dtype)
         else:
@@ -115,7 +130,7 @@ class MatrixOperator:
         gdbytes = self.gd.bytecount(dtype)
         count = self.Q * mynbands**2
 
-        # Code semipasted from allocate_work_arrays
+        # Code semipasted from allocate_work_arrays        
         if ngroups == 1 and self.nblocks == 1:
             mem.subnode('work1_xG', mynbands * gdbytes)
         else:
@@ -255,7 +270,7 @@ class MatrixOperator:
 
         return sbuf_mG, rbuf_mG, sbuf_In, rbuf_In
 
-    def suggest_temporary_buffer(self, dtype):
+    def suggest_temporary_buffer(self):
         """Return a *suggested* buffer for calculating A(psit_nG) during
         a call to calculate_matrix_elements. Work arrays will be allocated
         if they are not already available.
@@ -263,8 +278,9 @@ class MatrixOperator:
         Note that the temporary buffer is merely a reference to (part of) a
         work array, hence data race conditions occur if you're not careful.
         """
+        dtype = self.dtype
         if self.work1_xG is None:
-            self.allocate_work_arrays(dtype)
+            self.allocate_work_arrays()
         else:
             assert self.work1_xG.dtype == dtype
 
@@ -315,7 +331,7 @@ class MatrixOperator:
         N = self.bd.mynbands
         
         if self.work1_xG is None:
-            self.allocate_work_arrays(psit_nG.dtype)
+            self.allocate_work_arrays()
         else:
             assert self.work1_xG.dtype == psit_nG.dtype
 
