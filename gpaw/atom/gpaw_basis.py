@@ -63,6 +63,10 @@ def build_parser():
     parser.add_option('--debug', action='store_true',
                       help='use gpaw-DEBUG mode')
 
+    parser.add_option('-l', '--lvalues',
+                      help='Explicitly specify which l-values to include.  ' +
+                      'For example: spd')
+
     return parser
 
 
@@ -133,6 +137,11 @@ def main():
         if not opts.vconf_sharp_confinement:
             vconf_args = opts.vconf_amplitude, opts.vconf_rstart_rel
 
+        if opts.lvalues:
+            lvalues = ['spdf'.index(c) for c in opts.lvalues]
+        else:
+            lvalues = None
+            
         basis = bm.generate(zetacount, polcount,
                             tailnorm=tailnorm,
                             energysplit=opts.energy_shift,
@@ -142,5 +151,6 @@ def main():
                             rcutmax=opts.rcut_max,
                             #ngaussians=opts.gaussians,
                             rcharpol_rel=opts.rchar_pol_rel,
-                            vconf_args=vconf_args)
+                            vconf_args=vconf_args,
+                            lvalues=lvalues)
         basis.write_xml()
