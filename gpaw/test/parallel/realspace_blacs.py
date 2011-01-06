@@ -77,7 +77,7 @@ def blacs_inverse_cholesky(ksl, S_Nn, C_nN):
     C_nN[:] = bmd.redistribute_input(C_nn)
 
 def main(seed=42, dtype=float):
-    ksl = BlacsBandLayouts(gd, bd, mcpus, ncpus, blocksize)
+    ksl = BlacsBandLayouts(gd, bd, dtype, mcpus, ncpus, blocksize)
     nbands = bd.nbands
     mynbands = bd.mynbands
 
