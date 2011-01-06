@@ -120,7 +120,7 @@ class FDWFS(FDWaveFunctions):
                                kd, None)
         self.kin = Laplace(gd, -0.5, dtype=dtype, allocate=False)
         self.diagksl = None
-        self.orthoksl = BandLayouts(gd, bd)
+        self.orthoksl = BandLayouts(gd, bd, dtype)
         self.initksl = None
         self.overlap = None
         self.rank_a = None
