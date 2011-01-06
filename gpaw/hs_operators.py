@@ -463,7 +463,7 @@ class MatrixOperator:
         N = self.bd.mynbands
 
         if self.work1_xG is None:
-            self.allocate_work_arrays(psit_nG.dtype)
+            self.allocate_work_arrays()
         else:
             assert self.work1_xG.dtype == psit_nG.dtype
 
