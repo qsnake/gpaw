@@ -246,9 +246,10 @@ class UTProjectorFunctionSetup(UTLocalizedFunctionSetup):
     def setUp(self):
         UTLocalizedFunctionSetup.setUp(self)
 
-        fdksl = get_KohnSham_layouts(None, 'fd', self.gd, self.bd)
+        fdksl = get_KohnSham_layouts(None, 'fd', self.gd, self.bd, 
+                                     self.dtype)
         lcaoksl = get_KohnSham_layouts(None, 'lcao', self.gd, self.bd,
-                                        nao=self.setups.nao)
+                                       self.dtype, nao=self.setups.nao)
         args = (self.gd, self.setups.nvalence, self.setups,
                 self.bd, self.dtype, world, self.kd)
         self.wfs = FDWaveFunctions(p.stencils[0], fdksl, fdksl, lcaoksl, *args)
