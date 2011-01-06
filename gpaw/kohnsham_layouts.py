@@ -109,6 +109,7 @@ class BandLayouts(KohnShamLayouts):
 
     def __init__(self, gd, bd, dtype, buffer_size=None, timer=nulltimer):
         KohnShamLayouts.__init__(self, gd, bd, dtype, timer)
+        self._kwargs.update({'buffer_size':buffer_size})
         self.buffer_size = buffer_size
 
     def diagonalize(self, H_NN, eps_n):
@@ -199,9 +200,10 @@ class BlacsBandLayouts(BlacsLayouts): #XXX should derive from BandLayouts too!
                  timer=nulltimer):
         BlacsLayouts.__init__(self, gd, bd, dtype, mcpus, ncpus, blocksize,
                               timer)
+        self._kwargs.update({'buffer_size':buffer_size})
+        self.buffer_size = buffer_size
         nbands = bd.nbands
         mynbands = bd.mynbands
-        self.buffer_size = buffer_size
 
         # 1D layout - columns
         self.columngrid = BlacsGrid(self.columncomm, 1, bd.comm.size)
