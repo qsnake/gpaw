@@ -92,7 +92,6 @@ class BlacsLayouts(KohnShamLayouts):
 
     def __init__(self, gd, bd, dtype, mcpus, ncpus, blocksize, timer=nulltimer):
         KohnShamLayouts.__init__(self, gd, bd, dtype, timer)
-        self._kwargs.update({'mcpus': mcpus, 'ncpus': ncpus, 'blocksize': blocksize})
         # WARNING: Do not create the BlacsGrid on a communicator which does not 
         # contain blockcomm.rank = 0. This will break BlacsBandLayouts which
         # assume eps_M will be broadcast over blockcomm.
@@ -109,7 +108,6 @@ class BandLayouts(KohnShamLayouts):
 
     def __init__(self, gd, bd, dtype, buffer_size=None, timer=nulltimer):
         KohnShamLayouts.__init__(self, gd, bd, dtype, timer)
-        self._kwargs.update({'buffer_size':buffer_size})
         self.buffer_size = buffer_size
 
     def diagonalize(self, H_NN, eps_n):
@@ -200,7 +198,6 @@ class BlacsBandLayouts(BlacsLayouts): #XXX should derive from BandLayouts too!
                  timer=nulltimer):
         BlacsLayouts.__init__(self, gd, bd, dtype, mcpus, ncpus, blocksize,
                               timer)
-        self._kwargs.update({'buffer_size':buffer_size})
         self.buffer_size = buffer_size
         nbands = bd.nbands
         mynbands = bd.mynbands
@@ -285,8 +282,6 @@ class BlacsOrbitalLayouts(BlacsLayouts):
                  timer=nulltimer):
         BlacsLayouts.__init__(self, gd, bd, dtype, mcpus, ncpus, blocksize,
                               timer)
-        self._kwargs.update(nao=nao) #XXX should only be done by OrbitalLayouts!
-
         nbands = bd.nbands
         mynbands = bd.mynbands
         self.orbital_comm = self.bd.comm
@@ -430,7 +425,6 @@ class BlacsOrbitalLayouts(BlacsLayouts):
 class OrbitalLayouts(KohnShamLayouts):
     def __init__(self, gd, bd, dtype, nao, timer=nulltimer):
         KohnShamLayouts.__init__(self, gd, bd, dtype, timer)
-        self._kwargs.update({'nao': nao})
         self.mMdescriptor = MatrixDescriptor(nao, nao)
         self.nMdescriptor = MatrixDescriptor(bd.mynbands, nao)
         
