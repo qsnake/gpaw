@@ -11,17 +11,48 @@ import ase
 from ase.version import version as ase_version
 import gpaw
 
-import cmr
-from cmr.io import XMLData
-from cmr.io import READ_DATA
-from cmr.io import EVALUATE
-from cmr.io import WRITE_CONVERT
-from cmr.io import CONVERTION_ORIGINAL
-from cmr.static import CALCULATOR_GPAW
-
-def create_db_filename():
+try:
+    #new style cmr io
     import cmr
-    return cmr.create_db_filename()
+    from cmr.io import XMLData
+    from cmr.io import Flags
+    from cmr.tools.functions import create_db_filename
+    from cmr.definitions import CALCULATOR_GPAW
+
+    def get_reader(name):
+        reader = cmr.read(name, mode=Flags.READ_MODE_ORIGINAL_TYPE)
+        return reader
+        
+    def get_writer():
+        data = XMLData(CALCULATOR_GPAW)
+        data.set_mode(Flags.WRITE_MODE_CONVERT)
+        return data
+    
+    def create_db_filename():
+        return cmr.tools.functions.create_db_filename()
+except:    
+    #old style cmr io
+    import cmr
+    from cmr import create_db_filename
+    from cmr.io import XMLData
+    from cmr.io import READ_DATA
+    from cmr.io import EVALUATE
+    from cmr.io import WRITE_CONVERT
+    from cmr.io import CONVERTION_ORIGINAL
+    from cmr.static import CALCULATOR_GPAW
+    
+    def get_reader(name):
+        reader = cmr.read(name,
+                          read_mode=READ_DATA,
+                          evaluation_mode=EVALUATE,
+                          convertion_mode=CONVERTION_ORIGINAL)
+        return reader
+        
+    def get_writer():
+        data = XMLData()
+        data.set_calculator_name(CALCULATOR_GPAW)
+        data.set_write_mode(WRITE_CONVERT)
+        return data
 
 class Writer:
     """ This class is a wrapper to the db output writer
@@ -29,12 +60,11 @@ class Writer:
     """
     def __init__(self, filename, comm=None):
         self.verbose = False
-        self.data = XMLData()
-        self.data.set_calculator_name(CALCULATOR_GPAW)
-        self.data.set_write_mode(WRITE_CONVERT)
+        self.data = get_writer()
         self.split_array = None #used when array is not filled at once
         self.dimensions = {}
         self.filename = filename
+        self.cmr_params = {}
 
         uname = os.uname()
         self.data['user']=os.getenv('USER', '???')
@@ -134,7 +164,7 @@ class Writer:
         """writes the user variables and also sets the write attributes for
         the output file"""
         self.cmr_params = cmr_params.copy()
-        cmr.set_params_to_xml_data(self.data, cmr_params)
+        #cmr.set_params_to_xml_data(self.data, cmr_params)
         
     def close(self):
         if self.verbose:
@@ -148,11 +178,8 @@ class Reader:
     to read a db-file
     """
     def __init__(self, name):
-        self.reader = cmr.read(name,
-                               read_mode=READ_DATA,
-                               evaluation_mode=EVALUATE,
-                               convertion_mode=CONVERTION_ORIGINAL)
-        self.parameters = self.reader
+        self.verbose = False
+        self.reader = self.parameters = get_reader(name)
 
     def dimension(self, name):
         return self.reader[name]
@@ -164,7 +191,8 @@ class Reader:
         return self.reader.has_key(name)
     
     def get(self, name, *indices):
-        print "incides", indices
+        if self.verbose:
+            print "incides", indices
         result = self.reader[name]
         if indices!=():
             for a in indices:
@@ -174,7 +202,8 @@ class Reader:
         #gpaw wants expressions evaluated
         if type(result)==str or type(result)==unicode:
             try:
-                print "Converting ", result
+                if self.verbose:
+                    print "Converting ", result
                 result = eval(result, {})
             except (SyntaxError, NameError):
                 pass
