@@ -47,8 +47,8 @@ def maxrss():
     # to detect this and convert to bytes.
     mm = resource.getrusage(resource.RUSAGE_SELF)[2]
     if mm > 0:
-        if mm < (1024)**2: # (1 million bytes)
-            mm = mm*1024 # then mm was probably in kB so convert to MB
+        if mm < (1024)**2: # 1 MiB
+            mm = mm*1024 # then mm was probably in KiB so convert to MiB
         return mm
 
     # try to get it from /proc/id/status
