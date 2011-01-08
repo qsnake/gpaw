@@ -39,11 +39,20 @@ def maxrss():
     # see http://www.kernel.org/doc/man-pages/online/pages/man5/proc.5.html
 
     # try to get it from rusage
-    mm = resource.getrusage(resource.RUSAGE_SELF)[2]*resource.getpagesize()
+    # Python documentation here:
+    # http://docs.python.org/library/resource.html
+    # says to multiply by the pagesize, but this is incorrect. 
+    # What is implementation depenedent is whether ru_maxrss is in 
+    # bytes or kilobytes. We make an intelligent attempt to convert
+    # to detect this and convert to bytes.
+    mm = resource.getrusage(resource.RUSAGE_SELF)[2]
     if mm > 0:
+        if mm < (1024)**2: # (1 million bytes)
+            mm = mm*1024 # then mm was probably in kB so convert to MB
         return mm
 
     # try to get it from /proc/id/status
+    # This will not work on supercomputers like Blue Gene or Cray
     for name in ('VmHWM:',  # Peak resident set size ("high water mark")
                  'VmRss:',  # Resident set size
                  'VmPeak:', # Peak virtual memory size
