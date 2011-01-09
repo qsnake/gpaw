@@ -3,7 +3,6 @@ from math import log, pi, sqrt
 
 import numpy as np
 from ase.units import Hartree
-
 from gpaw.utilities.cg import CG
 import gpaw.mpi as mpi
 
@@ -11,13 +10,22 @@ import gpaw.mpi as mpi
 class XAS:
     def __init__(self, paw, mode="xas", center=None, spin=0):
         wfs = paw.wfs
+        self.orthogonal = wfs.gd.orthogonal
+        self.cell_cv = np.array(wfs.gd.cell_cv)
         assert wfs.world.size == 1 #assert not mpi.parallel
-        assert wfs.gd.orthogonal
+        #assert wfs.gd.orthogonal
         
         #
         # to allow spin polarized calclulation
         #
+        
         nkpts = len(wfs.ibzk_kc)
+
+        # the following lines are to stop the user to make mistakes
+        #if mode is not "xes" and spin == 1:
+        #    raise RuntimeError(
+        #        "The core hole is always in spin 0: please use spin=0")
+
         if wfs.nspins == 1:
             if spin is not 0:
                 raise RuntimeError(
@@ -49,7 +57,7 @@ class XAS:
 
         # look for the center with the corehole
         if center is not None:
-            print "center", center
+            #print "center", center
             setup = wfs.setups[center]
             a = center
             
@@ -92,12 +100,13 @@ class XAS:
             a_cn = np.inner(A_ci, P_ni)
             weight = kpt.weight * wfs.nspins / 2
             print "weight", weight
-            self.sigma_cn[:, n1:n2] = weight**0.5 * a_cn #.real
+            print a_cn.shape, self.sigma_cn.shape
+            self.sigma_cn[:, n1:n2] =  weight **0.5 * a_cn #.real
             n1 = n2
 
         self.symmetry = wfs.symmetry
 
-    def get_spectra(self, fwhm=0.5, linbroad=None, N=1000, kpoint=None,
+    def get_spectra(self, fwhm=0.5, E_in=None, linbroad=None, N=1000, kpoint=None,
                     proj=None,  proj_xyz=True, stick=False):
         """Calculate spectra.
 
@@ -109,8 +118,13 @@ class XAS:
           a list of three numbers, the first fwhm2, the second the value
           where the linear increase starts and the third the value where
           the broadening has reached fwhm2. example [0.5, 540, 550]
+        E_in:
+          a list of energy values where the spectrum is to be computed
+          if None the orbital energies will be used to compute the energy 
+          range
         N:
-          the number of bins in the broadened spectrum
+          the number of bins in the broadened spectrum. If E_in is given N
+          has no effect
         kpoint:
           select a specific k-point to calculate spectrum for
         proj:
@@ -124,14 +138,19 @@ class XAS:
         stick:
           if False return broadened spectrum, if True return stick spectrum
           
-        Symmetrization has been moved inside get_spectra because we want to
-        symmetrize squares of transition dipoles."""
+        Symmtrization has been moved inside get_spectra because we want to
+        symmtrice squares of transition dipoles."""
         
         # eps_n = self.eps_n[k_in*self.n: (k_in+1)*self.n -1]
          
-
         # proj keyword, check normalization of incoming vectors
+        if proj_xyz:
+            proj_3 = np.array([[1,0,0],[0,1,0],[0,0,1]], float)
+        else:
+            proj_3 = np.array([],float)
+
         if proj is not None:
+            assert self.orthogonal # does not work for nonorthogonal unit cells
             proj_2 = np.array(proj,float)
             if len(proj_2.shape) == 1:
                 proj_2 = np.array([proj],float)
@@ -140,38 +159,36 @@ class XAS:
                 if sum(p ** 2) ** 0.5 != 1.0:
                     print "proj_2 %s not normalized" %i
                     proj_2[i] /=  sum(p ** 2) ** 0.5
+            
+            proj_tmp = np.zeros((proj_3.shape[0] + proj_2.shape[0], 3), float)
+                
+            for i, p in enumerate(proj_3):
+                proj_tmp[i,:] = proj_3[i,:]
+
+            for i, p in enumerate(proj_2):
+                proj_tmp[proj_3.shape[0] + i,:] = proj_2[i,:]
         
-            # make vector of projections
-            if proj_xyz:
-                sigma1_cn = np.empty( (3 + proj_2.shape[0], self.sigma_cn.shape[1]),
-                                       complex)
-                sigma1_cn[0:3,:] = self.sigma_cn
-                for i,p in enumerate(proj_2):
-                    sigma1_cn[3 +i,:] = np.dot(p,self.sigma_cn) 
-            else:
-                sigma1_cn = np.empty((proj_2.shape[0], self.sigma_cn.shape[1]) ,
-                                       complex)
-                for i,p in enumerate(proj_2):
-                    sigma1_cn[i,:] = np.dot(p, self.sigma_cn)
-                                                
-            sigma2_cn = np.empty(sigma1_cn.shape)
-            sigma2_cn = (sigma1_cn*np.conjugate(sigma1_cn)).real
-
-        else:
-           sigma2_cn = (self.sigma_cn * np.conjugate(self.sigma_cn)).real
-
-        #print sigma2_cn
-
+            proj_3 = proj_tmp.copy()
+        
         # now symmetrize
-        if kpoint is not None:
-            if self.symmetry is not None:
-                sigma0_cn = sigma2_cn.copy()
-                sigma2_cn = np.zeros((len(sigma0_cn), len(sigma0_cn[0])))
-                for op_cc in self.symmetry.op_scc:
-                    sigma2_cn += np.dot(op_cc**2, sigma0_cn)
-                sigma2_cn /= len(self.symmetry.op_scc)
+        sigma2_cn = np.zeros((proj_3.shape[0], self.sigma_cn.shape[1]),float) 
         
+        if self.symmetry is not None:
+            for i,p in enumerate(proj_3):
+                for op_cc in self.symmetry.op_scc:
+                    op_vv = np.dot(np.linalg.inv(self.cell_cv),
+                                   np.dot(op_cc, self.cell_cv))
+                    s_tmp = np.dot(p, np.dot(op_vv, self.sigma_cn))
+                    sigma2_cn[i,:] += (s_tmp * np.conjugate(s_tmp) ).real 
+            sigma2_cn /= len(self.symmetry.op_scc)
+            
+        else:
+            for i,p in enumerate(proj_3):
+                s_tmp = np.dot(p, self.sigma_cn)
+                sigma2_cn[i,:] += (s_tmp * np.conjugate(s_tmp) ).real 
+                
         eps_n = self.eps_n[:]
+
         if kpoint is not None:
             eps_start = kpoint*self.n
             eps_end = (kpoint+1)*self.n
@@ -189,10 +206,14 @@ class XAS:
 
         # else return broadened spectrum
         else:
-            emin = min(eps_n) - 2 * fwhm
-            emax = max(eps_n) + 2 * fwhm
-            e = emin + np.arange(N + 1) * ((emax - emin) / N)
-            a_c = np.zeros((len(sigma2_cn), N + 1))
+            if E_in is not None:
+                e = np.array(E_in)
+            else:
+                emin = min(eps_n) - 2 * fwhm
+                emax = max(eps_n) + 2 * fwhm
+                e = emin + np.arange(N + 1) * ((emax - emin) / N)
+            
+            a_c = np.zeros((len(sigma2_cn), len(e)))
             
             if linbroad is None:
                 #constant broadening fwhm
@@ -240,14 +261,26 @@ class RecursionMethod:
         if paw is not None:
             wfs = paw.wfs
             assert wfs.gd.orthogonal
-            assert wfs.nspins == 1 # restricted - for now
+
             self.wfs = wfs
             self.hamiltonian = paw.hamiltonian
-            self.weight_k = wfs.weight_k
-            self.nkpts = len(wfs.ibzk_kc)
+            self.nkpts = len(wfs.ibzk_kc) * wfs.nspins
             self.nmykpts = len(wfs.kpt_u)
+
             self.k1 = wfs.kpt_comm.rank * self.nmykpts
             self.k2 = self.k1 + self.nmykpts
+            
+            print "k1", self.k1, "k2",self.k2
+
+            # put spin and weight index in the columns corresponding
+            # to this processors k-points
+            self.spin_k = np.zeros(self.nkpts,int)
+            self.weight_k = np.zeros(self.nkpts)
+
+            for n, i in enumerate(range(self.k1, self.k2)):
+                self.spin_k[i] = wfs.kpt_u[n].s
+                self.weight_k[i] = wfs.kpt_u[n].weight
+                     
             self.op_scc = None
             if wfs.symmetry is not None:
                 self.op_scc = wfs.symmetry.op_scc
@@ -278,6 +311,7 @@ class RecursionMethod:
         else:
             self.op_scc = data['symmetry operations']
         self.weight_k = data['weight_k']
+        self.spin_k = data['spin_k']
         self.dim = data['dim']
         k1, k2 = self.k1, self.k2
         if k2 is None:
@@ -285,6 +319,7 @@ class RecursionMethod:
         a_kci, b_kci = data['ab']
         self.a_uci = a_kci[k1:k2].copy()
         self.b_uci = b_kci[k1:k2].copy()
+
         if self.wfs is not None and 'arrays' in data:
             print 'reading arrays'
             w_kcG, wold_kcG, y_kcG = data['arrays']
@@ -292,7 +327,7 @@ class RecursionMethod:
             self.w_ucG = w_kcG[i].copy()
             self.wold_ucG = wold_kcG[i].copy()
             self.y_ucG = y_kcG[i].copy()
-
+            
     def write(self, filename, mode=''):
         assert self.wfs is not None
         kpt_comm = self.wfs.kpt_comm
@@ -305,18 +340,24 @@ class RecursionMethod:
                                   self.wfs.dtype)
                 b_kci = np.empty((kpt_comm.size, nmyu, dim, ni),
                                   self.wfs.dtype)
+
                 kpt_comm.gather(self.a_uci, 0, a_kci)
                 kpt_comm.gather(self.b_uci, 0, b_kci)
+                kpt_comm.sum(self.spin_k, 0)
+                kpt_comm.sum(self.weight_k, 0)
+                
                 a_kci.shape = (self.nkpts, dim, ni)
                 b_kci.shape = (self.nkpts, dim, ni)
                 data = {'ab': (a_kci, b_kci),
                         'nkpts': self.nkpts,
                         'symmetry operations': self.op_scc,
-                        'weight_k':self.weight_k,
+                        'weight_k':self.weight_k,'spin_k':self.spin_k,
                         'dim':dim}
             else:
                 kpt_comm.gather(self.a_uci, 0)
                 kpt_comm.gather(self.b_uci, 0)
+                kpt_comm.sum(self.spin_k, 0)
+                kpt_comm.sum(self.weight_k, 0)
             
         if mode == 'all':
             w0_ucG = gd.collect(self.w_ucG)
@@ -476,9 +517,14 @@ class RecursionMethod:
                       self.continued_fraction(e, k, c, i + 1, imax))
 
     def get_spectra(self, eps_s, delta=0.1, imax=None, kpoint=None, fwhm=None,
-                    linbroad=None):
+                    linbroad=None, spin=0):
         assert not mpi.parallel
-        
+
+        # the following lines are to stop the user to make mistakes
+        #if spin == 1:
+        #    raise RuntimeError(
+        #        "The core hole is always in spin 0: please use spin=0")
+
         n = len(eps_s)
                 
         sigma_cn = np.zeros((self.dim, n))
@@ -493,11 +539,13 @@ class RecursionMethod:
                                                        0, imax).imag
         else:
             for k in range(self.nkpts):
-                weight = self.weight_k[k]
-                for c in range(self.dim):
-                    sigma_cn[c] += weight*self.continued_fraction(eps_n, k, c,
-                                                               0, imax).imag
-
+                print 'kpoint', k, 'spin_k', self.spin_k[k], spin, 'weight', self.weight_k[k] 
+                if self.spin_k[k] == spin:
+                    weight = self.weight_k[k]
+                    for c in range(self.dim):
+                        sigma_cn[c] += weight*self.continued_fraction(eps_n, k, c,
+                                                                      0, imax).imag
+                        
         if self.op_scc is not None:
             sigma0_cn = sigma_cn
             sigma_cn = np.zeros((self.dim, n))
@@ -604,6 +652,17 @@ class RecursionMethod:
         self.a_uci = a_uci
         self.b_uci = b_uci
 
+
+def write_spectrum(a,b, filename):
+    f=open(filename, 'w')         
+    print f, a.shape, b.shape        
+    
+    for i in range(a.shape[0]):
+        print >>f, "%g" % a[i], b[0,i] +b[1,i] +b[2,i],
+        for b2 in b:
+            print >> f, "%g" % b2[i],
+        print >> f
+    f.close()      
 
 
                                                                                                                  
