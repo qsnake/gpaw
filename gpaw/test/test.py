@@ -12,31 +12,25 @@ from gpaw.hooks import hooks
 
 parser = OptionParser(usage='%prog [options] [tests]',
                       version='%prog 0.1')
-
 parser.add_option('-x', '--exclude',
                   type='string', default=None,
                   help='Exclude tests (comma separated list of tests).',
                   metavar='test1.py,test2.py,...')
-
 parser.add_option('-f', '--run-failed-tests-only',
                   action='store_true',
                   help='Run failed tests only.')
-
 parser.add_option('--from', metavar='TESTFILE', dest='from_test',
                   help='Run remaining tests, starting from TESTFILE')
-
 parser.add_option('--after', metavar='TESTFILE', dest='after_test',
                   help='Run remaining tests, starting after TESTFILE')
-
 parser.add_option('-j', '--jobs', type='int', default=1,
                   help='Run JOBS threads.')
-
 parser.add_option('--reverse', action='store_true',
                   help=('Run tests in reverse order (less overhead with '
                         'multiple jobs)'))
-
 parser.add_option('-k', '--keep-temp-dir', action='store_true',
                   dest='keep_tmpdir', help='Do not delete temporary files.')
+parser.add_option('-d', '--directory', help='Run test in this directory')
 
 opt, tests = parser.parse_args()
 
@@ -71,7 +65,14 @@ from gpaw.test import TestRunner
 old_hooks = hooks.copy()
 hooks.clear()
 if mpi.rank == 0:
-    tmpdir = tempfile.mkdtemp(prefix='gpaw-test-')
+    if opt.directory is None:
+        tmpdir = tempfile.mkdtemp(prefix='gpaw-test-')
+    else:
+        tmpdir = opt.directory
+        if os.path.isdir(tmpdir):
+            opt.keep_tmpdir = True
+        else:
+            os.mkdir(tmpdir)
 else:
     tmpdir = None
 tmpdir = mpi.broadcast_string(tmpdir)
