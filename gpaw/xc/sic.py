@@ -10,6 +10,7 @@ from math import pi, sqrt, cos, sin, log10, exp, atan2
 import numpy as np
 from ase.units import Bohr, Hartree
 
+from gpaw.utilities.tools import dagger
 from gpaw.utilities.blas import gemm
 from gpaw.utilities.lapack import diagonalize
 from gpaw.xc import XC
@@ -25,7 +26,7 @@ def matrix_exponential(G_nn, dlt):
 
     """Computes the matrix exponential of an antihermitian operator
 
-       U = exp(dlt*G)
+       U = exp(i*dlt*G)
         
     G_nn: ndarray
         anti-hermitian (skew-symmetric) matrix.
@@ -40,7 +41,7 @@ def matrix_exponential(G_nn, dlt):
     V_nn = np.zeros((ndim, ndim), dtype=complex)
     O_nn = np.zeros((ndim, ndim), dtype=complex)
     if G_nn.dtype==complex:
-        V_nn = 1j*G_nn.real + G_nn.imag
+        V_nn = 1j*G_nn.real - G_nn.imag
     else:
         V_nn = 1j*G_nn.real
 
@@ -172,25 +173,27 @@ class SIC(XCFunctional):
         self.nbands = wfs.nbands
         
         if self.finegrid:
-            poissonsolver = hamiltonian.poisson
+            self.finegd = density.finegd
             self.ghat = density.ghat
         else:
-            poissonsolver = PoissonSolver(eps=1e-14)
-            poissonsolver.set_grid_descriptor(density.gd)
-            poissonsolver.initialize()
-            self.ghat = LFC(density.gd,
-                            [setup.ghat_l for setup in density.setups],
-                            integral=sqrt(4 * pi), forces=True)
-
+            self.finegd = density.gd
+            self.ghat = LFC(self.finegd,
+                        [setup.ghat_l for setup in density.setups],
+                        integral=sqrt(4 * pi), forces=True)
+        
+        poissonsolver = PoissonSolver(eps=1e-14)
+        poissonsolver.set_grid_descriptor(self.finegd)
+        poissonsolver.initialize()
+        
         self.spin_s = {}
         for kpt in wfs.kpt_u:
             self.spin_s[kpt.s] = SICSpin(kpt, self.xc,
                                          density, hamiltonian, wfs,
                                          poissonsolver, self.ghat,
-                                         **self.parameters)
+                                         self.finegd, **self.parameters)
             
     def get_setup_name(self):
-        return 'PBE'
+        return self.xc.get_setup_name()
 
     def calculate_radial(self, rgd, n_sLg, Y_L, v_sg,
                          dndr_sLg=None, rnablaY_Lv=None,
@@ -203,6 +206,7 @@ class SIC(XCFunctional):
             self.ghat.set_positions(spos_ac)
     
     def calculate(self, gd, n_sg, v_sg=None, e_g=None):
+        
         self.gd = gd
         
         # Normal XC contribution:
@@ -241,16 +245,27 @@ class SIC(XCFunctional):
             return
 
         if calculate_change:
-            spin.calculate_residual_change(psit_xG, Htpsit_xG, c_axi, n_x)
+            spin.calculate_residual_change(psit_xG, Htpsit_xG, P_axi,
+                                           c_axi, n_x)
         else:
-            spin.calculate_residual(psit_xG, Htpsit_xG, c_axi)
+            spin.calculate_residual(psit_xG, Htpsit_xG, P_axi, c_axi)
         
     def rotate(self, kpt, U_nn):
         self.spin_s[kpt.s].rotate(U_nn)
 
+    def setup_force_corrections(self, F_av):
+       self.dF_av = np.zeros_like(F_av)
+       for spin in self.spin_s.values():
+           spin.add_forces(self.dF_av)
+       self.wfs.kpt_comm.sum(self.dF_av)
+        
+    def add_forces(self, F_av):
+       F_av += self.dF_av
+
     def summary(self, out=sys.stdout):
         for s in range(self.nspins):
             if s in self.spin_s:
+                stabpot = self.spin_s[s].stabpot
                 spin = self.spin_s[s]
                 pos_mv = spin.get_centers()
                 exc_m = spin.exc_m
@@ -275,15 +290,17 @@ class SIC(XCFunctional):
                           (self.spin_s[0].xc_factor,
                            self.spin_s[0].coulomb_factor))
                 out.write('          x       y       z       XC    Coulomb\n')
-                out.write('-----------------------------------------------\n')
+                out.write('--------------------------------------------------\n')
                 m = 0
                 for pos_v, exc, ecoulomb in zip(pos_mv, exc_m, ecoulomb_m):
-                    out.write('%d  (%7.3f,%7.3f,%7.3f): %8.3f %8.3f\n' %
+                    out.write('%3d  (%7.3f,%7.3f,%7.3f): %8.3f %8.3f\n' %
                               ((m,) + tuple(pos_v) +
                                (exc * Hartree, ecoulomb * Hartree)))
                     m += 1
-                out.write('-----------------------------------------------\n')
-        out.write('\nTotal SIC energy: %12.6f \n' % (self.esic* Hartree))
+                out.write('--------------------------------------------------\n')
+        out.write('\nTotal SIC energy     : %12.5f\n' % (self.esic * Hartree))
+        out.write('Stabilizing potential: %12.5f\n' % (stabpot * Hartree))
+        
 
 
     def read(self, reader):
@@ -369,13 +386,13 @@ class SIC(XCFunctional):
 class SICSpin:
     def __init__(self, kpt, xc,
                  density, hamiltonian, wfs,
-                 poissonsolver, ghat,
+                 poissonsolver, ghat, finegd,
                  dtype=float,
-                 coulomb_factor=1.0, xc_factor=1.0,
+                 coulomb_factor=0.5, xc_factor=0.5,
                  uominres=1E-1, uomaxres=1E-10,
-                 uorelres=1E-4, uonscres=1E-8,
-                 rattle=-0.1, scissor=0.0,
-                 maxuoiter=-2, logging=0):
+                 uorelres=1E-4, uonscres=1E-10,
+                 rattle=-0.1, stabpot=0.0,
+                 maxuoiter=10, logging=2):
         
         """Single spin SIC object.
         
@@ -409,8 +426,10 @@ class SICSpin:
         self.xc = xc
         self.poissonsolver = poissonsolver
         self.ghat = ghat
+        self.pt = wfs.pt
         
         self.gd = wfs.gd
+        self.finegd = finegd
         self.interpolator = density.interpolator
         self.restrictor = hamiltonian.restrictor
         self.nspins = wfs.nspins
@@ -429,10 +448,10 @@ class SICSpin:
         self.exc_m = None          # PZ-SIC contributions (from E_xc)
         self.ecoulomb_m = None     # PZ-SIC contributions (from E_H)
 
-        self.finegd = ghat.gd
-
         self.rattle = rattle       # perturb the initial unitary transformation
-        self.scissor = scissor     
+        self.stabpot = stabpot     # stabilizing constant potential to avoid
+                                   # occupation of unoccupied states
+                                   
         self.uominres = uominres
         self.uomaxres = uomaxres
         self.uorelres = uorelres   
@@ -493,7 +512,7 @@ class SICSpin:
 
     def localize_orbitals(self):
         #
-        #assert self.gd.orthogonal
+        assert self.gd.orthogonal
         #
         # calculate wannier matrixelements 
         Z_mmv = np.empty((self.nocc, self.nocc, 3), complex)
@@ -536,8 +555,9 @@ class SICSpin:
 
 
     def get_centers(self):
+        #
         assert self.gd.orthogonal
-
+        #
         # calculate energy optimal states (if necessary)
         if self.phit_mG is None:
             self.update_optimal_states()
@@ -557,17 +577,18 @@ class SICSpin:
 
 
     def calculate_sic_matrixelements(self):
+        
         # overlap of pseudo wavefunctions
         Htphit_mG = self.vt_mG * self.phit_mG
         V_mm = np.zeros((self.nocc, self.nocc), dtype=self.dtype)
         gemm(self.gd.dv, self.phit_mG, Htphit_mG, 0.0, V_mm, 't')
-
-        #for a, P_mi in self.P_ami.items():
-        #    for m, dH_p in enumerate(self.dH_amp[a]):
-        #        dH_ii = unpack(dH_p)
-        #        V_mm[m] += np.dot(P_mi, np.dot(P_mi[m], dH_ii))
+        #
+        # PAW
+        for a, P_mi in self.P_ami.items():
+            for m, dH_p in enumerate(self.dH_amp[a]):
+                dH_ii = unpack(dH_p)
+                V_mm[m,:] += np.dot(P_mi[m], np.dot(dH_ii, P_mi.T))
         
-        # PAW corrections
 
         # accumulate over grid-domains
         self.gd.comm.sum(V_mm)
@@ -618,10 +639,7 @@ class SICSpin:
             D_ap[a] = D_p = pack(D_ii)
             Q_aL[a] = np.dot(D_p, self.setups[a].Delta_pL)
 
-        rhot_g = nt_g.copy()
-        self.ghat.add(rhot_g, Q_aL)
-
-        return nt_g, rhot_g, D_ap
+        return nt_g, Q_aL, D_ap
         
     def update_potentials(self, save=False, restore=False):
         
@@ -645,31 +663,32 @@ class SICSpin:
         
         #
         # initialize some bigger fields
-        if self.vt_mG is None:
+        if self.vt_mG is None or self.nocc!=self.phit_mG.shape[0]:
             self.vt_mG = self.gd.empty(self.nocc)
             self.exc_m = np.zeros(self.nocc)
             self.ecoulomb_m = np.zeros(self.nocc)
             self.vHt_mg = self.finegd.zeros(self.nocc)
             zero_initial_phi = True
-            #
-            # PAW
-            self.dH_amp = {}
-            for a, P_mi in self.P_ami.items():
-                ni = P_mi.shape[1]
-                self.dH_amp[a] = np.empty((self.nocc, ni * (ni + 1) // 2))
         #
+        # PAW
+        self.dH_amp = {}
+        for a, P_mi in self.P_ami.items():
+            ni = P_mi.shape[1]
+            self.dH_amp[a] = np.empty((self.nocc, ni * (ni + 1) // 2))
+        #
+        self.Q_maL = {}
         # loop all occupied orbitals
         for m, phit_G in enumerate(self.phit_mG):
             #
             # setup the single-particle density and PAW density-matrix
-            nt_sg[0], rhot_g, D_ap = self.calculate_density(m)
+            nt_sg[0], Q_aL, D_ap = self.calculate_density(m)
             vt_sg[:] = 0.0
             #
             # xc-SIC
             self.timer.start('XC')
             if self.xc_factor != 0.0:
                 exc = self.xc.calculate(self.finegd, nt_sg, vt_sg)
-                exc /= self.gd.comm.size
+                exc /= self.finegd.comm.size
                 vt_sg[0] *= -self.xc_factor
                 #
                 # PAW
@@ -678,8 +697,6 @@ class SICSpin:
                     dH_p = self.dH_amp[a][m]
                     dH_sp = np.zeros((2, len(dH_p)))
                     #
-                    # TODO: check this
-                    
                     D_sp = np.array([D_p, np.zeros_like(D_p)])
                     exc += setup.xc_correction.calculate(self.xc, D_sp, dH_sp,
                                                          addcoredensity=False)
@@ -691,16 +708,19 @@ class SICSpin:
             # Hartree-SIC
             self.timer.start('Hartree')
             if self.coulomb_factor != 0.0:
-                self.poissonsolver.solve(self.vHt_mg[m], rhot_g,
+                #
+                # add compensation charges to pseudo density
+                self.ghat.add(nt_sg[0], Q_aL)
+                #
+                # solve the coulomb problem
+                self.poissonsolver.solve(self.vHt_mg[m], nt_sg[0],
                                          zero_initial_phi=zero_initial_phi)
-                ecoulomb = 0.5 * self.finegd.integrate(rhot_g *
+                ecoulomb = 0.5 * self.finegd.integrate(nt_sg[0] *
                                                        self.vHt_mg[m])
-                ecoulomb /= self.gd.comm.size
+                ecoulomb /= self.finegd.comm.size
                 vt_sg[0] -= self.coulomb_factor * self.vHt_mg[m]
                 #
                 # PAW
-                #
-                # TODO: check if core is excluded
                 self.ghat.integrate(self.vHt_mg[m], W_aL)
                 for a, D_p in D_ap.items():
                     setup = self.setups[a]
@@ -708,9 +728,8 @@ class SICSpin:
                     M_p = np.dot(setup.M_pp, D_p)
                     ecoulomb += np.dot(D_p, M_p)
                     #
-                    # TODO: check if core is excluded
                     dH_p -= self.coulomb_factor * (
-                        2 * M_p + np.dot(setup.Delta_pL, W_aL[a]))
+                        2.0 * M_p + np.dot(setup.Delta_pL, W_aL[a]))
                 #
                 self.ecoulomb_m[m] = -self.coulomb_factor * ecoulomb
             self.timer.stop('Hartree')
@@ -722,12 +741,13 @@ class SICSpin:
                 self.timer.start('Restrictor')
                 self.restrictor.apply(vt_sg[0], self.vt_mG[m])
                 self.timer.stop('Restrictor')
-                
+            self.Q_maL[m] = Q_aL 
+
         self.timer.stop('ODD-potentials')
         #
         # accumulate total xc-SIC and coulomb-SIC
-        self.gd.comm.sum(self.exc_m)
-        self.gd.comm.sum(self.ecoulomb_m)
+        self.finegd.comm.sum(self.exc_m)
+        self.finegd.comm.sum(self.ecoulomb_m)
         #
         # total sic (including spin-degeneracy)
         self.esic = self.exc_m.sum()
@@ -743,25 +763,19 @@ class SICSpin:
             
 
     def apply_orbital_dependent_hamiltonian(self, psit_nG):
-        """...
-        
-        Setup ``|V phi_m>`` and ``<l|Vphi_m>`` for occupied states m
-        and unoccupied states l.
+
         """
+            setup |V phi_m>   and   <l|Vphi_m>
 
-        nocc = self.nocc
-        nvirt = psit_nG.shape[0] - nocc
-
-        R_lm = np.zeros((nvirt, nocc), dtype=self.dtype)
+            for occupied states m and unoccupied states l
+        """
+        #
+        #nocc = self.nocc
+        #nvirt = psit_nG.shape[0] - nocc
+        #
         self.Htphit_mG = self.vt_mG * self.phit_mG
+        #
 
-        if nvirt > 0:
-            gemm(self.gd.dv, self.Htphit_mG, psit_nG[nocc:], 0.0, R_lm, 't')
-            self.gd.comm.sum(R_lm)
-
-        # TODO: PAW corrections to the matrixelements
-
-        self.R_lm = R_lm
         
     def correct_hamiltonian_matrix(self, H_nn):
         
@@ -782,22 +796,23 @@ class SICSpin:
         nvirt = H_nn.shape[0] - nocc
         #
         W_mn = self.W_mn
-        R_lm = self.R_lm
+        #R_mk = self.R_mk
         V_mm = 0.5*(self.V_mm + self.V_mm.T)
         #
         H_nn[:nocc, :nocc] += np.dot(W_mn.T, np.dot(V_mm, W_mn))
         #
         if nvirt != 0:
-            R_ln = np.dot(R_lm, W_mn) 
-            H_nn[:nocc, nocc:] += R_ln.T
-            H_nn[nocc:, :nocc] += R_ln
+            H_nn[:nocc, nocc:] = 0.0 #R_nk
+            H_nn[nocc:, :nocc] = 0.0 #R_nk.T
+            #R_nk = np.dot(W_mn.T, R_mk) # CHECK THIS
+            #H_nn[:nocc, nocc:] += R_nk
+            #H_nn[nocc:, :nocc] += R_nk.T
 
-        if self.scissor!=0.0:
-            H_nn[self.nocc:, self.nocc:] += np.eye(nbands -
-                                                   self.nocc)*self.scissor
+        if self.stabpot!=0.0:
+            H_nn[self.nocc:, self.nocc:] += np.eye(nvirt)*self.stabpot
 
         
-    def calculate_residual(self, psit_nG, Htpsit_nG, c_ani):
+    def calculate_residual(self, psit_nG, Htpsit_nG, P_ani, c_ani):
         
         """ Calculate the action of the unified Hamiltonian on an
             arbitrary state:
@@ -807,29 +822,63 @@ class SICSpin:
         #
         nocc = self.nocc
         nvirt = psit_nG.shape[0] - nocc
-        R_lm  = self.R_lm
+        #
+        # ==================================================================
+        # constraint for unoccupied states
+        R_mk = np.zeros((nocc, nvirt), dtype=self.dtype)
+        if nvirt>0:
+            #
+            #
+            gemm(self.gd.dv, psit_nG[nocc:], self.Htphit_mG, 0.0, R_mk, 't')
+            #
+            # PAW
+            for a, P_mi in self.P_ami.items():
+                P_ni = P_ani[a]
+                #
+                for m, dH_p in enumerate(self.dH_amp[a]):
+                    dH_ii = unpack(dH_p)
+                    R_mk[m] += np.dot(P_mi[m], np.dot(dH_ii, P_ni[nocc:].T))
+            #      
+            self.gd.comm.sum(R_mk)        
+        #
+        #self.R_mk = R_mk
+        # ==================================================================
+        #R_mk  = self.R_mk
         W_mn  = self.W_mn
         Htphit_mG = self.Htphit_mG
         phit_mG = self.phit_mG
         K_mm = 0.5*(self.V_mm - self.V_mm.T)
-        V_mn = np.dot(K_mm, W_mn)
+        Q_mn = np.dot(K_mm, W_mn)
         #
         # Action of unified Hamiltonian on occupied states:
         if nocc>0:
             gemm(1.0, Htphit_mG, W_mn.T.copy(), 1.0, Htpsit_nG[:nocc])
-            gemm(1.0,   phit_mG, V_mn.T.copy(), 1.0, Htpsit_nG[:nocc])
+            gemm(1.0,   phit_mG, Q_mn.T.copy(), 1.0, Htpsit_nG[:nocc])
         if nvirt>0:
-            gemm(1.0,   phit_mG, R_lm, 1.0, Htpsit_nG[nocc:])
+            gemm(1.0,   phit_mG, R_mk.T.copy(), 1.0, Htpsit_nG[nocc:])
+            if self.stabpot!=0.0:
+                Htpsit_nG[nocc:] += self.stabpot*psit_nG[nocc:]
         #
-        # TODO: PAW corrections
-        
-        #Htpsit_nG[:nocc] +=  np.dot(Htphit_mG.T, W_mn).T
-        #Htpsit_nG[:nocc] +=  np.dot(phit_mG.T, np.dot(K_mm, W_mn)).T
-        #Htpsit_nG[nocc:] +=  np.dot(phit_mG.T, R_lm.T).T
+        # PAW
+        for a, P_mi in self.P_ami.items():
+            #
+            c_ni = c_ani[a]
+            ct_mi = P_mi.copy()
+            #
+            dO_ii = self.setups[a].dO_ii
+            c_ni[:nocc] += np.dot(Q_mn.T, np.dot(P_mi, dO_ii))
+            c_ni[nocc:] += np.dot(R_mk.T, np.dot(P_mi, dO_ii))
+            #
+            for m, dH_p in enumerate(self.dH_amp[a]):
+                dH_ii = unpack(dH_p)
+                ct_mi[m] = np.dot(P_mi[m], dH_ii)
+            c_ni[:nocc] += np.dot(W_mn.T, ct_mi)
+            c_ni[nocc:] += self.stabpot * np.dot(P_ani[a][nocc:], dO_ii)
+            #
         #
         
-    def calculate_residual_change(self, psit_xG, Htpsit_xG, c_axi, n_x):
-
+    def calculate_residual_change(self, psit_xG, Htpsit_xG, P_axi, c_axi, n_x):
+        #
         """ 
 
         """
@@ -839,25 +888,57 @@ class SICSpin:
         Htphit_mG = self.Htphit_mG
         phit_mG = self.phit_mG
         
-        c_mx = np.zeros((self.nocc, 1), dtype=self.dtype)
+        w_mx = np.zeros((self.nocc, 1), dtype=self.dtype)
         v_mx = np.zeros((self.nocc, 1), dtype=self.dtype)
-        gemm(self.gd.dv, psit_xG, phit_mG  , 0.0, c_mx, 't')
+        #
+        gemm(self.gd.dv, psit_xG, phit_mG  , 0.0, w_mx, 't')
         gemm(self.gd.dv, psit_xG, Htphit_mG, 0.0, v_mx, 't')
-        self.gd.comm.sum(c_mx)
+        #
+        # PAW
+        for a, P_mi in self.P_ami.items():
+            P_xi = P_axi[a]
+            dO_ii = self.setups[a].dO_ii
+            #
+            w_mx += np.dot(P_mi, np.dot(dO_ii, P_xi.T))
+            
+            for m, dH_p in enumerate(self.dH_amp[a]):
+                dH_ii = unpack(dH_p)
+                v_mx[m] += np.dot(P_mi[m], np.dot(dH_ii, P_xi.T))   
+        #
+        # sum over grid-domains
+        self.gd.comm.sum(w_mx)
         self.gd.comm.sum(v_mx)
         #
-        # TODO: PAW-corrections
         
         V_mm = 0.5*(self.V_mm + self.V_mm.T)
-        v_mx -= np.dot(V_mm, c_mx)
-        
-        gemm(1.0, Htphit_mG, c_mx.T.copy(), 1.0, Htpsit_xG)
-        gemm(1.0,   phit_mG, v_mx.T.copy(), 1.0, Htpsit_xG)
+        q_mx = v_mx - np.dot(V_mm, w_mx)
+
+        if self.stabpot != 0.0:
+            q_mx -= self.stabpot*w_mx
+            
+        gemm(1.0, Htphit_mG, w_mx.T.copy(), 1.0, Htpsit_xG)
+        gemm(1.0,   phit_mG, q_mx.T.copy(), 1.0, Htpsit_xG)
         #
-        # TODO: PAW-corrections
-        
-        #Htpsit_xG += (np.dot(Htphit_mG.T, c_mx).T
-        #             +np.dot(self.phit_mG.T, v_mx).T)
+        # PAW
+        for a, P_mi in self.P_ami.items():
+            #
+            c_xi = c_axi[a]
+            ct_mi = P_mi.copy()
+            #
+            dO_ii = self.setups[a].dO_ii
+            c_xi += np.dot(q_mx.T, np.dot(P_mi, dO_ii))
+            #
+            for m, dH_p in enumerate(self.dH_amp[a]):
+                dH_ii = unpack(dH_p)
+                ct_mi[m] = np.dot(P_mi[m], dH_ii)
+            c_xi += np.dot(w_mx.T, ct_mi)
+
+        if self.stabpot != 0.0:
+            Htphit_mG += self.stabpot*psit_xG
+            for a, P_xi in P_axi.items():
+                dO_ii = self.setups[a].dO_ii
+                c_axi[a] += self.stabpot * np.dot(P_xi, dO_ii)
+        #
 
 
     def rotate(self, U_nn):
@@ -881,7 +962,27 @@ class SICSpin:
         # reorthogonalize if unoccupied states may have been mixed in
         if self.nocc != U_nn.shape[0]:
             self.W_mn = ortho(self.W_mn)
+            #self.R_mk = np.dot(self.R_mk, U_nn[self.nocc:, self.nocc:].T)
 
+    def add_forces(self, F_av):
+        # Calculate changes in projections
+        deg = 3-self.nspins
+        F_amiv = self.pt.dict(self.nocc, derivative=True)
+        self.pt.derivative(self.phit_mG, F_amiv)
+        for m in range(self.nocc):
+            # Force from compensation charges:
+            dF_aLv = self.ghat.dict(derivative=True)
+            self.ghat.derivative(self.vHt_mg[m], dF_aLv)
+            for a, dF_Lv in dF_aLv.items():
+                F_av[a] -= deg*self.coulomb_factor * np.dot(self.Q_maL[m][a], dF_Lv)        
+
+            # Force from projectors
+            for a, F_miv in F_amiv.items():
+                F_vi = F_miv[m].T.conj()
+                dH_ii = unpack(self.dH_amp[a][m])
+                P_i = self.P_ami[a][m]
+                F_v = np.dot(np.dot(F_vi, dH_ii), P_i)
+                F_av[a] += deg* 2 * F_v.real
                 
     def calculate(self):
 
