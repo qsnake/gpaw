@@ -763,19 +763,18 @@ class SICSpin:
             
 
     def apply_orbital_dependent_hamiltonian(self, psit_nG):
+        """...
 
-        """
-            setup |V phi_m>   and   <l|Vphi_m>
+        Setup::
 
-            for occupied states m and unoccupied states l
-        """
-        #
+            |V phi_m> and <l|Vphi_m>,
+
+        for occupied states m and unoccupied states l."""
+
         #nocc = self.nocc
         #nvirt = psit_nG.shape[0] - nocc
-        #
-        self.Htphit_mG = self.vt_mG * self.phit_mG
-        #
 
+        self.Htphit_mG = self.vt_mG * self.phit_mG
         
     def correct_hamiltonian_matrix(self, H_nn):
         
@@ -794,13 +793,13 @@ class SICSpin:
         """
         nocc = self.nocc
         nvirt = H_nn.shape[0] - nocc
-        #
+
         W_mn = self.W_mn
         #R_mk = self.R_mk
-        V_mm = 0.5*(self.V_mm + self.V_mm.T)
-        #
+        V_mm = 0.5 * (self.V_mm + self.V_mm.T)
+
         H_nn[:nocc, :nocc] += np.dot(W_mn.T, np.dot(V_mm, W_mn))
-        #
+
         if nvirt != 0:
             H_nn[:nocc, nocc:] = 0.0 #R_nk
             H_nn[nocc:, :nocc] = 0.0 #R_nk.T
@@ -808,21 +807,19 @@ class SICSpin:
             #H_nn[:nocc, nocc:] += R_nk
             #H_nn[nocc:, :nocc] += R_nk.T
 
-        if self.stabpot!=0.0:
-            H_nn[self.nocc:, self.nocc:] += np.eye(nvirt)*self.stabpot
+        if self.stabpot != 0.0:
+            H_nn[self.nocc:, self.nocc:] += np.eye(nvirt) * self.stabpot
 
-        
     def calculate_residual(self, psit_nG, Htpsit_nG, P_ani, c_ani):
-        
         """ Calculate the action of the unified Hamiltonian on an
             arbitrary state:
 
                 H_u|Psi> = 
         """
-        #
+
         nocc = self.nocc
         nvirt = psit_nG.shape[0] - nocc
-        #
+
         # ==================================================================
         # constraint for unoccupied states
         R_mk = np.zeros((nocc, nvirt), dtype=self.dtype)
