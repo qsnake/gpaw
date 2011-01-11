@@ -608,10 +608,6 @@ class Setup(BaseSetup):
         if basis is None:
             basis = self.create_basis_functions(phit_jg, beta, ng, rcut2,
                                                 gcut2, r_g)
-            
-        else:
-            if isinstance(basis, str):
-                basis = Basis(self.symbol, basis)
         phit_j = basis.tosplines()
         self.phit_j = phit_j
         self.basis = basis #?
@@ -1014,6 +1010,11 @@ class Setups(list):
                 setupdata = None
                 if not isinstance(type, str):
                     setupdata = type
+                # Basis may be None (meaning that the setup decides), a string
+                # (meaning we load the basis set now from a file) or an actual
+                # pre-created Basis object (meaning we just pass it along)
+                if isinstance(basis, str):
+                    basis = Basis(symbol, basis, world=world)
                 setup = create_setup(symbol, xc, lmax, type,
                                      basis, setupdata=setupdata, world=world)
                 self.setups[id] = setup

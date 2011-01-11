@@ -45,7 +45,7 @@ def parse_basis_name(name):
 
 
 class Basis:
-    def __init__(self, symbol, name, readxml=True):
+    def __init__(self, symbol, name, readxml=True, world=None):
         self.symbol = symbol
         self.name = name
         self.bf_j = []
@@ -56,7 +56,7 @@ class Basis:
         self.filename = None
 
         if readxml:
-            self.read_xml()
+            self.read_xml(world=world)
 
     def nao(self): # implement as a property so we don't have to
         # catch all the places where Basis objects are modified without
@@ -71,9 +71,9 @@ class Basis:
         gd = self.get_grid_descriptor()
         return [gd.reducedspline(bf.l, bf.phit_g) for bf in self.bf_j]
 
-    def read_xml(self, filename=None):
+    def read_xml(self, filename=None, world=None):
         parser = BasisSetXMLParser(self)
-        parser.parse(filename)
+        parser.parse(filename, world=world)
             
     def write_xml(self):
         """Write basis functions to file.
@@ -178,7 +178,7 @@ class BasisSetXMLParser(xml.sax.handler.ContentHandler):
         self.data = None
         self.l = None
 
-    def parse(self, filename=None):
+    def parse(self, filename=None, world=None):
         """Read from symbol.name.basis file.
 
         Example of filename: N.dzp.basis.  Use sz(dzp) to read
@@ -193,7 +193,7 @@ class BasisSetXMLParser(xml.sax.handler.ContentHandler):
             reduced = None
         fullname = '%s.%s.basis' % (basis.symbol, name)
         if filename is None:
-            basis.filename, source = search_for_file(fullname)
+            basis.filename, source = search_for_file(fullname, world=world)
             if source is None:
                 print """
 You need to set the GPAW_SETUP_PATH environment variable to point to
