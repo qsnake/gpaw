@@ -37,26 +37,33 @@ class MatrixOperator:
           J = nblocks             The number of blocks to divide bands into.
           M = N // J              The number of bands in each block.
           G = gd.n_c.prod()       The number of grid points on this MPI task.
-          g = int(np.ceil(G/J))   The number of grid points in a block.
+          g = G // J              The number of grid points in each block.
+          X and Q                 The workspaces to be calculated
 
-        Calculate X and Q, the latter is a function of ngroups and the
-        Hermiticity.
+        Q is relatively simple to calculate, refer to code. X is much more
+        difficult. Read below.
 
-        Conditions::
+        X is the band index of the workspace array. It is allocated in units
+        of the wavefunctions. Here is the condition on X and some intermediate
+        variables::
 
-          N % J == 0        Bands must be exactly divisible into blocks.
-          g * J >= G        The grid point blocks can contain all the points.
-          X * G >= N * g    Blocking over grid points must have enough space.
+              M >  0        At least one band in a block
+              X >= M        Blocking over band index must have enough space.
+          X * G >= N * g    Blocking over grid index must have enough space.
+
+        There are two different parallel matrix multiples here:
+        1. calculate_matrix_elements contracts on grid index
+        2. matrix_multiply contracts on the band index
+
+        We simply needed to make sure that we have enough workspace for
+        both of these multiples since we re-use the workspace arrays.
 
         Cases::
 
-          When G % J == 0, the expression for g simplifies to g = G//J,
-          and g * J >= G is obviously fulfilled. The condition for X
-          is equivalent to X >= N//J, hence this is the minimal requirement.
-
-          When G % J != 0, the expression for g becomes g = G//J+1 instead,
-          and g * J >= G is again fulfilled. The condition for X is basically
-          X * J * G >= N * (G+J) hence X = N//J + int(np.ceil(N/G)) is best.
+          Simplest case is G % J = M % J = 0: X = M.
+          
+          If g * N > M * G, then we need to increase the buffer size by one 
+          wavefunction unit greater than the simple case, thus X = M + 1.
 
         """
         self.bd = bd
@@ -75,35 +82,34 @@ class MatrixOperator:
         self.dtype = ksl.dtype
         self.buffer_size = ksl.buffer_size
 
-        # Calculate M, Q, and X for allocating arrays later
-        self.M = 1
-        self.X = 1 # not used in some cases
+        # Calculate Q and X for allocating arrays later
+        self.X = 1 # not used for ngroups == 1 and J == 0
         self.Q = 1
+        J = self.nblocks
         ngroups = self.bd.comm.size
         mynbands = self.bd.mynbands
-        nbands = self.bd.nbands
+        M = mynbands // J
         G = self.gd.n_c.prod()
+        g = G // J
+        assert M > 0 # must have at least one wave function in a block
 
         # If buffer_size keyword exist, use it to
         # calculate closest value of nblocks
-        if self.buffer_size is not None:
+        if self.buffer_size is not None: # buffersize is in MiB
             sizeof_single_wfs = self.gd.bytecount(self.dtype)
-            number_wfs = float(self.nblocks)*1024*1024/sizeof_single_wfs
-            temp_nblocks = int(np.floor(mynbands/multiple_wfs))
-            while (mynbands % temp_nblocks) != 0:
-                temp_nblocks -= temp_nblocks
-            assert temp_nblocks > 0
+            number_wfs = self.buffer_size*1024*1024/sizeof_single_wfs
+            temp_nblocks = int(np.floor(mynbands/number_wfs))
+            assert temp_nblocks > 0 # otherwise, buffer_size is too small
             self.nblocks = temp_nblocks
 
-        if ngroups == 1 and self.nblocks == 1:
+        if ngroups == 1 and J == 1:
             pass
         else:
-            assert mynbands % self.nblocks == 0
-            self.M = mynbands // self.nblocks
-            if G % self.nblocks != 0:
-                self.X += int(np.ceil(mynbands / G))
+            if g*mynbands > M*G:
+                self.X = M + 1
+                assert self.X*G >= g*mynbands
             else:
-                self.X = self.M
+                self.X = M
             if ngroups > 1:
                 if self.hermitian:
                     self.Q = ngroups // 2 + 1
@@ -111,10 +117,11 @@ class MatrixOperator:
                     self.Q = ngroups
 
     def allocate_work_arrays(self):
+        J = self.nblocks
         ngroups = self.bd.comm.size
         mynbands = self.bd.mynbands
         dtype = self.dtype
-        if ngroups == 1 and self.nblocks == 1:
+        if ngroups == 1 and J == 1:
             self.work1_xG = self.gd.zeros(mynbands, dtype)
         else:
             self.work1_xG = self.gd.zeros(self.X, dtype)
@@ -124,6 +131,7 @@ class MatrixOperator:
         self.A_nn = self.bmd.zeros(dtype=dtype)
 
     def estimate_memory(self, mem, dtype):
+        J = self.nblocks
         ngroups = self.bd.comm.size
         mynbands = self.bd.mynbands
         nbands = self.bd.nbands
@@ -131,7 +139,7 @@ class MatrixOperator:
         count = self.Q * mynbands**2
 
         # Code semipasted from allocate_work_arrays        
-        if ngroups == 1 and self.nblocks == 1:
+        if ngroups == 1 and J == 1:
             mem.subnode('work1_xG', mynbands * gdbytes)
         else:
             mem.subnode('work1_xG', self.X * gdbytes)
@@ -291,8 +299,8 @@ class MatrixOperator:
         if B == 1 and J == 1:
             return self.work1_xG
         else:
-            assert N % J == 0, "Can't divide %d bands in %d blocks." % (N,J)
-            M = self.M
+            M = N // J 
+            assert M > 0 # must have at least one wave function in group
             return self.work1_xG[:M]
 
     def calculate_matrix_elements(self, psit_nG, P_ani, A, dA):
@@ -329,7 +337,8 @@ class MatrixOperator:
         B = band_comm.size
         J = self.nblocks
         N = self.bd.mynbands
-        
+        M = N // J
+
         if self.work1_xG is None:
             self.allocate_work_arrays()
         else:
@@ -349,8 +358,7 @@ class MatrixOperator:
         # Now it gets nasty! We parallelize over B groups of bands and
         # each band group is blocked in J smaller slices (less memory).
         Q = self.Q
-        M = self.M
-
+        
         # Buffer for storage of blocks of calculated matrix elements.
         if B == 1:
             A_qnn = A_NN.reshape((1, N, N))
@@ -369,11 +377,18 @@ class MatrixOperator:
         # be syncronized up to this point but only on the 1D band_comm
         # communication ring
         band_comm.barrier()
+        if N % J != 0: # extra_J_slice = True
+            J = J + 1
+
         for j in range(J):
             n1 = j * M
             n2 = n1 + M
+            if n2 > N:
+                n2 = N
+                M = n2 - n1
             psit_mG = psit_nG[n1:n2]
-            sbuf_mG = A(psit_mG)
+            temp_mG = A(psit_mG) 
+            sbuf_mG = temp_mG[:M] # necessary only for extra_J_slice = True
             rbuf_mG = self.work2_xG[:M]
             cycle_P_ani = (j == J - 1 and P_ani)
 
@@ -390,6 +405,7 @@ class MatrixOperator:
 
                 # Calculate pseudo-braket contributions for the current slice
                 # of bands in the current mynbands x mynbands matrix block.
+                # if 0:
                 if q == 0 and self.hermitian and not self.bd.strided:
                     # Special case, we only need the lower part:
                     self._pseudo_braket(psit_nG[:n2], sbuf_mG, A_mn[:, :n2])
@@ -487,7 +503,7 @@ class MatrixOperator:
         shape = psit_nG.shape
         psit_nG = psit_nG.reshape(N, -1)
         G = psit_nG.shape[1]   # number of grid-points
-        g = int(np.ceil(G/J))
+        g = G // J
 
         # Buffers for send/receive of pre-multiplication versions of P_ani's.
         sbuf_In = rbuf_In = None
@@ -500,6 +516,9 @@ class MatrixOperator:
         # be syncronized up to this point but only on the 1D band_comm
         # communication ring
         band_comm.barrier()
+        if G % J != 0: # extra_J_slice = True
+            J = J + 1
+
         for j in range(J):
             G1 = j * g
             G2 = G1 + g

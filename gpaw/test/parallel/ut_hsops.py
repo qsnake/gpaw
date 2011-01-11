@@ -416,10 +416,9 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
     def get_optimal_number_of_blocks(self, blocking='fast'):
         """Estimate the optimal number of blocks for band parallelization.
 
-        The local number of bands ``mynbands`` must be divisible by the
-        number of blocks ``nblocks``. The number of blocks determines how
-        many parallel send/receive operations are performed, as well as
-        the added memory footprint of the required send/receive buffers.
+        The number of blocks determines how many parallel send/receive 
+        operations are performed, as well as the added memory footprint 
+        of the required send/receive buffers.
 
         ``blocking``  ``nblocks``      Description
         ============  =============    ========================================
@@ -445,10 +444,16 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
                            if self.bd.mynbands%j==0], dtype=int)
             jselect = np.argmin(abs(blocksize_bands-self.bd.mynbands/js))
             return js[jselect]
+        elif blocking == 'nonintdiv':
+            # Find first value of nblocks lead to non-integer divisible
+            # mynbands / nblock
+            nblocks = 1 
+            while self.bd.mynbands % nblocks == 0:
+                nblocks += 1
+            return nblocks
         else:
             nblocks = blocking
-            assert nblocks in range(1,self.bd.mynbands+1)
-            assert self.bd.mynbands % nblocks == 0
+            assert self.bd.mynbands // nblocks > 0
             return nblocks
 
     # =================================
@@ -714,7 +719,8 @@ def UTConstantWavefunctionFactory(dtype, parstride_bands, blocking, async):
     classname = 'UTConstantWavefunctionSetup' \
     + sep + {float:'Float', complex:'Complex'}[dtype] \
     + sep + {False:'Blocked', True:'Strided'}[parstride_bands] \
-    + sep + {'fast':'Fast', 'light':'Light', 'best':'Best'}[blocking] \
+    + sep + {'fast':'Fast', 'light':'Light', 
+             'best':'Best', 'nonintdiv': 'Nonintdiv'}[blocking] \
     + sep + {False:'Synchronous', True:'Asynchronous'}[async]
     class MetaPrototype(UTConstantWavefunctionSetup, object):
         __doc__ = UTConstantWavefunctionSetup.__doc__
@@ -751,7 +757,7 @@ if __name__ in ['__main__', '__builtin__']:
     testcases = []
     for dtype in [float, complex]:
         for parstride_bands in [False, True]:
-            for blocking in ['fast', 'best']: # 'light'
+            for blocking in ['fast', 'best', 'light', 'nonintdiv']: 
                 for async in [False, True]:
                     testcases.append(UTConstantWavefunctionFactory(dtype, \
                         parstride_bands, blocking, async))

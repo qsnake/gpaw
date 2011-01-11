@@ -339,7 +339,8 @@ def UTConstantWavefunctionFactory(dtype, parstride_bands, blocking, async):
     classname = 'UTConstantWavefunctionBlacsSetup' \
     + sep + {float:'Float', complex:'Complex'}[dtype] \
     + sep + {False:'Blocked', True:'Strided'}[parstride_bands] \
-    + sep + {'fast':'Fast', 'light':'Light', 'best':'Best'}[blocking] \
+    + sep + {'fast':'Fast', 'light':'Light', 
+             'best':'Best', 'nonintdiv': 'Nonintdiv'}[blocking] \
     + sep + {False:'Synchronous', True:'Asynchronous'}[async]
     class MetaPrototype(UTConstantWavefunctionBlacsSetup, object):
         __doc__ = UTConstantWavefunctionBlacsSetup.__doc__
@@ -376,7 +377,7 @@ if __name__ in ['__main__', '__builtin__'] and compiled_with_sl(True):
     testcases = []
     for dtype in [float, complex]:
         for parstride_bands in [False]: #XXX [False, True]:
-            for blocking in ['fast', 'best']: # 'light'
+            for blocking in ['fast', 'best', 'light', 'nonintdiv']: 
                 for async in [False, True]:
                     testcases.append(UTConstantWavefunctionFactory(dtype, \
                         parstride_bands, blocking, async))
