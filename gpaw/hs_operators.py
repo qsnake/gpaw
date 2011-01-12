@@ -82,23 +82,23 @@ class MatrixOperator:
         self.dtype = ksl.dtype
         self.buffer_size = ksl.buffer_size
 
+        mynbands = self.bd.mynbands
+        ngroups = self.bd.comm.size
+        G = self.gd.n_c.prod()
+
         # If buffer_size keyword exist, use it to
         # calculate closest value of nblocks
         if self.buffer_size is not None: # buffersize is in MiB
             sizeof_single_wfs = self.gd.bytecount(self.dtype)
             number_wfs = self.buffer_size*1024*1024/sizeof_single_wfs
             self.nblocks = int(np.floor(mynbands/number_wfs))
-            print 'nblocks', self.nblocks
             assert self.nblocks > 0 # otherwise, buffer_size is too small
 
         # Calculate Q and X for allocating arrays later
         self.X = 1 # not used for ngroups == 1 and J == 1
         self.Q = 1
         J = self.nblocks
-        ngroups = self.bd.comm.size
-        mynbands = self.bd.mynbands
         M = mynbands // J
-        G = self.gd.n_c.prod()
         g = G // J
         assert M > 0 # must have at least one wave function in a block
 
