@@ -82,8 +82,17 @@ class MatrixOperator:
         self.dtype = ksl.dtype
         self.buffer_size = ksl.buffer_size
 
+        # If buffer_size keyword exist, use it to
+        # calculate closest value of nblocks
+        if self.buffer_size is not None: # buffersize is in MiB
+            sizeof_single_wfs = self.gd.bytecount(self.dtype)
+            number_wfs = self.buffer_size*1024*1024/sizeof_single_wfs
+            self.nblocks = int(np.floor(mynbands/number_wfs))
+            print 'nblocks', self.nblocks
+            assert self.nblocks > 0 # otherwise, buffer_size is too small
+
         # Calculate Q and X for allocating arrays later
-        self.X = 1 # not used for ngroups == 1 and J == 0
+        self.X = 1 # not used for ngroups == 1 and J == 1
         self.Q = 1
         J = self.nblocks
         ngroups = self.bd.comm.size
@@ -92,15 +101,6 @@ class MatrixOperator:
         G = self.gd.n_c.prod()
         g = G // J
         assert M > 0 # must have at least one wave function in a block
-
-        # If buffer_size keyword exist, use it to
-        # calculate closest value of nblocks
-        if self.buffer_size is not None: # buffersize is in MiB
-            sizeof_single_wfs = self.gd.bytecount(self.dtype)
-            number_wfs = self.buffer_size*1024*1024/sizeof_single_wfs
-            temp_nblocks = int(np.floor(mynbands/number_wfs))
-            assert temp_nblocks > 0 # otherwise, buffer_size is too small
-            self.nblocks = temp_nblocks
 
         if ngroups == 1 and J == 1:
             pass
@@ -405,12 +405,15 @@ class MatrixOperator:
 
                 # Calculate pseudo-braket contributions for the current slice
                 # of bands in the current mynbands x mynbands matrix block.
-                # if 0:
-                if q == 0 and self.hermitian and not self.bd.strided:
-                    # Special case, we only need the lower part:
-                    self._pseudo_braket(psit_nG[:n2], sbuf_mG, A_mn[:, :n2])
-                else:
-                    self._pseudo_braket(psit_nG, sbuf_mG, A_mn, square=False)
+                # The special case is no longer valid when: 
+                # extra_J_slice = True
+                # Moreover, this special case seems like an accident waiting
+                # to happen. Always doing the more general case is safer.
+                # if q == 0 and self.hermitian and not self.bd.strided:
+                #    # Special case, we only need the lower part:
+                #    self._pseudo_braket(psit_nG[:n2], sbuf_mG, A_mn[:, :n2])
+                # else:
+                self._pseudo_braket(psit_nG, sbuf_mG, A_mn, square=False)
 
                 # If we're at the last slice, add contributions from P_ani's.
                 if cycle_P_ani:
