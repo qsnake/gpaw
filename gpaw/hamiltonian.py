@@ -313,11 +313,14 @@ class Hamiltonian:
                 
                 for D_p, H_p in zip(D_sp, self.dH_asp[a]):
                     [N_mm,V] =self.aoom(unpack2(D_p),a,l)
-                    N_mm=N_mm/2*nspins
-                    
-                    Eorb = setup.HubU/2. * (N_mm - np.dot(N_mm,N_mm)).trace()
+                    N_mm = N_mm / 2 * nspins
+                     
+                    Eorb = setup.HubU / 2. * (N_mm - np.dot(N_mm,N_mm)).trace()
                     Vorb = setup.HubU * (0.5 * np.eye(2*l+1) - N_mm)
                     Exc += Eorb
+                    if nspins == 1:
+                        # add contribution of other spin manyfold
+                        Exc += Eorb
                     
                     if len(nl)==2:
                         mm  = (2*np.array(l_j)+1)[0:nl[1]].sum()

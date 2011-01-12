@@ -190,6 +190,7 @@ tests = [
     'IP_oxygen.py',
     'atomize.py',
     'Hubbard_U.py',
+    'Hubbard_U_Zn.py',
     'revPBE_Li.py',
     'si_xas.py',
     'tpss.py',
