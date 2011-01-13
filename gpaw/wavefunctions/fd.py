@@ -29,7 +29,7 @@ class FDWaveFunctions(FDPWWaveFunctions):
         # Kinetic energy operator:
         self.kin = Laplace(self.gd, -0.5, stencil, self.dtype, allocate=False)
 
-        self.matrixoperator = MatrixOperator(self.bd, self.gd, orthoksl)
+        self.matrixoperator = MatrixOperator(orthoksl)
 
     def set_setups(self, setups):
         self.pt = LFC(self.gd, [setup.pt_j for setup in setups],

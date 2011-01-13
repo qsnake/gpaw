@@ -83,8 +83,7 @@ class UTConstantWavefunctionBlacsSetup(UTConstantWavefunctionSetup,
         S = lambda x: x
         dS = lambda a, P_ni: np.dot(P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
-        overlap = MatrixOperator(self.bd, self.gd, self.ksl,
-                                 nblocks, self.async, True)
+        overlap = MatrixOperator(self.ksl, nblocks, self.async, True)
         S_nn = overlap.calculate_matrix_elements(self.psit_nG, self.P_ani, S, dS)
 
         if memstats:
@@ -115,8 +114,7 @@ class UTConstantWavefunctionBlacsSetup(UTConstantWavefunctionSetup,
         S = lambda x: alpha*x
         dS = lambda a, P_ni: np.dot(alpha*P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
-        overlap = MatrixOperator(self.bd, self.gd, self.ksl,
-                                 nblocks, self.async, False)
+        overlap = MatrixOperator(self.ksl, nblocks, self.async, False)
         if 0: #XXX non-hermitian case so Nn2nn not just uplo='L' but rather 'G'
             blockcomm = self.ksl.nndescriptor.blacsgrid.comm
             self.ksl.Nn2nn = Redistributor(blockcomm, self.ksl.Nndescriptor,
@@ -145,8 +143,7 @@ class UTConstantWavefunctionBlacsSetup(UTConstantWavefunctionSetup,
         S = lambda x: x
         dS = lambda a, P_ni: np.dot(P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
-        overlap = MatrixOperator(self.bd, self.gd, self.ksl,
-                                 nblocks, self.async, True)
+        overlap = MatrixOperator(self.ksl, nblocks, self.async, True)
         S_nn = overlap.calculate_matrix_elements(self.psit_nG, self.P_ani, S, dS)
 
         # Known starting point of SI_nn = <psit_m|S+alpha*I|psit_n>
@@ -191,8 +188,7 @@ class UTConstantWavefunctionBlacsSetup(UTConstantWavefunctionSetup,
         S = lambda x: x
         dS = lambda a, P_ni: np.dot(P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
-        overlap = MatrixOperator(self.bd, self.gd, self.ksl,
-                                 nblocks, self.async, True)
+        overlap = MatrixOperator(self.ksl, nblocks, self.async, True)
         S_nn = overlap.calculate_matrix_elements(self.psit_nG, self.P_ani, S, dS)
 
         eps_N = self.bd.empty(global_array=True) # XXX dtype?
@@ -241,8 +237,7 @@ class UTConstantWavefunctionBlacsSetup(UTConstantWavefunctionSetup,
         S = lambda x: x
         dS = lambda a, P_ni: np.dot(P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
-        overlap = MatrixOperator(self.bd, self.gd, self.ksl,
-                                 nblocks, self.async, True)
+        overlap = MatrixOperator(self.ksl, nblocks, self.async, True)
 
         if self.bd.comm.rank == 0 and self.gd.comm.rank == 0:
             assert C_NN.shape == (self.bd.nbands,) * 2
@@ -295,8 +290,7 @@ class UTConstantWavefunctionBlacsSetup(UTConstantWavefunctionSetup,
         S = lambda x: alpha*x
         dS = lambda a, P_ni: np.dot(alpha*P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
-        overlap = MatrixOperator(self.bd, self.gd, self.ksl,
-                                 nblocks, self.async, False)
+        overlap = MatrixOperator(self.ksl, nblocks, self.async, False)
         if 0: #XXX non-hermitian case so Nn2nn not just uplo='L' but rather 'G'
             blockcomm = self.ksl.nndescriptor.blacsgrid.comm
             self.ksl.Nn2nn = Redistributor(blockcomm, self.ksl.Nndescriptor,

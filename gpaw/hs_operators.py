@@ -26,7 +26,7 @@ class MatrixOperator:
     async = True
     hermitian = True
 
-    def __init__(self, bd, gd, ksl, nblocks=None, async=None, hermitian=None):
+    def __init__(self, ksl, nblocks=None, async=None, hermitian=None):
         """The constructor now calculates the work array sizes, but does not
         allocate them. Here is a summary of the relevant variables and the
         cases handled.
@@ -66,34 +66,41 @@ class MatrixOperator:
           wavefunction unit greater than the simple case, thus X = M + 1.
 
         """
-        self.bd = bd
-        self.gd = gd
-        self.work1_xG = None
-        self.work2_xG = None
-        self.A_qnn = None
-        self.A_nn = None
+        self.bd = ksl.bd
+        self.gd = ksl.gd
+        self.blockcomm = ksl.blockcomm
+        self.bmd = ksl.new_descriptor() #XXX take hermitian as argument?
+        self.dtype = ksl.dtype
+        self.buffer_size = ksl.buffer_size
         if nblocks is not None:
             self.nblocks = nblocks
         if async is not None:
             self.async = async
         if hermitian is not None:
             self.hermitian = hermitian
-        self.bmd = ksl.new_descriptor() #XXX take hermitian as argument?
-        self.dtype = ksl.dtype
-        self.buffer_size = ksl.buffer_size
+
+        # default for work spaces
+        self.work1_xG = None
+        self.work2_xG = None
+        self.A_qnn = None
+        self.A_nn = None
 
         mynbands = self.bd.mynbands
         ngroups = self.bd.comm.size
         G = self.gd.n_c.prod()
 
-        # If buffer_size keyword exist, use it to
-        # calculate closest value of nblocks
-        if self.buffer_size is not None: # buffersize is in MiB
-            sizeof_single_wfs = self.gd.bytecount(self.dtype)
-            number_wfs = self.buffer_size*1024*1024/sizeof_single_wfs
-            self.nblocks = int(np.floor(mynbands/number_wfs))
-            assert self.nblocks > 0 # otherwise, buffer_size is too small
-
+        # If buffer_size keyword exist, use it to calculate closest 
+        # corresponding value of nblocks. Maximum allowed buffer_size
+        # corresponds to nblock = 1 which is all the wavefunctions.
+        # Give error if the buffer_size cannot contain a single
+        # wavefunction.
+        if self.buffer_size is not None: # buffersize is in KiB
+            sizeof_single_wfs = float(self.gd.bytecount(self.dtype))
+            number_wfs = self.buffer_size*1024/sizeof_single_wfs
+            assert number_wfs > 0 # buffer_size is too small
+            self.nblocks = max(int(np.floor(mynbands/number_wfs)),1)
+            print self.nblocks 
+            
         # Calculate Q and X for allocating arrays later
         self.X = 1 # not used for ngroups == 1 and J == 1
         self.Q = 1
@@ -334,6 +341,8 @@ class MatrixOperator:
         """
         band_comm = self.bd.comm
         domain_comm = self.gd.comm
+        block_comm = self.blockcomm
+
         B = band_comm.size
         J = self.nblocks
         N = self.bd.mynbands
@@ -411,7 +420,7 @@ class MatrixOperator:
                 # to happen. Always doing the more general case is safer.
                 # if q == 0 and self.hermitian and not self.bd.strided:
                 #    # Special case, we only need the lower part:
-                #    self._pseudo_braket(psit_nG[:n2], sbuf_mG, A_mn[:, :n2])
+                #     self._pseudo_braket(psit_nG[:n2], sbuf_mG, A_mn[:, :n2])
                 # else:
                 self._pseudo_braket(psit_nG, sbuf_mG, A_mn, square=False)
 
@@ -445,8 +454,7 @@ class MatrixOperator:
 
         # Because of the amount of communication involved, we need to
         # be syncronized up to this point.           
-        band_comm.barrier()
-        domain_comm.barrier()
+        block_comm.barrier()
         return self.bmd.redistribute_output(A_NN)
         
     def matrix_multiply(self, C_NN, psit_nG, P_ani=None):

@@ -85,7 +85,7 @@ class PWWaveFunctions(FDPWWaveFunctions):
                                    gd, nvalence, setups, bd, complex,
                                    world, kd, timer)
         
-        self.matrixoperator = MatrixOperator(self.bd, self.pd, orthoksl)
+        self.matrixoperator = MatrixOperator(orthoksl)
         self.wd = self.pd        
 
     def set_setups(self, setups):

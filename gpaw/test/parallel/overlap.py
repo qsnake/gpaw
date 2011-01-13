@@ -73,7 +73,7 @@ if 0:
     work2_xG = gd.empty(X)
 
 def run(psit_mG):
-    overlap = MatrixOperator(bd, gd, ksl, K)
+    overlap = MatrixOperator(ksl, K)
     if 0:
         overlap.work1_xG = work1_xG
         overlap.work2_xG = work2_xG
