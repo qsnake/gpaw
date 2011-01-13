@@ -200,12 +200,18 @@ class PAWTextOutput:
               tuple(self.wfs.gd.parsize_c))
         if self.wfs.bd.comm.size > 1: # band parallelization
             t('Parallelization over states: %d'
-              % self.wfs.bd.comm.size)
+              % self.wfs.bd.comm.size)     
 
         if p['mode'] == 'lcao':
             general_diagonalizer_layout = self.wfs.ksl.get_description()
             t('Diagonalizer layout: ' + general_diagonalizer_layout)
         elif p['mode'] == 'fd':
+            if self.wfs.diagksl.buffer_size is not None:
+                t('MatrixOperator buffer_size (KiB): %d'
+                  % self.wfs.diagksl.buffer_size)
+            else:
+                t('MatrixOperator buffer_size: default value or \n' \
+                      ' %s see value of nblock in input file' % (26*' ')) 
             diagonalizer_layout = self.wfs.diagksl.get_description()
             t('Diagonalizer layout: ' + diagonalizer_layout)
             orthonormalizer_layout = self.wfs.orthoksl.get_description()

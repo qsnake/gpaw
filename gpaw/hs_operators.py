@@ -99,7 +99,6 @@ class MatrixOperator:
             number_wfs = self.buffer_size*1024/sizeof_single_wfs
             assert number_wfs > 0 # buffer_size is too small
             self.nblocks = max(int(np.floor(mynbands/number_wfs)),1)
-            print self.nblocks 
             
         # Calculate Q and X for allocating arrays later
         self.X = 1 # not used for ngroups == 1 and J == 1
@@ -414,9 +413,11 @@ class MatrixOperator:
 
                 # Calculate pseudo-braket contributions for the current slice
                 # of bands in the current mynbands x mynbands matrix block.
-                # The special case is no longer valid when: 
+                # The special case may no longer be valid when: 
                 # extra_J_slice = True
-                # Moreover, this special case seems like an accident waiting
+                # Test showed a small effect on the SCF cycle, other test
+                # did not. Better to be conservative, than to risk it.
+                # Moreover, this special case seems is an accident waiting
                 # to happen. Always doing the more general case is safer.
                 # if q == 0 and self.hermitian and not self.bd.strided:
                 #    # Special case, we only need the lower part:

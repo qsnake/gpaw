@@ -13,11 +13,11 @@ and
 http://www.netlib.org/scalapack
 """
 
+import warnings
 from sys import stderr
 
 import numpy as np
 
-from gpaw.utilities import warning
 from gpaw import debug
 import gpaw.mpi as mpi
 import _gpaw
@@ -73,7 +73,13 @@ def scalapack_diagonalize_dc(desca, a, z, w, uplo):
     desca.checkassert(a)
     desca.checkassert(z)
     # only symmetric matrices
-    assert desca.gshape[0] == desca.gshape[1] 
+    assert desca.gshape[0] == desca.gshape[1]
+    if desca.gshape[0] < 250:
+        if (desca.blacsgrid.myrow, desca.blacsgrid.mycol) == (0, 0):
+            message = 'scalapack_diagonalize_dc may fail for small ' \
+                'matrices, use serial LAPACK instead.'
+            warnings.warn(message, RuntimeWarning)
+
     assert uplo in ['L', 'U']
     if not desca.blacsgrid.is_active():
         return
