@@ -1,62 +1,68 @@
 
 import numpy as np
 
-from gpaw.utilities import fact, ffact
-
-# Define (l+|m|)!/(l-|m|)!
-lmfact = lambda l,m: ffact(l-abs(m), l+abs(m))
+from gpaw.utilities import fact
+from gpaw.sphere import lmfact
+from gpaw.sphere.legendre import ilegendre, legendre, dlegendre
 
 # Define the Heaviside function
 heaviside = lambda x: (1.0+np.sign(x))/2.0
 
 # Define spherical harmoncics and normalization coefficient
-C = lambda l,m: ((2.*l+1.)/(4*np.pi*lmfact(l,m)))**0.5 #XXX BAD BAD BAD?!?
+C = lambda l,m: ((2.*l+1.)/(4*np.pi*lmfact(l,m)))**0.5
 
-# Integral norm of the associated Legendre polynomials
-ilegendre = lambda l,m: 2./(2.*l+1.)*lmfact(l,m)
+def Y(l,m,theta,phi):
+    if m == 0:
+        #return _Y(l,m,theta,phi)
+        return C(l,m)*legendre(l,abs(m),np.cos(theta))
+    elif m > 0:
+        #return (-1)**m*np.real(_Y(l,abs(m),theta,phi))*2**0.5
+        #return (-1)**m*(_Y(l,m,theta,phi)+_Y(l,m,theta,phi).conj())/2**0.5
+        #return (-1)**m*(_Y(l,m,theta,phi)+(-1)**m*_Y(l,-m,theta,phi))/2**0.5
+        #return (-1)**m*_C(l,m)*legendre(l,abs(m),np.cos(theta))*np.cos(m*phi)*2**0.5
+        return C(l,m)*legendre(l,abs(m),np.cos(theta))*np.cos(m*phi)*2**0.5
+    else:
+        #return (-1)**m*np.imag(_Y(l,abs(m),theta,phi))*2**0.5
+        #return (-1)**m*(_Y(l,abs(m),theta,phi)-_Y(l,abs(m),theta,phi).conj())/(2**0.5*1j)
+        #return (-1)**m*(_Y(l,abs(m),theta,phi)-(-1)**abs(m)*_Y(l,-abs(m),theta,phi))/(2**0.5*1j)
+        #return -_C(l,m)*legendre(l,abs(m),np.cos(theta))*np.sin(m*phi)*2**0.5
+        return -C(l,m)*legendre(l,abs(m),np.cos(theta))*np.sin(m*phi)*2**0.5
 
+# Define theta-derivative of spherical harmoncics
+def dYdtheta(l,m,theta,phi):
+    if m == 0:
+        #return _dYdtheta(l,m,theta,phi)
+        return C(l,m)*dlegendre(l,abs(m),np.cos(theta))
+    elif m > 0:
+        #return (-1)**m*np.real(_dYdtheta(l,abs(m),theta,phi))*2**0.5
+        #return (-1)**m*(_dYdtheta(l,m,theta,phi)+_dYdtheta(l,m,theta,phi).conj())/2**0.5
+        #return (-1)**m*(_dYdtheta(l,m,theta,phi)+(-1)**m*_dYdtheta(l,-m,theta,phi))/2**0.5
+        #return (-1)**m*_C(l,m)*dlegendre(l,abs(m),np.cos(theta))*np.cos(m*phi)*2**0.5
+        return C(l,m)*dlegendre(l,abs(m),np.cos(theta))*np.cos(m*phi)*2**0.5
+    else:
+        #return (-1)**m*np.imag(_dYdtheta(l,abs(m),theta,phi))*2**0.5
+        #return (-1)**m*(_dYdtheta(l,abs(m),theta,phi)-_dYdtheta(l,abs(m),theta,phi).conj())/(2**0.5*1j)
+        #return (-1)**m*(_dYdtheta(l,abs(m),theta,phi)-(-1)**abs(m)*_dYdtheta(l,-abs(m),theta,phi))/(2**0.5*1j)
+        #return -_C(l,m)*dlegendre(l,abs(m),np.cos(theta))*np.sin(m*phi)*2**0.5
+        return -C(l,m)*dlegendre(l,abs(m),np.cos(theta))*np.sin(m*phi)*2**0.5
 
-#from gpaw.sphere.legendre import ilegendre, legendre, dlegendre
-#from gpaw.sphere.csh import C as _C, Y as _Y, dYdtheta as _dYdtheta, dYdphi as _dYdphi
-
-#def Y(l,m,theta,phi):
-#    if m == 0:
-#        return _Y(l,m,theta,phi)
-#    elif m > 0:
-#        #return (-1)**m*np.real(_Y(l,abs(m),theta,phi))*2**0.5
-#        #return (-1)**m*(_Y(l,m,theta,phi)+_Y(l,m,theta,phi).conj())/2**0.5
-#        return (-1)**m*(_Y(l,m,theta,phi)+(-1)**m*_Y(l,-m,theta,phi))/2**0.5
-#    else:
-#        #return (-1)**m*np.imag(_Y(l,abs(m),theta,phi))*2**0.5
-#        #return (-1)**m*(_Y(l,abs(m),theta,phi)-_Y(l,abs(m),theta,phi).conj())/(2**0.5*1j)
-#        return (-1)**m*(_Y(l,abs(m),theta,phi)-(-1)**abs(m)*_Y(l,-abs(m),theta,phi))/(2**0.5*1j)
-
-## Define theta-derivative of spherical harmoncics
-#def dYdtheta(l,m,theta,phi):
-#    if m == 0:
-#        return _dYdtheta(l,m,theta,phi)
-#    elif m > 0:
-#        #return (-1)**m*np.real(_dYdtheta(l,abs(m),theta,phi))*2**0.5
-#        #return (-1)**m*(_dYdtheta(l,m,theta,phi)+_dYdtheta(l,m,theta,phi).conj())/2**0.5
-#        return (-1)**m*(_dYdtheta(l,m,theta,phi)+(-1)**m*_dYdtheta(l,-m,theta,phi))/2**0.5
-#    else:
-#        #return (-1)**m*np.imag(_Y(l,abs(m),theta,phi))*2**0.5
-#        #return (-1)**m*(_dYdtheta(l,abs(m),theta,phi)-_dYdtheta(l,abs(m),theta,phi).conj())/(2**0.5*1j)
-#        return (-1)**m*(_dYdtheta(l,abs(m),theta,phi)-(-1)**abs(m)*_dYdtheta(l,-abs(m),theta,phi))/(2**0.5*1j)
-
-## Define phi-derivative of spherical harmoncics
-#def dYdphi(l,m,theta,phi):
-#    if m == 0:
-#        return _dYdphi(l,m,theta,phi)
-#    elif m > 0:
-#        #return (-1)**m*np.real(_dYdphi(l,abs(m),theta,phi))*2**0.5
-#        return (-1)**m*(_dYdphi(l,m,theta,phi)+_dYdphi(l,m,theta,phi).conj())/2**0.5
-#        #return (-1)**m*(_dYdphi(l,m,theta,phi)+(-1)**m*_dYdphi(l,-m,theta,phi))/2**0.5
-#    else:
-#        #return (-1)**m*np.imag(_dYdphi(l,abs(m),theta,phi))*2**0.5
-#        return (-1)**m*(_dYdphi(l,abs(m),theta,phi)-_dYdphi(l,abs(m),theta,phi).conj())/(2**0.5*1j)
-#        #return (-1)**m*(_dYdphi(l,abs(m),theta,phi)-(-1)**abs(m)*_dYdphi(l,-abs(m),theta,phi))/(2**0.5*1j)
-
+# Define phi-derivative of spherical harmoncics
+def dYdphi(l,m,theta,phi):
+    if m == 0:
+        #return _dYdphi(l,m,theta,phi)
+        return np.zeros_like(theta)
+    elif m > 0:
+        #return (-1)**m*np.real(_dYdphi(l,abs(m),theta,phi))*2**0.5
+        #return (-1)**m*(_dYdphi(l,m,theta,phi)+_dYdphi(l,m,theta,phi).conj())/2**0.5
+        #return (-1)**m*(_dYdphi(l,m,theta,phi)+(-1)**m*_dYdphi(l,-m,theta,phi))/2**0.5
+        #return -(-1)**m*m*_C(l,m)*legendre(l,abs(m),np.cos(theta))*np.sin(m*phi)*2**0.5
+        return -m*C(l,m)*legendre(l,abs(m),np.cos(theta))*np.sin(m*phi)*2**0.5
+    else:
+        #return (-1)**m*np.imag(_dYdphi(l,abs(m),theta,phi))*2**0.5
+        #return (-1)**m*(_dYdphi(l,abs(m),theta,phi)-_dYdphi(l,abs(m),theta,phi).conj())/(2**0.5*1j)
+        #return (-1)**m*(_dYdphi(l,abs(m),theta,phi)-(-1)**abs(m)*_dYdphi(l,-abs(m),theta,phi))/(2**0.5*1j)
+        #return (-1)**m*m*_C(l,m)*legendre(l,abs(m),np.cos(theta))*np.cos(abs(m)*phi)*2**0.5
+        return -m*C(l,m)*legendre(l,abs(m),np.cos(theta))*np.cos(m*phi)*2**0.5
 
 # -------------------------------------------------------------------
 
@@ -79,7 +85,7 @@ def intYY(l1, m1, l2, m2):
 
 # -------------------------------------------------------------------
 
-from gpaw.sphere.csh import intYY_ex as _intYY_ex, intYY_ey as _intYY_ey, intYY_ez as _intYY_ez
+from gpaw.sphere.csh import intYY_ex as _intYY_ex, intYY_ey as _intYY_ey, intYY_ez as _intYY_ez #TODO make independent
 
 def mix(l1, m1, l2, m2, func):
     # m1 == 0
@@ -183,7 +189,7 @@ def intYY_ez(l1, m1, l2, m2):
 
 # -------------------------------------------------------------------
 
-from gpaw.sphere.csh import intYdYdtheta_ex as _intYdYdtheta_ex, intYdYdtheta_ey as _intYdYdtheta_ey, intYdYdtheta_ez as _intYdYdtheta_ez
+from gpaw.sphere.csh import intYdYdtheta_ex as _intYdYdtheta_ex, intYdYdtheta_ey as _intYdYdtheta_ey, intYdYdtheta_ez as _intYdYdtheta_ez #TODO make independent
 
 def intYdYdtheta_ex(l1, m1, l2, m2):
     """Calculates::
@@ -277,7 +283,7 @@ def intYdYdtheta_ez(l1, m1, l2, m2):
 
 # -------------------------------------------------------------------
 
-from gpaw.sphere.csh import intYdYdphi_ex as _intYdYdphi_ex, intYdYdphi_ey as _intYdYdphi_ey
+from gpaw.sphere.csh import intYdYdphi_ex as _intYdYdphi_ex, intYdYdphi_ey as _intYdYdphi_ey #TODO make independent
 
 def intYdYdphi_ex(l1, m1, l2, m2):
     """Calculates::

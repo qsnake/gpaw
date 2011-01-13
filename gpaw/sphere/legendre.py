@@ -1,10 +1,7 @@
 
 import numpy as np
 
-from gpaw.utilities import ffact
-
-# Define (l+|m|)!/(l-|m|)!
-lmfact = lambda l,m: ffact(l-abs(m), l+abs(m))
+from gpaw.sphere import lmfact
 
 # Highest l for which associated Legendre polynomials are implemented
 lmax = 9
@@ -248,10 +245,8 @@ def dlegendre(l, m, w): # XXX not d/dw but rather -sin(theta)*d/dw
 # -------------------------------------------------------------------
 
 if __name__ == '__main__':
-
     from gpaw.mpi import world
-    from gpaw.test.ut_csh import lmiter #XXX TODO move
-    #from gpaw.test import equal #XXX TODO use instead
+    from gpaw.sphere import lmiter
 
     def equal(x, y, tol=0, msg=''):
         if abs(x-y) > tol:

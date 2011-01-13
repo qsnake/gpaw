@@ -2,7 +2,8 @@
 import numpy as np
 
 from gpaw.utilities import fact
-from gpaw.sphere.legendre import lmfact, ilegendre, legendre, dlegendre
+from gpaw.sphere import lmfact
+from gpaw.sphere.legendre import ilegendre, legendre, dlegendre
 
 # Define the Heaviside function
 heaviside = lambda x: (1.0+np.sign(x))/2.0

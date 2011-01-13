@@ -125,6 +125,8 @@ tests = [
     'nonselfconsistent.py',
     'ewald.py',
     'harmonic.py',
+    'ut_csh.py',
+    'ut_rsh.py',
     'spinpol.py',
     'kptpar.py',
     'plt.py',
