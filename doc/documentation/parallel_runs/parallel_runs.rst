@@ -161,14 +161,6 @@ nitrogen molecule using two processes:
 
 .. literalinclude:: parallel_atomization.py
 
-ScaLapack
-=========
-
-.. toctree::
-   :maxdepth: 1
-
-   ScaLapack/ScaLapack
-
 .. _manual_parallelization_types:
 
 .. _manual_parallel:
@@ -190,7 +182,8 @@ The default value corresponds to this Python dictionary::
    'sl_default':          None,
    'sl_diagonalize':      None,
    'sl_inverse_cholesky': None,
-   'sl_lcao':             None}
+   'sl_lcao':              None
+   'buffer_size':       None}
 
 In words:
 
@@ -209,8 +202,17 @@ In words:
 * The four ``'sl_...'`` values are for specifying ScaLAPACK parameters, which
   must be a tuple ``(m,n,mb)`` of 3 integers to indicate a ``m*n`` grid of CPUs
   and a blocking factor of ``mb``. If either of the three latter are not
-  specified (i.e. ``None``), they default to the value of ``'sl_default'``,
-  which can also be omitted.
+  specified (i.e. ``None``), they default to the value of
+  ``'sl_default'``. Presently ``'sl_inverse_cholesky'`` is not used.
+
+* The ``'buffer_size'``  is specified as an integer and corresponds to
+  the size of the buffer in KiB used in the 1D systolic parallel
+  matrix multiply algorithm. The default value corresponds to sending all
+  wavefunctions simultaneously. A reasonable value would be the size
+  of the largest cache (L2 or L3) divide by the number of MPI tasks
+  per CPU. Values larger than the default value are non-sensical and
+  internally reset to the default value.
+
 
 .. note::
    With the exception of ``'stridebands'``, these parameters all have an
@@ -266,7 +268,7 @@ where ``nbg`` is the number of band groups to parallelize over.
    each CPU has to carry out to calculate e.g. the overlap matrix, the actual
    linear algebra necessary to solve such linear systems is in fact still
    done using serial LAPACK by default. It is therefor advisable to use both
-   band parallelization and ScaLAPACK / BLACS in conjunction to reduce this
+   band parallelization and ScaLAPACK in conjunction to reduce this
    potential bottleneck.
 
 There is also a command line argument ``--state-parallelization`` which allows you
@@ -279,4 +281,18 @@ More information about these topics can be found here:
 
    band_parallelization/band_parallelization
    ScaLapack/ScaLapack
+
+.. _manual_ScaLAPACK:
+
+ScaLAPACK
+--------------------
+The ScaLAPACK parameters are defined either using the aformentioned
+``'sl_...'`` entry in the parallel keyword dictionary or using a
+command line argument, e.g. ``--sl_default=m,n,mb``.  A reasonbly
+good guess for these parameters on most systems is related to the
+numbers of bands. We recommend::
+
+  mb = 32 or 64
+  m = sqrt(nbands/mb)
+  n = m
 
