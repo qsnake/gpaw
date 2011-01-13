@@ -18,7 +18,7 @@ from gpaw.kpt_descriptor import KPointDescriptorOld as KPointDescriptor
 from gpaw.paw import kpts2ndarray
 #from gpaw.brillouin import reduce_kpoints
 from gpaw.parameters import InputParameters
-from gpaw.xc_functional import XCFunctional
+#from gpaw.xc import XC
 from gpaw.setup import Setups
 from gpaw.utilities.gauss import gaussian_wave
 from gpaw.fd_operators import Laplace
@@ -76,7 +76,7 @@ class UTDomainParallelSetup(TestCase):
 
         #p = InputParameters()
         #Z_a = self.atoms.get_atomic_numbers()
-        #xcfunc = XCFunctional(p.xc, self.nspins)
+        #xcfunc = XC(p.xc)
         #setups = Setups(Z_a, p.setups, p.basis, p.lmax, xcfunc)
         #symmetry, weight_k, self.ibzk_kc = reduce_kpoints(self.atoms, bzk_kc,
         #                                                  setups, p.usesymm)

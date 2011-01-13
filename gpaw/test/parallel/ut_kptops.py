@@ -16,16 +16,10 @@ from gpaw.utilities import gcd
 from gpaw.paw import kpts2ndarray
 from gpaw.band_descriptor import BandDescriptor
 from gpaw.grid_descriptor import GridDescriptor
-from gpaw.kpt_descriptor import KPointDescriptor, KPointDescriptorOld #XXX
+from gpaw.kpt_descriptor import KPointDescriptor
 from gpaw.parameters import InputParameters
 from gpaw.setup import SetupData, Setups
 from gpaw.xc import XC
-
-#from gpaw.hs_operators import MatrixOperator
-#from gpaw.parameters import InputParameters
-#from gpaw.xc_functional import XCFunctional
-#from gpaw.setup import Setup, Setups
-#from gpaw.lfc import LFC
 
 from gpaw.test.ut_common import ase_svnversion, shapeopt, TestCase, \
     TextTestRunner, CustomTextTestRunner, defaultTestLoader, \
@@ -103,11 +97,8 @@ class UTKPointParallelSetup(TestCase):
         self.kd.set_symmetry(self.atoms, self.setups, p.usesymm)
         self.kd.set_communicator(kpt_comm)
 
-        #self.kd_old = KPointDescriptorOld(self.nspins, self.nibzkpts, \
-        #    kpt_comm, self.gamma, self.dtype) #XXX
-
     def tearDown(self):
-        del self.bd, self.gd, self.kd #self.kd_old
+        del self.bd, self.gd, self.kd
         del self.setups, self.atoms
 
     def get_parsizes(self): #XXX NO LONGER IN UT_HSOPS?!?

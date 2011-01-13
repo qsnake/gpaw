@@ -183,8 +183,8 @@ class UTGaussianWavefunctionSetup(UTDomainParallelSetup):
         self.setups = Setups(self.Z_a, p.setups, p.basis,
                              p.lmax, xc)
 
-        bzk_kc = np.array([[0, 0, 0],])
         # K-point descriptor
+        bzk_kc = np.array([[0, 0, 0]], dtype=float)
         self.kd = KPointDescriptor(bzk_kc, 1)
         self.kd.set_symmetry(self.atoms, self.setups, True)
         self.kd.set_communicator(self.kpt_comm)
