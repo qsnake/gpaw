@@ -250,7 +250,14 @@ def dlegendre(l, m, w): # XXX not d/dw but rather -sin(theta)*d/dw
 if __name__ == '__main__':
 
     from gpaw.mpi import world
-    from tools import equal, lmiter
+    from gpaw.test.ut_csh import lmiter #XXX TODO move
+    #from gpaw.test import equal #XXX TODO use instead
+
+    def equal(x, y, tol=0, msg=''):
+        if abs(x-y) > tol:
+            msg = (msg + '(%.9g,%.9g) != (%.9g,%.9g) (error: |%.9g| > %.9g)' %
+                   (np.real(x),np.imag(x),np.real(y),np.imag(y),abs(x-y),tol))
+            raise AssertionError(msg)
 
     nw = 10000
     dw = 2.0/nw
@@ -288,7 +295,7 @@ if __name__ == '__main__':
     if world.rank == 0:
         print '\n%s\nAssociated Legendre theta-derivative\n%s' % ('-'*40,'-'*40)
     for l,m in lmiter(lmax, False, comm=world):
-        scale = l**(-abs(m))*ffact(l,abs(m)) # scale to fit ~ [-1; 1]
+        scale = l**(-abs(m))*lmfact(l,abs(m)) # scale to fit ~ [-1; 1]
         p = legendre(l, m, w) / scale
         dpdtheta = -(1-w[1:-1]**2)**0.5*(p[2:]-p[:-2])/(2.0*dw)
         dpdtheta0 = dlegendre(l, m, w[1:-1]) / scale
@@ -307,4 +314,58 @@ if __name__ == '__main__':
         equal(e, 0, tol, 'l=%2d, m=%2d: ' % (l,m))
     del nw, dw, w, tol, p, dpdtheta, dpdtheta0, e
     world.barrier()
+
+    # =======================
+
+    R = 1.0
+    npts = 1000
+    tol = 1e-9
+    # ((R-dR)/(R+dR))**(lmax+1) = tol
+    # (lmax+1)*np.log((R-dR)/(R+dR)) = np.log(tol)
+    # (R-dR)/(R+dR) = np.exp(np.log(tol)/(lmax+1))
+    # R-dR = (R+dR) * tol**(1/(lmax+1))
+    # R * (1-tol**(1/(lmax+1))) = dR * (1+tol**(1/(lmax+1)))
+    dR = R * (1-tol**(1./(lmax+1))) / (1+tol**(1./(lmax+1)))
+    assert abs(((R-dR)/(R+dR))**(lmax+1) - tol) < 1e-12
+
+    r_g = np.random.uniform(R+dR, 10*R, size=npts)
+    world.broadcast(r_g, 0)
+    theta_g = np.random.uniform(0, np.pi, size=npts)
+    world.broadcast(theta_g, 0)
+    phi_g = np.random.uniform(0, np.pi, size=npts)
+    world.broadcast(phi_g, 0)
+
+    r_vg = np.empty((3, npts), dtype=float)
+    r_vg[0] = r_g*np.cos(phi_g)*np.sin(theta_g)
+    r_vg[1] = r_g*np.sin(phi_g)*np.sin(theta_g)
+    r_vg[2] = r_g*np.cos(theta_g)
+
+    rm_g = np.random.uniform(0, R-dR, size=npts)
+    world.broadcast(rm_g, 0)
+    thetam_g = np.random.uniform(0, np.pi, size=npts)
+    world.broadcast(thetam_g, 0)
+    phim_g = np.random.uniform(0, np.pi, size=npts)
+    world.broadcast(phim_g, 0)
+
+    rm_vg = np.empty((3, npts), dtype=float)
+    rm_vg[0] = rm_g*np.cos(phim_g)*np.sin(thetam_g)
+    rm_vg[1] = rm_g*np.sin(phim_g)*np.sin(thetam_g)
+    rm_vg[2] = rm_g*np.cos(thetam_g)
+
+    # Cosine of the angle between r and r' using 1st spherical law of cosines
+    w_g = np.cos(theta_g)*np.cos(thetam_g) \
+        + np.sin(theta_g)*np.sin(thetam_g)*np.cos(phi_g-phim_g)
+
+    f0_g = np.sum((r_vg-rm_vg)**2, axis=0)**(-0.5)
+    f_g = np.zeros_like(f0_g)
+
+    # Test truncated multi-pole expansion using Legendre polynomials
+    if world.rank == 0:
+        print '\n%s\nLegendre multi-pole expansion\n%s' % ('-'*40,'-'*40)
+    for l in range(lmax+1):
+        f_g += 1/r_g * (rm_g/r_g)**l * legendre(l, 0, w_g)
+
+    e = np.abs(f_g-f0_g).max()
+    equal(e, 0, tol, 'lmax=%02d, dR=%g: ' % (lmax, dR))
+    del R, dR, npts, tol, r_g, theta_g, phi_g, r_vg, rm_g, thetam_g, phim_g, rm_vg, w_g, f0_g, f_g, e
 
