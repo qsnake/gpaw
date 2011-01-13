@@ -191,6 +191,12 @@ can be summarized as follows::
 
 Setting the value of nblocks
 ============================
+The documentation below will be partially deprecated in the
+future. Use ``buffer_size=2048`` and nblocks will be automatically
+computed on the fly in the SVN version 7520 and higher. Refer to 
+:ref:`manual_parallel` for more information about the ``buffer_size``
+keyword.
+
 The computation of the hamiltonian and overlap matrix elements, as well as
 the computation of the new wavefunctions, is accomplished by a hand-coded 
 parallel matrix-multiply ``hs_operators.py`` employing a 1D systolic
@@ -220,7 +226,7 @@ There are thus a number of constraints on the value of nbands:
 
 1) ``nbands/B`` must be integer divisible
 
-#) ``nbands/B/K`` must be integer divisible
+#) ``nbands/B/K`` must be integer divisible. No longer applicable in SVN verison 7520 and higher.
 
 #) size of wavefunction block ~ 2 MB
 
