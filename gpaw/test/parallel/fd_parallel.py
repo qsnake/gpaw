@@ -142,10 +142,15 @@ del parallel['domain']
 parallel['band'] = 2 
 run(**OH_kwargs) 
 
+# do last test plus buffer_size keyword
+parallel['buffer_size'] = 50
+run(**OH_kwargs)
+
 if compiled_with_sl():
     # state-parallelization= 2,
     # domain-decomposition = (1, 1, 1)
     # with blacs
+    del parallel['buffer_size']
     parallel['sl_default'] = (2, 1, 2)
     run(**OH_kwargs)
 
@@ -153,6 +158,8 @@ if compiled_with_sl():
     # domain-decomposition = (1, 2, 1)
     del parallel['band']
     parallel['domain'] = (1, 2, 1)
-
     run(**OH_kwargs)
 
+    # dot last test plus buffer_size keyword
+    parallel['buffer_size'] = 50
+    run(**OH_kwargs)
