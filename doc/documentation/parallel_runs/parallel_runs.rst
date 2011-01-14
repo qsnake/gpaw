@@ -286,13 +286,15 @@ More information about these topics can be found here:
 
 ScaLAPACK
 --------------------
-The ScaLAPACK parameters are defined either using the aformentioned
-``'sl_...'`` entry in the parallel keyword dictionary or using a
-command line argument, e.g. ``--sl_default=m,n,mb``.  A reasonbly
-good guess for these parameters on most systems is related to the
-numbers of bands. We recommend::
+Calculations with nbands > 500 will benefit from ScaLAPACK (otherwise
+the default serial LAPACK should be used). The ScaLAPACK parameters
+are defined either using the aformentioned ``'sl_...'`` entry in the parallel
+keyword dictionary or using a command line argument,
+e.g. ``--sl_default=m,n,mb``.  A reasonbly good guess for these 
+parameters on most systems is related to the numbers of bands. 
+We recommend::
 
-  mb = 32 or 64
-  m = sqrt(nbands/mb)
+  mb = 64
+  m = floor(sqrt(nbands/mb))
   n = m
 
