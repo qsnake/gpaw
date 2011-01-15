@@ -2,7 +2,7 @@
 
 import sys
 import numpy as np
-import pylab as pl
+#import pylab as pl
 
 if 0:
     import os, sys, time
