@@ -245,7 +245,8 @@ class BSE(CHI):
         for iS in range(self.nS):
             Omega_SS[iS,iS] = e_S[iS]**2
             for jS in range(self.nS):
-                Omega_SS[iS,jS] += 2 * focc_S[iS] * e_S[iS] * K_SS[iS,jS]
+                Omega_SS[iS,jS] += 2 * np.sqrt(focc_S[iS] * e_S[iS]
+                                               * focc_S[jS] * e_S[jS]) * K_SS[iS,jS]
         w2_S = np.zeros(self.nS)
         diagonalize(Omega_SS, w2_S)
         print 'Solve Casida equation:'
