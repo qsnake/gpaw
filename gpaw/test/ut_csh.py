@@ -554,17 +554,16 @@ if __name__ in ['__main__', '__builtin__']:
         testrunner = TextTestRunner(stream=stream, verbosity=2)
 
     parinfo = []
-    """
-    for test in [UTSphereParallelSetup]:
-        info = ['', test.__name__, test.__doc__.strip('\n'), '']
-        testsuite = initialTestLoader.loadTestsFromTestCase(test)
-        map(testrunner.stream.writeln, info)
-        testresult = testrunner.run(testsuite)
-        assert testresult.wasSuccessful(), 'Initial verification failed!'
-        parinfo.extend(['    Parallelization options: %s' % tci._parinfo for \
-                        tci in testsuite._tests if hasattr(tci, '_parinfo')])
-    parinfo = np.unique(np.sort(parinfo)).tolist()
-    """
+
+##     for test in [UTSphereParallelSetup]:
+##         info = ['', test.__name__, test.__doc__.strip('\n'), '']
+##         testsuite = initialTestLoader.loadTestsFromTestCase(test)
+##         map(testrunner.stream.writeln, info)
+##         testresult = testrunner.run(testsuite)
+##         assert testresult.wasSuccessful(), 'Initial verification failed!'
+##         parinfo.extend(['    Parallelization options: %s' % tci._parinfo for \
+##                         tci in testsuite._tests if hasattr(tci, '_parinfo')])
+##     parinfo = np.unique(np.sort(parinfo)).tolist()
 
     testcases = [UTSphereParallelSetup]
     #for dtype in [float, complex]:
