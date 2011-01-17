@@ -19,15 +19,15 @@ improvement since DGEMM makes up a large fraction of the wall-clock
 time.
 
 Proceed as in the :ref:`building_with_gcc_on_surveyor`,
-but use the following :svn:`~doc/install/BGP/bgp_xlc.py` file:
+but use the following :svn:`bgp_xlc.py` file:
 
 .. literalinclude:: bgp_xlc.py
 
-Finally, change the lines in :svn:`~doc/install/BGP/customize_surveyor_gcc.py` accordingly::
+Finally, change the lines in :svn:`customize_surveyor_gcc.py` accordingly::
 
   mpicompiler = "bgp_xlc.py"
-  mpilinker = "bgp_xlc.py"
   compiler = "bgp_xlc.py"
+  mpilinker = "bgp_xlc_linker.py"
 
 Everything else should be the same.
 

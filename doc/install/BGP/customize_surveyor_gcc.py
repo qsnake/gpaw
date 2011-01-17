@@ -50,8 +50,8 @@ libraries = [
 #           'hpm',
            ]
 
-#          make sure xl library_dirs below matches XL compiler version
-#          e.g. aug2010, jan2011, etc.
+#          make sure XL library_dirs below match XL compiler version
+#          (e.g. aug2010, jan2011) used in mpilinker variable
 
 library_dirs = [
            '/soft/apps/SCALAPACK',
