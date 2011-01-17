@@ -2,24 +2,26 @@
 
 import sys
 import numpy as np
-#import pylab as pl
-
-if 0:
-    import os, sys, time
-    cmd = 'gdb %s %d' % (sys.executable, os.getpid())
-    assert os.system('screen -dm -S dbg %s' % cmd) == 0
-    time.sleep(3)
-
-try:
-    import fcntl, termios, struct
-    _width = struct.unpack("hhhh", fcntl.ioctl(0, termios.TIOCGWINSZ, "\000"*8))[1]
-    np.set_printoptions(linewidth=_width)
-except IOError:
-    pass
 
 from gpaw import debug
 from gpaw.mpi import world
 from gpaw.utilities.tools import L_to_lm, lm_to_L
+from gpaw.sphere import lmiter
+from gpaw.sphere.csh import C, Y, dYdtheta, dYdphi, \
+    intYY, intYY_ex, intYY_ey, intYY_ez, \
+    intYdYdtheta_ex, intYdYdtheta_ey, intYdYdtheta_ez, \
+    intYdYdphi_ex, intYdYdphi_ey, intYdYdphi_ez
+from gpaw.sphere.legendre import ilegendre, legendre, dlegendre
+from gpaw.sphere.rsh import C as _C, Y as _Y, \
+    dYdtheta as _dYdtheta, dYdphi as _dYdphi
+
+# Convert the 50 Lebedev quadrature points to angles (correct up to l=11)
+from gpaw.sphere.lebedev import R_nv as points_Lv, weight_n as weight_L
+
+assert points_Lv.shape == (50,3)
+nL = len(points_Lv)
+theta_L = np.arctan2(np.sum(points_Lv[:,:2]**2, axis=1)**0.5, points_Lv[:,2])
+phi_L = np.arctan2(points_Lv[:,1], points_Lv[:,0])
 
 # -------------------------------------------------------------------
 
@@ -35,55 +37,25 @@ if memstats:
 
 # -------------------------------------------------------------------
 
-#from quadrature import nL, theta_L, phi_L, weight_L, \
-#    condYdYdtheta, condYdYdphi, HitDetector
-
-# Convert the 50 Lebedev quadrature points to angles (correct up to l=11)
-from gpaw.sphere.lebedev import R_nv as points_Lv, weight_n as weight_L
-
-assert points_Lv.shape == (50,3)
-nL = len(points_Lv)
-theta_L = np.arctan2((points_Lv[:,0]**2+points_Lv[:,1]**2)**0.5, points_Lv[:,2])
-phi_L = np.arctan2(points_Lv[:,1],points_Lv[:,0])
-
-from gpaw.sphere import lmiter
-from gpaw.sphere.csh import C, Y, dYdtheta, dYdphi, \
-    intYY, intYY_ex, intYY_ey, intYY_ez, \
-    intYdYdtheta_ex, intYdYdtheta_ey, intYdYdtheta_ez, \
-    intYdYdphi_ex, intYdYdphi_ey, intYdYdphi_ez
-from gpaw.sphere.legendre import ilegendre, legendre, dlegendre
-from gpaw.sphere.rsh import C as _C, Y as _Y, \
-    dYdtheta as _dYdtheta, dYdphi as _dYdphi
-
-"""
-Y = lambda l,m,theta,phi: C(l,m)*legendre(l,abs(m),np.cos(theta))*np.exp(1j*m*phi)
-
-# Define theta-derivative of spherical harmoncics
-dYdtheta = lambda l,m,theta,phi: C(l,m)*dlegendre(l,abs(m),np.cos(theta))*np.exp(1j*m*phi)
-
-# Define phi-derivative of spherical harmoncics
-dYdphi = lambda l,m,theta,phi: 1j*m*C(l,m)*legendre(l,abs(m),np.cos(theta))*np.exp(1j*m*phi)
-"""
-
 def condYdYdtheta(l1, m1, l2, m2, lquad=11, out=False):
     """Predict whether this combination requires a higher-order quadrature."""
     # Address minor issues when l1+l2 < lquad
-    out |= (l1-l2)%2 == 1 and abs(m1-m2)%4 == 3 and m1*m2 < 0 #~75%, fpos~0%
-    out |= (l1+l2)%2 == 1 and m1==0 and m2%2 == 1 #~72%, fpos~0.3%
+    out |= (l1-l2)%2 == 1 and abs(m1-m2)%4 == 3 and m1*m2 < 0
+    out |= (l1+l2)%2 == 1 and m1==0 and m2%2 == 1
 
     # Works well if lmax>=6 as lquad=11 and 11//2=5, otherwise irrelevant
-    out |= l1+l2 >= lquad and (l1-l2)%2 == 1 and abs(m1-m2)%2 == 1 #~89%, fpos~0.1%
-    out |= l1+l2 >= lquad and (l1-l2)%2 == 1 and abs(m1-m2)%4 == 0 # ~79%, fpos~0%
+    out |= l1+l2 >= lquad and (l1-l2)%2 == 1 and abs(m1-m2)%2 == 1
+    out |= l1+l2 >= lquad and (l1-l2)%2 == 1 and abs(m1-m2)%4 == 0
     return out
 
 def condYdYdphi(l1, m1, l2, m2, lquad=11, out=False):
     """Predict whether this combination requires a higher-order quadrature."""
     # Address minor issues when l1+l2 < lquad
-    out |= (l1-l2)%2 == 1 and abs(m1-m2)%4 == 3 and m1*m2 < 0 #~89%, fpos~0%
-    out |= (l1+l2)%2 == 1 and m1==0 and m2%2 == 1 #~86%, fpos~0.4%
+    out |= (l1-l2)%2 == 1 and abs(m1-m2)%4 == 3 and m1*m2 < 0
+    out |= (l1+l2)%2 == 1 and m1==0 and m2%2 == 1
 
     # Works well if lmax>=6 as lquad=11 and 11//2=5, otherwise irrelevant
-    out |= l1+l2 > lquad and (l1-l2)%2 == 1 and abs(m1-m2)%2 == 1 and m2 != 0 #~97%, fpos~0.1%
+    out |= l1+l2 > lquad and (l1-l2)%2 == 1 and abs(m1-m2)%2 == 1 and m2 != 0
     return out
 
 # -------------------------------------------------------------------
@@ -175,19 +147,15 @@ class UTSphereParallelSetup(TestCase):
 
     def test_multipole_expansion(self):
         lmax = 9
-
-        # Test multipole expansion in complex spherical harmonics
         R = 1.0
         npts = 1000
         tol = 1e-9
-        # ((R-dR)/(R+dR))**(lmax+1) = tol
-        # (lmax+1)*np.log((R-dR)/(R+dR)) = np.log(tol)
-        # (R-dR)/(R+dR) = np.exp(np.log(tol)/(lmax+1))
-        # R-dR = (R+dR) * tol**(1/(lmax+1))
-        # R * (1-tol**(1/(lmax+1))) = dR * (1+tol**(1/(lmax+1)))
-        dR = R * (1-tol**(1./(lmax+1))) / (1+tol**(1./(lmax+1)))
+
+        # Solve ((R-dR)/(R+dR))**(lmax+1) = tol for dR
+        dR = R * (1 - tol**(1./(lmax+1))) / (1 + tol**(1./(lmax+1)))
         assert abs(((R-dR)/(R+dR))**(lmax+1) - tol) < 1e-12
 
+        # Test multipole expansion of 1/|r-r'| in complex spherical harmonics
         r_g = np.random.uniform(R+dR, 10*R, size=npts)
         world.broadcast(r_g, 0)
         theta_g = np.random.uniform(0, np.pi, size=npts)
@@ -229,12 +197,15 @@ class UTSphereParallelSetup(TestCase):
             if m == 0:
                 s_L = _Y(l,m,theta_L,phi_L)
             elif m > 0:
-                s_L = (-1)**m*(_Y(l,m,theta_L,phi_L)+1j*_Y(l,-m,theta_L,phi_L))/2**0.5
+                s_L = (-1)**m * (_Y(l,m,theta_L,phi_L) \
+                    + 1j * _Y(l,-m,theta_L,phi_L)) / 2**0.5
             else:
-                s_L = (_Y(l,abs(m),theta_L,phi_L)-1j*_Y(l,-abs(m),theta_L,phi_L))/2**0.5
+                s_L = (_Y(l,abs(m),theta_L,phi_L) \
+                    - 1j * _Y(l,-abs(m),theta_L,phi_L)) / 2**0.5
             s0_L = Y(l,m,theta_L,phi_L)
             e = np.abs(s_L - s0_L).max()
-            self.assertAlmostEqual(e, 0, 12, '%.17g max. (l=%2d, m=%2d)' % (e,l,m))
+            self.assertAlmostEqual(e, 0, 12, \
+                                   '%.17g max. (l=%2d, m=%2d)' % (e,l,m))
 
     def test_integral_orthogonality(self):
         lmax = 5 #XXX use meshgrid above l=5
@@ -292,11 +263,6 @@ class UTSphereParallelSetup(TestCase):
             np.linspace(dphi / 2, 2 * np.pi - dphi / 2, nphi))
 
         # Test theta-derivative of the spherical harmonics
-        #if world.rank == 0:
-        #    print '\n%s\nSpherical harmonic theta-derivatives\n%s' % ('-'*40,'-'*40)
-
-        #hd = HitDetector(lmax, comm=world)
-        #me = 0.0
         cf = lambda lmax,l1,m1: nL + ntheta * nphi \
             * sum(condYdYdtheta(l1, m1, l2, m2) for l2,m2 in lmiter(lmax))
 
@@ -330,31 +296,12 @@ class UTSphereParallelSetup(TestCase):
                         * ds2dtheta_L * weight_L)
                     del ds2dtheta_L
 
-                ## Predict: Will this combination require an expensive re-calculation?
-                #indicator = condYdYdtheta(l1, m1, l2, m2)
-                #hd.update(indicator, e, tol, lm_to_L(l1,m1), lm_to_L(l2,m2))
-
-                #if abs(l1-l2) % 2 == 1 and abs(m1-m2) <= 1:
-                #    print 'l1=%2d, m1=%2d, l2=%2d, m2=%2d, v_e=[(%8.5f,%8.5fj),(%8.5f,%8.5fj),(%8.5f,%8.5fj)], err=[%12.9f,%12.9f,%12.9f]' % (l1,m1,l2,m2,v_ex.real,v_ex.imag,v_ey.real,v_ey.imag,v_ez.real,v_ez.imag,abs(v_ex-v0_ex),abs(v_ey-v0_ey),abs(v_ez-v0_ez))
-
                 self.assertAlmostEqual(v_ex, v0_ex, 3, '%s != %s (l1=%2d, ' \
                     'm1=%2d, l2=%2d, m2=%2d)' % (v_ex,v0_ex,l1,m1,l2,m2))
                 self.assertAlmostEqual(v_ey, v0_ey, 3, '%s != %s (l1=%2d, ' \
                     'm1=%2d, l2=%2d, m2=%2d)' % (v_ey,v0_ey,l1,m1,l2,m2))
                 self.assertAlmostEqual(v_ez, v0_ez, 3, '%s != %s (l1=%2d, ' \
                     'm1=%2d, l2=%2d, m2=%2d)' % (v_ez,v0_ez,l1,m1,l2,m2))
-                #me = max([me, abs(v_ex-v0_ex), abs(v_ey-v0_ey), abs(v_ez-v0_ez)])
-
-        #catch(debug)
-        #hd.finalize()
-        #if debug and world.rank == 0:
-        #    hd.plot(fig=1)
-        #sys.stdout.flush()
-        #world.barrier()
-        #print 'MAX ERROR:', me
-
-        #del lmax, jmax, tol, ntheta, nphi, dtheta, dphi, theta_g, phi_g, hd, cf, s1_L, \
-        #    ds2dtheta_L, v_ex, v0_ex, v_ey, v0_ey, v_ez, v0_ez
 
     def test_integral_derivative_phi(self):
         lmax = 7
@@ -365,15 +312,11 @@ class UTSphereParallelSetup(TestCase):
         nphi = 20
         dtheta = np.pi/ntheta
         dphi = 2*np.pi/nphi
-        theta_g, phi_g = np.meshgrid(np.linspace(dtheta/2,np.pi-dtheta/2,ntheta), \
-                                     np.linspace(dphi/2,2*np.pi-dphi/2,nphi))
+        theta_g, phi_g = np.meshgrid( \
+            np.linspace(dtheta / 2, np.pi - dtheta / 2, ntheta), \
+            np.linspace(dphi / 2, 2 * np.pi - dphi / 2, nphi))
 
-        ## Test phi-derivative of the spherical harmonics
-        #if world.rank == 0:
-        #    print '\n%s\nSpherical harmonic phi-derivatives\n%s' % ('-'*40,'-'*40)
-
-        #hd = HitDetector(lmax, comm=world)
-        #me = 0.0
+        # Test phi-derivative of the spherical harmonics
         cf = lambda lmax,l1,m1: nL + ntheta * nphi \
             * sum(condYdYdphi(l1, m1, l2, m2) for l2,m2 in lmiter(lmax))
 
@@ -394,7 +337,7 @@ class UTSphereParallelSetup(TestCase):
                         -np.sin(phi_g) * ds2dphi_g)
                     v_ey = dphi * dtheta * np.vdot(s1_g, \
                         np.cos(phi_g) * ds2dphi_g)
-                    v_ez = dphi * dtheta * np.vdot(s1_g, 0 * ds2dphi_g) #XXX
+                    v_ez = dphi * dtheta * np.vdot(s1_g, 0 * ds2dphi_g)
                     del ds2dphi_g
                 else:
                     ds2dphi_L = dYdphi(l2, m2, theta_L, phi_L)
@@ -402,15 +345,8 @@ class UTSphereParallelSetup(TestCase):
                         / (np.sin(theta_L) + eps) * ds2dphi_L * weight_L)
                     v_ey = 4 * np.pi * np.vdot(s1_L, np.cos(phi_L) \
                         / (np.sin(theta_L) + eps) * ds2dphi_L * weight_L)
-                    v_ez = 4 * np.pi * np.vdot(s1_L, 0 * ds2dphi_L * weight_L) #XXX
+                    v_ez = 4 * np.pi * np.vdot(s1_L, 0 * ds2dphi_L * weight_L)
                     del ds2dphi_L
-
-                ## Predict: Will this combination require an expensive re-calculation?
-                #indicator = condYdYdphi(l1, m1, l2, m2)
-                #hd.update(indicator, e, tol, lm_to_L(l1,m1), lm_to_L(l2,m2))
-
-                #if abs(l1-l2)%2 == 1 and abs(m1-m2) <= 1:
-                #    print 'l1=%2d, m1=%2d, l2=%2d, m2=%2d, v_e=[(%8.5f,%8.5fj),(%8.5f,%8.5fj),(%8.5f,%8.5fj)], err=[%12.9f,%12.9f,%12.9f]' % (l1,m1,l2,m2,v_ex.real,v_ex.imag,v_ey.real,v_ey.imag,v_ez.real,v_ez.imag,abs(v_ex-v0_ex),abs(v_ey-v0_ey),abs(v_ez-v0_ez))
 
                 self.assertAlmostEqual(v_ex, v0_ex, 3, '%s != %s (l1=%2d, ' \
                     'm1=%2d, l2=%2d, m2=%2d)' % (v_ex,v0_ex,l1,m1,l2,m2))
@@ -418,129 +354,6 @@ class UTSphereParallelSetup(TestCase):
                     'm1=%2d, l2=%2d, m2=%2d)' % (v_ey,v0_ey,l1,m1,l2,m2))
                 self.assertAlmostEqual(v_ez, v0_ez, 3, '%s != %s (l1=%2d, ' \
                     'm1=%2d, l2=%2d, m2=%2d)' % (v_ez,v0_ez,l1,m1,l2,m2))
-                #me = max([me, abs(v_ex-v0_ex), abs(v_ey-v0_ey), abs(v_ez-v0_ez)])
-
-        #catch(debug)
-        #hd.finalize()
-        #if debug and world.rank == 0:
-        #    hd.plot(fig=2)
-        #    pl.show()
-        #sys.stdout.flush()
-        #world.barrier()
-        #print 'MAX ERROR:', me
-
-        #del lmax, jmax, tol, ntheta, nphi, dtheta, dphi, theta_g, phi_g, hd, cf, s1_L, \
-        #    ds2dphi_L, v_ex, v0_ex, v_ey, v0_ey, v_ez, v0_ez
-
-
-# -------------------------------------------------------------------
-
-"""
-class HitDetector:
-    def __init__(self, lmax, comm=world, verbose=False):
-        self.lmax = lmax
-        self.jmax = (self.lmax+1.0)**2
-        self.comm = comm
-        self.verbose = verbose
-        self.mynfails = 0
-        self.myhits, self.myfneg, self.myfpos = [], [], []
-        self.nfails, self.hits, self.fneg, self.fpos = None, None, None, None
-
-    def update(self, indicator, error, tolerance, *args):
-        if error > tolerance:
-            self.mynfails += 1
-        if indicator == (error>tolerance):
-            self.myhits.append(args)
-        elif indicator:
-            # false positive if indicator says 'yes'
-            self.myfpos.append(args)
-        else:
-            # false negative if indicator says 'no'
-            self.myfneg.append(args)
-        if self.verbose:
-            (l1,m1),(l2,m2) = map(L_to_lm, args)
-            print 'l1=%2d, m1=%2d, l2=%2d, m2=%2d, l1+l2=%2d, |l1-l2|=%2d, ' \
-                '|m1-m2|=%2d, I=%d, I0=%d, dI=%2d' % (l1,m1,l2,m2,l1+l2, \
-                abs(l1-l2),abs(m1-m2), indicator, error>tolerance, \
-                int(indicator)-int(error>tolerance))
-
-    def finalize(self):
-        self.nfails = self.comm.sum(self.mynfails)
-        mycounts_c = np.array([len(self.myhits), len(self.myfneg),
-                               len(self.myfpos)], dtype=int)
-        reqs = []
-        if self.comm.rank == 0:
-            counts_rc = np.empty((self.comm.size,3), dtype=int)
-            self.comm.gather(mycounts_c, 0, counts_rc)
-            np.cumsum(counts_rc, axis=0, out=counts_rc)
-            self.nhits, self.nfneg, self.nfpos = counts_rc[-1]
-
-            if self.verbose:
-                N = self.jmax**2
-                print 'INDICATOR: total=%6d, fails=%8.4f %%, hits=%8.4f %%, ' \
-                    'fneg=%8.4f %%, fpos=%8.4f %%' % (N, 1e2*self.nfails/N, \
-                    1e2*self.nhits/N, 1e2*self.nfneg/self.nfails, \
-                    1e2*self.nfpos/(N-self.nfails))
-
-            # Allocate buffers for collected data
-            self.hits = np.empty((self.nhits,2), dtype=int)
-            self.fneg = np.empty((self.nfneg,2), dtype=int)
-            self.fpos = np.empty((self.nfpos,2), dtype=int)
-            bufs_c = [self.hits, self.fneg, self.fpos]
-
-            # Start receiving data from slaves
-            for rank in range(1,self.comm.size):
-                for c,counts_r in enumerate(counts_rc.transpose()):
-                    buf = bufs_c[c][counts_r[rank-1]:counts_r[rank]]
-                    if self.verbose:
-                        print 'receive: rank=%d, c=%d, buf=%s contiguous:%s, ' \
-                            '%d:%d' % (rank,c,buf.shape,buf.flags.contiguous, \
-                            counts_r[rank-1],counts_r[rank])
-                    reqs.append(self.comm.receive(buf, rank, tag=c, block=False))
-            del counts_rc
-
-            # Fill in own data
-            self.hits[0:mycounts_c[0]] = np.array(self.myhits)
-            self.fneg[0:mycounts_c[1]] = np.array(self.myfneg)
-            self.fpos[0:mycounts_c[2]] = np.array(self.myfpos)
-        else:
-            self.comm.gather(mycounts_c, 0)
-
-            # XXX does this need to be non-blocking as well?
-            bufs_c = [self.myhits, self.myfneg, self.myfpos]
-            for c,buf in enumerate(bufs_c):
-                if self.verbose:
-                    print 'send   : rank=%d, c=%d, buf=%s contiguous:%s, ' \
-                        '%d:%d' % (self.comm.rank,c,np.array(buf).shape, \
-                        np.array(buf).flags.contiguous,0,mycounts_c[c])
-                reqs.append(self.comm.send(np.array(buf), 0, tag=c, block=False))
-
-        # Wait for all non-blocking MPI requests to complete
-        if reqs:
-            if self.verbose: print 'rank=%d, waiting...' % self.comm.rank
-            self.comm.waitall(reqs)
-
-    def plot(self, fig=1):
-        assert self.comm.rank == 0, 'Must be run on master only.'
-        fig = pl.figure(fig,(12,12))
-        ax = pl.axes()
-
-        # Draw seperation lines for different l1,l2 blocks
-        for l1 in range(self.lmax+1):
-            ax.plot([-0.5, self.jmax-0.5], [lm_to_L(l1,-l1)-0.5,lm_to_L(l1,-l1)-0.5], '--k')
-            ax.plot([lm_to_L(l1,-l1)-0.5,lm_to_L(l1,-l1)-0.5], [-0.5, self.jmax-0.5], '--k')
-            for l2 in range(self.lmax+1):
-                m = min(l1,l2)
-                ax.plot([lm_to_L(l1,-m)-0.5,lm_to_L(l1,m)+0.5], [lm_to_L(l2,-m)-0.5,lm_to_L(l2,m)+0.5], ':k')
-
-        if self.nhits: ax.plot(self.hits[:,0], self.hits[:,1], ',r')
-        if self.nfneg: ax.plot(self.fneg[:,0], self.fneg[:,1], 'dg')
-        if self.nfpos: ax.plot(self.fpos[:,0], self.fpos[:,1], 'sb')
-
-        ax.set_xlim([-0.5, self.jmax+0.5])
-        ax.set_ylim([-0.5, self.jmax+0.5])
-        return fig, ax
-"""
 
 # -------------------------------------------------------------------
 
@@ -554,16 +367,15 @@ if __name__ in ['__main__', '__builtin__']:
         testrunner = TextTestRunner(stream=stream, verbosity=2)
 
     parinfo = []
-
-##     for test in [UTSphereParallelSetup]:
-##         info = ['', test.__name__, test.__doc__.strip('\n'), '']
-##         testsuite = initialTestLoader.loadTestsFromTestCase(test)
-##         map(testrunner.stream.writeln, info)
-##         testresult = testrunner.run(testsuite)
-##         assert testresult.wasSuccessful(), 'Initial verification failed!'
-##         parinfo.extend(['    Parallelization options: %s' % tci._parinfo for \
-##                         tci in testsuite._tests if hasattr(tci, '_parinfo')])
-##     parinfo = np.unique(np.sort(parinfo)).tolist()
+    #for test in [UTSphereParallelSetup]:
+    #    info = ['', test.__name__, test.__doc__.strip('\n'), '']
+    #    testsuite = initialTestLoader.loadTestsFromTestCase(test)
+    #    map(testrunner.stream.writeln, info)
+    #    testresult = testrunner.run(testsuite)
+    #    assert testresult.wasSuccessful(), 'Initial verification failed!'
+    #    parinfo.extend(['    Parallelization options: %s' % tci._parinfo for \
+    #                    tci in testsuite._tests if hasattr(tci, '_parinfo')])
+    #parinfo = np.unique(np.sort(parinfo)).tolist()
 
     testcases = [UTSphereParallelSetup]
     #for dtype in [float, complex]:
@@ -579,6 +391,6 @@ if __name__ in ['__main__', '__builtin__']:
         map(testrunner.stream.writeln, info)
         testresult = testrunner.run(testsuite)
         # Provide feedback on failed tests if imported by test.py
-        #if __name__ == '__builtin__' and not testresult.wasSuccessful(): #XXX ENABLE!!!
-        if not testresult.wasSuccessful():
+        if __name__ == '__builtin__' and not testresult.wasSuccessful():
             raise SystemExit('Test failed. Check ut_csh.log for details.')
+
