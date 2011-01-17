@@ -7,9 +7,9 @@ define_macros += [('GPAW_NO_UNDERSCORE_BLACS', '1')]
 define_macros += [('GPAW_NO_UNDERSCORE_SCALAPACK', '1')]
 define_macros += [("GPAW_ASYNC",1)]
 define_macros += [("GPAW_MPI2",1)]
-define_macros += [("GPAW_MR3",1)]
+define_macros += [("GPAW_MR3",1)] # requires developmental ScaLAPACK
 # define_macros += [('GPAW_HPM',1)] # FLOP rate measurements
-# define_macros += [("GPAW_MPI_DEBUG",1)] # debugging
+define_macros += [("GPAW_MPI_DEBUG",1)] # debugging
 # define_macros += [("GPAW_OMP",1)] # not really working
 
 scalapack = True
@@ -50,14 +50,17 @@ libraries = [
 #           'hpm',
            ]
 
+#          make sure xl library_dirs below matches XL compiler version
+#          e.g. aug2010, jan2011, etc.
+
 library_dirs = [
            '/soft/apps/SCALAPACK',
            '/soft/apps/BLACS',
            '/soft/apps/LAPACK',
            '/soft/apps/ESSL-4.4.1-0/lib',
-#           '/soft/apps/LIBGOTO',
-           '/soft/apps/ibmcmp-jan2010/xlf/bg/11.1/bglib',
-           '/soft/apps/ibmcmp-jan2010/xlsmp/bg/1.7/bglib',
+#           '/soft/apps/LIBGOTO', 
+           '/soft/apps/ibmcmp-aug2010/xlf/bg/11.1/bglib',
+           '/soft/apps/ibmcmp-aug2010/xlsmp/bg/1.7/bglib',
            '/bgsys/drivers/ppcfloor/gnu-linux/lib',
 #           '/soft/apps/UPC/lib',
            ]
@@ -66,7 +69,10 @@ include_dirs += [
     '/soft/apps/python/python-2.6-cnk-gcc/numpy-1.3.0/lib/python2.6/site-packages/numpy/core/include'
     ]
 
+# TAU library below needed for automatic instrumentation only
+
 mpi_libraries = [
+#   'TAU',
     'mpich.cnk',
     'opa',
     'dcmf.cnk',
@@ -75,6 +81,7 @@ mpi_libraries = [
     ]
 
 mpi_library_dirs = [
+    '/soft/apps/tau/tau-2.19.2/bgp/lib/bindings-bgptimers-gnu-mpi-python-pdt',
     '/bgsys/drivers/ppcfloor/comm/default/lib',
     '/bgsys/drivers/ppcfloor/comm/sys/lib',
     '/bgsys/drivers/ppcfloor/runtime/SPI',
