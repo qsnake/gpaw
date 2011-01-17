@@ -42,14 +42,14 @@ def find_ibzkpt(symrel, ibzk_kc, bzk_c):
 
     for ioptmp, op in enumerate(symrel):
         for i, ibzk in enumerate(ibzk_kc):
-            diff_c = np.dot(ibzk, op.T) - bzk_c
+            diff_c = np.dot(op, ibzk) - bzk_c
             if (np.abs(diff_c - diff_c.round()) < 1e-8).all():
                 ibzkpt = i
                 iop = ioptmp
                 find = True
                 break
 
-            diff_c = np.dot(ibzk, op.T) + bzk_c
+            diff_c = np.dot(op, ibzk) + bzk_c
             if (np.abs(diff_c - diff_c.round()) < 1e-8).all():
                 ibzkpt = i
                 iop = ioptmp

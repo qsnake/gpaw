@@ -470,6 +470,9 @@ class CHI:
         
                 return np.complex128(psit_G)
         else:
+            if self.nkpt % size != 0:
+                raise ValueError('The number of kpoints should be divided by the number of cpus for no wfs dumping mode ! ')
+
             # support ground state calculation with only kpoint parallelization
             kpt_rank, u = self.calc.wfs.kd.get_rank_and_index(0, ibzk)
             bzkpt_rank = k // self.nkpt_local
