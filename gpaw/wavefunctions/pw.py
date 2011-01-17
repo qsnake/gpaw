@@ -85,6 +85,7 @@ class PWWaveFunctions(FDPWWaveFunctions):
                                    gd, nvalence, setups, bd, complex,
                                    world, kd, timer)
         
+        orthoksl.gd = self.pd
         self.matrixoperator = MatrixOperator(orthoksl)
         self.wd = self.pd        
 
