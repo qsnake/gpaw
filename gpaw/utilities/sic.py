@@ -51,7 +51,7 @@ class NSCFSIC:
                                                -f*(EHa+Exc) * Hartree))
                 ESIC += -f*(EHa+Exc)
                 
-        sic = SIC(finegrid=True)
+        sic = SIC(finegrid=True, coulomb_factor=1, xc_factor=1)
         sic.initialize(self.paw.density, self.paw.hamiltonian, self.paw.wfs)
         sic.set_positions(self.paw.atoms.get_scaled_positions())
         
