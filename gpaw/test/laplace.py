@@ -1,6 +1,7 @@
 from math import sin, cos, pi
 import numpy as np
 from gpaw.fd_operators import NewGUCLaplace as Laplace
+from gpaw.fd_operators import Gradient
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.mpi import size
 
@@ -62,6 +63,7 @@ if size == 1:
             c_v = gd.cell_cv.sum(0) / 2
             r_gv -= c_v
             lap = Laplace(gd, n=n)
+            grad_v = [Gradient(gd, v, n=n) for v in range(3)]
             assert lap.npoints == D * 2 * n + 1
             for m in range(0, 2 * n + 1):
                 for ix in range(m + 1):
@@ -75,3 +77,11 @@ if size == 1:
                         lap.apply(a_g, b_g)
                         e = b_g[n + 1, n + 1, n + 1] - r
                         assert abs(e) < 2e-12, e
+                        for v in range(3):
+                            grad_v[v].apply(a_g, b_g)
+                            if m == 1 and [ix, iy, iz][v] == 1:
+                                r = 1
+                            else:
+                                r = 0
+                            e = b_g[n + 1, n + 1, n + 1] - r
+                            assert abs(e) < 2e-12, (n,ix,iy,iz,r,v,e)
