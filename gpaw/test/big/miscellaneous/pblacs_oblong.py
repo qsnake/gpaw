@@ -8,7 +8,7 @@ import numpy as np
 
 from gpaw.blacs import BlacsGrid, parallelprint
 from gpaw.mpi import world, rank, size
-from gpaw.utilities.blacs import pblas_simple_gemm
+from gpaw.utilities.scalapack import pblas_simple_gemm
 
 gen = np.random.RandomState(42)
 
