@@ -29,8 +29,8 @@ def check_EELS(head):
 xpeak, ypeak = check_EELS('graphite')
 
 xcheck = np.array([6.9, 7.1, 7.6, 8.2, 8.9, 9.8, 8.])
-ycheck = np.array([0.98643176, 1.00341183, 1.03629564, 0.95586996,
-                   0.77751747, 0.56838948, 0.21416726])
+ycheck = np.array([ 0.98650367, 1.00346049, 1.03640948, 0.95599301, 
+                    0.77763781, 0.56852058, 0.21420561])
 
 for i in range(xpeak.shape[0]):
     if np.abs(xpeak[i] - xcheck[i]) > 1e-2:
