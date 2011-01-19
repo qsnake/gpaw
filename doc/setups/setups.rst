@@ -30,7 +30,6 @@ Comparison and Benchmark DataBase`_, `Dacapo pseudo potentials`_, and
 `Vasp pseudo potentials`_.
 
 .. _gpaw-setups-0.6.6300.tar.gz: http://wiki.fysik.dtu.dk/gpaw-files/gpaw-setups-0.6.6300.tar.gz
-.. _pawxml: http://wiki.fysik.dtu.dk/gpaw-files/pawxml/pawxml.xhtml
 .. _NIST Atomic Reference Data: http://physics.nist.gov/PhysRefData/DFTdata/Tables/ptable.html
 .. _Computational Chemistry Comparison and Benchmark DataBase: http://srdata.nist.gov/cccbdb/
 .. _Dacapo pseudo potentials: https://wiki.fysik.dtu.dk/dacapo/Pseudopotential_Library
@@ -43,7 +42,7 @@ Comparison and Benchmark DataBase`_, `Dacapo pseudo potentials`_, and
    molecule_tests
    bulk_tests
    generation_of_setups
-
+   pawxml
 
 .. from gpaw.atom.configurations import parameters
    for s in parameters:
