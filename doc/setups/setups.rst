@@ -9,7 +9,7 @@ pseudo-potential method.  All available setups are contained in this
 tar-file: gpaw-setups-0.6.6300.tar.gz_.  The tar-file contains PAW
 setups for LDA, PBE, revPBE and RPBE functionals and also dzp basis
 sets for all atoms.  Install them as described in the
-:ref:`installationguide`.  The setups are stored as compressed pawxml_
+:ref:`installationguide`.  The setups are stored as compressed :ref:`pawxml`
 files.
 
 

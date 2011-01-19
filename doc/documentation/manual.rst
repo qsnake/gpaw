@@ -751,21 +751,25 @@ The possible command line arguments are:
 argument                         description
 ===============================  =============================================
 ``--trace``
-``--debug``                      Run in debug-mode, e.g. check
+``--debug``                      
+                                 Run in debug-mode, e.g. check
                                  consistency of arrays passed to c-extensions
-``--dry-run[=nprocs]``           Print out the computational
+``--dry-run[=nprocs]``           
+                                 Print out the computational
                                  parameters and estimate memory usage, 
                                  do not perform actual calculation. 
                                  If ``nprocs`` is specified, print also which 
                                  parallelization settings would be employed
                                  when run on ``nprocs`` processors.
-``--memory-estimate-depth[=n]``  Print out an itemized memory estimate by
+``--memory-estimate-depth[=n]``  
+                                 Print out an itemized memory estimate by
                                  stepping recursively through the object
                                  hierarchy of the calculator. If ``n`` is
                                  specified, print a summary for depths
                                  greater than the specified value.
                                  Default: ``n=2``
-``--domain-decomposition=comp``  Specify the domain decomposition with
+``--domain-decomposition=comp``  
+                                 Specify the domain decomposition with
                                  ``comp`` as a positive integer or, for
                                  greater control, a tuple of three integers.
                                  Allowed values are equivalent to those of
@@ -773,13 +777,15 @@ argument                         description
                                  :ref:`parallel <manual_parallel>` keyword,
                                  with tuples specified as ``nx,ny,nz``.
                                  See :ref:`manual_parsize` for details.
-``--state-parallelization=nbg``  Specify the parallelization over Kohn-Sham
+``--state-parallelization=nbg``
+                                 Specify the parallelization over Kohn-Sham
                                  orbitals with ``nbg`` as a positive integer.
                                  Allowed values are equivalent to those of
                                  the ``band`` argument in the
                                  :ref:`parallel <manual_parallel>` keyword.
                                  See :ref:`manual_parsize_bands` for details.
-``--sl_...=m,n,mb``              Specify ScaLAPACK / BLACS parameters for
+``--sl_...=m,n,mb``
+                                 Specify ScaLAPACK / BLACS parameters for
                                  diagonalization (``--sl_default``),
                                  inverse Cholesky factorization
                                  (``--sl_inverse_cholesky``) and LCAO general
@@ -791,6 +797,12 @@ argument                         description
                                  the four ``sl_...`` arguments in the 
                                  :ref:`parallel <manual_parallel>` keyword.
                                  Requires GPAW to be built with ScaLAPACK.
+``--gpaw a=1,b=2.3,...``         
+				 Extra parameters for development work:
+				 
+				 >>> from gpaw import extra_parameters
+				 >>> print extra_parameters
+				 {'a': 1, 'b': 2.3}
 ===============================  =============================================
 
 
