@@ -5,12 +5,14 @@ define_macros += [('GPAW_NO_UNDERSCORE_CBLACS', '1')]
 define_macros += [('GPAW_NO_UNDERSCORE_CSCALAPACK', '1')]
 define_macros += [('GPAW_NO_UNDERSCORE_BLACS', '1')]
 define_macros += [('GPAW_NO_UNDERSCORE_SCALAPACK', '1')]
-define_macros += [("GPAW_ASYNC",1)]
-define_macros += [("GPAW_MPI2",1)]
-define_macros += [("GPAW_MR3",1)] # requires developmental ScaLAPACK
-# define_macros += [('GPAW_HPM',1)] # FLOP rate measurements
-define_macros += [("GPAW_MPI_DEBUG",1)] # debugging
-# define_macros += [("GPAW_OMP",1)] # not really working
+define_macros += [('GPAW_ASYNC',1)]
+define_macros += [('GPAW_MPI2',1)]
+define_macros += [('GPAW_MR3',1)] # requires developmental ScaLAPACK
+# uncomment two lines below for FLOP rate measurement
+# define_macros += [('GPAW_HPM',1)]
+# define_macros += [('GPAW_PERFORMANCE_REPORT',1)]
+define_macros += [('GPAW_MPI_DEBUG',1)] # debugging
+# define_macros += [('GPAW_OMP',1)] # not really working
 
 scalapack = True
 
