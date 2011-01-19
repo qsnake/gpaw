@@ -35,7 +35,13 @@ class PoissonSolver:
             self.relax_method = 2
         else:
             raise NotImplementedError('Relaxation method %s' % relax)
+    
+    def get_method(self):
+        return ['Gauss-Seidel', 'Jacobi'][self.relax_method - 1]
 
+    def get_stencil(self):
+        return self.nn
+    
     def set_grid_descriptor(self, gd):
         # Should probably be renamed initialize
         self.gd = gd
@@ -304,6 +310,9 @@ class PoissonFFTSolver(PoissonSolver):
     def __init__(self):
         self.charged_periodic_correction = None
 
+    def get_method(self):
+        return 'FFT solver of the first kind'
+
     def initialize(self, gd, load_gauss=False):
         # XXX this won't work now, but supposedly this class will be deprecated
         # in favour of FFTPoissonSolver, no?
@@ -335,6 +344,9 @@ class FFTPoissonSolver(PoissonSolver):
         self.charged_periodic_correction = None
         self.eps = eps
 
+    def get_method(self):
+        return 'FFT solver of the second kind'
+
     def set_grid_descriptor(self, gd):
         assert gd.pbc_c.all()
         self.gd = gd
@@ -365,6 +377,9 @@ class FixedBoundaryPoissonSolver(PoissonSolver):
         self.charged_periodic_correction = None
         assert self.nn == 1
 
+    def get_method(self):
+        return 'Fixed-boundary %s' % PoissonSolver.get_method(self)
+        
     def set_grid_descriptor(self, gd):
         assert gd.pbc_c.all()
         assert gd.orthogonal

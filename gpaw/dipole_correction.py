@@ -8,8 +8,13 @@ class DipoleCorrectionPoissonSolver:
     def __init__(self, poissonsolver, direction):
         self.corrector = DipoleCorrection(direction)
         self.poissonsolver = poissonsolver
-        self.relax_method = 0
-        self.nn = 17
+
+    def get_method(self):
+        description = self.poissonsolver.get_method()
+        return '%s with %s-axis dipole correction' % (description,
+                                                      'xyz'[self.corrector.c])
+    def get_stencil(self):
+        return self.poissonsolver.get_stencil()
 
     def set_grid_descriptor(self, gd):
         self.poissonsolver.set_grid_descriptor(gd)

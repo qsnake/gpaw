@@ -163,9 +163,12 @@ class PAWTextOutput:
         if p['mode'] != 'lcao':
             t('                   (%s)' % fd(p['stencils'][0]))
 
-        t('Poisson Solver:    %s \n                   (%s)' %
-          ([0, 'GaussSeidel', 'Jacobi'][self.hamiltonian.poisson.relax_method],
-           fd(self.hamiltonian.poisson.nn)))
+
+        poisson = self.hamiltonian.poisson
+        t('Poisson Solver:    %s' % poisson.get_method())
+        description = fd(poisson.get_stencil())
+        t('                   (%s)\n' % description)
+        
         order = str((2 * p['stencils'][1]))
         if order[-1] == '1':
             order = order + 'st'
@@ -551,4 +554,6 @@ def fd(n):
         return 'Mehrstellen finite-difference stencil'
     if n == 1:
         return 'Nearest neighbor central finite-difference stencil'
+    if isinstance(n, str):
+        return n
     return '%d nearest neighbors central finite-difference stencil' % n

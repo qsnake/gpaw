@@ -44,6 +44,12 @@ class AtomPoissonSolver:
     def initialize(self):
         pass
 
+    def get_method(self):
+        return 'Radial equidistant'
+
+    def get_stencil(self):
+        return 'Exact'
+
     def solve(self, vHt_g, rhot_g, charge=0):
         r = self.gd.r_g
         dp = rhot_g * r * self.gd.dr_g

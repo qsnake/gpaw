@@ -156,7 +156,7 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
         # Write various parameters:
         (w['KohnShamStencil'],
          w['InterpolationStencil']) = p['stencils']
-        w['PoissonStencil'] = paw.hamiltonian.poisson.nn
+        w['PoissonStencil'] = paw.hamiltonian.poisson.get_stencil()
         w['XCFunctional'] = paw.hamiltonian.xc.name
         w['Charge'] = p['charge']
         w['FixMagneticMoment'] = paw.occupations.fixmagmom
