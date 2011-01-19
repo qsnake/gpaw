@@ -5,7 +5,6 @@ operators."""
 
 import numpy as np
 
-from gpaw.polynomial import Polynomial
 from gpaw.external_potential import ExternalPotential
 from gpaw.utilities import pack2, unpack
 from gpaw.mpi import run
