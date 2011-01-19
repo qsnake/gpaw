@@ -89,6 +89,12 @@ Example::
   # Calculate photoabsorption spectrum and write it to 'be_spectrum_z.dat'
   photoabsorption_spectrum('be_dm.dat', 'be_spectrum_z.dat')
 
+.. note::
+
+  Make sure to number of iterations is divisible by the dump interval
+  such that the last iteration will be stored in the restart file.
+  Otherwise append td_calc.write('be_td.gpw', mode='all') to the script.
+
 When propagating after an absorption kick has been applied, it is a good
 idea to periodically write the time-evolution state to a restart file.
 This ensures that you can resume adding data to the dipole moment file
@@ -111,11 +117,6 @@ Example::
 
   # Recalculate photoabsorption spectrum and write it to 'be_spectrum_z2.dat'
   photoabsorption_spectrum('be_dm.dat', 'be_spectrum_z2.dat')
-
-.. note::
-
-  Make sure to number of iterations is divisible by the dump interval
-  such that the last iteration will be stored in the restart file.
 
 
 Typically in experiments, the spherically averaged spectrum is measured.
@@ -227,6 +228,37 @@ Example::
   # Save result of the Fourier transformations to a .ftd file
   obs.write('bda_fourier.ftd')
 
+You can now resume adding data to both the dipole moment file and the density
+fourier transform if the spectrum is not sufficiently evolved because the total
+simulation time was too short.
+
+Example::
+
+  from gpaw.tddft import TDDFT
+  from gpaw.tddft.fourier import DensityFourierTransform
+
+  time_step = 4.0                  # 1 attoseconds = 0.041341 autime
+  iterations = 5000                # 5000 x 4 as => 20 fs
+  frequencies = [4.26,6.27,13.0, \
+                 16.9,18.1,19.9]   # Pre-determined peak frequencies in eV
+  sigma = 0.05                     # Width of Gaussian envelope in
+
+  # Read restart file with result of previous propagation
+  td_calc = TDDFT('bda_td.gpw')
+
+  # Create and attach Fourier transform observer
+  obs = DensityFourierTransform(timestep, frequencies, sigma)
+  obs.initialize(td_calc)
+
+  # Read previous result of the corresponding Fourier transformations
+  obs.read('bda_fourier.ftd')
+
+  # Propagate more, appending the time-dependent dipole moment to the
+  # already existing 'bda_dm.dat' and use 'bda_td2.gpw' as restart file
+  td_calc.propagate(time_step, iterations, 'bda_dm.dat', 'bda_td2.gpw')
+
+  # Save result of the improved Fourier transformations to an .ftd file
+  obs.write('bda_fourier2.ftd') 
 
 
 --------------------------------
