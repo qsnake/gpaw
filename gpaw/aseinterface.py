@@ -172,10 +172,14 @@ class GPAW(PAW):
 
     get_pseudo_valence_density = get_pseudo_density  # Don't use this one!
     
-    def get_effective_potential(self, spin=0, pad=True):
+    def get_effective_potential(self, spin=0, pad=True, broadcast=False):
         """Return pseudo effective-potential."""
         # XXX should we do a gd.collect here?
-        vt_G = self.hamiltonian.vt_sG[spin]
+        vt_G = self.hamiltonian.gd.collect(self.hamiltonian.vt_sG[spin],
+                                           broadcast=broadcast)
+        if vt_G is None:
+            return None
+        
         if pad:
             vt_G = self.hamiltonian.gd.zero_pad(vt_G)
         return vt_G * Hartree
