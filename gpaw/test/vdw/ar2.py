@@ -1,14 +1,10 @@
-import os
 from math import sqrt
 
 from ase import Atoms
-from ase.parallel import rank, barrier
 
 from gpaw import GPAW
-from gpaw.test import equal, gen
+from gpaw.test import equal
 from gpaw.xc.vdw import FFTVDWFunctional
-
-gen('Ar', xcname='revPBE')
 
 energy_tolerance = 0.00002
 niter_tolerance = 0

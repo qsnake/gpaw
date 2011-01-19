@@ -1,12 +1,6 @@
-import os
 from ase import Atoms
 from gpaw import GPAW, FermiDirac
-from ase.parallel import rank, barrier
 from gpaw.xc.vdw import FFTVDWFunctional
-from gpaw.test import gen
-
-# Generate setup
-gen('H', xcname='revPBE')
 
 L = 2.5
 a = Atoms('H', cell=(L, L, L), pbc=True)

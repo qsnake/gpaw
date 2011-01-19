@@ -1,12 +1,7 @@
-import os
 from ase import Atoms
-from ase.parallel import rank, barrier
 from gpaw import GPAW
-from gpaw.test import equal, gen
+from gpaw.test import equal
 from ase.units import Bohr, Hartree
-
-# Generate setup
-gen('He', xcname='revPBE')
 
 a = 7.5 * Bohr
 n = 16

@@ -1,19 +1,7 @@
 import numpy as np
 from ase import Atoms
 from ase.data.molecules import molecule
-from ase.parallel import rank, barrier
-from gpaw.atom.generator import Generator
-from gpaw.atom.configurations import parameters
-from gpaw import setup_paths
 from gpaw import GPAW
-
-# Generate setup
-if rank == 0:
-    for symbol in ['Ar', 'Kr', 'C', 'H']:
-        g = Generator(symbol, 'revPBE', scalarrel=True, nofiles=True)
-        g.run(**parameters[symbol])
-barrier()
-setup_paths.insert(0, '.')
 
 L = 3.0 + 2 * 4.0
 d = np.linspace(3.0, 5.5, 11)

@@ -1,12 +1,7 @@
-import os
 from ase import Atoms
 from ase.units import Hartree
-from ase.parallel import rank, barrier
 from gpaw import GPAW, PoissonSolver
-from gpaw.test import equal, gen
-
-# Generate setup
-gen('Li', xcname='revPBE')
+from gpaw.test import equal
 
 a = 5.0
 n = 24
