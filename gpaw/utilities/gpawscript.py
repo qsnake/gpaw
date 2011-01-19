@@ -84,33 +84,6 @@ def build_parser():
                          help='Write gpw file.')
     parser.add_option_group(calc_opts)
 
-    if 0:
-        calc_opts.add_option('-e', '--eigensolver', default='rmm-diis',
-                             choices=['rmm-diis', 'cg'],
-                             help='Eigensolver.')
-        calc_opts.add_option('-m', '--mode', default='fd', choices=['fd', 'lcao'],
-                             help='Mode of calculation.')
-        calc_opts.add_option('-b', '--basis',
-                             help='Basis set.')
-        calc_opts.add_option('-k', '--brillouin-zone-sampling',
-                             default='1,1,1', metavar='K1,K2,K3',
-                             help='Number of k-points.  Example: -k 4,4,1.')
-        calc_opts.add_option('-g', '--grid-spacing', type='float', default=0.2,
-                             help='Grid spacing in Angstrom.  Deafault is 0.2.')
-        calc_opts.add_option('-T', '--smearing-width', type='float', default=0.1,
-                             metavar='WIDTH',
-                             help='Occupation number smearing width in eV.  Default '
-                             'is 0.1 eV.')
-        calc_opts.add_option('-s', '--finite-difference-stencils', default='3,3',
-                             metavar='K,I',
-                             help='Range of stencils for kinetic energy and '
-                             'interpolation.  Deafault is -s 3,3.')
-        calc_opts.add_option('-f', '--xc-functional', default='LDA',
-                             help='Exchange-Correlation functional (default value LDA).')
-        calc_opts.add_option('-N', '--number-of-bands', type='int',
-                             help='Number of bands / states.')
-        parser.add_option_group(calc_opts)
-
     return parser
 
 
