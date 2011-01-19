@@ -377,12 +377,8 @@ class HGHSetupData:
         return self.rgd.reducedspline(0, self.vbar_g)
 
     def build(self, xcfunc, lmax, basis):
-        if lmax != 0:
-            raise ValueError('HGH setups support only lmax=0')
         if basis is None:
             basis = self.create_basis_functions()
-        elif isinstance(basis, str):
-            basis = Basis(self.symbol, basis)
         setup = HGHSetup(self, basis)
         return setup
 
@@ -468,6 +464,10 @@ class HGHParameterSet:
         self.c_n = np.array(c_n) # Polynomial coefficients for local part
         self.v_l = list(v_l) # Non-local parts
 
+        Z, nlfe_j = configurations[self.symbol.split('.')[0]]
+        self.configuration = nlfe_j
+
+
     def __str__(self):
         strings = ['HGH setup for %s\n' % self.symbol,
                    '    Valence Z=%d, rloc=%.05f\n' % (self.Nv, self.rloc)]
@@ -477,11 +477,14 @@ class HGHParameterSet:
         else:
             coef_string = 'zeros'
         strings.append('    Local part coeffs: %s\n' % coef_string)
-        #strings.extend(['\n',
         strings.append('    Projectors:\n')
+        if not self.v_l:
+            strings.append('        None\n')
         for v in self.v_l:
             strings.append('        l=%d, rc=%.05f\n' % (v.l, v.r0))
-        strings.append('    Diagonal coefficients of nonlocal parts')
+        strings.append('    Diagonal coefficients of nonlocal parts:')
+        if not self.v_l:
+            strings.append('\n        None\n')
         for v in self.v_l:
             strings.append('\n')
             strings.append('        l=%d: ' % v.l +
@@ -504,8 +507,7 @@ class HGHParameterSet:
                     yield n, l
 
     def get_occupation_numbers(self):
-        Z, nlfe_j = configurations[self.symbol.split('.')[0]]
-        nlfe_j = list(nlfe_j)
+        nlfe_j = list(self.configuration)
         nlfe_j.reverse()
         f_ln = [[], [], []] # [[s], [p], [d]]
         Nv = 0
