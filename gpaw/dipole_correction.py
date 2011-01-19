@@ -48,7 +48,10 @@ class DipoleCorrection:
         cell boundaries and beyond.
         """
         # This implementation is not particularly economical memory-wise
-        c = self.c        
+        if not gd.orthogonal:
+            raise ValueError('Dipole correction requires orthorhombic cell')
+        
+        c = self.c
         moment = gd.calculate_dipole_moment(rhot_g)[c]
         if abs(moment) < 1e-12:
             return gd.zeros(), gd.zeros()
