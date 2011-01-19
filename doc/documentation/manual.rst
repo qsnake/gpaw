@@ -191,53 +191,48 @@ unoccupied bands will improve convergence.
 Exchange-Correlation functional
 -------------------------------
 
-The most commonly used exchange-correlation functionals are listed below.
-For the list of all commonly used functionals defined in GPAW
-see :trac:`~gpaw/xc_functional.py`
-(use :command:`grep "xcname ==" gpaw/xc_functional.py` for an overview),
-and for the complete list of functionals
-see :trac:`~gpaw/libxc_functionals.py`:
+Some of the most commonly used exchange-correlation functionals
+are listed below.
 
-============  =================== ===========================  ==========
-``xc``        libxc_ keyword      description                  reference 
-============  =================== ===========================  ==========
-``'LDA'``     ``'X-C_PW'``        Local density approximation  [#LDA]_
-``'PBE'``     ``'X_PBE-C_PBE'``   Perdew, Burke, Ernzerhof     [#PBE]_
-``'revPBE'``  ``'X_PBE_R-C_PBE'`` revised PBE                  [#revPBE]_
-``'RPBE'``    ``'X_RPBE-C_PBE'``  revised revPBE               [#RPBE]_
-``'PBEH'``    N/A as keyword      Known as PBE0                [#PBE0]_
-``'B3LYP'``   N/A as keyword      B3LYP (as in Gaussian Inc.)  [#B3LYP]_
-============  =================== ===========================  ==========
+============  =========================== ===========================  ==========
+``xc``        full libxc_ keyword         description                  reference 
+============  =========================== ===========================  ==========
+``'LDA'``     ``'LDA_X+LDA_C_PW'``        Local density approximation  [#LDA]_
+``'PBE'``     ``'GGA_X_PBE+GGA_C_PBE'``   Perdew, Burke, Ernzerhof     [#PBE]_
+``'revPBE'``  ``'GGA_X_PBE_R+GGA_C_PBE'`` revised PBE                  [#revPBE]_
+``'RPBE'``    ``'GGA_X_RPBE+GGA_C_PBE'``  revised revPBE               [#RPBE]_
+``'PBE0'``    ``'HYB_GGA_XC_PBEH'``       Known as PBE0                [#PBE0]_
+``'B3LYP'``   ``'HYB_GGA_XC_B3LYP'``      B3LYP (as in Gaussian Inc.)  [#B3LYP]_
+============  =========================== ===========================  ==========
 
 ``'LDA'`` is the default value.  The next three ones are of
 generalized gradient approximation (GGA) type, and the last two are
 `hybrid functionals <http://en.wikipedia.org/wiki/Hybrid_functional>`_.
 
+For the list of all functionals available in GPAW see :ref:`overview_xc`.
+
 GPAW uses the functionals from libxc_ by default.
-Keywords are based on the :file:`gpaw/libxc_functionals.py` file.
-Custom combinations of exchange and correlation functionals are allowed.
-To form a valid libxc keyword the exchange and
-correlation strings from the :file:`gpaw/libxc_functionals.py` file need
-to be stripped off the ``'XC_LDA'`` or ``'XC_GGA'`` prefix and
-combined using the dash (-); e.g. to use "the" LDA approximation (most
-common) in chemistry specify ``'X-C_VWN'``.
+Keywords are based on the strings from the
+:file:`gpaw/xc/libxc_functionals.py` file.
+Valid keywords are strings or combinations of exchange and correlation string
+joined by **+** (plus).
+For example, "the" (most common) LDA approximation in chemistry
+corresponds to ``'LDA_X+LDA_C_VWN'``.
 
-Hybdrid functionals (features implemented in GPAW are described  at :ref:`exx`)
-require the corresponding
-setups containing exx information (use :command:`gpaw-setup --exact-exchange`
-to generate such a setup) to be present in :envvar:`GPAW_SETUP_PATH`
-(see :ref:`manual_setups`).
-The setup type coresponding to a hybrid functional is to be found in
-:trac:`~gpaw/xc_functional.py`. For example, for ``'B3LYP'``
-the ``'BLYP'`` is listed as ``'self.setupname'``, so one would
-use the command :command:`gpaw-setup --exact-exchange -f BLYP H O`
-to generate hydrogen and oxygen setups for calculations using ``'B3LYP'``.
+Hybrid functionals (the feature is described at :ref:`exx`)
+require the setups containing exx information to be generated
+for any missing elements::
 
-**For developers only**: It is still possible to use the "old" functionals
-by prefixing the keyword with ``'old'``, e.g. ``'oldrevPBEx'``.
-It this case the ``'oldrevPBEx'`` setup will be used.
+     [~]$ gpaw-setup --exact-exchange -f PBE H O
 
-See details of implementation on the :ref:`xc_functionals` page.
+Currently all the hybrid functionals use the PBE setup as a *base* setup.
+
+The generated setups must to be present in the :envvar:`GPAW_SETUP_PATH`
+environment variable (see :ref:`manual_setups`).
+MDTMP - refer to the "how to set setups path".
+
+The details of the implementation of the exchange-correlation
+are described on the :ref:`xc_functionals` page.
 
 .. _libxc: http://www.tddft.org/programs/octopus/wiki/index.php/Libxc
 

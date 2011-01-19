@@ -186,10 +186,10 @@ Attributes of the wave function object: :attr:`gd`, :attr:`nspins`,
 :attr:`rank_a`, :attr:`nibzkpts`, :attr:`kpt_u`, :attr:`setups`,
 :attr:`ibzk_qc`, :attr:`eigensolver`, and :attr:`timer`.
         
+.. _overview_xc:
 
-
-Exchange-correlation functionals
-================================
+Exchange-correlation functionals module
+=======================================
 
 The ``gpaw.xc`` module contains all the code for XC functionals in
 GPAW::
@@ -223,13 +223,14 @@ using the :func:`gpaw.xc.XC` function:
 
 Example::
 
+    # the default implementation of PBE from LiBXC:
     from gpaw.xc import XC
     xc = XC('PBE')
-    # alternative:
+    # alternative call:
     from gpaw.xc.libxc import LibXC
     from gpaw.xc.gga import GGA
     xc = GGA(LibXC('PBE'))
-    # or:
+    # or, explicitly:
     xc = GGA(LibXC('GGA_X_PBE+GGA_C_PBE'))
 
 In this example, calling the
@@ -238,6 +239,10 @@ object passing in a :class:`~gpaw.grid_descriptor.GridDescriptor`, an
 input density array and an output array for the potential, the
 :class:`~gpaw.xc.gga.GGA` object will calculate the gradient of the
 density and pass that and the density on to the libxc kernel.
+
+Refer to :ref:`manual_xc` for other examples.
+
+Updating libxc and adding new functionals is described at :ref:`updating_libxc`.
 
 GPAW also has a few non-libxc kernels that one can use like this::
 

@@ -30,6 +30,11 @@ Here is how to update gpaw to use the latest version of libxc:
     cp -rp ../libxc.old/src/.svn src
     ...
 
+   **Note**: this step is performed by running the :file:`tools/libxc_svn_copy.py` script::
+
+    python ../../tools/libxc_svn_copy.py
+
+
  - check the svn status::
 
     svn status
@@ -42,6 +47,10 @@ Here is how to update gpaw to use the latest version of libxc:
     autoreconf -i
     ./configure --disable-fortran
     make
+
+   **Warning**: 19 Jan 2011: this step fails on CentOS 5 with::
+
+     src/Makefile.am:22: Libtool library used but `LIBTOOL' is undefined
     
  - check svn status again (files could have changed names compared to the previous release of libxc)::
 
