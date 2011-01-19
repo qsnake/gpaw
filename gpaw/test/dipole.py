@@ -1,5 +1,5 @@
 from gpaw import GPAW
-from gpaw.dipole_correction import DipoleCorrectionPoissonSolver as DCPS
+from gpaw.dipole_correction import DipoleCorrection
 from gpaw.poisson import PoissonSolver
 from ase.data.molecules import molecule
 from gpaw.mpi import rank
@@ -55,8 +55,8 @@ system2.center(vacuum=6.0, axis=2)
 
 calc1 = GPAW(mode='lcao',
              gpts=h2gpts(0.3, system1.cell, idiv=8),
-             poissonsolver=DCPS(PoissonSolver(relax='GS', eps=1e-11), 2)
-             )
+             poissonsolver=DipoleCorrection(PoissonSolver(relax='GS',
+                                                          eps=1e-11), 2))
 
 system1.set_calculator(calc1)
 system1.get_potential_energy()

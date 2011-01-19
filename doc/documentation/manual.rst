@@ -122,7 +122,10 @@ keyword            type       default value        description
 ``external``       Object                          XXX Missing doc
 ``verbose``        ``int``    ``0``                XXX Missing doc
 ``poissonsolver``  Object                          Specification of
-                                                   :ref:`manual_poissonsolver`
+                                                   :ref:`Poisson solver 
+                                                   <manual_poissonsolver>`
+                                                   or :ref:`dipole correction
+                                                   <manual_dipole_correction>`
 ``communicator``   Object                          XXX Missing doc
 ``idiotproof``     ``bool``   ``True``             Set to ``False`` to ignore 
                                                    setup fingerprint mismatch
@@ -604,6 +607,9 @@ Hamiltonian matrix instead of using an iterative method.
 Poisson solver
 --------------
 
+The *poissonsolver* keyword is used to specify a Poisson solver class
+or enable dipole correction.
+
 The default Poisson solver uses a multigrid Jacobian method.  Use this
 keyword to specify a different method.  This example corresponds to
 the default Poisson solver::
@@ -627,6 +633,29 @@ The last argument, ``eps``, is the convergence criterion.
   important in LCAO calculations, but can be good to know in general.
   See the LCAO notes on
   :ref:`Poisson performance <poisson_performance>`.
+
+.. _manual_dipole_correction:
+
+The *poissonsolver* keyword can also be used to specify that a dipole
+correction should be applied along a given axis.  The system should be
+non-periodic in that direction but periodic in the two other
+directions.
+
+::
+  
+  from gpaw import GPAW
+  from gpaw.poisson import PoissonSolver
+  from gpaw.dipole_correction import DipoleCorrectionPoissonSolver
+
+  poissonsolver = PoissonSolver()
+  correction = DipoleCorrection(poissonsolver, 2) # 2 == z-axis
+  calc = GPAW(poissonsolver=correction)
+
+Without dipole correction, the potential will approach 0 at all
+non-periodic boundaries.  With dipole correction, there will be a
+potential difference across the system depending on the size of the
+dipole moment.
+
 
 .. _manual_stencils:
 
