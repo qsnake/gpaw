@@ -1,6 +1,6 @@
 import sys
 import traceback
-from optparse import OptionParser, OptionGroup
+import optparse
 
 import numpy as np
 from ase.structure import bulk, estimate_lattice_constant
@@ -22,11 +22,12 @@ defaults = InputParameters()
 def build_parser():
     description = ('Run GPAW calculation for simple atoms, molecules or '
                    'bulk systems.')
+    epilog = 'Additional options: --%s.  ' % ', --'.join(defaults.keys())
+    parser = optparse.OptionParser(usage='%prog [options] formula or filename',
+                                   version='%prog 0.1', description=description,
+                                   epilog=epilog)
 
-    parser = OptionParser(usage='%prog [options] formula or filename',
-                          version='%prog 0.1', description=description)
-
-    struct = OptionGroup(parser, 'Structure')
+    struct = optparse.OptionGroup(parser, 'Structure')
     struct.add_option('-i', '--identifier',
                       help='String identifier added to filenames.')
     struct.add_option('-x', '--crystal-structure',
@@ -50,7 +51,7 @@ def build_parser():
                       help='Magnetic moment(s).  Use "-M 1" or "-M 2.3,-2.3".')
     parser.add_option_group(struct)
 
-    behavior = OptionGroup(parser, 'Behavior')
+    behavior = optparse.OptionGroup(parser, 'Behavior')
     behavior.add_option('--read', action='store_true',
                         help="Don't alculate anything - read from file.")
     behavior.add_option('-p', '--plot', action='store_true',
@@ -74,10 +75,10 @@ def build_parser():
     parser.add_option_group(behavior)
 
     # Calculator:
-    calc_opts = OptionGroup(parser, 'Calculator')
+    calc_opts = optparse.OptionGroup(parser, 'Calculator')
     for key in defaults:
         calc_opts.add_option('--%s' % key, type=str,
-                             help='default=%default')
+                             help=optparse.SUPPRESS_HELP)#'default=%default')
 
     calc_opts.add_option('--write-gpw-file', metavar='MODE',
                          help='Write gpw file.')
