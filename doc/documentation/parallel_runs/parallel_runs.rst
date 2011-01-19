@@ -22,10 +22,12 @@ decomposition that match both the number of processors and the size of
 the unit cell.  This choice can be overruled, see
 :ref:`manual_parallelization_types`.
 
-Before starting a parallel calculation, it might be useful to check how the parallelization corresponding to given number
-of processors would be done with ``--dry-run`` command line option::
+Before starting a parallel calculation, it might be useful to check how the parallelization corresponding to the given number
+of processes would be done with ``--dry-run`` command line option::
 
   python script.py --dry-run=8
+
+The output will contain also the estimated required RAM memory per process.
 
 In order to start parallel calculation, you need to know the
 command for starting parallel processes. This command might contain
