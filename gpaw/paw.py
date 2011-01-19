@@ -78,7 +78,6 @@ class PAW(PAWTextOutput):
         self.density = None
         self.hamiltonian = None
         self.atoms = None
-        self.bd = None
 
         self.initialized = False
 
@@ -474,13 +473,8 @@ class PAW(PAWTextOutput):
 
             kd.set_communicator(kpt_comm)
 
-            if self.bd is not None and self.bd.comm.size != band_comm.size:
-                # Band grouping has changed, so we need to
-                # reinitialize - err what exactly? WaveFunctions? XXX
-                raise NotImplementedError('Band communicator size changed.')
-
             parstride_bands = par.parallel['stridebands']
-            self.bd = BandDescriptor(nbands, band_comm, parstride_bands)
+            bd = BandDescriptor(nbands, band_comm, parstride_bands)
 
             if (self.density is not None and
                 self.density.gd.comm.size != domain_comm.size):
@@ -497,8 +491,7 @@ class PAW(PAWTextOutput):
                                             domain_comm, parsize)
 
             # do k-point analysis here? XXX
-            args = (gd, nvalence, setups, self.bd, dtype, world, kd,
-                    self.timer)
+            args = (gd, nvalence, setups, bd, dtype, world, kd, self.timer)
 
             if par.mode == 'lcao':
                 # Layouts used for general diagonalizer
@@ -506,9 +499,8 @@ class PAW(PAWTextOutput):
                 if sl_lcao is None:
                     sl_lcao = par.parallel['sl_default']
                 lcaoksl = get_KohnSham_layouts(sl_lcao, 'lcao',
-                                               gd, self.bd, dtype,
-                                               nao=nao,
-                                               timer=self.timer)
+                                               gd, bd, dtype,
+                                               nao=nao, timer=self.timer)
 
                 self.wfs = LCAOWaveFunctions(lcaoksl, *args)
             elif par.mode == 'fd' or isinstance(par.mode, PW):
@@ -519,7 +511,7 @@ class PAW(PAWTextOutput):
                 if sl_diagonalize is None:
                     sl_diagonalize = par.parallel['sl_default']
                 diagksl = get_KohnSham_layouts(sl_diagonalize, 'fd',
-                                               gd, self.bd, dtype,
+                                               gd, bd, dtype,
                                                buffer_size=buffer_size,
                                                timer=self.timer)
 
@@ -528,15 +520,15 @@ class PAW(PAWTextOutput):
                 if sl_inverse_cholesky is None:
                     sl_inverse_cholesky = par.parallel['sl_default']
                 orthoksl = get_KohnSham_layouts(sl_inverse_cholesky, 'fd',
-                                                gd, self.bd, dtype,
+                                                gd, bd, dtype,
                                                 buffer_size=buffer_size,
                                                 timer=self.timer)
 
                 # Use (at most) all available LCAO for initialization
                 lcaonbands = min(nbands, nao)
                 lcaobd = BandDescriptor(lcaonbands, band_comm, parstride_bands)
-                assert nbands <= nao or self.bd.comm.size == 1
-                assert lcaobd.mynbands == min(self.bd.mynbands, nao) #XXX
+                assert nbands <= nao or bd.comm.size == 1
+                assert lcaobd.mynbands == min(bd.mynbands, nao) #XXX
 
                 # Layouts used for general diagonalizer (LCAO initialization)
                 sl_lcao = par.parallel['sl_lcao']
@@ -553,7 +545,7 @@ class PAW(PAWTextOutput):
                 else:
                     # Planewave basis:
                     self.wfs = par.mode(diagksl, orthoksl, initksl,
-                                        gd, nvalence, setups, self.bd,
+                                        gd, nvalence, setups, bd,
                                         world, kd, self.timer)
             else:
                 self.wfs = par.mode(self, *args)
