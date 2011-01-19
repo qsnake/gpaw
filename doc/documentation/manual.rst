@@ -645,8 +645,8 @@ directions.
   
   from gpaw import GPAW
   from gpaw.poisson import PoissonSolver
-  from gpaw.dipole_correction import DipoleCorrectionPoissonSolver
-
+  from gpaw.dipole_correction import DipoleCorrection
+  
   poissonsolver = PoissonSolver()
   correction = DipoleCorrection(poissonsolver, 2) # 2 == z-axis
   calc = GPAW(poissonsolver=correction)
