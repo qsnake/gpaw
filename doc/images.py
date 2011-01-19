@@ -105,7 +105,7 @@ def setup(app):
     # Generate one page for each setup:
     if get('setups', ['setups-data.tar.gz'], '_static'):
         print 'Extracting setup data ...'
-        os.system('tar --directory=_static -xzf _static/setups-data.tar.gz')
+        os.system('tar -C _static -xzf _static/setups-data.tar.gz')
         print 'Generating setup pages ...'
         os.system('cd setups; %s make_setup_pages.py' % executable)
 
@@ -113,8 +113,33 @@ def setup(app):
     if get('.', ['gpaw-coverage-latest.tar.gz'], '_static',
            source='http://dcwww.camp.dtu.dk/~chlg'):
         print 'Extracting coverage pages ...'
-        os.system(
-            'tar --directory=devel -xzf _static/gpaw-coverage-latest.tar.gz')
+        os.system('tar -C devel -xzf _static/gpaw-coverage-latest.tar.gz')
+
+    # Fallback in case coverage pages were not found
+    if not os.path.isfile('devel/testsuite.rst'):
+        open('devel/testsuite.rst', 'w').write( \
+            '\n'.join(['.. _testsuite:',
+                       '', '==========', 'Test suite', '==========',
+                       '', '.. warning::', '   Coverage files not found!']))
+    if not os.path.isdir('devel/coverage'):
+        os.mkdir('devel/coverage', 0755)
+    if not os.path.isfile('devel/coverage/index.rst'):
+        open('devel/coverage/index.rst', 'w').write( \
+            '\n'.join(['-----------------------------------',
+                       'List of files with missing coverage',
+                       '-----------------------------------',
+                       '', 'Back to :ref:`code coverage <coverage>`.',
+                       '', '.. warning::', '   Coverage files not found!']))
+    if not os.path.isfile('devel/coverage/ranking.txt'):
+        open('devel/coverage/ranking.txt', 'w').write( \
+            '\n'.join(['-------------------------------------',
+                       'Distribution of coverage by developer',
+                       '-------------------------------------',
+                       '', '.. warning::', '   Coverage files not found!']))
+    if not os.path.isfile('devel/coverage/summary.txt'):
+        open('devel/coverage/summary.txt', 'w').write( \
+            '\n'.join(['-------', 'Summary', '-------',
+                       '', '.. warning::', '   Coverage files not found!']))
 
     # Get png files and other stuff from the AGTS scripts that run
     # every weekend:
