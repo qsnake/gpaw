@@ -3,15 +3,6 @@
 
 import sys
 
-# Importing GPAW will remove --setups=... from argv, so save a copy
-# Use --gpaw="setup_path='...'" instead.
-for i, arg in enumerate(sys.argv):
-    if arg.startswith('--setups='):
-        sys.argv.pop(i)
-        import gpaw
-        sys.argv.append(arg)
-        break
-
 from gpaw.utilities.gpawscript import main
 
 main()

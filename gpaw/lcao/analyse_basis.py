@@ -20,10 +20,6 @@ def build_parser():
                       help='Plot normalized wave functions')
     parser.add_option('-x', '--ext', default='png',
                       help='Image format [default: %default]')
-    # The --setups parameter is actually handled by setup_data module internally
-    # We just provide it here so the parser won't complain when it is used
-    parser.add_option('--setups', metavar='DIR',
-                      help='Read setups from specified directory')
     return parser
 
 def main():

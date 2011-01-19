@@ -1,6 +1,7 @@
 from math import pi, cos, sin
 from ase import Atoms
-from gpaw import GPAW, FermiDirac
+from gpaw import GPAW, setup_paths, FermiDirac
+setup_paths.insert(0, '.')
 
 a = 12.0  # use a large cell
 

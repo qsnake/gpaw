@@ -12,17 +12,17 @@ class AGTSJob:
 
         Example:
 
-        >>> job = AGTSJob('doc/tutorial/xas', 'run.py --setups=.')
+        >>> job = AGTSJob('doc/devel/256H2O', 'b256H2O.py --sl_default=4,4,16')
         >>> job.dir
-        'doc/tutorial/xas'
+        'doc/devel/256H2O'
         >>> job.script
-        'run.py'
+        'b256H2O.py'
         >>> job.args
-        '--setups=.'
+        '--sl_default=4,4,16'
         >>> job.name
-        'run.py_--setups=.'
+        'b256H2O.py_--sl_default=4,4,16'
         >>> job.absname
-        'doc/tutorial/xas/run.py_--setups=.'
+        'doc/devel/256H2O/b256H2O.py_--sl_default=4,4,16'
         """
 
         if ' ' in script:

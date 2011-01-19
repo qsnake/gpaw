@@ -746,8 +746,6 @@ argument                         description
 ``--trace``
 ``--debug``                      Run in debug-mode, e.g. check
                                  consistency of arrays passed to c-extensions
-``--setups=path``                Use setups from the colon-separated
-                                 list of directories in ``path``
 ``--dry-run[=nprocs]``           Print out the computational
                                  parameters and estimate memory usage, 
                                  do not perform actual calculation. 

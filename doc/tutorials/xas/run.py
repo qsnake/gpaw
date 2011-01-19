@@ -1,6 +1,7 @@
 from math import pi, cos, sin
 from ase import Atoms
-from gpaw import GPAW
+from gpaw import GPAW, setup_paths
+setup_paths.insert(0, '.')
 
 a = 12.0  # use a large cell
 

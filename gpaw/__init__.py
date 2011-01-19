@@ -56,7 +56,6 @@ class PoissonConvergenceError(ConvergenceError):
 # Check for special command line arguments:
 debug = False
 trace = False
-setup_paths = []
 dry_run = 0
 memory_estimate_depth = 2
 parsize = None
@@ -81,8 +80,6 @@ while len(sys.argv) > i:
     elif arg == '--debug':
         debug = True
         sys.stderr.write('gpaw-DEBUG mode\n')
-    elif arg.startswith('--setups='):
-        setup_paths = arg.split('=')[1].split(':')
     elif arg.startswith('--dry-run'):
         dry_run = 1
         if len(arg.split('=')) == 2:
@@ -234,11 +231,7 @@ def get_gpaw_python_path():
     raise RuntimeError('Could not find gpaw-python!')
 
 
-paths = os.environ.get('GPAW_SETUP_PATH', '')
-if paths != '':
-    setup_paths += paths.split(':')
-if 'setup_path' in extra_parameters:
-    setup_paths = extra_parameters['setup_path'].split(':') + setup_paths
+setup_paths = os.environ.get('GPAW_SETUP_PATH', '').split(':')
 
 from gpaw.aseinterface import GPAW
 from gpaw.mixer import Mixer, MixerSum, MixerDif, MixerSum2

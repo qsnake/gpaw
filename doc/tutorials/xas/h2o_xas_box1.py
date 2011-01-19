@@ -1,6 +1,7 @@
 import numpy as np
 from ase.data.molecules import molecule
-from gpaw import GPAW
+from gpaw import GPAW, setup_paths
+setup_paths.insert(0, '.')
 
 atoms = molecule('H2O')
 

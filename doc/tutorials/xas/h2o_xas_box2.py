@@ -1,7 +1,8 @@
 import numpy as np
-from gpaw import GPAW
+from gpaw import GPAW, setup_paths
 from gpaw.xas import XAS
 import pylab as plt
+setup_paths.insert(0, '.')
 
 h = 0.2
 
