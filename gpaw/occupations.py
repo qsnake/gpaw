@@ -376,7 +376,9 @@ class SmoothDistribution(ZeroKelvin):
         return string
 
     def calculate_occupation_numbers(self, wfs):
-        if self.width == 0 or self.nvalence == wfs.nbands * 2:
+        if self.width != 0 and self.nvalence == wfs.nbands * 2:
+            raise ValueError('Not enough bands for non-zero width.')
+        elif self.width == 0 or self.nvalence == wfs.nbands * 2:
             ZeroKelvin.calculate_occupation_numbers(self, wfs)
             return
 
