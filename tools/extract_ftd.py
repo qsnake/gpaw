@@ -58,7 +58,7 @@ if __name__ == '__main__':
         obs.initialize(calc)
         atoms = calc.get_atoms()
         del calc
-        obs.read(ftd_filename)
+        obs.read(ftd_filename, idiotproof=False)
         try:
             sys.stdout.write('Select grid refinement [1*/2]: ')
             gdref = int(sys.stdin.readline().strip())

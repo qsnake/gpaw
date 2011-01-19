@@ -155,18 +155,21 @@ class DensityFourierTransform(Observer):
         else:
             raise NotImplementedError('Arbitrary refinement not implemented')
 
-    def read(self, filename):
-        assert filename.endswith('.ftd'), 'Filename must end with `.ftd`.'
+    def read(self, filename, idiotproof=True):
+        if idiotproof and not filename.endswith('.ftd'):
+            raise IOError('Filename must end with `.ftd`.')
 
         tar = Reader(filename)
 
         # Test data type
         dtype = {'Float':float, 'Complex':complex}[tar['DataType']]
-        assert dtype == self.dtype, 'Data is an incompatible type.'
+        if dtype != self.dtype:
+            raise IOError('Data is an incompatible type.')
 
         # Test time
         time = tar['Time']
-        assert abs(time-self.time)<1e-9, 'Time is incompatible.' #TODO
+        if idiotproof and abs(time-self.time) >= 1e-9:
+            raise IOError('Timestamp is incompatible with calculator.')
 
         # Test timestep (non-critical)
         timestep = tar['TimeStep']
@@ -214,8 +217,9 @@ class DensityFourierTransform(Observer):
         # Close for good measure
         tar.close()
 
-    def write(self, filename):
-        assert filename.endswith('.ftd'), 'Filename must end with `.ftd`.'
+    def write(self, filename, idiotproof=True):
+        if idiotproof and not filename.endswith('.ftd'):
+            raise IOError('Filename must end with `.ftd`.')
 
         master = self.world.rank == 0
 
