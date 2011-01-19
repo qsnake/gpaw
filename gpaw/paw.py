@@ -25,7 +25,6 @@ from gpaw.hamiltonian import Hamiltonian
 from gpaw.utilities.timing import Timer
 from gpaw.xc import XC
 from gpaw.kpt_descriptor import KPointDescriptor
-from gpaw.brillouin import reduce_kpoints
 from gpaw.wavefunctions.base import EmptyWaveFunctions
 from gpaw.wavefunctions.fd import FDWaveFunctions
 from gpaw.wavefunctions.lcao import LCAOWaveFunctions

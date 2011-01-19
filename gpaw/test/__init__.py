@@ -104,6 +104,7 @@ tests = [
     'symmetry.py',
     'pes.py',
     'elf.py',
+    'lebedev.py',
     'usesymm.py',
 #    'usesymm2.py',
     'eed.py',

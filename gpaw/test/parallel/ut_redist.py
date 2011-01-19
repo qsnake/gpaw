@@ -9,7 +9,6 @@ from gpaw.mpi import world, distribute_cpus
 from gpaw.paw import kpts2ndarray
 from gpaw.parameters import InputParameters
 from gpaw.xc import XC
-from gpaw.brillouin import reduce_kpoints
 from gpaw.setup import SetupData, Setups
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.band_descriptor import BandDescriptor
