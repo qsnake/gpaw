@@ -354,13 +354,15 @@ def search_for_file(name, world=None):
     if world is not None and world.size > 1:
         if world.rank == 0:
             filename, source = search_for_file(name)
-            if not source:
-                return filename, source
+            if source is None:
+                source = ''
             string = filename + '|' + source
         else:
             string = None
-        string = broadcast_string(string, 0, world)
-        return string.split('|', 1)
+        filename, source = broadcast_string(string, 0, world).split('|', 1)
+        if source == '':
+            source = None
+        return filename, source
 
     source = None
     filename = None
@@ -377,7 +379,6 @@ def search_for_file(name, world=None):
                 else:
                     source = os.popen('gunzip -c ' + filename, 'r').read()
                 break
-
     return filename, source
 
 
