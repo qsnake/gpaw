@@ -102,9 +102,12 @@ class SetupData:
         self.has_corehole = False        
 
         if readxml:
-            PAWXMLParser(self).parse(world)
-            nj = len(self.l_j)
-            self.e_kin_jj.shape = (nj, nj)
+            self.read_xml(world=world)
+
+    def read_xml(self, source=None, world=None):
+        PAWXMLParser(self).parse(source=source, world=world)
+        nj = len(self.l_j)
+        self.e_kin_jj.shape = (nj, nj)
 
     def is_compatible(self, xc):
         return xc.get_setup_name() == self.setupname
@@ -389,10 +392,11 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
         self.id = None
         self.data = None
 
-    def parse(self, world=None):
+    def parse(self, source=None, world=None):
         setup = self.setup
-
-        (setup.filename, source) = search_for_file(setup.stdfilename, world)
+        if source is None:
+            (setup.filename, source) = search_for_file(setup.stdfilename,
+                                                       world)
 
         if source is None:
             print """
@@ -402,9 +406,9 @@ http://wiki.fysik.dtu.dk/gpaw/install/installationguide.html for details."""
             raise RuntimeError('Could not find %s-setup for "%s".' %
                                (setup.name + '.' + setup.setupname, 
                                 setup.symbol))
-
+        
         setup.fingerprint = md5_new(source).hexdigest()
-
+        
         # XXXX There must be a better way!
         # We don't want to look at the dtd now.  Remove it:
         source = re.compile(r'<!DOCTYPE .*?>', re.DOTALL).sub('', source, 1)

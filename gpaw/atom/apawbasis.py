@@ -6,18 +6,77 @@ import numpy as np
 from gpaw.atom.atompaw import AtomPAW
 from gpaw.atom.basis import rsplit_by_norm, QuasiGaussian,\
      get_gaussianlike_basis_function
-from gpaw.basis_data import BasisFunction
+from gpaw.basis_data import BasisFunction, Basis
 from gpaw.hgh import setups as hgh_setups, sc_setups as hgh_sc_setups,\
      HGHSetupData
 
+# XXX
+from scipy.optimize import bisect
 
-def generate_basis(opts, setup):
-    h = opts.grid
-    rcut = opts.rcut
-    
-    calc = AtomPAW(setup.symbol, [setup.f_ln], h=h, rcut=rcut,
+def atompaw(setup, f_ln, rcut, **kwargs):
+    return AtomPAW(setup.symbol,
+                   [f_ln],
+                   rcut=rcut,
                    setups={setup.symbol : setup},
-                   lmax=0)
+                   **kwargs)
+
+
+def get_orbitals_by_energy_shift(opts, setup, **kwargs):
+    h = opts.grid
+    try:
+        f_ln = setup.f_ln
+    except AttributeError:
+        f_ln = []
+        for n, l, f in zip(setup.n_j, setup.l_j, setup.f_j):
+            if n < 0:
+                continue
+            if l == len(f_ln):
+                f_ln.append([])
+            if f > 0 and n > 0:
+                f_ln[l].append(f)
+    def calculate(rcut, h=h, txt='-'):
+        return atompaw(setup, f_ln, rcut, h=h, txt=txt, **kwargs)
+
+    def get_orbital_energy(l0, n0, rcut):
+        calc = calculate(rcut, 0.15, txt=None)
+        for l, n, f, eps, psit_G in calc.state_iter():
+            if l == l0 and n + 1== n0: # XXX
+                return eps
+        raise ValueError('No such valence state: l=%d, n=%d' % (l0, n0))
+
+    calc0 = calculate(2.0, 0.2, txt=None) # XXX
+    def valence_states():
+        for l, n, f, eps, psit_G in calc0.state_iter():
+            yield l, n + 1 # XXX
+
+    bf_j = []
+    cutoffs = []
+    
+    for i, (l, n) in enumerate(valence_states()):
+        e0 = get_orbital_energy(l, n, 15.0) * 27.211 # 15Ang == infinity
+        print 'e0', e0
+        def obj(rcut):
+            eps = get_orbital_energy(l, n, rcut) * 27.211
+            de = eps - opts.energy_shift - e0
+            #print rcut, eps, de
+            return de
+        
+        # Not exactly efficient...
+        rcut = bisect(obj, 1.0, 15.0, xtol=0.1)
+        calc = calculate(h=h, rcut=rcut, txt=None)
+        bfs = calc.extract_basis_functions()
+        bf_j.append(bfs.bf_j[i])
+
+    basis = Basis(setup.symbol, 'strange', readxml=False)
+    basis.d = bfs.d
+    basis.ng = max([bf.ng for bf in bf_j])
+    basis.bf_j = bf_j
+    return basis
+    #for (l, n), cutoff in zip(valence_states(), cutoffs):
+    #    calculate(
+    
+    #return
+    #calc = calculate(rcut)
     bfs = calc.extract_basis_functions(basis_name=opts.name)
     ldict = dict([(bf.l, bf) for bf in bfs.bf_j])
 
@@ -81,24 +140,29 @@ def generate_basis(opts, setup):
 
 def build_parser():
     usage = '%prog [OPTION] [SYMBOL...]'
-    description = 'generate basis set from existing setup.  Values are in'\
-                  ' atomic units.'
+    
+    description = 'generate basis sets from existing setups.'
+    
     p = OptionParser(usage=usage, description=description)
     p.add_option('--grid', default=0.05, type=float, metavar='DR',
                  help='grid spacing in atomic calculation')
-    p.add_option('--rcut', default=10.0, type=float,
-                 help='radial cutoff for atomic calculation')
+    #p.add_option('--rcut', default=10.0, type=float,
+    #             help='radial cutoff for atomic calculation')
+    p.add_option('-f', '--file', action='store_true',
+                 help='load setups directly from files')
+    p.add_option('-E', '--energy-shift', type=float, default=0.1,
+                 help='use given energy shift to determine cutoff')
     p.add_option('-n', '--name', default='apaw',
                  help='name of basis set')
-    p.add_option('--splitnorm', action='append', default=[], metavar='NORM',
-                 help='add split-valence basis functions at this'
-                 ' tail norm.  Multiple options accumulate')
-    p.add_option('--polarization', action='append', default=[],
-                 metavar='NORM',
-                 help='add polarization function with characteristic radius'
-                 ' determined by tail norm.  Multiple options accumulate')
-    p.add_option('--s-approaches-zero', action='store_true',
-                 help='force s-type split-valence functions to 0 at origin')
+    #p.add_option('--splitnorm', action='append', default=[], metavar='NORM',
+    #             help='add split-valence basis functions at this'
+    #             ' tail norm.  Multiple options accumulate')
+    #p.add_option('--polarization', action='append', default=[],
+    #             metavar='NORM',
+    #             help='add polarization function with characteristic radius'
+    #             ' determined by tail norm.  Multiple options accumulate')
+    #p.add_option('--s-approaches-zero', action='store_true',
+    #             help='force s-type split-valence functions to 0 at origin')
     #p.add_option('-t', '--type',
     #             help='string describing extra basis functions')
                  
@@ -108,12 +172,34 @@ def build_parser():
 def main():
     p = build_parser()
     opts, args = p.parse_args()
-    
-    for arg in args:
-        setup = hgh_setups.get(arg)
-        if setup is None:
-            setup = hgh_sc_setups.get(arg.split('.')[0])
-        if setup is None:
-            raise ValueError('Unknown setup %s' % arg)
-        print setup
-        generate_basis(opts, HGHSetupData(setup))
+
+    if opts.file:
+        for fname in args:
+            tokens = fname.split('.')
+            symbol = tokens[0]
+            xc = tokens[1]
+            name = tokens[2]
+            if tokens[-1] == 'gz':
+                import gzip
+                fopen = gzip.open
+            else:
+                fopen = open
+            source = fopen(fname).read()
+
+            from gpaw.setup_data import SetupData
+
+            s = SetupData(symbol, xc, name, readxml=False)
+            s.read_xml(source=source)
+            basis = get_orbitals_by_energy_shift(opts, s, xc=xc)
+            basis.write_xml()
+    else:
+        for arg in args:
+            setup = hgh_setups.get(arg)
+            if setup is None:
+                setup = hgh_sc_setups.get(arg.split('.')[0])
+            if setup is None:
+                raise ValueError('Unknown setup %s' % arg)
+            print setup
+            basis = get_orbitals_by_energy_shift(opts, HGHSetupData(setup))
+            basis.write_xml()
+            #generate_basis(opts, HGHSetupData(setup))
