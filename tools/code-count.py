@@ -24,7 +24,7 @@ def plot_count(fname, dpi=70):
     date, libxc, c, code, test, doc = np.loadtxt(fname, unpack=True)
     zero = pl.zeros_like(date)
 
-    fig = pl.figure(1, figsize=(7.5, 5), dpi=dpi)
+    fig = pl.figure(1, figsize=(10, 5), dpi=dpi)
     ax = fig.add_subplot(111)
     polygon(date, c + code + test, c + code + test + doc,
              facecolor='m', label='Documentation')
