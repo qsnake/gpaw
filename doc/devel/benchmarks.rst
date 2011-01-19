@@ -550,7 +550,7 @@ The number of bands (1056) and cores are chosen to make comparisons
 of different band parallelizations (:ref:`band_parallelization`) possible.
 
 **Note**: to achive optimal performance diagonalization steps are performed
-on `4x4` blacs grid with block size of `64` specified by adding ``--sl_diagonalize=4,4,64`` option.
+on `4x4` blacs grid with block size of `64` specified by adding ``--gpaw=blacs=1 --sl_diagonalize=4,4,64`` options.
 
 **Note** also that a default domain decomposition is appplied, and different
 results can be obtained by tuning ``--domain-decomposition`` argument
@@ -707,7 +707,7 @@ The number of bands (1728) and cores are chosen to make comparisons
 of different band parallelizations (:ref:`band_parallelization`) possible.
 
 **Note**: to achive optimal performance diagonalization steps are performed
-on `5x5` blacs grid with block size of `64` specified by adding ``--sl_diagonalize=5,5,64`` option.
+on `5x5` blacs grid with block size of `64` specified by adding ``--gpaw=blacs=1 --sl_diagonalize=5,5,64`` options.
 
 **Note** also that a default domain decomposition is appplied, and different
 results can be obtained by tuning ``--domain-decomposition`` argument

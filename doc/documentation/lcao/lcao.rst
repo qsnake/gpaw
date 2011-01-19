@@ -73,9 +73,9 @@ will generate the basis-set files :file:`H.dzp.basis` and
 :file:`Cl.dzp.basis` for hydrogen and chlorine with sensible default
 parameters. Note that :file:`dzp` stands for ``double zeta polarized``
 which is the default basis-set type. The basis-set should be placed in
-the same directory as the GPAW setups (any directory listed in the
-:envvar:`GPAW_SETUP_PATH` environment variable). For a complete list
-of the parameters do::
+the same directory as the GPAW setups
+(see :ref:`installationguide_setup_files` for details).
+For a complete list of the parameters do::
 
   $ gpaw-basis --help
 

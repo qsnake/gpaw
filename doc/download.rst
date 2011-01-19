@@ -4,16 +4,17 @@
 Download
 ========
 
+.. note::
+
+   To determine which way of installation suits you best
+   please read carefully :ref:`installationguide` first!
+
 .. _latest_stable_release:
 
 Latest stable release
 =====================
 
 The latest stable release can be obtained from ``svn`` or as a ``tarball``.
-
-.. note::
-
-   The recommended installation path is :envvar:`$HOME`.
 
 When using svn please set the following variable:
 
@@ -65,21 +66,20 @@ Release   Date        Retrieve as svn checkout                       Retrieve as
 .. _gpaw-0.4.2734.tar.gz:
     https://wiki.fysik.dtu.dk/gpaw-files/gpaw-0.4.2734.tar.gz
 
-.. note::
-
-   GPAW requires ASE.
-   :ase:`Download and install ASE <download.html>`.
+After getting the code :ref:`create_links`.
 
 .. _latest_development_release:
 
 Latest development release
 ==========================
 
-The latest revision can be obtained like this::
+The latest revision can be obtained from svn::
 
   $ svn checkout https://svn.fysik.dtu.dk/projects/gpaw/trunk gpaw
 
 or from the daily snapshot: `<gpaw-snapshot.tar.gz>`_.
+
+After getting the code :ref:`create_links`.
 
 .. note::
 
@@ -87,9 +87,18 @@ or from the daily snapshot: `<gpaw-snapshot.tar.gz>`_.
 
 See :ref:`faq` in case of problems.
 
-Installation
+.. _create_links:
+
+Create links
 ============
 
+.. note::
+
+   GPAW requires ASE.
+   :ase:`Download and install ASE <download.html>`.
+
+It is convenient to maintain several version of GPAW
+with the help of links.
 After downloading create the link to the requested version, e.g.:
 
 - if retrieved from ``svn``::
@@ -103,4 +112,8 @@ After downloading create the link to the requested version, e.g.:
    $ tar xtzf gpaw-0.7.2.6974.tar.gz
    $ ln -s gpaw-0.7.2.6974 gpaw
 
-When you have the code, go to the :ref:`installationguide`.
+  .. note::
+
+     The recommended installation path is :envvar:`$HOME`.
+
+When you have the code, go back to the :ref:`installationguide`.

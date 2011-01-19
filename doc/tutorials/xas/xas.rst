@@ -24,11 +24,7 @@ or you can write a small script to do it:
 
 .. literalinclude:: setups.py
 
-.. note::
-
-   Refer to :ref:`Using your own setups <using_your_own_setups>` for help
-   on how to make GPAW recognize setups you create in local directories.
-
+Set the location of setups as decribed on :ref:`installationguide_setup_files`.
 
 Spectrum calculation using unoccupied states
 ============================================

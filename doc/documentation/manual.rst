@@ -230,9 +230,7 @@ for any missing elements::
 
 Currently all the hybrid functionals use the PBE setup as a *base* setup.
 
-The generated setups must to be present in the :envvar:`GPAW_SETUP_PATH`
-environment variable (see :ref:`manual_setups`).
-MDTMP - refer to the "how to set setups path".
+Set the location of setups as decribed on :ref:`installationguide_setup_files`.
 
 The details of the implementation of the exchange-correlation
 are described on the :ref:`xc_functionals` page.
@@ -504,9 +502,10 @@ The ``setups`` keyword is used to specify the name(s) of the setup files
 used in the calulation.
 
 For a given element ``E``, setup name ``NAME``, and xc-functional
-'XC', GPAW look for the file :file:`E.NAME.XC` or :file:`E.NAME.XC.gz`
-(in that order) in your :envvar:`GPAW_SETUP_PATH` environment
-variable. Unless ``NAME='paw'``, in which case it will simply look for
+'XC', GPAW looks for the file :file:`E.NAME.XC` or :file:`E.NAME.XC.gz`
+(in that order) in the setup locations
+(see :ref:`installationguide_setup_files`).
+Unless ``NAME='paw'``, in which case it will simply look for
 :file:`E.XC` (or :file:`E.XC.gz`).
 
 The ``setups`` keyword can be either a single string, or a dictionary.
@@ -555,9 +554,13 @@ determined by solving the Kohn-Sham equations in the LCAO basis.
 
 The ``basis`` keyword can be either a string or a dictionary.  If
 ``basis`` is a string, GPAW will look for a file named
-:file:`{symbol}.{basis}.basis` in the :envvar:`GPAW_SETUP_PATH`, where
+:file:`{symbol}.{basis}.basis` in
+the setup locations
+(see :ref:`installationguide_setup_files`), where
 :file:`{symbol}` is taken as the chemical symbol from the ``Atoms``
-object.  If ``basis`` is a dictionary, the basis set can be specified
+object.
+The first found file is used.
+If ``basis`` is a dictionary, the basis set can be specified
 differently for each atomic species by using the atomic symbol as
 a key, or for individual atoms by using an ``int`` as a key.  In the
 latter case the integer corresponds to the index of that atom in the
@@ -576,7 +579,8 @@ the ``Atoms`` object.
 The value ``None`` (default) implies that the pseudo partial waves
 from the setup are used as a basis. This basis is always available;
 choosing anything else requires the existence of the corresponding
-basis set file in the :envvar:`GPAW_SETUP_PATH`.
+basis set file in setup locations
+(see :ref:`installationguide_setup_files`).
 
 For details on the LCAO mode and generation of basis set files; see
 the :ref:`LCAO <lcao>` documentation.

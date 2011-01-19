@@ -85,7 +85,7 @@ while you run GPAW with the single command::
     GPAW_SETUP_PATH=.:$GPAW_SETUP_PATH gpaw-python script.py
 
 or if you are using csh or tcsh, you have to first run ``setenv`` and then 
-GPAW. This can be written on one line by delimiting with a semi-colon::
+GPAW::
 
-    setenv GPAW_SETUP_PATH .:$GPAW_SETUP_PATH; gpaw-python script.py
+    setenv GPAW_SETUP_PATH .:$GPAW_SETUP_PATH&& gpaw-python script.py
 
