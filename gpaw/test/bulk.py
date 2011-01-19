@@ -16,6 +16,13 @@ for x in a:
     niter1 = calc.get_number_of_iterations()
     e.append(e1)
 
+try:
+    from gpaw.io.etsf import ETSFWriter
+except ImportError:
+    pass  # Scientific.IO.NetCDF was not installed
+else:
+    ETSFWriter().write(calc)
+
 fit = np.polyfit(a, e, 2)
 a0 = np.roots(np.polyder(fit, 1))[0]
 e0 = np.polyval(fit, a0)
