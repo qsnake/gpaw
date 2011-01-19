@@ -563,6 +563,13 @@ latter case the integer corresponds to the index of that atom in the
 basis for carbon, and the ``dzp`` for whichever atom is number 7 in
 the ``Atoms`` object.
 
+.. note::
+
+    If you want to use only the ``sz`` basis functinons from a ``dzp``
+    basis set, then you can use this syntax: ``basis='sz(dzp)'``.
+    This will read the basis functions for, say hydrogen, from the
+    ``H.dzp.basis`` file.
+
 The value ``None`` (default) implies that the pseudo partial waves
 from the setup are used as a basis. This basis is always available;
 choosing anything else requires the existence of the corresponding

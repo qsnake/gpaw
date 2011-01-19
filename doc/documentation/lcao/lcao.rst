@@ -146,6 +146,7 @@ first matching file in the GPAW setups paths, rather than the precise
 specified files.  Run ``analyse-basis --help`` for more
 options.
 
+
 .. _ghost-atoms:
 
 Ghost atoms and basis set superposition errors
