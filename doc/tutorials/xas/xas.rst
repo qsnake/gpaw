@@ -24,14 +24,10 @@ or you can write a small script to do it:
 
 .. literalinclude:: setups.py
 
-Put the setups in a directory which is included in
-:envvar:`GPAW_SETUP_PATH`. If you want the setups in your local
-directory, add the following lines to your scripts
+.. note::
 
-::
-
-    from gpaw import setup_paths
-    setup_paths.insert(0, '.')
+   Refer to :ref:`Using your own setups <using_your_own_setups>` for help
+   on how to make GPAW recognize setups you create in local directories.
 
 
 Spectrum calculation using unoccupied states

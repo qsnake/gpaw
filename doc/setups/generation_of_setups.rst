@@ -63,3 +63,29 @@ which will use default parameters from the file
 ``gpaw/atom/generator.py``.
 
 
+.. _using_your_own_setups:
+
+Using your own setups
+=====================
+
+The setups you generate must be placed in a directory which is included in
+the environment variable :envvar:`GPAW_SETUP_PATH` in order for GPAW to
+find them. If you want to use the setups in your local directory, add the
+following lines to the beginning of your Python script::
+
+    from gpaw import setup_paths
+    setup_paths.insert(0, '.')
+
+You can also override the environment variable :envvar:`GPAW_SETUP_PATH` so
+that it lists the local directory first and the regular entries afterwards.
+
+If you use bash, :envvar:`GPAW_SETUP_PATH` can be temporarily modified
+while you run GPAW with the single command::
+
+    GPAW_SETUP_PATH=.:$GPAW_SETUP_PATH gpaw-python script.py
+
+or if you are using csh or tcsh, you have to first run ``setenv`` and then 
+GPAW. This can be written on one line by delimiting with a semi-colon::
+
+    setenv GPAW_SETUP_PATH .:$GPAW_SETUP_PATH; gpaw-python script.py
+
