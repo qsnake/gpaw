@@ -49,6 +49,8 @@ from numpy.fft import ifft
 
 from ase import Atoms
 from ase.calculators.neighborlist import NeighborList
+from ase.data import covalent_radii
+from ase.units import Bohr
 
 from gpaw.gaunt import gaunt
 from gpaw.spherical_harmonics import Yl, nablarlYL
@@ -352,8 +354,9 @@ class SimpleAtomIter:
 
 class NeighborPairs:
     """Class for looping over pairs of atoms using a neighbor list."""
-    def __init__(self, cutoff_a, cell_cv, pbc_c):
-        self.neighbors = NeighborList(cutoff_a, skin=0, sorted=True)
+    def __init__(self, cutoff_a, cell_cv, pbc_c, self_interaction):
+        self.neighbors = NeighborList(cutoff_a, skin=0, sorted=True, 
+                                      self_interaction=self_interaction)
         self.atoms = Atoms('X%d' % len(cutoff_a), cell=cell_cv, pbc=pbc_c)
         # Warning: never use self.atoms.get_scaled_positions() for
         # anything.  Those positions suffer from roundoff errors!
@@ -644,8 +647,12 @@ class NewTwoCenterIntegrals:
         self.setups_I = setups_I        
         self.atompairs = PairsWithSelfinteraction(NeighborPairs(cutoff_a,
                                                                 cell_cv,
-                                                                pbc_c))
+                                                                pbc_c,
+                                                                True))
         self.atoms = self.atompairs.pairs.atoms # XXX compatibility
+
+        cutoff_close_a = [covalent_radii[s.Z] / Bohr / 2. for s in setups]
+        self.atoms_close = NeighborPairs(cutoff_close_a, cell_cv, pbc_c, False)
 
         rcmax = max(cutoff_I + [0.001])
 
@@ -689,7 +696,18 @@ class NewTwoCenterIntegrals:
     def _calculate(self, calc, spos_ac, Theta_qxMM, T_qxMM, P_aqxMi):
         for X_xMM in [Theta_qxMM, T_qxMM] + P_aqxMi.values():
             X_xMM.fill(0.0)
-        
+ 
+        self.atoms_close.set_positions(spos_ac)
+        wrk = [x for x in  self.atoms_close.iter()]
+        if len(wrk) != 0:
+            txt = ''
+            for a1, a2, R_c, offset in wrk:
+                txt += 'Atom %d and Atom %d in cell (%d, %d, %d)\n' % \
+                        (a1, a2, offset[0], offset[1], offset[2])
+            raise RuntimeError('Atoms too close!\n' + txt)
+
+        del self.atoms_close
+       
         self.atompairs.set_positions(spos_ac)
 
         if self.blacs:
