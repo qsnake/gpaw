@@ -27,12 +27,13 @@ class ForceCalculator:
         # Force from projector functions (and basis set):
         wfs.calculate_forces(hamiltonian, self.F_av)
         
-        # ODD functionals need force corrections for each spin
-        #try:
-        #hamiltonian.xc.setup_force_corrections(self.F_av)
-        #except:
-        #pass # XXX why pass on KeyboardInterrupt ??
-        # If someone needs this please write proper except clause
+        try:
+            # ODD functionals need force corrections for each spin
+            correction = hamiltonian.xc.setup_force_corrections
+        except AttributeError:
+            pass
+        else:
+            correction(self.F_av)
         
         if wfs.band_comm.rank == 0 and wfs.kpt_comm.rank == 0:
             # Force from compensation charges:
