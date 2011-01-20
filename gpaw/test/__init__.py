@@ -171,6 +171,7 @@ tests = [
     'au02_absorption.py',
     'bse_aluminum.py',
     'bse_diamond.py',
+    'bse_vs_lrtddft.py',
     'hgh_h2o.py',
     'apmb.py',
     'relax.py',
@@ -277,6 +278,7 @@ except ImportError:
                 'au02_absorption.py',
                 'bse_aluminum.py',
                 'bse_diamond.py',
+                'bse_vs_lrtddft.py',
                 'aeatom.py']
 
 for test in exclude:
