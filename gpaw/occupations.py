@@ -6,6 +6,8 @@
 import warnings
 import numpy as np
 from ase.units import Hartree
+from gpaw.utilities import erf
+from math import pi
 
 class OccupationNumbers:
     """Base class for all occupation number objects."""
@@ -502,3 +504,41 @@ class FermiDirac(SmoothDistribution):
         e_entropy = -kpt.weight * y.sum() * self.width
         sign = 1 - kpt.s * 2
         return np.array([n, dnde, n * sign, e_entropy])
+
+class MethfesselPaxton(SmoothDistribution):
+    def __init__(self, width, iter=0, fixmagmom=False, maxiter=1000):
+        SmoothDistribution.__init__(self, width, fixmagmom, maxiter)
+        self.iter = iter
+
+    def distribution(self, kpt, fermilevel):
+        x = (kpt.eps_n - fermilevel) / self.width
+        x = x.clip(-100, 100)
+
+        z = 0.5 * (1 - erf(x))
+        for i in range(self.iter):
+            z += self.coff_function(i + 1) * self.hermite_poly(2 * i + 1, x) * np.exp(-x**2)
+        kpt.f_n[:] = kpt.weight * z
+        n = kpt.f_n.sum()
+
+        dnde = - 1. / np.sqrt(pi) * np.exp(-x**2)
+        for i in range(self.iter):
+            dnde += - self.coff_function(i + 1) * self.hermite_poly(2 * i + 2, x) * np.exp(-x**2)
+        dnde = dnde.sum()
+        dnde /= self.width
+        e_entropy = 0.5 * self.coff_function(self.iter) * self.hermite_poly(2 * self.iter, x)* np.exp(-x**2)
+        e_entropy = e_entropy.sum()
+
+        sign = 1 - kpt.s * 2
+        return np.array([n, dnde, n * sign, e_entropy])
+
+    def coff_function(self, n):
+        return (-1)**n / (np.product(np.arange(1, n + 1)) * 4.** n * np.sqrt(np.pi))
+
+    def hermite_poly(self, n, x):
+        if n == 0:
+            return 1
+        elif n == 1:
+            return 2 * x
+        else:
+            return 2 * x * self.hermite_poly(n - 1, x) \
+                            - 2 * (n - 1) * self.hermite_poly(n - 2 , x)

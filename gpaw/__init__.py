@@ -236,7 +236,7 @@ setup_paths = os.environ.get('GPAW_SETUP_PATH', '').split(':')
 from gpaw.aseinterface import GPAW
 from gpaw.mixer import Mixer, MixerSum, MixerDif, MixerSum2
 from gpaw.poisson import PoissonSolver
-from gpaw.occupations import FermiDirac
+from gpaw.occupations import FermiDirac, MethfesselPaxton
 
 class Calculator(GPAW):
     def __init__(self, *args, **kwargs):
