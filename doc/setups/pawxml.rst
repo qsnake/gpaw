@@ -17,11 +17,7 @@ calculations\ [#Blo94]_.  We use the term *setup* because the PAW
 method is not a pseudopotential method.
 
 An example XML file for nitrogen PAW setup using LDA can be seen
-here: N.LDA_.
-
-
-.. _N.LDA: N.LDA
-
+here: `N.LDA <../N.LDA>`_.
 
 .. note::
    Hartree atomic units are used in the XML file (`\hbar = m = e = 1`).
@@ -464,12 +460,13 @@ transformation, some sort of normalization may be necessary.
 Plotting the radial functions
 -----------------------------
 
-The first 10-20 lines of the XML-setups, should be pretty much
-human readable, and should give an overview of what kind of setup it
-is and how it was generated.  The remaining part of the files contain
+The first 10-20 lines of the XML-setups, should be pretty much human
+readable, and should give an overview of what kind of setup it is and
+how it was generated.  The remaining part of the files contain
 numerical data for all the radial functions.  To get an overview of
-these functions, you can extract that data with the `<pawxml.py>`__
-program and then pass it on to your favorite plotting tool.
+these functions, you can extract that data with the
+:trac:`~doc/setups/pawxml.py` program and then pass it on to your
+favorite plotting tool.
 
 .. note::
    The ``pawxml.py`` program is very primitive and is only included in
