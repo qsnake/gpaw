@@ -18,14 +18,13 @@ from gpaw.mpi import world
 
 defaults = InputParameters()
 
-
 def build_parser():
     description = ('Run GPAW calculation for simple atoms, molecules or '
                    'bulk systems.')
-    epilog = 'Additional options: --%s.  ' % ', --'.join(defaults.keys())
+    epilog = 'GPAW options: --%s.  ' % ', --'.join(defaults.keys())
     parser = optparse.OptionParser(usage='%prog [options] formula or filename',
-                                   version='%prog 0.1', description=description,
-                                   epilog=epilog)
+                                   version='%prog 0.1',
+                                   description=description + ' ' + epilog)
 
     struct = optparse.OptionGroup(parser, 'Structure')
     struct.add_option('-i', '--identifier',
@@ -74,11 +73,10 @@ def build_parser():
                         help='Use EMT calculator.')
     parser.add_option_group(behavior)
 
-    # Calculator:
     calc_opts = optparse.OptionGroup(parser, 'Calculator')
     for key in defaults:
         calc_opts.add_option('--%s' % key, type=str,
-                             help=optparse.SUPPRESS_HELP)#'default=%default')
+                             help=optparse.SUPPRESS_HELP)
 
     calc_opts.add_option('--write-gpw-file', metavar='MODE',
                          help='Write gpw file.')
