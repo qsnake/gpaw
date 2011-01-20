@@ -651,8 +651,8 @@ class NewTwoCenterIntegrals:
                                                                 True))
         self.atoms = self.atompairs.pairs.atoms # XXX compatibility
 
-        cutoff_close_a = [covalent_radii[s.Z] / Bohr / 2. for s in setups]
-        self.atoms_close = NeighborPairs(cutoff_close_a, cell_cv, pbc_c, False)
+        #cutoff_close_a = [covalent_radii[s.Z] / Bohr / 2. for s in setups]
+        #self.atoms_close = NeighborPairs(cutoff_close_a, cell_cv, pbc_c, False)
 
         rcmax = max(cutoff_I + [0.001])
 
@@ -696,17 +696,18 @@ class NewTwoCenterIntegrals:
     def _calculate(self, calc, spos_ac, Theta_qxMM, T_qxMM, P_aqxMi):
         for X_xMM in [Theta_qxMM, T_qxMM] + P_aqxMi.values():
             X_xMM.fill(0.0)
- 
-        self.atoms_close.set_positions(spos_ac)
-        wrk = [x for x in  self.atoms_close.iter()]
-        if len(wrk) != 0:
-            txt = ''
-            for a1, a2, R_c, offset in wrk:
-                txt += 'Atom %d and Atom %d in cell (%d, %d, %d)\n' % \
-                        (a1, a2, offset[0], offset[1], offset[2])
-            raise RuntimeError('Atoms too close!\n' + txt)
 
-        del self.atoms_close
+        if 0: # XXX
+            self.atoms_close.set_positions(spos_ac)
+            wrk = [x for x in  self.atoms_close.iter()]
+            if len(wrk) != 0:
+                txt = ''
+                for a1, a2, R_c, offset in wrk:
+                    txt += 'Atom %d and Atom %d in cell (%d, %d, %d)\n' % \
+                            (a1, a2, offset[0], offset[1], offset[2])
+                raise RuntimeError('Atoms too close!\n' + txt)
+
+            del self.atoms_close
        
         self.atompairs.set_positions(spos_ac)
 

@@ -9,6 +9,22 @@ from gpaw.utilities.blas import gemm, gemmdot
 from gpaw.wavefunctions.base import WaveFunctions
 
 
+def add_paw_correction_to_overlap(setups, P_aqMi, S_qMM, Mstart=0,
+                                  Mstop=None):
+    if Mstop is None:
+        Mstop = setups.nao
+    for a, P_qMi in P_aqMi.items():
+        dO_ii = np.asarray(setups[a].dO_ii, S_qMM.dtype)
+        for S_MM, P_Mi in zip(S_qMM, P_qMi):
+            dOP_iM = np.zeros((dO_ii.shape[1], setups.nao),
+                              P_Mi.dtype)
+            # (ATLAS can't handle uninitialized output array)
+            gemm(1.0, P_Mi, dO_ii, 0.0, dOP_iM, 'c')
+            gemm(1.0, dOP_iM, P_Mi[Mstart:Mstop],
+                 1.0, S_MM, 'n')
+
+
+
 class LCAOWaveFunctions(WaveFunctions):
     def __init__(self, ksl, gd, nvalence, setups, bd,
                  dtype, world, kd, timer=None):
@@ -37,18 +53,6 @@ class LCAOWaveFunctions(WaveFunctions):
     def set_eigensolver(self, eigensolver):
         WaveFunctions.set_eigensolver(self, eigensolver)
         eigensolver.initialize(self.gd, self.dtype, self.setups.nao, self.ksl)
-
-    def add_paw_correction_to_overlap(self, P_aqMi, S_qMM):
-        for a, P_qMi in P_aqMi.items():
-            dO_ii = np.asarray(self.setups[a].dO_ii, self.dtype)
-            for S_MM, P_Mi in zip(S_qMM, P_qMi):
-                dOP_iM = np.zeros((dO_ii.shape[1], self.setups.nao),
-                                  P_Mi.dtype)
-                # (ATLAS can't handle uninitialized output array)
-                gemm(1.0, P_Mi, dO_ii, 0.0, dOP_iM, 'c')
-                gemm(1.0, dOP_iM, P_Mi[self.ksl.Mstart:self.ksl.Mstop],
-                     1.0, S_MM, 'n')
-
 
     def set_positions(self, spos_ac):
         self.timer.start('Basic WFS set positions')
@@ -109,7 +113,8 @@ class LCAOWaveFunctions(WaveFunctions):
 
         self.timer.start('TCI: Calculate S, T, P')
         self.tci.calculate(spos_ac, S_qMM, T_qMM, self.P_aqMi)
-        self.add_paw_correction_to_overlap(self.P_aqMi, S_qMM)
+        add_paw_correction_to_overlap(self.setups, self.P_aqMi, S_qMM,
+                                      self.ksl.Mstart, self.ksl.Mstop)
         self.timer.stop('TCI: Calculate S, T, P')
 
         S_MM = None # allow garbage collection of old S_qMM after redist
