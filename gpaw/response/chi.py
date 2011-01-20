@@ -124,8 +124,8 @@ class CHI(BASECHI):
         self.get_phi_aGp()
 
         # Calculate ALDA kernel for EELS spectrum
-        # Use RPA kernel for Optical spectrum
-        if not self.optical_limit:
+        # Use RPA kernel for Optical spectrum and rpa correlation energy
+        if not self.optical_limit and np.dtype(self.w_w[0]) == float:
             R_av = calc.atoms.positions / Bohr
             self.Kxc_GG = calculate_Kxc(self.gd, # global grid
                                     calc.density.nt_sG,
@@ -159,6 +159,9 @@ class CHI(BASECHI):
 
         # Matrix init
         chi0_wGG = np.zeros((self.Nw_local, self.npw, self.npw), dtype=complex)
+        if not (f_kn > 0.001).any():
+            self.chi0_wGG = chi0_wGG
+            return
         if self.hilbert_trans:
             specfunc_wGG = np.zeros((self.NwS_local, self.npw, self.npw), dtype = complex)
 
