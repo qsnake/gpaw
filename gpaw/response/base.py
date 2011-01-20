@@ -34,7 +34,6 @@ class BASECHI:
                  optical_limit=False):
 
         self.xc = 'LDA'
-        self.nspin = 1
 
         self.txtname = txt
         self.output_init()
@@ -54,6 +53,7 @@ class BASECHI:
             self.calc = calc
 
         self.nbands = nbands
+        self.nspins = self.calc.wfs.nspins
         self.q_c = q
 
         self.w_w = w
@@ -84,8 +84,6 @@ class BASECHI:
         if self.nbands is None:
             self.nbands = calc.wfs.nbands
         self.nvalence = calc.wfs.nvalence
-
-        assert calc.wfs.nspins == 1
 
         # cell init
         self.acell_cv = calc.atoms.cell / Bohr
@@ -233,14 +231,14 @@ class BASECHI:
         return
 
 
-    def get_wavefunction(self, ibzk, n, k, check_focc=True):
+    def get_wavefunction(self, ibzk, n, k, check_focc=True, spin=0):
 
         if self.calc.wfs.kpt_comm.size != world.size or world.size == 1:
 
             if check_focc == False:
                 return
             else:
-                psit_G = self.calc.wfs.get_wave_function_array(n, ibzk, 0)
+                psit_G = self.calc.wfs.get_wave_function_array(n, ibzk, spin)
         
                 if self.calc.wfs.world.size == 1:
                     return np.complex128(psit_G)
