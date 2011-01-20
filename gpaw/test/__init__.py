@@ -79,6 +79,7 @@ tests = [
     'nabla.py',
     'aeatom.py',
     'pbc.py',
+    'atoms_too_close.py',
     'poisson.py',
     'XC2.py',
     'multipoletest.py',
