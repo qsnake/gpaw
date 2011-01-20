@@ -153,35 +153,81 @@ class FDPWWaveFunctions(WaveFunctions):
                 self.gd.distribute(big_psit_G, psit_G)
         
     def random_wave_functions(self, nao):
-        """Generate random wave functions"""
+        """Generate random wave functions."""
 
-        gd1 = self.gd.coarsen()
-        gd2 = gd1.coarsen()
+        gpts = self.gd.N_c[0]*self.gd.N_c[1]*self.gd.N_c[2]
+        
+        if self.nbands < gpts/64:
+            gd1 = self.gd.coarsen()
+            gd2 = gd1.coarsen()
 
-        psit_G1 = gd1.empty(dtype=self.dtype)
-        psit_G2 = gd2.empty(dtype=self.dtype)
+            psit_G1 = gd1.empty(dtype=self.dtype)
+            psit_G2 = gd2.empty(dtype=self.dtype)
 
-        interpolate2 = Transformer(gd2, gd1, 1, self.dtype).apply
-        interpolate1 = Transformer(gd1, self.gd, 1, self.dtype).apply
+            interpolate2 = Transformer(gd2, gd1, 1, self.dtype).apply
+            interpolate1 = Transformer(gd1, self.gd, 1, self.dtype).apply
 
-        shape = tuple(gd2.n_c)
+            shape = tuple(gd2.n_c)
+            scale = np.sqrt(12 / abs(np.linalg.det(gd2.cell_cv)))
 
-        scale = np.sqrt(12 / abs(np.linalg.det(gd2.cell_cv)))
+            old_state = np.random.get_state()
 
-        old_state = np.random.get_state()
-        np.random.seed(4 + self.world.rank)
+            np.random.seed(4 + self.world.rank)
 
-        for kpt in self.kpt_u:
-            for psit_G in kpt.psit_nG[nao:]:
-                if self.dtype == float:
-                    psit_G2[:] = (np.random.random(shape) - 0.5) * scale
-                else:
-                    psit_G2.real = (np.random.random(shape) - 0.5) * scale
-                    psit_G2.imag = (np.random.random(shape) - 0.5) * scale
-                    
-                interpolate2(psit_G2, psit_G1, kpt.phase_cd)
-                interpolate1(psit_G1, psit_G, kpt.phase_cd)
-        np.random.set_state(old_state)
+            for kpt in self.kpt_u:
+                for psit_G in kpt.psit_nG[nao:]:
+                    if self.dtype == float:
+                        psit_G2[:] = (np.random.random(shape) - 0.5) * scale
+                    else:
+                        psit_G2.real = (np.random.random(shape) - 0.5) * scale
+                        psit_G2.imag = (np.random.random(shape) - 0.5) * scale
+
+                    interpolate2(psit_G2, psit_G1, kpt.phase_cd)
+                    interpolate1(psit_G1, psit_G, kpt.phase_cd)
+            np.random.set_state(old_state)
+        
+        elif gpts/64 <= self.nbands < gpts/8:
+            gd1 = self.gd.coarsen()
+
+            psit_G1 = gd1.empty(dtype=self.dtype)
+
+            interpolate1 = Transformer(gd1, self.gd, 1, self.dtype).apply
+
+            shape = tuple(gd1.n_c)
+            scale = np.sqrt(12 / abs(np.linalg.det(gd1.cell_cv)))
+
+            old_state = np.random.get_state()
+
+            np.random.seed(4 + self.world.rank)
+
+            for kpt in self.kpt_u:
+                for psit_G in kpt.psit_nG[nao:]:
+                    if self.dtype == float:
+                        psit_G1[:] = (np.random.random(shape) - 0.5) * scale
+                    else:
+                        psit_G1.real = (np.random.random(shape) - 0.5) * scale
+                        psit_G1.imag = (np.random.random(shape) - 0.5) * scale
+
+                    interpolate1(psit_G1, psit_G, kpt.phase_cd)
+            np.random.set_state(old_state)
+               
+        else:
+            shape = tuple(self.gd.n_c)
+            scale = np.sqrt(12 / abs(np.linalg.det(self.gd.cell_cv)))
+
+            old_state = np.random.get_state()
+
+            np.random.seed(4 + self.world.rank)
+
+            for kpt in self.kpt_u:
+                for psit_G in kpt.psit_nG[nao:]:
+                    if self.dtype == float:
+                        psit_G[:] = (np.random.random(shape) - 0.5) * scale
+                    else:
+                        psit_G.real = (np.random.random(shape) - 0.5) * scale
+                        psit_G.imag = (np.random.random(shape) - 0.5) * scale
+
+            np.random.set_state(old_state)        
 
     def orthonormalize(self):
         for kpt in self.kpt_u:
