@@ -43,8 +43,23 @@ class DF(CHI):
         for iw in range(self.Nw_local):
             for iG in range(self.npw):
                 qG = np.dot(self.q_c + self.Gvec_Gc[iG], self.bcell_cv)
-                dm_wGG[iw,iG] =  tmp_GG[iG] - 4 * pi / np.dot(qG, qG) * self.chi0_wGG[iw,iG]
+                dm_wGG[iw,iG] = tmp_GG[iG] - 4 * pi / np.dot(qG, qG) * self.chi0_wGG[iw,iG]
 
+        if self.nspins == 2:
+            nibzkpt = self.ibzk_kc.shape[0]
+            kweight_k = self.calc.get_k_point_weights()
+            self.e_kn = np.array([self.calc.get_eigenvalues(kpt=k, spin=1)
+                                  for k in range(nibzkpt)]) / Hartree
+            self.f_kn = np.array([self.calc.get_occupation_numbers(kpt=k, spin=1) /
+                                  kweight_k[k]
+                                  for k in range(nibzkpt)]) / self.nkpt
+            self.calculate(spin=1)
+
+            for iw in range(self.Nw_local):
+                for iG in range(self.npw):
+                    qG = np.dot(self.q_c + self.Gvec_Gc[iG], self.bcell_cv)
+                    dm_wGG[iw,iG] -=  4 * pi / np.dot(qG, qG) * self.chi0_wGG[iw,iG]
+        
         return dm_wGG
 
 
@@ -71,7 +86,7 @@ class DF(CHI):
         for iw in range(self.Nw_local):
             tmp_GG = np.eye(self.npw, self.npw) - np.dot(self.chi0_wGG[iw], kernel_GG)
             chi_wGG[iw] = np.dot(np.linalg.inv(tmp_GG) , self.chi0_wGG[iw])
-            
+
         return chi_wGG
 
 
