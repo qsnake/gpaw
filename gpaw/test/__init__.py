@@ -255,7 +255,10 @@ if mpi.size < 4:
     exclude += ['parallel/pblas.py',
                 'parallel/scalapack.py',
                 'parallel/realspace_blacs.py',
-                'AA_exx_enthalpy.py']
+                'AA_exx_enthalpy.py',
+                'bse_aluminum.py',
+                'bse_diamond.py',
+                'bse_vs_lrtddft.py']
 
 if mpi.size != 4:
     exclude += ['parallel/lcao_parallel.py']
