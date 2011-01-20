@@ -38,6 +38,18 @@ class LCAOWaveFunctions(WaveFunctions):
         WaveFunctions.set_eigensolver(self, eigensolver)
         eigensolver.initialize(self.gd, self.dtype, self.setups.nao, self.ksl)
 
+    def add_paw_correction_to_overlap(self, P_aqMi, S_qMM):
+        for a, P_qMi in P_aqMi.items():
+            dO_ii = np.asarray(self.setups[a].dO_ii, self.dtype)
+            for S_MM, P_Mi in zip(S_qMM, P_qMi):
+                dOP_iM = np.zeros((dO_ii.shape[1], self.setups.nao),
+                                  P_Mi.dtype)
+                # (ATLAS can't handle uninitialized output array)
+                gemm(1.0, P_Mi, dO_ii, 0.0, dOP_iM, 'c')
+                gemm(1.0, dOP_iM, P_Mi[self.ksl.Mstart:self.ksl.Mstop],
+                     1.0, S_MM, 'n')
+
+
     def set_positions(self, spos_ac):
         self.timer.start('Basic WFS set positions')
         WaveFunctions.set_positions(self, spos_ac)
@@ -97,15 +109,7 @@ class LCAOWaveFunctions(WaveFunctions):
 
         self.timer.start('TCI: Calculate S, T, P')
         self.tci.calculate(spos_ac, S_qMM, T_qMM, self.P_aqMi)
-        nao = self.setups.nao
-        for a, P_qMi in self.P_aqMi.items():
-            dO_ii = np.asarray(self.setups[a].dO_ii, P_qMi.dtype)
-            for S_MM, P_Mi in zip(S_qMM, P_qMi):
-                dOP_iM = np.zeros((dO_ii.shape[1], nao), P_Mi.dtype)
-                # (ATLAS can't handle uninitialized output array)
-                gemm(1.0, P_Mi, dO_ii, 0.0, dOP_iM, 'c')
-                gemm(1.0, dOP_iM, P_Mi[Mstart:Mstop], 1.0, S_MM, 'n')
-
+        self.add_paw_correction_to_overlap(self.P_aqMi, S_qMM)
         self.timer.stop('TCI: Calculate S, T, P')
 
         S_MM = None # allow garbage collection of old S_qMM after redist
