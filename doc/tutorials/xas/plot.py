@@ -1,6 +1,8 @@
-from gpaw import GPAW
+from gpaw import GPAW, setup_paths
 from gpaw.xas import XAS
 import pylab as plt
+
+setup_paths.insert(0, '.')
 
 dks_energy = 532.774  # from dks calcualtion
 
