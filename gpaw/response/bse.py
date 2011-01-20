@@ -37,6 +37,8 @@ class BSE(CHI):
 
     def initialize(self):
 
+        calc = self.calc
+
         # frequency points init
         self.dw = self.w_w[1] - self.w_w[0]
         assert ((self.w_w[1:] - self.w_w[:-1] - self.dw) < 1e-10).all() # make sure its linear w grid
@@ -48,8 +50,6 @@ class BSE(CHI):
         self.w_w  /= Hartree
         self.wmax = self.w_w[-1] 
         self.Nw  = int(self.wmax / self.dw) + 1
-
-        calc = self.calc
         
         # kpoint init
         self.bzk_kc = calc.get_bz_k_points()
@@ -66,7 +66,6 @@ class BSE(CHI):
         # grid init
         self.nG = calc.get_number_of_grid_points()
         self.nG0 = self.nG[0] * self.nG[1] * self.nG[2]
-#        gd = GridDescriptor(self.nG, calc.wfs.gd.cell_cv, pbc_c=True, comm=serial_comm)
         self.gd = gd = calc.wfs.gd      
 
         # obtain eigenvalues, occupations
@@ -83,12 +82,10 @@ class BSE(CHI):
             print  >> self.txt, self.e_kn[0] * Hartree
         self.f_kn = np.array([calc.get_occupation_numbers(kpt=k) / kweight_k[k]
                     for k in range(nibzkpt)]) / self.nkpt
-        print self.f_kn
 
         # band init
         if self.nbands is None:
             self.nbands = calc.wfs.nbands
-        self.nvalence = calc.wfs.nvalence
 
         # k + q init
         assert self.q_c is not None
@@ -127,14 +124,32 @@ class BSE(CHI):
             op_scc = calc.wfs.symmetry.op_scc
         self.op_scc = op_scc
 
-        self.printtxt('Number of planewaves, %d' %(self.npw))
+        # find the pair index and initialized pair energy (e_i - e_j) and occupation(f_i-f_j)
+        self.e_S = {}
+        focc_s = {}
+        self.Sindex_S3 = {}
+        iS = 0
+        for k1 in range(self.nkpt):
+            ibzkpt1, iop1, timerev1 = find_ibzkpt(self.op_scc, self.ibzk_kc, self.bzk_kc[k1])
+            ibzkpt2, iop2, timerev2 = find_ibzkpt(self.op_scc, self.ibzk_kc, self.bzk_kc[kq_k[k1]])
+            for n1 in range(self.nbands):
+                for m1 in range(self.nbands):
+                    focc = self.f_kn[ibzkpt1,n1] - self.f_kn[ibzkpt2,m1]
+                    if np.abs(focc) > self.ftol:
+                        self.e_S[iS] =self.e_kn[ibzkpt2,m1] - self.e_kn[ibzkpt1,n1]
+                        focc_s[iS] = focc
+                        self.Sindex_S3[iS] = (k1, n1, m1)
+                        iS += 1
+        self.nS = iS
+        self.focc_S = np.zeros(self.nS)
+        for iS in range(self.nS):
+            self.focc_S[iS] = focc_s[iS]
 
         # parallel init
-        if self.nkpt > 1:
-            self.kcomm = world
-            self.nkpt, self.nkpt_local, self.kstart, self.kend = parallel_partition(
-                               self.nkpt, self.kcomm.rank, self.kcomm.size, reshape=False)
-            print self.kstart, self.kend, self.nkpt_local
+        self.Scomm = world
+        self.nS, self.nS_local, self.nS_start, self.nS_end = parallel_partition(
+                               self.nS, self.Scomm.rank, self.Scomm.size, reshape=False)
+        self.print_stuff()
 
 
         # For LCAO wfs
@@ -169,7 +184,7 @@ class BSE(CHI):
             self.kc_G[iG] = 1. / np.inner(qG, qG)
         if self.optical_limit:
             self.kc_G[0] = 0.
-
+        self.printtxt('Finished Coulomb kernel !')
         
         return
 
@@ -181,61 +196,27 @@ class BSE(CHI):
         ibzk_kc = self.ibzk_kc
         bzk_kc = self.bzk_kc
         kq_k = self.kq_k
-        
-        # find the corresponding ibzkpt for k and k+q
-        self.ibzk1_k = ibzk1_k = np.zeros(self.nkpt, dtype=int)
-        iop1_k = np.zeros(self.nkpt, dtype=int)
-        timerev1_k = np.zeros(self.nkpt, dtype=bool)
-        
-        self.ibzk2_k = ibzk2_k = np.zeros(self.nkpt, dtype=int)
-        iop2_k = np.zeros(self.nkpt, dtype=int)
-        timerev2_k = np.zeros(self.nkpt, dtype=bool)
-        
-        for ik in range(self.nkpt):
-            ibzk1_k[ik], iop1_k[ik], timerev1_k[ik] = find_ibzkpt(self.op_scc,
-                                                ibzk_kc, bzk_kc[ik])
-            ibzk2_k[ik], iop2_k[ik], timerev2_k[ik] = find_ibzkpt(self.op_scc,
-                                                ibzk_kc, bzk_kc[kq_k[ik]])
+        focc_S = self.focc_S
+        e_S = self.e_S
 
-        e_S = {}
-        focc_s = {}
-        Sindex_S3 = {}
-        iS = 0
-        for k1 in range(self.nkpt):
-            for n1 in range(self.nbands):
-                for m1 in range(self.nbands):
-                    focc = f_kn[ibzk1_k[k1],n1] - f_kn[ibzk2_k[k1],m1]
-                    if np.abs(focc) > self.ftol:
-                        e_S[iS] = e_kn[ibzk2_k[k1],m1] - e_kn[ibzk1_k[k1],n1]
-                        focc_s[iS] = focc
-                        Sindex_S3[iS] = (k1, n1, m1)
-                        iS += 1
-        self.nS = iS
-        print self.nS, self.nkpt, self.nbands
-        focc_S = np.zeros(self.nS)
-        for iS in range(self.nS):
-            focc_S[iS] = focc_s[iS]
-
+        # calculate kernel
         K_SS = np.zeros((self.nS, self.nS), dtype=complex)
         rhoG0_S = np.zeros((self.nS), dtype=complex)
 
-        nS, nS_local, nS_start, nS_end = parallel_partition(
-                               self.nS, world.rank, world.size, reshape=False)
-        print nS_local, nS_start, nS_end
-
-        for iS in range(nS_start, nS_end):
-            print iS
-            k1, n1, m1 = Sindex_S3[iS]
+        for iS in range(self.nS_start, self.nS_end):
+            print 'calculating kernel', iS
+            k1, n1, m1 = self.Sindex_S3[iS]
             rho1_G = self.density_matrix_Gspace(n1,m1,k1)
             rhoG0_S[iS] = rho1_G[0]
             for jS in range(self.nS):
-                k2, n2, m2 = Sindex_S3[jS]
+                k2, n2, m2 = self.Sindex_S3[jS]
                 rho2_G = self.density_matrix_Gspace(n2,m2,k2)
                 K_SS[iS, jS] = np.sum(rho1_G.conj() * rho2_G * self.kc_G)
         K_SS *= 4 * pi / self.vol
-        world.sum(K_SS)
-        world.sum(rhoG0_S)
-        
+        self.Scomm.sum(K_SS)
+        self.Scomm.sum(rhoG0_S)
+
+        # get and solve hamiltonian
         H_SS = np.zeros_like(K_SS)
         for iS in range(self.nS):
             H_SS[iS,iS] = e_S[iS]
@@ -244,16 +225,17 @@ class BSE(CHI):
 
         w_S, v_SS = np.linalg.eig(H_SS)
 
-        epsilon_w = np.zeros(self.Nw, dtype=complex)
-
+        # get overlap matrix
         tmp = np.zeros((self.nS, self.nS), dtype=complex)
         for iS in range(self.nS):
             for jS in range(self.nS):
                 tmp[iS, jS] = (v_SS[:, iS].conj() * v_SS[:, jS]).sum()
         overlap_SS = np.linalg.inv(tmp)
 
+        # get chi
+        epsilon_w = np.zeros(self.Nw, dtype=complex)
         tmp_w = np.zeros(self.Nw, dtype=complex)
-        for iS in range(nS_start, nS_end):
+        for iS in range(self.nS_start, self.nS_end):
             tmp_iS = v_SS[:,iS] * rhoG0_S 
             for iw in range(self.Nw):
                 tmp_w[iw] = 1. / (iw*self.dw - w_S[iS] + 1j * self.eta)
@@ -262,7 +244,7 @@ class BSE(CHI):
                 tmp_jS = v_SS[:,jS] * rhoG0_S * focc_S
                 tmp = np.outer(tmp_iS, tmp_jS.conj()).sum() * overlap_SS[iS, jS]
                 epsilon_w += tmp * tmp_w
-        world.sum(epsilon_w)
+        self.Scomm.sum(epsilon_w)
 
         epsilon_w *=  - 4 * pi / np.inner(self.qq_v, self.qq_v) / self.vol
         epsilon_w += 1        
@@ -324,3 +306,43 @@ class BSE(CHI):
             rho_G[0] /= self.e_kn[ibzkpt2, m] - self.e_kn[ibzkpt1, n]
 
         return rho_G
+
+
+    def printtxt(self, text):
+        print >> self.txt, text
+
+
+    def print_stuff(self):
+
+        printtxt = self.printtxt
+        printtxt('')
+        printtxt('Parameters used:')
+        printtxt('')
+        printtxt('Unit cell (a.u.):')
+        printtxt(self.acell_cv)
+        printtxt('Reciprocal cell (1/a.u.)')
+        printtxt(self.bcell_cv)
+        printtxt('Number of Grid points / G-vectors, and in total: (%d %d %d), %d'
+                  %(self.nG[0], self.nG[1], self.nG[2], self.nG0))
+        printtxt('Volome of cell (a.u.**3)     : %f' %(self.vol) )
+        printtxt('BZ volume (1/a.u.**3)        : %f' %(self.BZvol) )
+        printtxt('')                         
+        printtxt('Number of bands              : %d' %(self.nbands) )
+        printtxt('Number of kpoints            : %d' %(self.nkpt) )
+        printtxt('Planewave ecut (eV)          : (%f, %f, %f)' %(self.ecut[0]*Hartree,self.ecut[1]*Hartree,self.ecut[2]*Hartree) )
+        printtxt('Number of planewave used     : %d' %(self.npw) )
+        printtxt('Broadening (eta)             : %f' %(self.eta * Hartree))
+        printtxt('Number of frequency points   : %d' %(self.Nw) )
+        if self.optical_limit:
+            printtxt('Optical limit calculation ! (q=0.00001)')
+        else:
+            printtxt('q in reduced coordinate        : (%f %f %f)' %(self.q_c[0], self.q_c[1], self.q_c[2]) )
+            printtxt('q in cartesian coordinate (1/A): (%f %f %f) '
+                  %(self.qq_v[0] / Bohr, self.qq_v[1] / Bohr, self.qq_v[2] / Bohr) )
+            printtxt('|q| (1/A)                      : %f' %(sqrt(np.dot(self.qq_v / Bohr, self.qq_v / Bohr))) )
+        printtxt('')
+        printtxt('Number of pair orbitals      : %d' %(self.nS) )
+        printtxt('Parallelization scheme:')
+        printtxt('   Total cpus         : %d' %(world.size))
+        printtxt('   pair orb parsize   : %d' %(self.Scomm.size))        
+        
