@@ -25,6 +25,8 @@ class BSE(BASECHI):
         BASECHI.__init__(self, calc, nbands, w, q, ecut,
                      eta, ftol, txt, optical_limit)
 
+        self.epsilon_w = None
+
     def initialize(self):
 
         self.printtxt('')
@@ -85,9 +87,10 @@ class BSE(BASECHI):
             self.kc_G[iG] = 1. / np.inner(qG, qG)
         if self.optical_limit:
             self.kc_G[0] = 0.
-        self.printtxt('Finished Coulomb kernel !')
+        self.printtxt('')
         
         return
+
 
     def calculate(self):
 
@@ -140,7 +143,7 @@ class BSE(BASECHI):
             tmp_iS = v_SS[:,iS] * rhoG0_S 
             for iw in range(self.Nw):
                 tmp_w[iw] = 1. / (iw*self.dw - w_S[iS] + 1j * self.eta)
-            print iS
+            print 'calculating epsilon', iS
             for jS in range(self.nS):
                 tmp_jS = v_SS[:,jS] * rhoG0_S * focc_S
                 tmp = np.outer(tmp_iS, tmp_jS.conj()).sum() * overlap_SS[iS, jS]
@@ -164,3 +167,22 @@ class BSE(BASECHI):
         printtxt('   pair orb parsize   : %d' %(self.Scomm.size))        
         
         return
+
+
+    def get_dielectric_function(self, filename='df.dat'):
+
+        if self.epsilon_w is None:
+            self.initialize()
+            w_S, epsilon_w = self.calculate()
+            self.epsilon_w = epsilon_w
+
+        if rank == 0:
+            f = open(filename,'w')
+            for iw in range(self.Nw):
+                energy = iw * self.dw * Hartree
+                print >> f, energy, np.real(epsilon_w[iw]), np.imag(epsilon_w[iw])
+            f.close()
+
+        # Wait for I/O to finish
+        world.barrier()
+

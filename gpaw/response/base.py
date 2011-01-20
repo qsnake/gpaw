@@ -20,27 +20,7 @@ from gpaw.grid_descriptor import GridDescriptor
 from gpaw.utilities.memory import maxrss
 
 class BASECHI:
-    """This class is a calculator for the linear density response function.
-
-    Parameters:
-
-        nband: int
-            Number of bands.
-        wmax: float
-            Maximum energy for spectrum.
-        dw: float
-            Frequency interval.
-        wlist: tuple
-            Frequency points.
-        q: ndarray
-            Momentum transfer in reduced coordinate.
-        Ecut: ndarray
-            Planewave cutoff energy.
-        eta: float
-            Spectrum broadening factor.
-        sigma: float
-            Width for delta function.
-    """
+    """This class is to store the basic common stuff for chi and bse."""
 
     def __init__(self,
                  calc=None,
@@ -85,6 +65,7 @@ class BASECHI:
             assert len(ecut) == 3
             self.ecut = np.array(ecut, dtype=float)
         self.optical_limit = optical_limit
+
 
     def initialize(self):
                         
@@ -176,58 +157,7 @@ class BASECHI:
         return
 
 
-    def get_wavefunction(self, ibzk, n, k, check_focc=True):
 
-        if self.calc.wfs.kpt_comm.size != world.size or world.size == 1:
-
-            if check_focc == False:
-                return
-            else:
-                psit_G = self.calc.wfs.get_wave_function_array(n, ibzk, 0)
-        
-                if self.calc.wfs.world.size == 1:
-                    return np.complex128(psit_G)
-                
-                if not self.calc.wfs.world.rank == 0:
-                    psit_G = self.calc.wfs.gd.empty(dtype=self.calc.wfs.dtype,
-                                                    global_array=True)
-                self.calc.wfs.world.broadcast(psit_G, 0)
-        
-                return np.complex128(psit_G)
-        else:
-            if self.nkpt % size != 0:
-                raise ValueError('The number of kpoints should be divided by the number of cpus for no wfs dumping mode ! ')
-
-            # support ground state calculation with only kpoint parallelization
-            kpt_rank, u = self.calc.wfs.kd.get_rank_and_index(0, ibzk)
-            bzkpt_rank = k // self.nkpt_local
-            
-            klist = np.array([kpt_rank, u, bzkpt_rank])
-            klist_kcomm = np.zeros((self.kcomm.size, 3), dtype=int)            
-            self.kcomm.all_gather(klist, klist_kcomm)
-
-            check_focc_global = np.zeros(self.kcomm.size, dtype=bool)
-            self.kcomm.all_gather(np.array([check_focc]), check_focc_global)
-
-            psit_G = self.calc.wfs.gd.empty(dtype=self.calc.wfs.dtype)
-            
-	    for i in range(self.kcomm.size):
-                if check_focc_global[i] == True:
-                    kpt_rank, u, bzkpt_rank = klist_kcomm[i]
-                    if kpt_rank == bzkpt_rank:
-                        if rank == kpt_rank:
-                            psit_G = self.calc.wfs.kpt_u[u].psit_nG[n]
-                    else:
-                        if rank == kpt_rank:
-                            world.send(self.calc.wfs.kpt_u[u].psit_nG[n],
-                                       bzkpt_rank, 1300+bzkpt_rank)
-                        if rank == bzkpt_rank:
-                            psit_G = self.calc.wfs.gd.empty(dtype=self.calc.wfs.dtype)
-                            world.receive(psit_G, kpt_rank, 1300+bzkpt_rank)
-                    
-            self.wScomm.broadcast(psit_G, 0)
-            return psit_G
-        
     def output_init(self):
 
         if self.txtname is None:
@@ -301,6 +231,59 @@ class BASECHI:
         self.printtxt('Finished phi_Gp !')
 
         return
+
+
+    def get_wavefunction(self, ibzk, n, k, check_focc=True):
+
+        if self.calc.wfs.kpt_comm.size != world.size or world.size == 1:
+
+            if check_focc == False:
+                return
+            else:
+                psit_G = self.calc.wfs.get_wave_function_array(n, ibzk, 0)
+        
+                if self.calc.wfs.world.size == 1:
+                    return np.complex128(psit_G)
+                
+                if not self.calc.wfs.world.rank == 0:
+                    psit_G = self.calc.wfs.gd.empty(dtype=self.calc.wfs.dtype,
+                                                    global_array=True)
+                self.calc.wfs.world.broadcast(psit_G, 0)
+        
+                return np.complex128(psit_G)
+        else:
+            if self.nkpt % size != 0:
+                raise ValueError('The number of kpoints should be divided by the number of cpus for no wfs dumping mode ! ')
+
+            # support ground state calculation with only kpoint parallelization
+            kpt_rank, u = self.calc.wfs.kd.get_rank_and_index(0, ibzk)
+            bzkpt_rank = k // self.nkpt_local
+            
+            klist = np.array([kpt_rank, u, bzkpt_rank])
+            klist_kcomm = np.zeros((self.kcomm.size, 3), dtype=int)            
+            self.kcomm.all_gather(klist, klist_kcomm)
+
+            check_focc_global = np.zeros(self.kcomm.size, dtype=bool)
+            self.kcomm.all_gather(np.array([check_focc]), check_focc_global)
+
+            psit_G = self.calc.wfs.gd.empty(dtype=self.calc.wfs.dtype)
+            
+	    for i in range(self.kcomm.size):
+                if check_focc_global[i] == True:
+                    kpt_rank, u, bzkpt_rank = klist_kcomm[i]
+                    if kpt_rank == bzkpt_rank:
+                        if rank == kpt_rank:
+                            psit_G = self.calc.wfs.kpt_u[u].psit_nG[n]
+                    else:
+                        if rank == kpt_rank:
+                            world.send(self.calc.wfs.kpt_u[u].psit_nG[n],
+                                       bzkpt_rank, 1300+bzkpt_rank)
+                        if rank == bzkpt_rank:
+                            psit_G = self.calc.wfs.gd.empty(dtype=self.calc.wfs.dtype)
+                            world.receive(psit_G, kpt_rank, 1300+bzkpt_rank)
+                    
+            self.wScomm.broadcast(psit_G, 0)
+            return psit_G
 
 
     def density_matrix_Gspace(self,n,m,k):
