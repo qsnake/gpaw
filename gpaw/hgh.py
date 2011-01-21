@@ -54,7 +54,7 @@ class HGHSetup(BaseSetup):
                          for phit in self.phit_j])
 
         self.Nct = 0.0
-        self.nct = Spline(0, 0.5, [0., 0., 0.])
+        self.nct = Spline(0, 1.0, [0., 0., 0.])
 
         self.lmax = 0
 
