@@ -169,6 +169,7 @@ tests = [
     'aluminum_EELS.py',
     'dump_chi0.py',
     'au02_absorption.py',
+    'rpa_energy_N2.py',
     'bse_aluminum.py',
     'bse_diamond.py',
     'bse_vs_lrtddft.py',
