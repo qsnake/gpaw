@@ -17,12 +17,12 @@ atoms = Atoms('Na3', positions=[( 0, 0, 0),
                               ( 0, 0, d),
                               ( 0, d*sqrt(3./4.), d/2.)],
                    magmoms=[1.0, 1.0, 1.0],
-                   cell=(3.5, 3.5, 3.5),
+                   cell=(3.5, 3.5, 4.+2/3.),
                    pbc=True)
 
 # Only a short, non-converged calcuation
 conv = {'eigenstates': 1e-2, 'energy':2e-1, 'density':1e-1}
-calc = GPAW(h=0.34, nbands=3, convergence=conv)
+calc = GPAW(h=0.30, nbands=3, convergence=conv)
 atoms.set_calculator(calc)
 e0 = atoms.get_potential_energy()
 niter0 = calc.get_number_of_iterations()
@@ -64,6 +64,6 @@ for mode in modes:
 
     energy_tolerance = 0.0002
     niter_tolerance = 0
-    equal(e0, 27.1408, energy_tolerance)
+    equal(e0, -0.52198, energy_tolerance)
     equal(niter0, 6, niter_tolerance)
-    equal(e1, 27.1408, energy_tolerance)
+    equal(e1, -0.52198, energy_tolerance)
