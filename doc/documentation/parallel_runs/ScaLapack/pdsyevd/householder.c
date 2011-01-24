@@ -278,7 +278,6 @@ int main(int argc, char *argv[]) {
        MPIX_Get_property(blacs_comm, MPIDO_RECT_COMM, &result);
        if (result) printf("this is a rectangular communicator\n");
 #endif
-
      }
 
      // initialize the grid
