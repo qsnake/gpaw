@@ -150,7 +150,7 @@ class RPACorrelation:
                             + len(e_wGG[0]) - np.trace(e_wGG[i]))
             #local_int[i] = (np.sum(np.log(np.linalg.eigvals(e_wGG[i])))
             #                + self.npw - np.trace(e_wGG[i]))
-        df.comm.all_gather(local_int, integrand)
+        df.wcomm.all_gather(local_int, integrand)
         del df
         del e_wGG
         dw = w[1] - w[0]
