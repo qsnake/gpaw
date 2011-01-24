@@ -1,6 +1,7 @@
 from ase import *
 import numpy as np
 from gpaw import *
+from gpaw.mpi import serial_comm
 from gpaw.test import equal
 from gpaw.xc.rpa_correlation_energy import RPACorrelation
 
@@ -13,7 +14,8 @@ N.center()
 N.set_pbc(True)
 calc = GPAW(h=0.18,
             nbands=25,
-            convergence={'bands':-5})
+            convergence={'bands':-5},
+            communicator=serial_comm)
 N.set_calculator(calc)
 N.get_potential_energy()
 rpa = RPACorrelation(calc, nbands=10)    
@@ -25,7 +27,8 @@ N2.center()
 N2.set_pbc(True)
 calc = GPAW(h=0.18,
             nbands=25,
-            convergence={'bands':-5})
+            convergence={'bands':-5},
+            communicator=serial_comm)
 N2.set_calculator(calc)
 N2.get_potential_energy()
 rpa = RPACorrelation(calc, nbands=10)    
