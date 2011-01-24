@@ -7,10 +7,6 @@
 #define PY_ARRAY_UNIQUE_SYMBOL GPAW_ARRAY_API
 #include <numpy/arrayobject.h>
 
-#ifdef GPAW_WITH_HDF5
-PyMODINIT_FUNC init_hdf5(void);
-#endif
-
 #ifdef GPAW_HPM
 PyObject* ibm_hpm_start(PyObject *self, PyObject *args);
 PyObject* ibm_hpm_stop(PyObject *self, PyObject *args);
@@ -340,9 +336,6 @@ main(int argc, char **argv)
 
   Py_INCREF(&MPIType);
   PyModule_AddObject(m, "Communicator", (PyObject *)&MPIType);
-#ifdef GPAW_WITH_HDF5
-  init_hdf5();
-#endif
   import_array1(-1);
   MPI_Barrier(MPI_COMM_WORLD);
 #ifdef GPAW_CRAYPAT

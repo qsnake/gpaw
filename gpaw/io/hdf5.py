@@ -1,7 +1,9 @@
 import os
 import sys
 import time
-from hdf5_highlevel import File, selection_from_list
+import h5py
+import h5py.selections as sel
+import _gpaw
 
 import numpy as np
 
@@ -9,6 +11,36 @@ intsize = 4
 floatsize = np.array([1], float).itemsize
 complexsize = np.array([1], complex).itemsize
 itemsizes = {'int': intsize, 'float': floatsize, 'complex': complexsize}
+
+class File(h5py.File):
+    """Represents an parallel IO -enabled HDF5 file on disk"""
+
+    def __init__(self, name, mode, comm=None, driver=None, **driver_kwds):
+        """Stripped down copy-paste of h5py File __init__ with additional communicator argument.""" 
+
+        plist = h5py.h5p.create(h5py.h5p.FILE_ACCESS)
+        plist.set_fclose_degree(h5py.h5f.CLOSE_STRONG)
+        if comm:
+            _gpaw.h5_set_fapl_mpio(plist.id, comm)
+
+        try:
+            # If the byte string doesn't match the default encoding, just
+            # pass it on as-is.  Note Unicode objects can always be encoded.
+            name = name.encode(sys.getfilesystemencoding())
+        except (UnicodeError, LookupError):
+            pass
+
+        if mode == 'r':
+            self.fid = h5py.h5f.open(name, h5py.h5f.ACC_RDONLY, fapl=plist)
+        elif mode == 'w':
+            self.fid = h5py.h5f.create(name, h5py.h5f.ACC_TRUNC, fapl=plist)
+        else:
+            raise ValueError("Invalid mode; must be one of r, w")
+
+        self.id = self.fid  # So the Group constructor can find it.
+        h5py.Group.__init__(self, self, '/')
+
+        self._mode = mode
 
 class Writer:
     def __init__(self, name, comm=None):
@@ -46,11 +78,11 @@ class Writer:
         shape = [self.dims[dim] for dim in shape]
         if not shape:
             shape = [1,]
-        self.dset = self.file.create_dataset(name, type, shape)
+        self.dset = self.file.create_dataset(name, shape, type)
         if array is not None:
             self.fill(array, parallel=parallel)
 
-    def fill(self, array, indices, **kwargs):
+    def fill(self, array, *indices, **kwargs):
 
         try:
             parallel = kwargs['parallel']
@@ -63,14 +95,36 @@ class Writer:
             write = True
 
         if parallel:
-            collective = True
+            # Create H5P_DATASET_XFER property list
+            plist = h5py.h5p.create(h5py.h5p.DATASET_XFER)
+            _gpaw.h5_set_dxpl_mpio(plist.id)
         else:
-            collective = False
+            plist = None
 
-        if write:
-            self.dset.write(array, indices, collective)            
+        mshape = array.shape
+        mtype = None
+        fshape = self.dset.shape        
+
+        # Be careful to pad memory shape with ones to avoid HDF5 chunking
+        # glitch, which kicks in for mismatched memory/file selections
+        if(len(mshape) < len(fshape)):
+            mshape_pad = (1,)*(len(fshape)-len(mshape)) + mshape
         else:
-            self.dset.write(array, None, collective)            
+            mshape_pad = mshape
+        mspace = h5py.h5s.create_simple(mshape_pad,
+                                   (h5py.h5s.UNLIMITED,)*len(mshape_pad))
+        if write == False:
+            h5py.h5s.select_none(mspace)
+        
+        if indices is None:
+            fspace = h5py.h5s.create_simple(fshape, (h5py.h5s.UNLIMITED,)*len(fshape))
+            self.dset.id.write(mspace, fspace, array, mtype, plist)
+        else:
+            selection = sel.select(fshape, indices)
+            for fspace in selection.broadcast(mshape):
+                if write == False:
+                    h5py.h5s.select_none(fspace)
+                self.dset.id.write(mspace, fspace, array, mtype, plist)
 
     def get_data_type(self, array=None, dtype=None):
         if dtype is None:
@@ -116,7 +170,7 @@ class Reader:
     def has_array(self, name):
         return name in self.file.keys()
     
-    def get(self, name, indices, **kwargs):
+    def get(self, name, *indices, **kwargs):
 
         try:
             parallel = kwargs['parallel']
@@ -124,21 +178,20 @@ class Reader:
             parallel = False
 
         if parallel:
-            collective = True
-        else: 
-            collective = False
+            # Create H5P_DATASET_XFER property list
+            plist = h5py.h5p.create(h5py.h5p.DATASET_XFER)
+            _gpaw.set_dxpl_mpio(plist.id)
+        else:
+            plist = None
 
         dset = self.file[name]
-        offset, stride, count = selection_from_list(indices)
-        mshape = tuple(count)
-        array = np.empty(mshape, dset.dtype)
-        dset.read(array, indices, collective)
+        array = dset[indices]
         if array.shape == ():
             return array.item()
         else:
             return array
 
-    def get_reference(self, name, indices):
+    def get_reference(self, name, *indices):
         dset = self.file[name]
         array = dset[indices]
         return array

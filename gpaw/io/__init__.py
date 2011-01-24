@@ -337,7 +337,7 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
             do_write = (kpt_comm.rank == 0)
             indices = [s,] +  wfs.gd.get_slice()
             w.fill(density.nt_sG[s], parallel=True, write=do_write,
-                   indices=indices)
+                   *indices)
         elif kpt_comm.rank == 0:
             nt_sG = wfs.gd.collect(density.nt_sG[s])
             if master:
@@ -353,7 +353,7 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
             do_write = (kpt_comm.rank == 0)
             indices = [s,] + wfs.gd.get_slice()
             w.fill(hamiltonian.vt_sG[s], parallel=True, write=do_write, 
-                   indices=indices)
+                   *indices)
         elif kpt_comm.rank == 0:
             vt_sG = wfs.gd.collect(hamiltonian.vt_sG[s])
             if master:
@@ -481,7 +481,7 @@ def read(paw, reader):
     nt_sG = wfs.gd.empty(density.nspins)
     if hdf5:
         indices = [slice(0, density.nspins),] + wfs.gd.get_slice()
-        nt_sG[:] = r.get('PseudoElectronDensity', indices)
+        nt_sG[:] = r.get('PseudoElectronDensity', *indices)
     else:
         for s in range(density.nspins):
             wfs.gd.distribute(r.get('PseudoElectronDensity', s), nt_sG[s])
@@ -499,7 +499,7 @@ def read(paw, reader):
         hamiltonian.vt_sG = wfs.gd.empty(hamiltonian.nspins)
         if hdf5:
             indices = [slice(0, hamiltonian.nspins), ] + wfs.gd.get_slice()
-            hamiltonian.vt_sG[:] = r.get('PseudoPotential', indices)
+            hamiltonian.vt_sG[:] = r.get('PseudoPotential', *indices)
         else:
             for s in range(hamiltonian.nspins):
                 wfs.gd.distribute(r.get('PseudoPotential', s),
@@ -623,7 +623,7 @@ def read(paw, reader):
                         indices = [kpt.s, kpt.k]
                         indices.append(wfs.bd.get_slice())
                         indices += wfs.gd.get_slice()
-                        kpt.psit_nG[:] = r.get('PseudoWaveFunctions', indices)
+                        kpt.psit_nG[:] = r.get('PseudoWaveFunctions', *indices)
                     else:
                         # Read band by band to save memory
                         for myn, psit_G in enumerate(kpt.psit_nG):
