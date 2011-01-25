@@ -2641,7 +2641,94 @@ class Transport(GPAW):
  
             #self.analysor.save_ele_step()            
             self.analysor.save_bias_step()
-            
+
+    def save_lead_hamiltonian_matrix(self):
+        print 'assert self.nspins == 1'
+        self.guess_steps = 1
+        self.negf_prepare()
+        kpt_comm = self.wfs.kpt_comm
+        for i in range(self.lead_num):
+            nb = self.nblead[i]
+            if kpt_comm.rank == 0:
+                lead_overlap_matrix = np.zeros([self.npk, nb, nb], self.wfs.dtype)
+                lead_coupling_overlap_matrix = np.zeros([self.npk, nb, nb], self.wfs.dtype)
+                lead_hamiltonian_matrix = np.zeros([self.nspins, self.npk, nb, 
+                                                              nb], self.wfs.dtype)
+                lead_coupling_hamiltonian_matrix = np.zeros([self.nspins, self.npk, 
+                                                          nb, nb], self.wfs.dtype)
+            else:
+                lead_overlap_matrix = None
+                lead_coupling_overlap_matrix = None
+                lead_hamiltonian_matrix = None
+                lead_coupling_hamiltonian_matrix = None
+
+            local_lead_overlap_matrix = np.zeros([self.my_npk, nb, nb], self.wfs.dtype)
+            local_lead_coupling_overlap_matrix = np.zeros([self.my_npk, nb, nb], self.wfs.dtype)
+            local_lead_hamiltonian_matrix = np.zeros([self.my_nspins, self.my_npk, nb, 
+                                                              nb], self.wfs.dtype)
+            local_lead_coupling_hamiltonian_matrix = np.zeros([self.my_nspins, self.my_npk, 
+                                                          nb, nb], self.wfs.dtype)
+            for pk in range(self.my_npk):
+                local_lead_overlap_matrix[pk] = self.lead_hsd[i].S[pk].recover()
+                local_lead_coupling_overlap_matrix[pk] = self.lead_couple_hsd[i].S[pk].recover()
+                for s in range(self.my_nspins):
+                    local_lead_hamiltonian_matrix[s, pk] = self.lead_hsd[i].H[s][pk].recover()
+                    local_lead_coupling_hamiltonian_matrix[s, pk] = self.lead_couple_hsd[i].H[s][pk].recover()
+            kpt_comm.gather(local_lead_overlap_matrix, 0, lead_overlap_matrix)
+            kpt_comm.gather(local_lead_coupling_overlap_matrix, 0, lead_coupling_overlap_matrix)
+            kpt_comm.gather(local_lead_hamiltonian_matrix, 0, lead_hamiltonian_matrix)
+            kpt_comm.gather(local_lead_coupling_hamiltonian_matrix, 0, lead_coupling_hamiltonian_matrix)
+            if world.rank == 0:
+                fd = file('lead_hs_matrix' + str(i), 'wb')
+                cPickle.dump((lead_overlap_matrix,
+                             lead_coupling_overlap_matrix,
+                             lead_hamiltonian_matrix,
+                             lead_coupling_hamiltonian_matrix),
+                             fd, 2)
+                fd.close()
+
+    def save_scat_hamiltonian_matrix(self,n, n1=0):
+        print 'run save_lead_hamiltonian_matrix before'
+        kpt_comm = self.wfs.kpt_comm
+        flag = True
+        for i in range(n1, n):
+           if i > n1:
+               flag = False
+           fd = file('bias_data' + str(i + 1), 'r')
+           self.bias, vt_sG, dH_asp = cPickle.load(fd)
+           fd.close()
+           self.surround.combine_dH_asp(dH_asp)
+           self.gd1.distribute(vt_sG, self.extended_calc.hamiltonian.vt_sG) 
+           h_spkmm, s_pkmm = self.get_hs(self.extended_calc)
+           if kpt_comm.rank == 0:
+               scat_overlap_matrix = np.zeros([self.npk, self.nbmol, self.nbmol], self.wfs.dtype)
+               scat_hamiltonian_matrix = np.zeros([self.nspins, self.npk, self.nbmol, self.nbmol], self.wfs.dtype)
+           else:
+               scat_overlap_matrix = None
+               scat_hamiltonian_matrix = None
+           local_scat_overlap_matrix = np.zeros([self.my_npk, self.nbmol, self.nbmol], self.wfs.dtype)
+           local_scat_hamiltonian_matrix = np.zeros([self.my_nspins, self.my_npk, self.nbmol, self.nbmol], self.wfs.dtype)
+           for q in range(self.my_npk):
+               self.hsd.reset(0, q, s_pkmm[q], 'S', flag)                
+               for s in range(self.my_nspins):
+                   self.hsd.reset(s, q, h_spkmm[s, q], 'H', flag)
+                   self.hsd.reset(s, q, np.zeros([self.nbmol, self.nbmol], self.wfs.dtype), 'D', flag)
+           if flag:
+                self.append_buffer_hsd()                    
+
+           for q in range(self.my_npk):
+               local_scat_overlap_matrix[q] = self.hsd.S[q].recover()
+               for s in range(self.my_nspins):
+                   local_scat_hamiltonian_matrix[s, q] = self.hsd.H[s][q].recover()
+           kpt_comm.gather(local_scat_overlap_matrix, 0, scat_overlap_matrix)
+           kpt_comm.gather(local_scat_hamiltonian_matrix, 0, scat_hamiltonian_matrix)
+           if world.rank ==0:
+               fd = file('scat_hs_matrix' + str(i), 'wb')
+               cPickle.dump((scat_overlap_matrix,
+                             scat_hamiltonian_matrix),
+                             fd, 2)
+               fd.close()
+           
     def analysis_prepare(self, bias_step):
         fd = file('lead_hs', 'r')
         lead_s00, lead_s01, lead_h00, lead_h01 = cPickle.load(fd)
