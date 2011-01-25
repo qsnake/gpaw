@@ -40,13 +40,15 @@ Note that only :ref:`RMM-DIIS` eigensolver is compatible with band
 parallelization. Furthermore, the RMM-DIIS eigensolver requires 
 some unoccupied bands in order to converge properly. Recommend range is::
 
-  nbands = valence electrons/spin*[1.0 - 1.2], where
-  spin = 1 for spinpol = True
-  spin = 2 for spinpol = False
+  spinpol=False
+  nbands = valence electrons/2*[1.0 - 1.2]
+
+  spinpol=True
+  nbands = max(up valence electrons, down valence electrons)*[1.0 - 1.2]
   
 It was empirically determined that you need to have *nbands/B
 > 256*  for reasonable performance. It is also possible use smaller groups, 
-*N/B < 256*, but this may require large domains. It is *required* that
+*nbands/B < 256*, but this may require large domains. It is *required* that
 *nbands/B* be integer-divisible. The best values for B =2, 4, 8, 16,
 32, 64, and 128.
 
@@ -76,7 +78,7 @@ Hence, the possible values of T are::
 
 Note that there are 4 cores per node and 2 GB per node on BG/P. As GPAW is
 presently an MPI-only code, vn mode is preferred since all cores will
-be perform computational work.
+perform computational work.
 
 It is essential to think of the BG/P network as a 4-dimensional object with
 3 spatial dimentions and a T-dimension. For optimum scalability it
@@ -127,26 +129,29 @@ Mapping is accomplished by the Cobalt flag::
   
    --env=BG_MAPPING=<mapping>
 
-where *<mapping>* can be one of the standard BG/P mappings or
-a mapfile.
+where *<mapping>* can be one of the canonical BG/P mappings 
+(permutations of XYZT with T at the beginning or end) or a mapfile.
 
 Lastly, it is important to note that GPAW code orders the MPI tasks as
 follows::
   
    Z, Y, X, bands, kpoints, and spins.
 
+A list of mappings is provided below. Although the list is intended
+to be comprehensive, there are likely other compatible mappings that
+are await discovert.
+
 B = 2
 --------
-Simply set the followin submission script setting, noting that the
-domain decomposition must match up *exactly* with the partition dimensions::
+Simply set the following variables in your submission script::
 
   mode = dual
-  any mapping ending with a T
-  {Nz, Ny, Nx} = {Px, Py, Pz}; BG_MAPPING = XYZT
-  {Nz, Ny, Nx} = {Pz, Px, Py}; BG_MAPPING = ZXYT
-  {Nz, Ny, Nx} = {Py, Pz, Px}; BG_MAPPING = YZXT
-  plus other permutations of the right-hand side which end with a T
-  
+  mapping = any canonical mapping ending with a T
+
+the constraint on the domain-decomposition is simply::
+
+  Nx*Ny*Nz = Px*Py*Pz
+ 
 
 B = 4
 --------
@@ -156,38 +161,53 @@ Similar to the *B=2* case, but with::
 
 B = 8 or 16
 ---------------
+
+Submission script modification::
+  
+  mode = dual or vn
+  mapping = <mapfile>
+ 
 It will be necessary to have the combined band-domain decomposition
-match the partition dimension exactly, i.e.::
+match the partition dimension exactly, hence the constraint is::
 
   {Nz, Ny, Nx, B} = {T, Px, Py, Pz}
   {Nz, Ny, Nx, B} = {Px, T, Py, Pz}
   {Nz, Ny, Nx, B} = {Px, Py, T, Pz}
-  plus other permutations of the right-hand side which do not end with
-  a T
+  plus other permutations of the right-hand side which do not have a T
+  at the end
 
-As only mappings with T at the beginning or end are standard mappings
-on BG/P, a mapfile must be provided for many of the *B=8 or 16*
-case. This can be accomplised with ``tools/mapfile.py.`` You will want
+As only mappings with T at the beginning or end are canonical
+mappings, a mapfile must be provided for the *B=8 or 16* cases. 
+This can be accomplished with ``tools/mapfile.py.`` You will want
 to use ``band``  mode to generate a BG/P mapfile for a  DFT
 calculation. Since there is no orthogonalization in the rTDDFT method,
 one can use ``domain`` mode to satisfy the communiation pattern of the
-H*Psi products.  Remember to specify the mapfile via Cobalt::
-
-  --env=BG_MAPPING=<mapfile>
+H*Psi products.  
 
 B = 32, 64, or 128
 ------------------
-For *B=32*, a mapfile can be generated as in the *B=8 or 16* case. But
-it is much easier to fold the T-dimension into one of the three
-spatial dimensions and use this as the band parallelization
-direction. The three-dimensional physical domain can then be flattened into
-the two remaining spatial dimensions of the network. The constraints
-can be summarized as follows::
+For *B=32*, a mapfile can be generated as in the *B=8 or 16* case
+since there exist partition sizes with this dimension. An alternative
+simpler mapping is to fold the T-dimension into one of the three
+spatial partition dimensions (Px, Py, or Pz) and use this for band
+parallelization. The three-dimensional domain-decomposition can
+then be flattened into the two remaining spatial dimensions of the
+partition. 
 
-  mode = vn
+Submission script modification::
+
+  mode = vn or dual
   mapping =  any mapping end with T
-  T*[X,Y,Z] = B
-  product of remaining two dimensions = Nx*Ny*Nz
+
+constraint::
+
+  T*[size of adjacent partition dimension in mapping] = B
+  product of remaining two dimensions in mapping = Nx*Ny*Nz
+
+For example, suppose the target parition is 1024 nodes in
+vn mode. Here {Px, Py, Pz, T} = {8, 8, 16, T}. A ZYXT mapping would
+lead to Px*T = 32 = B for band parallelization and Pz*Py = Nx*Ny*Nz
+for domain-decomposition.
 
 Setting the value of nblocks
 ============================
