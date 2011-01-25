@@ -1,4 +1,3 @@
-from ase.transport.tools import function_integral, fermidistribution
 from ase import Atoms, Atom
 from ase.units import Hartree, Bohr
 from gpaw import GPAW, debug, dry_run, Mixer, MixerDif, PoissonSolver
@@ -7,22 +6,18 @@ from gpaw.poisson import FixedBoundaryPoissonSolver
 from gpaw import restart as restart_gpaw
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.transformers import Transformer
-from gpaw.lcao.tools import get_realspace_hs
 from gpaw.mpi import world
-from gpaw.utilities import h2gpts
-from gpaw.utilities.lapack import diagonalize
 from gpaw.utilities.memory import maxrss
 
 from gpaw.transport.tools import tri2full, dot, \
           get_atom_indices, substract_pk, get_lcao_density_matrix, \
           get_pk_hsd, get_matrix_index, aa1d, aa2d, collect_atomic_matrices,\
-          distribute_atomic_matrices
+          distribute_atomic_matrices, fermidistribution
 
 from gpaw.transport.sparse_matrix import Tp_Sparse_HSD, Banded_Sparse_HSD, \
                                   CP_Sparse_HSD, Se_Sparse_Matrix
 
-from gpaw.transport.intctrl import IntCtrl, PathInfo
-from gpaw.transport.contour import Contour
+from gpaw.transport.contour import Contour, EnergyNode
 from gpaw.transport.surrounding import Surrounding
 from gpaw.transport.selfenergy import LeadSelfEnergy
 from gpaw.transport.analysor import Transport_Analysor, Transport_Plotter
@@ -407,7 +402,7 @@ class Transport(GPAW):
                                             allocate=False)
             self.interpolator.allocate()
             if not self.multi_leads:
-                self.surround.combine()
+                self.surround.combine(self)
             if self.use_qzk_boundary or self.multi_leads:
                 self.extended_calc.set_positions()
             else:
@@ -622,7 +617,7 @@ class Transport(GPAW):
         fd = file(self.restart_file, 'r')
         self.bias, vt_sG, dH_asp = cPickle.load(fd)
         fd.close()
-        self.surround.combine_dH_asp(dH_asp)
+        self.surround.combine_dH_asp(self, dH_asp)
         self.gd1.distribute(vt_sG, self.extended_calc.hamiltonian.vt_sG) 
         h_spkmm, s_pkmm = self.get_hs(self.extended_calc)
         nb = s_pkmm.shape[-1]
@@ -1118,7 +1113,7 @@ class Transport(GPAW):
             self.step +=  1
         
         if self.foot_print:
-            self.analysor.save_bias_step()
+            self.analysor.save_bias_step(self)
        
         self.scf.converged = self.cvgflag
    
@@ -1150,7 +1145,7 @@ class Transport(GPAW):
         if not hasattr(self, 'contour'):
             self.contour = Contour(0.1,
                                self.lead_fermi, self.bias, comm=self.gd.comm,
-                                tp=self, plot_eta=self.plot_eta,
+                                plot_eta=self.plot_eta,
                                 plot_energy_range=self.plot_energy_range,
                              plot_energy_point_num=self.plot_energy_point_num)
             
@@ -1158,13 +1153,10 @@ class Transport(GPAW):
             self.analysor = Transport_Analysor(self, True)
             
         #self.analysor.save_ele_step()            
-        self.analysor.save_bias_step()
+        self.analysor.save_bias_step(self)
         fd = file('eq_hsd', 'w')
         cPickle.dump(self.hsd, fd, 2)
         fd.close()
-        del self.analysor
-        del self.surround
-        del self.contour       
 
     def get_density_matrix(self):
         self.timer.start('DenMM')
@@ -1175,7 +1167,7 @@ class Transport(GPAW):
         
         if self.recal_path:
             #self.initialize_path()
-            self.calculate_integral_path2()
+            self.calculate_integral_path()
             
         for s in range(self.my_nspins):
             for k in range(self.my_npk):
@@ -1261,14 +1253,9 @@ class Transport(GPAW):
         return cvg
  
     def initialize_scf(self):
-        self.intctrl = IntCtrl(self.occupations.width * Hartree,
-                                self.lead_fermi, self.bias,
-                                self.min_energy,
-                            self.neintmethod, self.neintstep, self.eqinttol)
-        
         self.contour = Contour(self.occupations.width * Hartree,
                                self.lead_fermi, self.bias, comm=self.gd.comm,
-                               tp=self, plot_eta=self.plot_eta,
+                               plot_eta=self.plot_eta,
                                neintstep=self.neintstep,
                                eqinttol=self.eqinttol,
                                min_energy=self.min_energy,
@@ -1276,13 +1263,13 @@ class Transport(GPAW):
                              plot_energy_point_num=self.plot_energy_point_num)
 
         if not self.multi_leads:
-            self.surround.reset_bias(self.bias)
+            self.surround.reset_bias(self)
         #if not self.use_qzk_boundary:
-        #    self.surround.reset_bias(self.bias)
+        #    self.surround.reset_bias(self)
         #else:
-        #    self.surround.reset_bias([0] * self.lead_num)
+        #    self.surround.reset_bias(self)
         self.initialize_green_function()
-        self.calculate_integral_path2()
+        self.calculate_integral_path()
         self.distribute_energy_points()
     
     
@@ -1328,26 +1315,13 @@ class Transport(GPAW):
             if not self.ground:
                 self.locpathinfo.append([])
             for k in range(self.my_npk):
-                self.eqpathinfo[s].append(PathInfo('eq', self.lead_num))
-                self.nepathinfo[s].append(PathInfo('ne', self.lead_num))    
+                self.eqpathinfo[s].append(EnergyNode('eq', self.lead_num))
+                self.nepathinfo[s].append(EnergyNode('ne', self.lead_num))    
                 if not self.ground:
-                    self.locpathinfo[s].append(PathInfo('eq',
+                    self.locpathinfo[s].append(EnergyNode('eq',
                                                          self.lead_num))
                     
     def calculate_integral_path(self):
-        self.initialize_path()
-        for s in range(self.my_nspins):
-            for k in range(self.my_npk):      
-                self.get_eqintegral_points(s, k)
-                self.get_neintegral_points(s, k)
-                if not self.ground:
-                    self.get_neintegral_points(s, k, 'locInt')
-        ne = self.eqpathinfo[0][0].num + self.nepathinfo[0][0].num
-        if not self.ground:
-            ne += self.locpathinfo[0][0].num
-        self.text('energy point' + str(ne))           
-
-    def calculate_integral_path2(self):
         self.initialize_path()
         for s in range(self.my_nspins):
             for k in range(self.my_npk):      
@@ -1369,8 +1343,8 @@ class Transport(GPAW):
         self.reset_lead_hs(s, k)        
         self.hsd.s = s
         self.hsd.pk = k        
-        self.contour.get_optimized_contour()
-        nids, energies, weights, ses = self.contour.sort_contour()
+        self.contour.get_optimized_contour(self)
+        nids, energies, weights, ses = self.contour.sort_contour(self.nbmol)
         elist = []
         wlist = []
         flist = []
@@ -1388,8 +1362,8 @@ class Transport(GPAW):
             siglist1.append([])      
         
         kt = self.contour.kt
-        max_ef = np.max(self.intctrl.leadfermi)
-        min_ef = np.min(self.intctrl.leadfermi)
+        max_ef = np.max(self.contour.leadfermi)
+        min_ef = np.min(self.contour.leadfermi)
         for nid, energy, weight, se in zip(nids, energies, weights, ses):
             if str(nid)[0] == '6':
                 elist1.append(energy)
@@ -1467,207 +1441,17 @@ class Transport(GPAW):
             for i in range(self.lead_num):
                 flist2.append([[], []])
                 for e in elist2:
-                    flist2[i][0].append(fermidistribution(e - self.intctrl.leadfermi[i],
+                    flist2[i][0].append(fermidistribution(e - self.contour.leadfermi[i],
                                            kt) - fermidistribution(e -
                                           min_ef, kt)) 
             
                     flist2[i][1].append(fermidistribution(e - max_ef,
                                            kt) - fermidistribution(e -
-                                            self.intctrl.leadfermi[i], kt))  
+                                            self.contour.leadfermi[i], kt))  
                     siglist2[i].append(self.selfenergies[i](e))
             self.nepathinfo[s][k].add(elist2, wlist2, flist2, siglist2)        
         self.contour.release()
        
-    def get_eqintegral_points(self, s, k):
-        if self.recal_path:
-            self.timer.start('eq fock2den')
-        maxintcnt = 50
-        nbmol = self.nbmol_inner
-        den = np.zeros([nbmol, nbmol], self.wfs.dtype)
-        intctrl = self.intctrl
-        self.zint = [0] * maxintcnt
-        self.fint = []
-
-        self.tgtint = []
-        for i in range(self.lead_num):
-            nblead = self.nblead[i]
-            self.tgtint.append([])
-        self.cntint = -1
-
-        self.reset_lead_hs(s, k)        
-        self.hsd.s = s
-        self.hsd.pk = k
-        
-        #--eq-Integral-----
-        [grsum, zgp, wgp, fcnt] = function_integral(self, 'eqInt')
-        # res Calcu
-        grsum += self.calgfunc(intctrl.eqresz, 'resInt')    
-        grsum.shape = (nbmol, nbmol)
-        den += 1.j * (grsum - grsum.T.conj()) / np.pi / 2
-
-        # --sort SGF --
-        nres = len(intctrl.eqresz)
-        self.eqpathinfo[s][k].set_nres(nres)
-        elist = zgp + intctrl.eqresz
-        wlist = wgp + [1.0] * nres
-
-        fcnt = len(elist)
-        sgforder = [0] * fcnt
-        for i in range(fcnt):
-            sgferr = np.min(abs(elist[i] -
-                                      np.array(self.zint[:self.cntint + 1 ])))
-                
-            sgforder[i] = np.argmin(abs(elist[i]
-                                     - np.array(self.zint[:self.cntint + 1])))
-            if sgferr > 1e-12:
-                self.text('Warning: SGF not Found. eqzgp[%d]= %f %f'
-                                                        %(i, elist[i],sgferr))
-        flist = []
-        siglist = []
-        for i in range(self.lead_num):
-            siglist.append([])
-        for i in sgforder:
-            flist.append(self.fint[i])
-
-        for i in range(self.lead_num):
-            for j in sgforder:
-                sigma = self.tgtint[i][j]
-                siglist[i].append(sigma)
-        self.eqpathinfo[s][k].add(elist, wlist, flist, siglist)    
-        
-        if self.recal_path:
-            self.timer.stop('eq fock2den')
-            
-        del self.fint, self.tgtint, self.zint
-        return den 
-    
-    def get_neintegral_points(self, s, k, calcutype='neInt'):
-        if self.recal_path:
-            self.timer.start('ne fock2den')        
-        intpathtol = 1e-8
-        nbmol = self.nbmol_inner
-        den = np.zeros([nbmol, nbmol], complex)
-        maxintcnt = 50
-        intctrl = self.intctrl
-
-        self.zint = [0] * maxintcnt
-        self.tgtint = []
-        for i in range(self.lead_num):
-            nblead = self.nblead[i]
-            self.tgtint.append([])
-        
-        self.reset_lead_hs(s, k)
-        self.hsd.s = s
-        self.hsd.pk = k
-
-        if calcutype == 'neInt':
-            for n in range(1, len(intctrl.neintpath)):
-                self.cntint = -1
-                self.fint = []
-                for i in range(self.lead_num):
-                    self.fint.append([[],[]])
-                if intctrl.kt <= 0:
-                    neintpath = [intctrl.neintpath[n - 1] + intpathtol,
-                                 intctrl.neintpath[n] - intpathtol]
-                else:
-                    neintpath = [intctrl.neintpath[n-1], intctrl.neintpath[n]]
-                if intctrl.neintmethod== 1:
-    
-                    # ----Auto Integral------
-                    sumga, zgp, wgp, nefcnt = function_integral(self,
-                                                                    calcutype)
-    
-                    nefcnt = len(zgp)
-                    sgforder = [0] * nefcnt
-                    for i in range(nefcnt):
-                        sgferr = np.min(np.abs(zgp[i] - np.array(
-                                            self.zint[:self.cntint + 1 ])))
-                        sgforder[i] = np.argmin(np.abs(zgp[i] -
-                                       np.array(self.zint[:self.cntint + 1])))
-                        if sgferr > 1e-12:
-                            self.text('--Warning: SGF not found, \
-                                    nezgp[%d]=%f %f' % (i, zgp[i], sgferr))
-                else:
-                    # ----Manual Integral------
-                    nefcnt = max(np.ceil(np.real(neintpath[1] -
-                                                    neintpath[0]) /
-                                                    intctrl.neintstep) + 1, 6)
-                    nefcnt = int(nefcnt)
-                    zgp = np.linspace(neintpath[0], neintpath[1], nefcnt)
-                    zgp = list(zgp)
-                    wgp = np.array([3.0 / 8, 7.0 / 6, 23.0 / 24] + [1] *
-                             (nefcnt - 6) + [23.0 / 24, 7.0 / 6, 3.0 / 8]) * (
-                                                          zgp[1] - zgp[0])
-                    wgp = list(wgp)
-                    sgforder = range(nefcnt)
-                    sumga = np.zeros([1, 2, nbmol, nbmol], complex)
-                    for i in range(nefcnt):
-                        sumga += self.calgfunc(zgp[i], calcutype) * wgp[i]
-                den += sumga[0, 0] / np.pi / 2
-                flist = [] 
-                siglist = []
-                for i in range(self.lead_num):
-                    flist.append([[],[]])
-                    siglist.append([])
-                for l in range(self.lead_num):
-                    for j in sgforder:
-                        for i in [0, 1]:
-                            fermi_factor = self.fint[l][i][j]
-                            flist[l][i].append(fermi_factor)   
-                        sigma = self.tgtint[l][j]
-                        siglist[l].append(sigma)
-                self.nepathinfo[s][k].add(zgp, wgp, flist, siglist)
-        # Loop neintpath
-        elif calcutype == 'locInt':
-            self.cntint = -1
-            self.fint =[]
-            sumgr, zgp, wgp, locfcnt = function_integral(self, 'locInt')
-            # res Calcu :minfermi
-            sumgr -= self.calgfunc(intctrl.locresz[0, :], 'resInt')
-            # res Calcu :maxfermi
-            sumgr += self.calgfunc(intctrl.locresz[1, :], 'resInt')
-            
-            sumgr.shape = (nbmol, nbmol)
-            den = 1.j * (sumgr - sumgr.T.conj()) / np.pi / 2
-         
-            # --sort SGF --
-            nres = intctrl.locresz.shape[-1]
-            self.locpathinfo[s][k].set_nres(2 * nres)
-            loc_e = intctrl.locresz.copy()
-            loc_e.shape = (2 * nres, )
-            elist = zgp + loc_e.tolist()
-            wlist = wgp + [-1.0] * nres + [1.0] * nres
-            fcnt = len(elist)
-            sgforder = [0] * fcnt
-            for i in range(fcnt):
-                sgferr = np.min(abs(elist[i] -
-                                      np.array(self.zint[:self.cntint + 1 ])))
-                
-                sgforder[i] = np.argmin(abs(elist[i]
-                                     - np.array(self.zint[:self.cntint + 1])))
-                if sgferr > 1e-12:
-                    self.text('Warning: SGF not Found. eqzgp[%d]= %f %f'
-                                                        %(i, elist[i],sgferr))
-            flist = []
-            siglist = []
-            for i in range(self.lead_num):
-                siglist.append([])
-            for i in sgforder:
-                flist.append(self.fint[i])
-            for i in range(self.lead_num):
-                for j in sgforder:
-                    sigma = self.tgtint[i][j]
-                    siglist[i].append(sigma)
-            self.locpathinfo[s][k].add(elist, wlist, flist, siglist)           
-
-        if self.recal_path:
-            self.timer.stop('ne fock2den')
-            
-        del self.zint, self.tgtint
-        if len(intctrl.neintpath) >= 2:
-            del self.fint
-        return den
-         
     def calgfunc(self, zp, calcutype, flag='old'):
         #calcutype = 
         #  - 'eqInt':  gfunc[Mx*Mx,nE] (default)
@@ -1675,7 +1459,7 @@ class Transport(GPAW):
         #  - 'resInt': gfunc[Mx,Mx] = gr * fint
         #              fint = -2i*pi*kt
       
-        intctrl = self.intctrl
+        contour = self.contour
         sgftol = 1e-10
         stepintcnt = 50
         nbmol = self.nbmol_inner
@@ -1716,15 +1500,15 @@ class Transport(GPAW):
             
             gr = self.hsd.calculate_eq_green_function(zp[i], sigma, False)
             # --ne-Integral---
-            kt = intctrl.kt
+            kt = contour.kt
             ff = []
             if calcutype == 'neInt':
                 ffocc = []
                 ffvir = []
                 for n in range(self.lead_num):
-                    lead_ef = intctrl.leadfermi[n]
-                    min_ef = intctrl.minfermi
-                    max_ef = intctrl.maxfermi
+                    lead_ef = contour.leadfermi[n]
+                    min_ef = contour.minfermi
+                    max_ef = contour.maxfermi
                     self.fint[n][0].append(fermidistribution(zp[i] - lead_ef,
                                            kt) - fermidistribution(zp[i] -
                                           min_ef, kt))
@@ -1742,8 +1526,8 @@ class Transport(GPAW):
             # --local-Integral--
             elif calcutype == 'locInt':
                 # fmax-fmin
-                max_ef = intctrl.maxfermi
-                min_ef = intctrl.minfermi
+                max_ef = contour.maxfermi
+                min_ef = contour.minfermi
                 self.fint.append(fermidistribution(zp[i] - max_ef, kt) - 
                                  fermidistribution(zp[i] - min_ef, kt) )
                 gfunc[i] = gr * self.fint[self.cntint]
@@ -1757,7 +1541,7 @@ class Transport(GPAW):
                 if kt <= 0:
                     self.fint.append(1.0)
                 else:
-                    min_ef = intctrl.minfermi
+                    min_ef = contour.minfermi
                     self.fint.append(fermidistribution(zp[i] - min_ef, kt))
                 gfunc[i] = gr * self.fint[self.cntint]    
         if flag == 'old':
@@ -1766,8 +1550,6 @@ class Transport(GPAW):
             return gfunc, sigma
 
     def fock2den(self, s, k):
-        intctrl = self.intctrl
-        
         self.hsd.s = s
         self.hsd.pk = k
 
@@ -1849,7 +1631,7 @@ class Transport(GPAW):
         
         self.timer.start('record')        
         if self.foot_print:
-            self.analysor.save_ele_step()
+            self.analysor.save_ele_step(self)
         self.timer.stop('record')
         self.record_time_cost = self.timer.timers['HamMM', 'record']
         
@@ -1876,7 +1658,7 @@ class Transport(GPAW):
             if not hasattr(self, 'contour'):
                 self.contour = Contour(self.occupations.width * Hartree,
                             self.lead_fermi, self.bias, comm=self.wfs.gd.comm,
-                             tp=self, plot_eta=self.plot_eta,
+                             plot_eta=self.plot_eta,
                              plot_energy_range=self.plot_energy_range,
                              plot_energy_point_num=self.plot_energy_point_num)            
             if not hasattr(self, 'analysor'):
@@ -1910,8 +1692,8 @@ class Transport(GPAW):
             else:
                 calc = self.equivalent_atoms.calc                
             self.extended_calc.hamiltonian = calc.hamiltonian
-            self.analysor.save_bias_step()    
-            self.analysor.save_ion_step()                
+            self.analysor.save_bias_step(self)    
+            self.analysor.save_ion_step(self)                
             return self.F_av
         
         else:            
@@ -1924,7 +1706,7 @@ class Transport(GPAW):
                 if np.sum(np.abs(self.bias)) < 1e-3:
                     self.ground = True
                 self.get_selfconsistent_hamiltonian()
-                self.analysor.save_ion_step()
+                self.analysor.save_ion_step(self)
                 self.text('--------------ionic_step---' +
                           str(self.analysor.n_ion_step) + '---------------')
                 self.F_av = None
@@ -1958,9 +1740,9 @@ class Transport(GPAW):
         self.extended_calc.wfs.calculate_forces(hamiltonian, self.F_av)
 
         nn = self.surround.nn * 2
-        vHt_g = self.surround.uncapsule(nn, hamiltonian.vHt_g,
+        vHt_g = self.surround.uncapsule(self, nn, hamiltonian.vHt_g,
                                                     self.finegd1, self.finegd)
-        vt_G0 = self.surround.uncapsule(nn / 2, vt_G, self.gd1, self.gd)  
+        vt_G0 = self.surround.uncapsule(self, nn / 2, vt_G, self.gd1, self.gd)  
         if wfs.band_comm.rank == 0 and wfs.kpt_comm.rank == 0:
             # Force from compensation charges:
             dF_aLv = self.density.ghat.dict(derivative=True)
@@ -2055,7 +1837,7 @@ class Transport(GPAW):
         
         if not self.use_qzk_boundary and not self.multi_leads:
             nn = self.surround.nn
-            density.nt_sG = self.surround.uncapsule(nn, nt_sG, self.gd1,
+            density.nt_sG = self.surround.uncapsule(self, nn, nt_sG, self.gd1,
                                                     self.gd)
         else:
             density.nt_sG = nt_sG
@@ -2113,7 +1895,7 @@ class Transport(GPAW):
             #self.inner_poisson.initialize()
  
         nn = self.surround.nn * 2
-        nt_sg = self.surround.capsule(nn, density.nt_sg, self.surround.nt_sg,
+        nt_sg = self.surround.capsule(self, nn, density.nt_sg, self.surround.nt_sg,
                                                     self.finegd1, self.finegd)
   
         Ebar = ham.finegd.integrate(ham.vbar_g, np.sum(nt_sg, axis=0),
@@ -2161,7 +1943,7 @@ class Transport(GPAW):
                 self.finegd.distribute(gate_vg, local_gate_vg)
                 self.hamiltonian.vHt_g += self.gate * local_gate_vg / Hartree
                
-        self.surround.combine_vHt_g(self.hamiltonian.vHt_g)
+        self.surround.combine_vHt_g(self, self.hamiltonian.vHt_g)
         self.text('poisson interations :' + str(ham.npoisson))
         self.timer.stop('Poisson')
         Epot = 0.5 * self.hamiltonian.finegd.integrate(self.hamiltonian.vHt_g,
@@ -2171,10 +1953,10 @@ class Transport(GPAW):
         for vt_g, vt_G in zip(ham.vt_sg, ham.vt_sG):
             vt_g += ham.vHt_g
             ham.restrict(vt_g, vt_G)
-        self.surround.refresh_vt_sG()
+        self.surround.refresh_vt_sG(self)
         
         nn = self.surround.nn
-        vt_sG = self.surround.uncapsule(nn, ham.vt_sG, self.gd1, self.gd)
+        vt_sG = self.surround.uncapsule(self, nn, ham.vt_sG, self.gd1, self.gd)
         for vt_G, nt_G in zip(vt_sG, density.nt_sG):    
             Ekin -= self.gd.integrate(vt_G, nt_G - density.nct_G,
                                                        global_integral=False)            
@@ -2237,7 +2019,7 @@ class Transport(GPAW):
         #dH_asp = collect_D_asp3(ham, self.density.rank_a)
         dH_asp = collect_atomic_matrices(ham.dH_asp, ham.setups, ham.nspins,
                                          ham.gd.comm, self.density.rank_a)
-        self.surround.combine_dH_asp(dH_asp)
+        self.surround.combine_dH_asp(self, dH_asp)
         self.timer.stop('Hamiltonian')      
 
     
@@ -2380,10 +2162,6 @@ class Transport(GPAW):
             self.non_sc_analysis()
         else:
             self.calculate_to_bias(v_limit, num_v, start=start)
-            del self.analysor
-            if not self.multi_leads:
-                del self.surround
-            del self.contour
 
     def calculate_transmission(self):
         self.negf_prepare()
@@ -2573,7 +2351,7 @@ class Transport(GPAW):
                 nt_sG = gd1.zeros(self.nspins)
                 wfs.basis_functions.add_to_density(nt_sG, f_asi)
                 nn = self.surround.nn
-                density.nt_sG = self.surround.uncapsule(nn, nt_sG, gd1, gd)
+                density.nt_sG = self.surround.uncapsule(self, nn, nt_sG, gd1, gd)
                 density.nt_sG += density.nct_G
                 density.normalize()
 
@@ -2598,7 +2376,7 @@ class Transport(GPAW):
         flag = True
         self.contour = Contour(self.occupations.width * Hartree,
                             self.lead_fermi, self.bias, comm=self.wfs.gd.comm,
-                             tp=self, plot_eta=self.plot_eta,
+                             plot_eta=self.plot_eta,
                              plot_energy_range=self.plot_energy_range,
                              plot_energy_point_num=self.plot_energy_point_num)
         if not hasattr(self, 'analysor'):
@@ -2615,14 +2393,10 @@ class Transport(GPAW):
             fd = file('bias_data' + str(i + 1), 'r')
             self.bias, vt_sG, dH_asp = cPickle.load(fd)
             fd.close()
-            self.intctrl = IntCtrl(self.occupations.width * Hartree,
-                                    self.lead_fermi, self.bias,
-                                    self.min_energy,
-                                    self.neintmethod, self.neintstep)
           
             for j in range(self.lead_num):
                 self.analysor.selfenergies[j].set_bias(self.bias[j])
-            self.surround.combine_dH_asp(dH_asp)
+            self.surround.combine_dH_asp(self, dH_asp)
             self.gd1.distribute(vt_sG, self.extended_calc.hamiltonian.vt_sG) 
             h_spkmm, s_pkmm = self.get_hs(self.extended_calc)
             if self.gate_mode == 'VM':
@@ -2640,7 +2414,7 @@ class Transport(GPAW):
                 self.append_buffer_hsd()                    
  
             #self.analysor.save_ele_step()            
-            self.analysor.save_bias_step()
+            self.analysor.save_bias_step(self)
 
     def save_lead_hamiltonian_matrix(self):
         print 'assert self.nspins == 1'
@@ -2728,7 +2502,7 @@ class Transport(GPAW):
                              scat_hamiltonian_matrix),
                              fd, 2)
                fd.close()
-           
+            
     def analysis_prepare(self, bias_step):
         fd = file('lead_hs', 'r')
         lead_s00, lead_s01, lead_h00, lead_h01 = cPickle.load(fd)
@@ -2742,14 +2516,10 @@ class Transport(GPAW):
         flag = True
         if not hasattr(self, 'analysor'):
             self.analysor = Transport_Analysor(self, True)
-        self.intctrl = IntCtrl(self.occupations.width * Hartree,
-                                    self.lead_fermi, self.bias,
-                                    self.min_energy,
-                                    self.neintmethod, self.neintstep)
         self.contour = Contour(self.occupations.width * Hartree,
                                self.lead_fermi, self.bias,
                                comm=self.wfs.gd.comm,
-                               tp=self, plot_eta=self.plot_eta,
+                               plot_eta=self.plot_eta,
                                plot_energy_range=self.plot_energy_range,
                              plot_energy_point_num=self.plot_energy_point_num)
         
