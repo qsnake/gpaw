@@ -800,8 +800,9 @@ class Transport_Analysor:
             if not tp.use_qzk_boundary and not tp.multi_leads:
                 force = tp.calculate_force() * Hartree / Bohr
             else:
-                force = tp.extended_calc.get_forces(tp.extended_atoms
-                                                    )[:len(tp.atoms)]
+                #force = tp.extended_calc.get_forces(tp.extended_atoms
+                #                                    )[:len(tp.atoms)]
+                force = None
             tp.F_av = None
             contour = self.collect_contour()            
         charge = self.collect_charge()
