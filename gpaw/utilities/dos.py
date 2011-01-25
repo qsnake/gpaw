@@ -97,8 +97,13 @@ def raw_orbital_LDOS(paw, a, spin, angular='spdf'):
     w_k = wfs.weight_k
     nk = len(w_k)
     nb = wfs.nbands
-    setup = wfs.setups[a]
 
+    if a < 0:
+        # Allow list-style negative indices; we'll need the positive a for the
+        # dictionary lookup later
+        a = len(wfs.setups) + a
+
+    setup = wfs.setups[a]
     energies = np.empty(nb * nk)
     weights_xi = np.empty((nb * nk, setup.ni))
     x = 0
