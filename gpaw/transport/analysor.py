@@ -14,27 +14,26 @@ import cPickle
 import os
 
 class Transport_Analysor:
-    def __init__(self, transport, restart=False):
-        self.tp = transport
+    def __init__(self, tp, restart=False):
         self.restart = restart
         self.data = {}
         self.ele_steps = []
         self.bias_steps = []
         self.ion_steps = []
         self.n_ele_step = 0
-        self.n_bias_step = self.tp.n_bias_step
-        self.n_ion_step = self.tp.n_ion_step
+        self.n_bias_step = tp.n_bias_step
+        self.n_ion_step = tp.n_ion_step
         self.matrix_foot_print = False
         self.reset = False
         self.scattering_states_initialized = False
-        self.initialize()
+        self.initialize(tp)
        
-    def initialize(self):
-        kw = self.tp.analysis_parameters
+    def initialize(self, tp):
+        kw = tp.analysis_parameters
         if self.restart:
-            self.initialize_selfenergy_and_green_function()
+            self.initialize_selfenergy_and_green_function(tp)
         else:
-            self.selfenergies = self.tp.selfenergies
+            self.selfenergies = tp.selfenergies
         p = self.set_default_analysis_parameters()
         for key in kw:
             if key in ['energies', 'lead_pairs', 'dos_project_atoms',
@@ -46,9 +45,8 @@ class Transport_Analysor:
         for key in p:
             vars(self)[key] = p[key]       
 
-        ef = self.tp.lead_fermi[0]
-        #self.energies = self.energies + ef + 1e-4 * 1.j
-        path = self.tp.contour.get_plot_path()
+        ef = tp.lead_fermi[0]
+        path = tp.contour.get_plot_path()
         self.energies = path.energies
         self.my_energies = path.my_energies
         self.weights = path.weights
@@ -60,7 +58,7 @@ class Transport_Analysor:
                          self.dos_realspace_energies]:
             if variable is not None:
                 variable = np.array(variable) + ef
-        ecomm = self.tp.contour.comm
+        ecomm = tp.contour.comm
         
         if self.eig_trans_channel_energies is not None:
             self.my_eig_trans_channel_energies = np.array_split(
@@ -76,13 +74,13 @@ class Transport_Analysor:
                 np.arange(len(self.dos_realspace_energies)),
                 ecomm.size)[ecomm.rank]
 
-        setups = self.tp.inner_setups
+        setups = tp.inner_setups
         self.project_atoms_in_device = self.project_equal_atoms[0]
         self.project_atoms_in_molecule = self.project_equal_atoms[1]
         self.project_basis_in_device = get_atom_indices(
                                   self.project_atoms_in_device, setups)
         if self.isolate_atoms is not None:
-            self.calculate_isolate_molecular_levels()
+            self.calculate_isolate_molecular_levels(tp)
         self.overhead_data_saved = False
         if world.rank == 0:
             if not os.access('analysis_data', os.F_OK):
@@ -92,25 +90,24 @@ class Transport_Analysor:
         world.barrier()
         self.data = {}
 
-    def save_overhead_data(self):
+    def save_overhead_data(self, tp):
         contour_parameters = {}
         cp = contour_parameters
-        cp['neintmethod'] = self.tp.neintmethod
-        cp['neintstep'] = self.tp.neintstep
-        cp['lead_fermi'] = self.tp.lead_fermi
-        cp['kt'] = self.tp.occupations.width * Hartree
-        if not self.tp.non_sc:
-            cp['eqinttol'] = self.tp.intctrl.eqinttol
-            cp['neinttol'] = self.tp.intctrl.neinttol
+        cp['neintmethod'] = tp.neintmethod
+        cp['neintstep'] = tp.neintstep
+        cp['lead_fermi'] = tp.lead_fermi
+        cp['kt'] = tp.occupations.width * Hartree
+        if not tp.non_sc:
+            cp['eqinttol'] = tp.contour.eqinttol
         
         basis_information = {}
         bi = basis_information
-        bi['orbital_indices'] = self.tp.orbital_indices
-        bi['lead_orbital_indices'] = self.tp.lead_orbital_indices
-        bi['ll_index'] = self.tp.hsd.S[0].ll_index
-        bi['ex_ll_index'] = self.tp.hsd.S[0].ex_ll_index
+        bi['orbital_indices'] = tp.orbital_indices
+        bi['lead_orbital_indices'] = tp.lead_orbital_indices
+        bi['ll_index'] = tp.hsd.S[0].ll_index
+        bi['ex_ll_index'] = tp.hsd.S[0].ex_ll_index
           
-        atoms = self.tp.atoms.copy()
+        atoms = tp.atoms.copy()
         if world.rank == 0:
             fd = file('analysis_overhead', 'wb')
             cPickle.dump((atoms, basis_information, contour_parameters), fd, 2)
@@ -131,9 +128,8 @@ class Transport_Analysor:
         p['dos_realspace_energies'] = None
         return p      
                 
-    def initialize_selfenergy_and_green_function(self):
+    def initialize_selfenergy_and_green_function(self, tp):
         self.selfenergies = []
-        tp = self.tp
         if tp.use_lead:
             for i in range(tp.lead_num):
                 self.selfenergies.append(LeadSelfEnergy(tp.lead_hsd[i],
@@ -141,47 +137,47 @@ class Transport_Analysor:
     
                 self.selfenergies[i].set_bias(tp.bias[i])
             
-    def reset_selfenergy(self, s, k):
-        for i in range(self.tp.lead_num):
+    def reset_selfenergy(self, tp, s, k):
+        for i in range(tp.lead_num):
             self.selfenergies[i].s = s
             self.selfenergies[i].pk = k
     
-    def reset_green_function(self, s, k): 
-        self.tp.hsd.s = s
-        self.tp.hsd.pk = k
+    def reset_green_function(self, tp, s, k): 
+        tp.hsd.s = s
+        tp.hsd.pk = k
       
-    def calculate_green_function_of_k_point(self, s, k, energy, sigma,
+    def calculate_green_function_of_k_point(self, tp, s, k, energy, sigma,
                                                                  full=False):
-        self.reset_green_function(s, k)
-        return self.tp.hsd.calculate_eq_green_function(energy, sigma,
+        self.reset_green_function(tp, s, k)
+        return tp.hsd.calculate_eq_green_function(energy, sigma,
                                                        ex=False, full=full)
  
-    def calculate_sigma(self, s, k, energy, nid_flag=None):
+    def calculate_sigma(self, tp, s, k, energy, nid_flag=None):
         sigma = []
-        for i in range(self.tp.lead_num):
+        for i in range(tp.lead_num):
             sigma.append(self.selfenergies[i](energy, nid_flag))        
         return sigma
 
-    def get_gamma(self, sigma):
+    def get_gamma(self, tp, sigma):
         gamma = []
-        for i in range(self.tp.lead_num):
+        for i in range(tp.lead_num):
             gamma.append(1.j * (sigma[i].recover() -
                                                 sigma[i].recover().T.conj()))
         return gamma
         
-    def calculate_transmission(self, s, k, energy, nid_flag=None):
-        self.reset_selfenergy(s, k)
-        self.reset_green_function(s, k)
-        sigma = self.calculate_sigma(s, k, energy, nid_flag)
-        gamma = self.get_gamma(sigma)    
+    def calculate_transmission(self, tp, s, k, energy, nid_flag=None):
+        self.reset_selfenergy(tp, s, k)
+        self.reset_green_function(tp, s, k)
+        sigma = self.calculate_sigma(tp, s, k, energy, nid_flag)
+        gamma = self.get_gamma(tp, sigma)    
         trans_coff = []
         for i, lead_pair in enumerate(self.lead_pairs):
             l1, l2 = lead_pair
             if i == 0:
-                gr_sub, inv_mat = self.tp.hsd.abstract_sub_green_matrix(
-                                                        energy, sigma, l1, l2)
+                gr_sub, inv_mat = tp.hsd.abstract_sub_green_matrix(
+                                                    energy, sigma, l1, l2)
             else:
-                gr_sub = self.tp.hsd.abstract_sub_green_matrix(energy,
+                gr_sub = tp.hsd.abstract_sub_green_matrix(energy,
                                                     sigma, l1, l2, inv_mat)                    
             transmission =  dot(dot(gamma[l1], gr_sub),
                                               dot(gamma[l2], gr_sub.T.conj()))
@@ -189,24 +185,24 @@ class Transport_Analysor:
         trans_coff = np.array(trans_coff)
         return trans_coff
     
-    def calculate_dos(self, s, k, energy, nid_flag=None):
-        self.reset_selfenergy(s, k)
-        self.reset_green_function(s, k)
-        sigma = self.calculate_sigma(s, k, energy, nid_flag)
-        gr = self.calculate_green_function_of_k_point(s, k, energy, sigma)        
-        dos = - np.imag(np.diag(dot(gr, self.tp.hsd.S[k].recover()))) / np.pi         
+    def calculate_dos(self, tp, s, k, energy, nid_flag=None):
+        self.reset_selfenergy(tp, s, k)
+        self.reset_green_function(tp, s, k)
+        sigma = self.calculate_sigma(tp, s, k, energy, nid_flag)
+        gr = self.calculate_green_function_of_k_point(tp, s, k, energy, sigma)        
+        dos = - np.imag(np.diag(dot(gr, tp.hsd.S[k].recover()))) / np.pi         
         return dos
     
-    def calculate_eigen_transport_channel(self, s, q, energy):
-        t, vc, k, vl = self.central_scattering_states(energy, s, q)
+    def calculate_eigen_transport_channel(self, tp, s, q, energy):
+        t, vc, k, vl = self.central_scattering_states(tp, energy, s, q)
         weights = []
         velocities = []
         vectors = []
-        for i in range(self.tp.lead_num):
+        for i in range(tp.lead_num):
             weights.append([])
             velocities.append([])
             vectors.append([])
-            for j in range(self.tp.lead_num):
+            for j in range(tp.lead_num):
                 zeta = t[i][j]
                 zeta2 = np.dot(zeta.T.conj(), zeta)
                 if np.product(zeta2.shape) != 0:
@@ -219,24 +215,24 @@ class Transport_Analysor:
         vectors = np.array(vectors)
         return weights, velocities, vectors
   
-    def calculate_charge_distribution(self, s, q):
-        d_mm = self.tp.hsd.D[s][q].recover(True)
-        s_mm = self.tp.hsd.S[q].recover(True)
+    def calculate_charge_distribution(self, tp, s, q):
+        d_mm = tp.hsd.D[s][q].recover(True)
+        s_mm = tp.hsd.S[q].recover(True)
         q_mm = np.dot(d_mm, s_mm)
         return np.diag(q_mm).real
 
-    def calculate_isolate_molecular_levels(self):
+    def calculate_isolate_molecular_levels(self, tp):
         atoms = self.isolate_atoms
         atoms.pbc = True
-        p = self.tp.gpw_kwargs.copy()
+        p = tp.gpw_kwargs.copy()
         p['nbands'] = None
         if 'mixer' in p:
-            if not self.tp.spinpol:
+            if not tp.spinpol:
                 p['mixer'] = Mixer(0.1, 5, weight=100.0)
             else:
                 p['mixer'] = MixerDif(0.1, 5, weight=100.0)
         p['poissonsolver'] = PoissonSolver(nn=2)
-        if type(p['basis']) is dict and len(p['basis']) == len(self.tp.atoms):
+        if type(p['basis']) is dict and len(p['basis']) == len(tp.atoms):
             p['basis'] = 'dzp'
             raise Warning('the dict basis is not surpported in isolate atoms')
         if 'txt' in p and p['txt'] != '-':
@@ -253,14 +249,14 @@ class Transport_Analysor:
         self.isolate_eigen_vectors = c_nm
         self.isolate_s_mm = s_mm
 
-    def calculate_project_transmission(self, s, q, energy):
+    def calculate_project_transmission(self, tp, s, q, energy):
         eps_n, c_nm, s_mm = self.isolate_eigen_values, \
                                  self.isolate_eigen_vectors, self.isolate_s_mm
-        nl = self.tp.lead_num
+        nl = tp.lead_num
         T0 = np.zeros(c_nm.shape[0])
         ind1 = self.project_basis_in_molecule
         ind2 = self.project_basis_in_device
-        t, vc, k, vl = self.central_scattering_states(energy, s, q)
+        t, vc, k, vl = self.central_scattering_states(tp, energy, s, q)
         project_transmission = []
         for j in range(nl):
             project_transmission.append([])
@@ -278,9 +274,9 @@ class Transport_Analysor:
         project_transmission = np.array(project_transmission)
         return project_transmission
 
-    def calculate_realspace_wave_functions(self, C_nm, q):
+    def calculate_realspace_wave_functions(self, tp, C_nm, q):
         #nl number of molecular levels
-        wfs = self.tp.wfs
+        wfs = tp.wfs
         nao = wfs.setups.nao
         nb, nl = C_nm.shape
         if wfs.dtype == float:
@@ -288,31 +284,31 @@ class Transport_Analysor:
         #extended_C_nm = np.zeros([nl, nao], wfs.dtype)
         total_psi_g = []
         for i in range(nl):
-            psi_g = self.tp.gd.zeros(nl, dtype=wfs.dtype)
+            psi_g = tp.gd.zeros(nl, dtype=wfs.dtype)
             c_nm = C_nm.reshape(1, -1)
             psi_g = psi_g.reshape(1, -1)
             wfs.basis_functions.lcao_to_grid(c_nm, psi_g, q)
-            psi_g.shape = self.tp.gd.n_c
-            global_psi_g = self.tp.gd.collect(psi_g / Bohr**1.5)
+            psi_g.shape = tp.gd.n_c
+            global_psi_g = tp.gd.collect(psi_g / Bohr**1.5)
             total_psi_g.append(global_psi_g)
         return np.array(total_psi_g)
 
-    def get_left_channels(self, energy, s, k):
+    def get_left_channels(self, tp, energy, s, k):
         # to get the left scattering channel from lead to scattering region
-        sigma = self.calculate_sigma(s, k, energy)
-        g_s_ii = self.calculate_green_function_of_k_point(s, k, energy,
+        sigma = self.calculate_sigma(tp, s, k, energy)
+        g_s_ii = self.calculate_green_function_of_k_point(tp, s, k, energy,
                                                           sigma, full=True)
         nb = g_s_ii.shape[-1]
         dtype = g_s_ii.dtype
         lambda_l_ii = np.zeros([nb, nb], dtype)
         lambda_r_ii = np.zeros([nb, nb], dtype)
-        ind = get_matrix_index(self.tp.hsd.S[0].ll_index[0][-1])
+        ind = get_matrix_index(tp.hsd.S[0].ll_index[0][-1])
         lambda_l_ii[ind.T, ind] = 1.j * (sigma[0].recover() -
                                                   sigma[0].recover().T.conj())
-        ind = get_matrix_index(self.tp.hsd.S[0].ll_index[1][-1])        
+        ind = get_matrix_index(tp.hsd.S[0].ll_index[1][-1])        
         lambda_r_ii[ind.T, ind] = 1.j * (sigma[1].recover() -
                                                   sigma[1].recover().T.conj())
-        s_mm = self.tp.hsd.S[k].recover()
+        s_mm = tp.hsd.S[k].recover()
         s_s_i, s_s_ii = np.linalg.eig(s_mm)
         s_s_i = np.abs(s_s_i)
         s_s_sqrt_i = np.sqrt(s_s_i) # sqrt of eigenvalues  
@@ -333,24 +329,24 @@ class Transport_Analysor:
         v_in = np.dot(np.dot(s_s_isqrt_ii, ut_ii), c_in)
         return T_n, v_in
     
-    def calculate_realspace_dos(self, energy):
-        wfs = self.tp.extended_calc.wfs
-        dosg = wfs.gd.zeros(self.tp.nspins)
+    def calculate_realspace_dos(self, tp, energy):
+        wfs = tp.extended_calc.wfs
+        dosg = wfs.gd.zeros(tp.nspins)
         for kpt in wfs.kpt_u:
             s = kpt.s
             q = kpt.q
-            sigma = self.calculate_sigma(s, q, energy)
+            sigma = self.calculate_sigma(tp, s, q, energy)
 
-            self.reset_green_function(s, q)
-            self.tp.hsd.G.reset_from_others(self.tp.hsd.S[q],
-                                            self.tp.hsd.H[s][q],
-                                            energy, -1, init=True)
+            self.reset_green_function(tp, s, q)
+            tp.hsd.G.reset_from_others(tp.hsd.S[q],
+                                       tp.hsd.H[s][q],
+                                       energy, -1, init=True)
             
-            for i in range(self.tp.hsd.G.lead_num):
-                self.tp.hsd.G.diag_h[i][-1].reset_minus(sigma[i])
+            for i in range(tp.hsd.G.lead_num):
+                tp.hsd.G.diag_h[i][-1].reset_minus(sigma[i])
             
-            gr = np.linalg.inv(self.tp.hsd.G.recover(True))
-            dos_mm = np.dot(gr, self.tp.hsd.S[q].recover(True))
+            gr = np.linalg.inv(tp.hsd.G.recover(True))
+            dos_mm = np.dot(gr, tp.hsd.S[q].recover(True))
         
             if wfs.dtype == float:
                 dos_mm = np.real(dos_mm).copy()
@@ -360,8 +356,7 @@ class Transport_Analysor:
         global_dosg = wfs.gd.collect(dosg)        
         return global_dosg
        
-    def lead_k_matrix(self, l, s, pk, k_vec, hors='S'):
-        tp = self.tp
+    def lead_k_matrix(self, tp, l, s, pk, k_vec, hors='S'):
         if hors == 'S':
             h00 = tp.lead_hsd[l].S[pk].recover()
             h01 = tp.lead_couple_hsd[l].S[pk].recover()
@@ -371,7 +366,7 @@ class Transport_Analysor:
         h01 *=  np.exp(2 * np.pi * 1.j * k_vec)
         return h00 + h01 + h01.T.conj()
       
-    def lead_scattering_states(self, energy, l, s, q):
+    def lead_scattering_states(self, tp, energy, l, s, q):
         #Calculating the scattering states in electrodes
         #l ---- index of electrode
         #s ---- index of spin
@@ -381,7 +376,6 @@ class Transport_Analysor:
         # the lead hamiltonian
         MaxLambda = 1e2
         MinErr = 1e-8
-        tp = self.tp
         energy += tp.bias[l]
         hes00 = tp.lead_hsd[l].H[s][q].recover() - \
                                     tp.lead_hsd[l].S[q].recover() * energy
@@ -433,17 +427,16 @@ class Transport_Analysor:
             j = proindex[0]
             while j <= proindex[-1]:
                 same_k_index = find(abs((k - k[j]).real) < MinErr)
-                sk = self.lead_k_matrix(l, s, q, k[j])
+                sk = self.lead_k_matrix(tp, l, s, q, k[j])
                 Vk[:, same_k_index] = eig_states_norm(Vk[:, same_k_index],
                                                                          sk)
                 j += len(same_k_index)
         return np.array(k[proindex]), np.array(Vk[:, proindex])
                    
-    def central_scattering_states(self, energy, s, q):
+    def central_scattering_states(self, tp, energy, s, q):
         #To get the scattering states corresponding to a Bloch vector in lead
         MaxLambda = 1e2
         MinErr = 1e-8
-        tp = self.tp        
         bc = tp.inner_mol_index
         nc = len(bc)
         molhes = tp.hsd.H[s][q].recover(True) - \
@@ -485,7 +478,7 @@ class Transport_Analysor:
         total_bB2 = []
                 
         for i in range(tp.lead_num):
-            k, vk = self.lead_scattering_states(energy, i, s, q)
+            k, vk = self.lead_scattering_states(tp, energy, i, s, q)
             total_k.append(k)
             total_vk.append(vk)
             
@@ -494,7 +487,7 @@ class Transport_Analysor:
             
             #calculating v = dE/dk
             de2 = 1e-8
-            k2, vk2 = self.lead_scattering_states(energy + de2, i, s, q)
+            k2, vk2 = self.lead_scattering_states(tp, energy + de2, i, s, q)
             v = de2 / (k2 - k) / 2 / np.pi 
             total_v.append(v)
             
@@ -641,7 +634,7 @@ class Transport_Analysor:
         return np.array(t), np.array(total_vc), \
                                          np.array(total_k), np.array(total_vl)
             
-    def cal_sstates(self, energies, s, q):
+    def cal_sstates(self, tp, energies, s, q):
         #To see how much the transmision from one orbital(local basis) in lead a
         # to the orbital in the lead b, the transmission is decomposited to
         # Bloch wave in leads
@@ -650,7 +643,6 @@ class Transport_Analysor:
         
         energies = np.real(energies)
         ne = len(energies)
-        tp  = self.tp
         t_all = np.zeros([ne, tp.lead_num, tp.lead_num])
         t_lead_all = []
         for i in range(tp.lead_num):
@@ -665,7 +657,7 @@ class Transport_Analysor:
         sk1 = []
         sk2 = []
         for n, energy in enumerate(energies):
-            t, vc, k, vl = self.central_scattering_states(energy, s, q)
+            t, vc, k, vl = self.central_scattering_states(tp, energy, s, q)
             total_t.append(t)
             total_vc.append(vc)
             total_k.append(k)
@@ -675,9 +667,9 @@ class Transport_Analysor:
                     t0 = t[i][j]
                     t_all[n, i, j] = np.sum(np.dot(t0.T.conj(), t0))
                     for m1 in range(t0.shape[0]):
-                        sk1.append(self.lead_k_matrix(i, s, q, k[i][m1], 'S'))
+                        sk1.append(self.lead_k_matrix(tp, i, s, q, k[i][m1], 'S'))
                     for m2 in range(t0.shape[1]):
-                        sk2.append(self.lead_k_matrix(i, s, q, k[j][m2], 'S'))
+                        sk2.append(self.lead_k_matrix(tp, i, s, q, k[j][m2], 'S'))
                     for m1 in range(t0.shape[0]):
                         for m2 in range(t0.shape[1]):
                             w1 = (vl[j][:, m1].conj() * np.dot(sk1[m1],
@@ -695,8 +687,7 @@ class Transport_Analysor:
         return np.array(t_lead_all), np.array(t_all)
 
     
-    def save_ele_step(self):
-        tp = self.tp
+    def save_ele_step(self, tp):
         if not self.matrix_foot_print:
             fd = file('matrix_sample', 'wb')
             sample = Tp_Sparse_Matrix(complex, tp.hsd.ll_index)
@@ -771,16 +762,15 @@ class Transport_Analysor:
             vHt = None
         self.n_ele_step += 1
       
-    def save_bias_step(self):
+    def save_bias_step(self, tp):
         if not self.overhead_data_saved:
-            self.save_overhead_data()
+            self.save_overhead_data(tp)
             self.overhead_data_saved = True
-        tp = self.tp
         ks_map = tp.my_ks_map
         if 'tc' in tp.analysis_data_list:
-            tc, dos = self.collect_transmission_and_dos()
+            tc, dos = self.collect_transmission_and_dos(tp)
             if not tp.non_sc:
-                current = self.calculate_current(tc)
+                current = self.calculate_current(tp, tc)
             else:
                 current = np.array(0)
             flag = 'ER_' + str(tp.contour.comm.rank)
@@ -789,23 +779,22 @@ class Transport_Analysor:
                 self.data[flag + '_dos'] = dos
                 if tp.contour.comm.rank == 0:
                     self.data['current'] = current
-        nt, vt, ntx, vtx, nty, vty = self.abstract_d_and_v()
+        nt, vt, ntx, vtx, nty, vty = self.abstract_d_and_v(tp)
         if world.rank == 0 :           
             for name in ['nt', 'vt', 'ntx', 'vtx', 'nty', 'vty']:
                 self.data[name] = eval(name)
-        if tp.non_sc or self.tp.analysis_mode:
+        if tp.non_sc or tp.analysis_mode:
             force = None
             contour = None
         else:
             if not tp.use_qzk_boundary and not tp.multi_leads:
                 force = tp.calculate_force() * Hartree / Bohr
             else:
-                #force = tp.extended_calc.get_forces(tp.extended_atoms
-                #                                    )[:len(tp.atoms)]
-                force = None
+                force = tp.extended_calc.get_forces(tp.extended_atoms
+                                                    )[:len(tp.atoms)]
             tp.F_av = None
-            contour = self.collect_contour()            
-        charge = self.collect_charge()
+            contour = self.collect_contour(tp)            
+        charge = self.collect_charge(tp)
         if world.rank == 0:
             lead_fermi = np.array(tp.lead_fermi)
             lead_pairs = np.array(self.lead_pairs)
@@ -825,7 +814,7 @@ class Transport_Analysor:
                 self.data[name] = eval(obj)
        
         if world.rank == 0:
-            if self.tp.analysis_mode:
+            if tp.analysis_mode:
                 filename = '/abias_step_' + str(self.n_bias_step)
             else:
                 filename = '/bias_step_' + str(self.n_bias_step)
@@ -837,12 +826,11 @@ class Transport_Analysor:
         self.n_ele_step = 0
         self.n_bias_step += 1
 
-    def collect_transmission_and_dos(self, energies=None, nids=None):
+    def collect_transmission_and_dos(self, tp, energies=None, nids=None):
         if energies == None:
             energies = self.my_energies
         if nids == None:
             nids = self.my_nids
-        tp = self.tp
       
         nlp = len(self.lead_pairs)
         ne = len(energies)
@@ -854,9 +842,9 @@ class Transport_Analysor:
         for s in range(ns):
             for q in range(npk):
                 for e, energy, nid in zip(range(len(energies)), energies, nids):
-                    local_dos_array[s, q, :, e] = self.calculate_dos(s, q,
+                    local_dos_array[s, q, :, e] = self.calculate_dos(tp, s, q,
                                                                energy, nid)
-                    local_tc_array[s, q, :, e] =  self.calculate_transmission(s,
+                    local_tc_array[s, q, :, e] =  self.calculate_transmission(tp, s,
                                                             q, energy, nid)
 
         kpt_comm = tp.wfs.kpt_comm
@@ -871,8 +859,7 @@ class Transport_Analysor:
         kpt_comm.gather(local_dos_array, 0, dos_array)                    
         return tc_array, dos_array
     
-    def collect_charge(self):
-        tp = self.tp
+    def collect_charge(self, tp):
         ns, npk = tp.nspins, tp.npk
         nbmol = tp.nbmol + np.sum(tp.nblead)
         kpt_comm = tp.wfs.kpt_comm
@@ -885,14 +872,13 @@ class Transport_Analysor:
         for s in range(ns):
             for q in range(npk):
                     local_charge_array[s, q] = \
-                                     self.calculate_charge_distribution(s, q)
+                                     self.calculate_charge_distribution(tp, s, q)
         kpt_comm.gather(local_charge_array, 0, charge_array)
         if world.rank == 0:
             charge_array = np.sum(charge_array, axis=1)
         return charge_array
 
-    def collect_contour(self):
-        tp = self.tp
+    def collect_contour(self, tp):
         my_eq_contour = {}
         my_ne_contour = {}
         my_loc_contour = {}
@@ -913,11 +899,11 @@ class Transport_Analysor:
         contour = {'eq': eq_contour, 'ne': ne_contour, 'loc': loc_contour}
         return contour
  
-    def save_ion_step(self):
+    def save_ion_step(self, tp):
         if world.rank == 0:
             fd = file('analysis_data/ionic_step_' +
                   str(self.n_ion_step) +'/positions', 'wb')
-            cPickle.dump(self.tp.atoms.positions, fd, 2)
+            cPickle.dump(tp.atoms.positions, fd, 2)
             fd.close()
         self.n_bias_step = 0
         self.n_ion_step += 1
@@ -927,8 +913,7 @@ class Transport_Analysor:
                 os.mkdir(dirname)
         world.barrier()
  
-    def abstract_d_and_v(self):
-        tp = self.tp
+    def abstract_d_and_v(self, tp):
         calc = tp.extended_calc
         gd = calc.gd
         if not tp.use_qzk_boundary and not tp.multi_leads:
@@ -964,15 +949,14 @@ class Transport_Analysor:
             vty = np.array(vty)
         return nt, vt, ntx, vtx, nty, vty
     
-    def calculate_current(self, tc_array, lead_pair_index=0, s=0):             
-        tp = self.tp
+    def calculate_current(self, tp, tc_array, lead_pair_index=0, s=0):             
         current = np.array([0])
         if tp.wfs.kpt_comm.rank == 0:
-            intctrl = tp.intctrl
+            contour = tp.contour
             kt = 0.02
             fd = fermidistribution        
-            lead_ef1 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][0]]
-            lead_ef2 = intctrl.leadfermi[self.lead_pairs[lead_pair_index][1]]
+            lead_ef1 = contour.leadfermi[self.lead_pairs[lead_pair_index][0]]
+            lead_ef2 = contour.leadfermi[self.lead_pairs[lead_pair_index][1]]
             if lead_ef2 > lead_ef1:
                 lead_ef1, lead_ef2 = lead_ef2, lead_ef1
             interval = np.real(self.my_energies[1] - self.my_energies[0])
