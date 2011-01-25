@@ -2,42 +2,98 @@ import numpy as np
 from gpaw.mpi import world
 from gpaw.transport.tools import fermidistribution, gather_ndarray_dict
 
-#---------------------------------------------------------------------------#
-# This class is used to get the integral contour parallelly and control
-# the necessary parameters.
+'''The Contour class is used to get the integral contour parallelly and control
+   the necessary parameters.
+ 
+   To get a Keldysh Green Function, one need to to the integral like this:
+ 
+                      /                          
+                      |                         ---- 
+      D=    1.j/(2*pi)| (Gr(Z) - Ga(Z)f(Z)dZ -  \   (Gr(E) - Ga(E)) * kt 
+                      /                         /___
+                   1, 2, 3                        4
+                             /
+                             |
+                   + 1/(2*pi)| G<(E)dE
+                             /
+                             5
+   The Path indexed by (1,2,3,4,5,6) looks like below:   
+ 
+                              ^   
+            |\                |
+            | \               |
+            |  \ 2            |
+            |   \             |
+          1 |    \            |
+            |     \    3      |        6
+            |      \---------------------
+            |                 |4                 5
+            |    --------------------------------------
+           --------------------------------------------->
+ 
+ 
+    Hierachy:
+       NID(node ID) is the most important information of the energy node.
+       With it you can get the corresponding energy and weight.
+ 
+    To evaluate a function(named f) integral on a region[c-h, c+h],
+    first, we use the Gauss-Lobatto formula to get a evaluation Q1
+      / c+h
+      |
+      |  f(x) dx  = 1/6*f(c-h) + 5/6*f(c-h/sqrt(5)) + 5/6*f(c+h/sqrt(5)) + 1/6*f(c+h) = Q1
+      |
+      / c-h
+ 
+    then, we use the cooresponding Kronrod formula to get another evalution Q2
+      / c+h
+      |
+      |  f(x) dx  = 77/1470*f(c-h) + 432/1470*f(c-sqrt(2/3)*h) + 625/1470*f(c-h/sqrt(5)) +
+      |
+      / c-h
+           672/1470*f(c) + 625/1470*f(c+h/sqrt(5)) + 432/1470*f(c+sqrt(2/3)*h) + 77/1470*f(c+h) = Q2
 
-# To get a Keldysh Green Function, one need to to the integral like this:
-#
-#                     /                          
-#                     |                         ---- 
-#     D=    1.j/(2*pi)| (Gr(Z) - Ga(Z)f(Z)dZ -  \   (Gr(E) - Ga(E)) * kt 
-#                     /                         /___
-#                  1, 2, 3                        4
-#                            /
-#                            |
-#                  + 1/(2*pi)| G<(E)dE
-#                            /
-#                            5
-# The Path indexed by (1,2,3,4,5,6) looks like below:   
-#
-#                             ^   
-#           |\                |
-#           | \               |
-#           |  \ 2            |
-#           |   \             |
-#         1 |    \            |
-#           |     \    3      |        6
-#           |      \---------------------
-#           |                 |4                 5
-#           |    --------------------------------------
-#          --------------------------------------------->
-#
-#
-#  Hierachy:
-#      NID(node ID) is the most important information of the energy node.
-#      With it you can get the corresponding energy and weight.
+    we compare the two results, if the difference is less than tolerance, then divide
+    the region into six parts, and for each of them, do the two evaluations until the difference
+    less than the tolerance.''' 
 
+class EnergyNode:
+    def __init__(self, type, nlead):
+        self.type = type
+        self.num = 0
+        self.lead_num = nlead
+        self.energy = []
+        self.weight = []
+        self.nres = 0
+        self.sigma = []
+        for i in range(nlead):
+            self.sigma.append([])
+        if type == 'eq':
+            self.fermi_factor = []
+        elif type == 'ne':
+            self.fermi_factor = []
+            for i in range(nlead):
+                self.fermi_factor.append([[], []])
+        else:
+            raise TypeError('unkown EnergyNode type')
 
+    def add(self, elist, wlist, flist, siglist):
+        self.num += len(elist)
+        self.energy += elist
+        self.weight += wlist
+        if self.type == 'eq':
+            self.fermi_factor += flist
+        elif self.type == 'ne':
+            for i in range(self.lead_num):
+                for j in [0, 1]:
+                    self.fermi_factor[i][j] += flist[i][j]
+        else:
+            raise TypeError('unkown EnergyNode type')
+        for i in range(self.lead_num):
+            self.sigma[i] += siglist[i]
+
+    def set_nres(self, nres):
+        self.nres = nres
+        
 class Path:
     poles_num = 4
     #int_step = 0.02
@@ -259,7 +315,7 @@ class Contour:
     eta = 1e-2
     calcutype = ['eqInt', 'eqInt', 'eqInt', 'resInt', 'neInt', 'locInt']
     def __init__(self, kt, fermi, bias, maxdepth=7, comm=None, neint='linear',
-                  tp=None, plot_eta=1e-4, neintstep=0.02, eqinttol=1e-4,
+                  plot_eta=1e-4, neintstep=0.02, eqinttol=1e-4,
                   min_energy=-700, plot_energy_range=[-5.,5.],
                   plot_energy_point_num=201):
         self.kt = kt
@@ -267,7 +323,6 @@ class Contour:
         self.dkt = 8 * np.pi * self.kt       
         self.fermi = fermi[0]
         self.bias = bias
-        self.tp = tp
         self.neint = neint
         self.leadfermi = []
         for i in range(len(bias)):
@@ -306,8 +361,7 @@ class Contour:
         for i in range(5):
             self.paths[i].get_full_nids()
 
-    def get_optimized_contour(self):
-        assert self.tp is not None
+    def get_optimized_contour(self, tp):
         self.paths = []
         depth = self.maxdepth
         self.paths.append(Path(self.min_energy + self.minfermi,
@@ -349,10 +403,10 @@ class Contour:
         while not converge and depth < self.maxdepth:
             nids, path_indices = self.collect(zones, depth)
             loc_nids, loc_path_indices = self.distribute(nids, path_indices)
-            self.calculate(loc_nids, loc_path_indices)
+            self.calculate(tp, loc_nids, loc_path_indices)
             if depth == 0:
                 self.joint(zones)
-            converge, zones = self.check_convergence(zones, depth)
+            converge, zones = self.check_convergence(zones, depth, tp.nbmol)
             depth += 1
             self.transfer(zones, depth)
 
@@ -415,14 +469,14 @@ class Contour:
         loc_path_indices = np.array_split(path_indices, self.comm.size)
         return loc_nids[self.comm.rank], loc_path_indices[self.comm.rank]
     
-    def calculate(self, loc_nids, path_indices):
+    def calculate(self, tp, loc_nids, path_indices):
         for nid, path_index in zip(loc_nids, path_indices):
             exp10 = int(np.floor(np.log10(nid)))
             flags = self.paths[path_index].get_flags(nid, True)
             energy = self.paths[path_index].get_energy(flags[1:])
             if  path_index in [0, 1, 2, 5]:
                 calcutype = self.calcutype[path_index]
-                green_function, se = self.tp.calgfunc(energy, calcutype,
+                green_function, se = tp.calgfunc(energy, calcutype,
                                                       'new')
                 self.paths[path_index].functions.append(np.diag(
                                                           green_function[0]))
@@ -514,9 +568,8 @@ class Contour:
         assert np.sum(info_array) == 1
         return np.argmax(info_array)
        
-    def check_convergence(self, zones, depth):
+    def check_convergence(self, zones, depth, nbmol):
         new_zones = []
-        nbmol = self.tp.nbmol
         converged = True
         errs = [0]
         err = 0
@@ -557,12 +610,11 @@ class Contour:
                         path.functions[ind] = None
         return converged, new_zones        
 
-    def sort_contour(self, cal_den=False):
+    def sort_contour(self, nbmol, cal_den=False):
         weights = []
         energies = []
         nids = []
         ses = []
-        nbmol = self.tp.nbmol
         for zone in self.converged_zones:
             if zone in [4, 5]:
                 if cal_den:
