@@ -432,8 +432,9 @@ class LCAOwrap:
         else:
             Fcore_ww = np.zeros((len(indices), len(indices)))
         for a, P_wi in self.get_projections(q, indices).items():
-            X_ii = unpack(self.calc.wfs.setups[a].X_p)
-            Fcore_ww -= dots(P_wi, X_ii, P_wi.T.conj())
+            if self.calc.wfs.setups[a].type != 'ghost':
+                X_ii = unpack(self.calc.wfs.setups[a].X_p)
+                Fcore_ww -= dots(P_wi, X_ii, P_wi.T.conj())
         return Fcore_ww * Hartree
 
     def get_xc(self, q=0, indices=None):
