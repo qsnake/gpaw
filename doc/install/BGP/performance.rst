@@ -16,7 +16,7 @@ There are four key aspects that require careful considerations:
 
 1) Choosing a parallelization strategy.
 
-#) Selecting the correct partion size (number of nodes) and mapping.
+#) Selecting the correct partition size (number of nodes) and mapping.
 
 #) Choosing an appropriate value of ``nblocks``. The constraints on ``nbands`` are also summarized.
 
