@@ -284,7 +284,7 @@ except ImportError:
                 'bse_diamond.py',
                 'bse_vs_lrtddft.py',
                 'aeatom.py',
-                'rpa_energy_N2.py']
+                'rpa_energy_Kr.py']
 
 for test in exclude:
     if test in tests:
