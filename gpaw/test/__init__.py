@@ -76,6 +76,7 @@ tests = [
     'second_derivative.py',
     'integral4.py',
     'transformations.py',
+    'occupations.py',
     'nabla.py',
     'aeatom.py',
     'pbc.py',
