@@ -305,12 +305,6 @@ main(int argc, char **argv)
   }
 #endif // GPAW_MPI_MAP
 
-#ifdef GPAW_HPM
-  HPM_Init();
-  HPM_Start("GPAW");
-#endif 
-
-
 #ifdef GPAW_MPI_DEBUG
   // Default Errhandler is MPI_ERRORS_ARE_FATAL
   MPI_Errhandler_set(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
