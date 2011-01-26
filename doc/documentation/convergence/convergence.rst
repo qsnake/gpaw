@@ -21,7 +21,7 @@ encountering convergence problems:
 * If you are specifying the :ref:`number of bands <manual_nbands>`
   manually, try to increase the number of empty states. You might also
   let gpaw choose the default number, which is in general large
-  enough. A sympton of having an insufficient number of empty bands is
+  enough. A symptom of having an insufficient number of empty bands is
   large variations in the number of SCF iterations with different
   number of MPI tasks. It is reasonable to need about 10-15% additional bands
   to properly converge the default ``rmm-diis`` eigensolver.

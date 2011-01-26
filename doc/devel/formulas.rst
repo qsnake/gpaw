@@ -56,7 +56,7 @@ Hydrogen
 
 The 1s orbital:
 
-.. math:: \psi_{\text{1s}}(r) = Y_{00} e^{-r}/2,
+.. math:: \psi_{\text{1s}}(r) = 2Y_{00} e^{-r},
 
 and the density is:
 
