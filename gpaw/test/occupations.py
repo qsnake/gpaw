@@ -16,19 +16,20 @@ def f(occ, x):
     return n, dnde, S
 
 def test(occ):
+    print occ
     for e in [-0.3 / Hartree, 0, 0.1 / Hartree, 1.2 / Hartree]:
         n0, d0, S0 = f(occ, e)
-        x = 0.00001
+        x = 0.000001
         np, dp, Sp = f(occ, e + x)
         nm, dm, Sm = f(occ, e - x)
         d = -(np - nm) / (2 * x)
-        dSdn = (Sp - Sm) / (np - nm)
-        print e, (d - d0) / d0, dSdn - e
-        assert abs((d - d0) / d0) < 1e-5
-        assert abs(dSdn - e) < 1e-8
-    print 
+        dS = Sp - Sm
+        dn = np - nm
+        print d - d0, dS - e * dn
+        assert abs(d - d0) < 3e-5
+        assert abs(dS - e * dn) < 1e-13
 
 for w in [0.1, 0.5]:
     test(FermiDirac(w))
-    #for n in range(4):
-    #    test(MethfesselPaxton(w, n))
+    for n in range(4):
+        test(MethfesselPaxton(w, n))
