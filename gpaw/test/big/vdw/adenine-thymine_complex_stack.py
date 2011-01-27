@@ -9,7 +9,7 @@ from gpaw.cluster import Cluster
 from gpaw.analyse.hirshfeld import HirshfeldDensity, HirshfeldPartitioning
 from gpaw.analyse.vdwradii import vdWradii
 
-h=0.18
+h=0.25
 box=3.
 
 molecule = 'Adenine-thymine_complex_stack'
