@@ -94,7 +94,7 @@ class HirshfeldPartitioning:
     def get_effective_volume_ratio(self, atom_index):
         """Effective volume to free volume ratio.
 
-        After: Tkatchenko and Scheffler PRL 102 (2009) 073005
+        After: Tkatchenko and Scheffler PRL 102 (2009) 073005, eq. (7)
         """
         atoms = self.atoms
         finegd = self.calculator.density.finegd
