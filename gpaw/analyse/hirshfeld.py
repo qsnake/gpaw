@@ -78,11 +78,14 @@ class HirshfeldPartitioning:
     """
     def __init__(self, calculator, density_cutoff=1.e-12):
         self.calculator = calculator
-        self.atoms = calculator.get_atoms()
-        self.hdensity = HirshfeldDensity(calculator)
+        self.density_cutoff = density_cutoff
+
+    def initialize(self):
+        self.atoms = self.calculator.get_atoms()
+        self.hdensity = HirshfeldDensity(self.calculator)
         density_g, gd = self.hdensity.get_density()
         self.invweight_g = 0. * density_g
-        density_ok = np.where(density_g > density_cutoff)
+        density_ok = np.where(density_g > self.density_cutoff)
         self.invweight_g[density_ok] = 1.0 / density_g[density_ok]
 
     def get_calculator(self):
@@ -115,9 +118,9 @@ class HirshfeldPartitioning:
 
     def get_effective_volume_ratios(self):
         """Return the list of effective volume to free volume ratios."""
+        self.initialize()
         ratios = []
         for a, atom in enumerate(self.atoms):
             ratios.append(self.get_effective_volume_ratio(a))
         return np.array(ratios)
-
-         
+        
