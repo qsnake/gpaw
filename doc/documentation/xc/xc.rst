@@ -8,6 +8,7 @@ XC Functionals
 
    functionals
    exx
+   rpa
    tpss
    vdw
    vdwcorrection

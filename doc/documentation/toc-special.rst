@@ -9,6 +9,7 @@
    orthogonalization
    xc/xc
    xc/exx
+   xc/rpa
    transport/negftransport
    tddft/tddft
    dscf/dscf
