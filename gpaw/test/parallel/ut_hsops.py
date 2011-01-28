@@ -424,8 +424,8 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         ============  =============    ========================================
         'fast'        ``1``            Heavy on memory, more accurate and fast.
         'light'       ``mynbands``     Light on memory, less accurate and slow.
-        'best'        ``...``          Algorithmically balanced middle ground.
-        ``int``       [1;mynbands]     Optional
+        'intdiv'      ``...``          First integer divisible value 
+        'nonintdiv'   ``...``          Some non-integer divisible cases
         """
 
         #if self.bd.comm.size == 1:
@@ -435,21 +435,31 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
             return 1
         elif blocking == 'light':
             return self.bd.mynbands
-        elif blocking == 'best':
-            # Estimated number of my bands per block (mynbands/nblocks)
-            blocksize_bands = 5
-
-            # Find all divisors of mynbands and pick the closest match
-            js = np.array([j for j in range(1,self.bd.mynbands+1) \
-                           if self.bd.mynbands%j==0], dtype=int)
-            jselect = np.argmin(abs(blocksize_bands-self.bd.mynbands/js))
-            return js[jselect]
-        elif blocking == 'nonintdiv':
-            # Find first value of nblocks lead to non-integer divisible
-            # mynbands / nblock
-            nblocks = 1 
-            while self.bd.mynbands % nblocks == 0:
+        elif blocking == 'intdiv':
+            # Find first value of nblocks that leads to integer
+            # divisible mybands / nblock. This is very like to be 
+            # 2 but coded here for the general case
+            nblocks = 2
+            while self.bd.mynbands % nblocks != 0:
+                nblocks +=1
+            return nblocks
+        elif blocking == 'nonintdiv1':
+            # Find first value of nblocks that leads to non-integer
+            # divisible mynbands / nblock that is less than M
+            nblocks = 2
+            M = self.bd.mynbands // nblocks
+            while self.bd.mynbands % nblocks < M:
                 nblocks += 1
+                M = self.bd.mynbands // nblocks
+            return nblocks
+        elif blocking == 'nonintdiv2':
+            # Find first value of nblocks that leads to non-integer
+            # divisible mynbands / nblock that is less than M
+            nblocks = 2
+            M = self.bd.mynbands // nblocks
+            while self.bd.mynbands % nblocks > M:
+                nblocks += 1
+                M = self.mynbands // nblocks
             return nblocks
         else:
             nblocks = blocking
@@ -714,7 +724,8 @@ def UTConstantWavefunctionFactory(dtype, parstride_bands, blocking, async):
     + sep + {float:'Float', complex:'Complex'}[dtype] \
     + sep + {False:'Blocked', True:'Strided'}[parstride_bands] \
     + sep + {'fast':'Fast', 'light':'Light', 
-             'best':'Best', 'nonintdiv': 'Nonintdiv'}[blocking] \
+             'intdiv':'Intdiv', 'nonintdiv1':'Nonintdiv1',
+             'nonintdiv2':'Nonintdiv2'}[blocking] \
     + sep + {False:'Synchronous', True:'Asynchronous'}[async]
     class MetaPrototype(UTConstantWavefunctionSetup, object):
         __doc__ = UTConstantWavefunctionSetup.__doc__
@@ -751,7 +762,8 @@ if __name__ in ['__main__', '__builtin__']:
     testcases = []
     for dtype in [float, complex]:
         for parstride_bands in [False, True]:
-            for blocking in ['fast', 'best', 'light', 'nonintdiv']: 
+            for blocking in ['fast', 'light', 'intdiv',  
+                             'nonintdiv1', 'nonintdiv2']: 
                 for async in [False, True]:
                     testcases.append(UTConstantWavefunctionFactory(dtype, \
                         parstride_bands, blocking, async))

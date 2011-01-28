@@ -291,6 +291,7 @@ class UTConstantWavefunctionBlacsSetup(UTConstantWavefunctionSetup,
         dS = lambda a, P_ni: np.dot(alpha*P_ni, self.setups[a].dO_ii)
         nblocks = self.get_optimal_number_of_blocks(self.blocking)
         overlap = MatrixOperator(self.ksl, nblocks, self.async, False)
+
         if 0: #XXX non-hermitian case so Nn2nn not just uplo='L' but rather 'G'
             blockcomm = self.ksl.nndescriptor.blacsgrid.comm
             self.ksl.Nn2nn = Redistributor(blockcomm, self.ksl.Nndescriptor,
@@ -334,7 +335,8 @@ def UTConstantWavefunctionFactory(dtype, parstride_bands, blocking, async):
     + sep + {float:'Float', complex:'Complex'}[dtype] \
     + sep + {False:'Blocked', True:'Strided'}[parstride_bands] \
     + sep + {'fast':'Fast', 'light':'Light', 
-             'best':'Best', 'nonintdiv': 'Nonintdiv'}[blocking] \
+             'intdiv':'Intdiv', 'nonintdiv1': 'Nonintdiv1', 
+             'nonintdiv2':'Nonintdiv2'}[blocking] \
     + sep + {False:'Synchronous', True:'Asynchronous'}[async]
     class MetaPrototype(UTConstantWavefunctionBlacsSetup, object):
         __doc__ = UTConstantWavefunctionBlacsSetup.__doc__
@@ -371,7 +373,8 @@ if __name__ in ['__main__', '__builtin__'] and compiled_with_sl(True):
     testcases = []
     for dtype in [float, complex]:
         for parstride_bands in [False]: #XXX [False, True]:
-            for blocking in ['fast', 'best', 'light', 'nonintdiv']: 
+            for blocking in ['fast', 'light', 'intdiv',
+                             'nonintdiv1', 'nonintdiv2']: 
                 for async in [False, True]:
                     testcases.append(UTConstantWavefunctionFactory(dtype, \
                         parstride_bands, blocking, async))
