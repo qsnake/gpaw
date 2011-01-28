@@ -169,7 +169,7 @@ class Symmetry:
         # Symmetry operation mapping the k-point in the irreducible BZ to k
         sym_k = np.empty(nbzkpts, int)
         # Time-reversal symmetry used on top of the point group operation
-        time_reversal_k = np.array(nbzkpts * [False])
+        time_reversal_k = np.zeros(nbzkpts, dtype=bool)
         
         for k_c in bzk_kc[::-1]:
             kbz -= 1
