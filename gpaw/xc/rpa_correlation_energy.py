@@ -33,47 +33,15 @@ class RPACorrelation:
         self.print_initialization()
         self.initialized = 0
         
+
     def get_rpa_correlation_energy(self,
                                    kcommsize=1,
                                    ecut=10,
                                    nbands=None,
                                    restart=None,
-                                   w=np.linspace(0, 100., 16)):
-        
-        dummy =  DF(calc=self.calc,
-                    eta=0.0,
-                    w=w * 1j,
-                    q=[0,0,0],
-                    ecut=ecut,
-                    hilbert_trans=False,
-                    kcommsize=kcommsize)
-        dummy.txt = devnull
-        dummy.spin = 0
-        dummy.initialize()
+                                   w=np.linspace(0, 200., 32)):
 
-        if nbands is None:
-            nbands = dummy.npw
-        self.nbands = nbands
-        
-        print >> self.txt, 'Planewave cut off          : %s eV' % ecut
-        print >> self.txt, 'Number of Planewaves       : %s' % dummy.npw
-        print >> self.txt, 'Response function bands    : %s' % nbands
-        print >> self.txt, 'Frequency range            : %s - %s eV' % (w[0], w[-1])
-        print >> self.txt, 'Number of frequency points : %s' % len(w)
-        print >> self.txt
-        print >> self.txt, 'Parallelization scheme'
-        print >> self.txt, '     Total cpus         : %d' % dummy.comm.size
-        if dummy.nkpt == 1:
-            print >> self.txt, '     Band parsize       : %d' % dummy.kcomm.size
-        else:
-            print >> self.txt, '     Kpoint parsize     : %d' % dummy.kcomm.size
-        print >> self.txt, '     Frequency parsize  : %d' % dummy.wScomm.size
-        print >> self.txt, 'Memory usage estimate'
-        print >> self.txt, '     chi0_wGG(Q)        : %f M / cpu' % (dummy.Nw_local *
-                                                                     dummy.npw**2 * 16.
-                                                                    / 1024**2)
-        print >> self.txt
-        del dummy
+        self.initialize_calculation(w, ecut, nbands, kcommsize)
         
         E_q = []
         if restart is not None:
@@ -89,8 +57,8 @@ class RPACorrelation:
             except:
                 IOError
 
-        for i, q in enumerate(self.ibz_q_points[len(E_q):]):
-            E_q.append(self.get_E_q(i=i, q=q, nbands=nbands,
+        for index, q in enumerate(self.ibz_q_points[len(E_q):]):
+            E_q.append(self.get_E_q(index=index, q=q, nbands=nbands,
                                     kcommsize=kcommsize, ecut=ecut, w=w))
             if restart is not None:
                 f = paropen(restart, 'a')
@@ -107,15 +75,19 @@ class RPACorrelation:
         print >> self.txt
         return E
 
+
     def get_E_q(self,
-                i=0,
+                index=None,
                 q=[0., 0., 0.],
                 integrated=True,
                 kcommsize=1,
                 ecut=10,
                 nbands=None,
-                w=np.linspace(0, 100., 16)):
-                
+                w=np.linspace(0, 200., 32)):
+
+        if index is None:
+            self.initialize_calculation(w, ecut, nbands, kcommsize)
+
         if abs(q[0]) < 0.001 and abs(q[1]) < 0.001 and abs(q[2]) < 0.001:
             q = [1.e-5, 0., 0.]
             optical_limit = True
@@ -132,15 +104,19 @@ class RPACorrelation:
                 optical_limit=optical_limit,
                 hilbert_trans=False)
         df.txt = devnull
-   
-        print >> self.txt, '#',i, '- Calculating RPA dielectric matrix at:'
+
+        if index is None:
+            print >> self.txt, 'Calculating RPA dielectric matrix at:'
+        else:
+            print >> self.txt, '#', index, '- Calculating RPA dielectric matrix at:'
+        
         if optical_limit:
             print >> self.txt, 'Q = [0 0 0]'
         else:
             print >> self.txt, 'Q = %s' % q 
-
+            
         e_wGG = df.get_RPA_dielectric_matrix()
-        print df.Nw_local
+
         Nw_local = len(e_wGG)
         local_int = np.zeros(Nw_local, dtype=complex)
 
@@ -157,11 +133,16 @@ class RPACorrelation:
         E_q = dw * np.sum((integrand[:-1]+integrand[1:])/2.) / (2.*np.pi)
         print >> self.txt, 'E_c(Q) = %s eV' % E_q.real
         print >> self.txt
+        if index is None:
+            print >> self.txt, 'Calculation completed at:  ', ctime()
+            print >> self.txt
+            print >> self.txt, '------------------------------------------------------'
         if integrated:
             return E_q
         else:
             return integrand
        
+
     def get_ibz_q_points(self, bz_k_points):
 
         # Get all q-points
@@ -195,6 +176,7 @@ class RPACorrelation:
         q_weights = kpt_descriptor.weight_k
         return ibz_q_points, q_weights
 
+
     def print_initialization(self):
         
         print >> self.txt, '------------------------------------------------------'
@@ -219,3 +201,40 @@ class RPACorrelation:
         print >> self.txt, '------------------------------------------------------'
         print >> self.txt
         
+
+    def initialize_calculation(self, w, ecut, nbands, kcommsize):
+
+        dummy = DF(calc=self.calc,
+                   eta=0.0,
+                   w=w * 1j,
+                   q=[0,0,0],
+                   ecut=ecut,
+                   hilbert_trans=False,
+                   kcommsize=kcommsize)
+        dummy.txt = devnull
+        dummy.spin = 0
+        dummy.initialize()
+
+        if nbands is None:
+            nbands = dummy.npw
+        self.nbands = nbands
+        
+        print >> self.txt, 'Planewave cut off          : %s eV' % ecut
+        print >> self.txt, 'Number of Planewaves       : %s' % dummy.npw
+        print >> self.txt, 'Response function bands    : %s' % nbands
+        print >> self.txt, 'Frequency range            : %s - %s eV' % (w[0], w[-1])
+        print >> self.txt, 'Number of frequency points : %s' % len(w)
+        print >> self.txt
+        print >> self.txt, 'Parallelization scheme'
+        print >> self.txt, '     Total cpus         : %d' % dummy.comm.size
+        if dummy.nkpt == 1:
+            print >> self.txt, '     Band parsize       : %d' % dummy.kcomm.size
+        else:
+            print >> self.txt, '     Kpoint parsize     : %d' % dummy.kcomm.size
+        print >> self.txt, '     Frequency parsize  : %d' % dummy.wScomm.size
+        print >> self.txt, 'Memory usage estimate'
+        print >> self.txt, '     chi0_wGG(Q)        : %f M / cpu' % (dummy.Nw_local *
+                                                                     dummy.npw**2 * 16.
+                                                                    / 1024**2)
+        print >> self.txt
+        del dummy
