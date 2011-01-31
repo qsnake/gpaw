@@ -1,8 +1,6 @@
 import numpy as np
 from gpaw.utilities import unpack
 from gpaw.utilities.blas import gemm
-from gpaw.utilities import scalapack
-from gpaw import sl_diagonalize, extra_parameters
 import gpaw.mpi as mpi
 
 
@@ -76,9 +74,6 @@ class LCAO:
         if kpt.eps_n is None:
             kpt.eps_n = np.empty(wfs.bd.mynbands)
             
-        if sl_diagonalize:
-            assert scalapack()
-
         diagonalization_string = repr(self.diagonalizer)
         wfs.timer.start(diagonalization_string)
         self.diagonalizer.diagonalize(H_MM, kpt.C_nM, kpt.eps_n, S_MM)
