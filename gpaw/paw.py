@@ -518,6 +518,10 @@ class PAW(PAWTextOutput):
                 sl_inverse_cholesky = par.parallel['sl_inverse_cholesky']
                 if sl_inverse_cholesky is None:
                     sl_inverse_cholesky = par.parallel['sl_default']
+                if sl_inverse_cholesky != sl_diagonalize:
+                    message = 'sl_inverse_cholesky != sl_diagonalize ' \
+                        'is not implemented.'
+                    raise NotImplementedError(message)
                 orthoksl = get_KohnSham_layouts(sl_inverse_cholesky, 'fd',
                                                 gd, bd, dtype,
                                                 buffer_size=buffer_size,
