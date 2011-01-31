@@ -71,6 +71,7 @@ class CHI(BASECHI):
         BASECHI.initialize(self)
 
         # Frequency init
+        self.dw = None
         if len(self.w_w) == 1:
             self.HilberTrans = False
 
@@ -159,9 +160,10 @@ class CHI(BASECHI):
 
         # Matrix init
         chi0_wGG = np.zeros((self.Nw_local, self.npw, self.npw), dtype=complex)
-        if not (f_kn > 0.001).any():
+        if not (f_kn > self.ftol).any():
             self.chi0_wGG = chi0_wGG
             return
+
         if self.hilbert_trans:
             specfunc_wGG = np.zeros((self.NwS_local, self.npw, self.npw), dtype = complex)
 
