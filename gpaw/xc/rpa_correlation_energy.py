@@ -168,6 +168,7 @@ class RPACorrelation:
                     break
             if q_in_list == False:
                 bz_qs.append(q_a)
+        self.bz_q_points = bz_qs
                 
         # Obtain q-points and weights in the irreducible part of the BZ
         kpt_descriptor = KPointDescriptor(bz_qs, self.nspins)
@@ -190,6 +191,8 @@ class RPACorrelation:
         print >> self.txt, 'Number of Bands                :   %s' % self.calc.wfs.nbands
         print >> self.txt, 'Number of Converged Bands      :   %s' % self.calc.input_parameters['convergence']['bands']
         print >> self.txt, 'Number of Spins                :   %s' % self.nspins
+        print >> self.txt, 'Number of K-points             :   %s' % len(self.calc.wfs.bzk_kc)
+        print >> self.txt, 'Number of Q-points             :   %s' % len(self.bz_q_points)
         print >> self.txt, 'Number of Irreducible K-points :   %s' % len(self.calc.wfs.ibzk_kc)
         print >> self.txt, 'Number of Irreducible Q-points :   %s' % len(self.ibz_q_points)
         print >> self.txt
@@ -207,7 +210,7 @@ class RPACorrelation:
         dummy = DF(calc=self.calc,
                    eta=0.0,
                    w=w * 1j,
-                   q=[0,0,0],
+                   q=[0.,0.,0.],
                    ecut=ecut,
                    hilbert_trans=False,
                    kcommsize=kcommsize)
