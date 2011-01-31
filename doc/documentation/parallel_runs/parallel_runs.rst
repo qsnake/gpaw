@@ -205,7 +205,7 @@ In words:
   must be a tuple ``(m,n,mb)`` of 3 integers to indicate a ``m*n`` grid of CPUs
   and a blocking factor of ``mb``. If either of the three latter are not
   specified (i.e. ``None``), they default to the value of
-  ``'sl_default'``. Presently ``'sl_inverse_cholesky'`` is not used.
+  ``'sl_default'``. Presently, ``'sl_inverse_cholesky'`` must equal ``'sl_diagonalize'``.
 
 * The ``'buffer_size'``  is specified as an integer and corresponds to
   the size of the buffer in KiB used in the 1D systolic parallel
@@ -299,4 +299,24 @@ We recommend::
   mb = 64
   m = floor(sqrt(nbands/mb))
   n = m
+
+There are a total of four ``'sl_...'`` keywords. Most people will be
+fine just using ``'sl_default'``. Here we use the same 
+ScaLAPACK parameters in three different places: i) general eigensolve
+in the LCAO intilization ii) standard eigensolve in the FD calculation and 
+iii) Cholesky decomposition in the FD calculation. It is currently
+possible to use different ScaLAPACK parameters in the LCAO
+intialization and the FD calculation by using two of the ScaLAPACK 
+keywords in tandem, e.g::
+
+   --sl_lcao=p,q,pb --sl_default=m,n,mb
+
+where ``p``, ``q``, ``pb``, ``m``, ``n``, and ``mb`` all 
+have different values. The most general case is the combination
+of three ScaLAPACK keywords, e.g::
+
+   --sl_lcao=p,q,pb --sl_diagonalize=m,n,mb  --sl_inverse_cholesky=r,s,rb
+
+however, we do not presently support ``m != r``, ``n != s``,  and
+``mb != rb``.  We may implement this in the future.
 
