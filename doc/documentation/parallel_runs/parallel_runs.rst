@@ -282,7 +282,6 @@ More information about these topics can be found here:
    :maxdepth: 1
 
    band_parallelization/band_parallelization
-   ScaLapack/ScaLapack
 
 .. _manual_ScaLAPACK:
 
