@@ -19,11 +19,12 @@ class DF(CHI):
                  ftol=1e-7,
                  txt=None,
                  hilbert_trans=True,
+                 full_response=False,
                  optical_limit=False,
                  kcommsize=None):
 
         CHI.__init__(self, calc, nbands, w, q, ecut,
-                     eta, ftol, txt, hilbert_trans, optical_limit, kcommsize)
+                     eta, ftol, txt, hilbert_trans, full_response, optical_limit, kcommsize)
 
         self.df1_w = None
         self.df2_w = None

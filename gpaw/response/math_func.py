@@ -30,7 +30,23 @@ def hilbert_transform(specfunc_wGG, Nw, dw, eta):
 
     return chi0_wGG * dw
 
-                
+
+def full_hilbert_transform(specfunc_wGG, Nw, dw, eta):
+
+    NwS = specfunc_wGG.shape[0]
+    tmp_ww = np.zeros((Nw, NwS), dtype=complex)
+
+    for iw in range(Nw):
+        w = iw * dw
+        for jw in range(NwS):
+            ww = jw * dw
+            tmp_ww[iw, jw] = 1. / (w - ww - 1j*eta) - 1. / (w + ww + 1j*eta)
+
+    chi0_wGG = gemmdot(tmp_ww, specfunc_wGG, beta = 0.)
+
+    return chi0_wGG * dw
+
+
 def two_phi_planewave_integrals(k_Gv, setup=None, rgd=None, phi_jg=None,
                                 phit_jg=None,l_j=None):
     """Calculate PAW-correction matrix elements with planewaves.

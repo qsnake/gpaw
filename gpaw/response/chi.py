@@ -8,7 +8,7 @@ from gpaw.utilities.blas import gemv, scal, axpy
 from gpaw.mpi import world, rank, size, serial_comm
 from gpaw.fd_operators import Gradient
 from gpaw.response.symmetrize import find_ibzkpt, symmetrize_wavefunction
-from gpaw.response.math_func import hilbert_transform
+from gpaw.response.math_func import hilbert_transform, full_hilbert_transform
 from gpaw.response.parallel import set_communicator, \
      parallel_partition, SliceAlongFrequency, SliceAlongOrbitals
 from gpaw.response.kernel import calculate_Kxc
@@ -48,6 +48,7 @@ class CHI(BASECHI):
                  ftol=1e-5,
                  txt=None,
                  hilbert_trans=True,
+                 full_response=False,
                  optical_limit=False,
                  kcommsize=None):
 
@@ -55,6 +56,7 @@ class CHI(BASECHI):
                      eta, ftol, txt, optical_limit)
 
         self.hilbert_trans = hilbert_trans
+        self.full_hilbert_trans = full_response
         self.kcommsize = kcommsize
         self.comm = world
         self.chi0_wGG = None
@@ -296,7 +298,10 @@ class CHI(BASECHI):
         else:
             self.kcomm.sum(specfunc_wGG)
             if self.wScomm.size == 1:
-                chi0_wGG = hilbert_transform(specfunc_wGG, self.Nw, self.dw, self.eta)[self.wstart:self.wend]
+                if not self.full_hilbert_trans:
+                    chi0_wGG = hilbert_transform(specfunc_wGG, self.Nw, self.dw, self.eta)[self.wstart:self.wend]
+                else:
+                    chi0_wGG = full_hilbert_transform(specfunc_wGG, self.Nw, self.dw, self.eta)[self.wstart:self.wend]                
                 self.printtxt('Finished hilbert transform !')
                 del specfunc_wGG
             else:
@@ -315,7 +320,10 @@ class CHI(BASECHI):
         
                 specfunc_Wg = SliceAlongFrequency(specfuncnew_wGG, coords, self.wcomm)
                 self.printtxt('Finished Slice Along Frequency !')
-                chi0_Wg = hilbert_transform(specfunc_Wg, self.Nw, self.dw, self.eta)[:self.Nw]
+                if not self.full_hilbert_trans:
+                    chi0_Wg = hilbert_transform(specfunc_Wg, self.Nw, self.dw, self.eta)[:self.Nw]
+                else:
+                    chi0_Wg = full_hilbert_transform(specfunc_Wg, self.Nw, self.dw, self.eta)[:self.Nw]
                 self.printtxt('Finished hilbert transform !')
                 self.comm.barrier()
                 del specfunc_Wg
@@ -418,6 +426,7 @@ class CHI(BASECHI):
 
         printtxt = self.printtxt
         printtxt('Use Hilbert Transform: %s' %(self.hilbert_trans) )
+        printtxt('Calculate full Response Function: %s' %(self.full_hilbert_trans) )
         printtxt('')
         printtxt('Number of frequency points   : %d' %(self.Nw) )
         if self.hilbert_trans:
@@ -437,6 +446,3 @@ class CHI(BASECHI):
         printtxt('     chi0_wGG        : %f M / cpu' %(self.Nw_local * self.npw**2 * 16. / 1024**2) )
         if self.hilbert_trans:
             printtxt('     specfunc_wGG    : %f M / cpu' %(self.NwS_local *self.npw**2 * 16. / 1024**2) )
-
-
-
