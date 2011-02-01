@@ -80,9 +80,9 @@ Domains
 -------
 
 Each domain will have its contribution to the overlap matrix, and these
-will have to be summed up using the domain communicator.  The linear
-algebra can be done on all nodes or in parallel using
-:ref:`ScaLapack <ScaLapack>`.
+will have to be summed up using the domain communicator.  The dense
+linear algebra can be performed in a replication fashion on all MPI
+tasks using LAPACK or in parallel on a subset of MPI tasks using ScaLAPACK.
 
 
 Bands
