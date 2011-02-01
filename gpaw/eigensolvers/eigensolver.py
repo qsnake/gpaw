@@ -128,7 +128,8 @@ class Eigensolver:
             Htpsit_xG = self.operator.suggest_temporary_buffer()
 
         def H(psit_xG):
-            wfs.apply_pseudo_hamiltonian(kpt, hamiltonian, psit_xG, Htpsit_xG)
+            wfs.apply_pseudo_hamiltonian(kpt, hamiltonian, psit_xG,
+                                         Htpsit_xG[:len(psit_xG)])
             hamiltonian.xc.apply_orbital_dependent_hamiltonian(
                 kpt, psit_xG, Htpsit_xG, hamiltonian.dH_asp)
             return Htpsit_xG

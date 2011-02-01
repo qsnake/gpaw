@@ -1,7 +1,7 @@
 import sys
 
 from ase import Atoms
-from gpaw import GPAW
+from gpaw import GPAW, FermiDirac
 from gpaw import KohnShamConvergenceError
 from gpaw.utilities import devnull, compiled_with_sl
 
@@ -117,7 +117,8 @@ basekwargs = dict(mode='fd',
 Eref = None
 Fref_av = None
 
-OH_kwargs = dict(formula='NH2', vacuum=1.5, pbc=1, spinpol=1, width=0.1)
+OH_kwargs = dict(formula='NH2', vacuum=1.5, pbc=1, spinpol=1,
+                 occupations=FermiDirac(width=0.1))
 
 # reference:
 # kpt-parallelization = 4, spin-polarization = 2,
