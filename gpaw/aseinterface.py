@@ -609,7 +609,6 @@ class GPAW(PAW):
             if isinstance(spos_c, int):
                 spos_c = spos_ac[spos_c]
             spos_xc.append(spos_c)
-            print a    
             alpha = .5 * Bohr**2 / sigma**2
             r = np.linspace(0, 6. * sigma, 500)
             f_g = (_fact[l] * (4 * alpha)**(l + 3 / 2.) *
