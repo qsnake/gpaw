@@ -602,8 +602,6 @@ class GPAW(PAW):
         nbf = np.sum([2 * l + 1 for pos, l, a in locfun])
         f_kni = np.zeros((nkpts, wfs.nbands, nbf), wfs.dtype)
 
-        bf = 0
-
         spos_ac = self.atoms.get_scaled_positions() % 1.0
         spos_xc = []
         splines_x = []
@@ -611,11 +609,11 @@ class GPAW(PAW):
             if isinstance(spos_c, int):
                 spos_c = spos_ac[spos_c]
             spos_xc.append(spos_c)
-            
+            print a    
             alpha = .5 * Bohr**2 / sigma**2
             r = np.linspace(0, 6. * sigma, 500)
             f_g = (_fact[l] * (4 * alpha)**(l + 3 / 2.) *
-                   np.exp(-a * r**2) /
+                   np.exp(-alpha * r**2) /
                    (np.sqrt(4 * np.pi) * _fact[2 * l + 1]))
             splines_x.append([Spline(l, rmax=r[-1], f_g=f_g, points=61)])
             
