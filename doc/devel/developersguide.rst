@@ -140,7 +140,7 @@ Densities
 =========
 
 From the pseudo wave-functions, the pseudo electron spin-densities can be
-constructed:
+constructed (see `here <http://xkcd.com/849>`_):
 
 .. math::
 
@@ -152,8 +152,9 @@ constructed:
   \frac{1}{2} \sum_a \tilde{n}_c^a(|\mathbf{r}-\mathbf{R}^a|) \right ].
 
 Here, `\hat{S}_s` is one of the `N_s` symmetry operators of the system
-(see :epydoc:`gpaw.symmetry.Symmetry`), `f_{n\mathbf{k}\sigma}` are the occupation numbers (adding up to the number of valence elctrons), and
-`\tilde{n}_c^a(r)` is the pseudo core density for atom number `a`.
+(see :epydoc:`gpaw.symmetry.Symmetry`), `f_{n\mathbf{k}\sigma}` are
+the occupation numbers (adding up to the number of valence elctrons),
+and `\tilde{n}_c^a(r)` is the pseudo core density for atom number `a`.
 
 The all-electron spin-densities are given as:
 
