@@ -24,7 +24,7 @@ perform some of the most common tasks:
    negfstm/negfstm
    ensembles/ensembles
    dielectric_response/dielectric_response
-
+   rpa/rpa	
 
 =========
 Exercises

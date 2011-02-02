@@ -20,8 +20,8 @@ The RPA correlation energy is obtained by::
     rpa = RPACorrelation(calc, txt='rpa_correlation.txt')   
     E_rpa = rpa.get_rpa_correlation_energy(ecut=ecut, w=ws, kcommsize=size)
 
-where calc is a calculator object containing converged wavefunctions from a ground state calculation, txt denotes the output file, ecut (eV) determines the plane wave cutoff used to represent the response function, w is an equidistant array of frequencies (eV) on which the response function is calculated and  kcommsize is the number of k-point domains used for parallelization. Default parallelization is over frequency points, but it is often an advantage to use a combination of frequency and k-point parallelization. For example, having a system with 20 irreducible k-points and a list with 32 frequency points, one could use kcommsize=4 on 32 processors, which would give 4 frequency points to each processor, which then belongs to one of the 4 k-point domains. 
-
+where calc is a calculator object containing converged wavefunctions from a ground state calculation, txt denotes the output file, ecut (eV) determines the plane wave cutoff used to represent the response function, w is an equidistant array of frequencies (eV) on which the response function is calculated and  kcommsize is the number of k-point domains used for parallelization. Default parallelization is over frequency points, but unless memory requirements becomes an issue, it is usually more efficient to parallelize over k-points. See :ref:`rpa_tutorial` for an example with kpoint parallelization.
+For an example with kpoint parallelization. 
 A major complication with the RPA correlation energy is that it converges very slowly with the number of unoccupied bands included in the evaluation of `\chi^0(i\omega)`. However, as described in Ref. \ [#Harl]_ the high energy part of the response function resembles the Lindhard function, which for high energies gives a correlation energy converging as
 
 .. math::
@@ -38,7 +38,7 @@ where `G^{\chi}_{cut}` is the largest reciprocal lattice vector used in the eval
 
 It is possible to specify the number of bands used to calculate the response function by the keyword "nbands" in get_rpa_correlation_energy(). The default value of nbands is the number of bands, which correspond to ecut and is saved in the variable rpa.nbands after the calculation. This value needs to be smaller than the total number of (converged) bands from the ground state calculation. 
 
-Below is shown an example of a calculation of the correlation part of the atomization energy of an N2 molecule represented in a unit cell of side length 6 Å. 
+A detailed example of this procedure can be followed in :ref:`rpa_tutorial`. Below is shown an example of a calculation of the correlation part of the atomization energy of an N2 molecule represented in a unit cell of side length 6 Å. 
 
 .. image:: E_rpa.png
 	   :height: 400 px
