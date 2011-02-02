@@ -460,15 +460,16 @@ class AllElectronAtom:
         self.log('=====================================================')
 
     def write_energies(self):
-        self.log('\nEnergies [Hartree]:')
-        self.log('=============================')
-        self.log(' kinetic       %+13.6f' % self.ekin)
-        self.log(' coulomb (e-e) %+13.6f' % self.eH)
-        self.log(' coulomb (e-n) %+13.6f' % self.eZ)
-        self.log(' xc            %+13.6f' % self.exc)
-        self.log(' total         %+13.6f' %
-                 (self.ekin + self.eH + self.eZ + self.exc))
-        self.log('=============================')
+        self.log('\nEnergies:          [Hartree]           [eV]')
+        self.log('============================================')
+        for text, e in [('kinetic      ', self.ekin),
+                        ('coulomb (e-e)', self.eH),
+                        ('coulomb (e-n)', self.eZ),
+                        ('xc           ', self.exc),
+                        ('total        ',
+                         self.ekin + self.eH + self.eZ + self.exc)]:
+            self.log(' %s %+13.6f  %+13.5f' % (text, e, units.Hartree * e))
+        self.log('============================================')
 
     def get_channel(self, l=None, s=0, k=None):
         if self.dirac:
