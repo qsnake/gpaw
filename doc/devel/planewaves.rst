@@ -47,7 +47,7 @@ we get the exact exchange energy:
     \frac{|C_{\bk_1n_1\bk_2n_2}(\bG)|^2}{|\bk_1-\bk_2-\bG|^2},
 
 where the weight of a `\bk`-point is included in `f_{\bk n}`.  Let
-`E_x'` be defined as the sum above exculding the divergent terms
+`E_x'` be defined as the sum above excluding the divergent terms
 for `\bk_1=\bk_2` and `\bG=0`.  With
 
 .. math::
