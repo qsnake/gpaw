@@ -58,7 +58,7 @@ class RPACorrelation:
                 IOError
 
         for index, q in enumerate(self.ibz_q_points[len(E_q):]):
-            E_q.append(self.get_E_q(index=index, q=q, nbands=nbands,
+            E_q.append(self.get_E_q(index=index, q=q, nbands=self.nbands,
                                     kcommsize=kcommsize, ecut=ecut, w=w))
             if restart is not None:
                 f = paropen(restart, 'a')
@@ -84,7 +84,7 @@ class RPACorrelation:
                 ecut=10,
                 nbands=None,
                 w=np.linspace(0, 200., 32)):
-
+        
         if index is None:
             self.initialize_calculation(w, ecut, nbands, kcommsize)
 
@@ -95,7 +95,7 @@ class RPACorrelation:
             optical_limit = False
             
         df = DF(calc=self.calc,
-                nbands=nbands,
+                nbands=self.nbands,
                 eta=0.0,
                 q=q,
                 w=w * 1j,
@@ -206,7 +206,7 @@ class RPACorrelation:
         
 
     def initialize_calculation(self, w, ecut, nbands, kcommsize):
-
+        
         dummy = DF(calc=self.calc,
                    eta=0.0,
                    w=w * 1j,
