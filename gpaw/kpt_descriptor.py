@@ -114,26 +114,22 @@ class KPointDescriptor:
 
             # Construct a Symmetry instance containing the identity operation
             # only
-            self.symmetry = Symmetry(id_a, atoms.get_cell() / Bohr,
-                                     atoms.get_pbc())
+            symmetry = Symmetry(id_a, atoms.get_cell() / Bohr, atoms.get_pbc())
 
             if usesymm:
                 # Find symmetry operations of atoms
-                self.symmetry.analyze(atoms.get_scaled_positions())
-            else:
-                self.symmetry.prune_symmetries(atoms.get_scaled_positions())
+                symmetry.analyze(atoms.get_scaled_positions())
 
             if N_c is not None:
-                self.symmetry.prune_symmetries_grid(N_c)
+                symmetry.prune_symmetries_grid(N_c)
 
             # Reduce the set of k-points and add inversion if not already
             # detected
             self.ibzk_kc, self.weight_k = self.symmetry.reduce(self.bzk_kc)
 
             if usesymm:
-                setups.set_symmetry(self.symmetry)
-            else:
-                self.symmetry = None
+                setups.set_symmetry(symmetry)
+                self.symmetry = symmetry
 
         # Number of irreducible k-points and k-point/spin combinations.
         self.nibzkpts = len(self.ibzk_kc)

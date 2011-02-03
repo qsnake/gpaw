@@ -23,6 +23,7 @@ class Symmetry:
         self.tol = tolerance
 
         self.op_scc = np.identity(3, int).reshape((1, 3, 3))
+        self.a_sa = np.arange(len(id_a)).reshape((1, -1))
         
     def analyze(self, spos_ac):
         """Determine list of symmetry operations.
@@ -92,10 +93,11 @@ class Symmetry:
                 species[id] = [(a, spos_c)]
 
         opok = []
-        maps = []
+        a_sa = []
         # Reduce point group using operation matrices
         for op_cc in self.op_scc:
             map = np.zeros(len(spos_ac), int)
+            ok = True
             for specie in species.values():
                 for a1, spos1_c in specie:
                     spos1_c = np.dot(spos1_c, op_cc)
@@ -113,10 +115,10 @@ class Symmetry:
                     break
             if ok:
                 opok.append(op_cc)
-                maps.append(map)
+                a_sa.append(map)
 
         if debug:
-            for op_cc, map_a in zip(opok, maps):
+            for op_cc, map_a in zip(opok, a_sa):
                 for a1, id1 in enumerate(self.id_a):
                     a2 = map_a[a1]
                     assert id1 == self.id_a[a2]
@@ -126,7 +128,7 @@ class Symmetry:
                     sdiff -= np.floor(sdiff + 0.5)
                     assert np.dot(sdiff, sdiff) < self.tol
 
-        self.maps = maps
+        self.a_sa = a_sa
         self.op_scc = np.array(opok)
 
     def check(self, spos_ac):
@@ -210,12 +212,12 @@ class Symmetry:
 
         U_scc = []
         a_sa = []
-        for U_cc, a_a in zip(self.op_scc, self.maps):
+        for U_cc, a_a in zip(self.op_scc, self.a_sa):
             if not (U_cc * N_c - (U_cc.T * N_c).T).any():
                 U_scc.append(U_cc)
                 a_sa.append(a_a)
                 
-        self.maps = np.array(a_sa)
+        self.a_sa = np.array(a_sa)
         self.op_scc = np.array(U_scc)
 
     def symmetrize(self, a, gd):
@@ -254,17 +256,19 @@ class Symmetry:
             import _gpaw
             b_g = np.zeros_like(a_g)
             if time_reversal:
-                _gpaw.symmetrize_wavefunction(a_g, b_g, op_cc, kibz_c, -kbz_c)
+                _gpaw.symmetrize_wavefunction(a_g, b_g, op_cc.T.copy(),
+                                              kibz_c, -kbz_c)
                 return b_g.conj()
             else:
-                _gpaw.symmetrize_wavefunction(a_g, b_g, op_cc, kibz_c, kbz_c)
+                _gpaw.symmetrize_wavefunction(a_g, b_g, op_cc.T.copy(),
+                                              kibz_c, kbz_c)
                 return b_g
         
     def symmetrize_forces(self, F0_av):
         """Symmetrice forces."""
         
         F_ac = np.zeros_like(F0_av)
-        for map_a, op_cc in zip(self.maps, self.op_scc):
+        for map_a, op_cc in zip(self.a_sa, self.op_scc):
             op_vv = np.dot(np.linalg.inv(self.cell_cv),
                            np.dot(op_cc, self.cell_cv))
             for a1, a2 in enumerate(map_a):

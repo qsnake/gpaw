@@ -179,7 +179,7 @@ class WaveFunctions(EmptyWaveFunctions):
                 for a, D_sp in D_asp.items():
                     setup = self.setups[a]
                     D_sp[s] = pack(setup.symmetrize(a, D_aii,
-                                                    self.symmetry.maps))
+                                                    self.symmetry.a_sa))
 
     def set_positions(self, spos_ac):
         self.positions_set = False
