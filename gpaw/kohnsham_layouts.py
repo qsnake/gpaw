@@ -248,6 +248,7 @@ class BlacsBandLayouts(BlacsLayouts): #XXX should derive from BandLayouts too!
     def inverse_cholesky(self, S_nn):
         self.timer.start('Inverse Cholesky')
         self._inverse_cholesky(S_nn)
+        self.blockcomm.barrier() # removing barrier may lead to race condition
         self.timer.stop('Inverse Cholesky')
         
     def _inverse_cholesky(self, S_nn):
