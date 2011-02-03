@@ -125,11 +125,13 @@ class KPointDescriptor:
 
             # Reduce the set of k-points and add inversion if not already
             # detected
-            self.ibzk_kc, self.weight_k = self.symmetry.reduce(self.bzk_kc)
+            self.ibzk_kc, self.weight_k = symmetry.reduce(self.bzk_kc)
 
             if usesymm:
                 setups.set_symmetry(symmetry)
                 self.symmetry = symmetry
+            else:
+                self.symmetry = None
 
         # Number of irreducible k-points and k-point/spin combinations.
         self.nibzkpts = len(self.ibzk_kc)
