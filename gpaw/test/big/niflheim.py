@@ -169,8 +169,8 @@ if __name__ == '__main__':
             '../analysis/analyse.pickle',  # file keeping history
             '../analysis',                 # Where to dump figures
             rev=niflheim.revision,
-            mailto='gpaw-developers@listserv.fysik.dtu.dk',
-            #mailto='jensj@fysik.dtu.dk',
+            #mailto='gpaw-developers@listserv.fysik.dtu.dk',
+            mailto='jensj@fysik.dtu.dk',
             mailserver='servfys.fysik.dtu.dk',
             attachment='status.log')
 
