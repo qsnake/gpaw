@@ -391,8 +391,8 @@ class MatrixOperator:
         # be syncronized up to this point but only on the 1D band_comm
         # communication ring
         band_comm.barrier()
-        # if N % J > M: # extra_J_slice = True
-        #     J = J + 1
+        if J*M == N + M: # remove extra slice
+            J -= 1
 
         for j in range(J):
             n1 = j * M
@@ -534,8 +534,8 @@ class MatrixOperator:
         # be syncronized up to this point but only on the 1D band_comm
         # communication ring
         band_comm.barrier()
-        # if G % J >= g: # extra_J_slice = True
-        # J = J + 1
+        if g*J == G + g: # remove extra slice
+            J -= 1
 
         for j in range(J):
             G1 = j * g
