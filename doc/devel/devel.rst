@@ -115,11 +115,13 @@ anpet      Andrew Peterson            andy,peterson:stanford,edu
 askhl      Ask Hjorth Larsen          askhl:fysik,dtu,dk
 dlandis    David Landis               dlandis:fysik,dtu,dk
 dulak      Marcin Dulak               dulak:fysik,dtu,dk
+falh       Falco Huser                falh:fysik,dtu,dk
 georg      Poul Georg Moses           georg:fysik,dtu,dk
 getri      George Tritsaris           getri:fysik,dtu,dk
 hahansen   Heine Anton Hansen         hahansen:fysik,dtu,dk
 haiping    Haiping Lin                H,Lin1:liverpool,ac,uk
 hhk05      Henrik Kristoffersen       hhk05:inano,dk
+hildur     Hildur Guõmundsdóttir      hildur,gud:gmail,com
 jensj      Jens Jørgen Mortensen      jensj:fysik,dtu,dk
 jesswe     Jess Wellendorff Pedersen  jesswe:fysik,dtu,dk
 jingzhe    Jingzhe Chen               jingzhe:fysik,dtu,dk
