@@ -36,6 +36,7 @@ class GridDescriptor:
         g_g = np.arange(N)
         self.r_g = self.a * g_g / (1 - self.b * g_g)
         self.dr_g = (self.b * self.r_g + self.a)**2 / self.a
+        self.dv_g = 4 * pi * self.r_g**2 * self.dr_g
 
     def get_index(self, r):
         return int(1 / (self.b + self.a / r) + 0.5)
@@ -54,6 +55,26 @@ class GridDescriptor:
         assert n > -2
         return np.dot(a_xg[..., 1:],
                       (self.r_g**(2 + n) * self.dr_g)[1:]) * (4 * pi)
+
+    def derivative(self, n_g, dndr_g):
+        """Finite-difference derivative of radial function."""
+        dndr_g[0] = n_g[1] - n_g[0]
+        dndr_g[1:-1] = 0.5 * (n_g[2:] - n_g[:-2])
+        dndr_g[-1] = n_g[-1] - n_g[-2]
+        dndr_g /= self.dr_g
+
+    def derivative2(self, a_g, b_g):
+        """Finite-difference derivative of radial function.
+
+        For an infinitely dense grid, this method would be identical
+        to the `derivative` method."""
+        
+        c_g = a_g / self.dr_g
+        b_g[0] = 0.5 * c_g[1] + c_g[0]
+        b_g[1] = 0.5 * c_g[2] - c_g[0]
+        b_g[1:-1] = 0.5 * (c_g[2:] - c_g[:-2])
+        b_g[-2] = c_g[-1] - 0.5 * c_g[-3]
+        b_g[-1] = -c_g[-1] - 0.5 * c_g[-2]
 
     def poisson(self, n_g):
         a_g = -4 * pi * n_g * self.r_g * self.dr_g
@@ -549,7 +570,7 @@ def main():
             n = int(x[0])
             l = 'spdfg'.find(x[1])
             x = x[2:]
-            if x[-1] in 'ab':
+            if x and x[-1] in 'ab':
                 s = int(x[-1] == 'b')
                 opt.spin_polarized = True
                 x = x[:-1]
