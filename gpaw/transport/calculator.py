@@ -1103,8 +1103,8 @@ class Transport(GPAW):
         self.timer.stop('init scf')
         
         ##temperary lines
-        self.hamiltonian.S = 0
-        self.hamiltonian.Etot = 0
+        #self.hamiltonian.S = 0
+        #self.hamiltonian.Etot = 0
         ##temp
         
         while not self.cvgflag and self.step < self.max_steps:
@@ -1114,6 +1114,11 @@ class Transport(GPAW):
         
         if self.foot_print:
             self.analysor.save_bias_step(self)
+            magmom = self.occupations.magmom
+            self.text('Total Magnetic Moment: %f' % magmom)
+            self.text('Local Magnetic Moments:')
+            for a, mom in enumerate(self.get_magnetic_moments()):
+                self.text(a, mom)
        
         self.scf.converged = self.cvgflag
    
@@ -2020,6 +2025,8 @@ class Transport(GPAW):
         dH_asp = collect_atomic_matrices(ham.dH_asp, ham.setups, ham.nspins,
                                          ham.gd.comm, self.density.rank_a)
         self.surround.combine_dH_asp(self, dH_asp)
+        if not self.analysis_mode:
+            ham.get_energy(self.occupations)
         self.timer.stop('Hamiltonian')      
 
     
