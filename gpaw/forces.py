@@ -64,7 +64,6 @@ class ForceCalculator:
         for kpt in wfs.kpt_u:
             pass#XXXself.F_av += hamiltonian.xcfunc.get_non_local_force(kpt)
     
-        if wfs.symmetry:
-            self.F_av = wfs.symmetry.symmetrize_forces(self.F_av)
+        self.F_av = wfs.symmetry.symmetrize_forces(self.F_av)
 
         return self.F_av

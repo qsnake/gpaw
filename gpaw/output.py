@@ -18,6 +18,7 @@ from gpaw import sl_diagonalize, sl_inverse_cholesky, dry_run, extra_parameters
 from gpaw.utilities.memory import maxrss
 import gpaw
 
+
 def initialize_text_stream(txt, rank, old_txt=None):
     """Set the stream for text output.
     
@@ -221,8 +222,8 @@ class PAWTextOutput:
             t('Orthonormalizer layout: ' + orthonormalizer_layout)
         t()      
 
-        if self.wfs.symmetry is not None:
-            self.wfs.symmetry.print_symmetries(t)
+        self.wfs.symmetry.print_symmetries(t)
+        
         t(('%d k-point%s in the Irreducible Part of the ' +
            'Brillouin Zone (total: %d)') %
           (nibzkpts, ' s'[1:nibzkpts], len(self.wfs.bzk_kc)))

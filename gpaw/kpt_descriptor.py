@@ -95,43 +95,34 @@ class KPointDescriptor:
         if (~atoms.pbc & self.bzk_kc.any(0)).any():
             raise ValueError('K-points can only be used with PBCs!')
 
+        # Construct a Symmetry instance containing the identity operation
+        # only
+        # Round off
+        magmom_a = atoms.get_initial_magnetic_moments().round(decimals=3)
+        id_a = zip(magmom_a, setups.id_a)
+        self.symmetry = Symmetry(id_a, atoms.cell / Bohr, atoms.pbc)
+        
         if self.gamma:
-            self.symmetry = None
             self.weight_k = np.array([1.0])
             self.ibzk_kc = np.zeros((1, 3))
 
         elif usesymm is None:
             # Point group and time-reversal symmetry neglected
             nkpts = len(self.bzk_kc)
-            self.symmetry = None
             self.weight_k = np.ones(nkpts) / nkpts
             self.ibzk_kc = self.bzk_kc.copy()
 
         else:
-            # Round off
-            magmom_a = atoms.get_initial_magnetic_moments().round(decimals=3)
-            id_a = zip(magmom_a, setups.id_a)
-
-            # Construct a Symmetry instance containing the identity operation
-            # only
-            symmetry = Symmetry(id_a, atoms.get_cell() / Bohr, atoms.get_pbc())
-
             if usesymm:
                 # Find symmetry operations of atoms
-                symmetry.analyze(atoms.get_scaled_positions())
+                self.symmetry.analyze(atoms.get_scaled_positions())
+                
+                if N_c is not None:
+                    self.symmetry.prune_symmetries_grid(N_c)
 
-            if N_c is not None:
-                symmetry.prune_symmetries_grid(N_c)
+            self.ibzk_kc, self.weight_k = self.symmetry.reduce(self.bzk_kc)
 
-            # Reduce the set of k-points and add inversion if not already
-            # detected
-            self.ibzk_kc, self.weight_k = symmetry.reduce(self.bzk_kc)
-
-            if usesymm:
-                setups.set_symmetry(symmetry)
-                self.symmetry = symmetry
-            else:
-                self.symmetry = None
+        setups.set_symmetry(self.symmetry)
 
         # Number of irreducible k-points and k-point/spin combinations.
         self.nibzkpts = len(self.ibzk_kc)

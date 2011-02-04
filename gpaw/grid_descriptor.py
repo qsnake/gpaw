@@ -324,6 +324,9 @@ class GridDescriptor(Domain):
 
 
     def symmetrize(self, a_g, op_scc):
+        if len(op_scc) == 1:
+            return
+        
         A_g = self.collect(a_g)
         if self.comm.rank == 0:
             B_g = np.zeros_like(A_g)

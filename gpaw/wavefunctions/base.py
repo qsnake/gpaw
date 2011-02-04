@@ -99,11 +99,10 @@ class WaveFunctions(EmptyWaveFunctions):
         self.band_comm.sum(nt_sG)
         self.kpt_comm.sum(nt_sG)
         
-        if self.symmetry:
-            self.timer.start('Symmetrize density')
-            for nt_G in nt_sG:
-                self.symmetry.symmetrize(nt_G, self.gd)
-            self.timer.stop('Symmetrize density')
+        self.timer.start('Symmetrize density')
+        for nt_G in nt_sG:
+            self.symmetry.symmetrize(nt_G, self.gd)
+        self.timer.stop('Symmetrize density')
 
     def add_to_density_from_k_point(self, nt_sG, kpt):
         self.add_to_density_from_k_point_with_occupation(nt_sG, kpt, kpt.f_n)
@@ -164,7 +163,7 @@ class WaveFunctions(EmptyWaveFunctions):
         self.symmetrize_atomic_density_matrices(D_asp)
 
     def symmetrize_atomic_density_matrices(self, D_asp):
-        if self.symmetry:
+        if len(self.symmetry.op_scc) > 1:
             all_D_asp = []
             for a, setup in enumerate(self.setups):
                 D_sp = D_asp.get(a)
