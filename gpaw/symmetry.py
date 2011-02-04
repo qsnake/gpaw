@@ -225,7 +225,8 @@ class Symmetry:
         
         gd.symmetrize(a, self.op_scc)
 
-    def symmetrize_wavefunction(self, a_g, kibz_c, kbz_c, op_cc, time_reversal):
+    def symmetrize_wavefunction(self, a_g, kibz_c, kbz_c, op_cc,
+                                time_reversal):
         """Generate Bloch function from symmetry related function in the IBZ.
 
         a_g: ndarray
@@ -256,10 +257,12 @@ class Symmetry:
             import _gpaw
             b_g = np.zeros_like(a_g)
             if time_reversal:
+                # assert abs(np.dot(op_cc, kibz_c) - -kbz_c) < tol
                 _gpaw.symmetrize_wavefunction(a_g, b_g, op_cc.T.copy(),
                                               kibz_c, -kbz_c)
                 return b_g.conj()
             else:
+                # assert abs(np.dot(op_cc, kibz_c) - kbz_c) < tol
                 _gpaw.symmetrize_wavefunction(a_g, b_g, op_cc.T.copy(),
                                               kibz_c, kbz_c)
                 return b_g
