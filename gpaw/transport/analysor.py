@@ -800,7 +800,10 @@ class Transport_Analysor:
             lead_pairs = np.array(self.lead_pairs)
             bias = np.array(tp.bias)
             gate = np.array(tp.gate)
-            for name in ['lead_fermi', 'lead_pairs', 'bias', 'gate', 'charge']:
+            magmom = tp.occupations.magmom
+            local_magmom = tp.get_magnetic_moments()   
+            for name in ['lead_fermi', 'lead_pairs', 'bias', 'gate', 
+                                      'charge', 'magmom', 'local_magmom']:
                 self.data[name] = eval(name)
         # do not include contour now because it is a dict, not a array able to
         # collect, but will do it at last
