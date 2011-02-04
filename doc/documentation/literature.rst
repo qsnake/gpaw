@@ -658,3 +658,12 @@ Publications using the gpaw code
    __ http://dx.doi.org/10.1021/jp1076774
 
    .. 6 December 2010
+
+#) Andreas Møgelhøj, André Kelkkanen, K. Thor Wikfeldt, Jakob Schiøtz,
+   Jens Jørgen Mortensen, Lars G.M. Pettersson, Bengt I. Lundqvist,
+   Karsten W. Jacobsen, Anders Nilsson and Jens K. Nørskov
+
+   `Ab initio van der Waals interactions in simulations of water alter
+   structure from mainly tetrahedral to high-density-like`__
+
+   __ http://arxiv.org/abs/1101.5666
