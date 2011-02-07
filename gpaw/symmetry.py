@@ -157,6 +157,11 @@ class Symmetry:
         sym_k = np.empty(nbzkpts, int)
         # Time-reversal symmetry used on top of the point group operation
         time_reversal_k = np.zeros(nbzkpts, dtype=bool)
+
+        for i, op_cc in enumerate(self.op_scc):
+            if (np.abs(op_cc - np.eye(3,dtype=int)) < 1e-8).all():
+                opI = i
+                break
         
         kbz = nbzkpts
         for k_c in bzk_kc[::-1]:
@@ -186,7 +191,7 @@ class Symmetry:
 
             if not found:
                 kibz_k[kbz] = nibzkpts
-                sym_k[kbz] = 0
+                sym_k[kbz] = opI
                 nibzkpts += 1
                 ibzk_kc = ibzk0_kc[:nibzkpts]
                 ibzk_kc[-1] = k_c

@@ -183,7 +183,6 @@ class CHI(BASECHI):
 
             # Find corresponding kpoint in IBZ
             ibzkpt1 = kd.kibz_k[k]
-            print k, ibzkpt1, kd.sym_k[k], kd.time_reversal_k[k]
             if self.optical_limit:
                 ibzkpt2 = ibzkpt1
             else:
@@ -214,7 +213,6 @@ class CHI(BASECHI):
 
                     if check_focc:
                         psit2_g = kd.transform_wave_function(psitold_g, kq_k[k])
-
                         P2_ai = pt.dict()
                         pt.integrate(psit2_g, P2_ai, kq_k[k])
 
