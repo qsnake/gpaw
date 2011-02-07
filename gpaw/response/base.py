@@ -284,7 +284,7 @@ class BASECHI:
             return psit_G
 
 
-    def density_matrix_Gspace(self,n,m,k):
+    def density_matrix(self,n,m,k,Gspace=True):
 
         ibzk_kc = self.ibzk_kc
         bzk_kc = self.bzk_kc
@@ -302,39 +302,42 @@ class BASECHI:
         psit2_g = symmetrize_wavefunction(psitold_g, self.op_scc[iop2], ibzk_kc[ibzkpt2],
                                           bzk_kc[kq_k[k]], timerev2)
 
-        # FFT
-        tmp_g = psit1_g.conj()* psit2_g * self.expqr_g
-        rho_g = np.fft.fftn(tmp_g) * self.vol / self.nG0
-
-        # Here, planewave cutoff is applied
-        rho_G = np.zeros(self.npw, dtype=complex)
-        for iG in range(self.npw):
-            index = self.Gindex_G[iG]
-            rho_G[iG] = rho_g[index[0], index[1], index[2]]
-
-        if self.optical_limit:
-            d_c = [Gradient(gd, i, n=4, dtype=complex).apply for i in range(3)]
-            dpsit_g = gd.empty(dtype=complex)
-            tmp = np.zeros((3), dtype=complex)
-
-            phase_cd = np.exp(2j * pi * gd.sdisp_cd * bzk_kc[kq_k[k], :, np.newaxis])
-            for ix in range(3):
-                d_c[ix](psit2_g, dpsit_g, phase_cd)
-                tmp[ix] = gd.integrate(psit1_g.conj() * dpsit_g)
-            rho_G[0] = -1j * np.dot(self.qq_v, tmp)
-
-        # PAW correction
-        pt = self.pt
-        P1_ai = pt.dict()
-        pt.integrate(psit1_g, P1_ai, k)
-        P2_ai = pt.dict()
-        pt.integrate(psit2_g, P2_ai, kq_k[k])
-                        
-        for a, id in enumerate(self.calc.wfs.setups.id_a):
-            P_p = np.outer(P1_ai[a].conj(), P2_ai[a]).ravel()
-            gemv(1.0, self.phi_aGp[a], P_p, 1.0, rho_G)
-
-        if self.optical_limit:
-            rho_G[0] /= self.e_kn[ibzkpt2, m] - self.e_kn[ibzkpt1, n]
-
-        return rho_G
+        if Gspace is False:
+            return psit1_g, psit2_g
+        else:
+            # FFT
+            tmp_g = psit1_g.conj()* psit2_g * self.expqr_g
+            rho_g = np.fft.fftn(tmp_g) * self.vol / self.nG0
+    
+            # Here, planewave cutoff is applied
+            rho_G = np.zeros(self.npw, dtype=complex)
+            for iG in range(self.npw):
+                index = self.Gindex_G[iG]
+                rho_G[iG] = rho_g[index[0], index[1], index[2]]
+    
+            if self.optical_limit:
+                d_c = [Gradient(gd, i, n=4, dtype=complex).apply for i in range(3)]
+                dpsit_g = gd.empty(dtype=complex)
+                tmp = np.zeros((3), dtype=complex)
+    
+                phase_cd = np.exp(2j * pi * gd.sdisp_cd * bzk_kc[kq_k[k], :, np.newaxis])
+                for ix in range(3):
+                    d_c[ix](psit2_g, dpsit_g, phase_cd)
+                    tmp[ix] = gd.integrate(psit1_g.conj() * dpsit_g)
+                rho_G[0] = -1j * np.dot(self.qq_v, tmp)
+    
+            # PAW correction
+            pt = self.pt
+            P1_ai = pt.dict()
+            pt.integrate(psit1_g, P1_ai, k)
+            P2_ai = pt.dict()
+            pt.integrate(psit2_g, P2_ai, kq_k[k])
+                            
+            for a, id in enumerate(self.calc.wfs.setups.id_a):
+                P_p = np.outer(P1_ai[a].conj(), P2_ai[a]).ravel()
+                gemv(1.0, self.phi_aGp[a], P_p, 1.0, rho_G)
+    
+            if self.optical_limit:
+                rho_G[0] /= self.e_kn[ibzkpt2, m] - self.e_kn[ibzkpt1, n]
+    
+            return rho_G

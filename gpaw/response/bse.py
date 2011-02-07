@@ -105,20 +105,20 @@ class BSE(BASECHI):
 
         # calculate kernel
         K_SS = np.zeros((self.nS, self.nS), dtype=complex)
-        rhoG0_S = np.zeros((self.nS), dtype=complex)
+        self.rhoG0_S = np.zeros((self.nS), dtype=complex)
 
         for iS in range(self.nS_start, self.nS_end):
             print 'calculating kernel', iS
             k1, n1, m1 = self.Sindex_S3[iS]
-            rho1_G = self.density_matrix_Gspace(n1,m1,k1)
-            rhoG0_S[iS] = rho1_G[0]
+            rho1_G = self.density_matrix(n1,m1,k1)
+            self.rhoG0_S[iS] = rho1_G[0]
             for jS in range(self.nS):
                 k2, n2, m2 = self.Sindex_S3[jS]
-                rho2_G = self.density_matrix_Gspace(n2,m2,k2)
+                rho2_G = self.density_matrix(n2,m2,k2)
                 K_SS[iS, jS] = np.sum(rho1_G.conj() * rho2_G * self.kc_G)
         K_SS *= 4 * pi / self.vol
         self.Scomm.sum(K_SS)
-        self.Scomm.sum(rhoG0_S)
+        self.Scomm.sum(self.rhoG0_S)
 
         # get and solve hamiltonian
         H_SS = np.zeros_like(K_SS)
@@ -127,33 +127,9 @@ class BSE(BASECHI):
             for jS in range(self.nS):
                 H_SS[iS,jS] += focc_S[iS] * K_SS[iS,jS]
 
-        w_S, v_SS = np.linalg.eig(H_SS)
-
-        # get overlap matrix
-        tmp = np.zeros((self.nS, self.nS), dtype=complex)
-        for iS in range(self.nS):
-            for jS in range(self.nS):
-                tmp[iS, jS] = (v_SS[:, iS].conj() * v_SS[:, jS]).sum()
-        overlap_SS = np.linalg.inv(tmp)
-
-        # get chi
-        epsilon_w = np.zeros(self.Nw, dtype=complex)
-        tmp_w = np.zeros(self.Nw, dtype=complex)
-        for iS in range(self.nS_start, self.nS_end):
-            tmp_iS = v_SS[:,iS] * rhoG0_S 
-            for iw in range(self.Nw):
-                tmp_w[iw] = 1. / (iw*self.dw - w_S[iS] + 1j * self.eta)
-            print 'calculating epsilon', iS
-            for jS in range(self.nS):
-                tmp_jS = v_SS[:,jS] * rhoG0_S * focc_S
-                tmp = np.outer(tmp_iS, tmp_jS.conj()).sum() * overlap_SS[iS, jS]
-                epsilon_w += tmp * tmp_w
-        self.Scomm.sum(epsilon_w)
-
-        epsilon_w *=  - 4 * pi / np.inner(self.qq_v, self.qq_v) / self.vol
-        epsilon_w += 1        
-
-        return w_S, epsilon_w
+        self.w_S, self.v_SS = np.linalg.eig(H_SS)
+        
+        return 
 
     
     def print_bse(self):
@@ -173,16 +149,68 @@ class BSE(BASECHI):
 
         if self.epsilon_w is None:
             self.initialize()
-            w_S, epsilon_w = self.calculate()
-            self.epsilon_w = epsilon_w
+            self.calculate()
 
+            w_S = self.w_S
+            v_SS = self.v_SS
+            rhoG0_S = self.rhoG0_S
+            focc_S = self.focc_S
+            
+            # get overlap matrix
+            tmp = np.zeros((self.nS, self.nS), dtype=complex)
+            for iS in range(self.nS):
+                for jS in range(self.nS):
+                    tmp[iS, jS] = (v_SS[:, iS].conj() * v_SS[:, jS]).sum()
+            overlap_SS = np.linalg.inv(tmp)
+    
+            # get chi
+            epsilon_w = np.zeros(self.Nw, dtype=complex)
+            tmp_w = np.zeros(self.Nw, dtype=complex)
+            for iS in range(self.nS_start, self.nS_end):
+                tmp_iS = v_SS[:,iS] * rhoG0_S 
+                for iw in range(self.Nw):
+                    tmp_w[iw] = 1. / (iw*self.dw - w_S[iS] + 1j * self.eta)
+                print 'calculating epsilon', iS
+                for jS in range(self.nS):
+                    tmp_jS = v_SS[:,jS] * rhoG0_S * focc_S
+                    tmp = np.outer(tmp_iS, tmp_jS.conj()).sum() * overlap_SS[iS, jS]
+                    epsilon_w += tmp * tmp_w
+            self.Scomm.sum(epsilon_w)
+    
+            epsilon_w *=  - 4 * pi / np.inner(self.qq_v, self.qq_v) / self.vol
+            epsilon_w += 1        
+
+            self.epsilon_w = epsilon_w
+    
         if rank == 0:
             f = open(filename,'w')
             for iw in range(self.Nw):
                 energy = iw * self.dw * Hartree
                 print >> f, energy, np.real(epsilon_w[iw]), np.imag(epsilon_w[iw])
             f.close()
-
+    
         # Wait for I/O to finish
         world.barrier()
 
+        return
+
+    def get_excitation_wavefunctions(self, lamda):
+
+        assert self.epsilon_w is not None
+        w_S = self.w_S
+        v_SS = self.v_SS
+        print np.real(w_S) * Hartree
+
+        print w_S[lamda] * Hartree
+        psi_RR = np.zeros((self.nG0, self.nG0),dtype=complex)
+        A_S = v_SS[:, lamda]
+        print A_S
+        for iS in range(self.nS):
+            k1, n1, m1 = self.Sindex_S3[iS]
+            psit1_g, psit2_g = self.density_matrix(n1,m1,k1,Gspace=False)
+            psi_RR += A_S[iS] * np.outer(psit1_g.conj(), psit2_g)
+
+        for i in range(self.nG0):
+            print i, (psi_RR[i]*psi_RR[i].conj()).sum()
+
+        return psi_RR
