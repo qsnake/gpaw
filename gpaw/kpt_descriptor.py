@@ -167,6 +167,42 @@ class KPointDescriptor:
 
         return kpt_u
 
+    def transform_wave_function(self, psit_G, k):
+        """Transform wave function from IBZ to BZ.
+
+        k is the index of the desired k-point in the full BZ."""
+        
+        s = self.symm_k[k]
+        time_reversal = self.time_reversal_k[k]
+        op_cc = self.op_scc[s]
+        
+        # Identity
+        if (np.abs(op_cc - np.eye(3, dtype=int)) < 1e-10).all():
+            if time_reversal:
+                return psit_G.conj()
+            else:
+                return psit_G
+        # Inversion symmetry
+        elif (np.abs(op_cc + np.eye(3, dtype=int)) < 1e-10).all():
+            return psit_G.conj()
+        # General point group symmetry
+        else:
+            ik = self.kibz_k[k]
+            kibz_c = self.ibzk_kc[ik]
+            kbz_c = self.bzk_kc[k]
+            import _gpaw
+            b_g = np.zeros_like(psit_G)
+            if time_reversal:
+                # assert abs(np.dot(op_cc, kibz_c) - -kbz_c) < tol
+                _gpaw.symmetrize_wavefunction(psit_G, b_g, op_cc.T.copy(),
+                                              kibz_c, -kbz_c)
+                return b_g.conj()
+            else:
+                # assert abs(np.dot(op_cc, kibz_c) - kbz_c) < tol
+                _gpaw.symmetrize_wavefunction(psit_G, b_g, op_cc.T.copy(),
+                                              kibz_c, kbz_c)
+                return b_g
+
     def find_k_plus_q(self, q_c):
         """Find the indices of k+q for all kpoints in the Brillouin zone.
 
