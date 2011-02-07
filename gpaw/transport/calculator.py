@@ -70,6 +70,7 @@ class Transport(GPAW):
                        'non_sc', 'fixed_boundary', 'guess_steps', 'foot_print',
                        'data_file', 'extended_atoms','restart_lead_hamiltonian',
                         'analysis_data_list', 'save_bias_data',
+                        'perturbation_steps', 'perturbation_magmom', 'perturbation_charge',
                         'analysis_mode', 'normalize_density', 'se_data_path',                     
                         'neintmethod', 'neintstep', 'eqinttol', 'extra_density']:
                 
@@ -154,6 +155,9 @@ class Transport(GPAW):
         self.extra_density = p['extra_density']
         self.eqinttol = p['eqinttol']
         self.spinpol = p['spinpol']
+        self.perturbation_steps = p['perturbation_steps']
+        self.perturbation_charge = p['perturbation_charge']
+        self.perturbation_magmom = p['perturbation_magmom']
         self.verbose = p['verbose']
         self.d = p['d']
        
@@ -242,6 +246,9 @@ class Transport(GPAW):
         p['neutral'] = True
         p['neutral_steps'] = None
         p['total_charge'] = 0
+        p['perturbation_steps'] = []
+        p['perturbation_magmom'] = None
+        p['perturbation_charge'] = 0
         p['gate'] = 0
         p['gate_mode'] = 'VG'
         p['gate_fun'] = None
@@ -1106,7 +1113,10 @@ class Transport(GPAW):
         #self.hamiltonian.S = 0
         #self.hamiltonian.Etot = 0
         ##temp
-        
+ 
+        if self.analysor.n_bias_step in self.perturbation_steps:
+            self.induce_density_perturbation()
+     
         while not self.cvgflag and self.step < self.max_steps:
             self.iterate()
             self.cvgflag = self.d_cvg and self.h_cvg
@@ -1818,7 +1828,34 @@ class Transport(GPAW):
             else:
                 # Energy extrapolated to zero Kelvin:
                 return Hartree * (self.hamiltonian.Etot + 0.5 * self.hamiltonian.S)
-       
+      
+    def induce_density_perturbation(self):
+        wfs = self.extended_calc.wfs
+        basis_functions = wfs.basis_functions        
+        density = self.density
+        f_sM = np.empty((self.nspins, basis_functions.Mmax))
+        D_asp = {}
+        f_asi = {}
+        for a in basis_functions.atom_indices:
+            c = self.perturbation_charge / len(wfs.setups)  # distribute on all atoms
+            f_si = wfs.setups[a].calculate_initial_occupation_numbers(
+                    self.perturbation_magmom[a], True, charge=c, nspins=self.nspins)
+            if a in basis_functions.my_atom_indices:
+                D_asp[a] = wfs.setups[a].initialize_density_matrix(f_si)
+            f_asi[a] = f_si
+
+        nt_sG = self.gd1.zeros(self.nspins)
+        basis_functions.add_to_density(nt_sG, f_asi)
+        nn = self.surround.nn
+        density.nt_sG = self.surround.uncapsule(self, nn, nt_sG, self.gd1,
+                                                    self.gd)
+        all_D_asp = collect_atomic_matrices(D_asp, wfs.setups, self.nspins,
+                                            self.gd.comm, wfs.rank_a)
+        D_asp = all_D_asp[:len(self.atoms)]
+        distribute_atomic_matrices(D_asp, density.D_asp, density.setups)
+        comp_charge = density.calculate_multipole_moments()
+        density.mix(comp_charge)
+  
     def update_density(self):
         self.timer.start('dmm recover')
         #self.fill_guess_with_leads()
@@ -2420,7 +2457,7 @@ class Transport(GPAW):
             if flag:
                 self.append_buffer_hsd()                    
  
-            #self.analysor.save_ele_step()            
+            #self.analysor.save_ele_step(self)            
             self.analysor.save_bias_step(self)
 
     def save_lead_hamiltonian_matrix(self):
