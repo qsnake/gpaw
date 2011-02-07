@@ -172,9 +172,9 @@ class KPointDescriptor:
 
         k is the index of the desired k-point in the full BZ."""
         
-        s = self.symm_k[k]
-        time_reversal = self.time_reversal_k[k]
-        op_cc = self.op_scc[s]
+        s = self.symmetry.sym_k[k]
+        time_reversal = self.symmetry.time_reversal_k[k]
+        op_cc = self.symmetry.op_scc[s]
         
         # Identity
         if (np.abs(op_cc - np.eye(3, dtype=int)) < 1e-10).all():
@@ -187,7 +187,7 @@ class KPointDescriptor:
             return psit_G.conj()
         # General point group symmetry
         else:
-            ik = self.kibz_k[k]
+            ik = self.symmetry.kibz_k[k]
             kibz_c = self.ibzk_kc[ik]
             kbz_c = self.bzk_kc[k]
             import _gpaw
