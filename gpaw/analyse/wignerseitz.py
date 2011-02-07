@@ -61,6 +61,8 @@ class WignerSeitz:
         """Get the weights of wave function in Wigner-Seitz cells
         around the atoms. The spin-k-point index u and band number n
         are needed for the augmentation sphere corrections."""
+
+        assert psit_G.dtype == float
         # smooth part
         weigths = self.expand(psit_G**2)
 

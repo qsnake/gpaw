@@ -244,6 +244,7 @@ def get_all_electron_IPR(paw):
 def raw_wignerseitz_LDOS(paw, a, spin):
     """Return a list of eigenvalues, and their weight on the specified atom"""
     wfs = paw.wfs
+    assert wfs.dtype == float
     gd = wfs.gd
     atom_index = wignerseitz(gd, paw.atoms)
 

@@ -249,7 +249,7 @@ class OmegaMatrix:
                     Pj_i = P_ni[kss[ij].j]
                     P_ii = np.outer(Pi_i, Pj_i)
                     # we need the symmetric form, hence we can pack
-                    P_p = pack(P_ii, tolerance=1e30)
+                    P_p = pack(P_ii)
                     D_sp = self.paw.density.D_asp[a].copy()
                     D_sp[kss[ij].pspin] -= ns * P_p
                     setup = wfs.setups[a]
@@ -337,7 +337,7 @@ class OmegaMatrix:
                         P_ii = np.outer(Pk_i, Pq_i)
                         # we need the symmetric form, hence we can pack
                         # use pack as I_sp used pack2
-                        P_p = pack(P_ii, tolerance=1e30)
+                        P_p = pack(P_ii)
                         Exc += np.dot(I_asp[a][kss[kq].pspin], P_p)
                     Om_xc[ij, kq] += weight * self.gd.comm.sum(Exc)
                     timer2.stop()
@@ -435,12 +435,12 @@ class OmegaMatrix:
                     Pi_i = P_ni[kss[ij].i]
                     Pj_i = P_ni[kss[ij].j]
                     Dij_ii = np.outer(Pi_i, Pj_i)
-                    Dij_p = pack(Dij_ii, tolerance=1e3)
+                    Dij_p = pack(Dij_ii)
                     Pkq_ni = wfs.kpt_u[kss[kq].spin].P_ani[a]
                     Pk_i = Pkq_ni[kss[kq].i]
                     Pq_i = Pkq_ni[kss[kq].j]
                     Dkq_ii = np.outer(Pk_i, Pq_i)
-                    Dkq_p = pack(Dkq_ii, tolerance=1e3)
+                    Dkq_p = pack(Dkq_ii)
                     C_pp = wfs.setups[a].M_pp
                     #   ----
                     # 2 >      P   P  C    P  P

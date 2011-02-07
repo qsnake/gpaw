@@ -61,16 +61,6 @@ def gcd(a, b):
     return a
 
 
-def contiguous(array, dtype):
-    # XXX Use numpy.ascontiguousarray(array, dtype=None) instead!
-    """Convert a sequence to a contiguous Numpy array."""
-    array = np.asarray(array, dtype)
-    if array.flags.contiguous:
-        return array
-    else:
-        return np.array(array)
-
-
 def is_contiguous(array, dtype=None):
     """Check for contiguity and type."""
     if dtype is None:
@@ -170,7 +160,7 @@ def unpack2(M):
     return M2
 
     
-def pack(M2, tolerance=1e-10):
+def pack(M2):
     """Pack a 2D array to 1D, adding offdiagonal terms.
     
     The matrix::
@@ -181,7 +171,7 @@ def pack(M2, tolerance=1e-10):
                 
     is transformed to the vector::
     
-      M = (a00, a01 + a10*, a02 + a20*, a11, a12 + a21*, a22)
+      M = (a00, a01 + a10, a02 + a20, a11, a12 + a21, a22)
     """
     n = len(M2)
     M = np.zeros(n * (n + 1) // 2, M2.dtype.char)
@@ -190,9 +180,7 @@ def pack(M2, tolerance=1e-10):
         M[p] = M2[r, r]
         p += 1
         for c in range(r + 1, n):
-            M[p] = M2[r, c] + np.conjugate(M2[c, r])
-            error = abs(M2[r, c] - np.conjugate(M2[c, r]))
-            assert error < tolerance, 'Pack not symmetric by %s' % error + ' %'
+            M[p] = M2[r, c] + M2[c, r]
             p += 1
     assert p == len(M)
     return M
@@ -230,15 +218,6 @@ def element_from_packed(M, i, j):
         return .5 * M[p]
     else:
         return .5 * np.conjugate(M[p])
-
-
-def check_unit_cell(cell):
-    """Check that the unit cell (3*3 matrix) is orthorhombic (diagonal)."""
-    c = cell.copy()
-    # Zero the diagonal:
-    c.flat[::4] = 0.0
-    if np.sometrue(c.flat):
-        raise RuntimeError('Unit cell not orthorhombic')
     
 
 class _DownTheDrain:
@@ -254,42 +233,6 @@ class _DownTheDrain:
         pass
 
 devnull = _DownTheDrain()
-
-"""
-class OutputFilter:
-    def __init__(self, out, threshold, level=500):
-        self.threshold = threshold
-        self.verbosity = verbosity
-
-    def write(self, string):
-        if kfdce
-
-"""
-
-
-def warning(msg):
-    r"""Put string in a box.
-
-    >>> print Warning('Watch your step!')
-     /\/\/\/\/\/\/\/\/\/\/\
-     \                    /
-     /  WARNING:          \
-     \  Watch your step!  /
-     /                    \
-     \/\/\/\/\/\/\/\/\/\/\/
-    """
-    
-    lines = ['', 'WARNING:'] + msg.split('\n')
-    n = max([len(line) for line in lines])
-    n += n % 2
-    bar = (n / 2 + 3) * '/\\'
-    start, end = ' \\ ', ' / '
-    msg = ' %s\n' % bar
-    for line in lines + (len(lines) % 2) * ['']:
-        msg += '%s %s %s%s\n' % (start, line, (n - len(line)) * ' ', end)
-        start, end = end, start
-    msg += ' %s/' % bar[1:]
-    return msg
 
 
 def uncamelcase(name):
@@ -309,47 +252,11 @@ def divrl(a_g, l, r_g):
     return b_g
 
 
-def locked(filename):
-    try:
-        os.open(filename, os.O_EXCL | os.O_RDWR | os.O_CREAT)
-    except OSError:
-        return True
-    os.remove(filename)
-    return False
-
-
-def fix(formula):
-    """Convert chemical formula to LaTeX"""
-    s = '$'
-    j = 0
-    for i in range(len(formula)):
-        c = formula[i]
-        if c.isdigit():
-            s += r'\rm{' + formula[j:i] + '}_' + c
-            j = i + 1
-    remainder = formula[j:]
-    if remainder:
-        s += r'\rm{' + remainder + '}'
-    return s + '$'
-
-
-def fix2(formula):
-    """Convert chemical formula to reStructuredText"""
-    s = ''
-    j = 0
-    for i in range(len(formula)):
-        c = formula[i]
-        if c.isdigit():
-            s += r'\ `' + c + '`:sub:\ '
-        else:
-            s += c
-    return s
-
-
 def compiled_with_sl(extended_check=False):
     if extended_check and not hasattr(_gpaw, 'Communicator'):
         return False
     return _gpaw.compiled_with_sl()
+
 
 def load_balance(paw, atoms):
     try:
@@ -377,6 +284,7 @@ def load_balance(paw, atoms):
 if not debug:
     hartree = _gpaw.hartree
 
+
 def mlsqr(order, cutoff, coords_nc, N_c, beg_c, data_g, target_n):
     """Interpolate a point using moving least squares algorithm.
 
@@ -392,12 +300,13 @@ def mlsqr(order, cutoff, coords_nc, N_c, beg_c, data_g, target_n):
 
     assert is_contiguous(coords_nc, float)
     assert is_contiguous(data_g, float)
-    N_c = contiguous(N_c, float)
-    beg_c = contiguous(beg_c, float)    
+    N_c = np.ascontiguousarray(N_c, float)
+    beg_c = np.ascontiguousarray(beg_c, float)    
     assert is_contiguous(target_n, float)
 
     return _gpaw.mlsqr(order, cutoff, coords_nc, N_c, beg_c, data_g, target_n)
     
+
 def interpolate_mlsqr(dg_c, vt_g, order):
     """Interpolate a point using moving least squares algorithm.
 

@@ -4,7 +4,7 @@
 import numpy as np
 
 from gpaw import debug
-from gpaw.utilities import contiguous, divrl, is_contiguous
+from gpaw.utilities import divrl, is_contiguous
 import _gpaw
 
 
@@ -22,7 +22,7 @@ class Spline:
         assert 0.0 < rmax
 
         if beta is None:
-            f_g = contiguous(f_g, float)
+            f_g = np.ascontiguousarray(f_g, float)
         else:
             f_g = divrl(f_g, l, r_g)
             r = 1.0 * rmax / points * np.arange(points + 1)

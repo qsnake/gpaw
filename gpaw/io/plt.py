@@ -1,13 +1,12 @@
 """IO routines for gOpenMol binary plt format"""
 
-from struct import calcsize,pack,unpack
-import numpy as np
+from struct import calcsize, pack, unpack
 
+import numpy as np
 from ase.units import Bohr
-from gpaw.utilities import check_unit_cell
 
 import gpaw.mpi as mpi
-from gpaw.mpi import MASTER
+
 
 def read_plt(filename):
     """Read plt files
@@ -63,7 +62,7 @@ def write_collected_plt(gd,
                         origin=(0.0,0.0,0.0), # ASE uses (0,0,0) as origin
                         typ=4):
     collected_grid = gd.collect(grid)
-    if mpi.rank == MASTER:
+    if mpi.rank == 0:
         write_plt(gd, collected_grid, filename, origin, typ)
 
 def write_plt(cell,
@@ -86,7 +85,7 @@ def write_plt(cell,
         xe, ye, ze = cell.h_c * cell.N_c * a0_A # get Angstroms
     elif len(cell.shape) == 2:
         # Check that the cell is orthorhombic
-        check_unit_cell(cell)
+        assert not cell.flat[[1, 2, 3, 5, 6, 7]].any()
         xe, ye, ze = np.diagonal(cell)
     else:
         xe, ye, ze = cell * a0_A # get Angstroms

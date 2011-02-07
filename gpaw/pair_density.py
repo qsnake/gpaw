@@ -48,6 +48,7 @@ class PairDensity2:
         # Determine the compensation charges for each nucleus
         Q_aL = {}
         for a, P_ni in self.P_ani.items():
+            assert P_ni.dtype == float
             # Generate density matrix
             P1_i = P_ni[self.n1]
             P2_i = P_ni[self.n2]
@@ -73,7 +74,8 @@ class PairDensity:
         self.density = paw.density
         self.setups = paw.wfs.setups
         self.spos_ac = paw.atoms.get_scaled_positions()
-
+        assert paw.wfs.dtype == float
+        
     def initialize(self, kpt, i, j):
         """initialize yourself with the wavefunctions"""
         self.i = i
@@ -109,7 +111,7 @@ class PairDensity:
             D_ii = np.outer(Pi_i, Pj_i)
             # allowed to pack as used in the scalar product with
             # the symmetric array Delta_pL
-            D_p  = pack(D_ii, tolerance=1e30)
+            D_p  = pack(D_ii)
             
             # Determine compensation charge coefficients:
             Q_aL[a] = np.dot(D_p, self.setups[a].Delta_pL)

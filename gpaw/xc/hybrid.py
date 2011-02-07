@@ -263,7 +263,7 @@ class HybridXC(XCFunctional):
             P1_i = P_ni[n1]
             P2_i = P_ni[n2]
             D_ii = np.outer(P1_i, P2_i.conj()).real
-            D_p = pack(D_ii, tolerance=1e30)
+            D_p = pack(D_ii)
             Q_aL[a] = np.dot(D_p, self.setups[a].Delta_pL)
             
         nt_G = psit_nG[n1] * psit_nG[n2]
@@ -450,7 +450,7 @@ def constructX(gen):
             i1 += 2 * lv1 + 1
 
     # pack X_ii matrix
-    X_p = pack2(X_ii, tolerance=1e-8)
+    X_p = pack2(X_ii)
     return X_p
 
 

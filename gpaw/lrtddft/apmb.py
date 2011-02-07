@@ -194,11 +194,11 @@ class ApmB(OmegaMatrix):
             Pi_i = Pij_ni[kss_ij.i]
             Pj_i = Pij_ni[kss_ij.j]
             Dij_ii = np.outer(Pi_i, Pj_i)
-            Dij_p = pack(Dij_ii, tolerance=1e3)
+            Dij_p = pack(Dij_ii)
             Pk_i = Pkq_ani[a][kss_kq.i]
             Pq_i = Pkq_ani[a][kss_kq.j]
             Dkq_ii = np.outer(Pk_i, Pq_i)
-            Dkq_p = pack(Dkq_ii, tolerance=1e3)
+            Dkq_p = pack(Dkq_ii)
             C_pp = wfs.setups[a].M_pp
             #   ----
             # 2 >      P   P  C    P  P
