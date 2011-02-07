@@ -151,6 +151,7 @@ class CHI(BASECHI):
         """Calculate the non-interacting density response function. """
 
         calc = self.calc
+        kd = self.kd
         gd = self.gd
         sdisp_cd = gd.sdisp_cd
         ibzk_kc = self.ibzk_kc
@@ -181,19 +182,19 @@ class CHI(BASECHI):
         for k in range(self.kstart, self.kend):
 
             # Find corresponding kpoint in IBZ
-            ibzkpt1, iop1, timerev1 = find_ibzkpt(self.op_scc, ibzk_kc, bzk_kc[k])
+            ibzkpt1 = kd.symmetry.kibz_k[k]
             if self.optical_limit:
-                ibzkpt2, iop2, timerev2 = ibzkpt1, iop1, timerev1
+                ibzkpt2 = ibzkpt1
             else:
-                ibzkpt2, iop2, timerev2 = find_ibzkpt(self.op_scc, ibzk_kc, bzk_kc[kq_k[k]])
-
+                ibzkpt2 = kd.symmetry.kibz_k[kq_k[k]]
+            
             for n in range(self.nstart, self.nend):
 #                print >> self.txt, k, n, t_get_wfs, time() - t0
                 t1 = time()
                 psitold_g = self.get_wavefunction(ibzkpt1, n, k, True, spin=spin)
                 t_get_wfs += time() - t1
-                psit1new_g = symmetrize_wavefunction(psitold_g, self.op_scc[iop1], ibzk_kc[ibzkpt1],
-                                                      bzk_kc[k], timerev1)
+                psit1new_g = kd.transform_wave_function(psitold_g, k)
+
                 P1_ai = pt.dict()
                 pt.integrate(psit1new_g, P1_ai, k)
 
@@ -211,8 +212,7 @@ class CHI(BASECHI):
                     t_get_wfs += time() - t1
 
                     if check_focc:
-                        psit2_g = symmetrize_wavefunction(psitold_g, self.op_scc[iop2], ibzk_kc[ibzkpt2],
-                                                           bzk_kc[kq_k[k]], timerev2)
+                        psit2_g = kd.transform_wave_function(psitold_g, kq_k[k])
 
                         P2_ai = pt.dict()
                         pt.integrate(psit2_g, P2_ai, kq_k[k])

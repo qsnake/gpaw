@@ -459,7 +459,6 @@ class DF(CHI):
                 'bzk_kc'       : self.bzk_kc,
                 'ibzk_kc'      : self.ibzk_kc,
                 'kq_k'         : self.kq_k,
-                'op_scc'       : self.op_scc,
                 'Gvec_Gc'       : self.Gvec_Gc,
                 'dfNLF_w'      : self.df1_w,
                 'dfLFC_w'      : self.df2_w}
@@ -507,7 +506,6 @@ class DF(CHI):
         self.bzk_kc  = data['bzk_kc']
         self.ibzk_kc = data['ibzk_kc']
         self.kq_k    = data['kq_k']
-        self.op_scc  = data['op_scc']
         self.Gvec_Gc  = data['Gvec_Gc']
         self.df1_w   = data['dfNLF_w']
         self.df2_w   = data['dfLFC_w']

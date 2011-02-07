@@ -75,9 +75,10 @@ class BASECHI:
         calc = self.calc
         
         # kpoint init
-        self.bzk_kc = calc.get_bz_k_points()
-        self.ibzk_kc = calc.get_ibz_k_points()
-        self.nkpt = self.bzk_kc.shape[0]
+        self.kd = kd = calc.wfs.kd
+        self.bzk_kc = kd.bzk_kc
+        self.ibzk_kc = kd.ibzk_kc
+        self.nkpt = kd.nbzkpts
         self.ftol /= self.nkpt
 
         # band init
@@ -97,8 +98,8 @@ class BASECHI:
         self.h_cv = gd.h_cv
 
         # obtain eigenvalues, occupations
-        nibzkpt = self.ibzk_kc.shape[0]
-        kweight_k = calc.get_k_point_weights()
+        nibzkpt = kd.nibzkpts
+        kweight_k = kd.weight_k
 
         try:
             self.e_kn
@@ -124,7 +125,7 @@ class BASECHI:
             qr_g = gemmdot(self.qq_v, r_vg, beta=0.0)
             self.expqr_g = np.exp(-1j * qr_g)
             del r_vg, qr_g
-            kq_k = find_kq(self.bzk_kc, self.q_c)
+            kq_k = kd.find_k_plus_q(self.q_c)
         self.kq_k = kq_k
 
         # Plane wave init
@@ -133,21 +134,11 @@ class BASECHI:
         # Projectors init
         setups = calc.wfs.setups
         pt = LFC(gd, [setup.pt_j for setup in setups],
-                 calc.wfs.kpt_comm, dtype=calc.wfs.dtype, forces=True)
+                 dtype=calc.wfs.dtype, forces=True)
         spos_ac = calc.atoms.get_scaled_positions()
         pt.set_k_points(self.bzk_kc)
         pt.set_positions(spos_ac)
         self.pt = pt
-
-        # Symmetry operations init
-        usesymm = calc.input_parameters.get('usesymm')
-        if usesymm == None or self.nkpt == 1:
-            op_scc = (np.eye(3, dtype=int),)
-        elif usesymm == False:
-            op_scc = (np.eye(3, dtype=int), -np.eye(3, dtype=int))
-        else:
-            op_scc = calc.wfs.symmetry.op_scc
-        self.op_scc = op_scc
 
         # Printing calculation information
         self.print_stuff()
@@ -290,17 +281,16 @@ class BASECHI:
         bzk_kc = self.bzk_kc
         kq_k = self.kq_k
         gd = self.gd
+        kd = self.kd
 
-        ibzkpt1, iop1, timerev1 = find_ibzkpt(self.op_scc, ibzk_kc, bzk_kc[k])
-        ibzkpt2, iop2, timerev2 = find_ibzkpt(self.op_scc, ibzk_kc, bzk_kc[kq_k[k]])
+        ibzkpt1 = kd.symmetry.kibz_k[k]
+        ibzkpt2 = kd.symmetry.kibz_k[kq[k]]
         
         psitold_g = self.get_wavefunction(ibzkpt1, n, k, True)
-        psit1_g = symmetrize_wavefunction(psitold_g, self.op_scc[iop1], ibzk_kc[ibzkpt1],
-                                                      bzk_kc[k], timerev1)
+        psit1_g = kd.transform_wave_function(psitold_g, k)
         
         psitold_g = self.get_wavefunction(ibzkpt2, m, kq_k[k], True)
-        psit2_g = symmetrize_wavefunction(psitold_g, self.op_scc[iop2], ibzk_kc[ibzkpt2],
-                                          bzk_kc[kq_k[k]], timerev2)
+        psit2_g = kd.transform_wave_function(psitold_g, kq_k[k])
 
         if Gspace is False:
             return psit1_g, psit2_g
