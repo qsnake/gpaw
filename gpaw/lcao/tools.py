@@ -103,8 +103,8 @@ def get_realspace_hs(h_skmm, s_kmm, bzk_kc, weight_k,
         # in a smarter way in the future.
         symmetry = Symmetry([1], np.eye(3))
         symmetry.prune_symmetries([[0, 0, 0]])
-        ibzk_kc, ibzweight_k = symmetry.reduce(bzk_kc)
-        ibzk_t_kc, weights_t_k = symmetry.reduce(bzk_t_kc)
+        ibzk_kc, ibzweight_k = symmetry.reduce(bzk_kc)[:2]
+        ibzk_t_kc, weights_t_k = symmetry.reduce(bzk_t_kc)[:2]
         ibzk_t_kc = ibzk_t_kc[:, :2]
         nkpts_t = len(ibzk_t_kc)
     else: # usesymm = None
