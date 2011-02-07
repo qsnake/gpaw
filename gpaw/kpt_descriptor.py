@@ -113,6 +113,7 @@ class KPointDescriptor:
             self.ibzk_kc = self.bzk_kc.copy()
             self.sym_k = np.zeros(nkpts)
             self.time_reversal_k = np.zeros(nkpts, bool)
+            self.kibz_k = np.arange(nkpts)
         else:
             if usesymm:
                 # Find symmetry operations of atoms
@@ -123,7 +124,8 @@ class KPointDescriptor:
 
             (self.ibzk_kc, self.weight_k,
              self.sym_k,
-             self.time_reversal_k, kibz_k) = self.symmetry.reduce(self.bzk_kc)
+             self.time_reversal_k,
+             self.kibz_k) = self.symmetry.reduce(self.bzk_kc)
 
         setups.set_symmetry(self.symmetry)
 
@@ -190,7 +192,7 @@ class KPointDescriptor:
             return psit_G.conj()
         # General point group symmetry
         else:
-            ik = self.symmetry.kibz_k[k]
+            ik = self.kibz_k[k]
             kibz_c = self.ibzk_kc[ik]
             kbz_c = self.bzk_kc[k]
             import _gpaw

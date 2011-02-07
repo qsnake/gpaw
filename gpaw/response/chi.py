@@ -182,11 +182,12 @@ class CHI(BASECHI):
         for k in range(self.kstart, self.kend):
 
             # Find corresponding kpoint in IBZ
-            ibzkpt1 = kd.symmetry.kibz_k[k]
+            ibzkpt1 = kd.kibz_k[k]
+            print k, ibzkpt1, kd.sym_k[k], kd.time_reversal_k[k]
             if self.optical_limit:
                 ibzkpt2 = ibzkpt1
             else:
-                ibzkpt2 = kd.symmetry.kibz_k[kq_k[k]]
+                ibzkpt2 = kd.kibz_k[kq_k[k]]
             
             for n in range(self.nstart, self.nend):
 #                print >> self.txt, k, n, t_get_wfs, time() - t0
