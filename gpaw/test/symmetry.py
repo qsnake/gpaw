@@ -16,7 +16,7 @@ bzk_kc = monkhorst_pack((4, 4, 4))
 # Do check
 symm = Symmetry(id_a, cell_cv, pbc_c)
 symm.analyze(spos_ac)
-ibzk_kc, w_k = symm.reduce(bzk_kc)
+ibzk_kc, w_k = symm.reduce(bzk_kc)[:2]
 assert len(symm.op_scc) == 24
 assert len(w_k) == 10
 a = 3 / 32.; b = 1 / 32.; c = 6 / 32.
@@ -29,7 +29,7 @@ cell_cv = a / sqrt(2) * np.array([(1, 0, 0),
                                   (0.5, sqrt(3) / 6, sqrt(2.0 / 3))])
 symm = Symmetry(id_a, cell_cv, pbc_c)
 symm.analyze(spos_ac)
-ibzkb_kc, wb_k = symm.reduce(bzk_kc)
+ibzkb_kc, wb_k = symm.reduce(bzk_kc)[:2]
 assert len(symm.op_scc) == 24
 assert abs(w_k - wb_k).sum() < 1e-14
 assert abs(ibzk_kc - ibzkb_kc).sum() < 1e-14
@@ -38,7 +38,7 @@ assert not symm.op_scc.sum(0).any()
 bzk_kc = monkhorst_pack((3, 3, 3))
 symm = Symmetry(id_a, cell_cv, pbc_c)
 symm.analyze(spos_ac)
-ibzk_kc, w_k = symm.reduce(bzk_kc)
+ibzk_kc, w_k = symm.reduce(bzk_kc)[:2]
 assert len(symm.op_scc) == 24
 assert len(w_k) == 4
 assert abs(w_k * 27 - (1, 12, 6, 8)).sum() < 1e-14
@@ -57,7 +57,7 @@ bzk_kc = monkhorst_pack((3, 1, 1))
 # Do check
 symm = Symmetry(id_a, cell_cv, pbc_c)
 symm.analyze(spos_ac)
-ibzk_kc, w_k = symm.reduce(bzk_kc)
+ibzk_kc, w_k = symm.reduce(bzk_kc)[:2]
 assert len(symm.op_scc) == 2
 assert len(w_k) == 2
 assert np.all(w_k == [1 / 3., 2 / 3.])
@@ -73,7 +73,7 @@ bzk_kc = monkhorst_pack((2, 2, 2))
 # Do check
 symm = Symmetry(id_a, cell_cv, pbc_c)
 symm.analyze(spos_ac)
-ibzk_kc, w_k = symm.reduce(bzk_kc)
+ibzk_kc, w_k = symm.reduce(bzk_kc)[:2]
 assert len(symm.op_scc) == 12
 assert len(w_k) == 2
 assert np.all(w_k == [3/4., 1/4.])

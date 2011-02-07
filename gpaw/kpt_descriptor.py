@@ -111,7 +111,8 @@ class KPointDescriptor:
             nkpts = len(self.bzk_kc)
             self.weight_k = np.ones(nkpts) / nkpts
             self.ibzk_kc = self.bzk_kc.copy()
-
+            self.sym_k = np.zeros(nkpts)
+            self.time_reversal_k = np.zeros(nkpts, bool)
         else:
             if usesymm:
                 # Find symmetry operations of atoms
@@ -120,7 +121,9 @@ class KPointDescriptor:
                 if N_c is not None:
                     self.symmetry.prune_symmetries_grid(N_c)
 
-            self.ibzk_kc, self.weight_k = self.symmetry.reduce(self.bzk_kc)
+            (self.ibzk_kc, self.weight_k,
+             self.sym_k,
+             self.time_reversal_k, kibz_k) = self.symmetry.reduce(self.bzk_kc)
 
         setups.set_symmetry(self.symmetry)
 
@@ -172,8 +175,8 @@ class KPointDescriptor:
 
         k is the index of the desired k-point in the full BZ."""
         
-        s = self.symmetry.sym_k[k]
-        time_reversal = self.symmetry.time_reversal_k[k]
+        s = self.sym_k[k]
+        time_reversal = self.time_reversal_k[k]
         op_cc = self.symmetry.op_scc[s]
         
         # Identity

@@ -145,26 +145,11 @@ class Symmetry:
         Returns the irreducible k-points and the weights.
         
         """
-        
-        op_scc = self.op_scc
-        inv_cc = -np.identity(3, int)
-        have_inversion_symmetry = False
-        
-        for op_cc in op_scc:
-            if (op_cc == inv_cc).all():
-                have_inversion_symmetry = True
-                break
-
-        # Use time-reversal symmetry when inversion symmetry is absent
-        if not have_inversion_symmetry:
-            op_scc = np.concatenate((op_scc, -op_scc))
-            
         nbzkpts = len(bzk_kc)
         ibzk0_kc = np.empty((nbzkpts, 3))
         ibzk_kc = ibzk0_kc[:0]
         weight_k = np.ones(nbzkpts)
         nibzkpts = 0
-        kbz = nbzkpts
         
         # Mapping between k and symmetry related point in the irreducible BZ
         kibz_k = np.empty(nbzkpts, int)
@@ -173,26 +158,32 @@ class Symmetry:
         # Time-reversal symmetry used on top of the point group operation
         time_reversal_k = np.zeros(nbzkpts, dtype=bool)
         
+        kbz = nbzkpts
         for k_c in bzk_kc[::-1]:
             kbz -= 1
             found = False
             
-            for s, op_cc in enumerate(op_scc):
+            for s, op_cc in enumerate(self.op_scc):
                 if len(ibzk_kc) == 0:
                     break
                 diff_kc = np.dot(ibzk_kc, op_cc.T) - k_c
                 b_k = ((diff_kc - diff_kc.round())**2).sum(1) < self.tol
-                if b_k.any():
-                    found = True
-                    kibz = np.where(b_k)[0][0]
-                    weight_k[kibz] += 1.0
-                    kibz_k[kbz] = kibz
-                    sym_k[kbz] = s
-                    # Time-reversal symmetry combined with point group symmetry
-                    if s >= len(self.op_scc):
-                        sym_k[kbz] = s - len(self.op_scc)
+                if not b_k.any():
+                    # Try with time reversal:
+                    diff_kc += 2 * k_c
+                    b_k = ((diff_kc - diff_kc.round())**2).sum(1) < self.tol
+                    if not b_k.any():
+                        continue
+                    else:
                         time_reversal_k[kbz] = True
-                    break
+
+                found = True
+                kibz = np.where(b_k)[0][0]
+                weight_k[kibz] += 1.0
+                kibz_k[kbz] = kibz
+                sym_k[kbz] = s
+                break
+
             if not found:
                 kibz_k[kbz] = nibzkpts
                 sym_k[kbz] = 0
@@ -200,12 +191,10 @@ class Symmetry:
                 ibzk_kc = ibzk0_kc[:nibzkpts]
                 ibzk_kc[-1] = k_c
 
-        self.sym_k = sym_k
-        self.time_reversal_k = time_reversal_k
         # Reverse order (looks more natural)
-        self.kibz_k = nibzkpts - 1 - kibz_k
-        
-        return ibzk_kc[::-1].copy(), weight_k[:nibzkpts][::-1] / nbzkpts
+        return (ibzk_kc[::-1].copy(),
+                weight_k[:nibzkpts][::-1] / nbzkpts,
+                sym_k, time_reversal_k, nibzkpts - 1 - kibz_k)
 
     def prune_symmetries_grid(self, N_c):
         """Remove symmetries that are not satisfied by the grid."""
