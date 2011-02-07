@@ -503,10 +503,13 @@ class Generator(AllElectron):
             nn = len(e_n)
             L_nn = np.identity(nn, float)
             U_nn = A_nn.copy()
-            for i in range(nn):
-                for j in range(i+1,nn):
-                    L_nn[j,i] = 1.0 * U_nn[j,i] / U_nn[i,i]
-                    U_nn[j,:] -= U_nn[i,:] * L_nn[j,i]
+            
+            # Keep all bound states normalized
+            if sum([n > 0 for n in n_ln[l]]) <= 1:
+                for i in range(nn):
+                    for j in range(i + 1, nn):
+                        L_nn[j, i] = 1.0 * U_nn[j, i] / U_nn[i, i]
+                        U_nn[j, :] -= U_nn[i, :] * L_nn[j, i]
 
             dO_nn = (np.inner(u_n, u_n * dr) -
                      np.inner(s_n, s_n * dr))
