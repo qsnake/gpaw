@@ -1034,7 +1034,7 @@ parameters = {
  'Ca': {'core': '[Ne]',   'rcut': [2.0, 1.7]},
  'Sc': {'core': '[Ne]',   'rcut': [1.9, 1.8]},
  'Ti': {'core': '[Ne]', 'rcut': [2.4, 2.0, 2.0],
-        'vbar': ('f', 1.8), 'rcutcomp': 2.3},
+        'vbar': ('f', 1.8), 'rcutcomp': 2.3, 'empty_states': '4p'},
  'V' : {'core': '[Ar]',   'rcut': [2.5, 2.4, 2.0],
         'vbar': ('poly', 2.3), 'rcutcomp': 2.5},
  'Cr': {'core': '[Ar]',   'rcut': [2.2, 2.3, 2.1]},
