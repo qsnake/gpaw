@@ -102,11 +102,7 @@ class KPointDescriptor:
         id_a = zip(magmom_a, setups.id_a)
         self.symmetry = Symmetry(id_a, atoms.cell / Bohr, atoms.pbc)
         
-        if self.gamma:
-            self.weight_k = np.array([1.0])
-            self.ibzk_kc = np.zeros((1, 3))
-
-        elif usesymm is None:
+        if self.gamma or usesymm is None:
             # Point group and time-reversal symmetry neglected
             nkpts = len(self.bzk_kc)
             self.weight_k = np.ones(nkpts) / nkpts

@@ -10,7 +10,6 @@ from gpaw.mpi import world, rank, size, serial_comm
 from gpaw.lfc import LocalizedFunctionsCollection as LFC
 from gpaw.fd_operators import Gradient
 from gpaw.response.cell import get_primitive_cell, set_Gvectors
-from gpaw.response.symmetrize import find_kq, find_ibzkpt, symmetrize_wavefunction
 from gpaw.response.math_func import delta_function, hilbert_transform, \
      two_phi_planewave_integrals
 from gpaw.response.parallel import set_communicator, \
@@ -283,8 +282,8 @@ class BASECHI:
         gd = self.gd
         kd = self.kd
 
-        ibzkpt1 = kd.symmetry.kibz_k[k]
-        ibzkpt2 = kd.symmetry.kibz_k[kq[k]]
+        ibzkpt1 = kd.kibz_k[k]
+        ibzkpt2 = kd.kibz_k[kq_k[k]]
         
         psitold_g = self.get_wavefunction(ibzkpt1, n, k, True)
         psit1_g = kd.transform_wave_function(psitold_g, k)

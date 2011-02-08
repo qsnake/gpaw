@@ -7,7 +7,6 @@ from gpaw import extra_parameters
 from gpaw.utilities.blas import gemv, scal, axpy
 from gpaw.mpi import world, rank, size, serial_comm
 from gpaw.fd_operators import Gradient
-from gpaw.response.symmetrize import find_ibzkpt, symmetrize_wavefunction
 from gpaw.response.math_func import hilbert_transform, full_hilbert_transform
 from gpaw.response.parallel import set_communicator, \
      parallel_partition, SliceAlongFrequency, SliceAlongOrbitals

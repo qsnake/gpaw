@@ -3,7 +3,6 @@ import numpy as np
 from math import pi
 from ase.units import Hartree
 from gpaw.mpi import world, size, rank
-from gpaw.response.symmetrize import find_ibzkpt
 from gpaw.response.base import BASECHI
 from gpaw.response.parallel import parallel_partition
 
@@ -38,6 +37,7 @@ class BSE(BASECHI):
         BASECHI.initialize(self)
         
         calc = self.calc
+        self.kd = kd = calc.wfs.kd
 
         # frequency points init
         self.dw = self.w_w[1] - self.w_w[0]
@@ -56,8 +56,8 @@ class BSE(BASECHI):
         iS = 0
         kq_k = self.kq_k
         for k1 in range(self.nkpt):
-            ibzkpt1, iop1, timerev1 = find_ibzkpt(self.op_scc, self.ibzk_kc, self.bzk_kc[k1])
-            ibzkpt2, iop2, timerev2 = find_ibzkpt(self.op_scc, self.ibzk_kc, self.bzk_kc[kq_k[k1]])
+            ibzkpt1 = kd.kibz_k[k1]
+            ibzkpt2 = kd.kibz_k[kq_k[k1]]
             for n1 in range(self.nbands):
                 for m1 in range(self.nbands):
                     focc = self.f_kn[ibzkpt1,n1] - self.f_kn[ibzkpt2,m1]
