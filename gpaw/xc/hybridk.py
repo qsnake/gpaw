@@ -182,7 +182,6 @@ class HybridXC(XCFunctional):
         
         self.ghat = LFC(self.gd,
                         [setup.ghat_l for setup in density.setups],
-                        #integral=np.sqrt(4 * pi)
                         dtype=complex
                         )
         self.ghat.set_k_points(self.bzk_kc)
@@ -224,7 +223,6 @@ class HybridXC(XCFunctional):
         self.exx = 0.0
         self.exx_skn = np.zeros((self.nspins, K, self.bd.nbands))
 
-        #for o in kd.symmetry.op_scc:print o.tolist()
         kpt_u = []
         for k in range(world.rank * Q, (world.rank + 1) * Q):
             k_c = self.fullkd.ibzk_kc[k]
@@ -249,7 +247,7 @@ class HybridXC(XCFunctional):
             phase_cd = np.exp(2j * pi * self.gd.sdisp_cd * k_c[:, np.newaxis])
             kpt2 = KPoint0(kpt.weight, kpt.s, k, None, phase_cd)
             kpt2.psit_nG = np.empty_like(kpt.psit_nG)
-            kpt2.f_n = kpt.f_n / kpt.weight / 2
+            kpt2.f_n = kpt.f_n / kpt.weight / K * 2
             for n, psit_G in enumerate(kpt2.psit_nG):
                 psit_G[:] = kd.symmetry.symmetrize_wavefunction(
                     kpt.psit_nG[n], ik_c, k_c, op_cc, time_reversal)
@@ -301,7 +299,7 @@ class HybridXC(XCFunctional):
         self.exx += self.calculate_paw_correction()
         
     def apply(self, kpt1, kpt2, invert=False):
-        print world.rank,kpt1.k,kpt2.k,invert
+        #print world.rank,kpt1.k,kpt2.k,invert
         k1_c = self.fullkd.ibzk_kc[kpt1.k]
         k2_c = self.fullkd.ibzk_kc[kpt2.k]
         if invert:
