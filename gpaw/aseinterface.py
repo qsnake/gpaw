@@ -20,6 +20,9 @@ class GPAW(PAW):
         atoms.set_calculator(self)
         return atoms
 
+    def set_atoms(self, atoms):
+        pass
+
     def get_potential_energy(self, atoms=None, force_consistent=False):
         """Return total energy.
 
