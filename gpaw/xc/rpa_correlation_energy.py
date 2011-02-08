@@ -38,10 +38,11 @@ class RPACorrelation:
                                    kcommsize=1,
                                    ecut=10,
                                    nbands=None,
-                                   restart=None,
-                                   w=np.linspace(0, 200., 32)):
-
-        self.initialize_calculation(w, ecut, nbands, kcommsize)
+                                   w=np.linspace(0, 200., 32),
+                                   extrapolate=True,
+                                   restart=None):
+        
+        self.initialize_calculation(w, ecut, nbands, kcommsize, extrapolate)
         
         E_q = []
         if restart is not None:
@@ -58,8 +59,13 @@ class RPACorrelation:
                 IOError
 
         for index, q in enumerate(self.ibz_q_points[len(E_q):]):
-            E_q.append(self.get_E_q(index=index, q=q, nbands=self.nbands,
-                                    kcommsize=kcommsize, ecut=ecut, w=w))
+            E_q.append(self.get_E_q(kcommsize=kcommsize,
+                                    index=index,
+                                    q=q,
+                                    ecut=ecut,
+                                    nbands=self.nbands,
+                                    w=w,
+                                    extrapolate=extrapolate))
             if restart is not None:
                 f = paropen(restart, 'a')
                 print >> f, E_q[-1]
@@ -77,16 +83,17 @@ class RPACorrelation:
 
 
     def get_E_q(self,
+                kcommsize=1,
                 index=None,
                 q=[0., 0., 0.],
                 integrated=True,
-                kcommsize=1,
                 ecut=10,
                 nbands=None,
-                w=np.linspace(0, 200., 32)):
+                w=np.linspace(0, 200., 32),
+                extrapolate=True):
         
         if index is None:
-            self.initialize_calculation(w, ecut, nbands, kcommsize)
+            self.initialize_calculation(w, ecut, nbands, kcommsize, extrapolate)
 
         if abs(q[0]) < 0.001 and abs(q[1]) < 0.001 and abs(q[2]) < 0.001:
             q = [1.e-5, 0., 0.]
@@ -118,19 +125,42 @@ class RPACorrelation:
         e_wGG = df.get_RPA_dielectric_matrix()
 
         Nw_local = len(e_wGG)
-        local_int = np.zeros(Nw_local, dtype=complex)
+        local_E_q_w = np.zeros(Nw_local, dtype=complex)
 
-        integrand = np.empty(len(w), complex)
+        E_q_w = np.empty(len(w), complex)
         for i in range(Nw_local):
-            local_int[i] = (np.log(np.linalg.det(e_wGG[i]))
-                            + len(e_wGG[0]) - np.trace(e_wGG[i]))
-            #local_int[i] = (np.sum(np.log(np.linalg.eigvals(e_wGG[i])))
-            #                + self.npw - np.trace(e_wGG[i]))
-        df.wcomm.all_gather(local_int, integrand)
+            local_E_q_w[i] = (np.log(np.linalg.det(e_wGG[i]))
+                              + len(e_wGG[0]) - np.trace(e_wGG[i]))
+            #local_E_q_w[i] = (np.sum(np.log(np.linalg.eigvals(e_wGG[i])))
+            #                  + self.npw - np.trace(e_wGG[i]))
+        df.wcomm.all_gather(local_E_q_w, E_q_w)
         del df
         del e_wGG
         dw = w[1] - w[0]
-        E_q = dw * np.sum((integrand[:-1]+integrand[1:])/2.) / (2.*np.pi)
+        E_q = dw * np.sum((E_q_w[:-1] + E_q_w[1:])/2.) / (2.*np.pi)
+        if extrapolate:
+            print
+            '''Fit tail to: Eq(w) = A**2/((w-B)**2 + C)**2'''
+            e1 = abs(E_q_w[-1])**0.5
+            e2 = abs(E_q_w[-2])**0.5
+            e3 = abs(E_q_w[-3])**0.5
+            w1 = w[-1]
+            w2 = w[-2]
+            w3 = w[-3]
+            B = (((e3*w3**2-e1*w1**2)/(e1-e3) - (e2*w2**2-e1*w1**2)/(e1-e2))
+                 / ((2*w3*e3-2*w1*e1)/(e1-e3) - (2*w2*e2-2*w1*e1)/(e1-e2)))
+            C = ((w2-B)**2*e2 - (w1-B)**2*e1)/(e1-e2)
+            A = e1*((w1-B)**2+C)
+            if C > 0:
+                E_q -= A**2*(np.pi/(4*C**1.5)
+                             - (w1-B)/((w1-B)**2+C)/(2*C)
+                             - np.arctan((w1-B)/C**0.5)/(2*C**1.5)) / (2*np.pi)
+            else:
+                E_q += A**2*((w1-B)/((w1-B)**2+C)/(2*C)
+                             + np.log((w1-B-abs(C)**0.5)/(w1-B+abs(C)**0.5))
+                             /(4*C*abs(C)**0.5)) / (2*np.pi)
+                
+
         print >> self.txt, 'E_c(Q) = %s eV' % E_q.real
         print >> self.txt
         if index is None:
@@ -140,7 +170,7 @@ class RPACorrelation:
         if integrated:
             return E_q
         else:
-            return integrand
+            return E_q_w
        
 
     def get_ibz_q_points(self, bz_k_points):
@@ -169,7 +199,7 @@ class RPACorrelation:
             if q_in_list == False:
                 bz_qs.append(q_a)
         self.bz_q_points = bz_qs
-                
+    
         # Obtain q-points and weights in the irreducible part of the BZ
         kpt_descriptor = KPointDescriptor(bz_qs, self.nspins)
         kpt_descriptor.set_symmetry(self.atoms, self.setups, usesymm=True)
@@ -205,7 +235,7 @@ class RPACorrelation:
         print >> self.txt
         
 
-    def initialize_calculation(self, w, ecut, nbands, kcommsize):
+    def initialize_calculation(self, w, ecut, nbands, kcommsize, extrapolate):
         
         dummy = DF(calc=self.calc,
                    eta=0.0,
@@ -222,11 +252,13 @@ class RPACorrelation:
             nbands = dummy.npw
         self.nbands = nbands
         
-        print >> self.txt, 'Planewave cut off          : %s eV' % ecut
-        print >> self.txt, 'Number of Planewaves       : %s' % dummy.npw
-        print >> self.txt, 'Response function bands    : %s' % nbands
-        print >> self.txt, 'Frequency range            : %s - %s eV' % (w[0], w[-1])
-        print >> self.txt, 'Number of frequency points : %s' % len(w)
+        print >> self.txt, 'Planewave cut off            : %s eV' % ecut
+        print >> self.txt, 'Number of Planewaves         : %s' % dummy.npw
+        print >> self.txt, 'Response function bands      : %s' % nbands
+        print >> self.txt, 'Frequency range              : %s - %s eV' % (w[0], w[-1])
+        print >> self.txt, 'Number of frequency points   : %s' % len(w)
+        if extrapolate:
+            print >> self.txt, 'Extrapolation of frequencies : Squared Lorentzian'
         print >> self.txt
         print >> self.txt, 'Parallelization scheme'
         print >> self.txt, '     Total cpus         : %d' % dummy.comm.size

@@ -21,8 +21,8 @@ Kr.set_calculator(calc)
 Kr.get_potential_energy()
 
 ecut = 30.
-w = np.linspace(0.0, 200.0, 16)
+w = np.linspace(0.0, 50., 8)
 rpa = RPACorrelation(calc)
 E_rpa = rpa.get_rpa_correlation_energy(ecut=ecut, w=w)
 
-equal(E_rpa, -1.88, 0.01)
+equal(E_rpa, -1.85, 0.01)
