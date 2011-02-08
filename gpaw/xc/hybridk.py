@@ -430,4 +430,4 @@ if __name__ == '__main__':
     e = calc.get_potential_energy()
     exx = HybridXC('EXX', alpha=alpha)
     e2 = calc.get_xc_difference(exx)
-    print e, e + e2
+    print e, e + e2, exx.exx
