@@ -14,9 +14,9 @@ import gpaw
 try:
     #new style cmr io
     import cmr
-    from cmr.io import XMLData
+    from cmr.base.converter import Converter
     from cmr.io import Flags
-    from cmr.tools.functions import create_db_filename
+    from cmr.tools.functions import create_db_filename as cdbfn
     from cmr.definitions import CALCULATOR_GPAW
 
     def get_reader(name):
@@ -24,16 +24,15 @@ try:
         return reader
         
     def get_writer():
-        data = XMLData(CALCULATOR_GPAW)
-        data.set_mode(Flags.WRITE_MODE_CONVERT)
-        return data
+        return Converter.get_xml_writer(CALCULATOR_GPAW)
     
-    def create_db_filename():
-        return cmr.tools.functions.create_db_filename()
+    def create_db_filename(param):
+        return cdbfn(param)
+    
 except:    
     #old style cmr io
     import cmr
-    from cmr import create_db_filename
+    from cmr import create_db_filename as cdbfn
     from cmr.io import XMLData
     from cmr.io import READ_DATA
     from cmr.io import EVALUATE
@@ -41,6 +40,9 @@ except:
     from cmr.io import CONVERTION_ORIGINAL
     from cmr.static import CALCULATOR_GPAW
     
+    def create_db_filename(param):
+        return cdbfn()
+
     def get_reader(name):
         reader = cmr.read(name,
                           read_mode=READ_DATA,
@@ -170,7 +172,12 @@ class Writer:
         if self.verbose:
             print "close()"
         self._close_array()
-        self.cmr_params["output"]=self.filename
+        print self.cmr_params.keys()
+        print self.filename
+        if self.filename==".db":
+            self.cmr_params["output"]=create_db_filename(self.data)
+        else:
+            self.cmr_params["output"]=self.filename
         self.data.write(self.cmr_params)
 
 class Reader:
@@ -229,4 +236,5 @@ class Reader:
 
     def close(self):
         pass
+
 

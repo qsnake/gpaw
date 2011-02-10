@@ -85,11 +85,6 @@ def write(paw, filename, mode, cmr_params=None, **kwargs):
 
     hdf5 = filename.endswith('.hdf5')
 
-    if master:
-        if filename == '.db':
-            from cmr_io import create_db_filename
-            filename = create_db_filename()
-
     if master or hdf5:
         w = open(filename, 'w', world)
         
