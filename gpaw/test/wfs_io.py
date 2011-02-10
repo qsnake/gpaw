@@ -47,6 +47,8 @@ for ending in endings:
     print E1, E2
     equal(E1, E2, 1e-12)
 
+    barrier()
+    
     if rank == 0:
         os.remove(restart_wf)
         os.remove(restart)
