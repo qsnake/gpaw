@@ -175,8 +175,12 @@ class KPointDescriptor:
         
         s = self.sym_k[k]
         time_reversal = self.time_reversal_k[k]
-        op_cc = self.symmetry.op_scc[s]
-        
+        tmp = np.linalg.inv(self.symmetry.op_scc[s])
+        op_cc = np.zeros((3,3),int)
+        for i in range(3):
+            for j in range(3):
+                op_cc[i, j] = np.int(tmp[i, j])
+
         # Identity
         if (np.abs(op_cc - np.eye(3, dtype=int)) < 1e-10).all():
             if time_reversal:
@@ -190,17 +194,17 @@ class KPointDescriptor:
         else:
             ik = self.kibz_k[k]
             kibz_c = self.ibzk_kc[ik]
-            kbz_c = self.bzk_kc[k]
+            kbz_c = self.bzk_kc[k]            
             import _gpaw
             b_g = np.zeros_like(psit_G)
             if time_reversal:
                 # assert abs(np.dot(op_cc, kibz_c) - -kbz_c) < tol
-                _gpaw.symmetrize_wavefunction(psit_G, b_g, op_cc.T.copy(),
+                _gpaw.symmetrize_wavefunction(psit_G, b_g, op_cc.copy(),
                                               kibz_c, -kbz_c)
                 return b_g.conj()
             else:
                 # assert abs(np.dot(op_cc, kibz_c) - kbz_c) < tol
-                _gpaw.symmetrize_wavefunction(psit_G, b_g, op_cc.T.copy(),
+                _gpaw.symmetrize_wavefunction(psit_G, b_g, op_cc.copy(),
                                               kibz_c, kbz_c)
                 return b_g
 
@@ -253,6 +257,54 @@ class KPointDescriptor:
             assert abs(kplusq_c - k_c).sum() < 1e-8, "Could not find k+q!"
         
         return kplusq_k
+
+    def get_bz_q_points(self):
+        """Return the q=k1-k2."""
+
+        bzk_kc = self.bzk_kc
+        # Get all q-points
+        all_qs = []
+        for k1 in bzk_kc:
+            for k2 in bzk_kc:
+                all_qs.append(k1-k2)
+        all_qs = np.array(all_qs)
+
+        # Fold q-points into Brillouin zone
+        all_qs[np.where(all_qs > 0.501)] -= 1.
+        all_qs[np.where(all_qs < -0.499)] += 1.
+
+        # Make list of non-identical q-points in full BZ
+        bz_qs = [all_qs[0]]
+        for q_a in all_qs:
+            q_in_list = False
+            for q_b in bz_qs:
+                if (abs(q_a[0]-q_b[0]) < 0.01 and
+                    abs(q_a[1]-q_b[1]) < 0.01 and
+                    abs(q_a[2]-q_b[2]) < 0.01):
+                    q_in_list = True
+                    break
+            if q_in_list == False:
+                bz_qs.append(q_a)
+        self.bzq_kc = bz_qs
+
+        return
+
+    def where_is_q(self, q_c):
+        """Find the index of q points."""
+        q_c[np.where(q_c>0.499)] -= 1
+        q_c[np.where(q_c<-0.499)] += 1
+
+        found = False
+        for ik in range(self.nbzkpts):
+            if (np.abs(self.bzq_kc[ik] - q_c) < 1e-8).all():
+                found = True
+                return ik
+                break
+            
+        if found is False:
+            print self.bzq_kc, q_c
+            raise ValueError('q-points can not be found!')
+        
 
     def get_count(self, rank=None):
         """Return the number of ks-pairs which belong to a given rank."""
