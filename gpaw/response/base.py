@@ -221,7 +221,7 @@ class BASECHI:
         return
 
 
-    def get_wavefunction(self, ibzk, n, k, check_focc=True, spin=0):
+    def get_wavefunction(self, ibzk, n, k=None, check_focc=True, spin=0):
 
         if self.calc.wfs.kpt_comm.size != world.size or world.size == 1:
 

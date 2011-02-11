@@ -1,7 +1,9 @@
 from time import time, ctime
 import numpy as np
+import pickle
 from math import pi
 from ase.units import Hartree
+from ase.io import write
 from gpaw.mpi import world, size, rank
 from gpaw.response.base import BASECHI
 from gpaw.response.parallel import parallel_partition
@@ -23,6 +25,7 @@ class BSE(BASECHI):
 
         BASECHI.__init__(self, calc, nbands, w, q, ecut,
                      eta, ftol, txt, optical_limit)
+
 
         self.epsilon_w = None
 
@@ -194,23 +197,142 @@ class BSE(BASECHI):
 
         return
 
-    def get_excitation_wavefunctions(self, lamda):
+    def get_e_h_density(self, lamda=None, filename=None):
 
-        assert self.epsilon_w is not None
+        if filename is not None:
+            self.load(filename)
+            self.initialize()
+            
+        gd = self.gd
         w_S = self.w_S
         v_SS = self.v_SS
-        print np.real(w_S) * Hartree
-
-        print w_S[lamda] * Hartree
-        psi_RR = np.zeros((self.nG0, self.nG0),dtype=complex)
         A_S = v_SS[:, lamda]
-        print A_S
-        for iS in range(self.nS):
+        kq_k = self.kq_k
+        kd = self.kd
+
+        # Electron density
+        nte_R = gd.zeros()
+        
+        for iS in range(self.nS_start, self.nS_end):
+            print 'electron density:', iS
             k1, n1, m1 = self.Sindex_S3[iS]
-            psit1_g, psit2_g = self.density_matrix(n1,m1,k1,Gspace=False)
-            psi_RR += A_S[iS] * np.outer(psit1_g.conj(), psit2_g)
+            ibzkpt1 = kd.kibz_k[k1]
+            psitold_g = self.get_wavefunction(ibzkpt1, n1)
+            psit1_g = kd.transform_wave_function(psitold_g, k1)
 
-        for i in range(self.nG0):
-            print i, (psi_RR[i]*psi_RR[i].conj()).sum()
+            for jS in range(self.nS):
+                k2, n2, m2 = self.Sindex_S3[jS]
+                if m1 == m2 and k1 == k2:
+                    psitold_g = self.get_wavefunction(ibzkpt1, n2)
+                    psit2_g = kd.transform_wave_function(psitold_g, k1)
 
-        return psi_RR
+                    nte_R += A_S[iS] * A_S[jS].conj() * psit1_g.conj() * psit2_g
+
+        # Electron density
+        nth_R = gd.zeros()
+        
+        for iS in range(self.nS_start, self.nS_end):
+            print 'hole density:', iS
+            k1, n1, m1 = self.Sindex_S3[iS]
+            ibzkpt1 = kd.kibz_k[kq_k[k1]]
+            psitold_g = self.get_wavefunction(ibzkpt1, m1)
+            psit1_g = kd.transform_wave_function(psitold_g, kq_k[k1])
+
+            for jS in range(self.nS):
+                k2, n2, m2 = self.Sindex_S3[jS]
+                if n1 == n2 and k1 == k2:
+                    psitold_g = self.get_wavefunction(ibzkpt1, m2)
+                    psit2_g = kd.transform_wave_function(psitold_g, kq_k[k1])
+
+                    nth_R += A_S[iS] * A_S[jS].conj() * psit1_g * psit2_g.conj()
+                    
+        self.Scomm.sum(nte_R)
+        self.Scomm.sum(nth_R)
+
+
+        if rank == 0:
+            write('rho_e.cube',self.calc.atoms, format='cube', data=nte_R)
+            write('rho_h.cube',self.calc.atoms, format='cube', data=nth_R)
+            
+        world.barrier()
+        
+        return 
+
+    def get_excitation_wavefunction(self, lamda=None,filename=None, re_c=None, rh_c=None):
+
+        if filename is not None:
+            self.load(filename)
+            self.initialize()
+            
+        gd = self.gd
+        w_S = self.w_S
+        v_SS = self.v_SS
+        A_S = v_SS[:, lamda]
+        kq_k = self.kq_k
+        kd = self.kd
+
+        if re_c is not None:
+            psith_R = gd.zeros(dtype=complex)
+        elif rh_c is not None:
+            psite_R = gd.zeros(dtype=complex)
+        else:
+            self.printtxt('No wavefunction output !')
+            return
+            
+        for iS in range(self.nS_start, self.nS_end):
+            print 'hole wavefunction', iS
+            k, n, m = self.Sindex_S3[iS]
+            ibzkpt1 = kd.kibz_k[k]
+            ibzkpt2 = kd.kibz_k[kq_k[k]]
+
+            psitold_g = self.get_wavefunction(ibzkpt1, n)
+            psit1_g = kd.transform_wave_function(psitold_g, k)
+
+            psitold_g = self.get_wavefunction(ibzkpt2, m)
+            psit2_g = kd.transform_wave_function(psitold_g, kq_k[k])
+
+            if re_c is not None:
+                # given electron position, plot hole wavefunction
+                psith_R += A_S[iS] * psit1_g[re_c].conj() * psit2_g
+            elif rh_c is not None:
+                # given hole position, plot electron wavefunction
+                psite_R += A_S[iS] * psit1_g.conj() * psit2_g[rh_c]
+            else:
+                pass
+
+        if re_c is not None:
+            self.Scomm.sum(psith_R)
+            if rank == 0:
+                write('psit_h.cube',self.calc.atoms, format='cube', data=psith_R)
+        elif rh_c is not None:
+            self.Scomm.sum(psite_R)
+            if rank == 0:
+                write('psit_e.cube',self.calc.atoms, format='cube', data=psite_R)
+        else:
+            pass
+
+        world.barrier()
+            
+        return
+    
+
+    def load(self, filename):
+
+        data = pickle.load(open(filename))
+        self.w_S  = data['w_S']
+        self.v_SS = data['v_SS']
+
+        self.printtxt('Read succesfully !')
+        
+
+    def save(self, filename):
+        """Dump essential data"""
+
+        data = {'w_S'  : self.w_S,
+                'v_SS' : self.v_SS}
+        
+        if rank == 0:
+            pickle.dump(data, open(filename, 'w'), -1)
+
+        world.barrier()
+
