@@ -221,7 +221,7 @@ class BASECHI:
         return
 
 
-    def get_wavefunction(self, ibzk, n, k=None, check_focc=True, spin=0):
+    def get_wavefunction(self, ibzk, n, check_focc=True, spin=0):
 
         if self.calc.wfs.kpt_comm.size != world.size or world.size == 1:
 
@@ -245,32 +245,33 @@ class BASECHI:
 
             # support ground state calculation with only kpoint parallelization
             kpt_rank, u = self.calc.wfs.kd.get_rank_and_index(0, ibzk)
-            bzkpt_rank = k // self.nkpt_local
+            bzkpt_rank = rank
             
-            klist = np.array([kpt_rank, u, bzkpt_rank])
-            klist_kcomm = np.zeros((self.kcomm.size, 3), dtype=int)            
+            klist = np.array([kpt_rank, u, bzkpt_rank, n])
+            klist_kcomm = np.zeros((self.kcomm.size, 4), dtype=int)            
             self.kcomm.all_gather(klist, klist_kcomm)
 
             check_focc_global = np.zeros(self.kcomm.size, dtype=bool)
             self.kcomm.all_gather(np.array([check_focc]), check_focc_global)
 
             psit_G = self.calc.wfs.gd.empty(dtype=self.calc.wfs.dtype)
-            
+
 	    for i in range(self.kcomm.size):
                 if check_focc_global[i] == True:
-                    kpt_rank, u, bzkpt_rank = klist_kcomm[i]
+                    kpt_rank, u, bzkpt_rank, nlocal = klist_kcomm[i]
                     if kpt_rank == bzkpt_rank:
                         if rank == kpt_rank:
-                            psit_G = self.calc.wfs.kpt_u[u].psit_nG[n]
+                            psit_G = self.calc.wfs.kpt_u[u].psit_nG[nlocal]
                     else:
                         if rank == kpt_rank:
-                            world.send(self.calc.wfs.kpt_u[u].psit_nG[n],
+                            world.send(self.calc.wfs.kpt_u[u].psit_nG[nlocal],
                                        bzkpt_rank, 1300+bzkpt_rank)
                         if rank == bzkpt_rank:
                             psit_G = self.calc.wfs.gd.empty(dtype=self.calc.wfs.dtype)
                             world.receive(psit_G, kpt_rank, 1300+bzkpt_rank)
                     
             self.wScomm.broadcast(psit_G, 0)
+
             return psit_G
 
 
@@ -285,10 +286,10 @@ class BASECHI:
         ibzkpt1 = kd.kibz_k[k]
         ibzkpt2 = kd.kibz_k[kq_k[k]]
         
-        psitold_g = self.get_wavefunction(ibzkpt1, n, k, True)
+        psitold_g = self.get_wavefunction(ibzkpt1, n, True)
         psit1_g = kd.transform_wave_function(psitold_g, k)
         
-        psitold_g = self.get_wavefunction(ibzkpt2, m, kq_k[k], True)
+        psitold_g = self.get_wavefunction(ibzkpt2, m, True)
         psit2_g = kd.transform_wave_function(psitold_g, kq_k[k])
 
         if Gspace is False:

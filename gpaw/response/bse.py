@@ -4,7 +4,7 @@ import pickle
 from math import pi
 from ase.units import Hartree
 from ase.io import write
-from gpaw.mpi import world, size, rank
+from gpaw.mpi import world, size, rank, serial_comm
 from gpaw.response.base import BASECHI
 from gpaw.response.parallel import parallel_partition
 
@@ -76,6 +76,10 @@ class BSE(BASECHI):
 
         # parallel init
         self.Scomm = world
+        # kcomm and wScomm is only to be used when wavefunctions r parallelly distributed.
+        self.kcomm = world
+        self.wScomm = serial_comm
+        
         self.nS, self.nS_local, self.nS_start, self.nS_end = parallel_partition(
                                self.nS, self.Scomm.rank, self.Scomm.size, reshape=False)
         self.print_bse()
@@ -228,7 +232,7 @@ class BSE(BASECHI):
 
                     nte_R += A_S[iS] * A_S[jS].conj() * psit1_g.conj() * psit2_g
 
-        # Electron density
+        # Hole density
         nth_R = gd.zeros()
         
         for iS in range(self.nS_start, self.nS_end):

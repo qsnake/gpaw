@@ -190,7 +190,7 @@ class CHI(BASECHI):
             for n in range(self.nstart, self.nend):
 #                print >> self.txt, k, n, t_get_wfs, time() - t0
                 t1 = time()
-                psitold_g = self.get_wavefunction(ibzkpt1, n, k, True, spin=spin)
+                psitold_g = self.get_wavefunction(ibzkpt1, n, True, spin=spin)
                 t_get_wfs += time() - t1
                 psit1new_g = kd.transform_wave_function(psitold_g, k)
 
@@ -207,7 +207,7 @@ class CHI(BASECHI):
                         check_focc = np.abs(f_kn[ibzkpt1, n] - f_kn[ibzkpt2, m]) > self.ftol
 
                     t1 = time()
-                    psitold_g = self.get_wavefunction(ibzkpt2, m, k, check_focc, spin=spin)
+                    psitold_g = self.get_wavefunction(ibzkpt2, m, check_focc, spin=spin)
                     t_get_wfs += time() - t1
 
                     if check_focc:
