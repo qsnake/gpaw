@@ -175,11 +175,7 @@ class KPointDescriptor:
         
         s = self.sym_k[k]
         time_reversal = self.time_reversal_k[k]
-        tmp = np.linalg.inv(self.symmetry.op_scc[s])
-        op_cc = np.zeros((3,3),int)
-        for i in range(3):
-            for j in range(3):
-                op_cc[i, j] = np.int(tmp[i, j])
+        op_cc = np.linalg.inv(self.symmetry.op_scc[s]).round().astype(int)
 
         # Identity
         if (np.abs(op_cc - np.eye(3, dtype=int)) < 1e-10).all():
