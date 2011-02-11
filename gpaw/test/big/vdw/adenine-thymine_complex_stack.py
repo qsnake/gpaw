@@ -3,6 +3,7 @@ import sys
 from ase import view, Atoms
 from ase.data.s22 import data, s22
 from ase.calculators.vdwcorrection import vdWTkatchenko09prl
+from ase.parallel import parprint
 
 from gpaw import GPAW, FermiDirac
 from gpaw.cluster import Cluster
