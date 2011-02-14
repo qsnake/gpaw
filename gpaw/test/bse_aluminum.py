@@ -25,10 +25,11 @@ if GS:
     
     atoms.set_calculator(calc)
     atoms.get_potential_energy()
+    calc.write('Al.gpw','all')
 
 if bse:
     
-    bse = BSE(calc,w=np.linspace(0,24,241),
+    bse = BSE('Al.gpw',w=np.linspace(0,24,241),
               q=np.array([0.25, 0, 0]),ecut=50., eta=0.2)
 
     bse.get_dielectric_function('Al_bse.dat')
@@ -39,7 +40,7 @@ if df:
     q = np.array([1/4.,0.,0.])
     w = np.linspace(0, 24, 241)
     
-    df = DF(calc=calc, q=q, w=w, eta=0.2, ecut=50,hilbert_trans=False)
+    df = DF(calc='Al.gpw', q=q, w=w, eta=0.2, ecut=50,hilbert_trans=False)
     df1, df2 = df.get_dielectric_function()
     df.get_EELS_spectrum(df1, df2,filename='Al_df.dat')
     df.write('Al.pckl')
