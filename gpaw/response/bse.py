@@ -34,7 +34,6 @@ class BSE(BASECHI):
         self.printtxt('')
         self.printtxt('-----------------------------------------------')
         self.printtxt('Belth Selpeter Equation calculation started at:')
-        self.starttime = time()
         self.printtxt(ctime())
 
         BASECHI.initialize(self)
@@ -114,6 +113,7 @@ class BSE(BASECHI):
         K_SS = np.zeros((self.nS, self.nS), dtype=complex)
         self.rhoG0_S = np.zeros((self.nS), dtype=complex)
 
+        t0 = time()
         for iS in range(self.nS_start, self.nS_end):
             print 'calculating kernel', iS
             k1, n1, m1 = self.Sindex_S3[iS]
@@ -123,6 +123,17 @@ class BSE(BASECHI):
                 k2, n2, m2 = self.Sindex_S3[jS]
                 rho2_G = self.density_matrix(n2,m2,k2)
                 K_SS[iS, jS] = np.sum(rho1_G.conj() * rho2_G * self.kc_G)
+
+            if iS == 0:
+                dt = time() - t0
+                totaltime = dt * self.nS_local
+                self.printtxt('Finished pair orbital 0 in %f seconds, estimated %f seconds left.' %(dt, totaltime))
+                
+            if rank == 0 and self.nS_local // 5 > 0:            
+                if iS > 0 and iS % (self.nS_local // 5) == 0:
+                    dt =  time() - t0
+                    self.printtxt('Finished pair orbital %d in %f seconds, estimated %f seconds left.  '%(k, dt, totaltime - dt) )
+                    
         K_SS *= 4 * pi / self.vol
         self.Scomm.sum(K_SS)
         self.Scomm.sum(self.rhoG0_S)
