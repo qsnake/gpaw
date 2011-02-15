@@ -16,9 +16,73 @@ from gpaw.atom.analyse_setup import analyse
 from gpaw import GPAW, ConvergenceError, Mixer, FermiDirac
 import gpaw.mpi as mpi
 
-
-b0 = {'Ni': 2.143, 'Pd': 2.485, 'Pt': 2.373, 'Ru': 2.125, 'Na': 3.289, 'Nb': 2.005, 'Mg': 3.5, 'Li': 2.99, 'Pb': 2.873, 'Rb': 4.360, 'Ti': 2.055, 'Rh': 2.231, 'Ta': 2.2, 'Be': 2.618, 'Ba': 4.871, 'La': 2.872, 'Si': 2.218, 'As': 2.071, 'Fe': 1.837, 'Br': 2.281, 'He': 1.972, 'C': 1.279, 'B': 1.694, 'F': 1.413, 'H': 0.753, 'K': 4.108, 'Mn': 1.665, 'O': 1.234, 'Ne': 1.976, 'P': 1.878, 'S': 1.893, 'Kr': 4.3, 'W': 2.1, 'V': 1.672, 'N': 1.102, 'Se': 2.154, 'Zn': 2.8, 'Co': 2.0, 'Ag': 2.626, 'Cl': 1.989, 'Ca': 2.805, 'Ir': 2.227, 'Al': 2.868, 'Cd': 3.5, 'Ge': 2.319, 'Ar': 2.3, 'Au': 2.555, 'Zr': 2.385, 'Ga': 2.837, 'Cs': 4.819, 'Cu': 2.281, 'Cr': 1.8, 'Mo': 1.9, 'Sr': 2.7, 'Bi': 2.7, 'Sc': 2.3, 'Os': 2.2, 'In': 3.1}
-
+b0 = {
+      'H': 0.753,
+      'He': 2.7,
+      'Li': 2.99,
+      'Be': 2.618,
+      'B': 1.694,
+      'C': 1.279,
+      'N': 1.102,
+      'O': 1.234,
+      'F': 1.413,
+      'Ne': 2.9,
+      'Na': 3.289,
+      'Mg': 3.5,
+      'Al': 2.868,
+      'Si': 2.218,
+      'P': 1.878,
+      'S': 1.893,
+      'Cl': 1.989,
+      'Ar': 3.7,
+      'K': 4.108,
+      'Ca': 2.805,
+      'Sc': 2.3,
+      'Ti': 2.0,
+      'V': 1.82,
+      'Cr': 1.75,
+      'Mn': 1.78,
+      'Fe': 1.850,
+      'Co': 2.0,
+      'Ni': 2.1,
+      'Cu': 2.281,
+      'Zn': 3.4,
+      'Ga': 2.837,
+      'Ge': 2.319,
+      'As': 2.071,
+      'Se': 2.154,
+      'Br': 2.281,
+      'Kr': 4.8,
+      'Rb': 4.360,
+      'Sr': 4.5,
+      'Y': 2.67,
+      'Zr': 2.36,
+      'Nb': 2.14,
+      'Mo': 1.95,
+      'Ru': 2.1,
+      'Rh': 2.20,
+      'Pd': 2.485,
+      'Ag': 2.626,
+      'Cd': 3.6,
+      'In': 3.1,
+      'Sb': 2.5,
+      'Xe': 4.5,
+      'Cs': 4.819,
+      'Ba': 4.60,
+      'La': 2.872,
+      'Hf': 2.38,
+      'Ta': 2.2,
+      'W': 2.1,
+      'Re': 2.1,
+      'Os': 2.2,
+      'Ir': 2.227,
+      'Pt': 2.373,
+      'Au': 2.555,
+      'Hg': 3.6,
+      'Pb': 2.85,
+      'Bi': 2.6,
+      'Rn': 4.7,
+      }
 
 class MakeSetupPageData:
     def __init__(self, symbol):
@@ -38,13 +102,13 @@ class MakeSetupPageData:
         mpi.world.barrier()
         if mpi.rank == 0:
             self.file = open(self.symbol + '.pckl', 'w')
-        
+
         self.generate_setup()
         self.prepare_box()
         self.eggbox()
         self.dimer()
         self.pickle()
-        
+
     def generate_setup(self):
         if mpi.rank == 0:
             gen = Generator(self.symbol, 'PBE', scalarrel=True)
@@ -97,8 +161,8 @@ class MakeSetupPageData:
         else:
             self.a = round(max(2.5 * self.d0, 5.5) / 0.2 / 4) * 4 * 0.2
 
-        gmin = 4 * int(self.a / 0.25 / 4 + 0.5)
-        gmax = 4 * int(self.a / 0.14 / 4 + 0.5)
+        gmin = 4 * int(self.a / 0.22 / 4 + 0.5)
+        gmax = 4 * int(self.a / 0.12 / 4 + 0.5)
         self.ng = (gmax + 4 - gmin) // 4
         self.gridspacings = self.a / np.arange(gmin, gmax + 4, 4)
 
@@ -108,11 +172,16 @@ class MakeSetupPageData:
         negg = 25
         self.Eegg = np.zeros((self.ng, negg))
         self.Fegg = np.zeros((self.ng, negg))
-        
+
+        eigensolver = 'rmm-diis'
+        if self.symbol in ['Ti', 'Sn', 'Te', 'Ba']: eigensolver = 'cg'
         for i in range(self.ng):
             h = self.gridspacings[i]
             calc = GPAW(h=h, txt='%s-eggbox-%.3f.txt' % (self.symbol, h),
-                        mixer=Mixer(beta=0.25, weight=1),
+                        mixer=Mixer(beta=0.1, nmaxold=5, weight=50),
+                        eigensolver=eigensolver,
+                        maxiter=300,
+                        nbands=-10,
                         **self.parameters)
             atom.set_calculator(calc)
 
@@ -132,12 +201,18 @@ class MakeSetupPageData:
 
         self.Edimer = np.zeros((self.ng, 7))
         self.Fdimer = np.zeros((self.ng, 7, 2))
-        
+
         q0 = self.d0 / np.sqrt(3)
+        eigensolver = 'rmm-diis'
+        if self.symbol in ['Ti', 'Sn', 'Te', 'Ba']: eigensolver = 'cg'
         for i in range(self.ng):
             h = self.gridspacings[i]
             calc = GPAW(h=h, txt='%s-dimer-%.3f.txt' % (self.symbol, h),
-                        mixer=Mixer(beta=0.25, weight=1),
+                        mixer=Mixer(beta=0.1, nmaxold=5, weight=50),
+                        #mixer=Mixer(beta=0.05, nmaxold=7, weight=100),
+                        eigensolver=eigensolver,
+                        maxiter=300,
+                        nbands=-10,
                         **self.parameters)
             dimer.set_calculator(calc)
 
