@@ -59,7 +59,12 @@ void *transapply_worker(void *threadarg)
   double* sendbuf = GPAW_MALLOC(double, bc->maxsend * GPAW_ASYNC_D);
   double* recvbuf = GPAW_MALLOC(double, bc->maxrecv * GPAW_ASYNC_D);
   double* buf = GPAW_MALLOC(double, args->ng2);
-  double* buf2 = GPAW_MALLOC(double, args->ng2 * 16);
+  int buf2size = args->ng2;
+  if (self->interpolate)
+    buf2size *= 16;
+  else
+    buf2size /= 2;
+  double* buf2 = GPAW_MALLOC(double, buf2size);
   MPI_Request recvreq[2 * GPAW_ASYNC_D];
   MPI_Request sendreq[2 * GPAW_ASYNC_D];
 
