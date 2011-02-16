@@ -19,7 +19,7 @@ from gpaw.mpi import broadcast_string
 
 try:
     import gzip
-except:
+except ImportError:
     has_gzip = False
 else:
     has_gzip = True

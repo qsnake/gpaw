@@ -12,7 +12,7 @@ from gpaw.grid_descriptor import EquidistantRadialGridDescriptor
 
 try:
     import gzip
-except:
+except ImportError:
     has_gzip = False
 else:
     has_gzip = True
