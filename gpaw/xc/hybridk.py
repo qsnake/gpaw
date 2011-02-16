@@ -232,15 +232,6 @@ class HybridXC(XCFunctional):
                 
             # Index of symmetry related point in the irreducible BZ
             ik = kd.kibz_k[k1]
-            # Index of point group operation
-            s = kd.sym_k[k1]
-            # Time-reversal symmetry used
-            time_reversal = kd.time_reversal_k[k1]
-
-            # Coordinates of symmetry related point in the irreducible BZ
-            ik_c = kd.ibzk_kc[ik]
-            # Point group operation
-            op_cc = kd.symmetry.op_scc[s]
             kpt = self.kpt_u[ik]
 
             # KPoint from ground-state calculation
@@ -249,8 +240,7 @@ class HybridXC(XCFunctional):
             kpt2.psit_nG = np.empty_like(kpt.psit_nG)
             kpt2.f_n = kpt.f_n / kpt.weight / K * 2
             for n, psit_G in enumerate(kpt2.psit_nG):
-                psit_G[:] = kd.symmetry.symmetrize_wavefunction(
-                    kpt.psit_nG[n], ik_c, k_c, op_cc, time_reversal)
+                psit_G[:] = kd.transform_wave_function(kpt.psit_nG[n], k1)
 
             kpt2.P_ani = self.pt.dict(len(kpt.psit_nG))
             self.pt.integrate(kpt2.psit_nG, kpt2.P_ani, k)
