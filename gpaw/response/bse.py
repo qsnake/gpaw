@@ -132,7 +132,7 @@ class BSE(BASECHI):
             if rank == 0 and self.nS_local // 5 > 0:            
                 if iS > 0 and iS % (self.nS_local // 5) == 0:
                     dt =  time() - t0
-                    self.printtxt('Finished pair orbital %d in %f seconds, estimated %f seconds left.  '%(k, dt, totaltime - dt) )
+                    self.printtxt('Finished pair orbital %d in %f seconds, estimated %f seconds left.  '%(iS, dt, totaltime - dt) )
                     
         K_SS *= 4 * pi / self.vol
         self.Scomm.sum(K_SS)
