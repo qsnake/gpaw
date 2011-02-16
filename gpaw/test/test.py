@@ -31,6 +31,8 @@ parser.add_option('--reverse', action='store_true',
 parser.add_option('-k', '--keep-temp-dir', action='store_true',
                   dest='keep_tmpdir', help='Do not delete temporary files.')
 parser.add_option('-d', '--directory', help='Run test in this directory')
+parser.add_option('-s', '--show-output', action='store_true',
+                  help='Show standard output from tests.')
 
 opt, tests = parser.parse_args()
 
@@ -80,7 +82,7 @@ cwd = os.getcwd()
 os.chdir(tmpdir)
 if mpi.rank == 0:
     print 'Running tests in', tmpdir
-failed = TestRunner(tests, jobs=opt.jobs).run()
+failed = TestRunner(tests, jobs=opt.jobs, show_output=opt.show_output).run()
 os.chdir(cwd)
 if mpi.rank == 0:
     if len(failed) > 0:

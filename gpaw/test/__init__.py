@@ -293,10 +293,12 @@ for test in exclude:
 
 
 class TestRunner:
-    def __init__(self, tests, stream=sys.__stdout__, jobs=1):
+    def __init__(self, tests, stream=sys.__stdout__, jobs=1,
+                 show_output=False):
         if mpi.size > 1:
             assert jobs == 1
         self.jobs = jobs
+        self.show_output = show_output
         self.tests = tests
         self.failed = []
         self.garbage = []
@@ -308,7 +310,8 @@ class TestRunner:
 
     def run(self):
         self.log.write('=' * 77 + '\n')
-        sys.stdout = devnull
+        if not self.show_output:
+            sys.stdout = devnull
         ntests = len(self.tests)
         t0 = time.time()
         if self.jobs == 1:
