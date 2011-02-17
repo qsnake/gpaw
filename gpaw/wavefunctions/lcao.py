@@ -112,6 +112,7 @@ class LCAOWaveFunctions(WaveFunctions):
                               for a, P_qMi in self.P_aqMi.items()])
 
         self.timer.start('TCI: Calculate S, T, P')
+        # Calculate lower triangle of S and T matrices:
         self.tci.calculate(spos_ac, S_qMM, T_qMM, self.P_aqMi)
         add_paw_correction_to_overlap(self.setups, self.P_aqMi, S_qMM,
                                       self.ksl.Mstart, self.ksl.Mstop)
@@ -133,7 +134,7 @@ class LCAOWaveFunctions(WaveFunctions):
             from numpy.linalg import eigvalsh
             self.timer.start('Check positive definiteness')
             for S_MM in S_qMM:
-                tri2full(S_MM, UL='U')
+                tri2full(S_MM, UL='L')
                 smin = eigvalsh(S_MM).real.min()
                 if smin < 0:
                     raise RuntimeError('Overlap matrix has negative '
