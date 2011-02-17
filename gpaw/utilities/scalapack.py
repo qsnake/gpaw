@@ -74,12 +74,6 @@ def scalapack_diagonalize_dc(desca, a, z, w, uplo):
     desca.checkassert(z)
     # only symmetric matrices
     assert desca.gshape[0] == desca.gshape[1]
-    if desca.gshape[0] < 250:
-        if (desca.blacsgrid.myrow, desca.blacsgrid.mycol) == (0, 0):
-            message = 'scalapack_diagonalize_dc may fail for small ' \
-                'matrices, use serial LAPACK instead.'
-            warnings.warn(message, RuntimeWarning)
-
     assert uplo in ['L', 'U']
     if not desca.blacsgrid.is_active():
         return
@@ -124,12 +118,15 @@ def scalapack_diagonalize_ex(desca, a, z, w, uplo, iu=None):
     if not desca.blacsgrid.is_active():
         return
     assert desca.gshape[0] == len(w)
+    if (desca.blacsgrid.myrow, desca.blacsgrid.mycol) == (0, 0):
+        message = 'scalapack_diagonalize_ex may have a buffer ' \
+            'overflow, use scalapack_diagonalize_dc instead'
+        warnings.warn(message, RuntimeWarning)
     info = _gpaw.scalapack_diagonalize_ex(a, desca.asarray(), 
                                           switch_lu[uplo], 
                                           iu, z, w)
-    if info not in [0, 2]:
+    if info != 0:
         # 0 means you are OK
-        # 2 means eigenvectors not guaranteed to be orthogonal
         raise RuntimeError('scalapack_diagonalize_ex error: %d' % info)
 
 def scalapack_diagonalize_mr3(desca, a, z, w, uplo, iu=None):
@@ -234,12 +231,15 @@ def scalapack_general_diagonalize_ex(desca, a, b, z, w, uplo, iu=None):
     if not desca.blacsgrid.is_active():
         return
     assert desca.gshape[0] == len(w)
+    if (desca.blacsgrid.myrow, desca.blacsgrid.mycol) == (0, 0):
+        message = 'scalapack_general_diagonalize_ex may have a buffer ' \
+            'overflow, use scalapack_general_diagonalize_dc instead'
+        warnings.warn(message, RuntimeWarning)
     info = _gpaw.scalapack_general_diagonalize_ex(a, desca.asarray(), 
                                                   switch_lu[uplo], 
                                                   iu, b, z, w)
-    if info not in [0, 2]:
+    if info != 0:
         # 0 means you are OK
-        # 2 means eigenvectors not guaranteed to be orthogonal        
         raise RuntimeError('scalapack_general_diagonalize_ex error: %d' % info)
 
 def scalapack_general_diagonalize_mr3(desca, a, b, z, w, uplo, iu=None):

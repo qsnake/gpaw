@@ -96,10 +96,12 @@ def main(N=73, seed=42, mprocs=2, nprocs=2, dtype=float):
     Glob2dist.redistribute(S0, C) # C0 was previously \
         # overwritten
 
-    scalapack_diagonalize_ex(dist, H.copy(), Z, W, 'L')
+    # we don't test the expert drivers anymore since there
+    # might be a buffer overflow error
+    ## scalapack_diagonalize_ex(dist, H.copy(), Z, W, 'L')
     scalapack_diagonalize_dc(dist, H.copy(), Z, W_dc, 'L')
     ## scalapack_diagonalize_mr3(dist, H.copy(), Z, W_mr3, 'L')
-    scalapack_general_diagonalize_ex(dist, H.copy(), S.copy(), Z, W_g, 'L')
+    ## scalapack_general_diagonalize_ex(dist, H.copy(), S.copy(), Z, W_g, 'L')
     scalapack_general_diagonalize_dc(dist, H.copy(), S.copy(), Z, W_g_dc, 'L')
     ## scalapack_general_diagonalize_mr3(dist, H.copy(), S.copy(), Z, W_g_mr3, 'L')
     scalapack_inverse_cholesky(dist, C, 'L')
@@ -110,41 +112,41 @@ def main(N=73, seed=42, mprocs=2, nprocs=2, dtype=float):
     Dist2glob.redistribute(C, C_test)
 
     if rank == 0:
-        diag_ex_err = abs(W - W0).max()
+        ## diag_ex_err = abs(W - W0).max()
         diag_dc_err = abs(W_dc - W0).max()
         ## diag_mr3_err = abs(W_mr3 - W0).max()
-        general_diag_ex_err = abs(W_g - W0_g).max()
+        ## general_diag_ex_err = abs(W_g - W0_g).max()
         general_diag_dc_err = abs(W_g_dc - W0_g).max()
         ## general_diag_mr3_err = abs(W_g_mr3 - W0_g).max()
         inverse_chol_err = abs(C_test-C0).max()
-        print 'diagonalize ex err', diag_ex_err
+        ## print 'diagonalize ex err', diag_ex_err
         print 'diagonalize dc err', diag_dc_err
         ## print 'diagonalize mr3 err', diag_mr3_err
-        print 'general diagonalize ex err', general_diag_ex_err
+        ## print 'general diagonalize ex err', general_diag_ex_err
         print 'general diagonalize dc err', general_diag_dc_err
         ## print 'general diagonalize mr3 err', general_diag_mr3_err
         print 'inverse chol err', inverse_chol_err 
     else:
-        diag_ex_err = 0.0
+        ## diag_ex_err = 0.0
         diag_dc_err = 0.0
         ## diag_mr3_err = 0.0
-        general_diag_ex_err = 0.0
+        ## general_diag_ex_err = 0.0
         general_diag_dc_err = 0.0
         ## general_diag_mr3_err = 0.0
         inverse_chol_err = 0.0
 
     # We don't like exceptions on only one cpu
-    diag_ex_err = world.sum(diag_ex_err)
+    ## diag_ex_err = world.sum(diag_ex_err)
     diag_dc_err = world.sum(diag_dc_err)
     ## diag_mr3_err = world.sum(diag_mr3_err)
-    general_diag_ex_err = world.sum(general_diag_ex_err)
+    ## general_diag_ex_err = world.sum(general_diag_ex_err)
     general_diag_dc_err = world.sum(general_diag_dc_err)
     ## general_diag_mr3_err = world.sum(general_diag_mr3_err) 
     inverse_chol_err = world.sum(inverse_chol_err)
-    assert diag_ex_err < tol
+    ## assert diag_ex_err < tol
     assert diag_dc_err < tol
     ## assert diag_mr3_err < tol
-    assert general_diag_ex_err < tol
+    ## assert general_diag_ex_err < tol
     assert general_diag_dc_err < tol
     ## assert general_diag_mr3_err < tol
     assert inverse_chol_err < tol
