@@ -424,33 +424,44 @@ class SmoothDistribution(ZeroKelvin):
     def guess_fermi_level(self, wfs):
         fermilevel = 0.0
 
-        # find the maximum length of kpt_u:
-        nu = wfs.kd.nks // wfs.kd.comm.size
-        if wfs.kd.rank0 < wfs.kd.comm.size:
-            nu += 1
-
-        # myeps_un must have same size on all cpu's so we can use gather.
-        myeps_un = np.empty((nu, wfs.nbands))
+        kd = wfs.kd
+        
+        myeps_un = np.empty((kd.mynks, wfs.nbands))
         for u, kpt in enumerate(wfs.kpt_u):
             myeps_un[u] = wfs.bd.collect(kpt.eps_n)
-        if len(wfs.kpt_u) < nu:
-            myeps_un[-1] = 1.0e10  # fill in large dummy values
-        myeps_n = myeps_un.ravel()
         
         if wfs.bd.comm.rank == 0:
             if wfs.kpt_comm.rank > 0:
-                wfs.kpt_comm.gather(myeps_n, 0)
+                kd.comm.send(myeps_un, 0)
             else:
-                eps_n = np.empty(nu * wfs.kpt_comm.size * wfs.nbands)
-                wfs.kpt_comm.gather(myeps_n, 0, eps_n)
-                eps_n = eps_n.ravel()
-                eps_n.sort()
-                n, f = divmod(self.nvalence * wfs.nibzkpts, 3 - wfs.nspins)
-                n = int(n)
-                if f > 0.0:
-                    fermilevel = eps_n[n]
+                eps_un = np.empty((kd.nspins * kd.nibzkpts, wfs.nbands))
+                u1 = kd.get_count(0)
+                eps_un[0:u1] = myeps_un
+                requests = []
+                for rank in range(1, kd.comm.size):
+                    u2 = u1 + kd.get_count(rank)
+                    requests.append(kd.comm.receive(eps_un[u1:u2], rank,
+                                                    block=False))
+                    u1 = u2
+                assert u1 == len(eps_un)
+                kd.comm.waitall(requests)
+
+                eps_n = eps_un.ravel()
+                w_skn = np.empty((kd.nspins, kd.nibzkpts, wfs.nbands))
+                w_skn[:] = 2.0 / wfs.nspins * kd.weight_k[:, np.newaxis]
+                w_n = w_skn.ravel()
+                n_i = eps_n.argsort()
+                w_i = w_n[n_i]
+                f_i = np.add.accumulate(w_i) - 0.5 * w_i
+                i = np.nonzero(f_i >= self.nvalence)[0][0]
+                if i == 0:
+                    fermilevel = eps_n[n_i[0]]
                 else:
-                    fermilevel = 0.5 * (eps_n[n - 1] + eps_n[n])
+                    fermilevel = ((eps_n[n_i[i]] *
+                                   (self.nvalence - f_i[i - 1]) +
+                                   eps_n[n_i[i - 1]] *
+                                   (f_i[i] - self.nvalence)) /
+                                  (f_i[i] - f_i[i - 1]))
 
         # XXX broadcast would be better!
         return wfs.bd.comm.sum(wfs.kpt_comm.sum(fermilevel))
@@ -485,6 +496,7 @@ class SmoothDistribution(ZeroKelvin):
 
         self.niter = niter
         return fermilevel, magmom, e_entropy
+
 
 class FermiDirac(SmoothDistribution):
     def __init__(self, width, fixmagmom=False, maxiter=1000):
