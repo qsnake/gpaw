@@ -166,6 +166,7 @@ tests = [
     'wannier_ethylene.py',
     'CH4.py',
     'neb.py',
+    'complex.py',
     'diamond_absorption.py',
     'aluminum_EELS.py',
     'dump_chi0.py',

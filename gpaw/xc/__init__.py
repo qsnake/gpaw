@@ -39,9 +39,16 @@ def XC(kernel, parameters=None):
         elif name == 'LB94':
             from gpaw.xc.lb94 import LB94
             kernel = LB94()
-        elif name.endswith('PZ-SIC'): 
-            from gpaw.xc.sic import SIC 
-            return SIC(xc=name[:-7])
+        elif name.startswith('ODD_'):
+            from ODD import ODDFunctional
+            return ODDFunctional(name[4:])
+        elif name.endswith('PZ-SIC'):
+            try:
+                from ODD import PerdewZungerSIC as SIC 
+                return SIC(xc=name[:-7])
+            except:
+                from gpaw.xc.sic import SIC 
+                return SIC(xc=name[:-7])
         elif name.startswith('old'): 
             from gpaw.xc.kernel import XCKernel
             kernel = XCKernel(name[3:])

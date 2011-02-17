@@ -113,7 +113,7 @@ class TDDFT(GPAW):
         GPAW.__init__(self, ground_state_file, txt=txt, mixer=DummyMixer(),
                       parallel={'domain': parsize, 'band': parsize_bands, 
                                 'stridebands': parstride_bands},
-                      communicator=communicator)
+                      communicator=communicator, dtype=complex)
 
         # Prepare for dipole moment file handle
         self.dm_file = None

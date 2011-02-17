@@ -185,7 +185,7 @@ class PAW(PAWTextOutput):
                 self.wfs = EmptyWaveFunctions()
                 self.occupations = None
             elif key in ['h', 'gpts', 'setups', 'spinpol', 'usesymm',
-                         'parallel', 'communicator']:
+                         'parallel', 'communicator', 'dtype']:
                 self.density = None
                 self.occupations = None
                 self.hamiltonian = None
@@ -378,7 +378,7 @@ class PAW(PAWTextOutput):
         cell_cv /= Bohr
 
 
-        if hasattr(self, 'time'):
+        if hasattr(self, 'time') or par.dtype==complex:
             dtype = complex
         else:
             if kd.gamma:

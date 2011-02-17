@@ -29,6 +29,7 @@ class InputParameters(dict):
             ('txt',             '-'),
             ('hund',            False),
             ('random',          False),
+            ('dtype',           float),
             ('maxiter',         120),
             ('parallel',        {'domain':              parsize,
                                  'band':                parsize_bands,
@@ -181,3 +182,12 @@ class InputParameters(dict):
             self.mode = r['Mode']
         except KeyError:
             self.mode = 'fd'
+
+        try:
+            dtype = r['DataType']
+            if dtype=='Float':
+                self.dtype = float
+            else:
+                self.dtype = complex
+        except KeyError:
+            self.dtype = float

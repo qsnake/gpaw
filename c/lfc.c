@@ -517,19 +517,36 @@ PyObject* lcao_to_grid(LFCObject *lfc, PyObject *args)
     return NULL; 
   
   if (!lfc->bloch_boundary_conditions) {
-    const double* c_M = (const double*)c_M_obj->data;
-    double* psit_G = (double*)psit_G_obj->data;
-    GRID_LOOP_START(lfc, -1) {
-      for (int i = 0; i < ni; i++) {
-        LFVolume* v = volume_i + i;
-        for (int gm = 0, G = Ga; G < Gb; G++) {
-          for (int m = 0; m < v->nm; m++, gm++) {
-            psit_G[G] += v->A_gm[gm] * c_M[v->M + m];
+    if (c_M_obj->descr->type_num == PyArray_DOUBLE) {
+      const double* c_M = (const double*)c_M_obj->data;
+      double* psit_G = (double*)psit_G_obj->data;
+      GRID_LOOP_START(lfc, -1) {
+        for (int i = 0; i < ni; i++) {
+          LFVolume* v = volume_i + i;
+          for (int gm = 0, G = Ga; G < Gb; G++) {
+            for (int m = 0; m < v->nm; m++, gm++) {
+              psit_G[G] += v->A_gm[gm] * c_M[v->M + m];
+            }
           }
         }
       }
+      GRID_LOOP_STOP(lfc, -1);
     }
-    GRID_LOOP_STOP(lfc, -1);
+    else {
+      const double complex* c_M = (const double complex*)c_M_obj->data;
+      double complex* psit_G = (double complex*)psit_G_obj->data;
+      GRID_LOOP_START(lfc, -1) {
+        for (int i = 0; i < ni; i++) {
+          LFVolume* v = volume_i + i;
+          for (int gm = 0, G = Ga; G < Gb; G++) {
+            for (int m = 0; m < v->nm; m++, gm++) {
+              psit_G[G] += v->A_gm[gm] * c_M[v->M + m];
+            }
+          }
+        }
+      }
+      GRID_LOOP_STOP(lfc, -1);
+    }
   }
   else {
     const double complex* c_M = (const double complex*)c_M_obj->data;
