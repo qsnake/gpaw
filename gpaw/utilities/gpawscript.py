@@ -176,7 +176,7 @@ def run(argv=None):
     if not opt.effective_medium_theory:
         # Import stuff that eval() may need to know:
         from gpaw.wavefunctions.pw import PW
-        from gpaw.occupations import FermiDirac
+        from gpaw.occupations import FermiDirac, MethfesselPaxton
             
         if opt.parameters:
             input_parameters = eval(open(opt.parameters).read())
