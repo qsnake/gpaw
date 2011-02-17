@@ -373,8 +373,8 @@ if __name__ in ['__main__', '__builtin__'] and compiled_with_sl(True):
     testcases = []
     for dtype in [float, complex]:
         for parstride_bands in [False]: #XXX [False, True]:
-            for blocking in ['fast', 'light', 'intdiv']:
-#                             'nonintdiv1', 'nonintdiv2']: 
+            for blocking in ['fast', 'light', 'intdiv',
+                             'nonintdiv1', 'nonintdiv2']: 
                 for async in [False, True]:
                     testcases.append(UTConstantWavefunctionFactory(dtype, \
                         parstride_bands, blocking, async))
