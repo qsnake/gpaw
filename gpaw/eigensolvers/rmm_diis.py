@@ -85,7 +85,7 @@ class RMM_DIIS(Eigensolver):
                                      calculate_change=True)
             
             # Find lam that minimizes the norm of R'_G = R_G + lam dR_G
-            RdR_x = np.array([np.vdot(dR_G, R_G)
+            RdR_x = np.array([np.vdot(dR_G, R_G).real
                               for R_G, dR_G in zip(R_xG, dR_xG)])
             dRdR_x = np.array([np.vdot(dR_G, dR_G).real for dR_G in dR_xG])
             self.gd.comm.sum(RdR_x)
