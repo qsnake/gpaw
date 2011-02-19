@@ -95,9 +95,8 @@ from gpaw.hs_operators import MatrixOperator
 def dscf_kpoint_overlaps(paw, phasemod=True, broadcast=True):
     bd = paw.wfs.bd
     gd = paw.wfs.gd
-    kd = KPointDescriptor(paw.wfs.nspins, paw.wfs.nibzkpts, \
-        paw.wfs.kpt_comm, paw.wfs.gamma, paw.wfs.dtype)
-    operator = MatrixOperator(bd, gd, hermitian=False)
+    kd = paw.wfs.kd
+    operator = MatrixOperator(paw.wfs.orthoksl, hermitian=False)
     atoms = paw.get_atoms()
 
     # Find the kpoint with lowest kpt.k_c (closest to gamma point)
@@ -106,7 +105,7 @@ def dscf_kpoint_overlaps(paw, phasemod=True, broadcast=True):
     # Maintain list of a single global reference kpoint for each spin
     kpt0_s = []
     for s0 in range(kd.nspins):
-        q0 = k0 - kd.beg % kd.nibzkpts
+        q0 = k0 - kd.get_offset() % kd.nibzkpts
         kpt0 = GlobalKPoint(None, s0, k0, q0, None)
         kpt0.update(paw.wfs)
         kpt0_s.append(kpt0)
@@ -122,7 +121,7 @@ def dscf_kpoint_overlaps(paw, phasemod=True, broadcast=True):
             r_G[:] = np.arange(gd.beg_c[c], gd.end_c[c], \
                                dtype=float)[slice_c2G] / gd.N_c[c]
 
-    X_unn = np.empty((kd.mynks, bd.nbands, bd.nbands), dtype=kd.dtype)
+    X_unn = np.empty((kd.mynks, bd.nbands, bd.nbands), dtype=paw.wfs.dtype)
     for myu, kpt in enumerate(paw.wfs.kpt_u):
         u = kd.global_index(myu)
         s, k = kd.what_is(u)
@@ -132,8 +131,8 @@ def dscf_kpoint_overlaps(paw, phasemod=True, broadcast=True):
         if phasemod:
             assert paw.wfs.dtype == complex, 'Phase modification is complex!'
 
-            k0_c = paw.wfs.ibzk_kc[k0]
-            k_c = paw.wfs.ibzk_kc[k]
+            k0_c = kd.ibzk_kc[k0]
+            k_c = kd.ibzk_kc[k]
             eirk_G = np.exp(2j*np.pi*np.sum(r_cG*(k_c-k0_c)[:,np.newaxis,np.newaxis,np.newaxis], axis=0))
             psit0_nG = eirk_G[np.newaxis,...]*kpt0.psit_nG
 
