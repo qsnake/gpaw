@@ -8,7 +8,6 @@ from gpaw.fd_operators import Laplace
 from gpaw.utilities.blas import axpy, r2k, gemm
 from gpaw.utilities.tools import apply_subspace_mask
 from gpaw.utilities import unpack
-from gpaw import debug, extra_parameters
 
 
 class Eigensolver:
