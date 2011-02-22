@@ -99,6 +99,8 @@ class AtomEigensolver:
             kpt.psit_nG = self.gd.empty(wfs.nbands)
             kpt.P_ani = {0: np.zeros((wfs.nbands, len(dS_ii)))}
         
+        self.initialized = True
+
     def iterate(self, hamiltonian, wfs):
         if not self.initialized:
             self.initialize(wfs)
