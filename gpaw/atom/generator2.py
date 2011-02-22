@@ -6,12 +6,8 @@ from math import pi, log
 import numpy as np
 from scipy.special import gamma
 from scipy.interpolate import splrep, splev
-from ase.data import atomic_numbers, atomic_names
-import ase.units as units
 
 from gpaw.atom.configurations import configurations
-from gpaw.xc_functional import XCFunctional
-from gpaw.utilities.progressbar import ProgressBar
 from gpaw.atom.aeatom import AllElectronAtom, Channel
 from gpaw.setup import BaseSetup
 from gpaw.spline import Spline
@@ -135,10 +131,11 @@ class PAWSetupGenerator:
             
         self.rhot_g = self.nt_g + self.Q * self.ghat_g
         self.vHtr_g = self.gd.poisson(self.rhot_g)
-        self.vxc_g = self.gd.zeros()
-        exc_g = self.gd.zeros()
-        self.aea.xc.calculate_spinpaired(exc_g, self.nt_g, self.vxc_g)
-        self.vtr_g = self.vHtr_g + (self.vxc_g + self.v0_g) * self.gd.r_g
+        self.vxct_g = self.gd.zeros()
+        exct_g = self.gd.zeros()
+        self.exct = self.aea.xc.calculate_spherical(
+            self.gd, self.nt_g.reshape((1, -1)), self.vxct_g.reshape((1, -1)))
+        self.vtr_g = self.vHtr_g + (self.vxct_g + self.v0_g) * self.gd.r_g
         
     def find_zero_potential(self):
         e0 = self.aea.channels[self.l0].e_n[0]
@@ -245,13 +242,17 @@ class PAWSetup:
     def print_info(self, text):
         text('Local pseudo potential')
         
-    def calculate_initial_occupation_numbers(self, magmom, hund, charge):
+    def calculate_initial_occupation_numbers(self, magmom, hund, charge,
+                                             nspins):
         return np.array([(1.0,)])
 
     def initialize_density_matrix(self, f_si):
         return np.zeros((1, 0))
 
-        
+    def calculate_rotations(self, R_slmm):
+        self.R_sii = np.zeros((1, 0, 0))
+
+     
 def build_parser(): 
     from optparse import OptionParser
 

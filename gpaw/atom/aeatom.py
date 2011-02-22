@@ -373,7 +373,8 @@ class AllElectronAtom:
                 basis = GaussianBasis(l, alpha_B, self.gd, eps)
                 nb_l.append(len(basis))
                 for s in range(self.nspins):
-                    self.channels.append(Channel(l, s, self.f_lsn[l][s], basis))
+                    self.channels.append(Channel(l, s, self.f_lsn[l][s],
+                                                 basis))
         else:
             for K in range(1, lmax + 2):
                 leff = (K**2 - (self.Z / c)**2)**0.5 - 1
