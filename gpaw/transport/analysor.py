@@ -795,13 +795,14 @@ class Transport_Analysor:
             tp.F_av = None
             contour = self.collect_contour(tp)            
         charge = self.collect_charge(tp)
+        magmom = tp.occupations.magmom
+        local_magmom = tp.get_magnetic_moments()   
+
         if world.rank == 0:
             lead_fermi = np.array(tp.lead_fermi)
             lead_pairs = np.array(self.lead_pairs)
             bias = np.array(tp.bias)
             gate = np.array(tp.gate)
-            magmom = tp.occupations.magmom
-            local_magmom = tp.get_magnetic_moments()   
             for name in ['lead_fermi', 'lead_pairs', 'bias', 'gate', 
                                       'charge', 'magmom', 'local_magmom']:
                 self.data[name] = eval(name)
