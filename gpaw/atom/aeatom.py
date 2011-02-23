@@ -6,7 +6,10 @@ from math import pi, log
 
 import numpy as np
 from scipy.special import gamma
+from numpy.linalg import eigh
+from scipy.interpolate import splrep, splev
 from ase.data import atomic_numbers, atomic_names, chemical_symbols
+from scipy.integrate import odeint
 import ase.units as units
 from ase.utils import devnull
 
@@ -134,15 +137,15 @@ class GaussianBasis:
         K_BB = 2**(l + 2.5) * M_BB**(0.5 * l + 0.75) / gamma(l + 1.5) * (
             0.5 * gamma(l + 1) / A_BB**(l + 1))
 
-        # Find set of liearly independent functions.
+        # Find set of linearly independent functions.
         # We have len(alpha_B) gaussians (index B) and self.nbasis
         # linearly independent functions (index b).
-        s_B, U_BB = np.linalg.eigh(S_BB)
+        s_B, U_BB = eigh(S_BB)
         self.nbasis = int((s_B > eps).sum())
 
         Q_Bb = np.dot(U_BB[:, -self.nbasis:],
                       np.diag(s_B[-self.nbasis:]**-0.5))
-
+        
         self.T_bb = np.dot(np.dot(Q_Bb.T, T_BB), Q_Bb)
         self.D_bb = np.dot(np.dot(Q_Bb.T, D_BB), Q_Bb)
         self.K_bb = np.dot(np.dot(Q_Bb.T, K_BB), Q_Bb)
@@ -186,7 +189,7 @@ class Channel:
         """Diagonalize Schrödinger equation in basis set."""
         H_bb = self.basis.calculate_potential_matrix(vr_g)
         H_bb += self.basis.T_bb
-        self.e_n, C_bn = np.linalg.eigh(H_bb)
+        self.e_n, C_bn = eigh(H_bb)
         self.C_nb = C_bn.T
     
     def calculate_density(self, n=None):
@@ -222,7 +225,7 @@ class DiracChannel(Channel):
         H_bb[:nb, :nb] = V_bb
         H_bb[nb:, nb:] = V_bb - 2 * c**2 * np.eye(nb)
         H_bb[nb:, :nb] = -c * (-self.basis.D_bb.T + self.k * self.basis.K_bb)
-        e_n, C_bn = np.linalg.eigh(H_bb)
+        e_n, C_bn = eigh(H_bb)
         if self.k < 0:
             n0 = nb
         else:
@@ -533,6 +536,23 @@ class AllElectronAtom:
         plt.axis(xmax=rc)
         plt.show()
 
+    def logarithmic_derivative(self, l, energies, rcut):
+        vr = splrep(self.gd.r_g, self.vr_sg[0])
+
+        def v(r):
+            return splev(r, vr) / r
+        
+        def f(y, r, e):
+            if r == 0:
+                return [y[1], -2.0]
+            return [y[1], 2 * (v(r) - e) * y[0]]
+
+        logderivs = []
+        for e in energies:
+            u, dudr = odeint(f, [0, 1], [0, rcut], (e,))[1, :]
+            logderivs.append(dudr / u)
+        return logderivs
+            
 
 def build_parser(): 
     from optparse import OptionParser
@@ -554,6 +574,8 @@ def build_parser():
     parser.add_option('-e', '--exponents',
                       help='Exponents a: exp(-a*r^2).  Use "-e 0.1:20.0:30" ' +
                       'to get 30 exponents from 0.1 to 20.0.')
+    parser.add_option('-l', '--logarithmic-derivatives',
+                      help='-l 1.3,spdf,-2,2,100')
     return parser
 
 
@@ -603,6 +625,21 @@ def main():
 
     aea.run()
 
+    if opt.logarithmic_derivatives:
+        rcut, lvalues, emin, emax, npoints = \
+              opt.logarithmic_derivatives.split(',')
+        rcut = float(rcut)
+        lvalues = ['spdfg'.find(x) for x in lvalues]
+        emin = float(emin)
+        emax = float(emax)
+        npoints = int(npoints)
+        energies = np.linspace(emin, emax, npoints)
+        import matplotlib.pyplot as plt
+        for l in lvalues:
+            ld = aea.logarithmic_derivative(l, energies, rcut)
+            plt.plot(energies, ld)
+        plt.show()
+        
     if opt.plot:
         aea.plot_wave_functions()
 
