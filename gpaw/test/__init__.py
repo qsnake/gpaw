@@ -230,6 +230,7 @@ tests = [
     'parallel/pblas.py',
     'parallel/blacsdist.py',
     'parallel/scalapack.py',
+    'parallel/scalapack_diag_simple.py',
     'parallel/realspace_blacs.py',
     'parallel/lcao_projections.py',
     #'dscf_forces.py',
@@ -257,6 +258,7 @@ if mpi.size > 2:
 if mpi.size < 4:
     exclude += ['parallel/pblas.py',
                 'parallel/scalapack.py',
+                'parallel/scalapack_diag_simple.py',
                 'parallel/realspace_blacs.py',
                 'AA_exx_enthalpy.py',
                 'bse_aluminum.py',
