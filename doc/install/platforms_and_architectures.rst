@@ -82,3 +82,9 @@ Solaris:
 
    Solaris/corona
    Solaris/bohr
+
+MacOSX:
+
+.. toctree::
+   :maxdepth: 1
+   MacOSX/SnowLeopard
