@@ -87,4 +87,5 @@ MacOSX:
 
 .. toctree::
    :maxdepth: 1
-   MacOSX/SnowLeopard
+   MacOSX/snowleopard
+
