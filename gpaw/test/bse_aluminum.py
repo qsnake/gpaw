@@ -62,7 +62,7 @@ if check_spectrum:
         raise ValueError('Please check spectrum strength ! ')
 
     d2 = np.loadtxt('Al_df.dat')
-    if np.abs((d[:240] - d2[:240, 2]).sum()) > 1e-4:
+    if np.abs(d[:240] - d2[:240, 2]).sum() > 0.003:
         raise ValueError('Please compare two spectrum')
 
     
