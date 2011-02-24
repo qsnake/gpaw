@@ -11,10 +11,10 @@ from gpaw import debug
 from gpaw.external_potential import ElectrostaticPotential
 
 class PointCharges(Atoms, ElectrostaticPotential):
-    def __init__(self, **kwargs):
+    def __init__(self, *args, **kwargs):
         self.pc_nc = None
         self.charge_n = None
-        Atoms.__init__(self, **kwargs)
+        Atoms.__init__(self, *args, **kwargs)
         
     def charge(self):
         """Return the summed charge of all point charges."""
@@ -219,5 +219,3 @@ class PointCharges(Atoms, ElectrostaticPotential):
 class PointCharge(Atom):
     def __init__(self, position, charge):
         Atom.__init__(self, position=position, charge=charge)
-
- 

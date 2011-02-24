@@ -117,6 +117,7 @@ tests = [
     'mgga_restart.py',
     'gga_atom.py',
     'bee1.py',
+    'external_potential.py',
     'refine.py',
     'revPBE.py',
     'lcao_largecellforce.py',
