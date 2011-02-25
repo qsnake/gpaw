@@ -25,6 +25,8 @@ Use the :program:`gpaw-test` command to run the tests::
                             Run failed tests only.
       --from=TESTFILE       Run remaining tests, starting from TESTFILE
       --after=TESTFILE      Run remaining tests, starting after TESTFILE
+      --range=test_i.py,test_j.py
+	                    Run tests in range test_i.py to test_j.py (inclusive)
       -j JOBS, --jobs=JOBS  Run JOBS threads.
       --reverse             Run tests in reverse order (less overhead with
                             multiple jobs)

@@ -23,6 +23,10 @@ parser.add_option('--from', metavar='TESTFILE', dest='from_test',
                   help='Run remaining tests, starting from TESTFILE')
 parser.add_option('--after', metavar='TESTFILE', dest='after_test',
                   help='Run remaining tests, starting after TESTFILE')
+parser.add_option('--range', 
+                  type='string', default=None,
+                  help='Run tests in range test_i.py to test_j.py (inclusive)',
+                  metavar='test_i.py,test_j.py')
 parser.add_option('-j', '--jobs', type='int', default=1,
                   help='Run JOBS threads.')
 parser.add_option('--reverse', action='store_true',
@@ -57,6 +61,12 @@ if opt.from_test:
 if opt.after_test:
     index = tests.index(opt.after_test) + 1
     tests = tests[index:]
+
+if opt.range:
+    indices = opt.range.split(',')
+    start_index = tests.index(indices[0])
+    stop_index = tests.index(indices[1])
+    tests = tests[start_index:stop_index]
 
 for test in exclude:
     if test in tests:
