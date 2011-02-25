@@ -18,9 +18,6 @@ if GS:
                 kpts=(4,2,2),
                 xc='LDA',
                 nbands=4,
-                parallel={'domain':1,
-                          'band':1},
-                idiotproof=False,  # allow uneven distribution of k-points
                 convergence={'band':'all'})
     
     atoms.set_calculator(calc)
