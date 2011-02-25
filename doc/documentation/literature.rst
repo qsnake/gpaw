@@ -659,6 +659,30 @@ Publications using the gpaw code
 
    .. 6 December 2010
 
+#) \D. J. Miller, H. Öberg, L.-Å. Näslund, T. Anniyev, H. Ogasawara,
+   L. G. M. Pettersson, and A. Nilsson
+ 
+   `Low O2 dissociation barrier on Pt(111) due to
+   adsorbate-adsorbate interactions`__
+
+   J. Chem. Phys. 133, 224701 (2010)
+
+   __ http://dx.doi.org/10.1063/1.3512618
+
+   .. 10 December 2010
+
+#) Eero Hulkko, Olga Lopez-Acevedo, Jaakko Koivisto, Yael
+   Levi-Kalisman, Roger D. Kornberg, Mika Pettersson and Hannu Hkkinen
+
+   `Electronic and Vibrational Signatures of the Au102(p-MBA)44
+   Cluster`__
+
+   \J. Am. Chem. Soc. ASAP article
+
+   __ http://dx.doi.org/10.1021/ja111077e
+
+   .. 24 February 2011
+
 #) Andreas Møgelhøj, André Kelkkanen, K. Thor Wikfeldt, Jakob Schiøtz,
    Jens Jørgen Mortensen, Lars G.M. Pettersson, Bengt I. Lundqvist,
    Karsten W. Jacobsen, Anders Nilsson and Jens K. Nørskov
@@ -667,13 +691,3 @@ Publications using the gpaw code
    structure from mainly tetrahedral to high-density-like`__
 
    __ http://arxiv.org/abs/1101.5666
-
-#) Eero Hulkko, Olga Lopez-Acevedo, Jaakko Koivisto, Yael
-   Levi-Kalisman, Roger D. Kornberg, Mika Pettersson and Hannu Hkkinen
-
-   `Electronic and Vibrational Signatures of the Au102(p-MBA)44
-   Cluster`__
-
-   __ http://dx.doi.org/10.1021/ja111077e
-
-   .. 24 February 2011
