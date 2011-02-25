@@ -15,6 +15,7 @@ job = ' '.join(argv[i:])
 
 qsub = '#!/usr/bin/env python\n'
 qsub += '#PBS -N %s\n' % script.split('/')[-1] # set default job name
+qsub += '#PBS -W umask=002\n'
 
 for line in open(script, 'r'):
     if line.startswith('#PBS'):
