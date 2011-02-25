@@ -667,3 +667,13 @@ Publications using the gpaw code
    structure from mainly tetrahedral to high-density-like`__
 
    __ http://arxiv.org/abs/1101.5666
+
+#) Eero Hulkko, Olga Lopez-Acevedo, Jaakko Koivisto, Yael
+   Levi-Kalisman, Roger D. Kornberg, Mika Pettersson and Hannu Hkkinen
+
+   `Electronic and Vibrational Signatures of the Au102(p-MBA)44
+   Cluster`__
+
+   __ http://dx.doi.org/10.1021/ja111077e
+
+   .. 24 February 2011
