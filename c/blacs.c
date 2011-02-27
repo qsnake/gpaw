@@ -550,10 +550,8 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
   char uplo;
   char diag='N'; // copy the diagonal
   int c_ConTxt;
-  int isreal;
   int m;
   int n;
-  int one = 1;
 
   int ia, ja, ib, jb;
 
